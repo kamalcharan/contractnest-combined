@@ -1,80 +1,74 @@
-MANUAL COPY INSTRUCTIONS
-========================
+═══════════════════════════════════════════════════════════════════
+MANUAL FILE COPY INSTRUCTIONS - Resources Contacts Fix & Description Card
+═══════════════════════════════════════════════════════════════════
 
-Copy these files from MANUAL_COPY_FILES folder to your local contractnest-combined repository:
+Branch: claude/service-catalog-resources-011CV5hK1PQvzsBwwSrXuqHM
+Submodule Modified: contractnest-ui
 
-CONTRACTNEST-UI FILES:
----------------------
-1. InvitationDetailsModal.tsx
-   → Copy to: contractnest-ui/src/components/users/InvitationDetailsModal.tsx
-   (NEW FILE - create it)
+TOTAL FILES TO COPY: 5
 
-2. InvitationsList.tsx
-   → Copy to: contractnest-ui/src/components/users/InvitationsList.tsx
-   (REPLACE existing file - Pending tab with icon buttons)
+─────────────────────────────────────────────────────────────────
+FILE 1: ResourcesPanel.tsx
+─────────────────────────────────────────────────────────────────
+Source: MANUAL_COPY_FILES\contractnest-ui\src\components\Resources\ResourcesPanel.tsx
+Destination: contractnest-ui\src\components\Resources\ResourcesPanel.tsx
 
-3. UsersList.tsx
-   → Copy to: contractnest-ui/src/components/users/UsersList.tsx
-   (REPLACE existing file - Active tab with icon buttons)
+Changes:
+- Fixed contactClassification lookup to use resourceType.id instead of name
+- Added enabled flag to prevent unnecessary contact API calls
+- Integrated ResourceDescriptionCard component
 
-4. users-index.tsx
-   → Copy to: contractnest-ui/src/pages/settings/users/index.tsx
-   (REPLACE existing file)
+─────────────────────────────────────────────────────────────────
+FILE 2: EmptyStates.tsx
+─────────────────────────────────────────────────────────────────
+Source: MANUAL_COPY_FILES\contractnest-ui\src\components\Resources\EmptyStates.tsx
+Destination: contractnest-ui\src\components\Resources\EmptyStates.tsx
 
-5. userView.tsx
-   → Copy to: contractnest-ui/src/pages/settings/users/userView.tsx
-   (REPLACE existing file)
+Changes:
+- Added new ResourceDescriptionCard component
+- Displays resource type description from database
+- Theme-aware styling with brand color accent
 
-6. useInvitations.ts
-   → Copy to: contractnest-ui/src/hooks/useInvitations.ts
-   (REPLACE existing file)
+─────────────────────────────────────────────────────────────────
+FILE 3: index.ts (Resources components)
+─────────────────────────────────────────────────────────────────
+Source: MANUAL_COPY_FILES\contractnest-ui\src\components\Resources\index.ts
+Destination: contractnest-ui\src\components\Resources\index.ts
 
+Changes:
+- Added ResourceDescriptionCard to exports
 
-CONTRACTNEST-EDGE FILES:
------------------------
-7. edge-user-invitations-index.ts
-   → Copy to: contractnest-edge/supabase/functions/user-invitations/index.ts
-   (REPLACE existing file)
+─────────────────────────────────────────────────────────────────
+FILE 4: useContacts.ts
+─────────────────────────────────────────────────────────────────
+Source: MANUAL_COPY_FILES\contractnest-ui\src\hooks\useContacts.ts
+Destination: contractnest-ui\src\hooks\useContacts.ts
 
-8. edge-auth-registration.ts
-   → Copy to: contractnest-edge/supabase/functions/auth/handlers/registration.ts
-   (REPLACE existing file - Fixes onboarding for invited users)
+Changes:
+- Added 'enabled' flag to ContactFilters interface
+- Added conditional fetch logic to skip API calls when enabled=false
 
+─────────────────────────────────────────────────────────────────
+FILE 5: resources.ts (types)
+─────────────────────────────────────────────────────────────────
+Source: MANUAL_COPY_FILES\contractnest-ui\src\types\resources.ts
+Destination: contractnest-ui\src\types\resources.ts
 
-AFTER COPYING ALL FILES:
------------------------
-1. Navigate to contractnest-ui folder:
-   cd contractnest-ui
+Changes:
+- Fixed getResourceTypeBehavior to use resourceType.id for classification lookup
 
-2. Rebuild the UI:
-   npm run dev
+═══════════════════════════════════════════════════════════════════
+WHAT THESE CHANGES FIX:
+═══════════════════════════════════════════════════════════════════
 
-3. Hard refresh browser: Ctrl + F5
+1. ✅ Resources Contacts API Integration (PRIMARY FIX)
+   - Team Staff now correctly fetches contacts with classification='team_member'
+   - Partners now correctly fetches contacts with classification='vendor'
+   - Equipment/Assets/Consumables no longer make unnecessary API calls
 
-4. Test the changes:
-   - Go to Settings → Users → Pending tab
-   - You should see icon buttons instead of dropdown menu
-   - Click View button to see InvitationDetailsModal
-   - EDIT button should be removed from user view page
+2. ✅ Resource Type Description Card (NEW FEATURE)
+   - Shows description from database at top of resources panel
+   - Provides context about what data belongs in each resource type
+   - Always visible for better user guidance
 
-
-WHAT CHANGED:
-------------
-PENDING TAB (InvitationsList.tsx):
-✅ Icon buttons (Eye, Copy, Resend, Cancel) replace dropdown menu
-✅ View Details modal shows full invitation information
-✅ Tooltips on all icon buttons
-
-ACTIVE TAB (UsersList.tsx):
-✅ Icon buttons (Eye, Resend, Suspend) replace dropdown menu
-✅ EDIT option removed completely
-✅ EXPORT button removed from header
-✅ ConfirmationDialog added for Suspend action (no more browser alerts)
-✅ Tooltips on all icon buttons
-
-OTHER CHANGES:
-✅ EDIT button removed from user view page (userView.tsx)
-✅ Pending count updates immediately after creating invitation (index.tsx)
-✅ All tab counts (All Team, Active, Pending) now show immediately on page load (index.tsx)
-✅ MSG91 integration for Email, SMS, WhatsApp (edge function)
-✅ Onboarding fix: Invited users skip onboarding and go directly to dashboard (registration.ts)
+═══════════════════════════════════════════════════════════════════
