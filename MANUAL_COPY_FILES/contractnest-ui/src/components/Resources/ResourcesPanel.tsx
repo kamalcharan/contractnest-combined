@@ -88,16 +88,6 @@ const ResourcesPanel: React.FC<ResourcesPanelProps> = ({
       : { enabled: false } // Don't fetch contacts for non-contact-based resource types
   );
 
-  // Log contact loading for debugging
-  console.log('Contact loading debug:', {
-    selectedResourceType: selectedResourceType?.name,
-    contactClassification,
-    contactsCount: contacts.length,
-    contactsLoading,
-    contactsError: contactsError?.message,
-    behavior: behavior?.isContactBased
-  });
-
   // Load next sequence number for manual entry types
   const { data: nextSequence } = useNextSequence(
     behavior?.isManualEntry ? selectedTypeId : null
@@ -140,17 +130,70 @@ const ResourcesPanel: React.FC<ResourcesPanelProps> = ({
     // Resources will auto-refresh via TanStack Query invalidation
   };
 
-  // Filter resources based on search
+  // Transform contacts to Resource format for contact-based types
+  const transformedContactsAsResources = useMemo((): Resource[] => {
+    if (!behavior?.isContactBased || contacts.length === 0) {
+      return [];
+    }
+
+    return contacts.map((contact) => ({
+      id: contact.id,
+      tenant_id: contact.tenant_id,
+      is_live: contact.is_live,
+      resource_type_id: selectedTypeId!,
+      name: contact.name || contact.company_name || 'Unnamed Contact',
+      display_name: contact.displayName || contact.name || contact.company_name || 'Unnamed Contact',
+      description: contact.notes || null,
+      code: null,
+      contact_id: contact.id,
+      attributes: null,
+      availability_config: null,
+      is_custom: false,
+      master_template_id: null,
+      status: contact.status === 'active' ? 'active' : 'inactive',
+      created_at: contact.created_at,
+      updated_at: contact.updated_at,
+      created_by: null,
+      updated_by: null,
+      hexcolor: null,
+      sequence_no: null,
+      is_deletable: false, // Contact-based resources are not deletable from Resources UI
+      tags: null,
+      form_settings: null,
+      contact: contact,
+      resource_type: selectedResourceType,
+    } as Resource));
+  }, [contacts, behavior?.isContactBased, selectedTypeId, selectedResourceType]);
+
+  // Determine which data source to use based on resource type
+  const displayData = useMemo(() => {
+    return behavior?.isContactBased ? transformedContactsAsResources : resources;
+  }, [behavior?.isContactBased, transformedContactsAsResources, resources]);
+
+  // Filter display data based on search
   const filteredResources = useMemo(() => {
-    if (!searchQuery.trim()) return resources;
-    
+    if (!searchQuery.trim()) return displayData;
+
     const query = searchQuery.toLowerCase();
-    return resources.filter(resource => 
+    return displayData.filter(resource =>
       resource.name.toLowerCase().includes(query) ||
       resource.display_name.toLowerCase().includes(query) ||
       (resource.description && resource.description.toLowerCase().includes(query))
     );
-  }, [resources, searchQuery]);
+  }, [displayData, searchQuery]);
+
+  // Log contact loading for debugging (after all data is computed)
+  console.log('Contact loading debug:', {
+    selectedResourceType: selectedResourceType?.name,
+    contactClassification,
+    contactsCount: contacts.length,
+    transformedCount: transformedContactsAsResources.length,
+    displayDataCount: displayData.length,
+    filteredCount: filteredResources.length,
+    contactsLoading,
+    contactsError: contactsError?.message,
+    isContactBased: behavior?.isContactBased
+  });
 
   // Determine loading state
   const isLoading = resourcesLoading || (behavior?.isContactBased && contactsLoading);
