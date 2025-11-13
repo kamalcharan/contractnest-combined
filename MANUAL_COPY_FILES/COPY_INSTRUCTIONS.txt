@@ -11,17 +11,21 @@ CONTRACTNEST-UI FILES:
 
 2. InvitationsList.tsx
    → Copy to: contractnest-ui/src/components/users/InvitationsList.tsx
-   (REPLACE existing file)
+   (REPLACE existing file - Pending tab with icon buttons)
 
-3. users-index.tsx
+3. UsersList.tsx
+   → Copy to: contractnest-ui/src/components/users/UsersList.tsx
+   (REPLACE existing file - Active tab with icon buttons)
+
+4. users-index.tsx
    → Copy to: contractnest-ui/src/pages/settings/users/index.tsx
    (REPLACE existing file)
 
-4. userView.tsx
+5. userView.tsx
    → Copy to: contractnest-ui/src/pages/settings/users/userView.tsx
    (REPLACE existing file)
 
-5. useInvitations.ts
+6. useInvitations.ts
    → Copy to: contractnest-ui/src/hooks/useInvitations.ts
    (REPLACE existing file)
 
@@ -52,8 +56,19 @@ AFTER COPYING ALL FILES:
 
 WHAT CHANGED:
 ------------
+PENDING TAB (InvitationsList.tsx):
 ✅ Icon buttons (Eye, Copy, Resend, Cancel) replace dropdown menu
 ✅ View Details modal shows full invitation information
-✅ EDIT button removed from user view
-✅ Pending count updates immediately after creating invitation
-✅ MSG91 integration for Email, SMS, WhatsApp (requires credentials setup)
+✅ Tooltips on all icon buttons
+
+ACTIVE TAB (UsersList.tsx):
+✅ Icon buttons (Eye, Resend, Suspend) replace dropdown menu
+✅ EDIT option removed completely
+✅ EXPORT button removed from header
+✅ ConfirmationDialog added for Suspend action (no more browser alerts)
+✅ Tooltips on all icon buttons
+
+OTHER CHANGES:
+✅ EDIT button removed from user view page (userView.tsx)
+✅ Pending count updates immediately after creating invitation (index.tsx)
+✅ MSG91 integration for Email, SMS, WhatsApp (edge function)
