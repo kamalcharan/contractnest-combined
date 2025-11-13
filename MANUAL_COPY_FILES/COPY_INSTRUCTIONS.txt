@@ -5,10 +5,17 @@
 This folder contains all modified files from the Services Production Stabilization.
 Copy each file to the exact location in your local repository.
 
-MODIFIED FILES (6 total):
+MODIFIED FILES (7 total):
 ─────────────────────────────────────────────────
 
-1. ServiceConfigStep.tsx [CRITICAL FIX]
+1. analytics.service.ts [FIX]
+   SOURCE: MANUAL_COPY_FILES/contractnest-ui/src/services/analytics.service.ts
+   TARGET: contractnest-ui/src/services/analytics.service.ts
+   CHANGE: Added missing trackEvent() method
+   LINES MODIFIED: 26-41 (new trackEvent method), 48-51 (updated trackWorkspaceEvent)
+   BUG FIXED: "analyticsService.trackEvent is not a function" error on service save
+
+2. ServiceConfigStep.tsx [CRITICAL FIX]
    SOURCE: MANUAL_COPY_FILES/contractnest-ui/src/components/catalog/ServiceForm/ServiceConfigStep.tsx
    TARGET: contractnest-ui/src/components/catalog/ServiceForm/ServiceConfigStep.tsx
    CHANGE: Fixed 400 Bad Request + "undefined undefined" - uses shared resourceTransforms utility
@@ -18,31 +25,31 @@ MODIFIED FILES (6 total):
      - Team Staff/Partners showing "undefined undefined"
      - Now reuses exact logic from ResourcesPanel via shared utility
 
-2. useResources.ts [PRODUCTION FIX]
+3. useResources.ts [PRODUCTION FIX]
    SOURCE: MANUAL_COPY_FILES/contractnest-ui/src/hooks/useResources.ts
    TARGET: contractnest-ui/src/hooks/useResources.ts
    CHANGE: Fixed 400 Bad Request error - use buildResourcesListURL helper + better error logging
    LINES MODIFIED: 8 (added import), 286-295 (use URL builder), 322-357 (enhanced error handling)
 
-3. AuthContext.tsx
+4. AuthContext.tsx
    SOURCE: MANUAL_COPY_FILES/contractnest-ui/src/context/AuthContext.tsx
    TARGET: contractnest-ui/src/context/AuthContext.tsx
    CHANGE: Fixed React Query provider error - use page reload instead of queryClient
    LINES MODIFIED: 1-8 (removed useQueryClient import), 155-157 (removed hook), 783-818 (page reload)
 
-4. useServiceCatalogQueries.ts
+5. useServiceCatalogQueries.ts
    SOURCE: MANUAL_COPY_FILES/contractnest-ui/src/hooks/queries/useServiceCatalogQueries.ts
    TARGET: contractnest-ui/src/hooks/queries/useServiceCatalogQueries.ts
    CHANGE: Added optimistic updates, exponential backoff, cache optimization
    LINES MODIFIED: 265-324, 714-864
 
-5. requestQueue.ts [NEW FILE]
+6. requestQueue.ts [NEW FILE]
    SOURCE: MANUAL_COPY_FILES/contractnest-ui/src/utils/requestQueue.ts
    TARGET: contractnest-ui/src/utils/requestQueue.ts
    CHANGE: New production-grade request queue manager for high concurrency
    LINES: 1-330 (entire new file)
 
-6. resourceTransforms.ts [NEW FILE - SHARED UTILITY]
+7. resourceTransforms.ts [NEW FILE - SHARED UTILITY]
    SOURCE: MANUAL_COPY_FILES/contractnest-ui/src/utils/resourceTransforms.ts
    TARGET: contractnest-ui/src/utils/resourceTransforms.ts
    CHANGE: Shared utility for transforming contacts to resources

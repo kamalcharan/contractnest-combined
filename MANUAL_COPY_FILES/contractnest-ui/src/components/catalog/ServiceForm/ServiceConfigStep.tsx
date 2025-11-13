@@ -635,8 +635,27 @@ const ServiceConfigStep: React.FC<ServiceConfigStepProps> = ({
                   </h4>
                   <div className="space-y-3">
                     {resourceRequirements.map((requirement, index) => {
-                      const resource = actualResources().find(r => r.id === requirement.resource_id);
-                      
+                      // PRODUCTION FIX: Try to find resource in current actualResources first,
+                      // then fallback to requirement data itself (for edit mode)
+                      let resource = actualResources().find(r => r.id === requirement.resource_id);
+
+                      // If not found and requirement has embedded resource data, use that
+                      if (!resource && requirement.resource) {
+                        resource = requirement.resource;
+                      }
+
+                      // If still not found, create a minimal object from requirement data
+                      if (!resource && requirement.resource_name) {
+                        resource = {
+                          id: requirement.resource_id,
+                          name: requirement.resource_name,
+                          display_name: requirement.resource_name,
+                          description: null,
+                          resource_type_id: requirement.resource_type_id || '',
+                          is_active: true
+                        };
+                      }
+
                       return (
                         <div 
                           key={index}
