@@ -5,51 +5,59 @@
 This folder contains all modified files from the Services Production Stabilization.
 Copy each file to the exact location in your local repository.
 
-MODIFIED FILES (7 total):
+MODIFIED FILES (8 total):
 ─────────────────────────────────────────────────
 
-1. analytics.service.ts [FIX]
+1. ServiceForm/index.tsx [FIX]
+   SOURCE: MANUAL_COPY_FILES/contractnest-ui/src/components/catalog/ServiceForm/index.tsx
+   TARGET: contractnest-ui/src/components/catalog/ServiceForm/index.tsx
+   CHANGE: Replace browser confirm popup with ConfirmationDialog component
+   LINES MODIFIED: 32 (import), 74 (state), 418-432 (handlers), 755-765 (dialog component)
+   BUG FIXED: Browser popup on navigation - now uses proper modal dialog
+
+2. analytics.service.ts [FIX]
    SOURCE: MANUAL_COPY_FILES/contractnest-ui/src/services/analytics.service.ts
    TARGET: contractnest-ui/src/services/analytics.service.ts
    CHANGE: Added missing trackEvent() method
    LINES MODIFIED: 26-41 (new trackEvent method), 48-51 (updated trackWorkspaceEvent)
    BUG FIXED: "analyticsService.trackEvent is not a function" error on service save
 
-2. ServiceConfigStep.tsx [CRITICAL FIX]
+3. ServiceConfigStep.tsx [CRITICAL FIX]
    SOURCE: MANUAL_COPY_FILES/contractnest-ui/src/components/catalog/ServiceForm/ServiceConfigStep.tsx
    TARGET: contractnest-ui/src/components/catalog/ServiceForm/ServiceConfigStep.tsx
    CHANGE: Fixed 400 Bad Request + "undefined undefined" - uses shared resourceTransforms utility
-   LINES MODIFIED: 26 (import), 155-168 (use shared transform)
+   LINES MODIFIED: 26 (import), 155-168 (use shared transform), 637-657 (edit mode fallback)
    BUGS FIXED:
      - Was sending service category UUIDs instead of resource type strings
      - Team Staff/Partners showing "undefined undefined"
+     - "Unknown Resource" in edit mode
      - Now reuses exact logic from ResourcesPanel via shared utility
 
-3. useResources.ts [PRODUCTION FIX]
+4. useResources.ts [PRODUCTION FIX]
    SOURCE: MANUAL_COPY_FILES/contractnest-ui/src/hooks/useResources.ts
    TARGET: contractnest-ui/src/hooks/useResources.ts
    CHANGE: Fixed 400 Bad Request error - use buildResourcesListURL helper + better error logging
    LINES MODIFIED: 8 (added import), 286-295 (use URL builder), 322-357 (enhanced error handling)
 
-4. AuthContext.tsx
+5. AuthContext.tsx
    SOURCE: MANUAL_COPY_FILES/contractnest-ui/src/context/AuthContext.tsx
    TARGET: contractnest-ui/src/context/AuthContext.tsx
    CHANGE: Fixed React Query provider error - use page reload instead of queryClient
    LINES MODIFIED: 1-8 (removed useQueryClient import), 155-157 (removed hook), 783-818 (page reload)
 
-5. useServiceCatalogQueries.ts
+6. useServiceCatalogQueries.ts
    SOURCE: MANUAL_COPY_FILES/contractnest-ui/src/hooks/queries/useServiceCatalogQueries.ts
    TARGET: contractnest-ui/src/hooks/queries/useServiceCatalogQueries.ts
    CHANGE: Added optimistic updates, exponential backoff, cache optimization
    LINES MODIFIED: 265-324, 714-864
 
-6. requestQueue.ts [NEW FILE]
+7. requestQueue.ts [NEW FILE]
    SOURCE: MANUAL_COPY_FILES/contractnest-ui/src/utils/requestQueue.ts
    TARGET: contractnest-ui/src/utils/requestQueue.ts
    CHANGE: New production-grade request queue manager for high concurrency
    LINES: 1-330 (entire new file)
 
-7. resourceTransforms.ts [NEW FILE - SHARED UTILITY]
+8. resourceTransforms.ts [NEW FILE - SHARED UTILITY]
    SOURCE: MANUAL_COPY_FILES/contractnest-ui/src/utils/resourceTransforms.ts
    TARGET: contractnest-ui/src/utils/resourceTransforms.ts
    CHANGE: Shared utility for transforming contacts to resources
