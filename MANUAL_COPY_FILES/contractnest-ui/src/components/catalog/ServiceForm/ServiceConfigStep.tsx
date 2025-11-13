@@ -21,7 +21,7 @@ import {
 import { useTenantContextMaster } from '../../../hooks/queries/useTenantContextMaster';
 
 // PRODUCTION FIX: Import resource hooks for proper data fetching
-import { useResourcesByType } from '../../../hooks/useResources';
+import { useResources } from '../../../hooks/useResources';
 import { useContactList } from '../../../hooks/useContacts';
 
 // Import the TaxRateTagSelector component
@@ -95,8 +95,8 @@ const ServiceConfigStep: React.FC<ServiceConfigStepProps> = ({
   // PRODUCTION FIX: Fetch actual resources based on selected type
   const {
     data: manualResources,
-    isLoading: isLoadingManualResources
-  } = useResourcesByType(selectedResourceType || null);
+    loading: isLoadingManualResources
+  } = useResources(selectedResourceType || undefined);
 
   // PRODUCTION FIX: Fetch contacts for contact-based resource types
   const selectedResourceTypeData = resourceTypes?.find(rt => rt.id === selectedResourceType);
@@ -104,13 +104,12 @@ const ServiceConfigStep: React.FC<ServiceConfigStepProps> = ({
 
   const {
     data: contactsData,
-    isLoading: isLoadingContacts
+    loading: isLoadingContacts
   } = useContactList({
-    classification: selectedResourceTypeData?.name?.toLowerCase().includes('partner')
+    classifications: [selectedResourceTypeData?.name?.toLowerCase().includes('partner')
       ? 'partner'
-      : 'team_member',
-    is_active: true
-  }, {
+      : 'team_member'],
+    status: 'active',
     enabled: isContactBased && !!selectedResourceType
   });
 
@@ -174,7 +173,7 @@ const ServiceConfigStep: React.FC<ServiceConfigStepProps> = ({
     if (!selectedResourceType) return [];
 
     if (isContactBased) {
-      return transformContactsToResources(contactsData?.data || []);
+      return transformContactsToResources(contactsData || []);
     } else {
       return manualResources || [];
     }
