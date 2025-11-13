@@ -151,17 +151,18 @@ const ServiceConfigStep: React.FC<ServiceConfigStepProps> = ({
     isDefault: rate.is_default
   })) || [];
 
-  // PRODUCTION FIX: Transform contacts to resource format
+  // PRODUCTION FIX: Transform contacts to resource format (reuse logic from ResourcesPanel)
   const transformContactsToResources = useCallback((contacts: any[]) => {
     if (!contacts || contacts.length === 0) return [];
 
     return contacts.map(contact => ({
       id: contact.id,
-      name: `${contact.first_name} ${contact.last_name}`.trim(),
-      display_name: `${contact.first_name} ${contact.last_name}`.trim(),
-      description: contact.email || contact.phone || 'Contact resource',
+      name: contact.name || contact.company_name || 'Unnamed Contact',
+      display_name: contact.displayName || contact.name || contact.company_name || 'Unnamed Contact',
+      description: contact.notes || contact.email || contact.phone || 'Contact resource',
       resource_type_id: selectedResourceType,
-      is_active: contact.is_active ?? true,
+      contact_id: contact.id,
+      is_active: contact.status === 'active',
       created_at: contact.created_at,
       updated_at: contact.updated_at,
       _source: 'contact'
