@@ -17,8 +17,8 @@ MODIFIED FILES (4 total):
 2. AuthContext.tsx
    SOURCE: MANUAL_COPY_FILES/contractnest-ui/src/context/AuthContext.tsx
    TARGET: contractnest-ui/src/context/AuthContext.tsx
-   CHANGE: Added React Query cache clearing on environment switch
-   LINES MODIFIED: 1-9, 156-159, 784-827
+   CHANGE: Fixed React Query provider error - use page reload instead of queryClient
+   LINES MODIFIED: 1-8 (removed useQueryClient import), 155-157 (removed hook), 783-818 (page reload)
 
 3. useServiceCatalogQueries.ts
    SOURCE: MANUAL_COPY_FILES/contractnest-ui/src/hooks/queries/useServiceCatalogQueries.ts
