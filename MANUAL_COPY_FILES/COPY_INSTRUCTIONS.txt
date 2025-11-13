@@ -71,4 +71,5 @@ ACTIVE TAB (UsersList.tsx):
 OTHER CHANGES:
 ✅ EDIT button removed from user view page (userView.tsx)
 ✅ Pending count updates immediately after creating invitation (index.tsx)
+✅ All tab counts (All Team, Active, Pending) now show immediately on page load (index.tsx)
 ✅ MSG91 integration for Email, SMS, WhatsApp (edge function)

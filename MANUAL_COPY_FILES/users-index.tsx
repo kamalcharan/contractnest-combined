@@ -68,12 +68,35 @@ const UsersPage: React.FC = () => {
   const [availableRoles, setAvailableRoles] = useState<Array<{ id: string; name: string; description?: string }>>([]);
   const [rolesLoading, setRolesLoading] = useState(false);
   const [dataLoaded, setDataLoaded] = useState<Record<TabType, boolean>>({ all: false, active: false, pending: false });
+  const [countsLoaded, setCountsLoaded] = useState(false);
+
+  // Load counts for all tabs on initial mount (for tab badges)
+  useEffect(() => {
+    const loadAllCounts = async () => {
+      if (!currentTenant?.id || countsLoaded) return;
+
+      try {
+        // Load data for all tabs to populate counts
+        await Promise.all([
+          fetchUsers(1, 'all'),
+          fetchUsers(1, 'active'),
+          fetchUsers(1, 'invited'),
+          fetchInvitations(1, 'pending')
+        ]);
+        setCountsLoaded(true);
+      } catch (error) {
+        console.error('Error loading counts:', error);
+      }
+    };
+
+    loadAllCounts();
+  }, [currentTenant?.id]);
 
   // Lazy load data when tab changes
   useEffect(() => {
     const loadTabData = async () => {
       if (!currentTenant?.id || dataLoaded[activeTab]) return;
-      
+
       switch (activeTab) {
         case 'all':
           await fetchUsers(1, 'all');
@@ -89,10 +112,10 @@ const UsersPage: React.FC = () => {
           ]);
           break;
       }
-      
+
       setDataLoaded(prev => ({ ...prev, [activeTab]: true }));
     };
-    
+
     loadTabData();
   }, [activeTab, currentTenant?.id]);
 
