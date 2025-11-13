@@ -128,9 +128,14 @@ export const useContactList = (initialFilters: ContactFilters) => {
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState<any>(null);
   const [filters, setFilters] = useState(initialFilters);
-  
+
   // Use ref to track the current request to prevent race conditions
   const requestIdRef = useRef(0);
+
+  // Update filters when initialFilters change
+  useEffect(() => {
+    setFilters(initialFilters);
+  }, [JSON.stringify(initialFilters)]); // Use JSON.stringify to detect deep changes
 
   const fetchContacts = useCallback(async () => {
     // Check if fetching is enabled
