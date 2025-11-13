@@ -32,9 +32,13 @@ CONTRACTNEST-UI FILES:
 
 CONTRACTNEST-EDGE FILES:
 -----------------------
-6. edge-user-invitations-index.ts
+7. edge-user-invitations-index.ts
    → Copy to: contractnest-edge/supabase/functions/user-invitations/index.ts
    (REPLACE existing file)
+
+8. edge-auth-registration.ts
+   → Copy to: contractnest-edge/supabase/functions/auth/handlers/registration.ts
+   (REPLACE existing file - Fixes onboarding for invited users)
 
 
 AFTER COPYING ALL FILES:
@@ -73,3 +77,4 @@ OTHER CHANGES:
 ✅ Pending count updates immediately after creating invitation (index.tsx)
 ✅ All tab counts (All Team, Active, Pending) now show immediately on page load (index.tsx)
 ✅ MSG91 integration for Email, SMS, WhatsApp (edge function)
+✅ Onboarding fix: Invited users skip onboarding and go directly to dashboard (registration.ts)
