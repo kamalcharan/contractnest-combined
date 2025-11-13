@@ -23,6 +23,7 @@ import { useTenantContextMaster } from '../../../hooks/queries/useTenantContextM
 // PRODUCTION FIX: Import resource hooks for proper data fetching
 import { useResources } from '../../../hooks/useResources';
 import { useContactList } from '../../../hooks/useContacts';
+import { transformContactsToResources } from '../../../utils/resourceTransforms';
 
 // Import the TaxRateTagSelector component
 import TaxRateTagSelector from '../shared/TaxRateTagSelector';
@@ -151,34 +152,20 @@ const ServiceConfigStep: React.FC<ServiceConfigStepProps> = ({
     isDefault: rate.is_default
   })) || [];
 
-  // PRODUCTION FIX: Transform contacts to resource format (reuse logic from ResourcesPanel)
-  const transformContactsToResources = useCallback((contacts: any[]) => {
-    if (!contacts || contacts.length === 0) return [];
-
-    return contacts.map(contact => ({
-      id: contact.id,
-      name: contact.name || contact.company_name || 'Unnamed Contact',
-      display_name: contact.displayName || contact.name || contact.company_name || 'Unnamed Contact',
-      description: contact.notes || contact.email || contact.phone || 'Contact resource',
-      resource_type_id: selectedResourceType,
-      contact_id: contact.id,
-      is_active: contact.status === 'active',
-      created_at: contact.created_at,
-      updated_at: contact.updated_at,
-      _source: 'contact'
-    }));
-  }, [selectedResourceType]);
-
-  // PRODUCTION FIX: Get actual resources based on type
+  // PRODUCTION FIX: Get actual resources based on type (using shared transform utility)
   const actualResources = useCallback(() => {
     if (!selectedResourceType) return [];
 
     if (isContactBased) {
-      return transformContactsToResources(contactsData || []);
+      return transformContactsToResources(
+        contactsData || [],
+        selectedResourceType,
+        selectedResourceTypeData
+      );
     } else {
       return manualResources || [];
     }
-  }, [selectedResourceType, isContactBased, contactsData, manualResources, transformContactsToResources]);
+  }, [selectedResourceType, isContactBased, contactsData, manualResources, selectedResourceTypeData]);
 
   // PRODUCTION FIX: Helper to get resources by category using real data
   const getResourcesByCategory = useCallback((categoryId: string) => {

@@ -5,15 +5,18 @@
 This folder contains all modified files from the Services Production Stabilization.
 Copy each file to the exact location in your local repository.
 
-MODIFIED FILES (5 total):
+MODIFIED FILES (6 total):
 ─────────────────────────────────────────────────
 
 1. ServiceConfigStep.tsx [CRITICAL FIX]
    SOURCE: MANUAL_COPY_FILES/contractnest-ui/src/components/catalog/ServiceForm/ServiceConfigStep.tsx
    TARGET: contractnest-ui/src/components/catalog/ServiceForm/ServiceConfigStep.tsx
-   CHANGE: Fixed 400 Bad Request - use resourceTypes (strings) instead of serviceCategories (UUIDs)
-   LINES MODIFIED: 16-25, 75-115, 155-193, 508-533, 651
-   BUG FIXED: Was sending service category UUIDs instead of resource type strings to API
+   CHANGE: Fixed 400 Bad Request + "undefined undefined" - uses shared resourceTransforms utility
+   LINES MODIFIED: 26 (import), 155-168 (use shared transform)
+   BUGS FIXED:
+     - Was sending service category UUIDs instead of resource type strings
+     - Team Staff/Partners showing "undefined undefined"
+     - Now reuses exact logic from ResourcesPanel via shared utility
 
 2. useResources.ts [PRODUCTION FIX]
    SOURCE: MANUAL_COPY_FILES/contractnest-ui/src/hooks/useResources.ts
@@ -38,6 +41,14 @@ MODIFIED FILES (5 total):
    TARGET: contractnest-ui/src/utils/requestQueue.ts
    CHANGE: New production-grade request queue manager for high concurrency
    LINES: 1-330 (entire new file)
+
+6. resourceTransforms.ts [NEW FILE - SHARED UTILITY]
+   SOURCE: MANUAL_COPY_FILES/contractnest-ui/src/utils/resourceTransforms.ts
+   TARGET: contractnest-ui/src/utils/resourceTransforms.ts
+   CHANGE: Shared utility for transforming contacts to resources
+   LINES: 1-80 (entire new file)
+   PURPOSE: Single source of truth for contact→resource transformation
+   USED BY: ServiceConfigStep, ResourcesPanel (future)
 
 ═══════════════════════════════════════════════════
 🎯 FEATURES FIXED
