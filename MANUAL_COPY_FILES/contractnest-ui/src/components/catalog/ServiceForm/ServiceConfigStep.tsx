@@ -22,7 +22,7 @@ import { useTenantContextMaster } from '../../../hooks/queries/useTenantContextM
 
 // PRODUCTION FIX: Import resource hooks for proper data fetching
 import { useResourcesByType } from '../../../hooks/useResources';
-import { useContactList } from '../../../hooks/useContactList';
+import { useContactList } from '../../../hooks/useContacts';
 
 // Import the TaxRateTagSelector component
 import TaxRateTagSelector from '../shared/TaxRateTagSelector';
