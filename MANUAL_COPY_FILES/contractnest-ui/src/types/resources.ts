@@ -271,7 +271,7 @@ export const RESOURCE_VALIDATION_RULES = {
 // Contact classification mapping for resource types
 export const CONTACT_CLASSIFICATION_MAP: Record<string, string> = {
   'team_staff': 'team_member',
-  'partner': 'vendor',
+  'partner': 'partner',  // Fixed: Changed from 'vendor' to 'partner' to match actual contact classifications
 } as const;
 
 // Resource type behavior helpers
