@@ -8,11 +8,12 @@ Copy each file to the exact location in your local repository.
 MODIFIED FILES (5 total):
 ─────────────────────────────────────────────────
 
-1. ServiceConfigStep.tsx
+1. ServiceConfigStep.tsx [CRITICAL FIX]
    SOURCE: MANUAL_COPY_FILES/contractnest-ui/src/components/catalog/ServiceForm/ServiceConfigStep.tsx
    TARGET: contractnest-ui/src/components/catalog/ServiceForm/ServiceConfigStep.tsx
-   CHANGE: Fixed resources not showing in Resource-Based services form
-   LINES MODIFIED: 16-25, 75-115, 155-193, 651
+   CHANGE: Fixed 400 Bad Request - use resourceTypes (strings) instead of serviceCategories (UUIDs)
+   LINES MODIFIED: 16-25, 75-115, 155-193, 508-533, 651
+   BUG FIXED: Was sending service category UUIDs instead of resource type strings to API
 
 2. useResources.ts [PRODUCTION FIX]
    SOURCE: MANUAL_COPY_FILES/contractnest-ui/src/hooks/useResources.ts

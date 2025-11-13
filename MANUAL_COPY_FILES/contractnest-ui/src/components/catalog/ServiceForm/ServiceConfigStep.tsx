@@ -505,14 +505,14 @@ const ServiceConfigStep: React.FC<ServiceConfigStepProps> = ({
             </div>
           ) : (
             <>
-              {/* FIXED: Service Category Selector with real data */}
-              {serviceCategories.length > 0 ? (
+              {/* PRODUCTION FIX: Resource Type Selector - use resourceTypes not serviceCategories */}
+              {resourceTypes && resourceTypes.length > 0 ? (
                 <div className="mb-6">
-                  <label 
+                  <label
                     className="block text-sm font-medium mb-2 transition-colors"
                     style={{ color: colors.utility.primaryText }}
                   >
-                    Select Service Category
+                    Select Resource Type
                   </label>
                   <select
                     value={selectedResourceType}
@@ -524,10 +524,10 @@ const ServiceConfigStep: React.FC<ServiceConfigStepProps> = ({
                       color: colors.utility.primaryText
                     }}
                   >
-                    <option value="">Select service category...</option>
-                    {serviceCategories.map(category => (
-                      <option key={category.id} value={category.id}>
-                        {category.name}
+                    <option value="">Select resource type...</option>
+                    {resourceTypes.map(type => (
+                      <option key={type.id} value={type.id}>
+                        {type.name}
                       </option>
                     ))}
                   </select>
@@ -544,11 +544,11 @@ const ServiceConfigStep: React.FC<ServiceConfigStepProps> = ({
                     className="h-4 w-4"
                     style={{ color: colors.semantic.warning }}
                   />
-                  <span 
+                  <span
                     className="text-sm"
                     style={{ color: colors.semantic.warning }}
                   >
-                    No service categories available. Please set up categories first.
+                    No resource types available. Please contact support.
                   </span>
                 </div>
               )}
