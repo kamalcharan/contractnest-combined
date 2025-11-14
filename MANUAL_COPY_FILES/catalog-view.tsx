@@ -635,18 +635,26 @@ const ServiceViewPage: React.FC = () => {
                       }}
                     >
                       <div className="flex-1">
-                        <h3 
+                        <h3
                           className="font-medium"
                           style={{ color: colors.utility.primaryText }}
                         >
-                          {requirement.resource_name || 'Resource'}
+                          {requirement.resource?.display_name || requirement.resource?.name || requirement.resource_name || 'Unknown Resource'}
                         </h3>
-                        <p 
+                        <p
                           className="text-sm"
                           style={{ color: colors.utility.secondaryText }}
                         >
-                          {requirement.description || 'No description available'}
+                          {requirement.resource?.description || requirement.description || 'No description available'}
                         </p>
+                        {(!requirement.resource_name && !requirement.resource) && (
+                          <p
+                            className="text-xs mt-1"
+                            style={{ color: colors.semantic.warning }}
+                          >
+                            Resource ID: {requirement.resource_id}
+                          </p>
+                        )}
                       </div>
                       <div className="text-right">
                         <span 
