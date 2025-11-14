@@ -11,10 +11,14 @@ Feature: Channels for Tenants - Landing Pages & Impact Analysis
 
 PARENT REPO (contractnest-combined):
 ─────────────────────────────────────────────────
-1. IMPACT_ANALYSIS_CHANNELS_FOR_TENANTS.md
+1. IMPACT_ANALYSIS_CHANNELS_FOR_TENANTS.md (v1.1 - ContractNest-Compatible)
    → Copy to: D:\projects\core projects\ContractNest\contractnest-combined\
    Purpose: Comprehensive 16-week implementation plan with database schema,
             API endpoints, pricing model, and rollout strategy
+   Updates: - Added BBB POC clarification (conceptual reference only)
+            - ContractNest schema integration approach
+            - N8N workflow comparison (BBB vs ContractNest)
+            - Semantic search implementation options
 
 
 SUBMODULE: contractnest-ui
@@ -80,3 +84,12 @@ After copying, verify:
 - WhatsApp group password is hardcoded as "bagyanagar" in demo
 - No new npm dependencies required
 - All icons use existing lucide-react library
+
+🔴 IMPORTANT: ContractNest Compatibility
+═══════════════════════════════════════════════════
+- Impact Analysis v1.1 is fully ContractNest-compatible
+- BBB (Bagyanagar Business Network) is referenced as POC inspiration only
+- NO BBB database tables are being imported
+- All new tables use tenant_id (ContractNest's existing structure)
+- Semantic search uses pgvector extension (optional add-on)
+- N8N workflows integrate with ContractNest APIs, not standalone BBB system
