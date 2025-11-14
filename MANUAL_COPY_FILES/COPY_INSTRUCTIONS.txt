@@ -2,14 +2,19 @@
 📋 MANUAL FILE COPY INSTRUCTIONS
 ═══════════════════════════════════════════════════
 
-IMPORTANT: These files contain 3 critical production fixes:
+IMPORTANT: These files contain 5 critical production fixes:
 1. Service list cards now show action icons (not "..." dropdown)
 2. View navigation fixed (no more 404 error)
 3. Team Members/Partners display correctly in edit mode
+4. Resource names stored when adding to services (fixes "Unknown Resource")
+5. Resource details show correctly in VIEW and EDIT modes
 
 ═══════════════════════════════════════════════════
-📁 FILES TO COPY (5 files total)
+📁 FILES TO COPY (14 files total)
 ═══════════════════════════════════════════════════
+
+SECTION A: Quick Copy Files (6 files - simplified paths)
+────────────────────────────────────────────────
 
 File 1: App.tsx
 ────────────────────────────────────────────────
@@ -32,27 +37,120 @@ DESTINATION: contractnest-ui\src\components\catalog\ServiceForm\index.tsx
 PURPOSE: Transform resource_requirements to include resource_name
 CHANGES: Lines 135-157 - Extract display_name from nested resource object
 
-File 4: catalog-view.tsx
+File 4: ServiceConfigStep.tsx [NEW FIX]
+────────────────────────────────────────────────
+SOURCE: MANUAL_COPY_FILES\ServiceConfigStep.tsx
+DESTINATION: contractnest-ui\src\components\catalog\ServiceForm\ServiceConfigStep.tsx
+PURPOSE: Store resource names/descriptions when adding resources
+CHANGES: Lines 238-262 - Save resource_name, description, and full resource object
+FIXES: "Unknown Resource" in VIEW/EDIT mode by storing display names to database
+
+File 5: catalog-view.tsx [UPDATED FIX]
 ────────────────────────────────────────────────
 SOURCE: MANUAL_COPY_FILES\catalog-view.tsx
 DESTINATION: contractnest-ui\src\pages\catalog\view.tsx
-PURPOSE: Fixed route parameter reading for view page
-CHANGES: Lines 3, 55 - Changed useSearchParams to useParams
+PURPOSE: Enhanced resource display with fallback chain
+CHANGES: Lines 3, 55, 637-658 - useParams fix + better resource name handling
+FIXES: Shows resource names correctly, falls back to resource ID for old data
 
-File 5: service-types.ts
+File 6: service-types.ts
 ────────────────────────────────────────────────
 SOURCE: MANUAL_COPY_FILES\service-types.ts
 DESTINATION: contractnest-ui\src\types\catalog\service.ts
 PURPOSE: Added resource_name field to ServiceResourceForm interface
 CHANGES: Line 108 - Added resource_name?: string field
 
+SECTION B: Nested Files (8 files - preserving folder structure)
+────────────────────────────────────────────────
+These files maintain the exact folder structure for easier copying
+
+File 7: AuthContext.tsx
+────────────────────────────────────────────────
+SOURCE: MANUAL_COPY_FILES\contractnest-ui\src\context\AuthContext.tsx
+DESTINATION: contractnest-ui\src\context\AuthContext.tsx
+PURPOSE: Remove React Query hook usage
+FIXES: Production issues with React Query hooks in auth context
+
+File 8: useResources.ts
+────────────────────────────────────────────────
+SOURCE: MANUAL_COPY_FILES\contractnest-ui\src\hooks\useResources.ts
+DESTINATION: contractnest-ui\src\hooks\useResources.ts
+PURPOSE: Enhanced error logging and Live/Test environment support
+FIXES: 400 Bad Request errors, adds comprehensive error tracking
+
+File 9: useServiceCatalogQueries.ts
+────────────────────────────────────────────────
+SOURCE: MANUAL_COPY_FILES\contractnest-ui\src\hooks\queries\useServiceCatalogQueries.ts
+DESTINATION: contractnest-ui\src\hooks\queries\useServiceCatalogQueries.ts
+PURPOSE: Updated service catalog query hooks
+CHANGES: Improved query handling and error management
+
+File 10: requestQueue.ts
+────────────────────────────────────────────────
+SOURCE: MANUAL_COPY_FILES\contractnest-ui\src\utils\requestQueue.ts
+DESTINATION: contractnest-ui\src\utils\requestQueue.ts
+PURPOSE: Request queue management utility
+CHANGES: Better request queuing and throttling
+
+File 11: resourceTransforms.ts
+────────────────────────────────────────────────
+SOURCE: MANUAL_COPY_FILES\contractnest-ui\src\utils\resourceTransforms.ts
+DESTINATION: contractnest-ui\src\utils\resourceTransforms.ts
+PURPOSE: Shared utility for resource transformations
+CHANGES: Centralized resource transformation logic for code reuse
+
+File 12: analytics.service.ts
+────────────────────────────────────────────────
+SOURCE: MANUAL_COPY_FILES\contractnest-ui\src\services\analytics.service.ts
+DESTINATION: contractnest-ui\src\services\analytics.service.ts
+PURPOSE: Analytics service integration
+CHANGES: Service analytics tracking and reporting
+
+File 13: ServiceForm/index.tsx (nested)
+────────────────────────────────────────────────
+SOURCE: MANUAL_COPY_FILES\contractnest-ui\src\components\catalog\ServiceForm\index.tsx
+DESTINATION: contractnest-ui\src\components\catalog\ServiceForm\index.tsx
+PURPOSE: Complete service form implementation
+CHANGES: Full service form with all validations and transforms
+
+File 14: ServiceForm/ServiceConfigStep.tsx (nested)
+────────────────────────────────────────────────
+SOURCE: MANUAL_COPY_FILES\contractnest-ui\src\components\catalog\ServiceForm\ServiceConfigStep.tsx
+DESTINATION: contractnest-ui\src\components\catalog\ServiceForm\ServiceConfigStep.tsx
+PURPOSE: Service configuration step with resource storage
+CHANGES: Complete ServiceConfigStep implementation with resource name storage
+
 ═══════════════════════════════════════════════════
 ✅ VERIFICATION CHECKLIST
 ═══════════════════════════════════════════════════
 After copying, verify:
-□ All 5 files copied successfully
+□ All 14 files copied successfully (6 quick copy + 8 nested files)
 □ File paths match exactly
 □ No syntax errors in copied files
 □ Files are in correct directories
+□ Nested folder structure preserved (src/context/, src/hooks/, etc.)
+
+═══════════════════════════════════════════════════
+🧪 TESTING - After copying files, test these:
+═══════════════════════════════════════════════════
+
+Test 1: Create NEW service with Team Staff
+□ Add Team Staff resources
+□ Save service
+□ View service - team names show (NOT "Unknown Resource")
+□ Edit service - team names show (NOT "Unknown Resource")
+
+Test 2: View OLD services (created before this fix)
+□ Open service with resources
+□ If shows "Unknown Resource", also shows "Resource ID: xxx"
+□ Edit and re-save to fix old data
+
+Test 3: Service list action icons
+□ List view shows Eye, Edit, Power, Copy icons
+□ No "..." dropdown menu
+
+Test 4: View navigation
+□ Click View icon - loads service details
+□ No 404 error
 
 ═══════════════════════════════════════════════════
