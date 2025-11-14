@@ -1,156 +1,95 @@
 ═══════════════════════════════════════════════════
-📋 MANUAL FILE COPY INSTRUCTIONS
+📋 MANUAL COPY INSTRUCTIONS
 ═══════════════════════════════════════════════════
-
-IMPORTANT: These files contain 5 critical production fixes:
-1. Service list cards now show action icons (not "..." dropdown)
-2. View navigation fixed (no more 404 error)
-3. Team Members/Partners display correctly in edit mode
-4. Resource names stored when adding to services (fixes "Unknown Resource")
-5. Resource details show correctly in VIEW and EDIT modes
+Branch: claude/tenant-channels-integration-0122gbY6zrtwtKpf4X27H5KM
+Date: November 14, 2025
+Feature: Channels for Tenants - Landing Pages & Impact Analysis
 
 ═══════════════════════════════════════════════════
-📁 FILES TO COPY (14 files total)
+📦 FILES TO COPY
 ═══════════════════════════════════════════════════
 
-SECTION A: Quick Copy Files (6 files - simplified paths)
-────────────────────────────────────────────────
+PARENT REPO (contractnest-combined):
+─────────────────────────────────────────────────
+1. IMPACT_ANALYSIS_CHANNELS_FOR_TENANTS.md (v1.1 - ContractNest-Compatible)
+   → Copy to: D:\projects\core projects\ContractNest\contractnest-combined\
+   Purpose: Comprehensive 16-week implementation plan with database schema,
+            API endpoints, pricing model, and rollout strategy
+   Updates: - Added BBB POC clarification (conceptual reference only)
+            - ContractNest schema integration approach
+            - N8N workflow comparison (BBB vs ContractNest)
+            - Semantic search implementation options
 
-File 1: App.tsx
-────────────────────────────────────────────────
-SOURCE: MANUAL_COPY_FILES\App.tsx
-DESTINATION: contractnest-ui\src\App.tsx
-PURPOSE: Fixed view route to use :id parameter instead of query param
-CHANGES: Line 350 - Changed path="view" to path="view/:id"
 
-File 2: ServiceCard.tsx
-────────────────────────────────────────────────
-SOURCE: MANUAL_COPY_FILES\ServiceCard.tsx
-DESTINATION: contractnest-ui\src\components\catalog\ServiceCard.tsx
-PURPOSE: Replaced dropdown "..." with direct action icon buttons
-CHANGES: Lines 631-710 - View, Edit, Power/PowerOff, Copy icons with tooltips
+SUBMODULE: contractnest-ui
+─────────────────────────────────────────────────
+2. src/App.tsx
+   → Copy to: D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui\src\
+   Purpose: Updated routing - added 3 new channel routes
+   Changes: Added imports and routes for Website, ChatBot, WhatsApp integration pages
 
-File 3: ServiceForm-index.tsx
-────────────────────────────────────────────────
-SOURCE: MANUAL_COPY_FILES\ServiceForm-index.tsx
-DESTINATION: contractnest-ui\src\components\catalog\ServiceForm\index.tsx
-PURPOSE: Transform resource_requirements to include resource_name
-CHANGES: Lines 135-157 - Extract display_name from nested resource object
+3. src/vani/pages/channels/WebsiteIntegrationPage.tsx
+   → Copy to: D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui\src\vani\pages\channels\
+   Purpose: Website Integration landing page (CRO-optimized)
+   Features: Multi-platform SDK (React, JS, PHP, WIX), interest form, FAQ
 
-File 4: ServiceConfigStep.tsx [NEW FIX]
-────────────────────────────────────────────────
-SOURCE: MANUAL_COPY_FILES\ServiceConfigStep.tsx
-DESTINATION: contractnest-ui\src\components\catalog\ServiceForm\ServiceConfigStep.tsx
-PURPOSE: Store resource names/descriptions when adding resources
-CHANGES: Lines 238-262 - Save resource_name, description, and full resource object
-FIXES: "Unknown Resource" in VIEW/EDIT mode by storing display names to database
+4. src/vani/pages/channels/ChatBotIntegrationPage.tsx
+   → Copy to: D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui\src\vani\pages\channels\
+   Purpose: AI Chat Bot landing page (CRO-optimized)
+   Features: Semantic clustering, document learning, AI capabilities showcase
 
-File 5: catalog-view.tsx [UPDATED FIX]
-────────────────────────────────────────────────
-SOURCE: MANUAL_COPY_FILES\catalog-view.tsx
-DESTINATION: contractnest-ui\src\pages\catalog\view.tsx
-PURPOSE: Enhanced resource display with fallback chain
-CHANGES: Lines 3, 55, 637-658 - useParams fix + better resource name handling
-FIXES: Shows resource names correctly, falls back to resource ID for old data
+5. src/vani/pages/channels/WhatsAppIntegrationPage.tsx
+   → Copy to: D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui\src\vani\pages\channels\
+   Purpose: WhatsApp Integration landing page (CRO-optimized)
+   Features: Dual-tab (Bot/Groups), BBB group invite with password, N8N workflow info
 
-File 6: service-types.ts
-────────────────────────────────────────────────
-SOURCE: MANUAL_COPY_FILES\service-types.ts
-DESTINATION: contractnest-ui\src\types\catalog\service.ts
-PURPOSE: Added resource_name field to ServiceResourceForm interface
-CHANGES: Line 108 - Added resource_name?: string field
 
-SECTION B: Nested Files (8 files - preserving folder structure)
-────────────────────────────────────────────────
-These files maintain the exact folder structure for easier copying
+═══════════════════════════════════════════════════
+📂 DIRECTORY STRUCTURE (if folders don't exist)
+═══════════════════════════════════════════════════
 
-File 7: AuthContext.tsx
-────────────────────────────────────────────────
-SOURCE: MANUAL_COPY_FILES\contractnest-ui\src\context\AuthContext.tsx
-DESTINATION: contractnest-ui\src\context\AuthContext.tsx
-PURPOSE: Remove React Query hook usage
-FIXES: Production issues with React Query hooks in auth context
+If the 'channels' folder doesn't exist, create it:
+D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui\src\vani\pages\channels\
 
-File 8: useResources.ts
-────────────────────────────────────────────────
-SOURCE: MANUAL_COPY_FILES\contractnest-ui\src\hooks\useResources.ts
-DESTINATION: contractnest-ui\src\hooks\useResources.ts
-PURPOSE: Enhanced error logging and Live/Test environment support
-FIXES: 400 Bad Request errors, adds comprehensive error tracking
-
-File 9: useServiceCatalogQueries.ts
-────────────────────────────────────────────────
-SOURCE: MANUAL_COPY_FILES\contractnest-ui\src\hooks\queries\useServiceCatalogQueries.ts
-DESTINATION: contractnest-ui\src\hooks\queries\useServiceCatalogQueries.ts
-PURPOSE: Updated service catalog query hooks
-CHANGES: Improved query handling and error management
-
-File 10: requestQueue.ts
-────────────────────────────────────────────────
-SOURCE: MANUAL_COPY_FILES\contractnest-ui\src\utils\requestQueue.ts
-DESTINATION: contractnest-ui\src\utils\requestQueue.ts
-PURPOSE: Request queue management utility
-CHANGES: Better request queuing and throttling
-
-File 11: resourceTransforms.ts
-────────────────────────────────────────────────
-SOURCE: MANUAL_COPY_FILES\contractnest-ui\src\utils\resourceTransforms.ts
-DESTINATION: contractnest-ui\src\utils\resourceTransforms.ts
-PURPOSE: Shared utility for resource transformations
-CHANGES: Centralized resource transformation logic for code reuse
-
-File 12: analytics.service.ts
-────────────────────────────────────────────────
-SOURCE: MANUAL_COPY_FILES\contractnest-ui\src\services\analytics.service.ts
-DESTINATION: contractnest-ui\src\services\analytics.service.ts
-PURPOSE: Analytics service integration
-CHANGES: Service analytics tracking and reporting
-
-File 13: ServiceForm/index.tsx (nested)
-────────────────────────────────────────────────
-SOURCE: MANUAL_COPY_FILES\contractnest-ui\src\components\catalog\ServiceForm\index.tsx
-DESTINATION: contractnest-ui\src\components\catalog\ServiceForm\index.tsx
-PURPOSE: Complete service form implementation
-CHANGES: Full service form with all validations and transforms
-
-File 14: ServiceForm/ServiceConfigStep.tsx (nested)
-────────────────────────────────────────────────
-SOURCE: MANUAL_COPY_FILES\contractnest-ui\src\components\catalog\ServiceForm\ServiceConfigStep.tsx
-DESTINATION: contractnest-ui\src\components\catalog\ServiceForm\ServiceConfigStep.tsx
-PURPOSE: Service configuration step with resource storage
-CHANGES: Complete ServiceConfigStep implementation with resource name storage
 
 ═══════════════════════════════════════════════════
 ✅ VERIFICATION CHECKLIST
 ═══════════════════════════════════════════════════
 After copying, verify:
-□ All 14 files copied successfully (6 quick copy + 8 nested files)
-□ File paths match exactly
-□ No syntax errors in copied files
-□ Files are in correct directories
-□ Nested folder structure preserved (src/context/, src/hooks/, etc.)
+[ ] IMPACT_ANALYSIS_CHANNELS_FOR_TENANTS.md is in root of contractnest-combined
+[ ] App.tsx is updated in contractnest-ui/src/
+[ ] channels/ folder exists in contractnest-ui/src/vani/pages/
+[ ] All 3 .tsx files are in the channels/ folder
+[ ] File sizes match (WebsiteIntegrationPage: ~30KB, ChatBotIntegrationPage: ~35KB, WhatsAppIntegrationPage: ~37KB)
+
 
 ═══════════════════════════════════════════════════
-🧪 TESTING - After copying files, test these:
+🔄 NEXT STEPS AFTER COPYING
 ═══════════════════════════════════════════════════
+1. Follow the PowerShell commands in the main workflow document
+2. Test the 3 new routes:
+   - http://localhost:5173/vani/channels/website
+   - http://localhost:5173/vani/channels/chatbot
+   - http://localhost:5173/vani/channels/whatsapp
+3. Review Impact Analysis document for next implementation phases
+4. Share BBB WhatsApp.pdf and N8N workflow JSON for deeper integration
 
-Test 1: Create NEW service with Team Staff
-□ Add Team Staff resources
-□ Save service
-□ View service - team names show (NOT "Unknown Resource")
-□ Edit service - team names show (NOT "Unknown Resource")
-
-Test 2: View OLD services (created before this fix)
-□ Open service with resources
-□ If shows "Unknown Resource", also shows "Resource ID: xxx"
-□ Edit and re-save to fix old data
-
-Test 3: Service list action icons
-□ List view shows Eye, Edit, Power, Copy icons
-□ No "..." dropdown menu
-
-Test 4: View navigation
-□ Click View icon - loads service details
-□ No 404 error
 
 ═══════════════════════════════════════════════════
+ℹ️ NOTES
+═══════════════════════════════════════════════════
+- All pages are theme-aware (dark/light mode)
+- All pages are responsive (mobile-friendly)
+- Forms currently log to console (TODO: connect to actual API)
+- WhatsApp group password is hardcoded as "bagyanagar" in demo
+- No new npm dependencies required
+- All icons use existing lucide-react library
+
+🔴 IMPORTANT: ContractNest Compatibility
+═══════════════════════════════════════════════════
+- Impact Analysis v1.1 is fully ContractNest-compatible
+- BBB (Bagyanagar Business Network) is referenced as POC inspiration only
+- NO BBB database tables are being imported
+- All new tables use tenant_id (ContractNest's existing structure)
+- Semantic search uses pgvector extension (optional add-on)
+- N8N workflows integrate with ContractNest APIs, not standalone BBB system
