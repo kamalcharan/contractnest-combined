@@ -334,14 +334,17 @@ const BBBProfileOnboardingPage: React.FC = () => {
 
   return (
     <div className="min-h-screen p-6 space-y-8 max-w-5xl mx-auto">
-      {/* Join BBB Dialog */}
-      <Dialog open={showJoinDialog} onOpenChange={setShowJoinDialog}>
+      {/* Join BBB Dialog - Non-dismissable until membership created */}
+      <Dialog open={showJoinDialog && !membershipId} onOpenChange={() => {}}>
         <DialogContent
-          className="sm:max-w-md"
+          className="sm:max-w-md [&>button]:hidden"
           style={{
             backgroundColor: colors.utility.primaryBackground,
             borderColor: `${colors.utility.primaryText}20`
           }}
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+          onInteractOutside={(e) => e.preventDefault()}
         >
           <DialogHeader>
             <div className="flex items-center justify-center mb-4">
