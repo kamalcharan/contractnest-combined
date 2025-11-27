@@ -315,8 +315,8 @@ const ProfileEntryForm: React.FC<ProfileEntryFormProps> = ({
                   </>
                 ) : (
                   <>
-                    <Globe className="w-5 h-5" />
-                    <span>Generate from Website</span>
+                    <Sparkles className="w-5 h-5" />
+                    <span>AI generation from website</span>
                   </>
                 )}
               </button>
