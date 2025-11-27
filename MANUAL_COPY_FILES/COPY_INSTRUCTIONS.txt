@@ -1,95 +1,39 @@
-═══════════════════════════════════════════════════
-📋 MANUAL COPY INSTRUCTIONS
-═══════════════════════════════════════════════════
-Branch: claude/tenant-channels-integration-0122gbY6zrtwtKpf4X27H5KM
-Date: November 14, 2025
-Feature: Channels for Tenants - Landing Pages & Impact Analysis
+═══════════════════════════════════════════════════════════════════
+MANUAL FILE COPY INSTRUCTIONS
+Feature: Add RichTextEditor to Profile Onboarding Forms
+Date: 2025-11-27
+═══════════════════════════════════════════════════════════════════
 
-═══════════════════════════════════════════════════
-📦 FILES TO COPY
-═══════════════════════════════════════════════════
+FILES TO COPY (3 files):
+─────────────────────────────────────────────────────────────────────
 
-PARENT REPO (contractnest-combined):
-─────────────────────────────────────────────────
-1. IMPACT_ANALYSIS_CHANNELS_FOR_TENANTS.md (v1.1 - ContractNest-Compatible)
-   → Copy to: D:\projects\core projects\ContractNest\contractnest-combined\
-   Purpose: Comprehensive 16-week implementation plan with database schema,
-            API endpoints, pricing model, and rollout strategy
-   Updates: - Added BBB POC clarification (conceptual reference only)
-            - ContractNest schema integration approach
-            - N8N workflow comparison (BBB vs ContractNest)
-            - Semantic search implementation options
+1. ProfileEntryForm.tsx
+   FROM: MANUAL_COPY_FILES\ProfileEntryForm.tsx
+   TO:   contractnest-ui\src\components\VaNi\bbb\ProfileEntryForm.tsx
+   CHANGE: Replaced textarea with RichTextEditor (height: 200-350px)
 
+2. AIEnhancementSection.tsx
+   FROM: MANUAL_COPY_FILES\AIEnhancementSection.tsx
+   TO:   contractnest-ui\src\components\VaNi\bbb\AIEnhancementSection.tsx
+   CHANGE: Replaced textarea with RichTextEditor for editing AI content (height: 250-400px)
 
-SUBMODULE: contractnest-ui
-─────────────────────────────────────────────────
-2. src/App.tsx
-   → Copy to: D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui\src\
-   Purpose: Updated routing - added 3 new channel routes
-   Changes: Added imports and routes for Website, ChatBot, WhatsApp integration pages
+3. WebsiteScrapingForm.tsx
+   FROM: MANUAL_COPY_FILES\WebsiteScrapingForm.tsx
+   TO:   contractnest-ui\src\components\VaNi\bbb\WebsiteScrapingForm.tsx
+   CHANGE: Replaced textarea with RichTextEditor for editing scraped content (height: 250-400px)
 
-3. src/vani/pages/channels/WebsiteIntegrationPage.tsx
-   → Copy to: D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui\src\vani\pages\channels\
-   Purpose: Website Integration landing page (CRO-optimized)
-   Features: Multi-platform SDK (React, JS, PHP, WIX), interest form, FAQ
+═══════════════════════════════════════════════════════════════════
+SUBMODULES AFFECTED:
+─────────────────────────────────────────────────────────────────────
+- contractnest-ui (3 files modified)
 
-4. src/vani/pages/channels/ChatBotIntegrationPage.tsx
-   → Copy to: D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui\src\vani\pages\channels\
-   Purpose: AI Chat Bot landing page (CRO-optimized)
-   Features: Semantic clustering, document learning, AI capabilities showcase
+═══════════════════════════════════════════════════════════════════
+SUMMARY OF CHANGES:
+─────────────────────────────────────────────────────────────────────
+All 3 forms now use RichTextEditor instead of plain textarea:
+- Rich text formatting (bold, italic, underline, bullet/ordered lists)
+- Character count display with max length validation
+- Increased editor height for better UX
+- Consistent toolbar: ['bold', 'italic', 'underline', 'bulletList', 'orderedList']
 
-5. src/vani/pages/channels/WhatsAppIntegrationPage.tsx
-   → Copy to: D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui\src\vani\pages\channels\
-   Purpose: WhatsApp Integration landing page (CRO-optimized)
-   Features: Dual-tab (Bot/Groups), BBB group invite with password, N8N workflow info
-
-
-═══════════════════════════════════════════════════
-📂 DIRECTORY STRUCTURE (if folders don't exist)
-═══════════════════════════════════════════════════
-
-If the 'channels' folder doesn't exist, create it:
-D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui\src\vani\pages\channels\
-
-
-═══════════════════════════════════════════════════
-✅ VERIFICATION CHECKLIST
-═══════════════════════════════════════════════════
-After copying, verify:
-[ ] IMPACT_ANALYSIS_CHANNELS_FOR_TENANTS.md is in root of contractnest-combined
-[ ] App.tsx is updated in contractnest-ui/src/
-[ ] channels/ folder exists in contractnest-ui/src/vani/pages/
-[ ] All 3 .tsx files are in the channels/ folder
-[ ] File sizes match (WebsiteIntegrationPage: ~30KB, ChatBotIntegrationPage: ~35KB, WhatsAppIntegrationPage: ~37KB)
-
-
-═══════════════════════════════════════════════════
-🔄 NEXT STEPS AFTER COPYING
-═══════════════════════════════════════════════════
-1. Follow the PowerShell commands in the main workflow document
-2. Test the 3 new routes:
-   - http://localhost:5173/vani/channels/website
-   - http://localhost:5173/vani/channels/chatbot
-   - http://localhost:5173/vani/channels/whatsapp
-3. Review Impact Analysis document for next implementation phases
-4. Share BBB WhatsApp.pdf and N8N workflow JSON for deeper integration
-
-
-═══════════════════════════════════════════════════
-ℹ️ NOTES
-═══════════════════════════════════════════════════
-- All pages are theme-aware (dark/light mode)
-- All pages are responsive (mobile-friendly)
-- Forms currently log to console (TODO: connect to actual API)
-- WhatsApp group password is hardcoded as "bagyanagar" in demo
-- No new npm dependencies required
-- All icons use existing lucide-react library
-
-🔴 IMPORTANT: ContractNest Compatibility
-═══════════════════════════════════════════════════
-- Impact Analysis v1.1 is fully ContractNest-compatible
-- BBB (Bagyanagar Business Network) is referenced as POC inspiration only
-- NO BBB database tables are being imported
-- All new tables use tenant_id (ContractNest's existing structure)
-- Semantic search uses pgvector extension (optional add-on)
-- N8N workflows integrate with ContractNest APIs, not standalone BBB system
+═══════════════════════════════════════════════════════════════════
