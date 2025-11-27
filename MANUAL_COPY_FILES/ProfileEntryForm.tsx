@@ -269,32 +269,57 @@ const ProfileEntryForm: React.FC<ProfileEntryFormProps> = ({
               </button>
             </div>
           ) : (
-            <div>
-              <label
-                htmlFor="website_url"
-                className="block text-sm font-medium mb-2"
-                style={{ color: colors.utility.primaryText }}
-              >
-                Website URL *
-              </label>
-              <input
-                type="text"
-                id="website_url"
-                value={websiteUrl}
-                onChange={(e) => setWebsiteUrl(e.target.value)}
-                placeholder="www.yourcompany.com or https://yourcompany.com"
-                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 transition-all"
+            <div className="space-y-4">
+              <div>
+                <label
+                  htmlFor="website_url"
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: colors.utility.primaryText }}
+                >
+                  Website URL *
+                </label>
+                <input
+                  type="text"
+                  id="website_url"
+                  value={websiteUrl}
+                  onChange={(e) => setWebsiteUrl(e.target.value)}
+                  placeholder="www.yourcompany.com or https://yourcompany.com"
+                  className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 transition-all"
+                  style={{
+                    borderColor: `${colors.utility.secondaryText}40`,
+                    backgroundColor: colors.utility.secondaryBackground,
+                    color: colors.utility.primaryText,
+                    '--tw-ring-color': colors.brand.primary
+                  } as React.CSSProperties}
+                  disabled={isSaving}
+                />
+                <p className="text-xs mt-1" style={{ color: colors.utility.secondaryText }}>
+                  Enter your website (e.g., www.vikuna.io or https://vikuna.io)
+                </p>
+              </div>
+
+              {/* Generate from Website Button */}
+              <button
+                type="submit"
+                disabled={!websiteUrl.trim() || isSaving}
+                className="w-full flex items-center justify-center space-x-2 px-6 py-3 rounded-lg font-semibold transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
-                  borderColor: `${colors.utility.secondaryText}40`,
-                  backgroundColor: colors.utility.secondaryBackground,
-                  color: colors.utility.primaryText,
-                  '--tw-ring-color': colors.brand.primary
-                } as React.CSSProperties}
-                disabled={isSaving}
-              />
-              <p className="text-xs mt-1" style={{ color: colors.utility.secondaryText }}>
-                Enter your website (e.g., www.vikuna.io or https://vikuna.io)
-              </p>
+                  backgroundColor: colors.brand.secondary,
+                  color: '#FFFFFF'
+                }}
+              >
+                {isSaving ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Analyzing Website...</span>
+                  </>
+                ) : (
+                  <>
+                    <Globe className="w-5 h-5" />
+                    <span>Generate from Website</span>
+                  </>
+                )}
+              </button>
             </div>
           )}
 
@@ -323,27 +348,29 @@ const ProfileEntryForm: React.FC<ProfileEntryFormProps> = ({
             </div>
           </div>
 
-          {/* Save Profile Button */}
-          <button
-            type="submit"
-            disabled={!isFormValid || isSaving}
-            className="w-full flex items-center justify-center space-x-2 px-6 py-4 rounded-lg font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{
-              background: `linear-gradient(to right, ${colors.brand.primary}, ${colors.brand.secondary})`
-            }}
-          >
-            {isSaving ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Saving your profile...</span>
-              </>
-            ) : (
-              <>
-                <CheckCircle className="w-5 h-5" />
-                <span>Save my profile</span>
-              </>
-            )}
-          </button>
+          {/* Save Profile Button - Only show for manual mode (skip AI enhancement) */}
+          {generationMethod === 'manual' && (
+            <button
+              type="submit"
+              disabled={!isFormValid || isSaving || isEnhancing}
+              className="w-full flex items-center justify-center space-x-2 px-6 py-4 rounded-lg font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                background: `linear-gradient(to right, ${colors.brand.primary}, ${colors.brand.secondary})`
+              }}
+            >
+              {isSaving ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Saving your profile...</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-5 h-5" />
+                  <span>Save without AI Enhancement</span>
+                </>
+              )}
+            </button>
+          )}
         </form>
       </CardContent>
     </Card>
