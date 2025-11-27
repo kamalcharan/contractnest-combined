@@ -43,11 +43,19 @@ const ProfileEntryForm: React.FC<ProfileEntryFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    // Auto-prepend https:// if URL doesn't have protocol
+    let normalizedUrl = websiteUrl.trim();
+    if (generationMethod === 'website' && normalizedUrl) {
+      if (!normalizedUrl.startsWith('http://') && !normalizedUrl.startsWith('https://')) {
+        normalizedUrl = `https://${normalizedUrl}`;
+      }
+    }
+
     const formData: ProfileFormData = {
       generation_method: generationMethod,
       short_description: shortDescription.trim(),
-      ...(generationMethod === 'website' && { website_url: websiteUrl.trim() })
+      ...(generationMethod === 'website' && { website_url: normalizedUrl })
     };
 
     onSubmit(formData);
@@ -270,11 +278,11 @@ const ProfileEntryForm: React.FC<ProfileEntryFormProps> = ({
                 Website URL *
               </label>
               <input
-                type="url"
+                type="text"
                 id="website_url"
                 value={websiteUrl}
                 onChange={(e) => setWebsiteUrl(e.target.value)}
-                placeholder="https://www.yourcompany.com"
+                placeholder="www.yourcompany.com or https://yourcompany.com"
                 className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 transition-all"
                 style={{
                   borderColor: `${colors.utility.secondaryText}40`,
@@ -285,7 +293,7 @@ const ProfileEntryForm: React.FC<ProfileEntryFormProps> = ({
                 disabled={isSaving}
               />
               <p className="text-xs mt-1" style={{ color: colors.utility.secondaryText }}>
-                VaNi will scrape your website and generate a profile based on your content
+                Enter your website (e.g., www.vikuna.io or https://vikuna.io)
               </p>
             </div>
           )}
