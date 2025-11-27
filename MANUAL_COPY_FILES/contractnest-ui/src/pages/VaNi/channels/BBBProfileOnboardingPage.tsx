@@ -11,6 +11,13 @@ import AIEnhancementSection from '../../../components/VaNi/bbb/AIEnhancementSect
 import SemanticClustersDisplay from '../../../components/VaNi/bbb/SemanticClustersDisplay';
 import SuccessModal from '../../../components/VaNi/bbb/SuccessModal';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '../../../components/ui/dialog';
+import {
   mockSemanticClusters,
   simulateDelay
 } from '../../../utils/fakejson/bbbMockData';
@@ -22,8 +29,14 @@ import {
   TenantProfile
 } from '../../../types/bbb';
 import toast from 'react-hot-toast';
-import { useEnhanceProfile, useScrapeWebsite } from '../../../hooks/queries/useGroupQueries';
+import {
+  useEnhanceProfile,
+  useScrapeWebsite,
+  useGroups,
+  useCreateMembership
+} from '../../../hooks/queries/useGroupQueries';
 import { useTenantProfile } from '../../../hooks/useTenantProfile';
+import { Users, MessageCircle, Sparkles } from 'lucide-react';
 
 type OnboardingStep =
   | 'profile_entry'
@@ -41,6 +54,17 @@ const BBBProfileOnboardingPage: React.FC = () => {
   // Get live tenant profile data
   const { profile: tenantProfileData, loading: isLoadingProfile } = useTenantProfile();
 
+  // Get BBB groups to find the group_id
+  const { data: bbbGroups, isLoading: isLoadingGroups } = useGroups('bbb_chapter');
+
+  // Create membership mutation
+  const createMembershipMutation = useCreateMembership();
+
+  // Membership state
+  const [showJoinDialog, setShowJoinDialog] = useState(false);
+  const [membershipId, setMembershipId] = useState<string | null>(null);
+  const [isCheckingMembership, setIsCheckingMembership] = useState(true);
+
   // Map tenant profile data to the format expected by ProfileCard
   const currentTenantProfile: TenantProfile = {
     id: tenantProfileData?.id || '',
@@ -52,13 +76,83 @@ const BBBProfileOnboardingPage: React.FC = () => {
     website_url: tenantProfileData?.website_url || undefined,
     logo_url: tenantProfileData?.logo_url || undefined,
     industry_id: tenantProfileData?.industry_id || undefined,
-    business_category: tenantProfileData?.industry_id || undefined, // Map industry to category
+    business_category: tenantProfileData?.industry_id || undefined,
     city: tenantProfileData?.city || undefined,
     address_line1: tenantProfileData?.address_line1 || undefined,
     address_line2: tenantProfileData?.address_line2 || undefined,
     postal_code: tenantProfileData?.postal_code || undefined,
     country_code: tenantProfileData?.country_code || 'IN',
     state_code: tenantProfileData?.state_code || undefined,
+  };
+
+  // Get the BBB group ID (first BBB chapter)
+  const bbbGroupId = bbbGroups?.[0]?.id;
+
+  // Check membership status on page load
+  useEffect(() => {
+    const checkMembership = async () => {
+      if (!bbbGroupId || !tenantProfileData?.tenant_id) {
+        setIsCheckingMembership(false);
+        return;
+      }
+
+      // For now, show the join dialog since we don't have a "check my membership" endpoint
+      // In production, you'd call an API to check if tenant has membership
+      // const membership = await groupsService.getMyMembership(bbbGroupId);
+
+      // Show join dialog if no membership
+      setShowJoinDialog(true);
+      setIsCheckingMembership(false);
+    };
+
+    if (!isLoadingProfile && !isLoadingGroups) {
+      checkMembership();
+    }
+  }, [bbbGroupId, tenantProfileData?.tenant_id, isLoadingProfile, isLoadingGroups]);
+
+  // Handle "Let me in" click - create membership
+  const handleJoinBBB = async () => {
+    if (!bbbGroupId) {
+      toast.error('BBB group not found. Please contact admin.', {
+        style: { background: colors.semantic.error, color: '#FFF' }
+      });
+      return;
+    }
+
+    try {
+      console.log('🤖 VaNi: Creating BBB membership...');
+
+      const result = await createMembershipMutation.mutateAsync({
+        group_id: bbbGroupId,
+        profile_data: {
+          mobile_number: tenantProfileData?.business_phone || '',
+        }
+      });
+
+      console.log('🤖 VaNi: Membership created:', result);
+
+      setMembershipId(result.id);
+      setShowJoinDialog(false);
+
+      toast.success('Welcome to BBB! Let\'s create your profile.', {
+        style: { background: colors.semantic.success, color: '#FFF' },
+        duration: 3000
+      });
+    } catch (error: any) {
+      console.error('🤖 VaNi: Failed to create membership:', error);
+
+      // If membership already exists, just close dialog and continue
+      if (error.message?.includes('already exists') || error.message?.includes('duplicate')) {
+        setShowJoinDialog(false);
+        toast.success('You\'re already a member! Let\'s update your profile.', {
+          style: { background: colors.semantic.info, color: '#FFF' }
+        });
+      } else {
+        toast.error(error.message || 'Failed to join BBB. Please try again.', {
+          style: { background: colors.semantic.error, color: '#FFF' }
+        });
+      }
+    }
   };
 
   // API hooks for AI operations
@@ -85,7 +179,7 @@ const BBBProfileOnboardingPage: React.FC = () => {
       console.log('🤖 VaNi: Calling AI enhancement API...');
 
       const result = await enhanceProfileMutation.mutateAsync({
-        membership_id: currentTenantProfile.id || 'temp-membership-id',
+        membership_id: membershipId || currentTenantProfile.id || 'temp-membership-id',
         short_description: description
       });
 
@@ -116,7 +210,7 @@ const BBBProfileOnboardingPage: React.FC = () => {
         console.log('🤖 VaNi: Calling website scraping API...');
 
         const result = await scrapeWebsiteMutation.mutateAsync({
-          membership_id: currentTenantProfile.id || 'temp-membership-id',
+          membership_id: membershipId || currentTenantProfile.id || 'temp-membership-id',
           website_url: data.website_url
         });
 
@@ -225,8 +319,92 @@ const BBBProfileOnboardingPage: React.FC = () => {
     setIsSavingProfile(false);
   };
 
+  // Show loading while checking membership
+  if (isCheckingMembership || isLoadingGroups) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-t-transparent rounded-full animate-spin mx-auto mb-4"
+            style={{ borderColor: colors.brand.primary, borderTopColor: 'transparent' }} />
+          <p style={{ color: colors.utility.secondaryText }}>Loading BBB Directory...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen p-6 space-y-8 max-w-5xl mx-auto">
+      {/* Join BBB Dialog */}
+      <Dialog open={showJoinDialog} onOpenChange={setShowJoinDialog}>
+        <DialogContent
+          className="sm:max-w-md"
+          style={{
+            backgroundColor: colors.utility.primaryBackground,
+            borderColor: `${colors.utility.primaryText}20`
+          }}
+        >
+          <DialogHeader>
+            <div className="flex items-center justify-center mb-4">
+              <div
+                className="p-4 rounded-full"
+                style={{ backgroundColor: `${colors.brand.primary}15` }}
+              >
+                <MessageCircle className="w-10 h-10" style={{ color: colors.brand.primary }} />
+              </div>
+            </div>
+            <DialogTitle
+              className="text-center text-xl"
+              style={{ color: colors.utility.primaryText }}
+            >
+              Welcome to BBB Directory!
+            </DialogTitle>
+            <DialogDescription className="text-center space-y-3 pt-2">
+              <p style={{ color: colors.utility.secondaryText }}>
+                I have received an invitation to join the
+              </p>
+              <p
+                className="text-lg font-semibold"
+                style={{ color: colors.brand.primary }}
+              >
+                BBB AI WhatsApp Group
+              </p>
+              <div
+                className="flex items-center justify-center space-x-2 py-3 px-4 rounded-lg mt-4"
+                style={{ backgroundColor: `${colors.semantic.success}10` }}
+              >
+                <Sparkles className="w-5 h-5" style={{ color: colors.semantic.success }} />
+                <span className="text-sm" style={{ color: colors.utility.secondaryText }}>
+                  Powered by VaNi AI Assistant
+                </span>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="mt-6">
+            <button
+              onClick={handleJoinBBB}
+              disabled={createMembershipMutation.isPending}
+              className="w-full flex items-center justify-center space-x-2 px-6 py-4 rounded-lg font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
+              style={{
+                background: `linear-gradient(to right, ${colors.brand.primary}, ${colors.brand.secondary})`
+              }}
+            >
+              {createMembershipMutation.isPending ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Joining...</span>
+                </>
+              ) : (
+                <>
+                  <Users className="w-5 h-5" />
+                  <span>Let me in!</span>
+                </>
+              )}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Page Header */}
       <div className="text-center mb-8">
         <h1
