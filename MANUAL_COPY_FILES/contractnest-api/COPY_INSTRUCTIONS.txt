@@ -1,0 +1,77 @@
+=====================================================
+MANUAL COPY INSTRUCTIONS - ContractNest API
+VaNi n8n Integration
+=====================================================
+
+These files need to be copied to your local contractnest-api folder.
+
+FILES TO COPY:
+1. src/config/VaNiN8NConfig.ts (NEW FILE - create config folder if needed)
+2. src/groupsService.ts → src/services/groupsService.ts
+3. src/groupsController.ts → src/controllers/groupsController.ts
+
+=====================================================
+POWERSHELL COMMANDS (Run from contractnest-combined folder)
+=====================================================
+
+# Step 1: Create config folder if it doesn't exist
+New-Item -ItemType Directory -Force -Path "contractnest-api\src\config"
+
+# Step 2: Copy all files
+Copy-Item "MANUAL_COPY_FILES\contractnest-api\src\config\VaNiN8NConfig.ts" -Destination "contractnest-api\src\config\VaNiN8NConfig.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\contractnest-api\src\groupsService.ts" -Destination "contractnest-api\src\services\groupsService.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\contractnest-api\src\groupsController.ts" -Destination "contractnest-api\src\controllers\groupsController.ts" -Force
+Write-Host "All API files copied!" -ForegroundColor Green
+
+# Step 3: Verify
+Get-ChildItem "contractnest-api\src\config\*.ts" | Select-Object Name, LastWriteTime
+Get-ChildItem "contractnest-api\src\services\groupsService.ts" | Select-Object Name, LastWriteTime
+Get-ChildItem "contractnest-api\src\controllers\groupsController.ts" | Select-Object Name, LastWriteTime
+
+=====================================================
+ENVIRONMENT VARIABLE
+=====================================================
+
+Add to your backend .env file:
+
+N8N_WEBHOOK_URL=https://n8n.srv1096269.hstgr.cloud
+
+=====================================================
+WHAT CHANGED
+=====================================================
+
+1. VaNiN8NConfig.ts (NEW)
+   - Centralized n8n webhook URL configuration
+   - Environment routing (test vs production)
+   - Type definitions for n8n requests/responses
+   - Helper functions for URL building
+
+2. groupsService.ts (UPDATED)
+   - enhanceProfile() now calls n8n webhook
+   - scrapeWebsite() now calls n8n webhook
+   - Transforms requests/responses between formats
+   - Supports test/production environment via x-environment header
+
+3. groupsController.ts (UPDATED)
+   - Passes x-environment header to service methods
+   - No other changes
+
+=====================================================
+TESTING
+=====================================================
+
+After copying files and adding env variable:
+
+1. Restart your Express API server
+2. Test from UI or curl:
+
+curl -X POST http://localhost:3001/api/profiles/enhance \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "x-environment: test" \
+  -d '{
+    "membership_id": "test-123",
+    "short_description": "I run a small accounting firm..."
+  }'
+
+Expected: Enhanced description from n8n
