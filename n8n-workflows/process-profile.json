@@ -130,23 +130,30 @@
     },
     {
       "parameters": {
-        "model": "gpt-4o-mini",
-        "messages": {
-          "values": [
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
             {
-              "content": "You are an expert content extractor. Extract the main business information from the following website HTML content. Focus on:\n- Company/Business name\n- What they do (services/products)\n- Key differentiators\n- Contact information if available\n- Any relevant business details\n\nReturn a clean, structured text summary (not HTML). Keep it concise but comprehensive.\n\nWebsite content:\n{{ $json.data }}"
+              "name": "Content-Type",
+              "value": "application/json"
             }
           ]
         },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"gpt-4o-mini\",\n  \"temperature\": 0.3,\n  \"max_tokens\": 1500,\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are an expert content extractor. Extract the main business information from website HTML content. Focus on: Company/Business name, What they do (services/products), Key differentiators, Contact information if available, Any relevant business details. Return a clean, structured text summary (not HTML). Keep it concise but comprehensive.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": {{ JSON.stringify($json.data) }}\n    }\n  ]\n}",
         "options": {
-          "temperature": 0.3,
-          "maxTokens": 1500
+          "timeout": 60000
         }
       },
-      "id": "ai-extract-website",
-      "name": "AI Extract Website Content",
-      "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 1.4,
+      "id": "openai-extract-website",
+      "name": "OpenAI Extract Website",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [900, 400],
       "credentials": {
         "openAiApi": {
@@ -163,7 +170,7 @@
               "id": "assign-extracted",
               "name": "rawContent",
               "type": "string",
-              "value": "={{ $json.message.content }}"
+              "value": "={{ $json.choices[0].message.content }}"
             },
             {
               "id": "assign-user-id-2",
@@ -203,23 +210,30 @@
     },
     {
       "parameters": {
-        "model": "gpt-4o",
-        "messages": {
-          "values": [
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
             {
-              "content": "You are an expert business profile writer. Your task is to enhance and professionally rewrite the following business description for a professional networking directory.\n\nGuidelines:\n1. Keep the core information accurate - don't invent details\n2. Use professional, engaging language\n3. Structure with clear paragraphs\n4. Highlight key services and expertise\n5. Make it compelling for potential business connections\n6. Keep it between 150-300 words\n7. Use first person (\"We\" or \"I\") appropriately based on context\n8. Include a brief tagline or summary at the start\n\nOriginal content:\n{{ $json.rawContent }}\n\nProvide the enhanced profile description only, no additional commentary."
+              "name": "Content-Type",
+              "value": "application/json"
             }
           ]
         },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"gpt-4o\",\n  \"temperature\": 0.7,\n  \"max_tokens\": 2000,\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are an expert business profile writer. Enhance and professionally rewrite business descriptions for a professional networking directory. Guidelines: 1) Keep core information accurate - don't invent details, 2) Use professional, engaging language, 3) Structure with clear paragraphs, 4) Highlight key services and expertise, 5) Make it compelling for potential business connections, 6) Keep it between 150-300 words, 7) Use first person (We or I) appropriately based on context, 8) Include a brief tagline or summary at the start. Provide the enhanced profile description only, no additional commentary.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": {{ JSON.stringify($json.rawContent) }}\n    }\n  ]\n}",
         "options": {
-          "temperature": 0.7,
-          "maxTokens": 2000
+          "timeout": 60000
         }
       },
-      "id": "ai-enhance-profile",
-      "name": "AI Enhance Profile",
-      "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 1.4,
+      "id": "openai-enhance-profile",
+      "name": "OpenAI Enhance Profile",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [1560, 300],
       "credentials": {
         "openAiApi": {
@@ -236,7 +250,7 @@
               "id": "final-enhanced",
               "name": "enhancedContent",
               "type": "string",
-              "value": "={{ $json.message.content }}"
+              "value": "={{ $json.choices[0].message.content }}"
             },
             {
               "id": "final-raw",
@@ -366,14 +380,14 @@
       "main": [
         [
           {
-            "node": "AI Extract Website Content",
+            "node": "OpenAI Extract Website",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "AI Extract Website Content": {
+    "OpenAI Extract Website": {
       "main": [
         [
           {
@@ -399,14 +413,14 @@
       "main": [
         [
           {
-            "node": "AI Enhance Profile",
+            "node": "OpenAI Enhance Profile",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "AI Enhance Profile": {
+    "OpenAI Enhance Profile": {
       "main": [
         [
           {
@@ -450,5 +464,5 @@
   ],
   "triggerCount": 1,
   "pinData": {},
-  "versionId": "1.0.0"
+  "versionId": "1.0.1"
 }
