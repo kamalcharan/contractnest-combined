@@ -10,24 +10,25 @@ import WebsiteScrapingForm from '../../../components/VaNi/bbb/WebsiteScrapingFor
 import AIEnhancementSection from '../../../components/VaNi/bbb/AIEnhancementSection';
 import SemanticClustersDisplay from '../../../components/VaNi/bbb/SemanticClustersDisplay';
 import SuccessModal from '../../../components/VaNi/bbb/SuccessModal';
-import { 
-  mockTenantProfiles, 
+import {
+  mockTenantProfiles,
   mockSemanticClusters,
-  simulateDelay 
+  simulateDelay
 } from '../../../utils/fakejson/bbbMockData';
-import { 
-  ProfileFormData, 
+import {
+  ProfileFormData,
   AIEnhancementResponse,
   WebsiteScrapingResponse,
   SemanticCluster
 } from '../../../types/bbb';
 import toast from 'react-hot-toast';
+import { useEnhanceProfile, useScrapeWebsite } from '../../../hooks/queries/useGroupQueries';
 
-type OnboardingStep = 
-  | 'profile_entry' 
-  | 'ai_enhanced' 
-  | 'website_scraped' 
-  | 'semantic_clusters' 
+type OnboardingStep =
+  | 'profile_entry'
+  | 'ai_enhanced'
+  | 'website_scraped'
+  | 'semantic_clusters'
   | 'success';
 
 const BBBProfileOnboardingPage: React.FC = () => {
@@ -39,6 +40,10 @@ const BBBProfileOnboardingPage: React.FC = () => {
   // Mock current user - in real app, get from auth context
   const currentTenantProfile = mockTenantProfiles[0]; // Vikuna Technologies
 
+  // API hooks for AI operations
+  const enhanceProfileMutation = useEnhanceProfile();
+  const scrapeWebsiteMutation = useScrapeWebsite();
+
   // State management
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('profile_entry');
   const [originalDescription, setOriginalDescription] = useState('');
@@ -46,77 +51,68 @@ const BBBProfileOnboardingPage: React.FC = () => {
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [generatedClusters, setGeneratedClusters] = useState<SemanticCluster[]>([]);
   const [keywords, setKeywords] = useState<string[]>([]);
-  
+
   // Loading states
-  const [isEnhancing, setIsEnhancing] = useState(false);
-  const [isScrapingWebsite, setIsScrapingWebsite] = useState(false);
   const [isGeneratingClusters, setIsGeneratingClusters] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
-  // Simulate AI Enhancement
+  // AI Enhancement via n8n
   const handleEnhanceWithAI = async (description: string) => {
-    setIsEnhancing(true);
     setOriginalDescription(description);
 
     try {
-      // Simulate API call
-      await simulateDelay(2000);
+      console.log('🤖 VaNi: Calling AI enhancement API...');
 
-      // Mock AI enhancement
-      const enhanced = `We are ${currentTenantProfile.business_name}, a leading ${currentTenantProfile.business_category} provider in ${currentTenantProfile.city}. ${description} Our expert team delivers comprehensive solutions tailored to your business needs. With years of experience serving diverse clients, we transform challenges into opportunities. Contact us at ${currentTenantProfile.business_phone_code} ${currentTenantProfile.business_phone} or visit ${currentTenantProfile.website_url} to discover how we can help your business thrive and achieve sustainable growth.`;
+      const result = await enhanceProfileMutation.mutateAsync({
+        membership_id: currentTenantProfile.id || 'temp-membership-id',
+        short_description: description
+      });
 
-      const mockKeywords = ['IT Services', 'Software Development', 'Cloud Solutions', 'Digital Transformation', 'Technology Consulting'];
+      console.log('🤖 VaNi: AI enhancement result:', result);
 
-      setEnhancedDescription(enhanced);
-      setKeywords(mockKeywords);
+      setEnhancedDescription(result.ai_enhanced_description);
+      setKeywords(result.suggested_keywords || []);
       setCurrentStep('ai_enhanced');
 
       toast.success('AI enhancement complete!', {
         style: { background: colors.semantic.success, color: '#FFF' }
       });
-    } catch (error) {
-      toast.error('Enhancement failed. Please try again.', {
+    } catch (error: any) {
+      console.error('🤖 VaNi: AI enhancement failed:', error);
+      toast.error(error.message || 'Enhancement failed. Please try again.', {
         style: { background: colors.semantic.error, color: '#FFF' }
       });
-    } finally {
-      setIsEnhancing(false);
     }
   };
 
   // Handle form submission
   const handleFormSubmit = async (data: ProfileFormData) => {
     if (data.generation_method === 'website' && data.website_url) {
-      // Website scraping flow
-      setIsScrapingWebsite(true);
+      // Website scraping flow via n8n
       setWebsiteUrl(data.website_url);
 
       try {
-        // Simulate website scraping
-        await simulateDelay(3000);
+        console.log('🤖 VaNi: Calling website scraping API...');
 
-        const scrapedDescription = `${currentTenantProfile.business_name} is a premier ${currentTenantProfile.business_category} company specializing in innovative solutions for modern businesses. We offer comprehensive services including consulting, implementation, and ongoing support. Our team of experienced professionals is dedicated to delivering exceptional results that drive business growth. Based in ${currentTenantProfile.city}, we serve clients across various industries with customized solutions that meet their unique requirements. Visit our website at ${data.website_url} to learn more about our services and success stories.`;
+        const result = await scrapeWebsiteMutation.mutateAsync({
+          membership_id: currentTenantProfile.id || 'temp-membership-id',
+          website_url: data.website_url
+        });
 
-        const mockKeywords = [
-          currentTenantProfile.business_category || 'Services',
-          'Consulting',
-          'Solutions',
-          'Innovation',
-          'Business Growth'
-        ];
+        console.log('🤖 VaNi: Website scraping result:', result);
 
-        setEnhancedDescription(scrapedDescription);
-        setKeywords(mockKeywords);
+        setEnhancedDescription(result.ai_enhanced_description);
+        setKeywords(result.suggested_keywords || []);
         setCurrentStep('website_scraped');
 
         toast.success('Website analyzed successfully!', {
           style: { background: colors.semantic.success, color: '#FFF' }
         });
-      } catch (error) {
-        toast.error('Website scraping failed. Please try manual entry.', {
+      } catch (error: any) {
+        console.error('🤖 VaNi: Website scraping failed:', error);
+        toast.error(error.message || 'Website scraping failed. Please try manual entry.', {
           style: { background: colors.semantic.error, color: '#FFF' }
         });
-      } finally {
-        setIsScrapingWebsite(false);
       }
     } else if (data.generation_method === 'manual' && data.short_description) {
       // Direct save without enhancement (user didn't click Enhance)
