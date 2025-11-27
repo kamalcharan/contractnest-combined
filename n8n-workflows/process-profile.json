@@ -1,0 +1,454 @@
+{
+  "name": "Process Profile - ContractNest",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "process-profile",
+        "options": {
+          "responseMode": "responseNode"
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "process-profile-webhook"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "rules": [
+            {
+              "outputKey": "manual",
+              "conditions": {
+                "options": {
+                  "version": 2,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "condition-manual",
+                    "operator": {
+                      "name": "filter.operator.equals",
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.body.type }}",
+                    "rightValue": "manual"
+                  }
+                ]
+              }
+            },
+            {
+              "outputKey": "website",
+              "conditions": {
+                "options": {
+                  "version": 2,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "combinator": "and",
+                "conditions": [
+                  {
+                    "id": "condition-website",
+                    "operator": {
+                      "name": "filter.operator.equals",
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "leftValue": "={{ $json.body.type }}",
+                    "rightValue": "website"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "switch-type",
+      "name": "Route by Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "assign-content",
+              "name": "rawContent",
+              "type": "string",
+              "value": "={{ $json.body.content }}"
+            },
+            {
+              "id": "assign-user-id",
+              "name": "userId",
+              "type": "string",
+              "value": "={{ $json.body.userId }}"
+            },
+            {
+              "id": "assign-group-id",
+              "name": "groupId",
+              "type": "string",
+              "value": "={{ $json.body.groupId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-manual-content",
+      "name": "Set Manual Content",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [680, 200]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.body.websiteUrl }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "http-scrape",
+      "name": "Scrape Website",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 400]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            {
+              "content": "You are an expert content extractor. Extract the main business information from the following website HTML content. Focus on:\n- Company/Business name\n- What they do (services/products)\n- Key differentiators\n- Contact information if available\n- Any relevant business details\n\nReturn a clean, structured text summary (not HTML). Keep it concise but comprehensive.\n\nWebsite content:\n{{ $json.data }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 1500
+        }
+      },
+      "id": "ai-extract-website",
+      "name": "AI Extract Website Content",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.4,
+      "position": [900, 400],
+      "credentials": {
+        "openAiApi": {
+          "id": "OPENAI_CREDENTIAL_ID",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "assign-extracted",
+              "name": "rawContent",
+              "type": "string",
+              "value": "={{ $json.message.content }}"
+            },
+            {
+              "id": "assign-user-id-2",
+              "name": "userId",
+              "type": "string",
+              "value": "={{ $('Webhook Trigger').item.json.body.userId }}"
+            },
+            {
+              "id": "assign-group-id-2",
+              "name": "groupId",
+              "type": "string",
+              "value": "={{ $('Webhook Trigger').item.json.body.groupId }}"
+            },
+            {
+              "id": "assign-source-url",
+              "name": "sourceUrl",
+              "type": "string",
+              "value": "={{ $('Webhook Trigger').item.json.body.websiteUrl }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-website-content",
+      "name": "Set Website Content",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1120, 400]
+    },
+    {
+      "parameters": {},
+      "id": "merge-paths",
+      "name": "Merge Paths",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o",
+        "messages": {
+          "values": [
+            {
+              "content": "You are an expert business profile writer. Your task is to enhance and professionally rewrite the following business description for a professional networking directory.\n\nGuidelines:\n1. Keep the core information accurate - don't invent details\n2. Use professional, engaging language\n3. Structure with clear paragraphs\n4. Highlight key services and expertise\n5. Make it compelling for potential business connections\n6. Keep it between 150-300 words\n7. Use first person (\"We\" or \"I\") appropriately based on context\n8. Include a brief tagline or summary at the start\n\nOriginal content:\n{{ $json.rawContent }}\n\nProvide the enhanced profile description only, no additional commentary."
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.7,
+          "maxTokens": 2000
+        }
+      },
+      "id": "ai-enhance-profile",
+      "name": "AI Enhance Profile",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.4,
+      "position": [1560, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "OPENAI_CREDENTIAL_ID",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "final-enhanced",
+              "name": "enhancedContent",
+              "type": "string",
+              "value": "={{ $json.message.content }}"
+            },
+            {
+              "id": "final-raw",
+              "name": "originalContent",
+              "type": "string",
+              "value": "={{ $('Merge Paths').item.json.rawContent }}"
+            },
+            {
+              "id": "final-user",
+              "name": "userId",
+              "type": "string",
+              "value": "={{ $('Merge Paths').item.json.userId }}"
+            },
+            {
+              "id": "final-group",
+              "name": "groupId",
+              "type": "string",
+              "value": "={{ $('Merge Paths').item.json.groupId }}"
+            },
+            {
+              "id": "final-source",
+              "name": "sourceUrl",
+              "type": "string",
+              "value": "={{ $('Merge Paths').item.json.sourceUrl || '' }}"
+            },
+            {
+              "id": "final-status",
+              "name": "status",
+              "type": "string",
+              "value": "success"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "prepare-response",
+      "name": "Prepare Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1780, 300]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseBody": "={{ JSON.stringify($json) }}",
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "respond-success",
+      "name": "Respond Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2000, 300]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseBody": "={{ JSON.stringify({ status: 'error', message: $json.message || 'An error occurred processing your request' }) }}",
+          "responseCode": 500,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "respond-error",
+      "name": "Respond Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1560, 520]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Route by Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Type": {
+      "main": [
+        [
+          {
+            "node": "Set Manual Content",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Scrape Website",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Manual Content": {
+      "main": [
+        [
+          {
+            "node": "Merge Paths",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape Website": {
+      "main": [
+        [
+          {
+            "node": "AI Extract Website Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Extract Website Content": {
+      "main": [
+        [
+          {
+            "node": "Set Website Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Website Content": {
+      "main": [
+        [
+          {
+            "node": "Merge Paths",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Paths": {
+      "main": [
+        [
+          {
+            "node": "AI Enhance Profile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Enhance Profile": {
+      "main": [
+        [
+          {
+            "node": "Prepare Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Response": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "ContractNest",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z"
+    },
+    {
+      "name": "Profile",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z"
+    }
+  ],
+  "triggerCount": 1,
+  "pinData": {},
+  "versionId": "1.0.0"
+}
