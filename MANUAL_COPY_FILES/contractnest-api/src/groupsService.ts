@@ -339,14 +339,17 @@ export const groupsService = {
         }
       );
 
+      // n8n may return an array - unwrap if needed
+      const n8nData = Array.isArray(response.data) ? response.data[0] : response.data;
+
       // Check for n8n error response
-      if (VaNiN8NConfig.isError(response.data)) {
-        console.error('🤖 VaNi: n8n returned error:', response.data);
-        throw new Error(response.data.message || 'AI enhancement failed');
+      if (VaNiN8NConfig.isError(n8nData)) {
+        console.error('🤖 VaNi: n8n returned error:', n8nData);
+        throw new Error(n8nData.message || 'AI enhancement failed');
       }
 
       // Transform n8n response to expected format
-      const successResponse = response.data as N8NProcessProfileResponse & { status: 'success' };
+      const successResponse = n8nData as N8NProcessProfileResponse & { status: 'success' };
       return {
         success: true,
         ai_enhanced_description: successResponse.enhancedContent,
@@ -405,9 +408,12 @@ export const groupsService = {
         }
       );
 
+      // n8n may return an array - unwrap if needed
+      const n8nData = Array.isArray(response.data) ? response.data[0] : response.data;
+
       // Check for n8n error response
-      if (VaNiN8NConfig.isError(response.data)) {
-        const errorResponse = response.data;
+      if (VaNiN8NConfig.isError(n8nData)) {
+        const errorResponse = n8nData;
         console.error('🤖 VaNi: n8n returned error:', errorResponse);
 
         // Map n8n error codes to user-friendly messages
@@ -418,7 +424,7 @@ export const groupsService = {
       }
 
       // Transform n8n response to expected format
-      const successResponse = response.data as N8NProcessProfileResponse & { status: 'success' };
+      const successResponse = n8nData as N8NProcessProfileResponse & { status: 'success' };
       return {
         success: true,
         ai_enhanced_description: successResponse.enhancedContent,
