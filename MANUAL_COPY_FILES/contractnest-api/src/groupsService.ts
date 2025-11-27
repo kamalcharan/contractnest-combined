@@ -349,9 +349,9 @@ export const groupsService = {
       const successResponse = response.data as N8NProcessProfileResponse & { status: 'success' };
       return {
         success: true,
-        enhanced_description: successResponse.enhancedContent,
-        original_description: successResponse.originalContent,
-        membership_id: request.membership_id,
+        ai_enhanced_description: successResponse.enhancedContent,
+        suggested_keywords: [], // n8n doesn't return keywords yet
+        processing_time_ms: 0,  // Could add timing if needed
       };
     } catch (error) {
       console.error('Error in enhanceProfile:', error);
@@ -421,10 +421,13 @@ export const groupsService = {
       const successResponse = response.data as N8NProcessProfileResponse & { status: 'success' };
       return {
         success: true,
-        scraped_content: successResponse.originalContent,
-        enhanced_description: successResponse.enhancedContent,
-        source_url: successResponse.sourceUrl,
-        membership_id: request.membership_id,
+        ai_enhanced_description: successResponse.enhancedContent,
+        suggested_keywords: [], // n8n doesn't return keywords yet
+        scraped_data: {
+          title: '',
+          meta_description: '',
+          content_snippets: [successResponse.originalContent],
+        },
       };
     } catch (error) {
       console.error('Error in scrapeWebsite:', error);
