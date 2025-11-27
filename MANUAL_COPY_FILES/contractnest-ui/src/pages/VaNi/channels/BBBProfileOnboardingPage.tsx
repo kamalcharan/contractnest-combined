@@ -11,7 +11,6 @@ import AIEnhancementSection from '../../../components/VaNi/bbb/AIEnhancementSect
 import SemanticClustersDisplay from '../../../components/VaNi/bbb/SemanticClustersDisplay';
 import SuccessModal from '../../../components/VaNi/bbb/SuccessModal';
 import {
-  mockTenantProfiles,
   mockSemanticClusters,
   simulateDelay
 } from '../../../utils/fakejson/bbbMockData';
@@ -19,10 +18,12 @@ import {
   ProfileFormData,
   AIEnhancementResponse,
   WebsiteScrapingResponse,
-  SemanticCluster
+  SemanticCluster,
+  TenantProfile
 } from '../../../types/bbb';
 import toast from 'react-hot-toast';
 import { useEnhanceProfile, useScrapeWebsite } from '../../../hooks/queries/useGroupQueries';
+import { useTenantProfile } from '../../../hooks/useTenantProfile';
 
 type OnboardingStep =
   | 'profile_entry'
@@ -37,8 +38,28 @@ const BBBProfileOnboardingPage: React.FC = () => {
   const location = useLocation();
   const branch = location.state?.branch || 'bagyanagar';
 
-  // Mock current user - in real app, get from auth context
-  const currentTenantProfile = mockTenantProfiles[0]; // Vikuna Technologies
+  // Get live tenant profile data
+  const { profile: tenantProfileData, loading: isLoadingProfile } = useTenantProfile();
+
+  // Map tenant profile data to the format expected by ProfileCard
+  const currentTenantProfile: TenantProfile = {
+    id: tenantProfileData?.id || '',
+    tenant_id: tenantProfileData?.tenant_id || '',
+    business_name: tenantProfileData?.business_name || 'Your Business',
+    business_email: tenantProfileData?.business_email || undefined,
+    business_phone: tenantProfileData?.business_phone || undefined,
+    business_phone_code: tenantProfileData?.business_phone_country_code || '+91',
+    website_url: tenantProfileData?.website_url || undefined,
+    logo_url: tenantProfileData?.logo_url || undefined,
+    industry_id: tenantProfileData?.industry_id || undefined,
+    business_category: tenantProfileData?.industry_id || undefined, // Map industry to category
+    city: tenantProfileData?.city || undefined,
+    address_line1: tenantProfileData?.address_line1 || undefined,
+    address_line2: tenantProfileData?.address_line2 || undefined,
+    postal_code: tenantProfileData?.postal_code || undefined,
+    country_code: tenantProfileData?.country_code || 'IN',
+    state_code: tenantProfileData?.state_code || undefined,
+  };
 
   // API hooks for AI operations
   const enhanceProfileMutation = useEnhanceProfile();
@@ -225,7 +246,18 @@ const BBBProfileOnboardingPage: React.FC = () => {
       </div>
 
       {/* Existing Profile Card */}
-      <ProfileCard profile={currentTenantProfile} showTitle={true} />
+      {isLoadingProfile ? (
+        <div
+          className="p-8 rounded-lg text-center"
+          style={{ backgroundColor: colors.utility.secondaryBackground }}
+        >
+          <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin mx-auto mb-4"
+            style={{ borderColor: colors.brand.primary, borderTopColor: 'transparent' }} />
+          <p style={{ color: colors.utility.secondaryText }}>Loading your business profile...</p>
+        </div>
+      ) : (
+        <ProfileCard profile={currentTenantProfile} showTitle={true} />
+      )}
 
       {/* Profile Entry Form */}
       {currentStep === 'profile_entry' && (
