@@ -361,27 +361,29 @@ const BBBProfileOnboardingPage: React.FC = () => {
             >
               Welcome to BBB Directory!
             </DialogTitle>
-            <DialogDescription className="text-center space-y-3 pt-2">
-              <p style={{ color: colors.utility.secondaryText }}>
-                I have received an invitation to join the
-              </p>
-              <p
-                className="text-lg font-semibold"
-                style={{ color: colors.brand.primary }}
-              >
-                BBB AI WhatsApp Group
-              </p>
-              <div
-                className="flex items-center justify-center space-x-2 py-3 px-4 rounded-lg mt-4"
-                style={{ backgroundColor: `${colors.semantic.success}10` }}
-              >
-                <Sparkles className="w-5 h-5" style={{ color: colors.semantic.success }} />
-                <span className="text-sm" style={{ color: colors.utility.secondaryText }}>
-                  Powered by VaNi AI Assistant
-                </span>
-              </div>
-            </DialogDescription>
           </DialogHeader>
+
+          {/* Content outside DialogDescription to avoid p > div nesting */}
+          <div className="text-center space-y-3 pt-2">
+            <p style={{ color: colors.utility.secondaryText }}>
+              I have received an invitation to join the
+            </p>
+            <p
+              className="text-lg font-semibold"
+              style={{ color: colors.brand.primary }}
+            >
+              BBB AI WhatsApp Group
+            </p>
+            <div
+              className="flex items-center justify-center space-x-2 py-3 px-4 rounded-lg mt-4"
+              style={{ backgroundColor: `${colors.semantic.success}10` }}
+            >
+              <Sparkles className="w-5 h-5" style={{ color: colors.semantic.success }} />
+              <span className="text-sm" style={{ color: colors.utility.secondaryText }}>
+                Powered by VaNi AI Assistant
+              </span>
+            </div>
+          </div>
 
           <div className="mt-6">
             <button
