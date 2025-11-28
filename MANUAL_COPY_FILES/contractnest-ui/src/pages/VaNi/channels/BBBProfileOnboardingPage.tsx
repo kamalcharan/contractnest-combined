@@ -33,7 +33,8 @@ import {
   useEnhanceProfile,
   useScrapeWebsite,
   useGroups,
-  useCreateMembership
+  useCreateMembership,
+  useSaveProfile
 } from '../../../hooks/queries/useGroupQueries';
 import { useTenantProfile } from '../../../hooks/useTenantProfile';
 import { Users, MessageCircle, Sparkles } from 'lucide-react';
@@ -196,6 +197,7 @@ const BBBProfileOnboardingPage: React.FC = () => {
   // API hooks for AI operations
   const enhanceProfileMutation = useEnhanceProfile();
   const scrapeWebsiteMutation = useScrapeWebsite();
+  const saveProfileMutation = useSaveProfile();
 
   // State management
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('profile_entry');
@@ -308,29 +310,57 @@ const BBBProfileOnboardingPage: React.FC = () => {
     }
   };
 
-  // Save profile (final step)
+  // Save profile (final step) - calls real API with embedding generation
   const handleSaveProfile = async (description: string) => {
+    if (!membershipId) {
+      toast.error('Please join BBB first before saving your profile.', {
+        style: { background: colors.semantic.error, color: '#FFF' }
+      });
+      return;
+    }
+
     setIsSavingProfile(true);
 
     try {
-      // Simulate profile save
-      await simulateDelay(1500);
+      console.log('🤖 VaNi: Saving profile with embedding generation...');
 
       // Generate default keywords if not already set
-      if (keywords.length === 0) {
-        const defaultKeywords = [
-          currentTenantProfile.business_category || 'Services',
-          currentTenantProfile.city || 'Hyderabad',
-          'Business',
-          'Professional'
-        ];
-        setKeywords(defaultKeywords);
-      }
+      const finalKeywords = keywords.length > 0 ? keywords : [
+        currentTenantProfile.business_category || 'Services',
+        currentTenantProfile.city || 'Hyderabad',
+        'Business',
+        'Professional'
+      ];
+      setKeywords(finalKeywords);
+
+      // Call the real save profile API with embedding generation
+      const result = await saveProfileMutation.mutateAsync({
+        membership_id: membershipId,
+        profile_data: {
+          generation_method: websiteUrl ? 'website' : 'manual',
+          short_description: originalDescription || description,
+          ai_enhanced_description: description,
+          approved_keywords: finalKeywords,
+          website_url: websiteUrl || undefined,
+        },
+        trigger_embedding: true, // Generate embedding via n8n
+        business_context: {
+          business_name: currentTenantProfile.business_name,
+          industry: currentTenantProfile.business_category,
+          city: currentTenantProfile.city,
+        }
+      });
+
+      console.log('🤖 VaNi: Profile saved:', result);
 
       // Move to semantic clusters step
       setCurrentStep('semantic_clusters');
 
-      toast.success('Profile saved! Generating semantic clusters...', {
+      const embeddingMsg = result.embedding_generated
+        ? 'Profile saved with AI embedding!'
+        : 'Profile saved! (Embedding will be generated later)';
+
+      toast.success(embeddingMsg, {
         style: { background: colors.semantic.success, color: '#FFF' }
       });
 
@@ -338,10 +368,12 @@ const BBBProfileOnboardingPage: React.FC = () => {
       setTimeout(() => {
         handleGenerateClusters();
       }, 500);
-    } catch (error) {
-      toast.error('Profile save failed. Please try again.', {
+    } catch (error: any) {
+      console.error('🤖 VaNi: Profile save failed:', error);
+      toast.error(error.message || 'Profile save failed. Please try again.', {
         style: { background: colors.semantic.error, color: '#FFF' }
       });
+    } finally {
       setIsSavingProfile(false);
     }
   };
