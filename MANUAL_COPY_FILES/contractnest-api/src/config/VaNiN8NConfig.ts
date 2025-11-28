@@ -168,8 +168,8 @@ export function getN8NWebhookUrl(
  * @returns N8NEnvironment ('production' | 'test')
  */
 export function mapEnvironmentToN8N(xEnvironment?: string): N8NEnvironment {
-  // 'live' maps to 'production', everything else maps to 'test'
-  return xEnvironment === 'live' ? 'production' : 'test';
+  // 'test' maps to 'test', everything else (including undefined) maps to 'production'
+  return xEnvironment === 'test' ? 'test' : 'production';
 }
 
 /**
