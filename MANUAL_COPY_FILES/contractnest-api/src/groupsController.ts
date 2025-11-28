@@ -184,15 +184,16 @@ export const createMembership = async (req: Request, res: Response) => {
     return res.status(201).json({ success: true, ...membership });
   } catch (error: any) {
     console.error('Error in createMembership controller:', error.message);
-    
-    // Handle duplicate membership error
-    if (error.message?.includes('already a member')) {
-      return res.status(409).json({ 
-        success: false, 
-        error: error.message 
+
+    // Handle duplicate membership error - include membership_id for auto-recovery
+    if (error.message?.includes('already a member') || error.message?.includes('already exists')) {
+      return res.status(409).json({
+        success: false,
+        error: error.message,
+        membership_id: error.membership_id // Pass through for auto-recovery
       });
     }
-    
+
     captureException(error instanceof Error ? error : new Error(String(error)), {
       tags: { source: 'api_groups', action: 'createMembership' },
       status: error.response?.status
@@ -200,7 +201,7 @@ export const createMembership = async (req: Request, res: Response) => {
 
     const status = error.response?.status || 500;
     const message = error.response?.data?.error || error.message || 'Failed to create membership';
-    
+
     return res.status(status).json({ success: false, error: message });
   }
 };

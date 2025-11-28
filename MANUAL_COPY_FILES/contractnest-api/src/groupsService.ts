@@ -167,12 +167,37 @@ export const groupsService = {
       return response.data;
     } catch (error) {
       console.error('Error in createMembership:', error);
-      
-      // Handle duplicate membership (409 Conflict)
+
+      // Handle duplicate membership (409 Conflict) - try to get existing membership_id
       if (axios.isAxiosError(error) && error.response?.status === 409) {
-        throw new Error('You are already a member of this group');
+        let membershipId = error.response?.data?.membership_id;
+
+        // If Edge Function didn't return membership_id, try to query for it
+        if (!membershipId) {
+          try {
+            console.log('🔍 Querying for existing membership...');
+            const membershipsResponse = await axios.get(
+              `${GROUPS_API_BASE}/memberships/group/${request.group_id}?status=all`,
+              { headers: getHeaders(authToken, tenantId) }
+            );
+            // Find the membership for this tenant
+            const existingMembership = membershipsResponse.data.memberships?.find(
+              (m: any) => m.tenant_id === tenantId
+            );
+            if (existingMembership) {
+              membershipId = existingMembership.id;
+              console.log('✅ Found existing membership:', membershipId);
+            }
+          } catch (queryError) {
+            console.error('Failed to query existing membership:', queryError);
+          }
+        }
+
+        const customError = new Error('You are already a member of this group') as Error & { membership_id?: string };
+        customError.membership_id = membershipId;
+        throw customError;
       }
-      
+
       captureException(error instanceof Error ? error : new Error(String(error)), {
         tags: { source: 'groupsService', action: 'createMembership' },
         extra: { tenantId, groupId: request.group_id }
