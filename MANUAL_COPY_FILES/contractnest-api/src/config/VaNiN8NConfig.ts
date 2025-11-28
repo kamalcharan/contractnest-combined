@@ -34,6 +34,9 @@ export const N8N_PATHS = {
   // Profile Processing
   PROCESS_PROFILE: '/process-profile',
 
+  // Embedding Generation
+  GENERATE_EMBEDDING: '/generate-embedding',
+
   // Future webhooks (add as needed)
   // GENERATE_CLUSTERS: '/generate-clusters',
   // SEARCH_MEMBERS: '/search-members',
@@ -94,6 +97,44 @@ export type N8NProcessProfileResponse =
   | N8NProcessProfileErrorResponse;
 
 // =================================================================
+// GENERATE EMBEDDING TYPES
+// =================================================================
+
+/**
+ * Request body for generate-embedding webhook
+ */
+export interface N8NGenerateEmbeddingRequest {
+  textToEmbed: string;
+  membershipId: string;
+}
+
+/**
+ * Success response from generate-embedding webhook
+ */
+export interface N8NGenerateEmbeddingSuccessResponse {
+  status: 'success';
+  embedding: number[];
+  dimensions: number;
+  membershipId: string;
+}
+
+/**
+ * Error response from generate-embedding webhook
+ */
+export interface N8NGenerateEmbeddingErrorResponse {
+  status: 'error';
+  message: string;
+  error?: string;
+}
+
+/**
+ * Combined embedding response type
+ */
+export type N8NGenerateEmbeddingResponse =
+  | N8NGenerateEmbeddingSuccessResponse
+  | N8NGenerateEmbeddingErrorResponse;
+
+// =================================================================
 // HELPER FUNCTIONS
 // =================================================================
 
@@ -145,6 +186,20 @@ export function isN8NError(response: N8NProcessProfileResponse): response is N8N
   return response.status === 'error';
 }
 
+/**
+ * Check if embedding response indicates success
+ */
+export function isEmbeddingSuccess(response: N8NGenerateEmbeddingResponse): response is N8NGenerateEmbeddingSuccessResponse {
+  return response.status === 'success';
+}
+
+/**
+ * Check if embedding response indicates error
+ */
+export function isEmbeddingError(response: N8NGenerateEmbeddingResponse): response is N8NGenerateEmbeddingErrorResponse {
+  return response.status === 'error';
+}
+
 // =================================================================
 // EXPORTS
 // =================================================================
@@ -157,6 +212,8 @@ export const VaNiN8NConfig = {
   mapEnvironment: mapEnvironmentToN8N,
   isSuccess: isN8NSuccess,
   isError: isN8NError,
+  isEmbeddingSuccess,
+  isEmbeddingError,
 };
 
 export default VaNiN8NConfig;

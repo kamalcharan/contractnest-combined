@@ -550,40 +550,57 @@ export const generateClusters = async (req: Request, res: Response) => {
 
 /**
  * POST /api/profiles/save
- * Save profile with embedding
+ * Save profile with optional embedding generation via n8n
+ *
+ * Body:
+ * - membership_id: string (required)
+ * - profile_data: object (required)
+ * - trigger_embedding: boolean (optional, default false)
+ * - business_context: object (optional) { business_name, industry, city }
+ *
+ * Headers:
+ * - x-environment: 'live' | 'test' (for n8n routing)
  */
 export const saveProfile = async (req: Request, res: Response) => {
   try {
     if (!validateSupabaseConfig('api_groups', 'saveProfile')) {
-      return res.status(500).json({ 
-        error: 'Server configuration error: Missing Supabase configuration' 
+      return res.status(500).json({
+        error: 'Server configuration error: Missing Supabase configuration'
       });
     }
 
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader) {
       return res.status(401).json({ error: 'Authorization header is required' });
     }
-    
-    const { membership_id, profile_data, trigger_embedding } = req.body;
-    
+
+    const { membership_id, profile_data, trigger_embedding, business_context } = req.body;
+
     if (!membership_id || !profile_data) {
-      return res.status(400).json({ 
-        error: 'membership_id and profile_data are required' 
+      return res.status(400).json({
+        error: 'membership_id and profile_data are required'
       });
     }
-    
-    const result = await groupsService.saveProfile(authHeader, {
-      membership_id,
-      profile_data,
-      trigger_embedding: trigger_embedding || false
-    });
-    
+
+    // Get environment from header for n8n routing (live → production, test → test)
+    const environment = req.headers['x-environment'] as string | undefined;
+
+    const result = await groupsService.saveProfile(
+      authHeader,
+      {
+        membership_id,
+        profile_data,
+        trigger_embedding: trigger_embedding || false
+      },
+      environment,
+      business_context
+    );
+
     return res.status(200).json(result);
   } catch (error: any) {
     console.error('Error in saveProfile controller:', error.message);
-    
+
     captureException(error instanceof Error ? error : new Error(String(error)), {
       tags: { source: 'api_groups', action: 'saveProfile' },
       status: error.response?.status
@@ -591,7 +608,7 @@ export const saveProfile = async (req: Request, res: Response) => {
 
     const status = error.response?.status || 500;
     const message = error.response?.data?.error || error.message || 'Failed to save profile';
-    
+
     return res.status(status).json({ success: false, error: message });
   }
 };

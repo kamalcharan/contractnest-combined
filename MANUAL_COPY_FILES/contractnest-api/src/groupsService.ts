@@ -9,6 +9,8 @@ import {
   VaNiN8NConfig,
   type N8NProcessProfileRequest,
   type N8NProcessProfileResponse,
+  type N8NGenerateEmbeddingRequest,
+  type N8NGenerateEmbeddingResponse,
 } from '../config/VaNiN8NConfig';
 import type {
   BusinessGroup,
@@ -485,23 +487,113 @@ export const groupsService = {
   },
 
   /**
-   * Save profile and generate embedding
+   * Save profile and optionally generate embedding via n8n
+   *
+   * @param authToken - Auth token for Edge Function
+   * @param request - Save profile request with profile_data and trigger_embedding flag
+   * @param environment - 'live' or 'test' from x-environment header (for n8n routing)
+   * @param businessContext - Optional business context for embedding (business_name, industry, city)
    */
   async saveProfile(
     authToken: string,
-    request: SaveProfileRequest
+    request: SaveProfileRequest,
+    environment?: string,
+    businessContext?: {
+      business_name?: string;
+      industry?: string;
+      city?: string;
+    }
   ): Promise<SaveProfileResponse> {
     try {
+      let embedding: number[] | undefined;
+
+      // Generate embedding via n8n if requested
+      if (request.trigger_embedding) {
+        console.log('🤖 VaNi: Generating embedding for profile...');
+
+        // Construct text for embedding from profile data + business context
+        const textParts: string[] = [];
+
+        if (businessContext?.business_name) {
+          textParts.push(businessContext.business_name);
+        }
+        if (businessContext?.industry) {
+          textParts.push(businessContext.industry);
+        }
+        if (businessContext?.city) {
+          textParts.push(businessContext.city);
+        }
+        if (request.profile_data.ai_enhanced_description) {
+          textParts.push(request.profile_data.ai_enhanced_description);
+        }
+        if (request.profile_data.approved_keywords?.length > 0) {
+          textParts.push(`Keywords: ${request.profile_data.approved_keywords.join(', ')}`);
+        }
+
+        const textToEmbed = textParts.join(' | ');
+
+        if (textToEmbed.trim()) {
+          // Map to n8n environment (live → production, test → test)
+          const n8nEnv = VaNiN8NConfig.mapEnvironment(environment);
+          const n8nUrl = VaNiN8NConfig.getWebhookUrl('GENERATE_EMBEDDING', n8nEnv);
+
+          console.log(`🤖 VaNi: Calling n8n generate-embedding [${n8nEnv}]:`, n8nUrl);
+
+          const n8nRequest: N8NGenerateEmbeddingRequest = {
+            textToEmbed,
+            membershipId: request.membership_id,
+          };
+
+          try {
+            const embeddingResponse = await axios.post<N8NGenerateEmbeddingResponse>(
+              n8nUrl,
+              n8nRequest,
+              {
+                headers: { 'Content-Type': 'application/json' },
+                timeout: 30000 // 30s timeout for embedding generation
+              }
+            );
+
+            // n8n may return an array - unwrap if needed
+            const n8nData = Array.isArray(embeddingResponse.data)
+              ? embeddingResponse.data[0]
+              : embeddingResponse.data;
+
+            if (VaNiN8NConfig.isEmbeddingSuccess(n8nData)) {
+              embedding = n8nData.embedding;
+              console.log(`🤖 VaNi: Embedding generated successfully (${n8nData.dimensions} dimensions)`);
+            } else {
+              // Log error but don't fail the save - embedding can be regenerated later
+              console.error('🤖 VaNi: Embedding generation failed:', n8nData.message);
+            }
+          } catch (embeddingError) {
+            // Log error but don't fail the save - embedding can be regenerated later
+            console.error('🤖 VaNi: Embedding API call failed:', embeddingError);
+          }
+        } else {
+          console.warn('🤖 VaNi: No text available for embedding generation');
+        }
+      }
+
+      // Save profile to Edge Function (with embedding if generated)
+      const saveRequest = {
+        ...request,
+        embedding, // Include embedding if generated (undefined if not)
+      };
+
       const response = await axios.post(
         `${GROUPS_API_BASE}/profiles/save`,
-        request,
+        saveRequest,
         {
           headers: getHeaders(authToken),
           timeout: 30000
         }
       );
-      
-      return response.data;
+
+      return {
+        ...response.data,
+        embedding_generated: !!embedding,
+      };
     } catch (error) {
       console.error('Error in saveProfile:', error);
       captureException(error instanceof Error ? error : new Error(String(error)), {
