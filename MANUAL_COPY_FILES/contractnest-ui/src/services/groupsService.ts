@@ -163,8 +163,14 @@ class GroupsService {
       // Handle duplicate membership (409) - extract membership_id for reuse
       if (error.response?.status === 409) {
         const membershipId = error.response?.data?.membership_id;
-        const customError = new Error('Membership already exists') as Error & { membership_id?: string };
+        console.log('🔍 UI Service: 409 detected, membership_id:', membershipId);
+
+        // Create error with membership_id attached in multiple ways for robustness
+        const customError = new Error('Membership already exists', {
+          cause: { membership_id: membershipId }
+        }) as Error & { membership_id?: string; cause?: { membership_id?: string } };
         customError.membership_id = membershipId;
+
         throw customError;
       }
 

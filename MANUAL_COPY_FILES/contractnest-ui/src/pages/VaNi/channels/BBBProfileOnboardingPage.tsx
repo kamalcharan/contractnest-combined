@@ -118,11 +118,17 @@ const BBBProfileOnboardingPage: React.FC = () => {
         });
 
       } catch (error: any) {
-        console.log('🤖 VaNi: Membership check result:', error.message);
+        console.log('🤖 VaNi: Membership check result:', error.message, error);
 
         // If membership already exists, extract the membership_id and proceed
         if (error.message?.includes('already exists') || error.message?.includes('Membership already exists')) {
-          const existingMembershipId = error.membership_id;
+          // Try multiple ways to get membership_id (custom property, axios response, or cause)
+          const existingMembershipId =
+            error.membership_id ||
+            error.response?.data?.membership_id ||
+            error.cause?.membership_id;
+
+          console.log('🤖 VaNi: Extracted membership_id:', existingMembershipId);
 
           if (existingMembershipId) {
             console.log('🤖 VaNi: Existing membership found:', existingMembershipId);
