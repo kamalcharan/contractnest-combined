@@ -38,7 +38,7 @@ import {
 } from '../../../hooks/queries/useGroupQueries';
 import groupsService from '../../../services/groupsService';
 import { useTenantProfile } from '../../../hooks/useTenantProfile';
-import { Users, MessageCircle, Sparkles } from 'lucide-react';
+import { Users, MessageCircle, Sparkles, Pencil, Eye, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 
 type OnboardingStep =
   | 'profile_entry'
@@ -66,6 +66,11 @@ const BBBProfileOnboardingPage: React.FC = () => {
   const [showJoinDialog, setShowJoinDialog] = useState(false);
   const [membershipId, setMembershipId] = useState<string | null>(null);
   const [isCheckingMembership, setIsCheckingMembership] = useState(true);
+
+  // Edit mode - if profile exists, start in view mode
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [existingProfileData, setExistingProfileData] = useState<any>(null);
+  const [membershipStatus, setMembershipStatus] = useState<string>('draft');
 
   // Map tenant profile data to the format expected by ProfileCard
   const currentTenantProfile: TenantProfile = {
@@ -112,7 +117,22 @@ const BBBProfileOnboardingPage: React.FC = () => {
         if (myMembership) {
           console.log('🤖 VaNi: Found existing membership:', myMembership.id);
           setMembershipId(myMembership.id);
+          setMembershipStatus(myMembership.status || 'draft');
           setShowJoinDialog(false);
+
+          // Check if profile_data exists with saved description
+          if (myMembership.profile_data?.ai_enhanced_description) {
+            console.log('🤖 VaNi: Found existing profile data, showing readonly view');
+            setExistingProfileData(myMembership.profile_data);
+            setEnhancedDescription(myMembership.profile_data.ai_enhanced_description);
+            setOriginalDescription(myMembership.profile_data.short_description || '');
+            setKeywords(myMembership.profile_data.approved_keywords || []);
+            setWebsiteUrl(myMembership.profile_data.website_url || '');
+            setIsEditMode(false); // Start in readonly view mode
+          } else {
+            // No saved profile - user needs to create one
+            setIsEditMode(true); // Start in edit mode to create profile
+          }
         } else {
           // No membership found - show "Let me in" dialog
           console.log('🤖 VaNi: No membership found, showing dialog');
@@ -353,6 +373,17 @@ const BBBProfileOnboardingPage: React.FC = () => {
 
       console.log('🤖 VaNi: Profile saved:', result);
 
+      // Update existing profile data with new values
+      const newProfileData = {
+        generation_method: websiteUrl ? 'website' : 'manual',
+        short_description: originalDescription || description,
+        ai_enhanced_description: description,
+        approved_keywords: keywords.length > 0 ? keywords : finalKeywords,
+        website_url: websiteUrl || undefined,
+      };
+      setExistingProfileData(newProfileData);
+      setIsEditMode(false); // Exit edit mode after save
+
       // Move to semantic clusters step
       setCurrentStep('semantic_clusters');
 
@@ -378,15 +409,53 @@ const BBBProfileOnboardingPage: React.FC = () => {
     }
   };
 
-  // Restart - go back to profile entry
+  // Enter edit mode - keep existing data but allow changes
+  const handleEnterEditMode = () => {
+    setIsEditMode(true);
+    setCurrentStep('profile_entry');
+    // Keep existing description for editing
+  };
+
+  // Cancel edit mode - go back to readonly view
+  const handleCancelEdit = () => {
+    if (existingProfileData?.ai_enhanced_description) {
+      // Restore original data
+      setEnhancedDescription(existingProfileData.ai_enhanced_description);
+      setOriginalDescription(existingProfileData.short_description || '');
+      setKeywords(existingProfileData.approved_keywords || []);
+      setIsEditMode(false);
+      setCurrentStep('profile_entry');
+    }
+  };
+
+  // Restart - go back to profile entry (for edit mode)
   const handleRestart = () => {
     setCurrentStep('profile_entry');
-    setOriginalDescription('');
-    setEnhancedDescription('');
+    // If editing, keep existing data visible
+    if (!isEditMode && existingProfileData) {
+      setOriginalDescription(existingProfileData.short_description || '');
+      setEnhancedDescription(existingProfileData.ai_enhanced_description || '');
+    } else {
+      setOriginalDescription('');
+      setEnhancedDescription('');
+    }
     setWebsiteUrl('');
     setGeneratedClusters([]);
-    setKeywords([]);
     setIsSavingProfile(false);
+  };
+
+  // Get status badge info
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'active':
+        return { icon: CheckCircle2, color: colors.semantic.success, label: 'Active', bgColor: `${colors.semantic.success}15` };
+      case 'pending':
+        return { icon: Clock, color: colors.semantic.warning, label: 'Pending Review', bgColor: `${colors.semantic.warning}15` };
+      case 'suspended':
+        return { icon: AlertCircle, color: colors.semantic.error, label: 'Suspended', bgColor: `${colors.semantic.error}15` };
+      default:
+        return { icon: Clock, color: colors.utility.secondaryText, label: 'Draft', bgColor: `${colors.utility.secondaryText}15` };
+    }
   };
 
   // Show loading while checking membership
@@ -512,14 +581,197 @@ const BBBProfileOnboardingPage: React.FC = () => {
         <ProfileCard profile={currentTenantProfile} showTitle={true} />
       )}
 
-      {/* Profile Entry Form */}
-      {currentStep === 'profile_entry' && (
-        <ProfileEntryForm
-          onSubmit={handleFormSubmit}
-          onEnhanceWithAI={handleEnhanceWithAI}
-          isEnhancing={enhanceProfileMutation.isPending}
-          isSaving={scrapeWebsiteMutation.isPending}
-        />
+      {/* Readonly Profile View - when profile exists and not in edit mode */}
+      {currentStep === 'profile_entry' && existingProfileData?.ai_enhanced_description && !isEditMode && (
+        <div
+          className="rounded-2xl overflow-hidden shadow-lg"
+          style={{
+            backgroundColor: colors.utility.secondaryBackground,
+            border: `1px solid ${colors.utility.primaryText}15`
+          }}
+        >
+          {/* Header with Status Badge and Edit Button */}
+          <div
+            className="p-6 flex items-center justify-between"
+            style={{
+              background: `linear-gradient(135deg, ${colors.brand.primary}10 0%, ${colors.brand.secondary}10 100%)`,
+              borderBottom: `1px solid ${colors.utility.primaryText}10`
+            }}
+          >
+            <div className="flex items-center space-x-3">
+              <Eye className="w-6 h-6" style={{ color: colors.brand.primary }} />
+              <div>
+                <h2 className="text-xl font-bold" style={{ color: colors.utility.primaryText }}>
+                  Your BBB Profile
+                </h2>
+                {/* Status Badge */}
+                {(() => {
+                  const badge = getStatusBadge(membershipStatus);
+                  const StatusIcon = badge.icon;
+                  return (
+                    <div
+                      className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full mt-1"
+                      style={{ backgroundColor: badge.bgColor }}
+                    >
+                      <StatusIcon className="w-3.5 h-3.5" style={{ color: badge.color }} />
+                      <span className="text-xs font-medium" style={{ color: badge.color }}>
+                        {badge.label}
+                      </span>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+            <button
+              onClick={handleEnterEditMode}
+              className="flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all hover:opacity-80"
+              style={{
+                backgroundColor: colors.brand.primary,
+                color: '#FFF'
+              }}
+            >
+              <Pencil className="w-4 h-4" />
+              <span>Edit Profile</span>
+            </button>
+          </div>
+
+          {/* Readonly Description */}
+          <div className="p-6 space-y-6">
+            <div>
+              <label
+                className="block text-sm font-semibold mb-2"
+                style={{ color: colors.utility.primaryText }}
+              >
+                AI-Enhanced Description
+              </label>
+              <div
+                className="p-4 rounded-lg min-h-[120px]"
+                style={{
+                  backgroundColor: colors.utility.primaryBackground,
+                  border: `1px solid ${colors.utility.primaryText}15`,
+                  color: colors.utility.secondaryText
+                }}
+              >
+                <p className="whitespace-pre-wrap leading-relaxed">
+                  {existingProfileData.ai_enhanced_description}
+                </p>
+              </div>
+            </div>
+
+            {/* Original Description if different */}
+            {existingProfileData.short_description &&
+              existingProfileData.short_description !== existingProfileData.ai_enhanced_description && (
+              <div>
+                <label
+                  className="block text-sm font-semibold mb-2"
+                  style={{ color: colors.utility.primaryText }}
+                >
+                  Original Description
+                </label>
+                <div
+                  className="p-4 rounded-lg"
+                  style={{
+                    backgroundColor: colors.utility.primaryBackground,
+                    border: `1px solid ${colors.utility.primaryText}10`,
+                    color: colors.utility.secondaryText
+                  }}
+                >
+                  <p className="text-sm whitespace-pre-wrap">
+                    {existingProfileData.short_description}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Keywords */}
+            {existingProfileData.approved_keywords?.length > 0 && (
+              <div>
+                <label
+                  className="block text-sm font-semibold mb-2"
+                  style={{ color: colors.utility.primaryText }}
+                >
+                  Keywords
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {existingProfileData.approved_keywords.map((keyword: string, idx: number) => (
+                    <span
+                      key={idx}
+                      className="px-3 py-1.5 rounded-full text-sm font-medium"
+                      style={{
+                        backgroundColor: `${colors.semantic.success}15`,
+                        color: colors.semantic.success
+                      }}
+                    >
+                      {keyword}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Website URL if exists */}
+            {existingProfileData.website_url && (
+              <div>
+                <label
+                  className="block text-sm font-semibold mb-2"
+                  style={{ color: colors.utility.primaryText }}
+                >
+                  Website
+                </label>
+                <a
+                  href={existingProfileData.website_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm hover:underline"
+                  style={{ color: colors.brand.primary }}
+                >
+                  {existingProfileData.website_url}
+                </a>
+              </div>
+            )}
+
+            {/* Generation Method Badge */}
+            <div className="pt-4 border-t" style={{ borderColor: `${colors.utility.primaryText}10` }}>
+              <span
+                className="text-xs px-2 py-1 rounded"
+                style={{
+                  backgroundColor: `${colors.semantic.info}15`,
+                  color: colors.semantic.info
+                }}
+              >
+                Generated via: {existingProfileData.generation_method === 'website' ? 'Website Scraping' : 'Manual Entry + AI'}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Profile Entry Form - for new profiles or when in edit mode */}
+      {currentStep === 'profile_entry' && (isEditMode || !existingProfileData?.ai_enhanced_description) && (
+        <>
+          {/* Cancel Edit button if editing existing profile */}
+          {isEditMode && existingProfileData?.ai_enhanced_description && (
+            <div className="flex justify-end mb-4">
+              <button
+                onClick={handleCancelEdit}
+                className="flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all hover:opacity-80"
+                style={{
+                  backgroundColor: colors.utility.secondaryBackground,
+                  color: colors.utility.secondaryText,
+                  border: `1px solid ${colors.utility.primaryText}20`
+                }}
+              >
+                <span>Cancel Edit</span>
+              </button>
+            </div>
+          )}
+          <ProfileEntryForm
+            onSubmit={handleFormSubmit}
+            onEnhanceWithAI={handleEnhanceWithAI}
+            isEnhancing={enhanceProfileMutation.isPending}
+            isSaving={scrapeWebsiteMutation.isPending}
+          />
+        </>
       )}
 
       {/* AI Enhancement Section */}
