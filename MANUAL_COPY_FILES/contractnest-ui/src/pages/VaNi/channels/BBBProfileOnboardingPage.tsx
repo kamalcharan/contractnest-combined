@@ -770,6 +770,10 @@ const BBBProfileOnboardingPage: React.FC = () => {
             onEnhanceWithAI={handleEnhanceWithAI}
             isEnhancing={enhanceProfileMutation.isPending}
             isSaving={scrapeWebsiteMutation.isPending}
+            isEditMode={isEditMode && !!existingProfileData?.ai_enhanced_description}
+            initialDescription={existingProfileData?.short_description || existingProfileData?.ai_enhanced_description || ''}
+            initialWebsiteUrl={existingProfileData?.website_url || ''}
+            initialMethod={existingProfileData?.generation_method === 'website' ? 'website' : 'manual'}
           />
         </>
       )}
