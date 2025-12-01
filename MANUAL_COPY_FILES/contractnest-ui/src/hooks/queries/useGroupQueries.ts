@@ -36,17 +36,22 @@ export const groupQueryKeys = {
   list: (filters?: any) => [...groupQueryKeys.lists(), filters] as const,
   details: () => [...groupQueryKeys.all, 'detail'] as const,
   detail: (id: string) => [...groupQueryKeys.details(), id] as const,
-  
+
   // Memberships
   memberships: () => [...groupQueryKeys.all, 'memberships'] as const,
   membership: (id: string) => [...groupQueryKeys.memberships(), id] as const,
-  groupMemberships: (groupId: string, filters?: any) => 
+  groupMemberships: (groupId: string, filters?: any) =>
     [...groupQueryKeys.memberships(), 'group', groupId, filters] as const,
-  
+
+  // Clusters
+  clusters: () => [...groupQueryKeys.all, 'clusters'] as const,
+  membershipClusters: (membershipId: string) =>
+    [...groupQueryKeys.clusters(), 'membership', membershipId] as const,
+
   // Admin
   admin: () => [...groupQueryKeys.all, 'admin'] as const,
   adminStats: (groupId: string) => [...groupQueryKeys.admin(), 'stats', groupId] as const,
-  activityLogs: (groupId: string, filters?: any) => 
+  activityLogs: (groupId: string, filters?: any) =>
     [...groupQueryKeys.admin(), 'logs', groupId, filters] as const,
 };
 
@@ -397,9 +402,9 @@ export const useGenerateClusters = () => {
   const { toast } = useToast();
 
   return useMutation({
-    mutationFn: (request: GenerateClustersRequest) => 
+    mutationFn: (request: GenerateClustersRequest) =>
       groupsService.generateClusters(request),
-    
+
     onSuccess: (data) => {
       toast({
         title: "Success",
@@ -407,7 +412,7 @@ export const useGenerateClusters = () => {
       });
       console.log('✅ Clusters generated:', data);
     },
-    
+
     onError: (error: Error) => {
       toast({
         variant: "destructive",
@@ -415,6 +420,98 @@ export const useGenerateClusters = () => {
         description: error.message || "Failed to generate clusters"
       });
       console.error('❌ Error generating clusters:', error);
+    }
+  });
+};
+
+/**
+ * Get semantic clusters for a membership
+ */
+export const useClusters = (membershipId: string) => {
+  const { currentTenant } = useAuth();
+
+  return useQuery({
+    queryKey: groupQueryKeys.membershipClusters(membershipId),
+    queryFn: () => groupsService.getClusters(membershipId),
+    enabled: !!currentTenant && !!membershipId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000,   // 10 minutes
+  });
+};
+
+/**
+ * Save semantic clusters
+ */
+export const useSaveClusters = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({
+      membershipId,
+      clusters
+    }: {
+      membershipId: string;
+      clusters: Array<{
+        primary_term: string;
+        related_terms: string[];
+        category: string;
+        confidence_score?: number;
+      }>;
+    }) => groupsService.saveClusters(membershipId, clusters),
+
+    onSuccess: (data, variables) => {
+      // Invalidate clusters query
+      queryClient.invalidateQueries({
+        queryKey: groupQueryKeys.membershipClusters(variables.membershipId)
+      });
+
+      toast({
+        title: "Success",
+        description: `${data.clusters_saved} clusters saved successfully`
+      });
+
+      console.log('✅ Clusters saved:', data);
+    },
+
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to save clusters"
+      });
+      console.error('❌ Error saving clusters:', error);
+    }
+  });
+};
+
+/**
+ * Delete semantic clusters
+ */
+export const useDeleteClusters = () => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (membershipId: string) =>
+      groupsService.deleteClusters(membershipId),
+
+    onSuccess: (data, membershipId) => {
+      // Invalidate clusters query
+      queryClient.invalidateQueries({
+        queryKey: groupQueryKeys.membershipClusters(membershipId)
+      });
+
+      console.log('✅ Clusters deleted:', data);
+    },
+
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to delete clusters"
+      });
+      console.error('❌ Error deleting clusters:', error);
     }
   });
 };
@@ -531,13 +628,14 @@ export const useUpdateMembershipStatus = () => {
  * Combined hook for group management
  * Provides all queries and mutations in one hook
  */
-export const useGroupsManager = (groupId?: string) => {
+export const useGroupsManager = (groupId?: string, membershipId?: string) => {
   // Queries
   const groupsQuery = useGroups('bbb_chapter');
   const groupQuery = useGroup(groupId || '');
   const membershipsQuery = useGroupMemberships(groupId || '', { status: 'all' });
   const adminStatsQuery = useAdminStats(groupId || '');
-  
+  const clustersQuery = useClusters(membershipId || '');
+
   // Mutations
   const verifyAccessMutation = useVerifyGroupAccess();
   const createMembershipMutation = useCreateMembership();
@@ -546,6 +644,8 @@ export const useGroupsManager = (groupId?: string) => {
   const enhanceProfileMutation = useEnhanceProfile();
   const scrapeWebsiteMutation = useScrapeWebsite();
   const generateClustersMutation = useGenerateClusters();
+  const saveClustersMutation = useSaveClusters();
+  const deleteClustersMutation = useDeleteClusters();
   const saveProfileMutation = useSaveProfile();
   const searchMutation = useSearch();
   const updateStatusMutation = useUpdateMembershipStatus();
@@ -558,19 +658,22 @@ export const useGroupsManager = (groupId?: string) => {
     pagination: membershipsQuery.data?.pagination,
     adminStats: adminStatsQuery.data?.stats,
     recentActivity: adminStatsQuery.data?.recent_activity || [],
-    
+    clusters: clustersQuery.data?.clusters || [],
+
     // Loading states
     isLoadingGroups: groupsQuery.isLoading,
     isLoadingGroup: groupQuery.isLoading,
     isLoadingMemberships: membershipsQuery.isLoading,
     isLoadingStats: adminStatsQuery.isLoading,
-    
+    isLoadingClusters: clustersQuery.isLoading,
+
     // Error states
     groupsError: groupsQuery.error,
     groupError: groupQuery.error,
     membershipsError: membershipsQuery.error,
     statsError: adminStatsQuery.error,
-    
+    clustersError: clustersQuery.error,
+
     // Mutation states
     isVerifying: verifyAccessMutation.isPending,
     isCreating: createMembershipMutation.isPending,
@@ -578,13 +681,15 @@ export const useGroupsManager = (groupId?: string) => {
     isDeleting: deleteMembershipMutation.isPending,
     isEnhancing: enhanceProfileMutation.isPending,
     isScraping: scrapeWebsiteMutation.isPending,
-    isGenerating: generateClustersMutation.isPending,
+    isGeneratingClusters: generateClustersMutation.isPending,
+    isSavingClusters: saveClustersMutation.isPending,
+    isDeletingClusters: deleteClustersMutation.isPending,
     isSaving: saveProfileMutation.isPending,
     isSearching: searchMutation.isPending,
     isUpdatingStatus: updateStatusMutation.isPending,
-    
+
     // Combined mutation state
-    isMutating: 
+    isMutating:
       verifyAccessMutation.isPending ||
       createMembershipMutation.isPending ||
       updateMembershipMutation.isPending ||
@@ -592,10 +697,12 @@ export const useGroupsManager = (groupId?: string) => {
       enhanceProfileMutation.isPending ||
       scrapeWebsiteMutation.isPending ||
       generateClustersMutation.isPending ||
+      saveClustersMutation.isPending ||
+      deleteClustersMutation.isPending ||
       saveProfileMutation.isPending ||
       searchMutation.isPending ||
       updateStatusMutation.isPending,
-    
+
     // Mutation functions
     verifyAccess: verifyAccessMutation.mutate,
     verifyAccessAsync: verifyAccessMutation.mutateAsync,
@@ -611,24 +718,32 @@ export const useGroupsManager = (groupId?: string) => {
     scrapeWebsiteAsync: scrapeWebsiteMutation.mutateAsync,
     generateClusters: generateClustersMutation.mutate,
     generateClustersAsync: generateClustersMutation.mutateAsync,
+    saveClusters: saveClustersMutation.mutate,
+    saveClustersAsync: saveClustersMutation.mutateAsync,
+    deleteClusters: deleteClustersMutation.mutate,
+    deleteClustersAsync: deleteClustersMutation.mutateAsync,
     saveProfile: saveProfileMutation.mutate,
     saveProfileAsync: saveProfileMutation.mutateAsync,
     search: searchMutation.mutate,
     searchAsync: searchMutation.mutateAsync,
     updateStatus: updateStatusMutation.mutate,
     updateStatusAsync: updateStatusMutation.mutateAsync,
-    
+
     // Refetch functions
     refetchGroups: groupsQuery.refetch,
     refetchGroup: groupQuery.refetch,
     refetchMemberships: membershipsQuery.refetch,
     refetchStats: adminStatsQuery.refetch,
+    refetchClusters: clustersQuery.refetch,
     refetchAll: () => {
       groupsQuery.refetch();
       if (groupId) {
         groupQuery.refetch();
         membershipsQuery.refetch();
         adminStatsQuery.refetch();
+      }
+      if (membershipId) {
+        clustersQuery.refetch();
       }
     }
   };

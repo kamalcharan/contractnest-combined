@@ -25,6 +25,7 @@ SECTION 1: CONTRACTNEST-UI FILES (18 files)
 4.  src/components/VaNi/bbb/ProfileEntryForm.tsx
 5.  src/components/VaNi/bbb/AIEnhancementSection.tsx (from root MANUAL_COPY_FILES)
 6.  src/components/VaNi/bbb/WebsiteScrapingForm.tsx (from root MANUAL_COPY_FILES)
+7.  src/components/VaNi/bbb/SemanticClustersForm.tsx (NEW - cluster management)
 
 # Pages (NEW)
 7.  src/pages/VaNi/channels/BBBAdminDashboard.tsx
@@ -90,13 +91,53 @@ FEATURE SUMMARY
    - Admin edit modal for member profiles
    - Cross-tenant RLS support
 
-3. n8n Integration
-   - Webhook for profile enhancement
-   - Webhook for website scraping
+3. Semantic Clusters (NEW)
+   - After profile save, cluster form opens automatically
+   - "Generate Clusters with AI" button triggers n8n
+   - User can review, edit, and add custom clusters manually
+   - Clusters saved to t_semantic_clusters table
+   - Used for enhanced WhatsApp bot search
+
+4. n8n Integration
+   - Webhook for profile enhancement (/webhook/process-profile)
+   - Webhook for embedding generation (/webhook/generate-embedding)
+   - Webhook for cluster generation (/webhook/generate-clusters) [ADD THIS]
    - OpenAI integration for AI processing
 
-4. WhatsApp Integration Page
+5. WhatsApp Integration Page
    - Business profile check before configuration
    - Updated flow for channel setup
+
+═══════════════════════════════════════════════════════════════════════════════
+N8N WEBHOOK TO ADD: /webhook/generate-clusters
+═══════════════════════════════════════════════════════════════════════════════
+
+Input:
+{
+  "membership_id": "uuid",
+  "profile_text": "business description text",
+  "keywords": ["keyword1", "keyword2"]
+}
+
+Output:
+{
+  "success": true,
+  "clusters_generated": 3,
+  "clusters": [
+    {
+      "primary_term": "accounting",
+      "related_terms": ["bookkeeping", "tax filing", "GST", "audit", "CA"],
+      "category": "Services",
+      "confidence_score": 0.95
+    }
+  ]
+}
+
+GPT Prompt for cluster generation:
+"Analyze this business profile and generate semantic clusters for search
+optimization. Consider: industry terms, common misspellings, regional terms
+(Indian English), product/service alternatives, customer search terms.
+Return JSON: { clusters: [{ primary_term, related_terms: [10-15 terms],
+category, confidence_score: 0-1 }] }"
 
 ═══════════════════════════════════════════════════════════════════════════════

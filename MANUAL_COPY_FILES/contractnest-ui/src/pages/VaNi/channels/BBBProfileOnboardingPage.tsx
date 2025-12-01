@@ -8,7 +8,7 @@ import ProfileCard from '../../../components/VaNi/bbb/ProfileCard';
 import ProfileEntryForm from '../../../components/VaNi/bbb/ProfileEntryForm';
 import WebsiteScrapingForm from '../../../components/VaNi/bbb/WebsiteScrapingForm';
 import AIEnhancementSection from '../../../components/VaNi/bbb/AIEnhancementSection';
-import SemanticClustersDisplay from '../../../components/VaNi/bbb/SemanticClustersDisplay';
+import SemanticClustersForm from '../../../components/VaNi/bbb/SemanticClustersForm';
 import SuccessModal from '../../../components/VaNi/bbb/SuccessModal';
 import {
   Dialog,
@@ -18,14 +18,9 @@ import {
   DialogDescription,
 } from '../../../components/ui/dialog';
 import {
-  mockSemanticClusters,
-  simulateDelay
-} from '../../../utils/fakejson/bbbMockData';
-import {
   ProfileFormData,
   AIEnhancementResponse,
   WebsiteScrapingResponse,
-  SemanticCluster,
   TenantProfile
 } from '../../../types/bbb';
 import toast from 'react-hot-toast';
@@ -34,11 +29,15 @@ import {
   useScrapeWebsite,
   useGroups,
   useCreateMembership,
-  useSaveProfile
+  useSaveProfile,
+  useGenerateClusters,
+  useSaveClusters,
+  useClusters
 } from '../../../hooks/queries/useGroupQueries';
 import groupsService from '../../../services/groupsService';
 import { useTenantProfile } from '../../../hooks/useTenantProfile';
 import { Users, MessageCircle, Sparkles, Pencil, Eye, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
+import type { SemanticCluster } from '../../../components/VaNi/bbb/SemanticClustersForm';
 
 type OnboardingStep =
   | 'profile_entry'
@@ -218,6 +217,11 @@ const BBBProfileOnboardingPage: React.FC = () => {
   const enhanceProfileMutation = useEnhanceProfile();
   const scrapeWebsiteMutation = useScrapeWebsite();
   const saveProfileMutation = useSaveProfile();
+  const generateClustersMutation = useGenerateClusters();
+  const saveClustersMutation = useSaveClusters();
+
+  // Fetch existing clusters when membershipId is available
+  const { data: existingClustersData } = useClusters(membershipId || '');
 
   // State management
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('profile_entry');
@@ -228,8 +232,14 @@ const BBBProfileOnboardingPage: React.FC = () => {
   const [keywords, setKeywords] = useState<string[]>([]);
 
   // Loading states
-  const [isGeneratingClusters, setIsGeneratingClusters] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  // Update clusters from API when loaded
+  useEffect(() => {
+    if (existingClustersData?.clusters && existingClustersData.clusters.length > 0) {
+      setGeneratedClusters(existingClustersData.clusters);
+    }
+  }, [existingClustersData]);
 
   // AI Enhancement via n8n
   const handleEnhanceWithAI = async (description: string) => {
@@ -301,32 +311,73 @@ const BBBProfileOnboardingPage: React.FC = () => {
     await handleSaveProfile(description);
   };
 
-  // Generate semantic clusters
-  const handleGenerateClusters = async () => {
-    setIsGeneratingClusters(true);
+  // Generate semantic clusters via n8n
+  const handleGenerateClusters = async (profileText: string, existingKeywords: string[]): Promise<SemanticCluster[]> => {
+    if (!membershipId) {
+      throw new Error('Membership ID required');
+    }
 
     try {
-      // Simulate cluster generation
-      await simulateDelay(2000);
+      console.log('🤖 VaNi: Generating clusters via n8n...');
 
-      // Use mock clusters based on category
-      const relevantClusters = mockSemanticClusters.slice(0, 3);
-      setGeneratedClusters(relevantClusters);
-
-      toast.success('Semantic clusters generated!', {
-        style: { background: colors.semantic.success, color: '#FFF' }
+      const result = await generateClustersMutation.mutateAsync({
+        membership_id: membershipId,
+        profile_text: profileText,
+        keywords: existingKeywords
       });
 
-      // Auto-proceed to success after showing clusters
+      console.log('🤖 VaNi: Clusters generated:', result);
+
+      // Transform API response to SemanticCluster format
+      const clusters: SemanticCluster[] = result.clusters.map(c => ({
+        primary_term: c.primary_term,
+        related_terms: c.related_terms,
+        category: c.category,
+        confidence_score: c.confidence_score || 0.9,
+        is_active: true
+      }));
+
+      setGeneratedClusters(clusters);
+      return clusters;
+    } catch (error: any) {
+      console.error('🤖 VaNi: Cluster generation failed:', error);
+      throw error;
+    }
+  };
+
+  // Save clusters to database
+  const handleSaveClusters = async (clusters: SemanticCluster[]): Promise<void> => {
+    if (!membershipId) {
+      throw new Error('Membership ID required');
+    }
+
+    try {
+      console.log('🤖 VaNi: Saving clusters to database...');
+
+      await saveClustersMutation.mutateAsync({
+        membershipId,
+        clusters: clusters.map(c => ({
+          primary_term: c.primary_term,
+          related_terms: c.related_terms,
+          category: c.category,
+          confidence_score: c.confidence_score || 1.0
+        }))
+      });
+
+      console.log('🤖 VaNi: Clusters saved successfully');
+
+      toast.success('Clusters saved! Your profile is now searchable.', {
+        style: { background: colors.semantic.success, color: '#FFF' },
+        duration: 3000
+      });
+
+      // Move to success step after saving clusters
       setTimeout(() => {
         setCurrentStep('success');
-      }, 1500);
-    } catch (error) {
-      toast.error('Cluster generation failed.', {
-        style: { background: colors.semantic.error, color: '#FFF' }
-      });
-    } finally {
-      setIsGeneratingClusters(false);
+      }, 1000);
+    } catch (error: any) {
+      console.error('🤖 VaNi: Cluster save failed:', error);
+      throw error;
     }
   };
 
@@ -382,23 +433,20 @@ const BBBProfileOnboardingPage: React.FC = () => {
         website_url: websiteUrl || undefined,
       };
       setExistingProfileData(newProfileData);
+      setEnhancedDescription(description); // Store for cluster generation
       setIsEditMode(false); // Exit edit mode after save
 
-      // Move to semantic clusters step
+      // Move to semantic clusters step (user will manually generate clusters)
       setCurrentStep('semantic_clusters');
 
       const embeddingMsg = result.embedding_generated
-        ? 'Profile saved with AI embedding!'
-        : 'Profile saved! (Embedding will be generated later)';
+        ? 'Profile saved! Now let\'s generate search clusters.'
+        : 'Profile saved! Now let\'s generate search clusters.';
 
       toast.success(embeddingMsg, {
         style: { background: colors.semantic.success, color: '#FFF' }
       });
 
-      // Auto-generate clusters
-      setTimeout(() => {
-        handleGenerateClusters();
-      }, 500);
     } catch (error: any) {
       console.error('🤖 VaNi: Profile save failed:', error);
       toast.error(error.message || 'Profile save failed. Please try again.', {
@@ -834,14 +882,17 @@ const BBBProfileOnboardingPage: React.FC = () => {
         </>
       )}
 
-      {/* Semantic Clusters */}
-      {currentStep === 'semantic_clusters' && (
-        <SemanticClustersDisplay
-          clusters={generatedClusters}
-          businessCategory={currentTenantProfile.business_category}
-          onGenerate={handleGenerateClusters}
-          isGenerating={isGeneratingClusters}
-          showGenerateButton={generatedClusters.length === 0}
+      {/* Semantic Clusters Form */}
+      {currentStep === 'semantic_clusters' && membershipId && (
+        <SemanticClustersForm
+          membershipId={membershipId}
+          profileText={enhancedDescription || existingProfileData?.ai_enhanced_description || ''}
+          keywords={keywords}
+          existingClusters={generatedClusters}
+          onGenerateClusters={handleGenerateClusters}
+          onSaveClusters={handleSaveClusters}
+          isGenerating={generateClustersMutation.isPending}
+          isSaving={saveClustersMutation.isPending}
         />
       )}
 

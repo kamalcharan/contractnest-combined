@@ -383,6 +383,102 @@ class GroupsService {
   }
 
   /**
+   * Save semantic clusters to database
+   * Calls: POST /api/profiles/clusters
+   */
+  async saveClusters(
+    membershipId: string,
+    clusters: Array<{
+      primary_term: string;
+      related_terms: string[];
+      category: string;
+      confidence_score?: number;
+    }>
+  ): Promise<{ success: boolean; clusters_saved: number; cluster_ids: string[] }> {
+    try {
+      console.log('🔍 UI Service: Saving clusters...', { membershipId, clusterCount: clusters.length });
+
+      const response = await api.post(
+        API_ENDPOINTS.GROUPS.PROFILES.SAVE_CLUSTERS,
+        {
+          membership_id: membershipId,
+          clusters
+        }
+      );
+
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Failed to save clusters');
+      }
+
+      return response.data;
+
+    } catch (error: any) {
+      console.error('UI Service error in saveClusters:', error);
+      throw new Error(error.message || 'Failed to save clusters');
+    }
+  }
+
+  /**
+   * Get semantic clusters for a membership
+   * Calls: GET /api/profiles/clusters/:membershipId
+   */
+  async getClusters(membershipId: string): Promise<{
+    success: boolean;
+    clusters: Array<{
+      id: string;
+      membership_id: string;
+      primary_term: string;
+      related_terms: string[];
+      category: string;
+      confidence_score: number;
+      is_active: boolean;
+      created_at: string;
+    }>;
+  }> {
+    try {
+      console.log('🔍 UI Service: Getting clusters...', { membershipId });
+
+      const response = await api.get(
+        API_ENDPOINTS.GROUPS.PROFILES.GET_CLUSTERS(membershipId)
+      );
+
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Failed to load clusters');
+      }
+
+      return response.data;
+
+    } catch (error: any) {
+      console.error('UI Service error in getClusters:', error);
+      throw new Error(error.message || 'Failed to load clusters');
+    }
+  }
+
+  /**
+   * Delete all clusters for a membership (before re-saving)
+   * Calls: DELETE /api/profiles/clusters/:membershipId
+   */
+  async deleteClusters(membershipId: string): Promise<{ success: boolean; deleted_count: number }> {
+    try {
+      console.log('🔍 UI Service: Deleting clusters...', { membershipId });
+
+      const response = await api.delete(
+        API_ENDPOINTS.GROUPS.PROFILES.DELETE_CLUSTERS(membershipId)
+      );
+
+      if (!response.data.success) {
+        throw new Error(response.data.error || 'Failed to delete clusters');
+      }
+
+      return response.data;
+
+    } catch (error: any) {
+      console.error('UI Service error in deleteClusters:', error);
+      throw new Error(error.message || 'Failed to delete clusters');
+    }
+  }
+
+  /**
    * Save profile with embedding
    * Calls: POST /api/profiles/save
    */
