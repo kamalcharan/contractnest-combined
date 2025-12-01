@@ -662,37 +662,198 @@ console.log('='.repeat(60));
       }
     }
     
-    // POST /profiles/generate-clusters - Generate semantic clusters (STUB)
+    // POST /profiles/generate-clusters - Generate semantic clusters via n8n
     if (method === 'POST' && path === '/profiles/generate-clusters') {
       try {
         const requestData = await req.json();
-        
-        if (!requestData.membership_id || !requestData.profile_text || !requestData.keywords) {
+
+        if (!requestData.membership_id || !requestData.profile_text) {
           return new Response(
-            JSON.stringify({ error: 'membership_id, profile_text, and keywords are required' }),
+            JSON.stringify({ error: 'membership_id and profile_text are required' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
-        
-        const mockClusters = requestData.keywords.slice(0, 3).map((keyword: string) => ({
-          primary_term: keyword,
-          related_terms: [keyword, `${keyword} services`, `${keyword} provider`],
-          category: 'general',
-          confidence_score: 0.85
-        }));
-        
+
+        // Get n8n webhook URL from environment
+        const n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL') || 'https://n8n.yourdomain.com';
+        const clusterWebhookUrl = `${n8nWebhookUrl}/webhook/generate-clusters`;
+
+        console.log('🤖 Calling n8n for cluster generation:', {
+          membershipId: requestData.membership_id,
+          profileLength: requestData.profile_text.length
+        });
+
+        // Call n8n webhook
+        const n8nResponse = await fetch(clusterWebhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            membership_id: requestData.membership_id,
+            profile_text: requestData.profile_text,
+            keywords: requestData.keywords || [],
+            chapter: requestData.chapter || ''
+          })
+        });
+
+        const n8nResult = await n8nResponse.json();
+
+        if (!n8nResponse.ok || n8nResult.status === 'error') {
+          console.error('n8n cluster generation failed:', n8nResult);
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: n8nResult.message || 'Cluster generation failed',
+              errorCode: n8nResult.errorCode || 'N8N_ERROR',
+              recoverable: n8nResult.recoverable !== false
+            }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.log('✅ n8n cluster generation success:', {
+          clustersGenerated: n8nResult.clusters_generated
+        });
+
         return new Response(
           JSON.stringify({
             success: true,
-            clusters_generated: mockClusters.length,
-            clusters: mockClusters
+            membership_id: requestData.membership_id,
+            clusters_generated: n8nResult.clusters_generated || 0,
+            clusters: n8nResult.clusters || [],
+            tokens_used: n8nResult.tokens_used || 0
           }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       } catch (error) {
         console.error('Error in POST /profiles/generate-clusters:', error);
         return new Response(
-          JSON.stringify({ success: false, error: 'Failed to generate clusters', details: error.message }),
+          JSON.stringify({
+            success: false,
+            error: 'Failed to generate clusters',
+            details: error.message,
+            recoverable: true
+          }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // POST /profiles/clusters - Save semantic clusters
+    if (method === 'POST' && path === '/profiles/clusters') {
+      try {
+        const requestData = await req.json();
+
+        if (!requestData.membership_id || !requestData.clusters || !Array.isArray(requestData.clusters)) {
+          return new Response(
+            JSON.stringify({ error: 'membership_id and clusters array are required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { membership_id, clusters } = requestData;
+
+        // First, delete existing clusters for this membership
+        await supabaseAdmin
+          .from('t_semantic_clusters')
+          .delete()
+          .eq('membership_id', membership_id);
+
+        // Prepare clusters for insertion
+        const clustersToInsert = clusters.map((cluster: any) => ({
+          membership_id,
+          primary_term: cluster.primary_term,
+          related_terms: cluster.related_terms || [],
+          category: cluster.category || 'Services',
+          confidence_score: cluster.confidence_score || 1.0,
+          is_active: true
+        }));
+
+        // Insert new clusters
+        const { data, error } = await supabaseAdmin
+          .from('t_semantic_clusters')
+          .insert(clustersToInsert)
+          .select('id');
+
+        if (error) throw error;
+
+        console.log('✅ Saved clusters:', {
+          membershipId: membership_id,
+          count: data.length
+        });
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            clusters_saved: data.length,
+            cluster_ids: data.map((c: any) => c.id)
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error('Error in POST /profiles/clusters:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to save clusters', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // GET /profiles/clusters/:membershipId - Get semantic clusters
+    const getClustersMatch = path.match(/^\/profiles\/clusters\/([a-f0-9-]{36})$/);
+    if (method === 'GET' && getClustersMatch) {
+      try {
+        const membershipId = getClustersMatch[1];
+
+        const { data, error } = await supabaseAdmin
+          .from('t_semantic_clusters')
+          .select('id, membership_id, primary_term, related_terms, category, confidence_score, is_active, created_at')
+          .eq('membership_id', membershipId)
+          .eq('is_active', true)
+          .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            clusters: data || []
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error('Error in GET /profiles/clusters/:id:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to get clusters', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // DELETE /profiles/clusters/:membershipId - Delete all clusters for a membership
+    const deleteClustersMatch = path.match(/^\/profiles\/clusters\/([a-f0-9-]{36})$/);
+    if (method === 'DELETE' && deleteClustersMatch) {
+      try {
+        const membershipId = deleteClustersMatch[1];
+
+        const { data, error } = await supabaseAdmin
+          .from('t_semantic_clusters')
+          .delete()
+          .eq('membership_id', membershipId)
+          .select('id');
+
+        if (error) throw error;
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            deleted_count: data?.length || 0
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error('Error in DELETE /profiles/clusters/:id:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to delete clusters', details: error.message }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -1048,7 +1209,10 @@ console.log('='.repeat(60));
           'DELETE /memberships/:id (Delete membership)',
           'POST /profiles/enhance (AI enhance)',
           'POST /profiles/scrape-website (Scrape website)',
-          'POST /profiles/generate-clusters (Generate clusters)',
+          'POST /profiles/generate-clusters (Generate clusters via n8n)',
+          'POST /profiles/clusters (Save clusters)',
+          'GET /profiles/clusters/:membershipId (Get clusters)',
+          'DELETE /profiles/clusters/:membershipId (Delete clusters)',
           'POST /profiles/save (Save profile)',
           'POST /search (Search members)',
           'GET /admin/stats/:groupId (Admin stats)',
