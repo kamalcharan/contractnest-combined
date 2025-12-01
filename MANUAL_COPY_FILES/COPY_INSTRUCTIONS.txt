@@ -68,11 +68,12 @@ SECTION 3: CONTRACTNEST-API FILES (3 files)
 3. src/controllers/groupsController.ts (NEW)
 
 ═══════════════════════════════════════════════════════════════════════════════
-SECTION 4: N8N WORKFLOWS (2 files - import via n8n dashboard)
+SECTION 4: N8N WORKFLOWS (3 files - import via n8n dashboard)
 ═══════════════════════════════════════════════════════════════════════════════
 
 1. n8n-workflows/process-profile.json (import to n8n dashboard)
-2. n8n-workflows/IMPORT_INSTRUCTIONS.md (reference guide)
+2. n8n-workflows/generate-clusters.json (NEW - import to n8n dashboard)
+3. n8n-workflows/IMPORT_INSTRUCTIONS.md (reference guide)
 
 ═══════════════════════════════════════════════════════════════════════════════
 FEATURE SUMMARY
@@ -101,18 +102,26 @@ FEATURE SUMMARY
 4. n8n Integration
    - Webhook for profile enhancement (/webhook/process-profile)
    - Webhook for embedding generation (/webhook/generate-embedding)
-   - Webhook for cluster generation (/webhook/generate-clusters) [ADD THIS]
-   - OpenAI integration for AI processing
+   - Webhook for cluster generation (/webhook/generate-clusters) [READY]
+   - OpenAI integration for AI processing (GPT-4o-mini)
 
 5. WhatsApp Integration Page
    - Business profile check before configuration
    - Updated flow for channel setup
 
 ═══════════════════════════════════════════════════════════════════════════════
-N8N WEBHOOK TO ADD: /webhook/generate-clusters
+N8N WORKFLOW: /webhook/generate-clusters (IMPLEMENTED)
+File: n8n-workflows/generate-clusters.json
 ═══════════════════════════════════════════════════════════════════════════════
 
-Input:
+IMPORT INSTRUCTIONS:
+1. Open n8n dashboard
+2. Click "Import" or "Add workflow"
+3. Select generate-clusters.json file
+4. Update OpenAI credential ID (replace OPENAI_CREDENTIAL_ID)
+5. Activate the workflow
+
+Input (POST to /webhook/generate-clusters):
 {
   "membership_id": "uuid",
   "profile_text": "business description text",
@@ -122,22 +131,31 @@ Input:
 Output:
 {
   "success": true,
+  "membership_id": "uuid",
   "clusters_generated": 3,
   "clusters": [
     {
       "primary_term": "accounting",
-      "related_terms": ["bookkeeping", "tax filing", "GST", "audit", "CA"],
+      "related_terms": ["bookkeeping", "tax filing", "GST", "audit", "CA", "ITR", "tax consultant", "chartered accountant"],
       "category": "Services",
       "confidence_score": 0.95
     }
   ]
 }
 
-GPT Prompt for cluster generation:
-"Analyze this business profile and generate semantic clusters for search
-optimization. Consider: industry terms, common misspellings, regional terms
-(Indian English), product/service alternatives, customer search terms.
-Return JSON: { clusters: [{ primary_term, related_terms: [10-15 terms],
-category, confidence_score: 0-1 }] }"
+Workflow Nodes:
+1. Webhook Trigger - Receives POST request
+2. Validate Input - Validates membership_id and profile_text
+3. Generate Clusters (GPT) - Calls GPT-4o-mini with optimized prompt
+4. Format Response - Parses and validates clusters
+5. Respond to Webhook - Returns JSON response
+6. Error Handler - Handles failures gracefully
+
+GPT Prompt (optimized for Indian business context):
+- Generates 3-5 semantic clusters per profile
+- Includes 10-15 related terms per cluster
+- Considers Hindi/regional transliterations
+- Includes common misspellings and customer search terms
+- Categories: Technology, Healthcare, Services, Manufacturing, etc.
 
 ═══════════════════════════════════════════════════════════════════════════════

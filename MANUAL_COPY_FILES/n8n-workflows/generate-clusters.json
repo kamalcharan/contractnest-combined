@@ -1,0 +1,178 @@
+{
+  "name": "ContractNest - Generate Semantic Clusters",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-clusters",
+        "options": {
+          "responseMode": "responseNode"
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [260, 300],
+      "webhookId": "generate-clusters"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract and validate input data\nconst input = $input.first().json.body;\n\nconst membershipId = input.membership_id;\nconst profileText = input.profile_text || '';\nconst keywords = input.keywords || [];\n\n// Validate required fields\nif (!membershipId) {\n  throw new Error('membership_id is required');\n}\n\nif (!profileText.trim()) {\n  throw new Error('profile_text is required');\n}\n\n// Build context for GPT\nconst keywordContext = keywords.length > 0 \n  ? `\\n\\nExisting Keywords: ${keywords.join(', ')}` \n  : '';\n\nreturn {\n  membership_id: membershipId,\n  profile_text: profileText,\n  keywords: keywords,\n  keyword_context: keywordContext,\n  char_count: profileText.length,\n  word_count: profileText.split(/\\s+/).length\n};"
+      },
+      "id": "validate-input",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a semantic analysis expert specializing in business profile optimization for search. Your task is to generate semantic clusters that will help match customer searches with relevant businesses.\n\nContext:\n- These clusters are used by a WhatsApp bot to identify relevant businesses when customers search\n- The target audience is primarily Indian businesses and customers\n- Consider: industry terms, common misspellings, regional terms (Indian English/Hindi transliterations), product/service alternatives, and how customers might search\n\nIMPORTANT: Return ONLY valid JSON, no markdown formatting."
+            },
+            {
+              "role": "user",
+              "content": "=Analyze this business profile and generate semantic clusters for search optimization.\n\nProfile Text:\n{{ $json.profile_text }}{{ $json.keyword_context }}\n\nGenerate 3-5 semantic clusters. For each cluster include:\n1. primary_term: The main keyword (lowercase)\n2. related_terms: Array of 10-15 related search terms (lowercase) including:\n   - Synonyms and variations\n   - Common misspellings\n   - Hindi/regional transliterations if applicable\n   - Customer search phrases\n   - Industry jargon and layman terms\n3. category: One of [Technology, Healthcare, Services, Manufacturing, Trading, Education, Finance, Real Estate, Retail, Hospitality, Consulting, Other]\n4. confidence_score: 0.0 to 1.0 based on relevance to the profile\n\nReturn JSON format:\n{\n  \"clusters\": [\n    {\n      \"primary_term\": \"term\",\n      \"related_terms\": [\"term1\", \"term2\", ...],\n      \"category\": \"Category\",\n      \"confidence_score\": 0.95\n    }\n  ]\n}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 2000,
+          "responseFormat": "json_object"
+        }
+      },
+      "id": "openai-generate",
+      "name": "Generate Clusters (GPT)",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [700, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "OPENAI_CREDENTIAL_ID",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse GPT response and format output\nconst input = $input.first().json;\nconst membershipId = $('Validate Input').first().json.membership_id;\n\ntry {\n  // Get the message content from OpenAI response\n  let responseText = '';\n  \n  // Handle different response structures\n  if (input.message && input.message.content) {\n    responseText = input.message.content;\n  } else if (input.choices && input.choices[0]) {\n    responseText = input.choices[0].message.content;\n  } else if (typeof input === 'string') {\n    responseText = input;\n  } else {\n    responseText = JSON.stringify(input);\n  }\n  \n  // Parse the JSON response\n  const parsed = JSON.parse(responseText);\n  const clusters = parsed.clusters || [];\n  \n  // Validate and clean up clusters\n  const validatedClusters = clusters.map((cluster, index) => ({\n    primary_term: (cluster.primary_term || '').toLowerCase().trim(),\n    related_terms: (cluster.related_terms || []).map(t => t.toLowerCase().trim()).filter(t => t.length > 0),\n    category: cluster.category || 'Services',\n    confidence_score: Math.min(1, Math.max(0, parseFloat(cluster.confidence_score) || 0.8))\n  })).filter(c => c.primary_term.length > 0);\n  \n  return {\n    success: true,\n    membership_id: membershipId,\n    clusters_generated: validatedClusters.length,\n    clusters: validatedClusters\n  };\n  \n} catch (error) {\n  return {\n    success: false,\n    membership_id: membershipId,\n    error: 'Failed to parse GPT response: ' + error.message,\n    clusters_generated: 0,\n    clusters: []\n  };\n}"
+      },
+      "id": "format-response",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [920, 300]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1140, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Error handler - return error response\nconst error = $input.first();\nconst membershipId = $('Validate Input').first()?.json?.membership_id || 'unknown';\n\nreturn {\n  success: false,\n  membership_id: membershipId,\n  error: error.message || 'An unexpected error occurred',\n  clusters_generated: 0,\n  clusters: []\n};"
+      },
+      "id": "error-handler",
+      "name": "Error Handler",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [920, 500]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "respond-error",
+      "name": "Respond Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1140, 500]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Generate Clusters (GPT)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Clusters (GPT)": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Handler": {
+      "main": [
+        [
+          {
+            "node": "Respond Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "ContractNest",
+      "id": "contractnest"
+    },
+    {
+      "name": "AI",
+      "id": "ai"
+    }
+  ],
+  "triggerCount": 1,
+  "versionId": "1"
+}

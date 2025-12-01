@@ -17,7 +17,11 @@ import {
   RefreshCw,
   ChevronDown,
   ChevronUp,
-  AlertCircle
+  AlertCircle,
+  HelpCircle,
+  Search,
+  MessageCircle,
+  Zap
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -81,6 +85,7 @@ const SemanticClustersForm: React.FC<SemanticClustersFormProps> = ({
   const [editingCluster, setEditingCluster] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<SemanticCluster | null>(null);
   const [newTermInput, setNewTermInput] = useState('');
+  const [showLearnMore, setShowLearnMore] = useState(false);
 
   // Initialize with existing clusters
   useEffect(() => {
@@ -287,19 +292,160 @@ const SemanticClustersForm: React.FC<SemanticClustersFormProps> = ({
             </div>
           </div>
 
-          {/* Cluster count badge */}
-          {clusters.length > 0 && (
-            <div
-              className="px-3 py-1 rounded-full text-sm font-medium"
+          <div className="flex items-center space-x-3">
+            {/* Cluster count badge */}
+            {clusters.length > 0 && (
+              <div
+                className="px-3 py-1 rounded-full text-sm font-medium"
+                style={{
+                  backgroundColor: `${colors.semantic.success}15`,
+                  color: colors.semantic.success
+                }}
+              >
+                {clusters.length} cluster{clusters.length !== 1 ? 's' : ''}
+              </div>
+            )}
+
+            {/* Learn More Button */}
+            <button
+              onClick={() => setShowLearnMore(!showLearnMore)}
+              className="flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium transition-all hover:opacity-80"
               style={{
-                backgroundColor: `${colors.semantic.success}15`,
-                color: colors.semantic.success
+                backgroundColor: `${colors.semantic.info}15`,
+                color: colors.semantic.info
               }}
             >
-              {clusters.length} cluster{clusters.length !== 1 ? 's' : ''}
-            </div>
-          )}
+              <HelpCircle className="w-4 h-4" />
+              <span>Learn More</span>
+            </button>
+          </div>
         </div>
+
+        {/* Educational Section - What are Semantic Clusters? */}
+        {showLearnMore && (
+          <div
+            className="mt-4 p-5 rounded-xl space-y-4"
+            style={{
+              backgroundColor: colors.utility.primaryBackground,
+              border: `1px solid ${colors.semantic.info}30`
+            }}
+          >
+            <div className="flex items-start space-x-3">
+              <div
+                className="p-2 rounded-lg flex-shrink-0"
+                style={{ backgroundColor: `${colors.semantic.info}15` }}
+              >
+                <Brain className="w-5 h-5" style={{ color: colors.semantic.info }} />
+              </div>
+              <div>
+                <h3 className="font-semibold text-base mb-1" style={{ color: colors.utility.primaryText }}>
+                  What are Semantic Clusters?
+                </h3>
+                <p className="text-sm leading-relaxed" style={{ color: colors.utility.secondaryText }}>
+                  Semantic clusters are groups of related terms that help our AI understand your business better.
+                  Each cluster contains a <strong>primary term</strong> (the main keyword) and multiple
+                  <strong> related terms</strong> (synonyms, variations, and associated words).
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start space-x-3">
+              <div
+                className="p-2 rounded-lg flex-shrink-0"
+                style={{ backgroundColor: `${colors.brand.primary}15` }}
+              >
+                <Search className="w-5 h-5" style={{ color: colors.brand.primary }} />
+              </div>
+              <div>
+                <h3 className="font-semibold text-base mb-1" style={{ color: colors.utility.primaryText }}>
+                  How do they improve search?
+                </h3>
+                <p className="text-sm leading-relaxed" style={{ color: colors.utility.secondaryText }}>
+                  When customers search for services via WhatsApp, they use various terms. For example,
+                  searching for "CA" should also match "Chartered Accountant", "tax consultant", "accountant", etc.
+                  Clusters ensure your profile appears in relevant searches even when exact keywords don't match.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start space-x-3">
+              <div
+                className="p-2 rounded-lg flex-shrink-0"
+                style={{ backgroundColor: `${colors.brand.secondary}15` }}
+              >
+                <MessageCircle className="w-5 h-5" style={{ color: colors.brand.secondary }} />
+              </div>
+              <div>
+                <h3 className="font-semibold text-base mb-1" style={{ color: colors.utility.primaryText }}>
+                  WhatsApp Bot Integration
+                </h3>
+                <p className="text-sm leading-relaxed" style={{ color: colors.utility.secondaryText }}>
+                  Our WhatsApp bot uses these clusters to identify the most relevant businesses for customer queries.
+                  Better clusters = higher visibility when customers search for your services in their local language or
+                  common variations (e.g., "AC repair" vs "air conditioning service").
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start space-x-3">
+              <div
+                className="p-2 rounded-lg flex-shrink-0"
+                style={{ backgroundColor: `${colors.semantic.success}15` }}
+              >
+                <Zap className="w-5 h-5" style={{ color: colors.semantic.success }} />
+              </div>
+              <div>
+                <h3 className="font-semibold text-base mb-1" style={{ color: colors.utility.primaryText }}>
+                  Tips for Better Clusters
+                </h3>
+                <ul className="text-sm space-y-1" style={{ color: colors.utility.secondaryText }}>
+                  <li>• <strong>AI Generation:</strong> Let AI analyze your profile for accurate clusters</li>
+                  <li>• <strong>Add Local Terms:</strong> Include regional/Hindi variations customers might use</li>
+                  <li>• <strong>Common Misspellings:</strong> Add frequently misspelled versions of your services</li>
+                  <li>• <strong>Industry Jargon:</strong> Include both technical terms and layman language</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* Example Cluster */}
+            <div
+              className="p-4 rounded-lg"
+              style={{
+                backgroundColor: `${colors.brand.primary}08`,
+                border: `1px dashed ${colors.brand.primary}30`
+              }}
+            >
+              <p className="text-xs font-semibold mb-2" style={{ color: colors.brand.primary }}>
+                EXAMPLE CLUSTER
+              </p>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium" style={{ color: colors.utility.primaryText }}>
+                    Primary Term:
+                  </span>
+                  <span
+                    className="px-2 py-0.5 rounded text-sm font-semibold"
+                    style={{ backgroundColor: `${colors.brand.primary}20`, color: colors.brand.primary }}
+                  >
+                    accounting
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  <span className="text-sm" style={{ color: colors.utility.secondaryText }}>Related:</span>
+                  {['CA', 'chartered accountant', 'tax filing', 'GST', 'bookkeeping', 'audit', 'ITR', 'tax consultant'].map(term => (
+                    <span
+                      key={term}
+                      className="px-2 py-0.5 rounded text-xs"
+                      style={{ backgroundColor: `${colors.utility.primaryText}10`, color: colors.utility.secondaryText }}
+                    >
+                      {term}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Action Buttons */}
