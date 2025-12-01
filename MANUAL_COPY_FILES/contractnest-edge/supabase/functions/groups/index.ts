@@ -676,7 +676,7 @@ console.log('='.repeat(60));
 
         // Get n8n webhook URL from environment
         const n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL') || 'https://n8n.yourdomain.com';
-        const clusterWebhookUrl = `${n8nWebhookUrl}/webhook/generate-clusters`;
+        const clusterWebhookUrl = `${n8nWebhookUrl}/webhook/generate-semantic-clusters`;
 
         console.log('🤖 Calling n8n for cluster generation:', {
           membershipId: requestData.membership_id,
