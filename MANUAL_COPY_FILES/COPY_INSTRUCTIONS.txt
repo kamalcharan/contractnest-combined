@@ -1,39 +1,102 @@
-═══════════════════════════════════════════════════════════════════
-MANUAL FILE COPY INSTRUCTIONS
-Feature: Add RichTextEditor to Profile Onboarding Forms
-Date: 2025-11-27
-═══════════════════════════════════════════════════════════════════
+═══════════════════════════════════════════════════════════════════════════════
+COMPLETE MANUAL COPY INSTRUCTIONS
+Feature: BBB Profile Onboarding + Admin Dashboard + n8n Integration
+Branch: claude/review-ai-bot-code-01Kn4TLm8FefBpZ8RvcxaUSf
+Date: 2025-12-01
+═══════════════════════════════════════════════════════════════════════════════
 
-FILES TO COPY (3 files):
-─────────────────────────────────────────────────────────────────────
-
-1. ProfileEntryForm.tsx
-   FROM: MANUAL_COPY_FILES\ProfileEntryForm.tsx
-   TO:   contractnest-ui\src\components\VaNi\bbb\ProfileEntryForm.tsx
-   CHANGE: Replaced textarea with RichTextEditor (height: 200-350px)
-
-2. AIEnhancementSection.tsx
-   FROM: MANUAL_COPY_FILES\AIEnhancementSection.tsx
-   TO:   contractnest-ui\src\components\VaNi\bbb\AIEnhancementSection.tsx
-   CHANGE: Replaced textarea with RichTextEditor for editing AI content (height: 250-400px)
-
-3. WebsiteScrapingForm.tsx
-   FROM: MANUAL_COPY_FILES\WebsiteScrapingForm.tsx
-   TO:   contractnest-ui\src\components\VaNi\bbb\WebsiteScrapingForm.tsx
-   CHANGE: Replaced textarea with RichTextEditor for editing scraped content (height: 250-400px)
-
-═══════════════════════════════════════════════════════════════════
 SUBMODULES AFFECTED:
-─────────────────────────────────────────────────────────────────────
-- contractnest-ui (3 files modified)
+─────────────────────────────────────────────────────────────────────────────
+- contractnest-ui (18 files)
+- contractnest-edge (1 file)
+- contractnest-api (3 files)
+- n8n-workflows (2 files - import to n8n separately)
 
-═══════════════════════════════════════════════════════════════════
-SUMMARY OF CHANGES:
-─────────────────────────────────────────────────────────────────────
-All 3 forms now use RichTextEditor instead of plain textarea:
-- Rich text formatting (bold, italic, underline, bullet/ordered lists)
-- Character count display with max length validation
-- Increased editor height for better UX
-- Consistent toolbar: ['bold', 'italic', 'underline', 'bulletList', 'orderedList']
+═══════════════════════════════════════════════════════════════════════════════
+SECTION 1: CONTRACTNEST-UI FILES (18 files)
+═══════════════════════════════════════════════════════════════════════════════
 
-═══════════════════════════════════════════════════════════════════
+# App & Context
+1.  src/App.tsx
+2.  src/context/AuthContext.tsx
+
+# BBB Components (NEW)
+3.  src/components/VaNi/bbb/BBBMemberTable.tsx
+4.  src/components/VaNi/bbb/ProfileEntryForm.tsx
+5.  src/components/VaNi/bbb/AIEnhancementSection.tsx (from root MANUAL_COPY_FILES)
+6.  src/components/VaNi/bbb/WebsiteScrapingForm.tsx (from root MANUAL_COPY_FILES)
+
+# Pages (NEW)
+7.  src/pages/VaNi/channels/BBBAdminDashboard.tsx
+8.  src/pages/VaNi/channels/BBBProfileOnboardingPage.tsx
+
+# VaNi Channel Pages (UPDATED)
+9.  src/vani/pages/channels/ChatBotIntegrationPage.tsx
+10. src/vani/pages/channels/WebsiteIntegrationPage.tsx
+11. src/vani/pages/channels/WhatsAppIntegrationPage.tsx
+
+# Services (NEW)
+12. src/services/groupsService.ts
+13. src/services/analytics.service.ts
+
+# Hooks (NEW/UPDATED)
+14. src/hooks/queries/useGroupQueries.ts
+15. src/hooks/queries/useServiceCatalogQueries.ts
+16. src/hooks/useResources.ts
+
+# Utils
+17. src/utils/requestQueue.ts
+18. src/utils/resourceTransforms.ts
+
+# Service Catalog Components
+19. src/components/catalog/ServiceForm/ServiceConfigStep.tsx
+20. src/components/catalog/ServiceForm/index.tsx
+
+═══════════════════════════════════════════════════════════════════════════════
+SECTION 2: CONTRACTNEST-EDGE FILES (1 file)
+═══════════════════════════════════════════════════════════════════════════════
+
+1. supabase/functions/groups/index.ts (NEW - create groups folder)
+
+═══════════════════════════════════════════════════════════════════════════════
+SECTION 3: CONTRACTNEST-API FILES (3 files)
+═══════════════════════════════════════════════════════════════════════════════
+
+1. src/config/VaNiN8NConfig.ts (NEW - create config folder)
+2. src/services/groupsService.ts (NEW)
+3. src/controllers/groupsController.ts (NEW)
+
+═══════════════════════════════════════════════════════════════════════════════
+SECTION 4: N8N WORKFLOWS (2 files - import via n8n dashboard)
+═══════════════════════════════════════════════════════════════════════════════
+
+1. n8n-workflows/process-profile.json (import to n8n dashboard)
+2. n8n-workflows/IMPORT_INSTRUCTIONS.md (reference guide)
+
+═══════════════════════════════════════════════════════════════════════════════
+FEATURE SUMMARY
+═══════════════════════════════════════════════════════════════════════════════
+
+1. BBB Profile Onboarding Page
+   - Profile entry form with AI enhancement
+   - Website scraping to auto-generate profiles
+   - "Let me in" dialog for membership creation
+   - Rich text editor for profile descriptions
+   - Embedding generation via n8n
+
+2. BBB Admin Dashboard
+   - Member table with search/filter
+   - Status management (draft, active, suspended, inactive)
+   - Admin edit modal for member profiles
+   - Cross-tenant RLS support
+
+3. n8n Integration
+   - Webhook for profile enhancement
+   - Webhook for website scraping
+   - OpenAI integration for AI processing
+
+4. WhatsApp Integration Page
+   - Business profile check before configuration
+   - Updated flow for channel setup
+
+═══════════════════════════════════════════════════════════════════════════════
