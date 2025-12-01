@@ -23,7 +23,7 @@ import {
   deleteClusters,
   saveProfile,
   // Search
-  searchMembers,
+  search,
   // Admin
   getAdminStats,
   updateMembershipStatus,
@@ -62,7 +62,7 @@ router.post('/groups/profiles/save', saveProfile);
 // ============================================
 // SEARCH
 // ============================================
-router.post('/groups/search', searchMembers);
+router.post('/groups/search', search);
 
 // ============================================
 // ADMIN
