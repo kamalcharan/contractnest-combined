@@ -36,6 +36,7 @@ import {
   useCreateMembership,
   useSaveProfile
 } from '../../../hooks/queries/useGroupQueries';
+import groupsService from '../../../services/groupsService';
 import { useTenantProfile } from '../../../hooks/useTenantProfile';
 import { Users, MessageCircle, Sparkles } from 'lucide-react';
 
@@ -123,12 +124,29 @@ const BBBProfileOnboardingPage: React.FC = () => {
         // If membership already exists, extract the membership_id and proceed
         if (error.message?.includes('already exists') || error.message?.includes('Membership already exists')) {
           // Try multiple ways to get membership_id (custom property, axios response, or cause)
-          const existingMembershipId =
+          let existingMembershipId =
             error.membership_id ||
             error.response?.data?.membership_id ||
             error.cause?.membership_id;
 
-          console.log('🤖 VaNi: Extracted membership_id:', existingMembershipId);
+          console.log('🤖 VaNi: Extracted membership_id from error:', existingMembershipId);
+
+          // Fallback: Query for existing membership if not in error
+          if (!existingMembershipId && bbbGroupId) {
+            try {
+              console.log('🤖 VaNi: Querying for existing membership...');
+              const { memberships } = await groupsService.getGroupMemberships(bbbGroupId, { status: 'all' });
+              const myMembership = memberships.find(
+                (m: any) => m.tenant_id === tenantProfileData?.tenant_id
+              );
+              if (myMembership) {
+                existingMembershipId = myMembership.id;
+                console.log('🤖 VaNi: Found membership via query:', existingMembershipId);
+              }
+            } catch (queryError) {
+              console.error('🤖 VaNi: Failed to query memberships:', queryError);
+            }
+          }
 
           if (existingMembershipId) {
             console.log('🤖 VaNi: Existing membership found:', existingMembershipId);
