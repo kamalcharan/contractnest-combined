@@ -497,11 +497,13 @@ console.log('='.repeat(60));
             status: m.status,
             joined_at: m.joined_at,
             profile_data: m.profile_data,
-            mobile_number: m.profile_data?.mobile_number || null,
-            business_name: tenantProfile?.business_name || '',
-            business_email: tenantProfile?.business_email || '',
-            city: tenantProfile?.city || '',
-            logo_url: tenantProfile?.logo_url || null
+            // Nested tenant_profile for UI compatibility
+            tenant_profile: tenantProfile ? {
+              business_name: tenantProfile.business_name || '',
+              business_email: tenantProfile.business_email || '',
+              city: tenantProfile.city || '',
+              logo_url: tenantProfile.logo_url || null
+            } : null
           };
         });
         
@@ -908,9 +910,9 @@ console.log('='.repeat(60));
         const membershipId = adminStatusMatch[1];
         const requestData = await req.json();
         
-        if (!requestData.status || !['active', 'inactive', 'suspended'].includes(requestData.status)) {
+        if (!requestData.status || !['draft', 'active', 'inactive', 'suspended'].includes(requestData.status)) {
           return new Response(
-            JSON.stringify({ error: 'status must be "active", "inactive", or "suspended"' }),
+            JSON.stringify({ error: 'status must be "draft", "active", "inactive", or "suspended"' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }

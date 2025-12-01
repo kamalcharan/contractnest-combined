@@ -658,6 +658,21 @@ const BBBAdminDashboard: React.FC = () => {
                     Admin Actions
                   </h3>
                   <div className="flex flex-wrap gap-2">
+                    {selectedMembership.status !== 'draft' && (
+                      <button
+                        onClick={() => {
+                          handleStatusChange(selectedMembership.id, 'draft');
+                          setViewModalOpen(false);
+                        }}
+                        className="px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-80"
+                        style={{
+                          backgroundColor: `${colors.semantic.info}20`,
+                          color: colors.semantic.info
+                        }}
+                      >
+                        Set to Draft
+                      </button>
+                    )}
                     {selectedMembership.status !== 'active' && (
                       <button
                         onClick={() => {
@@ -670,7 +685,7 @@ const BBBAdminDashboard: React.FC = () => {
                           color: colors.semantic.success
                         }}
                       >
-                        Activate Profile
+                        Activate
                       </button>
                     )}
                     {selectedMembership.status !== 'suspended' && (
@@ -685,7 +700,7 @@ const BBBAdminDashboard: React.FC = () => {
                           color: colors.semantic.warning
                         }}
                       >
-                        Suspend Profile
+                        Suspend
                       </button>
                     )}
                     {selectedMembership.status !== 'inactive' && (
@@ -700,7 +715,7 @@ const BBBAdminDashboard: React.FC = () => {
                           color: colors.semantic.error
                         }}
                       >
-                        Set Inactive
+                        Deactivate
                       </button>
                     )}
                   </div>
