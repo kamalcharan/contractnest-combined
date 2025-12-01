@@ -90,86 +90,45 @@ const BBBProfileOnboardingPage: React.FC = () => {
   // Get the BBB group ID (first BBB chapter)
   const bbbGroupId = bbbGroups?.[0]?.id;
 
-  // Check membership status on page load by auto-attempting creation
+  // Check membership status on page load - query FIRST, then show dialog if not found
   useEffect(() => {
-    const checkOrCreateMembership = async () => {
+    const checkMembership = async () => {
       if (!bbbGroupId || !tenantProfileData?.tenant_id) {
         setIsCheckingMembership(false);
         return;
       }
 
       try {
-        console.log('🤖 VaNi: Auto-checking membership by attempting creation...');
+        console.log('🤖 VaNi: Checking for existing membership...');
 
-        // Try to create membership - if already exists, API returns 409 with membership_id
-        const result = await createMembershipMutation.mutateAsync({
-          group_id: bbbGroupId,
-          profile_data: {
-            mobile_number: tenantProfileData?.business_phone || '',
-          }
-        });
+        // Query for existing membership FIRST
+        const { memberships } = await groupsService.getGroupMemberships(bbbGroupId, { status: 'all' });
+        console.log('🤖 VaNi: Found memberships:', memberships.length);
 
-        // New membership created successfully
-        console.log('🤖 VaNi: New membership created:', result);
-        setMembershipId(result.id);
-        setShowJoinDialog(false);
-        toast.success('Welcome to BBB! Let\'s create your profile.', {
-          style: { background: colors.semantic.success, color: '#FFF' },
-          duration: 3000
-        });
+        const myMembership = memberships.find(
+          (m: any) => m.tenant_id === tenantProfileData?.tenant_id
+        );
 
-      } catch (error: any) {
-        console.log('🤖 VaNi: Membership check result:', error.message, error);
-
-        // If membership already exists, extract the membership_id and proceed
-        if (error.message?.includes('already exists') || error.message?.includes('Membership already exists')) {
-          // Try multiple ways to get membership_id (custom property, axios response, or cause)
-          let existingMembershipId =
-            error.membership_id ||
-            error.response?.data?.membership_id ||
-            error.cause?.membership_id;
-
-          console.log('🤖 VaNi: Extracted membership_id from error:', existingMembershipId);
-
-          // Fallback: Query for existing membership if not in error
-          if (!existingMembershipId && bbbGroupId) {
-            try {
-              console.log('🤖 VaNi: Querying for existing membership...');
-              const { memberships } = await groupsService.getGroupMemberships(bbbGroupId, { status: 'all' });
-              const myMembership = memberships.find(
-                (m: any) => m.tenant_id === tenantProfileData?.tenant_id
-              );
-              if (myMembership) {
-                existingMembershipId = myMembership.id;
-                console.log('🤖 VaNi: Found membership via query:', existingMembershipId);
-              }
-            } catch (queryError) {
-              console.error('🤖 VaNi: Failed to query memberships:', queryError);
-            }
-          }
-
-          if (existingMembershipId) {
-            console.log('🤖 VaNi: Existing membership found:', existingMembershipId);
-            setMembershipId(existingMembershipId);
-            setShowJoinDialog(false);
-            // Silent - no toast needed for returning users
-          } else {
-            // membership_id not returned, show dialog to manually join
-            console.log('🤖 VaNi: Membership exists but ID not returned, showing dialog');
-            setShowJoinDialog(true);
-          }
+        if (myMembership) {
+          console.log('🤖 VaNi: Found existing membership:', myMembership.id);
+          setMembershipId(myMembership.id);
+          setShowJoinDialog(false);
         } else {
-          // Other error - show dialog to try again
-          console.error('🤖 VaNi: Error checking membership:', error);
+          // No membership found - show "Let me in" dialog
+          console.log('🤖 VaNi: No membership found, showing dialog');
           setShowJoinDialog(true);
         }
+
+      } catch (error: any) {
+        console.error('🤖 VaNi: Error checking membership:', error);
+        setShowJoinDialog(true);
       }
 
       setIsCheckingMembership(false);
     };
 
     if (!isLoadingProfile && !isLoadingGroups) {
-      checkOrCreateMembership();
+      checkMembership();
     }
   }, [bbbGroupId, tenantProfileData?.tenant_id, isLoadingProfile, isLoadingGroups]);
 
