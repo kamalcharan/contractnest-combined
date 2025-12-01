@@ -31,14 +31,22 @@ serve(async (req) => {
       );
     }
     
-    // Create supabase client
+    // Create supabase client (with user auth for RLS)
     const supabase = createClient(supabaseUrl, supabaseKey, {
-      global: { 
-        headers: { 
+      global: {
+        headers: {
           Authorization: authHeader,
           ...(tenantHeader && { 'x-tenant-id': tenantHeader })
-        } 
+        }
       },
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false
+      }
+    });
+
+    // Admin client (bypasses RLS for cross-tenant queries like fetching all tenant profiles)
+    const supabaseAdmin = createClient(supabaseUrl, supabaseKey, {
       auth: {
         persistSession: false,
         autoRefreshToken: false
@@ -476,12 +484,12 @@ console.log('='.repeat(60));
 
         if (error) throw error;
 
-        // Get tenant profiles separately if needed
+        // Get tenant profiles separately using admin client (bypasses RLS)
         const tenantIds = data.map(m => m.tenant_id).filter(Boolean);
         let tenantProfiles: any[] = [];
 
         if (tenantIds.length > 0) {
-          const { data: profiles } = await supabase
+          const { data: profiles } = await supabaseAdmin
             .from('t_tenant_profiles')
             .select('tenant_id, business_name, business_email, city, logo_url')
             .in('tenant_id', tenantIds);
