@@ -444,16 +444,16 @@ const BBBProfileOnboardingPage: React.FC = () => {
     setIsSavingProfile(false);
   };
 
-  // Get status badge info
+  // Get status badge info (4 statuses: draft, active, suspended, inactive)
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
         return { icon: CheckCircle2, color: colors.semantic.success, label: 'Active', bgColor: `${colors.semantic.success}15` };
-      case 'pending':
-        return { icon: Clock, color: colors.semantic.warning, label: 'Pending Review', bgColor: `${colors.semantic.warning}15` };
       case 'suspended':
-        return { icon: AlertCircle, color: colors.semantic.error, label: 'Suspended', bgColor: `${colors.semantic.error}15` };
-      default:
+        return { icon: AlertCircle, color: colors.semantic.warning, label: 'Suspended', bgColor: `${colors.semantic.warning}15` };
+      case 'inactive':
+        return { icon: AlertCircle, color: colors.semantic.error, label: 'Inactive', bgColor: `${colors.semantic.error}15` };
+      default: // draft
         return { icon: Clock, color: colors.utility.secondaryText, label: 'Draft', bgColor: `${colors.utility.secondaryText}15` };
     }
   };

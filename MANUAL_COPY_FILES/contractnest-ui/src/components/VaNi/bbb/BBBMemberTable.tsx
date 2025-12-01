@@ -93,32 +93,27 @@ const BBBMemberTable: React.FC<BBBMemberTableProps> = ({
     setCurrentPage(1);
   }, [statusFilter, searchQuery]);
 
-  // Status badge
+  // Status badge (4 statuses: draft, active, suspended, inactive)
   const getStatusBadge = (status: string) => {
     const statusConfig: { [key: string]: { icon: any; color: string; label: string } } = {
-      active: {
-        icon: CheckCircle,
-        color: colors.semantic.success,
-        label: 'Active'
-      },
-      pending: {
-        icon: Clock,
-        color: colors.semantic.warning,
-        label: 'Pending'
-      },
       draft: {
         icon: FileText,
         color: colors.semantic.info,
         label: 'Draft'
       },
+      active: {
+        icon: CheckCircle,
+        color: colors.semantic.success,
+        label: 'Active'
+      },
       suspended: {
         icon: AlertTriangle,
-        color: colors.semantic.error,
+        color: colors.semantic.warning,
         label: 'Suspended'
       },
       inactive: {
         icon: XCircle,
-        color: colors.utility.secondaryText,
+        color: colors.semantic.error,
         label: 'Inactive'
       }
     };
@@ -208,9 +203,8 @@ const BBBMemberTable: React.FC<BBBMemberTableProps> = ({
                 } as React.CSSProperties}
               >
                 <option value="all">All Statuses</option>
-                <option value="active">Active</option>
-                <option value="pending">Pending</option>
                 <option value="draft">Draft</option>
+                <option value="active">Active</option>
                 <option value="suspended">Suspended</option>
                 <option value="inactive">Inactive</option>
               </select>
