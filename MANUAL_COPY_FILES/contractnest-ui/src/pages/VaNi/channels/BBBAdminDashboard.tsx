@@ -19,10 +19,12 @@ import {
 } from 'lucide-react';
 import BBBMemberTable from '../../../components/VaNi/bbb/BBBMemberTable';
 import ProfileCard from '../../../components/VaNi/bbb/ProfileCard';
+import ProfileEntryForm from '../../../components/VaNi/bbb/ProfileEntryForm';
+import AIEnhancementSection from '../../../components/VaNi/bbb/AIEnhancementSection';
 import toast from 'react-hot-toast';
-import { useGroups, useGroupMemberships } from '../../../hooks/queries/useGroupQueries';
+import { useGroups, useGroupMemberships, useEnhanceProfile, useSaveProfile } from '../../../hooks/queries/useGroupQueries';
 import groupsService from '../../../services/groupsService';
-import type { TenantProfile } from '../../../types/bbb';
+import type { TenantProfile, ProfileFormData } from '../../../types/bbb';
 
 const BBBAdminDashboard: React.FC = () => {
   const { isDarkMode, currentTheme } = useTheme();
@@ -30,7 +32,17 @@ const BBBAdminDashboard: React.FC = () => {
 
   // Modal states
   const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedMembership, setSelectedMembership] = useState<any>(null);
+
+  // Edit mode states
+  const [editStep, setEditStep] = useState<'form' | 'enhanced'>('form');
+  const [editDescription, setEditDescription] = useState('');
+  const [enhancedDescription, setEnhancedDescription] = useState('');
+
+  // API mutations for editing
+  const enhanceProfileMutation = useEnhanceProfile();
+  const saveProfileMutation = useSaveProfile();
 
   // Get BBB groups to find the group_id
   const { data: bbbGroups, isLoading: isLoadingGroups } = useGroups('bbb_chapter');
@@ -45,50 +57,57 @@ const BBBAdminDashboard: React.FC = () => {
 
   const memberships = membershipsData?.memberships || [];
 
-  // Compute stats from memberships data
+  // Get group info (BBB = group, Bagyanagar = chapter)
+  const currentGroup = bbbGroups?.[0];
+  const groupName = 'BBB'; // Business networking group
+  const chapterName = currentGroup?.name?.replace('BBB', '').trim() || 'Bagyanagar';
+
+  // Compute stats from memberships data (4 statuses: draft, active, suspended, inactive)
   const stats = useMemo(() => {
     const total = memberships.length;
+    const draft = memberships.filter((m: any) => m.status === 'draft').length;
     const active = memberships.filter((m: any) => m.status === 'active').length;
-    const pending = memberships.filter((m: any) => m.status === 'pending' || m.status === 'draft').length;
-    const inactive = memberships.filter((m: any) => m.status === 'inactive' || m.status === 'suspended').length;
+    const suspended = memberships.filter((m: any) => m.status === 'suspended').length;
+    const inactive = memberships.filter((m: any) => m.status === 'inactive').length;
 
     return {
       total_members: total,
+      draft_members: draft,
       active_members: active,
-      pending_approvals: pending,
+      suspended_members: suspended,
       inactive_members: inactive
     };
   }, [memberships]);
 
-  // Stats display config
+  // Stats display config (4 statuses)
   const statsConfig = [
     {
-      icon: Users,
-      label: 'Total Members',
-      value: stats.total_members,
-      color: colors.brand.primary,
-      bgColor: `${colors.brand.primary}20`
+      icon: FileText,
+      label: 'Draft',
+      value: stats.draft_members,
+      color: colors.semantic.info,
+      bgColor: `${colors.semantic.info}20`
     },
     {
       icon: CheckCircle,
-      label: 'Active Members',
+      label: 'Active',
       value: stats.active_members,
       color: colors.semantic.success,
       bgColor: `${colors.semantic.success}20`
     },
     {
-      icon: Clock,
-      label: 'Pending/Draft',
-      value: stats.pending_approvals,
+      icon: AlertCircle,
+      label: 'Suspended',
+      value: stats.suspended_members,
       color: colors.semantic.warning,
       bgColor: `${colors.semantic.warning}20`
     },
     {
       icon: XCircle,
-      label: 'Inactive/Suspended',
+      label: 'Inactive',
       value: stats.inactive_members,
-      color: colors.utility.secondaryText,
-      bgColor: `${colors.utility.secondaryText}20`
+      color: colors.semantic.error,
+      bgColor: `${colors.semantic.error}20`
     }
   ];
 
@@ -152,16 +171,103 @@ const BBBAdminDashboard: React.FC = () => {
     }
   };
 
-  // Handle edit - navigate to onboarding page for admin editing (future)
+  // Handle edit - open edit modal with membership data
   const handleEdit = (membershipId: string) => {
     const membership = memberships.find((m: any) => m.id === membershipId);
+    if (membership) {
+      setSelectedMembership(membership);
+      // Set edit description to AI-enhanced description or original
+      const description = membership.profile_data?.ai_enhanced_description ||
+                         membership.profile_data?.short_description || '';
+      setEditDescription(description);
+      setEnhancedDescription('');
+      setEditStep('form');
+      setEditModalOpen(true);
+    }
+  };
 
-    toast.success(`Opening editor for ${membership?.tenant_profile?.business_name || 'profile'}`, {
-      style: { background: colors.brand.primary, color: '#FFF' }
-    });
+  // Handle admin AI enhancement
+  const handleAdminEnhance = async (description: string) => {
+    if (!selectedMembership) return;
 
-    // TODO: Implement admin edit functionality
-    // Could open a modal or navigate to edit page
+    try {
+      const result = await enhanceProfileMutation.mutateAsync({
+        short_description: description,
+        generation_method: 'manual'
+      });
+
+      if (result?.profile_data?.ai_enhanced_description) {
+        setEnhancedDescription(result.profile_data.ai_enhanced_description);
+        setEditStep('enhanced');
+        toast.success('Description enhanced with AI!', {
+          style: { background: colors.semantic.success, color: '#FFF' }
+        });
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to enhance description', {
+        style: { background: colors.semantic.error, color: '#FFF' }
+      });
+    }
+  };
+
+  // Handle admin save profile
+  const handleAdminSave = async (formData: ProfileFormData) => {
+    if (!selectedMembership || !bbbGroupId) return;
+
+    try {
+      // Use the enhanced description if available, otherwise the form description
+      const descriptionToSave = enhancedDescription || editDescription;
+
+      await saveProfileMutation.mutateAsync({
+        group_id: bbbGroupId,
+        profile_data: {
+          short_description: formData.short_description,
+          ai_enhanced_description: descriptionToSave,
+          generation_method: formData.generation_method,
+          website_url: formData.website_url
+        }
+      });
+
+      toast.success(`${selectedMembership.tenant_profile?.business_name || 'Profile'} updated successfully!`, {
+        style: { background: colors.semantic.success, color: '#FFF' }
+      });
+
+      setEditModalOpen(false);
+      setSelectedMembership(null);
+      refetchMemberships();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to save profile', {
+        style: { background: colors.semantic.error, color: '#FFF' }
+      });
+    }
+  };
+
+  // Handle admin save enhanced description
+  const handleAdminSaveEnhanced = async () => {
+    if (!selectedMembership || !bbbGroupId) return;
+
+    try {
+      await saveProfileMutation.mutateAsync({
+        group_id: bbbGroupId,
+        profile_data: {
+          short_description: editDescription,
+          ai_enhanced_description: enhancedDescription,
+          generation_method: 'manual'
+        }
+      });
+
+      toast.success(`${selectedMembership.tenant_profile?.business_name || 'Profile'} updated successfully!`, {
+        style: { background: colors.semantic.success, color: '#FFF' }
+      });
+
+      setEditModalOpen(false);
+      setSelectedMembership(null);
+      refetchMemberships();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to save profile', {
+        style: { background: colors.semantic.error, color: '#FFF' }
+      });
+    }
   };
 
   // Handle status change
@@ -266,17 +372,28 @@ const BBBAdminDashboard: React.FC = () => {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1
-            className="text-3xl font-bold mb-2"
-            style={{ color: colors.utility.primaryText }}
-          >
-            BBB Admin Dashboard
-          </h1>
+          <div className="flex items-center space-x-3 mb-2">
+            <h1
+              className="text-3xl font-bold"
+              style={{ color: colors.utility.primaryText }}
+            >
+              {groupName} Admin Dashboard
+            </h1>
+            <span
+              className="px-3 py-1 rounded-full text-sm font-medium"
+              style={{
+                backgroundColor: `${colors.brand.primary}15`,
+                color: colors.brand.primary
+              }}
+            >
+              {chapterName} Chapter
+            </span>
+          </div>
           <p
             className="text-lg"
             style={{ color: colors.utility.secondaryText }}
           >
-            Manage BBB Directory members and monitor activity
+            Manage {groupName} Directory members • Total: <strong style={{ color: colors.brand.primary }}>{stats.total_members}</strong> members
           </p>
         </div>
         <div className="flex items-center space-x-3">
@@ -720,6 +837,94 @@ const BBBAdminDashboard: React.FC = () => {
                     )}
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Edit Modal */}
+      {editModalOpen && selectedMembership && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity"
+            onClick={() => setEditModalOpen(false)}
+            style={{ backdropFilter: 'blur(4px)' }}
+          />
+
+          {/* Modal */}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div
+              className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl"
+              style={{
+                backgroundColor: colors.utility.primaryBackground,
+                border: `1px solid ${colors.utility.primaryText}20`
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Close Button */}
+              <button
+                onClick={() => setEditModalOpen(false)}
+                className="absolute top-4 right-4 p-2 rounded-lg transition-all hover:opacity-80 z-10"
+                style={{
+                  backgroundColor: colors.utility.secondaryBackground,
+                  color: colors.utility.secondaryText
+                }}
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              {/* Header */}
+              <div
+                className="p-6 border-b"
+                style={{
+                  borderColor: `${colors.utility.primaryText}15`,
+                  background: `linear-gradient(135deg, ${colors.brand.primary}10 0%, ${colors.brand.secondary}10 100%)`
+                }}
+              >
+                <h2
+                  className="text-2xl font-bold"
+                  style={{ color: colors.utility.primaryText }}
+                >
+                  Edit Member Profile
+                </h2>
+                <p
+                  className="text-sm mt-1"
+                  style={{ color: colors.utility.secondaryText }}
+                >
+                  Editing: <strong>{selectedMembership.tenant_profile?.business_name || 'Unknown Business'}</strong>
+                </p>
+              </div>
+
+              {/* Edit Content */}
+              <div className="p-6">
+                {editStep === 'form' ? (
+                  <ProfileEntryForm
+                    onSubmit={handleAdminSave}
+                    onEnhanceWithAI={handleAdminEnhance}
+                    isEnhancing={enhanceProfileMutation.isPending}
+                    isSaving={saveProfileMutation.isPending}
+                    isEditMode={true}
+                    initialDescription={editDescription}
+                    initialWebsiteUrl={selectedMembership.profile_data?.website_url || ''}
+                    initialMethod={selectedMembership.profile_data?.generation_method || 'manual'}
+                  />
+                ) : (
+                  <AIEnhancementSection
+                    enhancedDescription={enhancedDescription}
+                    onConfirm={handleAdminSaveEnhanced}
+                    onEdit={() => {
+                      setEditDescription(enhancedDescription);
+                      setEditStep('form');
+                    }}
+                    isSaving={saveProfileMutation.isPending}
+                    generatedKeywords={[]}
+                    semanticClusters={[]}
+                    onKeywordToggle={() => {}}
+                    approvedKeywords={[]}
+                  />
+                )}
               </div>
             </div>
           </div>

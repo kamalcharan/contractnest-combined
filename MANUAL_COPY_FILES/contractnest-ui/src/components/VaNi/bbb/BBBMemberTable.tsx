@@ -388,7 +388,34 @@ const BBBMemberTable: React.FC<BBBMemberTableProps> = ({
                       )}
                     </td>
                     <td className="p-3">
-                      {getStatusBadge(membership.status)}
+                      {onStatusChange ? (
+                        <select
+                          value={membership.status}
+                          onChange={(e) => onStatusChange(membership.id, e.target.value)}
+                          className="text-xs px-2 py-1 rounded-lg border focus:outline-none focus:ring-1 cursor-pointer"
+                          style={{
+                            backgroundColor: membership.status === 'active' ? `${colors.semantic.success}15` :
+                              membership.status === 'suspended' ? `${colors.semantic.warning}15` :
+                              membership.status === 'inactive' ? `${colors.semantic.error}15` :
+                              `${colors.semantic.info}15`,
+                            color: membership.status === 'active' ? colors.semantic.success :
+                              membership.status === 'suspended' ? colors.semantic.warning :
+                              membership.status === 'inactive' ? colors.semantic.error :
+                              colors.semantic.info,
+                            borderColor: membership.status === 'active' ? colors.semantic.success :
+                              membership.status === 'suspended' ? colors.semantic.warning :
+                              membership.status === 'inactive' ? colors.semantic.error :
+                              colors.semantic.info,
+                          }}
+                        >
+                          <option value="draft">Draft</option>
+                          <option value="active">Active</option>
+                          <option value="suspended">Suspended</option>
+                          <option value="inactive">Inactive</option>
+                        </select>
+                      ) : (
+                        getStatusBadge(membership.status)
+                      )}
                     </td>
                     <td className="p-3">
                       <div className="flex items-center justify-center space-x-2">
