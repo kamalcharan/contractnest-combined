@@ -450,7 +450,8 @@ console.log('='.repeat(60));
         const status = url.searchParams.get('status') || 'all';
         const limit = parseInt(url.searchParams.get('limit') || '50');
         const offset = parseInt(url.searchParams.get('offset') || '0');
-        
+
+        // Query memberships without join (foreign key not set up)
         let query = supabase
           .from('t_group_memberships')
           .select(`
@@ -458,40 +459,51 @@ console.log('='.repeat(60));
             tenant_id,
             status,
             joined_at,
-            profile_data,
-            tenant_profile:t_tenant_profiles!tenant_id (
-              business_name,
-              business_email,
-              city,
-              logo_url
-            )
+            profile_data
           `, { count: 'exact' })
           .eq('group_id', groupId)
           .eq('is_active', true);
-        
+
         if (status !== 'all') {
           query = query.eq('status', status);
         }
-        
+
         query = query
           .order('joined_at', { ascending: false })
           .range(offset, offset + limit - 1);
-        
+
         const { data, error, count } = await query;
-        
+
         if (error) throw error;
-        
-        const memberships = data.map(m => ({
-          membership_id: m.id,
-          tenant_id: m.tenant_id,
-          status: m.status,
-          joined_at: m.joined_at,
-          mobile_number: m.profile_data?.mobile_number || null,
-          business_name: m.tenant_profile?.business_name || '',
-          business_email: m.tenant_profile?.business_email || '',
-          city: m.tenant_profile?.city || '',
-          logo_url: m.tenant_profile?.logo_url || null
-        }));
+
+        // Get tenant profiles separately if needed
+        const tenantIds = data.map(m => m.tenant_id).filter(Boolean);
+        let tenantProfiles: any[] = [];
+
+        if (tenantIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from('t_tenant_profiles')
+            .select('tenant_id, business_name, business_email, city, logo_url')
+            .in('tenant_id', tenantIds);
+          tenantProfiles = profiles || [];
+        }
+
+        const memberships = data.map(m => {
+          const tenantProfile = tenantProfiles.find(p => p.tenant_id === m.tenant_id);
+          return {
+            id: m.id,
+            membership_id: m.id,
+            tenant_id: m.tenant_id,
+            status: m.status,
+            joined_at: m.joined_at,
+            profile_data: m.profile_data,
+            mobile_number: m.profile_data?.mobile_number || null,
+            business_name: tenantProfile?.business_name || '',
+            business_email: tenantProfile?.business_email || '',
+            city: tenantProfile?.city || '',
+            logo_url: tenantProfile?.logo_url || null
+          };
+        });
         
         return new Response(
           JSON.stringify({
