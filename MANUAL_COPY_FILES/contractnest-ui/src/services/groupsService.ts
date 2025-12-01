@@ -165,6 +165,12 @@ class GroupsService {
         const membershipId = error.response?.data?.membership_id;
         console.log('🔍 UI Service: 409 detected, membership_id:', membershipId);
 
+        // Store in sessionStorage as backup (TanStack Query strips custom error properties)
+        if (membershipId) {
+          sessionStorage.setItem('bbb_existing_membership_id', membershipId);
+          console.log('🔍 UI Service: Stored membership_id in sessionStorage');
+        }
+
         // Create error with membership_id attached in multiple ways for robustness
         const customError = new Error('Membership already exists', {
           cause: { membership_id: membershipId }

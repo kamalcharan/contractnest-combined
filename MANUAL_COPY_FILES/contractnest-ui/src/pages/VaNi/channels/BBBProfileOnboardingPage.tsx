@@ -163,12 +163,29 @@ const BBBProfileOnboardingPage: React.FC = () => {
     } catch (error: any) {
       console.error('🤖 VaNi: Failed to create membership:', error);
 
-      // If membership already exists, just close dialog and continue
+      // If membership already exists, extract ID and continue
       if (error.message?.includes('already exists') || error.message?.includes('duplicate')) {
-        setShowJoinDialog(false);
-        toast.success('You\'re already a member! Let\'s update your profile.', {
-          style: { background: colors.semantic.info, color: '#FFF' }
-        });
+        // Try to get membership_id from multiple sources
+        const existingId =
+          error.membership_id ||
+          error.cause?.membership_id ||
+          sessionStorage.getItem('bbb_existing_membership_id'); // Fallback from service
+
+        console.log('🤖 VaNi: 409 - membership exists, extracted ID:', existingId);
+
+        if (existingId) {
+          setMembershipId(existingId);
+          setShowJoinDialog(false);
+          // Clear sessionStorage after use
+          sessionStorage.removeItem('bbb_existing_membership_id');
+          toast.success('Welcome back! Let\'s update your profile.', {
+            style: { background: colors.semantic.success, color: '#FFF' }
+          });
+        } else {
+          toast.error('Membership exists but could not retrieve ID. Please refresh.', {
+            style: { background: colors.semantic.error, color: '#FFF' }
+          });
+        }
       } else {
         toast.error(error.message || 'Failed to join BBB. Please try again.', {
           style: { background: colors.semantic.error, color: '#FFF' }
