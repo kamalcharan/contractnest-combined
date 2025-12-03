@@ -281,24 +281,31 @@ async function getSequenceConfigs(supabase: any, tenantId: string, isLive: boole
 
     if (error) throw error;
 
-    // Transform to frontend format
+    // Transform to frontend format - use snake_case to match UI type definitions
     const transformedData = (data || []).map((item: any) => ({
       id: item.id,
-      code: item.sub_cat_name,
+      entity_type: item.sub_cat_name,  // UI expects entity_type, not code
+      code: item.sub_cat_name,         // Keep for backwards compatibility
       name: item.display_name,
       prefix: item.form_settings?.prefix || '',
       separator: item.form_settings?.separator || '',
       suffix: item.form_settings?.suffix || '',
-      paddingLength: item.form_settings?.padding_length || 4,
-      startValue: item.form_settings?.start_value || 1,
-      resetFrequency: item.form_settings?.reset_frequency || 'NEVER',
-      incrementBy: item.form_settings?.increment_by || 1,
+      padding: item.form_settings?.padding_length || 4,      // UI expects padding
+      start_value: item.form_settings?.start_value || 1,     // UI expects start_value
+      current_value: 0,                                       // Will be updated from status
+      increment_by: item.form_settings?.increment_by || 1,   // UI expects increment_by
+      reset_frequency: (item.form_settings?.reset_frequency || 'NEVER').toLowerCase(), // UI expects lowercase
+      format_pattern: '',
       hexcolor: item.hexcolor,
-      iconName: item.icon_name,
+      icon_name: item.icon_name,
       description: item.description,
-      isDeletable: item.is_deletable,
-      isLive: item.is_live,
-      tenantId: item.tenant_id
+      is_deletable: item.is_deletable,
+      is_active: item.is_active,
+      is_live: item.is_live,
+      tenant_id: item.tenant_id,
+      environment: item.is_live ? 'live' : 'test',
+      created_at: item.created_at,
+      updated_at: item.updated_at
     }));
 
     return new Response(
@@ -464,19 +471,25 @@ async function createSequenceConfig(
 
     if (insertError) throw insertError;
 
-    // Transform response
+    // Transform response - use snake_case to match UI type definitions
     const result = {
       id: newConfig.id,
+      entity_type: newConfig.sub_cat_name,
       code: newConfig.sub_cat_name,
       name: newConfig.display_name,
-      prefix: newConfig.form_settings?.prefix,
-      separator: newConfig.form_settings?.separator,
-      suffix: newConfig.form_settings?.suffix,
-      paddingLength: newConfig.form_settings?.padding_length,
-      startValue: newConfig.form_settings?.start_value,
-      resetFrequency: newConfig.form_settings?.reset_frequency,
-      currentSequence: 0,
-      isLive: newConfig.is_live
+      prefix: newConfig.form_settings?.prefix || '',
+      separator: newConfig.form_settings?.separator || '',
+      suffix: newConfig.form_settings?.suffix || '',
+      padding: newConfig.form_settings?.padding_length || 4,
+      start_value: newConfig.form_settings?.start_value || 1,
+      current_value: 0,
+      increment_by: newConfig.form_settings?.increment_by || 1,
+      reset_frequency: (newConfig.form_settings?.reset_frequency || 'NEVER').toLowerCase(),
+      format_pattern: '',
+      is_active: newConfig.is_active,
+      is_live: newConfig.is_live,
+      environment: newConfig.is_live ? 'live' : 'test',
+      tenant_id: newConfig.tenant_id
     };
 
     return new Response(
@@ -514,10 +527,21 @@ async function updateSequenceConfig(
     if (data.description !== undefined) updateData.description = data.description;
 
     // Update form_settings if any related fields are provided
-    if (data.prefix !== undefined || data.separator !== undefined ||
-        data.suffix !== undefined || data.paddingLength !== undefined ||
-        data.startValue !== undefined || data.resetFrequency !== undefined) {
+    // Accept both camelCase and snake_case field names for flexibility
+    const hasFormSettingUpdates =
+        data.prefix !== undefined ||
+        data.separator !== undefined ||
+        data.suffix !== undefined ||
+        data.paddingLength !== undefined ||
+        data.padding !== undefined ||
+        data.startValue !== undefined ||
+        data.start_value !== undefined ||
+        data.resetFrequency !== undefined ||
+        data.reset_frequency !== undefined ||
+        data.incrementBy !== undefined ||
+        data.increment_by !== undefined;
 
+    if (hasFormSettingUpdates) {
       // Get current form_settings
       const { data: current } = await supabase
         .from('t_category_details')
@@ -527,15 +551,21 @@ async function updateSequenceConfig(
 
       const currentSettings = current?.form_settings || {};
 
+      // Accept both camelCase and snake_case
+      const newPadding = data.padding ?? data.paddingLength;
+      const newStartValue = data.start_value ?? data.startValue;
+      const newResetFrequency = data.reset_frequency ?? data.resetFrequency;
+      const newIncrementBy = data.increment_by ?? data.incrementBy;
+
       updateData.form_settings = {
         ...currentSettings,
         ...(data.prefix !== undefined && { prefix: data.prefix }),
         ...(data.separator !== undefined && { separator: data.separator }),
         ...(data.suffix !== undefined && { suffix: data.suffix }),
-        ...(data.paddingLength !== undefined && { padding_length: data.paddingLength }),
-        ...(data.startValue !== undefined && { start_value: data.startValue }),
-        ...(data.resetFrequency !== undefined && { reset_frequency: data.resetFrequency }),
-        ...(data.incrementBy !== undefined && { increment_by: data.incrementBy })
+        ...(newPadding !== undefined && { padding_length: newPadding }),
+        ...(newStartValue !== undefined && { start_value: newStartValue }),
+        ...(newResetFrequency !== undefined && { reset_frequency: newResetFrequency?.toUpperCase() }),
+        ...(newIncrementBy !== undefined && { increment_by: newIncrementBy })
       };
     }
 
@@ -549,18 +579,25 @@ async function updateSequenceConfig(
 
     if (error) throw error;
 
-    // Transform response
+    // Transform response - use snake_case to match UI type definitions
     const result = {
       id: updated.id,
+      entity_type: updated.sub_cat_name,
       code: updated.sub_cat_name,
       name: updated.display_name,
-      prefix: updated.form_settings?.prefix,
-      separator: updated.form_settings?.separator,
-      suffix: updated.form_settings?.suffix,
-      paddingLength: updated.form_settings?.padding_length,
-      startValue: updated.form_settings?.start_value,
-      resetFrequency: updated.form_settings?.reset_frequency,
-      isLive: updated.is_live
+      prefix: updated.form_settings?.prefix || '',
+      separator: updated.form_settings?.separator || '',
+      suffix: updated.form_settings?.suffix || '',
+      padding: updated.form_settings?.padding_length || 4,
+      start_value: updated.form_settings?.start_value || 1,
+      current_value: 0,
+      increment_by: updated.form_settings?.increment_by || 1,
+      reset_frequency: (updated.form_settings?.reset_frequency || 'NEVER').toLowerCase(),
+      format_pattern: '',
+      is_active: updated.is_active,
+      is_live: updated.is_live,
+      environment: updated.is_live ? 'live' : 'test',
+      tenant_id: updated.tenant_id
     };
 
     return new Response(
