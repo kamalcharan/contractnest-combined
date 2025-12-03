@@ -255,18 +255,15 @@ serve(async (req) => {
  */
 async function getSequenceConfigs(supabase: any, tenantId: string, isLive: boolean, requestId: string) {
   try {
-    // First get the sequence_numbers category ID
+    // First get the sequence_numbers category ID (global category, not tenant-specific)
     const { data: categoryData, error: categoryError } = await supabase
       .from('t_category_master')
       .select('id')
-      .eq('tenant_id', tenantId)
       .eq('category_name', 'sequence_numbers')
-      .eq('is_live', isLive)
-      .eq('is_active', true)
       .single();
 
     if (categoryError || !categoryData) {
-      console.log('[Sequences] No sequence_numbers category found for tenant');
+      console.log('[Sequences] No sequence_numbers category found in master');
       return new Response(
         JSON.stringify({ success: true, data: [], requestId }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -425,13 +422,11 @@ async function createSequenceConfig(
   requestId: string
 ) {
   try {
-    // Get sequence_numbers category ID
+    // Get sequence_numbers category ID (global category, not tenant-specific)
     const { data: categoryData, error: categoryError } = await supabase
       .from('t_category_master')
       .select('id')
-      .eq('tenant_id', tenantId)
       .eq('category_name', 'sequence_numbers')
-      .eq('is_live', isLive)
       .single();
 
     if (categoryError || !categoryData) {
