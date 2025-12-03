@@ -201,8 +201,11 @@ const SequencingSettingsPage = () => {
 
   // Generate preview of formatted sequence
   const generatePreview = (config: SequenceConfig | EditingState, currentValue: number = 1): string => {
-    const paddedNumber = String(currentValue).padStart(config.padding, '0');
-    return `${config.prefix}${paddedNumber}${config.suffix || ''}`;
+    const padding = config.padding ?? 4;
+    const prefix = config.prefix ?? '';
+    const suffix = config.suffix || '';
+    const paddedNumber = String(currentValue).padStart(padding, '0');
+    return `${prefix}${paddedNumber}${suffix}`;
   };
 
   // Get status for an entity type
@@ -434,7 +437,7 @@ const SequencingSettingsPage = () => {
                       className="text-sm font-mono"
                       style={{ color: colors.utility.primaryText }}
                     >
-                      {config.prefix}[{config.padding} digits]{config.suffix || ''}
+                      {config.prefix ?? ''}[{config.padding ?? 4} digits]{config.suffix || ''}
                     </div>
                   )}
                 </div>
@@ -450,7 +453,7 @@ const SequencingSettingsPage = () => {
                   >
                     {isEditing
                       ? generatePreview(editingConfig, status?.current_value || 1)
-                      : status?.next_formatted || generatePreview(config, config.current_value + 1)
+                      : status?.next_formatted || generatePreview(config, (config.current_value ?? 0) + 1)
                     }
                   </div>
                 </div>
@@ -461,7 +464,7 @@ const SequencingSettingsPage = () => {
                     className="font-mono text-sm"
                     style={{ color: colors.utility.primaryText }}
                   >
-                    {config.current_value.toLocaleString()}
+                    {(config.current_value ?? 0).toLocaleString()}
                   </div>
                   {status?.last_reset_at && (
                     <div
