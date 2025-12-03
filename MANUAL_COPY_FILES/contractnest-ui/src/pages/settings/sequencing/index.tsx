@@ -628,6 +628,7 @@ const SequencingSettingsPage = () => {
                               }}
                             />
                           </div>
+                          {/* MVP: Reset Frequency hidden for now
                           <div className="flex-1">
                             <label className="text-xs font-medium" style={{ color: colors.utility.secondaryText }}>
                               Reset Frequency
@@ -651,6 +652,7 @@ const SequencingSettingsPage = () => {
                             <option value="quarterly">Quarterly</option>
                           </select>
                         </div>
+                          */}
                       </div>
                     </div>
                     ) : (
@@ -682,6 +684,7 @@ const SequencingSettingsPage = () => {
                               {(config.current_value ?? status?.current_value ?? 0).toLocaleString()}
                             </p>
                           </div>
+                          {/* MVP: Reset Frequency hidden for now
                           <div>
                             <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
                               Reset
@@ -690,6 +693,7 @@ const SequencingSettingsPage = () => {
                               {RESET_FREQUENCY_LABELS[config.reset_frequency] || config.reset_frequency || 'Never'}
                             </p>
                           </div>
+                          */}
                         </div>
 
                         {/* Format Info */}
@@ -890,7 +894,7 @@ const SequencingSettingsPage = () => {
                       </p>
                     </div>
 
-                    {/* Reset Frequency */}
+                    {/* MVP: Reset Frequency hidden for now
                     <div className="hidden lg:block min-w-[80px]">
                       <span
                         className="px-2 py-1 rounded-full text-xs font-medium"
@@ -902,6 +906,7 @@ const SequencingSettingsPage = () => {
                         {RESET_FREQUENCY_LABELS[config.reset_frequency] || 'Never'}
                       </span>
                     </div>
+                    */}
 
                     {/* Actions */}
                     <div className="flex gap-1 flex-shrink-0">
@@ -1018,6 +1023,7 @@ const SequencingSettingsPage = () => {
                             }}
                           />
                         </div>
+                        {/* MVP: Reset Frequency hidden for now
                         <div>
                           <label className="text-xs font-medium" style={{ color: colors.utility.secondaryText }}>
                             Reset Frequency
@@ -1041,6 +1047,7 @@ const SequencingSettingsPage = () => {
                             <option value="quarterly">Quarterly</option>
                           </select>
                         </div>
+                        */}
                       </div>
                       <div className="flex gap-2 mt-4 justify-end">
                         <Button
@@ -1139,7 +1146,9 @@ const SequencingSettingsPage = () => {
           <li><strong>Prefix</strong>: Text that appears before the number (e.g., "CT-" for contacts).</li>
           <li><strong>Padding</strong>: Number of digits to pad with zeros (e.g., 4 digits = 0001, 0002...).</li>
           <li><strong>Suffix</strong>: Optional text that appears after the number.</li>
+          {/* MVP: Reset Frequency hidden for now
           <li><strong>Reset Frequency</strong>: When to restart the counter (yearly resets on Jan 1st).</li>
+          */}
           <li><strong>Reset</strong>: Manually resets the counter back to the start value.</li>
         </ul>
       </div>
