@@ -791,7 +791,6 @@ async function seedSequences(
             is_active: true,
             is_deletable: item.is_deletable,
             is_live: isLive,
-            created_by: userId,
             form_settings: {
               prefix: item.prefix,
               separator: item.separator,
