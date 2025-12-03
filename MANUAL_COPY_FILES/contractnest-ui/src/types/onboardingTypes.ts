@@ -192,7 +192,7 @@ export const ONBOARDING_CONSTANTS = {
     TEAM: 'team' as OnboardingStepId,
     TOUR: 'tour' as OnboardingStepId,
   },
-  REQUIRED_STEPS: ['user-profile', 'business-basic'] as string[],
+  REQUIRED_STEPS: ['user-profile', 'business-basic', 'sequence-numbers'] as string[],
   TOTAL_STEPS: 13, // Updated for 13-step flow (added sequence-numbers)
 
   // UI specific - routing paths
@@ -365,7 +365,7 @@ export const OnboardingUtils = {
         sequence: 8,
         title: 'Sequence Numbers',
         description: 'Configure auto-generated number formats',
-        isRequired: false,
+        isRequired: true,
         estimatedTime: '2 min',
         icon: 'Hash',
         path: ONBOARDING_CONSTANTS.ROUTES.SEQUENCE_NUMBERS,

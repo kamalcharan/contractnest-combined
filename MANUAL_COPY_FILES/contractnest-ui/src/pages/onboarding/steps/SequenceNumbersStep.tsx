@@ -406,15 +406,6 @@ const SequenceNumbersStep: React.FC = () => {
                 </>
               )}
             </button>
-
-            <button
-              onClick={handleSkip}
-              disabled={!canContinue}
-              className="text-sm px-4 py-2 rounded-lg transition-colors hover:opacity-80"
-              style={{ color: colors.utility.secondaryText }}
-            >
-              Skip for now
-            </button>
           </div>
 
           {/* Help text */}
@@ -423,7 +414,7 @@ const SequenceNumbersStep: React.FC = () => {
               className="text-xs transition-colors"
               style={{ color: colors.utility.secondaryText }}
             >
-              You can always set this up later in Settings → Sequence Numbers
+              You can customize formats later in Settings → Sequence Numbers
             </p>
           </div>
         </div>
