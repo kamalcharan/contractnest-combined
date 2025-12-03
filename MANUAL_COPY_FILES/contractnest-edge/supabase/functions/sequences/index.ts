@@ -760,17 +760,18 @@ async function seedSequences(
       const skipped: string[] = [];
 
       for (const item of seedData) {
-        // Check if already exists (unique constraint is on sub_cat_name, category_id, tenant_id - no is_live)
+        // Check if already exists for this environment
         const { data: existing } = await supabase
           .from('t_category_details')
-          .select('id, is_live')
+          .select('id')
           .eq('category_id', categoryId)
           .eq('tenant_id', tenantId)
           .eq('sub_cat_name', item.code)
+          .eq('is_live', isLive)
           .single();
 
         if (existing) {
-          console.log(`[Sequences] Skipping ${item.code} - already exists (is_live=${existing.is_live})`);
+          console.log(`[Sequences] Skipping ${item.code} - already exists for ${isLive ? 'Live' : 'Test'}`);
           skipped.push(item.code);
           continue;
         }
