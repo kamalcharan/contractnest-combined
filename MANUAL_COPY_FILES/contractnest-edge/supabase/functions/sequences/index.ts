@@ -251,6 +251,7 @@ serve(async (req) => {
 
 /**
  * Get all sequence configurations for tenant
+ * Now includes current_value from t_sequence_numbers table
  */
 async function getSequenceConfigs(supabase: any, tenantId: string, isLive: boolean, requestId: string) {
   try {
@@ -284,32 +285,57 @@ async function getSequenceConfigs(supabase: any, tenantId: string, isLive: boole
 
     if (error) throw error;
 
+    // Get current values from t_sequence_numbers for all sequence types
+    const { data: sequenceNumbers, error: seqError } = await supabase
+      .from('t_sequence_numbers')
+      .select('sequence_code, current_value, last_reset_date')
+      .eq('tenant_id', tenantId)
+      .eq('is_live', isLive);
+
+    if (seqError) {
+      console.warn('[Sequences] Could not fetch current values:', seqError.message);
+    }
+
+    // Create a lookup map for current values
+    const currentValueMap: Record<string, { current_value: number; last_reset_date: string | null }> = {};
+    (sequenceNumbers || []).forEach((seq: any) => {
+      currentValueMap[seq.sequence_code] = {
+        current_value: seq.current_value || 0,
+        last_reset_date: seq.last_reset_date
+      };
+    });
+
     // Transform to frontend format - use snake_case to match UI type definitions
-    const transformedData = (data || []).map((item: any) => ({
-      id: item.id,
-      entity_type: item.sub_cat_name,  // UI expects entity_type, not code
-      code: item.sub_cat_name,         // Keep for backwards compatibility
-      name: item.display_name,
-      prefix: item.form_settings?.prefix || '',
-      separator: item.form_settings?.separator || '',
-      suffix: item.form_settings?.suffix || '',
-      padding: item.form_settings?.padding_length || 4,      // UI expects padding
-      start_value: item.form_settings?.start_value || 1,     // UI expects start_value
-      current_value: 0,                                       // Will be updated from status
-      increment_by: item.form_settings?.increment_by || 1,   // UI expects increment_by
-      reset_frequency: (item.form_settings?.reset_frequency || 'NEVER').toLowerCase(), // UI expects lowercase
-      format_pattern: '',
-      hexcolor: item.hexcolor,
-      icon_name: item.icon_name,
-      description: item.description,
-      is_deletable: item.is_deletable,
-      is_active: item.is_active,
-      is_live: item.is_live,
-      tenant_id: item.tenant_id,
-      environment: item.is_live ? 'live' : 'test',
-      created_at: item.created_at,
-      updated_at: item.updated_at
-    }));
+    const transformedData = (data || []).map((item: any) => {
+      const seqData = currentValueMap[item.sub_cat_name] || { current_value: 0, last_reset_date: null };
+
+      return {
+        id: item.id,
+        entity_type: item.sub_cat_name,  // UI expects entity_type, not code
+        code: item.sub_cat_name,         // Keep for backwards compatibility
+        name: item.display_name,
+        prefix: item.form_settings?.prefix || '',
+        separator: item.form_settings?.separator || '',
+        suffix: item.form_settings?.suffix || '',
+        padding: item.form_settings?.padding_length || 4,      // UI expects padding
+        start_value: item.form_settings?.start_value || 1,     // UI expects start_value
+        current_value: seqData.current_value,                  // Actual current value from t_sequence_numbers
+        last_reset_date: seqData.last_reset_date,              // Last reset date
+        increment_by: item.form_settings?.increment_by || 1,   // UI expects increment_by
+        reset_frequency: (item.form_settings?.reset_frequency || 'NEVER').toLowerCase(), // UI expects lowercase
+        format_pattern: '',
+        hexcolor: item.hexcolor,
+        icon_name: item.icon_name,
+        description: item.description,
+        is_deletable: item.is_deletable,
+        is_active: item.is_active,
+        is_live: item.is_live,
+        tenant_id: item.tenant_id,
+        environment: item.is_live ? 'live' : 'test',
+        created_at: item.created_at,
+        updated_at: item.updated_at
+      };
+    });
 
     return new Response(
       JSON.stringify({ success: true, data: transformedData, requestId }),

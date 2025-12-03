@@ -95,6 +95,7 @@ const SequencingSettingsPage = () => {
   const [statuses, setStatuses] = useState<SequenceStatus[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [seeding, setSeeding] = useState(false);
   const [editingConfig, setEditingConfig] = useState<EditingState | null>(null);
   const [resetConfirmId, setResetConfirmId] = useState<string | null>(null);
   const [viewType, setViewType] = useState<ViewType>('grid');
@@ -225,6 +226,32 @@ const SequencingSettingsPage = () => {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Seed default sequences
+  const handleSeedSequences = async () => {
+    try {
+      setSeeding(true);
+
+      // Call the seed API through TenantSeedService
+      const result = await TenantSeedService.seedSequences();
+
+      toast({
+        title: 'Sequences Seeded',
+        description: `Successfully seeded ${result.seeded_count || 0} sequence types for both Live and Test environments.`,
+      });
+
+      await fetchData();
+    } catch (err: any) {
+      console.error('[SequencingSettings] Error seeding:', err);
+      toast({
+        title: 'Error',
+        description: err.message || 'Failed to seed sequences.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSeeding(false);
     }
   };
 
@@ -413,7 +440,36 @@ const SequencingSettingsPage = () => {
             className="mb-6 transition-colors"
             style={{ color: colors.utility.secondaryText }}
           >
-            Sequence configurations will appear here once set up during onboarding.
+            Sequence numbers haven't been set up yet. Click the button below to initialize
+            default sequences for both Live and Test environments.
+          </p>
+          <Button
+            onClick={handleSeedSequences}
+            disabled={seeding}
+            className="transition-colors"
+            style={{
+              backgroundColor: colors.brand.primary,
+              color: '#FFFFFF'
+            }}
+          >
+            {seeding ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Seeding...
+              </>
+            ) : (
+              <>
+                <Plus className="h-4 w-4 mr-2" />
+                Initialize Default Sequences
+              </>
+            )}
+          </Button>
+          <p
+            className="mt-4 text-xs"
+            style={{ color: colors.utility.secondaryText }}
+          >
+            This will create sequence configurations for Contacts, Contracts, Invoices,
+            Quotations, Receipts, Projects, Tasks, and Tickets.
           </p>
         </div>
       ) : (
@@ -596,6 +652,7 @@ const SequencingSettingsPage = () => {
                           </select>
                         </div>
                       </div>
+                    </div>
                     ) : (
                       // View Mode
                       <div className="space-y-3">
