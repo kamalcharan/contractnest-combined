@@ -146,11 +146,11 @@ export const transformSequenceForDB = (
   item: SeedItem,
   tenantId: string,
   isLive: boolean,
-  categoryId: string
+  categoryId?: string
 ): any => {
   return {
     tenant_id: tenantId,
-    category_id: categoryId,
+    category_id: categoryId || '',
     sub_cat_name: item.code,
     display_name: item.name,
     description: item.description,
