@@ -22,7 +22,7 @@ export interface SeedDefinition {
   data: SeedItem[];
 
   // Transform function to map seed data to table structure
-  transform?: (item: SeedItem, tenantId: string, isLive: boolean) => any;
+  transform?: (item: SeedItem, tenantId: string, isLive: boolean, categoryId?: string) => any;
 
   // Order for seeding (lower = first)
   order: number;
