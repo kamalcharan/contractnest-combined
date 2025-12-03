@@ -74,6 +74,7 @@ interface EditingState {
   prefix: string;
   suffix: string;
   padding: number;
+  start_value: number;
   reset_frequency: 'never' | 'yearly' | 'monthly' | 'quarterly';
 }
 
@@ -157,6 +158,7 @@ const SequencingSettingsPage = () => {
       prefix: config.prefix || '',
       suffix: config.suffix || '',
       padding: config.padding ?? 4,
+      start_value: config.start_value ?? 1,
       reset_frequency: (config.reset_frequency?.toLowerCase() || 'never') as any,
     });
   };
@@ -177,6 +179,7 @@ const SequencingSettingsPage = () => {
         prefix: editingConfig.prefix,
         suffix: editingConfig.suffix || undefined,
         padding: editingConfig.padding,
+        start_value: editingConfig.start_value,
         reset_frequency: editingConfig.reset_frequency,
       });
 
@@ -548,22 +551,43 @@ const SequencingSettingsPage = () => {
                             />
                           </div>
                         </div>
-                        <div>
-                          <label className="text-xs font-medium" style={{ color: colors.utility.secondaryText }}>
-                            Reset Frequency
-                          </label>
-                          <select
-                            value={editingConfig.reset_frequency}
-                            onChange={(e) => setEditingConfig({
-                              ...editingConfig,
-                              reset_frequency: e.target.value as any
-                            })}
-                            className="w-full px-3 py-2 text-sm rounded-lg border mt-1"
-                            style={{
-                              backgroundColor: colors.utility.primaryBackground,
-                              borderColor: colors.utility.primaryText + '30',
-                              color: colors.utility.primaryText
-                            }}
+                        <div className="flex gap-2">
+                          <div className="flex-1">
+                            <label className="text-xs font-medium" style={{ color: colors.utility.secondaryText }}>
+                              Start Value
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={editingConfig.start_value}
+                              onChange={(e) => setEditingConfig({
+                                ...editingConfig,
+                                start_value: parseInt(e.target.value) || 1
+                              })}
+                              className="w-full px-3 py-2 text-sm rounded-lg border mt-1"
+                              style={{
+                                backgroundColor: colors.utility.primaryBackground,
+                                borderColor: colors.utility.primaryText + '30',
+                                color: colors.utility.primaryText
+                              }}
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <label className="text-xs font-medium" style={{ color: colors.utility.secondaryText }}>
+                              Reset Frequency
+                            </label>
+                            <select
+                              value={editingConfig.reset_frequency}
+                              onChange={(e) => setEditingConfig({
+                                ...editingConfig,
+                                reset_frequency: e.target.value as any
+                              })}
+                              className="w-full px-3 py-2 text-sm rounded-lg border mt-1"
+                              style={{
+                                backgroundColor: colors.utility.primaryBackground,
+                                borderColor: colors.utility.primaryText + '30',
+                                color: colors.utility.primaryText
+                              }}
                           >
                             <option value="never">Never</option>
                             <option value="yearly">Yearly</option>
@@ -855,7 +879,7 @@ const SequencingSettingsPage = () => {
                       className="mt-4 pt-4 border-t"
                       style={{ borderColor: colors.utility.primaryText + '10' }}
                     >
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                         <div>
                           <label className="text-xs font-medium" style={{ color: colors.utility.secondaryText }}>
                             Prefix
@@ -867,6 +891,26 @@ const SequencingSettingsPage = () => {
                             onChange={(e) => setEditingConfig({
                               ...editingConfig,
                               prefix: e.target.value
+                            })}
+                            className="w-full px-3 py-2 text-sm rounded-lg border mt-1"
+                            style={{
+                              backgroundColor: colors.utility.primaryBackground,
+                              borderColor: colors.utility.primaryText + '30',
+                              color: colors.utility.primaryText
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium" style={{ color: colors.utility.secondaryText }}>
+                            Start Value
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={editingConfig.start_value}
+                            onChange={(e) => setEditingConfig({
+                              ...editingConfig,
+                              start_value: parseInt(e.target.value) || 1
                             })}
                             className="w-full px-3 py-2 text-sm rounded-lg border mt-1"
                             style={{
