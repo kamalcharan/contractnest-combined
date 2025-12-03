@@ -1,5 +1,7 @@
 // src/pages/onboarding/steps/SequenceNumbersStep.tsx
 // Onboarding step for setting up sequence number defaults
+// Fetches preview data from API layer (single source of truth)
+
 import React, { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -14,10 +16,19 @@ import {
   Receipt,
   Briefcase,
   ClipboardList,
-  Ticket
+  Ticket,
+  CreditCard,
+  Folder,
+  CheckSquare,
+  FileQuestion
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { sequenceService } from '@/services/sequenceService';
+import {
+  TenantSeedService,
+  SeedPreview,
+  SeedPreviewItem,
+  getSequenceColor
+} from '@/services/TenantSeedService';
 
 interface OnboardingStepContext {
   onComplete: (data?: Record<string, any>) => void;
@@ -26,57 +37,20 @@ interface OnboardingStepContext {
   updateTenantField: (field: string, value: any) => void;
 }
 
-// Default sequence configurations that will be seeded
-const DEFAULT_SEQUENCES = [
-  {
-    code: 'CONTACT',
-    name: 'Contacts',
-    prefix: 'CT-',
-    example: 'CT-0001',
-    icon: Users,
-    description: 'Customer and vendor contacts'
-  },
-  {
-    code: 'CONTRACT',
-    name: 'Contracts',
-    prefix: 'CON-',
-    example: 'CON-0001',
-    icon: FileText,
-    description: 'Service contracts and agreements'
-  },
-  {
-    code: 'INVOICE',
-    name: 'Invoices',
-    prefix: 'INV-',
-    example: 'INV-0001',
-    icon: Receipt,
-    description: 'Customer invoices'
-  },
-  {
-    code: 'QUOTATION',
-    name: 'Quotations',
-    prefix: 'QT-',
-    example: 'QT-0001',
-    icon: ClipboardList,
-    description: 'Price quotations and estimates'
-  },
-  {
-    code: 'PROJECT',
-    name: 'Projects',
-    prefix: 'PRJ-',
-    example: 'PRJ-0001',
-    icon: Briefcase,
-    description: 'Project tracking'
-  },
-  {
-    code: 'TICKET',
-    name: 'Support Tickets',
-    prefix: 'TKT-',
-    example: 'TKT-0001',
-    icon: Ticket,
-    description: 'Customer support tickets'
-  },
-];
+// Icon mapping for sequence types
+const ICON_MAP: Record<string, any> = {
+  Users: Users,
+  FileText: FileText,
+  Receipt: Receipt,
+  FileQuestion: FileQuestion,
+  CreditCard: CreditCard,
+  Folder: Folder,
+  CheckSquare: CheckSquare,
+  Ticket: Ticket,
+  Briefcase: Briefcase,
+  ClipboardList: ClipboardList,
+  Hash: Hash,
+};
 
 const SequenceNumbersStep: React.FC = () => {
   const { onComplete, onSkip, isSubmitting } = useOutletContext<OnboardingStepContext>();
@@ -84,55 +58,90 @@ const SequenceNumbersStep: React.FC = () => {
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(true);
   const [isSeeded, setIsSeeded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [seedResult, setSeedResult] = useState<{ seeded_count: number; sequences: string[] } | null>(null);
+  const [preview, setPreview] = useState<SeedPreview | null>(null);
 
-  // Check if sequences already exist on mount
+  // Fetch preview data from API on mount
   useEffect(() => {
-    checkExistingSequences();
+    loadPreviewAndCheckStatus();
   }, []);
 
-  const checkExistingSequences = async () => {
+  const loadPreviewAndCheckStatus = async () => {
     try {
-      const configs = await sequenceService.getConfigs();
-      if (configs && configs.length > 0) {
+      setIsLoadingPreview(true);
+
+      // Fetch preview data from API (single source of truth)
+      const previewData = await TenantSeedService.getSequenceDefaults();
+      setPreview(previewData);
+
+      // Check if already seeded
+      const alreadySeeded = await TenantSeedService.checkSequencesSeeded();
+      if (alreadySeeded) {
         setIsSeeded(true);
-        setSeedResult({ seeded_count: configs.length, sequences: configs.map(c => c.entity_type) });
+        setSeedResult({
+          seeded_count: previewData.itemCount,
+          sequences: previewData.items.map(i => i.code)
+        });
       }
     } catch (err) {
-      // If error, assume not seeded yet
-      console.log('[SequenceNumbersStep] Could not check existing sequences:', err);
+      console.log('[SequenceNumbersStep] Could not load preview:', err);
+      // Use fallback data if API fails
+      setPreview({
+        category: 'sequences',
+        displayName: 'Sequence Numbers',
+        description: 'Auto-generated number formats',
+        itemCount: 6,
+        items: [
+          { code: 'CONTACT', name: 'Contacts', preview: 'CT-1001' },
+          { code: 'CONTRACT', name: 'Contracts', preview: 'CN-1001' },
+          { code: 'INVOICE', name: 'Invoices', preview: 'INV-10001' },
+          { code: 'QUOTATION', name: 'Quotations', preview: 'QT-1001' },
+          { code: 'PROJECT', name: 'Projects', preview: 'PRJ-1001' },
+          { code: 'TICKET', name: 'Support Tickets', preview: 'TKT-10001' },
+        ]
+      });
+    } finally {
+      setIsLoadingPreview(false);
     }
   };
 
   /**
-   * Handle seeding default sequences
+   * Handle seeding default sequences via API
    */
   const handleSeedDefaults = async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      console.log('[SequenceNumbersStep] Seeding default sequences...');
-      const result = await sequenceService.seedDefaults();
+      console.log('[SequenceNumbersStep] Seeding default sequences via API...');
+
+      // Call TenantSeedService which calls API layer
+      const result = await TenantSeedService.seedSequences();
 
       console.log('[SequenceNumbersStep] Seed result:', result);
 
       if (result.success) {
         setIsSeeded(true);
-        setSeedResult({ seeded_count: result.seeded_count, sequences: result.sequences });
-        toast.success(`${result.seeded_count} sequence configurations created!`, {
+        setSeedResult({
+          seeded_count: result.inserted,
+          sequences: result.items || []
+        });
+        toast.success(`${result.inserted} sequence configurations created!`, {
           duration: 3000,
           icon: '✓'
         });
+        return true;
       } else {
-        throw new Error('Failed to seed sequences');
+        throw new Error(result.errors?.join(', ') || 'Failed to seed sequences');
       }
     } catch (err: any) {
       console.error('[SequenceNumbersStep] Error seeding:', err);
       setError(err.message || 'Failed to set up sequence numbers');
       toast.error('Failed to set up sequence numbers. You can configure them later in Settings.');
+      return false;
     } finally {
       setIsLoading(false);
     }
@@ -149,12 +158,17 @@ const SequenceNumbersStep: React.FC = () => {
     try {
       // If not seeded yet, seed first
       if (!isSeeded) {
-        await handleSeedDefaults();
+        const success = await handleSeedDefaults();
+        if (!success) {
+          // Still allow continuing even if seeding failed
+          await onComplete({ step: 'sequence-numbers', sequences_configured: false });
+          return;
+        }
       }
 
       const dataToSend = {
         step: 'sequence-numbers',
-        sequences_configured: isSeeded || seedResult !== null,
+        sequences_configured: true,
         completed_at: new Date().toISOString()
       };
 
@@ -172,15 +186,27 @@ const SequenceNumbersStep: React.FC = () => {
     }
   };
 
-  /**
-   * Handle skip
-   */
-  const handleSkip = () => {
-    console.log('[SequenceNumbersStep] Skipping step');
-    onSkip();
+  // Get icon component for a sequence
+  const getIconComponent = (iconName: string | undefined) => {
+    return ICON_MAP[iconName || 'Hash'] || Hash;
   };
 
-  const canContinue = !isSubmitting && !isLoading;
+  const canContinue = !isSubmitting && !isLoading && !isLoadingPreview;
+
+  // Loading state
+  if (isLoadingPreview) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center p-8">
+        <Loader2
+          className="w-8 h-8 animate-spin mb-4"
+          style={{ color: colors.brand.primary }}
+        />
+        <p style={{ color: colors.utility.secondaryText }}>
+          Loading sequence configuration...
+        </p>
+      </div>
+    );
+  }
 
   // Already seeded view
   if (isSeeded && seedResult) {
@@ -272,8 +298,7 @@ const SequenceNumbersStep: React.FC = () => {
               className="text-sm max-w-2xl mx-auto transition-colors"
               style={{ color: colors.utility.secondaryText }}
             >
-              We'll set up automatic numbering for your contacts, contracts, invoices, and more.
-              Each record gets a unique, formatted identifier that you can customize later.
+              {preview?.description || 'We\'ll set up automatic numbering for your contacts, contracts, invoices, and more. Each record gets a unique, formatted identifier that you can customize later.'}
             </p>
           </div>
 
@@ -292,7 +317,7 @@ const SequenceNumbersStep: React.FC = () => {
             </div>
           )}
 
-          {/* Default sequences preview */}
+          {/* Default sequences preview - fetched from API */}
           <div
             className="rounded-lg border p-6 mb-8"
             style={{
@@ -304,14 +329,25 @@ const SequenceNumbersStep: React.FC = () => {
               className="font-semibold mb-4"
               style={{ color: colors.utility.primaryText }}
             >
-              Default Sequence Formats
+              Default Sequence Formats ({preview?.itemCount || 0} types)
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {DEFAULT_SEQUENCES.map((seq) => {
-                const IconComponent = seq.icon;
+              {preview?.items.map((item) => {
+                const IconComponent = getIconComponent(
+                  item.code === 'CONTACT' ? 'Users' :
+                  item.code === 'CONTRACT' ? 'FileText' :
+                  item.code === 'INVOICE' ? 'Receipt' :
+                  item.code === 'QUOTATION' ? 'FileQuestion' :
+                  item.code === 'RECEIPT' ? 'CreditCard' :
+                  item.code === 'PROJECT' ? 'Folder' :
+                  item.code === 'TASK' ? 'CheckSquare' :
+                  item.code === 'TICKET' ? 'Ticket' : 'Hash'
+                );
+                const itemColor = getSequenceColor(item.code);
+
                 return (
                   <div
-                    key={seq.code}
+                    key={item.code}
                     className="p-4 rounded-lg border transition-colors"
                     style={{
                       backgroundColor: colors.utility.primaryBackground,
@@ -322,8 +358,8 @@ const SequenceNumbersStep: React.FC = () => {
                       <div
                         className="w-10 h-10 rounded-lg flex items-center justify-center"
                         style={{
-                          backgroundColor: colors.brand.primary + '15',
-                          color: colors.brand.primary
+                          backgroundColor: itemColor + '15',
+                          color: itemColor
                         }}
                       >
                         <IconComponent className="w-5 h-5" />
@@ -333,24 +369,26 @@ const SequenceNumbersStep: React.FC = () => {
                           className="font-medium text-sm"
                           style={{ color: colors.utility.primaryText }}
                         >
-                          {seq.name}
+                          {item.name}
                         </div>
-                        <div
-                          className="font-mono text-xs px-2 py-0.5 rounded inline-block mt-1"
-                          style={{
-                            backgroundColor: colors.brand.primary + '10',
-                            color: colors.brand.primary
-                          }}
-                        >
-                          {seq.example}
-                        </div>
+                        {item.preview && (
+                          <div
+                            className="font-mono text-xs px-2 py-0.5 rounded inline-block mt-1"
+                            style={{
+                              backgroundColor: itemColor + '10',
+                              color: itemColor
+                            }}
+                          >
+                            {item.preview}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <p
                       className="text-xs"
                       style={{ color: colors.utility.secondaryText }}
                     >
-                      {seq.description}
+                      {item.code}
                     </p>
                   </div>
                 );
@@ -377,7 +415,7 @@ const SequenceNumbersStep: React.FC = () => {
               style={{ color: colors.utility.secondaryText }}
             >
               <li>• These sequences will be created with default settings</li>
-              <li>• Numbers start at 0001 and auto-increment</li>
+              <li>• Numbers auto-increment from the configured start value</li>
               <li>• You can customize prefixes, padding, and reset frequency in Settings</li>
               <li>• Existing records won't be affected - only new records get numbers</li>
             </ul>

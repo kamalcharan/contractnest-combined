@@ -192,9 +192,12 @@ serve(async (req) => {
 
     // =================================================================
     // POST /seed - Seed default sequences for tenant (onboarding)
+    // Now accepts seedData from API layer for single source of truth
     // =================================================================
     if (resourceType === 'seed' && req.method === 'POST') {
-      return await seedSequences(supabase, tenantHeader, userData.user.id, requestId);
+      const data = await req.json().catch(() => ({}));
+      const seedData = data.seedData || null;  // Seed data from API layer
+      return await seedSequences(supabase, tenantHeader, userData.user.id, isLive, seedData, requestId);
     }
 
     // =================================================================
@@ -701,9 +704,102 @@ async function resetSequence(
 
 /**
  * Seed default sequences for tenant (onboarding)
+ * Now accepts seedData from API layer for single source of truth
  */
-async function seedSequences(supabase: any, tenantId: string, userId: string, requestId: string) {
+async function seedSequences(
+  supabase: any,
+  tenantId: string,
+  userId: string,
+  isLive: boolean,
+  seedData: any[] | null,
+  requestId: string
+) {
   try {
+    // If seedData is provided from API layer, use it
+    // Otherwise fall back to RPC function (legacy support)
+    if (seedData && Array.isArray(seedData) && seedData.length > 0) {
+      console.log('[Sequences] Using seed data from API layer:', seedData.length, 'items');
+
+      // Get or create the sequence_numbers category
+      const { data: categoryData, error: catError } = await supabase
+        .from('t_category_master')
+        .select('id')
+        .eq('category_name', 'sequence_numbers')
+        .single();
+
+      if (catError) throw new Error('sequence_numbers category not found in master');
+
+      const categoryId = categoryData.id;
+      const seeded: string[] = [];
+      const skipped: string[] = [];
+
+      for (const item of seedData) {
+        // Check if already exists
+        const { data: existing } = await supabase
+          .from('t_category_details')
+          .select('id')
+          .eq('category_id', categoryId)
+          .eq('tenant_id', tenantId)
+          .eq('sub_cat_name', item.code)
+          .eq('is_live', isLive)
+          .single();
+
+        if (existing) {
+          console.log(`[Sequences] Skipping ${item.code} - already exists`);
+          skipped.push(item.code);
+          continue;
+        }
+
+        // Insert new sequence config
+        const { error: insertError } = await supabase
+          .from('t_category_details')
+          .insert({
+            tenant_id: tenantId,
+            category_id: categoryId,
+            sub_cat_name: item.code,
+            display_name: item.name,
+            description: item.description,
+            hexcolor: item.hexcolor,
+            icon_name: item.icon_name,
+            sequence_no: item.sequence_order,
+            is_active: true,
+            is_deletable: item.is_deletable,
+            is_live: isLive,
+            created_by: userId,
+            form_settings: {
+              prefix: item.prefix,
+              separator: item.separator,
+              suffix: item.suffix || '',
+              padding_length: item.padding_length,
+              start_value: item.start_value,
+              increment_by: item.increment_by,
+              reset_frequency: item.reset_frequency
+            }
+          });
+
+        if (insertError) {
+          console.error(`[Sequences] Error inserting ${item.code}:`, insertError);
+          throw insertError;
+        }
+
+        seeded.push(item.code);
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          seeded_count: seeded.length,
+          skipped_count: skipped.length,
+          sequences: seeded,
+          skipped: skipped,
+          requestId
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Legacy: Fall back to RPC function if no seedData provided
+    console.log('[Sequences] Using legacy RPC function for seeding');
     const { data, error } = await supabase.rpc('seed_sequence_numbers_for_tenant', {
       p_tenant_id: tenantId,
       p_created_by: userId

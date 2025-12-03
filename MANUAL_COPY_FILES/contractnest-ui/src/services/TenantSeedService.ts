@@ -1,167 +1,80 @@
 // src/services/TenantSeedService.ts
 // Service for seeding default data for new tenants
-// Centralized source of truth for all tenant default configurations
+// Calls API layer which holds the seed data (single source of truth)
 
 import api from './api';
-import { API_ENDPOINTS } from './serviceURLs';
 
 // ============================================================
-// DEFAULT SEQUENCE CONFIGURATIONS
-// These are the default sequences seeded for new tenants
+// TYPES
 // ============================================================
 
-export interface DefaultSequenceConfig {
+export interface SeedPreviewItem {
   code: string;
   name: string;
-  description: string;
-  prefix: string;
-  separator: string;
-  suffix: string;
-  padding_length: number;
-  start_value: number;
-  reset_frequency: 'NEVER' | 'YEARLY' | 'MONTHLY' | 'QUARTERLY';
-  increment_by: number;
-  hexcolor: string;
-  icon_name: string;
-  is_deletable: boolean;
-  sequence_order: number;
+  preview?: string;
 }
 
-// Default sequence configurations for both live and test environments
-export const DEFAULT_SEQUENCES: DefaultSequenceConfig[] = [
-  {
-    code: 'CONTACT',
-    name: 'Contact Number',
-    description: 'Auto-generated number for contacts',
-    prefix: 'CT',
-    separator: '-',
-    suffix: '',
-    padding_length: 4,
-    start_value: 1001,
-    reset_frequency: 'NEVER',
-    increment_by: 1,
-    hexcolor: '#3B82F6',  // Blue
-    icon_name: 'Users',
-    is_deletable: false,  // System sequence
-    sequence_order: 1
-  },
-  {
-    code: 'CONTRACT',
-    name: 'Contract Number',
-    description: 'Auto-generated number for contracts',
-    prefix: 'CN',
-    separator: '-',
-    suffix: '',
-    padding_length: 4,
-    start_value: 1001,
-    reset_frequency: 'YEARLY',
-    increment_by: 1,
-    hexcolor: '#10B981',  // Green
-    icon_name: 'FileText',
-    is_deletable: false,
-    sequence_order: 2
-  },
-  {
-    code: 'INVOICE',
-    name: 'Invoice Number',
-    description: 'Auto-generated number for invoices',
-    prefix: 'INV',
-    separator: '-',
-    suffix: '',
-    padding_length: 5,
-    start_value: 10001,
-    reset_frequency: 'YEARLY',
-    increment_by: 1,
-    hexcolor: '#F59E0B',  // Amber
-    icon_name: 'Receipt',
-    is_deletable: false,
-    sequence_order: 3
-  },
-  {
-    code: 'QUOTATION',
-    name: 'Quotation Number',
-    description: 'Auto-generated number for quotations',
-    prefix: 'QT',
-    separator: '-',
-    suffix: '',
-    padding_length: 4,
-    start_value: 1001,
-    reset_frequency: 'YEARLY',
-    increment_by: 1,
-    hexcolor: '#8B5CF6',  // Purple
-    icon_name: 'FileQuestion',
-    is_deletable: false,
-    sequence_order: 4
-  },
-  {
-    code: 'RECEIPT',
-    name: 'Receipt Number',
-    description: 'Auto-generated number for receipts',
-    prefix: 'RCP',
-    separator: '-',
-    suffix: '',
-    padding_length: 5,
-    start_value: 10001,
-    reset_frequency: 'YEARLY',
-    increment_by: 1,
-    hexcolor: '#EC4899',  // Pink
-    icon_name: 'CreditCard',
-    is_deletable: false,
-    sequence_order: 5
-  },
-  {
-    code: 'PROJECT',
-    name: 'Project Number',
-    description: 'Auto-generated number for projects',
-    prefix: 'PRJ',
-    separator: '-',
-    suffix: '',
-    padding_length: 4,
-    start_value: 1001,
-    reset_frequency: 'YEARLY',
-    increment_by: 1,
-    hexcolor: '#06B6D4',  // Cyan
-    icon_name: 'Folder',
-    is_deletable: true,   // Optional sequence
-    sequence_order: 6
-  },
-  {
-    code: 'TASK',
-    name: 'Task Number',
-    description: 'Auto-generated number for tasks',
-    prefix: 'TSK',
-    separator: '-',
-    suffix: '',
-    padding_length: 5,
-    start_value: 10001,
-    reset_frequency: 'NEVER',
-    increment_by: 1,
-    hexcolor: '#64748B',  // Slate
-    icon_name: 'CheckSquare',
-    is_deletable: true,
-    sequence_order: 7
-  },
-  {
-    code: 'TICKET',
-    name: 'Support Ticket Number',
-    description: 'Auto-generated number for support tickets',
-    prefix: 'TKT',
-    separator: '-',
-    suffix: '',
-    padding_length: 5,
-    start_value: 10001,
-    reset_frequency: 'YEARLY',
-    increment_by: 1,
-    hexcolor: '#EF4444',  // Red
-    icon_name: 'Ticket',
-    is_deletable: true,
-    sequence_order: 8
-  }
-];
+export interface SeedPreview {
+  category: string;
+  displayName: string;
+  description: string;
+  itemCount: number;
+  items: SeedPreviewItem[];
+}
+
+export interface SeedResult {
+  success: boolean;
+  category: string;
+  displayName: string;
+  inserted: number;
+  skipped: number;
+  errors: string[];
+  items?: string[];
+}
+
+export interface TenantSeedResult {
+  success: boolean;
+  tenantId: string;
+  environment: 'live' | 'test';
+  results: SeedResult[];
+  totalInserted: number;
+  totalSkipped: number;
+  errors: string[];
+  timestamp: string;
+}
+
+export interface SeedStatus {
+  category: string;
+  displayName: string;
+  isSeeded: boolean;
+  count: number;
+}
+
+export interface SeedStatusResponse {
+  success: boolean;
+  tenantId: string;
+  environment: string;
+  allSeeded: boolean;
+  requiredSeeded: boolean;
+  statuses: SeedStatus[];
+}
 
 // ============================================================
-// ENTITY TYPE DISPLAY NAMES
-// Used for showing friendly names in the UI
+// API ENDPOINTS
+// ============================================================
+
+const SEED_ENDPOINTS = {
+  DEFAULTS: '/api/seeds/defaults',
+  DEFAULTS_CATEGORY: (category: string) => `/api/seeds/defaults/${category}`,
+  DATA_CATEGORY: (category: string) => `/api/seeds/data/${category}`,
+  TENANT: '/api/seeds/tenant',
+  TENANT_CATEGORY: (category: string) => `/api/seeds/tenant/${category}`,
+  STATUS: '/api/seeds/status',
+};
+
+// ============================================================
+// ENTITY DISPLAY NAMES (for UI convenience)
+// These are also available from the API via /defaults/sequences
 // ============================================================
 
 export const ENTITY_DISPLAY_NAMES: Record<string, string> = {
@@ -187,49 +100,130 @@ export const RESET_FREQUENCY_OPTIONS = [
 ] as const;
 
 // ============================================================
-// SEED SERVICE RESPONSES
-// ============================================================
-
-export interface SeedSequencesResponse {
-  success: boolean;
-  message: string;
-  seeded_count: number;
-  sequences: string[];
-}
-
-export interface SeedResult {
-  success: boolean;
-  category: string;
-  count: number;
-  items: string[];
-  error?: string;
-}
-
-export interface TenantSeedResult {
-  success: boolean;
-  results: SeedResult[];
-  total_seeded: number;
-  errors: string[];
-}
-
-// ============================================================
 // TENANT SEED SERVICE
 // ============================================================
 
 export const TenantSeedService = {
   /**
-   * Get default sequence configurations
-   * Can be used to display preview during onboarding
+   * Get preview of all seed categories
+   * Fetches from API layer (single source of truth)
    */
-  getDefaultSequences(): DefaultSequenceConfig[] {
-    return DEFAULT_SEQUENCES;
+  async getAllDefaults(): Promise<{
+    previews: SeedPreview[];
+    categories: string[];
+    requiredCategories: string[];
+  }> {
+    try {
+      console.log('[TenantSeedService] Fetching all seed defaults');
+      const response = await api.get<{
+        success: boolean;
+        data: SeedPreview[];
+        categories: string[];
+        requiredCategories: string[];
+      }>(SEED_ENDPOINTS.DEFAULTS);
+
+      return {
+        previews: response.data.data,
+        categories: response.data.categories,
+        requiredCategories: response.data.requiredCategories
+      };
+    } catch (error) {
+      console.error('[TenantSeedService] Error fetching defaults:', error);
+      throw error;
+    }
   },
 
   /**
-   * Get a specific sequence configuration by code
+   * Get preview for a specific seed category
    */
-  getSequenceByCode(code: string): DefaultSequenceConfig | undefined {
-    return DEFAULT_SEQUENCES.find(s => s.code === code.toUpperCase());
+  async getCategoryDefaults(category: string): Promise<SeedPreview> {
+    try {
+      console.log('[TenantSeedService] Fetching defaults for:', category);
+      const response = await api.get<{ success: boolean; data: SeedPreview }>(
+        SEED_ENDPOINTS.DEFAULTS_CATEGORY(category)
+      );
+      return response.data.data;
+    } catch (error) {
+      console.error('[TenantSeedService] Error fetching category defaults:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get sequence defaults preview (convenience method)
+   */
+  async getSequenceDefaults(): Promise<SeedPreview> {
+    return this.getCategoryDefaults('sequences');
+  },
+
+  /**
+   * Seed all required data for the current tenant
+   */
+  async seedAllDefaults(categories?: string[]): Promise<TenantSeedResult> {
+    try {
+      console.log('[TenantSeedService] Seeding all defaults', { categories });
+      const response = await api.post<TenantSeedResult>(
+        SEED_ENDPOINTS.TENANT,
+        { categories }
+      );
+      console.log('[TenantSeedService] Seed result:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('[TenantSeedService] Error seeding defaults:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Seed a specific category for the current tenant
+   */
+  async seedCategory(category: string): Promise<SeedResult> {
+    try {
+      console.log('[TenantSeedService] Seeding category:', category);
+      const response = await api.post<{ success: boolean; data: SeedResult }>(
+        SEED_ENDPOINTS.TENANT_CATEGORY(category)
+      );
+      console.log('[TenantSeedService] Category seed result:', response.data);
+      return response.data.data;
+    } catch (error) {
+      console.error('[TenantSeedService] Error seeding category:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Seed sequences for the current tenant (convenience method)
+   */
+  async seedSequences(): Promise<SeedResult> {
+    return this.seedCategory('sequences');
+  },
+
+  /**
+   * Check seed status for the current tenant
+   */
+  async getSeedStatus(): Promise<SeedStatusResponse> {
+    try {
+      console.log('[TenantSeedService] Checking seed status');
+      const response = await api.get<SeedStatusResponse>(SEED_ENDPOINTS.STATUS);
+      return response.data;
+    } catch (error) {
+      console.error('[TenantSeedService] Error checking status:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Check if sequences have already been seeded
+   */
+  async checkSequencesSeeded(): Promise<boolean> {
+    try {
+      const status = await this.getSeedStatus();
+      const sequencesStatus = status.statuses.find(s => s.category === 'sequences');
+      return sequencesStatus?.isSeeded ?? false;
+    } catch (error) {
+      console.error('[TenantSeedService] Error checking sequences seeded:', error);
+      return false;
+    }
   },
 
   /**
@@ -237,91 +231,6 @@ export const TenantSeedService = {
    */
   getEntityDisplayName(entityType: string): string {
     return ENTITY_DISPLAY_NAMES[entityType?.toUpperCase()] || entityType;
-  },
-
-  /**
-   * Generate preview of what a sequence number will look like
-   */
-  generateSequencePreview(config: DefaultSequenceConfig, currentValue?: number): string {
-    const value = currentValue ?? config.start_value;
-    const paddedNumber = String(value).padStart(config.padding_length, '0');
-    return `${config.prefix}${config.separator}${paddedNumber}${config.suffix}`;
-  },
-
-  /**
-   * Seed default sequences for the current tenant
-   * Calls the backend API which handles the actual database operations
-   * Works for both live and test environments (determined by x-environment header)
-   */
-  async seedSequences(): Promise<SeedSequencesResponse> {
-    try {
-      console.log('[TenantSeedService] Seeding default sequences');
-      const response = await api.post<SeedSequencesResponse>(API_ENDPOINTS.SEQUENCES.SEED);
-      console.log('[TenantSeedService] Seed response:', response.data);
-      return response.data;
-    } catch (error) {
-      console.error('[TenantSeedService] Error seeding sequences:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Seed all default data for a new tenant
-   * Currently includes: Sequences
-   * Future: Roles, Tags, Statuses, etc.
-   */
-  async seedAllDefaults(): Promise<TenantSeedResult> {
-    const results: SeedResult[] = [];
-    const errors: string[] = [];
-    let totalSeeded = 0;
-
-    // Seed sequences
-    try {
-      const sequenceResult = await this.seedSequences();
-      results.push({
-        success: sequenceResult.success,
-        category: 'Sequence Numbers',
-        count: sequenceResult.seeded_count,
-        items: sequenceResult.sequences
-      });
-      totalSeeded += sequenceResult.seeded_count;
-    } catch (error: any) {
-      errors.push(`Sequences: ${error.message || 'Failed to seed'}`);
-      results.push({
-        success: false,
-        category: 'Sequence Numbers',
-        count: 0,
-        items: [],
-        error: error.message
-      });
-    }
-
-    // Future: Add more seed operations here
-    // - Roles
-    // - Tags
-    // - Default statuses
-    // - etc.
-
-    return {
-      success: errors.length === 0,
-      results,
-      total_seeded: totalSeeded,
-      errors
-    };
-  },
-
-  /**
-   * Check if sequences have already been seeded for the tenant
-   * Useful for onboarding flow to determine if step should be skipped
-   */
-  async checkSequencesSeeded(): Promise<boolean> {
-    try {
-      const response = await api.get<{ success: boolean; data: any[] }>(API_ENDPOINTS.SEQUENCES.CONFIGS.LIST);
-      return response.data.data && response.data.data.length > 0;
-    } catch (error) {
-      console.error('[TenantSeedService] Error checking seeded sequences:', error);
-      return false;
-    }
   }
 };
 
@@ -331,34 +240,53 @@ export const TenantSeedService = {
 
 /**
  * Get the color for a sequence type (for UI theming)
+ * Note: Actual colors are defined in API layer and returned via preview
  */
 export const getSequenceColor = (code: string): string => {
-  const sequence = DEFAULT_SEQUENCES.find(s => s.code === code.toUpperCase());
-  return sequence?.hexcolor || '#6B7280'; // Default gray
+  const colorMap: Record<string, string> = {
+    CONTACT: '#3B82F6',
+    CONTRACT: '#10B981',
+    INVOICE: '#F59E0B',
+    QUOTATION: '#8B5CF6',
+    RECEIPT: '#EC4899',
+    PROJECT: '#06B6D4',
+    TASK: '#64748B',
+    TICKET: '#EF4444',
+  };
+  return colorMap[code?.toUpperCase()] || '#6B7280';
 };
 
 /**
  * Get the icon name for a sequence type (Lucide icons)
  */
 export const getSequenceIcon = (code: string): string => {
-  const sequence = DEFAULT_SEQUENCES.find(s => s.code === code.toUpperCase());
-  return sequence?.icon_name || 'Hash';
+  const iconMap: Record<string, string> = {
+    CONTACT: 'Users',
+    CONTRACT: 'FileText',
+    INVOICE: 'Receipt',
+    QUOTATION: 'FileQuestion',
+    RECEIPT: 'CreditCard',
+    PROJECT: 'Folder',
+    TASK: 'CheckSquare',
+    TICKET: 'Ticket',
+  };
+  return iconMap[code?.toUpperCase()] || 'Hash';
 };
 
 /**
- * Get all sequence codes (useful for dropdowns)
+ * Get all sequence codes
  */
 export const getAllSequenceCodes = (): string[] => {
-  return DEFAULT_SEQUENCES.map(s => s.code);
+  return Object.keys(ENTITY_DISPLAY_NAMES);
 };
 
 /**
  * Get sequence options for dropdowns
  */
 export const getSequenceOptions = (): Array<{ value: string; label: string }> => {
-  return DEFAULT_SEQUENCES.map(s => ({
-    value: s.code,
-    label: s.name
+  return Object.entries(ENTITY_DISPLAY_NAMES).map(([value, label]) => ({
+    value,
+    label
   }));
 };
 
