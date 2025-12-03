@@ -95,6 +95,7 @@ import {
   ApiServerDownPage
 } from './pages/misc';
 import TaxSettingsPage from './pages/settings/TaxSettings';
+import SequencingSettingsPage from './pages/settings/sequencing';
 
 // Main pages
 import Dashboard from './pages/Dashboard';
@@ -421,7 +422,10 @@ const AppContent: React.FC = () => {
 
             {/* tax-settings route */}
             <Route path="tax-settings" element={<TaxSettingsPage />} />
-            
+
+            {/* sequence-numbers settings route */}
+            <Route path="sequencing" element={<SequencingSettingsPage />} />
+
             {/* Storage Management Routes */}
             <Route path="storage/storagesetup" element={<StorageSetupPage />} />
             <Route path="storage/storagecomplete" element={<StorageCompletePage />} />
