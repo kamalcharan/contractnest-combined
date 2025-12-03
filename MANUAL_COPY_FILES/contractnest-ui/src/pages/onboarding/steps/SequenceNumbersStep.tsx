@@ -229,11 +229,19 @@ const SequenceNumbersStep: React.FC = () => {
             Sequence Numbers Configured
           </h2>
           <p
-            className="text-sm mb-6"
+            className="text-sm mb-4"
             style={{ color: colors.utility.secondaryText }}
           >
-            {seedResult.seeded_count} sequence types have been set up for your account.
-            You can customize formats later in Settings → Sequence Numbers.
+            {seedResult.seeded_count} sequence types have been set up for <strong>both Live and Test environments</strong>.
+          </p>
+          <p
+            className="text-xs mb-6 px-4 py-2 rounded-lg inline-block"
+            style={{
+              backgroundColor: colors.semantic.warning + '10',
+              color: colors.utility.secondaryText
+            }}
+          >
+            💡 Need custom formats? Go to <strong style={{ color: colors.utility.primaryText }}>Settings → Configure → Sequence Numbers</strong> to personalize prefixes, starting numbers, and more.
           </p>
 
           {/* Show configured sequences */}
@@ -414,11 +422,38 @@ const SequenceNumbersStep: React.FC = () => {
               className="text-sm space-y-1"
               style={{ color: colors.utility.secondaryText }}
             >
-              <li>• These sequences will be created with default settings</li>
-              <li>• Numbers auto-increment from the configured start value</li>
-              <li>• You can customize prefixes, padding, and reset frequency in Settings</li>
+              <li>• Default sequences are created for <strong>both Live and Test environments</strong></li>
+              <li>• Numbers auto-increment from the configured start value (default: 1)</li>
+              <li>• Each new record automatically gets a unique, formatted identifier</li>
               <li>• Existing records won't be affected - only new records get numbers</li>
             </ul>
+          </div>
+
+          {/* Customization note */}
+          <div
+            className="p-4 rounded-lg border mb-8"
+            style={{
+              backgroundColor: colors.semantic.warning + '08',
+              borderColor: colors.semantic.warning + '25'
+            }}
+          >
+            <h4
+              className="font-medium text-sm mb-2"
+              style={{ color: colors.semantic.warning }}
+            >
+              Need custom sequence formats?
+            </h4>
+            <p
+              className="text-sm"
+              style={{ color: colors.utility.secondaryText }}
+            >
+              After onboarding, you can fully customize your sequence formats including prefixes,
+              suffixes, starting numbers, and reset frequencies. Navigate to{' '}
+              <strong style={{ color: colors.utility.primaryText }}>
+                Settings → Configure → Sequence Numbers
+              </strong>{' '}
+              to personalize each sequence type.
+            </p>
           </div>
 
           {/* Action buttons */}

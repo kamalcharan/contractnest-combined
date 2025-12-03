@@ -328,6 +328,7 @@ async function seedCategory(
 
 // =================================================================
 // Helper: Seed sequences via edge function
+// Seeds BOTH live and test environments for the tenant
 // =================================================================
 async function seedSequences(
   tenantId: string,
@@ -335,30 +336,60 @@ async function seedSequences(
   authHeader: string
 ): Promise<SeedResult> {
   try {
-    // Send seed data TO the edge function
-    const response = await axios.post(
-      `${process.env.SUPABASE_URL}/functions/v1/sequences/seed`,
-      {
-        seedData: SEQUENCE_SEED_DATA  // Pass data from API layer
-      },
-      {
-        headers: {
-          Authorization: authHeader,
-          'x-tenant-id': tenantId,
-          'x-environment': isLive ? 'live' : 'test',
-          'Content-Type': 'application/json'
-        }
+    let totalInserted = 0;
+    let totalSkipped = 0;
+    const allItems: string[] = [];
+    const errors: string[] = [];
+
+    // Seed BOTH environments (live and test)
+    for (const environment of ['live', 'test']) {
+      console.log(`[SeedRoutes] Seeding sequences for ${environment} environment`);
+
+      try {
+        const response = await axios.post(
+          `${process.env.SUPABASE_URL}/functions/v1/sequences/seed`,
+          {
+            seedData: SEQUENCE_SEED_DATA  // Pass data from API layer
+          },
+          {
+            headers: {
+              Authorization: authHeader,
+              'x-tenant-id': tenantId,
+              'x-environment': environment,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+
+        const seededCount = response.data.seeded_count || 0;
+        const skippedCount = response.data.skipped_count || 0;
+        const sequences = response.data.sequences || [];
+
+        totalInserted += seededCount;
+        totalSkipped += skippedCount;
+
+        // Only add unique items
+        sequences.forEach((seq: string) => {
+          if (!allItems.includes(seq)) {
+            allItems.push(seq);
+          }
+        });
+
+        console.log(`[SeedRoutes] ${environment}: inserted=${seededCount}, skipped=${skippedCount}`);
+      } catch (envError: any) {
+        console.error(`[SeedRoutes] Error seeding ${environment}:`, envError.message);
+        errors.push(`${environment}: ${envError.response?.data?.error || envError.message}`);
       }
-    );
+    }
 
     return {
-      success: true,
+      success: errors.length === 0,
       category: 'sequences',
       displayName: 'Sequence Numbers',
-      inserted: response.data.seeded_count || response.data.data?.length || 0,
-      skipped: response.data.skipped_count || 0,
-      errors: [],
-      items: response.data.sequences || response.data.data?.map((s: any) => s.code) || []
+      inserted: totalInserted,
+      skipped: totalSkipped,
+      errors,
+      items: allItems
     };
   } catch (error: any) {
     console.error('[SeedRoutes] Error seeding sequences:', error.message);
