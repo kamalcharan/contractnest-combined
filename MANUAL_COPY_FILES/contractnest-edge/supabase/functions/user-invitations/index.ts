@@ -596,41 +596,34 @@ async function sendInvitationEmail(data: {
      // Extract domain from sender email for MSG91
      const senderDomain = senderEmail.split('@')[1];
 
-     // MSG91 Email API format - using recipients array structure
+     // MSG91 Email API format - body must be object with data and type
      const payload = {
-       recipients: [
-         {
-           to: [
-             {
-               email: data.to,
-               name: data.to.split('@')[0]
-             }
-           ],
-           variables: {
-             inviterName: data.inviterName,
-             workspaceName: data.workspaceName,
-             invitationLink: data.invitationLink,
-             customMessage: data.customMessage || ''
-           }
-         }
-       ],
        from: {
          email: senderEmail,
          name: senderName
        },
+       to: [
+         {
+           email: data.to,
+           name: data.to.split('@')[0]
+         }
+       ],
        domain: senderDomain,
        subject: `You're invited to join ${data.workspaceName}`,
-       body: generateEmailHTML(data),
-       bodyType: 'HTML'
+       body: {
+         data: generateEmailHTML(data),
+         type: 'HTML'
+       }
      };
 
      console.log('📤 Sending email via MSG91...');
      console.log('📧 Payload:', JSON.stringify({
        from: payload.from,
-       recipients: payload.recipients,
+       to: payload.to,
        domain: payload.domain,
        subject: payload.subject,
-       bodyLength: payload.body?.length || 0
+       bodyType: payload.body.type,
+       bodyLength: payload.body.data?.length || 0
      }));
 
      const response = await fetch('https://control.msg91.com/api/v5/email/send', {
