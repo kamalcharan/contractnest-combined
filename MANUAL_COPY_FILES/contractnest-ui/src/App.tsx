@@ -3,6 +3,7 @@ import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, Outlet } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { TenantContextProvider } from './context/TenantContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { MasterDataProvider } from './contexts/MasterDataContext';
@@ -541,13 +542,15 @@ const App: React.FC = () => {
         <ThemeProvider>
           <Router>
             <AuthProvider>
-              <QueryClientProvider client={queryClient}>
-                <QueryProvider> {/* ✅ NEW: Wrap with QueryProvider */}
-                  <MasterDataProvider>
-                    <AppContent />
-                  </MasterDataProvider>
-                </QueryProvider>
-              </QueryClientProvider>
+              <TenantContextProvider>
+                <QueryClientProvider client={queryClient}>
+                  <QueryProvider> {/* ✅ NEW: Wrap with QueryProvider */}
+                    <MasterDataProvider>
+                      <AppContent />
+                    </MasterDataProvider>
+                  </QueryProvider>
+                </QueryClientProvider>
+              </TenantContextProvider>
             </AuthProvider>
           </Router>
         </ThemeProvider>
