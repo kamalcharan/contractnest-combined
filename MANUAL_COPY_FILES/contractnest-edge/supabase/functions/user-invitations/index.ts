@@ -593,12 +593,16 @@ async function sendInvitationEmail(data: {
        return false;
      }
 
+     // Extract domain from sender email for MSG91
+     const senderDomain = senderEmail.split('@')[1];
+
      const payload = {
        from: {
          email: senderEmail,
          name: senderName
        },
-       to: [{ email: data.to }],
+       to: [{ email: data.to, name: data.to.split('@')[0] }],
+       domain: senderDomain,
        subject: `You're invited to join ${data.workspaceName}`,
        body: generateEmailHTML(data)
      };
@@ -607,6 +611,7 @@ async function sendInvitationEmail(data: {
      console.log('📧 Payload:', JSON.stringify({
        from: payload.from,
        to: payload.to,
+       domain: payload.domain,
        subject: payload.subject,
        bodyLength: payload.body?.length || 0
      }));
@@ -614,7 +619,8 @@ async function sendInvitationEmail(data: {
      const response = await fetch('https://control.msg91.com/api/v5/email/send', {
        method: 'POST',
        headers: {
-         'authkey': cleanAuthKey,
+         'Authkey': cleanAuthKey,
+         'accept': 'application/json',
          'Content-Type': 'application/json'
        },
        body: JSON.stringify(payload)
