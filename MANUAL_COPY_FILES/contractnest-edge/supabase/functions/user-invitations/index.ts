@@ -612,7 +612,7 @@ async function sendInvitationEmail(data: {
        subject: `You're invited to join ${data.workspaceName}`,
        body: {
          data: generateEmailHTML(data),
-         type: 'HTML'
+         type: 'text/html'
        }
      };
 
