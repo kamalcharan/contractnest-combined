@@ -1,0 +1,87 @@
+===============================================================
+ MANUAL COPY INSTRUCTIONS - GENERATE CLUSTERS N8N DIRECT CALL
+===============================================================
+Branch: claude/whatsapp-ai-bot-continue-01TakjNP7qH9etA761KsH37k
+Date: December 4, 2025
+Fix: 500 Error on /api/profiles/generate-clusters
+
+===============================================================
+ ROOT CAUSE
+===============================================================
+The generateClusters flow was going through the Edge Function
+which had a hardcoded wrong default URL (https://n8n.yourdomain.com).
+
+Meanwhile, enhanceProfile and scrapeWebsite were calling n8n
+DIRECTLY from the Express API and working perfectly.
+
+===============================================================
+ THE FIX
+===============================================================
+Updated generateClusters to follow the SAME pattern as
+enhanceProfile - call n8n webhook DIRECTLY from Express API.
+
+Flow BEFORE (broken):
+  Frontend -> Express API -> Edge Function -> n8n (wrong URL)
+
+Flow AFTER (fixed, matching enhanceProfile):
+  Frontend -> Express API -> n8n (correct URL via VaNiN8NConfig)
+
+===============================================================
+ FILES TO COPY
+===============================================================
+
+SUBMODULE: contractnest-api
+-------------------------------------------------------------
+1. src/config/VaNiN8NConfig.ts
+   -> Copy to: contractnest-api/src/config/VaNiN8NConfig.ts
+   Changes: Added GENERATE_SEMANTIC_CLUSTERS path and types
+
+2. src/services/groupsService.ts
+   -> Copy to: contractnest-api/src/services/groupsService.ts
+   Changes: generateClusters now calls n8n directly
+
+3. src/controllers/groupsController.ts
+   -> Copy to: contractnest-api/src/controllers/groupsController.ts
+   Changes: Pass environment header to generateClusters
+
+===============================================================
+ N8N WEBHOOK URL
+===============================================================
+Base URL: https://n8n.srv1096269.hstgr.cloud
+Webhook path: /webhook/generate-semantic-clusters (production)
+             /webhook-test/generate-semantic-clusters (test)
+
+The x-environment header determines which n8n webhook is called:
+- 'live' -> /webhook/ (production)
+- 'test' -> /webhook-test/ (test)
+
+===============================================================
+ NO EDGE FUNCTION CHANGES NEEDED
+===============================================================
+The Edge Function is NO LONGER used for generateClusters.
+The flow now goes directly from Express API to n8n.
+
+===============================================================
+ VERIFICATION CHECKLIST
+===============================================================
+After copying:
+[ ] VaNiN8NConfig.ts has GENERATE_SEMANTIC_CLUSTERS path
+[ ] groupsService.ts calls VaNiN8NConfig.getWebhookUrl('GENERATE_SEMANTIC_CLUSTERS')
+[ ] groupsController.ts passes environment to generateClusters
+[ ] Restart Express API server
+[ ] Test generate-clusters - should get AI response from n8n
+
+===============================================================
+ POWERSHELL COPY COMMANDS
+===============================================================
+# From contractnest-combined directory:
+
+# 1. Copy VaNiN8NConfig to API
+Copy-Item "VaNiN8NConfig.ts" -Destination "contractnest-api/src/config/VaNiN8NConfig.ts"
+
+# 2. Copy groupsService to API
+Copy-Item "MANUAL_COPY_FILES/groupsService.ts" -Destination "contractnest-api/src/services/groupsService.ts"
+
+# 3. Copy groupsController to API
+Copy-Item "MANUAL_COPY_FILES/groupsController.ts" -Destination "contractnest-api/src/controllers/groupsController.ts"
+
