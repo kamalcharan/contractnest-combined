@@ -812,5 +812,89 @@ export const groupsService = {
       });
       throw error;
     }
+  },
+
+  // ============================================
+  // CLUSTER CRUD OPERATIONS
+  // ============================================
+
+  /**
+   * Save semantic clusters for a membership
+   */
+  async saveClusters(
+    authToken: string,
+    request: { membership_id: string; clusters: any[] }
+  ): Promise<{ success: boolean; membership_id: string; clusters_saved: number }> {
+    try {
+      const response = await axios.post(
+        `${GROUPS_API_BASE}/profiles/clusters`,
+        request,
+        {
+          headers: getHeaders(authToken),
+          timeout: 30000
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error('Error in saveClusters:', error);
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        tags: { source: 'groupsService', action: 'saveClusters' },
+        extra: { membershipId: request.membership_id }
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Get semantic clusters for a membership
+   */
+  async getClusters(
+    authToken: string,
+    membershipId: string
+  ): Promise<{ success: boolean; membership_id: string; clusters: any[] }> {
+    try {
+      const response = await axios.get(
+        `${GROUPS_API_BASE}/profiles/clusters/${membershipId}`,
+        {
+          headers: getHeaders(authToken)
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error('Error in getClusters:', error);
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        tags: { source: 'groupsService', action: 'getClusters' },
+        extra: { membershipId }
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Delete semantic clusters for a membership
+   */
+  async deleteClusters(
+    authToken: string,
+    membershipId: string
+  ): Promise<{ success: boolean; membership_id: string }> {
+    try {
+      const response = await axios.delete(
+        `${GROUPS_API_BASE}/profiles/clusters/${membershipId}`,
+        {
+          headers: getHeaders(authToken)
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error('Error in deleteClusters:', error);
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        tags: { source: 'groupsService', action: 'deleteClusters' },
+        extra: { membershipId }
+      });
+      throw error;
+    }
   }
 };
