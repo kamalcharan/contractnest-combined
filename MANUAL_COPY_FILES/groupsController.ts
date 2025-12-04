@@ -518,7 +518,7 @@ export const generateClusters = async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Authorization header is required' });
     }
 
-    const { membership_id, profile_text, keywords, chapter } = req.body;
+    const { membership_id, profile_text, keywords } = req.body;
 
     if (!membership_id || !profile_text) {
       return res.status(400).json({
@@ -536,8 +536,7 @@ export const generateClusters = async (req: Request, res: Response) => {
     const result = await groupsService.generateClusters(authHeader, {
       membership_id,
       profile_text,
-      keywords,
-      chapter
+      keywords: keywords || []
     }, environment);
 
     return res.status(200).json(result);

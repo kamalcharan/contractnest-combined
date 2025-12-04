@@ -510,7 +510,6 @@ export const groupsService = {
         membership_id: request.membership_id,
         profile_text: request.profile_text,
         keywords: request.keywords,
-        chapter: request.chapter,
       };
 
       const response = await axios.post<N8NGenerateClustersResponse>(
