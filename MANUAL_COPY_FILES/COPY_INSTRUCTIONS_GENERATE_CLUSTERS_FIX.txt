@@ -3,21 +3,20 @@
 ═══════════════════════════════════════════════════
 Branch: claude/whatsapp-ai-bot-continue-01TakjNP7qH9etA761KsH37k
 Date: December 4, 2025
-Fix: 404 Error on /api/groups/profiles/generate-clusters
+Fix: 404 + 500 Errors on /api/groups/profiles/generate-clusters
 
 ═══════════════════════════════════════════════════
-🐛 ROOT CAUSE
+🐛 ROOT CAUSES FIXED
 ═══════════════════════════════════════════════════
-1. URL mismatch in serviceURLs.ts:
+1. 404 Error - URL mismatch in serviceURLs.ts:
    - Frontend called: /api/groups/profiles/generate-clusters
    - Backend had: /api/profiles/generate-clusters (no /groups prefix)
+   - FIX: Updated serviceURLs.ts to use consistent URLs
 
-2. Missing cluster routes in groupsRoutes.ts:
-   - Routes for saveClusters, getClusters, deleteClusters were not defined
-
-3. Missing cluster functions in controllers & services:
-   - Functions existed in src/groupsController.ts but not in src/controllers/groupsController.ts
-   - Same issue with groupsService.ts
+2. 500 Error - n8n webhook not configured:
+   - Edge Function was calling n8n webhook which doesn't exist
+   - n8n response was empty, causing JSON parse error
+   - FIX: Updated Edge Function to use STUB (mock data) for now
 
 ═══════════════════════════════════════════════════
 📦 FILES TO COPY
@@ -28,39 +27,42 @@ SUBMODULE: contractnest-ui
 1. src/services/serviceURLs.ts
    → Copy to: contractnest-ui/src/services/serviceURLs.ts
    Changes: Fixed PROFILES URLs to remove inconsistent /groups prefix
-   - GENERATE_CLUSTERS: '/api/profiles/generate-clusters' (was /api/groups/...)
-   - SAVE_CLUSTERS: '/api/profiles/clusters' (was /api/groups/...)
-   - GET_CLUSTERS: '/api/profiles/clusters/:id' (was /api/groups/...)
-   - DELETE_CLUSTERS: '/api/profiles/clusters/:id' (was /api/groups/...)
 
 SUBMODULE: contractnest-api
 ─────────────────────────────────────────────────
 2. src/routes/groupsRoutes.ts
    → Copy to: contractnest-api/src/routes/groupsRoutes.ts
-   Changes: Added 3 new routes:
-   - POST /profiles/clusters (saveClusters)
-   - GET /profiles/clusters/:membershipId (getClusters)
-   - DELETE /profiles/clusters/:membershipId (deleteClusters)
+   Changes: Added 3 new cluster routes
 
 3. src/controllers/groupsController.ts
    → Copy to: contractnest-api/src/controllers/groupsController.ts
-   Changes: Added 3 new controller functions:
-   - saveClusters()
-   - getClusters()
-   - deleteClusters()
+   Changes: Added cluster controller functions
 
 4. src/services/groupsService.ts
    → Copy to: contractnest-api/src/services/groupsService.ts
-   Changes: Added 3 new service methods:
-   - saveClusters()
-   - getClusters()
-   - deleteClusters()
+   Changes: Added cluster service methods
+
+SUBMODULE: contractnest-edge
+─────────────────────────────────────────────────
+5. supabase/functions/groups/index.ts
+   → Copy to: contractnest-edge/supabase/functions/groups/index.ts
+   Changes: Updated generate-clusters to use STUB (returns mock data)
+   ⚠️  IMPORTANT: After copying, you MUST redeploy the Edge Function!
+
+═══════════════════════════════════════════════════
+🚀 DEPLOY EDGE FUNCTION
+═══════════════════════════════════════════════════
+After copying index.ts, deploy to Supabase:
+
+cd contractnest-edge
+supabase functions deploy groups --project-ref uwyqhzotluikawcboldr
 
 ═══════════════════════════════════════════════════
 ✅ VERIFICATION CHECKLIST
 ═══════════════════════════════════════════════════
-After copying, verify:
+After copying & deploying:
 [ ] serviceURLs.ts has GENERATE_CLUSTERS: '/api/profiles/generate-clusters'
 [ ] groupsRoutes.ts has router.post('/profiles/clusters', ...)
-[ ] groupsController.ts has export const saveClusters = ...
-[ ] groupsService.ts has async saveClusters(...)
+[ ] Edge Function is redeployed
+[ ] Generate clusters no longer returns 404 or 500
+[ ] Clusters are generated (mock data with source: 'stub')
