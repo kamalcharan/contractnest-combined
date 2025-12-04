@@ -575,7 +575,20 @@ async function sendInvitationEmail(data: {
      const senderEmail = Deno.env.get('MSG91_SENDER_EMAIL');
      const senderName = Deno.env.get('MSG91_SENDER_NAME');
 
-     if (!authKey || !senderEmail || !senderName) {
+     // Debug: Check auth key format (don't log full key for security)
+     console.log('🔑 MSG91 Auth Key Debug:', {
+       exists: !!authKey,
+       length: authKey?.length || 0,
+       firstChars: authKey?.substring(0, 5) + '...',
+       hasWhitespace: authKey !== authKey?.trim(),
+       senderEmail: senderEmail,
+       senderName: senderName
+     });
+
+     // Trim whitespace from auth key just in case
+     const cleanAuthKey = authKey?.trim();
+
+     if (!cleanAuthKey || !senderEmail || !senderName) {
        console.error('MSG91 email configuration is incomplete');
        return false;
      }
@@ -601,7 +614,7 @@ async function sendInvitationEmail(data: {
      const response = await fetch('https://control.msg91.com/api/v5/email/send', {
        method: 'POST',
        headers: {
-         'authkey': authKey,
+         'authkey': cleanAuthKey,
          'Content-Type': 'application/json'
        },
        body: JSON.stringify(payload)
