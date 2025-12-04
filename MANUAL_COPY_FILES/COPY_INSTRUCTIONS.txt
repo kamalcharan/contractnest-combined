@@ -1,19 +1,19 @@
 ═══════════════════════════════════════════════════════════════════════════════
-MANUAL COPY INSTRUCTIONS - x-tenant-id Debug Logging
+MANUAL COPY INSTRUCTIONS - Email Invitation Fix
 ═══════════════════════════════════════════════════════════════════════════════
 
 Date: 2025-12-04
-Feature: Add debug logging for x-tenant-id header tracing in invitations
+Feature: Fix resendInvitation to actually send email/SMS/WhatsApp + debug logging
 
 ═══════════════════════════════════════════════════════════════════════════════
 FILES TO COPY
 ═══════════════════════════════════════════════════════════════════════════════
 
-1. Edge Function - User Invitations (Debug logging for incoming headers & MSG91)
+1. Edge Function - User Invitations (CRITICAL FIX + Debug logging)
    FROM: MANUAL_COPY_FILES\contractnest-edge\supabase\functions\user-invitations\index.ts
    TO:   contractnest-edge\supabase\functions\user-invitations\index.ts
 
-2. API Controller - Invitation Controller (Debug logging for forwarded headers)
+2. API Controller - Invitation Controller (Debug logging)
    FROM: MANUAL_COPY_FILES\contractnest-api\src\controllers\invitationController.ts
    TO:   contractnest-api\src\controllers\invitationController.ts
 
@@ -23,13 +23,32 @@ CHANGES SUMMARY
 
 FILE 1: contractnest-edge/supabase/functions/user-invitations/index.ts
 ------------------------------------------------------------------------
-- Added MSG91 email response debug logging
-- Added incoming request headers debug logging
-- Logs when x-tenant-id is missing
+BUG FIX - resendInvitation function (lines 932-1010):
+- Previously had "// TODO: Actually resend the invitation" and did nothing!
+- Now actually calls sendInvitationEmail(), sendInvitationSMS(), or sendInvitationWhatsApp()
+- Gets inviter profile and tenant details for personalized message
+- Updates metadata with delivery status
+
+Debug Logging Added:
+- MSG91 email response logging (lines 577-600)
+- Incoming request headers logging (lines 75-98)
+- Resend operation logging
 
 FILE 2: contractnest-api/src/controllers/invitationController.ts
 ------------------------------------------------------------------------
 - Added debug logging before forwarding to Edge Function
 - Logs headers being sent to Supabase
+
+═══════════════════════════════════════════════════════════════════════════════
+AFTER DEPLOYMENT - WHAT TO CHECK IN LOGS
+═══════════════════════════════════════════════════════════════════════════════
+
+When you click "Resend", you should now see:
+1. "📨 Resending invitation via: email"
+2. "📤 Sending email via MSG91..."
+3. "📧 Payload: {...}"
+4. "📬 MSG91 Response Status: 200"
+5. "📬 MSG91 Response: {...}"
+6. "📨 Resend result: SUCCESS"
 
 ═══════════════════════════════════════════════════════════════════════════════
