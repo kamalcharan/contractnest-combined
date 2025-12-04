@@ -1,0 +1,497 @@
+{
+  "name": "BBB-Search-With-Caching",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "search",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 300],
+      "id": "search-endpoint",
+      "name": "SearchEndpoint",
+      "webhookId": "bbb-search-webhook"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/query_cache",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query_normalized",
+              "value": "=eq.{{ $json.body.query.toLowerCase().trim() }}"
+            },
+            {
+              "name": "chapter",
+              "value": "=eq.{{ $json.body.chapter || 'Bhagyanagar' }}"
+            },
+            {
+              "name": "select",
+              "value": "*"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 300],
+      "id": "check-cache",
+      "name": "Check Cache",
+      "credentials": {
+        "supabaseApi": {
+          "id": "njvJJndsevBZdUns",
+          "name": "VaNi"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const cacheResults = $input.all();\nconst originalQuery = $node[\"SearchEndpoint\"].json.body.query;\nconst chapter = $node[\"SearchEndpoint\"].json.body.chapter || \"Bhagyanagar\";\n\n// Check if we have valid cache results\nif (cacheResults.length === 0 || !cacheResults[0].json || \n    (Array.isArray(cacheResults[0].json) && cacheResults[0].json.length === 0)) {\n  return {\n    cache_hit: false,\n    query_text: \"\",\n    original_query: originalQuery,\n    chapter: chapter\n  };\n}\n\n// Handle array response from Supabase\nlet cached = cacheResults[0].json;\nif (Array.isArray(cached)) {\n  if (cached.length === 0) {\n    return {\n      cache_hit: false,\n      query_text: \"\",\n      original_query: originalQuery,\n      chapter: chapter\n    };\n  }\n  cached = cached[0];\n}\n\n// Check if cache has expired\nif (cached.expires_at) {\n  const expiresAt = new Date(cached.expires_at);\n  if (expiresAt < new Date()) {\n    return {\n      cache_hit: false,\n      cache_expired: true,\n      original_query: originalQuery,\n      chapter: chapter\n    };\n  }\n}\n\nreturn {\n  cache_hit: true,\n  query_text: cached.query_text,\n  query_normalized: cached.query_normalized,\n  chapter: cached.chapter,\n  results: cached.results,\n  original_query: originalQuery,\n  created_at: cached.created_at,\n  hit_count: cached.hit_count || 0\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300],
+      "id": "cache-normalizer",
+      "name": "Cache Normalizer"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cache-hit-condition",
+              "leftValue": "={{ $json.cache_hit }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [660, 300],
+      "id": "cache-decision",
+      "name": "Cache Decision"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Return cached results with cache indicator\nconst cached = $input.item.json;\n\nreturn {\n  success: true,\n  query: cached.original_query,\n  from_cache: true,\n  cached_at: cached.created_at,\n  results_found: cached.results?.results_found || 0,\n  profiles: cached.results?.profiles || []\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 200],
+      "id": "return-cached",
+      "name": "Return Cached Results"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare query for OpenAI embedding\nconst query = $json.original_query || $node[\"SearchEndpoint\"].json.body.query;\n\nreturn {\n  model: \"text-embedding-ada-002\",\n  input: query\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 400],
+      "id": "prepare-query",
+      "name": "Prepare Query"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/embeddings",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "={{ $json.model }}"
+            },
+            {
+              "name": "input",
+              "value": "={{ $json.input }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 400],
+      "id": "openai-embed",
+      "name": "OpenAI Embed",
+      "credentials": {
+        "openAiApi": {
+          "id": "D7quOivJEzyKnfHS",
+          "name": "BBBwhatsapp"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const query = $node[\"SearchEndpoint\"].json.body.query;\nconst queryLower = query.toLowerCase().trim();\nconst queryWords = queryLower.split(/\\s+/);\n\n// Filter out common stop words\nconst stopWords = ['who', 'is', 'are', 'the', 'a', 'an', 'into', 'for', 'with', 'from', 'to', 'and', 'or'];\nconst meaningfulWords = queryWords.filter(word => !stopWords.includes(word));\n\n// Use first meaningful word for cluster search\nconst searchWord = meaningfulWords.length > 0 ? meaningfulWords[0] : queryWords[0];\n\nreturn {\n  original_query: query,\n  query_words: queryWords,\n  meaningful_words: meaningfulWords,\n  search_word: searchWord,\n  query_embedding: $input.item.json.data[0].embedding\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 400],
+      "id": "extract-embedding",
+      "name": "Extract Embedding"
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/semantic_clusters",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "select",
+              "value": "id,membership_id,primary_term,related_terms,category"
+            },
+            {
+              "name": "is_active",
+              "value": "eq.true"
+            },
+            {
+              "name": "primary_term",
+              "value": "=ilike.*{{ $json.search_word }}*"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1540, 400],
+      "id": "fetch-clusters",
+      "name": "Fetch Matching Clusters",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "njvJJndsevBZdUns",
+          "name": "VaNi"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const clusterResults = $input.all();\nconst embeddingData = $node[\"Extract Embedding\"].json;\n\n// If no clusters found, return empty enhancement\nif (!clusterResults || clusterResults.length === 0 || !clusterResults[0].json) {\n  return {\n    query_embedding: embeddingData.query_embedding,\n    has_clusters: false,\n    membership_ids: [],\n    boost_terms: []\n  };\n}\n\n// Handle array response\nlet clusters = clusterResults[0].json;\nif (!Array.isArray(clusters)) {\n  clusters = [clusters];\n}\n\nif (clusters.length === 0 || !clusters[0].id) {\n  return {\n    query_embedding: embeddingData.query_embedding,\n    has_clusters: false,\n    membership_ids: [],\n    boost_terms: []\n  };\n}\n\n// Extract membership IDs and boost terms\nconst membershipIds = new Set();\nconst boostTerms = new Set();\n\nclusters.forEach(cluster => {\n  if (cluster.membership_id) {\n    membershipIds.add(cluster.membership_id);\n  }\n  if (cluster.primary_term) {\n    boostTerms.add(cluster.primary_term.toLowerCase());\n  }\n  if (cluster.related_terms && Array.isArray(cluster.related_terms)) {\n    cluster.related_terms.forEach(term => {\n      if (term) boostTerms.add(term.toLowerCase());\n    });\n  }\n});\n\nreturn {\n  query_embedding: embeddingData.query_embedding,\n  has_clusters: membershipIds.size > 0,\n  membership_ids: Array.from(membershipIds),\n  boost_terms: Array.from(boostTerms)\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1760, 400],
+      "id": "process-clusters",
+      "name": "Process Cluster Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare vector search request\nconst embedding = $input.item.json.query_embedding;\n\nreturn {\n  query_embedding: embedding\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1980, 400],
+      "id": "prepare-search",
+      "name": "Prepare Search"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/rpc/vector_search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2200, 400],
+      "id": "vector-search",
+      "name": "Vector Search",
+      "credentials": {
+        "supabaseApi": {
+          "id": "njvJJndsevBZdUns",
+          "name": "VaNi"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const searchResults = $input.all();\nconst clusterData = $node[\"Process Cluster Data\"].json;\n\n// Handle empty results\nif (!searchResults || searchResults.length === 0) {\n  return [];\n}\n\n// Flatten array if needed\nlet results = searchResults[0].json;\nif (!Array.isArray(results)) {\n  results = [results];\n}\n\n// If no clusters, pass through unchanged\nif (!clusterData.has_clusters) {\n  return results.map(r => ({ json: r }));\n}\n\n// Apply boost to results\nconst boostedResults = results.map(profile => {\n  let finalScore = profile.similarity || 0;\n  let boostReason = [];\n  \n  // BOOST 1: Membership has semantic clusters for this query (+15%)\n  if (clusterData.membership_ids.includes(profile.membership_id)) {\n    finalScore = Math.min(1.0, finalScore + 0.15);\n    boostReason.push(\"cluster_match\");\n  }\n  \n  // BOOST 2: Raw data contains cluster-related terms (+5% per term, max +10%)\n  const rawDataLower = (profile.raw_data || profile.ai_enhanced_description || \"\").toLowerCase();\n  let textMatchBoost = 0;\n  clusterData.boost_terms.forEach(term => {\n    if (rawDataLower.includes(term)) {\n      textMatchBoost += 0.05;\n    }\n  });\n  textMatchBoost = Math.min(0.10, textMatchBoost);\n  finalScore = Math.min(1.0, finalScore + textMatchBoost);\n  \n  if (textMatchBoost > 0) {\n    boostReason.push(\"text_match\");\n  }\n  \n  return {\n    ...profile,\n    similarity_original: profile.similarity,\n    similarity: finalScore,\n    boost_reason: boostReason.join(\",\")\n  };\n});\n\nreturn boostedResults.map(r => ({ json: r }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2420, 400],
+      "id": "apply-boost",
+      "name": "Apply Cluster Boost"
+    },
+    {
+      "parameters": {
+        "jsCode": "const searchResults = $input.all();\nconst query = $node[\"SearchEndpoint\"].json.body.query;\nconst clusterData = $node[\"Process Cluster Data\"].json;\n\n// Dynamic threshold based on query length\nconst queryWords = query.trim().split(/\\s+/).length;\nlet SIMILARITY_THRESHOLD;\n\nif (queryWords <= 2) {\n  SIMILARITY_THRESHOLD = 0.75;\n} else if (queryWords <= 4) {\n  SIMILARITY_THRESHOLD = 0.72;\n} else {\n  SIMILARITY_THRESHOLD = 0.70;\n}\n\n// Filter by threshold and sort\nlet qualityResults = searchResults\n  .map(item => item.json)\n  .filter(item => item.similarity >= SIMILARITY_THRESHOLD)\n  .sort((a, b) => b.similarity - a.similarity)\n  .slice(0, 10); // Top 10 results\n\n// Format results\nconst formattedResults = qualityResults.map((item, index) => ({\n  rank: index + 1,\n  membership_id: item.membership_id,\n  chapter: item.chapter,\n  profile: item.raw_data || item.ai_enhanced_description,\n  similarity_score: `${(item.similarity * 100).toFixed(1)}%`,\n  original_score: item.similarity_original ? `${(item.similarity_original * 100).toFixed(1)}%` : null,\n  boost_applied: item.boost_reason || null\n}));\n\n// Return response\nif (formattedResults.length === 0) {\n  return {\n    success: true,\n    query: query,\n    results_found: 0,\n    cluster_enhancement: clusterData.has_clusters,\n    message: queryWords <= 2 \n      ? \"Query too short or ambiguous. Try using 2-3 words for better results.\"\n      : \"No matching profiles found. Try different keywords.\",\n    profiles: []\n  };\n}\n\nreturn {\n  success: true,\n  query: query,\n  results_found: formattedResults.length,\n  cluster_enhancement: clusterData.has_clusters,\n  profiles: formattedResults\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2640, 400],
+      "id": "format-results",
+      "name": "Format Results"
+    },
+    {
+      "parameters": {
+        "jsCode": "const query = $node[\"SearchEndpoint\"].json.body.query;\nconst chapter = $node[\"SearchEndpoint\"].json.body.chapter || \"Bhagyanagar\";\nconst embedding = $node[\"Process Cluster Data\"].json.query_embedding;\nconst formattedResults = $node[\"Format Results\"].json;\n\n// Prepare cache entry with 30-day expiry\nreturn {\n  query_text: query,\n  query_normalized: query.toLowerCase().trim(),\n  chapter: chapter,\n  embedding: embedding,\n  results: formattedResults,\n  hit_count: 1,\n  expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2860, 400],
+      "id": "prepare-cache",
+      "name": "Prepare Cache Data"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/query_cache?on_conflict=query_normalized,chapter",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "resolution=merge-duplicates"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3080, 400],
+      "id": "store-cache",
+      "name": "Store in Cache",
+      "credentials": {
+        "supabaseApi": {
+          "id": "njvJJndsevBZdUns",
+          "name": "VaNi"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Return the formatted search results\nconst searchResults = $node[\"Format Results\"].json;\n\nreturn {\n  ...searchResults,\n  from_cache: false\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [3300, 400],
+      "id": "return-results",
+      "name": "Return Search Results"
+    }
+  ],
+  "connections": {
+    "SearchEndpoint": {
+      "main": [
+        [
+          {
+            "node": "Check Cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Cache": {
+      "main": [
+        [
+          {
+            "node": "Cache Normalizer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cache Normalizer": {
+      "main": [
+        [
+          {
+            "node": "Cache Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cache Decision": {
+      "main": [
+        [
+          {
+            "node": "Return Cached Results",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Query": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Embed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Embed": {
+      "main": [
+        [
+          {
+            "node": "Extract Embedding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Embedding": {
+      "main": [
+        [
+          {
+            "node": "Fetch Matching Clusters",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Matching Clusters": {
+      "main": [
+        [
+          {
+            "node": "Process Cluster Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Cluster Data": {
+      "main": [
+        [
+          {
+            "node": "Prepare Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Search": {
+      "main": [
+        [
+          {
+            "node": "Vector Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vector Search": {
+      "main": [
+        [
+          {
+            "node": "Apply Cluster Boost",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Cluster Boost": {
+      "main": [
+        [
+          {
+            "node": "Format Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Results": {
+      "main": [
+        [
+          {
+            "node": "Prepare Cache Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Cache Data": {
+      "main": [
+        [
+          {
+            "node": "Store in Cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store in Cache": {
+      "main": [
+        [
+          {
+            "node": "Return Search Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "instanceId": "bbb-search-production"
+  },
+  "tags": []
+}
