@@ -534,15 +534,17 @@ export const groupsService = {
       const successResponse = n8nData as N8NGenerateClustersResponse & { status: 'success' };
       return {
         success: true,
-        clusters: successResponse.clusters.map(cluster => ({
+        clusters_generated: successResponse.clusters_generated,
+        clusters: successResponse.clusters.map((cluster, index) => ({
+          id: `temp-${request.membership_id}-${index}`,
+          membership_id: request.membership_id,
           primary_term: cluster.primary_term,
           related_terms: cluster.related_terms,
           category: cluster.category,
           confidence_score: cluster.confidence_score,
+          is_active: true,
+          created_at: new Date().toISOString(),
         })),
-        clusters_generated: successResponse.clusters_generated,
-        membership_id: successResponse.membership_id,
-        source: 'n8n',
       };
     } catch (error) {
       console.error('Error in generateClusters:', error);
