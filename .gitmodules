@@ -13,3 +13,6 @@
 [submodule "ContractNest-Mobile"]
 	path = ContractNest-Mobile
 	url = https://github.com/kamalcharan/ContractNest-Mobile.git
+[submodule "FamilyKnows"]
+	path = FamilyKnows
+	url = https://github.com/kamalcharan/FamilyKnows.git
