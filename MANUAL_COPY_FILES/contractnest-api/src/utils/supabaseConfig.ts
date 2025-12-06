@@ -3,6 +3,7 @@
 
 import * as dotenv from 'dotenv';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { Request } from 'express';
 import { captureException } from './sentry';
 import { getProduct, getDefaultProduct, ProductConfig } from '../config/products';
 
@@ -84,8 +85,9 @@ export const getSupabaseClientForProduct = (productCode: string): SupabaseClient
  * Get Supabase client from Express request (uses req.product)
  * Falls back to default product if not set
  */
-export const getSupabaseClientFromRequest = (req: Express.Request): SupabaseClient | null => {
-  const productCode = req.productCode || 'contractnest';
+export const getSupabaseClientFromRequest = (req: Request): SupabaseClient | null => {
+  // Access productCode from request (set by productContext middleware)
+  const productCode = (req as any).productCode || 'contractnest';
   return getSupabaseClientForProduct(productCode);
 };
 
