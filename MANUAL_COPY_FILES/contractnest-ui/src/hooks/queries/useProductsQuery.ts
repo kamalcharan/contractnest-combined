@@ -1,8 +1,9 @@
 // src/hooks/queries/useProductsQuery.ts
-// Hook to fetch products from the products edge function
+// Hook to fetch products via API (not edge function directly)
 
 import { useQuery } from '@tanstack/react-query';
-import { useAuth } from '../../context/AuthContext';
+import api from '@/services/api';
+import { API_ENDPOINTS } from '@/services/serviceURLs';
 
 export interface Product {
   id: string;
@@ -28,46 +29,25 @@ export const productKeys = {
 };
 
 /**
- * Fetch products from the edge function
+ * Fetch products via API layer (which proxies to edge function)
  */
-const fetchProducts = async (token: string, supabaseUrl: string): Promise<Product[]> => {
-  const response = await fetch(`${supabaseUrl}/functions/v1/products`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
-  });
+const fetchProducts = async (): Promise<Product[]> => {
+  const response = await api.get<ProductsResponse>(API_ENDPOINTS.PRODUCTS.LIST);
 
-  if (!response.ok) {
-    throw new Error(`Failed to fetch products: ${response.status}`);
-  }
-
-  const result: ProductsResponse = await response.json();
-
-  if (!result.success) {
+  if (!response.data.success) {
     throw new Error('Failed to fetch products');
   }
 
-  return result.data;
+  return response.data.data;
 };
 
 /**
  * Hook to get all active products
  */
 export const useProducts = () => {
-  const { user } = useAuth();
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-
   return useQuery({
     queryKey: productKeys.list(),
-    queryFn: async () => {
-      if (!user?.token) {
-        throw new Error('User not authenticated');
-      }
-      return fetchProducts(user.token, supabaseUrl);
-    },
-    enabled: !!user?.token && !!supabaseUrl,
+    queryFn: fetchProducts,
     staleTime: 5 * 60 * 1000, // 5 minutes - products don't change often
     gcTime: 30 * 60 * 1000, // 30 minutes cache
   });
