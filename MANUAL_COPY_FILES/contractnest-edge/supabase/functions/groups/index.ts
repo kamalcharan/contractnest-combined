@@ -1181,13 +1181,390 @@ console.log('='.repeat(60));
     }
 
     // ============================================
+    // CHAT ROUTES (VaNi AI Assistant)
+    // Session management, group activation, intent handling
+    // ============================================
+
+    // POST /chat/init - Get VaNi intro message with available groups
+    if (method === 'POST' && path === '/chat/init') {
+      try {
+        console.log('💬 Chat init - Getting VaNi intro message');
+
+        // Call the get_vani_intro_message() function
+        const { data, error } = await supabaseAdmin.rpc('get_vani_intro_message');
+
+        if (error) {
+          console.error('Error calling get_vani_intro_message:', error);
+          throw error;
+        }
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            ...data
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error('Error in POST /chat/init:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to get intro message', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // POST /chat/session - Get or create chat session
+    if (method === 'POST' && path === '/chat/session') {
+      try {
+        const requestData = await req.json();
+        const channel = requestData.channel || 'web';
+
+        console.log('💬 Chat session - Getting/creating session:', {
+          userId: tenantHeader,
+          channel
+        });
+
+        // Call get_or_create_session function
+        const { data, error } = await supabaseAdmin.rpc('get_or_create_session', {
+          p_user_id: tenantHeader || null,
+          p_tenant_id: tenantHeader || null,
+          p_channel: channel
+        });
+
+        if (error) {
+          console.error('Error calling get_or_create_session:', error);
+          throw error;
+        }
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            session: data
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error('Error in POST /chat/session:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to get/create session', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // POST /chat/activate - Activate group session with trigger phrase
+    if (method === 'POST' && path === '/chat/activate') {
+      try {
+        const requestData = await req.json();
+
+        if (!requestData.trigger_phrase && !requestData.group_id) {
+          return new Response(
+            JSON.stringify({ error: 'Either trigger_phrase or group_id is required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.log('💬 Chat activate - Activating group:', requestData);
+
+        let groupData = null;
+
+        // Find group by trigger phrase
+        if (requestData.trigger_phrase) {
+          const { data, error } = await supabaseAdmin.rpc('find_group_by_trigger', {
+            p_trigger_phrase: requestData.trigger_phrase
+          });
+
+          if (error) {
+            console.error('Error calling find_group_by_trigger:', error);
+            throw error;
+          }
+
+          if (data && data.length > 0) {
+            groupData = data[0];
+          }
+        } else if (requestData.group_id) {
+          // Direct group lookup
+          const { data, error } = await supabaseAdmin
+            .from('t_business_groups')
+            .select('id, group_name, group_type')
+            .eq('id', requestData.group_id)
+            .eq('is_active', true)
+            .single();
+
+          if (error && error.code !== 'PGRST116') throw error;
+
+          if (data) {
+            // Get chat config
+            const { data: chatConfig } = await supabaseAdmin.rpc('get_group_chat_config', {
+              p_group_id: data.id
+            });
+
+            groupData = {
+              group_id: data.id,
+              group_name: data.group_name,
+              group_type: data.group_type,
+              chat_config: chatConfig
+            };
+          }
+        }
+
+        if (!groupData) {
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: 'Group not found',
+              message: 'No group matches the provided trigger phrase or ID'
+            }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // If session_id provided, activate the group in that session
+        if (requestData.session_id) {
+          const { data: sessionData, error: sessionError } = await supabaseAdmin.rpc('activate_group_session', {
+            p_session_id: requestData.session_id,
+            p_group_id: groupData.group_id,
+            p_group_name: groupData.group_name
+          });
+
+          if (sessionError) {
+            console.error('Error activating session:', sessionError);
+          }
+        }
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            group_id: groupData.group_id,
+            group_name: groupData.group_name,
+            group_type: groupData.group_type,
+            chat_config: groupData.chat_config,
+            message: `Welcome to ${groupData.group_name}! How can I help you today?`
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error('Error in POST /chat/activate:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to activate group', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // POST /chat/intent - Set intent when user clicks a button
+    if (method === 'POST' && path === '/chat/intent') {
+      try {
+        const requestData = await req.json();
+
+        if (!requestData.session_id || !requestData.intent) {
+          return new Response(
+            JSON.stringify({ error: 'session_id and intent are required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.log('💬 Chat intent - Setting intent:', requestData);
+
+        const { data, error } = await supabaseAdmin.rpc('set_session_intent', {
+          p_session_id: requestData.session_id,
+          p_intent: requestData.intent,
+          p_prompt: requestData.prompt || null
+        });
+
+        if (error) {
+          console.error('Error calling set_session_intent:', error);
+          throw error;
+        }
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            session: data,
+            prompt: requestData.prompt || 'What are you looking for?'
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error('Error in POST /chat/intent:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to set intent', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // POST /chat/search - AI-powered search with caching (via n8n)
+    if (method === 'POST' && path === '/chat/search') {
+      try {
+        const requestData = await req.json();
+
+        if (!requestData.group_id || !requestData.query) {
+          return new Response(
+            JSON.stringify({ error: 'group_id and query are required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const limit = requestData.limit || 5;
+        const useCache = requestData.use_cache !== false;
+        const similarityThreshold = requestData.similarity_threshold || 0.7;
+
+        console.log('💬 Chat search:', {
+          groupId: requestData.group_id,
+          query: requestData.query,
+          useCache
+        });
+
+        // Get n8n webhook URL for search with caching
+        const n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL') || 'https://n8n.yourdomain.com';
+        const searchWebhookUrl = `${n8nWebhookUrl}/webhook/search-with-caching`;
+
+        // Call n8n which handles embedding generation and cached_vector_search
+        const n8nResponse = await fetch(searchWebhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            group_id: requestData.group_id,
+            query: requestData.query,
+            limit,
+            use_cache: useCache,
+            similarity_threshold: similarityThreshold,
+            session_id: requestData.session_id || null,
+            intent: requestData.intent || null
+          })
+        });
+
+        if (!n8nResponse.ok) {
+          const errorText = await n8nResponse.text();
+          console.error('n8n search failed:', errorText);
+          throw new Error(`n8n search failed: ${n8nResponse.status}`);
+        }
+
+        const n8nResult = await n8nResponse.json();
+
+        console.log('✅ Search completed:', {
+          resultsCount: n8nResult.results_count,
+          fromCache: n8nResult.from_cache
+        });
+
+        // Update session message count if session_id provided
+        if (requestData.session_id) {
+          await supabaseAdmin.rpc('increment_session_messages', {
+            p_session_id: requestData.session_id
+          });
+        }
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            query: requestData.query,
+            results_count: n8nResult.results_count || 0,
+            from_cache: n8nResult.from_cache || false,
+            cache_hit_count: n8nResult.cache_hit_count || 0,
+            results: n8nResult.results || []
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error('Error in POST /chat/search:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to search', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // GET /chat/session/:sessionId - Get session state
+    const getSessionMatch = path.match(/^\/chat\/session\/([a-f0-9-]{36})$/);
+    if (method === 'GET' && getSessionMatch) {
+      try {
+        const sessionId = getSessionMatch[1];
+
+        const { data, error } = await supabaseAdmin
+          .from('t_chat_sessions')
+          .select('*')
+          .eq('id', sessionId)
+          .single();
+
+        if (error) {
+          if (error.code === 'PGRST116') {
+            return new Response(
+              JSON.stringify({ success: false, error: 'Session not found' }),
+              { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          throw error;
+        }
+
+        // Check if session is expired
+        const isExpired = new Date(data.expires_at) < new Date();
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            session: data,
+            is_expired: isExpired
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error('Error in GET /chat/session/:id:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to get session', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // POST /chat/end - End chat session
+    if (method === 'POST' && path === '/chat/end') {
+      try {
+        const requestData = await req.json();
+
+        if (!requestData.session_id) {
+          return new Response(
+            JSON.stringify({ error: 'session_id is required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.log('💬 Chat end - Ending session:', requestData.session_id);
+
+        const { error } = await supabaseAdmin.rpc('end_chat_session', {
+          p_session_id: requestData.session_id
+        });
+
+        if (error) {
+          console.error('Error calling end_chat_session:', error);
+          throw error;
+        }
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: 'Session ended successfully'
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error('Error in POST /chat/end:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to end session', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // ============================================
     // No matching route found - 404
     // ============================================
     console.log('❌ No route matched:', { path, method });
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         success: false,
-        error: 'Endpoint not found', 
+        error: 'Endpoint not found',
         availableEndpoints: [
           'GET / (List groups)',
           'GET /:id (Get group)',
@@ -1207,7 +1584,14 @@ console.log('='.repeat(60));
           'POST /search (Search members)',
           'GET /admin/stats/:groupId (Admin stats)',
           'PUT /admin/memberships/:id/status (Update status)',
-          'GET /admin/activity-logs/:groupId (Activity logs)'
+          'GET /admin/activity-logs/:groupId (Activity logs)',
+          'POST /chat/init (VaNi intro message)',
+          'POST /chat/session (Get/create session)',
+          'POST /chat/activate (Activate group)',
+          'POST /chat/intent (Set intent)',
+          'POST /chat/search (AI search with cache)',
+          'GET /chat/session/:id (Get session)',
+          'POST /chat/end (End session)'
         ],
         requestedMethod: method,
         requestedPath: path,

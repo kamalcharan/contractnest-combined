@@ -154,4 +154,56 @@ router.put('/admin/memberships/:membershipId/status', groupsController.updateMem
  */
 router.get('/admin/activity-logs/:groupId', groupsController.getActivityLogs);
 
+// ============================================
+// CHAT ROUTES (VaNi AI Assistant)
+// ============================================
+
+/**
+ * POST /api/chat/init
+ * Get VaNi intro message with available groups
+ */
+router.post('/chat/init', groupsController.chatInit);
+
+/**
+ * POST /api/chat/session
+ * Get or create chat session
+ * Headers: x-tenant-id
+ * Body: { channel?: 'web' | 'whatsapp' | 'widget' }
+ */
+router.post('/chat/session', groupsController.chatGetSession);
+
+/**
+ * GET /api/chat/session/:sessionId
+ * Get chat session by ID
+ */
+router.get('/chat/session/:sessionId', groupsController.chatGetSessionById);
+
+/**
+ * POST /api/chat/activate
+ * Activate group in chat session
+ * Body: { trigger_phrase?: string, group_id?: string, session_id?: string }
+ */
+router.post('/chat/activate', groupsController.chatActivate);
+
+/**
+ * POST /api/chat/intent
+ * Set intent in chat session (when user clicks a button)
+ * Body: { session_id, intent, prompt? }
+ */
+router.post('/chat/intent', groupsController.chatSetIntent);
+
+/**
+ * POST /api/chat/search
+ * AI-powered search with caching
+ * Body: { group_id, query, session_id?, intent?, limit?, use_cache?, similarity_threshold? }
+ */
+router.post('/chat/search', groupsController.chatSearch);
+
+/**
+ * POST /api/chat/end
+ * End chat session
+ * Body: { session_id }
+ */
+router.post('/chat/end', groupsController.chatEnd);
+
 export default router;

@@ -950,3 +950,310 @@ export const deleteClusters = async (req: Request, res: Response) => {
     return res.status(status).json({ success: false, error: message });
   }
 };
+
+// ============================================
+// CHAT CONTROLLERS (VaNi AI Assistant)
+// ============================================
+
+/**
+ * POST /api/chat/init
+ * Get VaNi intro message with available groups
+ */
+export const chatInit = async (req: Request, res: Response) => {
+  try {
+    if (!validateSupabaseConfig('api_groups', 'chatInit')) {
+      return res.status(500).json({
+        error: 'Server configuration error: Missing Supabase configuration'
+      });
+    }
+
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Authorization header is required' });
+    }
+
+    const result = await groupsService.chatInit(authHeader);
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error in chatInit controller:', error.message);
+
+    captureException(error instanceof Error ? error : new Error(String(error)), {
+      tags: { source: 'api_groups', action: 'chatInit' },
+      status: error.response?.status
+    });
+
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.error || error.message || 'Failed to get chat intro';
+
+    return res.status(status).json({ success: false, error: message });
+  }
+};
+
+/**
+ * POST /api/chat/session
+ * Get or create chat session
+ */
+export const chatGetSession = async (req: Request, res: Response) => {
+  try {
+    if (!validateSupabaseConfig('api_groups', 'chatGetSession')) {
+      return res.status(500).json({
+        error: 'Server configuration error: Missing Supabase configuration'
+      });
+    }
+
+    const authHeader = req.headers.authorization;
+    const tenantId = req.headers['x-tenant-id'] as string;
+
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Authorization header is required' });
+    }
+
+    const { channel } = req.body;
+
+    const result = await groupsService.chatGetSession(authHeader, tenantId, channel);
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error in chatGetSession controller:', error.message);
+
+    captureException(error instanceof Error ? error : new Error(String(error)), {
+      tags: { source: 'api_groups', action: 'chatGetSession' },
+      status: error.response?.status
+    });
+
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.error || error.message || 'Failed to get/create session';
+
+    return res.status(status).json({ success: false, error: message });
+  }
+};
+
+/**
+ * GET /api/chat/session/:sessionId
+ * Get chat session by ID
+ */
+export const chatGetSessionById = async (req: Request, res: Response) => {
+  try {
+    if (!validateSupabaseConfig('api_groups', 'chatGetSessionById')) {
+      return res.status(500).json({
+        error: 'Server configuration error: Missing Supabase configuration'
+      });
+    }
+
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Authorization header is required' });
+    }
+
+    const { sessionId } = req.params;
+
+    if (!sessionId) {
+      return res.status(400).json({ error: 'sessionId is required' });
+    }
+
+    const result = await groupsService.chatGetSessionById(authHeader, sessionId);
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error in chatGetSessionById controller:', error.message);
+
+    captureException(error instanceof Error ? error : new Error(String(error)), {
+      tags: { source: 'api_groups', action: 'chatGetSessionById' },
+      status: error.response?.status
+    });
+
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.error || error.message || 'Failed to get session';
+
+    return res.status(status).json({ success: false, error: message });
+  }
+};
+
+/**
+ * POST /api/chat/activate
+ * Activate group in chat session
+ */
+export const chatActivate = async (req: Request, res: Response) => {
+  try {
+    if (!validateSupabaseConfig('api_groups', 'chatActivate')) {
+      return res.status(500).json({
+        error: 'Server configuration error: Missing Supabase configuration'
+      });
+    }
+
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Authorization header is required' });
+    }
+
+    const { trigger_phrase, group_id, session_id } = req.body;
+
+    if (!trigger_phrase && !group_id) {
+      return res.status(400).json({
+        error: 'Either trigger_phrase or group_id is required'
+      });
+    }
+
+    const result = await groupsService.chatActivate(authHeader, {
+      trigger_phrase,
+      group_id,
+      session_id
+    });
+
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error in chatActivate controller:', error.message);
+
+    captureException(error instanceof Error ? error : new Error(String(error)), {
+      tags: { source: 'api_groups', action: 'chatActivate' },
+      status: error.response?.status
+    });
+
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.error || error.message || 'Failed to activate group';
+
+    return res.status(status).json({ success: false, error: message });
+  }
+};
+
+/**
+ * POST /api/chat/intent
+ * Set intent in chat session
+ */
+export const chatSetIntent = async (req: Request, res: Response) => {
+  try {
+    if (!validateSupabaseConfig('api_groups', 'chatSetIntent')) {
+      return res.status(500).json({
+        error: 'Server configuration error: Missing Supabase configuration'
+      });
+    }
+
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Authorization header is required' });
+    }
+
+    const { session_id, intent, prompt } = req.body;
+
+    if (!session_id || !intent) {
+      return res.status(400).json({
+        error: 'session_id and intent are required'
+      });
+    }
+
+    const result = await groupsService.chatSetIntent(authHeader, {
+      session_id,
+      intent,
+      prompt
+    });
+
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error in chatSetIntent controller:', error.message);
+
+    captureException(error instanceof Error ? error : new Error(String(error)), {
+      tags: { source: 'api_groups', action: 'chatSetIntent' },
+      status: error.response?.status
+    });
+
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.error || error.message || 'Failed to set intent';
+
+    return res.status(status).json({ success: false, error: message });
+  }
+};
+
+/**
+ * POST /api/chat/search
+ * AI-powered search with caching
+ */
+export const chatSearch = async (req: Request, res: Response) => {
+  try {
+    if (!validateSupabaseConfig('api_groups', 'chatSearch')) {
+      return res.status(500).json({
+        error: 'Server configuration error: Missing Supabase configuration'
+      });
+    }
+
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Authorization header is required' });
+    }
+
+    const { group_id, query, session_id, intent, limit, use_cache, similarity_threshold } = req.body;
+
+    if (!group_id || !query) {
+      return res.status(400).json({
+        error: 'group_id and query are required'
+      });
+    }
+
+    const result = await groupsService.chatSearch(authHeader, {
+      group_id,
+      query,
+      session_id,
+      intent,
+      limit,
+      use_cache,
+      similarity_threshold
+    });
+
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error in chatSearch controller:', error.message);
+
+    captureException(error instanceof Error ? error : new Error(String(error)), {
+      tags: { source: 'api_groups', action: 'chatSearch' },
+      status: error.response?.status
+    });
+
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.error || error.message || 'Failed to search';
+
+    return res.status(status).json({ success: false, error: message });
+  }
+};
+
+/**
+ * POST /api/chat/end
+ * End chat session
+ */
+export const chatEnd = async (req: Request, res: Response) => {
+  try {
+    if (!validateSupabaseConfig('api_groups', 'chatEnd')) {
+      return res.status(500).json({
+        error: 'Server configuration error: Missing Supabase configuration'
+      });
+    }
+
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Authorization header is required' });
+    }
+
+    const { session_id } = req.body;
+
+    if (!session_id) {
+      return res.status(400).json({ error: 'session_id is required' });
+    }
+
+    const result = await groupsService.chatEnd(authHeader, session_id);
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error in chatEnd controller:', error.message);
+
+    captureException(error instanceof Error ? error : new Error(String(error)), {
+      tags: { source: 'api_groups', action: 'chatEnd' },
+      status: error.response?.status
+    });
+
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.error || error.message || 'Failed to end session';
+
+    return res.status(status).json({ success: false, error: message });
+  }
+};

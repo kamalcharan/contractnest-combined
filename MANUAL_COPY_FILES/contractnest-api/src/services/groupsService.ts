@@ -843,5 +843,213 @@ export const groupsService = {
       });
       throw error;
     }
+  },
+
+  // ============================================
+  // CHAT OPERATIONS (VaNi AI Assistant)
+  // ============================================
+
+  /**
+   * Get VaNi intro message with available groups
+   */
+  async chatInit(authToken: string): Promise<any> {
+    try {
+      const response = await axios.post(
+        `${GROUPS_API_BASE}/chat/init`,
+        {},
+        {
+          headers: getHeaders(authToken),
+          timeout: 10000
+        }
+      );
+
+      return response.data;
+    } catch (error: any) {
+      console.error('Error in chatInit:', error);
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        tags: { source: 'groupsService', action: 'chatInit' }
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Get or create chat session
+   */
+  async chatGetSession(
+    authToken: string,
+    tenantId: string,
+    channel?: string
+  ): Promise<any> {
+    try {
+      const response = await axios.post(
+        `${GROUPS_API_BASE}/chat/session`,
+        { channel: channel || 'web' },
+        {
+          headers: getHeaders(authToken, tenantId),
+          timeout: 10000
+        }
+      );
+
+      return response.data;
+    } catch (error: any) {
+      console.error('Error in chatGetSession:', error);
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        tags: { source: 'groupsService', action: 'chatGetSession' }
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Get session by ID
+   */
+  async chatGetSessionById(authToken: string, sessionId: string): Promise<any> {
+    try {
+      const response = await axios.get(
+        `${GROUPS_API_BASE}/chat/session/${sessionId}`,
+        {
+          headers: getHeaders(authToken),
+          timeout: 10000
+        }
+      );
+
+      return response.data;
+    } catch (error: any) {
+      console.error('Error in chatGetSessionById:', error);
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        tags: { source: 'groupsService', action: 'chatGetSessionById' },
+        extra: { sessionId }
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Activate group in chat session
+   */
+  async chatActivate(
+    authToken: string,
+    request: {
+      trigger_phrase?: string;
+      group_id?: string;
+      session_id?: string;
+    }
+  ): Promise<any> {
+    try {
+      const response = await axios.post(
+        `${GROUPS_API_BASE}/chat/activate`,
+        request,
+        {
+          headers: getHeaders(authToken),
+          timeout: 10000
+        }
+      );
+
+      return response.data;
+    } catch (error: any) {
+      console.error('Error in chatActivate:', error);
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        tags: { source: 'groupsService', action: 'chatActivate' },
+        extra: { request }
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Set intent in chat session
+   */
+  async chatSetIntent(
+    authToken: string,
+    request: {
+      session_id: string;
+      intent: string;
+      prompt?: string;
+    }
+  ): Promise<any> {
+    try {
+      const response = await axios.post(
+        `${GROUPS_API_BASE}/chat/intent`,
+        request,
+        {
+          headers: getHeaders(authToken),
+          timeout: 10000
+        }
+      );
+
+      return response.data;
+    } catch (error: any) {
+      console.error('Error in chatSetIntent:', error);
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        tags: { source: 'groupsService', action: 'chatSetIntent' },
+        extra: { sessionId: request.session_id, intent: request.intent }
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * AI-powered search with caching
+   */
+  async chatSearch(
+    authToken: string,
+    request: {
+      group_id: string;
+      query: string;
+      session_id?: string;
+      intent?: string;
+      limit?: number;
+      use_cache?: boolean;
+      similarity_threshold?: number;
+    }
+  ): Promise<any> {
+    try {
+      const response = await axios.post(
+        `${GROUPS_API_BASE}/chat/search`,
+        request,
+        {
+          headers: getHeaders(authToken),
+          timeout: 30000 // 30s for AI search
+        }
+      );
+
+      return response.data;
+    } catch (error: any) {
+      console.error('Error in chatSearch:', error);
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        tags: { source: 'groupsService', action: 'chatSearch' },
+        extra: { groupId: request.group_id, query: request.query }
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * End chat session
+   */
+  async chatEnd(
+    authToken: string,
+    sessionId: string
+  ): Promise<any> {
+    try {
+      const response = await axios.post(
+        `${GROUPS_API_BASE}/chat/end`,
+        { session_id: sessionId },
+        {
+          headers: getHeaders(authToken),
+          timeout: 10000
+        }
+      );
+
+      return response.data;
+    } catch (error: any) {
+      console.error('Error in chatEnd:', error);
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        tags: { source: 'groupsService', action: 'chatEnd' },
+        extra: { sessionId }
+      });
+      throw error;
+    }
   }
 };
