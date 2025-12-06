@@ -2,6 +2,11 @@
 
 Apply these changes to `contractnest-api/src/index.ts`:
 
+**IMPORTANT:** X-Product header is now REQUIRED for all API requests (except system endpoints like /health).
+- ContractNest UI sends `x-product: contractnest` automatically
+- FamilyKnows clients must send `x-product: familyknows`
+- System endpoints (/health, /api/system/*) skip product validation
+
 ---
 
 ## CHANGE 1: Add Import (around line 18-19)

@@ -26,15 +26,39 @@ declare global {
  * Product Context Middleware
  *
  * Reads X-Product header and attaches product configuration to request.
- * - If header is missing, defaults to 'contractnest'
+ * - If header is missing, returns 400 error (header is required)
  * - If header is invalid, returns 400 error
  * - If product is not configured (missing env vars), returns 503 error
  */
+// Paths that skip product validation (system endpoints)
+const SKIP_PRODUCT_VALIDATION_PATHS = [
+  '/health',
+  '/api/system/health',
+  '/api/system/maintenance',
+];
+
 export const setProductContext = (req: Request, res: Response, next: NextFunction) => {
   try {
+    // Skip product validation for system endpoints
+    const shouldSkip = SKIP_PRODUCT_VALIDATION_PATHS.some(path => req.path.startsWith(path));
+    if (shouldSkip) {
+      return next();
+    }
+
     // Get product code from header (case-insensitive)
     const productHeader = req.headers['x-product'] as string | undefined;
-    const productCode = productHeader?.toLowerCase() || DEFAULT_PRODUCT;
+
+    // X-Product header is required - no default assumption
+    if (!productHeader) {
+      return res.status(400).json({
+        error: 'Missing product header',
+        code: 'MISSING_PRODUCT_HEADER',
+        message: 'X-Product header is required',
+        valid_products: VALID_PRODUCTS,
+      });
+    }
+
+    const productCode = productHeader.toLowerCase();
 
     // Validate product code
     if (!isValidProduct(productCode)) {
