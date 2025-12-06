@@ -1,32 +1,62 @@
 ═══════════════════════════════════════════════════════════════════════════════
 MULTI-PRODUCT ARCHITECTURE - FILE COPY INSTRUCTIONS
 ═══════════════════════════════════════════════════════════════════════════════
-Date: 2024-12-05
-Feature: Multi-product architecture foundation (m_products table + env config)
+Date: 2024-12-06
+Feature: Multi-product architecture with smart API router
 ═══════════════════════════════════════════════════════════════════════════════
 
 FILES TO COPY:
 ─────────────────────────────────────────────────────────────────────────────────
 
-1. NEW FILE: m_products table migration
+1. NEW FILE: m_products table migration (ALREADY DONE - SKIP IF COMPLETED)
    FROM: MANUAL_COPY_FILES\contractnest-api\src\migrations\001_create_m_products.sql
    TO:   contractnest-api\src\migrations\001_create_m_products.sql
 
-   PURPOSE: Creates m_products table for product registry with seed data
-            for contractnest and familyknows products.
+   PURPOSE: Creates m_products table for product registry with seed data.
 
-2. MODIFIED FILE: Environment variables example
-   FROM: MANUAL_COPY_FILES\contractnest-api\.env.example
-   TO:   contractnest-api\.env.example
+2. NEW FILE: Products configuration
+   FROM: MANUAL_COPY_FILES\contractnest-api\src\config\products.ts
+   TO:   contractnest-api\src\config\products.ts
 
-   PURPOSE: Added FK_SUPABASE_URL and FK_SUPABASE_KEY for FamilyKnows product.
-            Reorganized file with clear sections.
+   PURPOSE: Product registry with env var mapping. Maps product codes to
+            environment variable prefixes (e.g., familyknows -> FK_).
+
+3. NEW FILE: Product context middleware
+   FROM: MANUAL_COPY_FILES\contractnest-api\src\middleware\productContext.ts
+   TO:   contractnest-api\src\middleware\productContext.ts
+
+   PURPOSE: Reads X-Product header and attaches product config to request.
+            Returns 400 for invalid products, 503 for unconfigured products.
+
+4. MODIFIED FILE: Supabase configuration (multi-product support)
+   FROM: MANUAL_COPY_FILES\contractnest-api\src\utils\supabaseConfig.ts
+   TO:   contractnest-api\src\utils\supabaseConfig.ts
+
+   PURPOSE: Adds getSupabaseClientForProduct() and related functions.
+            Maintains backward compatibility with existing code.
+
+5. MODIFIED FILE: Sentry utils (adds product context)
+   FROM: MANUAL_COPY_FILES\contractnest-api\src\utils\sentry.ts
+   TO:   contractnest-api\src\utils\sentry.ts
+
+   PURPOSE: Adds setProductContext() to tag Sentry errors with product.
+
+6. MANUAL CHANGES: index.ts modifications
+   READ:  MANUAL_COPY_FILES\contractnest-api\src\INDEX_CHANGES.md
+   APPLY: contractnest-api\src\index.ts
+
+   PURPOSE: Instructions for updating index.ts to use product context middleware.
 
 ═══════════════════════════════════════════════════════════════════════════════
 SUBMODULES AFFECTED: contractnest-api
 ═══════════════════════════════════════════════════════════════════════════════
 
+FOLDERS TO CREATE:
+- contractnest-api\src\config\       (if doesn't exist)
+- contractnest-api\src\migrations\   (if doesn't exist)
+
 NOTES:
-- The migrations folder may need to be created: contractnest-api\src\migrations\
-- Run the SQL migration on ContractNest Supabase to create m_products table
-- Update your local .env file with actual FK_SUPABASE_URL and FK_SUPABASE_KEY values
+- Read INDEX_CHANGES.md carefully for manual changes to index.ts
+- After changes, server should log product configuration status at startup
+- Test with X-Product: contractnest header first (default)
+- Test with X-Product: familyknows header once FK env vars are set
