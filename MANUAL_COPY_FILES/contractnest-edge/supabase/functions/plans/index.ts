@@ -123,19 +123,33 @@ serve(async (req) => {
           );
         }
         
+        // Get product name
+        let productName = null;
+        if (plan.product_code) {
+          const { data: product } = await supabase
+            .from('m_products')
+            .select('name')
+            .eq('code', plan.product_code)
+            .single();
+          if (product) {
+            productName = product.name;
+          }
+        }
+
         if (isEdit) {
           const editData = transformPlanForEdit(plan, activeVersion);
           const suggestedVersion = await getNextVersionNumber(supabase, planId);
           editData.next_version_number = suggestedVersion;
-          
+          editData.product_name = productName;
+
           return new Response(
             JSON.stringify(editData),
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
-        
+
         return new Response(
-          JSON.stringify({ ...plan, activeVersion }),
+          JSON.stringify({ ...plan, activeVersion, product_name: productName }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       } 
@@ -164,18 +178,35 @@ serve(async (req) => {
       
       if (error) throw error;
       
-      // Enrich with version info
+      // Enrich with version info and product names
       if (plans.length > 0) {
         const planIds = plans.map(p => p.plan_id);
         const { data: versions } = await supabase
           .from('t_bm_plan_version')
           .select('plan_id, version_id, version_number, is_active')
           .in('plan_id', planIds);
-          
+
+        // Get unique product codes and fetch product names
+        const uniqueProductCodes = [...new Set(plans.map(p => p.product_code).filter(Boolean))];
+        let productNameMap: Record<string, string> = {};
+
+        if (uniqueProductCodes.length > 0) {
+          const { data: products } = await supabase
+            .from('m_products')
+            .select('code, name')
+            .in('code', uniqueProductCodes);
+
+          if (products) {
+            products.forEach(p => {
+              productNameMap[p.code] = p.name;
+            });
+          }
+        }
+
         if (versions) {
           const versionCountMap: Record<string, number> = {};
           const activeVersionMap: Record<string, any> = {};
-          
+
           versions.forEach(v => {
             versionCountMap[v.plan_id] = (versionCountMap[v.plan_id] || 0) + 1;
             if (v.is_active) {
@@ -185,14 +216,15 @@ serve(async (req) => {
               };
             }
           });
-          
+
           const enrichedPlans = plans.map(plan => ({
             ...plan,
             version_count: versionCountMap[plan.plan_id] || 0,
             active_version: activeVersionMap[plan.plan_id] || null,
-            subscriber_count: 0
+            subscriber_count: 0,
+            product_name: productNameMap[plan.product_code] || null
           }));
-          
+
           return new Response(
             JSON.stringify(enrichedPlans),
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
