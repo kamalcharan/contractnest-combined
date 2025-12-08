@@ -77,6 +77,7 @@ import { ChatConversation, ChatMessage } from './vani/types/chat.types';
 import WebsiteIntegrationPage from './vani/pages/channels/WebsiteIntegrationPage';
 import ChatBotIntegrationPage from './vani/pages/channels/ChatBotIntegrationPage';
 import WhatsAppIntegrationPage from './vani/pages/channels/WhatsAppIntegrationPage';
+import VaNiChatPage from './pages/VaNi/channels/VaNiChatPage';
 
 // MISC Pages
 import { 
@@ -484,6 +485,7 @@ const AppContent: React.FC = () => {
             <Route path="channels/website" element={<WebsiteIntegrationPage />} />
             <Route path="channels/chatbot" element={<ChatBotIntegrationPage />} />
             <Route path="channels/whatsapp" element={<WhatsAppIntegrationPage />} />
+            <Route path="channels/chat" element={<VaNiChatPage />} />
             <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="analytics/cross-module" element={<AnalyticsPage />} />
             <Route path="webhooks" element={<WebhookManagementPage />} />
