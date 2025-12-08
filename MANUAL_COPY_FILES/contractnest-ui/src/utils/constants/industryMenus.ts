@@ -227,25 +227,16 @@ export const defaultMenuItems: MenuItem[] = [
 
       // Implementation Toolkit (Admin)
       {
-        id: 'vani-toolkit',
-        label: 'Implementation Toolkit',
-        icon: 'Wrench',
-        path: '/vani/toolkit/tenant-profiles',
-        hasSubmenu: true,
-        submenuItems: [
-          {
-            id: 'vani-toolkit-profiles',
-            label: 'Tenant Profiles',
-            icon: 'Users',
-            path: '/vani/toolkit/tenant-profiles'
-          },
-          {
-            id: 'vani-toolkit-bbb-admin',
-            label: 'BBB Admin',
-            icon: 'Shield',
-            path: '/vani/channels/bbb/admin'
-          }
-        ]
+        id: 'vani-toolkit-profiles',
+        label: 'Tenant Profiles',
+        icon: 'Users',
+        path: '/vani/toolkit/tenant-profiles'
+      },
+      {
+        id: 'vani-toolkit-bbb-admin',
+        label: 'BBB Admin',
+        icon: 'Shield',
+        path: '/vani/channels/bbb/admin'
       }
     ]
   },
