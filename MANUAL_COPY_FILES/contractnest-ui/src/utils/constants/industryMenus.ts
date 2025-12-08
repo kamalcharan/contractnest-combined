@@ -223,17 +223,24 @@ export const defaultMenuItems: MenuItem[] = [
         label: 'Cross-Module Analytics',
         icon: 'BarChart3',
         path: '/vani/analytics'
-      },
-
-      // Implementation Toolkit (Admin)
+      }
+    ]
+  },
+  {
+    id: 'implementation-toolkit',
+    label: 'Implementation Toolkit',
+    icon: 'Wrench',
+    path: '/vani/toolkit/tenant-profiles',
+    hasSubmenu: true,
+    submenuItems: [
       {
-        id: 'vani-toolkit-profiles',
+        id: 'toolkit-tenant-profiles',
         label: 'Tenant Profiles',
         icon: 'Users',
         path: '/vani/toolkit/tenant-profiles'
       },
       {
-        id: 'vani-toolkit-bbb-admin',
+        id: 'toolkit-bbb-admin',
         label: 'BBB Admin',
         icon: 'Shield',
         path: '/vani/channels/bbb/admin'
