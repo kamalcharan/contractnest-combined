@@ -227,27 +227,6 @@ export const defaultMenuItems: MenuItem[] = [
     ]
   },
   {
-    id: 'implementation-toolkit',
-    label: 'Implementation Toolkit',
-    icon: 'Wrench',
-    path: '/vani/tenant-profiles',
-    hasSubmenu: true,
-    submenuItems: [
-      {
-        id: 'toolkit-tenant-profiles',
-        label: 'Tenant Profiles',
-        icon: 'Users',
-        path: '/vani/tenant-profiles'
-      },
-      {
-        id: 'toolkit-bbb-admin',
-        label: 'BBB Admin',
-        icon: 'Shield',
-        path: '/vani/channels/bbb/admin'
-      }
-    ]
-  },
-  {
     id: 'catalog',
     label: 'Service Catalog',
     icon: 'Package',
@@ -376,6 +355,18 @@ export const defaultMenuItems: MenuItem[] = [
         label: 'Billing Dashboard',
         icon: 'CreditCard',
         path: '/settings/businessmodel/admin/billing'
+      },
+      {
+        id: 'tenant-profiles',
+        label: 'Tenant Profiles',
+        icon: 'Users',
+        path: '/vani/tenant-profiles'
+      },
+      {
+        id: 'bbb-admin',
+        label: 'BBB Admin',
+        icon: 'Shield',
+        path: '/vani/channels/bbb/admin'
       }
     ]
   },
