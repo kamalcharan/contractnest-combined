@@ -1631,6 +1631,204 @@ console.log('='.repeat(60));
     }
 
     // ============================================
+    // TENANT DASHBOARD ROUTES
+    // Stats, NLP Search, and Intents for admin dashboard
+    // ============================================
+
+    // POST /tenants/stats - Get tenant statistics
+    if (method === 'POST' && path === '/tenants/stats') {
+      try {
+        const requestData = await req.json();
+        const groupId = requestData.group_id || null;
+
+        console.log('📊 Getting tenant stats:', { groupId });
+
+        // Call the get_tenant_stats RPC function
+        const { data, error } = await supabaseAdmin.rpc('get_tenant_stats', {
+          p_group_id: groupId
+        });
+
+        if (error) {
+          console.error('Error calling get_tenant_stats:', error);
+          throw error;
+        }
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            stats: data
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error('Error in POST /tenants/stats:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to get tenant stats', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // POST /tenants/search - NLP-based tenant search
+    if (method === 'POST' && path === '/tenants/search') {
+      try {
+        const requestData = await req.json();
+
+        if (!requestData.query) {
+          return new Response(
+            JSON.stringify({ error: 'query is required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const query = requestData.query.toLowerCase();
+        const groupId = requestData.group_id || null;
+        const intentCode = requestData.intent_code || null;
+
+        console.log('🔍 Tenant search:', { query, groupId, intentCode });
+
+        // Build search query based on intent
+        let membershipsQuery = supabaseAdmin
+          .from('t_group_memberships')
+          .select(`
+            id,
+            tenant_id,
+            group_id,
+            profile_data,
+            status
+          `)
+          .eq('status', 'active')
+          .eq('is_active', true);
+
+        if (groupId) {
+          membershipsQuery = membershipsQuery.eq('group_id', groupId);
+        }
+
+        const { data: memberships, error: membershipsError } = await membershipsQuery.limit(100);
+
+        if (membershipsError) throw membershipsError;
+
+        // Get tenant profiles
+        const tenantIds = memberships.map(m => m.tenant_id).filter(Boolean);
+        let tenantProfiles: any[] = [];
+        let groupsMap: Record<string, string> = {};
+
+        if (tenantIds.length > 0) {
+          // Get profiles
+          const { data: profiles } = await supabaseAdmin
+            .from('t_tenant_profiles')
+            .select('tenant_id, business_name, business_email, city, industry_id, logo_url, profile_type')
+            .in('tenant_id', tenantIds);
+          tenantProfiles = profiles || [];
+
+          // Get group names
+          const groupIds = [...new Set(memberships.map(m => m.group_id))];
+          const { data: groups } = await supabaseAdmin
+            .from('t_business_groups')
+            .select('id, group_name')
+            .in('id', groupIds);
+
+          if (groups) {
+            groups.forEach(g => { groupsMap[g.id] = g.group_name; });
+          }
+        }
+
+        // Filter based on query and intent
+        let filteredResults = memberships.map(m => {
+          const profile = tenantProfiles.find(p => p.tenant_id === m.tenant_id);
+          return {
+            membership_id: m.id,
+            tenant_id: m.tenant_id,
+            group_id: m.group_id,
+            group_name: groupsMap[m.group_id] || '',
+            business_name: profile?.business_name || '',
+            business_email: profile?.business_email || '',
+            city: profile?.city || '',
+            industry: profile?.industry_id || '',
+            profile_snippet: m.profile_data?.ai_enhanced_description?.substring(0, 200) || '',
+            ai_enhanced_description: m.profile_data?.ai_enhanced_description || '',
+            approved_keywords: m.profile_data?.approved_keywords || [],
+            logo_url: profile?.logo_url || null,
+            profile_type: profile?.profile_type || 'unknown',
+            similarity: 0.8
+          };
+        });
+
+        // Apply intent-based filtering
+        if (intentCode === 'buyers' || query.includes('buyer')) {
+          filteredResults = filteredResults.filter(r => r.profile_type === 'buyer' || r.profile_type === 'both');
+        } else if (intentCode === 'sellers' || query.includes('seller')) {
+          filteredResults = filteredResults.filter(r => r.profile_type === 'seller' || r.profile_type === 'both');
+        } else if (intentCode !== 'all_tenants' && intentCode !== 'by_group') {
+          // Apply text search for other queries
+          filteredResults = filteredResults.filter(r => {
+            const searchText = `${r.business_name} ${r.industry} ${r.city} ${r.ai_enhanced_description} ${r.approved_keywords.join(' ')}`.toLowerCase();
+            return searchText.includes(query);
+          });
+        }
+
+        // Sort by relevance (mock score for now)
+        filteredResults = filteredResults.map((r, i) => ({
+          ...r,
+          similarity: 0.95 - (i * 0.02)
+        })).slice(0, 20);
+
+        console.log('✅ Search results:', filteredResults.length);
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            query: requestData.query,
+            results_count: filteredResults.length,
+            results: filteredResults
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error('Error in POST /tenants/search:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Tenant search failed', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // GET /intents - Get resolved intents
+    if (method === 'GET' && path === '/intents') {
+      try {
+        const groupId = url.searchParams.get('group_id');
+        const userRole = url.searchParams.get('user_role') || 'member';
+        const channel = url.searchParams.get('channel') || 'web';
+
+        console.log('📋 Getting intents:', { groupId, userRole, channel });
+
+        // Get intents from t_intent_definitions
+        const { data, error } = await supabaseAdmin
+          .from('t_intent_definitions')
+          .select('intent_code, intent_name, description, default_label, default_icon, default_prompt, intent_type')
+          .contains('default_roles', [userRole])
+          .contains('default_channels', [channel])
+          .eq('is_active', true);
+
+        if (error) throw error;
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            intents: data || []
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error('Error in GET /intents:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to get intents', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // ============================================
     // No matching route found - 404
     // ============================================
     console.log('❌ No route matched:', { path, method });
@@ -1664,7 +1862,10 @@ console.log('='.repeat(60));
           'POST /chat/intent (Set intent)',
           'POST /chat/search (AI search with cache)',
           'GET /chat/session/:id (Get session)',
-          'POST /chat/end (End session)'
+          'POST /chat/end (End session)',
+          'POST /tenants/stats (Get tenant statistics)',
+          'POST /tenants/search (NLP tenant search)',
+          'GET /intents (Get resolved intents)'
         ],
         requestedMethod: method,
         requestedPath: path,
