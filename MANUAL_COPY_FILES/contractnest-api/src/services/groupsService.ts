@@ -48,10 +48,20 @@ import type {
 // ============================================
 const GROUPS_API_BASE = `${SUPABASE_URL}/functions/v1/groups`;
 
+// Internal API key for API-to-Edge communication
+const INTERNAL_API_SECRET = process.env.INTERNAL_SIGNING_SECRET || '';
+
 const getHeaders = (authToken: string, tenantId?: string) => ({
   'Authorization': authToken,
   'Content-Type': 'application/json',
   ...(tenantId && { 'x-tenant-id': tenantId })
+});
+
+// Headers for chat routes that require internal key authentication
+const getChatHeaders = (authToken: string) => ({
+  'Authorization': authToken,
+  'Content-Type': 'application/json',
+  'x-internal-key': INTERNAL_API_SECRET
 });
 
 // ============================================
@@ -1012,7 +1022,7 @@ export const groupsService = {
       const response = await axios.post(
         `${GROUPS_API_BASE}/chat/init`,
         { channel },
-        { headers: getHeaders(authToken) }
+        { headers: getChatHeaders(authToken) }
       );
       return response.data;
     } catch (error) {
@@ -1035,7 +1045,7 @@ export const groupsService = {
       const response = await axios.post(
         `${GROUPS_API_BASE}/chat/session`,
         { channel },
-        { headers: getHeaders(authToken) }
+        { headers: getChatHeaders(authToken) }
       );
       return response.data;
     } catch (error) {
@@ -1057,7 +1067,7 @@ export const groupsService = {
     try {
       const response = await axios.get(
         `${GROUPS_API_BASE}/chat/session/${sessionId}`,
-        { headers: getHeaders(authToken) }
+        { headers: getChatHeaders(authToken) }
       );
       return response.data;
     } catch (error) {
@@ -1081,7 +1091,7 @@ export const groupsService = {
       const response = await axios.post(
         `${GROUPS_API_BASE}/chat/activate`,
         request,
-        { headers: getHeaders(authToken) }
+        { headers: getChatHeaders(authToken) }
       );
       return response.data;
     } catch (error) {
@@ -1104,7 +1114,7 @@ export const groupsService = {
       const response = await axios.post(
         `${GROUPS_API_BASE}/chat/intent`,
         request,
-        { headers: getHeaders(authToken) }
+        { headers: getChatHeaders(authToken) }
       );
       return response.data;
     } catch (error) {
@@ -1135,7 +1145,7 @@ export const groupsService = {
       const response = await axios.post(
         `${GROUPS_API_BASE}/chat/search`,
         request,
-        { headers: getHeaders(authToken) }
+        { headers: getChatHeaders(authToken) }
       );
       return response.data;
     } catch (error) {
@@ -1158,7 +1168,7 @@ export const groupsService = {
       const response = await axios.post(
         `${GROUPS_API_BASE}/chat/end`,
         { session_id: sessionId },
-        { headers: getHeaders(authToken) }
+        { headers: getChatHeaders(authToken) }
       );
       return response.data;
     } catch (error) {
