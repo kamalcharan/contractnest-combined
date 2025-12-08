@@ -141,9 +141,9 @@ export const defaultMenuItems: MenuItem[] = [
       },
       {
         id: 'vani-chat',
-        label: 'Customer Chat',
-        icon: 'MessageSquare',
-        path: '/vani/chat'
+        label: 'VaNi Chat',
+        icon: 'Search',
+        path: '/vani/channels/chat'
       },
       {
         id: 'vani-webhooks',
