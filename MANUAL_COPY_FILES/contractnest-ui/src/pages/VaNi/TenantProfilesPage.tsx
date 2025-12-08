@@ -49,7 +49,17 @@ interface SearchResult {
   ai_enhanced_description: string;
   approved_keywords: string[];
   similarity: number;
+  similarity_original?: number;  // Before cluster boost
+  boost_applied?: string | null; // 'cluster_match' if boosted
+  match_type?: string;           // 'vector' | 'fallback_text'
   logo_url?: string;
+}
+
+interface SearchMeta {
+  from_cache: boolean;
+  cache_hit_count: number;
+  search_type: string;
+  results_count: number;
 }
 
 interface IntentCard {
@@ -72,6 +82,7 @@ const TenantProfilesPage: React.FC = () => {
   // State
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searchMeta, setSearchMeta] = useState<SearchMeta | null>(null);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [stats, setStats] = useState<TenantStats | null>(null);
@@ -167,6 +178,12 @@ const TenantProfilesPage: React.FC = () => {
 
       if (data.success && data.results) {
         setSearchResults(data.results);
+        setSearchMeta({
+          from_cache: data.from_cache || false,
+          cache_hit_count: data.cache_hit_count || 0,
+          search_type: data.search_type || 'unknown',
+          results_count: data.results_count || data.results.length
+        });
         if (data.results.length === 0) {
           toast('No results found. Try different keywords.', {
             icon: '🔍',
@@ -175,6 +192,7 @@ const TenantProfilesPage: React.FC = () => {
         }
       } else {
         setSearchResults([]);
+        setSearchMeta(null);
         if (data.error) {
           toast.error(data.error, {
             style: { background: colors.semantic.error, color: '#FFF' }
@@ -241,6 +259,12 @@ const TenantProfilesPage: React.FC = () => {
 
       if (data.success && data.results) {
         setSearchResults(data.results);
+        setSearchMeta({
+          from_cache: data.from_cache || false,
+          cache_hit_count: data.cache_hit_count || 0,
+          search_type: data.search_type || 'unknown',
+          results_count: data.results_count || data.results.length
+        });
         if (data.results.length === 0) {
           toast('No results found for this group.', {
             icon: '🔍',
@@ -249,6 +273,7 @@ const TenantProfilesPage: React.FC = () => {
         }
       } else {
         setSearchResults([]);
+        setSearchMeta(null);
       }
     } catch (error: any) {
       console.error('Search error:', error);
@@ -256,6 +281,7 @@ const TenantProfilesPage: React.FC = () => {
         style: { background: colors.semantic.error, color: '#FFF' }
       });
       setSearchResults([]);
+      setSearchMeta(null);
     } finally {
       setIsSearching(false);
     }
@@ -551,6 +577,30 @@ const TenantProfilesPage: React.FC = () => {
                   </span>
                 )}
               </h2>
+              {/* Search metadata badges */}
+              {searchMeta && (
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  {/* Search type badge */}
+                  <span
+                    className="px-2 py-0.5 rounded text-xs font-medium"
+                    style={{
+                      backgroundColor: searchMeta.search_type === 'ai_vector' ? `${colors.semantic.success}15` : `${colors.semantic.warning}15`,
+                      color: searchMeta.search_type === 'ai_vector' ? colors.semantic.success : colors.semantic.warning
+                    }}
+                  >
+                    {searchMeta.search_type === 'ai_vector' ? 'AI Vector Search' : 'Text Search'}
+                  </span>
+                  {/* Cache badge */}
+                  {searchMeta.from_cache && (
+                    <span
+                      className="px-2 py-0.5 rounded text-xs font-medium"
+                      style={{ backgroundColor: `${colors.semantic.info}15`, color: colors.semantic.info }}
+                    >
+                      Cached (hit #{searchMeta.cache_hit_count})
+                    </span>
+                  )}
+                </div>
+              )}
               {selectedGroup && (
                 <p className="text-sm mt-1" style={{ color: colors.brand.primary }}>
                   Filtered by: {selectedGroup.name}
@@ -678,12 +728,27 @@ const TenantCard: React.FC<TenantCardProps> = ({ result, colors, onView }) => {
                 </div>
               </div>
 
-              {/* Relevance Score */}
-              <div
-                className="px-2 py-1 rounded text-xs font-medium"
-                style={{ backgroundColor: `${colors.semantic.success}15`, color: colors.semantic.success }}
-              >
-                {Math.round(result.similarity * 100)}%
+              {/* AI Confidence Score with Boost Indicator */}
+              <div className="flex flex-col items-end space-y-1">
+                <div
+                  className="px-2 py-1 rounded text-xs font-medium flex items-center space-x-1"
+                  style={{ backgroundColor: `${colors.semantic.success}15`, color: colors.semantic.success }}
+                >
+                  <span>{Math.round(result.similarity * 100)}%</span>
+                  {result.boost_applied && (
+                    <Sparkles className="w-3 h-3" title="Cluster boost applied" />
+                  )}
+                </div>
+                {/* Show boost breakdown if applicable */}
+                {result.boost_applied && result.similarity_original && (
+                  <span
+                    className="text-[10px] px-1.5 py-0.5 rounded"
+                    style={{ backgroundColor: `${colors.brand.primary}10`, color: colors.brand.primary }}
+                    title={`Original: ${Math.round(result.similarity_original * 100)}% + 15% cluster boost`}
+                  >
+                    +boost
+                  </span>
+                )}
               </div>
             </div>
 
