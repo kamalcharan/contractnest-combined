@@ -58,10 +58,12 @@ const getHeaders = (authToken: string, tenantId?: string) => ({
 });
 
 // Headers for chat routes that require internal key authentication
-const getChatHeaders = (authToken: string) => ({
+// Default to 'live' environment for n8n webhook routing
+const getChatHeaders = (authToken: string, environment: string = 'live') => ({
   'Authorization': authToken,
   'Content-Type': 'application/json',
-  'x-internal-key': INTERNAL_API_SECRET
+  'x-internal-key': INTERNAL_API_SECRET,
+  'x-environment': environment
 });
 
 // ============================================
