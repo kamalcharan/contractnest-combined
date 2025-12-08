@@ -3,8 +3,8 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTheme } from '../../../contexts/ThemeContext';
-import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui/card';
+import { useTheme } from '../../contexts/ThemeContext';
+import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import {
   Search,
   Users,
@@ -14,8 +14,8 @@ import {
   Sparkles,
   MessageSquare
 } from 'lucide-react';
-import groupsService from '../../../services/groupsService';
-import { useGroups } from '../../../hooks/queries/useGroupQueries';
+import groupsService from '../../services/groupsService';
+import { useGroups } from '../../hooks/queries/useGroupQueries';
 import toast from 'react-hot-toast';
 
 interface SearchResult {
