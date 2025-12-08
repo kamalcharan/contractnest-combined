@@ -1472,9 +1472,16 @@ console.log('='.repeat(60));
           useCache
         });
 
-        // Get n8n webhook URL for search with caching
-        const n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL') || 'https://n8n.yourdomain.com';
-        const searchWebhookUrl = `${n8nWebhookUrl}/webhook/search-with-caching`;
+        // Get n8n webhook URL for AI-powered search
+        // Uses the /search endpoint which handles:
+        // 1. Cache check  2. Query embedding generation  3. Semantic cluster lookup
+        // 4. Vector search  5. Cluster boost  6. Cache storage
+        const n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL') || 'https://n8n.srv1096269.hstgr.cloud';
+        const xEnvironment = req.headers.get('x-environment');
+        const webhookPrefix = xEnvironment === 'live' ? '/webhook' : '/webhook-test';
+        const searchWebhookUrl = `${n8nWebhookUrl}${webhookPrefix}/search`;
+
+        console.log('🔍 Calling n8n search:', searchWebhookUrl);
 
         // Call n8n which handles embedding generation and cached_vector_search
         const n8nResponse = await fetch(searchWebhookUrl, {
@@ -1487,7 +1494,8 @@ console.log('='.repeat(60));
             use_cache: useCache,
             similarity_threshold: similarityThreshold,
             session_id: requestData.session_id || null,
-            intent: requestData.intent || null
+            intent: requestData.intent || null,
+            channel: requestData.channel || 'web'
           })
         });
 

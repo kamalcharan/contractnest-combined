@@ -37,9 +37,13 @@ export const N8N_PATHS = {
   // Embedding Generation
   GENERATE_EMBEDDING: '/generate-embedding',
 
+  // AI-powered Search (with caching and semantic boost)
+  SEARCH: '/search',
+
+  // Semantic Clusters
+  GENERATE_CLUSTERS: '/generate-semantic-clusters',
+
   // Future webhooks (add as needed)
-  // GENERATE_CLUSTERS: '/generate-clusters',
-  // SEARCH_MEMBERS: '/search-members',
   // SEND_NOTIFICATION: '/send-notification',
 } as const;
 
