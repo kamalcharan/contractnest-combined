@@ -499,44 +499,50 @@ export const scrapeWebsite = async (req: Request, res: Response) => {
 
 /**
  * POST /api/profiles/generate-clusters
- * Generate semantic clusters
+ * Generate semantic clusters via n8n webhook
+ *
+ * Headers:
+ * - x-environment: 'live' | 'test' (for n8n routing)
  */
 export const generateClusters = async (req: Request, res: Response) => {
   try {
     if (!validateSupabaseConfig('api_groups', 'generateClusters')) {
-      return res.status(500).json({ 
-        error: 'Server configuration error: Missing Supabase configuration' 
+      return res.status(500).json({
+        error: 'Server configuration error: Missing Supabase configuration'
       });
     }
 
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader) {
       return res.status(401).json({ error: 'Authorization header is required' });
     }
-    
+
     const { membership_id, profile_text, keywords } = req.body;
-    
-    if (!membership_id || !profile_text || !keywords) {
-      return res.status(400).json({ 
-        error: 'membership_id, profile_text, and keywords are required' 
+
+    if (!membership_id || !profile_text) {
+      return res.status(400).json({
+        error: 'membership_id and profile_text are required'
       });
     }
-    
-    if (!Array.isArray(keywords)) {
+
+    if (keywords && !Array.isArray(keywords)) {
       return res.status(400).json({ error: 'keywords must be an array' });
     }
-    
+
+    // Get environment from header for n8n routing (live → production, test → test)
+    const environment = req.headers['x-environment'] as string | undefined;
+
     const result = await groupsService.generateClusters(authHeader, {
       membership_id,
       profile_text,
-      keywords
-    });
-    
+      keywords: keywords || []
+    }, environment);
+
     return res.status(200).json(result);
   } catch (error: any) {
     console.error('Error in generateClusters controller:', error.message);
-    
+
     captureException(error instanceof Error ? error : new Error(String(error)), {
       tags: { source: 'api_groups', action: 'generateClusters' },
       status: error.response?.status
@@ -544,7 +550,7 @@ export const generateClusters = async (req: Request, res: Response) => {
 
     const status = error.response?.status || 500;
     const message = error.response?.data?.error || error.message || 'Failed to generate clusters';
-    
+
     return res.status(status).json({ success: false, error: message });
   }
 };
@@ -620,41 +626,41 @@ export const saveProfile = async (req: Request, res: Response) => {
 
 /**
  * POST /api/search
- * Search group directory
+ * Search group directory (legacy - uses Edge Function)
  */
 export const search = async (req: Request, res: Response) => {
   try {
     if (!validateSupabaseConfig('api_groups', 'search')) {
-      return res.status(500).json({ 
-        error: 'Server configuration error: Missing Supabase configuration' 
+      return res.status(500).json({
+        error: 'Server configuration error: Missing Supabase configuration'
       });
     }
 
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader) {
       return res.status(401).json({ error: 'Authorization header is required' });
     }
-    
+
     const { group_id, query, limit, use_cache } = req.body;
-    
+
     if (!group_id || !query) {
-      return res.status(400).json({ 
-        error: 'group_id and query are required' 
+      return res.status(400).json({
+        error: 'group_id and query are required'
       });
     }
-    
+
     const result = await groupsService.search(authHeader, {
       group_id,
       query,
       limit,
       use_cache
     });
-    
+
     return res.status(200).json(result);
   } catch (error: any) {
     console.error('Error in search controller:', error.message);
-    
+
     captureException(error instanceof Error ? error : new Error(String(error)), {
       tags: { source: 'api_groups', action: 'search' },
       status: error.response?.status
@@ -662,7 +668,119 @@ export const search = async (req: Request, res: Response) => {
 
     const status = error.response?.status || 500;
     const message = error.response?.data?.error || error.message || 'Failed to search';
-    
+
+    return res.status(status).json({ success: false, error: message });
+  }
+};
+
+/**
+ * POST /api/ai-search
+ * AI-powered search via n8n - supports intent, scope, channel, RBAC
+ *
+ * Body:
+ * - group_id: string (required)
+ * - query: string (required)
+ * - scope: 'group' | 'tenant' | 'product' (optional, default 'group')
+ * - intent_code: string (optional, default 'search_offering')
+ * - user_role: 'admin' | 'member' | 'guest' (optional, default 'member')
+ * - channel: 'web' | 'mobile' | 'whatsapp' | 'chatbot' | 'api' (optional, default 'web')
+ * - limit: number (optional, default 10)
+ * - use_cache: boolean (optional, default true)
+ * - similarity_threshold: number (optional, default 0.7)
+ *
+ * Headers:
+ * - x-environment: 'live' | 'test' (for n8n routing)
+ */
+export const aiSearch = async (req: Request, res: Response) => {
+  try {
+    if (!validateSupabaseConfig('api_groups', 'aiSearch')) {
+      return res.status(500).json({
+        error: 'Server configuration error: Missing Supabase configuration'
+      });
+    }
+
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Authorization header is required' });
+    }
+
+    const {
+      group_id,
+      query,
+      scope,
+      intent_code,
+      user_role,
+      channel,
+      limit,
+      use_cache,
+      similarity_threshold
+    } = req.body;
+
+    if (!group_id || !query) {
+      return res.status(400).json({
+        error: 'group_id and query are required'
+      });
+    }
+
+    // Validate optional enum values
+    if (scope && !['group', 'tenant', 'product'].includes(scope)) {
+      return res.status(400).json({
+        error: 'scope must be "group", "tenant", or "product"'
+      });
+    }
+
+    if (user_role && !['admin', 'member', 'guest'].includes(user_role)) {
+      return res.status(400).json({
+        error: 'user_role must be "admin", "member", or "guest"'
+      });
+    }
+
+    if (channel && !['web', 'mobile', 'whatsapp', 'chatbot', 'api'].includes(channel)) {
+      return res.status(400).json({
+        error: 'channel must be "web", "mobile", "whatsapp", "chatbot", or "api"'
+      });
+    }
+
+    // Get environment from header for n8n routing (live → production, test → test)
+    const environment = req.headers['x-environment'] as string | undefined;
+
+    const result = await groupsService.aiSearch(
+      authHeader,
+      {
+        group_id,
+        query,
+        scope,
+        intent_code,
+        user_role,
+        channel,
+        limit,
+        use_cache,
+        similarity_threshold
+      },
+      environment
+    );
+
+    // Return appropriate status based on success/permission
+    if (!result.success) {
+      if (result.denial_reason) {
+        return res.status(403).json(result);
+      }
+      return res.status(500).json(result);
+    }
+
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error in aiSearch controller:', error.message);
+
+    captureException(error instanceof Error ? error : new Error(String(error)), {
+      tags: { source: 'api_groups', action: 'aiSearch' },
+      status: error.response?.status
+    });
+
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.error || error.message || 'Failed to perform AI search';
+
     return res.status(status).json({ success: false, error: message });
   }
 };
@@ -803,7 +921,7 @@ export const getActivityLogs = async (req: Request, res: Response) => {
     return res.status(200).json({ success: true, ...result });
   } catch (error: any) {
     console.error('Error in getActivityLogs controller:', error.message);
-
+    
     captureException(error instanceof Error ? error : new Error(String(error)), {
       tags: { source: 'api_groups', action: 'getActivityLogs' },
       status: error.response?.status
@@ -817,12 +935,12 @@ export const getActivityLogs = async (req: Request, res: Response) => {
 };
 
 // ============================================
-// CLUSTER CONTROLLERS
+// CLUSTER CRUD CONTROLLERS
 // ============================================
 
 /**
  * POST /api/profiles/clusters
- * Save semantic clusters
+ * Save semantic clusters for a membership
  */
 export const saveClusters = async (req: Request, res: Response) => {
   try {
@@ -840,9 +958,9 @@ export const saveClusters = async (req: Request, res: Response) => {
 
     const { membership_id, clusters } = req.body;
 
-    if (!membership_id || !clusters || !Array.isArray(clusters)) {
+    if (!membership_id || !clusters) {
       return res.status(400).json({
-        error: 'membership_id and clusters array are required'
+        error: 'membership_id and clusters are required'
       });
     }
 
@@ -880,19 +998,17 @@ export const getClusters = async (req: Request, res: Response) => {
     }
 
     const authHeader = req.headers.authorization;
+    const membershipId = req.params.membershipId;
 
     if (!authHeader) {
       return res.status(401).json({ error: 'Authorization header is required' });
     }
 
-    const { membershipId } = req.params;
-
     if (!membershipId) {
-      return res.status(400).json({ error: 'membershipId is required' });
+      return res.status(400).json({ error: 'membershipId parameter is required' });
     }
 
     const result = await groupsService.getClusters(authHeader, membershipId);
-
     return res.status(200).json(result);
   } catch (error: any) {
     console.error('Error in getClusters controller:', error.message);
@@ -911,7 +1027,7 @@ export const getClusters = async (req: Request, res: Response) => {
 
 /**
  * DELETE /api/profiles/clusters/:membershipId
- * Delete all clusters for a membership
+ * Delete semantic clusters for a membership
  */
 export const deleteClusters = async (req: Request, res: Response) => {
   try {
@@ -922,19 +1038,17 @@ export const deleteClusters = async (req: Request, res: Response) => {
     }
 
     const authHeader = req.headers.authorization;
+    const membershipId = req.params.membershipId;
 
     if (!authHeader) {
       return res.status(401).json({ error: 'Authorization header is required' });
     }
 
-    const { membershipId } = req.params;
-
     if (!membershipId) {
-      return res.status(400).json({ error: 'membershipId is required' });
+      return res.status(400).json({ error: 'membershipId parameter is required' });
     }
 
     const result = await groupsService.deleteClusters(authHeader, membershipId);
-
     return res.status(200).json(result);
   } catch (error: any) {
     console.error('Error in deleteClusters controller:', error.message);
@@ -952,12 +1066,13 @@ export const deleteClusters = async (req: Request, res: Response) => {
 };
 
 // ============================================
-// CHAT CONTROLLERS (VaNi AI Assistant)
+// CHAT SESSION CONTROLLERS
+// Proxy to Edge Function /chat/* endpoints
 // ============================================
 
 /**
  * POST /api/chat/init
- * Get VaNi intro message with available groups
+ * Initialize chat - get VaNi intro message
  */
 export const chatInit = async (req: Request, res: Response) => {
   try {
@@ -968,24 +1083,20 @@ export const chatInit = async (req: Request, res: Response) => {
     }
 
     const authHeader = req.headers.authorization;
-
     if (!authHeader) {
       return res.status(401).json({ error: 'Authorization header is required' });
     }
 
-    const result = await groupsService.chatInit(authHeader);
+    const { channel = 'web' } = req.body;
+    const result = await groupsService.chatInit(authHeader, channel);
     return res.status(200).json(result);
   } catch (error: any) {
     console.error('Error in chatInit controller:', error.message);
-
     captureException(error instanceof Error ? error : new Error(String(error)), {
-      tags: { source: 'api_groups', action: 'chatInit' },
-      status: error.response?.status
+      tags: { source: 'api_groups', action: 'chatInit' }
     });
-
     const status = error.response?.status || 500;
-    const message = error.response?.data?.error || error.message || 'Failed to get chat intro';
-
+    const message = error.response?.data?.error || error.message || 'Failed to initialize chat';
     return res.status(status).json({ success: false, error: message });
   }
 };
@@ -994,77 +1105,64 @@ export const chatInit = async (req: Request, res: Response) => {
  * POST /api/chat/session
  * Get or create chat session
  */
-export const chatGetSession = async (req: Request, res: Response) => {
+export const chatSession = async (req: Request, res: Response) => {
   try {
-    if (!validateSupabaseConfig('api_groups', 'chatGetSession')) {
+    if (!validateSupabaseConfig('api_groups', 'chatSession')) {
       return res.status(500).json({
         error: 'Server configuration error: Missing Supabase configuration'
       });
     }
 
     const authHeader = req.headers.authorization;
-    const tenantId = req.headers['x-tenant-id'] as string;
-
     if (!authHeader) {
       return res.status(401).json({ error: 'Authorization header is required' });
     }
 
-    const { channel } = req.body;
-
-    const result = await groupsService.chatGetSession(authHeader, tenantId, channel);
+    const { channel = 'web' } = req.body;
+    const result = await groupsService.chatSession(authHeader, channel);
     return res.status(200).json(result);
   } catch (error: any) {
-    console.error('Error in chatGetSession controller:', error.message);
-
+    console.error('Error in chatSession controller:', error.message);
     captureException(error instanceof Error ? error : new Error(String(error)), {
-      tags: { source: 'api_groups', action: 'chatGetSession' },
-      status: error.response?.status
+      tags: { source: 'api_groups', action: 'chatSession' }
     });
-
     const status = error.response?.status || 500;
     const message = error.response?.data?.error || error.message || 'Failed to get/create session';
-
     return res.status(status).json({ success: false, error: message });
   }
 };
 
 /**
  * GET /api/chat/session/:sessionId
- * Get chat session by ID
+ * Get session by ID
  */
-export const chatGetSessionById = async (req: Request, res: Response) => {
+export const chatSessionById = async (req: Request, res: Response) => {
   try {
-    if (!validateSupabaseConfig('api_groups', 'chatGetSessionById')) {
+    if (!validateSupabaseConfig('api_groups', 'chatSessionById')) {
       return res.status(500).json({
         error: 'Server configuration error: Missing Supabase configuration'
       });
     }
 
     const authHeader = req.headers.authorization;
-
     if (!authHeader) {
       return res.status(401).json({ error: 'Authorization header is required' });
     }
 
     const { sessionId } = req.params;
-
     if (!sessionId) {
-      return res.status(400).json({ error: 'sessionId is required' });
+      return res.status(400).json({ error: 'sessionId parameter is required' });
     }
 
-    const result = await groupsService.chatGetSessionById(authHeader, sessionId);
+    const result = await groupsService.chatSessionById(authHeader, sessionId);
     return res.status(200).json(result);
   } catch (error: any) {
-    console.error('Error in chatGetSessionById controller:', error.message);
-
+    console.error('Error in chatSessionById controller:', error.message);
     captureException(error instanceof Error ? error : new Error(String(error)), {
-      tags: { source: 'api_groups', action: 'chatGetSessionById' },
-      status: error.response?.status
+      tags: { source: 'api_groups', action: 'chatSessionById' }
     });
-
     const status = error.response?.status || 500;
     const message = error.response?.data?.error || error.message || 'Failed to get session';
-
     return res.status(status).json({ success: false, error: message });
   }
 };
@@ -1082,37 +1180,24 @@ export const chatActivate = async (req: Request, res: Response) => {
     }
 
     const authHeader = req.headers.authorization;
-
     if (!authHeader) {
       return res.status(401).json({ error: 'Authorization header is required' });
     }
 
     const { trigger_phrase, group_id, session_id } = req.body;
-
     if (!trigger_phrase && !group_id) {
-      return res.status(400).json({
-        error: 'Either trigger_phrase or group_id is required'
-      });
+      return res.status(400).json({ error: 'trigger_phrase or group_id is required' });
     }
 
-    const result = await groupsService.chatActivate(authHeader, {
-      trigger_phrase,
-      group_id,
-      session_id
-    });
-
+    const result = await groupsService.chatActivate(authHeader, { trigger_phrase, group_id, session_id });
     return res.status(200).json(result);
   } catch (error: any) {
     console.error('Error in chatActivate controller:', error.message);
-
     captureException(error instanceof Error ? error : new Error(String(error)), {
-      tags: { source: 'api_groups', action: 'chatActivate' },
-      status: error.response?.status
+      tags: { source: 'api_groups', action: 'chatActivate' }
     });
-
     const status = error.response?.status || 500;
     const message = error.response?.data?.error || error.message || 'Failed to activate group';
-
     return res.status(status).json({ success: false, error: message });
   }
 };
@@ -1121,46 +1206,33 @@ export const chatActivate = async (req: Request, res: Response) => {
  * POST /api/chat/intent
  * Set intent in chat session
  */
-export const chatSetIntent = async (req: Request, res: Response) => {
+export const chatIntent = async (req: Request, res: Response) => {
   try {
-    if (!validateSupabaseConfig('api_groups', 'chatSetIntent')) {
+    if (!validateSupabaseConfig('api_groups', 'chatIntent')) {
       return res.status(500).json({
         error: 'Server configuration error: Missing Supabase configuration'
       });
     }
 
     const authHeader = req.headers.authorization;
-
     if (!authHeader) {
       return res.status(401).json({ error: 'Authorization header is required' });
     }
 
     const { session_id, intent, prompt } = req.body;
-
     if (!session_id || !intent) {
-      return res.status(400).json({
-        error: 'session_id and intent are required'
-      });
+      return res.status(400).json({ error: 'session_id and intent are required' });
     }
 
-    const result = await groupsService.chatSetIntent(authHeader, {
-      session_id,
-      intent,
-      prompt
-    });
-
+    const result = await groupsService.chatIntent(authHeader, { session_id, intent, prompt });
     return res.status(200).json(result);
   } catch (error: any) {
-    console.error('Error in chatSetIntent controller:', error.message);
-
+    console.error('Error in chatIntent controller:', error.message);
     captureException(error instanceof Error ? error : new Error(String(error)), {
-      tags: { source: 'api_groups', action: 'chatSetIntent' },
-      status: error.response?.status
+      tags: { source: 'api_groups', action: 'chatIntent' }
     });
-
     const status = error.response?.status || 500;
     const message = error.response?.data?.error || error.message || 'Failed to set intent';
-
     return res.status(status).json({ success: false, error: message });
   }
 };
@@ -1178,17 +1250,13 @@ export const chatSearch = async (req: Request, res: Response) => {
     }
 
     const authHeader = req.headers.authorization;
-
     if (!authHeader) {
       return res.status(401).json({ error: 'Authorization header is required' });
     }
 
     const { group_id, query, session_id, intent, limit, use_cache, similarity_threshold } = req.body;
-
     if (!group_id || !query) {
-      return res.status(400).json({
-        error: 'group_id and query are required'
-      });
+      return res.status(400).json({ error: 'group_id and query are required' });
     }
 
     const result = await groupsService.chatSearch(authHeader, {
@@ -1200,19 +1268,14 @@ export const chatSearch = async (req: Request, res: Response) => {
       use_cache,
       similarity_threshold
     });
-
     return res.status(200).json(result);
   } catch (error: any) {
     console.error('Error in chatSearch controller:', error.message);
-
     captureException(error instanceof Error ? error : new Error(String(error)), {
-      tags: { source: 'api_groups', action: 'chatSearch' },
-      status: error.response?.status
+      tags: { source: 'api_groups', action: 'chatSearch' }
     });
-
     const status = error.response?.status || 500;
-    const message = error.response?.data?.error || error.message || 'Failed to search';
-
+    const message = error.response?.data?.error || error.message || 'Search failed';
     return res.status(status).json({ success: false, error: message });
   }
 };
@@ -1230,13 +1293,11 @@ export const chatEnd = async (req: Request, res: Response) => {
     }
 
     const authHeader = req.headers.authorization;
-
     if (!authHeader) {
       return res.status(401).json({ error: 'Authorization header is required' });
     }
 
     const { session_id } = req.body;
-
     if (!session_id) {
       return res.status(400).json({ error: 'session_id is required' });
     }
@@ -1245,15 +1306,11 @@ export const chatEnd = async (req: Request, res: Response) => {
     return res.status(200).json(result);
   } catch (error: any) {
     console.error('Error in chatEnd controller:', error.message);
-
     captureException(error instanceof Error ? error : new Error(String(error)), {
-      tags: { source: 'api_groups', action: 'chatEnd' },
-      status: error.response?.status
+      tags: { source: 'api_groups', action: 'chatEnd' }
     });
-
     const status = error.response?.status || 500;
     const message = error.response?.data?.error || error.message || 'Failed to end session';
-
     return res.status(status).json({ success: false, error: message });
   }
 };
