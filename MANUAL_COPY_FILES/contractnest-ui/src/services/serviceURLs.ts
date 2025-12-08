@@ -553,58 +553,35 @@ export const API_ENDPOINTS = {
       // Helper function for activity logs with filters
       ACTIVITY_LOGS_WITH_FILTERS: (groupId: string, filters: ActivityLogFilters = {}) => {
         const params = new URLSearchParams();
-        
+
         if (filters.activity_type) params.append('activity_type', filters.activity_type);
         if (filters.limit !== undefined) params.append('limit', filters.limit.toString());
         if (filters.offset !== undefined) params.append('offset', filters.offset.toString());
-        
+
         const queryString = params.toString();
-        return queryString 
-          ? `/api/admin/activity-logs/${groupId}?${queryString}` 
+        return queryString
+          ? `/api/admin/activity-logs/${groupId}?${queryString}`
           : `/api/admin/activity-logs/${groupId}`;
+      }
+    },
+
+    // Tenant Dashboard operations (NLP-based search)
+    TENANTS_DASHBOARD: {
+      STATS: '/api/tenants/stats',
+      SEARCH: '/api/tenants/search',
+      INTENTS: '/api/intents',
+
+      // Helper function for getting intents with filters
+      INTENTS_WITH_FILTERS: (groupId: string, userRole: string = 'admin', channel: string = 'web') => {
+        const params = new URLSearchParams();
+        params.append('group_id', groupId);
+        params.append('user_role', userRole);
+        params.append('channel', channel);
+        return `/api/intents?${params.toString()}`;
       }
     }
   },
-
-  // =================================================================
-  // CHAT ENDPOINTS - VaNi AI Assistant
-  // =================================================================
-  CHAT: {
-    // Session management
-    INIT: '/api/chat/init',
-    SESSION: '/api/chat/session',
-    SESSION_BY_ID: (sessionId: string) => `/api/chat/session/${sessionId}`,
-
-    // Group activation
-    ACTIVATE: '/api/chat/activate',
-
-    // Intent handling
-    INTENT: '/api/chat/intent',
-
-    // AI-powered search
-    SEARCH: '/api/chat/search',
-
-    // Session end
-    END: '/api/chat/end',
-
-    // Helper functions
-    helpers: {
-      // Build search request body
-      buildSearchRequest: (options: ChatSearchOptions) => ({
-        url: '/api/chat/search',
-        body: {
-          group_id: options.group_id,
-          query: options.query,
-          session_id: options.session_id,
-          intent: options.intent,
-          limit: options.limit || 5,
-          use_cache: options.use_cache !== false,
-          similarity_threshold: options.similarity_threshold || 0.7
-        }
-      })
-    }
-  },
-
+  
   // =================================================================
   // SERVICE CONTRACTS - BLOCK SYSTEM ENDPOINTS - PRESERVED
   // =================================================================
@@ -811,17 +788,6 @@ export type ActivityLogFilters = {
   offset?: number;
 };
 
-// Chat search options interface
-export type ChatSearchOptions = {
-  group_id: string;
-  query: string;
-  session_id?: string;
-  intent?: string;
-  limit?: number;
-  use_cache?: boolean;
-  similarity_threshold?: number;
-};
-
 // Pagination metadata interface
 export type PaginationMetadata = {
   current_page: number;
@@ -934,7 +900,6 @@ export type ContactEndpoints = typeof API_ENDPOINTS.CONTACTS;
 export type CatalogEndpoints = typeof API_ENDPOINTS.CATALOG;
 export type ServiceCatalogEndpoints = typeof API_ENDPOINTS.SERVICE_CATALOG;
 export type GroupsEndpoints = typeof API_ENDPOINTS.GROUPS;
-export type ChatEndpoints = typeof API_ENDPOINTS.CHAT;
 export type ServiceContractsEndpoints = typeof API_ENDPOINTS.SERVICE_CONTRACTS;
 export type BlockEndpoints = typeof API_ENDPOINTS.SERVICE_CONTRACTS.BLOCKS;
 export type ProductMasterDataEndpoints = typeof API_ENDPOINTS.PRODUCT_MASTERDATA;

@@ -224,4 +224,29 @@ router.put('/admin/memberships/:membershipId/status', groupsController.updateMem
  */
 router.get('/admin/activity-logs/:groupId', groupsController.getActivityLogs);
 
+// ============================================
+// TENANT ROUTES (Dashboard & NLP Search)
+// ============================================
+
+/**
+ * POST /api/tenants/stats
+ * Get tenant statistics for dashboard
+ * Body: { group_id?: string }
+ */
+router.post('/tenants/stats', groupsController.getTenantStats);
+
+/**
+ * POST /api/tenants/search
+ * NLP-based tenant search
+ * Body: { query: string, group_id?: string, intent_code?: string }
+ */
+router.post('/tenants/search', groupsController.searchTenants);
+
+/**
+ * GET /api/intents
+ * Get resolved intents for a group/user/channel
+ * Query params: ?group_id=xxx&user_role=admin&channel=web
+ */
+router.get('/intents', groupsController.getIntents);
+
 export default router;

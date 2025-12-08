@@ -494,3 +494,89 @@ export interface ApiErrorResponse {
 }
 
 export type ApiResponse<T = any> = ApiSuccessResponse<T> | ApiErrorResponse;
+
+// ============================================
+// TENANT STATS (Dashboard)
+// ============================================
+
+export interface TenantStatsRequest {
+  group_id?: string;
+}
+
+export interface GroupStat {
+  group_id: string;
+  group_name: string;
+  count: number;
+}
+
+export interface IndustryStat {
+  industry_id: string;
+  industry_name: string;
+  count: number;
+}
+
+export interface ProfileTypeStat {
+  buyers: number;
+  sellers: number;
+  both: number;
+}
+
+export interface TenantStats {
+  total_tenants: number;
+  by_group: GroupStat[];
+  by_industry: IndustryStat[];
+  by_profile_type: ProfileTypeStat;
+}
+
+export interface TenantStatsResponse {
+  success: boolean;
+  stats?: TenantStats;
+  error?: string;
+}
+
+// ============================================
+// INTENT DEFINITIONS
+// ============================================
+
+export interface IntentDefinition {
+  id: string;
+  intent_code: string;
+  intent_name: string;
+  description: string;
+  intent_type: 'search' | 'list' | 'filter' | 'action' | 'info';
+  default_label: string;
+  default_icon: string;
+  default_prompt: string;
+  requires_ai: boolean;
+  cacheable: boolean;
+  is_system: boolean;
+  default_roles: string[];
+  default_channels: string[];
+  default_scopes: string[];
+  default_max_results: number;
+  is_active: boolean;
+}
+
+export interface ResolvedIntent {
+  intent_code: string;
+  label: string;
+  icon: string;
+  prompt: string;
+  intent_type: string;
+  requires_ai: boolean;
+  cacheable: boolean;
+  max_results: number;
+  scopes: string[];
+}
+
+export interface GetIntentsRequest {
+  group_id: string;
+  user_role?: string;
+  channel?: string;
+}
+
+export interface GetIntentsResponse {
+  success: boolean;
+  intents?: ResolvedIntent[];
+  error?: string;
+}

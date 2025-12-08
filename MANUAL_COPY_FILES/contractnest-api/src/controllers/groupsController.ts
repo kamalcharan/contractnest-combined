@@ -1314,3 +1314,112 @@ export const chatEnd = async (req: Request, res: Response) => {
     return res.status(status).json({ success: false, error: message });
   }
 };
+
+// ============================================
+// TENANT STATS & INTENTS CONTROLLERS
+// ============================================
+
+/**
+ * POST /api/tenants/stats
+ * Get tenant statistics for dashboard
+ */
+export const getTenantStats = async (req: Request, res: Response) => {
+  try {
+    if (!validateSupabaseConfig('api_groups', 'getTenantStats')) {
+      return res.status(500).json({
+        error: 'Server configuration error: Missing Supabase configuration'
+      });
+    }
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Authorization header is required' });
+    }
+
+    const { group_id } = req.body;
+    const result = await groupsService.getTenantStats(authHeader, group_id);
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error in getTenantStats controller:', error.message);
+    captureException(error instanceof Error ? error : new Error(String(error)), {
+      tags: { source: 'api_groups', action: 'getTenantStats' }
+    });
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.error || error.message || 'Failed to get tenant stats';
+    return res.status(status).json({ success: false, error: message });
+  }
+};
+
+/**
+ * GET /api/intents
+ * Get resolved intents for a group/user/channel
+ */
+export const getIntents = async (req: Request, res: Response) => {
+  try {
+    if (!validateSupabaseConfig('api_groups', 'getIntents')) {
+      return res.status(500).json({
+        error: 'Server configuration error: Missing Supabase configuration'
+      });
+    }
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Authorization header is required' });
+    }
+
+    const group_id = req.query.group_id as string;
+    const user_role = req.query.user_role as string || 'member';
+    const channel = req.query.channel as string || 'web';
+
+    if (!group_id) {
+      return res.status(400).json({ error: 'group_id query parameter is required' });
+    }
+
+    const result = await groupsService.getIntents(authHeader, group_id, user_role, channel);
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error in getIntents controller:', error.message);
+    captureException(error instanceof Error ? error : new Error(String(error)), {
+      tags: { source: 'api_groups', action: 'getIntents' }
+    });
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.error || error.message || 'Failed to get intents';
+    return res.status(status).json({ success: false, error: message });
+  }
+};
+
+/**
+ * POST /api/tenants/search
+ * NLP-based tenant search
+ */
+export const searchTenants = async (req: Request, res: Response) => {
+  try {
+    if (!validateSupabaseConfig('api_groups', 'searchTenants')) {
+      return res.status(500).json({
+        error: 'Server configuration error: Missing Supabase configuration'
+      });
+    }
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Authorization header is required' });
+    }
+
+    const { query, group_id, intent_code } = req.body;
+
+    if (!query) {
+      return res.status(400).json({ error: 'query is required' });
+    }
+
+    const result = await groupsService.searchTenants(authHeader, query, group_id, intent_code);
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error in searchTenants controller:', error.message);
+    captureException(error instanceof Error ? error : new Error(String(error)), {
+      tags: { source: 'api_groups', action: 'searchTenants' }
+    });
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.error || error.message || 'Tenant search failed';
+    return res.status(status).json({ success: false, error: message });
+  }
+};

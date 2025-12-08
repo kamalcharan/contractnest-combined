@@ -1180,5 +1180,93 @@ export const groupsService = {
       });
       throw error;
     }
+  },
+
+  // ============================================
+  // TENANT STATS & INTENTS
+  // ============================================
+
+  /**
+   * Get tenant statistics for dashboard
+   * Calls Supabase RPC function get_tenant_stats
+   */
+  async getTenantStats(
+    authToken: string,
+    groupId?: string
+  ): Promise<any> {
+    try {
+      const response = await axios.post(
+        `${GROUPS_API_BASE}/tenants/stats`,
+        { group_id: groupId },
+        { headers: getHeaders(authToken) }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error in getTenantStats:', error);
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        tags: { source: 'groupsService', action: 'getTenantStats' },
+        extra: { groupId }
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Get resolved intents for a group/user/channel
+   * Returns intents filtered by RBAC
+   */
+  async getIntents(
+    authToken: string,
+    groupId: string,
+    userRole: string = 'member',
+    channel: string = 'web'
+  ): Promise<any> {
+    try {
+      const response = await axios.get(
+        `${GROUPS_API_BASE}/intents?group_id=${groupId}&user_role=${userRole}&channel=${channel}`,
+        { headers: getHeaders(authToken) }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error in getIntents:', error);
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        tags: { source: 'groupsService', action: 'getIntents' },
+        extra: { groupId, userRole, channel }
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * NLP-based tenant search
+   * Sends natural language query to AI for interpretation and search
+   */
+  async searchTenants(
+    authToken: string,
+    query: string,
+    groupId?: string,
+    intentCode?: string
+  ): Promise<any> {
+    try {
+      const response = await axios.post(
+        `${GROUPS_API_BASE}/tenants/search`,
+        {
+          query,
+          group_id: groupId,
+          intent_code: intentCode,
+          channel: 'web',
+          user_role: 'admin'
+        },
+        { headers: getChatHeaders(authToken) }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error in searchTenants:', error);
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        tags: { source: 'groupsService', action: 'searchTenants' },
+        extra: { query, groupId, intentCode }
+      });
+      throw error;
+    }
   }
 };
