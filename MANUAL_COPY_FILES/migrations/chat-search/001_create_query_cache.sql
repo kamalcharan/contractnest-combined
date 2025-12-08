@@ -198,7 +198,7 @@ CREATE POLICY "Users can read cache for their groups" ON public.t_query_cache
         EXISTS (
             SELECT 1 FROM public.t_group_memberships gm
             WHERE gm.group_id = t_query_cache.group_id
-              AND gm.tenant_id = auth.uid()::text
+              AND gm.tenant_id::text = auth.uid()::text
               AND gm.status = 'active'
         )
     );
