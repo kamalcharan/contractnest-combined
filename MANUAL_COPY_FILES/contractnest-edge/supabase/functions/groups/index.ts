@@ -1473,13 +1473,13 @@ console.log('='.repeat(60));
         });
 
         // Get n8n webhook URL for AI-powered search
-        // Uses the /search endpoint which handles:
+        // Uses the /ai-search endpoint which handles:
         // 1. Cache check  2. Query embedding generation  3. Semantic cluster lookup
         // 4. Vector search  5. Cluster boost  6. Cache storage
         const n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL') || 'https://n8n.srv1096269.hstgr.cloud';
         const xEnvironment = req.headers.get('x-environment');
         const webhookPrefix = xEnvironment === 'live' ? '/webhook' : '/webhook-test';
-        const searchWebhookUrl = `${n8nWebhookUrl}${webhookPrefix}/search`;
+        const searchWebhookUrl = `${n8nWebhookUrl}${webhookPrefix}/ai-search`;
 
         console.log('🔍 Calling n8n search:', searchWebhookUrl);
 
