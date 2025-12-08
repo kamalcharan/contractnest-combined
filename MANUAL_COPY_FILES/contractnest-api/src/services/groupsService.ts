@@ -42,14 +42,14 @@ import type {
 // ============================================
 const GROUPS_API_BASE = `${SUPABASE_URL}/functions/v1/groups`;
 
-// Internal API secret for API-to-Edge communication
+// Internal signing secret for API-to-Edge communication
 // This ensures requests to Edge Function are authenticated from our API server
-const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET || '';
+const INTERNAL_SIGNING_SECRET = process.env.INTERNAL_SIGNING_SECRET || '';
 
 const getHeaders = (authToken: string, tenantId?: string, environment?: string) => ({
   'Authorization': authToken,
   'Content-Type': 'application/json',
-  'x-internal-key': INTERNAL_API_SECRET,
+  'x-internal-key': INTERNAL_SIGNING_SECRET,
   ...(tenantId && { 'x-tenant-id': tenantId }),
   ...(environment && { 'x-environment': environment })
 });

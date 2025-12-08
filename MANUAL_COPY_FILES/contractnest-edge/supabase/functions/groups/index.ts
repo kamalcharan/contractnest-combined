@@ -19,7 +19,7 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-    const internalApiSecret = Deno.env.get('INTERNAL_API_SECRET') ?? '';
+    const internalApiSecret = Deno.env.get('INTERNAL_SIGNING_SECRET') ?? '';
 
     // Get headers
     const authHeader = req.headers.get('Authorization');
