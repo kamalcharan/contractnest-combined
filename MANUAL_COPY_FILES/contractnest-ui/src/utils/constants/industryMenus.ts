@@ -174,30 +174,6 @@ export const defaultMenuItems: MenuItem[] = [
         path: '/vani/templates'
       },
       {
-            id: 'vani-channels-whatsapp',
-            label: 'WhatsApp',
-            icon: 'MessageCircle',
-            path: '/vani/channels/whatsapp'
-          },
-          {
-            id: 'vani-channels-bot',
-            label: 'Bot',
-            icon: 'Bot',
-            path: '/vani/channels/chatbot'
-          },
-          {
-            id: 'vani-channels-website',
-            label: 'Website',
-            icon: 'Globe',
-            path: '/vani/channels/website'
-          },
-          {
-            id: 'vani-channels-chat',
-            label: 'VaNi Chat',
-            icon: 'Search',
-            path: '/vani/channels/chat'
-          },
-      {
         id: 'vani-channels',
         label: 'Channels',
         icon: 'Radio',
@@ -221,12 +197,6 @@ export const defaultMenuItems: MenuItem[] = [
             label: 'Website',
             icon: 'Globe',
             path: '/vani/channels/website'
-          },
-          {
-            id: 'vani-channels-chat',
-            label: 'VaNi Chat',
-            icon: 'Search',
-            path: '/vani/channels/chat'
           }
         ]
       },
