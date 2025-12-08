@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useGroups } from '../../hooks/queries/useGroupQueries';
 import { API_ENDPOINTS } from '../../services/serviceURLs';
+import api from '../../services/api';
 import toast from 'react-hot-toast';
 
 // ============================================
@@ -121,21 +122,12 @@ const TenantProfilesPage: React.FC = () => {
   const fetchStats = async () => {
     setIsLoadingStats(true);
     try {
-      const token = localStorage.getItem('authToken') || '';
-      const response = await fetch(API_ENDPOINTS.GROUPS.TENANTS_DASHBOARD.STATS, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ group_id: defaultGroupId })
+      const response = await api.post(API_ENDPOINTS.GROUPS.TENANTS_DASHBOARD.STATS, {
+        group_id: defaultGroupId
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.stats) {
-          setStats(data.stats);
-        }
+      if (response.data?.success && response.data?.stats) {
+        setStats(response.data.stats);
       }
     } catch (error) {
       console.error('Failed to fetch stats:', error);
@@ -159,24 +151,14 @@ const TenantProfilesPage: React.FC = () => {
 
     try {
       console.log('🔍 NLP Search:', query);
-      const token = localStorage.getItem('authToken') || '';
 
-      const response = await fetch(API_ENDPOINTS.GROUPS.TENANTS_DASHBOARD.SEARCH, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'x-internal-key': 'internal',
-          'x-environment': 'live'
-        },
-        body: JSON.stringify({
-          query,
-          group_id: defaultGroupId,
-          intent_code: intentCode
-        })
+      const response = await api.post(API_ENDPOINTS.GROUPS.TENANTS_DASHBOARD.SEARCH, {
+        query,
+        group_id: defaultGroupId,
+        intent_code: intentCode
       });
 
-      const data = await response.json();
+      const data = response.data;
       console.log('🔍 Search results:', data);
 
       if (data.success && data.results) {
@@ -197,7 +179,7 @@ const TenantProfilesPage: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Search error:', error);
-      toast.error(error.message || 'Search failed', {
+      toast.error(error.response?.data?.error || error.message || 'Search failed', {
         style: { background: colors.semantic.error, color: '#FFF' }
       });
       setSearchResults([]);
