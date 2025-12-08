@@ -141,9 +141,9 @@ export const defaultMenuItems: MenuItem[] = [
       },
       {
         id: 'vani-chat',
-        label: 'VaNi Chat',
-        icon: 'Search',
-        path: '/vani/channels/chat'
+        label: 'Customer Chat',
+        icon: 'MessageSquare',
+        path: '/vani/chat'
       },
       {
         id: 'vani-webhooks',
@@ -173,6 +173,24 @@ export const defaultMenuItems: MenuItem[] = [
         icon: 'FileText',
         path: '/vani/templates'
       },
+      {
+            id: 'vani-channels-whatsapp',
+            label: 'WhatsApp',
+            icon: 'MessageCircle',
+            path: '/vani/channels/whatsapp'
+          },
+          {
+            id: 'vani-channels-bot',
+            label: 'Bot',
+            icon: 'Bot',
+            path: '/vani/channels/chatbot'
+          },
+          {
+            id: 'vani-channels-website',
+            label: 'Website',
+            icon: 'Globe',
+            path: '/vani/channels/website'
+          },
       {
         id: 'vani-channels',
         label: 'Channels',
@@ -205,6 +223,29 @@ export const defaultMenuItems: MenuItem[] = [
         label: 'Cross-Module Analytics',
         icon: 'BarChart3',
         path: '/vani/analytics'
+      },
+
+      // Implementation Toolkit (Admin)
+      {
+        id: 'vani-toolkit',
+        label: 'Implementation Toolkit',
+        icon: 'Wrench',
+        path: '/vani/toolkit/tenant-profiles',
+        hasSubmenu: true,
+        submenuItems: [
+          {
+            id: 'vani-toolkit-profiles',
+            label: 'Tenant Profiles',
+            icon: 'Users',
+            path: '/vani/toolkit/tenant-profiles'
+          },
+          {
+            id: 'vani-toolkit-bbb-admin',
+            label: 'BBB Admin',
+            icon: 'Shield',
+            path: '/vani/channels/bbb/admin'
+          }
+        ]
       }
     ]
   },

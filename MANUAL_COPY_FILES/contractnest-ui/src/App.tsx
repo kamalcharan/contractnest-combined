@@ -52,7 +52,8 @@ import UserProfileStep from '@/pages/onboarding/steps/UserProfileStep';
 import ThemeSelectionStep from '@/pages/onboarding/steps/ThemeSelectionStep';
 import BusinessBasicStep from '@/pages/onboarding/steps/BusinessBasicStep';
 import BusinessBrandingStep from '@/pages/onboarding/steps/BusinessBrandingStep';     
-import BusinessPreferencesStep from '@/pages/onboarding/steps/BusinessPreferencesStep'; 
+import BusinessPreferencesStep from '@/pages/onboarding/steps/BusinessPreferencesStep';
+import SequenceNumbersStep from '@/pages/onboarding/steps/SequenceNumbersStep';
 
 
 //VaNi Pages
@@ -77,7 +78,13 @@ import { ChatConversation, ChatMessage } from './vani/types/chat.types';
 import WebsiteIntegrationPage from './vani/pages/channels/WebsiteIntegrationPage';
 import ChatBotIntegrationPage from './vani/pages/channels/ChatBotIntegrationPage';
 import WhatsAppIntegrationPage from './vani/pages/channels/WhatsAppIntegrationPage';
-import VaNiChatPage from './pages/VaNi/channels/VaNiChatPage';
+
+// ✅ NEW: BBB Directory Pages
+import BBBProfileOnboardingPage from './pages/VaNi/channels/BBBProfileOnboardingPage';
+import BBBAdminDashboard from './pages/VaNi/channels/BBBAdminDashboard';
+
+// ✅ Implementation Toolkit
+import TenantProfilesPage from './pages/VaNi/toolkit/TenantProfilesPage';
 
 // MISC Pages
 import { 
@@ -91,6 +98,7 @@ import {
   ApiServerDownPage
 } from './pages/misc';
 import TaxSettingsPage from './pages/settings/TaxSettings';
+import SequencingSettingsPage from './pages/settings/sequencing';
 
 // Main pages
 import Dashboard from './pages/Dashboard';
@@ -312,7 +320,8 @@ const AppContent: React.FC = () => {
  <Route path="/onboarding/theme-selection" element={<ThemeSelectionStep />} />
  <Route path="/onboarding/business-basic" element={<BusinessBasicStep />} />
 <Route path="business-branding" element={<BusinessBrandingStep />} />              
-<Route path="business-preferences" element={<BusinessPreferencesStep />} />       
+<Route path="business-preferences" element={<BusinessPreferencesStep />} />
+<Route path="sequence-numbers" element={<SequenceNumbersStep />} />
   <Route path="master-data" element={<div>Master Data Step (Coming Soon)</div>} />
   <Route path="team-invite" element={<div>Team Invite Step (Coming Soon)</div>} />
   <Route path="product-tour" element={<div>Product Tour Step (Coming Soon)</div>} />
@@ -416,7 +425,10 @@ const AppContent: React.FC = () => {
 
             {/* tax-settings route */}
             <Route path="tax-settings" element={<TaxSettingsPage />} />
-            
+
+            {/* sequence-numbers settings route */}
+            <Route path="sequencing" element={<SequencingSettingsPage />} />
+
             {/* Storage Management Routes */}
             <Route path="storage/storagesetup" element={<StorageSetupPage />} />
             <Route path="storage/storagecomplete" element={<StorageCompletePage />} />
@@ -485,7 +497,14 @@ const AppContent: React.FC = () => {
             <Route path="channels/website" element={<WebsiteIntegrationPage />} />
             <Route path="channels/chatbot" element={<ChatBotIntegrationPage />} />
             <Route path="channels/whatsapp" element={<WhatsAppIntegrationPage />} />
-            <Route path="channels/chat" element={<VaNiChatPage />} />
+            
+            {/* ✅ NEW: BBB Directory Routes */}
+            <Route path="channels/bbb/onboarding" element={<BBBProfileOnboardingPage />} />
+            <Route path="channels/bbb/admin" element={<BBBAdminDashboard />} />
+
+            {/* ✅ Implementation Toolkit Routes */}
+            <Route path="toolkit/tenant-profiles" element={<TenantProfilesPage />} />
+
             <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="analytics/cross-module" element={<AnalyticsPage />} />
             <Route path="webhooks" element={<WebhookManagementPage />} />
