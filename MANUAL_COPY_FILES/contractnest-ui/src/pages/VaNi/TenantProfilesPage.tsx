@@ -1,4 +1,4 @@
-// src/pages/VaNi/toolkit/TenantProfilesPage.tsx
+// src/pages/VaNi/TenantProfilesPage.tsx
 // Phase 1: Simple tenant search with intent-based queries
 
 import React, { useState } from 'react';

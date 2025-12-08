@@ -230,14 +230,14 @@ export const defaultMenuItems: MenuItem[] = [
     id: 'implementation-toolkit',
     label: 'Implementation Toolkit',
     icon: 'Wrench',
-    path: '/vani/toolkit/tenant-profiles',
+    path: '/vani/tenant-profiles',
     hasSubmenu: true,
     submenuItems: [
       {
         id: 'toolkit-tenant-profiles',
         label: 'Tenant Profiles',
         icon: 'Users',
-        path: '/vani/toolkit/tenant-profiles'
+        path: '/vani/tenant-profiles'
       },
       {
         id: 'toolkit-bbb-admin',

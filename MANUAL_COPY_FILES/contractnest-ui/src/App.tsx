@@ -84,7 +84,7 @@ import BBBProfileOnboardingPage from './pages/VaNi/channels/BBBProfileOnboarding
 import BBBAdminDashboard from './pages/VaNi/channels/BBBAdminDashboard';
 
 // ✅ Implementation Toolkit
-import TenantProfilesPage from './pages/VaNi/toolkit/TenantProfilesPage';
+import TenantProfilesPage from './pages/VaNi/TenantProfilesPage';
 
 // MISC Pages
 import { 
@@ -503,7 +503,7 @@ const AppContent: React.FC = () => {
             <Route path="channels/bbb/admin" element={<BBBAdminDashboard />} />
 
             {/* ✅ Implementation Toolkit Routes */}
-            <Route path="toolkit/tenant-profiles" element={<TenantProfilesPage />} />
+            <Route path="tenant-profiles" element={<TenantProfilesPage />} />
 
             <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="analytics/cross-module" element={<AnalyticsPage />} />
