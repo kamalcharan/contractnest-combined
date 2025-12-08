@@ -78,11 +78,15 @@ const TenantProfilesPage: React.FC = () => {
   const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [activeIntent, setActiveIntent] = useState<string | null>(null);
 
+  // Drill-down state
+  const [drillDownMode, setDrillDownMode] = useState<'none' | 'groups' | 'industries'>('none');
+  const [selectedGroup, setSelectedGroup] = useState<{ id: string; name: string } | null>(null);
+
   // Get groups for context
   const { data: groups } = useGroups();
-  const defaultGroupId = groups?.[0]?.id;
+  const defaultGroupId = undefined; // Don't filter by default - show all tenants
 
-  // Intent cards (pre-defined NLP queries)
+  // Intent cards (pre-defined NLP queries) - using brand colors for better visibility
   const intentCards: IntentCard[] = [
     {
       id: 'all_tenants',
@@ -96,21 +100,21 @@ const TenantProfilesPage: React.FC = () => {
       label: 'By Group',
       icon: <Building2 className="w-5 h-5" />,
       query: 'Show tenants grouped by their business group',
-      color: colors.semantic.info
+      color: colors.brand.secondary || colors.brand.primary
     },
     {
       id: 'buyers',
       label: 'Find Buyers',
       icon: <ShoppingCart className="w-5 h-5" />,
       query: 'Show all buyer profiles',
-      color: colors.semantic.success
+      color: '#10B981' // Fixed green for visibility
     },
     {
       id: 'sellers',
       label: 'Find Sellers',
       icon: <Store className="w-5 h-5" />,
       query: 'Show all seller profiles',
-      color: colors.semantic.warning
+      color: '#F59E0B' // Fixed amber for visibility
     }
   ];
 
@@ -190,8 +194,71 @@ const TenantProfilesPage: React.FC = () => {
 
   // Handle intent card click
   const handleIntentClick = (intent: IntentCard) => {
+    // Reset drill-down state
+    setSelectedGroup(null);
+
+    // Special handling for "by_group" - show drill-down
+    if (intent.id === 'by_group') {
+      setDrillDownMode('groups');
+      setActiveIntent('by_group');
+      setHasSearched(false);
+      setSearchResults([]);
+      setSearchQuery('');
+      return;
+    }
+
+    // Normal search for other intents
+    setDrillDownMode('none');
     setSearchQuery(intent.query);
     handleSearch(intent.query, intent.id);
+  };
+
+  // Handle group selection in drill-down mode
+  const handleGroupSelect = (groupId: string, groupName: string) => {
+    setSelectedGroup({ id: groupId, name: groupName });
+    setDrillDownMode('none');
+    setSearchQuery(`Tenants in ${groupName}`);
+    handleSearchWithGroup(`Show tenants in ${groupName}`, groupId, 'by_group');
+  };
+
+  // Search with specific group_id
+  const handleSearchWithGroup = async (query: string, groupId: string, intentCode?: string) => {
+    setIsSearching(true);
+    setHasSearched(true);
+    setActiveIntent(intentCode || null);
+
+    try {
+      console.log('🔍 NLP Search with group:', { query, groupId });
+
+      const response = await api.post(API_ENDPOINTS.GROUPS.TENANTS_DASHBOARD.SEARCH, {
+        query,
+        group_id: groupId,
+        intent_code: intentCode
+      });
+
+      const data = response.data;
+      console.log('🔍 Search results:', data);
+
+      if (data.success && data.results) {
+        setSearchResults(data.results);
+        if (data.results.length === 0) {
+          toast('No results found for this group.', {
+            icon: '🔍',
+            style: { background: colors.utility.secondaryBackground, color: colors.utility.primaryText }
+          });
+        }
+      } else {
+        setSearchResults([]);
+      }
+    } catch (error: any) {
+      console.error('Search error:', error);
+      toast.error(error.response?.data?.error || error.message || 'Search failed', {
+        style: { background: colors.semantic.error, color: '#FFF' }
+      });
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   // Handle key press
@@ -410,18 +477,100 @@ const TenantProfilesPage: React.FC = () => {
         </CardContent>
       </Card>
 
+      {/* Drill-Down: Group Cards */}
+      {drillDownMode === 'groups' && stats?.by_group && stats.by_group.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold" style={{ color: colors.utility.primaryText }}>
+              Select a Group
+              <span className="ml-2 text-sm font-normal" style={{ color: colors.utility.secondaryText }}>
+                ({stats.by_group.length} groups)
+              </span>
+            </h2>
+            <button
+              onClick={() => {
+                setDrillDownMode('none');
+                setActiveIntent(null);
+              }}
+              className="text-sm px-3 py-1 rounded-lg"
+              style={{ color: colors.utility.secondaryText, backgroundColor: `${colors.utility.primaryText}10` }}
+            >
+              Cancel
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {stats.by_group.map((group) => (
+              <Card
+                key={group.group_id}
+                className="cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02]"
+                style={{
+                  backgroundColor: colors.utility.secondaryBackground,
+                  borderColor: `${colors.brand.primary}30`,
+                  borderWidth: '2px'
+                }}
+                onClick={() => handleGroupSelect(group.group_id, group.group_name)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div
+                        className="w-10 h-10 rounded-lg flex items-center justify-center"
+                        style={{ backgroundColor: `${colors.brand.primary}15` }}
+                      >
+                        <Building2 className="w-5 h-5" style={{ color: colors.brand.primary }} />
+                      </div>
+                      <div>
+                        <p className="font-medium" style={{ color: colors.utility.primaryText }}>
+                          {group.group_name}
+                        </p>
+                        <p className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                          {group.count} tenant{group.count !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <ArrowRight className="w-5 h-5" style={{ color: colors.utility.secondaryText }} />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Search Results */}
       {hasSearched && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold" style={{ color: colors.utility.primaryText }}>
-              Search Results
-              {searchResults.length > 0 && (
-                <span className="ml-2 text-sm font-normal" style={{ color: colors.utility.secondaryText }}>
-                  ({searchResults.length} found)
-                </span>
+            <div>
+              <h2 className="text-lg font-semibold" style={{ color: colors.utility.primaryText }}>
+                Search Results
+                {searchResults.length > 0 && (
+                  <span className="ml-2 text-sm font-normal" style={{ color: colors.utility.secondaryText }}>
+                    ({searchResults.length} found)
+                  </span>
+                )}
+              </h2>
+              {selectedGroup && (
+                <p className="text-sm mt-1" style={{ color: colors.brand.primary }}>
+                  Filtered by: {selectedGroup.name}
+                </p>
               )}
-            </h2>
+            </div>
+            {selectedGroup && (
+              <button
+                onClick={() => {
+                  setSelectedGroup(null);
+                  setHasSearched(false);
+                  setSearchResults([]);
+                  setActiveIntent(null);
+                }}
+                className="text-sm px-3 py-1 rounded-lg"
+                style={{ color: colors.utility.secondaryText, backgroundColor: `${colors.utility.primaryText}10` }}
+              >
+                Clear Filter
+              </button>
+            )}
           </div>
 
           {isSearching ? (

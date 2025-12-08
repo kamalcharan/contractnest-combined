@@ -1635,28 +1635,92 @@ console.log('='.repeat(60));
     // Stats, NLP Search, and Intents for admin dashboard
     // ============================================
 
-    // POST /tenants/stats - Get tenant statistics
+    // POST /tenants/stats - Get tenant statistics (calculated dynamically)
     if (method === 'POST' && path === '/tenants/stats') {
       try {
         const requestData = await req.json();
         const groupId = requestData.group_id || null;
 
-        console.log('📊 Getting tenant stats:', { groupId });
+        console.log('📊 Getting tenant stats (dynamic):', { groupId });
 
-        // Call the get_tenant_stats RPC function
-        const { data, error } = await supabaseAdmin.rpc('get_tenant_stats', {
-          p_group_id: groupId
+        // Build base query for memberships
+        let membershipsQuery = supabaseAdmin
+          .from('t_group_memberships')
+          .select('id, tenant_id, group_id, status')
+          .eq('status', 'active')
+          .eq('is_active', true);
+
+        if (groupId) {
+          membershipsQuery = membershipsQuery.eq('group_id', groupId);
+        }
+
+        const { data: memberships, error: membershipsError } = await membershipsQuery;
+        if (membershipsError) throw membershipsError;
+
+        // Get unique tenant IDs
+        const tenantIds = [...new Set(memberships.map(m => m.tenant_id).filter(Boolean))];
+        const groupIds = [...new Set(memberships.map(m => m.group_id).filter(Boolean))];
+
+        // Get tenant profiles for profile_type
+        let tenantProfiles: any[] = [];
+        if (tenantIds.length > 0) {
+          const { data: profiles } = await supabaseAdmin
+            .from('t_tenant_profiles')
+            .select('tenant_id, industry_id, profile_type')
+            .in('tenant_id', tenantIds);
+          tenantProfiles = profiles || [];
+        }
+
+        // Get group names
+        let groups: any[] = [];
+        if (groupIds.length > 0) {
+          const { data: groupData } = await supabaseAdmin
+            .from('t_business_groups')
+            .select('id, group_name')
+            .in('id', groupIds);
+          groups = groupData || [];
+        }
+
+        // Calculate stats
+        const totalTenants = tenantIds.length;
+
+        // By group
+        const byGroup = groups.map(g => {
+          const count = memberships.filter(m => m.group_id === g.id).length;
+          return { group_id: g.id, group_name: g.group_name, count };
+        }).filter(g => g.count > 0);
+
+        // By industry
+        const industryMap: Record<string, number> = {};
+        tenantProfiles.forEach(p => {
+          const industry = p.industry_id || 'Unknown';
+          industryMap[industry] = (industryMap[industry] || 0) + 1;
+        });
+        const byIndustry = Object.entries(industryMap).map(([industry_id, count]) => ({
+          industry_id,
+          industry_name: industry_id,
+          count
+        }));
+
+        // By profile type
+        let buyers = 0, sellers = 0, both = 0;
+        tenantProfiles.forEach(p => {
+          if (p.profile_type === 'buyer') buyers++;
+          else if (p.profile_type === 'seller') sellers++;
+          else if (p.profile_type === 'both') both++;
         });
 
-        if (error) {
-          console.error('Error calling get_tenant_stats:', error);
-          throw error;
-        }
+        const stats = {
+          total_tenants: totalTenants,
+          by_group: byGroup,
+          by_industry: byIndustry,
+          by_profile_type: { buyers, sellers, both }
+        };
 
         return new Response(
           JSON.stringify({
             success: true,
-            stats: data
+            stats
           }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
