@@ -38,10 +38,9 @@ CREATE TABLE IF NOT EXISTS public.t_chat_sessions (
 CREATE INDEX IF NOT EXISTS idx_chat_sessions_user
     ON public.t_chat_sessions(user_id, tenant_id);
 
--- Index for active sessions (not expired)
-CREATE INDEX IF NOT EXISTS idx_chat_sessions_active
-    ON public.t_chat_sessions(expires_at)
-    WHERE expires_at > NOW();
+-- Index for session expiry lookups
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_expires
+    ON public.t_chat_sessions(expires_at);
 
 -- Index for channel-based queries
 CREATE INDEX IF NOT EXISTS idx_chat_sessions_channel
