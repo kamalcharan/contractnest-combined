@@ -31,13 +31,29 @@ Settings → Configure → Customer Channels → Groups
       └── View Profile → 65:35 Dashboard (if has profile)
 
 ═══════════════════════════════════════════════════════════════════════════════
-📦 FILES TO COPY (6 FILES)
+📦 FILES TO COPY (7 FILES)
 ═══════════════════════════════════════════════════════════════════════════════
+
+SUBMODULE: contractnest-edge
+─────────────────────────────────────────────────────────────────────────────
+
+1. UPDATED FILE: groups/index.ts (Edge Function)
+   FROM: MANUAL_COPY_FILES/contractnest-edge/supabase/functions/groups/index.ts
+   TO:   contractnest-edge/supabase/functions/groups/index.ts
+
+   CHANGES:
+   - Fixed GET /memberships/:membershipId to use two separate queries
+   - Removes FK dependency on t_tenant_profiles
+   - Step 1: Get membership from t_group_memberships
+   - Step 2: Get tenant profile separately using tenant_id
+   - Returns combined data with tenant_profile (or null if not found)
+
+─────────────────────────────────────────────────────────────────────────────
 
 SUBMODULE: contractnest-ui
 ─────────────────────────────────────────────────────────────────────────────
 
-1. NEW FILE: GroupsListPage.tsx
+2. NEW FILE: GroupsListPage.tsx
    FROM: MANUAL_COPY_FILES/GroupsListPage.tsx
    TO:   contractnest-ui/src/pages/settings/customer-channels/GroupsListPage.tsx
 
@@ -50,7 +66,7 @@ SUBMODULE: contractnest-ui
    - SessionStorage persistence for authenticated groups
    - Smart navigation to dashboard
 
-2. NEW FILE: GroupProfileDashboard.tsx
+3. NEW FILE: GroupProfileDashboard.tsx
    FROM: MANUAL_COPY_FILES/GroupProfileDashboard.tsx
    TO:   contractnest-ui/src/pages/settings/customer-channels/GroupProfileDashboard.tsx
 
@@ -61,7 +77,7 @@ SUBMODULE: contractnest-ui
    - Fixed redirect after success (profileJustCreated state)
    - Improved empty state with card styling
 
-3. UPDATED FILE: ProfileEntryForm.tsx
+4. UPDATED FILE: ProfileEntryForm.tsx
    FROM: MANUAL_COPY_FILES/contractnest-ui/src/components/VaNi/bbb/ProfileEntryForm.tsx
    TO:   contractnest-ui/src/components/VaNi/bbb/ProfileEntryForm.tsx
 
@@ -72,19 +88,19 @@ SUBMODULE: contractnest-ui
    - Shows error messages on blur and submit
    - Prevents form submission with invalid URLs
 
-4. UPDATED FILE: settingsMenus.ts
+5. UPDATED FILE: settingsMenus.ts
    FROM: MANUAL_COPY_FILES/settingsMenus.ts
    TO:   contractnest-ui/src/utils/constants/settingsMenus.ts
 
    CHANGES: Added "Groups" menu item under Customer Channels section (lines 186-195)
 
-5. UPDATED FILE: industryMenus.ts
+6. UPDATED FILE: industryMenus.ts
    FROM: MANUAL_COPY_FILES/industryMenus.ts
    TO:   contractnest-ui/src/utils/constants/industryMenus.ts
 
    CHANGES: Renamed "Tenant Profiles" to "Group Member Profiles" (line 361)
 
-6. UPDATED FILE: App.tsx
+7. UPDATED FILE: App.tsx
    FROM: MANUAL_COPY_FILES/App.tsx
    TO:   contractnest-ui/src/App.tsx
 
@@ -106,7 +122,10 @@ New-Item -ItemType Directory -Path "contractnest-ui\src\pages\settings\customer-
 
 Step 3: Copy files from MANUAL_COPY_FILES
 ─────────────────────────────────────────────────────────────────────────────
-# Copy new pages
+# Copy Edge function (FIXES 500 ERROR!)
+Copy-Item "MANUAL_COPY_FILES\contractnest-edge\supabase\functions\groups\index.ts" "contractnest-edge\supabase\functions\groups\index.ts" -Force
+
+# Copy new UI pages
 Copy-Item "MANUAL_COPY_FILES\GroupsListPage.tsx" "contractnest-ui\src\pages\settings\customer-channels\GroupsListPage.tsx" -Force
 Copy-Item "MANUAL_COPY_FILES\GroupProfileDashboard.tsx" "contractnest-ui\src\pages\settings\customer-channels\GroupProfileDashboard.tsx" -Force
 
@@ -120,29 +139,33 @@ Copy-Item "MANUAL_COPY_FILES\App.tsx" "contractnest-ui\src\App.tsx" -Force
 
 Step 4: Verify files
 ─────────────────────────────────────────────────────────────────────────────
+# Check Edge function updated (should show "two separate queries")
+Select-String -Path "contractnest-edge\supabase\functions\groups\index.ts" -Pattern "Step 1: Get membership data"
+
 # Check new pages exist
 Test-Path "contractnest-ui\src\pages\settings\customer-channels\GroupsListPage.tsx"
 Test-Path "contractnest-ui\src\pages\settings\customer-channels\GroupProfileDashboard.tsx"
 
-# Check ProfileEntryForm has URL validation
-Select-String -Path "contractnest-ui\src\components\VaNi\bbb\ProfileEntryForm.tsx" -Pattern "isValidWebsiteUrl"
+Step 5: Deploy Edge Function (IMPORTANT!)
+─────────────────────────────────────────────────────────────────────────────
+cd contractnest-edge
+supabase functions deploy groups --project-ref YOUR_PROJECT_REF
 
 ═══════════════════════════════════════════════════════════════════════════════
 🔧 KNOWN ISSUES & FIXES
 ═══════════════════════════════════════════════════════════════════════════════
 
-1. 500 ERROR ON GET /api/memberships/:id
+1. ✅ FIXED: 500 ERROR ON GET /api/memberships/:id
 
-   CAUSE: The Edge function performs a Supabase join with tenant_profile.
-   The join may fail if:
-   - t_tenant_profiles doesn't have a record for the tenant_id
-   - Foreign key relationship is not properly configured
-   - RLS policies blocking the join
+   CAUSE: Edge function used FK-based join that required foreign key constraint
+   between t_group_memberships.tenant_id and t_tenant_profiles.tenant_id
 
-   FIX: In Supabase Dashboard:
-   - Verify t_tenant_profiles has records for all tenant_ids
-   - Check foreign key: t_group_memberships.tenant_id -> t_tenant_profiles
-   - Review RLS policies on t_tenant_profiles
+   FIX: Updated Edge function to use two separate queries:
+   - Query 1: Get membership from t_group_memberships
+   - Query 2: Get tenant profile using tenant_id (no FK needed)
+
+   FILE: contractnest-edge/supabase/functions/groups/index.ts
+   DEPLOY: supabase functions deploy groups
 
 2. t_semantic_clusters.t_tenantid INSERTING NULL
 

@@ -333,61 +333,49 @@ console.log('='.repeat(60));
     }
     
     // GET /memberships/:membershipId - Get membership with profile
+    // Uses two separate queries (no FK constraint needed between t_group_memberships and t_tenant_profiles)
     const membershipGetMatch = path.match(/^\/memberships\/([a-f0-9-]{36})$/);
     if (method === 'GET' && membershipGetMatch) {
       try {
         const membershipId = membershipGetMatch[1];
-        
-        const { data, error } = await supabase
+
+        // Step 1: Get membership data
+        const { data: membership, error: membershipError } = await supabase
           .from('t_group_memberships')
-          .select(`
-            id,
-            tenant_id,
-            group_id,
-            status,
-            joined_at,
-            profile_data,
-            is_active,
-            created_at,
-            updated_at,
-            tenant_profile:t_tenant_profiles!tenant_id (
-              business_name,
-              business_email,
-              business_phone,
-              business_whatsapp,
-              business_whatsapp_country_code,
-              city,
-              state_code,
-              industry_id,
-              website_url,
-              logo_url
-            )
-          `)
+          .select('id, tenant_id, group_id, status, joined_at, profile_data, is_active, created_at, updated_at')
           .eq('id', membershipId)
           .eq('is_active', true)
           .single();
-        
-        if (error) {
-          if (error.code === 'PGRST116') {
+
+        if (membershipError) {
+          if (membershipError.code === 'PGRST116') {
             return new Response(
               JSON.stringify({ success: false, error: 'Membership not found' }),
               { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
           }
-          throw error;
+          throw membershipError;
         }
-        
+
+        // Step 2: Get tenant profile using tenant_id (separate query, no FK needed)
+        const { data: tenantProfile } = await supabase
+          .from('t_tenant_profiles')
+          .select('business_name, business_email, business_phone, business_whatsapp, business_whatsapp_country_code, city, state_code, industry_id, website_url, logo_url')
+          .eq('tenant_id', membership.tenant_id)
+          .single();
+
+        // Step 3: Return combined data
         return new Response(
           JSON.stringify({
             success: true,
             membership: {
-              membership_id: data.id,
-              tenant_id: data.tenant_id,
-              group_id: data.group_id,
-              status: data.status,
-              joined_at: data.joined_at,
-              profile_data: data.profile_data,
-              tenant_profile: data.tenant_profile
+              membership_id: membership.id,
+              tenant_id: membership.tenant_id,
+              group_id: membership.group_id,
+              status: membership.status,
+              joined_at: membership.joined_at,
+              profile_data: membership.profile_data,
+              tenant_profile: tenantProfile || null
             }
           }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -2060,17 +2048,41 @@ console.log('='.repeat(60));
 
         console.log('💾 Saving smartprofile for tenant:', requestData.tenant_id);
 
+        // Validate profile_type - database constraint allows: 'seller', 'buyer'
+        const validProfileTypes = ['seller', 'buyer'];
+        let profileType = requestData.profile_type || 'seller';
+        if (!validProfileTypes.includes(profileType)) {
+          // Map invalid types to 'seller' (default for business profiles)
+          profileType = 'seller';
+        }
+
+        // Build upsert data with all fields from UI
+        const upsertData: any = {
+          tenant_id: requestData.tenant_id,
+          short_description: requestData.short_description || null,
+          profile_type: profileType,
+          approved_keywords: requestData.approved_keywords || [],
+          status: requestData.status || 'active',
+          is_active: requestData.is_active !== false,
+          updated_at: new Date().toISOString()
+        };
+
+        // Add optional fields if provided
+        if (requestData.ai_enhanced_description) {
+          upsertData.ai_enhanced_description = requestData.ai_enhanced_description;
+        }
+        if (requestData.website_url) {
+          upsertData.website_url = requestData.website_url;
+        }
+        if (requestData.generation_method) {
+          upsertData.generation_method = requestData.generation_method;
+        }
+
+        console.log('📝 Upserting smartprofile:', Object.keys(upsertData));
+
         const { data, error } = await supabaseAdmin
           .from('t_tenant_smartprofiles')
-          .upsert({
-            tenant_id: requestData.tenant_id,
-            short_description: requestData.short_description || null,
-            profile_type: requestData.profile_type || 'seller',
-            approved_keywords: requestData.approved_keywords || [],
-            status: requestData.status || 'draft',
-            is_active: requestData.is_active !== false,
-            updated_at: new Date().toISOString()
-          }, { onConflict: 'tenant_id' })
+          .upsert(upsertData, { onConflict: 'tenant_id' })
           .select()
           .single();
 
@@ -2094,11 +2106,43 @@ console.log('='.repeat(60));
       try {
         const requestData = await req.json();
 
-        if (!requestData.tenant_id || !requestData.short_description) {
+        if (!requestData.tenant_id) {
           return new Response(
-            JSON.stringify({ error: 'tenant_id and short_description are required' }),
+            JSON.stringify({ error: 'tenant_id is required' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
+        }
+
+        let shortDescription = requestData.short_description;
+        let keywords = requestData.keywords || [];
+        let profileType = requestData.profile_type || 'seller';
+
+        // If no short_description provided, fetch from tenant profile
+        if (!shortDescription) {
+          console.log('📋 Fetching tenant profile for:', requestData.tenant_id);
+          const { data: tenantProfile, error: profileError } = await supabase
+            .from('t_tenant_profiles')
+            .select('business_name, description, industry, city, state, country')
+            .eq('tenant_id', requestData.tenant_id)
+            .single();
+
+          if (profileError || !tenantProfile) {
+            console.error('❌ Failed to fetch tenant profile:', profileError);
+            return new Response(
+              JSON.stringify({ error: 'Tenant profile not found. Please complete your Business Profile first.' }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
+          // Build short description from tenant profile
+          const parts = [];
+          if (tenantProfile.business_name) parts.push(tenantProfile.business_name);
+          if (tenantProfile.industry) parts.push(tenantProfile.industry);
+          if (tenantProfile.description) parts.push(tenantProfile.description);
+          if (tenantProfile.city) parts.push(tenantProfile.city);
+
+          shortDescription = parts.join(' - ') || 'Business Profile';
+          console.log('📝 Built description from profile:', shortDescription.substring(0, 100));
         }
 
         console.log('🤖 Generating smartprofile via n8n for tenant:', requestData.tenant_id);
@@ -2117,9 +2161,9 @@ console.log('='.repeat(60));
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             tenant_id: requestData.tenant_id,
-            short_description: requestData.short_description,
-            keywords: requestData.keywords || [],
-            profile_type: requestData.profile_type || 'seller'
+            short_description: shortDescription,
+            keywords: keywords,
+            profile_type: profileType
           })
         });
 
@@ -2244,6 +2288,308 @@ console.log('='.repeat(60));
         console.error('Error in POST /smartprofiles/search:', error);
         return new Response(
           JSON.stringify({ success: false, error: 'SmartProfile search failed', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // POST /smartprofiles/enhance - AI enhance SmartProfile description via n8n /process-profile
+    if (method === 'POST' && path === '/smartprofiles/enhance') {
+      try {
+        const requestData = await req.json();
+        if (!requestData.tenant_id || !requestData.short_description) {
+          return new Response(
+            JSON.stringify({ error: 'tenant_id and short_description are required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        console.log('🤖 Enhancing SmartProfile for tenant:', requestData.tenant_id);
+
+        // Call n8n /process-profile webhook with type=manual
+        const n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL') || 'https://n8n.srv1096269.hstgr.cloud';
+        const xEnvironment = req.headers.get('x-environment');
+        // Use /webhook for active workflows (default), /webhook-test only when explicitly in test mode
+        const webhookPrefix = xEnvironment === 'test' ? '/webhook-test' : '/webhook';
+        const processProfileUrl = `${n8nWebhookUrl}${webhookPrefix}/process-profile`;
+
+        console.log('🔗 Calling n8n process-profile (manual):', processProfileUrl);
+
+        const n8nResponse = await fetch(processProfileUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'manual',
+            content: requestData.short_description,
+            userId: requestData.tenant_id,
+            groupId: requestData.group_id || ''
+          })
+        });
+
+        if (!n8nResponse.ok) {
+          const errorText = await n8nResponse.text();
+          console.error('❌ n8n process-profile failed:', n8nResponse.status, errorText);
+          return new Response(
+            JSON.stringify({ success: false, error: 'AI enhancement failed', details: errorText }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const n8nResult = await n8nResponse.json();
+        console.log('✅ SmartProfile enhanced via n8n:', n8nResult.status);
+
+        // Handle error response from n8n
+        if (n8nResult.status === 'error') {
+          return new Response(
+            JSON.stringify({ success: false, error: n8nResult.message, details: n8nResult.details, suggestion: n8nResult.suggestion, recoverable: n8nResult.recoverable }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            ai_enhanced_description: n8nResult.enhancedContent,
+            original_description: n8nResult.originalContent,
+            suggested_keywords: []
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error('Error in POST /smartprofiles/enhance:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to enhance SmartProfile', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // POST /smartprofiles/scrape-website - Scrape website for SmartProfile via n8n /process-profile
+    if (method === 'POST' && path === '/smartprofiles/scrape-website') {
+      try {
+        const requestData = await req.json();
+        if (!requestData.tenant_id || !requestData.website_url) {
+          return new Response(
+            JSON.stringify({ error: 'tenant_id and website_url are required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        const urlPattern = /^https?:\/\/.+\..+/;
+        if (!urlPattern.test(requestData.website_url)) {
+          return new Response(
+            JSON.stringify({ error: 'Invalid URL format' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        console.log('🌐 Scraping website for SmartProfile:', requestData.website_url);
+
+        // Call n8n /process-profile webhook with type=website (uses Jina Reader + AI extraction)
+        const n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL') || 'https://n8n.srv1096269.hstgr.cloud';
+        const xEnvironment = req.headers.get('x-environment');
+        // Use /webhook for active workflows (default), /webhook-test only when explicitly in test mode
+        const webhookPrefix = xEnvironment === 'test' ? '/webhook-test' : '/webhook';
+        const processProfileUrl = `${n8nWebhookUrl}${webhookPrefix}/process-profile`;
+
+        console.log('🔗 Calling n8n process-profile (website):', processProfileUrl);
+
+        const n8nResponse = await fetch(processProfileUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'website',
+            websiteUrl: requestData.website_url,
+            userId: requestData.tenant_id,
+            groupId: requestData.group_id || ''
+          })
+        });
+
+        if (!n8nResponse.ok) {
+          const errorText = await n8nResponse.text();
+          console.error('❌ n8n process-profile failed:', n8nResponse.status, errorText);
+          return new Response(
+            JSON.stringify({ success: false, error: 'Website scraping failed', details: errorText }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const n8nResult = await n8nResponse.json();
+        console.log('✅ SmartProfile website scraped via n8n:', n8nResult.status);
+
+        // Handle error response from n8n
+        if (n8nResult.status === 'error') {
+          return new Response(
+            JSON.stringify({ success: false, error: n8nResult.message, details: n8nResult.details, suggestion: n8nResult.suggestion, recoverable: n8nResult.recoverable }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            ai_enhanced_description: n8nResult.enhancedContent,
+            original_description: n8nResult.originalContent,
+            source_url: n8nResult.sourceUrl,
+            suggested_keywords: []
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error('Error in POST /smartprofiles/scrape-website:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to scrape website', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // POST /smartprofiles/generate-clusters - Generate semantic clusters via n8n /generate-semantic-clusters
+    if (method === 'POST' && path === '/smartprofiles/generate-clusters') {
+      try {
+        const requestData = await req.json();
+        if (!requestData.tenant_id || !requestData.profile_text) {
+          return new Response(
+            JSON.stringify({ error: 'tenant_id and profile_text are required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        console.log('🧠 Generating clusters for SmartProfile tenant:', requestData.tenant_id);
+
+        // Call n8n /generate-semantic-clusters webhook
+        const n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL') || 'https://n8n.srv1096269.hstgr.cloud';
+        const xEnvironment = req.headers.get('x-environment');
+        // Use /webhook for active workflows (default), /webhook-test only when explicitly in test mode
+        const webhookPrefix = xEnvironment === 'test' ? '/webhook-test' : '/webhook';
+        const clustersUrl = `${n8nWebhookUrl}${webhookPrefix}/generate-semantic-clusters`;
+
+        console.log('🔗 Calling n8n generate-semantic-clusters:', clustersUrl);
+
+        const n8nResponse = await fetch(clustersUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            membership_id: requestData.tenant_id,
+            profile_text: requestData.profile_text,
+            keywords: requestData.keywords || [],
+            chapter: requestData.chapter || ''
+          })
+        });
+
+        if (!n8nResponse.ok) {
+          const errorText = await n8nResponse.text();
+          console.error('❌ n8n generate-semantic-clusters failed:', n8nResponse.status, errorText);
+          return new Response(
+            JSON.stringify({ success: false, error: 'Cluster generation failed', details: errorText }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const n8nResult = await n8nResponse.json();
+        console.log('✅ SmartProfile clusters generated via n8n:', n8nResult.status, 'count:', n8nResult.clusters_generated);
+
+        // Handle error response from n8n
+        if (n8nResult.status === 'error') {
+          return new Response(
+            JSON.stringify({ success: false, error: n8nResult.message, details: n8nResult.details, suggestion: n8nResult.suggestion, recoverable: n8nResult.recoverable }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            clusters: n8nResult.clusters || [],
+            clusters_generated: n8nResult.clusters_generated || 0,
+            tokens_used: n8nResult.tokens_used || 0
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error('Error in POST /smartprofiles/generate-clusters:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to generate clusters', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // POST /smartprofiles/clusters - Save SmartProfile clusters
+    if (method === 'POST' && path === '/smartprofiles/clusters') {
+      try {
+        const requestData = await req.json();
+        if (!requestData.tenant_id || !requestData.clusters) {
+          return new Response(
+            JSON.stringify({ error: 'tenant_id and clusters are required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { tenant_id, clusters } = requestData;
+        console.log('💾 Saving SmartProfile clusters for tenant:', tenant_id, 'Count:', clusters.length);
+
+        // First, delete existing clusters for this tenant
+        await supabaseAdmin
+          .from('t_semantic_clusters')
+          .delete()
+          .eq('tenant_id', tenant_id);
+
+        // Prepare clusters for insertion with tenant_id
+        const clustersToInsert = clusters.map((cluster: any) => ({
+          tenant_id,
+          primary_term: cluster.primary_term,
+          related_terms: cluster.related_terms || [],
+          category: cluster.category || 'Services',
+          confidence_score: cluster.confidence_score || 1.0,
+          is_active: true
+        }));
+
+        // Insert new clusters
+        const { data, error: saveError } = await supabaseAdmin
+          .from('t_semantic_clusters')
+          .insert(clustersToInsert)
+          .select('id');
+
+        if (saveError) throw saveError;
+
+        console.log('✅ Saved SmartProfile clusters:', {
+          tenantId: tenant_id,
+          count: data.length
+        });
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            clusters_saved: data.length,
+            cluster_ids: data.map((c: any) => c.id)
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error('Error in POST /smartprofiles/clusters:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to save clusters', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // GET /smartprofiles/clusters/:tenantId - Get SmartProfile clusters
+    if (method === 'GET' && path.match(/^\/smartprofiles\/clusters\/[^\/]+$/)) {
+      try {
+        const tenantId = path.split('/').pop();
+        console.log('📋 Getting SmartProfile clusters for tenant:', tenantId);
+        const { data, error: fetchError } = await supabaseAdmin
+          .from('t_semantic_clusters')
+          .select('id, primary_term, related_terms, category, confidence_score')
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true);
+        if (fetchError) throw fetchError;
+        return new Response(
+          JSON.stringify({ success: true, clusters: data || [] }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error('Error in GET /smartprofiles/clusters/:tenantId:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to get clusters', details: error.message }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
