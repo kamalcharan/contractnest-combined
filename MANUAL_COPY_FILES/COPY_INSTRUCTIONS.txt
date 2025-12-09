@@ -1,8 +1,10 @@
 ═══════════════════════════════════════════════════════════════════════════════
-SMARTPROFILE - COMPLETE COPY INSTRUCTIONS
+SMARTPROFILE + TENANT DASHBOARD - COMPLETE COPY INSTRUCTIONS
 ═══════════════════════════════════════════════════════════════════════════════
 
 This folder contains all SmartProfile files - API layer AND UI components.
+Also includes Tenant Dashboard (TenantProfilesPage) for NLP-based tenant search.
+
 SmartProfile follows the BBB membership profile wizard pattern with:
 - Create/View/Edit modes
 - Manual description OR website scraping
@@ -36,12 +38,26 @@ PART 1: UI FILES (contractnest-ui)
             - useScrapeWebsiteForSmartProfile, useGenerateSmartProfileClusters
             - useSaveSmartProfileClusters, useSearchSmartProfiles
 
+4. contractnest-ui/src/services/serviceURLs.ts
+   → Copy to: contractnest-ui/src/services/serviceURLs.ts
+   Purpose: Added TENANTS_DASHBOARD and SMARTPROFILES endpoints:
+            - TENANTS_DASHBOARD.STATS (/api/tenants/stats)
+            - TENANTS_DASHBOARD.SEARCH (/api/tenants/search)
+            - TENANTS_DASHBOARD.INTENTS (/api/intents)
+            - SMARTPROFILES endpoints
+
+5. contractnest-ui/src/pages/VaNi/TenantProfilesPage.tsx
+   → Copy to: contractnest-ui/src/pages/VaNi/TenantProfilesPage.tsx
+   Purpose: Tenant Dashboard with NLP-based search and intent cards
+
 UI POWERSHELL COPY COMMANDS:
 ═══════════════════════════
 
 Copy-Item -Path ".\MANUAL_COPY_FILES\contractnest-ui\src\pages\settings\business-profile\smart-profile.tsx" -Destination ".\contractnest-ui\src\pages\settings\business-profile\" -Force
 Copy-Item -Path ".\MANUAL_COPY_FILES\contractnest-ui\src\services\groupsService.ts" -Destination ".\contractnest-ui\src\services\" -Force
 Copy-Item -Path ".\MANUAL_COPY_FILES\contractnest-ui\src\hooks\queries\useGroupQueries.ts" -Destination ".\contractnest-ui\src\hooks\queries\" -Force
+Copy-Item -Path ".\MANUAL_COPY_FILES\contractnest-ui\src\services\serviceURLs.ts" -Destination ".\contractnest-ui\src\services\" -Force
+Copy-Item -Path ".\MANUAL_COPY_FILES\contractnest-ui\src\pages\VaNi\TenantProfilesPage.tsx" -Destination ".\contractnest-ui\src\pages\VaNi\" -Force
 
 Write-Host "UI files copied!" -ForegroundColor Green
 
@@ -53,16 +69,20 @@ IMPORTANT: Files are in subdirectories (controllers/ and services/), not root sr
 
 1. contractnest-api/src/services/groupsService.ts
    → Copy to: contractnest-api/src/services/groupsService.ts
-   Purpose: Added SmartProfile service methods (getSmartProfile, saveSmartProfile,
-            generateSmartProfile, searchSmartProfiles)
+   Purpose: Added SmartProfile + Tenant Dashboard service methods:
+            - getSmartProfile, saveSmartProfile, generateSmartProfile, searchSmartProfiles
+            - getTenantStats, searchTenants
 
 2. contractnest-api/src/controllers/groupsController.ts
    → Copy to: contractnest-api/src/controllers/groupsController.ts
-   Purpose: Added SmartProfile controller handlers for Express routes
+   Purpose: Added SmartProfile + Tenant Dashboard controller handlers:
+            - getSmartProfile, saveSmartProfile, generateSmartProfile, searchSmartProfiles
+            - getTenantStats, searchTenants
 
 3. contractnest-api/src/routes/groupsRoutes.ts
    → Copy to: contractnest-api/src/routes/groupsRoutes.ts
-   Purpose: Added SmartProfile routes:
+   Purpose: Added SmartProfile + Tenant Dashboard routes:
+            SmartProfile:
             - GET /api/smartprofiles/:tenantId
             - POST /api/smartprofiles
             - POST /api/smartprofiles/generate
@@ -71,6 +91,9 @@ IMPORTANT: Files are in subdirectories (controllers/ and services/), not root sr
             - POST /api/smartprofiles/scrape-website
             - POST /api/smartprofiles/generate-clusters
             - POST /api/smartprofiles/clusters
+            Tenant Dashboard:
+            - POST /api/tenants/stats
+            - POST /api/tenants/search
 
 API POWERSHELL COPY COMMANDS:
 ═════════════════════════════
@@ -87,7 +110,10 @@ PART 3: EDGE FUNCTION (contractnest-edge)
 
 1. contractnest-edge/supabase/functions/groups/index.ts
    → Copy to: contractnest-edge/supabase/functions/groups/index.ts
-   Purpose: SmartProfile Edge Function endpoints that call n8n workflows
+   Purpose: SmartProfile + Tenant Dashboard Edge Function endpoints:
+            - POST /smartprofiles/* (AI operations via n8n)
+            - POST /tenants/stats (Dashboard statistics)
+            - POST /tenants/search (NLP search via n8n)
 
 EDGE FUNCTION COPY & DEPLOY:
 ════════════════════════════
@@ -107,6 +133,8 @@ COPY ALL AT ONCE:
 Copy-Item -Path ".\MANUAL_COPY_FILES\contractnest-ui\src\pages\settings\business-profile\smart-profile.tsx" -Destination ".\contractnest-ui\src\pages\settings\business-profile\" -Force
 Copy-Item -Path ".\MANUAL_COPY_FILES\contractnest-ui\src\services\groupsService.ts" -Destination ".\contractnest-ui\src\services\" -Force
 Copy-Item -Path ".\MANUAL_COPY_FILES\contractnest-ui\src\hooks\queries\useGroupQueries.ts" -Destination ".\contractnest-ui\src\hooks\queries\" -Force
+Copy-Item -Path ".\MANUAL_COPY_FILES\contractnest-ui\src\services\serviceURLs.ts" -Destination ".\contractnest-ui\src\services\" -Force
+Copy-Item -Path ".\MANUAL_COPY_FILES\contractnest-ui\src\pages\VaNi\TenantProfilesPage.tsx" -Destination ".\contractnest-ui\src\pages\VaNi\" -Force
 
 # API Files
 Copy-Item -Path ".\MANUAL_COPY_FILES\contractnest-api\src\services\groupsService.ts" -Destination ".\contractnest-api\src\services\" -Force
@@ -116,7 +144,7 @@ Copy-Item -Path ".\MANUAL_COPY_FILES\contractnest-api\src\routes\groupsRoutes.ts
 # Edge Function
 Copy-Item -Path ".\MANUAL_COPY_FILES\contractnest-edge\supabase\functions\groups\index.ts" -Destination ".\contractnest-edge\supabase\functions\groups\" -Force
 
-Write-Host "All SmartProfile files copied!" -ForegroundColor Green
+Write-Host "All files copied!" -ForegroundColor Green
 
 ═══════════════════════════════════════════════════════════════════════════════
 AFTER COPYING:
@@ -125,10 +153,11 @@ AFTER COPYING:
 1. Restart UI: npm run dev (in contractnest-ui)
 2. Restart API: npm run dev (in contractnest-api)
 3. Deploy Edge Function: cd contractnest-edge && npx supabase functions deploy groups
-4. Test: Navigate to /settings/business-profile/smart-profile
+4. Test SmartProfile: Navigate to /settings/business-profile/smart-profile
+5. Test Tenant Dashboard: Navigate to /vani/toolkit/tenant-profiles
 
 ═══════════════════════════════════════════════════════════════════════════════
-FLOW:
+FLOW - SMARTPROFILE:
 ═══════════════════════════════════════════════════════════════════════════════
 
 User → SmartProfile Page → Select method (Manual/Website)
@@ -156,3 +185,20 @@ UI → API (/api/smartprofiles/generate-clusters) → Edge Function → n8n
 UI → API (/api/smartprofiles/clusters) → Edge Function → t_smart_profile_clusters table
                         ↓
         → SUCCESS!
+
+═══════════════════════════════════════════════════════════════════════════════
+FLOW - TENANT DASHBOARD:
+═══════════════════════════════════════════════════════════════════════════════
+
+User → Tenant Dashboard → Click Intent Card OR Enter Search Query
+                        ↓
+UI → API (/api/tenants/search) → Edge Function → n8n AI Search
+                        ↓
+        → View Search Results with NLP matching
+                        ↓
+        → Click on Tenant to View Details
+
+Stats Flow:
+UI → API (/api/tenants/stats) → Edge Function → Calculate Statistics
+                        ↓
+        → Display Dashboard Stats (by group, by industry, etc.)

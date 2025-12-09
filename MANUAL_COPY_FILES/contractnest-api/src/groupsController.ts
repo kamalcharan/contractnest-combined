@@ -1130,3 +1130,92 @@ export const searchSmartProfiles = async (req: Request, res: Response) => {
     return res.status(status).json({ success: false, error: message });
   }
 };
+
+// ============================================
+// TENANT DASHBOARD CONTROLLERS
+// ============================================
+
+/**
+ * POST /api/tenants/stats
+ * Get tenant statistics for dashboard
+ */
+export const getTenantStats = async (req: Request, res: Response) => {
+  try {
+    if (!validateSupabaseConfig('api_groups', 'getTenantStats')) {
+      return res.status(500).json({
+        error: 'Server configuration error: Missing Supabase configuration'
+      });
+    }
+
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Authorization header is required' });
+    }
+
+    const { group_id } = req.body;
+
+    const result = await groupsService.getTenantStats(authHeader, group_id);
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error in getTenantStats controller:', error.message);
+
+    captureException(error instanceof Error ? error : new Error(String(error)), {
+      tags: { source: 'api_groups', action: 'getTenantStats' },
+      status: error.response?.status
+    });
+
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.error || error.message || 'Failed to fetch tenant stats';
+
+    return res.status(status).json({ success: false, error: message });
+  }
+};
+
+/**
+ * POST /api/tenants/search
+ * NLP-based tenant search via n8n
+ */
+export const searchTenants = async (req: Request, res: Response) => {
+  try {
+    if (!validateSupabaseConfig('api_groups', 'searchTenants')) {
+      return res.status(500).json({
+        error: 'Server configuration error: Missing Supabase configuration'
+      });
+    }
+
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Authorization header is required' });
+    }
+
+    const { query, group_id, intent_code } = req.body;
+
+    if (!query) {
+      return res.status(400).json({ error: 'query is required' });
+    }
+
+    const environment = req.headers['x-environment'] as string | undefined;
+
+    const result = await groupsService.searchTenants(authHeader, {
+      query,
+      group_id,
+      intent_code
+    }, environment);
+
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error in searchTenants controller:', error.message);
+
+    captureException(error instanceof Error ? error : new Error(String(error)), {
+      tags: { source: 'api_groups', action: 'searchTenants' },
+      status: error.response?.status
+    });
+
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.error || error.message || 'Failed to search tenants';
+
+    return res.status(status).json({ success: false, error: message });
+  }
+};

@@ -257,4 +257,23 @@ router.post('/smartprofiles/generate', groupsController.generateSmartProfile);
  */
 router.post('/smartprofiles/search', groupsController.searchSmartProfiles);
 
+// ============================================
+// TENANT DASHBOARD ROUTES
+// ============================================
+
+/**
+ * POST /api/tenants/stats
+ * Get tenant statistics for dashboard
+ * Body: { group_id? }
+ */
+router.post('/tenants/stats', groupsController.getTenantStats);
+
+/**
+ * POST /api/tenants/search
+ * NLP-based tenant search via n8n
+ * Body: { query, group_id?, intent_code? }
+ * Headers: x-environment: 'live' | 'test'
+ */
+router.post('/tenants/search', groupsController.searchTenants);
+
 export default router;

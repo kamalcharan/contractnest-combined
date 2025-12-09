@@ -553,11 +553,11 @@ export const API_ENDPOINTS = {
       // Helper function for activity logs with filters
       ACTIVITY_LOGS_WITH_FILTERS: (groupId: string, filters: ActivityLogFilters = {}) => {
         const params = new URLSearchParams();
-
+        
         if (filters.activity_type) params.append('activity_type', filters.activity_type);
         if (filters.limit !== undefined) params.append('limit', filters.limit.toString());
         if (filters.offset !== undefined) params.append('offset', filters.offset.toString());
-
+        
         const queryString = params.toString();
         return queryString
           ? `/api/admin/activity-logs/${groupId}?${queryString}`

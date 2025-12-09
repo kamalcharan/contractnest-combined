@@ -968,5 +968,71 @@ export const groupsService = {
       });
       throw error;
     }
+  },
+
+  // ============================================
+  // TENANT DASHBOARD METHODS
+  // ============================================
+
+  /**
+   * Get tenant statistics for dashboard
+   */
+  async getTenantStats(
+    authToken: string,
+    groupId?: string
+  ): Promise<any> {
+    try {
+      const response = await axios.post(
+        `${GROUPS_API_BASE}/tenants/stats`,
+        { group_id: groupId },
+        {
+          headers: getHeaders(authToken),
+          timeout: 30000
+        }
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('Error in getTenantStats:', error);
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        tags: { source: 'groupsService', action: 'getTenantStats' },
+        extra: { groupId }
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * NLP-based tenant search via n8n
+   */
+  async searchTenants(
+    authToken: string,
+    request: {
+      query: string;
+      group_id?: string;
+      intent_code?: string;
+    },
+    environment?: string
+  ): Promise<any> {
+    try {
+      const response = await axios.post(
+        `${GROUPS_API_BASE}/tenants/search`,
+        request,
+        {
+          headers: {
+            ...getHeaders(authToken),
+            'x-environment': environment || 'live'
+          },
+          timeout: 30000
+        }
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('Error in searchTenants:', error);
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        tags: { source: 'groupsService', action: 'searchTenants' },
+        extra: { query: request.query, intentCode: request.intent_code }
+      });
+      throw error;
+    }
   }
 };
