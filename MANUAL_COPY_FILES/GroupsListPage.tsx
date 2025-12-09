@@ -613,7 +613,7 @@ const GroupsListPage: React.FC = () => {
 
                       {/* Chat - VaNi AI Chat */}
                       <button
-                        onClick={() => navigate('/vani/channels/chat')}
+                        onClick={() => navigate('/vani/chat')}
                         title="Chat with VaNi AI"
                         className="p-2.5 rounded-lg transition-all hover:opacity-80"
                         style={{
