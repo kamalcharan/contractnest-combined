@@ -1,7 +1,7 @@
 // src/pages/settings/customer-channels/GroupsListPage.tsx
 // Groups List Page - View and manage group memberships
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { useAuth } from '../../../context/AuthContext';
@@ -22,7 +22,9 @@ import {
   Compass,
   Phone
 } from 'lucide-react';
-import { useGroups, useGroupMemberships, useVerifyGroupAccess } from '../../../hooks/queries/useGroupQueries';
+import { useQueries } from '@tanstack/react-query';
+import { useGroups, useVerifyGroupAccess, groupQueryKeys } from '../../../hooks/queries/useGroupQueries';
+import groupsService from '../../../services/groupsService';
 import toast from 'react-hot-toast';
 
 // Authentication Modal Component - Only verifies password
@@ -238,26 +240,39 @@ const GroupsListPage: React.FC = () => {
   // Fetch all groups
   const { data: groups, isLoading: isLoadingGroups, refetch: refetchGroups } = useGroups('all');
 
-  // Get first BBB group ID to check memberships
-  const bbbGroupId = groups?.[0]?.id || '';
+  // Fetch memberships for ALL groups in parallel
+  const membershipQueries = useQueries({
+    queries: (groups || []).map((group: any) => ({
+      queryKey: groupQueryKeys.groupMemberships(group.id, { status: 'all' }),
+      queryFn: () => groupsService.getGroupMemberships(group.id, { status: 'all' }),
+      enabled: !!currentTenant && !!group.id,
+      staleTime: 2 * 60 * 1000,
+    })),
+  });
 
-  // Fetch user's memberships for the BBB group
-  const { data: membershipsData, refetch: refetchMemberships } = useGroupMemberships(bbbGroupId, { status: 'all' });
+  // Refetch all memberships
+  const refetchMemberships = () => {
+    membershipQueries.forEach((query) => query.refetch());
+  };
 
-  // Build membership map for current tenant
+  // Build membership map for current tenant from ALL groups
   const membershipMap = useMemo(() => {
     const map: Record<string, any> = {};
 
-    if (membershipsData?.memberships && currentTenant) {
-      membershipsData.memberships.forEach((m: any) => {
-        if (m.tenant_id === currentTenant.id) {
-          map[m.group_id] = m;
+    if (currentTenant) {
+      membershipQueries.forEach((query) => {
+        if (query.data?.memberships) {
+          query.data.memberships.forEach((m: any) => {
+            if (m.tenant_id === currentTenant.id && m.group_id) {
+              map[m.group_id] = m;
+            }
+          });
         }
       });
     }
 
     return map;
-  }, [membershipsData, currentTenant]);
+  }, [membershipQueries, currentTenant]);
 
   // Filter groups based on search
   const filteredGroups = useMemo(() => {

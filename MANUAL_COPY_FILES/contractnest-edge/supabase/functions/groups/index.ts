@@ -468,6 +468,7 @@ console.log('='.repeat(60));
           .select(`
             id,
             tenant_id,
+            group_id,
             status,
             joined_at,
             profile_data
@@ -505,6 +506,7 @@ console.log('='.repeat(60));
             id: m.id,
             membership_id: m.id,
             tenant_id: m.tenant_id,
+            group_id: m.group_id || groupId,
             status: m.status,
             joined_at: m.joined_at,
             profile_data: m.profile_data,
