@@ -2094,11 +2094,43 @@ console.log('='.repeat(60));
       try {
         const requestData = await req.json();
 
-        if (!requestData.tenant_id || !requestData.short_description) {
+        if (!requestData.tenant_id) {
           return new Response(
-            JSON.stringify({ error: 'tenant_id and short_description are required' }),
+            JSON.stringify({ error: 'tenant_id is required' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
+        }
+
+        let shortDescription = requestData.short_description;
+        let keywords = requestData.keywords || [];
+        let profileType = requestData.profile_type || 'seller';
+
+        // If no short_description provided, fetch from tenant profile
+        if (!shortDescription) {
+          console.log('📋 Fetching tenant profile for:', requestData.tenant_id);
+          const { data: tenantProfile, error: profileError } = await supabase
+            .from('t_tenant_profiles')
+            .select('business_name, description, industry, city, state, country')
+            .eq('tenant_id', requestData.tenant_id)
+            .single();
+
+          if (profileError || !tenantProfile) {
+            console.error('❌ Failed to fetch tenant profile:', profileError);
+            return new Response(
+              JSON.stringify({ error: 'Tenant profile not found. Please complete your Business Profile first.' }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
+          // Build short description from tenant profile
+          const parts = [];
+          if (tenantProfile.business_name) parts.push(tenantProfile.business_name);
+          if (tenantProfile.industry) parts.push(tenantProfile.industry);
+          if (tenantProfile.description) parts.push(tenantProfile.description);
+          if (tenantProfile.city) parts.push(tenantProfile.city);
+
+          shortDescription = parts.join(' - ') || 'Business Profile';
+          console.log('📝 Built description from profile:', shortDescription.substring(0, 100));
         }
 
         console.log('🤖 Generating smartprofile via n8n for tenant:', requestData.tenant_id);
@@ -2117,9 +2149,9 @@ console.log('='.repeat(60));
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             tenant_id: requestData.tenant_id,
-            short_description: requestData.short_description,
-            keywords: requestData.keywords || [],
-            profile_type: requestData.profile_type || 'seller'
+            short_description: shortDescription,
+            keywords: keywords,
+            profile_type: profileType
           })
         });
 
