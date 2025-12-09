@@ -817,6 +817,10 @@ export const useSaveSmartProfile = () => {
         queryKey: smartProfileQueryKeys.profile(variables.tenant_id)
       });
 
+      toast({
+        title: "Success",
+        description: "SmartProfile saved successfully"
+      });
       console.log('✅ SmartProfile saved:', data);
     },
 
