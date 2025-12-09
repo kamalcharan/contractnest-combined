@@ -698,7 +698,14 @@ class GroupsService {
     generation_method?: 'manual' | 'website';
   }): Promise<{ success: boolean; profile_id: string }> {
     try {
-      console.log('🔍 UI Service: Saving SmartProfile...', { tenantId: data.tenant_id });
+      console.log('🔍 UI Service: Saving SmartProfile...', {
+        tenantId: data.tenant_id,
+        hasEnhancedDesc: !!data.ai_enhanced_description,
+        enhancedDescLength: data.ai_enhanced_description?.length || 0,
+        shortDescLength: data.short_description?.length || 0,
+        keywordsCount: data.approved_keywords?.length || 0,
+        generationMethod: data.generation_method
+      });
 
       const response = await api.post(
         API_ENDPOINTS.GROUPS.SMARTPROFILES.SAVE,

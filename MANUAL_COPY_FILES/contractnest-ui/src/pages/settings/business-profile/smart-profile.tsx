@@ -226,14 +226,23 @@ const SmartProfilePage: React.FC = () => {
   };
 
   // Save profile and move to clusters
-  const handleSaveProfile = async (description: string) => {
+  const handleSaveProfile = async () => {
     if (!currentTenant?.id) return;
+
+    // Debug: log what we're saving
+    console.log('🔍 handleSaveProfile called with state:', {
+      enhancedDescription: enhancedDescription?.substring(0, 100),
+      shortDescription: shortDescription?.substring(0, 50),
+      keywords: keywords?.length,
+      websiteUrl,
+      generationMethod
+    });
 
     try {
       await saveSmartProfileMutation.mutateAsync({
         tenant_id: currentTenant.id,
-        short_description: shortDescription || description,
-        ai_enhanced_description: description,
+        short_description: shortDescription,
+        ai_enhanced_description: enhancedDescription,  // Read from state directly - no closure issues
         approved_keywords: keywords,
         website_url: websiteUrl || undefined,
         generation_method: generationMethod,
@@ -245,7 +254,6 @@ const SmartProfilePage: React.FC = () => {
         queryKey: smartProfileQueryKeys.profile(currentTenant.id)
       });
 
-      setEnhancedDescription(description);
       setIsEditMode(false);
       setCurrentStep('semantic_clusters');
 
@@ -1008,7 +1016,7 @@ const SmartProfilePage: React.FC = () => {
                 {/* Action Buttons */}
                 <div className="flex space-x-4 pt-4">
                   <button
-                    onClick={() => handleSaveProfile(enhancedDescription)}
+                    onClick={handleSaveProfile}
                     disabled={saveSmartProfileMutation.isPending}
                     className="flex-1 flex items-center justify-center space-x-2 px-6 py-3 rounded-lg font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
                     style={{
