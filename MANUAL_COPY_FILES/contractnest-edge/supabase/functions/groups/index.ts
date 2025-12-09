@@ -1472,9 +1472,16 @@ console.log('='.repeat(60));
           useCache
         });
 
-        // Get n8n webhook URL for search with caching
-        const n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL') || 'https://n8n.yourdomain.com';
-        const searchWebhookUrl = `${n8nWebhookUrl}/webhook/search-with-caching`;
+        // Get n8n webhook URL for AI-powered search
+        // Uses the /ai-search endpoint which handles:
+        // 1. Cache check  2. Query embedding generation  3. Semantic cluster lookup
+        // 4. Vector search  5. Cluster boost  6. Cache storage
+        const n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL') || 'https://n8n.srv1096269.hstgr.cloud';
+        const xEnvironment = req.headers.get('x-environment');
+        const webhookPrefix = xEnvironment === 'live' ? '/webhook' : '/webhook-test';
+        const searchWebhookUrl = `${n8nWebhookUrl}${webhookPrefix}/ai-search`;
+
+        console.log('🔍 Calling n8n search:', searchWebhookUrl);
 
         // Call n8n which handles embedding generation and cached_vector_search
         const n8nResponse = await fetch(searchWebhookUrl, {
@@ -1487,7 +1494,8 @@ console.log('='.repeat(60));
             use_cache: useCache,
             similarity_threshold: similarityThreshold,
             session_id: requestData.session_id || null,
-            intent: requestData.intent || null
+            intent: requestData.intent || null,
+            channel: requestData.channel || 'web'
           })
         });
 
@@ -1623,6 +1631,369 @@ console.log('='.repeat(60));
     }
 
     // ============================================
+    // TENANT DASHBOARD ROUTES
+    // Stats, NLP Search, and Intents for admin dashboard
+    // ============================================
+
+    // POST /tenants/stats - Get tenant statistics (calculated dynamically)
+    if (method === 'POST' && path === '/tenants/stats') {
+      try {
+        const requestData = await req.json();
+        const groupId = requestData.group_id || null;
+
+        console.log('📊 Getting tenant stats (dynamic):', { groupId });
+
+        // Build base query for memberships
+        let membershipsQuery = supabaseAdmin
+          .from('t_group_memberships')
+          .select('id, tenant_id, group_id, status')
+          .eq('status', 'active')
+          .eq('is_active', true);
+
+        if (groupId) {
+          membershipsQuery = membershipsQuery.eq('group_id', groupId);
+        }
+
+        const { data: memberships, error: membershipsError } = await membershipsQuery;
+        if (membershipsError) throw membershipsError;
+
+        // Get unique tenant IDs
+        const tenantIds = [...new Set(memberships.map(m => m.tenant_id).filter(Boolean))];
+        const groupIds = [...new Set(memberships.map(m => m.group_id).filter(Boolean))];
+
+        // Get tenant profiles for profile_type
+        let tenantProfiles: any[] = [];
+        if (tenantIds.length > 0) {
+          const { data: profiles } = await supabaseAdmin
+            .from('t_tenant_profiles')
+            .select('tenant_id, industry_id, profile_type')
+            .in('tenant_id', tenantIds);
+          tenantProfiles = profiles || [];
+        }
+
+        // Get group names
+        let groups: any[] = [];
+        if (groupIds.length > 0) {
+          const { data: groupData } = await supabaseAdmin
+            .from('t_business_groups')
+            .select('id, group_name')
+            .in('id', groupIds);
+          groups = groupData || [];
+        }
+
+        // Calculate stats
+        const totalTenants = tenantIds.length;
+
+        // By group
+        const byGroup = groups.map(g => {
+          const count = memberships.filter(m => m.group_id === g.id).length;
+          return { group_id: g.id, group_name: g.group_name, count };
+        }).filter(g => g.count > 0);
+
+        // By industry
+        const industryMap: Record<string, number> = {};
+        tenantProfiles.forEach(p => {
+          const industry = p.industry_id || 'Unknown';
+          industryMap[industry] = (industryMap[industry] || 0) + 1;
+        });
+        const byIndustry = Object.entries(industryMap).map(([industry_id, count]) => ({
+          industry_id,
+          industry_name: industry_id,
+          count
+        }));
+
+        // By profile type
+        let buyers = 0, sellers = 0, both = 0;
+        tenantProfiles.forEach(p => {
+          if (p.profile_type === 'buyer') buyers++;
+          else if (p.profile_type === 'seller') sellers++;
+          else if (p.profile_type === 'both') both++;
+        });
+
+        const stats = {
+          total_tenants: totalTenants,
+          by_group: byGroup,
+          by_industry: byIndustry,
+          by_profile_type: { buyers, sellers, both }
+        };
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            stats
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error('Error in POST /tenants/stats:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to get tenant stats', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // POST /tenants/search - NLP-based tenant search via n8n AI Search
+    // Routes to n8n /ai-search webhook which handles:
+    // 1. Cache check  2. Query embedding generation  3. Semantic cluster lookup
+    // 4. Vector search  5. Cluster boost (+15%)  6. Cache storage
+    if (method === 'POST' && path === '/tenants/search') {
+      try {
+        const requestData = await req.json();
+
+        if (!requestData.query) {
+          return new Response(
+            JSON.stringify({ error: 'query is required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const query = requestData.query;
+        const groupId = requestData.group_id || null;
+        const intentCode = requestData.intent_code || null;
+        const limit = requestData.limit || 20;
+        const useCache = requestData.use_cache !== false;
+
+        console.log('🔍 Tenant search (n8n AI):', { query, groupId, intentCode, useCache });
+
+        // Get n8n webhook URL for AI-powered search
+        const n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL') || 'https://n8n.srv1096269.hstgr.cloud';
+        const xEnvironment = req.headers.get('x-environment');
+        const webhookPrefix = xEnvironment === 'live' ? '/webhook' : '/webhook-test';
+        const searchWebhookUrl = `${n8nWebhookUrl}${webhookPrefix}/ai-search`;
+
+        console.log('🔗 Calling n8n AI search:', searchWebhookUrl);
+
+        // Build search payload for n8n
+        const searchPayload: any = {
+          query: query,
+          limit: limit,
+          use_cache: useCache,
+          similarity_threshold: 0.7,
+          channel: 'web',
+          user_role: 'admin'
+        };
+
+        // Add group_id if provided (scoped search)
+        if (groupId) {
+          searchPayload.group_id = groupId;
+          searchPayload.scope = 'group';
+        } else {
+          searchPayload.scope = 'product'; // Search across all groups
+        }
+
+        // Map intent codes to search intents
+        if (intentCode) {
+          const intentMap: Record<string, string> = {
+            'all_tenants': 'list_all',
+            'by_group': 'list_by_group',
+            'buyers': 'find_buyer',
+            'sellers': 'search_offering'
+          };
+          searchPayload.intent = intentMap[intentCode] || 'general_search';
+        }
+
+        // Call n8n AI search webhook
+        const n8nResponse = await fetch(searchWebhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(searchPayload)
+        });
+
+        if (!n8nResponse.ok) {
+          const errorText = await n8nResponse.text();
+          console.error('❌ n8n AI search failed:', n8nResponse.status, errorText);
+
+          // Fallback to basic search if n8n fails
+          console.log('⚠️ Falling back to basic search...');
+          return await fallbackBasicSearch(supabaseAdmin, requestData, corsHeaders);
+        }
+
+        const n8nResult = await n8nResponse.json();
+
+        console.log('✅ AI Search completed:', {
+          resultsCount: n8nResult.results_count,
+          fromCache: n8nResult.from_cache,
+          status: n8nResult.status
+        });
+
+        // Transform results to match expected format
+        const results = (n8nResult.results || []).map((r: any) => ({
+          membership_id: r.membership_id,
+          tenant_id: r.tenant_id,
+          group_id: r.group_id,
+          group_name: r.group_name || '',
+          business_name: r.business_name || '',
+          business_email: r.business_email || '',
+          mobile_number: r.mobile_number || '',
+          city: r.city || '',
+          industry: r.industry || '',
+          profile_snippet: r.profile_snippet || r.ai_enhanced_description?.substring(0, 200) || '',
+          ai_enhanced_description: r.ai_enhanced_description || '',
+          approved_keywords: r.approved_keywords || [],
+          logo_url: r.logo_url || null,
+          // Real AI confidence scores from unified_search
+          similarity: r.similarity || 0,
+          similarity_original: r.similarity_original || r.similarity || 0,
+          boost_applied: r.boost_applied || null,
+          match_type: r.match_type || 'vector'
+        }));
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            query: query,
+            results_count: results.length,
+            from_cache: n8nResult.from_cache || false,
+            cache_hit_count: n8nResult.cache_hit_count || 0,
+            search_type: 'ai_vector',
+            results: results
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error('Error in POST /tenants/search:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Tenant search failed', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // Fallback basic search function (when n8n is unavailable)
+    async function fallbackBasicSearch(supabaseClient: any, requestData: any, headers: any) {
+      const query = requestData.query.toLowerCase();
+      const groupId = requestData.group_id || null;
+      const intentCode = requestData.intent_code || null;
+
+      console.log('📋 Fallback basic search:', { query, groupId, intentCode });
+
+      // Build search query
+      let membershipsQuery = supabaseClient
+        .from('t_group_memberships')
+        .select(`id, tenant_id, group_id, profile_data, status`)
+        .eq('status', 'active')
+        .eq('is_active', true);
+
+      if (groupId) {
+        membershipsQuery = membershipsQuery.eq('group_id', groupId);
+      }
+
+      const { data: memberships, error: membershipsError } = await membershipsQuery.limit(100);
+      if (membershipsError) throw membershipsError;
+
+      // Get tenant profiles
+      const tenantIds = memberships.map((m: any) => m.tenant_id).filter(Boolean);
+      let tenantProfiles: any[] = [];
+      let groupsMap: Record<string, string> = {};
+
+      if (tenantIds.length > 0) {
+        const { data: profiles } = await supabaseClient
+          .from('t_tenant_profiles')
+          .select('tenant_id, business_name, business_email, city, industry_id, logo_url, profile_type')
+          .in('tenant_id', tenantIds);
+        tenantProfiles = profiles || [];
+
+        const groupIds = [...new Set(memberships.map((m: any) => m.group_id))];
+        const { data: groups } = await supabaseClient
+          .from('t_business_groups')
+          .select('id, group_name')
+          .in('id', groupIds);
+
+        if (groups) {
+          groups.forEach((g: any) => { groupsMap[g.id] = g.group_name; });
+        }
+      }
+
+      // Build results with text matching
+      let filteredResults = memberships.map((m: any) => {
+        const profile = tenantProfiles.find((p: any) => p.tenant_id === m.tenant_id);
+        return {
+          membership_id: m.id,
+          tenant_id: m.tenant_id,
+          group_id: m.group_id,
+          group_name: groupsMap[m.group_id] || '',
+          business_name: profile?.business_name || '',
+          business_email: profile?.business_email || '',
+          city: profile?.city || '',
+          industry: profile?.industry_id || '',
+          profile_snippet: m.profile_data?.ai_enhanced_description?.substring(0, 200) || '',
+          logo_url: profile?.logo_url || null,
+          profile_type: profile?.profile_type || 'unknown',
+          similarity: 0,
+          similarity_original: 0,
+          boost_applied: null,
+          match_type: 'fallback_text'
+        };
+      });
+
+      // Apply intent-based filtering
+      if (intentCode === 'buyers' || query.includes('buyer')) {
+        filteredResults = filteredResults.filter((r: any) => r.profile_type === 'buyer' || r.profile_type === 'both');
+      } else if (intentCode === 'sellers' || query.includes('seller')) {
+        filteredResults = filteredResults.filter((r: any) => r.profile_type === 'seller' || r.profile_type === 'both');
+      } else if (intentCode !== 'all_tenants' && intentCode !== 'by_group') {
+        filteredResults = filteredResults.filter((r: any) => {
+          const searchText = `${r.business_name} ${r.industry} ${r.city}`.toLowerCase();
+          return searchText.includes(query);
+        });
+      }
+
+      // Basic relevance scoring for fallback
+      filteredResults = filteredResults.map((r: any, i: number) => ({
+        ...r,
+        similarity: Math.max(0.5, 0.8 - (i * 0.02))
+      })).slice(0, 20);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          query: requestData.query,
+          results_count: filteredResults.length,
+          from_cache: false,
+          search_type: 'fallback_text',
+          results: filteredResults
+        }),
+        { status: 200, headers: { ...headers, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // GET /intents - Get resolved intents
+    if (method === 'GET' && path === '/intents') {
+      try {
+        const groupId = url.searchParams.get('group_id');
+        const userRole = url.searchParams.get('user_role') || 'member';
+        const channel = url.searchParams.get('channel') || 'web';
+
+        console.log('📋 Getting intents:', { groupId, userRole, channel });
+
+        // Get intents from t_intent_definitions
+        const { data, error } = await supabaseAdmin
+          .from('t_intent_definitions')
+          .select('intent_code, intent_name, description, default_label, default_icon, default_prompt, intent_type')
+          .contains('default_roles', [userRole])
+          .contains('default_channels', [channel])
+          .eq('is_active', true);
+
+        if (error) throw error;
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            intents: data || []
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error('Error in GET /intents:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to get intents', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // ============================================
     // No matching route found - 404
     // ============================================
     console.log('❌ No route matched:', { path, method });
@@ -1656,7 +2027,10 @@ console.log('='.repeat(60));
           'POST /chat/intent (Set intent)',
           'POST /chat/search (AI search with cache)',
           'GET /chat/session/:id (Get session)',
-          'POST /chat/end (End session)'
+          'POST /chat/end (End session)',
+          'POST /tenants/stats (Get tenant statistics)',
+          'POST /tenants/search (NLP tenant search)',
+          'GET /intents (Get resolved intents)'
         ],
         requestedMethod: method,
         requestedPath: path,

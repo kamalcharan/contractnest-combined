@@ -139,6 +139,112 @@ export type N8NGenerateEmbeddingResponse =
   | N8NGenerateEmbeddingErrorResponse;
 
 // =================================================================
+// SEARCH TYPES
+// =================================================================
+
+/**
+ * Search scope - where to search
+ * - 'group': Search within a specific business group (default)
+ * - 'tenant': Search across all groups for a tenant
+ * - 'global': Search across all tenants (admin only, future)
+ */
+export type SearchScope = 'group' | 'tenant' | 'global';
+
+/**
+ * Request body for search webhook
+ * Supports AI-powered search with caching and semantic boost
+ */
+export interface N8NSearchRequest {
+  // Required
+  query: string;                    // Search query text
+
+  // Scope (at least one required)
+  group_id?: string;                // Search within this group
+  tenant_id?: string;               // Search within this tenant's groups
+  scope?: SearchScope;              // Explicit scope (defaults to 'group' if group_id provided)
+
+  // Optional parameters
+  limit?: number;                   // Max results (default: 5)
+  use_cache?: boolean;              // Whether to use query cache (default: true)
+  similarity_threshold?: number;    // Min similarity score 0-1 (default: 0.7)
+
+  // Session context (for chat flows)
+  session_id?: string;              // Chat session ID
+  intent?: string;                  // User intent (search_offering, search_segment, member_lookup)
+
+  // Delivery channel context
+  channel?: 'web' | 'mobile' | 'whatsapp' | 'chatbot' | 'api';
+}
+
+/**
+ * Individual search result
+ */
+export interface N8NSearchResult {
+  membership_id: string;
+  tenant_id: string;
+  business_name: string;
+  business_email?: string;
+  mobile_number?: string;
+  city?: string;
+  industry?: string;
+  profile_snippet: string;
+  ai_enhanced_description?: string;
+  approved_keywords?: string[];
+  similarity: number;
+  similarity_original?: number;     // Original score before boost
+  boost_applied?: string;           // e.g., 'cluster_match'
+  match_type: string;               // 'vector', 'keyword', 'hybrid'
+}
+
+/**
+ * Success response from search webhook
+ */
+export interface N8NSearchSuccessResponse {
+  success: true;
+  query: string;
+  results_count: number;
+  from_cache: boolean;
+  cache_hit_count?: number;
+  results: N8NSearchResult[];
+
+  // Metadata
+  search_scope?: SearchScope;
+  group_id?: string;
+  tenant_id?: string;
+}
+
+/**
+ * Error response from search webhook
+ */
+export interface N8NSearchErrorResponse {
+  success: false;
+  error: string;
+  details?: string;
+  query?: string;
+}
+
+/**
+ * Combined search response type
+ */
+export type N8NSearchResponse =
+  | N8NSearchSuccessResponse
+  | N8NSearchErrorResponse;
+
+/**
+ * Check if search response indicates success
+ */
+export function isSearchSuccess(response: N8NSearchResponse): response is N8NSearchSuccessResponse {
+  return response.success === true;
+}
+
+/**
+ * Check if search response indicates error
+ */
+export function isSearchError(response: N8NSearchResponse): response is N8NSearchErrorResponse {
+  return response.success === false;
+}
+
+// =================================================================
 // HELPER FUNCTIONS
 // =================================================================
 
@@ -218,6 +324,8 @@ export const VaNiN8NConfig = {
   isError: isN8NError,
   isEmbeddingSuccess,
   isEmbeddingError,
+  isSearchSuccess,
+  isSearchError,
 };
 
 export default VaNiN8NConfig;
