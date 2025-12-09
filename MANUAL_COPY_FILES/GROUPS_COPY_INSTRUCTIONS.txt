@@ -1,0 +1,64 @@
+═══════════════════════════════════════════════════════════════════════════════
+📋 MANUAL COPY INSTRUCTIONS - GROUPS FEATURE
+═══════════════════════════════════════════════════════════════════════════════
+Branch: claude/init-submodules-01AnoU9WPqvtgSskV4XFH7bD
+Date: December 9, 2024
+Feature: Customer Channels - Groups (User Profile Dashboard 65:35 View)
+═══════════════════════════════════════════════════════════════════════════════
+
+🎯 SUMMARY OF CHANGES
+═══════════════════════════════════════════════════════════════════════════════
+
+This update implements:
+1. NEW Groups List Page - Settings → Customer Channels → Groups
+2. NEW 65:35 Profile Dashboard - View/Edit profile and semantic clusters
+3. Profile Creation Modal - Reuses existing wizard components
+4. Menu updates - Added "Groups" under Customer Channels
+5. Renamed "Tenant Profiles" to "Group Member Profiles" in Implementation Toolkit
+
+Navigation Flow:
+Settings → Configure → Customer Channels → Groups
+  └── List of available groups
+      ├── Authenticate (if locked)
+      ├── Create Profile (if authenticated, no profile)
+      └── View Profile → 65:35 Dashboard (if has profile)
+
+═══════════════════════════════════════════════════════════════════════════════
+📦 FILES TO COPY (5 FILES)
+═══════════════════════════════════════════════════════════════════════════════
+
+SUBMODULE: contractnest-ui
+─────────────────────────────────────────────────────────────────────────────
+
+1. NEW FILE: GroupsListPage.tsx
+   FROM: MANUAL_COPY_FILES/GroupsListPage.tsx
+   TO:   contractnest-ui/src/pages/settings/customer-channels/GroupsListPage.tsx
+
+   NOTE: Create the directory first:
+   mkdir -p contractnest-ui/src/pages/settings/customer-channels/
+
+2. NEW FILE: GroupProfileDashboard.tsx
+   FROM: MANUAL_COPY_FILES/GroupProfileDashboard.tsx
+   TO:   contractnest-ui/src/pages/settings/customer-channels/GroupProfileDashboard.tsx
+
+3. UPDATED FILE: settingsMenus.ts
+   FROM: MANUAL_COPY_FILES/settingsMenus.ts
+   TO:   contractnest-ui/src/utils/constants/settingsMenus.ts
+
+   CHANGES: Added "Groups" menu item under Customer Channels section (lines 186-195)
+
+4. UPDATED FILE: industryMenus.ts
+   FROM: MANUAL_COPY_FILES/industryMenus.ts
+   TO:   contractnest-ui/src/utils/constants/industryMenus.ts
+
+   CHANGES: Renamed "Tenant Profiles" to "Group Member Profiles" (line 361)
+
+5. UPDATED FILE: App.tsx
+   FROM: MANUAL_COPY_FILES/App.tsx
+   TO:   contractnest-ui/src/App.tsx
+
+   CHANGES:
+   - Added imports for GroupsListPage and GroupProfileDashboard (lines 89-91)
+   - Added routes for /settings/configure/customer-channels/groups (lines 449-451)
+
+═══════════════════════════════════════════════════════════════════════════════
