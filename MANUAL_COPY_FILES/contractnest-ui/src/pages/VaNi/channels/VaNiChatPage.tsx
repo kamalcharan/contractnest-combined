@@ -457,7 +457,7 @@ const VaNiChatPage: React.FC = () => {
       >
         <div className="flex items-center space-x-4">
           <button
-            onClick={() => navigate('/vani/channels/bbb')}
+            onClick={() => navigate('/settings/configure/customer-channels/groups')}
             className="flex items-center space-x-2 px-3 py-2 border rounded-lg transition-colors hover:opacity-80"
             style={{
               borderColor: `${colors.utility.primaryText}20`,
