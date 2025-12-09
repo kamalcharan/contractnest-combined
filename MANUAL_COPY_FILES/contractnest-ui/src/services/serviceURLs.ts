@@ -579,9 +579,17 @@ export const API_ENDPOINTS = {
         params.append('channel', channel);
         return `/api/intents?${params.toString()}`;
       }
+    },
+
+    // SmartProfile operations (tenant-level AI profiles)
+    SMARTPROFILES: {
+      GET: (tenantId: string) => `/api/smartprofiles/${tenantId}`,
+      SAVE: '/api/smartprofiles',
+      GENERATE: '/api/smartprofiles/generate',
+      SEARCH: '/api/smartprofiles/search'
     }
   },
-  
+
   // =================================================================
   // SERVICE CONTRACTS - BLOCK SYSTEM ENDPOINTS - PRESERVED
   // =================================================================
