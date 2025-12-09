@@ -1,13 +1,55 @@
 ═══════════════════════════════════════════════════════════════════════════════
-SMARTPROFILE API LAYER - COPY INSTRUCTIONS (CORRECTED PATHS)
+SMARTPROFILE - COMPLETE COPY INSTRUCTIONS
 ═══════════════════════════════════════════════════════════════════════════════
 
-This folder contains the SmartProfile API layer routes, controllers, and services.
+This folder contains all SmartProfile files - API layer AND UI components.
+SmartProfile follows the BBB membership profile wizard pattern with:
+- Create/View/Edit modes
+- Manual description OR website scraping
+- AI enhancement
+- Semantic clusters generation
+
+═══════════════════════════════════════════════════════════════════════════════
+PART 1: UI FILES (contractnest-ui)
+═══════════════════════════════════════════════════════════════════════════════
+
+1. contractnest-ui/src/pages/settings/business-profile/smart-profile.tsx
+   → Copy to: contractnest-ui/src/pages/settings/business-profile/smart-profile.tsx
+   Purpose: SmartProfile wizard page with Create/View/Edit modes
+            - Step 1: Enter description OR website URL
+            - Step 2: AI enhancement review
+            - Step 3: Semantic clusters management
+            - Step 4: Success
+
+2. contractnest-ui/src/services/groupsService.ts
+   → Copy to: contractnest-ui/src/services/groupsService.ts
+   Purpose: Added SmartProfile service methods:
+            - getSmartProfile, saveSmartProfile, enhanceSmartProfile
+            - scrapeWebsiteForSmartProfile, generateSmartProfileClusters
+            - saveSmartProfileClusters, getSmartProfileClusters
+            - searchSmartProfiles
+
+3. contractnest-ui/src/hooks/queries/useGroupQueries.ts
+   → Copy to: contractnest-ui/src/hooks/queries/useGroupQueries.ts
+   Purpose: Added SmartProfile React Query hooks:
+            - useSmartProfile, useSaveSmartProfile, useEnhanceSmartProfile
+            - useScrapeWebsiteForSmartProfile, useGenerateSmartProfileClusters
+            - useSaveSmartProfileClusters, useSearchSmartProfiles
+
+UI POWERSHELL COPY COMMANDS:
+═══════════════════════════
+
+Copy-Item -Path ".\MANUAL_COPY_FILES\contractnest-ui\src\pages\settings\business-profile\smart-profile.tsx" -Destination ".\contractnest-ui\src\pages\settings\business-profile\" -Force
+Copy-Item -Path ".\MANUAL_COPY_FILES\contractnest-ui\src\services\groupsService.ts" -Destination ".\contractnest-ui\src\services\" -Force
+Copy-Item -Path ".\MANUAL_COPY_FILES\contractnest-ui\src\hooks\queries\useGroupQueries.ts" -Destination ".\contractnest-ui\src\hooks\queries\" -Force
+
+Write-Host "UI files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════════════════════════════════
+PART 2: API LAYER FILES (contractnest-api)
+═══════════════════════════════════════════════════════════════════════════════
 
 IMPORTANT: Files are in subdirectories (controllers/ and services/), not root src/
-
-FILES TO COPY:
-══════════════
 
 1. contractnest-api/src/services/groupsService.ts
    → Copy to: contractnest-api/src/services/groupsService.ts
@@ -25,17 +67,92 @@ FILES TO COPY:
             - POST /api/smartprofiles
             - POST /api/smartprofiles/generate
             - POST /api/smartprofiles/search
+            - POST /api/smartprofiles/enhance
+            - POST /api/smartprofiles/scrape-website
+            - POST /api/smartprofiles/generate-clusters
+            - POST /api/smartprofiles/clusters
 
-POWERSHELL COPY COMMANDS:
-═════════════════════════
+API POWERSHELL COPY COMMANDS:
+═════════════════════════════
 
 Copy-Item -Path ".\MANUAL_COPY_FILES\contractnest-api\src\services\groupsService.ts" -Destination ".\contractnest-api\src\services\" -Force
 Copy-Item -Path ".\MANUAL_COPY_FILES\contractnest-api\src\controllers\groupsController.ts" -Destination ".\contractnest-api\src\controllers\" -Force
 Copy-Item -Path ".\MANUAL_COPY_FILES\contractnest-api\src\routes\groupsRoutes.ts" -Destination ".\contractnest-api\src\routes\" -Force
 
-Write-Host "All API files copied!" -ForegroundColor Green
+Write-Host "API files copied!" -ForegroundColor Green
 
+═══════════════════════════════════════════════════════════════════════════════
+PART 3: EDGE FUNCTION (contractnest-edge)
+═══════════════════════════════════════════════════════════════════════════════
+
+1. contractnest-edge/supabase/functions/groups/index.ts
+   → Copy to: contractnest-edge/supabase/functions/groups/index.ts
+   Purpose: SmartProfile Edge Function endpoints that call n8n workflows
+
+EDGE FUNCTION COPY & DEPLOY:
+════════════════════════════
+
+Copy-Item -Path ".\MANUAL_COPY_FILES\contractnest-edge\supabase\functions\groups\index.ts" -Destination ".\contractnest-edge\supabase\functions\groups\" -Force
+cd contractnest-edge
+npx supabase functions deploy groups
+cd ..
+
+Write-Host "Edge function deployed!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════════════════════════════════
+COPY ALL AT ONCE:
+═══════════════════════════════════════════════════════════════════════════════
+
+# UI Files
+Copy-Item -Path ".\MANUAL_COPY_FILES\contractnest-ui\src\pages\settings\business-profile\smart-profile.tsx" -Destination ".\contractnest-ui\src\pages\settings\business-profile\" -Force
+Copy-Item -Path ".\MANUAL_COPY_FILES\contractnest-ui\src\services\groupsService.ts" -Destination ".\contractnest-ui\src\services\" -Force
+Copy-Item -Path ".\MANUAL_COPY_FILES\contractnest-ui\src\hooks\queries\useGroupQueries.ts" -Destination ".\contractnest-ui\src\hooks\queries\" -Force
+
+# API Files
+Copy-Item -Path ".\MANUAL_COPY_FILES\contractnest-api\src\services\groupsService.ts" -Destination ".\contractnest-api\src\services\" -Force
+Copy-Item -Path ".\MANUAL_COPY_FILES\contractnest-api\src\controllers\groupsController.ts" -Destination ".\contractnest-api\src\controllers\" -Force
+Copy-Item -Path ".\MANUAL_COPY_FILES\contractnest-api\src\routes\groupsRoutes.ts" -Destination ".\contractnest-api\src\routes\" -Force
+
+# Edge Function
+Copy-Item -Path ".\MANUAL_COPY_FILES\contractnest-edge\supabase\functions\groups\index.ts" -Destination ".\contractnest-edge\supabase\functions\groups\" -Force
+
+Write-Host "All SmartProfile files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════════════════════════════════
 AFTER COPYING:
-══════════════
-1. Restart your API server (npm run dev in contractnest-api)
-2. Test the SmartProfile page at /settings/business-profile/smart-profile
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Restart UI: npm run dev (in contractnest-ui)
+2. Restart API: npm run dev (in contractnest-api)
+3. Deploy Edge Function: cd contractnest-edge && npx supabase functions deploy groups
+4. Test: Navigate to /settings/business-profile/smart-profile
+
+═══════════════════════════════════════════════════════════════════════════════
+FLOW:
+═══════════════════════════════════════════════════════════════════════════════
+
+User → SmartProfile Page → Select method (Manual/Website)
+                        ↓
+        → Enter description / website URL
+                        ↓
+        → Click "Enhance with AI" / "Analyze Website"
+                        ↓
+UI → API (/api/smartprofiles/enhance or /scrape-website) → Edge Function → n8n
+                        ↓
+        → Review AI-enhanced description
+                        ↓
+        → Click "Save & Continue to Clusters"
+                        ↓
+UI → API (/api/smartprofiles) → Edge Function → t_smart_profiles table
+                        ↓
+        → Click "Generate Clusters with AI"
+                        ↓
+UI → API (/api/smartprofiles/generate-clusters) → Edge Function → n8n
+                        ↓
+        → Review/Edit clusters
+                        ↓
+        → Click "Save Clusters"
+                        ↓
+UI → API (/api/smartprofiles/clusters) → Edge Function → t_smart_profile_clusters table
+                        ↓
+        → SUCCESS!
