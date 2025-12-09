@@ -1994,6 +1994,262 @@ console.log('='.repeat(60));
     }
 
     // ============================================
+    // SMARTPROFILE ROUTES
+    // Tenant-level AI-enhanced profiles
+    // ============================================
+
+    // GET /smartprofiles/:tenantId - Get tenant's smartprofile
+    if (method === 'GET' && path.match(/^\/smartprofiles\/[^\/]+$/)) {
+      try {
+        const tenantId = path.split('/')[2];
+        console.log('📋 Getting smartprofile for tenant:', tenantId);
+
+        const { data, error } = await supabaseAdmin
+          .from('t_tenant_smartprofiles')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .single();
+
+        if (error && error.code !== 'PGRST116') throw error;
+
+        if (!data) {
+          return new Response(
+            JSON.stringify({ success: true, exists: false, smartprofile: null }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Get clusters for this tenant
+        const { data: clusters } = await supabaseAdmin
+          .from('t_semantic_clusters')
+          .select('id, primary_term, related_terms, category, confidence_score')
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true);
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            exists: true,
+            smartprofile: {
+              ...data,
+              clusters: clusters || []
+            }
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error('Error in GET /smartprofiles/:tenantId:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to get smartprofile', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // POST /smartprofiles - Create/update smartprofile (basic save without AI)
+    if (method === 'POST' && path === '/smartprofiles') {
+      try {
+        const requestData = await req.json();
+
+        if (!requestData.tenant_id) {
+          return new Response(
+            JSON.stringify({ error: 'tenant_id is required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.log('💾 Saving smartprofile for tenant:', requestData.tenant_id);
+
+        const { data, error } = await supabaseAdmin
+          .from('t_tenant_smartprofiles')
+          .upsert({
+            tenant_id: requestData.tenant_id,
+            short_description: requestData.short_description || null,
+            profile_type: requestData.profile_type || 'seller',
+            approved_keywords: requestData.approved_keywords || [],
+            status: requestData.status || 'draft',
+            is_active: requestData.is_active !== false,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'tenant_id' })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        return new Response(
+          JSON.stringify({ success: true, smartprofile: data }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error('Error in POST /smartprofiles:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to save smartprofile', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // POST /smartprofiles/generate - Generate embedding + clusters via n8n
+    if (method === 'POST' && path === '/smartprofiles/generate') {
+      try {
+        const requestData = await req.json();
+
+        if (!requestData.tenant_id || !requestData.short_description) {
+          return new Response(
+            JSON.stringify({ error: 'tenant_id and short_description are required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.log('🤖 Generating smartprofile via n8n for tenant:', requestData.tenant_id);
+
+        // Get n8n webhook URL
+        const n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL') || 'https://n8n.srv1096269.hstgr.cloud';
+        const xEnvironment = req.headers.get('x-environment');
+        const webhookPrefix = xEnvironment === 'live' ? '/webhook' : '/webhook-test';
+        const generateWebhookUrl = `${n8nWebhookUrl}${webhookPrefix}/smartprofile-generate`;
+
+        console.log('🔗 Calling n8n:', generateWebhookUrl);
+
+        // Call n8n to generate embedding + clusters
+        const n8nResponse = await fetch(generateWebhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tenant_id: requestData.tenant_id,
+            short_description: requestData.short_description,
+            keywords: requestData.keywords || [],
+            profile_type: requestData.profile_type || 'seller'
+          })
+        });
+
+        if (!n8nResponse.ok) {
+          const errorText = await n8nResponse.text();
+          console.error('❌ n8n generate failed:', n8nResponse.status, errorText);
+          return new Response(
+            JSON.stringify({ success: false, error: 'AI generation failed', details: errorText }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const n8nResult = await n8nResponse.json();
+        console.log('✅ SmartProfile generated:', n8nResult);
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            tenant_id: requestData.tenant_id,
+            embedding_generated: n8nResult.embedding_generated || false,
+            clusters_count: n8nResult.clusters_count || 0
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error('Error in POST /smartprofiles/generate:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to generate smartprofile', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // POST /smartprofiles/search - Search smartprofiles via n8n
+    if (method === 'POST' && path === '/smartprofiles/search') {
+      try {
+        const requestData = await req.json();
+
+        if (!requestData.query) {
+          return new Response(
+            JSON.stringify({ error: 'query is required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const query = requestData.query;
+        const scope = requestData.scope || 'product';
+        const scopeId = requestData.scope_id || null;
+        const limit = requestData.limit || 10;
+        const useCache = requestData.use_cache !== false;
+
+        console.log('🔍 SmartProfile search:', { query, scope, scopeId, limit, useCache });
+
+        // Get n8n webhook URL
+        const n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL') || 'https://n8n.srv1096269.hstgr.cloud';
+        const xEnvironment = req.headers.get('x-environment');
+        const webhookPrefix = xEnvironment === 'live' ? '/webhook' : '/webhook-test';
+        const searchWebhookUrl = `${n8nWebhookUrl}${webhookPrefix}/smartprofile-search`;
+
+        console.log('🔗 Calling n8n SmartProfile search:', searchWebhookUrl);
+
+        // Call n8n for AI-powered search
+        const n8nResponse = await fetch(searchWebhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query,
+            scope,
+            scope_id: scopeId,
+            limit,
+            use_cache: useCache
+          })
+        });
+
+        if (!n8nResponse.ok) {
+          const errorText = await n8nResponse.text();
+          console.error('❌ n8n smartprofile search failed:', n8nResponse.status, errorText);
+          return new Response(
+            JSON.stringify({ success: false, error: 'SmartProfile search failed', details: errorText }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const n8nResult = await n8nResponse.json();
+
+        console.log('✅ SmartProfile search completed:', {
+          resultsCount: n8nResult.results_count,
+          fromCache: n8nResult.from_cache
+        });
+
+        // Transform results
+        const results = (n8nResult.results || []).map((r: any) => ({
+          tenant_id: r.tenant_id,
+          business_name: r.business_name || '',
+          business_email: r.business_email || '',
+          city: r.city || '',
+          industry: r.industry || '',
+          profile_type: r.profile_type || 'seller',
+          profile_snippet: r.profile_snippet || r.ai_enhanced_description?.substring(0, 200) || '',
+          ai_enhanced_description: r.ai_enhanced_description || '',
+          approved_keywords: r.approved_keywords || [],
+          similarity: r.similarity || 0,
+          similarity_original: r.similarity_original || r.similarity || 0,
+          boost_applied: r.boost_applied || null,
+          match_type: r.match_type || 'vector'
+        }));
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            query,
+            scope,
+            results_count: results.length,
+            from_cache: n8nResult.from_cache || false,
+            cache_hit_count: n8nResult.cache_hit_count || 0,
+            search_type: 'smartprofile_vector',
+            results
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      } catch (error) {
+        console.error('Error in POST /smartprofiles/search:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'SmartProfile search failed', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // ============================================
     // No matching route found - 404
     // ============================================
     console.log('❌ No route matched:', { path, method });
@@ -2030,7 +2286,11 @@ console.log('='.repeat(60));
           'POST /chat/end (End session)',
           'POST /tenants/stats (Get tenant statistics)',
           'POST /tenants/search (NLP tenant search)',
-          'GET /intents (Get resolved intents)'
+          'GET /intents (Get resolved intents)',
+          'GET /smartprofiles/:tenantId (Get smartprofile)',
+          'POST /smartprofiles (Save smartprofile)',
+          'POST /smartprofiles/generate (Generate via AI)',
+          'POST /smartprofiles/search (Search smartprofiles)'
         ],
         requestedMethod: method,
         requestedPath: path,
