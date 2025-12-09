@@ -84,6 +84,10 @@ import BBBProfileOnboardingPage from './pages/VaNi/channels/BBBProfileOnboarding
 import BBBAdminDashboard from './pages/VaNi/channels/BBBAdminDashboard';
 import VaNiChatPage from './pages/VaNi/channels/VaNiChatPage';
 
+// ✅ NEW: Groups Pages (Settings -> Configure -> Customer Channels -> Groups)
+import GroupsListPage from './pages/settings/customer-channels/GroupsListPage';
+import GroupProfileDashboard from './pages/settings/customer-channels/GroupProfileDashboard';
+
 // ✅ Implementation Toolkit
 import TenantProfilesPage from './pages/VaNi/TenantProfilesPage';
 
@@ -461,6 +465,10 @@ const AppContent: React.FC = () => {
             <Route path="businessmodel/admin/billing" element={<BillingDashboardPage />} />
             <Route path="businessmodel/admin/billing/create-invoice" element={<CreateInvoicePage />} />
             <Route path="businessmodel/admin/billing/invoices/:id" element={<InvoiceDetailPage />} />
+
+            {/* ✅ NEW: Customer Channels - Groups */}
+            <Route path="configure/customer-channels/groups" element={<GroupsListPage />} />
+            <Route path="configure/customer-channels/groups/:groupId" element={<GroupProfileDashboard />} />
           </Route>
 
           {/* Contacts Routes */}
