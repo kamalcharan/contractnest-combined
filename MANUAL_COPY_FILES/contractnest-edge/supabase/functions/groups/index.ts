@@ -2060,17 +2060,33 @@ console.log('='.repeat(60));
 
         console.log('💾 Saving smartprofile for tenant:', requestData.tenant_id);
 
+        // Build upsert data with all fields from UI
+        const upsertData: any = {
+          tenant_id: requestData.tenant_id,
+          short_description: requestData.short_description || null,
+          profile_type: requestData.profile_type || 'seller',
+          approved_keywords: requestData.approved_keywords || [],
+          status: requestData.status || 'active',
+          is_active: requestData.is_active !== false,
+          updated_at: new Date().toISOString()
+        };
+
+        // Add optional fields if provided
+        if (requestData.ai_enhanced_description) {
+          upsertData.ai_enhanced_description = requestData.ai_enhanced_description;
+        }
+        if (requestData.website_url) {
+          upsertData.website_url = requestData.website_url;
+        }
+        if (requestData.generation_method) {
+          upsertData.generation_method = requestData.generation_method;
+        }
+
+        console.log('📝 Upserting smartprofile:', Object.keys(upsertData));
+
         const { data, error } = await supabaseAdmin
           .from('t_tenant_smartprofiles')
-          .upsert({
-            tenant_id: requestData.tenant_id,
-            short_description: requestData.short_description || null,
-            profile_type: requestData.profile_type || 'seller',
-            approved_keywords: requestData.approved_keywords || [],
-            status: requestData.status || 'draft',
-            is_active: requestData.is_active !== false,
-            updated_at: new Date().toISOString()
-          }, { onConflict: 'tenant_id' })
+          .upsert(upsertData, { onConflict: 'tenant_id' })
           .select()
           .single();
 
