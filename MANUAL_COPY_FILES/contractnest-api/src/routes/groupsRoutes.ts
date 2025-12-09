@@ -125,10 +125,80 @@ router.delete('/profiles/clusters/:membershipId', groupsController.deleteCluster
 
 /**
  * POST /api/search
- * Search group directory (uses Edge Function)
+ * Search group directory (legacy - uses Edge Function)
  * Body: { group_id, query, limit?, use_cache? }
  */
 router.post('/search', groupsController.search);
+
+/**
+ * POST /api/ai-search
+ * AI-powered search via n8n - supports intent, scope, channel, RBAC
+ * Body: {
+ *   group_id: string (required),
+ *   query: string (required),
+ *   scope?: 'group' | 'tenant' | 'product',
+ *   intent_code?: string,
+ *   user_role?: 'admin' | 'member' | 'guest',
+ *   channel?: 'web' | 'mobile' | 'whatsapp' | 'chatbot' | 'api',
+ *   limit?: number,
+ *   use_cache?: boolean,
+ *   similarity_threshold?: number
+ * }
+ * Headers: x-environment: 'live' | 'test'
+ */
+router.post('/ai-search', groupsController.aiSearch);
+
+// ============================================
+// CHAT ROUTES (VaNi Chat - Proxy to Edge Function)
+// ============================================
+
+/**
+ * POST /api/chat/init
+ * Initialize chat - get VaNi intro message
+ * Body: { channel?: string }
+ */
+router.post('/chat/init', groupsController.chatInit);
+
+/**
+ * POST /api/chat/session
+ * Get or create chat session
+ * Body: { channel?: string }
+ */
+router.post('/chat/session', groupsController.chatSession);
+
+/**
+ * GET /api/chat/session/:sessionId
+ * Get session by ID
+ */
+router.get('/chat/session/:sessionId', groupsController.chatSessionById);
+
+/**
+ * POST /api/chat/activate
+ * Activate group in chat session
+ * Body: { trigger_phrase?, group_id?, session_id? }
+ */
+router.post('/chat/activate', groupsController.chatActivate);
+
+/**
+ * POST /api/chat/intent
+ * Set intent in chat session
+ * Body: { session_id, intent, prompt? }
+ */
+router.post('/chat/intent', groupsController.chatIntent);
+
+/**
+ * POST /api/chat/search
+ * AI-powered search with caching (via Edge Function -> n8n)
+ * Body: { group_id, query, session_id?, intent?, limit?, use_cache?, similarity_threshold? }
+ */
+router.post('/chat/search', groupsController.chatSearch);
+
+/**
+ * POST /api/chat/end
+ * End chat session
+ * Body: { session_id }
+ */
+router.post('/chat/end', groupsController.chatEnd);
 
 // ============================================
 // ADMIN ROUTES
