@@ -257,6 +257,40 @@ router.post('/smartprofiles/generate', groupsController.generateSmartProfile);
  */
 router.post('/smartprofiles/search', groupsController.searchSmartProfiles);
 
+/**
+ * POST /api/smartprofiles/enhance
+ * AI enhance SmartProfile description
+ * Body: { tenant_id, short_description }
+ */
+router.post('/smartprofiles/enhance', groupsController.enhanceSmartProfile);
+
+/**
+ * POST /api/smartprofiles/scrape-website
+ * Scrape website for SmartProfile
+ * Body: { tenant_id, website_url }
+ */
+router.post('/smartprofiles/scrape-website', groupsController.scrapeWebsiteForSmartProfile);
+
+/**
+ * POST /api/smartprofiles/generate-clusters
+ * Generate semantic clusters for SmartProfile
+ * Body: { tenant_id, profile_text, keywords }
+ */
+router.post('/smartprofiles/generate-clusters', groupsController.generateSmartProfileClusters);
+
+/**
+ * POST /api/smartprofiles/clusters
+ * Save SmartProfile clusters
+ * Body: { tenant_id, clusters }
+ */
+router.post('/smartprofiles/clusters', groupsController.saveSmartProfileClusters);
+
+/**
+ * GET /api/smartprofiles/clusters/:tenantId
+ * Get SmartProfile clusters
+ */
+router.get('/smartprofiles/clusters/:tenantId', groupsController.getSmartProfileClusters);
+
 // ============================================
 // TENANT DASHBOARD ROUTES
 // ============================================

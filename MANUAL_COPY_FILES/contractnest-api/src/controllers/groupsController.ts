@@ -1499,6 +1499,186 @@ export const searchSmartProfiles = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * POST /api/smartprofiles/enhance
+ * AI enhance SmartProfile description
+ */
+export const enhanceSmartProfile = async (req: Request, res: Response) => {
+  try {
+    if (!validateSupabaseConfig('api_groups', 'enhanceSmartProfile')) {
+      return res.status(500).json({
+        error: 'Server configuration error: Missing Supabase configuration'
+      });
+    }
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Authorization header is required' });
+    }
+
+    const { tenant_id, short_description } = req.body;
+    if (!tenant_id || !short_description) {
+      return res.status(400).json({ error: 'tenant_id and short_description are required' });
+    }
+
+    const result = await groupsService.enhanceSmartProfile(authHeader, tenant_id, short_description);
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error in enhanceSmartProfile controller:', error.message);
+    captureException(error instanceof Error ? error : new Error(String(error)), {
+      tags: { source: 'api_groups', action: 'enhanceSmartProfile' },
+      status: error.response?.status
+    });
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.error || error.message || 'Failed to enhance SmartProfile';
+    return res.status(status).json({ success: false, error: message });
+  }
+};
+
+/**
+ * POST /api/smartprofiles/scrape-website
+ * Scrape website for SmartProfile
+ */
+export const scrapeWebsiteForSmartProfile = async (req: Request, res: Response) => {
+  try {
+    if (!validateSupabaseConfig('api_groups', 'scrapeWebsiteForSmartProfile')) {
+      return res.status(500).json({
+        error: 'Server configuration error: Missing Supabase configuration'
+      });
+    }
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Authorization header is required' });
+    }
+
+    const { tenant_id, website_url } = req.body;
+    if (!tenant_id || !website_url) {
+      return res.status(400).json({ error: 'tenant_id and website_url are required' });
+    }
+
+    const result = await groupsService.scrapeWebsiteForSmartProfile(authHeader, tenant_id, website_url);
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error in scrapeWebsiteForSmartProfile controller:', error.message);
+    captureException(error instanceof Error ? error : new Error(String(error)), {
+      tags: { source: 'api_groups', action: 'scrapeWebsiteForSmartProfile' },
+      status: error.response?.status
+    });
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.error || error.message || 'Failed to scrape website for SmartProfile';
+    return res.status(status).json({ success: false, error: message });
+  }
+};
+
+/**
+ * POST /api/smartprofiles/generate-clusters
+ * Generate semantic clusters for SmartProfile
+ */
+export const generateSmartProfileClusters = async (req: Request, res: Response) => {
+  try {
+    if (!validateSupabaseConfig('api_groups', 'generateSmartProfileClusters')) {
+      return res.status(500).json({
+        error: 'Server configuration error: Missing Supabase configuration'
+      });
+    }
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Authorization header is required' });
+    }
+
+    const { tenant_id, profile_text, keywords } = req.body;
+    if (!tenant_id || !profile_text) {
+      return res.status(400).json({ error: 'tenant_id and profile_text are required' });
+    }
+
+    const result = await groupsService.generateSmartProfileClusters(authHeader, tenant_id, profile_text, keywords);
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error in generateSmartProfileClusters controller:', error.message);
+    captureException(error instanceof Error ? error : new Error(String(error)), {
+      tags: { source: 'api_groups', action: 'generateSmartProfileClusters' },
+      status: error.response?.status
+    });
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.error || error.message || 'Failed to generate SmartProfile clusters';
+    return res.status(status).json({ success: false, error: message });
+  }
+};
+
+/**
+ * POST /api/smartprofiles/clusters
+ * Save SmartProfile clusters
+ */
+export const saveSmartProfileClusters = async (req: Request, res: Response) => {
+  try {
+    if (!validateSupabaseConfig('api_groups', 'saveSmartProfileClusters')) {
+      return res.status(500).json({
+        error: 'Server configuration error: Missing Supabase configuration'
+      });
+    }
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Authorization header is required' });
+    }
+
+    const { tenant_id, clusters } = req.body;
+    if (!tenant_id || !clusters) {
+      return res.status(400).json({ error: 'tenant_id and clusters are required' });
+    }
+
+    const result = await groupsService.saveSmartProfileClusters(authHeader, tenant_id, clusters);
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error in saveSmartProfileClusters controller:', error.message);
+    captureException(error instanceof Error ? error : new Error(String(error)), {
+      tags: { source: 'api_groups', action: 'saveSmartProfileClusters' },
+      status: error.response?.status
+    });
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.error || error.message || 'Failed to save SmartProfile clusters';
+    return res.status(status).json({ success: false, error: message });
+  }
+};
+
+/**
+ * GET /api/smartprofiles/clusters/:tenantId
+ * Get SmartProfile clusters
+ */
+export const getSmartProfileClusters = async (req: Request, res: Response) => {
+  try {
+    if (!validateSupabaseConfig('api_groups', 'getSmartProfileClusters')) {
+      return res.status(500).json({
+        error: 'Server configuration error: Missing Supabase configuration'
+      });
+    }
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Authorization header is required' });
+    }
+
+    const tenantId = req.params.tenantId;
+    if (!tenantId) {
+      return res.status(400).json({ error: 'tenantId parameter is required' });
+    }
+
+    const result = await groupsService.getSmartProfileClusters(authHeader, tenantId);
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error in getSmartProfileClusters controller:', error.message);
+    captureException(error instanceof Error ? error : new Error(String(error)), {
+      tags: { source: 'api_groups', action: 'getSmartProfileClusters' },
+      status: error.response?.status
+    });
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.error || error.message || 'Failed to get SmartProfile clusters';
+    return res.status(status).json({ success: false, error: message });
+  }
+};
+
 // ============================================
 // TENANT DASHBOARD CONTROLLERS
 // ============================================
@@ -1516,26 +1696,21 @@ export const getTenantStats = async (req: Request, res: Response) => {
     }
 
     const authHeader = req.headers.authorization;
-
     if (!authHeader) {
       return res.status(401).json({ error: 'Authorization header is required' });
     }
 
     const { group_id } = req.body;
-
     const result = await groupsService.getTenantStats(authHeader, group_id);
     return res.status(200).json(result);
   } catch (error: any) {
     console.error('Error in getTenantStats controller:', error.message);
-
     captureException(error instanceof Error ? error : new Error(String(error)), {
       tags: { source: 'api_groups', action: 'getTenantStats' },
       status: error.response?.status
     });
-
     const status = error.response?.status || 500;
     const message = error.response?.data?.error || error.message || 'Failed to fetch tenant stats';
-
     return res.status(status).json({ success: false, error: message });
   }
 };
@@ -1553,37 +1728,26 @@ export const searchTenants = async (req: Request, res: Response) => {
     }
 
     const authHeader = req.headers.authorization;
-
     if (!authHeader) {
       return res.status(401).json({ error: 'Authorization header is required' });
     }
 
     const { query, group_id, intent_code } = req.body;
-
     if (!query) {
       return res.status(400).json({ error: 'query is required' });
     }
 
     const environment = req.headers['x-environment'] as string | undefined;
-
-    const result = await groupsService.searchTenants(authHeader, {
-      query,
-      group_id,
-      intent_code
-    }, environment);
-
+    const result = await groupsService.searchTenants(authHeader, { query, group_id, intent_code }, environment);
     return res.status(200).json(result);
   } catch (error: any) {
     console.error('Error in searchTenants controller:', error.message);
-
     captureException(error instanceof Error ? error : new Error(String(error)), {
       tags: { source: 'api_groups', action: 'searchTenants' },
       status: error.response?.status
     });
-
     const status = error.response?.status || 500;
     const message = error.response?.data?.error || error.message || 'Failed to search tenants';
-
     return res.status(status).json({ success: false, error: message });
   }
 };

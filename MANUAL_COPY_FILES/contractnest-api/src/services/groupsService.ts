@@ -1308,6 +1308,110 @@ export const groupsService = {
     }
   },
 
+  /**
+   * Enhance SmartProfile description via n8n
+   */
+  async enhanceSmartProfile(authToken: string, tenantId: string, shortDescription: string): Promise<any> {
+    try {
+      const response = await axios.post(
+        `${GROUPS_API_BASE}/smartprofiles/enhance`,
+        { tenant_id: tenantId, short_description: shortDescription },
+        { headers: getHeaders(authToken, tenantId), timeout: 60000 }
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('Error in enhanceSmartProfile:', error);
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        tags: { source: 'groupsService', action: 'enhanceSmartProfile' },
+        extra: { tenantId }
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Scrape website for SmartProfile via n8n
+   */
+  async scrapeWebsiteForSmartProfile(authToken: string, tenantId: string, websiteUrl: string): Promise<any> {
+    try {
+      const response = await axios.post(
+        `${GROUPS_API_BASE}/smartprofiles/scrape-website`,
+        { tenant_id: tenantId, website_url: websiteUrl },
+        { headers: getHeaders(authToken, tenantId), timeout: 60000 }
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('Error in scrapeWebsiteForSmartProfile:', error);
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        tags: { source: 'groupsService', action: 'scrapeWebsiteForSmartProfile' },
+        extra: { tenantId, websiteUrl }
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Generate semantic clusters for SmartProfile via n8n
+   */
+  async generateSmartProfileClusters(authToken: string, tenantId: string, profileText: string, keywords?: string[]): Promise<any> {
+    try {
+      const response = await axios.post(
+        `${GROUPS_API_BASE}/smartprofiles/generate-clusters`,
+        { tenant_id: tenantId, profile_text: profileText, keywords },
+        { headers: getHeaders(authToken, tenantId), timeout: 60000 }
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('Error in generateSmartProfileClusters:', error);
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        tags: { source: 'groupsService', action: 'generateSmartProfileClusters' },
+        extra: { tenantId }
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Save SmartProfile clusters
+   */
+  async saveSmartProfileClusters(authToken: string, tenantId: string, clusters: any[]): Promise<any> {
+    try {
+      const response = await axios.post(
+        `${GROUPS_API_BASE}/smartprofiles/clusters`,
+        { tenant_id: tenantId, clusters },
+        { headers: getHeaders(authToken, tenantId), timeout: 30000 }
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('Error in saveSmartProfileClusters:', error);
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        tags: { source: 'groupsService', action: 'saveSmartProfileClusters' },
+        extra: { tenantId }
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Get SmartProfile clusters
+   */
+  async getSmartProfileClusters(authToken: string, tenantId: string): Promise<any> {
+    try {
+      const response = await axios.get(
+        `${GROUPS_API_BASE}/smartprofiles/clusters/${tenantId}`,
+        { headers: getHeaders(authToken, tenantId), timeout: 30000 }
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('Error in getSmartProfileClusters:', error);
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        tags: { source: 'groupsService', action: 'getSmartProfileClusters' },
+        extra: { tenantId }
+      });
+      throw error;
+    }
+  },
+
   // ============================================
   // TENANT DASHBOARD METHODS
   // ============================================
@@ -1315,18 +1419,12 @@ export const groupsService = {
   /**
    * Get tenant statistics for dashboard
    */
-  async getTenantStats(
-    authToken: string,
-    groupId?: string
-  ): Promise<any> {
+  async getTenantStats(authToken: string, groupId?: string): Promise<any> {
     try {
       const response = await axios.post(
         `${GROUPS_API_BASE}/tenants/stats`,
         { group_id: groupId },
-        {
-          headers: getHeaders(authToken),
-          timeout: 30000
-        }
+        { headers: getHeaders(authToken), timeout: 30000 }
       );
       return response.data;
     } catch (error: any) {
@@ -1344,11 +1442,7 @@ export const groupsService = {
    */
   async searchTenants(
     authToken: string,
-    request: {
-      query: string;
-      group_id?: string;
-      intent_code?: string;
-    },
+    request: { query: string; group_id?: string; intent_code?: string },
     environment?: string
   ): Promise<any> {
     try {
