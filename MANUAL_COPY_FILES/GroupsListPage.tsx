@@ -5,7 +5,7 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { useAuth } from '../../../context/AuthContext';
-import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui/card';
+import { Card, CardContent } from '../../../components/ui/card';
 import {
   Users,
   Shield,
@@ -16,39 +16,35 @@ import {
   RefreshCw,
   Building2,
   CheckCircle,
-  AlertCircle,
   ArrowRight,
   Search,
   Info
 } from 'lucide-react';
-import { useGroups, useGroupMemberships, useVerifyGroupAccess, useCreateMembership } from '../../../hooks/queries/useGroupQueries';
+import { useGroups, useGroupMemberships, useVerifyGroupAccess } from '../../../hooks/queries/useGroupQueries';
 import toast from 'react-hot-toast';
 
-// Authentication Modal Component
+// Authentication Modal Component - Only verifies password
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   group: any;
-  onSuccess: (membershipId: string) => void;
+  onSuccess: () => void;
 }
 
 const AuthenticationModal: React.FC<AuthModalProps> = ({ isOpen, onClose, group, onSuccess }) => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
-  const { currentTenant } = useAuth();
 
   const [password, setPassword] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
 
   const verifyAccessMutation = useVerifyGroupAccess();
-  const createMembershipMutation = useCreateMembership();
 
   const handleAuthenticate = async () => {
-    if (!password.trim() || !group || !currentTenant) return;
+    if (!password.trim() || !group) return;
 
     setIsVerifying(true);
     try {
-      // Step 1: Verify password
       const result = await verifyAccessMutation.mutateAsync({
         groupId: group.id,
         password: password.trim(),
@@ -56,21 +52,10 @@ const AuthenticationModal: React.FC<AuthModalProps> = ({ isOpen, onClose, group,
       });
 
       if (result.access_granted) {
-        // Step 2: Create membership
-        const membership = await createMembershipMutation.mutateAsync({
-          group_id: group.id,
-          tenant_id: currentTenant.id,
-          status: 'draft',
-          profile_data: {
-            branch: group.settings?.default_branch || 'default'
-          }
-        });
-
-        toast.success(`Welcome to ${group.name}!`, {
+        toast.success(`Access granted to ${group.name}!`, {
           style: { background: colors.semantic.success, color: '#FFF' }
         });
-
-        onSuccess(membership.id);
+        onSuccess();
         onClose();
       } else {
         toast.error('Invalid password. Please try again.', {
@@ -78,18 +63,9 @@ const AuthenticationModal: React.FC<AuthModalProps> = ({ isOpen, onClose, group,
         });
       }
     } catch (error: any) {
-      // Handle "already exists" - member is already part of the group
-      if (error.membership_id) {
-        toast.success('You are already a member of this group!', {
-          style: { background: colors.semantic.success, color: '#FFF' }
-        });
-        onSuccess(error.membership_id);
-        onClose();
-      } else {
-        toast.error(error.message || 'Authentication failed', {
-          style: { background: colors.semantic.error, color: '#FFF' }
-        });
-      }
+      toast.error(error.message || 'Authentication failed', {
+        style: { background: colors.semantic.error, color: '#FFF' }
+      });
     } finally {
       setIsVerifying(false);
       setPassword('');
@@ -240,19 +216,18 @@ const GroupsListPage: React.FC = () => {
   // Fetch all groups
   const { data: groups, isLoading: isLoadingGroups, refetch: refetchGroups } = useGroups('all');
 
-  // Fetch user's memberships across all groups
-  const groupIds = groups?.map((g: any) => g.id) || [];
+  // Get first BBB group ID to check memberships
+  const bbbGroupId = groups?.[0]?.id || '';
 
-  // We need to check membership status for each group
-  // For simplicity, we'll fetch memberships for the first BBB group and extend later
-  const { data: bbbMemberships } = useGroupMemberships(groupIds[0] || '', { status: 'all' });
+  // Fetch user's memberships for the BBB group
+  const { data: membershipsData, refetch: refetchMemberships } = useGroupMemberships(bbbGroupId, { status: 'all' });
 
   // Build membership map for current tenant
   const membershipMap = useMemo(() => {
     const map: Record<string, any> = {};
 
-    if (bbbMemberships?.memberships && currentTenant) {
-      bbbMemberships.memberships.forEach((m: any) => {
+    if (membershipsData?.memberships && currentTenant) {
+      membershipsData.memberships.forEach((m: any) => {
         if (m.tenant_id === currentTenant.id) {
           map[m.group_id] = m;
         }
@@ -260,7 +235,7 @@ const GroupsListPage: React.FC = () => {
     }
 
     return map;
-  }, [bbbMemberships, currentTenant]);
+  }, [membershipsData, currentTenant]);
 
   // Filter groups based on search
   const filteredGroups = useMemo(() => {
@@ -300,16 +275,17 @@ const GroupsListPage: React.FC = () => {
     setAuthModalOpen(true);
   };
 
-  // Handle authentication success
-  const handleAuthSuccess = (membershipId: string) => {
+  // Handle authentication success - navigate to dashboard to create membership
+  const handleAuthSuccess = () => {
     refetchGroups();
-    // Navigate to create profile
-    navigate(`/settings/configure/customer-channels/groups/${selectedGroup?.id}?action=create&membership=${membershipId}`);
+    refetchMemberships();
+    // Navigate to dashboard - it will handle "Let me in" flow
+    navigate(`/settings/configure/customer-channels/groups/${selectedGroup?.id}`);
   };
 
-  // Handle create profile click
+  // Handle create profile click (already has membership)
   const handleCreate = (group: any, membershipId: string) => {
-    navigate(`/settings/configure/customer-channels/groups/${group.id}?action=create&membership=${membershipId}`);
+    navigate(`/settings/configure/customer-channels/groups/${group.id}?membership=${membershipId}`);
   };
 
   // Handle view profile click
@@ -345,7 +321,7 @@ const GroupsListPage: React.FC = () => {
           </p>
         </div>
         <button
-          onClick={() => refetchGroups()}
+          onClick={() => { refetchGroups(); refetchMemberships(); }}
           className="p-2 rounded-lg transition-all hover:opacity-80"
           style={{ backgroundColor: `${colors.brand.primary}15` }}
           title="Refresh"

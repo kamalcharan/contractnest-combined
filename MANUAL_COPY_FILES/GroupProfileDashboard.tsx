@@ -7,6 +7,12 @@ import { useTheme } from '../../../contexts/ThemeContext';
 import { useAuth } from '../../../context/AuthContext';
 import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui/card';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '../../../components/ui/dialog';
+import {
   ArrowLeft,
   Edit3,
   Save,
@@ -21,10 +27,8 @@ import {
   FileText,
   AlertCircle,
   Loader2,
-  Plus,
-  Trash2,
-  ChevronDown,
-  ChevronUp
+  Users,
+  MessageCircle
 } from 'lucide-react';
 import {
   useGroup,
@@ -34,306 +38,16 @@ import {
   useSaveProfile,
   useGenerateClusters,
   useSaveClusters,
-  useScrapeWebsite
+  useScrapeWebsite,
+  useCreateMembership,
+  useGroupMemberships
 } from '../../../hooks/queries/useGroupQueries';
+import { useTenantProfile } from '../../../hooks/useTenantProfile';
+import groupsService from '../../../services/groupsService';
 import ProfileEntryForm from '../../../components/VaNi/bbb/ProfileEntryForm';
 import AIEnhancementSection from '../../../components/VaNi/bbb/AIEnhancementSection';
 import SemanticClustersForm, { SemanticCluster } from '../../../components/VaNi/bbb/SemanticClustersForm';
 import toast from 'react-hot-toast';
-
-// Profile Creation Modal Component
-interface CreateProfileModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  membershipId: string;
-  groupId: string;
-  onSuccess: () => void;
-}
-
-const CreateProfileModal: React.FC<CreateProfileModalProps> = ({
-  isOpen,
-  onClose,
-  membershipId,
-  groupId,
-  onSuccess
-}) => {
-  const { isDarkMode, currentTheme } = useTheme();
-  const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
-
-  // Wizard steps
-  const [step, setStep] = useState<'profile' | 'enhanced' | 'clusters' | 'success'>('profile');
-  const [profileData, setProfileData] = useState<any>(null);
-  const [enhancedDescription, setEnhancedDescription] = useState('');
-  const [generatedKeywords, setGeneratedKeywords] = useState<string[]>([]);
-  const [approvedKeywords, setApprovedKeywords] = useState<string[]>([]);
-  const [generatedClusters, setGeneratedClusters] = useState<SemanticCluster[]>([]);
-
-  // Mutations
-  const enhanceProfileMutation = useEnhanceProfile();
-  const scrapeWebsiteMutation = useScrapeWebsite();
-  const saveProfileMutation = useSaveProfile();
-  const generateClustersMutation = useGenerateClusters();
-  const saveClustersMutation = useSaveClusters();
-
-  // Handle profile form submission
-  const handleProfileSubmit = async (data: any) => {
-    setProfileData(data);
-
-    if (data.generation_method === 'website' && data.website_url) {
-      // Scrape website
-      try {
-        const result = await scrapeWebsiteMutation.mutateAsync({
-          website_url: data.website_url
-        });
-
-        if (result.business_description) {
-          setEnhancedDescription(result.business_description);
-          setGeneratedKeywords(result.keywords || []);
-          setApprovedKeywords(result.keywords || []);
-          setStep('enhanced');
-        }
-      } catch (error: any) {
-        toast.error(error.message || 'Failed to scrape website', {
-          style: { background: colors.semantic.error, color: '#FFF' }
-        });
-      }
-    }
-  };
-
-  // Handle AI enhancement
-  const handleEnhanceWithAI = async (description: string) => {
-    try {
-      const result = await enhanceProfileMutation.mutateAsync({
-        short_description: description,
-        generation_method: 'manual'
-      });
-
-      if (result?.profile_data?.ai_enhanced_description) {
-        setEnhancedDescription(result.profile_data.ai_enhanced_description);
-        setGeneratedKeywords(result.profile_data.suggested_keywords || []);
-        setApprovedKeywords(result.profile_data.suggested_keywords || []);
-        setStep('enhanced');
-      }
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to enhance profile', {
-        style: { background: colors.semantic.error, color: '#FFF' }
-      });
-    }
-  };
-
-  // Handle saving enhanced description and moving to clusters
-  const handleSaveEnhanced = async () => {
-    try {
-      await saveProfileMutation.mutateAsync({
-        membership_id: membershipId,
-        group_id: groupId,
-        profile_data: {
-          short_description: profileData?.short_description || '',
-          ai_enhanced_description: enhancedDescription,
-          approved_keywords: approvedKeywords,
-          generation_method: profileData?.generation_method || 'manual',
-          website_url: profileData?.website_url
-        },
-        trigger_embedding: true
-      });
-
-      setStep('clusters');
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to save profile', {
-        style: { background: colors.semantic.error, color: '#FFF' }
-      });
-    }
-  };
-
-  // Handle cluster generation
-  const handleGenerateClusters = async (profileText: string, keywords: string[]): Promise<SemanticCluster[]> => {
-    const result = await generateClustersMutation.mutateAsync({
-      membership_id: membershipId,
-      profile_text: profileText,
-      keywords
-    });
-
-    const clusters = result.clusters?.map((c: any) => ({
-      ...c,
-      is_active: true,
-      confidence_score: c.confidence_score || 0.9
-    })) || [];
-
-    setGeneratedClusters(clusters);
-    return clusters;
-  };
-
-  // Handle saving clusters
-  const handleSaveClusters = async (clusters: SemanticCluster[]) => {
-    await saveClustersMutation.mutateAsync({
-      membershipId,
-      clusters: clusters.map(c => ({
-        primary_term: c.primary_term,
-        related_terms: c.related_terms,
-        category: c.category,
-        confidence_score: c.confidence_score
-      }))
-    });
-
-    setStep('success');
-    setTimeout(() => {
-      onSuccess();
-      onClose();
-    }, 2000);
-  };
-
-  // Handle keyword toggle
-  const handleKeywordToggle = (keyword: string) => {
-    if (approvedKeywords.includes(keyword)) {
-      setApprovedKeywords(approvedKeywords.filter(k => k !== keyword));
-    } else {
-      setApprovedKeywords([...approvedKeywords, keyword]);
-    }
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity"
-        onClick={onClose}
-        style={{ backdropFilter: 'blur(4px)' }}
-      />
-
-      {/* Modal */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
-        <div
-          className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl"
-          style={{
-            backgroundColor: colors.utility.primaryBackground,
-            border: `1px solid ${colors.utility.primaryText}20`
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Close Button */}
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 p-2 rounded-lg transition-all hover:opacity-80 z-10"
-            style={{
-              backgroundColor: colors.utility.secondaryBackground,
-              color: colors.utility.secondaryText
-            }}
-          >
-            <X className="w-5 h-5" />
-          </button>
-
-          {/* Progress Steps */}
-          <div
-            className="p-4 border-b"
-            style={{ borderColor: `${colors.utility.primaryText}10` }}
-          >
-            <div className="flex items-center justify-center space-x-4">
-              {['profile', 'enhanced', 'clusters', 'success'].map((s, i) => (
-                <React.Fragment key={s}>
-                  <div className="flex items-center space-x-2">
-                    <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                        step === s ? 'ring-2 ring-offset-2' : ''
-                      }`}
-                      style={{
-                        backgroundColor: ['profile', 'enhanced', 'clusters', 'success'].indexOf(step) >= i
-                          ? colors.brand.primary
-                          : `${colors.utility.primaryText}20`,
-                        color: ['profile', 'enhanced', 'clusters', 'success'].indexOf(step) >= i
-                          ? '#FFF'
-                          : colors.utility.secondaryText,
-                        '--tw-ring-color': colors.brand.primary
-                      } as React.CSSProperties}
-                    >
-                      {i + 1}
-                    </div>
-                    <span
-                      className="text-sm hidden sm:inline"
-                      style={{
-                        color: step === s ? colors.utility.primaryText : colors.utility.secondaryText
-                      }}
-                    >
-                      {s === 'profile' ? 'Profile' : s === 'enhanced' ? 'Enhance' : s === 'clusters' ? 'Clusters' : 'Done'}
-                    </span>
-                  </div>
-                  {i < 3 && (
-                    <div
-                      className="w-12 h-0.5"
-                      style={{
-                        backgroundColor: ['profile', 'enhanced', 'clusters', 'success'].indexOf(step) > i
-                          ? colors.brand.primary
-                          : `${colors.utility.primaryText}20`
-                      }}
-                    />
-                  )}
-                </React.Fragment>
-              ))}
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="p-6">
-            {step === 'profile' && (
-              <ProfileEntryForm
-                onSubmit={handleProfileSubmit}
-                onEnhanceWithAI={handleEnhanceWithAI}
-                isEnhancing={enhanceProfileMutation.isPending || scrapeWebsiteMutation.isPending}
-                isSaving={false}
-              />
-            )}
-
-            {step === 'enhanced' && (
-              <AIEnhancementSection
-                enhancedDescription={enhancedDescription}
-                onConfirm={handleSaveEnhanced}
-                onEdit={() => {
-                  setStep('profile');
-                }}
-                isSaving={saveProfileMutation.isPending}
-                generatedKeywords={generatedKeywords}
-                semanticClusters={[]}
-                onKeywordToggle={handleKeywordToggle}
-                approvedKeywords={approvedKeywords}
-              />
-            )}
-
-            {step === 'clusters' && (
-              <SemanticClustersForm
-                membershipId={membershipId}
-                profileText={enhancedDescription}
-                keywords={approvedKeywords}
-                existingClusters={generatedClusters}
-                onGenerateClusters={handleGenerateClusters}
-                onSaveClusters={handleSaveClusters}
-                isGenerating={generateClustersMutation.isPending}
-                isSaving={saveClustersMutation.isPending}
-              />
-            )}
-
-            {step === 'success' && (
-              <div className="text-center py-12">
-                <div
-                  className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center"
-                  style={{ backgroundColor: `${colors.semantic.success}15` }}
-                >
-                  <CheckCircle className="w-10 h-10" style={{ color: colors.semantic.success }} />
-                </div>
-                <h2 className="text-2xl font-bold mb-2" style={{ color: colors.utility.primaryText }}>
-                  Profile Created Successfully!
-                </h2>
-                <p style={{ color: colors.utility.secondaryText }}>
-                  Your profile is now active and searchable by other members.
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </>
-  );
-};
 
 // Profile Details Card Component (Left 65%)
 interface ProfileDetailsCardProps {
@@ -343,6 +57,8 @@ interface ProfileDetailsCardProps {
   onCancelEdit: () => void;
   onSaveEdit: (data: any) => void;
   isSaving: boolean;
+  isEnhancing: boolean;
+  onEnhanceWithAI: (description: string) => void;
 }
 
 const ProfileDetailsCard: React.FC<ProfileDetailsCardProps> = ({
@@ -351,7 +67,9 @@ const ProfileDetailsCard: React.FC<ProfileDetailsCardProps> = ({
   isEditing,
   onCancelEdit,
   onSaveEdit,
-  isSaving
+  isSaving,
+  isEnhancing,
+  onEnhanceWithAI
 }) => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
@@ -396,8 +114,8 @@ const ProfileDetailsCard: React.FC<ProfileDetailsCardProps> = ({
         <CardContent className="p-6">
           <ProfileEntryForm
             onSubmit={onSaveEdit}
-            onEnhanceWithAI={(desc) => onSaveEdit({ short_description: desc, enhance: true })}
-            isEnhancing={false}
+            onEnhanceWithAI={onEnhanceWithAI}
+            isEnhancing={isEnhancing}
             isSaving={isSaving}
             isEditMode={true}
             initialDescription={profileData.ai_enhanced_description || profileData.short_description || ''}
@@ -591,103 +309,236 @@ const GroupProfileDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
+  const { currentTenant } = useAuth();
 
-  // Get membership ID from URL params
-  const membershipId = searchParams.get('membership') || '';
-  const action = searchParams.get('action');
+  // Get tenant profile data
+  const { profile: tenantProfileData, loading: isLoadingTenantProfile } = useTenantProfile();
+
+  // Get membership ID from URL params (if provided)
+  const urlMembershipId = searchParams.get('membership') || '';
 
   // State
   const [isEditing, setIsEditing] = useState(false);
-  const [showCreateModal, setShowCreateModal] = useState(action === 'create');
+  const [showJoinDialog, setShowJoinDialog] = useState(false);
+  const [membershipId, setMembershipId] = useState<string | null>(urlMembershipId || null);
+  const [isCheckingMembership, setIsCheckingMembership] = useState(true);
+  const [showCreateFlow, setShowCreateFlow] = useState(false);
+
+  // Profile creation state
+  const [createStep, setCreateStep] = useState<'profile' | 'enhanced' | 'clusters' | 'success'>('profile');
+  const [profileFormData, setProfileFormData] = useState<any>(null);
+  const [enhancedDescription, setEnhancedDescription] = useState('');
+  const [originalDescription, setOriginalDescription] = useState('');
+  const [keywords, setKeywords] = useState<string[]>([]);
 
   // Fetch data
   const { data: group, isLoading: isLoadingGroup } = useGroup(groupId || '');
-  const { data: membership, isLoading: isLoadingMembership, refetch: refetchMembership } = useMembership(membershipId);
-  const { data: clustersData, isLoading: isLoadingClusters, refetch: refetchClusters } = useClusters(membershipId);
+  const { data: membershipsData } = useGroupMemberships(groupId || '', { status: 'all' });
 
   // Mutations
+  const createMembershipMutation = useCreateMembership();
   const saveProfileMutation = useSaveProfile();
   const enhanceProfileMutation = useEnhanceProfile();
+  const scrapeWebsiteMutation = useScrapeWebsite();
   const generateClustersMutation = useGenerateClusters();
   const saveClustersMutation = useSaveClusters();
+
+  // Check for existing membership on load
+  useEffect(() => {
+    const checkMembership = async () => {
+      if (!groupId || !currentTenant?.id || isLoadingTenantProfile) {
+        return;
+      }
+
+      // If we have a membershipId from URL, use it
+      if (urlMembershipId) {
+        setMembershipId(urlMembershipId);
+        setIsCheckingMembership(false);
+        return;
+      }
+
+      try {
+        console.log('🔍 Checking for existing membership...');
+
+        // Find membership for current tenant
+        const myMembership = membershipsData?.memberships?.find(
+          (m: any) => m.tenant_id === currentTenant.id
+        );
+
+        if (myMembership) {
+          console.log('✅ Found existing membership:', myMembership.id);
+          setMembershipId(myMembership.id);
+
+          // Check if profile exists
+          const hasProfile = myMembership.profile_data?.ai_enhanced_description ||
+                            myMembership.profile_data?.short_description;
+
+          if (!hasProfile) {
+            setShowCreateFlow(true);
+          }
+        } else {
+          // No membership - show "Let me in" dialog
+          console.log('❌ No membership found, showing join dialog');
+          setShowJoinDialog(true);
+        }
+      } catch (error) {
+        console.error('Error checking membership:', error);
+        setShowJoinDialog(true);
+      }
+
+      setIsCheckingMembership(false);
+    };
+
+    if (!isLoadingGroup && membershipsData) {
+      checkMembership();
+    }
+  }, [groupId, currentTenant?.id, urlMembershipId, isLoadingGroup, membershipsData, isLoadingTenantProfile]);
+
+  // Fetch membership data once we have membershipId
+  const { data: membership, isLoading: isLoadingMembership, refetch: refetchMembership } = useMembership(membershipId || '');
+  const { data: clustersData, refetch: refetchClusters } = useClusters(membershipId || '');
 
   // Check if profile exists
   const hasProfile = membership?.profile_data?.ai_enhanced_description ||
                      membership?.profile_data?.short_description;
 
-  // Open create modal if action=create and no profile
-  useEffect(() => {
-    if (action === 'create' && !hasProfile) {
-      setShowCreateModal(true);
+  // Handle "Let me in" click - create membership
+  const handleJoinGroup = async () => {
+    if (!groupId || !currentTenant?.id) {
+      toast.error('Group not found. Please try again.', {
+        style: { background: colors.semantic.error, color: '#FFF' }
+      });
+      return;
     }
-  }, [action, hasProfile]);
+
+    try {
+      console.log('🚀 Creating membership...');
+
+      const result = await createMembershipMutation.mutateAsync({
+        group_id: groupId,
+        profile_data: {
+          mobile_number: tenantProfileData?.business_phone || '',
+        }
+      });
+
+      console.log('✅ Membership created:', result);
+
+      setMembershipId(result.id);
+      setShowJoinDialog(false);
+      setShowCreateFlow(true);
+
+      toast.success('Welcome! Let\'s create your profile.', {
+        style: { background: colors.semantic.success, color: '#FFF' }
+      });
+    } catch (error: any) {
+      console.error('❌ Failed to create membership:', error);
+
+      // Handle "already exists"
+      if (error.message?.includes('already exists') || error.membership_id) {
+        const existingId = error.membership_id;
+        if (existingId) {
+          setMembershipId(existingId);
+          setShowJoinDialog(false);
+          toast.success('Welcome back! Let\'s update your profile.', {
+            style: { background: colors.semantic.success, color: '#FFF' }
+          });
+        }
+      } else {
+        toast.error(error.message || 'Failed to join group. Please try again.', {
+          style: { background: colors.semantic.error, color: '#FFF' }
+        });
+      }
+    }
+  };
 
   // Handle back navigation
   const handleBack = () => {
     navigate('/settings/configure/customer-channels/groups');
   };
 
-  // Handle profile edit save
-  const handleSaveEdit = async (data: any) => {
-    if (data.enhance) {
-      // Enhance with AI first
+  // Handle AI enhancement
+  const handleEnhanceWithAI = async (description: string) => {
+    setOriginalDescription(description);
+
+    try {
+      const result = await enhanceProfileMutation.mutateAsync({
+        membership_id: membershipId || '',
+        short_description: description
+      });
+
+      setEnhancedDescription(result.ai_enhanced_description);
+      setKeywords(result.suggested_keywords || []);
+      setCreateStep('enhanced');
+
+      toast.success('AI enhancement complete!', {
+        style: { background: colors.semantic.success, color: '#FFF' }
+      });
+    } catch (error: any) {
+      toast.error(error.message || 'Enhancement failed', {
+        style: { background: colors.semantic.error, color: '#FFF' }
+      });
+    }
+  };
+
+  // Handle profile form submit (for website scraping)
+  const handleProfileFormSubmit = async (data: any) => {
+    setProfileFormData(data);
+
+    if (data.generation_method === 'website' && data.website_url) {
       try {
-        const result = await enhanceProfileMutation.mutateAsync({
-          short_description: data.short_description,
-          generation_method: 'manual'
+        const result = await scrapeWebsiteMutation.mutateAsync({
+          membership_id: membershipId || '',
+          website_url: data.website_url
         });
 
-        if (result?.profile_data?.ai_enhanced_description) {
-          await saveProfileMutation.mutateAsync({
-            membership_id: membershipId,
-            group_id: groupId || '',
-            profile_data: {
-              short_description: data.short_description,
-              ai_enhanced_description: result.profile_data.ai_enhanced_description,
-              approved_keywords: result.profile_data.suggested_keywords || [],
-              generation_method: 'manual'
-            },
-            trigger_embedding: true
-          });
-        }
-      } catch (error: any) {
-        toast.error(error.message || 'Failed to enhance and save profile', {
-          style: { background: colors.semantic.error, color: '#FFF' }
-        });
-        return;
-      }
-    } else {
-      // Direct save
-      try {
-        await saveProfileMutation.mutateAsync({
-          membership_id: membershipId,
-          group_id: groupId || '',
-          profile_data: {
-            ...membership?.profile_data,
-            short_description: data.short_description,
-            generation_method: data.generation_method,
-            website_url: data.website_url
-          },
-          trigger_embedding: true
+        setEnhancedDescription(result.ai_enhanced_description);
+        setKeywords(result.suggested_keywords || []);
+        setCreateStep('enhanced');
+
+        toast.success('Website analyzed successfully!', {
+          style: { background: colors.semantic.success, color: '#FFF' }
         });
       } catch (error: any) {
-        toast.error(error.message || 'Failed to save profile', {
+        toast.error(error.message || 'Website scraping failed', {
           style: { background: colors.semantic.error, color: '#FFF' }
         });
-        return;
       }
     }
+  };
 
-    setIsEditing(false);
-    refetchMembership();
+  // Handle save from enhancement
+  const handleSaveEnhanced = async (description: string) => {
+    try {
+      await saveProfileMutation.mutateAsync({
+        membership_id: membershipId || '',
+        profile_data: {
+          generation_method: profileFormData?.generation_method || 'manual',
+          short_description: originalDescription || description,
+          ai_enhanced_description: description,
+          approved_keywords: keywords,
+          website_url: profileFormData?.website_url,
+        },
+        trigger_embedding: true
+      });
+
+      setCreateStep('clusters');
+
+      toast.success('Profile saved! Now let\'s generate search clusters.', {
+        style: { background: colors.semantic.success, color: '#FFF' }
+      });
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to save profile', {
+        style: { background: colors.semantic.error, color: '#FFF' }
+      });
+    }
   };
 
   // Handle cluster generation
-  const handleGenerateClusters = async (profileText: string, keywords: string[]): Promise<SemanticCluster[]> => {
+  const handleGenerateClusters = async (profileText: string, existingKeywords: string[]): Promise<SemanticCluster[]> => {
     const result = await generateClustersMutation.mutateAsync({
-      membership_id: membershipId,
+      membership_id: membershipId || '',
       profile_text: profileText,
-      keywords
+      keywords: existingKeywords
     });
 
     return result.clusters?.map((c: any) => ({
@@ -697,10 +548,10 @@ const GroupProfileDashboard: React.FC = () => {
     })) || [];
   };
 
-  // Handle saving clusters
+  // Handle save clusters
   const handleSaveClusters = async (clusters: SemanticCluster[]) => {
     await saveClustersMutation.mutateAsync({
-      membershipId,
+      membershipId: membershipId || '',
       clusters: clusters.map(c => ({
         primary_term: c.primary_term,
         related_terms: c.related_terms,
@@ -709,11 +560,49 @@ const GroupProfileDashboard: React.FC = () => {
       }))
     });
 
-    refetchClusters();
+    setCreateStep('success');
+
+    toast.success('Clusters saved! Your profile is now searchable.', {
+      style: { background: colors.semantic.success, color: '#FFF' }
+    });
+
+    // Refresh and show dashboard after success
+    setTimeout(() => {
+      setShowCreateFlow(false);
+      refetchMembership();
+      refetchClusters();
+    }, 2000);
+  };
+
+  // Handle profile edit save
+  const handleSaveEdit = async (data: any) => {
+    try {
+      await saveProfileMutation.mutateAsync({
+        membership_id: membershipId || '',
+        profile_data: {
+          ...membership?.profile_data,
+          short_description: data.short_description,
+          generation_method: data.generation_method,
+          website_url: data.website_url
+        },
+        trigger_embedding: true
+      });
+
+      setIsEditing(false);
+      refetchMembership();
+
+      toast.success('Profile updated!', {
+        style: { background: colors.semantic.success, color: '#FFF' }
+      });
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update profile', {
+        style: { background: colors.semantic.error, color: '#FFF' }
+      });
+    }
   };
 
   // Loading state
-  if (isLoadingGroup || isLoadingMembership) {
+  if (isLoadingGroup || isCheckingMembership || isLoadingTenantProfile) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -721,46 +610,82 @@ const GroupProfileDashboard: React.FC = () => {
             className="w-12 h-12 border-4 border-t-transparent rounded-full animate-spin mx-auto mb-4"
             style={{ borderColor: colors.brand.primary, borderTopColor: 'transparent' }}
           />
-          <p style={{ color: colors.utility.secondaryText }}>Loading Profile...</p>
+          <p style={{ color: colors.utility.secondaryText }}>Loading...</p>
         </div>
-      </div>
-    );
-  }
-
-  // No membership found
-  if (!membership) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <Card
-          className="max-w-md w-full p-8 text-center"
-          style={{
-            backgroundColor: colors.utility.secondaryBackground,
-            borderColor: `${colors.semantic.warning}40`
-          }}
-        >
-          <AlertCircle className="w-16 h-16 mx-auto mb-4" style={{ color: colors.semantic.warning }} />
-          <h2 className="text-xl font-bold mb-2" style={{ color: colors.utility.primaryText }}>
-            Membership Not Found
-          </h2>
-          <p className="mb-6" style={{ color: colors.utility.secondaryText }}>
-            You don't have access to this group. Please authenticate first.
-          </p>
-          <button
-            onClick={handleBack}
-            className="px-6 py-3 rounded-lg font-medium text-white"
-            style={{
-              background: `linear-gradient(to right, ${colors.brand.primary}, ${colors.brand.secondary})`
-            }}
-          >
-            Back to Groups
-          </button>
-        </Card>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen p-6 space-y-6 max-w-7xl mx-auto">
+      {/* Join Group Dialog - "Let me in!" */}
+      <Dialog open={showJoinDialog && !membershipId} onOpenChange={() => {}}>
+        <DialogContent
+          className="sm:max-w-md [&>button]:hidden"
+          style={{
+            backgroundColor: colors.utility.primaryBackground,
+            borderColor: `${colors.utility.primaryText}20`
+          }}
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <div className="flex items-center justify-center mb-4">
+              <div
+                className="p-4 rounded-full"
+                style={{ backgroundColor: `${colors.brand.primary}15` }}
+              >
+                <MessageCircle className="w-10 h-10" style={{ color: colors.brand.primary }} />
+              </div>
+            </div>
+            <DialogTitle
+              className="text-center text-xl"
+              style={{ color: colors.utility.primaryText }}
+            >
+              Welcome to {group?.name}!
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="text-center space-y-3 pt-2">
+            <p style={{ color: colors.utility.secondaryText }}>
+              You've been authenticated to join this group.
+            </p>
+            <div
+              className="flex items-center justify-center space-x-2 py-3 px-4 rounded-lg mt-4"
+              style={{ backgroundColor: `${colors.semantic.success}10` }}
+            >
+              <Sparkles className="w-5 h-5" style={{ color: colors.semantic.success }} />
+              <span className="text-sm" style={{ color: colors.utility.secondaryText }}>
+                Powered by VaNi AI Assistant
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-6">
+            <button
+              onClick={handleJoinGroup}
+              disabled={createMembershipMutation.isPending}
+              className="w-full flex items-center justify-center space-x-2 px-6 py-4 rounded-lg font-semibold text-white transition-all hover:opacity-90 disabled:opacity-50"
+              style={{
+                background: `linear-gradient(to right, ${colors.brand.primary}, ${colors.brand.secondary})`
+              }}
+            >
+              {createMembershipMutation.isPending ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span>Joining...</span>
+                </>
+              ) : (
+                <>
+                  <Users className="w-5 h-5" />
+                  <span>Let me in!</span>
+                </>
+              )}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
@@ -779,68 +704,185 @@ const GroupProfileDashboard: React.FC = () => {
               {group?.name || 'Group Profile'}
             </h1>
             <p className="text-sm" style={{ color: colors.utility.secondaryText }}>
-              Manage your profile and semantic clusters
+              {showCreateFlow ? 'Create your profile' : 'Manage your profile and semantic clusters'}
             </p>
           </div>
         </div>
 
-        <button
-          onClick={() => {
-            refetchMembership();
-            refetchClusters();
-          }}
-          className="p-2 rounded-lg transition-all hover:opacity-80"
-          style={{ backgroundColor: `${colors.brand.primary}15` }}
-          title="Refresh"
-        >
-          <RefreshCw className="w-5 h-5" style={{ color: colors.brand.primary }} />
-        </button>
+        {!showCreateFlow && (
+          <button
+            onClick={() => {
+              refetchMembership();
+              refetchClusters();
+            }}
+            className="p-2 rounded-lg transition-all hover:opacity-80"
+            style={{ backgroundColor: `${colors.brand.primary}15` }}
+            title="Refresh"
+          >
+            <RefreshCw className="w-5 h-5" style={{ color: colors.brand.primary }} />
+          </button>
+        )}
       </div>
 
-      {/* 65:35 Split Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column - Profile Details (65%) */}
-        <div className="lg:col-span-7">
-          <ProfileDetailsCard
-            membership={membership}
-            onEdit={() => setIsEditing(true)}
-            isEditing={isEditing}
-            onCancelEdit={() => setIsEditing(false)}
-            onSaveEdit={handleSaveEdit}
-            isSaving={saveProfileMutation.isPending || enhanceProfileMutation.isPending}
-          />
-        </div>
+      {/* Profile Creation Flow */}
+      {showCreateFlow && membershipId && (
+        <div className="max-w-4xl mx-auto">
+          {/* Progress Steps */}
+          <div className="mb-8">
+            <div className="flex items-center justify-center space-x-4">
+              {['profile', 'enhanced', 'clusters', 'success'].map((s, i) => (
+                <React.Fragment key={s}>
+                  <div className="flex items-center space-x-2">
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                        createStep === s ? 'ring-2 ring-offset-2' : ''
+                      }`}
+                      style={{
+                        backgroundColor: ['profile', 'enhanced', 'clusters', 'success'].indexOf(createStep) >= i
+                          ? colors.brand.primary
+                          : `${colors.utility.primaryText}20`,
+                        color: ['profile', 'enhanced', 'clusters', 'success'].indexOf(createStep) >= i
+                          ? '#FFF'
+                          : colors.utility.secondaryText,
+                        '--tw-ring-color': colors.brand.primary
+                      } as React.CSSProperties}
+                    >
+                      {i + 1}
+                    </div>
+                    <span
+                      className="text-sm hidden sm:inline"
+                      style={{
+                        color: createStep === s ? colors.utility.primaryText : colors.utility.secondaryText
+                      }}
+                    >
+                      {s === 'profile' ? 'Profile' : s === 'enhanced' ? 'Enhance' : s === 'clusters' ? 'Clusters' : 'Done'}
+                    </span>
+                  </div>
+                  {i < 3 && (
+                    <div
+                      className="w-12 h-0.5"
+                      style={{
+                        backgroundColor: ['profile', 'enhanced', 'clusters', 'success'].indexOf(createStep) > i
+                          ? colors.brand.primary
+                          : `${colors.utility.primaryText}20`
+                      }}
+                    />
+                  )}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
 
-        {/* Right Column - Semantic Clusters (35%) */}
-        <div className="lg:col-span-5">
-          <SemanticClustersForm
-            membershipId={membershipId}
-            profileText={membership?.profile_data?.ai_enhanced_description || membership?.profile_data?.short_description || ''}
-            keywords={membership?.profile_data?.approved_keywords || []}
-            existingClusters={clustersData?.clusters || []}
-            onGenerateClusters={handleGenerateClusters}
-            onSaveClusters={handleSaveClusters}
-            isGenerating={generateClustersMutation.isPending}
-            isSaving={saveClustersMutation.isPending}
-          />
-        </div>
-      </div>
+          {/* Step Content */}
+          {createStep === 'profile' && (
+            <ProfileEntryForm
+              onSubmit={handleProfileFormSubmit}
+              onEnhanceWithAI={handleEnhanceWithAI}
+              isEnhancing={enhanceProfileMutation.isPending || scrapeWebsiteMutation.isPending}
+              isSaving={false}
+            />
+          )}
 
-      {/* Create Profile Modal */}
-      <CreateProfileModal
-        isOpen={showCreateModal}
-        onClose={() => {
-          setShowCreateModal(false);
-          // Remove action param from URL
-          navigate(`/settings/configure/customer-channels/groups/${groupId}?membership=${membershipId}`, { replace: true });
-        }}
-        membershipId={membershipId}
-        groupId={groupId || ''}
-        onSuccess={() => {
-          refetchMembership();
-          refetchClusters();
-        }}
-      />
+          {createStep === 'enhanced' && (
+            <AIEnhancementSection
+              originalDescription={originalDescription}
+              enhancedDescription={enhancedDescription}
+              onSave={handleSaveEnhanced}
+              isSaving={saveProfileMutation.isPending}
+            />
+          )}
+
+          {createStep === 'clusters' && (
+            <SemanticClustersForm
+              membershipId={membershipId}
+              profileText={enhancedDescription}
+              keywords={keywords}
+              existingClusters={[]}
+              onGenerateClusters={handleGenerateClusters}
+              onSaveClusters={handleSaveClusters}
+              isGenerating={generateClustersMutation.isPending}
+              isSaving={saveClustersMutation.isPending}
+            />
+          )}
+
+          {createStep === 'success' && (
+            <div className="text-center py-12">
+              <div
+                className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center"
+                style={{ backgroundColor: `${colors.semantic.success}15` }}
+              >
+                <CheckCircle className="w-10 h-10" style={{ color: colors.semantic.success }} />
+              </div>
+              <h2 className="text-2xl font-bold mb-2" style={{ color: colors.utility.primaryText }}>
+                Profile Created Successfully!
+              </h2>
+              <p style={{ color: colors.utility.secondaryText }}>
+                Your profile is now active and searchable by other members.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 65:35 Dashboard Layout - Only show when profile exists and not in create flow */}
+      {!showCreateFlow && membershipId && hasProfile && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Left Column - Profile Details (65%) */}
+          <div className="lg:col-span-7">
+            <ProfileDetailsCard
+              membership={membership}
+              onEdit={() => setIsEditing(true)}
+              isEditing={isEditing}
+              onCancelEdit={() => setIsEditing(false)}
+              onSaveEdit={handleSaveEdit}
+              isSaving={saveProfileMutation.isPending}
+              isEnhancing={enhanceProfileMutation.isPending}
+              onEnhanceWithAI={handleEnhanceWithAI}
+            />
+          </div>
+
+          {/* Right Column - Semantic Clusters (35%) */}
+          <div className="lg:col-span-5">
+            <SemanticClustersForm
+              membershipId={membershipId}
+              profileText={membership?.profile_data?.ai_enhanced_description || membership?.profile_data?.short_description || ''}
+              keywords={membership?.profile_data?.approved_keywords || []}
+              existingClusters={clustersData?.clusters || []}
+              onGenerateClusters={handleGenerateClusters}
+              onSaveClusters={handleSaveClusters}
+              isGenerating={generateClustersMutation.isPending}
+              isSaving={saveClustersMutation.isPending}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Show create flow prompt if no profile yet */}
+      {!showCreateFlow && membershipId && !hasProfile && !isLoadingMembership && (
+        <div className="text-center py-12">
+          <div
+            className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center"
+            style={{ backgroundColor: `${colors.brand.primary}15` }}
+          >
+            <Sparkles className="w-10 h-10" style={{ color: colors.brand.primary }} />
+          </div>
+          <h2 className="text-2xl font-bold mb-2" style={{ color: colors.utility.primaryText }}>
+            Let's Create Your Profile
+          </h2>
+          <p className="mb-6" style={{ color: colors.utility.secondaryText }}>
+            You're a member of this group but haven't created your profile yet.
+          </p>
+          <button
+            onClick={() => setShowCreateFlow(true)}
+            className="px-8 py-3 rounded-lg font-medium text-white"
+            style={{
+              background: `linear-gradient(to right, ${colors.brand.primary}, ${colors.brand.secondary})`
+            }}
+          >
+            Create Profile
+          </button>
+        </div>
+      )}
     </div>
   );
 };
