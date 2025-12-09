@@ -82,6 +82,7 @@ import WhatsAppIntegrationPage from './vani/pages/channels/WhatsAppIntegrationPa
 // ✅ NEW: BBB Directory Pages
 import BBBProfileOnboardingPage from './pages/VaNi/channels/BBBProfileOnboardingPage';
 import BBBAdminDashboard from './pages/VaNi/channels/BBBAdminDashboard';
+import VaNiChatPage from './pages/VaNi/channels/VaNiChatPage';
 
 // ✅ Implementation Toolkit
 import TenantProfilesPage from './pages/VaNi/TenantProfilesPage';
@@ -127,6 +128,8 @@ import UserProfilePage from './pages/settings/users/user-profile';
 import BusinessProfilePage from './pages/settings/business-profile';
 import EditBusinessProfilePage from './pages/settings/business-profile/edit';
 import OnboardingBusinessProfilePage from './pages/onboarding/business-profile';
+import SmartProfilePage from './pages/settings/business-profile/smart-profile';
+
 
 // Integration pages
 import IntegrationsPage from './pages/settings/integrations';
@@ -419,6 +422,8 @@ const AppContent: React.FC = () => {
             {/* Business Profile Settings */}
             <Route path="business-profile" element={<BusinessProfilePage />} />
             <Route path="business-profile/edit" element={<EditBusinessProfilePage />} />
+            <Route path="business-profile/smart-profile" element={<SmartProfilePage />} />
+
             
             {/* Storage Settings */}
             <Route path="configure/storage" element={<StorageSettingsPage />} />
@@ -501,6 +506,7 @@ const AppContent: React.FC = () => {
             {/* ✅ NEW: BBB Directory Routes */}
             <Route path="channels/bbb/onboarding" element={<BBBProfileOnboardingPage />} />
             <Route path="channels/bbb/admin" element={<BBBAdminDashboard />} />
+            <Route path="channels/bbb/chat" element={<VaNiChatPage />} />
 
             {/* ✅ Implementation Toolkit Routes */}
             <Route path="tenant-profiles" element={<TenantProfilesPage />} />
