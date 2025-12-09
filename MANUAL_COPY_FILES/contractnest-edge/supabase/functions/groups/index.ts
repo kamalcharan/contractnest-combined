@@ -2427,7 +2427,7 @@ console.log('='.repeat(60));
       }
     }
 
-    // POST /smartprofiles/generate-clusters - Generate semantic clusters for SmartProfile
+    // POST /smartprofiles/generate-clusters - Generate semantic clusters via n8n /generate-semantic-clusters
     if (method === 'POST' && path === '/smartprofiles/generate-clusters') {
       try {
         const requestData = await req.json();
@@ -2438,22 +2438,53 @@ console.log('='.repeat(60));
           );
         }
         console.log('🧠 Generating clusters for SmartProfile tenant:', requestData.tenant_id);
-        const keywords = requestData.keywords || [];
-        const mockClusters = keywords.slice(0, 5).map((keyword: string) => ({
-          primary_term: keyword,
-          related_terms: [keyword, `${keyword} services`, `${keyword} solutions`],
-          category: 'general',
-          confidence_score: 0.85 + Math.random() * 0.1
-        }));
-        if (mockClusters.length === 0 && requestData.profile_text) {
-          const words = requestData.profile_text.split(/\s+/).filter((w: string) => w.length > 4);
-          const uniqueWords = [...new Set(words)].slice(0, 3) as string[];
-          uniqueWords.forEach((word: string) => {
-            mockClusters.push({ primary_term: word, related_terms: [word, `${word} related`], category: 'auto-generated', confidence_score: 0.75 });
-          });
+
+        // Call n8n /generate-semantic-clusters webhook
+        const n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL') || 'https://n8n.srv1096269.hstgr.cloud';
+        const xEnvironment = req.headers.get('x-environment');
+        const webhookPrefix = xEnvironment === 'live' ? '/webhook' : '/webhook-test';
+        const clustersUrl = `${n8nWebhookUrl}${webhookPrefix}/generate-semantic-clusters`;
+
+        console.log('🔗 Calling n8n generate-semantic-clusters:', clustersUrl);
+
+        const n8nResponse = await fetch(clustersUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            membership_id: requestData.tenant_id,
+            profile_text: requestData.profile_text,
+            keywords: requestData.keywords || [],
+            chapter: requestData.chapter || ''
+          })
+        });
+
+        if (!n8nResponse.ok) {
+          const errorText = await n8nResponse.text();
+          console.error('❌ n8n generate-semantic-clusters failed:', n8nResponse.status, errorText);
+          return new Response(
+            JSON.stringify({ success: false, error: 'Cluster generation failed', details: errorText }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
         }
+
+        const n8nResult = await n8nResponse.json();
+        console.log('✅ SmartProfile clusters generated via n8n:', n8nResult.status, 'count:', n8nResult.clusters_generated);
+
+        // Handle error response from n8n
+        if (n8nResult.status === 'error') {
+          return new Response(
+            JSON.stringify({ success: false, error: n8nResult.message, details: n8nResult.details, suggestion: n8nResult.suggestion, recoverable: n8nResult.recoverable }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         return new Response(
-          JSON.stringify({ success: true, clusters: mockClusters }),
+          JSON.stringify({
+            success: true,
+            clusters: n8nResult.clusters || [],
+            clusters_generated: n8nResult.clusters_generated || 0,
+            tokens_used: n8nResult.tokens_used || 0
+          }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       } catch (error) {
