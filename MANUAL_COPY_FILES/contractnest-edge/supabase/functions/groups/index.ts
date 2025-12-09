@@ -2060,11 +2060,19 @@ console.log('='.repeat(60));
 
         console.log('💾 Saving smartprofile for tenant:', requestData.tenant_id);
 
+        // Validate profile_type - database constraint allows: 'seller', 'buyer'
+        const validProfileTypes = ['seller', 'buyer'];
+        let profileType = requestData.profile_type || 'seller';
+        if (!validProfileTypes.includes(profileType)) {
+          // Map invalid types to 'seller' (default for business profiles)
+          profileType = 'seller';
+        }
+
         // Build upsert data with all fields from UI
         const upsertData: any = {
           tenant_id: requestData.tenant_id,
           short_description: requestData.short_description || null,
-          profile_type: requestData.profile_type || 'seller',
+          profile_type: profileType,
           approved_keywords: requestData.approved_keywords || [],
           status: requestData.status || 'active',
           is_active: requestData.is_active !== false,
