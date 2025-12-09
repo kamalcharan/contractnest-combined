@@ -1,19 +1,21 @@
 ═══════════════════════════════════════════════════════════════════════════════
-SMARTPROFILE API LAYER - COPY INSTRUCTIONS
+SMARTPROFILE API LAYER - COPY INSTRUCTIONS (CORRECTED PATHS)
 ═══════════════════════════════════════════════════════════════════════════════
 
 This folder contains the SmartProfile API layer routes, controllers, and services.
 
+IMPORTANT: Files are in subdirectories (controllers/ and services/), not root src/
+
 FILES TO COPY:
 ══════════════
 
-1. contractnest-api/src/groupsService.ts
-   → Copy to: contractnest-api/src/groupsService.ts
+1. contractnest-api/src/services/groupsService.ts
+   → Copy to: contractnest-api/src/services/groupsService.ts
    Purpose: Added SmartProfile service methods (getSmartProfile, saveSmartProfile,
             generateSmartProfile, searchSmartProfiles)
 
-2. contractnest-api/src/groupsController.ts
-   → Copy to: contractnest-api/src/groupsController.ts
+2. contractnest-api/src/controllers/groupsController.ts
+   → Copy to: contractnest-api/src/controllers/groupsController.ts
    Purpose: Added SmartProfile controller handlers for Express routes
 
 3. contractnest-api/src/routes/groupsRoutes.ts
@@ -27,8 +29,8 @@ FILES TO COPY:
 POWERSHELL COPY COMMANDS:
 ═════════════════════════
 
-Copy-Item -Path ".\MANUAL_COPY_FILES\contractnest-api\src\groupsService.ts" -Destination ".\contractnest-api\src\" -Force
-Copy-Item -Path ".\MANUAL_COPY_FILES\contractnest-api\src\groupsController.ts" -Destination ".\contractnest-api\src\" -Force
+Copy-Item -Path ".\MANUAL_COPY_FILES\contractnest-api\src\services\groupsService.ts" -Destination ".\contractnest-api\src\services\" -Force
+Copy-Item -Path ".\MANUAL_COPY_FILES\contractnest-api\src\controllers\groupsController.ts" -Destination ".\contractnest-api\src\controllers\" -Force
 Copy-Item -Path ".\MANUAL_COPY_FILES\contractnest-api\src\routes\groupsRoutes.ts" -Destination ".\contractnest-api\src\routes\" -Force
 
 Write-Host "All API files copied!" -ForegroundColor Green

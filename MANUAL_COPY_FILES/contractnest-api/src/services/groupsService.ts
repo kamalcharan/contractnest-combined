@@ -1183,88 +1183,126 @@ export const groupsService = {
   },
 
   // ============================================
-  // TENANT STATS & INTENTS
+  // SMARTPROFILES (Tenant-level AI profiles)
   // ============================================
 
   /**
-   * Get tenant statistics for dashboard
-   * Calls Supabase RPC function get_tenant_stats
+   * Get SmartProfile for a tenant
    */
-  async getTenantStats(
-    authToken: string,
-    groupId?: string
-  ): Promise<any> {
-    try {
-      const response = await axios.post(
-        `${GROUPS_API_BASE}/tenants/stats`,
-        { group_id: groupId },
-        { headers: getHeaders(authToken) }
-      );
-      return response.data;
-    } catch (error) {
-      console.error('Error in getTenantStats:', error);
-      captureException(error instanceof Error ? error : new Error(String(error)), {
-        tags: { source: 'groupsService', action: 'getTenantStats' },
-        extra: { groupId }
-      });
-      throw error;
-    }
-  },
-
-  /**
-   * Get resolved intents for a group/user/channel
-   * Returns intents filtered by RBAC
-   */
-  async getIntents(
-    authToken: string,
-    groupId: string,
-    userRole: string = 'member',
-    channel: string = 'web'
-  ): Promise<any> {
+  async getSmartProfile(authToken: string, tenantId: string): Promise<any> {
     try {
       const response = await axios.get(
-        `${GROUPS_API_BASE}/intents?group_id=${groupId}&user_role=${userRole}&channel=${channel}`,
-        { headers: getHeaders(authToken) }
+        `${GROUPS_API_BASE}/smartprofiles/${tenantId}`,
+        {
+          headers: getHeaders(authToken, tenantId)
+        }
       );
       return response.data;
-    } catch (error) {
-      console.error('Error in getIntents:', error);
+    } catch (error: any) {
+      console.error('Error in getSmartProfile:', error);
       captureException(error instanceof Error ? error : new Error(String(error)), {
-        tags: { source: 'groupsService', action: 'getIntents' },
-        extra: { groupId, userRole, channel }
+        tags: { source: 'groupsService', action: 'getSmartProfile' },
+        extra: { tenantId }
       });
       throw error;
     }
   },
 
   /**
-   * NLP-based tenant search
-   * Sends natural language query to AI for interpretation and search
+   * Save SmartProfile (basic save without AI generation)
    */
-  async searchTenants(
+  async saveSmartProfile(
     authToken: string,
-    query: string,
-    groupId?: string,
-    intentCode?: string
+    tenantId: string,
+    profileData: {
+      short_description?: string;
+      approved_keywords?: string[];
+      profile_type?: string;
+    }
   ): Promise<any> {
     try {
       const response = await axios.post(
-        `${GROUPS_API_BASE}/tenants/search`,
+        `${GROUPS_API_BASE}/smartprofiles`,
+        { tenant_id: tenantId, ...profileData },
         {
-          query,
-          group_id: groupId,
-          intent_code: intentCode,
-          channel: 'web',
-          user_role: 'admin'
-        },
-        { headers: getChatHeaders(authToken) }
+          headers: getHeaders(authToken, tenantId)
+        }
       );
       return response.data;
-    } catch (error) {
-      console.error('Error in searchTenants:', error);
+    } catch (error: any) {
+      console.error('Error in saveSmartProfile:', error);
       captureException(error instanceof Error ? error : new Error(String(error)), {
-        tags: { source: 'groupsService', action: 'searchTenants' },
-        extra: { query, groupId, intentCode }
+        tags: { source: 'groupsService', action: 'saveSmartProfile' },
+        extra: { tenantId }
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Generate SmartProfile via n8n (AI enhancement + embedding)
+   */
+  async generateSmartProfile(
+    authToken: string,
+    tenantId: string,
+    environment?: string
+  ): Promise<any> {
+    try {
+      const response = await axios.post(
+        `${GROUPS_API_BASE}/smartprofiles/generate`,
+        { tenant_id: tenantId },
+        {
+          headers: {
+            ...getHeaders(authToken, tenantId),
+            'x-environment': environment || 'live'
+          },
+          timeout: 60000
+        }
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('Error in generateSmartProfile:', error);
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        tags: { source: 'groupsService', action: 'generateSmartProfile' },
+        extra: { tenantId }
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Search SmartProfiles via n8n
+   */
+  async searchSmartProfiles(
+    authToken: string,
+    request: {
+      query: string;
+      scope?: 'tenant' | 'group' | 'product';
+      group_id?: string;
+      tenant_id?: string;
+      limit?: number;
+      use_cache?: boolean;
+    },
+    environment?: string
+  ): Promise<any> {
+    try {
+      const response = await axios.post(
+        `${GROUPS_API_BASE}/smartprofiles/search`,
+        request,
+        {
+          headers: {
+            ...getHeaders(authToken, request.tenant_id),
+            'x-environment': environment || 'live'
+          },
+          timeout: 30000
+        }
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('Error in searchSmartProfiles:', error);
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        tags: { source: 'groupsService', action: 'searchSmartProfiles' },
+        extra: { query: request.query, scope: request.scope }
       });
       throw error;
     }
