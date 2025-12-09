@@ -2296,7 +2296,8 @@ console.log('='.repeat(60));
         // Call n8n /process-profile webhook with type=manual
         const n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL') || 'https://n8n.srv1096269.hstgr.cloud';
         const xEnvironment = req.headers.get('x-environment');
-        const webhookPrefix = xEnvironment === 'live' ? '/webhook' : '/webhook-test';
+        // Use /webhook for active workflows (default), /webhook-test only when explicitly in test mode
+        const webhookPrefix = xEnvironment === 'test' ? '/webhook-test' : '/webhook';
         const processProfileUrl = `${n8nWebhookUrl}${webhookPrefix}/process-profile`;
 
         console.log('🔗 Calling n8n process-profile (manual):', processProfileUrl);
@@ -2372,7 +2373,8 @@ console.log('='.repeat(60));
         // Call n8n /process-profile webhook with type=website (uses Jina Reader + AI extraction)
         const n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL') || 'https://n8n.srv1096269.hstgr.cloud';
         const xEnvironment = req.headers.get('x-environment');
-        const webhookPrefix = xEnvironment === 'live' ? '/webhook' : '/webhook-test';
+        // Use /webhook for active workflows (default), /webhook-test only when explicitly in test mode
+        const webhookPrefix = xEnvironment === 'test' ? '/webhook-test' : '/webhook';
         const processProfileUrl = `${n8nWebhookUrl}${webhookPrefix}/process-profile`;
 
         console.log('🔗 Calling n8n process-profile (website):', processProfileUrl);
@@ -2442,7 +2444,8 @@ console.log('='.repeat(60));
         // Call n8n /generate-semantic-clusters webhook
         const n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL') || 'https://n8n.srv1096269.hstgr.cloud';
         const xEnvironment = req.headers.get('x-environment');
-        const webhookPrefix = xEnvironment === 'live' ? '/webhook' : '/webhook-test';
+        // Use /webhook for active workflows (default), /webhook-test only when explicitly in test mode
+        const webhookPrefix = xEnvironment === 'test' ? '/webhook-test' : '/webhook';
         const clustersUrl = `${n8nWebhookUrl}${webhookPrefix}/generate-semantic-clusters`;
 
         console.log('🔗 Calling n8n generate-semantic-clusters:', clustersUrl);
