@@ -2533,16 +2533,45 @@ console.log('='.repeat(60));
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
-        console.log('💾 Saving SmartProfile clusters for tenant:', requestData.tenant_id);
-        // Save to t_smart_profile_clusters table
-        const { data, error: saveError } = await supabase
-          .from('t_smart_profile_clusters')
-          .upsert({ tenant_id: requestData.tenant_id, clusters: requestData.clusters, updated_at: new Date().toISOString() }, { onConflict: 'tenant_id' })
-          .select()
-          .single();
+
+        const { tenant_id, clusters } = requestData;
+        console.log('💾 Saving SmartProfile clusters for tenant:', tenant_id, 'Count:', clusters.length);
+
+        // First, delete existing clusters for this tenant
+        await supabaseAdmin
+          .from('t_semantic_clusters')
+          .delete()
+          .eq('tenant_id', tenant_id);
+
+        // Prepare clusters for insertion with tenant_id
+        const clustersToInsert = clusters.map((cluster: any) => ({
+          tenant_id,
+          primary_term: cluster.primary_term,
+          related_terms: cluster.related_terms || [],
+          category: cluster.category || 'Services',
+          confidence_score: cluster.confidence_score || 1.0,
+          is_active: true
+        }));
+
+        // Insert new clusters
+        const { data, error: saveError } = await supabaseAdmin
+          .from('t_semantic_clusters')
+          .insert(clustersToInsert)
+          .select('id');
+
         if (saveError) throw saveError;
+
+        console.log('✅ Saved SmartProfile clusters:', {
+          tenantId: tenant_id,
+          count: data.length
+        });
+
         return new Response(
-          JSON.stringify({ success: true, clusters: data }),
+          JSON.stringify({
+            success: true,
+            clusters_saved: data.length,
+            cluster_ids: data.map((c: any) => c.id)
+          }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       } catch (error) {
@@ -2559,14 +2588,14 @@ console.log('='.repeat(60));
       try {
         const tenantId = path.split('/').pop();
         console.log('📋 Getting SmartProfile clusters for tenant:', tenantId);
-        const { data, error: fetchError } = await supabase
-          .from('t_smart_profile_clusters')
-          .select('*')
+        const { data, error: fetchError } = await supabaseAdmin
+          .from('t_semantic_clusters')
+          .select('id, primary_term, related_terms, category, confidence_score')
           .eq('tenant_id', tenantId)
-          .single();
-        if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
+          .eq('is_active', true);
+        if (fetchError) throw fetchError;
         return new Response(
-          JSON.stringify({ success: true, clusters: data?.clusters || [] }),
+          JSON.stringify({ success: true, clusters: data || [] }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       } catch (error) {
