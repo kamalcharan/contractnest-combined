@@ -16,9 +16,11 @@ import {
   RefreshCw,
   Building2,
   CheckCircle,
-  ArrowRight,
   Search,
-  Info
+  Info,
+  MessageCircle,
+  Compass,
+  Phone
 } from 'lucide-react';
 import { useGroups, useGroupMemberships, useVerifyGroupAccess } from '../../../hooks/queries/useGroupQueries';
 import toast from 'react-hot-toast';
@@ -534,17 +536,72 @@ const GroupsListPage: React.FC = () => {
                   )}
 
                   {groupStatus.action === 'view' && (
-                    <button
-                      onClick={() => handleView(group, groupStatus.membershipId!)}
-                      className="w-full flex items-center justify-center space-x-2 px-4 py-2.5 rounded-lg font-medium text-white transition-all hover:opacity-90"
-                      style={{
-                        background: `linear-gradient(to right, ${colors.semantic.success}, ${colors.brand.primary})`
-                      }}
-                    >
-                      <Eye className="w-4 h-4" />
-                      <span>View Profile</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center justify-center space-x-2">
+                      {/* View Profile */}
+                      <button
+                        onClick={() => handleView(group, groupStatus.membershipId!)}
+                        title="View Profile"
+                        className="flex-1 flex items-center justify-center space-x-2 px-3 py-2.5 rounded-lg font-medium text-white transition-all hover:opacity-90"
+                        style={{
+                          background: `linear-gradient(to right, ${colors.semantic.success}, ${colors.brand.primary})`
+                        }}
+                      >
+                        <Eye className="w-4 h-4" />
+                        <span>View</span>
+                      </button>
+
+                      {/* Chat */}
+                      <button
+                        onClick={() => navigate('/vani/chat')}
+                        title="Chat with VaNi"
+                        className="p-2.5 rounded-lg transition-all hover:opacity-80"
+                        style={{
+                          backgroundColor: `${colors.semantic.info}15`,
+                          color: colors.semantic.info
+                        }}
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                      </button>
+
+                      {/* WhatsApp - Future */}
+                      <button
+                        title="WhatsApp (Coming Soon)"
+                        className="p-2.5 rounded-lg transition-all cursor-not-allowed opacity-50"
+                        style={{
+                          backgroundColor: `${colors.semantic.success}15`,
+                          color: colors.semantic.success
+                        }}
+                        disabled
+                      >
+                        <Phone className="w-4 h-4" />
+                      </button>
+
+                      {/* Explore - Group Member Profiles */}
+                      <button
+                        onClick={() => navigate('/vani/tenant-profiles')}
+                        title="Explore Group Members"
+                        className="p-2.5 rounded-lg transition-all hover:opacity-80"
+                        style={{
+                          backgroundColor: `${colors.brand.primary}15`,
+                          color: colors.brand.primary
+                        }}
+                      >
+                        <Compass className="w-4 h-4" />
+                      </button>
+
+                      {/* Admin */}
+                      <button
+                        onClick={() => navigate('/vani/channels/bbb/admin')}
+                        title="Group Admin"
+                        className="p-2.5 rounded-lg transition-all hover:opacity-80"
+                        style={{
+                          backgroundColor: `${colors.semantic.warning}15`,
+                          color: colors.semantic.warning
+                        }}
+                      >
+                        <Shield className="w-4 h-4" />
+                      </button>
+                    </div>
                   )}
                 </CardContent>
               </Card>

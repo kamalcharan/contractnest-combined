@@ -19,7 +19,6 @@ import {
   X,
   CheckCircle,
   Globe,
-  Tag,
   Brain,
   Sparkles,
   RefreshCw,
@@ -253,32 +252,6 @@ const ProfileDetailsCard: React.FC<ProfileDetailsCardProps> = ({
             >
               {profileData.website_url}
             </a>
-          </div>
-        )}
-
-        {/* Keywords */}
-        {profileData.approved_keywords && profileData.approved_keywords.length > 0 && (
-          <div>
-            <div className="flex items-center space-x-2 mb-3">
-              <Tag className="w-4 h-4" style={{ color: colors.semantic.success }} />
-              <span className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
-                Keywords
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {profileData.approved_keywords.map((keyword: string, idx: number) => (
-                <span
-                  key={idx}
-                  className="px-3 py-1.5 rounded-full text-xs font-medium"
-                  style={{
-                    backgroundColor: `${colors.semantic.success}15`,
-                    color: colors.semantic.success
-                  }}
-                >
-                  {keyword}
-                </span>
-              ))}
-            </div>
           </div>
         )}
 

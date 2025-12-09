@@ -1,5 +1,5 @@
 ═══════════════════════════════════════════════════════════════════════════════
-📋 MANUAL COPY INSTRUCTIONS - GROUPS FEATURE (v2.0)
+📋 MANUAL COPY INSTRUCTIONS - GROUPS FEATURE (v3.0)
 ═══════════════════════════════════════════════════════════════════════════════
 Branch: claude/init-submodules-01AnoU9WPqvtgSskV4XFH7bD
 Date: December 9, 2024
@@ -18,20 +18,26 @@ This update implements:
 
 Bug Fixes in v2.0:
 6. Fixed empty state UI with proper card styling
-7. Added website URL validation (UI-side)
-8. Fixed redirect after profile creation success
-9. Fixed re-authentication issue using sessionStorage
-10. Improved profile creation flow with proper state management
+7. Fixed redirect after profile creation success
+8. Fixed re-authentication issue using sessionStorage
+9. Fixed 500 error on GET /memberships/:id (two queries, no FK needed)
+
+Enhancements in v3.0:
+10. Removed hardcoded keywords - rely on semantic clusters instead
+11. Added action icons: View, Chat, WhatsApp, Explore, Admin
+12. Added "Family Knows" group SQL script
 
 Navigation Flow:
 Settings → Configure → Customer Channels → Groups
-  └── List of available groups
-      ├── Authenticate (if locked) → stored in sessionStorage
-      ├── Create Profile (if authenticated, no profile)
-      └── View Profile → 65:35 Dashboard (if has profile)
+  └── List of available groups with action icons
+      ├── View (Eye) - opens profile dashboard
+      ├── Chat (MessageCircle) - opens VaNi chat
+      ├── WhatsApp (Phone) - coming soon
+      ├── Explore (Compass) - opens Group Member Profiles
+      └── Admin (Shield) - opens BBB Admin
 
 ═══════════════════════════════════════════════════════════════════════════════
-📦 FILES TO COPY (7 FILES)
+📦 FILES TO COPY (9 FILES)
 ═══════════════════════════════════════════════════════════════════════════════
 
 SUBMODULE: contractnest-edge
@@ -57,14 +63,10 @@ SUBMODULE: contractnest-ui
    FROM: MANUAL_COPY_FILES/GroupsListPage.tsx
    TO:   contractnest-ui/src/pages/settings/customer-channels/GroupsListPage.tsx
 
-   NOTE: Create the directory first:
-   mkdir -p contractnest-ui/src/pages/settings/customer-channels/
-
    FEATURES:
    - Groups list with status cards (Locked/Authenticated/Active)
-   - Authentication modal for password verification
+   - Action icons for active profiles: View, Chat, WhatsApp, Explore, Admin
    - SessionStorage persistence for authenticated groups
-   - Smart navigation to dashboard
 
 3. NEW FILE: GroupProfileDashboard.tsx
    FROM: MANUAL_COPY_FILES/GroupProfileDashboard.tsx
@@ -72,41 +74,49 @@ SUBMODULE: contractnest-ui
 
    FEATURES:
    - 65:35 split layout (Profile left, Clusters right)
+   - Removed Keywords section (using semantic clusters instead)
    - "Let me in" dialog for membership creation
-   - Profile creation wizard with step tracking
    - Fixed redirect after success (profileJustCreated state)
-   - Improved empty state with card styling
 
-4. UPDATED FILE: ProfileEntryForm.tsx
-   FROM: MANUAL_COPY_FILES/contractnest-ui/src/components/VaNi/bbb/ProfileEntryForm.tsx
-   TO:   contractnest-ui/src/components/VaNi/bbb/ProfileEntryForm.tsx
+4. UPDATED FILE: BBBProfileOnboardingPage.tsx
+   FROM: MANUAL_COPY_FILES/contractnest-ui/src/pages/VaNi/channels/BBBProfileOnboardingPage.tsx
+   TO:   contractnest-ui/src/pages/VaNi/channels/BBBProfileOnboardingPage.tsx
 
    CHANGES:
-   - Added website URL validation (isValidWebsiteUrl function)
-   - URL must start with http:// or https://
-   - Validates domain format and TLD
-   - Shows error messages on blur and submit
-   - Prevents form submission with invalid URLs
+   - Removed hardcoded fallback keywords (technology, Hyderabad, Business, Professional)
+   - Keywords now come from AI enhancement only
+   - Relies on semantic clusters for search discoverability
 
 5. UPDATED FILE: settingsMenus.ts
    FROM: MANUAL_COPY_FILES/settingsMenus.ts
    TO:   contractnest-ui/src/utils/constants/settingsMenus.ts
 
-   CHANGES: Added "Groups" menu item under Customer Channels section (lines 186-195)
+   CHANGES: Added "Groups" menu item under Customer Channels section
 
 6. UPDATED FILE: industryMenus.ts
    FROM: MANUAL_COPY_FILES/industryMenus.ts
    TO:   contractnest-ui/src/utils/constants/industryMenus.ts
 
-   CHANGES: Renamed "Tenant Profiles" to "Group Member Profiles" (line 361)
+   CHANGES: Renamed "Tenant Profiles" to "Group Member Profiles"
 
 7. UPDATED FILE: App.tsx
    FROM: MANUAL_COPY_FILES/App.tsx
    TO:   contractnest-ui/src/App.tsx
 
    CHANGES:
-   - Added imports for GroupsListPage and GroupProfileDashboard (lines 89-91)
-   - Added routes for /settings/configure/customer-channels/groups (lines 449-451)
+   - Added imports for GroupsListPage and GroupProfileDashboard
+   - Added routes for /settings/configure/customer-channels/groups
+
+─────────────────────────────────────────────────────────────────────────────
+
+DATABASE
+─────────────────────────────────────────────────────────────────────────────
+
+8. SQL SCRIPT: Family Knows Group
+   FILE: MANUAL_COPY_FILES/SQL_INSERT_FAMILY_KNOWS_GROUP.sql
+
+   Run in Supabase SQL Editor to create the "Family Knows" group.
+   Passwords: user=family2025, admin=familyadmin2025
 
 ═══════════════════════════════════════════════════════════════════════════════
 💻 WINDOWS POWERSHELL COMMANDS
@@ -129,27 +139,23 @@ Copy-Item "MANUAL_COPY_FILES\contractnest-edge\supabase\functions\groups\index.t
 Copy-Item "MANUAL_COPY_FILES\GroupsListPage.tsx" "contractnest-ui\src\pages\settings\customer-channels\GroupsListPage.tsx" -Force
 Copy-Item "MANUAL_COPY_FILES\GroupProfileDashboard.tsx" "contractnest-ui\src\pages\settings\customer-channels\GroupProfileDashboard.tsx" -Force
 
-# Copy updated component
-Copy-Item "MANUAL_COPY_FILES\contractnest-ui\src\components\VaNi\bbb\ProfileEntryForm.tsx" "contractnest-ui\src\components\VaNi\bbb\ProfileEntryForm.tsx" -Force
+# Copy updated BBBProfileOnboardingPage (removes hardcoded keywords)
+Copy-Item "MANUAL_COPY_FILES\contractnest-ui\src\pages\VaNi\channels\BBBProfileOnboardingPage.tsx" "contractnest-ui\src\pages\VaNi\channels\BBBProfileOnboardingPage.tsx" -Force
 
 # Copy updated config files
 Copy-Item "MANUAL_COPY_FILES\settingsMenus.ts" "contractnest-ui\src\utils\constants\settingsMenus.ts" -Force
 Copy-Item "MANUAL_COPY_FILES\industryMenus.ts" "contractnest-ui\src\utils\constants\industryMenus.ts" -Force
 Copy-Item "MANUAL_COPY_FILES\App.tsx" "contractnest-ui\src\App.tsx" -Force
 
-Step 4: Verify files
-─────────────────────────────────────────────────────────────────────────────
-# Check Edge function updated (should show "two separate queries")
-Select-String -Path "contractnest-edge\supabase\functions\groups\index.ts" -Pattern "Step 1: Get membership data"
-
-# Check new pages exist
-Test-Path "contractnest-ui\src\pages\settings\customer-channels\GroupsListPage.tsx"
-Test-Path "contractnest-ui\src\pages\settings\customer-channels\GroupProfileDashboard.tsx"
-
-Step 5: Deploy Edge Function (IMPORTANT!)
+Step 4: Deploy Edge Function
 ─────────────────────────────────────────────────────────────────────────────
 cd contractnest-edge
 supabase functions deploy groups --project-ref YOUR_PROJECT_REF
+
+Step 5: Run SQL for Family Knows Group
+─────────────────────────────────────────────────────────────────────────────
+# Copy contents of MANUAL_COPY_FILES/SQL_INSERT_FAMILY_KNOWS_GROUP.sql
+# Paste and run in Supabase SQL Editor
 
 ═══════════════════════════════════════════════════════════════════════════════
 🔧 KNOWN ISSUES & FIXES
@@ -157,74 +163,46 @@ supabase functions deploy groups --project-ref YOUR_PROJECT_REF
 
 1. ✅ FIXED: 500 ERROR ON GET /api/memberships/:id
 
-   CAUSE: Edge function used FK-based join that required foreign key constraint
-   between t_group_memberships.tenant_id and t_tenant_profiles.tenant_id
-
-   FIX: Updated Edge function to use two separate queries:
-   - Query 1: Get membership from t_group_memberships
-   - Query 2: Get tenant profile using tenant_id (no FK needed)
-
+   FIX: Updated Edge function to use two separate queries (no FK needed)
    FILE: contractnest-edge/supabase/functions/groups/index.ts
-   DEPLOY: supabase functions deploy groups
 
-2. t_semantic_clusters.t_tenantid INSERTING NULL
+2. ✅ FIXED: HARDCODED KEYWORDS
+
+   FIX: Removed from BBBProfileOnboardingPage - now relies on semantic clusters
+   FILE: contractnest-ui/src/pages/VaNi/channels/BBBProfileOnboardingPage.tsx
+
+3. t_semantic_clusters.t_tenantid INSERTING NULL
 
    CAUSE: Backend may not be passing tenant_id when saving clusters.
+   FIX: Check the saveClusters endpoint in Edge function.
 
-   FIX: Check the saveClusters endpoint in Edge function to ensure
-   tenant_id is extracted from the membership record.
+═══════════════════════════════════════════════════════════════════════════════
+🎨 ACTION ICONS (v3.0)
+═══════════════════════════════════════════════════════════════════════════════
 
-3. t_semantic_clusters.cluster_embedding INSERTING NULL
+For profiles with status "active" (profile created), the following icons appear:
 
-   CAUSE: Embedding generation may not be triggered or failing silently.
-
-   FIX: Check n8n workflow for cluster embedding generation.
-   Ensure the webhook is being called after cluster save.
+| Icon | Action | Route |
+|------|--------|-------|
+| Eye | View Profile | /settings/configure/customer-channels/groups/:id |
+| MessageCircle | Chat | /vani/chat |
+| Phone | WhatsApp | (Coming Soon - Disabled) |
+| Compass | Explore Members | /vani/tenant-profiles |
+| Shield | Admin Dashboard | /vani/channels/bbb/admin |
 
 ═══════════════════════════════════════════════════════════════════════════════
 ✅ TESTING CHECKLIST
 ═══════════════════════════════════════════════════════════════════════════════
 
-[ ] 1. Start the UI dev server:
-      cd contractnest-ui && npm run dev
-
-[ ] 2. Navigate to Settings → Configure → Customer Channels → Groups
-
-[ ] 3. Verify Groups list page loads with available groups
-
-[ ] 4. Test authentication flow:
-      - Click "Authenticate" on a locked group
-      - Enter group password
-      - Verify success message and navigation to dashboard
-
-[ ] 5. Test "Let me in" dialog:
-      - Should appear after authentication
-      - Click "Let me in!" to create membership
-
-[ ] 6. Test profile creation:
-      - Manual entry with AI enhancement
-      - Website URL validation (test invalid URLs)
-      - Website scraping flow
-
-[ ] 7. Test clusters generation:
-      - Generate clusters from enhanced profile
-      - Save clusters
-
-[ ] 8. Verify redirect after success:
-      - Should show 65:35 dashboard view
-      - NOT empty state
-
-[ ] 9. Test navigation back to Groups list:
-      - Should show "Profile Created" status
-      - NOT require re-authentication
-
-═══════════════════════════════════════════════════════════════════════════════
-📝 NOTES
-═══════════════════════════════════════════════════════════════════════════════
-
-- SessionStorage key: 'authenticated_groups' - stores array of group IDs
-- URL validation is client-side only (frontend)
-- Profile success tracked via 'profileJustCreated' state
-- All styling is theme-aware (dark/light mode supported)
+[ ] 1. Deploy Edge function and verify 500 error is fixed
+[ ] 2. Run SQL to create "Family Knows" group
+[ ] 3. Verify Groups list shows both BBB and Family Knows
+[ ] 4. Test action icons on active profile:
+      - View → opens dashboard
+      - Chat → opens /vani/chat
+      - Explore → opens /vani/tenant-profiles
+      - Admin → opens /vani/channels/bbb/admin
+[ ] 5. Create new profile and verify no hardcoded keywords appear
+[ ] 6. Verify semantic clusters display correctly
 
 ═══════════════════════════════════════════════════════════════════════════════
