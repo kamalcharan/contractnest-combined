@@ -1,0 +1,246 @@
+{
+  "name": "ContractNest - SmartProfile Enhance",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "SmartProfile Enhance Endpoint\n\nStep 1 of SmartProfile Wizard:\n- Takes short_description (manual input OR scraped from website)\n- Uses GPT-4o-mini to enhance the description\n- Extracts suggested keywords\n- Returns enhanced description + keywords",
+        "height": 800,
+        "width": 2000,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [-2100, 100],
+      "typeVersion": 1,
+      "id": "sp-enhance-sticky",
+      "name": "Sticky Note - SmartProfile Enhance"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "smartprofile-enhance",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "SmartProfile Enhance Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [-2000, 400],
+      "id": "sp-enhance-webhook",
+      "webhookId": "smartprofile-enhance-001"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.body.tenant_id !== undefined && $json.body.short_description !== undefined && $json.body.short_description.length > 0 }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "Validate Enhance Input",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [-1792, 400],
+      "id": "sp-enhance-validate"
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            { "name": "status", "value": "error" },
+            { "name": "errorCode", "value": "INVALID_INPUT" },
+            { "name": "message", "value": "Missing required fields" },
+            { "name": "details", "value": "tenant_id and short_description are required" },
+            { "name": "suggestion", "value": "Provide tenant_id and short_description in request body" }
+          ],
+          "boolean": [
+            { "name": "recoverable", "value": true }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Invalid Enhance Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [-1584, 560],
+      "id": "sp-enhance-invalid-input"
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            { "name": "tenant_id", "value": "={{ $json.body.tenant_id }}" },
+            { "name": "short_description", "value": "={{ $json.body.short_description.substring(0, 4000) }}" },
+            { "name": "profile_type", "value": "={{ $json.body.profile_type || 'seller' }}" }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Prepare Enhance Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [-1584, 280],
+      "id": "sp-enhance-prepare"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"gpt-4o-mini\",\n  \"temperature\": 0.7,\n  \"max_tokens\": 1500,\n  \"response_format\": { \"type\": \"json_object\" },\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a professional business profile writer specializing in creating compelling, SEO-optimized business descriptions for Indian businesses. Your goal is to enhance short business descriptions into professional, engaging profiles that will help businesses get discovered by potential customers.\\n\\nContext:\\n- Target audience: Indian businesses and customers\\n- Focus on: clarity, professionalism, searchability\\n- Include: key services, value propositions, unique selling points\\n- Consider: Indian English usage, regional context\\n\\nReturn ONLY valid JSON.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": {{ JSON.stringify(\"Enhance this business description into a professional profile.\\n\\nOriginal Description: \" + $json.short_description + \"\\n\\nProfile Type: \" + $json.profile_type + \"\\n\\nRequirements:\\n1. Create an enhanced description (150-300 words) that is professional, engaging, and SEO-friendly\\n2. Extract 5-10 relevant keywords that customers might search for\\n3. Maintain the core message but make it more compelling\\n\\nReturn JSON: { \\\"enhanced_description\\\": \\\"...\\\", \\\"keywords\\\": [\\\"keyword1\\\", \\\"keyword2\\\", ...], \\\"summary\\\": \\\"One sentence summary\\\" }\") }}\n    }\n  ]\n}",
+        "options": { "timeout": 60000 }
+      },
+      "name": "Enhance Profile with AI",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [-1376, 280],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "id": "sp-enhance-ai",
+      "credentials": {
+        "openAiApi": {
+          "id": "D7quOivJEzyKnfHS",
+          "name": "BBBwhatsapp"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.error !== undefined || $json.choices === undefined }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "Enhance AI Failed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [-1168, 280],
+      "id": "sp-enhance-ai-check"
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            { "name": "status", "value": "error" },
+            { "name": "errorCode", "value": "AI_ENHANCEMENT_FAILED" },
+            { "name": "message", "value": "Failed to enhance profile" },
+            { "name": "details", "value": "={{ $json.error?.message || 'OpenAI API temporarily unavailable' }}" },
+            { "name": "suggestion", "value": "Please try again in a few moments" },
+            { "name": "tenant_id", "value": "={{ $('Prepare Enhance Data').item.json.tenant_id }}" }
+          ],
+          "boolean": [
+            { "name": "recoverable", "value": true }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Enhance AI Error",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [-960, 400],
+      "id": "sp-enhance-ai-error"
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiResponse = $input.first().json;\nconst profileData = $('Prepare Enhance Data').first().json;\n\n// Parse AI response\nlet enhanced_description = '';\nlet keywords = [];\nlet summary = '';\n\ntry {\n  const responseText = aiResponse.choices[0].message.content;\n  const parsed = JSON.parse(responseText);\n  enhanced_description = parsed.enhanced_description || parsed.description || '';\n  keywords = (parsed.keywords || []).map(k => k.toLowerCase().trim()).filter(k => k.length > 0);\n  summary = parsed.summary || '';\n} catch (e) {\n  // If parsing fails, use original description\n  enhanced_description = profileData.short_description;\n  keywords = [];\n}\n\n// Calculate tokens used\nconst tokensUsed = aiResponse.usage?.total_tokens || 0;\n\nreturn {\n  success: true,\n  tenant_id: profileData.tenant_id,\n  ai_enhanced_description: enhanced_description,\n  suggested_keywords: keywords,\n  summary: summary,\n  original_description: profileData.short_description,\n  profile_type: profileData.profile_type,\n  tokens_used: tokensUsed,\n  processing_time_ms: Date.now()\n};"
+      },
+      "name": "Format Enhance Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-960, 160],
+      "id": "sp-enhance-format"
+    },
+    {
+      "parameters": {},
+      "name": "Merge Enhance Errors",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [-752, 480],
+      "id": "sp-enhance-merge-errors"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": { "responseCode": 200 }
+      },
+      "name": "Respond Enhance Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [-752, 160],
+      "id": "sp-enhance-respond-success"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": { "responseCode": 400 }
+      },
+      "name": "Respond Enhance Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [-544, 480],
+      "id": "sp-enhance-respond-error"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "SmartProfile Enhance Webhook": {
+      "main": [[{ "node": "Validate Enhance Input", "type": "main", "index": 0 }]]
+    },
+    "Validate Enhance Input": {
+      "main": [
+        [{ "node": "Prepare Enhance Data", "type": "main", "index": 0 }],
+        [{ "node": "Invalid Enhance Input", "type": "main", "index": 0 }]
+      ]
+    },
+    "Invalid Enhance Input": {
+      "main": [[{ "node": "Merge Enhance Errors", "type": "main", "index": 0 }]]
+    },
+    "Prepare Enhance Data": {
+      "main": [[{ "node": "Enhance Profile with AI", "type": "main", "index": 0 }]]
+    },
+    "Enhance Profile with AI": {
+      "main": [[{ "node": "Enhance AI Failed?", "type": "main", "index": 0 }]]
+    },
+    "Enhance AI Failed?": {
+      "main": [
+        [{ "node": "Enhance AI Error", "type": "main", "index": 0 }],
+        [{ "node": "Format Enhance Response", "type": "main", "index": 0 }]
+      ]
+    },
+    "Enhance AI Error": {
+      "main": [[{ "node": "Merge Enhance Errors", "type": "main", "index": 0 }]]
+    },
+    "Format Enhance Response": {
+      "main": [[{ "node": "Respond Enhance Success", "type": "main", "index": 0 }]]
+    },
+    "Merge Enhance Errors": {
+      "main": [[{ "node": "Respond Enhance Error", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "",
+  "meta": {
+    "instanceId": ""
+  },
+  "id": "",
+  "tags": []
+}

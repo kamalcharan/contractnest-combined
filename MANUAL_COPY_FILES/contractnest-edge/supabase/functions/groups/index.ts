@@ -2281,7 +2281,7 @@ console.log('='.repeat(60));
       }
     }
 
-    // POST /smartprofiles/enhance - AI enhance SmartProfile description
+    // POST /smartprofiles/enhance - AI enhance SmartProfile description via n8n
     if (method === 'POST' && path === '/smartprofiles/enhance') {
       try {
         const requestData = await req.json();
@@ -2292,10 +2292,45 @@ console.log('='.repeat(60));
           );
         }
         console.log('🤖 Enhancing SmartProfile for tenant:', requestData.tenant_id);
-        // For now return enhanced version (can integrate with n8n later)
-        const enhanced = `${requestData.short_description}\n\nThis organization provides professional services with a commitment to quality and customer satisfaction.`;
+
+        // Call n8n webhook for AI enhancement
+        const n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL') || 'https://n8n.srv1096269.hstgr.cloud';
+        const xEnvironment = req.headers.get('x-environment');
+        const webhookPrefix = xEnvironment === 'live' ? '/webhook' : '/webhook-test';
+        const enhanceWebhookUrl = `${n8nWebhookUrl}${webhookPrefix}/smartprofile-enhance`;
+
+        console.log('🔗 Calling n8n enhance:', enhanceWebhookUrl);
+
+        const n8nResponse = await fetch(enhanceWebhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tenant_id: requestData.tenant_id,
+            short_description: requestData.short_description,
+            profile_type: requestData.profile_type || 'seller'
+          })
+        });
+
+        if (!n8nResponse.ok) {
+          const errorText = await n8nResponse.text();
+          console.error('❌ n8n enhance failed:', n8nResponse.status, errorText);
+          return new Response(
+            JSON.stringify({ success: false, error: 'AI enhancement failed', details: errorText }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const n8nResult = await n8nResponse.json();
+        console.log('✅ SmartProfile enhanced via n8n');
+
         return new Response(
-          JSON.stringify({ success: true, ai_enhanced_description: enhanced, suggested_keywords: ['Professional', 'Quality', 'Services'] }),
+          JSON.stringify({
+            success: true,
+            ai_enhanced_description: n8nResult.ai_enhanced_description || n8nResult.enhanced_description,
+            suggested_keywords: n8nResult.suggested_keywords || n8nResult.keywords || [],
+            summary: n8nResult.summary || '',
+            tokens_used: n8nResult.tokens_used || 0
+          }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       } catch (error) {
@@ -2307,7 +2342,7 @@ console.log('='.repeat(60));
       }
     }
 
-    // POST /smartprofiles/scrape-website - Scrape website for SmartProfile
+    // POST /smartprofiles/scrape-website - Scrape website for SmartProfile via n8n
     if (method === 'POST' && path === '/smartprofiles/scrape-website') {
       try {
         const requestData = await req.json();
@@ -2325,14 +2360,45 @@ console.log('='.repeat(60));
           );
         }
         console.log('🌐 Scraping website for SmartProfile:', requestData.website_url);
-        // Return mock data (can integrate with n8n website scraper later)
-        const mockEnhanced = `Based on the website analysis of ${requestData.website_url}, this is a professional organization providing comprehensive services. Their online presence demonstrates commitment to quality and customer satisfaction.`;
+
+        // Call n8n webhook for website scraping
+        const n8nWebhookUrl = Deno.env.get('N8N_WEBHOOK_URL') || 'https://n8n.srv1096269.hstgr.cloud';
+        const xEnvironment = req.headers.get('x-environment');
+        const webhookPrefix = xEnvironment === 'live' ? '/webhook' : '/webhook-test';
+        const scrapeWebhookUrl = `${n8nWebhookUrl}${webhookPrefix}/smartprofile-scrape`;
+
+        console.log('🔗 Calling n8n scrape:', scrapeWebhookUrl);
+
+        const n8nResponse = await fetch(scrapeWebhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tenant_id: requestData.tenant_id,
+            website_url: requestData.website_url,
+            profile_type: requestData.profile_type || 'seller'
+          })
+        });
+
+        if (!n8nResponse.ok) {
+          const errorText = await n8nResponse.text();
+          console.error('❌ n8n scrape failed:', n8nResponse.status, errorText);
+          return new Response(
+            JSON.stringify({ success: false, error: 'Website scraping failed', details: errorText }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const n8nResult = await n8nResponse.json();
+        console.log('✅ SmartProfile website scraped via n8n');
+
         return new Response(
           JSON.stringify({
             success: true,
-            ai_enhanced_description: mockEnhanced,
-            suggested_keywords: ['Professional', 'Services', 'Quality', 'Solutions'],
-            scraped_data: { title: 'Company Website', meta_description: 'Professional services provider', content_snippets: ['Service 1', 'Service 2'] }
+            ai_enhanced_description: n8nResult.ai_enhanced_description || n8nResult.enhanced_description,
+            suggested_keywords: n8nResult.suggested_keywords || n8nResult.keywords || [],
+            summary: n8nResult.summary || '',
+            scraped_data: n8nResult.scraped_data || {},
+            tokens_used: n8nResult.tokens_used || 0
           }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
