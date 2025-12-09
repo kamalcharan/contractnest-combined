@@ -1,7 +1,7 @@
 // src/pages/settings/customer-channels/GroupsListPage.tsx
 // Groups List Page - View and manage group memberships
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { useAuth } from '../../../context/AuthContext';
@@ -19,23 +19,29 @@ import {
   Search,
   Info,
   MessageCircle,
-  Compass,
-  Phone
+  Compass
 } from 'lucide-react';
 import { useQueries } from '@tanstack/react-query';
 import { useGroups, useVerifyGroupAccess, groupQueryKeys } from '../../../hooks/queries/useGroupQueries';
 import groupsService from '../../../services/groupsService';
 import toast from 'react-hot-toast';
 
-// Authentication Modal Component - Only verifies password
+// Authentication Modal Component - Verifies user or admin password
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   group: any;
   onSuccess: () => void;
+  accessType?: 'user' | 'admin';
 }
 
-const AuthenticationModal: React.FC<AuthModalProps> = ({ isOpen, onClose, group, onSuccess }) => {
+const AuthenticationModal: React.FC<AuthModalProps> = ({
+  isOpen,
+  onClose,
+  group,
+  onSuccess,
+  accessType = 'user'
+}) => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
 
@@ -52,11 +58,14 @@ const AuthenticationModal: React.FC<AuthModalProps> = ({ isOpen, onClose, group,
       const result = await verifyAccessMutation.mutateAsync({
         groupId: group.id,
         password: password.trim(),
-        accessType: 'user'
+        accessType: accessType
       });
 
       if (result.access_granted) {
-        toast.success(`Access granted to ${group.name}!`, {
+        const message = accessType === 'admin'
+          ? `Admin access granted to ${group.name}!`
+          : `Access granted to ${group.name}!`;
+        toast.success(message, {
           style: { background: colors.semantic.success, color: '#FFF' }
         });
         onSuccess();
@@ -108,13 +117,24 @@ const AuthenticationModal: React.FC<AuthModalProps> = ({ isOpen, onClose, group,
             <div className="flex items-center space-x-3">
               <div
                 className="p-3 rounded-xl"
-                style={{ backgroundColor: `${colors.brand.primary}20` }}
+                style={{
+                  backgroundColor: accessType === 'admin'
+                    ? `${colors.semantic.warning}20`
+                    : `${colors.brand.primary}20`
+                }}
               >
-                <Shield className="w-6 h-6" style={{ color: colors.brand.primary }} />
+                <Shield
+                  className="w-6 h-6"
+                  style={{
+                    color: accessType === 'admin'
+                      ? colors.semantic.warning
+                      : colors.brand.primary
+                  }}
+                />
               </div>
               <div>
                 <h2 className="text-xl font-bold" style={{ color: colors.utility.primaryText }}>
-                  Authenticate Access
+                  {accessType === 'admin' ? 'Admin Authentication' : 'Authenticate Access'}
                 </h2>
                 <p className="text-sm" style={{ color: colors.utility.secondaryText }}>
                   {group?.name}
@@ -128,14 +148,25 @@ const AuthenticationModal: React.FC<AuthModalProps> = ({ isOpen, onClose, group,
             <div
               className="p-4 rounded-lg"
               style={{
-                backgroundColor: `${colors.semantic.info}10`,
-                border: `1px solid ${colors.semantic.info}30`
+                backgroundColor: accessType === 'admin'
+                  ? `${colors.semantic.warning}10`
+                  : `${colors.semantic.info}10`,
+                border: `1px solid ${accessType === 'admin' ? colors.semantic.warning : colors.semantic.info}30`
               }}
             >
               <div className="flex items-start space-x-3">
-                <Info className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: colors.semantic.info }} />
+                <Info
+                  className="w-5 h-5 flex-shrink-0 mt-0.5"
+                  style={{
+                    color: accessType === 'admin'
+                      ? colors.semantic.warning
+                      : colors.semantic.info
+                  }}
+                />
                 <p className="text-sm" style={{ color: colors.utility.secondaryText }}>
-                  Enter the group password provided by your administrator to join this group and create your profile.
+                  {accessType === 'admin'
+                    ? 'Enter the admin password to access group administration features like member management and analytics.'
+                    : 'Enter the group password provided by your administrator to join this group and create your profile.'}
                 </p>
               </div>
             </div>
@@ -145,7 +176,7 @@ const AuthenticationModal: React.FC<AuthModalProps> = ({ isOpen, onClose, group,
                 className="block text-sm font-medium mb-2"
                 style={{ color: colors.utility.primaryText }}
               >
-                Group Password
+                {accessType === 'admin' ? 'Admin Password' : 'Group Password'}
               </label>
               <input
                 type="password"
@@ -234,7 +265,9 @@ const GroupsListPage: React.FC = () => {
   // State
   const [searchQuery, setSearchQuery] = useState('');
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [adminAuthModalOpen, setAdminAuthModalOpen] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<any>(null);
+  const [adminAuthGroup, setAdminAuthGroup] = useState<any>(null);
   const [authenticatedGroupIds, setAuthenticatedGroupIds] = useState<string[]>(() => getAuthenticatedGroups());
 
   // Fetch all groups
@@ -340,6 +373,19 @@ const GroupsListPage: React.FC = () => {
   // Handle view profile click
   const handleView = (group: any, membershipId: string) => {
     navigate(`/settings/configure/customer-channels/groups/${group.id}?membership=${membershipId}`);
+  };
+
+  // Handle admin click - open admin auth modal
+  const handleAdminAuth = (group: any) => {
+    setAdminAuthGroup(group);
+    setAdminAuthModalOpen(true);
+  };
+
+  // Handle admin auth success - navigate to admin page
+  const handleAdminAuthSuccess = () => {
+    if (adminAuthGroup?.id) {
+      navigate('/vani/channels/bbb/admin');
+    }
   };
 
   // Loading state
@@ -565,14 +611,14 @@ const GroupsListPage: React.FC = () => {
                         <span>View</span>
                       </button>
 
-                      {/* Chat */}
+                      {/* Chat - VaNi AI Chat */}
                       <button
-                        onClick={() => navigate('/vani/chat')}
-                        title="Chat with VaNi"
+                        onClick={() => navigate('/vani/channels/chat')}
+                        title="Chat with VaNi AI"
                         className="p-2.5 rounded-lg transition-all hover:opacity-80"
                         style={{
-                          backgroundColor: `${colors.semantic.info}15`,
-                          color: colors.semantic.info
+                          backgroundColor: `${colors.brand.primary}15`,
+                          color: colors.brand.primary
                         }}
                       >
                         <MessageCircle className="w-4 h-4" />
@@ -583,12 +629,15 @@ const GroupsListPage: React.FC = () => {
                         title="WhatsApp (Coming Soon)"
                         className="p-2.5 rounded-lg transition-all cursor-not-allowed opacity-50"
                         style={{
-                          backgroundColor: `${colors.semantic.success}15`,
-                          color: colors.semantic.success
+                          backgroundColor: '#25D36615',
+                          color: '#25D366'
                         }}
                         disabled
                       >
-                        <Phone className="w-4 h-4" />
+                        {/* WhatsApp Icon SVG */}
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                        </svg>
                       </button>
 
                       {/* Explore - Group Member Profiles */}
@@ -597,16 +646,16 @@ const GroupsListPage: React.FC = () => {
                         title="Explore Group Members"
                         className="p-2.5 rounded-lg transition-all hover:opacity-80"
                         style={{
-                          backgroundColor: `${colors.brand.primary}15`,
-                          color: colors.brand.primary
+                          backgroundColor: `${colors.brand.secondary}15`,
+                          color: colors.brand.secondary
                         }}
                       >
                         <Compass className="w-4 h-4" />
                       </button>
 
-                      {/* Admin */}
+                      {/* Admin - Requires Authentication */}
                       <button
-                        onClick={() => navigate('/vani/channels/bbb/admin')}
+                        onClick={() => handleAdminAuth(group)}
                         title="Group Admin"
                         className="p-2.5 rounded-lg transition-all hover:opacity-80"
                         style={{
@@ -654,7 +703,7 @@ const GroupsListPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Authentication Modal */}
+      {/* Authentication Modal - User Access */}
       <AuthenticationModal
         isOpen={authModalOpen}
         onClose={() => {
@@ -663,6 +712,19 @@ const GroupsListPage: React.FC = () => {
         }}
         group={selectedGroup}
         onSuccess={handleAuthSuccess}
+        accessType="user"
+      />
+
+      {/* Authentication Modal - Admin Access */}
+      <AuthenticationModal
+        isOpen={adminAuthModalOpen}
+        onClose={() => {
+          setAdminAuthModalOpen(false);
+          setAdminAuthGroup(null);
+        }}
+        group={adminAuthGroup}
+        onSuccess={handleAdminAuthSuccess}
+        accessType="admin"
       />
     </div>
   );
