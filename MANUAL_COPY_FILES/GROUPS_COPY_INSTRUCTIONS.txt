@@ -1,5 +1,5 @@
 ═══════════════════════════════════════════════════════════════════════════════
-📋 MANUAL COPY INSTRUCTIONS - GROUPS FEATURE
+📋 MANUAL COPY INSTRUCTIONS - GROUPS FEATURE (v2.0)
 ═══════════════════════════════════════════════════════════════════════════════
 Branch: claude/init-submodules-01AnoU9WPqvtgSskV4XFH7bD
 Date: December 9, 2024
@@ -16,15 +16,22 @@ This update implements:
 4. Menu updates - Added "Groups" under Customer Channels
 5. Renamed "Tenant Profiles" to "Group Member Profiles" in Implementation Toolkit
 
+Bug Fixes in v2.0:
+6. Fixed empty state UI with proper card styling
+7. Added website URL validation (UI-side)
+8. Fixed redirect after profile creation success
+9. Fixed re-authentication issue using sessionStorage
+10. Improved profile creation flow with proper state management
+
 Navigation Flow:
 Settings → Configure → Customer Channels → Groups
   └── List of available groups
-      ├── Authenticate (if locked)
+      ├── Authenticate (if locked) → stored in sessionStorage
       ├── Create Profile (if authenticated, no profile)
       └── View Profile → 65:35 Dashboard (if has profile)
 
 ═══════════════════════════════════════════════════════════════════════════════
-📦 FILES TO COPY (5 FILES)
+📦 FILES TO COPY (6 FILES)
 ═══════════════════════════════════════════════════════════════════════════════
 
 SUBMODULE: contractnest-ui
@@ -37,28 +44,164 @@ SUBMODULE: contractnest-ui
    NOTE: Create the directory first:
    mkdir -p contractnest-ui/src/pages/settings/customer-channels/
 
+   FEATURES:
+   - Groups list with status cards (Locked/Authenticated/Active)
+   - Authentication modal for password verification
+   - SessionStorage persistence for authenticated groups
+   - Smart navigation to dashboard
+
 2. NEW FILE: GroupProfileDashboard.tsx
    FROM: MANUAL_COPY_FILES/GroupProfileDashboard.tsx
    TO:   contractnest-ui/src/pages/settings/customer-channels/GroupProfileDashboard.tsx
 
-3. UPDATED FILE: settingsMenus.ts
+   FEATURES:
+   - 65:35 split layout (Profile left, Clusters right)
+   - "Let me in" dialog for membership creation
+   - Profile creation wizard with step tracking
+   - Fixed redirect after success (profileJustCreated state)
+   - Improved empty state with card styling
+
+3. UPDATED FILE: ProfileEntryForm.tsx
+   FROM: MANUAL_COPY_FILES/contractnest-ui/src/components/VaNi/bbb/ProfileEntryForm.tsx
+   TO:   contractnest-ui/src/components/VaNi/bbb/ProfileEntryForm.tsx
+
+   CHANGES:
+   - Added website URL validation (isValidWebsiteUrl function)
+   - URL must start with http:// or https://
+   - Validates domain format and TLD
+   - Shows error messages on blur and submit
+   - Prevents form submission with invalid URLs
+
+4. UPDATED FILE: settingsMenus.ts
    FROM: MANUAL_COPY_FILES/settingsMenus.ts
    TO:   contractnest-ui/src/utils/constants/settingsMenus.ts
 
    CHANGES: Added "Groups" menu item under Customer Channels section (lines 186-195)
 
-4. UPDATED FILE: industryMenus.ts
+5. UPDATED FILE: industryMenus.ts
    FROM: MANUAL_COPY_FILES/industryMenus.ts
    TO:   contractnest-ui/src/utils/constants/industryMenus.ts
 
    CHANGES: Renamed "Tenant Profiles" to "Group Member Profiles" (line 361)
 
-5. UPDATED FILE: App.tsx
+6. UPDATED FILE: App.tsx
    FROM: MANUAL_COPY_FILES/App.tsx
    TO:   contractnest-ui/src/App.tsx
 
    CHANGES:
    - Added imports for GroupsListPage and GroupProfileDashboard (lines 89-91)
    - Added routes for /settings/configure/customer-channels/groups (lines 449-451)
+
+═══════════════════════════════════════════════════════════════════════════════
+💻 WINDOWS POWERSHELL COMMANDS
+═══════════════════════════════════════════════════════════════════════════════
+
+Step 1: Navigate to your project root
+─────────────────────────────────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Step 2: Create required directories
+─────────────────────────────────────────────────────────────────────────────
+New-Item -ItemType Directory -Path "contractnest-ui\src\pages\settings\customer-channels" -Force
+
+Step 3: Copy files from MANUAL_COPY_FILES
+─────────────────────────────────────────────────────────────────────────────
+# Copy new pages
+Copy-Item "MANUAL_COPY_FILES\GroupsListPage.tsx" "contractnest-ui\src\pages\settings\customer-channels\GroupsListPage.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\GroupProfileDashboard.tsx" "contractnest-ui\src\pages\settings\customer-channels\GroupProfileDashboard.tsx" -Force
+
+# Copy updated component
+Copy-Item "MANUAL_COPY_FILES\contractnest-ui\src\components\VaNi\bbb\ProfileEntryForm.tsx" "contractnest-ui\src\components\VaNi\bbb\ProfileEntryForm.tsx" -Force
+
+# Copy updated config files
+Copy-Item "MANUAL_COPY_FILES\settingsMenus.ts" "contractnest-ui\src\utils\constants\settingsMenus.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\industryMenus.ts" "contractnest-ui\src\utils\constants\industryMenus.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\App.tsx" "contractnest-ui\src\App.tsx" -Force
+
+Step 4: Verify files
+─────────────────────────────────────────────────────────────────────────────
+# Check new pages exist
+Test-Path "contractnest-ui\src\pages\settings\customer-channels\GroupsListPage.tsx"
+Test-Path "contractnest-ui\src\pages\settings\customer-channels\GroupProfileDashboard.tsx"
+
+# Check ProfileEntryForm has URL validation
+Select-String -Path "contractnest-ui\src\components\VaNi\bbb\ProfileEntryForm.tsx" -Pattern "isValidWebsiteUrl"
+
+═══════════════════════════════════════════════════════════════════════════════
+🔧 KNOWN ISSUES & FIXES
+═══════════════════════════════════════════════════════════════════════════════
+
+1. 500 ERROR ON GET /api/memberships/:id
+
+   CAUSE: The Edge function performs a Supabase join with tenant_profile.
+   The join may fail if:
+   - t_tenant_profiles doesn't have a record for the tenant_id
+   - Foreign key relationship is not properly configured
+   - RLS policies blocking the join
+
+   FIX: In Supabase Dashboard:
+   - Verify t_tenant_profiles has records for all tenant_ids
+   - Check foreign key: t_group_memberships.tenant_id -> t_tenant_profiles
+   - Review RLS policies on t_tenant_profiles
+
+2. t_semantic_clusters.t_tenantid INSERTING NULL
+
+   CAUSE: Backend may not be passing tenant_id when saving clusters.
+
+   FIX: Check the saveClusters endpoint in Edge function to ensure
+   tenant_id is extracted from the membership record.
+
+3. t_semantic_clusters.cluster_embedding INSERTING NULL
+
+   CAUSE: Embedding generation may not be triggered or failing silently.
+
+   FIX: Check n8n workflow for cluster embedding generation.
+   Ensure the webhook is being called after cluster save.
+
+═══════════════════════════════════════════════════════════════════════════════
+✅ TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+[ ] 1. Start the UI dev server:
+      cd contractnest-ui && npm run dev
+
+[ ] 2. Navigate to Settings → Configure → Customer Channels → Groups
+
+[ ] 3. Verify Groups list page loads with available groups
+
+[ ] 4. Test authentication flow:
+      - Click "Authenticate" on a locked group
+      - Enter group password
+      - Verify success message and navigation to dashboard
+
+[ ] 5. Test "Let me in" dialog:
+      - Should appear after authentication
+      - Click "Let me in!" to create membership
+
+[ ] 6. Test profile creation:
+      - Manual entry with AI enhancement
+      - Website URL validation (test invalid URLs)
+      - Website scraping flow
+
+[ ] 7. Test clusters generation:
+      - Generate clusters from enhanced profile
+      - Save clusters
+
+[ ] 8. Verify redirect after success:
+      - Should show 65:35 dashboard view
+      - NOT empty state
+
+[ ] 9. Test navigation back to Groups list:
+      - Should show "Profile Created" status
+      - NOT require re-authentication
+
+═══════════════════════════════════════════════════════════════════════════════
+📝 NOTES
+═══════════════════════════════════════════════════════════════════════════════
+
+- SessionStorage key: 'authenticated_groups' - stores array of group IDs
+- URL validation is client-side only (frontend)
+- Profile success tracked via 'profileJustCreated' state
+- All styling is theme-aware (dark/light mode supported)
 
 ═══════════════════════════════════════════════════════════════════════════════

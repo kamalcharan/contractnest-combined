@@ -201,6 +201,25 @@ const AuthenticationModal: React.FC<AuthModalProps> = ({ isOpen, onClose, group,
   );
 };
 
+// Helper to get authenticated groups from sessionStorage
+const getAuthenticatedGroups = (): string[] => {
+  try {
+    const stored = sessionStorage.getItem('authenticated_groups');
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+};
+
+// Helper to add authenticated group to sessionStorage
+const addAuthenticatedGroup = (groupId: string) => {
+  const groups = getAuthenticatedGroups();
+  if (!groups.includes(groupId)) {
+    groups.push(groupId);
+    sessionStorage.setItem('authenticated_groups', JSON.stringify(groups));
+  }
+};
+
 // Main Component
 const GroupsListPage: React.FC = () => {
   const { isDarkMode, currentTheme } = useTheme();
@@ -212,6 +231,7 @@ const GroupsListPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<any>(null);
+  const [authenticatedGroupIds, setAuthenticatedGroupIds] = useState<string[]>(() => getAuthenticatedGroups());
 
   // Fetch all groups
   const { data: groups, isLoading: isLoadingGroups, refetch: refetchGroups } = useGroups('all');
@@ -255,6 +275,10 @@ const GroupsListPage: React.FC = () => {
     const membership = membershipMap[group.id];
 
     if (!membership) {
+      // Check if user has authenticated this group (stored in sessionStorage)
+      if (authenticatedGroupIds.includes(group.id)) {
+        return { status: 'authenticated', label: 'Authenticated', action: 'create' };
+      }
       return { status: 'locked', label: 'Not Authenticated', action: 'authenticate' };
     }
 
@@ -277,15 +301,23 @@ const GroupsListPage: React.FC = () => {
 
   // Handle authentication success - navigate to dashboard to create membership
   const handleAuthSuccess = () => {
+    // Store authenticated group in sessionStorage
+    if (selectedGroup?.id) {
+      addAuthenticatedGroup(selectedGroup.id);
+      setAuthenticatedGroupIds(prev => [...prev, selectedGroup.id]);
+    }
     refetchGroups();
     refetchMemberships();
     // Navigate to dashboard - it will handle "Let me in" flow
     navigate(`/settings/configure/customer-channels/groups/${selectedGroup?.id}`);
   };
 
-  // Handle create profile click (already has membership)
-  const handleCreate = (group: any, membershipId: string) => {
-    navigate(`/settings/configure/customer-channels/groups/${group.id}?membership=${membershipId}`);
+  // Handle create profile click (may or may not have membership yet)
+  const handleCreate = (group: any, membershipId?: string) => {
+    const url = membershipId
+      ? `/settings/configure/customer-channels/groups/${group.id}?membership=${membershipId}`
+      : `/settings/configure/customer-channels/groups/${group.id}`;
+    navigate(url);
   };
 
   // Handle view profile click
@@ -490,7 +522,7 @@ const GroupsListPage: React.FC = () => {
 
                   {groupStatus.action === 'create' && (
                     <button
-                      onClick={() => handleCreate(group, groupStatus.membershipId!)}
+                      onClick={() => handleCreate(group, groupStatus.membershipId)}
                       className="w-full flex items-center justify-center space-x-2 px-4 py-2.5 rounded-lg font-medium text-white transition-all hover:opacity-90"
                       style={{
                         background: `linear-gradient(to right, ${colors.brand.primary}, ${colors.brand.secondary})`

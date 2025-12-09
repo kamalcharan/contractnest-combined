@@ -323,6 +323,7 @@ const GroupProfileDashboard: React.FC = () => {
   const [membershipId, setMembershipId] = useState<string | null>(urlMembershipId || null);
   const [isCheckingMembership, setIsCheckingMembership] = useState(true);
   const [showCreateFlow, setShowCreateFlow] = useState(false);
+  const [profileJustCreated, setProfileJustCreated] = useState(false); // Track successful profile creation
 
   // Profile creation state
   const [createStep, setCreateStep] = useState<'profile' | 'enhanced' | 'clusters' | 'success'>('profile');
@@ -398,8 +399,9 @@ const GroupProfileDashboard: React.FC = () => {
   const { data: membership, isLoading: isLoadingMembership, refetch: refetchMembership } = useMembership(membershipId || '');
   const { data: clustersData, refetch: refetchClusters } = useClusters(membershipId || '');
 
-  // Check if profile exists
-  const hasProfile = membership?.profile_data?.ai_enhanced_description ||
+  // Check if profile exists (or was just created)
+  const hasProfile = profileJustCreated ||
+                     membership?.profile_data?.ai_enhanced_description ||
                      membership?.profile_data?.short_description;
 
   // Handle "Let me in" click - create membership
@@ -566,11 +568,14 @@ const GroupProfileDashboard: React.FC = () => {
       style: { background: colors.semantic.success, color: '#FFF' }
     });
 
+    // Mark profile as just created to show dashboard immediately
+    setProfileJustCreated(true);
+
     // Refresh and show dashboard after success
-    setTimeout(() => {
+    setTimeout(async () => {
       setShowCreateFlow(false);
-      refetchMembership();
-      refetchClusters();
+      // Refetch data in the background
+      await Promise.all([refetchMembership(), refetchClusters()]);
     }, 2000);
   };
 
@@ -859,29 +864,45 @@ const GroupProfileDashboard: React.FC = () => {
 
       {/* Show create flow prompt if no profile yet */}
       {!showCreateFlow && membershipId && !hasProfile && !isLoadingMembership && (
-        <div className="text-center py-12">
-          <div
-            className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center"
-            style={{ backgroundColor: `${colors.brand.primary}15` }}
-          >
-            <Sparkles className="w-10 h-10" style={{ color: colors.brand.primary }} />
-          </div>
-          <h2 className="text-2xl font-bold mb-2" style={{ color: colors.utility.primaryText }}>
-            Let's Create Your Profile
-          </h2>
-          <p className="mb-6" style={{ color: colors.utility.secondaryText }}>
-            You're a member of this group but haven't created your profile yet.
-          </p>
-          <button
-            onClick={() => setShowCreateFlow(true)}
-            className="px-8 py-3 rounded-lg font-medium text-white"
-            style={{
-              background: `linear-gradient(to right, ${colors.brand.primary}, ${colors.brand.secondary})`
-            }}
-          >
-            Create Profile
-          </button>
-        </div>
+        <Card
+          className="max-w-2xl mx-auto"
+          style={{
+            backgroundColor: colors.utility.secondaryBackground,
+            borderColor: `${colors.brand.primary}30`
+          }}
+        >
+          <CardContent className="p-8">
+            <div className="text-center">
+              <div
+                className="w-20 h-20 rounded-full mx-auto mb-6 flex items-center justify-center"
+                style={{ backgroundColor: `${colors.brand.primary}15` }}
+              >
+                <Sparkles className="w-10 h-10" style={{ color: colors.brand.primary }} />
+              </div>
+              <h2 className="text-2xl font-bold mb-2" style={{ color: colors.utility.primaryText }}>
+                Let's Create Your Profile
+              </h2>
+              <p className="mb-2" style={{ color: colors.utility.secondaryText }}>
+                You're a member of <strong style={{ color: colors.brand.primary }}>{group?.name}</strong> but haven't created your profile yet.
+              </p>
+              <p className="text-sm mb-6" style={{ color: colors.utility.secondaryText }}>
+                Create your profile to be discoverable by other group members via WhatsApp bot and web search.
+              </p>
+              <button
+                onClick={() => setShowCreateFlow(true)}
+                className="px-8 py-3 rounded-lg font-medium text-white transition-all hover:opacity-90"
+                style={{
+                  background: `linear-gradient(to right, ${colors.brand.primary}, ${colors.brand.secondary})`
+                }}
+              >
+                <div className="flex items-center space-x-2">
+                  <Sparkles className="w-5 h-5" />
+                  <span>Create My Profile</span>
+                </div>
+              </button>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
