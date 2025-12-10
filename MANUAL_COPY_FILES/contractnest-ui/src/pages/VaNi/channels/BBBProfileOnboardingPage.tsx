@@ -104,17 +104,22 @@ const BBBProfileOnboardingPage: React.FC = () => {
 
       try {
         console.log('🤖 VaNi: Checking for existing membership...');
+        console.log('🤖 VaNi: Looking for tenant_id:', tenantProfileData?.tenant_id);
 
         // Query for existing membership FIRST
         const { memberships } = await groupsService.getGroupMemberships(bbbGroupId, { status: 'all' });
         console.log('🤖 VaNi: Found memberships:', memberships.length);
+        console.log('🤖 VaNi: All membership tenant_ids:', memberships.map((m: any) => m.tenant_id));
 
         const myMembership = memberships.find(
           (m: any) => m.tenant_id === tenantProfileData?.tenant_id
         );
 
+        console.log('🤖 VaNi: myMembership found?', !!myMembership);
+
         if (myMembership) {
           console.log('🤖 VaNi: Found existing membership:', myMembership.id);
+          console.log('🤖 VaNi: profile_data:', JSON.stringify(myMembership.profile_data));
           setMembershipId(myMembership.id);
           setMembershipStatus(myMembership.status || 'draft');
           setShowJoinDialog(false);
@@ -122,6 +127,8 @@ const BBBProfileOnboardingPage: React.FC = () => {
           // Check if profile_data exists with saved description (either AI enhanced or manual)
           const hasExistingProfile = myMembership.profile_data?.ai_enhanced_description ||
                                      myMembership.profile_data?.short_description;
+
+          console.log('🤖 VaNi: hasExistingProfile?', hasExistingProfile);
 
           if (hasExistingProfile) {
             console.log('🤖 VaNi: Found existing profile data, showing readonly view');
