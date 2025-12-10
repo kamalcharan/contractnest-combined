@@ -1,9 +1,9 @@
-// src/components/profile/ProfileWizardSteps.tsx
+// src/components/tenantprofile/ProfileWizardSteps.tsx
 // Shared progress steps component for profile creation wizard
 // Used by both GroupProfileDashboard and SmartProfile pages
 
 import React from 'react';
-import { useTheme } from '@/context/ThemeContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export type WizardStep = 'entry' | 'profile' | 'enhanced' | 'clusters' | 'success';
 
@@ -26,7 +26,8 @@ export const ProfileWizardSteps: React.FC<ProfileWizardStepsProps> = ({
   steps,
   stepLabels = defaultLabels
 }) => {
-  const { colors } = useTheme();
+  const { isDarkMode, currentTheme } = useTheme();
+  const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
   const currentIndex = steps.indexOf(currentStep);
 
   return (

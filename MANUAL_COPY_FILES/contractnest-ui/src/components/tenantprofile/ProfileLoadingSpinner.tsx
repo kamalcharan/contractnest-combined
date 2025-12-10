@@ -1,9 +1,9 @@
-// src/components/profile/ProfileLoadingSpinner.tsx
+// src/components/tenantprofile/ProfileLoadingSpinner.tsx
 // Shared loading spinner component for profile pages
 // Used by both GroupProfileDashboard and SmartProfile pages
 
 import React from 'react';
-import { useTheme } from '@/context/ThemeContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface ProfileLoadingSpinnerProps {
   message?: string;
@@ -14,7 +14,8 @@ export const ProfileLoadingSpinner: React.FC<ProfileLoadingSpinnerProps> = ({
   message = 'Loading...',
   fullScreen = true
 }) => {
-  const { colors } = useTheme();
+  const { isDarkMode, currentTheme } = useTheme();
+  const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
 
   const containerClasses = fullScreen
     ? 'min-h-screen flex items-center justify-center'

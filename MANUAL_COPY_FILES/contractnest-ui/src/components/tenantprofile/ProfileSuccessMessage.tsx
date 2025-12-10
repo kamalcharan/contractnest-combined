@@ -1,10 +1,10 @@
-// src/components/profile/ProfileSuccessMessage.tsx
+// src/components/tenantprofile/ProfileSuccessMessage.tsx
 // Shared success message component for profile creation wizard
 // Used by both GroupProfileDashboard and SmartProfile pages
 
 import React from 'react';
 import { CheckCircle, Eye, ArrowLeft } from 'lucide-react';
-import { useTheme } from '@/context/ThemeContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface ProfileSuccessMessageProps {
   title?: string;
@@ -27,7 +27,8 @@ export const ProfileSuccessMessage: React.FC<ProfileSuccessMessageProps> = ({
   showViewButton = true,
   showBackButton = true
 }) => {
-  const { colors } = useTheme();
+  const { isDarkMode, currentTheme } = useTheme();
+  const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
 
   return (
     <div

@@ -1,4 +1,4 @@
-// src/components/profile/index.ts
+// src/components/tenantprofile/index.ts
 // Barrel export for shared profile components
 
 export { ProfileWizardSteps, type WizardStep } from './ProfileWizardSteps';

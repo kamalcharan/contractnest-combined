@@ -1,10 +1,10 @@
-// src/components/profile/ProfileEmptyState.tsx
+// src/components/tenantprofile/ProfileEmptyState.tsx
 // Shared empty state component prompting user to create profile
 // Used by both GroupProfileDashboard and SmartProfile pages
 
 import React from 'react';
 import { Sparkles } from 'lucide-react';
-import { useTheme } from '@/context/ThemeContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Card, CardContent } from '@/components/ui/card';
 
 interface ProfileEmptyStateProps {
@@ -24,7 +24,8 @@ export const ProfileEmptyState: React.FC<ProfileEmptyStateProps> = ({
   onCreateProfile,
   contextName
 }) => {
-  const { colors } = useTheme();
+  const { isDarkMode, currentTheme } = useTheme();
+  const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
 
   return (
     <Card
