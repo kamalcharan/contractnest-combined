@@ -119,17 +119,27 @@ const BBBProfileOnboardingPage: React.FC = () => {
           setMembershipStatus(myMembership.status || 'draft');
           setShowJoinDialog(false);
 
-          // Check if profile_data exists with saved description
-          if (myMembership.profile_data?.ai_enhanced_description) {
+          // Check if profile_data exists with saved description (either AI enhanced or manual)
+          const hasProfile = myMembership.profile_data?.ai_enhanced_description ||
+                            myMembership.profile_data?.short_description;
+
+          console.log('🤖 VaNi: profile_data check:', {
+            hasAiEnhanced: !!myMembership.profile_data?.ai_enhanced_description,
+            hasShortDesc: !!myMembership.profile_data?.short_description,
+            hasProfile: !!hasProfile
+          });
+
+          if (hasProfile) {
             console.log('🤖 VaNi: Found existing profile data, showing readonly view');
             setExistingProfileData(myMembership.profile_data);
-            setEnhancedDescription(myMembership.profile_data.ai_enhanced_description);
+            setEnhancedDescription(myMembership.profile_data.ai_enhanced_description || myMembership.profile_data.short_description || '');
             setOriginalDescription(myMembership.profile_data.short_description || '');
             setKeywords(myMembership.profile_data.approved_keywords || []);
             setWebsiteUrl(myMembership.profile_data.website_url || '');
             setIsEditMode(false); // Start in readonly view mode
           } else {
             // No saved profile - user needs to create one
+            console.log('🤖 VaNi: No profile data found, showing create mode');
             setIsEditMode(true); // Start in edit mode to create profile
           }
         } else {
@@ -466,9 +476,9 @@ const BBBProfileOnboardingPage: React.FC = () => {
 
   // Cancel edit mode - go back to readonly view
   const handleCancelEdit = () => {
-    if (existingProfileData?.ai_enhanced_description) {
+    if (existingProfileData?.ai_enhanced_description || existingProfileData?.short_description) {
       // Restore original data
-      setEnhancedDescription(existingProfileData.ai_enhanced_description);
+      setEnhancedDescription(existingProfileData.ai_enhanced_description || existingProfileData.short_description || '');
       setOriginalDescription(existingProfileData.short_description || '');
       setKeywords(existingProfileData.approved_keywords || []);
       setIsEditMode(false);
@@ -630,7 +640,7 @@ const BBBProfileOnboardingPage: React.FC = () => {
       )}
 
       {/* Readonly Profile View - when profile exists and not in edit mode */}
-      {currentStep === 'profile_entry' && existingProfileData?.ai_enhanced_description && !isEditMode && (
+      {currentStep === 'profile_entry' && (existingProfileData?.ai_enhanced_description || existingProfileData?.short_description) && !isEditMode && (
         <div
           className="rounded-2xl overflow-hidden shadow-lg"
           style={{
@@ -795,10 +805,10 @@ const BBBProfileOnboardingPage: React.FC = () => {
       )}
 
       {/* Profile Entry Form - for new profiles or when in edit mode */}
-      {currentStep === 'profile_entry' && (isEditMode || !existingProfileData?.ai_enhanced_description) && (
+      {currentStep === 'profile_entry' && (isEditMode || !(existingProfileData?.ai_enhanced_description || existingProfileData?.short_description)) && (
         <>
           {/* Cancel Edit button if editing existing profile */}
-          {isEditMode && existingProfileData?.ai_enhanced_description && (
+          {isEditMode && (existingProfileData?.ai_enhanced_description || existingProfileData?.short_description) && (
             <div className="flex justify-end mb-4">
               <button
                 onClick={handleCancelEdit}
@@ -818,7 +828,7 @@ const BBBProfileOnboardingPage: React.FC = () => {
             onEnhanceWithAI={handleEnhanceWithAI}
             isEnhancing={enhanceProfileMutation.isPending}
             isSaving={scrapeWebsiteMutation.isPending}
-            isEditMode={isEditMode && !!existingProfileData?.ai_enhanced_description}
+            isEditMode={isEditMode && !!(existingProfileData?.ai_enhanced_description || existingProfileData?.short_description)}
             initialDescription={existingProfileData?.ai_enhanced_description || existingProfileData?.short_description || ''}
             initialWebsiteUrl={existingProfileData?.website_url || ''}
             initialMethod={existingProfileData?.generation_method === 'website' ? 'website' : 'manual'}
