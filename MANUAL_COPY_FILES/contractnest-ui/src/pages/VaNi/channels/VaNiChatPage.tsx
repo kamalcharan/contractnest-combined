@@ -131,29 +131,43 @@ const VaNiChatPage: React.FC = () => {
         setSession(sessionResponse.session);
 
         // Auto-activate BBB group
-        const activateResponse = await chatService.activateGroup({
-          trigger_phrase: 'Hi BBB',
-          session_id: sessionResponse.session.id
-        });
+        try {
+          const activateResponse = await chatService.activateGroup({
+            trigger_phrase: 'Hi BBB',
+            session_id: sessionResponse.session.id
+          });
 
-        if (activateResponse.success) {
-          setGroupActivated(true);
-          setSession(prev => prev ? {
-            ...prev,
-            group_id: activateResponse.group_id,
-            group_name: activateResponse.group_name
-          } : null);
+          if (activateResponse.success) {
+            setSession(prev => prev ? {
+              ...prev,
+              group_id: activateResponse.group_id,
+              group_name: activateResponse.group_name
+            } : null);
 
-          // Add welcome message
-          addBotMessage(`Hi, I am VaNi, your AI assistant.\nWelcome to ${activateResponse.group_name || 'BBB Bagyanagar'}!\n\nHow can I help you today?`);
-        } else {
-          addBotMessage('Hi, I am VaNi, your AI assistant.\n\nI couldn\'t connect to BBB. Please try again later.');
+            // Add welcome message with group name
+            addBotMessage(`Hi, I am VaNi, your AI assistant.\nWelcome to ${activateResponse.group_name || 'BBB Bagyanagar'}!\n\nHow can I help you today?`);
+          } else {
+            // Still show welcome even if activation fails
+            addBotMessage('Hi, I am VaNi, your AI assistant.\nWelcome to BBB Bagyanagar!\n\nHow can I help you today?');
+          }
+        } catch (activateError) {
+          console.error('Error activating group:', activateError);
+          // Still show welcome even if activation fails
+          addBotMessage('Hi, I am VaNi, your AI assistant.\nWelcome to BBB Bagyanagar!\n\nHow can I help you today?');
         }
+
+        // Always enable typing after session is created
+        setGroupActivated(true);
+      } else {
+        // No session - show welcome anyway
+        addBotMessage('Hi, I am VaNi, your AI assistant.\nWelcome to BBB Bagyanagar!\n\nHow can I help you today?');
+        setGroupActivated(true);
       }
     } catch (error) {
       console.error('Error initializing chat:', error);
-      addBotMessage('Hi, I am VaNi. There was an error connecting. Please refresh the page.');
-      toast.error('Failed to initialize chat');
+      // Show welcome even on error
+      addBotMessage('Hi, I am VaNi, your AI assistant.\nWelcome to BBB Bagyanagar!\n\nHow can I help you today?');
+      setGroupActivated(true);
     } finally {
       setIsInitializing(false);
     }
@@ -447,14 +461,16 @@ const VaNiChatPage: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: colors.utility.primaryBackground }}>
-      {/* Header */}
-      <div
-        className="flex items-center justify-between p-4 border-b"
-        style={{
-          backgroundColor: colors.utility.secondaryBackground,
-          borderColor: `${colors.utility.primaryText}20`
-        }}
-      >
+      {/* Centered Chat Container */}
+      <div className="max-w-2xl mx-auto w-full flex flex-col min-h-screen">
+        {/* Header */}
+        <div
+          className="flex items-center justify-between p-4 border-b"
+          style={{
+            backgroundColor: colors.utility.secondaryBackground,
+            borderColor: `${colors.utility.primaryText}20`
+          }}
+        >
         <div className="flex items-center space-x-4">
           <button
             onClick={() => navigate('/settings/configure/customer-channels/groups')}
@@ -650,6 +666,7 @@ const VaNiChatPage: React.FC = () => {
           </div>
         )}
       </div>
+      </div> {/* End Centered Chat Container */}
     </div>
   );
 };
