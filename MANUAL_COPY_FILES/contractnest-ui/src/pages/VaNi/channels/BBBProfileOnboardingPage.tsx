@@ -97,7 +97,15 @@ const BBBProfileOnboardingPage: React.FC = () => {
   // Check membership status on page load - query FIRST, then show dialog if not found
   useEffect(() => {
     const checkMembership = async () => {
+      console.log('🤖 VaNi: checkMembership called with:', {
+        bbbGroupId,
+        tenantId: tenantProfileData?.tenant_id,
+        isLoadingProfile,
+        isLoadingGroups
+      });
+
       if (!bbbGroupId || !tenantProfileData?.tenant_id) {
+        console.log('🤖 VaNi: Early return - missing bbbGroupId or tenant_id');
         setIsCheckingMembership(false);
         return;
       }
@@ -108,10 +116,14 @@ const BBBProfileOnboardingPage: React.FC = () => {
         // Query for existing membership FIRST
         const { memberships } = await groupsService.getGroupMemberships(bbbGroupId, { status: 'all' });
         console.log('🤖 VaNi: Found memberships:', memberships.length);
+        console.log('🤖 VaNi: Looking for tenant_id:', tenantProfileData?.tenant_id);
+        console.log('🤖 VaNi: Available tenant_ids:', memberships.map((m: any) => m.tenant_id));
 
         const myMembership = memberships.find(
           (m: any) => m.tenant_id === tenantProfileData?.tenant_id
         );
+
+        console.log('🤖 VaNi: myMembership found?', !!myMembership);
 
         if (myMembership) {
           console.log('🤖 VaNi: Found existing membership:', myMembership.id);
