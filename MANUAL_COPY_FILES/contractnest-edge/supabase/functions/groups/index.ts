@@ -339,7 +339,8 @@ console.log('='.repeat(60));
         const membershipId = membershipGetMatch[1];
 
         // Use supabaseAdmin to bypass RLS for reliable cross-tenant access
-        const { data, error } = await supabaseAdmin
+        // Query membership first (no foreign key join - query separately)
+        const { data: membershipData, error: membershipError } = await supabaseAdmin
           .from('t_group_memberships')
           .select(`
             id,
@@ -350,45 +351,44 @@ console.log('='.repeat(60));
             profile_data,
             is_active,
             created_at,
-            updated_at,
-            tenant_profile:t_tenant_profiles!tenant_id (
-              business_name,
-              business_email,
-              business_phone,
-              business_whatsapp,
-              business_whatsapp_country_code,
-              city,
-              state_code,
-              industry_id,
-              website_url,
-              logo_url
-            )
+            updated_at
           `)
           .eq('id', membershipId)
           .eq('is_active', true)
           .single();
-        
-        if (error) {
-          if (error.code === 'PGRST116') {
+
+        if (membershipError) {
+          if (membershipError.code === 'PGRST116') {
             return new Response(
               JSON.stringify({ success: false, error: 'Membership not found' }),
               { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
           }
-          throw error;
+          throw membershipError;
         }
-        
+
+        // Fetch tenant profile separately (no FK relationship)
+        let tenantProfile = null;
+        if (membershipData.tenant_id) {
+          const { data: profileData } = await supabaseAdmin
+            .from('t_tenant_profiles')
+            .select('business_name, business_email, business_phone, business_whatsapp, business_whatsapp_country_code, city, state_code, industry_id, website_url, logo_url')
+            .eq('tenant_id', membershipData.tenant_id)
+            .single();
+          tenantProfile = profileData;
+        }
+
         return new Response(
           JSON.stringify({
             success: true,
             membership: {
-              membership_id: data.id,
-              tenant_id: data.tenant_id,
-              group_id: data.group_id,
-              status: data.status,
-              joined_at: data.joined_at,
-              profile_data: data.profile_data,
-              tenant_profile: data.tenant_profile
+              membership_id: membershipData.id,
+              tenant_id: membershipData.tenant_id,
+              group_id: membershipData.group_id,
+              status: membershipData.status,
+              joined_at: membershipData.joined_at,
+              profile_data: membershipData.profile_data,
+              tenant_profile: tenantProfile
             }
           }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
