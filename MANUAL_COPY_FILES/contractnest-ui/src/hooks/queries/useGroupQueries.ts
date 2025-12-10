@@ -206,6 +206,7 @@ export const useGroups = (groupType?: 'bbb_chapter' | 'tech_forum' | 'network' |
     enabled: !!currentTenant,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000,   // 10 minutes
+    retry: false, // Don't retry on error to prevent continuous refresh
   });
 };
 
@@ -221,6 +222,7 @@ export const useGroup = (groupId: string) => {
     enabled: !!currentTenant && !!groupId,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
+    retry: false, // Don't retry on error to prevent continuous refresh
   });
 };
 
@@ -236,6 +238,7 @@ export const useMembership = (membershipId: string) => {
     enabled: !!currentTenant && !!membershipId,
     staleTime: 3 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
+    retry: false, // Don't retry on error to prevent continuous refresh
   });
 };
 
@@ -258,6 +261,7 @@ export const useGroupMemberships = (
     enabled: !!currentTenant && !!groupId,
     staleTime: 2 * 60 * 1000, // 2 minutes
     gcTime: 5 * 60 * 1000,
+    retry: false, // Don't retry on error to prevent continuous refresh
   });
 };
 
@@ -571,6 +575,7 @@ export const useClusters = (membershipId: string) => {
     enabled: !!currentTenant && !!membershipId,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000,   // 10 minutes
+    retry: false, // Don't retry on error to prevent continuous refresh
   });
 };
 
@@ -910,6 +915,7 @@ export const useSmartProfile = (tenantId: string) => {
     enabled: !!currentTenant && !!tenantId,
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000,   // 10 minutes
+    retry: false, // Don't retry on error to prevent continuous refresh
   });
 };
 
@@ -925,6 +931,7 @@ export const useSmartProfileClusters = (tenantId: string) => {
     enabled: !!currentTenant && !!tenantId,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
+    retry: false, // Don't retry on error to prevent continuous refresh
   });
 };
 
