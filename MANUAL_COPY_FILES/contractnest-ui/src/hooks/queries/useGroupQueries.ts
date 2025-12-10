@@ -62,30 +62,11 @@ export const groupQueryKeys = {
 
 type EntityType = 'membership' | 'tenant';
 
-interface EnhanceProfileRequest {
-  entityType: EntityType;
-  entityId: string;
-  shortDescription: string;
-}
-
-interface ScrapeWebsiteRequest {
-  entityType: EntityType;
-  entityId: string;
-  websiteUrl: string;
-}
-
-interface GenerateClustersRequest {
-  entityType: EntityType;
-  entityId: string;
-  profileText: string;
-  keywords?: string[];
-}
-
 /**
  * Shared hook factory for profile enhancement
  * Used by both useEnhanceProfile and useEnhanceSmartProfile
  */
-const useEnhanceProfileFactory = (entityType: EntityType) => {
+export const useEnhanceProfileFactory = (entityType: EntityType) => {
   const { toast } = useToast();
   const label = entityType === 'membership' ? 'Profile' : 'SmartProfile';
 
@@ -127,7 +108,7 @@ const useEnhanceProfileFactory = (entityType: EntityType) => {
  * Shared hook factory for website scraping
  * Used by both useScrapeWebsite and useScrapeWebsiteForSmartProfile
  */
-const useScrapeWebsiteFactory = (entityType: EntityType) => {
+export const useScrapeWebsiteFactory = (entityType: EntityType) => {
   const { toast } = useToast();
   const label = entityType === 'membership' ? 'Profile' : 'SmartProfile';
 
@@ -169,7 +150,7 @@ const useScrapeWebsiteFactory = (entityType: EntityType) => {
  * Shared hook factory for cluster generation
  * Used by both useGenerateClusters and useGenerateSmartProfileClusters
  */
-const useGenerateClustersFactory = (entityType: EntityType) => {
+export const useGenerateClustersFactory = (entityType: EntityType) => {
   const { toast } = useToast();
   const label = entityType === 'membership' ? 'Profile' : 'SmartProfile';
 
