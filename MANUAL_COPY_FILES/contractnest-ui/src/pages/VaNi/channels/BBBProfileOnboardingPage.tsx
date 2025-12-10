@@ -36,6 +36,7 @@ import {
 } from '../../../hooks/queries/useGroupQueries';
 import groupsService from '../../../services/groupsService';
 import { useTenantProfile } from '../../../hooks/useTenantProfile';
+import { useAuth } from '../../../context/AuthContext';
 import { Users, MessageCircle, Sparkles, Pencil, Eye, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 import type { SemanticCluster } from '../../../components/VaNi/bbb/SemanticClustersForm';
 
@@ -52,7 +53,10 @@ const BBBProfileOnboardingPage: React.FC = () => {
   const location = useLocation();
   const branch = location.state?.branch || 'bagyanagar';
 
-  // Get live tenant profile data
+  // Get currentTenant from AuthContext (this has the tenant_id from sessionStorage)
+  const { currentTenant } = useAuth();
+
+  // Get live tenant profile data (for business details display)
   const { profile: tenantProfileData, loading: isLoadingProfile } = useTenantProfile();
 
   // Get BBB groups to find the group_id
@@ -97,33 +101,23 @@ const BBBProfileOnboardingPage: React.FC = () => {
   // Check membership status on page load - query FIRST, then show dialog if not found
   useEffect(() => {
     const checkMembership = async () => {
-      console.log('🤖 VaNi: checkMembership called with:', {
-        bbbGroupId,
-        tenantId: tenantProfileData?.tenant_id,
-        isLoadingProfile,
-        isLoadingGroups
-      });
-
-      if (!bbbGroupId || !tenantProfileData?.tenant_id) {
-        console.log('🤖 VaNi: Early return - missing bbbGroupId or tenant_id');
+      // Use currentTenant.id from AuthContext (sessionStorage), NOT tenantProfileData.tenant_id
+      if (!bbbGroupId || !currentTenant?.id) {
+        console.log('🤖 VaNi: Waiting for bbbGroupId or currentTenant.id...', { bbbGroupId, tenantId: currentTenant?.id });
         setIsCheckingMembership(false);
         return;
       }
 
       try {
-        console.log('🤖 VaNi: Checking for existing membership...');
+        console.log('🤖 VaNi: Checking for existing membership with tenant_id:', currentTenant.id);
 
         // Query for existing membership FIRST
         const { memberships } = await groupsService.getGroupMemberships(bbbGroupId, { status: 'all' });
         console.log('🤖 VaNi: Found memberships:', memberships.length);
-        console.log('🤖 VaNi: Looking for tenant_id:', tenantProfileData?.tenant_id);
-        console.log('🤖 VaNi: Available tenant_ids:', memberships.map((m: any) => m.tenant_id));
 
         const myMembership = memberships.find(
-          (m: any) => m.tenant_id === tenantProfileData?.tenant_id
+          (m: any) => m.tenant_id === currentTenant.id
         );
-
-        console.log('🤖 VaNi: myMembership found?', !!myMembership);
 
         if (myMembership) {
           console.log('🤖 VaNi: Found existing membership:', myMembership.id);
@@ -131,27 +125,17 @@ const BBBProfileOnboardingPage: React.FC = () => {
           setMembershipStatus(myMembership.status || 'draft');
           setShowJoinDialog(false);
 
-          // Check if profile_data exists with saved description (either AI enhanced or manual)
-          const hasProfile = myMembership.profile_data?.ai_enhanced_description ||
-                            myMembership.profile_data?.short_description;
-
-          console.log('🤖 VaNi: profile_data check:', {
-            hasAiEnhanced: !!myMembership.profile_data?.ai_enhanced_description,
-            hasShortDesc: !!myMembership.profile_data?.short_description,
-            hasProfile: !!hasProfile
-          });
-
-          if (hasProfile) {
+          // Check if profile_data exists with saved description
+          if (myMembership.profile_data?.ai_enhanced_description) {
             console.log('🤖 VaNi: Found existing profile data, showing readonly view');
             setExistingProfileData(myMembership.profile_data);
-            setEnhancedDescription(myMembership.profile_data.ai_enhanced_description || myMembership.profile_data.short_description || '');
+            setEnhancedDescription(myMembership.profile_data.ai_enhanced_description);
             setOriginalDescription(myMembership.profile_data.short_description || '');
             setKeywords(myMembership.profile_data.approved_keywords || []);
             setWebsiteUrl(myMembership.profile_data.website_url || '');
             setIsEditMode(false); // Start in readonly view mode
           } else {
             // No saved profile - user needs to create one
-            console.log('🤖 VaNi: No profile data found, showing create mode');
             setIsEditMode(true); // Start in edit mode to create profile
           }
         } else {
@@ -168,10 +152,10 @@ const BBBProfileOnboardingPage: React.FC = () => {
       setIsCheckingMembership(false);
     };
 
-    if (!isLoadingProfile && !isLoadingGroups) {
+    if (!isLoadingGroups && currentTenant?.id) {
       checkMembership();
     }
-  }, [bbbGroupId, tenantProfileData?.tenant_id, isLoadingProfile, isLoadingGroups]);
+  }, [bbbGroupId, currentTenant?.id, isLoadingGroups]);
 
   // Handle "Let me in" click - create membership
   const handleJoinBBB = async () => {
@@ -488,9 +472,9 @@ const BBBProfileOnboardingPage: React.FC = () => {
 
   // Cancel edit mode - go back to readonly view
   const handleCancelEdit = () => {
-    if (existingProfileData?.ai_enhanced_description || existingProfileData?.short_description) {
+    if (existingProfileData?.ai_enhanced_description) {
       // Restore original data
-      setEnhancedDescription(existingProfileData.ai_enhanced_description || existingProfileData.short_description || '');
+      setEnhancedDescription(existingProfileData.ai_enhanced_description);
       setOriginalDescription(existingProfileData.short_description || '');
       setKeywords(existingProfileData.approved_keywords || []);
       setIsEditMode(false);
@@ -652,7 +636,7 @@ const BBBProfileOnboardingPage: React.FC = () => {
       )}
 
       {/* Readonly Profile View - when profile exists and not in edit mode */}
-      {currentStep === 'profile_entry' && (existingProfileData?.ai_enhanced_description || existingProfileData?.short_description) && !isEditMode && (
+      {currentStep === 'profile_entry' && existingProfileData?.ai_enhanced_description && !isEditMode && (
         <div
           className="rounded-2xl overflow-hidden shadow-lg"
           style={{
@@ -817,10 +801,10 @@ const BBBProfileOnboardingPage: React.FC = () => {
       )}
 
       {/* Profile Entry Form - for new profiles or when in edit mode */}
-      {currentStep === 'profile_entry' && (isEditMode || !(existingProfileData?.ai_enhanced_description || existingProfileData?.short_description)) && (
+      {currentStep === 'profile_entry' && (isEditMode || !existingProfileData?.ai_enhanced_description) && (
         <>
           {/* Cancel Edit button if editing existing profile */}
-          {isEditMode && (existingProfileData?.ai_enhanced_description || existingProfileData?.short_description) && (
+          {isEditMode && existingProfileData?.ai_enhanced_description && (
             <div className="flex justify-end mb-4">
               <button
                 onClick={handleCancelEdit}
@@ -840,7 +824,7 @@ const BBBProfileOnboardingPage: React.FC = () => {
             onEnhanceWithAI={handleEnhanceWithAI}
             isEnhancing={enhanceProfileMutation.isPending}
             isSaving={scrapeWebsiteMutation.isPending}
-            isEditMode={isEditMode && !!(existingProfileData?.ai_enhanced_description || existingProfileData?.short_description)}
+            isEditMode={isEditMode && !!existingProfileData?.ai_enhanced_description}
             initialDescription={existingProfileData?.ai_enhanced_description || existingProfileData?.short_description || ''}
             initialWebsiteUrl={existingProfileData?.website_url || ''}
             initialMethod={existingProfileData?.generation_method === 'website' ? 'website' : 'manual'}
