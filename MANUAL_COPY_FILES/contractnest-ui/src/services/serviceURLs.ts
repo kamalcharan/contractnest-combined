@@ -591,6 +591,28 @@ export const API_ENDPOINTS = {
   },
 
   // =================================================================
+  // CHAT / VaNi AI ENDPOINTS - NEW ADDITION
+  // =================================================================
+  CHAT: {
+    // Session management
+    INIT: '/api/chat/init',
+    SESSION: '/api/chat/session',
+    SESSION_BY_ID: (sessionId: string) => `/api/chat/session/${sessionId}`,
+
+    // Group activation
+    ACTIVATE: '/api/chat/activate',
+
+    // Intent management
+    INTENT: '/api/chat/intent',
+
+    // Search operations
+    SEARCH: '/api/chat/search',
+
+    // End session
+    END: '/api/chat/end'
+  },
+
+  // =================================================================
   // SERVICE CONTRACTS - BLOCK SYSTEM ENDPOINTS - PRESERVED
   // =================================================================
   SERVICE_CONTRACTS: {
