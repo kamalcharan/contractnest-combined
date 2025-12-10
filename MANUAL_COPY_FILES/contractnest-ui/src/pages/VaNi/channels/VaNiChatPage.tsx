@@ -47,7 +47,9 @@ interface SearchResult {
   business_phone: string | null;
   business_email: string | null;
   website_url: string | null;
+  profile_snippet: string | null;
   ai_enhanced_description: string | null;
+  industry: string | null;
   similarity: number;
   cluster_boost: number;
 }
@@ -305,7 +307,7 @@ const VaNiChatPage: React.FC = () => {
               <h4 className="font-semibold" style={{ color: colors.utility.primaryText }}>
                 {result.business_name}
               </h4>
-              {result.business_category && (
+              {(result.industry || result.business_category) && (
                 <span
                   className="text-xs px-2 py-0.5 rounded-full"
                   style={{
@@ -313,7 +315,7 @@ const VaNiChatPage: React.FC = () => {
                     color: colors.semantic.success
                   }}
                 >
-                  {result.business_category}
+                  {result.industry || result.business_category}
                 </span>
               )}
             </div>
@@ -329,12 +331,12 @@ const VaNiChatPage: React.FC = () => {
           </div>
         </div>
 
-        {result.ai_enhanced_description && (
+        {(result.profile_snippet || result.ai_enhanced_description) && (
           <p
-            className="text-sm mb-3 line-clamp-2"
+            className="text-sm mb-3"
             style={{ color: colors.utility.secondaryText }}
           >
-            {result.ai_enhanced_description}
+            {result.profile_snippet || (result.ai_enhanced_description?.substring(0, 200) + '...')}
           </p>
         )}
 
