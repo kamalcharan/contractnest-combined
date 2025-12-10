@@ -1183,89 +1183,377 @@ export const groupsService = {
   },
 
   // ============================================
-  // TENANT STATS & INTENTS
+  // SMARTPROFILES (Tenant-level AI profiles)
   // ============================================
 
   /**
-   * Get tenant statistics for dashboard
-   * Calls Supabase RPC function get_tenant_stats
+   * Get SmartProfile for a tenant
    */
-  async getTenantStats(
-    authToken: string,
-    groupId?: string
-  ): Promise<any> {
-    try {
-      const response = await axios.post(
-        `${GROUPS_API_BASE}/tenants/stats`,
-        { group_id: groupId },
-        { headers: getHeaders(authToken) }
-      );
-      return response.data;
-    } catch (error) {
-      console.error('Error in getTenantStats:', error);
-      captureException(error instanceof Error ? error : new Error(String(error)), {
-        tags: { source: 'groupsService', action: 'getTenantStats' },
-        extra: { groupId }
-      });
-      throw error;
-    }
-  },
-
-  /**
-   * Get resolved intents for a group/user/channel
-   * Returns intents filtered by RBAC
-   */
-  async getIntents(
-    authToken: string,
-    groupId: string,
-    userRole: string = 'member',
-    channel: string = 'web'
-  ): Promise<any> {
+  async getSmartProfile(authToken: string, tenantId: string): Promise<any> {
     try {
       const response = await axios.get(
-        `${GROUPS_API_BASE}/intents?group_id=${groupId}&user_role=${userRole}&channel=${channel}`,
-        { headers: getHeaders(authToken) }
+        `${GROUPS_API_BASE}/smartprofiles/${tenantId}`,
+        {
+          headers: getHeaders(authToken, tenantId)
+        }
       );
       return response.data;
-    } catch (error) {
-      console.error('Error in getIntents:', error);
+    } catch (error: any) {
+      console.error('Error in getSmartProfile:', error);
       captureException(error instanceof Error ? error : new Error(String(error)), {
-        tags: { source: 'groupsService', action: 'getIntents' },
-        extra: { groupId, userRole, channel }
+        tags: { source: 'groupsService', action: 'getSmartProfile' },
+        extra: { tenantId }
       });
       throw error;
     }
   },
 
   /**
-   * NLP-based tenant search
-   * Sends natural language query to AI for interpretation and search
+   * Save SmartProfile (basic save without AI generation)
    */
-  async searchTenants(
+  async saveSmartProfile(
     authToken: string,
-    query: string,
-    groupId?: string,
-    intentCode?: string
+    tenantId: string,
+    profileData: {
+      short_description?: string;
+      approved_keywords?: string[];
+      profile_type?: string;
+    }
   ): Promise<any> {
     try {
       const response = await axios.post(
-        `${GROUPS_API_BASE}/tenants/search`,
+        `${GROUPS_API_BASE}/smartprofiles`,
+        { tenant_id: tenantId, ...profileData },
         {
-          query,
-          group_id: groupId,
-          intent_code: intentCode,
-          channel: 'web',
-          user_role: 'admin'
-        },
-        { headers: getChatHeaders(authToken) }
+          headers: getHeaders(authToken, tenantId)
+        }
       );
       return response.data;
-    } catch (error) {
-      console.error('Error in searchTenants:', error);
+    } catch (error: any) {
+      console.error('Error in saveSmartProfile:', error);
       captureException(error instanceof Error ? error : new Error(String(error)), {
-        tags: { source: 'groupsService', action: 'searchTenants' },
-        extra: { query, groupId, intentCode }
+        tags: { source: 'groupsService', action: 'saveSmartProfile' },
+        extra: { tenantId }
       });
+      throw error;
+    }
+  },
+
+  /**
+   * Generate SmartProfile via n8n (AI enhancement + embedding)
+   */
+  async generateSmartProfile(
+    authToken: string,
+    tenantId: string,
+    environment?: string
+  ): Promise<any> {
+    try {
+      const response = await axios.post(
+        `${GROUPS_API_BASE}/smartprofiles/generate`,
+        { tenant_id: tenantId },
+        {
+          headers: {
+            ...getHeaders(authToken, tenantId),
+            'x-environment': environment || 'live'
+          },
+          timeout: 60000
+        }
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('Error in generateSmartProfile:', error);
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        tags: { source: 'groupsService', action: 'generateSmartProfile' },
+        extra: { tenantId }
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Search SmartProfiles via n8n
+   */
+  async searchSmartProfiles(
+    authToken: string,
+    request: {
+      query: string;
+      scope?: 'tenant' | 'group' | 'product';
+      group_id?: string;
+      tenant_id?: string;
+      limit?: number;
+      use_cache?: boolean;
+    },
+    environment?: string
+  ): Promise<any> {
+    try {
+      const response = await axios.post(
+        `${GROUPS_API_BASE}/smartprofiles/search`,
+        request,
+        {
+          headers: {
+            ...getHeaders(authToken, request.tenant_id),
+            'x-environment': environment || 'live'
+          },
+          timeout: 30000
+        }
+      );
+      return response.data;
+    } catch (error: any) {
+      console.error('Error in searchSmartProfiles:', error);
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        tags: { source: 'groupsService', action: 'searchSmartProfiles' },
+        extra: { query: request.query, scope: request.scope }
+      });
+      throw error;
+    }
+  },
+
+  // SmartProfile wizard methods - call n8n directly (reusing Groups pattern)
+
+  /**
+   * Enhance SmartProfile description with AI via n8n
+   * Reuses same n8n endpoint as Groups enhanceProfile
+   */
+  async enhanceSmartProfile(authToken: string, tenantId: string, shortDescription: string, environment?: string): Promise<any> {
+    try {
+      // Map to n8n environment (live → production, test → test)
+      const n8nEnv = VaNiN8NConfig.mapEnvironment(environment);
+      const n8nUrl = VaNiN8NConfig.getWebhookUrl('PROCESS_PROFILE', n8nEnv);
+
+      console.log(`🤖 SmartProfile: Calling n8n enhance profile [${n8nEnv}]:`, n8nUrl);
+
+      // Transform request to n8n format (same as Groups)
+      const n8nRequest: N8NProcessProfileRequest = {
+        type: 'manual',
+        content: shortDescription,
+        userId: tenantId,
+        groupId: tenantId, // Using tenantId for tracking
+      };
+
+      const response = await axios.post<N8NProcessProfileResponse>(
+        n8nUrl,
+        n8nRequest,
+        {
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 60000
+        }
+      );
+
+      // n8n may return an array - unwrap if needed
+      const n8nData = Array.isArray(response.data) ? response.data[0] : response.data;
+
+      // Check for n8n error response
+      if (VaNiN8NConfig.isError(n8nData)) {
+        console.error('🤖 SmartProfile: n8n returned error:', n8nData);
+        throw new Error(n8nData.message || 'AI enhancement failed');
+      }
+
+      // Transform n8n response to expected format
+      const successResponse = n8nData as N8NProcessProfileResponse & { status: 'success' };
+      return {
+        success: true,
+        ai_enhanced_description: successResponse.enhancedContent,
+        original_description: shortDescription,
+        suggested_keywords: [], // Will be extracted by UI if needed
+        source: 'n8n'
+      };
+    } catch (error: any) {
+      console.error('Error in enhanceSmartProfile:', error);
+
+      if (axios.isAxiosError(error) && error.code === 'ECONNABORTED') {
+        throw new Error('AI enhancement timed out. Please try again.');
+      }
+
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        tags: { source: 'groupsService', action: 'enhanceSmartProfile', via: 'n8n' },
+        extra: { tenantId }
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Scrape website for SmartProfile via n8n
+   * Reuses same n8n endpoint as Groups scrapeWebsite
+   */
+  async scrapeWebsiteForSmartProfile(authToken: string, tenantId: string, websiteUrl: string, environment?: string): Promise<any> {
+    try {
+      // Map to n8n environment (live → production, test → test)
+      const n8nEnv = VaNiN8NConfig.mapEnvironment(environment);
+      const n8nUrl = VaNiN8NConfig.getWebhookUrl('PROCESS_PROFILE', n8nEnv);
+
+      console.log(`🤖 SmartProfile: Calling n8n scrape website [${n8nEnv}]:`, n8nUrl);
+
+      // Transform request to n8n format (same as Groups)
+      const n8nRequest: N8NProcessProfileRequest = {
+        type: 'website',
+        websiteUrl: websiteUrl,
+        userId: tenantId,
+        groupId: tenantId,
+      };
+
+      const response = await axios.post<N8NProcessProfileResponse>(
+        n8nUrl,
+        n8nRequest,
+        {
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 90000 // 90s timeout for scraping + AI
+        }
+      );
+
+      // n8n may return an array - unwrap if needed
+      const n8nData = Array.isArray(response.data) ? response.data[0] : response.data;
+
+      // Check for n8n error response
+      if (VaNiN8NConfig.isError(n8nData)) {
+        const errorResponse = n8nData;
+        console.error('🤖 SmartProfile: n8n returned error:', errorResponse);
+
+        if (errorResponse.errorCode === 'WEBSITE_FETCH_FAILED') {
+          throw new Error(errorResponse.suggestion || 'Unable to access website. Please check the URL.');
+        }
+        throw new Error(errorResponse.message || 'Website scraping failed');
+      }
+
+      // Transform n8n response to expected format
+      const successResponse = n8nData as N8NProcessProfileResponse & { status: 'success' };
+      return {
+        success: true,
+        ai_enhanced_description: successResponse.enhancedContent,
+        original_description: successResponse.originalContent,
+        source_url: websiteUrl,
+        suggested_keywords: [],
+        source: 'n8n'
+      };
+    } catch (error: any) {
+      console.error('Error in scrapeWebsiteForSmartProfile:', error);
+
+      if (axios.isAxiosError(error)) {
+        if (error.code === 'ECONNABORTED') {
+          throw new Error('Website scraping timed out. Please try again.');
+        }
+        if (error.response?.status === 400 && error.response?.data?.suggestion) {
+          throw new Error(error.response.data.suggestion);
+        }
+      }
+
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        tags: { source: 'groupsService', action: 'scrapeWebsiteForSmartProfile', via: 'n8n' },
+        extra: { tenantId, websiteUrl }
+      });
+      throw error;
+    }
+  },
+
+  /**
+   * Generate semantic clusters for SmartProfile via n8n
+   * Reuses same n8n endpoint as Groups generateClusters
+   */
+  async generateSmartProfileClusters(authToken: string, tenantId: string, profileText: string, keywords?: string[], environment?: string): Promise<any> {
+    try {
+      // Map to n8n environment (live → production, test → test)
+      const n8nEnv = VaNiN8NConfig.mapEnvironment(environment);
+      const n8nUrl = VaNiN8NConfig.getWebhookUrl('GENERATE_SEMANTIC_CLUSTERS', n8nEnv);
+
+      console.log(`🤖 SmartProfile: Calling n8n generate-semantic-clusters [${n8nEnv}]:`, n8nUrl);
+
+      // Transform request to n8n format (adapted for tenant)
+      const n8nRequest: N8NGenerateClustersRequest = {
+        membership_id: tenantId, // Using tenantId in place of membership_id
+        profile_text: profileText,
+        keywords: keywords || [],
+      };
+
+      const response = await axios.post<N8NGenerateClustersResponse>(
+        n8nUrl,
+        n8nRequest,
+        {
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 60000
+        }
+      );
+
+      // n8n may return an array - unwrap if needed
+      const n8nData = Array.isArray(response.data) ? response.data[0] : response.data;
+
+      // Check for n8n error response
+      if (VaNiN8NConfig.isClustersError(n8nData)) {
+        console.error('🤖 SmartProfile: n8n returned error:', n8nData);
+        throw new Error(n8nData.message || 'Cluster generation failed');
+      }
+
+      // Transform n8n response to expected format
+      const successResponse = n8nData as N8NGenerateClustersResponse & { status: 'success' };
+      return {
+        success: true,
+        clusters_generated: successResponse.clusters_generated,
+        clusters: successResponse.clusters.map((cluster, index) => ({
+          id: `temp-${tenantId}-${index}`,
+          tenant_id: tenantId,
+          primary_term: cluster.primary_term,
+          related_terms: cluster.related_terms,
+          category: cluster.category,
+          confidence_score: cluster.confidence_score,
+          is_active: true,
+          created_at: new Date().toISOString(),
+        })),
+      };
+    } catch (error: any) {
+      console.error('Error in generateSmartProfileClusters:', error);
+
+      if (axios.isAxiosError(error) && error.code === 'ECONNABORTED') {
+        throw new Error('Cluster generation timed out. Please try again.');
+      }
+
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        tags: { source: 'groupsService', action: 'generateSmartProfileClusters', via: 'n8n' },
+        extra: { tenantId }
+      });
+      throw error;
+    }
+  },
+
+  async saveSmartProfileClusters(authToken: string, tenantId: string, clusters: any[]): Promise<any> {
+    try {
+      const response = await axios.post(`${GROUPS_API_BASE}/smartprofiles/clusters`, { tenant_id: tenantId, clusters }, { headers: getHeaders(authToken, tenantId), timeout: 30000 });
+      return response.data;
+    } catch (error: any) {
+      console.error('Error in saveSmartProfileClusters:', error);
+      captureException(error instanceof Error ? error : new Error(String(error)), { tags: { source: 'groupsService', action: 'saveSmartProfileClusters' } });
+      throw error;
+    }
+  },
+
+  async getSmartProfileClusters(authToken: string, tenantId: string): Promise<any> {
+    try {
+      const response = await axios.get(`${GROUPS_API_BASE}/smartprofiles/clusters/${tenantId}`, { headers: getHeaders(authToken, tenantId), timeout: 30000 });
+      return response.data;
+    } catch (error: any) {
+      console.error('Error in getSmartProfileClusters:', error);
+      captureException(error instanceof Error ? error : new Error(String(error)), { tags: { source: 'groupsService', action: 'getSmartProfileClusters' } });
+      throw error;
+    }
+  },
+
+  // Tenant Dashboard methods
+  async getTenantStats(authToken: string, groupId?: string): Promise<any> {
+    try {
+      const response = await axios.post(`${GROUPS_API_BASE}/tenants/stats`, { group_id: groupId }, { headers: getHeaders(authToken), timeout: 30000 });
+      return response.data;
+    } catch (error: any) {
+      console.error('Error in getTenantStats:', error);
+      captureException(error instanceof Error ? error : new Error(String(error)), { tags: { source: 'groupsService', action: 'getTenantStats' } });
+      throw error;
+    }
+  },
+
+  async searchTenants(authToken: string, request: { query: string; group_id?: string; intent_code?: string }, environment?: string): Promise<any> {
+    try {
+      const response = await axios.post(`${GROUPS_API_BASE}/tenants/search`, request, { headers: { ...getHeaders(authToken), 'x-environment': environment || 'live' }, timeout: 30000 });
+      return response.data;
+    } catch (error: any) {
+      console.error('Error in searchTenants:', error);
+      captureException(error instanceof Error ? error : new Error(String(error)), { tags: { source: 'groupsService', action: 'searchTenants' } });
       throw error;
     }
   }
