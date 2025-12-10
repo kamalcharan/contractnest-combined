@@ -119,11 +119,14 @@ const BBBProfileOnboardingPage: React.FC = () => {
           setMembershipStatus(myMembership.status || 'draft');
           setShowJoinDialog(false);
 
-          // Check if profile_data exists with saved description
-          if (myMembership.profile_data?.ai_enhanced_description) {
+          // Check if profile_data exists with saved description (either AI enhanced or manual)
+          const hasExistingProfile = myMembership.profile_data?.ai_enhanced_description ||
+                                     myMembership.profile_data?.short_description;
+
+          if (hasExistingProfile) {
             console.log('🤖 VaNi: Found existing profile data, showing readonly view');
             setExistingProfileData(myMembership.profile_data);
-            setEnhancedDescription(myMembership.profile_data.ai_enhanced_description);
+            setEnhancedDescription(myMembership.profile_data.ai_enhanced_description || myMembership.profile_data.short_description || '');
             setOriginalDescription(myMembership.profile_data.short_description || '');
             setKeywords(myMembership.profile_data.approved_keywords || []);
             setWebsiteUrl(myMembership.profile_data.website_url || '');
@@ -395,11 +398,14 @@ const BBBProfileOnboardingPage: React.FC = () => {
     try {
       console.log('🤖 VaNi: Saving profile with embedding generation...');
 
-      // Use keywords from AI enhancement (no hardcoded fallbacks - semantic clusters handle search)
-      const finalKeywords = keywords.length > 0 ? keywords : [];
-      if (finalKeywords.length > 0) {
-        setKeywords(finalKeywords);
-      }
+      // Generate default keywords if not already set
+      const finalKeywords = keywords.length > 0 ? keywords : [
+        currentTenantProfile.business_category || 'Services',
+        currentTenantProfile.city || 'Hyderabad',
+        'Business',
+        'Professional'
+      ];
+      setKeywords(finalKeywords);
 
       // Call the real save profile API with embedding generation
       const result = await saveProfileMutation.mutateAsync({
@@ -463,9 +469,9 @@ const BBBProfileOnboardingPage: React.FC = () => {
 
   // Cancel edit mode - go back to readonly view
   const handleCancelEdit = () => {
-    if (existingProfileData?.ai_enhanced_description) {
+    if (existingProfileData?.ai_enhanced_description || existingProfileData?.short_description) {
       // Restore original data
-      setEnhancedDescription(existingProfileData.ai_enhanced_description);
+      setEnhancedDescription(existingProfileData.ai_enhanced_description || existingProfileData.short_description || '');
       setOriginalDescription(existingProfileData.short_description || '');
       setKeywords(existingProfileData.approved_keywords || []);
       setIsEditMode(false);
@@ -627,7 +633,7 @@ const BBBProfileOnboardingPage: React.FC = () => {
       )}
 
       {/* Readonly Profile View - when profile exists and not in edit mode */}
-      {currentStep === 'profile_entry' && existingProfileData?.ai_enhanced_description && !isEditMode && (
+      {currentStep === 'profile_entry' && (existingProfileData?.ai_enhanced_description || existingProfileData?.short_description) && !isEditMode && (
         <div
           className="rounded-2xl overflow-hidden shadow-lg"
           style={{
