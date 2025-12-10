@@ -104,36 +104,26 @@ const BBBProfileOnboardingPage: React.FC = () => {
 
       try {
         console.log('🤖 VaNi: Checking for existing membership...');
-        console.log('🤖 VaNi: Looking for tenant_id:', tenantProfileData?.tenant_id);
 
         // Query for existing membership FIRST
         const { memberships } = await groupsService.getGroupMemberships(bbbGroupId, { status: 'all' });
         console.log('🤖 VaNi: Found memberships:', memberships.length);
-        console.log('🤖 VaNi: All membership tenant_ids:', memberships.map((m: any) => m.tenant_id));
 
         const myMembership = memberships.find(
           (m: any) => m.tenant_id === tenantProfileData?.tenant_id
         );
 
-        console.log('🤖 VaNi: myMembership found?', !!myMembership);
-
         if (myMembership) {
           console.log('🤖 VaNi: Found existing membership:', myMembership.id);
-          console.log('🤖 VaNi: profile_data:', JSON.stringify(myMembership.profile_data));
           setMembershipId(myMembership.id);
           setMembershipStatus(myMembership.status || 'draft');
           setShowJoinDialog(false);
 
-          // Check if profile_data exists with saved description (either AI enhanced or manual)
-          const hasExistingProfile = myMembership.profile_data?.ai_enhanced_description ||
-                                     myMembership.profile_data?.short_description;
-
-          console.log('🤖 VaNi: hasExistingProfile?', hasExistingProfile);
-
-          if (hasExistingProfile) {
+          // Check if profile_data exists with saved description
+          if (myMembership.profile_data?.ai_enhanced_description) {
             console.log('🤖 VaNi: Found existing profile data, showing readonly view');
             setExistingProfileData(myMembership.profile_data);
-            setEnhancedDescription(myMembership.profile_data.ai_enhanced_description || myMembership.profile_data.short_description || '');
+            setEnhancedDescription(myMembership.profile_data.ai_enhanced_description);
             setOriginalDescription(myMembership.profile_data.short_description || '');
             setKeywords(myMembership.profile_data.approved_keywords || []);
             setWebsiteUrl(myMembership.profile_data.website_url || '');
@@ -476,9 +466,9 @@ const BBBProfileOnboardingPage: React.FC = () => {
 
   // Cancel edit mode - go back to readonly view
   const handleCancelEdit = () => {
-    if (existingProfileData?.ai_enhanced_description || existingProfileData?.short_description) {
+    if (existingProfileData?.ai_enhanced_description) {
       // Restore original data
-      setEnhancedDescription(existingProfileData.ai_enhanced_description || existingProfileData.short_description || '');
+      setEnhancedDescription(existingProfileData.ai_enhanced_description);
       setOriginalDescription(existingProfileData.short_description || '');
       setKeywords(existingProfileData.approved_keywords || []);
       setIsEditMode(false);
@@ -640,7 +630,7 @@ const BBBProfileOnboardingPage: React.FC = () => {
       )}
 
       {/* Readonly Profile View - when profile exists and not in edit mode */}
-      {currentStep === 'profile_entry' && (existingProfileData?.ai_enhanced_description || existingProfileData?.short_description) && !isEditMode && (
+      {currentStep === 'profile_entry' && existingProfileData?.ai_enhanced_description && !isEditMode && (
         <div
           className="rounded-2xl overflow-hidden shadow-lg"
           style={{
