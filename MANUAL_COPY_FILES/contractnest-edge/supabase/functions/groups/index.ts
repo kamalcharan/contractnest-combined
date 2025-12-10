@@ -337,8 +337,9 @@ console.log('='.repeat(60));
     if (method === 'GET' && membershipGetMatch) {
       try {
         const membershipId = membershipGetMatch[1];
-        
-        const { data, error } = await supabase
+
+        // Use supabaseAdmin to bypass RLS for reliable cross-tenant access
+        const { data, error } = await supabaseAdmin
           .from('t_group_memberships')
           .select(`
             id,
@@ -474,8 +475,8 @@ console.log('='.repeat(60));
         const limit = parseInt(url.searchParams.get('limit') || '50');
         const offset = parseInt(url.searchParams.get('offset') || '0');
 
-        // Query memberships without join (foreign key not set up)
-        let query = supabase
+        // Use supabaseAdmin to bypass RLS for reliable cross-tenant access
+        let query = supabaseAdmin
           .from('t_group_memberships')
           .select(`
             id,
