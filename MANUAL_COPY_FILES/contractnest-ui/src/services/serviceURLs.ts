@@ -553,11 +553,11 @@ export const API_ENDPOINTS = {
       // Helper function for activity logs with filters
       ACTIVITY_LOGS_WITH_FILTERS: (groupId: string, filters: ActivityLogFilters = {}) => {
         const params = new URLSearchParams();
-
+        
         if (filters.activity_type) params.append('activity_type', filters.activity_type);
         if (filters.limit !== undefined) params.append('limit', filters.limit.toString());
         if (filters.offset !== undefined) params.append('offset', filters.offset.toString());
-
+        
         const queryString = params.toString();
         return queryString
           ? `/api/admin/activity-logs/${groupId}?${queryString}`
@@ -588,6 +588,31 @@ export const API_ENDPOINTS = {
       GENERATE: '/api/smartprofiles/generate',
       SEARCH: '/api/smartprofiles/search'
     }
+  },
+
+  // =================================================================
+  // CHAT / VaNi AI ENDPOINTS
+  // =================================================================
+  CHAT: {
+    // Session management
+    INIT: '/api/chat/init',
+    SESSION: '/api/chat/session',
+    SESSION_BY_ID: (sessionId: string) => `/api/chat/session/${sessionId}`,
+
+    // Group activation
+    ACTIVATE: '/api/chat/activate',
+
+    // Intent management
+    INTENT: '/api/chat/intent',
+
+    // Search operations
+    SEARCH: '/api/chat/search',
+
+    // Handle intent actions (DBC, Catalog, Quote, etc.)
+    HANDLE_INTENT: '/api/chat/handle-intent',
+
+    // End session
+    END: '/api/chat/end'
   },
 
   // =================================================================

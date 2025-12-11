@@ -23,7 +23,11 @@ import {
   Clock,
   Database,
   RefreshCw,
-  MessageSquare
+  MessageSquare,
+  Calendar,
+  CreditCard,
+  ShoppingBag,
+  FileQuestion
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { chatService } from '../../../services/chatService';
@@ -45,8 +49,13 @@ interface SearchResult {
   business_category: string | null;
   city: string | null;
   business_phone: string | null;
+  business_phone_code: string | null;
+  mobile_number: string | null;
   business_email: string | null;
   website_url: string | null;
+  booking_url: string | null;
+  logo_url: string | null;
+  profile_snippet: string | null;
   ai_enhanced_description: string | null;
   similarity: number;
   cluster_boost: number;
@@ -266,6 +275,53 @@ const VaNiChatPage: React.FC = () => {
     addBotMessage('What would you like to search for?');
   };
 
+  // Handle intent-based actions (DBC, Catalog, Quote)
+  const handleIntentAction = async (
+    intent: 'VIEW_DBC' | 'VIEW_CATALOG' | 'REQUEST_QUOTE',
+    tenantId: string,
+    businessName: string
+  ) => {
+    if (!session?.group_id) {
+      toast.error('Session not active');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await chatService.handleIntent({
+        intent,
+        tenant_id: tenantId,
+        session_id: session.id,
+        group_id: session.group_id
+      });
+
+      if (response.success || response.status === 'success') {
+        // Handle response based on action type
+        if (response.url) {
+          // Open URL in new tab
+          window.open(response.url, '_blank', 'noopener,noreferrer');
+        } else if (response.data) {
+          // Show data in chat
+          const intentLabels: Record<string, string> = {
+            'VIEW_DBC': 'Digital Business Card',
+            'VIEW_CATALOG': 'Product Catalog',
+            'REQUEST_QUOTE': 'Quote Request'
+          };
+          addBotMessage(`${intentLabels[intent]} for ${businessName}:\n${response.message || 'Data loaded successfully'}`);
+        } else {
+          addBotMessage(response.message || `${intent} request processed for ${businessName}`);
+        }
+      } else {
+        addBotMessage(response.message || response.error || `Unable to process ${intent} for ${businessName}`);
+      }
+    } catch (error) {
+      console.error('Error handling intent:', error);
+      toast.error('Failed to process request');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Render search result card
   const renderResultCard = (result: SearchResult, index: number) => {
     const matchPercent = Math.round((result.similarity + (result.cluster_boost || 0)) * 100);
@@ -324,46 +380,117 @@ const VaNiChatPage: React.FC = () => {
           </p>
         )}
 
-        <div className="flex flex-wrap gap-3 text-sm">
+        {/* Contact Info */}
+        <div className="flex flex-wrap gap-3 text-sm mb-3">
           {result.city && (
             <div className="flex items-center space-x-1" style={{ color: colors.utility.secondaryText }}>
               <MapPin className="w-3 h-3" />
               <span>{result.city}</span>
             </div>
           )}
+        </div>
+
+        {/* Direct Action Buttons */}
+        <div className="flex flex-wrap gap-2 mb-2">
           {result.business_phone && (
             <a
               href={`tel:${result.business_phone}`}
-              className="flex items-center space-x-1 hover:underline"
-              style={{ color: colors.semantic.info }}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors hover:opacity-80"
+              style={{
+                backgroundColor: `${colors.semantic.info}15`,
+                color: colors.semantic.info
+              }}
             >
               <Phone className="w-3 h-3" />
-              <span>{result.business_phone}</span>
+              Call
             </a>
           )}
           {result.business_email && (
             <a
               href={`mailto:${result.business_email}`}
-              className="flex items-center space-x-1 hover:underline"
-              style={{ color: colors.semantic.warning }}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors hover:opacity-80"
+              style={{
+                backgroundColor: `${colors.semantic.warning}15`,
+                color: colors.semantic.warning
+              }}
             >
               <Mail className="w-3 h-3" />
-              <span>Email</span>
+              Email
             </a>
           )}
           {result.website_url && (
             <a
-              href={result.website_url}
+              href={result.website_url.startsWith('http') ? result.website_url : `https://${result.website_url}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center space-x-1 hover:underline"
-              style={{ color: colors.brand.secondary }}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors hover:opacity-80"
+              style={{
+                backgroundColor: `${colors.brand.secondary}15`,
+                color: colors.brand.secondary
+              }}
             >
               <Globe className="w-3 h-3" />
-              <span>Website</span>
-              <ExternalLink className="w-3 h-3" />
+              Website
             </a>
           )}
+          {result.booking_url && (
+            <a
+              href={result.booking_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors hover:opacity-80"
+              style={{
+                backgroundColor: `${colors.semantic.success}15`,
+                color: colors.semantic.success
+              }}
+            >
+              <Calendar className="w-3 h-3" />
+              Book Appointment
+            </a>
+          )}
+        </div>
+
+        {/* Intent-based Action Buttons */}
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => handleIntentAction('VIEW_DBC', result.tenant_id, result.business_name)}
+            disabled={isLoading}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors hover:opacity-80 disabled:opacity-50"
+            style={{
+              backgroundColor: `${colors.brand.primary}10`,
+              color: colors.brand.primary,
+              border: `1px solid ${colors.brand.primary}30`
+            }}
+          >
+            <CreditCard className="w-3 h-3" />
+            View DBC
+          </button>
+          <button
+            onClick={() => handleIntentAction('VIEW_CATALOG', result.tenant_id, result.business_name)}
+            disabled={isLoading}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors hover:opacity-80 disabled:opacity-50"
+            style={{
+              backgroundColor: `${colors.brand.primary}10`,
+              color: colors.brand.primary,
+              border: `1px solid ${colors.brand.primary}30`
+            }}
+          >
+            <ShoppingBag className="w-3 h-3" />
+            Catalog
+          </button>
+          <button
+            onClick={() => handleIntentAction('REQUEST_QUOTE', result.tenant_id, result.business_name)}
+            disabled={isLoading}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-colors hover:opacity-80 disabled:opacity-50"
+            style={{
+              backgroundColor: `${colors.brand.primary}10`,
+              color: colors.brand.primary,
+              border: `1px solid ${colors.brand.primary}30`
+            }}
+          >
+            <FileQuestion className="w-3 h-3" />
+            Request Quote
+          </button>
         </div>
       </div>
     );
