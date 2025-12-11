@@ -242,7 +242,8 @@ const VaNiChatPage: React.FC = () => {
         use_cache: true
       });
 
-      if (response.success) {
+      // Handle both success: true and status: "success" formats
+      if (response.success || response.status === 'success') {
         const resultCount = response.results_count || 0;
         const fromCache = response.from_cache || false;
         const cacheHitCount = response.cache_hit_count || 0;
@@ -255,10 +256,10 @@ const VaNiChatPage: React.FC = () => {
             cacheHitCount
           );
         } else {
-          addBotMessage(`No members found for "${query}". Try different keywords or browse by segment.`);
+          addBotMessage(response.message || `No members found for "${query}". Try different keywords or browse by segment.`);
         }
       } else {
-        addBotMessage('Sorry, I couldn\'t complete the search. Please try again.');
+        addBotMessage(response.message || 'Sorry, I couldn\'t complete the search. Please try again.');
       }
     } catch (error) {
       console.error('Error searching:', error);
