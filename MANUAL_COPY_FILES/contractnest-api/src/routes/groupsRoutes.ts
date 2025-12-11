@@ -200,6 +200,13 @@ router.post('/chat/search', groupsController.chatSearch);
  */
 router.post('/chat/end', groupsController.chatEnd);
 
+/**
+ * POST /api/chat/handle-intent
+ * Handle intent actions (DBC, Catalog, Quote, etc.)
+ * Body: { intent, tenant_id, session_id?, group_id? }
+ */
+router.post('/chat/handle-intent', groupsController.chatHandleIntent);
+
 // ============================================
 // ADMIN ROUTES
 // ============================================

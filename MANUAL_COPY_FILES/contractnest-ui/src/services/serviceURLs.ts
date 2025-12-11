@@ -608,6 +608,9 @@ export const API_ENDPOINTS = {
     // Search operations
     SEARCH: '/api/chat/search',
 
+    // Handle intent actions (DBC, Catalog, Quote, etc.)
+    HANDLE_INTENT: '/api/chat/handle-intent',
+
     // End session
     END: '/api/chat/end'
   },

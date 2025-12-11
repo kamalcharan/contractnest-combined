@@ -103,6 +103,24 @@ export interface ChatEndResponse {
   error?: string;
 }
 
+export interface HandleIntentRequest {
+  intent: 'VIEW_DBC' | 'VIEW_CATALOG' | 'REQUEST_QUOTE' | 'BOOK_APPOINTMENT';
+  tenant_id: string;
+  session_id?: string;
+  group_id?: string;
+}
+
+export interface HandleIntentResponse {
+  success: boolean;
+  status?: string;
+  intent?: string;
+  action?: string;
+  url?: string;
+  data?: any;
+  message?: string;
+  error?: string;
+}
+
 /**
  * Chat Service class
  * Uses API_ENDPOINTS.CHAT from serviceURLs.ts for endpoint definitions
@@ -251,6 +269,24 @@ class ChatService {
       return {
         success: false,
         error: error.response?.data?.error || error.message || 'Failed to end session'
+      };
+    }
+  }
+
+  /**
+   * Handle intent action (DBC, Catalog, Quote, etc.)
+   * POST /api/chat/handle-intent
+   */
+  async handleIntent(request: HandleIntentRequest): Promise<HandleIntentResponse> {
+    try {
+      console.log('💬 Chat Service: Handling intent...', request);
+      const response = await api.post(API_ENDPOINTS.CHAT.HANDLE_INTENT, request);
+      return response.data;
+    } catch (error: any) {
+      console.error('Chat Service error in handleIntent:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message || 'Failed to handle intent'
       };
     }
   }

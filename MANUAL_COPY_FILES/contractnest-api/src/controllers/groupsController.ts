@@ -1315,6 +1315,58 @@ export const chatEnd = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * POST /api/chat/handle-intent
+ * Handle intent actions (DBC, Catalog, Quote, etc.)
+ */
+export const chatHandleIntent = async (req: Request, res: Response) => {
+  try {
+    if (!validateSupabaseConfig('api_groups', 'chatHandleIntent')) {
+      return res.status(500).json({
+        error: 'Server configuration error: Missing Supabase configuration'
+      });
+    }
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Authorization header is required' });
+    }
+
+    const { intent, tenant_id, session_id, group_id } = req.body;
+
+    if (!intent || !tenant_id) {
+      return res.status(400).json({ error: 'intent and tenant_id are required' });
+    }
+
+    // Validate intent type
+    const validIntents = ['VIEW_DBC', 'VIEW_CATALOG', 'REQUEST_QUOTE', 'BOOK_APPOINTMENT'];
+    if (!validIntents.includes(intent)) {
+      return res.status(400).json({
+        error: `Invalid intent. Must be one of: ${validIntents.join(', ')}`
+      });
+    }
+
+    const environment = req.headers['x-environment'] as string | undefined;
+
+    const result = await groupsService.chatHandleIntent(authHeader, {
+      intent,
+      tenant_id,
+      session_id,
+      group_id
+    }, environment);
+
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error in chatHandleIntent controller:', error.message);
+    captureException(error instanceof Error ? error : new Error(String(error)), {
+      tags: { source: 'api_groups', action: 'chatHandleIntent' }
+    });
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.error || error.message || 'Failed to handle intent';
+    return res.status(status).json({ success: false, error: message });
+  }
+};
+
 // ============================================
 // SMARTPROFILE CONTROLLERS
 // ============================================

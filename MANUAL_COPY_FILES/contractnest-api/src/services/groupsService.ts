@@ -1272,6 +1272,46 @@ export const groupsService = {
     }
   },
 
+  /**
+   * Handle intent actions (DBC, Catalog, Quote, etc.)
+   * Proxies to N8N handle-intent webhook
+   */
+  async chatHandleIntent(
+    authToken: string,
+    request: {
+      intent: string;
+      tenant_id: string;
+      session_id?: string;
+      group_id?: string;
+    },
+    environment?: string
+  ): Promise<any> {
+    try {
+      // Use N8N webhook for intent handling
+      const n8nBaseUrl = environment === 'test'
+        ? process.env.N8N_WEBHOOK_URL_TEST || process.env.N8N_WEBHOOK_URL
+        : process.env.N8N_WEBHOOK_URL;
+
+      const response = await axios.post(
+        `${n8nBaseUrl}/handle-intent`,
+        request,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': authToken
+          }
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error in chatHandleIntent:', error);
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        tags: { source: 'groupsService', action: 'chatHandleIntent' }
+      });
+      throw error;
+    }
+  },
+
   // ============================================
   // SMARTPROFILES (Tenant-level AI profiles)
   // ============================================
