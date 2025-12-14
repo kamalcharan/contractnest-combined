@@ -1,4 +1,4 @@
-// src/pages/VaNi/channels/VaNiChatPage.tsx
+  // src/pages/VaNi/channels/VaNiChatPage.tsx
 // VaNi AI Chat - BBB Directory Search with Caching
 // Route: /vani/channels/chat
 
@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { chatService } from '../../../services/chatService';
+import { aiAgentService, type AIAgentSearchResult } from '../../../services/aiAgentService';
 
 // Types
 interface ChatSession {
@@ -44,12 +45,13 @@ interface SearchResult {
   business_name: string;
   business_category: string | null;
   city: string | null;
+  chapter: string | null;
   business_phone: string | null;
   business_email: string | null;
   website_url: string | null;
   ai_enhanced_description: string | null;
-  similarity: number;
-  cluster_boost: number;
+  similarity?: number;
+  cluster_boost?: number;
 }
 
 interface ChatMessage {
@@ -131,29 +133,43 @@ const VaNiChatPage: React.FC = () => {
         setSession(sessionResponse.session);
 
         // Auto-activate BBB group
-        const activateResponse = await chatService.activateGroup({
-          trigger_phrase: 'Hi BBB',
-          session_id: sessionResponse.session.id
-        });
+        try {
+          const activateResponse = await chatService.activateGroup({
+            trigger_phrase: 'Hi BBB',
+            session_id: sessionResponse.session.id
+          });
 
-        if (activateResponse.success) {
-          setGroupActivated(true);
-          setSession(prev => prev ? {
-            ...prev,
-            group_id: activateResponse.group_id,
-            group_name: activateResponse.group_name
-          } : null);
+          if (activateResponse.success) {
+            setSession(prev => prev ? {
+              ...prev,
+              group_id: activateResponse.group_id,
+              group_name: activateResponse.group_name
+            } : null);
 
-          // Add welcome message
-          addBotMessage(`Hi, I am VaNi, your AI assistant.\nWelcome to ${activateResponse.group_name || 'BBB Bagyanagar'}!\n\nHow can I help you today?`);
-        } else {
-          addBotMessage('Hi, I am VaNi, your AI assistant.\n\nI couldn\'t connect to BBB. Please try again later.');
+            // Add welcome message with group name
+            addBotMessage(`Hi, I am VaNi, your AI assistant.\nWelcome to ${activateResponse.group_name || 'BBB Bagyanagar'}!\n\nHow can I help you today?`);
+          } else {
+            // Still show welcome even if activation fails
+            addBotMessage('Hi, I am VaNi, your AI assistant.\nWelcome to BBB Bagyanagar!\n\nHow can I help you today?');
+          }
+        } catch (activateError) {
+          console.error('Error activating group:', activateError);
+          // Still show welcome even if activation fails
+          addBotMessage('Hi, I am VaNi, your AI assistant.\nWelcome to BBB Bagyanagar!\n\nHow can I help you today?');
         }
+
+        // Always enable typing after session is created
+        setGroupActivated(true);
+      } else {
+        // No session - show welcome anyway
+        addBotMessage('Hi, I am VaNi, your AI assistant.\nWelcome to BBB Bagyanagar!\n\nHow can I help you today?');
+        setGroupActivated(true);
       }
     } catch (error) {
       console.error('Error initializing chat:', error);
-      addBotMessage('Hi, I am VaNi. There was an error connecting. Please refresh the page.');
-      toast.error('Failed to initialize chat');
+      // Show welcome even on error
+      addBotMessage('Hi, I am VaNi, your AI assistant.\nWelcome to BBB Bagyanagar!\n\nHow can I help you today?');
+      setGroupActivated(true);
     } finally {
       setIsInitializing(false);
     }
@@ -209,7 +225,7 @@ const VaNiChatPage: React.FC = () => {
   };
 
   const handleSearch = async () => {
-    if (!inputValue.trim() || !session?.group_id) return;
+    if (!inputValue.trim()) return;
 
     const query = inputValue.trim();
     setInputValue('');
@@ -217,37 +233,47 @@ const VaNiChatPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await chatService.search({
-        group_id: session.group_id,
-        query,
-        session_id: session.id,
-        intent: currentIntent || undefined,
-        limit: 5,
-        use_cache: true
-      });
+      // Use AI Agent for conversational search
+      const response = await aiAgentService.chat(query, session?.group_id || undefined);
 
-      if (response.success) {
+      if (aiAgentService.isSuccess(response)) {
+        // AI Agent returns a natural language message AND optional results
         const resultCount = response.results_count || 0;
         const fromCache = response.from_cache || false;
-        const cacheHitCount = response.cache_hit_count || 0;
 
-        if (resultCount > 0) {
+        if (resultCount > 0 && response.results) {
+          // Map AI Agent results to SearchResult format
+          const mappedResults: SearchResult[] = response.results.map(r => ({
+            membership_id: r.membership_id,
+            tenant_id: r.tenant_id,
+            business_name: r.business_name,
+            business_category: r.business_category,
+            city: r.city,
+            chapter: r.chapter,
+            business_phone: r.business_phone,
+            business_email: r.business_email,
+            website_url: r.website_url,
+            ai_enhanced_description: r.ai_enhanced_description,
+            similarity: r.similarity
+          }));
+
           addBotMessage(
-            `Found ${resultCount} member${resultCount > 1 ? 's' : ''} for "${query}":`,
-            response.results,
-            fromCache,
-            cacheHitCount
+            response.message || `Found ${resultCount} member${resultCount > 1 ? 's' : ''}:`,
+            mappedResults,
+            fromCache
           );
         } else {
-          addBotMessage(`No members found for "${query}". Try different keywords or browse by segment.`);
+          // Just show the AI message (no results)
+          addBotMessage(response.message);
         }
       } else {
-        addBotMessage('Sorry, I couldn\'t complete the search. Please try again.');
+        // Error response
+        addBotMessage(response.message || 'Sorry, I couldn\'t process your request. Please try again.');
       }
     } catch (error) {
-      console.error('Error searching:', error);
-      addBotMessage('Search failed. Please try again.');
-      toast.error('Search failed');
+      console.error('Error with AI Agent:', error);
+      addBotMessage('Something went wrong. Please try again.');
+      toast.error('Request failed');
     } finally {
       setIsLoading(false);
       setCurrentIntent(null);
@@ -268,7 +294,10 @@ const VaNiChatPage: React.FC = () => {
 
   // Render search result card
   const renderResultCard = (result: SearchResult, index: number) => {
-    const matchPercent = Math.round((result.similarity + (result.cluster_boost || 0)) * 100);
+    // Calculate match percent if similarity is available
+    const matchPercent = result.similarity
+      ? Math.round((result.similarity + (result.cluster_boost || 0)) * 100)
+      : null;
 
     return (
       <div
@@ -291,28 +320,43 @@ const VaNiChatPage: React.FC = () => {
               <h4 className="font-semibold" style={{ color: colors.utility.primaryText }}>
                 {result.business_name}
               </h4>
-              {result.business_category && (
-                <span
-                  className="text-xs px-2 py-0.5 rounded-full"
-                  style={{
-                    backgroundColor: `${colors.semantic.success}20`,
-                    color: colors.semantic.success
-                  }}
-                >
-                  {result.business_category}
-                </span>
-              )}
+              <div className="flex flex-wrap gap-1">
+                {result.business_category && (
+                  <span
+                    className="text-xs px-2 py-0.5 rounded-full"
+                    style={{
+                      backgroundColor: `${colors.semantic.success}20`,
+                      color: colors.semantic.success
+                    }}
+                  >
+                    {result.business_category}
+                  </span>
+                )}
+                {result.chapter && (
+                  <span
+                    className="text-xs px-2 py-0.5 rounded-full"
+                    style={{
+                      backgroundColor: `${colors.semantic.info}20`,
+                      color: colors.semantic.info
+                    }}
+                  >
+                    {result.chapter}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
-          <div
-            className="text-sm font-bold px-2 py-1 rounded"
-            style={{
-              backgroundColor: `${colors.brand.primary}20`,
-              color: colors.brand.primary
-            }}
-          >
-            {matchPercent}% match
-          </div>
+          {matchPercent !== null && (
+            <div
+              className="text-sm font-bold px-2 py-1 rounded"
+              style={{
+                backgroundColor: `${colors.brand.primary}20`,
+                color: colors.brand.primary
+              }}
+            >
+              {matchPercent}% match
+            </div>
+          )}
         </div>
 
         {result.ai_enhanced_description && (
@@ -447,17 +491,19 @@ const VaNiChatPage: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: colors.utility.primaryBackground }}>
-      {/* Header */}
-      <div
-        className="flex items-center justify-between p-4 border-b"
-        style={{
-          backgroundColor: colors.utility.secondaryBackground,
-          borderColor: `${colors.utility.primaryText}20`
-        }}
-      >
+      {/* Centered Chat Container */}
+      <div className="max-w-2xl mx-auto w-full flex flex-col min-h-screen">
+        {/* Header */}
+        <div
+          className="flex items-center justify-between p-4 border-b"
+          style={{
+            backgroundColor: colors.utility.secondaryBackground,
+            borderColor: `${colors.utility.primaryText}20`
+          }}
+        >
         <div className="flex items-center space-x-4">
           <button
-            onClick={() => navigate('/vani/channels/bbb')}
+            onClick={() => navigate('/settings/configure/customer-channels/groups')}
             className="flex items-center space-x-2 px-3 py-2 border rounded-lg transition-colors hover:opacity-80"
             style={{
               borderColor: `${colors.utility.primaryText}20`,
@@ -579,7 +625,7 @@ const VaNiChatPage: React.FC = () => {
                     }}
                   >
                     <Loader2 className="w-4 h-4 animate-spin" style={{ color: colors.brand.primary }} />
-                    <span style={{ color: colors.utility.secondaryText }}>Searching...</span>
+                    <span style={{ color: colors.utility.secondaryText }}>VaNi is thinking...</span>
                   </div>
                 </div>
               </div>
@@ -604,7 +650,7 @@ const VaNiChatPage: React.FC = () => {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder={currentIntent ? 'Type your search query...' : 'Click a button above or type to search...'}
+            placeholder={currentIntent ? 'Type your search query...' : 'Ask me anything about BBB members...'}
             disabled={isLoading || isInitializing || !groupActivated}
             className="flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 disabled:opacity-50"
             style={{
@@ -650,6 +696,7 @@ const VaNiChatPage: React.FC = () => {
           </div>
         )}
       </div>
+      </div> {/* End Centered Chat Container */}
     </div>
   );
 };

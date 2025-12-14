@@ -1316,110 +1316,458 @@ export const chatEnd = async (req: Request, res: Response) => {
 };
 
 // ============================================
-// TENANT STATS & INTENTS CONTROLLERS
+// SMARTPROFILE CONTROLLERS
 // ============================================
 
 /**
- * POST /api/tenants/stats
- * Get tenant statistics for dashboard
+ * GET /api/smartprofiles/:tenantId
+ * Get SmartProfile for a tenant
  */
-export const getTenantStats = async (req: Request, res: Response) => {
+export const getSmartProfile = async (req: Request, res: Response) => {
   try {
-    if (!validateSupabaseConfig('api_groups', 'getTenantStats')) {
+    if (!validateSupabaseConfig('api_groups', 'getSmartProfile')) {
       return res.status(500).json({
         error: 'Server configuration error: Missing Supabase configuration'
       });
     }
 
     const authHeader = req.headers.authorization;
+    const tenantId = req.params.tenantId;
+
     if (!authHeader) {
       return res.status(401).json({ error: 'Authorization header is required' });
     }
 
-    const { group_id } = req.body;
-    const result = await groupsService.getTenantStats(authHeader, group_id);
+    if (!tenantId) {
+      return res.status(400).json({ error: 'tenantId parameter is required' });
+    }
+
+    const result = await groupsService.getSmartProfile(authHeader, tenantId);
     return res.status(200).json(result);
   } catch (error: any) {
-    console.error('Error in getTenantStats controller:', error.message);
+    console.error('Error in getSmartProfile controller:', error.message);
+
     captureException(error instanceof Error ? error : new Error(String(error)), {
-      tags: { source: 'api_groups', action: 'getTenantStats' }
+      tags: { source: 'api_groups', action: 'getSmartProfile' },
+      status: error.response?.status
     });
+
     const status = error.response?.status || 500;
-    const message = error.response?.data?.error || error.message || 'Failed to get tenant stats';
+    const message = error.response?.data?.error || error.message || 'Failed to fetch SmartProfile';
+
     return res.status(status).json({ success: false, error: message });
   }
 };
 
 /**
- * GET /api/intents
- * Get resolved intents for a group/user/channel
+ * POST /api/smartprofiles
+ * Save SmartProfile (basic save without AI)
  */
-export const getIntents = async (req: Request, res: Response) => {
+export const saveSmartProfile = async (req: Request, res: Response) => {
   try {
-    if (!validateSupabaseConfig('api_groups', 'getIntents')) {
+    if (!validateSupabaseConfig('api_groups', 'saveSmartProfile')) {
       return res.status(500).json({
         error: 'Server configuration error: Missing Supabase configuration'
       });
     }
 
     const authHeader = req.headers.authorization;
+
     if (!authHeader) {
       return res.status(401).json({ error: 'Authorization header is required' });
     }
 
-    const group_id = req.query.group_id as string;
-    const user_role = req.query.user_role as string || 'member';
-    const channel = req.query.channel as string || 'web';
+    const {
+      tenant_id,
+      short_description,
+      ai_enhanced_description,
+      approved_keywords,
+      profile_type,
+      website_url,
+      generation_method
+    } = req.body;
 
-    if (!group_id) {
-      return res.status(400).json({ error: 'group_id query parameter is required' });
+    if (!tenant_id) {
+      return res.status(400).json({ error: 'tenant_id is required' });
     }
 
-    const result = await groupsService.getIntents(authHeader, group_id, user_role, channel);
+    console.log('📝 saveSmartProfile controller received:', {
+      tenant_id,
+      hasEnhancedDesc: !!ai_enhanced_description,
+      enhancedDescLength: ai_enhanced_description?.length || 0,
+      shortDescLength: short_description?.length || 0,
+      keywordsCount: approved_keywords?.length || 0
+    });
+
+    const result = await groupsService.saveSmartProfile(authHeader, tenant_id, {
+      short_description,
+      ai_enhanced_description,
+      approved_keywords,
+      profile_type,
+      website_url,
+      generation_method
+    });
+
     return res.status(200).json(result);
   } catch (error: any) {
-    console.error('Error in getIntents controller:', error.message);
+    console.error('Error in saveSmartProfile controller:', error.message);
+
     captureException(error instanceof Error ? error : new Error(String(error)), {
-      tags: { source: 'api_groups', action: 'getIntents' }
+      tags: { source: 'api_groups', action: 'saveSmartProfile' },
+      status: error.response?.status
     });
+
     const status = error.response?.status || 500;
-    const message = error.response?.data?.error || error.message || 'Failed to get intents';
+    const message = error.response?.data?.error || error.message || 'Failed to save SmartProfile';
+
     return res.status(status).json({ success: false, error: message });
   }
 };
 
 /**
- * POST /api/tenants/search
- * NLP-based tenant search
+ * POST /api/smartprofiles/generate
+ * Generate SmartProfile via n8n (AI enhancement + embedding)
  */
-export const searchTenants = async (req: Request, res: Response) => {
+export const generateSmartProfile = async (req: Request, res: Response) => {
   try {
-    if (!validateSupabaseConfig('api_groups', 'searchTenants')) {
+    if (!validateSupabaseConfig('api_groups', 'generateSmartProfile')) {
       return res.status(500).json({
         error: 'Server configuration error: Missing Supabase configuration'
       });
     }
 
     const authHeader = req.headers.authorization;
+
     if (!authHeader) {
       return res.status(401).json({ error: 'Authorization header is required' });
     }
 
-    const { query, group_id, intent_code } = req.body;
+    const { tenant_id } = req.body;
+
+    if (!tenant_id) {
+      return res.status(400).json({ error: 'tenant_id is required' });
+    }
+
+    const environment = req.headers['x-environment'] as string | undefined;
+
+    const result = await groupsService.generateSmartProfile(authHeader, tenant_id, environment);
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error in generateSmartProfile controller:', error.message);
+
+    captureException(error instanceof Error ? error : new Error(String(error)), {
+      tags: { source: 'api_groups', action: 'generateSmartProfile' },
+      status: error.response?.status
+    });
+
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.error || error.message || 'Failed to generate SmartProfile';
+
+    return res.status(status).json({ success: false, error: message });
+  }
+};
+
+/**
+ * POST /api/smartprofiles/search
+ * Search SmartProfiles via n8n
+ */
+export const searchSmartProfiles = async (req: Request, res: Response) => {
+  try {
+    if (!validateSupabaseConfig('api_groups', 'searchSmartProfiles')) {
+      return res.status(500).json({
+        error: 'Server configuration error: Missing Supabase configuration'
+      });
+    }
+
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Authorization header is required' });
+    }
+
+    const { query, scope, group_id, tenant_id, limit, use_cache } = req.body;
 
     if (!query) {
       return res.status(400).json({ error: 'query is required' });
     }
 
-    const result = await groupsService.searchTenants(authHeader, query, group_id, intent_code);
+    const environment = req.headers['x-environment'] as string | undefined;
+
+    const result = await groupsService.searchSmartProfiles(authHeader, {
+      query,
+      scope,
+      group_id,
+      tenant_id,
+      limit,
+      use_cache
+    }, environment);
+
     return res.status(200).json(result);
   } catch (error: any) {
-    console.error('Error in searchTenants controller:', error.message);
+    console.error('Error in searchSmartProfiles controller:', error.message);
+
     captureException(error instanceof Error ? error : new Error(String(error)), {
-      tags: { source: 'api_groups', action: 'searchTenants' }
+      tags: { source: 'api_groups', action: 'searchSmartProfiles' },
+      status: error.response?.status
     });
+
     const status = error.response?.status || 500;
-    const message = error.response?.data?.error || error.message || 'Tenant search failed';
+    const message = error.response?.data?.error || error.message || 'Failed to search SmartProfiles';
+
+    return res.status(status).json({ success: false, error: message });
+  }
+};
+
+// SmartProfile wizard methods
+export const enhanceSmartProfile = async (req: Request, res: Response) => {
+  try {
+    if (!validateSupabaseConfig('api_groups', 'enhanceSmartProfile')) {
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Authorization header is required' });
+    const environment = req.headers['x-environment'] as string || 'live';
+    const { tenant_id, short_description } = req.body;
+    if (!tenant_id || !short_description) return res.status(400).json({ error: 'tenant_id and short_description are required' });
+    const result = await groupsService.enhanceSmartProfile(authHeader, tenant_id, short_description, environment);
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error in enhanceSmartProfile:', error.message);
+    captureException(error instanceof Error ? error : new Error(String(error)), { tags: { source: 'api_groups', action: 'enhanceSmartProfile' } });
+    return res.status(error.response?.status || 500).json({ success: false, error: error.response?.data?.error || error.message });
+  }
+};
+
+export const scrapeWebsiteForSmartProfile = async (req: Request, res: Response) => {
+  try {
+    if (!validateSupabaseConfig('api_groups', 'scrapeWebsiteForSmartProfile')) {
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Authorization header is required' });
+    const environment = req.headers['x-environment'] as string || 'live';
+    const { tenant_id, website_url } = req.body;
+    if (!tenant_id || !website_url) return res.status(400).json({ error: 'tenant_id and website_url are required' });
+    const result = await groupsService.scrapeWebsiteForSmartProfile(authHeader, tenant_id, website_url, environment);
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error in scrapeWebsiteForSmartProfile:', error.message);
+    captureException(error instanceof Error ? error : new Error(String(error)), { tags: { source: 'api_groups', action: 'scrapeWebsiteForSmartProfile' } });
+    return res.status(error.response?.status || 500).json({ success: false, error: error.response?.data?.error || error.message });
+  }
+};
+
+export const generateSmartProfileClusters = async (req: Request, res: Response) => {
+  try {
+    if (!validateSupabaseConfig('api_groups', 'generateSmartProfileClusters')) {
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Authorization header is required' });
+    const environment = req.headers['x-environment'] as string || 'live';
+    const { tenant_id, profile_text, keywords } = req.body;
+    if (!tenant_id || !profile_text) return res.status(400).json({ error: 'tenant_id and profile_text are required' });
+    const result = await groupsService.generateSmartProfileClusters(authHeader, tenant_id, profile_text, keywords, environment);
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error in generateSmartProfileClusters:', error.message);
+    captureException(error instanceof Error ? error : new Error(String(error)), { tags: { source: 'api_groups', action: 'generateSmartProfileClusters' } });
+    return res.status(error.response?.status || 500).json({ success: false, error: error.response?.data?.error || error.message });
+  }
+};
+
+export const saveSmartProfileClusters = async (req: Request, res: Response) => {
+  try {
+    if (!validateSupabaseConfig('api_groups', 'saveSmartProfileClusters')) {
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Authorization header is required' });
+    const { tenant_id, clusters } = req.body;
+    if (!tenant_id || !clusters) return res.status(400).json({ error: 'tenant_id and clusters are required' });
+    const result = await groupsService.saveSmartProfileClusters(authHeader, tenant_id, clusters);
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error in saveSmartProfileClusters:', error.message);
+    captureException(error instanceof Error ? error : new Error(String(error)), { tags: { source: 'api_groups', action: 'saveSmartProfileClusters' } });
+    return res.status(error.response?.status || 500).json({ success: false, error: error.response?.data?.error || error.message });
+  }
+};
+
+export const getSmartProfileClusters = async (req: Request, res: Response) => {
+  try {
+    if (!validateSupabaseConfig('api_groups', 'getSmartProfileClusters')) {
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Authorization header is required' });
+    const tenantId = req.params.tenantId;
+    if (!tenantId) return res.status(400).json({ error: 'tenantId parameter is required' });
+    const result = await groupsService.getSmartProfileClusters(authHeader, tenantId);
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error in getSmartProfileClusters:', error.message);
+    captureException(error instanceof Error ? error : new Error(String(error)), { tags: { source: 'api_groups', action: 'getSmartProfileClusters' } });
+    return res.status(error.response?.status || 500).json({ success: false, error: error.response?.data?.error || error.message });
+  }
+};
+
+// Tenant Dashboard methods
+export const getTenantStats = async (req: Request, res: Response) => {
+  try {
+    if (!validateSupabaseConfig('api_groups', 'getTenantStats')) {
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Authorization header is required' });
+    const { group_id } = req.body;
+    const result = await groupsService.getTenantStats(authHeader, group_id);
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error in getTenantStats:', error.message);
+    captureException(error instanceof Error ? error : new Error(String(error)), { tags: { source: 'api_groups', action: 'getTenantStats' } });
+    return res.status(error.response?.status || 500).json({ success: false, error: error.response?.data?.error || error.message });
+  }
+};
+
+export const searchTenants = async (req: Request, res: Response) => {
+  try {
+    if (!validateSupabaseConfig('api_groups', 'searchTenants')) {
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'Authorization header is required' });
+    const { query, group_id, intent_code } = req.body;
+    if (!query) return res.status(400).json({ error: 'query is required' });
+    const environment = req.headers['x-environment'] as string | undefined;
+    const result = await groupsService.searchTenants(authHeader, { query, group_id, intent_code }, environment);
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error in searchTenants:', error.message);
+    captureException(error instanceof Error ? error : new Error(String(error)), { tags: { source: 'api_groups', action: 'searchTenants' } });
+    return res.status(error.response?.status || 500).json({ success: false, error: error.response?.data?.error || error.message });
+  }
+};
+
+// ============================================
+// AI AGENT CONTROLLERS
+// Conversational AI for Group Discovery
+// ============================================
+
+/**
+ * POST /api/ai-agent/message
+ * Send message to AI Agent via N8N webhook
+ *
+ * Body:
+ * - message: string (required) - User's message
+ * - channel: 'chat' | 'whatsapp' | 'web' (required) - Channel type
+ * - group_id?: string - Optional group context
+ *
+ * Headers:
+ * - Authorization: Bearer token (required for chat/web)
+ * - x-environment: 'live' | 'test' (for n8n routing)
+ *
+ * For WhatsApp: phone is extracted from auth context
+ * For Chat/Web: user_id is extracted from auth token
+ */
+export const aiAgentMessage = async (req: Request, res: Response) => {
+  try {
+    if (!validateSupabaseConfig('api_groups', 'aiAgentMessage')) {
+      return res.status(500).json({
+        success: false,
+        error: 'Server configuration error: Missing Supabase configuration'
+      });
+    }
+
+    const { message, channel, group_id, phone } = req.body;
+
+    // Validate required fields
+    if (!message || typeof message !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: 'message is required and must be a string'
+      });
+    }
+
+    if (!channel || !['chat', 'whatsapp', 'web'].includes(channel)) {
+      return res.status(400).json({
+        success: false,
+        error: 'channel is required and must be "chat", "whatsapp", or "web"'
+      });
+    }
+
+    // Extract user_id from auth token for chat/web channels
+    let user_id: string | undefined;
+
+    if (channel === 'chat' || channel === 'web') {
+      const authHeader = req.headers.authorization;
+      if (!authHeader) {
+        return res.status(401).json({
+          success: false,
+          error: 'Authorization header is required for chat/web channels'
+        });
+      }
+
+      // Extract user_id from JWT token (assuming it's in the payload)
+      // The actual user_id extraction depends on your auth implementation
+      // For now, we'll pass the auth header and let the service handle it
+      // In production, you'd decode the JWT here
+      try {
+        const token = authHeader.replace('Bearer ', '');
+        // Decode JWT to get user_id (base64 decode the payload)
+        const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+        user_id = payload.sub || payload.user_id;
+      } catch (e) {
+        console.warn('Could not extract user_id from token, proceeding without it');
+      }
+    }
+
+    // For WhatsApp, phone should be provided in the request body
+    if (channel === 'whatsapp' && !phone) {
+      return res.status(400).json({
+        success: false,
+        error: 'phone is required for whatsapp channel'
+      });
+    }
+
+    // Get environment from header for n8n routing
+    const environment = req.headers['x-environment'] as string | undefined;
+
+    console.log(`🤖 AI Agent Controller: Processing ${channel} message`, {
+      hasUserId: !!user_id,
+      hasPhone: !!phone,
+      groupId: group_id,
+      messageLength: message.length
+    });
+
+    const result = await groupsService.aiAgentMessage(
+      {
+        message,
+        channel,
+        user_id,
+        phone,
+        group_id
+      },
+      environment
+    );
+
+    // Return appropriate status based on success
+    if (!result.success) {
+      return res.status(500).json(result);
+    }
+
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error in aiAgentMessage controller:', error.message);
+
+    captureException(error instanceof Error ? error : new Error(String(error)), {
+      tags: { source: 'api_groups', action: 'aiAgentMessage' },
+      status: error.response?.status
+    });
+
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.error || error.message || 'AI Agent request failed';
+
     return res.status(status).json({ success: false, error: message });
   }
 };
