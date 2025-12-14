@@ -1,0 +1,97 @@
+═══════════════════════════════════════════════════════════════════════════════
+AI AGENT MIGRATIONS - COPY & DEPLOYMENT INSTRUCTIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+These SQL migration files create the database infrastructure for the AI Agent
+feature (BBB WhatsApp/Chat integration).
+
+═══════════════════════════════════════════════════════════════════════════════
+FILE LIST
+═══════════════════════════════════════════════════════════════════════════════
+
+1. 001_create_ai_agent_sessions.sql
+   - Creates t_ai_agent_sessions table
+   - Indexes for phone/user/group lookups
+   - RLS policies for security
+
+2. 002_add_ai_agent_config_to_groups.sql
+   - Defines ai_agent JSONB schema for t_business_groups.settings
+   - Helper functions: get_ai_agent_config(), is_ai_agent_enabled()
+
+3. 003_create_user_lookup_rpc.sql
+   - get_user_by_phone() - Finds user by phone number
+   - normalize_phone() - Utility function
+
+4. 004_create_session_rpcs.sql
+   - get_ai_session() - Get active session
+   - create_ai_session() - Start new session
+   - update_ai_session() - Update context/history
+   - end_ai_session() - End session (Bye)
+   - switch_ai_session() - Switch groups
+   - cleanup_expired_ai_sessions() - Maintenance
+
+5. 005_create_group_activation_rpc.sql
+   - detect_group_activation() - Detect "Hi BBB" / "Bye"
+   - get_ai_enabled_groups() - List AI-enabled groups
+   - is_exit_command() - Quick exit check
+
+6. 006_create_access_check_rpc.sql
+   - check_user_group_access() - RBAC check (uses membership)
+   - check_phone_group_access() - Combined lookup + access
+   - get_user_accessible_groups() - User's groups
+
+7. 007_create_scoped_search_rpcs.sql
+   - scoped_member_search() - Vector search with scope
+   - get_members_by_scope() - List members
+   - get_member_contact() - Get contact details
+   - get_segments_by_scope() - Industry segments
+
+═══════════════════════════════════════════════════════════════════════════════
+DEPLOYMENT ORDER (IMPORTANT!)
+═══════════════════════════════════════════════════════════════════════════════
+
+Run in Supabase SQL Editor in this EXACT order:
+
+1. 001_create_ai_agent_sessions.sql
+2. 002_add_ai_agent_config_to_groups.sql
+3. 003_create_user_lookup_rpc.sql
+4. 004_create_session_rpcs.sql
+5. 005_create_group_activation_rpc.sql
+6. 006_create_access_check_rpc.sql
+7. 007_create_scoped_search_rpcs.sql
+
+THEN run seed data (008 - to be created):
+8. 008_seed_bbb_ai_config.sql
+
+═══════════════════════════════════════════════════════════════════════════════
+TESTING AFTER DEPLOYMENT
+═══════════════════════════════════════════════════════════════════════════════
+
+Run these queries in Supabase SQL Editor to verify:
+
+-- 1. Test user lookup (replace with real phone)
+SELECT * FROM get_user_by_phone('+919876543210');
+
+-- 2. Test group activation detection
+SELECT * FROM detect_group_activation('Hi BBB');
+SELECT * FROM detect_group_activation('Bye');
+
+-- 3. Test AI-enabled groups list
+SELECT * FROM get_ai_enabled_groups();
+
+-- 4. Test session creation (requires user_id and group_id)
+-- SELECT create_ai_session('user-uuid', '+919876543210', 'group-uuid', 'whatsapp', 'en');
+
+-- 5. Test access check
+-- SELECT * FROM check_user_group_access('user-uuid', 'group-uuid');
+
+═══════════════════════════════════════════════════════════════════════════════
+NOTES
+═══════════════════════════════════════════════════════════════════════════════
+
+- These files do NOT modify any submodules (no UI/API/Edge changes yet)
+- All changes are Supabase database level (SQL)
+- The 008_seed_bbb_ai_config.sql will add AI config to BBB group
+- N8N workflow integration comes after DB is ready
+
+═══════════════════════════════════════════════════════════════════════════════
