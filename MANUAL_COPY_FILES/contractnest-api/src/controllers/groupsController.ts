@@ -1708,14 +1708,13 @@ export const aiAgentMessage = async (req: Request, res: Response) => {
         });
       }
 
-      // Extract user_id from JWT token (assuming it's in the payload)
-      // The actual user_id extraction depends on your auth implementation
-      // For now, we'll pass the auth header and let the service handle it
-      // In production, you'd decode the JWT here
+      // Extract user_id from JWT token
+      // Supabase JWT has user_id in the 'sub' claim
       try {
         const token = authHeader.replace('Bearer ', '');
-        // Decode JWT to get user_id (base64 decode the payload)
-        const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+        const base64Payload = token.split('.')[1];
+        // Use global Buffer (Node.js) for base64 decoding
+        const payload = JSON.parse(globalThis.Buffer.from(base64Payload, 'base64').toString('utf8'));
         user_id = payload.sub || payload.user_id;
       } catch (e) {
         console.warn('Could not extract user_id from token, proceeding without it');
