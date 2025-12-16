@@ -1,5 +1,5 @@
 ═══════════════════════════════════════════════════════════════════════════════
-N8N AI AGENT RESPONSE NORMALIZATION + SIMPLIFIED VANI CHAT UX
+N8N AI AGENT INTEGRATION - COMPLETE PACKAGE
 ═══════════════════════════════════════════════════════════════════════════════
 
 FILES TO COPY:
@@ -14,6 +14,7 @@ FILES TO COPY:
    FROM: MANUAL_COPY_FILES\groupsService.ts
    TO:   contractnest-api\src\services\groupsService.ts
    PURPOSE: Normalize N8N response (maps 'response' -> 'message' for frontend)
+            + Extract data from N8N 500 error responses
 
 3. aiAgentService.ts (NEW FILE)
    FROM: MANUAL_COPY_FILES\aiAgentService.ts
@@ -23,17 +24,46 @@ FILES TO COPY:
 4. VaNiChatPage.tsx
    FROM: MANUAL_COPY_FILES\VaNiChatPage.tsx
    TO:   contractnest-ui\src\pages\VaNi\channels\VaNiChatPage.tsx
-   PURPOSE: Simplified UX - welcome message with instructions, pre-filled "Hi BBB",
-            markdown rendering, hidden intent buttons (N8N shows its own menu)
+   PURPOSE: - Simplified UX with welcome message and instructions
+            - Pre-filled "Hi BBB" input
+            - Markdown rendering for bold, bullets, emojis
+            - ACTION BUTTONS: Call, Email, Website, Get Details
+            - Prevent double welcome message (React StrictMode fix)
 
 ═══════════════════════════════════════════════════════════════════════════════
 WHAT WAS FIXED:
 ──────────────
-- N8N returns { success: true, response: "..." }
-- Frontend expected { success: true, message: "..." }
-- Backend now normalizes 'response' -> 'message'
-- Added markdown renderer for bold, bullets, emojis
-- Simplified welcome message with clear instructions
-- Input pre-filled with "Hi BBB" for easy start
+1. N8N Response Normalization: 'response' -> 'message'
+2. Handle N8N 500 errors that contain valid data
+3. Handle session_id being an error object
+4. Added markdown renderer
+5. Added action buttons on each result card
+6. Fixed double welcome message issue
+
+═══════════════════════════════════════════════════════════════════════════════
+FOR N8N DEVELOPER - REQUIRED RESPONSE FORMAT:
+──────────────
+N8N must return STRUCTURED results array (not text blob):
+
+{
+  "success": true,
+  "response": "Found 3 businesses:",
+  "results": [
+    {
+      "membership_id": "uuid",
+      "business_name": "Company Name",
+      "business_category": "IT",
+      "city": "Hyderabad",
+      "chapter": "Jubilee Hills",
+      "business_phone": "+91 9876543210",
+      "business_email": "contact@company.com",
+      "website_url": "https://company.com",
+      "ai_enhanced_description": "...",
+      "similarity": 0.89
+    }
+  ],
+  "results_count": 3,
+  "session_id": "uuid-string-not-object"
+}
 
 ═══════════════════════════════════════════════════════════════════════════════
