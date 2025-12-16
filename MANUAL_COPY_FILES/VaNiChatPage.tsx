@@ -159,6 +159,7 @@ const VaNiChatPage: React.FC = () => {
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
   const navigate = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isInitializedRef = useRef(false);
 
   // State
   const [session, setSession] = useState<ChatSession | null>(null);
@@ -180,6 +181,10 @@ const VaNiChatPage: React.FC = () => {
   }, []);
 
   const initializeChat = async () => {
+    // Prevent double initialization (React StrictMode)
+    if (isInitializedRef.current) return;
+    isInitializedRef.current = true;
+
     setIsInitializing(true);
     try {
       // Get or create session (for tracking purposes)
