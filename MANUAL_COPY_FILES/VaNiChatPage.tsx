@@ -408,7 +408,8 @@ const VaNiChatPage: React.FC = () => {
           </p>
         )}
 
-        <div className="flex flex-wrap gap-3 text-sm">
+        {/* Contact Info Row */}
+        <div className="flex flex-wrap gap-3 text-sm mb-3">
           {result.city && (
             <div className="flex items-center space-x-1" style={{ color: colors.utility.secondaryText }}>
               <MapPin className="w-3 h-3" />
@@ -416,20 +417,38 @@ const VaNiChatPage: React.FC = () => {
             </div>
           )}
           {result.business_phone && (
-            <a
-              href={`tel:${result.business_phone}`}
-              className="flex items-center space-x-1 hover:underline"
-              style={{ color: colors.semantic.info }}
-            >
+            <div className="flex items-center space-x-1" style={{ color: colors.utility.secondaryText }}>
               <Phone className="w-3 h-3" />
               <span>{result.business_phone}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Action Buttons Row */}
+        <div className="flex flex-wrap gap-2 pt-2 border-t" style={{ borderColor: `${colors.utility.primaryText}10` }}>
+          {result.business_phone && (
+            <a
+              href={`tel:${result.business_phone}`}
+              className="flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-80"
+              style={{
+                backgroundColor: `${colors.semantic.success}15`,
+                color: colors.semantic.success,
+                border: `1px solid ${colors.semantic.success}30`
+              }}
+            >
+              <Phone className="w-3 h-3" />
+              <span>Call</span>
             </a>
           )}
           {result.business_email && (
             <a
               href={`mailto:${result.business_email}`}
-              className="flex items-center space-x-1 hover:underline"
-              style={{ color: colors.semantic.warning }}
+              className="flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-80"
+              style={{
+                backgroundColor: `${colors.semantic.warning}15`,
+                color: colors.semantic.warning,
+                border: `1px solid ${colors.semantic.warning}30`
+              }}
             >
               <Mail className="w-3 h-3" />
               <span>Email</span>
@@ -440,14 +459,32 @@ const VaNiChatPage: React.FC = () => {
               href={result.website_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center space-x-1 hover:underline"
-              style={{ color: colors.brand.secondary }}
+              className="flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-80"
+              style={{
+                backgroundColor: `${colors.semantic.info}15`,
+                color: colors.semantic.info,
+                border: `1px solid ${colors.semantic.info}30`
+              }}
             >
               <Globe className="w-3 h-3" />
               <span>Website</span>
-              <ExternalLink className="w-3 h-3" />
             </a>
           )}
+          <button
+            onClick={() => {
+              // Send follow-up message to get more details
+              setInputValue(`Tell me more about ${result.business_name}`);
+            }}
+            className="flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-80"
+            style={{
+              backgroundColor: `${colors.brand.primary}15`,
+              color: colors.brand.primary,
+              border: `1px solid ${colors.brand.primary}30`
+            }}
+          >
+            <Info className="w-3 h-3" />
+            <span>Get Details</span>
+          </button>
         </div>
       </div>
     );
