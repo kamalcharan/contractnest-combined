@@ -34,7 +34,8 @@ const CompleteStep: React.FC = () => {
     setIsCompleting(true);
     try {
       await onComplete({ acknowledged: true });
-      // Navigation will be handled by onComplete
+      // Navigate to dashboard after completion
+      navigate('/dashboard');
     } catch (error) {
       console.error('Error completing onboarding:', error);
       setIsCompleting(false);
@@ -49,8 +50,8 @@ const CompleteStep: React.FC = () => {
     },
     {
       icon: Settings,
-      title: 'Sequence Numbers',
-      description: 'Auto-numbering for contracts, invoices & more'
+      title: 'Quick Start Data',
+      description: 'Required data has been set up for quick start'
     },
     {
       icon: Users,
