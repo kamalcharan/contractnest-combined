@@ -171,12 +171,12 @@ const ContactFields: React.FC<ContactFieldsProps> = ({
   };
   
   /**
-   * Handle phone change
+   * Handle phone change - only allow digits
    */
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
+    const value = e.target.value.replace(/[^\d]/g, ''); // Only digits
     onPhoneChange(value);
-    
+
     if (phoneTouched) {
       setPhoneError(validatePhone(value));
     }
@@ -191,12 +191,12 @@ const ContactFields: React.FC<ContactFieldsProps> = ({
   };
   
   /**
-   * Handle WhatsApp change
+   * Handle WhatsApp change - only allow digits
    */
   const handleWhatsAppChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
+    const value = e.target.value.replace(/[^\d]/g, ''); // Only digits
     onWhatsAppChange(value);
-    
+
     if (whatsappTouched) {
       setWhatsappError(validateWhatsApp(value));
     }
