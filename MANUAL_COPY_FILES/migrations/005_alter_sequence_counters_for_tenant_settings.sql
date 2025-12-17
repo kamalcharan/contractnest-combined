@@ -57,9 +57,12 @@ AND sc.sequence_code IS NULL;
 -- STEP 4: Update constraints
 -- ============================================================
 
--- Drop old unique constraint if exists
+-- Drop old unique constraints if they exist
 ALTER TABLE public.t_sequence_counters
 DROP CONSTRAINT IF EXISTS uq_sequence_counter_unique;
+
+ALTER TABLE public.t_sequence_counters
+DROP CONSTRAINT IF EXISTS uq_sequence_counter;
 
 -- Add new unique constraint (sequence_code based)
 ALTER TABLE public.t_sequence_counters
