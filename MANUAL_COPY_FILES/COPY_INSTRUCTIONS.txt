@@ -1,12 +1,21 @@
 # MANUAL_COPY_FILES - JTD Framework Files
 # Generated: 2025-12-17
+# Updated: 2025-12-17
 # ============================================================
 
 ## PURPOSE
-These files need to be manually copied to your local submodules and pushed.
-The folder structure matches the target repository structure exactly.
+All JTD framework files are stored here in contractnest-combined repo.
+Files will be copied to submodules ONLY when ready to push (at certain stage).
+Folder structure mirrors the target repository structure for easy copy.
+
+## WORKFLOW
+1. Files stay in MANUAL_COPY_FILES (committed to contractnest-combined)
+2. Review and iterate on files here
+3. When ready: copy to local submodules and push
 
 ## FILES INCLUDED
+
+### contractnest-edge (Database Migrations)
 
 1. contractnest-edge/supabase/migrations/jtd-framework/001_create_jtd_master_tables.sql
    - Creates 12 JTD tables with indexes, triggers, and helper functions
@@ -22,11 +31,13 @@ The folder structure matches the target repository structure exactly.
 3. contractnest-edge/supabase/migrations/jtd-framework/README.md
    - Migration documentation and usage examples
 
+### ClaudeDocumentation (Documentation)
+
 4. ClaudeDocumentation/JTD/JTD-Framework.md
    - Comprehensive JTD framework documentation ("bible")
    - Architecture, core concepts, database schema, status flows, etc.
 
-## TARGET REPOSITORIES
+## TARGET REPOSITORIES (When Ready to Push)
 
 - contractnest-edge: https://github.com/kamalcharan/contractnest-edge.git
 - ClaudeDocumentation: https://github.com/kamalcharan/ClaudeDocumentation.git
@@ -34,9 +45,11 @@ The folder structure matches the target repository structure exactly.
 ## FEATURE BRANCH NAME
 claude/feature-hDIp7
 
-## NOTES
-- All tables have is_active for soft delete
-- Transaction tables have is_live for test/prod mode separation
-- All tables have audit fields: created_by, created_at, updated_by, updated_at
-- Status history table (n_jtd_status_history) tracks every status change with duration
+## KEY DESIGN DECISIONS
+- is_active: Soft delete on all tables
+- is_live: Test/prod mode separation on transaction tables
+- Audit fields: created_by, created_at, updated_by, updated_at on ALL tables
+- Status history: n_jtd_status_history tracks every status change with duration
 - VaNi UUID: 00000000-0000-0000-0000-000000000001
+- Statuses: Per event type (not global)
+- Status flows: Soft enforcement (invalid transitions allowed but flagged)
