@@ -52,9 +52,10 @@ import StorageSetupStep from './pages/onboarding/steps/StorageSetupStep';
 import UserProfileStep from '@/pages/onboarding/steps/UserProfileStep';
 import ThemeSelectionStep from '@/pages/onboarding/steps/ThemeSelectionStep';
 import BusinessBasicStep from '@/pages/onboarding/steps/BusinessBasicStep';
-import BusinessBrandingStep from '@/pages/onboarding/steps/BusinessBrandingStep';     
+import BusinessBrandingStep from '@/pages/onboarding/steps/BusinessBrandingStep';
 import BusinessPreferencesStep from '@/pages/onboarding/steps/BusinessPreferencesStep';
 import SequenceNumbersStep from '@/pages/onboarding/steps/SequenceNumbersStep';
+import CompleteStep from '@/pages/onboarding/steps/CompleteStep';
 
 
 //VaNi Pages
@@ -341,7 +342,7 @@ const AppContent: React.FC = () => {
 <Route path="business-preferences" element={<BusinessPreferencesStep />} />
 <Route path="sequence-numbers" element={<SequenceNumbersStep />} />
   <Route path="master-data" element={<div>Master Data Step (Coming Soon)</div>} />
-  <Route path="complete" element={<div>Complete Step (Coming Soon)</div>} />
+  <Route path="complete" element={<CompleteStep />} />
 </Route>
           {/* Protected Routes with MainLayout - Your Original Structure */}
           <Route
