@@ -431,8 +431,8 @@ const GroupProfileDashboard: React.FC = () => {
     navigate('/settings/configure/customer-channels/groups');
   };
 
-  // Handle AI enhancement - returns enhanced description for edit mode
-  const handleEnhanceWithAI = async (description: string): Promise<string | undefined> => {
+  // Handle AI enhancement
+  const handleEnhanceWithAI = async (description: string) => {
     setOriginalDescription(description);
 
     try {
@@ -448,14 +448,10 @@ const GroupProfileDashboard: React.FC = () => {
       toast.success('AI enhancement complete!', {
         style: { background: colors.semantic.success, color: '#FFF' }
       });
-
-      // Return enhanced description for edit mode form update
-      return result.ai_enhanced_description;
     } catch (error: any) {
       toast.error(error.message || 'Enhancement failed', {
         style: { background: colors.semantic.error, color: '#FFF' }
       });
-      return undefined;
     }
   };
 
@@ -564,6 +560,8 @@ const GroupProfileDashboard: React.FC = () => {
         profile_data: {
           ...membership?.profile_data,
           short_description: data.short_description,
+          // Also update ai_enhanced_description when saving edited content
+          ai_enhanced_description: data.short_description,
           generation_method: data.generation_method,
           website_url: data.website_url
         },
