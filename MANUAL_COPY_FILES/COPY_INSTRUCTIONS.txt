@@ -1,94 +1,33 @@
 ═══════════════════════════════════════════════════
-📋 MANUAL COPY INSTRUCTIONS
-═══════════════════════════════════════════════════
-Branch: claude/onboarding-feature-tt71K
-Date: December 17, 2025
-Feature: Onboarding - Role Seeding + Owner-Only Onboarding
-
-═══════════════════════════════════════════════════
-🎯 SUMMARY OF CHANGES
+MANUAL COPY INSTRUCTIONS - Profile Edit Mode in Onboarding
 ═══════════════════════════════════════════════════
 
-This update implements:
+Files to copy:
 
-1. ROLE SEEDING: During signup, seed TWO default roles:
-   - Owner (non-deletable, green #32e275, sequence 1) - assigned to user
-   - Admin (deletable, blue #3b82f6, sequence 2)
+1. PersonalInfoSection.tsx
+   FROM: MANUAL_COPY_FILES\PersonalInfoSection.tsx
+   TO:   contractnest-ui\src\components\users\user-profile\PersonalInfoSection.tsx
 
-2. ONBOARDING FOR OWNERS ONLY:
-   - Only the workspace owner (signup user) sees onboarding
-   - Invited users see "Onboarding Pending" screen with owner contact
-   - Invited users do NOT affect tenant's onboarding status
-   - Onboarding status API now returns owner info
+2. userProfileStep.tsx
+   FROM: MANUAL_COPY_FILES\userProfileStep.tsx
+   TO:   contractnest-ui\src\pages\onboarding\steps\userProfileStep.tsx
 
 ═══════════════════════════════════════════════════
-📦 FILES TO COPY (6 FILES)
+CHANGES MADE:
 ═══════════════════════════════════════════════════
 
-SUBMODULE: contractnest-edge (3 files)
-─────────────────────────────────────────────────
+PersonalInfoSection.tsx:
+- Added initialEditMode prop (optional, defaults to false)
+- Component now accepts initialEditMode to start in edit mode
 
-1. supabase/functions/auth/handlers/roles.ts
-   FROM: MANUAL_COPY_FILES/contractnest-edge/supabase/functions/auth/handlers/roles.ts
-   TO:   contractnest-edge/supabase/functions/auth/handlers/roles.ts
-   Changes: Seed Admin + Owner roles during signup
-
-2. supabase/functions/auth/handlers/registration.ts
-   FROM: MANUAL_COPY_FILES/contractnest-edge/supabase/functions/auth/handlers/registration.ts
-   TO:   contractnest-edge/supabase/functions/auth/handlers/registration.ts
-   Changes: Removed onboarding upsert from invite registration
-
-3. supabase/functions/onboarding/index.ts
-   FROM: MANUAL_COPY_FILES/contractnest-edge/supabase/functions/onboarding/index.ts
-   TO:   contractnest-edge/supabase/functions/onboarding/index.ts
-   Changes: Added owner info to onboarding status response
-
-
-SUBMODULE: contractnest-ui (3 files)
-─────────────────────────────────────────────────
-
-4. src/contexts/OnboardingContext.ts
-   FROM: MANUAL_COPY_FILES/contractnest-ui/src/contexts/OnboardingContext.ts
-   TO:   contractnest-ui/src/contexts/OnboardingContext.ts
-   Changes: Check is_owner before redirecting to onboarding
-
-5. src/pages/onboarding/OnboardingPendingPage.tsx (NEW FILE)
-   FROM: MANUAL_COPY_FILES/contractnest-ui/src/pages/onboarding/OnboardingPendingPage.tsx
-   TO:   contractnest-ui/src/pages/onboarding/OnboardingPendingPage.tsx
-   Changes: New page for non-owners when onboarding is pending
-
-6. src/App.tsx
-   FROM: MANUAL_COPY_FILES/contractnest-ui/src/App.tsx
-   TO:   contractnest-ui/src/App.tsx
-   Changes: Added /onboarding-pending route
-
+userProfileStep.tsx:
+- Passes initialEditMode={true} to PersonalInfoSection
+- During onboarding, profile form now opens in edit mode immediately
 
 ═══════════════════════════════════════════════════
-✅ TESTING CHECKLIST
+PURPOSE:
 ═══════════════════════════════════════════════════
 
-After deploying, test the following:
-
-ROLE SEEDING:
-[ ] 1. Create a new signup (new tenant)
-[ ] 2. Navigate to Configure -> Settings -> LOV -> Roles
-      - Should see TWO roles: Owner and Admin
-[ ] 3. Verify Owner role is NOT deletable
-
-ONBOARDING FOR OWNERS:
-[ ] 4. After signup, owner should be redirected to /onboarding
-[ ] 5. Owner can complete all onboarding steps
-[ ] 6. After completion, owner goes to /dashboard
-
-ONBOARDING FOR INVITED USERS:
-[ ] 7. Owner invites a new user (before completing onboarding)
-[ ] 8. Invited user registers via invitation link
-[ ] 9. Invited user should see "Onboarding Pending" screen
-      - Shows workspace name
-      - Shows owner name and email
-      - Has "Contact Owner" button (mailto link)
-      - Has "Check Again" button
-[ ] 10. Owner completes onboarding
-[ ] 11. Invited user clicks "Check Again"
-[ ] 12. Invited user should be redirected to /dashboard
-
+Step 3 "Your Profile" in onboarding now opens directly in EDIT MODE
+so users can immediately add their mobile number and photo without
+needing to click "Edit Profile" button first.
