@@ -1,33 +1,91 @@
 ═══════════════════════════════════════════════════
-MANUAL COPY INSTRUCTIONS - Sequence Numbers Seeding Fix
+SEQUENCE NUMBERS - COMPLETE ARCHITECTURE REFACTOR
 ═══════════════════════════════════════════════════
 
-Files to copy:
+NEW ARCHITECTURE:
+- t_category_master & t_category_details = GLOBAL (templates only)
+- t_sequence_counters = TENANT-SPECIFIC (settings + counters)
+
+═══════════════════════════════════════════════════
+STEP 1: RUN MIGRATIONS (in Supabase SQL Editor)
+═══════════════════════════════════════════════════
+
+Run these two migrations in ORDER:
+
+1. 005_alter_sequence_counters_for_tenant_settings.sql
+   - Adds settings columns (prefix, padding, etc.) to t_sequence_counters
+   - Creates get_next_formatted_sequence_v2 RPC function
+
+2. 006_seed_global_sequence_definitions.sql
+   - Creates global "sequence_numbers" category in t_category_master
+   - Creates global sequence type templates in t_category_details
+   - These are TEMPLATES used when seeding tenant data
+
+═══════════════════════════════════════════════════
+STEP 2: COPY FILES
+═══════════════════════════════════════════════════
 
 1. index.ts (sequences edge function)
    FROM: MANUAL_COPY_FILES\index.ts
    TO:   contractnest-edge\supabase\functions\sequences\index.ts
 
 ═══════════════════════════════════════════════════
-CHANGES MADE:
+STEP 3: DEPLOY EDGE FUNCTION
 ═══════════════════════════════════════════════════
 
-- Fixed seedSequences() function to CREATE category master if not exists
-- Added tenant_id filter when checking for existing category
-- Follows same pattern as roles.ts (get or create)
+cd contractnest-edge
+supabase functions deploy sequences
 
 ═══════════════════════════════════════════════════
-THE BUG:
+CHANGES MADE TO EDGE FUNCTION:
 ═══════════════════════════════════════════════════
 
-Previously, the edge function assumed category_master entry existed.
-It threw error: "sequence_numbers category not found in master"
+1. seedSequences() - Now inserts into t_sequence_counters
+   - Creates rows for BOTH live and test environments
+   - Uses seed data from API layer OR global templates
 
-Now it creates the category if missing (like roles.ts does).
+2. getSequenceConfigs() - Now queries t_sequence_counters directly
+   - Single source of truth
+   - No more joins with t_category_details
+
+3. getNextSequence() - Uses new get_next_formatted_sequence_v2 RPC
+   - Queries t_sequence_counters for settings
+   - Atomically increments counter
+
+4. getSequenceStatus() - Queries t_sequence_counters directly
+
+5. createSequenceConfig() - Inserts into t_sequence_counters
+
+6. updateSequenceConfig() - Updates t_sequence_counters
+
+7. deleteSequenceConfig() - Soft deletes in t_sequence_counters
 
 ═══════════════════════════════════════════════════
-DEPLOYMENT REQUIRED:
+SERVICE LAYER FOR OTHER MODULES:
 ═══════════════════════════════════════════════════
 
-After copying, deploy the sequences edge function:
-  supabase functions deploy sequences
+For Contact module (or any module) to get next sequence:
+
+API Call:
+  POST /api/sequences/next/CONTACT
+  Headers: x-tenant-id, x-environment (live/test)
+
+Response:
+  {
+    "formatted": "CT-0001",
+    "raw_value": 1
+  }
+
+Or use RPC directly:
+  SELECT get_next_formatted_sequence_v2('CONTACT', tenant_id, true);
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST:
+═══════════════════════════════════════════════════
+
+- [ ] Run migration 005 (alter table)
+- [ ] Run migration 006 (global templates)
+- [ ] Deploy sequences edge function
+- [ ] Test onboarding - sequence numbers setup
+- [ ] Test Settings > Sequence Numbers page
+- [ ] Test creating a contact (gets sequence number)
