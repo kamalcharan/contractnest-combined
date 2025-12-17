@@ -1,33 +1,33 @@
 ═══════════════════════════════════════════════════
-MANUAL COPY INSTRUCTIONS - Profile Edit Mode in Onboarding
+MANUAL COPY INSTRUCTIONS - Sequence Numbers Seeding Fix
 ═══════════════════════════════════════════════════
 
 Files to copy:
 
-1. PersonalInfoSection.tsx
-   FROM: MANUAL_COPY_FILES\PersonalInfoSection.tsx
-   TO:   contractnest-ui\src\components\users\user-profile\PersonalInfoSection.tsx
-
-2. userProfileStep.tsx
-   FROM: MANUAL_COPY_FILES\userProfileStep.tsx
-   TO:   contractnest-ui\src\pages\onboarding\steps\userProfileStep.tsx
+1. index.ts (sequences edge function)
+   FROM: MANUAL_COPY_FILES\index.ts
+   TO:   contractnest-edge\supabase\functions\sequences\index.ts
 
 ═══════════════════════════════════════════════════
 CHANGES MADE:
 ═══════════════════════════════════════════════════
 
-PersonalInfoSection.tsx:
-- Added initialEditMode prop (optional, defaults to false)
-- Component now accepts initialEditMode to start in edit mode
-
-userProfileStep.tsx:
-- Passes initialEditMode={true} to PersonalInfoSection
-- During onboarding, profile form now opens in edit mode immediately
+- Fixed seedSequences() function to CREATE category master if not exists
+- Added tenant_id filter when checking for existing category
+- Follows same pattern as roles.ts (get or create)
 
 ═══════════════════════════════════════════════════
-PURPOSE:
+THE BUG:
 ═══════════════════════════════════════════════════
 
-Step 3 "Your Profile" in onboarding now opens directly in EDIT MODE
-so users can immediately add their mobile number and photo without
-needing to click "Edit Profile" button first.
+Previously, the edge function assumed category_master entry existed.
+It threw error: "sequence_numbers category not found in master"
+
+Now it creates the category if missing (like roles.ts does).
+
+═══════════════════════════════════════════════════
+DEPLOYMENT REQUIRED:
+═══════════════════════════════════════════════════
+
+After copying, deploy the sequences edge function:
+  supabase functions deploy sequences
