@@ -112,9 +112,10 @@ serve(async (req) => {
 
     // =================================================================
     // GET /configs - List all sequence configurations
+    // All DB operations use adminSupabase to bypass RLS (tenant isolation handled by tenantHeader)
     // =================================================================
     if ((resourceType === 'configs' || resourceType === null) && req.method === 'GET') {
-      return await getSequenceConfigs(supabase, tenantHeader, isLive, requestId);
+      return await getSequenceConfigs(adminSupabase, tenantHeader, isLive, requestId);
     }
 
     // =================================================================
@@ -130,14 +131,14 @@ serve(async (req) => {
         );
       }
 
-      return await getNextSequence(supabase, tenantHeader, sequenceCode, isLive, requestId);
+      return await getNextSequence(adminSupabase, tenantHeader, sequenceCode, isLive, requestId);
     }
 
     // =================================================================
     // GET /status - Get status of all sequences with current values
     // =================================================================
     if (resourceType === 'status' && req.method === 'GET') {
-      return await getSequenceStatus(supabase, tenantHeader, isLive, requestId);
+      return await getSequenceStatus(adminSupabase, tenantHeader, isLive, requestId);
     }
 
     // =================================================================
@@ -145,7 +146,7 @@ serve(async (req) => {
     // =================================================================
     if (resourceType === 'configs' && req.method === 'POST') {
       const data = await req.json();
-      return await createSequenceConfig(supabase, tenantHeader, isLive, data, userData.user.id, requestId);
+      return await createSequenceConfig(adminSupabase, tenantHeader, isLive, data, userData.user.id, requestId);
     }
 
     // =================================================================
@@ -162,7 +163,7 @@ serve(async (req) => {
       }
 
       const data = await req.json();
-      return await updateSequenceConfig(supabase, tenantHeader, configId, data, userData.user.id, requestId);
+      return await updateSequenceConfig(adminSupabase, tenantHeader, configId, data, userData.user.id, requestId);
     }
 
     // =================================================================
@@ -178,7 +179,7 @@ serve(async (req) => {
         );
       }
 
-      return await deleteSequenceConfig(supabase, tenantHeader, configId, requestId);
+      return await deleteSequenceConfig(adminSupabase, tenantHeader, configId, requestId);
     }
 
     // =================================================================
@@ -195,13 +196,12 @@ serve(async (req) => {
         );
       }
 
-      return await resetSequence(supabase, tenantHeader, sequenceCode, isLive, data.newStartValue, requestId);
+      return await resetSequence(adminSupabase, tenantHeader, sequenceCode, isLive, data.newStartValue, requestId);
     }
 
     // =================================================================
     // POST /seed - Seed default sequences for tenant (onboarding)
     // Now accepts seedData from API layer for single source of truth
-    // Uses adminSupabase to bypass RLS for admin operations
     // =================================================================
     if (resourceType === 'seed' && req.method === 'POST') {
       const data = await req.json().catch(() => ({}));
@@ -222,7 +222,7 @@ serve(async (req) => {
         );
       }
 
-      return await backfillSequence(supabase, tenantHeader, sequenceCode, isLive, requestId);
+      return await backfillSequence(adminSupabase, tenantHeader, sequenceCode, isLive, requestId);
     }
 
     return new Response(
