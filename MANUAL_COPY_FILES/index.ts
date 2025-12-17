@@ -50,7 +50,7 @@ serve(async (req) => {
       );
     }
 
-    // Create supabase client with service role key
+    // Create supabase client with service role key (for user validation)
     const supabase = createClient(supabaseUrl, supabaseKey, {
       global: {
         headers: {
@@ -58,6 +58,14 @@ serve(async (req) => {
           'x-tenant-id': tenantHeader
         }
       },
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false
+      }
+    });
+
+    // Create admin client WITHOUT user auth header - bypasses RLS for admin operations
+    const adminSupabase = createClient(supabaseUrl, supabaseKey, {
       auth: {
         persistSession: false,
         autoRefreshToken: false
@@ -193,11 +201,12 @@ serve(async (req) => {
     // =================================================================
     // POST /seed - Seed default sequences for tenant (onboarding)
     // Now accepts seedData from API layer for single source of truth
+    // Uses adminSupabase to bypass RLS for admin operations
     // =================================================================
     if (resourceType === 'seed' && req.method === 'POST') {
       const data = await req.json().catch(() => ({}));
       const seedData = data.seedData || null;  // Seed data from API layer
-      return await seedSequences(supabase, tenantHeader, userData.user.id, isLive, seedData, requestId);
+      return await seedSequences(adminSupabase, tenantHeader, userData.user.id, isLive, seedData, requestId);
     }
 
     // =================================================================
