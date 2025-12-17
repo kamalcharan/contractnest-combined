@@ -47,6 +47,7 @@ import CreateTenantPage from './pages/auth/CreateTenantPage';
 import WelcomeStep from './pages/onboarding/steps/WelcomeStep';
 import OnboardingIndexPage from './pages/onboarding/index';
 import OnboardingLayout from './components/onboarding/OnboardingLayout';
+import OnboardingPendingPage from './pages/onboarding/OnboardingPendingPage';
 import StorageSetupStep from './pages/onboarding/steps/StorageSetupStep';
 import UserProfileStep from '@/pages/onboarding/steps/UserProfileStep';
 import ThemeSelectionStep from '@/pages/onboarding/steps/ThemeSelectionStep';
@@ -82,9 +83,14 @@ import WhatsAppIntegrationPage from './vani/pages/channels/WhatsAppIntegrationPa
 // ✅ NEW: BBB Directory Pages
 import BBBProfileOnboardingPage from './pages/VaNi/channels/BBBProfileOnboardingPage';
 import BBBAdminDashboard from './pages/VaNi/channels/BBBAdminDashboard';
+import VaNiChatPage from './pages/VaNi/channels/VaNiChatPage';
 
 // ✅ Implementation Toolkit
 import TenantProfilesPage from './pages/VaNi/TenantProfilesPage';
+
+// ✅ NEW: Groups Pages (Customer Channels)
+import GroupsListPage from './pages/settings/customer-channels/GroupsListPage';
+import GroupProfileDashboard from './pages/settings/customer-channels/GroupProfileDashboard';
 
 // MISC Pages
 import { 
@@ -127,6 +133,8 @@ import UserProfilePage from './pages/settings/users/user-profile';
 import BusinessProfilePage from './pages/settings/business-profile';
 import EditBusinessProfilePage from './pages/settings/business-profile/edit';
 import OnboardingBusinessProfilePage from './pages/onboarding/business-profile';
+import SmartProfilePage from './pages/settings/business-profile/smart-profile';
+
 
 // Integration pages
 import IntegrationsPage from './pages/settings/integrations';
@@ -304,6 +312,16 @@ const AppContent: React.FC = () => {
             }
           />
           
+          {/* Onboarding Pending - for non-owners when onboarding is not complete */}
+          <Route
+            path="/onboarding-pending"
+            element={
+              <ProtectedRoute requireTenant={true}>
+                <OnboardingPendingPage />
+              </ProtectedRoute>
+            }
+          />
+
           {/* Complete Onboarding Routes - with Layout */}
           <Route
   path="/onboarding"
@@ -419,6 +437,8 @@ const AppContent: React.FC = () => {
             {/* Business Profile Settings */}
             <Route path="business-profile" element={<BusinessProfilePage />} />
             <Route path="business-profile/edit" element={<EditBusinessProfilePage />} />
+            <Route path="business-profile/smart-profile" element={<SmartProfilePage />} />
+
             
             {/* Storage Settings */}
             <Route path="configure/storage" element={<StorageSettingsPage />} />
@@ -437,7 +457,11 @@ const AppContent: React.FC = () => {
             
             {/* Integration Settings */}
             <Route path="integrations" element={<IntegrationsPage />} />
-            
+
+            {/* ✅ NEW: Customer Channels - Groups */}
+            <Route path="configure/customer-channels/groups" element={<GroupsListPage />} />
+            <Route path="configure/customer-channels/groups/:groupId" element={<GroupProfileDashboard />} />
+
             {/* Business Model Routes */}
             
             {/* Admin - Pricing Plans Management */}
@@ -501,6 +525,7 @@ const AppContent: React.FC = () => {
             {/* ✅ NEW: BBB Directory Routes */}
             <Route path="channels/bbb/onboarding" element={<BBBProfileOnboardingPage />} />
             <Route path="channels/bbb/admin" element={<BBBAdminDashboard />} />
+            <Route path="channels/bbb/chat" element={<VaNiChatPage />} />
 
             {/* ✅ Implementation Toolkit Routes */}
             <Route path="tenant-profiles" element={<TenantProfilesPage />} />
