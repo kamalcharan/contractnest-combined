@@ -1,8 +1,8 @@
 # JTD (Jobs To Do) Framework
 
-> **Version:** 1.0.0
+> **Version:** 1.1.0
 > **Last Updated:** 2025-12-17
-> **Status:** Architecture Design Phase
+> **Status:** Architecture Finalized
 
 ---
 
@@ -12,15 +12,17 @@
 2. [Core Concepts](#2-core-concepts)
 3. [VaNi Integration](#3-vani-integration)
 4. [Architecture](#4-architecture)
-5. [Database Schema](#5-database-schema)
-6. [Event Types](#6-event-types)
-7. [Channels](#7-channels)
-8. [Status Flows](#8-status-flows)
-9. [Source Types](#9-source-types)
-10. [Configuration](#10-configuration)
-11. [Implementation Status](#11-implementation-status)
-12. [Open Questions](#12-open-questions)
-13. [Change Log](#13-change-log)
+5. [API Endpoints](#5-api-endpoints)
+6. [Database Schema](#6-database-schema)
+7. [Event Types](#7-event-types)
+8. [Channels](#8-channels)
+9. [Status Flows](#9-status-flows)
+10. [Source Types](#10-source-types)
+11. [Configuration](#11-configuration)
+12. [Implementation Status](#12-implementation-status)
+13. [Architecture Decisions](#13-architecture-decisions)
+14. [Implementation Sequence](#14-implementation-sequence)
+15. [Change Log](#15-change-log)
 
 ---
 
@@ -140,49 +142,154 @@ This is stored in `n_system_actors` table.
 
 ## 4. Architecture
 
-### 4.1 High-Level Flow
+### 4.1 Architecture Approach: API-First
+
+JTD uses an **API-First** approach designed to be:
+- **Agent friendly** - Works with AI agents and chatbots
+- **Multi-channel** - Supports Web, Mobile App, Chatbot, WhatsApp
+
+### 4.2 Request Channels
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                         JTD ARCHITECTURE                                     │
+│                         REQUEST CHANNELS                                     │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
-│   MASTER CONFIG                    TENANT CONFIG                             │
-│   ─────────────                    ─────────────                             │
-│   n_jtd_event_types               n_jtd_tenant_config                       │
-│   n_jtd_channels                  • vani_enabled                            │
-│   n_jtd_statuses                  • channels_enabled                        │
-│   n_jtd_source_types              • event_configs                           │
-│                                                                              │
-│   ════════════════════════════════════════════════════════════════════════  │
-│                                                                              │
-│   EVENT FLOW                                                                 │
-│   ──────────                                                                 │
-│                                                                              │
-│   Trigger ──▶ JTD Service ──▶ n_jtd (status: created)                       │
-│                    │                                                         │
-│                    ▼                                                         │
-│              PGMQ Queue ──▶ Worker(s) ──▶ MSG91/Provider                    │
-│                    │              │                                          │
-│                    │              ▼                                          │
-│                    │         n_jtd (status: sent/delivered/failed)          │
-│                    │                                                         │
-│                    ▼                                                         │
-│              Realtime ──▶ UI Update (debounced)                             │
-│                                                                              │
-│   ════════════════════════════════════════════════════════════════════════  │
-│                                                                              │
-│   ACTOR TRACKING                                                             │
-│   ──────────────                                                             │
-│                                                                              │
-│   performed_by_type: 'user' | 'vani' | 'system' | 'webhook'                 │
-│   performed_by_id:   user_uuid | VaNi UUID | NULL                           │
-│   performed_by_name: 'John Doe' | 'VaNi' | 'System'                         │
+│    ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐                       │
+│    │   Web   │  │ Mobile  │  │ Chatbot │  │WhatsApp │                       │
+│    │   UI    │  │   App   │  │  Agent  │  │  Agent  │                       │
+│    └────┬────┘  └────┬────┘  └────┬────┘  └────┬────┘                       │
+│         │            │            │            │                             │
+│         └────────────┴─────┬──────┴────────────┘                             │
+│                            │                                                 │
+│                            ▼                                                 │
+│                   ┌─────────────────┐                                       │
+│                   │ contractnest-api│                                       │
+│                   │   /api/jtd/*    │                                       │
+│                   └─────────────────┘                                       │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 4.2 Volume & Concurrency Considerations
+### 4.3 Complete Architecture Flow
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                         JTD API-FIRST ARCHITECTURE                           │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                     contractnest-api                                 │    │
+│  │  ════════════════════════════════════                               │    │
+│  │                                                                      │    │
+│  │   Routes: /api/jtd/*                                                │    │
+│  │      │                                                               │    │
+│  │      ▼                                                               │    │
+│  │   Controller: jtdController.ts                                      │    │
+│  │      │                                                               │    │
+│  │      ▼                                                               │    │
+│  │   Service: jtdService.ts ◄─── Business Services call this           │    │
+│  │      │                        (userService, contractService, etc.)  │    │
+│  │      │                                                               │    │
+│  └──────┼───────────────────────────────────────────────────────────────┘    │
+│         │                                                                    │
+│         ▼                                                                    │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                     contractnest-edge (Supabase)                    │    │
+│  │  ════════════════════════════════════════════════                   │    │
+│  │                                                                      │    │
+│  │   ┌──────────────┐         ┌──────────────┐                         │    │
+│  │   │    n_jtd     │────────▶│  PGMQ Queue  │                         │    │
+│  │   │  (main tbl)  │ trigger │              │                         │    │
+│  │   └──────────────┘         └──────┬───────┘                         │    │
+│  │          │                        │                                  │    │
+│  │          ▼                        ▼                                  │    │
+│  │   ┌──────────────┐         ┌──────────────┐                         │    │
+│  │   │ n_jtd_status │         │ Edge Function│                         │    │
+│  │   │   _history   │         │   (Worker)   │                         │    │
+│  │   └──────────────┘         └──────┬───────┘                         │    │
+│  │                                   │                                  │    │
+│  └───────────────────────────────────┼──────────────────────────────────┘    │
+│                                      │                                       │
+│                        ┌─────────────┼─────────────┐                        │
+│                        ▼             ▼             ▼                        │
+│                   ┌────────┐   ┌────────┐   ┌────────────┐                  │
+│                   │ Email  │   │  SMS   │   │  WhatsApp  │                  │
+│                   │ (MSG91)│   │ (MSG91)│   │  (MSG91)   │                  │
+│                   └───┬────┘   └───┬────┘   └─────┬──────┘                  │
+│                       │            │              │                         │
+│                       └────────────┴──────┬───────┘                         │
+│                                           │                                  │
+│                                           ▼                                  │
+│                                    ┌─────────────┐                          │
+│                                    │  Webhook    │                          │
+│                                    │  Callback   │                          │
+│                                    └──────┬──────┘                          │
+│                                           │                                  │
+│                                           ▼                                  │
+│                              Update n_jtd status + history                  │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 4.4 Sequence Flow (User Invite Example)
+
+```
+┌─────────┐     ┌─────────┐     ┌─────────────┐     ┌──────────┐     ┌──────┐
+│   UI    │     │   API   │     │ JTD Service │     │  n_jtd   │     │ PGMQ │
+└────┬────┘     └────┬────┘     └──────┬──────┘     └────┬─────┘     └──┬───┘
+     │               │                 │                 │              │
+     │ POST /invite  │                 │                 │              │
+     │──────────────▶│                 │                 │              │
+     │               │                 │                 │              │
+     │               │ userService.    │                 │              │
+     │               │ sendInvite()    │                 │              │
+     │               │────────────────▶│                 │              │
+     │               │                 │                 │              │
+     │               │                 │ createJTD()     │              │
+     │               │                 │────────────────▶│              │
+     │               │                 │                 │              │
+     │               │                 │                 │──(trigger)──▶│
+     │               │                 │                 │              │
+     │               │                 │◀────────────────│              │
+     │               │◀────────────────│                 │              │
+     │◀──────────────│                 │                 │              │
+     │               │                 │                 │              │
+     │  Response:    │                 │                 │              │
+     │  JTD created  │                 │                 │              │
+```
+
+**Async Processing (Edge Function Worker):**
+
+```
+┌──────┐     ┌───────────────┐     ┌──────────┐     ┌───────┐     ┌───────┐
+│ PGMQ │     │ Edge Function │     │  n_jtd   │     │ MSG91 │     │Webhook│
+└──┬───┘     └───────┬───────┘     └────┬─────┘     └───┬───┘     └───┬───┘
+   │                 │                  │               │             │
+   │ poll message    │                  │               │             │
+   │────────────────▶│                  │               │             │
+   │                 │                  │               │             │
+   │                 │ get JTD details  │               │             │
+   │                 │─────────────────▶│               │             │
+   │                 │◀─────────────────│               │             │
+   │                 │                  │               │             │
+   │                 │ send email       │               │             │
+   │                 │─────────────────────────────────▶│             │
+   │                 │◀─────────────────────────────────│             │
+   │                 │                  │               │             │
+   │                 │ update status    │               │             │
+   │                 │ (sent)           │               │             │
+   │                 │─────────────────▶│               │             │
+   │                 │                  │               │             │
+   │                 │                  │               │  delivery   │
+   │                 │                  │               │  callback   │
+   │                 │                  │◀────────────────────────────│
+   │                 │                  │               │             │
+   │                 │                  │ status=       │             │
+   │                 │                  │ delivered     │             │
+```
+
+### 4.5 Volume & Concurrency Considerations
 
 | Aspect | Strategy |
 |--------|----------|
@@ -191,29 +298,78 @@ This is stored in `n_system_actors` table.
 | **Realtime Updates** | Supabase Realtime, status changes only, 500ms debounce |
 | **Caching** | React Query with appropriate TTLs |
 
-### 4.3 PGMQ Integration (Planned)
+### 4.6 PGMQ Integration
 
 ```sql
 -- Create JTD queue
 SELECT pgmq.create('jtd_queue');
 
--- Send to queue (from JTD Service)
+-- Send to queue (from trigger on n_jtd insert)
 SELECT pgmq.send('jtd_queue', jsonb_build_object(
     'jtd_id', jtd_record.id,
-    'event_type', jtd_record.event_type,
-    'channel', jtd_record.channel,
+    'event_type', jtd_record.event_type_code,
+    'channel', jtd_record.channel_code,
     'priority', jtd_record.priority
 ));
 
--- Read from queue (Worker)
+-- Read from queue (Edge Function Worker)
 SELECT * FROM pgmq.read('jtd_queue', 30, 10);  -- 30s visibility, batch of 10
 ```
 
 ---
 
-## 5. Database Schema
+## 5. API Endpoints
 
-### 5.1 Table Overview
+### 5.1 JTD Endpoints (Agent/Chatbot Friendly)
+
+| Method | Endpoint | Purpose |
+|--------|----------|---------|
+| POST | `/api/jtd` | Create new JTD |
+| GET | `/api/jtd/:id` | Get JTD by ID |
+| GET | `/api/jtd` | List JTDs (with filters) |
+| PATCH | `/api/jtd/:id/status` | Update JTD status |
+| GET | `/api/jtd/:id/history` | Get status history |
+| POST | `/api/jtd/webhooks/msg91` | Provider callback |
+
+### 5.2 Internal Service Calls
+
+Business services call JTD Service internally:
+
+```typescript
+// userService.ts
+async sendInvite(inviteData) {
+  // ... create invitation record ...
+
+  // Create JTD for notification
+  await jtdService.createJTD({
+    source_type_code: 'user_invite',
+    tenant_id: tenantId,
+    recipient_contact: inviteData.email,
+    payload: { ... }
+  });
+}
+
+// contractService.ts
+async createContract(contractData) {
+  // ... create contract ...
+
+  // Create JTDs for each service visit
+  for (const visit of serviceVisits) {
+    await jtdService.createJTD({
+      source_type_code: 'service_scheduled',
+      event_type_code: 'service_visit',
+      scheduled_at: visit.date,
+      payload: { ... }
+    });
+  }
+}
+```
+
+---
+
+## 6. Database Schema
+
+### 6.1 Table Overview
 
 | # | Table | Purpose | Type |
 |---|-------|---------|------|
@@ -230,7 +386,7 @@ SELECT * FROM pgmq.read('jtd_queue', 30, 10);  -- 30s visibility, batch of 10
 | 11 | `n_jtd_status_history` | Status change audit trail | Audit |
 | 12 | `n_jtd_history` | General audit trail | Audit |
 
-### 5.2 Common Fields
+### 6.2 Common Fields
 
 All tables have these standard fields:
 
@@ -242,7 +398,7 @@ All tables have these standard fields:
 **Transaction Tables (additional):**
 - `is_live` - Test mode (false) vs Production (true)
 
-### 5.3 Key Relationships
+### 6.3 Key Relationships
 
 ```
 n_jtd_event_types (code)
@@ -259,7 +415,7 @@ n_jtd_event_types (code)
 
 ---
 
-## 6. Event Types
+## 7. Event Types
 
 | Code | Name | Category | Channels | Scheduling |
 |------|------|----------|----------|------------|
@@ -273,7 +429,7 @@ n_jtd_event_types (code)
 
 ---
 
-## 7. Channels
+## 8. Channels
 
 | Code | Name | Provider | Cost | Rate Limit |
 |------|------|----------|------|------------|
@@ -285,9 +441,9 @@ n_jtd_event_types (code)
 
 ---
 
-## 8. Status Flows
+## 9. Status Flows
 
-### 8.1 Status Types
+### 9.1 Status Types
 
 | Type | Description |
 |------|-------------|
@@ -297,14 +453,14 @@ n_jtd_event_types (code)
 | `failure` | Failed (may allow retry) |
 | `terminal` | End state, no further transitions |
 
-### 8.2 Soft Enforcement
+### 9.2 Soft Enforcement
 
 Status transitions are **soft-enforced**:
 - Valid transitions defined in `n_jtd_status_flows`
 - Invalid transitions **allowed** but flagged (`is_valid_transition = false`)
 - All transitions logged in `n_jtd_status_history`
 
-### 8.3 Example Flows
+### 9.3 Example Flows
 
 **Notification:**
 ```
@@ -327,7 +483,7 @@ created → pending → assigned → in_progress → completed
                     cancelled    blocked → in_progress
 ```
 
-### 8.4 Status History (Audit Trail)
+### 9.4 Status History (Audit Trail)
 
 Every status change is logged with:
 - `from_status_code`, `to_status_code`
@@ -338,7 +494,7 @@ Every status change is logged with:
 
 ---
 
-## 9. Source Types
+## 10. Source Types
 
 Source types define **what triggers JTD creation**:
 
@@ -358,9 +514,9 @@ Source types define **what triggers JTD creation**:
 
 ---
 
-## 10. Configuration
+## 11. Configuration
 
-### 10.1 Tenant Config (`n_jtd_tenant_config`)
+### 11.1 Tenant Config (`n_jtd_tenant_config`)
 
 ```json
 {
@@ -381,7 +537,7 @@ Source types define **what triggers JTD creation**:
 }
 ```
 
-### 10.2 Tenant Source Config (`n_jtd_tenant_source_config`)
+### 11.2 Tenant Source Config (`n_jtd_tenant_source_config`)
 
 Override settings per source type:
 
@@ -397,46 +553,72 @@ Override settings per source type:
 
 ---
 
-## 11. Implementation Status
+## 12. Implementation Status
 
-### 11.1 Completed
+### 12.1 Completed
 
 - [x] Architecture design
+- [x] Architecture decisions finalized
 - [x] Database schema design (12 tables)
 - [x] Status flow definitions
 - [x] Source type definitions
 - [x] Template structure
 - [x] Migration files created (`001_create_jtd_master_tables.sql`, `002_seed_jtd_master_data.sql`)
+- [x] API-first architecture documented
 
-### 11.2 In Progress
+### 12.2 Pending
 
-- [ ] Discussion and review of schema
-
-### 11.3 Pending
-
-- [ ] JTD Service layer (API)
-- [ ] User Invite integration
-- [ ] PGMQ queue setup
-- [ ] VaNi UI connection to real data
-- [ ] Standard (non-VaNi) UI screens
-
----
-
-## 12. Open Questions
-
-| # | Question | Status | Decision |
-|---|----------|--------|----------|
-| 1 | Should we migrate existing `n_events`/`n_deliveries` to new schema? | Open | TBD |
-| 2 | How to handle existing user invite flow during migration? | Open | TBD |
-| 3 | PGMQ vs N8N for queue processing? | Decided | PGMQ first, N8N for workflows later |
-| 4 | VaNi user representation? | Decided | System actor with UUID `00000000-0000-0000-0000-000000000001` |
+- [ ] Apply new JTD tables migration (contractnest-edge)
+- [ ] Remove old tables: `n_events`, `n_deliveries` (contractnest-edge)
+- [ ] Create new `jtdService.ts` - rewrite (contractnest-api)
+- [ ] Create `jtdController.ts` & routes (contractnest-api)
+- [ ] Setup PGMQ queue (contractnest-edge)
+- [ ] Create Edge Function worker (contractnest-edge)
+- [ ] Integrate user invite as first use case (contractnest-api)
+- [ ] Connect VaNi UI to real data (contractnest-ui)
 
 ---
 
-## 13. Change Log
+## 13. Architecture Decisions
+
+| # | Decision | Choice | Rationale |
+|---|----------|--------|-----------|
+| 1 | Interface approach | **API-First** | Agent/chatbot friendly, supports Web, Mobile, Chatbot, WhatsApp |
+| 2 | Current tables | **Remove old, use new** | Clean start - old `n_events`/`n_deliveries` were POC only |
+| 3 | Queue mechanism | **PGMQ** | PostgreSQL native, N8N only for future AI tasks |
+| 4 | Worker location | **Edge Function** | Maintains current architecture |
+| 5 | VaNi representation | **System actor UUID** | `00000000-0000-0000-0000-000000000001` |
+
+---
+
+## 14. Implementation Sequence
+
+| Phase | Task | Repository | Dependencies |
+|-------|------|------------|--------------|
+| 1 | Apply new JTD tables migration | contractnest-edge | None |
+| 2 | Remove old tables (n_events, n_deliveries) | contractnest-edge | Phase 1 |
+| 3 | Create new `jtdService.ts` (rewrite) | contractnest-api | Phase 1 |
+| 4 | Create `jtdController.ts` & routes | contractnest-api | Phase 3 |
+| 5 | Setup PGMQ queue | contractnest-edge | Phase 1 |
+| 6 | Create Edge Function worker | contractnest-edge | Phase 5 |
+| 7 | Integrate user invite as first use case | contractnest-api | Phases 3-6 |
+| 8 | Connect VaNi UI to real data | contractnest-ui | Phase 7 |
+
+---
+
+## 15. Change Log
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2025-12-17 | 1.1.0 | Architecture finalized |
+| | | - API-first approach confirmed |
+| | | - Request channels: Web, Mobile, Chatbot, WhatsApp |
+| | | - Decision: Remove old tables (n_events, n_deliveries) |
+| | | - Decision: PGMQ for queue (N8N later for AI tasks) |
+| | | - Decision: Edge Function for worker |
+| | | - Added API endpoints documentation |
+| | | - Added sequence flow diagrams |
+| | | - Added implementation sequence |
 | 2025-12-17 | 1.0.0 | Initial architecture design |
 | | | - 12 tables defined |
 | | | - Statuses per event type |
