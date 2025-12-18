@@ -672,6 +672,72 @@ class JTDService {
   }
 
   // =================================================================
+  // REPROCESS QUEUED EVENTS (Called on server startup)
+  // =================================================================
+
+  /**
+   * Reprocess any JTDs that were stuck in processing state
+   * Called on server startup to recover from crashes
+   */
+  async reprocessQueuedEvents(): Promise<void> {
+    try {
+      console.log('[JTD] Checking for stuck JTDs to reprocess...');
+
+      // Find JTDs stuck in 'processing' status (likely from a crash)
+      const response = await axios.get(
+        `${this.supabaseUrl}/rest/v1/n_jtd?status_code=eq.processing&is_active=eq.true&limit=100`,
+        {
+          headers: {
+            'apikey': this.serviceKey,
+            'Authorization': `Bearer ${this.serviceKey}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      const stuckJTDs = response.data;
+
+      if (stuckJTDs.length === 0) {
+        console.log('[JTD] No stuck JTDs found');
+        return;
+      }
+
+      console.log(`[JTD] Found ${stuckJTDs.length} stuck JTDs, resetting to pending...`);
+
+      // Reset them to 'pending' so they get picked up by the worker
+      for (const jtd of stuckJTDs) {
+        await axios.patch(
+          `${this.supabaseUrl}/rest/v1/n_jtd?id=eq.${jtd.id}`,
+          {
+            status_code: 'pending',
+            updated_at: new Date().toISOString(),
+            updated_by: VANI_UUID
+          },
+          {
+            headers: {
+              'apikey': this.serviceKey,
+              'Authorization': `Bearer ${this.serviceKey}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+      }
+
+      console.log(`[JTD] Reset ${stuckJTDs.length} JTDs to pending status`);
+
+      // Optionally trigger the worker to process them
+      // await this.triggerWorker();
+
+    } catch (error) {
+      console.error('[JTD] Error reprocessing queued events:', error);
+      // Don't throw - this is a startup task, we don't want to crash the server
+      captureException(error as Error, {
+        tags: { component: 'JTDService', action: 'reprocessQueuedEvents' }
+      });
+    }
+  }
+
+  // =================================================================
   // ANALYTICS & METRICS
   // =================================================================
 
