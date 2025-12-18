@@ -804,6 +804,34 @@ class JTDService {
       throw error;
     }
   }
+
+  // =================================================================
+  // BACKWARD COMPATIBILITY ALIASES
+  // =================================================================
+
+  /**
+   * Alias for createJTD - backward compatibility with existing code
+   * @deprecated Use createJTD instead
+   */
+  async createEvent(data: CreateJTDRequest): Promise<JTDRecord> {
+    return this.createJTD(data);
+  }
+
+  /**
+   * Alias for getJTD - backward compatibility
+   * @deprecated Use getJTD instead
+   */
+  async getEvent(eventId: string): Promise<JTDRecord | null> {
+    return this.getJTD(eventId);
+  }
+
+  /**
+   * Alias for getJTDWithHistory - backward compatibility
+   * @deprecated Use getJTDWithHistory instead
+   */
+  async getEventWithHistory(eventId: string): Promise<JTDRecord & { status_history: any[] } | null> {
+    return this.getJTDWithHistory(eventId);
+  }
 }
 
 // =================================================================
