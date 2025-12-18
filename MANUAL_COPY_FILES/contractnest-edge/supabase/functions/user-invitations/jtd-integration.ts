@@ -209,20 +209,104 @@ export async function sendInvitationViaJTD(
 }
 
 /**
- * Check if JTD tables exist (for graceful fallback)
+ * Check if channel is enabled for tenant + source_type
+ * Uses n_jtd_tenant_source_config table
  */
-export async function isJTDEnabled(
-  supabase: ReturnType<typeof createClient>
+export async function isChannelEnabled(
+  supabase: ReturnType<typeof createClient>,
+  tenantId: string,
+  sourceType: string,
+  channel: 'email' | 'sms' | 'whatsapp' | 'inapp'
 ): Promise<boolean> {
   try {
-    const { error } = await supabase
-      .from('n_jtd')
-      .select('id')
-      .limit(1);
+    const { data: config, error } = await supabase
+      .from('n_jtd_tenant_source_config')
+      .select('email_enabled, sms_enabled, whatsapp_enabled, inapp_enabled')
+      .eq('tenant_id', tenantId)
+      .eq('source_type', sourceType)
+      .eq('is_active', true)
+      .single();
 
-    // If no error, table exists
-    return !error;
-  } catch {
+    if (error || !config) {
+      // No config found - default to enabled
+      console.log(`[JTD] No config for ${tenantId}/${sourceType}, defaulting to enabled`);
+      return true;
+    }
+
+    const channelMap: Record<string, boolean> = {
+      email: config.email_enabled,
+      sms: config.sms_enabled,
+      whatsapp: config.whatsapp_enabled,
+      inapp: config.inapp_enabled
+    };
+
+    return channelMap[channel] ?? true;
+  } catch (error) {
+    console.error('[JTD] Error checking channel config:', error);
+    return true; // Default to enabled on error
+  }
+}
+
+/**
+ * Get is_live flag from tenant config
+ */
+export async function getTenantIsLive(
+  supabase: ReturnType<typeof createClient>,
+  tenantId: string
+): Promise<boolean> {
+  try {
+    const { data: config, error } = await supabase
+      .from('n_jtd_tenant_config')
+      .select('is_live')
+      .eq('tenant_id', tenantId)
+      .eq('is_active', true)
+      .single();
+
+    if (error || !config) {
+      // No config - default to test mode (false)
+      return false;
+    }
+
+    return config.is_live;
+  } catch (error) {
+    console.error('[JTD] Error getting tenant is_live:', error);
     return false;
   }
+}
+
+/**
+ * Send invitation via JTD with channel check
+ * Returns success=false if channel is disabled for tenant
+ */
+export async function sendInvitation(
+  supabase: ReturnType<typeof createClient>,
+  params: CreateInvitationJTDParams
+): Promise<{ success: boolean; jtdId?: string; error?: string; skipped?: boolean }> {
+  const { tenantId, invitationMethod } = params;
+
+  // Check if channel is enabled for this tenant/source_type
+  const channelEnabled = await isChannelEnabled(
+    supabase,
+    tenantId,
+    'user_invite',
+    invitationMethod
+  );
+
+  if (!channelEnabled) {
+    console.log(`[JTD] Channel ${invitationMethod} disabled for tenant ${tenantId}`);
+    return {
+      success: true, // Not an error, just skipped
+      skipped: true,
+      error: `Channel ${invitationMethod} is disabled for this tenant`
+    };
+  }
+
+  // Get is_live from tenant config if not provided
+  let isLive = params.isLive;
+  if (isLive === undefined) {
+    isLive = await getTenantIsLive(supabase, tenantId);
+  }
+
+  // Create JTD with resolved is_live
+  return createInvitationJTD(supabase, { ...params, isLive });
 }
