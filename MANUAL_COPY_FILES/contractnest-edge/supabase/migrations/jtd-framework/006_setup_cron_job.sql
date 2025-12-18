@@ -25,25 +25,16 @@ DECLARE
     v_service_role_key TEXT;
     v_request_id BIGINT;
 BEGIN
-    -- Get Supabase URL from environment or set directly
-    -- In production, these should be set as database secrets
-    v_supabase_url := current_setting('app.settings.supabase_url', true);
-    v_service_role_key := current_setting('app.settings.service_role_key', true);
+    -- Get secrets from vault (using existing secret names)
+    SELECT decrypted_secret INTO v_supabase_url
+    FROM vault.decrypted_secrets
+    WHERE name = 'SUPABASE_URL'
+    LIMIT 1;
 
-    -- If settings not configured, try vault secrets
-    IF v_supabase_url IS NULL THEN
-        SELECT decrypted_secret INTO v_supabase_url
-        FROM vault.decrypted_secrets
-        WHERE name = 'supabase_url'
-        LIMIT 1;
-    END IF;
-
-    IF v_service_role_key IS NULL THEN
-        SELECT decrypted_secret INTO v_service_role_key
-        FROM vault.decrypted_secrets
-        WHERE name = 'service_role_key'
-        LIMIT 1;
-    END IF;
+    SELECT decrypted_secret INTO v_service_role_key
+    FROM vault.decrypted_secrets
+    WHERE name = 'SUPABASE_SERVICE_ROLE_KEY'
+    LIMIT 1;
 
     -- Make HTTP request to jtd-worker Edge Function
     IF v_supabase_url IS NOT NULL AND v_service_role_key IS NOT NULL THEN
@@ -102,16 +93,13 @@ SELECT cron.schedule(
 --    - HTTP Headers: Authorization: Bearer <service_role_key>
 
 -- ============================================================
--- 5. STORE SECRETS IN VAULT (recommended)
+-- 5. VAULT SECRETS (already configured)
 -- ============================================================
 
--- Run these manually in Supabase SQL Editor with your actual values:
---
--- INSERT INTO vault.secrets (name, secret)
--- VALUES ('supabase_url', 'https://your-project-ref.supabase.co');
---
--- INSERT INTO vault.secrets (name, secret)
--- VALUES ('service_role_key', 'your-service-role-key-here');
+-- This migration uses existing vault secrets:
+-- - SUPABASE_URL
+-- - SUPABASE_SERVICE_ROLE_KEY
+-- No additional configuration needed.
 
 -- ============================================================
 -- 6. MANUAL TEST FUNCTION
