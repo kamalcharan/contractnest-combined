@@ -18,6 +18,7 @@ INSERT INTO public.n_jtd_templates (
     content,
     content_html,
     variables,
+    is_live,
     is_active,
     created_by,
     updated_by
@@ -58,10 +59,11 @@ INSERT INTO public.n_jtd_templates (
 </body>
 </html>',
     '["recipient_name", "inviter_name", "workspace_name", "invitation_link", "custom_message"]'::jsonb,
+    NULL, -- NULL is_live for system templates
     true,
     '00000000-0000-0000-0000-000000000001', -- VaNi
     '00000000-0000-0000-0000-000000000001'
-) ON CONFLICT (template_key, tenant_id) WHERE tenant_id IS NULL
+) ON CONFLICT (tenant_id, template_key, channel_code, is_live)
 DO UPDATE SET
     content = EXCLUDED.content,
     content_html = EXCLUDED.content_html,
@@ -80,6 +82,7 @@ INSERT INTO public.n_jtd_templates (
     subject,
     content,
     variables,
+    is_live,
     is_active,
     created_by,
     updated_by
@@ -93,10 +96,11 @@ INSERT INTO public.n_jtd_templates (
     NULL, -- No subject for SMS
     '{{inviter_name}} invited you to join {{workspace_name}}. Accept here: {{invitation_link}}',
     '["inviter_name", "workspace_name", "invitation_link"]'::jsonb,
+    NULL, -- NULL is_live for system templates
     true,
     '00000000-0000-0000-0000-000000000001',
     '00000000-0000-0000-0000-000000000001'
-) ON CONFLICT (template_key, tenant_id) WHERE tenant_id IS NULL
+) ON CONFLICT (tenant_id, template_key, channel_code, is_live)
 DO UPDATE SET
     content = EXCLUDED.content,
     variables = EXCLUDED.variables,
@@ -116,6 +120,7 @@ INSERT INTO public.n_jtd_templates (
     content,
     provider_template_id,
     variables,
+    is_live,
     is_active,
     created_by,
     updated_by
@@ -130,10 +135,11 @@ INSERT INTO public.n_jtd_templates (
     '{{inviter_name}} invited you to join {{workspace_name}}. Accept here: {{invitation_link}}',
     'user_invitation', -- This is the template NAME on MSG91
     '["inviter_name", "workspace_name", "invitation_link"]'::jsonb,
+    NULL, -- NULL is_live for system templates
     true,
     '00000000-0000-0000-0000-000000000001',
     '00000000-0000-0000-0000-000000000001'
-) ON CONFLICT (template_key, tenant_id) WHERE tenant_id IS NULL
+) ON CONFLICT (tenant_id, template_key, channel_code, is_live)
 DO UPDATE SET
     content = EXCLUDED.content,
     provider_template_id = EXCLUDED.provider_template_id,
@@ -148,57 +154,55 @@ DO UPDATE SET
 -- For tenant 1: Enable email, sms, whatsapp for user_invite
 INSERT INTO public.n_jtd_tenant_source_config (
     tenant_id,
-    source_type,
-    email_enabled,
-    sms_enabled,
-    whatsapp_enabled,
-    inapp_enabled,
+    source_type_code,
+    channels_enabled,
+    is_enabled,
+    auto_execute,
+    is_live,
     is_active,
     created_by,
     updated_by
 ) VALUES (
     '70f8eb69-9ccf-4a0c-8177-cb6131934344',
     'user_invite',
+    ARRAY['email', 'sms', 'whatsapp'],
     true,
-    true,
-    true,
-    false, -- No in-app for invite (user doesn't have account yet)
+    true, -- VaNi auto-executes
+    true, -- Live mode
     true,
     '00000000-0000-0000-0000-000000000001',
     '00000000-0000-0000-0000-000000000001'
-) ON CONFLICT (tenant_id, source_type)
+) ON CONFLICT (tenant_id, source_type_code, is_live)
 DO UPDATE SET
-    email_enabled = EXCLUDED.email_enabled,
-    sms_enabled = EXCLUDED.sms_enabled,
-    whatsapp_enabled = EXCLUDED.whatsapp_enabled,
+    channels_enabled = EXCLUDED.channels_enabled,
+    is_enabled = EXCLUDED.is_enabled,
     updated_at = now();
 
 -- For tenant 2: Enable email, sms, whatsapp for user_invite
 INSERT INTO public.n_jtd_tenant_source_config (
     tenant_id,
-    source_type,
-    email_enabled,
-    sms_enabled,
-    whatsapp_enabled,
-    inapp_enabled,
+    source_type_code,
+    channels_enabled,
+    is_enabled,
+    auto_execute,
+    is_live,
     is_active,
     created_by,
     updated_by
 ) VALUES (
     'a58ca91a-7832-4b4c-b67c-a210032f26b8',
     'user_invite',
+    ARRAY['email', 'sms', 'whatsapp'],
     true,
     true,
     true,
-    false,
     true,
     '00000000-0000-0000-0000-000000000001',
     '00000000-0000-0000-0000-000000000001'
-) ON CONFLICT (tenant_id, source_type)
+) ON CONFLICT (tenant_id, source_type_code, is_live)
 DO UPDATE SET
-    email_enabled = EXCLUDED.email_enabled,
-    sms_enabled = EXCLUDED.sms_enabled,
-    whatsapp_enabled = EXCLUDED.whatsapp_enabled,
+    channels_enabled = EXCLUDED.channels_enabled,
+    is_enabled = EXCLUDED.is_enabled,
     updated_at = now();
 
 -- ============================================================
@@ -216,7 +220,7 @@ BEGIN
 
     SELECT COUNT(*) INTO config_count
     FROM public.n_jtd_tenant_source_config
-    WHERE source_type = 'user_invite';
+    WHERE source_type_code = 'user_invite';
 
     RAISE NOTICE 'User invitation templates seeded: %', template_count;
     RAISE NOTICE 'Tenant source configs for user_invite: %', config_count;

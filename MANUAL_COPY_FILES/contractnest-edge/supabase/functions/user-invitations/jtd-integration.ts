@@ -47,49 +47,63 @@ export async function createInvitationJTD(
   } = params;
 
   try {
-    // Map invitation_method to JTD channel
-    const channel = invitationMethod; // email, sms, whatsapp are same
+    // Map invitation_method to JTD channel_code
+    const channelCode = invitationMethod; // email, sms, whatsapp are same
 
-    // Build recipient_data based on channel
-    const recipientData: Record<string, any> = {};
-    if (channel === 'email') {
-      recipientData.email = recipientEmail;
-      recipientData.name = recipientName || recipientEmail?.split('@')[0];
+    // Build recipient info based on channel
+    let recipientContact: string;
+    const derivedRecipientName = recipientName ||
+      (channelCode === 'email' ? recipientEmail?.split('@')[0] : undefined) ||
+      'there';
+
+    if (channelCode === 'email') {
+      recipientContact = recipientEmail || '';
     } else {
-      recipientData.mobile = recipientMobile;
-      recipientData.name = recipientName;
+      recipientContact = recipientMobile || '';
     }
 
-    // Build template_data for rendering
-    const templateData = {
-      inviter_name: inviterName,
-      workspace_name: workspaceName,
-      invitation_link: invitationLink,
-      custom_message: customMessage || '',
-      recipient_name: recipientData.name || 'there'
+    // Build payload with template_data for rendering
+    const payload = {
+      recipient_data: {
+        email: recipientEmail,
+        mobile: recipientMobile,
+        name: derivedRecipientName
+      },
+      template_data: {
+        inviter_name: inviterName,
+        workspace_name: workspaceName,
+        invitation_link: invitationLink,
+        custom_message: customMessage || '',
+        recipient_name: derivedRecipientName
+      }
     };
 
-    // Create JTD entry
+    // Create JTD entry - matches n_jtd table columns
     const { data: jtd, error } = await supabase
       .from('n_jtd')
       .insert({
-        event_type: 'notification',
-        channel: channel,
         tenant_id: tenantId,
-        source_type: 'user_invite',
+        event_type_code: 'notification',
+        channel_code: channelCode,
+        source_type_code: 'user_invite',
         source_id: invitationId,
-        current_status: 'created', // DB trigger will change to 'pending' after enqueue
-        priority: 5, // Normal priority
-        recipient_data: recipientData,
-        template_data: templateData,
+        status_code: 'created',
+        priority: 5,
+        recipient_name: derivedRecipientName,
+        recipient_contact: recipientContact,
+        payload: payload,
+        template_key: `user_invitation_${channelCode}`,
+        template_variables: payload.template_data,
         metadata: {
           invitation_id: invitationId,
           invitation_method: invitationMethod,
           workspace_name: workspaceName
         },
         is_live: isLive,
-        is_active: true,
-        created_by: '00000000-0000-0000-0000-000000000001', // VaNi
+        performed_by_type: 'system',
+        performed_by_id: '00000000-0000-0000-0000-000000000001', // VaNi
+        performed_by_name: 'VaNi',
+        created_by: '00000000-0000-0000-0000-000000000001',
         updated_by: '00000000-0000-0000-0000-000000000001'
       })
       .select('id')
@@ -129,15 +143,15 @@ export async function getInvitationJTDStatus(
 ): Promise<{
   found: boolean;
   status?: string;
-  sentAt?: string;
-  deliveredAt?: string;
+  executedAt?: string;
+  completedAt?: string;
   error?: string;
 }> {
   try {
     const { data: jtd, error } = await supabase
       .from('n_jtd')
-      .select('id, current_status, sent_at, delivered_at, error_message')
-      .eq('source_type', 'user_invite')
+      .select('id, status_code, executed_at, completed_at, error_message')
+      .eq('source_type_code', 'user_invite')
       .eq('source_id', invitationId)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -154,9 +168,9 @@ export async function getInvitationJTDStatus(
 
     return {
       found: true,
-      status: jtd.current_status,
-      sentAt: jtd.sent_at,
-      deliveredAt: jtd.delivered_at,
+      status: jtd.status_code,
+      executedAt: jtd.executed_at,
+      completedAt: jtd.completed_at,
       error: jtd.error_message
     };
 
@@ -171,26 +185,6 @@ export async function getInvitationJTDStatus(
 
 /**
  * Send invitation using JTD (replacement for direct MSG91 calls)
- *
- * Usage in user-invitations/index.ts:
- *
- * // Instead of:
- * // sendSuccess = await sendInvitationEmail({ ... });
- *
- * // Use:
- * import { sendInvitationViaJTD } from './jtd-integration.ts';
- * const result = await sendInvitationViaJTD(supabase, {
- *   tenantId,
- *   invitationId: invitation.id,
- *   invitationMethod: 'email',
- *   recipientEmail: email,
- *   inviterName: `${inviterProfile?.first_name} ${inviterProfile?.last_name}`.trim(),
- *   workspaceName: tenant?.name || 'Workspace',
- *   invitationLink,
- *   customMessage: custom_message,
- *   isLive: true // Set to true for production
- * });
- * sendSuccess = result.success;
  */
 export async function sendInvitationViaJTD(
   supabase: ReturnType<typeof createClient>,
@@ -211,6 +205,9 @@ export async function sendInvitationViaJTD(
 /**
  * Check if channel is enabled for tenant + source_type
  * Uses n_jtd_tenant_source_config table
+ *
+ * The table has channels_enabled as TEXT[] containing enabled channels
+ * e.g., ['email', 'sms', 'whatsapp']
  */
 export async function isChannelEnabled(
   supabase: ReturnType<typeof createClient>,
@@ -221,9 +218,9 @@ export async function isChannelEnabled(
   try {
     const { data: config, error } = await supabase
       .from('n_jtd_tenant_source_config')
-      .select('email_enabled, sms_enabled, whatsapp_enabled, inapp_enabled')
+      .select('channels_enabled, is_enabled')
       .eq('tenant_id', tenantId)
-      .eq('source_type', sourceType)
+      .eq('source_type_code', sourceType)
       .eq('is_active', true)
       .single();
 
@@ -233,14 +230,14 @@ export async function isChannelEnabled(
       return true;
     }
 
-    const channelMap: Record<string, boolean> = {
-      email: config.email_enabled,
-      sms: config.sms_enabled,
-      whatsapp: config.whatsapp_enabled,
-      inapp: config.inapp_enabled
-    };
+    // Check if overall source is enabled
+    if (!config.is_enabled) {
+      return false;
+    }
 
-    return channelMap[channel] ?? true;
+    // Check if specific channel is in channels_enabled array
+    const channelsEnabled: string[] = config.channels_enabled || [];
+    return channelsEnabled.includes(channel);
   } catch (error) {
     console.error('[JTD] Error checking channel config:', error);
     return true; // Default to enabled on error
