@@ -1,9 +1,11 @@
 // supabase/functions/jtd-worker/handlers/sms.ts
-// SMS handler using MSG91
+// SMS handler using MSG91 - matches contractnest-api/src/services/sms.service.ts
 
 interface SMSRequest {
   to: string;
   body: string;
+  templateId?: string;
+  variables?: Record<string, string>;
   metadata?: Record<string, any>;
 }
 
@@ -13,80 +15,108 @@ interface ProcessResult {
   error?: string;
 }
 
-// MSG91 Configuration
+// MSG91 Configuration (same as sms.service.ts)
 const MSG91_AUTH_KEY = Deno.env.get('MSG91_AUTH_KEY');
-const MSG91_SENDER_ID = Deno.env.get('MSG91_SENDER_ID') || 'CNEST';
-const MSG91_ROUTE = Deno.env.get('MSG91_SMS_ROUTE') || '4'; // Transactional
+const MSG91_SENDER_ID = Deno.env.get('MSG91_SENDER_ID');
+const MSG91_ROUTE = Deno.env.get('MSG91_ROUTE') || '4'; // Default: Transactional
+const MSG91_COUNTRY_CODE = Deno.env.get('MSG91_COUNTRY_CODE') || '91';
+
+/**
+ * Format mobile number (same as sms.service.ts)
+ */
+function formatMobile(num: string): string {
+  const cleaned = num.replace(/\D/g, '');
+  if (cleaned.startsWith(MSG91_COUNTRY_CODE)) {
+    return cleaned;
+  }
+  return `${MSG91_COUNTRY_CODE}${cleaned}`;
+}
 
 /**
  * Send SMS via MSG91
- * API: https://docs.msg91.com/reference/send-sms
+ * Matches: contractnest-api/src/services/sms.service.ts
  */
 export async function handleSMS(request: SMSRequest): Promise<ProcessResult> {
-  const { to, body, metadata } = request;
+  const { to, body, templateId, variables, metadata } = request;
 
+  // Validation (same as sms.service.ts)
   if (!MSG91_AUTH_KEY) {
-    console.error('MSG91_AUTH_KEY not configured');
+    console.error('MSG91_AUTH_KEY is not configured');
     return {
       success: false,
-      error: 'SMS provider not configured'
+      error: 'MSG91_AUTH_KEY is not configured'
+    };
+  }
+
+  if (!MSG91_SENDER_ID) {
+    console.error('MSG91_SENDER_ID is not configured');
+    return {
+      success: false,
+      error: 'MSG91_SENDER_ID is not configured'
     };
   }
 
   if (!to) {
     return {
       success: false,
-      error: 'Recipient mobile number is required'
+      error: 'Mobile number is required'
     };
   }
 
   try {
-    // Normalize mobile number (ensure country code)
-    const mobile = to.startsWith('91') ? to : `91${to.replace(/^0+/, '')}`;
+    const formattedMobile = formatMobile(to);
 
-    // MSG91 SMS API endpoint
-    const url = 'https://api.msg91.com/api/v5/flow/';
+    // MSG91 SMS API endpoint (same as sms.service.ts)
+    const url = 'https://control.msg91.com/api/v5/flow/';
 
-    // For transactional SMS, use flow API with template
-    const payload = {
-      template_id: metadata?.msg91_template_id,
+    // Payload format matches sms.service.ts
+    const payload: Record<string, any> = {
       sender: MSG91_SENDER_ID,
-      mobiles: mobile,
-      // Variables in template
-      VAR1: body,
-      // Add more variables as needed from metadata
-      ...metadata?.template_vars
+      route: MSG91_ROUTE,
+      country: MSG91_COUNTRY_CODE,
+      sms: [{
+        message: body,
+        to: [formattedMobile]
+      }]
     };
 
-    console.log(`Sending SMS to ${mobile}`);
+    // Add template fields if provided
+    if (templateId || metadata?.template_id) {
+      payload.template_id = templateId || metadata?.template_id;
+      if (variables || metadata?.variables) {
+        payload.sms[0].variables = variables || metadata?.variables;
+      }
+    }
+
+    console.log(`[JTD SMS] Sending to ${formattedMobile}`);
 
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        'authkey': MSG91_AUTH_KEY
+        'authkey': MSG91_AUTH_KEY,
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(payload)
     });
 
     const result = await response.json();
 
-    if (response.ok && result.type === 'success') {
-      console.log(`SMS sent successfully to ${mobile}, request_id: ${result.request_id}`);
+    if (result && result.type === 'success') {
+      console.log(`[JTD SMS] Sent successfully to ${formattedMobile}, request_id: ${result.request_id}`);
       return {
         success: true,
         provider_message_id: result.request_id
       };
-    } else {
-      console.error('MSG91 SMS error:', result);
-      return {
-        success: false,
-        error: result.message || `MSG91 error: ${response.status}`
-      };
     }
 
+    console.error('[JTD SMS] MSG91 error:', result);
+    return {
+      success: false,
+      error: result.message || 'Failed to send SMS'
+    };
+
   } catch (error) {
-    console.error('SMS send error:', error);
+    console.error('[JTD SMS] Send error:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error sending SMS'
