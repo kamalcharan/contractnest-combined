@@ -139,16 +139,16 @@ async function updateJTDStatus(
  * Get template for JTD
  */
 async function getTemplate(
-  eventType: string,
+  sourceType: string,
   channel: string,
   tenantId: string
-): Promise<{ subject?: string; body: string } | null> {
+): Promise<{ subject?: string; body: string; bodyHtml?: string; providerTemplateId?: string } | null> {
   // First try tenant-specific template
   let { data, error } = await supabase
     .from('n_jtd_templates')
-    .select('subject, body')
-    .eq('event_type', eventType)
-    .eq('channel', channel)
+    .select('subject, content, content_html, provider_template_id')
+    .eq('source_type_code', sourceType)
+    .eq('channel_code', channel)
     .eq('tenant_id', tenantId)
     .eq('is_active', true)
     .single();
@@ -157,9 +157,9 @@ async function getTemplate(
     // Fall back to system template (tenant_id is null)
     const result = await supabase
       .from('n_jtd_templates')
-      .select('subject, body')
-      .eq('event_type', eventType)
-      .eq('channel', channel)
+      .select('subject, content, content_html, provider_template_id')
+      .eq('source_type_code', sourceType)
+      .eq('channel_code', channel)
       .is('tenant_id', null)
       .eq('is_active', true)
       .single();
@@ -173,7 +173,14 @@ async function getTemplate(
     return null;
   }
 
-  return data;
+  if (!data) return null;
+
+  return {
+    subject: data.subject,
+    body: data.content,
+    bodyHtml: data.content_html,
+    providerTemplateId: data.provider_template_id
+  };
 }
 
 /**
@@ -191,22 +198,25 @@ function renderTemplate(template: string, data: Record<string, any>): string {
  */
 async function processMessage(msg: JTDMessage): Promise<void> {
   const { message } = msg;
-  const { jtd_id, event_type, channel, tenant_id, recipient_data, template_data, metadata } = message;
+  const { jtd_id, event_type, channel, tenant_id, source_type, recipient_data, template_data, metadata } = message;
 
-  console.log(`Processing JTD ${jtd_id} - ${event_type} via ${channel}`);
+  console.log(`Processing JTD ${jtd_id} - ${source_type}/${event_type} via ${channel}`);
 
   try {
     // Update status to 'processing'
     await updateJTDStatus(jtd_id, 'processing');
 
-    // Get template
-    const template = await getTemplate(event_type, channel, tenant_id);
+    // Get template using source_type (e.g., 'user_invite')
+    const template = await getTemplate(source_type, channel, tenant_id);
     if (!template) {
-      throw new Error(`No template found for ${event_type}/${channel}`);
+      throw new Error(`No template found for ${source_type}/${channel}`);
     }
 
     // Render template with data
     const renderedBody = renderTemplate(template.body, template_data);
+    const renderedBodyHtml = template.bodyHtml
+      ? renderTemplate(template.bodyHtml, template_data)
+      : undefined;
     const renderedSubject = template.subject
       ? renderTemplate(template.subject, template_data)
       : undefined;
@@ -218,8 +228,8 @@ async function processMessage(msg: JTDMessage): Promise<void> {
       case 'email':
         result = await handleEmail({
           to: recipient_data.email,
-          subject: renderedSubject || `Notification: ${event_type}`,
-          body: renderedBody,
+          subject: renderedSubject || `Notification: ${source_type}`,
+          body: renderedBodyHtml || renderedBody, // Prefer HTML for email
           metadata
         });
         break;
@@ -227,7 +237,7 @@ async function processMessage(msg: JTDMessage): Promise<void> {
       case 'sms':
         result = await handleSMS({
           to: recipient_data.mobile,
-          body: renderedBody,
+          body: renderedBody, // Plain text for SMS
           metadata
         });
         break;
@@ -235,7 +245,7 @@ async function processMessage(msg: JTDMessage): Promise<void> {
       case 'whatsapp':
         result = await handleWhatsApp({
           to: recipient_data.mobile,
-          templateName: metadata.whatsapp_template || event_type,
+          templateName: template.providerTemplateId || metadata.whatsapp_template || source_type,
           templateData: template_data,
           metadata
         });
@@ -245,7 +255,7 @@ async function processMessage(msg: JTDMessage): Promise<void> {
         result = await handleInApp({
           userId: recipient_data.user_id,
           tenantId: tenant_id,
-          title: renderedSubject || event_type,
+          title: renderedSubject || source_type,
           body: renderedBody,
           metadata
         });

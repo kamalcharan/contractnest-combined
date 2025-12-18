@@ -8,22 +8,28 @@
 
 -- Email template for user invitation
 INSERT INTO public.n_jtd_templates (
-    event_type,
-    channel,
     tenant_id,
+    template_key,
     name,
+    description,
+    channel_code,
+    source_type_code,
     subject,
-    body,
+    content,
+    content_html,
     variables,
     is_active,
     created_by,
     updated_by
 ) VALUES (
-    'notification',
-    'email',
     NULL, -- System template (applies to all tenants)
     'user_invitation_email',
+    'User Invitation Email',
+    'Email template for inviting users to a workspace',
+    'email',
+    'user_invite',
     'You''re invited to join {{workspace_name}}',
+    'Hi {{recipient_name}}, {{inviter_name}} has invited you to join {{workspace_name}}. Accept here: {{invitation_link}}',
     '<!DOCTYPE html>
 <html>
 <head>
@@ -39,11 +45,6 @@ INSERT INTO public.n_jtd_templates (
         <div style="padding: 40px;">
             <p>Hi {{recipient_name}},</p>
             <p><strong>{{inviter_name}}</strong> has invited you to join <strong>{{workspace_name}}</strong>.</p>
-            {{#custom_message}}
-            <div style="background-color: #EEF2FF; padding: 15px; margin: 20px 0; border-radius: 4px;">
-                <p style="margin: 0;">{{custom_message}}</p>
-            </div>
-            {{/custom_message}}
             <div style="text-align: center; margin: 40px 0;">
                 <a href="{{invitation_link}}" style="background-color: #4F46E5; color: white; padding: 14px 30px; text-decoration: none; border-radius: 6px; display: inline-block;">Accept Invitation</a>
             </div>
@@ -60,80 +61,89 @@ INSERT INTO public.n_jtd_templates (
     true,
     '00000000-0000-0000-0000-000000000001', -- VaNi
     '00000000-0000-0000-0000-000000000001'
-) ON CONFLICT (event_type, channel, tenant_id) WHERE tenant_id IS NULL
+) ON CONFLICT (template_key, tenant_id) WHERE tenant_id IS NULL
 DO UPDATE SET
-    body = EXCLUDED.body,
+    content = EXCLUDED.content,
+    content_html = EXCLUDED.content_html,
     subject = EXCLUDED.subject,
     variables = EXCLUDED.variables,
     updated_at = now();
 
 -- SMS template for user invitation
 INSERT INTO public.n_jtd_templates (
-    event_type,
-    channel,
     tenant_id,
+    template_key,
     name,
+    description,
+    channel_code,
+    source_type_code,
     subject,
-    body,
+    content,
     variables,
     is_active,
     created_by,
     updated_by
 ) VALUES (
-    'notification',
-    'sms',
     NULL,
     'user_invitation_sms',
+    'User Invitation SMS',
+    'SMS template for inviting users to a workspace',
+    'sms',
+    'user_invite',
     NULL, -- No subject for SMS
     '{{inviter_name}} invited you to join {{workspace_name}}. Accept here: {{invitation_link}}',
     '["inviter_name", "workspace_name", "invitation_link"]'::jsonb,
     true,
     '00000000-0000-0000-0000-000000000001',
     '00000000-0000-0000-0000-000000000001'
-) ON CONFLICT (event_type, channel, tenant_id) WHERE tenant_id IS NULL
+) ON CONFLICT (template_key, tenant_id) WHERE tenant_id IS NULL
 DO UPDATE SET
-    body = EXCLUDED.body,
+    content = EXCLUDED.content,
     variables = EXCLUDED.variables,
     updated_at = now();
 
 -- WhatsApp template for user invitation
--- Note: body contains the MSG91/WhatsApp approved template NAME
+-- Note: content contains the MSG91/WhatsApp approved template NAME
 -- The actual template is configured on MSG91 dashboard
 INSERT INTO public.n_jtd_templates (
-    event_type,
-    channel,
     tenant_id,
+    template_key,
     name,
+    description,
+    channel_code,
+    source_type_code,
     subject,
-    body,
+    content,
+    provider_template_id,
     variables,
     is_active,
     created_by,
     updated_by
 ) VALUES (
-    'notification',
-    'whatsapp',
     NULL,
     'user_invitation_whatsapp',
+    'User Invitation WhatsApp',
+    'WhatsApp template for inviting users - uses MSG91 approved template',
+    'whatsapp',
+    'user_invite',
     NULL,
+    '{{inviter_name}} invited you to join {{workspace_name}}. Accept here: {{invitation_link}}',
     'user_invitation', -- This is the template NAME on MSG91
     '["inviter_name", "workspace_name", "invitation_link"]'::jsonb,
     true,
     '00000000-0000-0000-0000-000000000001',
     '00000000-0000-0000-0000-000000000001'
-) ON CONFLICT (event_type, channel, tenant_id) WHERE tenant_id IS NULL
+) ON CONFLICT (template_key, tenant_id) WHERE tenant_id IS NULL
 DO UPDATE SET
-    body = EXCLUDED.body,
+    content = EXCLUDED.content,
+    provider_template_id = EXCLUDED.provider_template_id,
     variables = EXCLUDED.variables,
     updated_at = now();
 
 -- ============================================================
--- SEED TENANT CONFIG FOR USER INVITE
+-- SEED TENANT SOURCE CONFIG FOR USER INVITE
 -- Enable all channels for user_invite by default for test tenants
 -- ============================================================
-
--- Note: Tenant configs already seeded in 004_rls_policies.sql
--- Here we add source_type specific configs
 
 -- For tenant 1: Enable email, sms, whatsapp for user_invite
 INSERT INTO public.n_jtd_tenant_source_config (
@@ -202,7 +212,7 @@ DECLARE
 BEGIN
     SELECT COUNT(*) INTO template_count
     FROM public.n_jtd_templates
-    WHERE name LIKE 'user_invitation%';
+    WHERE template_key LIKE 'user_invitation%';
 
     SELECT COUNT(*) INTO config_count
     FROM public.n_jtd_tenant_source_config
