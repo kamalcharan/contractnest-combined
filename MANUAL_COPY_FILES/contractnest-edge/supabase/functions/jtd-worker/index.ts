@@ -104,7 +104,9 @@ async function updateJTDStatus(
   errorMessage?: string
 ): Promise<void> {
   const updateData: Record<string, any> = {
-    current_status: status,
+    status_code: status,
+    previous_status_code: undefined, // Will be set by trigger if exists
+    status_changed_at: new Date().toISOString(),
     updated_by: VANI_UUID,
     updated_at: new Date().toISOString()
   };
@@ -113,12 +115,11 @@ async function updateJTDStatus(
     updateData.provider_message_id = providerMessageId;
   }
 
-  if (status === 'sent') {
-    updateData.sent_at = new Date().toISOString();
-  } else if (status === 'delivered') {
-    updateData.delivered_at = new Date().toISOString();
+  if (status === 'processing') {
+    updateData.executed_at = new Date().toISOString();
+  } else if (status === 'sent' || status === 'completed') {
+    updateData.completed_at = new Date().toISOString();
   } else if (status === 'failed') {
-    updateData.failed_at = new Date().toISOString();
     updateData.error_message = errorMessage;
   }
 
@@ -194,13 +195,56 @@ function renderTemplate(template: string, data: Record<string, any>): string {
 }
 
 /**
+ * Fetch full JTD record from database
+ */
+async function fetchJTDRecord(jtdId: string): Promise<any> {
+  const { data, error } = await supabase
+    .from('n_jtd')
+    .select('*')
+    .eq('id', jtdId)
+    .single();
+
+  if (error) {
+    console.error('Error fetching JTD record:', error);
+    throw error;
+  }
+
+  return data;
+}
+
+/**
  * Process a single JTD message
  */
 async function processMessage(msg: JTDMessage): Promise<void> {
   const { message } = msg;
-  const { jtd_id, event_type, channel, tenant_id, source_type, recipient_data, template_data, metadata } = message;
+  // Handle both field naming conventions (with and without _code suffix)
+  const jtd_id = message.jtd_id;
+  const tenant_id = message.tenant_id;
 
-  console.log(`Processing JTD ${jtd_id} - ${source_type}/${event_type} via ${channel}`);
+  console.log(`Processing JTD ${jtd_id} from queue`);
+
+  // Fetch full JTD record from database to get all fields
+  const jtdRecord = await fetchJTDRecord(jtd_id);
+
+  const event_type = jtdRecord.event_type_code;
+  const channel = jtdRecord.channel_code;
+  const source_type = jtdRecord.source_type_code;
+  const is_live = jtdRecord.is_live;
+
+  // Parse payload and template_variables from JSONB
+  const payload = typeof jtdRecord.payload === 'string' ? JSON.parse(jtdRecord.payload) : jtdRecord.payload || {};
+  const template_variables = typeof jtdRecord.template_variables === 'string' ? JSON.parse(jtdRecord.template_variables) : jtdRecord.template_variables || {};
+  const metadata = typeof jtdRecord.metadata === 'string' ? JSON.parse(jtdRecord.metadata) : jtdRecord.metadata || {};
+
+  // Build recipient_data and template_data from JTD record
+  const recipient_data = payload.recipient_data || {
+    name: jtdRecord.recipient_name,
+    email: jtdRecord.recipient_contact,
+    mobile: jtdRecord.recipient_contact
+  };
+  const template_data = payload.template_data || template_variables || {};
+
+  console.log(`Processing JTD ${jtd_id} - ${source_type}/${event_type} via ${channel} (is_live: ${is_live})`);
 
   try {
     // Update status to 'processing'
