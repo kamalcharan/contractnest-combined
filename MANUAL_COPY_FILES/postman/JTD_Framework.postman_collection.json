@@ -1,0 +1,616 @@
+{
+  "info": {
+    "name": "JTD Framework",
+    "_postman_id": "jtd-framework-collection",
+    "description": "Testing collection for JTD (Jobs To Do) notification framework",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "{{SUPABASE_URL}}"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Setup",
+      "item": [
+        {
+          "name": "1.1 Login (Get Token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.access_token) {",
+                  "    pm.environment.set('USER_TOKEN', json.access_token);",
+                  "    pm.environment.set('REFRESH_TOKEN', json.refresh_token);",
+                  "    pm.test('Login successful', () => pm.response.to.have.status(200));",
+                  "} else {",
+                  "    pm.test('Login failed', () => pm.expect.fail(json.error_description || 'No token'));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "apikey", "value": "{{SUPABASE_ANON_KEY}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{TEST_USER_EMAIL}}\",\n  \"password\": \"{{TEST_USER_PASSWORD}}\"\n}"
+            },
+            "url": {
+              "raw": "{{SUPABASE_URL}}/auth/v1/token?grant_type=password",
+              "host": ["{{SUPABASE_URL}}"],
+              "path": ["auth", "v1", "token"],
+              "query": [{"key": "grant_type", "value": "password"}]
+            }
+          }
+        },
+        {
+          "name": "1.2 Check Tenant Config",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('Tenant config exists', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "if (json.length > 0) {",
+                  "    console.log('Tenant config:', JSON.stringify(json[0], null, 2));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{USER_TOKEN}}"},
+              {"key": "apikey", "value": "{{SUPABASE_ANON_KEY}}"}
+            ],
+            "url": {
+              "raw": "{{SUPABASE_URL}}/rest/v1/n_jtd_tenant_source_config?tenant_id=eq.{{TENANT_ID}}&source_type_code=eq.user_invite",
+              "host": ["{{SUPABASE_URL}}"],
+              "path": ["rest", "v1", "n_jtd_tenant_source_config"],
+              "query": [
+                {"key": "tenant_id", "value": "eq.{{TENANT_ID}}"},
+                {"key": "source_type_code", "value": "eq.user_invite"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "1.3 Check Templates Exist",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('Templates seeded', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json.length).to.be.at.least(3);",
+                  "});",
+                  "console.log('Found templates:', json.map(t => t.template_key).join(', '));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{USER_TOKEN}}"},
+              {"key": "apikey", "value": "{{SUPABASE_ANON_KEY}}"}
+            ],
+            "url": {
+              "raw": "{{SUPABASE_URL}}/rest/v1/n_jtd_templates?template_key=like.user_invitation*&select=id,template_key,channel_code,source_type_code",
+              "host": ["{{SUPABASE_URL}}"],
+              "path": ["rest", "v1", "n_jtd_templates"],
+              "query": [
+                {"key": "template_key", "value": "like.user_invitation*"},
+                {"key": "select", "value": "id,template_key,channel_code,source_type_code"}
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Create Invitation (Triggers JTD)",
+      "item": [
+        {
+          "name": "2.1 Create Email Invitation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('Invitation created', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json.success).to.be.true;",
+                  "});",
+                  "",
+                  "if (json.invitation) {",
+                  "    pm.environment.set('INVITATION_ID', json.invitation.id);",
+                  "    console.log('Created invitation:', json.invitation.id);",
+                  "}",
+                  "",
+                  "if (json.jtdId) {",
+                  "    pm.environment.set('JTD_ID', json.jtdId);",
+                  "    console.log('Created JTD:', json.jtdId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{USER_TOKEN}}"},
+              {"key": "apikey", "value": "{{SUPABASE_ANON_KEY}}"},
+              {"key": "x-tenant-id", "value": "{{TENANT_ID}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"create\",\n  \"email\": \"{{TEST_RECIPIENT_EMAIL}}\",\n  \"invitation_method\": \"email\",\n  \"role_id\": \"{{DEFAULT_ROLE_ID}}\",\n  \"custom_message\": \"Welcome to ContractNest! This is a test invitation.\"\n}"
+            },
+            "url": {
+              "raw": "{{SUPABASE_URL}}/functions/v1/user-invitations",
+              "host": ["{{SUPABASE_URL}}"],
+              "path": ["functions", "v1", "user-invitations"]
+            }
+          }
+        },
+        {
+          "name": "2.2 Create SMS Invitation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('SMS Invitation created', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json.success).to.be.true;",
+                  "});",
+                  "",
+                  "if (json.invitation) {",
+                  "    pm.environment.set('SMS_INVITATION_ID', json.invitation.id);",
+                  "}",
+                  "if (json.jtdId) {",
+                  "    pm.environment.set('SMS_JTD_ID', json.jtdId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{USER_TOKEN}}"},
+              {"key": "apikey", "value": "{{SUPABASE_ANON_KEY}}"},
+              {"key": "x-tenant-id", "value": "{{TENANT_ID}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"create\",\n  \"mobile\": \"{{TEST_RECIPIENT_MOBILE}}\",\n  \"invitation_method\": \"sms\",\n  \"role_id\": \"{{DEFAULT_ROLE_ID}}\"\n}"
+            },
+            "url": {
+              "raw": "{{SUPABASE_URL}}/functions/v1/user-invitations",
+              "host": ["{{SUPABASE_URL}}"],
+              "path": ["functions", "v1", "user-invitations"]
+            }
+          }
+        },
+        {
+          "name": "2.3 Create WhatsApp Invitation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('WhatsApp Invitation created', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json.success).to.be.true;",
+                  "});",
+                  "",
+                  "if (json.invitation) {",
+                  "    pm.environment.set('WA_INVITATION_ID', json.invitation.id);",
+                  "}",
+                  "if (json.jtdId) {",
+                  "    pm.environment.set('WA_JTD_ID', json.jtdId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{USER_TOKEN}}"},
+              {"key": "apikey", "value": "{{SUPABASE_ANON_KEY}}"},
+              {"key": "x-tenant-id", "value": "{{TENANT_ID}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"create\",\n  \"mobile\": \"{{TEST_RECIPIENT_MOBILE}}\",\n  \"invitation_method\": \"whatsapp\",\n  \"role_id\": \"{{DEFAULT_ROLE_ID}}\"\n}"
+            },
+            "url": {
+              "raw": "{{SUPABASE_URL}}/functions/v1/user-invitations",
+              "host": ["{{SUPABASE_URL}}"],
+              "path": ["functions", "v1", "user-invitations"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Verify JTD Created",
+      "item": [
+        {
+          "name": "3.1 Get JTD by Invitation ID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('JTD found for invitation', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json.length).to.be.at.least(1);",
+                  "});",
+                  "",
+                  "if (json.length > 0) {",
+                  "    const jtd = json[0];",
+                  "    pm.environment.set('JTD_ID', jtd.id);",
+                  "    console.log('JTD Status:', jtd.status_code);",
+                  "    console.log('JTD Channel:', jtd.channel_code);",
+                  "    pm.test('JTD status is created or pending', () => {",
+                  "        pm.expect(jtd.status_code).to.be.oneOf(['created', 'pending', 'processing']);",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{USER_TOKEN}}"},
+              {"key": "apikey", "value": "{{SUPABASE_ANON_KEY}}"}
+            ],
+            "url": {
+              "raw": "{{SUPABASE_URL}}/rest/v1/n_jtd?source_id=eq.{{INVITATION_ID}}&source_type_code=eq.user_invite&select=*",
+              "host": ["{{SUPABASE_URL}}"],
+              "path": ["rest", "v1", "n_jtd"],
+              "query": [
+                {"key": "source_id", "value": "eq.{{INVITATION_ID}}"},
+                {"key": "source_type_code", "value": "eq.user_invite"},
+                {"key": "select", "value": "*"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "3.2 Get All Pending JTDs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('Query successful', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "console.log('Pending JTDs:', json.length);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{USER_TOKEN}}"},
+              {"key": "apikey", "value": "{{SUPABASE_ANON_KEY}}"}
+            ],
+            "url": {
+              "raw": "{{SUPABASE_URL}}/rest/v1/n_jtd?status_code=in.(created,pending)&tenant_id=eq.{{TENANT_ID}}&select=id,status_code,channel_code,source_type_code,created_at&order=created_at.desc&limit=10",
+              "host": ["{{SUPABASE_URL}}"],
+              "path": ["rest", "v1", "n_jtd"],
+              "query": [
+                {"key": "status_code", "value": "in.(created,pending)"},
+                {"key": "tenant_id", "value": "eq.{{TENANT_ID}}"},
+                {"key": "select", "value": "id,status_code,channel_code,source_type_code,created_at"},
+                {"key": "order", "value": "created_at.desc"},
+                {"key": "limit", "value": "10"}
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Trigger JTD Worker",
+      "item": [
+        {
+          "name": "4.1 Process JTD Queue",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('Worker executed', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "if (json.processed) {",
+                  "    console.log('Processed:', json.processed);",
+                  "    console.log('Results:', JSON.stringify(json.results, null, 2));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{SUPABASE_SERVICE_KEY}}"},
+              {"key": "apikey", "value": "{{SUPABASE_ANON_KEY}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"process\",\n  \"limit\": 10\n}"
+            },
+            "url": {
+              "raw": "{{SUPABASE_URL}}/functions/v1/jtd-worker",
+              "host": ["{{SUPABASE_URL}}"],
+              "path": ["functions", "v1", "jtd-worker"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Check JTD Status After Processing",
+      "item": [
+        {
+          "name": "5.1 Get JTD Details",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('JTD found', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json.length).to.equal(1);",
+                  "});",
+                  "",
+                  "if (json.length > 0) {",
+                  "    const jtd = json[0];",
+                  "    console.log('Status:', jtd.status_code);",
+                  "    console.log('Provider Message ID:', jtd.provider_message_id);",
+                  "    console.log('Executed At:', jtd.executed_at);",
+                  "    console.log('Error:', jtd.error_message || 'None');",
+                  "    ",
+                  "    if (jtd.provider_message_id) {",
+                  "        pm.environment.set('PROVIDER_MESSAGE_ID', jtd.provider_message_id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{USER_TOKEN}}"},
+              {"key": "apikey", "value": "{{SUPABASE_ANON_KEY}}"}
+            ],
+            "url": {
+              "raw": "{{SUPABASE_URL}}/rest/v1/n_jtd?id=eq.{{JTD_ID}}&select=*",
+              "host": ["{{SUPABASE_URL}}"],
+              "path": ["rest", "v1", "n_jtd"],
+              "query": [
+                {"key": "id", "value": "eq.{{JTD_ID}}"},
+                {"key": "select", "value": "*"}
+              ]
+            }
+          }
+        },
+        {
+          "name": "5.2 Get JTD Status History",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('Status history found', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "console.log('Status transitions:');",
+                  "json.forEach(h => {",
+                  "    console.log(`  ${h.from_status_code || 'NULL'} -> ${h.to_status_code} at ${h.created_at}`);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{USER_TOKEN}}"},
+              {"key": "apikey", "value": "{{SUPABASE_ANON_KEY}}"}
+            ],
+            "url": {
+              "raw": "{{SUPABASE_URL}}/rest/v1/n_jtd_status_history?jtd_id=eq.{{JTD_ID}}&select=*&order=created_at.asc",
+              "host": ["{{SUPABASE_URL}}"],
+              "path": ["rest", "v1", "n_jtd_status_history"],
+              "query": [
+                {"key": "jtd_id", "value": "eq.{{JTD_ID}}"},
+                {"key": "select", "value": "*"},
+                {"key": "order", "value": "created_at.asc"}
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Simulate Webhook (Delivery Status)",
+      "item": [
+        {
+          "name": "6.1 MSG91 Email Webhook",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Compute HMAC signature for webhook",
+                  "const body = pm.request.body.raw;",
+                  "const secret = pm.environment.get('INTERNAL_SIGNING_SECRET');",
+                  "",
+                  "if (secret) {",
+                  "    const signature = CryptoJS.HmacSHA256(body, secret).toString(CryptoJS.enc.Hex);",
+                  "    pm.request.headers.add({",
+                  "        key: 'x-webhook-signature',",
+                  "        value: signature",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Webhook processed', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "console.log('Response:', pm.response.json());"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestId\": \"{{PROVIDER_MESSAGE_ID}}\",\n  \"event\": \"delivered\",\n  \"description\": \"Message delivered successfully\",\n  \"timestamp\": \"{{$isoTimestamp}}\"\n}"
+            },
+            "url": {
+              "raw": "{{API_URL}}/api/jtd/webhook/msg91",
+              "host": ["{{API_URL}}"],
+              "path": ["api", "jtd", "webhook", "msg91"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Resend Invitation",
+      "item": [
+        {
+          "name": "7.1 Resend Invitation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test('Resend successful', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "    pm.expect(json.success).to.be.true;",
+                  "});",
+                  "",
+                  "if (json.jtdId) {",
+                  "    pm.environment.set('RESEND_JTD_ID', json.jtdId);",
+                  "    console.log('New JTD for resend:', json.jtdId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{USER_TOKEN}}"},
+              {"key": "apikey", "value": "{{SUPABASE_ANON_KEY}}"},
+              {"key": "x-tenant-id", "value": "{{TENANT_ID}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"resend\",\n  \"invitation_id\": \"{{INVITATION_ID}}\"\n}"
+            },
+            "url": {
+              "raw": "{{SUPABASE_URL}}/functions/v1/user-invitations",
+              "host": ["{{SUPABASE_URL}}"],
+              "path": ["functions", "v1", "user-invitations"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Cleanup (Optional)",
+      "item": [
+        {
+          "name": "8.1 Cancel Invitation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Authorization", "value": "Bearer {{USER_TOKEN}}"},
+              {"key": "apikey", "value": "{{SUPABASE_ANON_KEY}}"},
+              {"key": "x-tenant-id", "value": "{{TENANT_ID}}"},
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"cancel\",\n  \"invitation_id\": \"{{INVITATION_ID}}\"\n}"
+            },
+            "url": {
+              "raw": "{{SUPABASE_URL}}/functions/v1/user-invitations",
+              "host": ["{{SUPABASE_URL}}"],
+              "path": ["functions", "v1", "user-invitations"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
