@@ -560,6 +560,8 @@ const GroupProfileDashboard: React.FC = () => {
         profile_data: {
           ...membership?.profile_data,
           short_description: data.short_description,
+          // Also update ai_enhanced_description when saving edited content
+          ai_enhanced_description: data.short_description,
           generation_method: data.generation_method,
           website_url: data.website_url
         },

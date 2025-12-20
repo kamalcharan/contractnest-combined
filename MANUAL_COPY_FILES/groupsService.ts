@@ -15,6 +15,9 @@ import {
   type N8NGenerateClustersResponse,
   type N8NAISearchRequest,
   type N8NAISearchResponse,
+  type N8NAIAgentRequest,
+  type N8NAIAgentResponse,
+  type AIAgentChannel,
 } from '../config/VaNiN8NConfig';
 import type {
   BusinessGroup,
@@ -1494,6 +1497,153 @@ export const groupsService = {
       console.error('Error in searchTenants:', error);
       captureException(error instanceof Error ? error : new Error(String(error)), { tags: { source: 'groupsService', action: 'searchTenants' } });
       throw error;
+    }
+  },
+
+  // ============================================
+  // AI AGENT - Conversational Group Discovery
+  // Calls N8N webhook for AI-powered chat
+  // ============================================
+
+  /**
+   * Send message to AI Agent via N8N webhook
+   * Supports chat, whatsapp, and web channels
+   *
+   * @param request - AI Agent request containing message, channel, and user identifier
+   * @param environment - 'live' or 'test' for N8N routing
+   * @returns AI Agent response with message and optional search results
+   */
+  async aiAgentMessage(
+    request: {
+      message: string;
+      channel: AIAgentChannel;
+      user_id?: string;
+      phone?: string;
+      group_id?: string;
+      tenant_id?: string;
+    },
+    environment?: string
+  ): Promise<N8NAIAgentResponse> {
+    try {
+      const n8nEnv = VaNiN8NConfig.mapEnvironment(environment);
+      const n8nUrl = VaNiN8NConfig.getWebhookUrl('AI_AGENT', n8nEnv);
+
+      console.log(`🤖 AI Agent: Calling N8N webhook [${n8nEnv}]:`, n8nUrl);
+      console.log(`🤖 AI Agent: Request:`, {
+        channel: request.channel,
+        message: request.message.substring(0, 50) + '...',
+        hasUserId: !!request.user_id,
+        hasPhone: !!request.phone,
+        groupId: request.group_id
+      });
+
+      const n8nRequest: N8NAIAgentRequest = {
+        message: request.message,
+        channel: request.channel,
+        ...(request.user_id && { user_id: request.user_id }),
+        ...(request.phone && { phone: request.phone }),
+        ...(request.group_id && { group_id: request.group_id }),
+        ...(request.tenant_id && { tenant_id: request.tenant_id }),
+      };
+
+      const response = await axios.post<N8NAIAgentResponse>(
+        n8nUrl,
+        n8nRequest,
+        {
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 90000 // 90 seconds for AI processing
+        }
+      );
+
+      // Handle array response (N8N sometimes wraps in array)
+      const n8nData = Array.isArray(response.data) ? response.data[0] : response.data;
+
+      console.log(`🤖 AI Agent: Response received:`, {
+        success: n8nData.success,
+        hasResponse: !!(n8nData as any).response,
+        hasResults: !!(n8nData as any).results,
+        resultsCount: (n8nData as any).results_count
+      });
+
+      // Normalize N8N response: map 'response' field to 'message' for frontend compatibility
+      // N8N returns { success, response, session_id, ... }
+      // Frontend expects { success, message, session_id, ... }
+
+      // Handle session_id - it might be a string, object with error, or undefined
+      let sessionId = (n8nData as any).session_id;
+      if (typeof sessionId === 'object' && sessionId !== null) {
+        // N8N returned an error object instead of string - log and set to undefined
+        console.warn('⚠️ AI Agent: session_id is an object (possible N8N error):', sessionId);
+        sessionId = undefined;
+      }
+
+      const normalizedData: N8NAIAgentResponse = {
+        success: n8nData.success,
+        // Map 'response' to 'message' (N8N uses 'response', our frontend expects 'message')
+        message: (n8nData as any).response || (n8nData as any).message || '',
+        session_id: sessionId,
+        group_id: (n8nData as any).group_id,
+        channel: (n8nData as any).channel,
+        results: (n8nData as any).results,
+        results_count: (n8nData as any).results_count,
+        intent_detected: (n8nData as any).intent_detected,
+        from_cache: (n8nData as any).from_cache,
+        duration_ms: (n8nData as any).duration_ms,
+      } as N8NAIAgentResponse;
+
+      return normalizedData;
+    } catch (error: any) {
+      console.error('Error in aiAgentMessage:', error.message);
+
+      // Try to extract data from error response (N8N might return 500 with valid data)
+      if (axios.isAxiosError(error) && error.response?.data) {
+        const errorData = Array.isArray(error.response.data) ? error.response.data[0] : error.response.data;
+        if (errorData && (errorData.response || errorData.message)) {
+          console.log('⚠️ AI Agent: Extracting data from error response');
+          // Handle session_id that might be an error object
+          let sessionId = errorData.session_id;
+          if (typeof sessionId === 'object' && sessionId !== null) {
+            sessionId = undefined;
+          }
+          return {
+            success: true,
+            message: errorData.response || errorData.message || '',
+            session_id: sessionId,
+            group_id: errorData.group_id,
+            channel: errorData.channel,
+            duration_ms: errorData.duration_ms,
+          } as N8NAIAgentResponse;
+        }
+      }
+
+      // Handle timeout
+      if (axios.isAxiosError(error) && error.code === 'ECONNABORTED') {
+        return {
+          success: false,
+          error: 'AI Agent request timed out. Please try again.',
+          message: 'The request took too long to process.'
+        };
+      }
+
+      // Handle network errors
+      if (axios.isAxiosError(error) && !error.response) {
+        return {
+          success: false,
+          error: 'Unable to reach AI Agent. Please try again later.',
+          message: 'Network error occurred.'
+        };
+      }
+
+      captureException(error instanceof Error ? error : new Error(String(error)), {
+        tags: { source: 'groupsService', action: 'aiAgentMessage', via: 'n8n' },
+        extra: { channel: request.channel, hasMessage: !!request.message }
+      });
+
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message || 'AI Agent request failed',
+        message: 'An error occurred while processing your request.'
+      };
     }
   }
 };
