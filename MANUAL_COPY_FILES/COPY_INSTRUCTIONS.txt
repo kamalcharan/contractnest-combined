@@ -1,41 +1,22 @@
 ═══════════════════════════════════════════════════════════════════════════════
-                    AI ENHANCEMENT FIX - FILE COPY INSTRUCTIONS
+                    REVERT - RESTORE ORIGINAL FILES
 ═══════════════════════════════════════════════════════════════════════════════
 
-ISSUE FIXED:
-- Manual AI Enhancement in Edit mode was not displaying the enhanced content
-- N8N response was returned but UI never showed the AIEnhancementSection
-
-ROOT CAUSE:
-- When in edit mode, showCreateFlow was false
-- AIEnhancementSection only renders when showCreateFlow && createStep === 'enhanced'
-- So enhanced content was never displayed after N8N returned it
+This reverts the AI Enhancement changes that caused issues.
 
 ═══════════════════════════════════════════════════════════════════════════════
-                              FILES TO COPY
+                              FILES TO COPY (REVERTED)
 ═══════════════════════════════════════════════════════════════════════════════
 
-FILE 1: groupsService.ts
+FILE 1: groupsService.ts (REVERTED TO ORIGINAL)
 ────────────────────────────────────────────────────────────────────────────────
 Source:      MANUAL_COPY_FILES\groupsService.ts
 Destination: contractnest-api\src\services\groupsService.ts
 
-Changes:
-- Added comprehensive logging for N8N request/response debugging
-- Made enhanced content extraction flexible (checks multiple field names)
-- Now extracts suggested_keywords from N8N if available
-- Better error messages when enhanced content is missing
 
-
-FILE 2: GroupProfileDashboard.tsx
+FILE 2: GroupProfileDashboard.tsx (REVERTED TO ORIGINAL)
 ────────────────────────────────────────────────────────────────────────────────
 Source:      MANUAL_COPY_FILES\GroupProfileDashboard.tsx
 Destination: contractnest-ui\src\pages\settings\customer-channels\GroupProfileDashboard.tsx
-
-Changes:
-- When AI enhancement completes in edit mode, switches to create flow
-- This ensures AIEnhancementSection displays the enhanced content
-- Preserves existing profile data when saving in edit mode
-- Added console logging for debugging
 
 ═══════════════════════════════════════════════════════════════════════════════

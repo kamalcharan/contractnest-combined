@@ -116,8 +116,6 @@ async function _enhanceProfileInternal(params: EnhanceProfileParams): Promise<an
       groupId: entityId,
     };
 
-    console.log(`🤖 ${label}: Request payload:`, JSON.stringify(n8nRequest, null, 2));
-
     const response = await axios.post<N8NProcessProfileResponse>(
       n8nUrl,
       n8nRequest,
@@ -127,38 +125,19 @@ async function _enhanceProfileInternal(params: EnhanceProfileParams): Promise<an
       }
     );
 
-    // Log raw response for debugging
-    console.log(`🤖 ${label}: Raw N8N response:`, JSON.stringify(response.data, null, 2));
-
     const n8nData = Array.isArray(response.data) ? response.data[0] : response.data;
-
-    console.log(`🤖 ${label}: Parsed N8N data:`, JSON.stringify(n8nData, null, 2));
 
     if (VaNiN8NConfig.isError(n8nData)) {
       console.error(`🤖 ${label}: n8n returned error:`, n8nData);
       throw new Error(n8nData.message || 'AI enhancement failed');
     }
 
-    // Extract enhanced content - check multiple possible field names
-    const successResponse = n8nData as any;
-    const enhancedContent = successResponse.enhancedContent ||
-                            successResponse.enhanced_content ||
-                            successResponse.content ||
-                            successResponse.result ||
-                            successResponse.output;
-
-    if (!enhancedContent) {
-      console.error(`🤖 ${label}: No enhanced content found in response. Keys available:`, Object.keys(successResponse));
-      throw new Error('AI enhancement returned empty result');
-    }
-
-    console.log(`🤖 ${label}: Enhanced content extracted successfully, length:`, enhancedContent.length);
-
+    const successResponse = n8nData as N8NProcessProfileResponse & { status: 'success' };
     return {
       success: true,
-      ai_enhanced_description: enhancedContent,
+      ai_enhanced_description: successResponse.enhancedContent,
       original_description: shortDescription,
-      suggested_keywords: successResponse.suggested_keywords || successResponse.keywords || [],
+      suggested_keywords: [],
       source: 'n8n'
     };
   } catch (error: any) {

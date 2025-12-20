@@ -441,24 +441,14 @@ const GroupProfileDashboard: React.FC = () => {
         short_description: description
       });
 
-      console.log('🎯 AI Enhancement result:', result);
-
       setEnhancedDescription(result.ai_enhanced_description);
       setKeywords(result.suggested_keywords || []);
-
-      // If in edit mode, switch to create flow to show the enhancement section
-      if (isEditing) {
-        setIsEditing(false);
-        setShowCreateFlow(true);
-      }
-
       setCreateStep('enhanced');
 
       toast.success('AI enhancement complete!', {
         style: { background: colors.semantic.success, color: '#FFF' }
       });
     } catch (error: any) {
-      console.error('🎯 AI Enhancement error:', error);
       toast.error(error.message || 'Enhancement failed', {
         style: { background: colors.semantic.error, color: '#FFF' }
       });
@@ -494,18 +484,14 @@ const GroupProfileDashboard: React.FC = () => {
   // Handle save from enhancement
   const handleSaveEnhanced = async (description: string) => {
     try {
-      // Preserve existing profile data when editing
-      const existingProfileData = membership?.profile_data || {};
-
       await saveProfileMutation.mutateAsync({
         membership_id: membershipId || '',
         profile_data: {
-          ...existingProfileData,
-          generation_method: profileFormData?.generation_method || existingProfileData.generation_method || 'manual',
+          generation_method: profileFormData?.generation_method || 'manual',
           short_description: originalDescription || description,
           ai_enhanced_description: description,
-          approved_keywords: keywords.length > 0 ? keywords : existingProfileData.approved_keywords,
-          website_url: profileFormData?.website_url || existingProfileData.website_url,
+          approved_keywords: keywords,
+          website_url: profileFormData?.website_url,
         },
         trigger_embedding: true
       });
