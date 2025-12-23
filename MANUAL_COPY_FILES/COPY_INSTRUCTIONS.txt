@@ -1,6 +1,59 @@
 ═══════════════════════════════════════════════════
 📋 MANUAL COPY INSTRUCTIONS
 ═══════════════════════════════════════════════════
+Branch: claude/init-submodules-feature-lFnRk
+Date: December 23, 2025
+Feature: GroupDiscovery Chat Widget Integration
+
+═══════════════════════════════════════════════════
+🆕 NEW FILES (GroupDiscovery Chat Widget)
+═══════════════════════════════════════════════════
+
+SUBMODULE: contractnest-ui
+─────────────────────────────────────────────────
+1. src/pages/VaNi/channels/VaNiChatPage.tsx
+   FROM: MANUAL_COPY_FILES/contractnest-ui/src/pages/VaNi/channels/VaNiChatPage.tsx
+   TO:   contractnest-ui/src/pages/VaNi/channels/
+
+   CRITICAL BUG FIX:
+   - "Get Details" now sends membership_id (UUID) instead of business_name
+
+   NEW FEATURES:
+   - Logo support with UI Avatars fallback
+   - WhatsApp button with number normalization
+   - Booking button for calendar integration
+   - Location button with Google Maps
+   - Contact Detail Card (full contact info display)
+   - Segment/Industry List Card (browse categories)
+   - Intent Buttons (Search, Browse Industries, View All Members)
+   - Response type detection (search_results, contact_details, segment_list)
+   - Match percentage color coding (green >= 80%, yellow >= 60%, gray < 60%)
+   - Backward compatibility for old API field names
+
+2. src/services/aiAgentService.ts
+   FROM: MANUAL_COPY_FILES/contractnest-ui/src/services/aiAgentService.ts
+   TO:   contractnest-ui/src/services/
+
+   CHANGES:
+   - Updated AIAgentSearchResult interface with new fields:
+     * logo_url, short_description, industry, whatsapp, booking_url
+     * card_url, vcard_url (for digital card features)
+     * full_address, state, address (for location)
+     * phone_country_code, whatsapp_country_code
+   - Added AIAgentSegmentResult interface for industry/segment lists
+   - Updated AIAgentSuccessResponse with segments array and group_name
+
+POWERSHELL COPY COMMANDS (NEW FILES):
+─────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\contractnest-ui\src\pages\VaNi\channels\VaNiChatPage.tsx" -Destination "contractnest-ui\src\pages\VaNi\channels\VaNiChatPage.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\contractnest-ui\src\services\aiAgentService.ts" -Destination "contractnest-ui\src\services\aiAgentService.ts" -Force
+
+Write-Host "GroupDiscovery Chat Widget files copied!" -ForegroundColor Green
+
+
+═══════════════════════════════════════════════════
+📋 PREVIOUS INSTRUCTIONS (WhatsApp Bot Feature)
+═══════════════════════════════════════════════════
 Branch: claude/whatsapp-bot-profile-search-01MR3u8ibbM31ydizJSyAvr6
 Date: December 6, 2025
 Feature: WhatsApp Bot - Chat Service, Internal API Key, CHAT Routes

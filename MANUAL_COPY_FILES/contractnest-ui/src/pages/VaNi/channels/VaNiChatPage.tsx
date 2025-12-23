@@ -1,4 +1,4 @@
-// src/pages/VaNi/channels/VaNiChatPage.tsx
+  // src/pages/VaNi/channels/VaNiChatPage.tsx
 // VaNi AI Chat - BBB Directory Search with Caching
 // Route: /vani/channels/chat
 
@@ -23,10 +23,72 @@ import {
   Clock,
   Database,
   RefreshCw,
-  MessageSquare
+  MessageSquare,
+  MessageCircle,
+  Calendar,
+  Share2,
+  Download,
+  CreditCard,
+  ChevronRight
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { chatService } from '../../../services/chatService';
+import { aiAgentService, type AIAgentSearchResult, type AIAgentSegmentResult, type AIAgentSuccessResponse } from '../../../services/aiAgentService';
+
+// Simple markdown renderer for N8N responses
+const renderMarkdown = (text: string): React.ReactNode => {
+  if (!text) return null;
+
+  // Split by lines and process
+  const lines = text.split('\n');
+
+  return lines.map((line, i) => {
+    // Process bold text: **text** → <strong>text</strong>
+    let processed: React.ReactNode = line;
+
+    // Handle bold
+    const boldPattern = /\*\*(.*?)\*\*/g;
+    const parts: React.ReactNode[] = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = boldPattern.exec(line)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(line.substring(lastIndex, match.index));
+      }
+      parts.push(<strong key={`bold-${i}-${match.index}`}>{match[1]}</strong>);
+      lastIndex = match.index + match[0].length;
+    }
+
+    if (parts.length > 0) {
+      if (lastIndex < line.length) {
+        parts.push(line.substring(lastIndex));
+      }
+      processed = <>{parts}</>;
+    }
+
+    // Handle list items: - item
+    if (line.trim().startsWith('- ')) {
+      const content = line.trim().substring(2);
+      // Re-process bold in list item
+      const listContent = content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      return (
+        <div key={i} className="flex items-start space-x-2 ml-2">
+          <span>•</span>
+          <span dangerouslySetInnerHTML={{ __html: listContent }} />
+        </div>
+      );
+    }
+
+    // Regular line
+    return (
+      <React.Fragment key={i}>
+        {processed}
+        {i < lines.length - 1 && <br />}
+      </React.Fragment>
+    );
+  });
+};
 
 // Types
 interface ChatSession {
@@ -39,28 +101,168 @@ interface ChatSession {
 }
 
 interface SearchResult {
+  // Core identifiers
   membership_id: string;
-  tenant_id: string;
+  tenant_id?: string;
+  rank?: number;
+
+  // Business info
   business_name: string;
-  business_category: string | null;
-  city: string | null;
-  business_phone: string | null;
-  business_email: string | null;
-  website_url: string | null;
-  ai_enhanced_description: string | null;
-  similarity: number;
-  cluster_boost: number;
+  logo_url?: string | null;
+  short_description?: string | null;
+  ai_enhanced_description?: string | null;
+
+  // Industry/Category (support both old and new field names)
+  industry?: string | null;
+  business_category?: string | null;
+
+  // Location
+  city?: string | null;
+  state?: string | null;
+  address?: string | null;
+  full_address?: string | null;
+  chapter?: string | null;
+
+  // Contact info (support both old and new field names)
+  phone?: string | null;
+  phone_country_code?: string;
+  business_phone?: string | null;
+
+  whatsapp?: string | null;
+  whatsapp_country_code?: string;
+
+  email?: string | null;
+  business_email?: string | null;
+
+  website?: string | null;
+  website_url?: string | null;
+
+  booking_url?: string | null;
+
+  // Card URLs (for contact details)
+  card_url?: string | null;
+  vcard_url?: string | null;
+
+  // Match scoring (0-100 scale from API)
+  similarity?: number;
+  cluster_boost?: number;
 }
+
+interface SegmentResult {
+  segment_id: string;
+  segment_name: string;
+  member_count: number;
+}
+
+type ResponseType = 'message_only' | 'search_results' | 'contact_details' | 'segment_list' | 'member_list';
 
 interface ChatMessage {
   id: string;
-  type: 'bot' | 'user' | 'results';
+  type: 'bot' | 'user' | 'results' | 'segments' | 'contact';
   content: string;
   timestamp: Date;
   results?: SearchResult[];
+  segments?: SegmentResult[];
+  responseType?: ResponseType;
   fromCache?: boolean;
   cacheHitCount?: number;
 }
+
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
+
+/**
+ * Normalize WhatsApp number to international format
+ * Handles: 9876543210, 919876543210, +91 98765 43210
+ */
+const normalizeWhatsApp = (num: string | null | undefined): string => {
+  if (!num) return '';
+  const digits = num.replace(/[^0-9]/g, '');
+  // If 10 digits, assume India (+91)
+  return digits.length === 10 ? `91${digits}` : digits;
+};
+
+/**
+ * Get logo URL with UI Avatars fallback
+ */
+const getLogoUrl = (result: SearchResult): string => {
+  if (result.logo_url) return result.logo_url;
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(result.business_name)}&size=120&background=667eea&color=fff&bold=true`;
+};
+
+/**
+ * Get match percentage color based on similarity score
+ */
+const getMatchColor = (similarity: number | undefined): string => {
+  if (!similarity) return '#9ca3af';  // Gray
+  if (similarity >= 80) return '#22c55e';  // Green
+  if (similarity >= 60) return '#eab308';  // Yellow
+  return '#9ca3af';  // Gray
+};
+
+/**
+ * Determine response type from API response
+ */
+const getResponseType = (response: AIAgentSuccessResponse): ResponseType => {
+  // Check for segments first
+  if (response.segments && response.segments.length > 0) {
+    return 'segment_list';
+  }
+
+  if (!response.results || response.results.length === 0) {
+    return 'message_only';
+  }
+
+  const firstResult = response.results[0];
+
+  // Contact details have card_url and vcard_url
+  if (firstResult.card_url && firstResult.vcard_url) {
+    return 'contact_details';
+  }
+
+  // Search results have similarity score
+  if (firstResult.similarity !== undefined) {
+    return 'search_results';
+  }
+
+  // Default to member list
+  return 'member_list';
+};
+
+/**
+ * Map API result to SearchResult with backward compatibility
+ */
+const mapApiResult = (r: AIAgentSearchResult): SearchResult => ({
+  membership_id: r.membership_id,
+  tenant_id: r.tenant_id,
+  rank: r.rank,
+  business_name: r.business_name,
+  logo_url: r.logo_url,
+  short_description: r.short_description || r.ai_enhanced_description,
+  ai_enhanced_description: r.ai_enhanced_description,
+  industry: r.industry || r.business_category,
+  business_category: r.business_category || r.industry,
+  city: r.city,
+  state: r.state,
+  address: r.address,
+  full_address: r.full_address,
+  chapter: r.chapter,
+  phone: r.phone || r.business_phone,
+  phone_country_code: r.phone_country_code,
+  business_phone: r.business_phone || r.phone,
+  whatsapp: r.whatsapp || r.business_whatsapp,
+  whatsapp_country_code: r.whatsapp_country_code,
+  email: r.email || r.business_email,
+  business_email: r.business_email || r.email,
+  website: r.website || r.website_url,
+  website_url: r.website_url || r.website,
+  booking_url: r.booking_url,
+  card_url: r.card_url,
+  vcard_url: r.vcard_url,
+  similarity: r.similarity,
+  cluster_boost: r.cluster_boost,
+});
 
 // Intent button definitions
 const INTENTS = [
@@ -102,6 +304,7 @@ const VaNiChatPage: React.FC = () => {
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
   const navigate = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isInitializedRef = useRef(false);
 
   // State
   const [session, setSession] = useState<ChatSession | null>(null);
@@ -123,37 +326,35 @@ const VaNiChatPage: React.FC = () => {
   }, []);
 
   const initializeChat = async () => {
+    // Prevent double initialization (React StrictMode)
+    if (isInitializedRef.current) return;
+    isInitializedRef.current = true;
+
     setIsInitializing(true);
     try {
-      // Get or create session
+      // Get or create session (for tracking purposes)
       const sessionResponse = await chatService.getSession();
       if (sessionResponse.success && sessionResponse.session) {
         setSession(sessionResponse.session);
-
-        // Auto-activate BBB group
-        const activateResponse = await chatService.activateGroup({
-          trigger_phrase: 'Hi BBB',
-          session_id: sessionResponse.session.id
-        });
-
-        if (activateResponse.success) {
-          setGroupActivated(true);
-          setSession(prev => prev ? {
-            ...prev,
-            group_id: activateResponse.group_id,
-            group_name: activateResponse.group_name
-          } : null);
-
-          // Add welcome message
-          addBotMessage(`Hi, I am VaNi, your AI assistant.\nWelcome to ${activateResponse.group_name || 'BBB Bagyanagar'}!\n\nHow can I help you today?`);
-        } else {
-          addBotMessage('Hi, I am VaNi, your AI assistant.\n\nI couldn\'t connect to BBB. Please try again later.');
-        }
       }
+
+      // Show welcome message with clear instructions
+      // N8N will handle the actual conversation once user sends "Hi BBB"
+      addBotMessage(
+        `Hi, I am **VaNi**, your AI assistant.\nWelcome to **BBB Bhagyanagar**!\n\nHow can I help you today?\n\n- To start conversation: **'Hi BBB'**\n- To end conversation: **'Bye'**`
+      );
+
+      // Pre-fill input with "Hi BBB" for easy start
+      setInputValue('Hi BBB');
+      setGroupActivated(true);
     } catch (error) {
       console.error('Error initializing chat:', error);
-      addBotMessage('Hi, I am VaNi. There was an error connecting. Please refresh the page.');
-      toast.error('Failed to initialize chat');
+      // Show welcome even on error
+      addBotMessage(
+        `Hi, I am **VaNi**, your AI assistant.\nWelcome to **BBB Bhagyanagar**!\n\nHow can I help you today?\n\n- To start conversation: **'Hi BBB'**\n- To end conversation: **'Bye'**`
+      );
+      setInputValue('Hi BBB');
+      setGroupActivated(true);
     } finally {
       setIsInitializing(false);
     }
@@ -209,7 +410,7 @@ const VaNiChatPage: React.FC = () => {
   };
 
   const handleSearch = async () => {
-    if (!inputValue.trim() || !session?.group_id) return;
+    if (!inputValue.trim()) return;
 
     const query = inputValue.trim();
     setInputValue('');
@@ -217,37 +418,67 @@ const VaNiChatPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await chatService.search({
-        group_id: session.group_id,
-        query,
-        session_id: session.id,
-        intent: currentIntent || undefined,
-        limit: 5,
-        use_cache: true
-      });
+      // Use AI Agent for conversational search
+      const response = await aiAgentService.chat(query, session?.group_id || undefined);
 
-      if (response.success) {
-        const resultCount = response.results_count || 0;
+      if (aiAgentService.isSuccess(response)) {
+        const responseType = getResponseType(response);
         const fromCache = response.from_cache || false;
-        const cacheHitCount = response.cache_hit_count || 0;
 
-        if (resultCount > 0) {
-          addBotMessage(
-            `Found ${resultCount} member${resultCount > 1 ? 's' : ''} for "${query}":`,
-            response.results,
-            fromCache,
-            cacheHitCount
-          );
-        } else {
-          addBotMessage(`No members found for "${query}". Try different keywords or browse by segment.`);
+        // Handle segment/industry list response
+        if (responseType === 'segment_list' && response.segments) {
+          const message: ChatMessage = {
+            id: `bot-${Date.now()}`,
+            type: 'segments',
+            content: response.message || 'Here are the available industries:',
+            timestamp: new Date(),
+            segments: response.segments,
+            responseType: 'segment_list',
+            fromCache
+          };
+          setMessages(prev => [...prev, message]);
+        }
+        // Handle contact details response
+        else if (responseType === 'contact_details' && response.results) {
+          const mappedResults = response.results.map(mapApiResult);
+          const message: ChatMessage = {
+            id: `bot-${Date.now()}`,
+            type: 'contact',
+            content: response.message || 'Here are the contact details:',
+            timestamp: new Date(),
+            results: mappedResults,
+            responseType: 'contact_details',
+            fromCache
+          };
+          setMessages(prev => [...prev, message]);
+        }
+        // Handle search results or member list
+        else if ((responseType === 'search_results' || responseType === 'member_list') && response.results) {
+          const mappedResults = response.results.map(mapApiResult);
+          const resultCount = response.results_count || mappedResults.length;
+          const message: ChatMessage = {
+            id: `bot-${Date.now()}`,
+            type: 'results',
+            content: response.message || `Found ${resultCount} member${resultCount !== 1 ? 's' : ''}:`,
+            timestamp: new Date(),
+            results: mappedResults,
+            responseType,
+            fromCache
+          };
+          setMessages(prev => [...prev, message]);
+        }
+        // Message only (no results)
+        else {
+          addBotMessage(response.message || 'How can I help you?');
         }
       } else {
-        addBotMessage('Sorry, I couldn\'t complete the search. Please try again.');
+        // Error response
+        addBotMessage(response.message || 'Sorry, I couldn\'t process your request. Please try again.');
       }
     } catch (error) {
-      console.error('Error searching:', error);
-      addBotMessage('Search failed. Please try again.');
-      toast.error('Search failed');
+      console.error('Error with AI Agent:', error);
+      addBotMessage('Something went wrong. Please try again.');
+      toast.error('Request failed');
     } finally {
       setIsLoading(false);
       setCurrentIntent(null);
@@ -266,9 +497,165 @@ const VaNiChatPage: React.FC = () => {
     addBotMessage('What would you like to search for?');
   };
 
+  /**
+   * Handle "Get Details" button click - sends membership_id to API
+   * FIX: Uses membership_id (UUID) instead of business_name
+   */
+  const handleGetDetails = async (result: SearchResult) => {
+    addUserMessage(`Get details for ${result.business_name}`);
+    setIsLoading(true);
+
+    try {
+      // Pass membership_id in the message for N8N to parse
+      const response = await aiAgentService.chat(
+        `get contact for membership_id:${result.membership_id}`,
+        session?.group_id || undefined
+      );
+
+      if (aiAgentService.isSuccess(response)) {
+        const responseType = getResponseType(response);
+
+        if (response.results && response.results.length > 0) {
+          const mappedResults = response.results.map(mapApiResult);
+
+          const message: ChatMessage = {
+            id: `bot-${Date.now()}`,
+            type: responseType === 'contact_details' ? 'contact' : 'results',
+            content: response.message || `Here are the details for ${result.business_name}:`,
+            timestamp: new Date(),
+            results: mappedResults,
+            responseType,
+            fromCache: response.from_cache
+          };
+          setMessages(prev => [...prev, message]);
+        } else {
+          addBotMessage(response.message || 'Contact details not found.');
+        }
+      } else {
+        addBotMessage(response.message || 'Failed to get contact details. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error getting details:', error);
+      addBotMessage('Something went wrong. Please try again.');
+      toast.error('Request failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  /**
+   * Handle quick action button clicks (call, whatsapp, email, etc.)
+   */
+  const handleQuickAction = (type: string, result: SearchResult) => {
+    switch (type) {
+      case 'call': {
+        const phone = result.phone || result.business_phone;
+        if (phone) window.open(`tel:${phone}`, '_self');
+        break;
+      }
+
+      case 'whatsapp': {
+        const waNumber = normalizeWhatsApp(result.whatsapp || result.phone || result.business_phone);
+        if (waNumber) window.open(`https://wa.me/${waNumber}`, '_blank');
+        break;
+      }
+
+      case 'email': {
+        const email = result.email || result.business_email;
+        if (email) window.open(`mailto:${email}`, '_self');
+        break;
+      }
+
+      case 'website': {
+        const url = result.website || result.website_url;
+        if (url) {
+          const fullUrl = url.startsWith('http') ? url : `https://${url}`;
+          window.open(fullUrl, '_blank');
+        }
+        break;
+      }
+
+      case 'book':
+        if (result.booking_url) window.open(result.booking_url, '_blank');
+        break;
+
+      case 'location': {
+        const address = result.full_address || result.address || result.city;
+        if (address) window.open(`https://maps.google.com/?q=${encodeURIComponent(address)}`, '_blank');
+        break;
+      }
+
+      case 'view_card':
+        if (result.card_url) window.open(result.card_url, '_blank');
+        break;
+
+      case 'save_contact':
+        if (result.vcard_url) window.location.href = result.vcard_url;
+        break;
+
+      case 'share':
+        if (navigator.share && result.card_url) {
+          navigator.share({
+            title: result.business_name,
+            text: result.short_description || result.ai_enhanced_description || '',
+            url: result.card_url
+          }).catch(() => {
+            // Fallback to clipboard
+            navigator.clipboard.writeText(result.card_url || '');
+            toast.success('Link copied to clipboard!');
+          });
+        } else if (result.card_url) {
+          navigator.clipboard.writeText(result.card_url);
+          toast.success('Link copied to clipboard!');
+        }
+        break;
+    }
+  };
+
+  /**
+   * Handle "View Members" click from segment list
+   */
+  const handleViewMembers = (segment: SegmentResult) => {
+    const query = `list members in ${segment.segment_name}`;
+    setInputValue('');
+    addUserMessage(query);
+    setIsLoading(true);
+
+    aiAgentService.chat(query, session?.group_id || undefined)
+      .then(response => {
+        if (aiAgentService.isSuccess(response) && response.results) {
+          const mappedResults = response.results.map(mapApiResult);
+          addBotMessage(
+            response.message || `Members in ${segment.segment_name}:`,
+            mappedResults,
+            response.from_cache
+          );
+        } else {
+          addBotMessage(response.message || 'No members found in this segment.');
+        }
+      })
+      .catch(error => {
+        console.error('Error fetching members:', error);
+        addBotMessage('Failed to load members. Please try again.');
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  };
+
   // Render search result card
   const renderResultCard = (result: SearchResult, index: number) => {
-    const matchPercent = Math.round((result.similarity + (result.cluster_boost || 0)) * 100);
+    // Similarity is now 0-100 from API, no need to multiply
+    const matchPercent = result.similarity ? Math.round(result.similarity) : null;
+    const matchColor = getMatchColor(result.similarity);
+
+    // Get values with backward compatibility
+    const industry = result.industry || result.business_category;
+    const phone = result.phone || result.business_phone;
+    const email = result.email || result.business_email;
+    const website = result.website || result.website_url;
+    const description = result.short_description || result.ai_enhanced_description;
+    const whatsapp = result.whatsapp;
 
     return (
       <div
@@ -281,89 +668,521 @@ const VaNiChatPage: React.FC = () => {
       >
         <div className="flex items-start justify-between mb-2">
           <div className="flex items-center space-x-3">
-            <div
-              className="w-10 h-10 rounded-lg flex items-center justify-center"
-              style={{ backgroundColor: `${colors.brand.primary}20` }}
-            >
-              <Building2 className="w-5 h-5" style={{ color: colors.brand.primary }} />
-            </div>
+            {/* Logo with fallback */}
+            <img
+              src={getLogoUrl(result)}
+              alt={result.business_name}
+              className="w-10 h-10 rounded-lg object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(result.business_name)}&background=667eea&color=fff`;
+              }}
+            />
             <div>
               <h4 className="font-semibold" style={{ color: colors.utility.primaryText }}>
                 {result.business_name}
               </h4>
-              {result.business_category && (
-                <span
-                  className="text-xs px-2 py-0.5 rounded-full"
-                  style={{
-                    backgroundColor: `${colors.semantic.success}20`,
-                    color: colors.semantic.success
-                  }}
-                >
-                  {result.business_category}
-                </span>
-              )}
+              <div className="flex flex-wrap gap-1">
+                {industry && (
+                  <span
+                    className="text-xs px-2 py-0.5 rounded-full"
+                    style={{
+                      backgroundColor: `${colors.semantic.success}20`,
+                      color: colors.semantic.success
+                    }}
+                  >
+                    {industry}
+                  </span>
+                )}
+                {result.chapter && (
+                  <span
+                    className="text-xs px-2 py-0.5 rounded-full"
+                    style={{
+                      backgroundColor: `${colors.semantic.info}20`,
+                      color: colors.semantic.info
+                    }}
+                  >
+                    {result.chapter}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
-          <div
-            className="text-sm font-bold px-2 py-1 rounded"
-            style={{
-              backgroundColor: `${colors.brand.primary}20`,
-              color: colors.brand.primary
-            }}
-          >
-            {matchPercent}% match
-          </div>
+          {matchPercent !== null && (
+            <div
+              className="text-sm font-bold px-2 py-1 rounded"
+              style={{
+                backgroundColor: `${matchColor}20`,
+                color: matchColor
+              }}
+            >
+              {matchPercent}% match
+            </div>
+          )}
         </div>
 
-        {result.ai_enhanced_description && (
+        {description && (
           <p
             className="text-sm mb-3 line-clamp-2"
             style={{ color: colors.utility.secondaryText }}
           >
-            {result.ai_enhanced_description}
+            {description}
           </p>
         )}
 
-        <div className="flex flex-wrap gap-3 text-sm">
+        {/* Contact Info Row */}
+        <div className="flex flex-wrap gap-3 text-sm mb-3">
           {result.city && (
             <div className="flex items-center space-x-1" style={{ color: colors.utility.secondaryText }}>
               <MapPin className="w-3 h-3" />
               <span>{result.city}</span>
             </div>
           )}
-          {result.business_phone && (
-            <a
-              href={`tel:${result.business_phone}`}
-              className="flex items-center space-x-1 hover:underline"
-              style={{ color: colors.semantic.info }}
+          {phone && (
+            <div className="flex items-center space-x-1" style={{ color: colors.utility.secondaryText }}>
+              <Phone className="w-3 h-3" />
+              <span>{phone}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Action Buttons Row */}
+        <div className="flex flex-wrap gap-2 pt-2 border-t" style={{ borderColor: `${colors.utility.primaryText}10` }}>
+          {phone && (
+            <button
+              onClick={() => handleQuickAction('call', result)}
+              className="flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-80"
+              style={{
+                backgroundColor: `${colors.semantic.success}15`,
+                color: colors.semantic.success,
+                border: `1px solid ${colors.semantic.success}30`
+              }}
             >
               <Phone className="w-3 h-3" />
-              <span>{result.business_phone}</span>
-            </a>
+              <span>Call</span>
+            </button>
           )}
-          {result.business_email && (
-            <a
-              href={`mailto:${result.business_email}`}
-              className="flex items-center space-x-1 hover:underline"
-              style={{ color: colors.semantic.warning }}
+          {whatsapp && (
+            <button
+              onClick={() => handleQuickAction('whatsapp', result)}
+              className="flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-80"
+              style={{
+                backgroundColor: '#25d36615',
+                color: '#25d366',
+                border: '1px solid #25d36630'
+              }}
+            >
+              <MessageCircle className="w-3 h-3" />
+              <span>WhatsApp</span>
+            </button>
+          )}
+          {email && (
+            <button
+              onClick={() => handleQuickAction('email', result)}
+              className="flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-80"
+              style={{
+                backgroundColor: `${colors.semantic.warning}15`,
+                color: colors.semantic.warning,
+                border: `1px solid ${colors.semantic.warning}30`
+              }}
             >
               <Mail className="w-3 h-3" />
               <span>Email</span>
-            </a>
+            </button>
           )}
-          {result.website_url && (
-            <a
-              href={result.website_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center space-x-1 hover:underline"
-              style={{ color: colors.brand.secondary }}
+          {website && (
+            <button
+              onClick={() => handleQuickAction('website', result)}
+              className="flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-80"
+              style={{
+                backgroundColor: `${colors.semantic.info}15`,
+                color: colors.semantic.info,
+                border: `1px solid ${colors.semantic.info}30`
+              }}
             >
               <Globe className="w-3 h-3" />
               <span>Website</span>
-              <ExternalLink className="w-3 h-3" />
-            </a>
+            </button>
           )}
+          {result.booking_url && (
+            <button
+              onClick={() => handleQuickAction('book', result)}
+              className="flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all hover:opacity-80"
+              style={{
+                backgroundColor: '#3b82f615',
+                color: '#3b82f6',
+                border: '1px solid #3b82f630'
+              }}
+            >
+              <Calendar className="w-3 h-3" />
+              <span>Book</span>
+            </button>
+          )}
+        </div>
+
+        {/* Get Full Details Button - Fixed to use membership_id */}
+        <button
+          onClick={() => handleGetDetails(result)}
+          className="w-full mt-3 flex items-center justify-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all hover:opacity-90"
+          style={{
+            background: `linear-gradient(135deg, ${colors.brand.primary}, ${colors.brand.secondary})`,
+            color: '#FFF'
+          }}
+        >
+          <Phone className="w-4 h-4" />
+          <span>Get Full Details</span>
+        </button>
+      </div>
+    );
+  };
+
+  // Render contact detail card (full details view)
+  const renderContactDetailCard = (result: SearchResult) => {
+    const phone = result.phone || result.business_phone;
+    const email = result.email || result.business_email;
+    const website = result.website || result.website_url;
+    const description = result.ai_enhanced_description || result.short_description;
+    const industry = result.industry || result.business_category;
+    const address = result.full_address || result.address;
+
+    return (
+      <div
+        key={result.membership_id}
+        className="rounded-xl overflow-hidden"
+        style={{
+          backgroundColor: colors.utility.primaryBackground,
+          border: `1px solid ${colors.utility.primaryText}15`
+        }}
+      >
+        {/* Header with Logo */}
+        <div
+          className="p-6 text-center"
+          style={{
+            background: `linear-gradient(135deg, ${colors.brand.primary}15 0%, ${colors.brand.secondary}15 100%)`
+          }}
+        >
+          <img
+            src={getLogoUrl(result)}
+            alt={result.business_name}
+            className="w-20 h-20 rounded-xl object-cover mx-auto mb-3"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(result.business_name)}&size=120&background=667eea&color=fff`;
+            }}
+          />
+          <h3 className="text-xl font-bold" style={{ color: colors.utility.primaryText }}>
+            {result.business_name}
+          </h3>
+          {industry && (
+            <span
+              className="inline-block mt-2 text-xs px-3 py-1 rounded-full"
+              style={{
+                backgroundColor: colors.utility.secondaryBackground,
+                color: colors.utility.secondaryText
+              }}
+            >
+              {industry}
+            </span>
+          )}
+        </div>
+
+        {/* Description */}
+        {description && (
+          <div className="px-6 py-4 border-b" style={{ borderColor: `${colors.utility.primaryText}10` }}>
+            <p className="text-sm" style={{ color: colors.utility.secondaryText }}>
+              {description}
+            </p>
+          </div>
+        )}
+
+        {/* Contact Details List */}
+        <div className="divide-y" style={{ borderColor: `${colors.utility.primaryText}10` }}>
+          {phone && (
+            <button
+              onClick={() => handleQuickAction('call', result)}
+              className="w-full flex items-center justify-between px-6 py-4 hover:bg-opacity-50 transition-all"
+              style={{ backgroundColor: 'transparent' }}
+            >
+              <div className="flex items-center space-x-3">
+                <Phone className="w-5 h-5" style={{ color: colors.semantic.success }} />
+                <div className="text-left">
+                  <div className="text-xs" style={{ color: colors.utility.secondaryText }}>Phone</div>
+                  <div className="font-medium" style={{ color: colors.utility.primaryText }}>
+                    {result.phone_country_code || '+91'} {phone}
+                  </div>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5" style={{ color: colors.utility.secondaryText }} />
+            </button>
+          )}
+
+          {result.whatsapp && (
+            <button
+              onClick={() => handleQuickAction('whatsapp', result)}
+              className="w-full flex items-center justify-between px-6 py-4 hover:bg-opacity-50 transition-all"
+              style={{ backgroundColor: 'transparent' }}
+            >
+              <div className="flex items-center space-x-3">
+                <MessageCircle className="w-5 h-5" style={{ color: '#25d366' }} />
+                <div className="text-left">
+                  <div className="text-xs" style={{ color: colors.utility.secondaryText }}>WhatsApp</div>
+                  <div className="font-medium" style={{ color: colors.utility.primaryText }}>
+                    {result.whatsapp_country_code || '+91'} {result.whatsapp}
+                  </div>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5" style={{ color: colors.utility.secondaryText }} />
+            </button>
+          )}
+
+          {email && (
+            <button
+              onClick={() => handleQuickAction('email', result)}
+              className="w-full flex items-center justify-between px-6 py-4 hover:bg-opacity-50 transition-all"
+              style={{ backgroundColor: 'transparent' }}
+            >
+              <div className="flex items-center space-x-3">
+                <Mail className="w-5 h-5" style={{ color: colors.semantic.warning }} />
+                <div className="text-left">
+                  <div className="text-xs" style={{ color: colors.utility.secondaryText }}>Email</div>
+                  <div className="font-medium" style={{ color: colors.utility.primaryText }}>{email}</div>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5" style={{ color: colors.utility.secondaryText }} />
+            </button>
+          )}
+
+          {website && (
+            <button
+              onClick={() => handleQuickAction('website', result)}
+              className="w-full flex items-center justify-between px-6 py-4 hover:bg-opacity-50 transition-all"
+              style={{ backgroundColor: 'transparent' }}
+            >
+              <div className="flex items-center space-x-3">
+                <Globe className="w-5 h-5" style={{ color: colors.semantic.info }} />
+                <div className="text-left">
+                  <div className="text-xs" style={{ color: colors.utility.secondaryText }}>Website</div>
+                  <div className="font-medium" style={{ color: colors.utility.primaryText }}>
+                    {website.replace(/^https?:\/\//, '')}
+                  </div>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5" style={{ color: colors.utility.secondaryText }} />
+            </button>
+          )}
+
+          {result.booking_url && (
+            <button
+              onClick={() => handleQuickAction('book', result)}
+              className="w-full flex items-center justify-between px-6 py-4 hover:bg-opacity-50 transition-all"
+              style={{ backgroundColor: 'transparent' }}
+            >
+              <div className="flex items-center space-x-3">
+                <Calendar className="w-5 h-5" style={{ color: '#3b82f6' }} />
+                <div className="text-left">
+                  <div className="text-xs" style={{ color: colors.utility.secondaryText }}>Book Meeting</div>
+                  <div className="font-medium" style={{ color: colors.utility.primaryText }}>Schedule Now</div>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5" style={{ color: colors.utility.secondaryText }} />
+            </button>
+          )}
+
+          {(address || result.city) && (
+            <button
+              onClick={() => handleQuickAction('location', result)}
+              className="w-full flex items-center justify-between px-6 py-4 hover:bg-opacity-50 transition-all"
+              style={{ backgroundColor: 'transparent' }}
+            >
+              <div className="flex items-center space-x-3">
+                <MapPin className="w-5 h-5" style={{ color: colors.brand.primary }} />
+                <div className="text-left">
+                  <div className="text-xs" style={{ color: colors.utility.secondaryText }}>Location</div>
+                  <div className="font-medium" style={{ color: colors.utility.primaryText }}>
+                    {address || result.city}
+                  </div>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5" style={{ color: colors.utility.secondaryText }} />
+            </button>
+          )}
+        </div>
+
+        {/* Action Buttons */}
+        {(result.card_url || result.vcard_url) && (
+          <div className="p-4 flex flex-wrap gap-2 border-t" style={{ borderColor: `${colors.utility.primaryText}10` }}>
+            {result.card_url && (
+              <button
+                onClick={() => handleQuickAction('view_card', result)}
+                className="flex-1 flex items-center justify-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all hover:opacity-80"
+                style={{
+                  backgroundColor: `${colors.brand.primary}15`,
+                  color: colors.brand.primary,
+                  border: `1px solid ${colors.brand.primary}30`
+                }}
+              >
+                <CreditCard className="w-4 h-4" />
+                <span>View Card</span>
+              </button>
+            )}
+            {result.vcard_url && (
+              <button
+                onClick={() => handleQuickAction('save_contact', result)}
+                className="flex-1 flex items-center justify-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all hover:opacity-80"
+                style={{
+                  backgroundColor: `${colors.semantic.success}15`,
+                  color: colors.semantic.success,
+                  border: `1px solid ${colors.semantic.success}30`
+                }}
+              >
+                <Download className="w-4 h-4" />
+                <span>Save Contact</span>
+              </button>
+            )}
+            {result.card_url && (
+              <button
+                onClick={() => handleQuickAction('share', result)}
+                className="flex-1 flex items-center justify-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all hover:opacity-80"
+                style={{
+                  backgroundColor: `${colors.semantic.info}15`,
+                  color: colors.semantic.info,
+                  border: `1px solid ${colors.semantic.info}30`
+                }}
+              >
+                <Share2 className="w-4 h-4" />
+                <span>Share</span>
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Render segment/industry list card
+  const renderSegmentListCard = (segment: SegmentResult, index: number) => {
+    return (
+      <div
+        key={segment.segment_id || index}
+        className="flex items-center justify-between p-4 rounded-lg transition-all hover:shadow-md"
+        style={{
+          backgroundColor: colors.utility.primaryBackground,
+          border: `1px solid ${colors.utility.primaryText}15`
+        }}
+      >
+        <div>
+          <h4 className="font-semibold" style={{ color: colors.utility.primaryText }}>
+            {segment.segment_name}
+          </h4>
+          <p className="text-sm" style={{ color: colors.utility.secondaryText }}>
+            {segment.member_count} member{segment.member_count !== 1 ? 's' : ''}
+          </p>
+        </div>
+        <button
+          onClick={() => handleViewMembers(segment)}
+          className="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-80"
+          style={{
+            backgroundColor: `${colors.brand.primary}15`,
+            color: colors.brand.primary,
+            border: `1px solid ${colors.brand.primary}30`
+          }}
+        >
+          <Users className="w-4 h-4" />
+          <span>View Members</span>
+        </button>
+      </div>
+    );
+  };
+
+  // Render Intent Buttons panel
+  const renderIntentButtons = () => {
+    return (
+      <div className="flex justify-start mb-4">
+        <div className="flex items-start space-x-3">
+          <div className="w-8 h-8" />
+          <div className="space-y-2">
+            <p className="text-sm mb-2" style={{ color: colors.utility.secondaryText }}>
+              What would you like to do?
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => {
+                  setInputValue('');
+                  addBotMessage('What are you looking for?');
+                }}
+                className="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all hover:shadow-md"
+                style={{
+                  backgroundColor: colors.utility.secondaryBackground,
+                  border: `1px solid ${colors.brand.primary}30`,
+                  color: colors.utility.primaryText
+                }}
+              >
+                <Search className="w-4 h-4" style={{ color: colors.brand.primary }} />
+                <span>Search Businesses</span>
+              </button>
+              <button
+                onClick={() => {
+                  addUserMessage('list industries');
+                  setIsLoading(true);
+                  aiAgentService.chat('list industries', session?.group_id || undefined)
+                    .then(response => {
+                      if (aiAgentService.isSuccess(response)) {
+                        if (response.segments && response.segments.length > 0) {
+                          const message: ChatMessage = {
+                            id: `bot-${Date.now()}`,
+                            type: 'segments',
+                            content: response.message || 'Here are the available industries:',
+                            timestamp: new Date(),
+                            segments: response.segments,
+                            responseType: 'segment_list'
+                          };
+                          setMessages(prev => [...prev, message]);
+                        } else {
+                          addBotMessage(response.message || 'No industries found.');
+                        }
+                      }
+                    })
+                    .finally(() => setIsLoading(false));
+                }}
+                className="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all hover:shadow-md"
+                style={{
+                  backgroundColor: colors.utility.secondaryBackground,
+                  border: `1px solid ${colors.brand.primary}30`,
+                  color: colors.utility.primaryText
+                }}
+              >
+                <Users className="w-4 h-4" style={{ color: colors.brand.primary }} />
+                <span>Browse Industries</span>
+              </button>
+              <button
+                onClick={() => {
+                  addUserMessage('list all members');
+                  setIsLoading(true);
+                  aiAgentService.chat('list all members', session?.group_id || undefined)
+                    .then(response => {
+                      if (aiAgentService.isSuccess(response) && response.results) {
+                        const mappedResults = response.results.map(mapApiResult);
+                        addBotMessage(
+                          response.message || 'Here are all members:',
+                          mappedResults,
+                          response.from_cache
+                        );
+                      } else {
+                        addBotMessage(response.message || 'No members found.');
+                      }
+                    })
+                    .finally(() => setIsLoading(false));
+                }}
+                className="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all hover:shadow-md"
+                style={{
+                  backgroundColor: colors.utility.secondaryBackground,
+                  border: `1px solid ${colors.brand.primary}30`,
+                  color: colors.utility.primaryText
+                }}
+              >
+                <Building2 className="w-4 h-4" style={{ color: colors.brand.primary }} />
+                <span>View All Members</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -398,18 +1217,32 @@ const VaNiChatPage: React.FC = () => {
           </div>
           <div className="flex-1">
             <div
-              className="px-4 py-2 rounded-lg rounded-bl-none whitespace-pre-wrap"
+              className="px-4 py-2 rounded-lg rounded-bl-none"
               style={{
                 backgroundColor: colors.utility.secondaryBackground,
                 color: colors.utility.primaryText,
                 border: `1px solid ${colors.utility.primaryText}15`
               }}
             >
-              {message.content}
+              {renderMarkdown(message.content)}
             </div>
 
-            {/* Search results */}
-            {message.results && message.results.length > 0 && (
+            {/* Contact Details Card */}
+            {message.type === 'contact' && message.results && message.results.length > 0 && (
+              <div className="mt-3">
+                {renderContactDetailCard(message.results[0])}
+              </div>
+            )}
+
+            {/* Segment/Industry List */}
+            {message.type === 'segments' && message.segments && message.segments.length > 0 && (
+              <div className="mt-3 space-y-2">
+                {message.segments.map((segment, idx) => renderSegmentListCard(segment, idx))}
+              </div>
+            )}
+
+            {/* Search results (regular cards) */}
+            {message.type === 'results' && message.results && message.results.length > 0 && (
               <div className="mt-3 space-y-3">
                 {message.results.map((result, idx) => renderResultCard(result, idx))}
 
@@ -420,7 +1253,7 @@ const VaNiChatPage: React.FC = () => {
                     style={{ color: colors.utility.secondaryText }}
                   >
                     <Database className="w-3 h-3" />
-                    <span>Results from cache (hit #{message.cacheHitCount})</span>
+                    <span>Results from cache</span>
                   </div>
                 )}
 
@@ -439,6 +1272,13 @@ const VaNiChatPage: React.FC = () => {
                 </button>
               </div>
             )}
+
+            {/* Fallback for 'bot' type with results (backward compat) */}
+            {message.type === 'bot' && message.results && message.results.length > 0 && (
+              <div className="mt-3 space-y-3">
+                {message.results.map((result, idx) => renderResultCard(result, idx))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -447,17 +1287,19 @@ const VaNiChatPage: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: colors.utility.primaryBackground }}>
-      {/* Header */}
-      <div
-        className="flex items-center justify-between p-4 border-b"
-        style={{
-          backgroundColor: colors.utility.secondaryBackground,
-          borderColor: `${colors.utility.primaryText}20`
-        }}
-      >
+      {/* Centered Chat Container */}
+      <div className="max-w-2xl mx-auto w-full flex flex-col min-h-screen">
+        {/* Header */}
+        <div
+          className="flex items-center justify-between p-4 border-b"
+          style={{
+            backgroundColor: colors.utility.secondaryBackground,
+            borderColor: `${colors.utility.primaryText}20`
+          }}
+        >
         <div className="flex items-center space-x-4">
           <button
-            onClick={() => navigate('/vani/channels/bbb')}
+            onClick={() => navigate('/settings/configure/customer-channels/groups')}
             className="flex items-center space-x-2 px-3 py-2 border rounded-lg transition-colors hover:opacity-80"
             style={{
               borderColor: `${colors.utility.primaryText}20`,
@@ -519,47 +1361,8 @@ const VaNiChatPage: React.FC = () => {
             {/* Messages */}
             {messages.map(renderMessage)}
 
-            {/* Intent Buttons - Show when no current intent and group is activated */}
-            {groupActivated && !currentIntent && !isLoading && (
-              <div className="flex justify-start mb-4">
-                <div className="flex items-start space-x-3">
-                  <div className="w-8 h-8" /> {/* Spacer for alignment */}
-                  <div className="grid grid-cols-2 gap-3">
-                    {INTENTS.map((intent) => {
-                      const Icon = intent.icon;
-                      return (
-                        <button
-                          key={intent.id}
-                          onClick={() => handleIntentClick(intent)}
-                          className="flex items-center space-x-2 px-4 py-3 rounded-lg text-left transition-all hover:shadow-md transform hover:scale-102"
-                          style={{
-                            backgroundColor: colors.utility.secondaryBackground,
-                            border: `1px solid ${colors.brand.primary}30`,
-                            color: colors.utility.primaryText
-                          }}
-                        >
-                          <div
-                            className="p-2 rounded-lg"
-                            style={{ backgroundColor: `${colors.brand.primary}15` }}
-                          >
-                            <Icon className="w-4 h-4" style={{ color: colors.brand.primary }} />
-                          </div>
-                          <div>
-                            <div className="font-medium text-sm">{intent.label}</div>
-                            <div
-                              className="text-xs"
-                              style={{ color: colors.utility.secondaryText }}
-                            >
-                              {intent.description}
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Intent Buttons - Show after welcome message when not loading */}
+            {groupActivated && !isLoading && messages.length <= 2 && renderIntentButtons()}
 
             {/* Loading indicator */}
             {isLoading && (
@@ -579,7 +1382,7 @@ const VaNiChatPage: React.FC = () => {
                     }}
                   >
                     <Loader2 className="w-4 h-4 animate-spin" style={{ color: colors.brand.primary }} />
-                    <span style={{ color: colors.utility.secondaryText }}>Searching...</span>
+                    <span style={{ color: colors.utility.secondaryText }}>VaNi is thinking...</span>
                   </div>
                 </div>
               </div>
@@ -604,7 +1407,7 @@ const VaNiChatPage: React.FC = () => {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder={currentIntent ? 'Type your search query...' : 'Click a button above or type to search...'}
+            placeholder="Type your message..."
             disabled={isLoading || isInitializing || !groupActivated}
             className="flex-1 p-3 border rounded-lg focus:outline-none focus:ring-2 disabled:opacity-50"
             style={{
@@ -631,7 +1434,8 @@ const VaNiChatPage: React.FC = () => {
           </button>
         </div>
 
-        {currentIntent && (
+        {/* Intent indicator - Hidden: N8N handles intents internally */}
+        {/* {currentIntent && (
           <div
             className="mt-2 text-sm flex items-center space-x-2"
             style={{ color: colors.utility.secondaryText }}
@@ -648,8 +1452,9 @@ const VaNiChatPage: React.FC = () => {
               Clear
             </button>
           </div>
-        )}
+        )} */}
       </div>
+      </div> {/* End Centered Chat Container */}
     </div>
   );
 };
