@@ -302,67 +302,45 @@ const VaNiChatPage: React.FC = () => {
 
     setIsInitializing(true);
     try {
-      // Step 1: Get or create session first (this gives us group_id)
-      console.log('🔄 Getting/creating session...');
+      // Step 1: Check if session exists and is active
+      console.log('🔄 Checking session status...');
       const sessionResponse = await chatService.getSession('chat');
-      let groupId: string | undefined;
 
       if (sessionResponse.success && sessionResponse.session) {
-        setSession(sessionResponse.session);
-        groupId = sessionResponse.session.group_id || undefined;
-        console.log('✅ Session obtained:', {
-          session_id: sessionResponse.session.id,
-          group_id: groupId
+        const existingSession = sessionResponse.session;
+        setSession(existingSession);
+
+        console.log('✅ Session found:', {
+          session_id: existingSession.id,
+          group_id: existingSession.group_id,
+          intent_state: existingSession.intent_state
         });
-      }
 
-      // Step 2: Auto-send "Hi BBB" with group_id to activate and get welcome
-      console.log('🚀 Auto-sending "Hi BBB" to initialize session...', { groupId });
-      const response = await aiAgentService.chat('Hi BBB', groupId);
-
-      if (aiAgentService.isSuccess(response)) {
-        // Update session info from N8N response if available
-        if (response.session_id) {
-          setSession(prev => ({
-            ...prev!,
-            id: response.session_id!,
-            group_id: response.group_id || prev?.group_id || null,
-            group_name: response.group_name || prev?.group_name || 'BBB Bhagyanagar',
-            intent_state: 'active',
-            current_intent: null,
-            expires_at: prev?.expires_at || ''
-          }));
-        }
-
-        // Show N8N's welcome message
-        const message: ChatMessage = {
-          id: `bot-${Date.now()}`,
-          type: 'bot',
-          content: response.message || 'Hi, I am **VaNi**, your AI assistant.\nWelcome to **BBB Bhagyanagar**!\n\nHow can I help you today?',
-          timestamp: new Date(),
-          responseType: response.response_type,
-          detailLevel: response.detail_level
-        };
-        setMessages([message]);
+        // Session exists and is active - show welcome back message
+        addBotMessage(
+          `Hi, I am **VaNi**, your AI assistant.\nWelcome back to **${existingSession.group_name || 'BBB Bhagyanagar'}**!\n\nYour session is active. How can I help you today?`,
+          { responseType: 'welcome' }
+        );
         setGroupActivated(true);
-
-        console.log('✅ Session initialized:', {
-          session_id: response.session_id,
-          group_id: response.group_id,
-          is_new_session: response.is_new_session,
-          response_type: response.response_type
-        });
       } else {
-        // Error response - show fallback welcome
-        console.error('❌ Failed to initialize session:', response);
-        addBotMessage('Hi, I am **VaNi**, your AI assistant.\nWelcome to **BBB Bhagyanagar**!\n\nHow can I help you today?');
-        setGroupActivated(true);
+        // No active session - show intro and ask user to say "Hi BBB"
+        console.log('📋 No active session, prompting user to start...');
+        addBotMessage(
+          `Hi, I am **VaNi**, your AI assistant.\nWelcome to **BBB Bhagyanagar**!\n\nTo start our conversation, please type **"Hi BBB"** below.\n\n- To start conversation: **'Hi BBB'**\n- To end conversation: **'Bye'**`,
+          { responseType: 'welcome' }
+        );
+        // Pre-fill input with "Hi BBB" for easy start
+        setInputValue('Hi BBB');
+        // Don't set groupActivated - wait for user to send "Hi BBB"
       }
     } catch (error) {
-      console.error('Error initializing chat:', error);
-      // Show fallback welcome on error
-      addBotMessage('Hi, I am **VaNi**, your AI assistant.\nWelcome to **BBB Bhagyanagar**!\n\nHow can I help you today?');
-      setGroupActivated(true);
+      console.error('Error checking session:', error);
+      // Show welcome on error - let user try "Hi BBB"
+      addBotMessage(
+        `Hi, I am **VaNi**, your AI assistant.\nWelcome to **BBB Bhagyanagar**!\n\nTo start our conversation, please type **"Hi BBB"** below.`,
+        { responseType: 'welcome' }
+      );
+      setInputValue('Hi BBB');
     } finally {
       setIsInitializing(false);
     }
@@ -441,6 +419,28 @@ const VaNiChatPage: React.FC = () => {
       const response = await aiAgentService.chat(query, session?.group_id || undefined);
 
       if (aiAgentService.isSuccess(response)) {
+        // Check if this is a "Hi BBB" activation response
+        const isHiBBB = query.toLowerCase().includes('hi bbb');
+        const isNewSession = response.is_new_session;
+
+        // Update session info if returned from N8N
+        if (response.session_id) {
+          setSession(prev => ({
+            id: response.session_id!,
+            group_id: response.group_id || prev?.group_id || null,
+            group_name: response.group_name || prev?.group_name || 'BBB Bhagyanagar',
+            intent_state: 'active',
+            current_intent: null,
+            expires_at: prev?.expires_at || ''
+          }));
+        }
+
+        // Activate group if this was a "Hi BBB" trigger
+        if (isHiBBB && !groupActivated) {
+          setGroupActivated(true);
+          console.log('✅ Group activated via "Hi BBB"');
+        }
+
         // Use N8N's response_type directly
         const responseType = response.response_type || 'conversation';
         const detailLevel = response.detail_level || 'none';
