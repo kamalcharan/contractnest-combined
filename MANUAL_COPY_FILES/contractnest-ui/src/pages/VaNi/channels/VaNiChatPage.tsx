@@ -338,7 +338,8 @@ const VaNiChatPage: React.FC = () => {
         );
         // Pre-fill input with "Hi BBB" for easy start
         setInputValue('Hi BBB');
-        // Don't set groupActivated yet - wait for user to send "Hi BBB"
+        // Enable input so user can type and send "Hi BBB"
+        setGroupActivated(true);
       }
     } catch (error) {
       console.error('Error getting session:', error);
@@ -348,6 +349,8 @@ const VaNiChatPage: React.FC = () => {
         { responseType: 'welcome' }
       );
       setInputValue('Hi BBB');
+      // Enable input so user can type
+      setGroupActivated(true);
     } finally {
       setIsInitializing(false);
     }
