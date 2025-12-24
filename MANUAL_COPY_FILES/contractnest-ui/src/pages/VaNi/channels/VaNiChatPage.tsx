@@ -302,42 +302,49 @@ const VaNiChatPage: React.FC = () => {
 
     setIsInitializing(true);
     try {
-      // Step 1: Check if session exists and is active
-      console.log('🔄 Checking session status...');
+      // Step 1: Get or create session (this ensures we always have group_id)
+      console.log('🔄 Getting/creating session...');
       const sessionResponse = await chatService.getSession('chat');
 
+      // ALWAYS set session if returned (needed for group_id in all API calls)
       if (sessionResponse.success && sessionResponse.session) {
-        const existingSession = sessionResponse.session;
-        setSession(existingSession);
-
-        console.log('✅ Session found:', {
-          session_id: existingSession.id,
-          group_id: existingSession.group_id,
-          intent_state: existingSession.intent_state
+        setSession(sessionResponse.session);
+        console.log('✅ Session obtained:', {
+          session_id: sessionResponse.session.id,
+          group_id: sessionResponse.session.group_id,
+          intent_state: sessionResponse.session.intent_state
         });
+      }
 
-        // Session exists and is active - show welcome back message
+      // Step 2: Check if session is active (has ongoing conversation)
+      const isSessionActive = sessionResponse.success &&
+        sessionResponse.session &&
+        sessionResponse.session.intent_state === 'active';
+
+      if (isSessionActive) {
+        // Step 2: Session IS active - show welcome back message
+        const groupName = sessionResponse.session?.group_name || 'BBB Bhagyanagar';
         addBotMessage(
-          `Hi, I am **VaNi**, your AI assistant.\nWelcome back to **${existingSession.group_name || 'BBB Bhagyanagar'}**!\n\nYour session is active. How can I help you today?`,
+          `Welcome back! Your session with **${groupName}** is still active.\n\nHow can I help you today?`,
           { responseType: 'welcome' }
         );
         setGroupActivated(true);
       } else {
-        // No active session - show intro and ask user to say "Hi BBB"
-        console.log('📋 No active session, prompting user to start...');
+        // Step 3: No active session - show VaNi intro and ask for "Hi BBB"
+        console.log('📋 No active session, showing intro...');
         addBotMessage(
-          `Hi, I am **VaNi**, your AI assistant.\nWelcome to **BBB Bhagyanagar**!\n\nTo start our conversation, please type **"Hi BBB"** below.\n\n- To start conversation: **'Hi BBB'**\n- To end conversation: **'Bye'**`,
+          `Hi, I am **VaNi**, your AI assistant.\nWelcome to **BBB Bhagyanagar**!\n\nHow can I help you today?\n\n- To start conversation: **'Hi BBB'**\n- To end conversation: **'Bye'**`,
           { responseType: 'welcome' }
         );
         // Pre-fill input with "Hi BBB" for easy start
         setInputValue('Hi BBB');
-        // Don't set groupActivated - wait for user to send "Hi BBB"
+        // Don't set groupActivated yet - wait for user to send "Hi BBB"
       }
     } catch (error) {
-      console.error('Error checking session:', error);
-      // Show welcome on error - let user try "Hi BBB"
+      console.error('Error getting session:', error);
+      // Show VaNi intro on error - let user try "Hi BBB"
       addBotMessage(
-        `Hi, I am **VaNi**, your AI assistant.\nWelcome to **BBB Bhagyanagar**!\n\nTo start our conversation, please type **"Hi BBB"** below.`,
+        `Hi, I am **VaNi**, your AI assistant.\nWelcome to **BBB Bhagyanagar**!\n\nHow can I help you today?\n\n- To start conversation: **'Hi BBB'**\n- To end conversation: **'Bye'**`,
         { responseType: 'welcome' }
       );
       setInputValue('Hi BBB');
@@ -419,9 +426,9 @@ const VaNiChatPage: React.FC = () => {
       const response = await aiAgentService.chat(query, session?.group_id || undefined);
 
       if (aiAgentService.isSuccess(response)) {
-        // Check if this is a "Hi BBB" activation response
+        // Check if this is a "Hi BBB" activation or "Bye" goodbye
         const isHiBBB = query.toLowerCase().includes('hi bbb');
-        const isNewSession = response.is_new_session;
+        const isBye = query.toLowerCase() === 'bye' || query.toLowerCase().includes('bye bbb');
 
         // Update session info if returned from N8N
         if (response.session_id) {
@@ -429,34 +436,45 @@ const VaNiChatPage: React.FC = () => {
             id: response.session_id!,
             group_id: response.group_id || prev?.group_id || null,
             group_name: response.group_name || prev?.group_name || 'BBB Bhagyanagar',
-            intent_state: 'active',
+            intent_state: isBye ? 'inactive' : 'active',
             current_intent: null,
             expires_at: prev?.expires_at || ''
           }));
         }
 
-        // Activate group if this was a "Hi BBB" trigger
+        // Step 4: Activate group if this was a "Hi BBB" trigger
         if (isHiBBB && !groupActivated) {
           setGroupActivated(true);
           console.log('✅ Group activated via "Hi BBB"');
         }
 
-        // Use N8N's response_type directly
-        const responseType = response.response_type || 'conversation';
-        const detailLevel = response.detail_level || 'none';
-        const fromCache = response.from_cache || false;
+        // Step 5: Handle "Bye" - thank user and deactivate
+        if (isBye) {
+          setGroupActivated(false);
+          console.log('👋 Session ended via "Bye"');
+          // Show N8N's goodbye message or fallback
+          addBotMessage(
+            response.message || 'Thank you for using VaNi! Goodbye and have a great day. Type **"Hi BBB"** to start a new conversation.',
+            { responseType: response.response_type || 'goodbye' }
+          );
+        } else {
+          // Use N8N's response_type directly
+          const responseType = response.response_type || 'conversation';
+          const detailLevel = response.detail_level || 'none';
+          const fromCache = response.from_cache || false;
 
-        // Map results if present
-        const mappedResults = response.results?.map(mapApiResult);
+          // Map results if present
+          const mappedResults = response.results?.map(mapApiResult);
 
-        // Add bot message with appropriate data based on response_type
-        addBotMessage(response.message || 'How can I help you?', {
-          results: mappedResults,
-          segments: response.segments,
-          responseType,
-          detailLevel,
-          fromCache
-        });
+          // Add bot message with appropriate data based on response_type
+          addBotMessage(response.message || 'How can I help you?', {
+            results: mappedResults,
+            segments: response.segments,
+            responseType,
+            detailLevel,
+            fromCache
+          });
+        }
       } else {
         // Error response
         addBotMessage(response.message || 'Sorry, I couldn\'t process your request. Please try again.');
