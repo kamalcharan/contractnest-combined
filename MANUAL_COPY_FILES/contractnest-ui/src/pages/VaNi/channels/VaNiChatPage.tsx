@@ -3,7 +3,7 @@
 // Route: /vani/channels/chat
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui/card';
 import {
@@ -266,15 +266,16 @@ const INTENTS = [
   }
 ];
 
-// BBB Group ID (hardcoded for now - will be dynamic later)
-const BBB_GROUP_ID = '550e8400-e29b-41d4-a716-446655440001'; // Replace with actual BBB group ID
-
 const VaNiChatPage: React.FC = () => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isInitializedRef = useRef(false);
+
+  // Get groupId from URL query param (passed from GroupsListPage)
+  const urlGroupId = searchParams.get('groupId');
 
   // State
   const [session, setSession] = useState<ChatSession | null>(null);
@@ -426,8 +427,8 @@ const VaNiChatPage: React.FC = () => {
 
     try {
       // Use AI Agent for conversational search
-      // Use session group_id, fallback to BBB_GROUP_ID if not set
-      const groupId = session?.group_id || BBB_GROUP_ID;
+      // Use session group_id, fallback to URL groupId param
+      const groupId = session?.group_id || urlGroupId || undefined;
       const response = await aiAgentService.chat(query, groupId);
 
       if (aiAgentService.isSuccess(response)) {
@@ -517,7 +518,7 @@ const VaNiChatPage: React.FC = () => {
       // Pass membership_id in the message for N8N to parse
       const response = await aiAgentService.chat(
         `get details for ${result.membership_id}`,
-        session?.group_id || BBB_GROUP_ID
+        session?.group_id || urlGroupId || undefined
       );
 
       if (aiAgentService.isSuccess(response)) {
@@ -619,7 +620,7 @@ const VaNiChatPage: React.FC = () => {
     addUserMessage(query);
     setIsLoading(true);
 
-    aiAgentService.chat(query, session?.group_id || BBB_GROUP_ID)
+    aiAgentService.chat(query, session?.group_id || urlGroupId || undefined)
       .then(response => {
         if (aiAgentService.isSuccess(response)) {
           const mappedResults = response.results?.map(mapApiResult);
@@ -1121,7 +1122,7 @@ const VaNiChatPage: React.FC = () => {
                 onClick={() => {
                   addUserMessage('list industries');
                   setIsLoading(true);
-                  aiAgentService.chat('list industries', session?.group_id || BBB_GROUP_ID)
+                  aiAgentService.chat('list industries', session?.group_id || urlGroupId || undefined)
                     .then(response => {
                       if (aiAgentService.isSuccess(response)) {
                         addBotMessage(response.message || 'Here are the available industries:', {
@@ -1149,7 +1150,7 @@ const VaNiChatPage: React.FC = () => {
                 onClick={() => {
                   addUserMessage('list all members');
                   setIsLoading(true);
-                  aiAgentService.chat('list all members', session?.group_id || BBB_GROUP_ID)
+                  aiAgentService.chat('list all members', session?.group_id || urlGroupId || undefined)
                     .then(response => {
                       if (aiAgentService.isSuccess(response)) {
                         const mappedResults = response.results?.map(mapApiResult);
