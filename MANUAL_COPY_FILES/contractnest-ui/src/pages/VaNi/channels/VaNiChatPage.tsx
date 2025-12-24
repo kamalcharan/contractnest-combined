@@ -1190,7 +1190,8 @@ const VaNiChatPage: React.FC = () => {
             )}
 
             {/* Search Results - Multiple mini cards */}
-            {responseType === 'search_results' && hasResults && (
+            {/* Show cards if response_type is 'search_results' OR if response_type is missing but results exist (fallback) */}
+            {(responseType === 'search_results' || (!responseType && hasResults)) && hasResults && (
               <div className="mt-3 space-y-3">
                 {message.results!.map((result, idx) => renderResultCard(result, idx))}
 
