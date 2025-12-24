@@ -426,7 +426,9 @@ const VaNiChatPage: React.FC = () => {
 
     try {
       // Use AI Agent for conversational search
-      const response = await aiAgentService.chat(query, session?.group_id || undefined);
+      // Use session group_id, fallback to BBB_GROUP_ID if not set
+      const groupId = session?.group_id || BBB_GROUP_ID;
+      const response = await aiAgentService.chat(query, groupId);
 
       if (aiAgentService.isSuccess(response)) {
         // Check if this is a "Hi BBB" activation or "Bye" goodbye
@@ -515,7 +517,7 @@ const VaNiChatPage: React.FC = () => {
       // Pass membership_id in the message for N8N to parse
       const response = await aiAgentService.chat(
         `get details for ${result.membership_id}`,
-        session?.group_id || undefined
+        session?.group_id || BBB_GROUP_ID
       );
 
       if (aiAgentService.isSuccess(response)) {
@@ -617,7 +619,7 @@ const VaNiChatPage: React.FC = () => {
     addUserMessage(query);
     setIsLoading(true);
 
-    aiAgentService.chat(query, session?.group_id || undefined)
+    aiAgentService.chat(query, session?.group_id || BBB_GROUP_ID)
       .then(response => {
         if (aiAgentService.isSuccess(response)) {
           const mappedResults = response.results?.map(mapApiResult);
@@ -1119,7 +1121,7 @@ const VaNiChatPage: React.FC = () => {
                 onClick={() => {
                   addUserMessage('list industries');
                   setIsLoading(true);
-                  aiAgentService.chat('list industries', session?.group_id || undefined)
+                  aiAgentService.chat('list industries', session?.group_id || BBB_GROUP_ID)
                     .then(response => {
                       if (aiAgentService.isSuccess(response)) {
                         addBotMessage(response.message || 'Here are the available industries:', {
@@ -1147,7 +1149,7 @@ const VaNiChatPage: React.FC = () => {
                 onClick={() => {
                   addUserMessage('list all members');
                   setIsLoading(true);
-                  aiAgentService.chat('list all members', session?.group_id || undefined)
+                  aiAgentService.chat('list all members', session?.group_id || BBB_GROUP_ID)
                     .then(response => {
                       if (aiAgentService.isSuccess(response)) {
                         const mappedResults = response.results?.map(mapApiResult);
