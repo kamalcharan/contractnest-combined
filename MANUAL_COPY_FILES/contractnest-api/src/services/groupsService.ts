@@ -15,9 +15,11 @@ import {
   type N8NGenerateClustersResponse,
   type N8NAISearchRequest,
   type N8NAISearchResponse,
-  type N8NAIAgentRequest,
-  type N8NAIAgentResponse,
-  type AIAgentChannel,
+  // Group Discovery types (replaces AI Agent)
+  type GroupDiscoveryRequest,
+  type GroupDiscoveryResponse,
+  type GroupDiscoveryIntent,
+  type GroupDiscoveryChannel,
 } from '../config/VaNiN8NConfig';
 import type {
   BusinessGroup,
@@ -1501,136 +1503,106 @@ export const groupsService = {
   },
 
   // ============================================
-  // AI AGENT - Conversational Group Discovery
-  // Calls N8N webhook for AI-powered chat
+  // GROUP DISCOVERY - Deterministic Intent-based API
+  // Replaces AI Agent with predictable intent-based requests
   // ============================================
 
   /**
-   * Send message to AI Agent via N8N webhook
-   * Supports chat, whatsapp, and web channels
+   * Send intent-based request to Group Discovery via N8N webhook
+   * Supports chat and whatsapp channels
    *
-   * @param request - AI Agent request containing message, channel, and user identifier
+   * @param request - Group Discovery request with intent, group_id, channel, and intent-specific params
    * @param environment - 'live' or 'test' for N8N routing
-   * @returns AI Agent response with message and optional search results
+   * @returns Group Discovery response with message, results, and metadata
    */
-  async aiAgentMessage(
+  async groupDiscovery(
     request: {
-      message: string;
-      channel: AIAgentChannel;
-      user_id?: string;
-      phone?: string;
-      group_id?: string;
-      tenant_id?: string;
+      intent: GroupDiscoveryIntent;
+      group_id: string;
+      channel: GroupDiscoveryChannel;
+      session_id?: string;
+      // Intent-specific params
+      query?: string;           // For 'search' intent
+      segment?: string;         // For 'list_members' intent
+      membership_id?: string;   // For 'get_contact' intent
+      business_name?: string;   // For 'get_contact' intent (alternative)
+      limit?: number;           // Optional limit for results
     },
     environment?: string
-  ): Promise<N8NAIAgentResponse> {
+  ): Promise<GroupDiscoveryResponse> {
     try {
       const n8nEnv = VaNiN8NConfig.mapEnvironment(environment);
-      const n8nUrl = VaNiN8NConfig.getWebhookUrl('AI_AGENT', n8nEnv);
+      const n8nUrl = VaNiN8NConfig.getWebhookUrl('GROUP_DISCOVERY', n8nEnv);
 
-      console.log(`🤖 AI Agent: Calling N8N webhook [${n8nEnv}]:`, n8nUrl);
-      console.log(`🤖 AI Agent: Request:`, {
+      console.log(`🔍 Group Discovery: Calling N8N webhook [${n8nEnv}]:`, n8nUrl);
+      console.log(`🔍 Group Discovery: Request:`, {
+        intent: request.intent,
         channel: request.channel,
-        message: request.message.substring(0, 50) + '...',
-        hasUserId: !!request.user_id,
-        hasPhone: !!request.phone,
-        groupId: request.group_id
+        groupId: request.group_id,
+        hasQuery: !!request.query,
+        hasSegment: !!request.segment,
+        hasMembershipId: !!request.membership_id
       });
 
-      const n8nRequest: N8NAIAgentRequest = {
-        message: request.message,
+      const n8nRequest: GroupDiscoveryRequest = {
+        intent: request.intent,
+        group_id: request.group_id,
         channel: request.channel,
-        ...(request.user_id && { user_id: request.user_id }),
-        ...(request.phone && { phone: request.phone }),
-        ...(request.group_id && { group_id: request.group_id }),
-        ...(request.tenant_id && { tenant_id: request.tenant_id }),
+        ...(request.session_id && { session_id: request.session_id }),
+        ...(request.query && { query: request.query }),
+        ...(request.segment && { segment: request.segment }),
+        ...(request.membership_id && { membership_id: request.membership_id }),
+        ...(request.business_name && { business_name: request.business_name }),
+        ...(request.limit && { limit: request.limit }),
       };
 
-      const response = await axios.post<N8NAIAgentResponse>(
+      const response = await axios.post<GroupDiscoveryResponse>(
         n8nUrl,
         n8nRequest,
         {
           headers: { 'Content-Type': 'application/json' },
-          timeout: 90000 // 90 seconds for AI processing
+          timeout: 30000 // 30 seconds - deterministic API should be fast
         }
       );
 
       // Handle array response (N8N sometimes wraps in array)
       const n8nData = Array.isArray(response.data) ? response.data[0] : response.data;
 
-      console.log(`🤖 AI Agent: Response received:`, {
+      console.log(`🔍 Group Discovery: Response received:`, {
         success: n8nData.success,
-        hasResponse: !!(n8nData as any).response,
-        hasResults: !!(n8nData as any).results,
-        resultsCount: (n8nData as any).results_count
+        responseType: n8nData.response_type,
+        resultsCount: n8nData.results_count,
+        hasResults: Array.isArray(n8nData.results) && n8nData.results.length > 0
       });
 
-      // Normalize N8N response: map 'response' field to 'message' for frontend compatibility
-      // N8N returns { success, response, session_id, ... }
-      // Frontend expects { success, message, session_id, ... }
-
-      // Handle session_id - it might be a string, object with error, or undefined
-      let sessionId = (n8nData as any).session_id;
-      if (typeof sessionId === 'object' && sessionId !== null) {
-        // N8N returned an error object instead of string - log and set to undefined
-        console.warn('⚠️ AI Agent: session_id is an object (possible N8N error):', sessionId);
-        sessionId = undefined;
-      }
-
-      const normalizedData: N8NAIAgentResponse = {
+      // Return normalized response - N8N response format matches our types
+      return {
         success: n8nData.success,
-        // Map 'response' to 'message' (N8N uses 'response', our frontend expects 'message')
-        message: (n8nData as any).response || (n8nData as any).message || '',
-        session_id: sessionId,
-        group_id: (n8nData as any).group_id,
-        group_name: (n8nData as any).group_name,
-        channel: (n8nData as any).channel,
-        // Card rendering fields
-        response_type: (n8nData as any).response_type,
-        detail_level: (n8nData as any).detail_level,
-        // Results data
-        results: (n8nData as any).results,
-        results_count: (n8nData as any).results_count,
-        segments: (n8nData as any).segments,
-        // Session/intent fields
-        is_new_session: (n8nData as any).is_new_session,
-        intent_detected: (n8nData as any).intent_detected,
-        // Cache/performance fields
-        from_cache: (n8nData as any).from_cache,
-        duration_ms: (n8nData as any).duration_ms,
-      } as N8NAIAgentResponse;
-
-      return normalizedData;
+        intent: n8nData.intent,
+        response_type: n8nData.response_type,
+        detail_level: n8nData.detail_level,
+        message: n8nData.message || '',
+        results: n8nData.results || [],
+        results_count: n8nData.results_count || 0,
+        session_id: n8nData.session_id,
+        group_id: n8nData.group_id,
+        group_name: n8nData.group_name,
+        channel: n8nData.channel,
+        from_cache: n8nData.from_cache,
+        duration_ms: n8nData.duration_ms,
+      };
     } catch (error: any) {
-      console.error('Error in aiAgentMessage:', error.message);
-
-      // Try to extract data from error response (N8N might return 500 with valid data)
-      if (axios.isAxiosError(error) && error.response?.data) {
-        const errorData = Array.isArray(error.response.data) ? error.response.data[0] : error.response.data;
-        if (errorData && (errorData.response || errorData.message)) {
-          console.log('⚠️ AI Agent: Extracting data from error response');
-          // Handle session_id that might be an error object
-          let sessionId = errorData.session_id;
-          if (typeof sessionId === 'object' && sessionId !== null) {
-            sessionId = undefined;
-          }
-          return {
-            success: true,
-            message: errorData.response || errorData.message || '',
-            session_id: sessionId,
-            group_id: errorData.group_id,
-            channel: errorData.channel,
-            duration_ms: errorData.duration_ms,
-          } as N8NAIAgentResponse;
-        }
-      }
+      console.error('Error in groupDiscovery:', error.message);
 
       // Handle timeout
       if (axios.isAxiosError(error) && error.code === 'ECONNABORTED') {
         return {
           success: false,
-          error: 'AI Agent request timed out. Please try again.',
-          message: 'The request took too long to process.'
+          response_type: 'error',
+          detail_level: 'none',
+          message: 'Request timed out. Please try again.',
+          results: [],
+          results_count: 0,
         };
       }
 
@@ -1638,20 +1610,39 @@ export const groupsService = {
       if (axios.isAxiosError(error) && !error.response) {
         return {
           success: false,
-          error: 'Unable to reach AI Agent. Please try again later.',
-          message: 'Network error occurred.'
+          response_type: 'error',
+          detail_level: 'none',
+          message: 'Network error. Please check your connection.',
+          results: [],
+          results_count: 0,
+        };
+      }
+
+      // Extract error message from N8N response if available
+      if (axios.isAxiosError(error) && error.response?.data) {
+        const errorData = Array.isArray(error.response.data) ? error.response.data[0] : error.response.data;
+        return {
+          success: false,
+          response_type: 'error',
+          detail_level: 'none',
+          message: errorData?.message || 'An error occurred.',
+          results: [],
+          results_count: 0,
         };
       }
 
       captureException(error instanceof Error ? error : new Error(String(error)), {
-        tags: { source: 'groupsService', action: 'aiAgentMessage', via: 'n8n' },
-        extra: { channel: request.channel, hasMessage: !!request.message }
+        tags: { source: 'groupsService', action: 'groupDiscovery', via: 'n8n' },
+        extra: { intent: request.intent, groupId: request.group_id }
       });
 
       return {
         success: false,
-        error: error.response?.data?.error || error.message || 'AI Agent request failed',
-        message: 'An error occurred while processing your request.'
+        response_type: 'error',
+        detail_level: 'none',
+        message: 'An error occurred while processing your request.',
+        results: [],
+        results_count: 0,
       };
     }
   }

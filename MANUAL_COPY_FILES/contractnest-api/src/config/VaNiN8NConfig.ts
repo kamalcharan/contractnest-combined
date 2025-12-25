@@ -43,6 +43,9 @@ export const N8N_PATHS = {
   // Semantic Clusters
   GENERATE_CLUSTERS: '/generate-semantic-clusters',
 
+  // Group Discovery - Deterministic intent-based API (replaces AI_AGENT)
+  GROUP_DISCOVERY: '/group-discovery',
+
   // Future webhooks (add as needed)
   // SEND_NOTIFICATION: '/send-notification',
 } as const;
@@ -327,5 +330,120 @@ export const VaNiN8NConfig = {
   isSearchSuccess,
   isSearchError,
 };
+
+// =================================================================
+// GROUP DISCOVERY TYPES (Deterministic Intent-based API)
+// =================================================================
+
+/**
+ * Available intents for Group Discovery
+ */
+export type GroupDiscoveryIntent =
+  | 'welcome'
+  | 'goodbye'
+  | 'list_segments'
+  | 'list_members'
+  | 'search'
+  | 'get_contact';
+
+/**
+ * Channel types for Group Discovery
+ */
+export type GroupDiscoveryChannel = 'chat' | 'whatsapp';
+
+/**
+ * Response types from Group Discovery
+ */
+export type GroupDiscoveryResponseType =
+  | 'welcome'
+  | 'goodbye'
+  | 'segments_list'
+  | 'search_results'
+  | 'contact_details'
+  | 'error';
+
+/**
+ * Detail levels for card rendering
+ */
+export type GroupDiscoveryDetailLevel = 'none' | 'list' | 'summary' | 'full';
+
+/**
+ * Action button in search results
+ */
+export interface GroupDiscoveryAction {
+  type: 'call' | 'whatsapp' | 'email' | 'website' | 'booking' | 'card' | 'vcard' | 'details';
+  label: string;
+  value: string;
+}
+
+/**
+ * Request body for Group Discovery webhook
+ */
+export interface GroupDiscoveryRequest {
+  intent: GroupDiscoveryIntent;
+  group_id: string;
+  channel: GroupDiscoveryChannel;
+  session_id?: string;
+  // Intent-specific params
+  query?: string;           // For 'search' intent
+  segment?: string;         // For 'list_members' intent
+  membership_id?: string;   // For 'get_contact' intent
+  business_name?: string;   // For 'get_contact' intent (alternative)
+  limit?: number;           // Optional limit for results
+}
+
+/**
+ * Segment result (for segments_list response)
+ */
+export interface GroupDiscoverySegment {
+  segment_name: string;
+  member_count: number;
+}
+
+/**
+ * Search result (for search_results and contact_details responses)
+ */
+export interface GroupDiscoveryResult {
+  rank?: number;
+  membership_id: string;
+  business_name: string;
+  logo_url?: string | null;
+  short_description?: string | null;
+  ai_enhanced_description?: string | null;
+  industry?: string | null;
+  chapter?: string | null;
+  city?: string | null;
+  full_address?: string | null;
+  phone?: string | null;
+  phone_country_code?: string;
+  whatsapp?: string | null;
+  email?: string | null;
+  website?: string | null;
+  booking_url?: string | null;
+  card_url?: string | null;
+  vcard_url?: string | null;
+  similarity?: number;
+  semantic_clusters?: any[];
+  actions?: GroupDiscoveryAction[];
+}
+
+/**
+ * Response from Group Discovery webhook
+ */
+export interface GroupDiscoveryResponse {
+  success: boolean;
+  intent?: GroupDiscoveryIntent;
+  response_type: GroupDiscoveryResponseType;
+  detail_level: GroupDiscoveryDetailLevel;
+  message: string;
+  results: GroupDiscoveryResult[] | GroupDiscoverySegment[];
+  results_count: number;
+  session_id?: string;
+  group_id?: string;
+  group_name?: string;
+  channel?: string;
+  from_cache?: boolean;
+  duration_ms?: number;
+}
 
 export default VaNiN8NConfig;

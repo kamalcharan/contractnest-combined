@@ -1423,3 +1423,103 @@ export const searchTenants = async (req: Request, res: Response) => {
     return res.status(status).json({ success: false, error: message });
   }
 };
+
+// ============================================
+// GROUP DISCOVERY (Deterministic Intent-based API)
+// ============================================
+
+/**
+ * POST /api/group-discovery
+ * Intent-based group discovery API
+ * Replaces AI Agent with predictable, deterministic responses
+ */
+export const groupDiscovery = async (req: Request, res: Response) => {
+  try {
+    const { intent, group_id, channel, session_id, query, segment, membership_id, business_name, limit } = req.body;
+
+    // Validate required fields
+    if (!intent) {
+      return res.status(400).json({
+        success: false,
+        response_type: 'error',
+        message: 'intent is required',
+        results: [],
+        results_count: 0
+      });
+    }
+
+    if (!group_id) {
+      return res.status(400).json({
+        success: false,
+        response_type: 'error',
+        message: 'group_id is required',
+        results: [],
+        results_count: 0
+      });
+    }
+
+    if (!channel) {
+      return res.status(400).json({
+        success: false,
+        response_type: 'error',
+        message: 'channel is required',
+        results: [],
+        results_count: 0
+      });
+    }
+
+    // Validate intent value
+    const validIntents = ['welcome', 'goodbye', 'list_segments', 'list_members', 'search', 'get_contact'];
+    if (!validIntents.includes(intent)) {
+      return res.status(400).json({
+        success: false,
+        response_type: 'error',
+        message: `Invalid intent. Must be one of: ${validIntents.join(', ')}`,
+        results: [],
+        results_count: 0
+      });
+    }
+
+    // Validate channel value
+    const validChannels = ['chat', 'whatsapp'];
+    if (!validChannels.includes(channel)) {
+      return res.status(400).json({
+        success: false,
+        response_type: 'error',
+        message: `Invalid channel. Must be one of: ${validChannels.join(', ')}`,
+        results: [],
+        results_count: 0
+      });
+    }
+
+    // Get environment from header for n8n routing
+    const environment = req.headers['x-environment'] as string | undefined;
+
+    const result = await groupsService.groupDiscovery({
+      intent,
+      group_id,
+      channel,
+      session_id,
+      query,
+      segment,
+      membership_id,
+      business_name,
+      limit
+    }, environment);
+
+    return res.status(200).json(result);
+  } catch (error: any) {
+    console.error('Error in groupDiscovery controller:', error.message);
+    captureException(error instanceof Error ? error : new Error(String(error)), {
+      tags: { source: 'api_groups', action: 'groupDiscovery' }
+    });
+
+    return res.status(500).json({
+      success: false,
+      response_type: 'error',
+      message: error.message || 'Group discovery request failed',
+      results: [],
+      results_count: 0
+    });
+  }
+};

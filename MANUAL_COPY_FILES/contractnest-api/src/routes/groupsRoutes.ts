@@ -249,4 +249,26 @@ router.post('/tenants/search', groupsController.searchTenants);
  */
 router.get('/intents', groupsController.getIntents);
 
+// ============================================
+// GROUP DISCOVERY ROUTES (Deterministic Intent-based API)
+// ============================================
+
+/**
+ * POST /api/group-discovery
+ * Intent-based group discovery API
+ * Body: {
+ *   intent: 'welcome' | 'goodbye' | 'list_segments' | 'list_members' | 'search' | 'get_contact',
+ *   group_id: string (required),
+ *   channel: 'chat' | 'whatsapp',
+ *   session_id?: string,
+ *   query?: string,           // For 'search' intent
+ *   segment?: string,         // For 'list_members' intent
+ *   membership_id?: string,   // For 'get_contact' intent
+ *   business_name?: string,   // For 'get_contact' intent (alternative)
+ *   limit?: number
+ * }
+ * Headers: x-environment: 'live' | 'test'
+ */
+router.post('/group-discovery', groupsController.groupDiscovery);
+
 export default router;

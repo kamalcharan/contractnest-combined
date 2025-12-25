@@ -587,7 +587,10 @@ export const API_ENDPOINTS = {
       SAVE: '/api/smartprofiles',
       GENERATE: '/api/smartprofiles/generate',
       SEARCH: '/api/smartprofiles/search'
-    }
+    },
+
+    // Group Discovery (Deterministic Intent-based API)
+    GROUP_DISCOVERY: '/api/group-discovery'
   },
 
   // =================================================================

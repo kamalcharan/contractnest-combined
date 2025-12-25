@@ -149,7 +149,6 @@ interface SearchResult {
 }
 
 interface SegmentResult {
-  segment_id: string;
   segment_name: string;
   member_count: number;
 }
@@ -426,10 +425,10 @@ const VaNiChatPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // Use AI Agent for conversational search
+      // Use Group Discovery API with intent detection
       // Use session group_id, fallback to URL groupId param
       const groupId = session?.group_id || urlGroupId || undefined;
-      const response = await aiAgentService.chat(query, groupId);
+      const response = await aiAgentService.chat(query, groupId, session?.id);
 
       if (aiAgentService.isSuccess(response)) {
         // Check if this is a "Hi BBB" activation or "Bye" goodbye
@@ -511,14 +510,21 @@ const VaNiChatPage: React.FC = () => {
    * Handle "Get Details" button click - sends membership_id to API
    */
   const handleGetDetails = async (result: SearchResult) => {
+    const groupId = session?.group_id || urlGroupId;
+    if (!groupId) {
+      toast.error('Group ID is required');
+      return;
+    }
+
     addUserMessage(`Get details for ${result.business_name}`);
     setIsLoading(true);
 
     try {
-      // Pass membership_id in the message for N8N to parse
-      const response = await aiAgentService.chat(
-        `get details for ${result.membership_id}`,
-        session?.group_id || urlGroupId || undefined
+      // Use getContact method with membership_id
+      const response = await aiAgentService.getContact(
+        groupId,
+        { membership_id: result.membership_id },
+        session?.id
       );
 
       if (aiAgentService.isSuccess(response)) {
@@ -615,12 +621,17 @@ const VaNiChatPage: React.FC = () => {
    * Handle "View Members" click from segment list
    */
   const handleViewMembers = (segment: SegmentResult) => {
-    const query = `list members in ${segment.segment_name}`;
-    setInputValue('');
-    addUserMessage(query);
+    const groupId = session?.group_id || urlGroupId;
+    if (!groupId) {
+      toast.error('Group ID is required');
+      return;
+    }
+
+    addUserMessage(`Show members in ${segment.segment_name}`);
     setIsLoading(true);
 
-    aiAgentService.chat(query, session?.group_id || urlGroupId || undefined)
+    // Use listMembers method with segment name
+    aiAgentService.listMembers(groupId, segment.segment_name, session?.id)
       .then(response => {
         if (aiAgentService.isSuccess(response)) {
           const mappedResults = response.results?.map(mapApiResult);
@@ -1057,18 +1068,19 @@ const VaNiChatPage: React.FC = () => {
     );
   };
 
-  // Render segment/industry list card
+  // Render segment/industry list card (chip style)
   const renderSegmentListCard = (segment: SegmentResult, index: number) => {
     return (
-      <div
-        key={segment.segment_id || index}
-        className="flex items-center justify-between p-4 rounded-lg transition-all hover:shadow-md"
+      <button
+        key={segment.segment_name || index}
+        onClick={() => handleViewMembers(segment)}
+        className="flex items-center justify-between p-4 rounded-lg transition-all hover:shadow-md cursor-pointer"
         style={{
           backgroundColor: colors.utility.primaryBackground,
           border: `1px solid ${colors.utility.primaryText}15`
         }}
       >
-        <div>
+        <div className="text-left">
           <h4 className="font-semibold" style={{ color: colors.utility.primaryText }}>
             {segment.segment_name}
           </h4>
@@ -1076,24 +1088,24 @@ const VaNiChatPage: React.FC = () => {
             {segment.member_count} member{segment.member_count !== 1 ? 's' : ''}
           </p>
         </div>
-        <button
-          onClick={() => handleViewMembers(segment)}
-          className="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-80"
+        <div
+          className="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-sm font-medium"
           style={{
             backgroundColor: `${colors.brand.primary}15`,
             color: colors.brand.primary,
-            border: `1px solid ${colors.brand.primary}30`
           }}
         >
           <Users className="w-4 h-4" />
-          <span>View Members</span>
-        </button>
-      </div>
+          <span>View</span>
+        </div>
+      </button>
     );
   };
 
   // Render Intent Buttons panel
   const renderIntentButtons = () => {
+    const groupId = session?.group_id || urlGroupId;
+
     return (
       <div className="flex justify-start mb-4">
         <div className="flex items-start space-x-3">
@@ -1120,13 +1132,22 @@ const VaNiChatPage: React.FC = () => {
               </button>
               <button
                 onClick={() => {
-                  addUserMessage('list industries');
+                  if (!groupId) {
+                    toast.error('Group ID is required');
+                    return;
+                  }
+                  addUserMessage('Browse Industries');
                   setIsLoading(true);
-                  aiAgentService.chat('list industries', session?.group_id || urlGroupId || undefined)
+                  // Use listSegments method
+                  aiAgentService.listSegments(groupId, session?.id)
                     .then(response => {
                       if (aiAgentService.isSuccess(response)) {
+                        // Segments come directly from response.results for segments_list type
+                        const segments = response.response_type === 'segments_list'
+                          ? response.results as unknown as SegmentResult[]
+                          : response.segments;
                         addBotMessage(response.message || 'Here are the available industries:', {
-                          segments: response.segments,
+                          segments: segments,
                           responseType: response.response_type || 'segments_list',
                           detailLevel: response.detail_level || 'list'
                         });
@@ -1148,9 +1169,14 @@ const VaNiChatPage: React.FC = () => {
               </button>
               <button
                 onClick={() => {
-                  addUserMessage('list all members');
+                  if (!groupId) {
+                    toast.error('Group ID is required');
+                    return;
+                  }
+                  addUserMessage('View All Members');
                   setIsLoading(true);
-                  aiAgentService.chat('list all members', session?.group_id || urlGroupId || undefined)
+                  // Use search method with 'all' query
+                  aiAgentService.search(groupId, 'all', session?.id)
                     .then(response => {
                       if (aiAgentService.isSuccess(response)) {
                         const mappedResults = response.results?.map(mapApiResult);
