@@ -320,40 +320,58 @@ const VaNiChatPage: React.FC = () => {
         });
       }
 
-      // Step 2: Check if session is active (has ongoing conversation)
-      const isSessionActive = sessionResponse.success &&
-        sessionResponse.session &&
-        sessionResponse.session.intent_state === 'active';
+      // Get group_id from session or URL
+      const groupId = sessionResponse.session?.group_id || urlGroupId;
 
-      if (isSessionActive) {
-        // Step 2: Session IS active - show welcome back message
-        const groupName = sessionResponse.session?.group_name || 'BBB Bhagyanagar';
-        addBotMessage(
-          `Welcome back! Your session with **${groupName}** is still active.\n\nHow can I help you today?`,
-          { responseType: 'welcome' }
-        );
-        setGroupActivated(true);
+      // Step 2: Call Group Discovery API with 'welcome' intent to get dynamic buttons
+      if (groupId) {
+        console.log('🔄 Calling welcome intent...');
+        const welcomeResponse = await aiAgentService.welcome(groupId, sessionResponse.session?.id);
+
+        if (aiAgentService.isSuccess(welcomeResponse)) {
+          // Show N8N's welcome message with available_intents
+          addBotMessage(welcomeResponse.message || 'Welcome to BBB Directory!', {
+            responseType: welcomeResponse.response_type || 'welcome',
+            availableIntents: welcomeResponse.available_intents,
+            options: welcomeResponse.options,
+            contactActions: welcomeResponse.contact_actions
+          });
+
+          // Update session if N8N returned one
+          if (welcomeResponse.session_id) {
+            setSession(prev => ({
+              id: welcomeResponse.session_id!,
+              group_id: welcomeResponse.group_id || prev?.group_id || null,
+              group_name: welcomeResponse.group_name || prev?.group_name || 'BBB',
+              intent_state: 'active',
+              current_intent: null,
+              expires_at: prev?.expires_at || ''
+            }));
+          }
+
+          setGroupActivated(true);
+        } else {
+          // Fallback if welcome API fails
+          addBotMessage(
+            `Hi, I am **VaNi**, your AI assistant.\nWelcome to **BBB Bhagyanagar**!\n\nHow can I help you today?`,
+            { responseType: 'welcome' }
+          );
+          setGroupActivated(true);
+        }
       } else {
-        // Step 3: No active session - show VaNi intro and ask for "Hi BBB"
-        console.log('📋 No active session, showing intro...');
+        // No group_id - show basic welcome
         addBotMessage(
-          `Hi, I am **VaNi**, your AI assistant.\nWelcome to **BBB Bhagyanagar**!\n\nHow can I help you today?\n\n- To start conversation: **'Hi BBB'**\n- To end conversation: **'Bye'**`,
+          `Hi, I am **VaNi**, your AI assistant.\nWelcome to **BBB Bhagyanagar**!\n\nPlease select a group to start.`,
           { responseType: 'welcome' }
         );
-        // Pre-fill input with "Hi BBB" for easy start
-        setInputValue('Hi BBB');
-        // Enable input so user can type and send "Hi BBB"
-        setGroupActivated(true);
       }
     } catch (error) {
-      console.error('Error getting session:', error);
-      // Show VaNi intro on error - let user try "Hi BBB"
+      console.error('Error initializing chat:', error);
+      // Show VaNi intro on error
       addBotMessage(
-        `Hi, I am **VaNi**, your AI assistant.\nWelcome to **BBB Bhagyanagar**!\n\nHow can I help you today?\n\n- To start conversation: **'Hi BBB'**\n- To end conversation: **'Bye'**`,
+        `Hi, I am **VaNi**, your AI assistant.\nWelcome to **BBB Bhagyanagar**!\n\nHow can I help you today?`,
         { responseType: 'welcome' }
       );
-      setInputValue('Hi BBB');
-      // Enable input so user can type
       setGroupActivated(true);
     } finally {
       setIsInitializing(false);
