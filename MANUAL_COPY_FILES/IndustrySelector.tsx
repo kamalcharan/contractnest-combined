@@ -1,9 +1,9 @@
 // src/components/tenantprofile/IndustrySelector.tsx
-// Updated to use useIndustries() hook - fetches from m_catalog_industries table
+// Updated to use useIndustries() hook from useProductMasterdata - fetches from m_catalog_industries table
 import React, { useState } from 'react';
 import * as LucideIcons from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useIndustries } from '@/hooks/queries/useMasterDataQueries';
+import { useIndustries } from '@/hooks/queries/useProductMasterdata';
 import { cn } from '@/lib/utils';
 import { Search, AlertCircle } from 'lucide-react';
 
@@ -22,8 +22,9 @@ const IndustrySelector: React.FC<IndustrySelectorProps> = ({
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Fetch industries from database via hook
-  const { data: industries = [], isLoading, error, refetch } = useIndustries();
+  // Fetch industries from database via hook (uses /api/product-masterdata/industries endpoint)
+  const { data: industriesResponse, isLoading, error, refetch } = useIndustries();
+  const industries = industriesResponse?.data || [];
 
   // Get icon component from name
   const getIconComponent = (iconName: string | undefined, isSelected: boolean) => {
@@ -35,8 +36,8 @@ const IndustrySelector: React.FC<IndustrySelectorProps> = ({
 
   // Filter industries based on search term (only active industries)
   const filteredIndustries = industries
-    .filter(industry => industry.isActive !== false)
-    .filter(industry =>
+    .filter((industry: any) => industry.is_active !== false)
+    .filter((industry: any) =>
       industry.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (industry.description && industry.description.toLowerCase().includes(searchTerm.toLowerCase()))
     );
