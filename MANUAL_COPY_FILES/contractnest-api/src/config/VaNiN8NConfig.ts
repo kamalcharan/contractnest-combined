@@ -37,11 +37,14 @@ export const N8N_PATHS = {
   // Embedding Generation
   GENERATE_EMBEDDING: '/generate-embedding',
 
-  // AI-powered Search (with caching and semantic boost)
-  SEARCH: '/search',
+  // Semantic Clusters Generation
+  GENERATE_SEMANTIC_CLUSTERS: '/generate-semantic-clusters',
 
-  // Semantic Clusters
-  GENERATE_CLUSTERS: '/generate-semantic-clusters',
+  // AI Search (unified intent-based search)
+  AI_SEARCH: '/search',
+
+  // AI Agent - Conversational group discovery (Chat, WhatsApp, Web)
+  AI_AGENT: '/group-discovery-agent',
 
   // Group Discovery - Deterministic intent-based API (replaces AI_AGENT)
   GROUP_DISCOVERY: '/group-discovery',
@@ -142,108 +145,226 @@ export type N8NGenerateEmbeddingResponse =
   | N8NGenerateEmbeddingErrorResponse;
 
 // =================================================================
-// SEARCH TYPES
+// GENERATE SEMANTIC CLUSTERS TYPES
 // =================================================================
 
 /**
- * Search scope - where to search
- * - 'group': Search within a specific business group (default)
- * - 'tenant': Search across all groups for a tenant
- * - 'global': Search across all tenants (admin only, future)
+ * Request body for generate-semantic-clusters webhook
  */
-export type SearchScope = 'group' | 'tenant' | 'global';
-
-/**
- * Request body for search webhook
- * Supports AI-powered search with caching and semantic boost
- */
-export interface N8NSearchRequest {
-  // Required
-  query: string;                    // Search query text
-
-  // Scope (at least one required)
-  group_id?: string;                // Search within this group
-  tenant_id?: string;               // Search within this tenant's groups
-  scope?: SearchScope;              // Explicit scope (defaults to 'group' if group_id provided)
-
-  // Optional parameters
-  limit?: number;                   // Max results (default: 5)
-  use_cache?: boolean;              // Whether to use query cache (default: true)
-  similarity_threshold?: number;    // Min similarity score 0-1 (default: 0.7)
-
-  // Session context (for chat flows)
-  session_id?: string;              // Chat session ID
-  intent?: string;                  // User intent (search_offering, search_segment, member_lookup)
-
-  // Delivery channel context
-  channel?: 'web' | 'mobile' | 'whatsapp' | 'chatbot' | 'api';
+export interface N8NGenerateClustersRequest {
+  membership_id: string;
+  profile_text: string;
+  keywords?: string[];
+  chapter?: string;
 }
 
 /**
- * Individual search result
+ * Cluster item in response
  */
-export interface N8NSearchResult {
+export interface N8NClusterItem {
+  primary_term: string;
+  related_terms: string[];
+  category: string;
+  confidence_score: number;
+}
+
+/**
+ * Success response from generate-semantic-clusters webhook
+ */
+export interface N8NGenerateClustersSuccessResponse {
+  status: 'success';
+  membership_id: string;
+  clusters_generated: number;
+  clusters: N8NClusterItem[];
+  tokens_used: number;
+}
+
+/**
+ * Error response from generate-semantic-clusters webhook
+ */
+export interface N8NGenerateClustersErrorResponse {
+  status: 'error';
+  errorCode?: string;
+  message: string;
+  details?: string;
+  suggestion?: string;
+  membership_id?: string;
+  recoverable?: boolean;
+  clusters_generated?: number;
+}
+
+/**
+ * Combined clusters response type
+ */
+export type N8NGenerateClustersResponse =
+  | N8NGenerateClustersSuccessResponse
+  | N8NGenerateClustersErrorResponse;
+
+// =================================================================
+// AI SEARCH TYPES
+// =================================================================
+
+/**
+ * Request body for AI search webhook
+ * Matches the n8n workflow input format
+ */
+export interface N8NAISearchRequest {
+  query: string;
+  group_id: string;
+  scope?: 'group' | 'tenant' | 'product';
+  intent_code?: string;
+  user_role?: 'admin' | 'member' | 'guest';
+  channel?: 'web' | 'mobile' | 'whatsapp' | 'chatbot' | 'api';
+  limit?: number;
+  use_cache?: boolean;
+  similarity_threshold?: number;
+}
+
+/**
+ * Search result item from AI search
+ */
+export interface N8NAISearchResultItem {
   membership_id: string;
   tenant_id: string;
+  group_id: string;
+  group_name: string;
   business_name: string;
-  business_email?: string;
-  mobile_number?: string;
-  city?: string;
-  industry?: string;
+  business_email: string | null;
+  mobile_number: string | null;
+  city: string | null;
+  industry: string | null;
   profile_snippet: string;
-  ai_enhanced_description?: string;
-  approved_keywords?: string[];
+  ai_enhanced_description: string;
+  approved_keywords: string[];
   similarity: number;
-  similarity_original?: number;     // Original score before boost
-  boost_applied?: string;           // e.g., 'cluster_match'
-  match_type: string;               // 'vector', 'keyword', 'hybrid'
+  similarity_original: number;
+  boost_applied: string | null;
+  match_type: 'vector' | 'keyword' | 'semantic';
+  search_scope: string;
 }
 
 /**
- * Success response from search webhook
+ * Success response from AI search webhook
  */
-export interface N8NSearchSuccessResponse {
+export interface N8NAISearchSuccessResponse {
   success: true;
-  query: string;
-  results_count: number;
+  status?: 'success';
   from_cache: boolean;
   cache_hit_count?: number;
-  results: N8NSearchResult[];
-
-  // Metadata
-  search_scope?: SearchScope;
-  group_id?: string;
-  tenant_id?: string;
+  results_count: number;
+  results: N8NAISearchResultItem[];
+  query: string;
+  search_scope: string;
+  intent_code?: string;
+  user_role?: string;
+  channel?: string;
+  max_results_allowed?: number;
 }
 
 /**
- * Error response from search webhook
+ * Error response from AI search webhook
  */
-export interface N8NSearchErrorResponse {
+export interface N8NAISearchErrorResponse {
   success: false;
   error: string;
   details?: string;
-  query?: string;
+  denial_reason?: string;
+  intent_code?: string;
+  user_role?: string;
+  channel?: string;
 }
 
 /**
- * Combined search response type
+ * Combined AI search response type
  */
-export type N8NSearchResponse =
-  | N8NSearchSuccessResponse
-  | N8NSearchErrorResponse;
+export type N8NAISearchResponse =
+  | N8NAISearchSuccessResponse
+  | N8NAISearchErrorResponse;
+
+// =================================================================
+// AI AGENT TYPES (Conversational Group Discovery)
+// =================================================================
 
 /**
- * Check if search response indicates success
+ * Channel types for AI Agent
  */
-export function isSearchSuccess(response: N8NSearchResponse): response is N8NSearchSuccessResponse {
+export type AIAgentChannel = 'chat' | 'whatsapp' | 'web';
+
+/**
+ * Request body for AI Agent webhook
+ * Supports both phone (WhatsApp) and user_id (Web/Chat) identification
+ */
+export interface N8NAIAgentRequest {
+  message: string;
+  channel: AIAgentChannel;
+  phone?: string;      // For WhatsApp channel
+  user_id?: string;    // For Web/Chat channels
+  group_id?: string;   // Optional: specific group context
+  tenant_id?: string;  // Optional: tenant context
+}
+
+/**
+ * Search result from AI Agent
+ */
+export interface N8NAIAgentSearchResult {
+  membership_id: string;
+  tenant_id: string;
+  business_name: string;
+  business_category: string | null;
+  city: string | null;
+  chapter: string | null;
+  business_phone: string | null;
+  business_email: string | null;
+  website_url: string | null;
+  ai_enhanced_description: string | null;
+  similarity?: number;
+}
+
+/**
+ * Success response from AI Agent webhook
+ * Note: N8N returns 'response' field, backend normalizes to 'message' for frontend
+ */
+export interface N8NAIAgentSuccessResponse {
+  success: true;
+  message: string;           // AI-generated natural language response (normalized from N8N's 'response')
+  results?: N8NAIAgentSearchResult[];  // Search results if applicable
+  results_count?: number;
+  session_id?: string;       // Session ID for continuity
+  group_id?: string;         // Group context from N8N
+  channel?: string;          // Channel type returned by N8N
+  intent_detected?: string;  // What intent the AI detected
+  from_cache?: boolean;
+  duration_ms?: number;      // Processing time in milliseconds
+}
+
+/**
+ * Error response from AI Agent webhook
+ */
+export interface N8NAIAgentErrorResponse {
+  success: false;
+  error: string;
+  message?: string;
+  details?: string;
+}
+
+/**
+ * Combined AI Agent response type
+ */
+export type N8NAIAgentResponse =
+  | N8NAIAgentSuccessResponse
+  | N8NAIAgentErrorResponse;
+
+/**
+ * Check if AI Agent response indicates success
+ */
+export function isAIAgentSuccess(response: N8NAIAgentResponse): response is N8NAIAgentSuccessResponse {
   return response.success === true;
 }
 
 /**
- * Check if search response indicates error
+ * Check if AI Agent response indicates error
  */
-export function isSearchError(response: N8NSearchResponse): response is N8NSearchErrorResponse {
+export function isAIAgentError(response: N8NAIAgentResponse): response is N8NAIAgentErrorResponse {
   return response.success === false;
 }
 
@@ -313,6 +434,34 @@ export function isEmbeddingError(response: N8NGenerateEmbeddingResponse): respon
   return response.status === 'error';
 }
 
+/**
+ * Check if clusters response indicates success
+ */
+export function isClustersSuccess(response: N8NGenerateClustersResponse): response is N8NGenerateClustersSuccessResponse {
+  return response.status === 'success';
+}
+
+/**
+ * Check if clusters response indicates error
+ */
+export function isClustersError(response: N8NGenerateClustersResponse): response is N8NGenerateClustersErrorResponse {
+  return response.status === 'error';
+}
+
+/**
+ * Check if AI search response indicates success
+ */
+export function isAISearchSuccess(response: N8NAISearchResponse): response is N8NAISearchSuccessResponse {
+  return response.success === true;
+}
+
+/**
+ * Check if AI search response indicates error
+ */
+export function isAISearchError(response: N8NAISearchResponse): response is N8NAISearchErrorResponse {
+  return response.success === false;
+}
+
 // =================================================================
 // EXPORTS
 // =================================================================
@@ -327,17 +476,20 @@ export const VaNiN8NConfig = {
   isError: isN8NError,
   isEmbeddingSuccess,
   isEmbeddingError,
-  isSearchSuccess,
-  isSearchError,
+  isClustersSuccess,
+  isClustersError,
+  isAISearchSuccess,
+  isAISearchError,
+  isAIAgentSuccess,
+  isAIAgentError,
 };
+
+export default VaNiN8NConfig;
 
 // =================================================================
 // GROUP DISCOVERY TYPES (Deterministic Intent-based API)
 // =================================================================
 
-/**
- * Available intents for Group Discovery
- */
 export type GroupDiscoveryIntent =
   | 'welcome'
   | 'goodbye'
@@ -346,14 +498,8 @@ export type GroupDiscoveryIntent =
   | 'search'
   | 'get_contact';
 
-/**
- * Channel types for Group Discovery
- */
 export type GroupDiscoveryChannel = 'chat' | 'whatsapp';
 
-/**
- * Response types from Group Discovery
- */
 export type GroupDiscoveryResponseType =
   | 'welcome'
   | 'goodbye'
@@ -362,47 +508,31 @@ export type GroupDiscoveryResponseType =
   | 'contact_details'
   | 'error';
 
-/**
- * Detail levels for card rendering
- */
 export type GroupDiscoveryDetailLevel = 'none' | 'list' | 'summary' | 'full';
 
-/**
- * Action button in search results
- */
 export interface GroupDiscoveryAction {
   type: 'call' | 'whatsapp' | 'email' | 'website' | 'booking' | 'card' | 'vcard' | 'details';
   label: string;
   value: string;
 }
 
-/**
- * Request body for Group Discovery webhook
- */
 export interface GroupDiscoveryRequest {
   intent: GroupDiscoveryIntent;
   group_id: string;
   channel: GroupDiscoveryChannel;
   session_id?: string;
-  // Intent-specific params
-  query?: string;           // For 'search' intent
-  segment?: string;         // For 'list_members' intent
-  membership_id?: string;   // For 'get_contact' intent
-  business_name?: string;   // For 'get_contact' intent (alternative)
-  limit?: number;           // Optional limit for results
+  query?: string;
+  segment?: string;
+  membership_id?: string;
+  business_name?: string;
+  limit?: number;
 }
 
-/**
- * Segment result (for segments_list response)
- */
 export interface GroupDiscoverySegment {
   segment_name: string;
   member_count: number;
 }
 
-/**
- * Search result (for search_results and contact_details responses)
- */
 export interface GroupDiscoveryResult {
   rank?: number;
   membership_id: string;
@@ -427,9 +557,6 @@ export interface GroupDiscoveryResult {
   actions?: GroupDiscoveryAction[];
 }
 
-/**
- * Response from Group Discovery webhook
- */
 export interface GroupDiscoveryResponse {
   success: boolean;
   intent?: GroupDiscoveryIntent;
@@ -445,17 +572,12 @@ export interface GroupDiscoveryResponse {
   channel?: string;
   from_cache?: boolean;
   duration_ms?: number;
-
-  // Dynamic UI elements from N8N
   available_intents?: AvailableIntent[];
   options?: OptionsConfig;
   contact_actions?: ContactAction[];
   expects_input?: boolean;
 }
 
-/**
- * Available intent button from N8N
- */
 export interface AvailableIntent {
   id: GroupDiscoveryIntent | string;
   label: string;
@@ -464,31 +586,20 @@ export interface AvailableIntent {
   whatsapp_type?: 'button' | 'list' | 'text_prompt';
 }
 
-/**
- * Options configuration for selectable lists
- */
 export interface OptionsConfig {
   prompt: string;
   intent: GroupDiscoveryIntent | string;
   items: OptionItem[];
 }
 
-/**
- * Individual option item (industry or member)
- */
 export interface OptionItem {
   label: string;
   value: string;
   subtitle?: string;
 }
 
-/**
- * Contact action button
- */
 export interface ContactAction {
   type: 'call' | 'whatsapp' | 'email' | 'website' | 'vcard' | 'booking';
   label: string;
   value: string;
 }
-
-export default VaNiN8NConfig;
