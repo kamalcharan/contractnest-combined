@@ -1,0 +1,152 @@
+═══════════════════════════════════════════════════
+📋 INDUSTRIES MIGRATION - MANUAL COPY INSTRUCTIONS
+═══════════════════════════════════════════════════
+Branch: claude/init-submodules-feature-3jhxs
+Date: December 25, 2024
+Feature: Migrate industries from constants file to m_catalog_industries table
+
+═══════════════════════════════════════════════════
+🎯 SUMMARY OF CHANGES
+═══════════════════════════════════════════════════
+
+This update migrates industries from UI constants to database:
+1. useMasterDataQueries.ts - Fixed API endpoint to use /industries path
+2. IndustrySelector.tsx - Uses useIndustries() hook with loading/error states
+3. business-profile/index.tsx - Uses useIndustries() hook
+4. TenantProfileView.tsx - Uses useIndustries() hook
+
+Key Change: API endpoint changed from ?category_name=industries to /industries
+This queries m_catalog_industries table instead of m_category_master
+
+═══════════════════════════════════════════════════
+📦 FILES TO COPY (4 FILES)
+═══════════════════════════════════════════════════
+
+SUBMODULE: contractnest-ui
+─────────────────────────────────────────────────
+
+1. useMasterDataQueries.ts
+   FROM: MANUAL_COPY_FILES\useMasterDataQueries.ts
+   TO:   contractnest-ui\src\hooks\queries\useMasterDataQueries.ts
+
+   CHANGES:
+   - Added icon field to Industry interface
+   - Changed API endpoint from ?category_name=industries to /industries
+   - Updated mapping to include icon from m_catalog_industries
+   - Updated fallback industries with correct IDs
+
+2. IndustrySelector.tsx
+   FROM: MANUAL_COPY_FILES\IndustrySelector.tsx
+   TO:   contractnest-ui\src\components\tenantprofile\IndustrySelector.tsx
+
+   CHANGES:
+   - Replaced constants import with useIndustries() hook
+   - Added loading skeleton UI
+   - Added error state with retry button
+   - Filters only active industries
+
+3. TenantProfileView.tsx
+   FROM: MANUAL_COPY_FILES\TenantProfileView.tsx
+   TO:   contractnest-ui\src\components\tenantprofile\TenantProfileView.tsx
+
+   CHANGES:
+   - Replaced constants import with useIndustries() hook
+   - Fetches all industries, then finds matching one by profile.industry_id
+
+4. business-profile-index.tsx (RENAME WHEN COPYING!)
+   FROM: MANUAL_COPY_FILES\business-profile-index.tsx
+   TO:   contractnest-ui\src\pages\settings\business-profile\index.tsx
+
+   CHANGES:
+   - Replaced constants import with useIndustries() hook
+   - Fetches all industries, then finds matching one by profile.industry_id
+
+
+═══════════════════════════════════════════════════
+💻 WINDOWS POWERSHELL COMMANDS
+═══════════════════════════════════════════════════
+
+Step 1: Navigate to your project root
+─────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Step 2: Copy files from MANUAL_COPY_FILES
+─────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\useMasterDataQueries.ts" -Destination "contractnest-ui\src\hooks\queries\useMasterDataQueries.ts" -Force
+
+Copy-Item "MANUAL_COPY_FILES\IndustrySelector.tsx" -Destination "contractnest-ui\src\components\tenantprofile\IndustrySelector.tsx" -Force
+
+Copy-Item "MANUAL_COPY_FILES\TenantProfileView.tsx" -Destination "contractnest-ui\src\components\tenantprofile\TenantProfileView.tsx" -Force
+
+Copy-Item "MANUAL_COPY_FILES\business-profile-index.tsx" -Destination "contractnest-ui\src\pages\settings\business-profile\index.tsx" -Force
+
+Step 3: Verify files copied correctly
+─────────────────────────────────────────────────
+Get-Content "contractnest-ui\src\hooks\queries\useMasterDataQueries.ts" -Head 35
+Get-Content "contractnest-ui\src\components\tenantprofile\IndustrySelector.tsx" -Head 10
+Get-Content "contractnest-ui\src\components\tenantprofile\TenantProfileView.tsx" -Head 10
+Get-Content "contractnest-ui\src\pages\settings\business-profile\index.tsx" -Head 15
+
+
+═══════════════════════════════════════════════════
+✅ TESTING CHECKLIST
+═══════════════════════════════════════════════════
+
+After copying files, test the following:
+
+[ ] 1. Start the UI dev server:
+      cd contractnest-ui && npm run dev
+
+[ ] 2. Test Onboarding flow:
+      - Navigate to onboarding
+      - Check that industries load (not empty)
+      - Select an industry and proceed
+
+[ ] 3. Test Business Profile page:
+      - Navigate to Settings > Business Profile
+      - Verify existing profile shows correctly (not "empty state")
+      - Industry name displays correctly
+
+[ ] 4. Test Edit Profile:
+      - Click Edit Profile
+      - Verify industries dropdown populates
+      - Change industry and save
+
+
+═══════════════════════════════════════════════════
+🔄 ROLLBACK INSTRUCTIONS
+═══════════════════════════════════════════════════
+
+If issues occur, restore from git:
+
+cd contractnest-ui
+git checkout -- src/hooks/queries/useMasterDataQueries.ts
+git checkout -- src/components/tenantprofile/IndustrySelector.tsx
+git checkout -- src/components/tenantprofile/TenantProfileView.tsx
+git checkout -- src/pages/settings/business-profile/index.tsx
+
+
+═══════════════════════════════════════════════════
+ℹ️ TECHNICAL NOTES
+═══════════════════════════════════════════════════
+
+API Endpoint Change:
+- OLD: /api/functions/product-masterdata?category_name=industries
+  (queries m_category_master table - wrong table)
+
+- NEW: /api/functions/product-masterdata/industries
+  (queries m_catalog_industries table - correct table)
+
+Industry Interface:
+export interface Industry {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string; // Lucide icon name from m_catalog_industries
+  isActive: boolean;
+  sortOrder?: number;
+}
+
+RLS Note:
+Ensure RLS policies on m_catalog_industries allow SELECT for authenticated users.
+
