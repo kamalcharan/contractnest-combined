@@ -1585,11 +1585,17 @@ export const groupsService = {
         results: n8nData.results || [],
         results_count: n8nData.results_count || 0,
         session_id: n8nData.session_id,
+        is_new_session: n8nData.is_new_session,
         group_id: n8nData.group_id,
         group_name: n8nData.group_name,
         channel: n8nData.channel,
         from_cache: n8nData.from_cache,
         duration_ms: n8nData.duration_ms,
+        // Dynamic UI elements
+        available_intents: n8nData.available_intents,
+        options: n8nData.options,
+        contact_actions: n8nData.contact_actions,
+        expects_input: n8nData.expects_input,
       };
     } catch (error: any) {
       console.error('Error in groupDiscovery:', error.message);

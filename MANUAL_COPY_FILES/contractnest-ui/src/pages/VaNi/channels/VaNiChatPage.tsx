@@ -33,7 +33,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { chatService } from '../../../services/chatService';
-import { aiAgentService, type AIAgentSearchResult, type AIAgentSegmentResult, type AIAgentSuccessResponse, type AIAgentResponseType, type AIAgentDetailLevel } from '../../../services/aiAgentService';
+import { aiAgentService, type AIAgentSearchResult, type AIAgentSegmentResult, type AIAgentSuccessResponse, type AIAgentResponseType, type AIAgentDetailLevel, type AvailableIntent, type OptionsConfig, type ContactAction, type OptionItem } from '../../../services/aiAgentService';
 
 // Simple markdown renderer for N8N responses
 const renderMarkdown = (text: string): React.ReactNode => {
@@ -163,6 +163,10 @@ interface ChatMessage {
   responseType?: AIAgentResponseType;  // Use N8N response_type directly
   detailLevel?: AIAgentDetailLevel;    // Use N8N detail_level directly
   fromCache?: boolean;
+  // Dynamic UI elements from N8N
+  availableIntents?: AvailableIntent[];
+  options?: OptionsConfig;
+  contactActions?: ContactAction[];
 }
 
 // ============================================
@@ -364,6 +368,9 @@ const VaNiChatPage: React.FC = () => {
       responseType?: AIAgentResponseType;
       detailLevel?: AIAgentDetailLevel;
       fromCache?: boolean;
+      availableIntents?: AvailableIntent[];
+      options?: OptionsConfig;
+      contactActions?: ContactAction[];
     }
   ) => {
     const message: ChatMessage = {
@@ -375,7 +382,10 @@ const VaNiChatPage: React.FC = () => {
       segments: options?.segments,
       responseType: options?.responseType,
       detailLevel: options?.detailLevel,
-      fromCache: options?.fromCache
+      fromCache: options?.fromCache,
+      availableIntents: options?.availableIntents,
+      options: options?.options,
+      contactActions: options?.contactActions
     };
     setMessages(prev => [...prev, message]);
   };
@@ -453,14 +463,18 @@ const VaNiChatPage: React.FC = () => {
           console.log('✅ Group activated via "Hi BBB"');
         }
 
-        // Step 5: Handle "Bye" - thank user and deactivate
+        // Step 5: Handle "Bye" - thank user but keep input enabled for new session
         if (isBye) {
-          setGroupActivated(false);
-          console.log('👋 Session ended via "Bye"');
-          // Show N8N's goodbye message or fallback
+          console.log('👋 Session ended via "Bye" - input remains enabled for new session');
+          // Show N8N's goodbye message with available_intents for restart
           addBotMessage(
             response.message || 'Thank you for using VaNi! Goodbye and have a great day. Type **"Hi BBB"** to start a new conversation.',
-            { responseType: response.response_type || 'goodbye' }
+            {
+              responseType: response.response_type || 'goodbye',
+              availableIntents: response.available_intents,
+              options: response.options,
+              contactActions: response.contact_actions
+            }
           );
         } else {
           // Use N8N's response_type directly
@@ -471,13 +485,22 @@ const VaNiChatPage: React.FC = () => {
           // Map results if present
           const mappedResults = response.results?.map(mapApiResult);
 
+          // For segments_list, use results directly if options not provided
+          let segments = response.segments;
+          if (responseType === 'segments_list' && !segments && response.results) {
+            segments = response.results as unknown as AIAgentSegmentResult[];
+          }
+
           // Add bot message with appropriate data based on response_type
           addBotMessage(response.message || 'How can I help you?', {
             results: mappedResults,
-            segments: response.segments,
+            segments,
             responseType,
             detailLevel,
-            fromCache
+            fromCache,
+            availableIntents: response.available_intents,
+            options: response.options,
+            contactActions: response.contact_actions
           });
         }
       } else {
@@ -534,7 +557,10 @@ const VaNiChatPage: React.FC = () => {
           results: mappedResults,
           responseType: response.response_type || 'contact_details',
           detailLevel: response.detail_level || 'full',
-          fromCache: response.from_cache
+          fromCache: response.from_cache,
+          availableIntents: response.available_intents,
+          options: response.options,
+          contactActions: response.contact_actions
         });
       } else {
         addBotMessage(response.message || 'Failed to get contact details. Please try again.');
@@ -639,7 +665,10 @@ const VaNiChatPage: React.FC = () => {
             results: mappedResults,
             responseType: response.response_type || 'search_results',
             detailLevel: response.detail_level || 'summary',
-            fromCache: response.from_cache
+            fromCache: response.from_cache,
+            availableIntents: response.available_intents,
+            options: response.options,
+            contactActions: response.contact_actions
           });
         } else {
           addBotMessage(response.message || 'No members found in this segment.');
@@ -1102,7 +1131,233 @@ const VaNiChatPage: React.FC = () => {
     );
   };
 
-  // Render Intent Buttons panel
+  // Handle dynamic intent button click
+  const handleDynamicIntent = async (intent: AvailableIntent) => {
+    const groupId = session?.group_id || urlGroupId;
+    if (!groupId) {
+      toast.error('Group ID is required');
+      return;
+    }
+
+    if (intent.requires_input) {
+      // Show input prompt
+      setInputValue('');
+      addBotMessage(intent.input_placeholder || 'What are you looking for?', { responseType: 'conversation' });
+      // Focus input field
+      return;
+    }
+
+    // Direct action - send intent
+    addUserMessage(intent.label);
+    setIsLoading(true);
+
+    try {
+      const response = await aiAgentService.sendRequest({
+        intent: intent.id as any,
+        group_id: groupId,
+        channel: 'chat',
+        session_id: session?.id
+      });
+
+      if (aiAgentService.isSuccess(response)) {
+        const mappedResults = response.results?.map(mapApiResult);
+        let segments = response.segments;
+        if (response.response_type === 'segments_list' && !segments && response.results) {
+          segments = response.results as unknown as AIAgentSegmentResult[];
+        }
+
+        addBotMessage(response.message || 'Here you go:', {
+          results: mappedResults,
+          segments,
+          responseType: response.response_type,
+          detailLevel: response.detail_level,
+          fromCache: response.from_cache,
+          availableIntents: response.available_intents,
+          options: response.options,
+          contactActions: response.contact_actions
+        });
+      } else {
+        addBotMessage(response.message || 'Something went wrong.');
+      }
+    } catch (error) {
+      console.error('Error with dynamic intent:', error);
+      addBotMessage('Something went wrong. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle option item click (from options.items)
+  const handleOptionClick = async (options: OptionsConfig, item: OptionItem) => {
+    const groupId = session?.group_id || urlGroupId;
+    if (!groupId) {
+      toast.error('Group ID is required');
+      return;
+    }
+
+    addUserMessage(item.label);
+    setIsLoading(true);
+
+    try {
+      const response = await aiAgentService.sendRequest({
+        intent: options.intent as any,
+        group_id: groupId,
+        channel: 'chat',
+        session_id: session?.id,
+        segment: item.value,
+        membership_id: item.value
+      });
+
+      if (aiAgentService.isSuccess(response)) {
+        const mappedResults = response.results?.map(mapApiResult);
+        addBotMessage(response.message || `Here are the results for ${item.label}:`, {
+          results: mappedResults,
+          responseType: response.response_type,
+          detailLevel: response.detail_level,
+          fromCache: response.from_cache,
+          availableIntents: response.available_intents,
+          options: response.options,
+          contactActions: response.contact_actions
+        });
+      } else {
+        addBotMessage(response.message || 'No results found.');
+      }
+    } catch (error) {
+      console.error('Error with option click:', error);
+      addBotMessage('Something went wrong. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle contact action click
+  const handleContactAction = (action: ContactAction) => {
+    switch (action.type) {
+      case 'call':
+        window.location.href = `tel:${action.value}`;
+        break;
+      case 'whatsapp':
+        window.open(`https://wa.me/${action.value.replace(/[^0-9]/g, '')}`, '_blank');
+        break;
+      case 'email':
+        window.location.href = `mailto:${action.value}`;
+        break;
+      case 'website':
+        window.open(action.value.startsWith('http') ? action.value : `https://${action.value}`, '_blank');
+        break;
+      case 'vcard':
+        window.location.href = action.value;
+        break;
+      case 'booking':
+        window.open(action.value, '_blank');
+        break;
+    }
+  };
+
+  // Render dynamic available_intents buttons
+  const renderAvailableIntents = (intents: AvailableIntent[]) => {
+    if (!intents || intents.length === 0) return null;
+
+    return (
+      <div className="flex flex-wrap gap-2 mt-3">
+        {intents.map((intent, idx) => (
+          <button
+            key={intent.id || idx}
+            onClick={() => handleDynamicIntent(intent)}
+            disabled={isLoading}
+            className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all hover:shadow-md disabled:opacity-50"
+            style={{
+              backgroundColor: colors.utility.secondaryBackground,
+              border: `1px solid ${colors.brand.primary}30`,
+              color: colors.utility.primaryText
+            }}
+          >
+            <span>{intent.label}</span>
+          </button>
+        ))}
+      </div>
+    );
+  };
+
+  // Render dynamic options (industry/member pills)
+  const renderOptions = (options: OptionsConfig) => {
+    if (!options || !options.items || options.items.length === 0) return null;
+
+    return (
+      <div className="mt-3">
+        {options.prompt && (
+          <p className="text-sm mb-2" style={{ color: colors.utility.secondaryText }}>
+            {options.prompt}
+          </p>
+        )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {options.items.map((item, idx) => (
+            <button
+              key={item.value || idx}
+              onClick={() => handleOptionClick(options, item)}
+              disabled={isLoading}
+              className="flex items-center justify-between p-3 rounded-lg transition-all hover:shadow-md cursor-pointer disabled:opacity-50"
+              style={{
+                backgroundColor: colors.utility.primaryBackground,
+                border: `1px solid ${colors.utility.primaryText}15`
+              }}
+            >
+              <div className="text-left">
+                <h4 className="font-medium" style={{ color: colors.utility.primaryText }}>
+                  {item.label}
+                </h4>
+                {item.subtitle && (
+                  <p className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                    {item.subtitle}
+                  </p>
+                )}
+              </div>
+              <ChevronRight className="w-4 h-4" style={{ color: colors.utility.secondaryText }} />
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  // Render dynamic contact actions
+  const renderContactActions = (actions: ContactAction[]) => {
+    if (!actions || actions.length === 0) return null;
+
+    const getActionIcon = (type: string) => {
+      switch (type) {
+        case 'call': return <Phone className="w-4 h-4" />;
+        case 'whatsapp': return <MessageCircle className="w-4 h-4" />;
+        case 'email': return <Mail className="w-4 h-4" />;
+        case 'website': return <Globe className="w-4 h-4" />;
+        case 'vcard': return <Download className="w-4 h-4" />;
+        case 'booking': return <Calendar className="w-4 h-4" />;
+        default: return <ExternalLink className="w-4 h-4" />;
+      }
+    };
+
+    return (
+      <div className="flex flex-wrap gap-2 mt-3">
+        {actions.map((action, idx) => (
+          <button
+            key={`${action.type}-${idx}`}
+            onClick={() => handleContactAction(action)}
+            className="flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all hover:shadow-md"
+            style={{
+              backgroundColor: `${colors.brand.primary}15`,
+              color: colors.brand.primary,
+              border: `1px solid ${colors.brand.primary}30`
+            }}
+          >
+            {getActionIcon(action.type)}
+            <span>{action.label}</span>
+          </button>
+        ))}
+      </div>
+    );
+  };
+
+  // Render Intent Buttons panel (fallback when no dynamic intents)
   const renderIntentButtons = () => {
     const groupId = session?.group_id || urlGroupId;
 
@@ -1302,6 +1557,15 @@ const VaNiChatPage: React.FC = () => {
                 {message.segments!.map((segment, idx) => renderSegmentListCard(segment, idx))}
               </div>
             )}
+
+            {/* Dynamic Options from N8N (alternative to segments) */}
+            {message.options && renderOptions(message.options)}
+
+            {/* Dynamic Contact Actions from N8N */}
+            {message.contactActions && renderContactActions(message.contactActions)}
+
+            {/* Dynamic Available Intents from N8N */}
+            {message.availableIntents && renderAvailableIntents(message.availableIntents)}
           </div>
         </div>
       </div>

@@ -439,11 +439,56 @@ export interface GroupDiscoveryResponse {
   results: GroupDiscoveryResult[] | GroupDiscoverySegment[];
   results_count: number;
   session_id?: string;
+  is_new_session?: boolean;
   group_id?: string;
   group_name?: string;
   channel?: string;
   from_cache?: boolean;
   duration_ms?: number;
+
+  // Dynamic UI elements from N8N
+  available_intents?: AvailableIntent[];
+  options?: OptionsConfig;
+  contact_actions?: ContactAction[];
+  expects_input?: boolean;
+}
+
+/**
+ * Available intent button from N8N
+ */
+export interface AvailableIntent {
+  id: GroupDiscoveryIntent | string;
+  label: string;
+  requires_input: boolean;
+  input_placeholder?: string;
+  whatsapp_type?: 'button' | 'list' | 'text_prompt';
+}
+
+/**
+ * Options configuration for selectable lists
+ */
+export interface OptionsConfig {
+  prompt: string;
+  intent: GroupDiscoveryIntent | string;
+  items: OptionItem[];
+}
+
+/**
+ * Individual option item (industry or member)
+ */
+export interface OptionItem {
+  label: string;
+  value: string;
+  subtitle?: string;
+}
+
+/**
+ * Contact action button
+ */
+export interface ContactAction {
+  type: 'call' | 'whatsapp' | 'email' | 'website' | 'vcard' | 'booking';
+  label: string;
+  value: string;
 }
 
 export default VaNiN8NConfig;

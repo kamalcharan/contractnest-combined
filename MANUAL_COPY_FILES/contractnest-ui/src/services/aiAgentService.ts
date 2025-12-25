@@ -103,6 +103,33 @@ export interface AIAgentSearchResult {
   actions?: GroupDiscoveryAction[];
 }
 
+// Dynamic UI element types from N8N
+export interface AvailableIntent {
+  id: GroupDiscoveryIntent | string;
+  label: string;
+  requires_input: boolean;
+  input_placeholder?: string;
+  whatsapp_type?: 'button' | 'list' | 'text_prompt';
+}
+
+export interface OptionsConfig {
+  prompt: string;
+  intent: GroupDiscoveryIntent | string;
+  items: OptionItem[];
+}
+
+export interface OptionItem {
+  label: string;
+  value: string;
+  subtitle?: string;
+}
+
+export interface ContactAction {
+  type: 'call' | 'whatsapp' | 'email' | 'website' | 'vcard' | 'booking';
+  label: string;
+  value: string;
+}
+
 export interface AIAgentSuccessResponse {
   success: true;
   intent?: GroupDiscoveryIntent;
@@ -120,6 +147,11 @@ export interface AIAgentSuccessResponse {
   intent_detected?: string;
   from_cache?: boolean;
   duration_ms?: number;
+  // Dynamic UI elements from N8N
+  available_intents?: AvailableIntent[];
+  options?: OptionsConfig;
+  contact_actions?: ContactAction[];
+  expects_input?: boolean;
 }
 
 export interface AIAgentErrorResponse {
