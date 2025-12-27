@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "FamilyKnows",
+    "slug": "family-knows",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": false,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#6F61EF"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.familyknows.app",
+      "infoPlist": {
+        "NSContactsUsageDescription": "FamilyKnows needs access to your contacts to help you add service providers from your contact list."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#6F61EF"
+      },
+      "package": "com.familyknows.app",
+      "permissions": [
+        "READ_CONTACTS"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
