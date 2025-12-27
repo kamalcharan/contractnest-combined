@@ -12,7 +12,7 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk",
-        "image": "ubuntu-22.04-jdk-17-ndk-27"
+        "image": "ubuntu-24.04-jdk-21-ndk-27"
       }
     },
     "production": {
