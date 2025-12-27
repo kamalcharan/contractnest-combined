@@ -12,10 +12,7 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk",
-        "gradleCommand": ":app:assembleRelease"
-      },
-      "env": {
-        "EXPO_NO_DEV_CLIENT": "true"
+        "image": "latest"
       }
     },
     "production": {
