@@ -63,6 +63,10 @@ const CatalogStudioTemplatePage: React.FC = () => {
   const [selectedTemplateBlock, setSelectedTemplateBlock] = useState<string | null>(null);
   const [previewBlock, setPreviewBlock] = useState<Block | null>(null);
 
+  // Drag-drop state
+  const [draggedBlockId, setDraggedBlockId] = useState<string | null>(null);
+  const [dragOverBlockId, setDragOverBlockId] = useState<string | null>(null);
+
   // Get default config based on block category
   const getDefaultConfig = (block: Block): BlockConfig => {
     const baseConfig: BlockConfig = { isVisible: true };
@@ -138,6 +142,59 @@ const CatalogStudioTemplatePage: React.FC = () => {
     if (selectedTemplateBlock === templateBlockId) {
       setSelectedTemplateBlock(null);
     }
+  };
+
+  // Drag-drop handlers
+  const handleDragStart = (e: React.DragEvent, blockId: string) => {
+    setDraggedBlockId(blockId);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', blockId);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedBlockId(null);
+    setDragOverBlockId(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent, blockId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (blockId !== draggedBlockId) {
+      setDragOverBlockId(blockId);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDragOverBlockId(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetBlockId: string) => {
+    e.preventDefault();
+    if (!draggedBlockId || draggedBlockId === targetBlockId) {
+      setDraggedBlockId(null);
+      setDragOverBlockId(null);
+      return;
+    }
+
+    const draggedIndex = templateBlocks.findIndex((tb) => tb.id === draggedBlockId);
+    const targetIndex = templateBlocks.findIndex((tb) => tb.id === targetBlockId);
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    // Reorder blocks
+    const newBlocks = [...templateBlocks];
+    const [removed] = newBlocks.splice(draggedIndex, 1);
+    newBlocks.splice(targetIndex, 0, removed);
+
+    // Update order values
+    const updatedBlocks = newBlocks.map((block, index) => ({
+      ...block,
+      order: index,
+    }));
+
+    setTemplateBlocks(updatedBlocks);
+    setDraggedBlockId(null);
+    setDragOverBlockId(null);
   };
 
   const getBlockCategory = (block: Block) => {
@@ -288,28 +345,44 @@ const CatalogStudioTemplatePage: React.FC = () => {
                 {templateBlocks.map((tb, index) => {
                   const category = getBlockCategory(tb.block);
                   const BlockIcon = getIconComponent(tb.block.icon);
+                  const isDragging = draggedBlockId === tb.id;
+                  const isDragOver = dragOverBlockId === tb.id;
                   return (
                     <div
                       key={tb.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, tb.id)}
+                      onDragEnd={handleDragEnd}
+                      onDragOver={(e) => handleDragOver(e, tb.id)}
+                      onDragLeave={handleDragLeave}
+                      onDrop={(e) => handleDrop(e, tb.id)}
                       className={`rounded-xl border-2 overflow-hidden transition-all cursor-pointer ${
                         selectedTemplateBlock === tb.id ? 'ring-2' : ''
                       } ${tb.isNew ? 'animate-in slide-in-from-left-4 duration-300' : ''}`}
                       style={{
                         backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#FFFFFF',
-                        borderColor: tb.isNew
-                          ? colors.semantic.success
-                          : selectedTemplateBlock === tb.id
-                            ? colors.brand.primary
-                            : (isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB'),
-                        boxShadow: tb.isNew ? `0 0 0 2px ${colors.semantic.success}40` : undefined,
+                        borderColor: isDragOver
+                          ? colors.brand.primary
+                          : tb.isNew
+                            ? colors.semantic.success
+                            : selectedTemplateBlock === tb.id
+                              ? colors.brand.primary
+                              : (isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB'),
+                        boxShadow: isDragOver
+                          ? `0 0 0 3px ${colors.brand.primary}40`
+                          : tb.isNew
+                            ? `0 0 0 2px ${colors.semantic.success}40`
+                            : undefined,
+                        opacity: isDragging ? 0.5 : 1,
+                        transform: isDragOver ? 'scale(1.02)' : 'scale(1)',
                       }}
                       onClick={() => setSelectedTemplateBlock(tb.id)}
                     >
                       <div className="p-4 flex items-center gap-4">
                         <div className="flex items-center gap-2">
                           <GripVertical
-                            className="w-4 h-4 cursor-move"
-                            style={{ color: colors.utility.secondaryText }}
+                            className="w-4 h-4 cursor-grab active:cursor-grabbing"
+                            style={{ color: isDragging ? colors.brand.primary : colors.utility.secondaryText }}
                           />
                           <span
                             className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
