@@ -6,7 +6,34 @@ import { BLOCK_CATEGORIES, WIZARD_STEPS } from '../../../utils/catalog-studio';
 import WizardHeader from './WizardHeader';
 import WizardProgress from './WizardProgress';
 import WizardFooter from './WizardFooter';
-import { TypeSelectionStep, BasicInfoStep, DeliveryStep, PricingStep, EvidenceStep, RulesStep } from './steps';
+import {
+  TypeSelectionStep,
+  BasicInfoStep,
+  // Service steps
+  DeliveryStep,
+  PricingStep,
+  EvidenceStep,
+  RulesStep,
+  // Spare Parts steps
+  InventoryStep,
+  FulfillmentStep,
+  // Billing steps
+  StructureStep,
+  ScheduleStep,
+  AutomationStep,
+  // Content steps
+  ContentStep,
+  ContentSettingsStep,
+  // Media steps
+  MediaStep,
+  ImageUploadStep,
+  DisplaySettingsStep,
+  // Checklist steps
+  ItemsStep,
+  ChecklistSettingsStep,
+  // Document steps
+  FileSettingsStep,
+} from './steps';
 
 interface BlockWizardProps {
   isOpen: boolean;
@@ -59,20 +86,78 @@ const BlockWizard: React.FC<BlockWizardProps> = ({
   if (!isOpen) return null;
 
   const renderStepContent = () => {
+    // Step 1 - Type Selection (common for all)
     if (currentStep === 1) {
       return <TypeSelectionStep categories={BLOCK_CATEGORIES} selectedType={blockType} onSelectType={handleTypeChange} />;
     }
+
+    // Step 2 - Basic Info (common for all)
     if (currentStep === 2) {
       return <BasicInfoStep blockType={blockType} formData={formData} onChange={handleFormChange} />;
     }
-    if (blockType === 'service') {
-      switch (currentStep) {
-        case 3: return <DeliveryStep formData={formData} onChange={handleFormChange} />;
-        case 4: return <PricingStep formData={formData} onChange={handleFormChange} />;
-        case 5: return <EvidenceStep formData={formData} onChange={handleFormChange} />;
-        case 6: return <RulesStep formData={formData} onChange={handleFormChange} />;
-      }
+
+    // Block-specific steps (step 3+)
+    switch (blockType) {
+      case 'service':
+        switch (currentStep) {
+          case 3: return <DeliveryStep formData={formData} onChange={handleFormChange} />;
+          case 4: return <PricingStep formData={formData} onChange={handleFormChange} />;
+          case 5: return <EvidenceStep formData={formData} onChange={handleFormChange} />;
+          case 6: return <RulesStep formData={formData} onChange={handleFormChange} />;
+        }
+        break;
+
+      case 'spare':
+        switch (currentStep) {
+          case 3: return <InventoryStep formData={formData} onChange={handleFormChange} />;
+          case 4: return <FulfillmentStep formData={formData} onChange={handleFormChange} />;
+        }
+        break;
+
+      case 'billing':
+        switch (currentStep) {
+          case 3: return <StructureStep formData={formData} onChange={handleFormChange} />;
+          case 4: return <ScheduleStep formData={formData} onChange={handleFormChange} />;
+          case 5: return <AutomationStep formData={formData} onChange={handleFormChange} />;
+        }
+        break;
+
+      case 'content':
+        switch (currentStep) {
+          case 3: return <ContentStep formData={formData} onChange={handleFormChange} />;
+          case 4: return <ContentSettingsStep formData={formData} onChange={handleFormChange} />;
+        }
+        break;
+
+      case 'video':
+        switch (currentStep) {
+          case 3: return <MediaStep formData={formData} onChange={handleFormChange} />;
+          case 4: return <DisplaySettingsStep formData={formData} onChange={handleFormChange} />;
+        }
+        break;
+
+      case 'image':
+        switch (currentStep) {
+          case 3: return <ImageUploadStep formData={formData} onChange={handleFormChange} />;
+          case 4: return <DisplaySettingsStep formData={formData} onChange={handleFormChange} />;
+        }
+        break;
+
+      case 'checklist':
+        switch (currentStep) {
+          case 3: return <ItemsStep formData={formData} onChange={handleFormChange} />;
+          case 4: return <ChecklistSettingsStep formData={formData} onChange={handleFormChange} />;
+        }
+        break;
+
+      case 'document':
+        switch (currentStep) {
+          case 3: return <FileSettingsStep formData={formData} onChange={handleFormChange} />;
+        }
+        break;
     }
+
+    // Fallback for any unhandled steps
     const stepLabel = wizardSteps.find((s) => s.id === currentStep)?.label || 'Configuration';
     return (
       <div className="animate-in fade-in slide-in-from-right-4 duration-200">
