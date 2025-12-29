@@ -1,5 +1,5 @@
 // src/components/catalog-studio/ServiceCatalogTree/index.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   ChevronDown,
   ChevronRight,
@@ -14,6 +14,7 @@ import {
   Grid3X3,
   List,
   CheckCircle2,
+  X,
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { useTheme } from '../../../contexts/ThemeContext';
@@ -373,6 +374,30 @@ const ServiceCatalogTree: React.FC<ServiceCatalogTreeProps> = ({
 
   const treeData = buildTree();
 
+  // Auto-expand all categories when searching
+  useEffect(() => {
+    if (searchQuery.length > 0) {
+      // Expand all categories when searching
+      const allCategoryIds = categories.map((c) => c.id);
+      setExpandedNodes(new Set(['root', ...allCategoryIds]));
+    }
+  }, [searchQuery, categories]);
+
+  // Count matching results
+  const searchResultsCount = useMemo(() => {
+    if (!searchQuery) return 0;
+    const query = searchQuery.toLowerCase();
+    return blocks.filter((b) => {
+      const category = categories.find((c) => c.id === b.categoryId);
+      return (
+        b.name.toLowerCase().includes(query) ||
+        b.description.toLowerCase().includes(query) ||
+        (b.tags && b.tags.some((tag) => tag.toLowerCase().includes(query))) ||
+        (category && category.name.toLowerCase().includes(query))
+      );
+    }).length;
+  }, [searchQuery, blocks, categories]);
+
   const toggleNode = (nodeId: string) => {
     const newExpanded = new Set(expandedNodes);
     if (newExpanded.has(nodeId)) {
@@ -427,18 +452,36 @@ const ServiceCatalogTree: React.FC<ServiceCatalogTreeProps> = ({
     console.log(`Action ${action} on node:`, node);
   };
 
-  // Filter tree based on search
+  // Enhanced filter tree based on search (name, description, tags, category)
   const filterTree = (nodes: TreeNode[], query: string): TreeNode[] => {
     if (!query) return nodes;
+    const lowerQuery = query.toLowerCase();
 
     return nodes.reduce<TreeNode[]>((acc, node) => {
-      const matchesQuery = node.name.toLowerCase().includes(query.toLowerCase());
-      const filteredChildren = node.children ? filterTree(node.children, query) : [];
+      // Check if category name matches
+      const categoryMatches = node.type === 'category' && node.name.toLowerCase().includes(lowerQuery);
 
-      if (matchesQuery || filteredChildren.length > 0) {
+      // Filter children with enhanced search
+      const filteredChildren = node.children
+        ? node.children.filter((child) => {
+            if (child.type === 'block' && child.data) {
+              const block = child.data as Block;
+              return (
+                block.name.toLowerCase().includes(lowerQuery) ||
+                block.description.toLowerCase().includes(lowerQuery) ||
+                (block.tags && block.tags.some((tag) => tag.toLowerCase().includes(lowerQuery))) ||
+                node.name.toLowerCase().includes(lowerQuery) // Include if parent category matches
+              );
+            }
+            return child.name.toLowerCase().includes(lowerQuery);
+          })
+        : [];
+
+      if (categoryMatches || filteredChildren.length > 0) {
         acc.push({
           ...node,
-          children: filteredChildren.length > 0 ? filteredChildren : node.children,
+          children: filteredChildren.length > 0 ? filteredChildren : undefined,
+          count: filteredChildren.length,
         });
       }
 
@@ -446,15 +489,21 @@ const ServiceCatalogTree: React.FC<ServiceCatalogTreeProps> = ({
     }, []);
   };
 
-  // Filter blocks for grid view
+  // Enhanced filter blocks for grid view (name, description, tags, category)
   const getFilteredBlocks = () => {
     let filteredBlocks = blocks;
+    const lowerQuery = searchQuery.toLowerCase();
 
     if (searchQuery) {
-      filteredBlocks = filteredBlocks.filter((b) =>
-        b.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        b.description.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      filteredBlocks = filteredBlocks.filter((b) => {
+        const category = categories.find((c) => c.id === b.categoryId);
+        return (
+          b.name.toLowerCase().includes(lowerQuery) ||
+          b.description.toLowerCase().includes(lowerQuery) ||
+          (b.tags && b.tags.some((tag) => tag.toLowerCase().includes(lowerQuery))) ||
+          (category && category.name.toLowerCase().includes(lowerQuery))
+        );
+      });
     }
 
     if (selectedGridCategory) {
@@ -615,17 +664,43 @@ const ServiceCatalogTree: React.FC<ServiceCatalogTreeProps> = ({
           />
           <input
             type="text"
-            placeholder="Search blocks..."
+            placeholder="Search blocks, tags, categories..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 text-xs border rounded-lg focus:outline-none focus:ring-1"
+            className="w-full pl-8 pr-8 py-1.5 text-xs border rounded-lg focus:outline-none focus:ring-1"
             style={{
               backgroundColor: isDarkMode ? colors.utility.secondaryBackground : '#FFFFFF',
-              borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB',
+              borderColor: searchQuery ? colors.brand.primary : (isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB'),
               color: colors.utility.primaryText,
             }}
           />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+            >
+              <X className="w-3 h-3" style={{ color: colors.utility.secondaryText }} />
+            </button>
+          )}
         </div>
+        {/* Search results count */}
+        {searchQuery && (
+          <div
+            className="mt-2 text-[10px] flex items-center justify-between"
+            style={{ color: colors.utility.secondaryText }}
+          >
+            <span>
+              Found <strong style={{ color: colors.brand.primary }}>{searchResultsCount}</strong> block{searchResultsCount !== 1 ? 's' : ''}
+            </span>
+            <button
+              onClick={() => setSearchQuery('')}
+              className="underline hover:no-underline"
+              style={{ color: colors.brand.primary }}
+            >
+              Clear
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Instruction hint */}
