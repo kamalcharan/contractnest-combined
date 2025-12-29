@@ -1,6 +1,6 @@
 // src/pages/catalog-studio/template.tsx
 import React, { useState, useMemo } from 'react';
-import { Plus, Download, Save, Eye, MoreVertical, Settings, GripVertical, Trash2, LayoutTemplate, FileText, X, Info, DollarSign, Clock, Camera, FileCheck, AlertCircle, Package, CreditCard, Type, Video, Image, CheckSquare, Paperclip, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, Download, Save, Eye, MoreVertical, Settings, GripVertical, Trash2, LayoutTemplate, FileText, X, Info, DollarSign, Clock, Camera, FileCheck, AlertCircle, Package, CreditCard, Type, Video, Image, CheckSquare, Paperclip, ToggleLeft, ToggleRight, Square, CheckSquare as CheckedSquare, Copy, EyeOff } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Block } from '../../types/catalogStudio';
@@ -66,6 +66,10 @@ const CatalogStudioTemplatePage: React.FC = () => {
   // Drag-drop state
   const [draggedBlockId, setDraggedBlockId] = useState<string | null>(null);
   const [dragOverBlockId, setDragOverBlockId] = useState<string | null>(null);
+
+  // Multi-select state
+  const [selectedBlockIds, setSelectedBlockIds] = useState<Set<string>>(new Set());
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
 
   // Get default config based on block category
   const getDefaultConfig = (block: Block): BlockConfig => {
@@ -197,6 +201,69 @@ const CatalogStudioTemplatePage: React.FC = () => {
     setDragOverBlockId(null);
   };
 
+  // Multi-select handlers
+  const toggleBlockSelection = (blockId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newSelection = new Set(selectedBlockIds);
+    if (newSelection.has(blockId)) {
+      newSelection.delete(blockId);
+    } else {
+      newSelection.add(blockId);
+    }
+    setSelectedBlockIds(newSelection);
+    if (newSelection.size === 0) {
+      setIsMultiSelectMode(false);
+    } else if (!isMultiSelectMode) {
+      setIsMultiSelectMode(true);
+    }
+  };
+
+  const selectAllBlocks = () => {
+    setSelectedBlockIds(new Set(templateBlocks.map((tb) => tb.id)));
+    setIsMultiSelectMode(true);
+  };
+
+  const clearSelection = () => {
+    setSelectedBlockIds(new Set());
+    setIsMultiSelectMode(false);
+  };
+
+  const deleteSelectedBlocks = () => {
+    setTemplateBlocks(templateBlocks.filter((tb) => !selectedBlockIds.has(tb.id)));
+    if (selectedTemplateBlock && selectedBlockIds.has(selectedTemplateBlock)) {
+      setSelectedTemplateBlock(null);
+    }
+    clearSelection();
+  };
+
+  const duplicateSelectedBlocks = () => {
+    const blocksToDuplicate = templateBlocks.filter((tb) => selectedBlockIds.has(tb.id));
+    const newBlocks = blocksToDuplicate.map((tb) => ({
+      ...tb,
+      id: `tb-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      order: templateBlocks.length + blocksToDuplicate.indexOf(tb),
+      isNew: true,
+    }));
+    setTemplateBlocks([...templateBlocks, ...newBlocks]);
+    clearSelection();
+
+    // Remove "new" flag after animation
+    setTimeout(() => {
+      setTemplateBlocks((prev) =>
+        prev.map((tb) => (newBlocks.find((nb) => nb.id === tb.id) ? { ...tb, isNew: false } : tb))
+      );
+    }, 1000);
+  };
+
+  const hideSelectedBlocks = () => {
+    setTemplateBlocks(
+      templateBlocks.map((tb) =>
+        selectedBlockIds.has(tb.id) ? { ...tb, config: { ...tb.config, isVisible: false } } : tb
+      )
+    );
+    clearSelection();
+  };
+
   const getBlockCategory = (block: Block) => {
     return BLOCK_CATEGORIES.find((c) => c.id === block.categoryId);
   };
@@ -286,29 +353,100 @@ const CatalogStudioTemplatePage: React.FC = () => {
 
         {/* Template Canvas */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Canvas Header - Light Primary */}
-          <div
-            className="px-4 py-3 border-b flex items-center justify-between"
-            style={{
-              backgroundColor: isDarkMode ? colors.utility.secondaryBackground : `${colors.brand.primary}08`,
-              borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB'
-            }}
-          >
-            <div className="flex items-center gap-3">
-              <FileText className="w-5 h-5" style={{ color: colors.brand.primary }} />
-              <span className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
-                Template Blocks ({templateBlocks.length})
-              </span>
+          {/* Canvas Header - Light Primary or Bulk Action Bar */}
+          {isMultiSelectMode && selectedBlockIds.size > 0 ? (
+            <div
+              className="px-4 py-3 border-b flex items-center justify-between animate-in fade-in duration-200"
+              style={{
+                backgroundColor: `${colors.brand.primary}15`,
+                borderColor: colors.brand.primary,
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={clearSelection}
+                  className="p-1.5 rounded-lg hover:bg-white/50 transition-colors"
+                  style={{ color: colors.brand.primary }}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+                <span className="text-sm font-semibold" style={{ color: colors.brand.primary }}>
+                  {selectedBlockIds.size} selected
+                </span>
+                {selectedBlockIds.size < templateBlocks.length && (
+                  <button
+                    onClick={selectAllBlocks}
+                    className="text-xs underline"
+                    style={{ color: colors.brand.primary }}
+                  >
+                    Select all
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={duplicateSelectedBlocks}
+                  className="px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors hover:bg-white/50"
+                  style={{ color: colors.brand.primary }}
+                  title="Duplicate selected"
+                >
+                  <Copy className="w-4 h-4" />
+                  Duplicate
+                </button>
+                <button
+                  onClick={hideSelectedBlocks}
+                  className="px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors hover:bg-white/50"
+                  style={{ color: colors.utility.secondaryText }}
+                  title="Hide selected"
+                >
+                  <EyeOff className="w-4 h-4" />
+                  Hide
+                </button>
+                <button
+                  onClick={deleteSelectedBlocks}
+                  className="px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors hover:bg-red-50"
+                  style={{ color: colors.semantic.error }}
+                  title="Delete selected"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                className="p-1.5 rounded-lg transition-colors"
-                style={{ color: colors.utility.secondaryText }}
-              >
-                <Settings className="w-4 h-4" />
-              </button>
+          ) : (
+            <div
+              className="px-4 py-3 border-b flex items-center justify-between"
+              style={{
+                backgroundColor: isDarkMode ? colors.utility.secondaryBackground : `${colors.brand.primary}08`,
+                borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB'
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <FileText className="w-5 h-5" style={{ color: colors.brand.primary }} />
+                <span className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
+                  Template Blocks ({templateBlocks.length})
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {templateBlocks.length > 0 && (
+                  <button
+                    onClick={() => setIsMultiSelectMode(!isMultiSelectMode)}
+                    className="p-1.5 rounded-lg transition-colors"
+                    style={{ color: colors.utility.secondaryText }}
+                    title="Multi-select mode"
+                  >
+                    <CheckSquare className="w-4 h-4" />
+                  </button>
+                )}
+                <button
+                  className="p-1.5 rounded-lg transition-colors"
+                  style={{ color: colors.utility.secondaryText }}
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Canvas Content */}
           <div
@@ -347,11 +485,13 @@ const CatalogStudioTemplatePage: React.FC = () => {
                   const BlockIcon = getIconComponent(tb.block.icon);
                   const isDragging = draggedBlockId === tb.id;
                   const isDragOver = dragOverBlockId === tb.id;
+                  const isSelected = selectedBlockIds.has(tb.id);
+                  const isHidden = tb.config.isVisible === false;
                   return (
                     <div
                       key={tb.id}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, tb.id)}
+                      draggable={!isMultiSelectMode}
+                      onDragStart={(e) => !isMultiSelectMode && handleDragStart(e, tb.id)}
                       onDragEnd={handleDragEnd}
                       onDragOver={(e) => handleDragOver(e, tb.id)}
                       onDragLeave={handleDragLeave}
@@ -360,26 +500,47 @@ const CatalogStudioTemplatePage: React.FC = () => {
                         selectedTemplateBlock === tb.id ? 'ring-2' : ''
                       } ${tb.isNew ? 'animate-in slide-in-from-left-4 duration-300' : ''}`}
                       style={{
-                        backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#FFFFFF',
-                        borderColor: isDragOver
+                        backgroundColor: isSelected
+                          ? `${colors.brand.primary}08`
+                          : isDarkMode
+                            ? colors.utility.primaryBackground
+                            : '#FFFFFF',
+                        borderColor: isSelected
                           ? colors.brand.primary
-                          : tb.isNew
-                            ? colors.semantic.success
-                            : selectedTemplateBlock === tb.id
-                              ? colors.brand.primary
-                              : (isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB'),
-                        boxShadow: isDragOver
-                          ? `0 0 0 3px ${colors.brand.primary}40`
-                          : tb.isNew
-                            ? `0 0 0 2px ${colors.semantic.success}40`
-                            : undefined,
-                        opacity: isDragging ? 0.5 : 1,
+                          : isDragOver
+                            ? colors.brand.primary
+                            : tb.isNew
+                              ? colors.semantic.success
+                              : selectedTemplateBlock === tb.id
+                                ? colors.brand.primary
+                                : (isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB'),
+                        boxShadow: isSelected
+                          ? `0 0 0 2px ${colors.brand.primary}30`
+                          : isDragOver
+                            ? `0 0 0 3px ${colors.brand.primary}40`
+                            : tb.isNew
+                              ? `0 0 0 2px ${colors.semantic.success}40`
+                              : undefined,
+                        opacity: isDragging ? 0.5 : isHidden ? 0.6 : 1,
                         transform: isDragOver ? 'scale(1.02)' : 'scale(1)',
                       }}
-                      onClick={() => setSelectedTemplateBlock(tb.id)}
+                      onClick={() => !isMultiSelectMode && setSelectedTemplateBlock(tb.id)}
                     >
                       <div className="p-4 flex items-center gap-4">
                         <div className="flex items-center gap-2">
+                          {/* Checkbox for multi-select */}
+                          {isMultiSelectMode && (
+                            <button
+                              onClick={(e) => toggleBlockSelection(tb.id, e)}
+                              className="p-0.5 rounded transition-colors"
+                            >
+                              {isSelected ? (
+                                <CheckedSquare className="w-5 h-5" style={{ color: colors.brand.primary }} />
+                              ) : (
+                                <Square className="w-5 h-5" style={{ color: colors.utility.secondaryText }} />
+                              )}
+                            </button>
+                          )}
                           <GripVertical
                             className="w-4 h-4 cursor-grab active:cursor-grabbing"
                             style={{ color: isDragging ? colors.brand.primary : colors.utility.secondaryText }}
@@ -405,16 +566,25 @@ const CatalogStudioTemplatePage: React.FC = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div
-                            className="font-semibold text-sm"
-                            style={{ color: colors.utility.primaryText }}
+                            className="font-semibold text-sm flex items-center gap-2"
+                            style={{ color: isHidden ? colors.utility.secondaryText : colors.utility.primaryText }}
                           >
                             {tb.block.name}
                             {tb.isNew && (
                               <span
-                                className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full"
+                                className="text-[10px] px-1.5 py-0.5 rounded-full"
                                 style={{ backgroundColor: `${colors.semantic.success}20`, color: colors.semantic.success }}
                               >
                                 New
+                              </span>
+                            )}
+                            {isHidden && (
+                              <span
+                                className="text-[10px] px-1.5 py-0.5 rounded-full flex items-center gap-1"
+                                style={{ backgroundColor: `${colors.utility.secondaryText}20`, color: colors.utility.secondaryText }}
+                              >
+                                <EyeOff className="w-3 h-3" />
+                                Hidden
                               </span>
                             )}
                           </div>
