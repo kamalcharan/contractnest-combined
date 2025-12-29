@@ -1,269 +1,124 @@
 ═══════════════════════════════════════════════════
-📋 MANUAL COPY INSTRUCTIONS
-═══════════════════════════════════════════════════
-Branch: claude/whatsapp-bot-profile-search-01MR3u8ibbM31ydizJSyAvr6
-Date: December 6, 2025
-Feature: WhatsApp Bot - Chat Service, Internal API Key, CHAT Routes
-
-═══════════════════════════════════════════════════
-🎯 SUMMARY OF CHANGES
+BUSINESS PROFILE - 3-CARD LAYOUT
 ═══════════════════════════════════════════════════
 
-This update implements:
-1. CHAT endpoints in serviceURLs.ts (centralized UI endpoint management)
-2. Updated chatService.ts to use centralized endpoints
-3. Internal API key authentication for API-to-Edge communication
-4. CHAT routes in Edge Function with internal key protection
+CARD 1: Organization Identity
+  - Logo
+  - Organization Name
+  - Brand Colors (compact inline picker)
 
-Security: API-to-Edge requests now require INTERNAL_API_SECRET header
-N8N: Workflows use their own Supabase/LLM credentials (no changes needed)
+CARD 2: Contact Information
+  - Contact Person (First Name + Last Name)
+  - Email
+  - Phone (with country code)
+  - WhatsApp (with country code - same format as Phone)
+  - Website
+  - Booking URL
 
-═══════════════════════════════════════════════════
-📦 FILES TO COPY (4 FILES)
-═══════════════════════════════════════════════════
-
-SUBMODULE: contractnest-ui
-─────────────────────────────────────────────────
-1. src/services/serviceURLs.ts
-   FROM: MANUAL_COPY_FILES/contractnest-ui/src/services/serviceURLs.ts
-   TO:   D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui\src\services\
-
-   Changes: Added CHAT section to API_ENDPOINTS with:
-   - INIT, SESSION, SESSION_BY_ID, ACTIVATE, INTENT, SEARCH, END endpoints
-   - ChatSearchOptions type definition
-   - ChatEndpoints type export
-   - Helper function for building search requests
-
-2. src/services/chatService.ts
-   FROM: MANUAL_COPY_FILES/contractnest-ui/src/services/chatService.ts
-   TO:   D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui\src\services\
-
-   Changes: Updated to import from serviceURLs.ts:
-   - Removed local CHAT_ENDPOINTS constant
-   - Now uses API_ENDPOINTS.CHAT.INIT, .SESSION, etc.
-   - Follows coding standard: centralized endpoint management
-
-
-SUBMODULE: contractnest-api
-─────────────────────────────────────────────────
-3. src/services/groupsService.ts
-   FROM: MANUAL_COPY_FILES/contractnest-api/src/services/groupsService.ts
-   TO:   D:\projects\core projects\ContractNest\contractnest-combined\contractnest-api\src\services\
-
-   Changes: Added internal API key header:
-   - INTERNAL_API_SECRET from env
-   - getHeaders() now includes 'x-internal-key' header
-   - All API-to-Edge calls authenticated
-
-
-SUBMODULE: contractnest-edge
-─────────────────────────────────────────────────
-4. supabase/functions/groups/index.ts
-   FROM: MANUAL_COPY_FILES/contractnest-edge/supabase/functions/groups/index.ts
-   TO:   D:\projects\core projects\ContractNest\contractnest-combined\contractnest-edge\supabase\functions\groups\
-
-   Changes: Added CHAT routes with internal key protection:
-   - Updated CORS headers (x-internal-key, x-environment)
-   - Internal API key validation
-   - Protected endpoints: /chat/session, /chat/activate, /chat/intent, /chat/search, /chat/end
-   - Public endpoint: /chat/init (intro message only)
-
+CARD 3: Address
+  - Address Line 1, Line 2
+  - Country, State, City, Postal Code
 
 ═══════════════════════════════════════════════════
-⚙️ ENVIRONMENT VARIABLES REQUIRED
+DATABASE MIGRATION (Run First!)
 ═══════════════════════════════════════════════════
 
-Add to your .env files:
+FILE: migrations/011_add_contact_name_fields.sql
+Run this SQL in Supabase SQL Editor:
 
-For contractnest-api (.env):
-─────────────────────────────────────────────────
-INTERNAL_API_SECRET=your-strong-secret-key-here-min-32-chars
-
-For contractnest-edge (Supabase secrets):
-─────────────────────────────────────────────────
-INTERNAL_API_SECRET=your-strong-secret-key-here-min-32-chars
-
-IMPORTANT: Both must use the SAME value!
-
-Generate a strong key:
-- Use: openssl rand -base64 32
-- Or: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
-
+  ALTER TABLE t_tenant_profiles
+  ADD COLUMN IF NOT EXISTS contact_first_name VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS contact_last_name VARCHAR(100);
 
 ═══════════════════════════════════════════════════
-💻 WINDOWS POWERSHELL COMMANDS
+UI FILES TO COPY
 ═══════════════════════════════════════════════════
 
-Step 1: Navigate to your project root
-─────────────────────────────────────────────────
-cd "D:\projects\core projects\ContractNest\contractnest-combined"
+FILE 1: useTenantProfile.ts (Interface with contact name fields)
+─────────────────────────────────
+FROM: MANUAL_COPY_FILES\useTenantProfile.ts
+TO:   contractnest-ui\src\hooks\useTenantProfile.ts
 
-Step 2: Backup existing files (optional but recommended)
-─────────────────────────────────────────────────
-$timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
-$backupDir = "BACKUP_$timestamp"
-New-Item -ItemType Directory -Path $backupDir -Force
+FILE 2: OrganizationDetailsForm.tsx (NEW 3-Card Layout)
+─────────────────────────────────
+FROM: MANUAL_COPY_FILES\OrganizationDetailsForm.tsx
+TO:   contractnest-ui\src\components\tenantprofile\OrganizationDetailsForm.tsx
 
-# Backup UI files
-Copy-Item "contractnest-ui\src\services\serviceURLs.ts" "$backupDir\serviceURLs.ts.bak" -Force
-Copy-Item "contractnest-ui\src\services\chatService.ts" "$backupDir\chatService.ts.bak" -Force
-
-# Backup API file
-Copy-Item "contractnest-api\src\services\groupsService.ts" "$backupDir\groupsService.ts.bak" -Force
-
-# Backup Edge file
-Copy-Item "contractnest-edge\supabase\functions\groups\index.ts" "$backupDir\groups-index.ts.bak" -Force
-
-Step 3: Copy new files from MANUAL_COPY_FILES
-─────────────────────────────────────────────────
-# Copy UI files
-Copy-Item "MANUAL_COPY_FILES\contractnest-ui\src\services\serviceURLs.ts" "contractnest-ui\src\services\serviceURLs.ts" -Force
-Copy-Item "MANUAL_COPY_FILES\contractnest-ui\src\services\chatService.ts" "contractnest-ui\src\services\chatService.ts" -Force
-
-# Copy API file
-Copy-Item "MANUAL_COPY_FILES\contractnest-api\src\services\groupsService.ts" "contractnest-api\src\services\groupsService.ts" -Force
-
-# Copy Edge file
-Copy-Item "MANUAL_COPY_FILES\contractnest-edge\supabase\functions\groups\index.ts" "contractnest-edge\supabase\functions\groups\index.ts" -Force
-
-Step 4: Set environment variables
-─────────────────────────────────────────────────
-# Generate a secret key (copy the output)
-node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
-
-# Add to contractnest-api/.env
-Add-Content -Path "contractnest-api\.env" -Value "`nINTERNAL_API_SECRET=YOUR_GENERATED_KEY_HERE"
-
-# For Supabase Edge Function, set via Supabase CLI:
-# supabase secrets set INTERNAL_API_SECRET=YOUR_GENERATED_KEY_HERE
-
-Step 5: Verify files copied correctly
-─────────────────────────────────────────────────
-# Check file exists and show first few lines
-Get-Content "contractnest-ui\src\services\serviceURLs.ts" -Head 10
-Get-Content "contractnest-ui\src\services\chatService.ts" -Head 10
-Get-Content "contractnest-api\src\services\groupsService.ts" -Head 10
-Get-Content "contractnest-edge\supabase\functions\groups\index.ts" -Head 10
-
-Step 6: Verify CHAT section exists in serviceURLs.ts
-─────────────────────────────────────────────────
-Select-String -Path "contractnest-ui\src\services\serviceURLs.ts" -Pattern "CHAT:" -Context 2,10
-
+FILE 3: BrandColorPicker.tsx (Added compact mode)
+─────────────────────────────────
+FROM: MANUAL_COPY_FILES\BrandColorPicker.tsx
+TO:   contractnest-ui\src\components\tenantprofile\shared\BrandColorPicker.tsx
 
 ═══════════════════════════════════════════════════
-✅ TESTING CHECKLIST
+ONBOARDING FIX
 ═══════════════════════════════════════════════════
 
-After copying files, test the following:
+FILE 4: BusinessPreferencesStep.tsx (WhatsApp field fix)
+─────────────────────────────────
+FROM: MANUAL_COPY_FILES\BusinessPreferencesStep.tsx
+TO:   contractnest-ui\src\pages\onboarding\steps\BusinessPreferencesStep.tsx
 
-[ ] 1. Start the UI dev server:
-      cd contractnest-ui && npm run dev
-
-[ ] 2. Start the API server:
-      cd contractnest-api && npm run dev
-
-[ ] 3. Test CHAT init (public - should work):
-      curl -X POST http://localhost:3000/api/chat/init \
-        -H "Content-Type: application/json" \
-        -H "Authorization: Bearer YOUR_TOKEN" \
-        -d '{}'
-
-[ ] 4. Test CHAT session without internal key (should fail with 403):
-      curl -X POST http://localhost:3000/api/chat/session \
-        -H "Content-Type: application/json" \
-        -H "Authorization: Bearer YOUR_TOKEN" \
-        -d '{"channel":"web"}'
-
-[ ] 5. Test CHAT session with internal key (should work):
-      curl -X POST http://localhost:3000/api/chat/session \
-        -H "Content-Type: application/json" \
-        -H "Authorization: Bearer YOUR_TOKEN" \
-        -H "x-internal-key: YOUR_INTERNAL_SECRET" \
-        -d '{"channel":"web"}'
-
-[ ] 6. Verify UI chatService uses centralized endpoints:
-      - Open browser dev tools
-      - Navigate to VaNi chat
-      - Check network requests go to /api/chat/* endpoints
-
-[ ] 7. Verify internal key is sent from API to Edge:
-      - Check API logs for x-internal-key header
-      - Check Edge function logs for internal key validation
-
+BUG FIXED:
+  - handleWhatsAppChange: 'whatsapp_number' → 'business_whatsapp'
+  - handleWhatsAppCountryCodeChange: 'whatsapp_country_code' → 'business_whatsapp_country_code'
+  - Added WhatsApp data to dataToSend in handleContinue (was missing!)
 
 ═══════════════════════════════════════════════════
-🔐 SECURITY NOTES
+GROUPS 500 ERROR FIX (Settings > Configure > Groups)
 ═══════════════════════════════════════════════════
 
-1. Internal API Key Flow:
-   UI -> API Server -> Edge Function
+FILE 5: groups/index.ts (Edge Function - RLS bypass fix)
+─────────────────────────────────
+FROM: MANUAL_COPY_FILES\contractnest-edge\supabase\functions\groups\index.ts
+TO:   contractnest-edge\supabase\functions\groups\index.ts
 
-   - UI calls API (public endpoints)
-   - API adds x-internal-key header
-   - Edge validates internal key before processing
+BUG FIXED:
+  - Changed 'supabase' to 'supabaseAdmin' for GET / groups query
+  - RLS policy was blocking t_business_groups read access
+  - Now bypasses RLS since groups list should be public to all authenticated users
 
-2. Protected CHAT Endpoints (require internal key):
-   - POST /chat/session
-   - POST /chat/activate
-   - POST /chat/intent
-   - POST /chat/search
-   - POST /chat/end
-
-3. Public CHAT Endpoint (no internal key needed):
-   - POST /chat/init (returns intro message only)
-
-4. N8N Webhooks:
-   - Have their own Supabase/LLM credentials
-   - Called by Edge Function with proper auth
-   - No changes needed to n8n workflows
-
+DEPLOY: After copying, run: supabase functions deploy groups
 
 ═══════════════════════════════════════════════════
-📁 FILE SIZE REFERENCE
+PREVIOUS FILES (Industries Migration + Edge Fix)
 ═══════════════════════════════════════════════════
 
-serviceURLs.ts:    ~45 KB (1315 lines)
-chatService.ts:    ~7 KB (262 lines)
-groupsService.ts:  ~34 KB (1061 lines)
-index.ts (Edge):   ~52 KB (1674 lines)
+FILE 6: IndustrySelector.tsx
+─────────────────────────────────
+FROM: MANUAL_COPY_FILES\IndustrySelector.tsx
+TO:   contractnest-ui\src\components\tenantprofile\IndustrySelector.tsx
 
+FILE 7: TenantProfileView.tsx
+─────────────────────────────────
+FROM: MANUAL_COPY_FILES\TenantProfileView.tsx
+TO:   contractnest-ui\src\components\tenantprofile\TenantProfileView.tsx
 
-═══════════════════════════════════════════════════
-🔄 ROLLBACK INSTRUCTIONS
-═══════════════════════════════════════════════════
+FILE 8: BusinessProfilePage_index.tsx
+─────────────────────────────────
+FROM: MANUAL_COPY_FILES\BusinessProfilePage_index.tsx
+TO:   contractnest-ui\src\pages\settings\business-profile\index.tsx
 
-If you need to rollback:
-
-# Restore from backup
-Copy-Item "BACKUP_$timestamp\serviceURLs.ts.bak" "contractnest-ui\src\services\serviceURLs.ts" -Force
-Copy-Item "BACKUP_$timestamp\chatService.ts.bak" "contractnest-ui\src\services\chatService.ts" -Force
-Copy-Item "BACKUP_$timestamp\groupsService.ts.bak" "contractnest-api\src\services\groupsService.ts" -Force
-Copy-Item "BACKUP_$timestamp\groups-index.ts.bak" "contractnest-edge\supabase\functions\groups\index.ts" -Force
-
-
-═══════════════════════════════════════════════════
-ℹ️ ADDITIONAL NOTES
-═══════════════════════════════════════════════════
-
-- No new npm dependencies required
-- No database migrations required (uses existing tables)
-- SQL functions (get_vani_intro_message, etc.) should already exist
-- All changes are backward compatible
-- Theme-aware components (dark/light mode supported)
-
-Database tables used:
-- t_chat_sessions (session management)
-- t_query_cache (search result caching)
-- t_business_groups (group lookup)
-- t_group_memberships (member search)
-
+FILE 9: product-masterdata_index.ts (Edge Function)
+─────────────────────────────────
+FROM: MANUAL_COPY_FILES\product-masterdata_index.ts
+TO:   contractnest-edge\supabase\functions\product-masterdata\index.ts
 
 ═══════════════════════════════════════════════════
-📞 SUPPORT
+WHAT CHANGED
 ═══════════════════════════════════════════════════
 
-If you encounter issues:
-1. Check browser console for API errors
-2. Check API server logs for internal key issues
-3. Check Edge function logs in Supabase dashboard
-4. Verify INTERNAL_API_SECRET matches in both .env files
+1. OrganizationDetailsForm.tsx - Complete rewrite:
+   - 3 visual cards with headers and icons
+   - Card 1: Logo + Name + Brand Colors (compact)
+   - Card 2: All contact fields including new Contact Person name
+   - Card 3: Address fields in compact 4-column layout
+   - Removed Short Description
+   - Removed separate ContactFields component usage
+   - Phone/WhatsApp country codes aligned (same format)
+
+2. BrandColorPicker.tsx:
+   - Added compact prop for inline color picker
+   - Used in Card 1 for space efficiency
+
+3. useTenantProfile.ts:
+   - Added contact_first_name and contact_last_name to interface

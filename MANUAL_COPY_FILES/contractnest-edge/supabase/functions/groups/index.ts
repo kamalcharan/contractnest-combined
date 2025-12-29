@@ -98,11 +98,12 @@ console.log('='.repeat(60));
     // ============================================
     
     // GET / - Get all groups (with optional filter)
+    // Use supabaseAdmin to bypass RLS - groups list should be visible to all authenticated users
     if (method === 'GET' && path === '/') {
       try {
         const groupType = url.searchParams.get('group_type') || 'all';
-        
-        let query = supabase
+
+        let query = supabaseAdmin
           .from('t_business_groups')
           .select('id, group_name, group_type, description, settings, member_count, is_active, created_at')
           .eq('is_active', true)
