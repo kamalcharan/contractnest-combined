@@ -64,25 +64,41 @@ BUG FIXED:
   - Added WhatsApp data to dataToSend in handleContinue (was missing!)
 
 ═══════════════════════════════════════════════════
+GROUPS 500 ERROR FIX (Settings > Configure > Groups)
+═══════════════════════════════════════════════════
+
+FILE 5: groups/index.ts (Edge Function - RLS bypass fix)
+─────────────────────────────────
+FROM: MANUAL_COPY_FILES\contractnest-edge\supabase\functions\groups\index.ts
+TO:   contractnest-edge\supabase\functions\groups\index.ts
+
+BUG FIXED:
+  - Changed 'supabase' to 'supabaseAdmin' for GET / groups query
+  - RLS policy was blocking t_business_groups read access
+  - Now bypasses RLS since groups list should be public to all authenticated users
+
+DEPLOY: After copying, run: supabase functions deploy groups
+
+═══════════════════════════════════════════════════
 PREVIOUS FILES (Industries Migration + Edge Fix)
 ═══════════════════════════════════════════════════
 
-FILE 5: IndustrySelector.tsx
+FILE 6: IndustrySelector.tsx
 ─────────────────────────────────
 FROM: MANUAL_COPY_FILES\IndustrySelector.tsx
 TO:   contractnest-ui\src\components\tenantprofile\IndustrySelector.tsx
 
-FILE 6: TenantProfileView.tsx
+FILE 7: TenantProfileView.tsx
 ─────────────────────────────────
 FROM: MANUAL_COPY_FILES\TenantProfileView.tsx
 TO:   contractnest-ui\src\components\tenantprofile\TenantProfileView.tsx
 
-FILE 7: BusinessProfilePage_index.tsx
+FILE 8: BusinessProfilePage_index.tsx
 ─────────────────────────────────
 FROM: MANUAL_COPY_FILES\BusinessProfilePage_index.tsx
 TO:   contractnest-ui\src\pages\settings\business-profile\index.tsx
 
-FILE 8: product-masterdata_index.ts (Edge Function)
+FILE 9: product-masterdata_index.ts (Edge Function)
 ─────────────────────────────────
 FROM: MANUAL_COPY_FILES\product-masterdata_index.ts
 TO:   contractnest-edge\supabase\functions\product-masterdata\index.ts
