@@ -1,69 +1,81 @@
 ═══════════════════════════════════════════════════
-INDUSTRIES MIGRATION - ALL FILES (Business Profile + Edit/Onboarding)
+BUSINESS PROFILE FORM IMPROVEMENTS
 ═══════════════════════════════════════════════════
 
-Copy these files to their destinations:
+CHANGES MADE:
+1. Organization Name - Reduced field size (single column instead of full width)
+2. Short Description - Hidden (removed from form)
+3. Contact Person - Added First Name and Last Name fields (NEW)
+4. WhatsApp Country Code - Aligned with Phone format (shows "IN +91" instead of just "+91")
+5. Overall layout - Made more compact to reduce scrolling
 
-FILE 1: IndustrySelector.tsx (MAIN - Industry Selection Grid)
+═══════════════════════════════════════════════════
+DATABASE MIGRATION (Run First!)
+═══════════════════════════════════════════════════
+
+FILE: migrations/011_add_contact_name_fields.sql
+Run this SQL in Supabase SQL Editor:
+
+  ALTER TABLE t_tenant_profiles
+  ADD COLUMN IF NOT EXISTS contact_first_name VARCHAR(100),
+  ADD COLUMN IF NOT EXISTS contact_last_name VARCHAR(100);
+
+═══════════════════════════════════════════════════
+UI FILES TO COPY
+═══════════════════════════════════════════════════
+
+FILE 1: useTenantProfile.ts (Hook with updated interface)
+─────────────────────────────────
+FROM: MANUAL_COPY_FILES\useTenantProfile.ts
+TO:   contractnest-ui\src\hooks\useTenantProfile.ts
+
+FILE 2: OrganizationDetailsForm.tsx (Main form component)
+─────────────────────────────────
+FROM: MANUAL_COPY_FILES\OrganizationDetailsForm.tsx
+TO:   contractnest-ui\src\components\tenantprofile\OrganizationDetailsForm.tsx
+
+FILE 3: ContactFields.tsx (Contact fields with aligned WhatsApp)
+─────────────────────────────────
+FROM: MANUAL_COPY_FILES\ContactFields.tsx
+TO:   contractnest-ui\src\components\tenantprofile\shared\ContactFields.tsx
+
+═══════════════════════════════════════════════════
+PREVIOUS FILES (Industries Migration)
+═══════════════════════════════════════════════════
+
+FILE 4: IndustrySelector.tsx
 ─────────────────────────────────
 FROM: MANUAL_COPY_FILES\IndustrySelector.tsx
 TO:   contractnest-ui\src\components\tenantprofile\IndustrySelector.tsx
 
-FILE 2: TenantProfileView.tsx (View Profile)
+FILE 5: TenantProfileView.tsx
 ─────────────────────────────────
 FROM: MANUAL_COPY_FILES\TenantProfileView.tsx
 TO:   contractnest-ui\src\components\tenantprofile\TenantProfileView.tsx
 
-FILE 3: BusinessProfilePage index.tsx (Settings Page)
+FILE 6: BusinessProfilePage_index.tsx
 ─────────────────────────────────
 FROM: MANUAL_COPY_FILES\BusinessProfilePage_index.tsx
 TO:   contractnest-ui\src\pages\settings\business-profile\index.tsx
 
-═══════════════════════════════════════════════════
-EDGE FUNCTION FIX (CRITICAL - Deploy to Supabase)
-═══════════════════════════════════════════════════
-
-FILE 4: product-masterdata/index.ts (Edge Function)
+FILE 7: product-masterdata_index.ts (Edge Function)
 ─────────────────────────────────
 FROM: MANUAL_COPY_FILES\product-masterdata_index.ts
 TO:   contractnest-edge\supabase\functions\product-masterdata\index.ts
 
-TWO BUGS FIXED:
-
-BUG 1 - Validation Check:
-The edge function incorrectly required 'category_name' for /industries.
-Fix: Added exclusion for /industries, /all-categories, /industry-categories
-
-BUG 2 - Routing Order (CRITICAL):
-URL /product-masterdata/industries matched /product-masterdata FIRST
-causing getProductMasterData() to be called (queries m_category_master)
-instead of getIndustries() (queries m_catalog_industries).
-
-Fix: Reordered route checks - specific routes (/industries, /all-categories,
-/industry-categories) are now checked BEFORE generic /product-masterdata.
-
-After copying, deploy the edge function:
-  cd contractnest-edge
-  supabase functions deploy product-masterdata
-
 ═══════════════════════════════════════════════════
-CHANGES MADE
+SUMMARY OF ALL CHANGES
 ═══════════════════════════════════════════════════
 
-UI FILES (1-3):
-1. Replace: import { industries } from '@/utils/constants/industries'
-   With:    import { useIndustries } from '@/hooks/queries/useProductMasterdata'
+TenantProfile Interface (useTenantProfile.ts):
+- Added contact_first_name and contact_last_name fields
 
-2. Add hook call inside component:
-   const { data: industriesResponse, isLoading, error, refetch } = useIndustries();
-   const industries = industriesResponse?.data || [];
+OrganizationDetailsForm.tsx:
+- Organization Name: Changed from full width to single column
+- Short Description: Removed/hidden
+- Contact Person section: Added with First Name and Last Name fields
+- Reduced spacing (gap-6 to gap-4) for more compact layout
 
-3. IndustrySelector.tsx also includes:
-   - Loading state with skeleton UI
-   - Error state with retry button
-
-EDGE FUNCTION (4):
-- Fixed validation to not require category_name for /industries endpoint
-- Fixed routing order so /industries calls getIndustries() -> m_catalog_industries
-
-This migrates industries data source from static constants to database API.
+ContactFields.tsx:
+- WhatsApp country code dropdown: w-24 → w-32
+- WhatsApp country code format: "+91" → "IN +91" (matches Phone)
