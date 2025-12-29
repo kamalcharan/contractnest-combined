@@ -32,10 +32,10 @@ const OrganizationDetailsForm: React.FC<OrganizationDetailsFormProps> = ({
     '--tw-ring-color': colors.brand.primary
   } as React.CSSProperties);
 
-  // Card container styles
+  // Card container styles - use primaryBackground to contrast with parent's secondaryBackground
   const cardStyles = {
-    backgroundColor: colors.utility.secondaryBackground,
-    borderColor: colors.utility.secondaryText + '20',
+    backgroundColor: colors.utility.primaryBackground,
+    borderColor: colors.utility.secondaryText + '30',
   };
 
   // Sort countries with common ones first
@@ -83,7 +83,7 @@ const OrganizationDetailsForm: React.FC<OrganizationDetailsFormProps> = ({
             />
           </div>
 
-          {/* Right: Name + Brand Colors */}
+          {/* Right: Name */}
           <div className="space-y-4">
             {/* Organization Name */}
             <div className="space-y-2">
@@ -106,18 +106,20 @@ const OrganizationDetailsForm: React.FC<OrganizationDetailsFormProps> = ({
                 required
               />
             </div>
-
-            {/* Brand Colors - Inline */}
-            <BrandColorPicker
-              primaryColor={formData.primary_color || '#4F46E5'}
-              secondaryColor={formData.secondary_color || '#10B981'}
-              onPrimaryColorChange={(value) => onUpdate('primary_color', value)}
-              onSecondaryColorChange={(value) => onUpdate('secondary_color', value)}
-              disabled={disabled}
-              showLabel={false}
-              compact={true}
-            />
           </div>
+        </div>
+
+        {/* Brand Colors - Full picker inside Card 1 */}
+        <div className="mt-5 pt-5 border-t" style={{ borderColor: colors.utility.secondaryText + '20' }}>
+          <BrandColorPicker
+            primaryColor={formData.primary_color || '#4F46E5'}
+            secondaryColor={formData.secondary_color || '#10B981'}
+            onPrimaryColorChange={(value) => onUpdate('primary_color', value)}
+            onSecondaryColorChange={(value) => onUpdate('secondary_color', value)}
+            disabled={disabled}
+            showLabel={true}
+            labelText="Brand Colors"
+          />
         </div>
       </div>
 
