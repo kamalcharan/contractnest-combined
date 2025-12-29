@@ -13,6 +13,7 @@ import {
   Search,
   Grid3X3,
   List,
+  CheckCircle2,
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { useTheme } from '../../../contexts/ThemeContext';
@@ -33,11 +34,14 @@ interface ServiceCatalogTreeProps {
   categories: BlockCategory[];
   blocks: Block[];
   onBlockSelect?: (block: Block) => void;
+  onBlockAdd?: (block: Block) => void;
+  onBlockPreview?: (block: Block) => void;
   onCategorySelect?: (categoryId: string) => void;
   onAddBlock?: (categoryId: string) => void;
   onAddCategory?: () => void;
   selectedBlockId?: string;
   selectedCategoryId?: string;
+  previewBlockId?: string;
 }
 
 // Helper to get Lucide icon component by name
@@ -51,8 +55,11 @@ interface TreeNodeItemProps {
   level: number;
   isExpanded: boolean;
   isSelected: boolean;
+  isPreviewing: boolean;
+  isAdding: boolean;
   onToggle: () => void;
   onSelect: () => void;
+  onDoubleClick: () => void;
   onAction?: (action: string) => void;
 }
 
@@ -61,8 +68,11 @@ const TreeNodeItem: React.FC<TreeNodeItemProps> = ({
   level,
   isExpanded,
   isSelected,
+  isPreviewing,
+  isAdding,
   onToggle,
   onSelect,
+  onDoubleClick,
   onAction,
 }) => {
   const { isDarkMode, currentTheme } = useTheme();
@@ -75,14 +85,22 @@ const TreeNodeItem: React.FC<TreeNodeItemProps> = ({
   return (
     <div
       className={`group flex items-center gap-1 px-2 py-1.5 rounded-lg cursor-pointer transition-all ${
-        isSelected ? 'ring-1' : ''
-      }`}
+        isPreviewing ? 'ring-1' : ''
+      } ${isAdding ? 'animate-pulse scale-95' : ''}`}
       style={{
         paddingLeft: `${level * 12 + 8}px`,
-        backgroundColor: isSelected ? `${colors.brand.primary}15` : 'transparent',
-        borderColor: isSelected ? colors.brand.primary : 'transparent',
+        backgroundColor: isPreviewing
+          ? `${colors.brand.primary}15`
+          : isAdding
+            ? `${colors.semantic.success}20`
+            : 'transparent',
+        borderColor: isPreviewing ? colors.brand.primary : 'transparent',
       }}
       onClick={onSelect}
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        onDoubleClick();
+      }}
     >
       {/* Expand/Collapse Arrow */}
       {hasChildren ? (
@@ -103,29 +121,42 @@ const TreeNodeItem: React.FC<TreeNodeItemProps> = ({
         <div className="w-4" />
       )}
 
-      {/* Icon */}
+      {/* Icon with animation */}
       <div
-        className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0"
+        className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 transition-all ${
+          isAdding ? 'scale-110' : ''
+        }`}
         style={{
-          backgroundColor: node.color ? `${node.color}20` : (isDarkMode ? colors.utility.secondaryBackground : '#F3F4F6'),
+          backgroundColor: isAdding
+            ? `${colors.semantic.success}30`
+            : node.color
+              ? `${node.color}20`
+              : (isDarkMode ? colors.utility.secondaryBackground : '#F3F4F6'),
         }}
       >
-        <IconComponent
-          className="w-3 h-3"
-          style={{ color: node.color || colors.utility.secondaryText }}
-        />
+        {isAdding ? (
+          <CheckCircle2
+            className="w-3 h-3 animate-in zoom-in duration-200"
+            style={{ color: colors.semantic.success }}
+          />
+        ) : (
+          <IconComponent
+            className="w-3 h-3"
+            style={{ color: node.color || colors.utility.secondaryText }}
+          />
+        )}
       </div>
 
       {/* Name */}
       <span
-        className="flex-1 text-sm truncate"
-        style={{ color: colors.utility.primaryText }}
+        className={`flex-1 text-sm truncate transition-all ${isAdding ? 'font-medium' : ''}`}
+        style={{ color: isAdding ? colors.semantic.success : colors.utility.primaryText }}
       >
-        {node.name}
+        {isAdding ? 'Added!' : node.name}
       </span>
 
       {/* Count Badge */}
-      {node.count !== undefined && node.count > 0 && (
+      {node.count !== undefined && node.count > 0 && !isAdding && (
         <span
           className="text-[10px] px-1.5 py-0.5 rounded-full"
           style={{
@@ -134,6 +165,19 @@ const TreeNodeItem: React.FC<TreeNodeItemProps> = ({
           }}
         >
           {node.count}
+        </span>
+      )}
+
+      {/* Double-click hint for blocks */}
+      {node.type === 'block' && !isAdding && (
+        <span
+          className="text-[9px] opacity-0 group-hover:opacity-100 transition-opacity px-1.5 py-0.5 rounded"
+          style={{
+            backgroundColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB',
+            color: colors.utility.secondaryText,
+          }}
+        >
+          2× add
         </span>
       )}
 
@@ -200,11 +244,14 @@ const ServiceCatalogTree: React.FC<ServiceCatalogTreeProps> = ({
   categories,
   blocks,
   onBlockSelect,
+  onBlockAdd,
+  onBlockPreview,
   onCategorySelect,
   onAddBlock,
   onAddCategory,
   selectedBlockId,
   selectedCategoryId,
+  previewBlockId,
 }) => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
@@ -212,6 +259,7 @@ const ServiceCatalogTree: React.FC<ServiceCatalogTreeProps> = ({
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set(['root']));
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState<'tree' | 'list'>('tree');
+  const [addingBlockId, setAddingBlockId] = useState<string | null>(null);
 
   // Build tree structure from categories and blocks
   const buildTree = (): TreeNode[] => {
@@ -249,17 +297,37 @@ const ServiceCatalogTree: React.FC<ServiceCatalogTreeProps> = ({
     setExpandedNodes(newExpanded);
   };
 
+  // Single click - preview
   const handleNodeSelect = (node: TreeNode) => {
     if (node.type === 'category') {
       onCategorySelect?.(node.id);
+      // Auto-expand category on click
+      if (!expandedNodes.has(node.id)) {
+        toggleNode(node.id);
+      }
     } else if (node.type === 'block' && node.data) {
-      onBlockSelect?.(node.data as Block);
+      onBlockPreview?.(node.data as Block);
+    }
+  };
+
+  // Double click - add to canvas with animation
+  const handleNodeDoubleClick = (node: TreeNode) => {
+    if (node.type === 'block' && node.data) {
+      // Show adding animation
+      setAddingBlockId(node.id);
+
+      // Trigger the add callback
+      onBlockAdd?.(node.data as Block);
+
+      // Clear animation after delay
+      setTimeout(() => {
+        setAddingBlockId(null);
+      }, 800);
     }
   };
 
   const handleNodeAction = (node: TreeNode, action: string) => {
     console.log(`Action ${action} on node:`, node);
-    // These actions would be implemented based on requirements
   };
 
   // Filter tree based on search
@@ -295,8 +363,11 @@ const ServiceCatalogTree: React.FC<ServiceCatalogTreeProps> = ({
               ? selectedCategoryId === node.id
               : selectedBlockId === node.id
           }
+          isPreviewing={node.type === 'block' && previewBlockId === node.id}
+          isAdding={addingBlockId === node.id}
           onToggle={() => toggleNode(node.id)}
           onSelect={() => handleNodeSelect(node)}
+          onDoubleClick={() => handleNodeDoubleClick(node)}
           onAction={(action) => handleNodeAction(node, action)}
         />
         {expandedNodes.has(node.id) && node.children && (
@@ -312,18 +383,21 @@ const ServiceCatalogTree: React.FC<ServiceCatalogTreeProps> = ({
     <div
       className="w-72 border-r flex flex-col h-full overflow-hidden"
       style={{
-        backgroundColor: colors.utility.primaryBackground,
+        backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#FFFFFF',
         borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB',
       }}
     >
-      {/* Header */}
+      {/* Header - Light Primary */}
       <div
         className="px-4 py-3 border-b"
-        style={{ borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB' }}
+        style={{
+          backgroundColor: isDarkMode ? colors.utility.secondaryBackground : `${colors.brand.primary}08`,
+          borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB'
+        }}
       >
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
-            Service Catalog
+            Block Catalog
           </h3>
           <div className="flex items-center gap-1">
             <button
@@ -349,17 +423,29 @@ const ServiceCatalogTree: React.FC<ServiceCatalogTreeProps> = ({
           />
           <input
             type="text"
-            placeholder="Search catalog..."
+            placeholder="Search blocks..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-8 pr-3 py-1.5 text-xs border rounded-lg focus:outline-none focus:ring-1"
             style={{
-              backgroundColor: isDarkMode ? colors.utility.secondaryBackground : '#F9FAFB',
+              backgroundColor: isDarkMode ? colors.utility.secondaryBackground : '#FFFFFF',
               borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB',
               color: colors.utility.primaryText,
             }}
           />
         </div>
+      </div>
+
+      {/* Instruction hint */}
+      <div
+        className="px-4 py-2 text-[10px] border-b"
+        style={{
+          backgroundColor: isDarkMode ? colors.utility.secondaryBackground : '#FEFCE8',
+          borderColor: isDarkMode ? colors.utility.secondaryBackground : '#FEF3C7',
+          color: isDarkMode ? colors.utility.secondaryText : '#92400E'
+        }}
+      >
+        💡 <strong>Click</strong> to preview • <strong>Double-click</strong> to add
       </div>
 
       {/* Tree Content */}
@@ -373,7 +459,7 @@ const ServiceCatalogTree: React.FC<ServiceCatalogTreeProps> = ({
               style={{ color: colors.utility.secondaryText }}
             />
             <p className="text-xs" style={{ color: colors.utility.secondaryText }}>
-              No items found
+              No blocks found
             </p>
           </div>
         )}

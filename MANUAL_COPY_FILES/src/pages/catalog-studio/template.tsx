@@ -1,6 +1,7 @@
 // src/pages/catalog-studio/template.tsx
 import React, { useState } from 'react';
-import { Plus, Download, Save, Eye, MoreVertical, Settings, GripVertical, Trash2, LayoutTemplate, FileText } from 'lucide-react';
+import { Plus, Download, Save, Eye, MoreVertical, Settings, GripVertical, Trash2, LayoutTemplate, FileText, X, Info } from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Block } from '../../types/catalogStudio';
 import { BLOCK_CATEGORIES, getAllBlocks } from '../../utils/catalog-studio';
@@ -12,16 +13,14 @@ interface TemplateBlock {
   block: Block;
   order: number;
   config?: Record<string, unknown>;
+  isNew?: boolean;
 }
 
-interface Template {
-  id: string;
-  name: string;
-  description: string;
-  blocks: TemplateBlock[];
-  createdAt: string;
-  status: 'draft' | 'active' | 'archived';
-}
+// Helper to get Lucide icon component by name
+const getIconComponent = (iconName: string) => {
+  const iconsMap = LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>>;
+  return iconsMap[iconName] || LucideIcons.Circle;
+};
 
 const CatalogStudioTemplatePage: React.FC = () => {
   const { isDarkMode, currentTheme } = useTheme();
@@ -32,15 +31,30 @@ const CatalogStudioTemplatePage: React.FC = () => {
   const [templateName, setTemplateName] = useState('Untitled Template');
   const [templateDescription, setTemplateDescription] = useState('');
   const [selectedTemplateBlock, setSelectedTemplateBlock] = useState<string | null>(null);
+  const [previewBlock, setPreviewBlock] = useState<Block | null>(null);
 
-  const handleBlockSelect = (block: Block) => {
+  // Handle double-click add from tree
+  const handleBlockAdd = (block: Block) => {
     const newTemplateBlock: TemplateBlock = {
       id: `tb-${Date.now()}`,
       blockId: block.id,
       block,
       order: templateBlocks.length,
+      isNew: true,
     };
     setTemplateBlocks([...templateBlocks, newTemplateBlock]);
+
+    // Remove the "new" flag after animation
+    setTimeout(() => {
+      setTemplateBlocks((prev) =>
+        prev.map((tb) => (tb.id === newTemplateBlock.id ? { ...tb, isNew: false } : tb))
+      );
+    }, 1000);
+  };
+
+  // Handle single-click preview from tree
+  const handleBlockPreview = (block: Block) => {
+    setPreviewBlock(block);
   };
 
   const handleRemoveBlock = (templateBlockId: string) => {
@@ -131,13 +145,15 @@ const CatalogStudioTemplatePage: React.FC = () => {
         <ServiceCatalogTree
           categories={BLOCK_CATEGORIES}
           blocks={allBlocks}
-          onBlockSelect={handleBlockSelect}
+          onBlockAdd={handleBlockAdd}
+          onBlockPreview={handleBlockPreview}
           onCategorySelect={(catId) => console.log('Category selected:', catId)}
+          previewBlockId={previewBlock?.id}
         />
 
         {/* Template Canvas */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Canvas Header */}
+          {/* Canvas Header - Light Primary */}
           <div
             className="px-4 py-3 border-b flex items-center justify-between"
             style={{
@@ -186,7 +202,7 @@ const CatalogStudioTemplatePage: React.FC = () => {
                     className="text-sm max-w-sm mx-auto"
                     style={{ color: colors.utility.secondaryText }}
                   >
-                    Click on blocks from the catalog tree on the left to add them to your template.
+                    <strong>Double-click</strong> on blocks from the catalog to add them here.
                     Arrange and configure them to create reusable contract templates.
                   </p>
                 </div>
@@ -195,15 +211,21 @@ const CatalogStudioTemplatePage: React.FC = () => {
               <div className="space-y-3">
                 {templateBlocks.map((tb, index) => {
                   const category = getBlockCategory(tb.block);
+                  const BlockIcon = getIconComponent(tb.block.icon);
                   return (
                     <div
                       key={tb.id}
                       className={`rounded-xl border-2 overflow-hidden transition-all cursor-pointer ${
                         selectedTemplateBlock === tb.id ? 'ring-2' : ''
-                      }`}
+                      } ${tb.isNew ? 'animate-in slide-in-from-left-4 duration-300' : ''}`}
                       style={{
-                        backgroundColor: colors.utility.primaryBackground,
-                        borderColor: selectedTemplateBlock === tb.id ? colors.brand.primary : (isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB'),
+                        backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#FFFFFF',
+                        borderColor: tb.isNew
+                          ? colors.semantic.success
+                          : selectedTemplateBlock === tb.id
+                            ? colors.brand.primary
+                            : (isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB'),
+                        boxShadow: tb.isNew ? `0 0 0 2px ${colors.semantic.success}40` : undefined,
                       }}
                       onClick={() => setSelectedTemplateBlock(tb.id)}
                     >
@@ -227,7 +249,7 @@ const CatalogStudioTemplatePage: React.FC = () => {
                           className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
                           style={{ backgroundColor: category?.bgColor || '#F3F4F6' }}
                         >
-                          <FileText
+                          <BlockIcon
                             className="w-5 h-5"
                             style={{ color: category?.color || colors.utility.secondaryText }}
                           />
@@ -238,6 +260,14 @@ const CatalogStudioTemplatePage: React.FC = () => {
                             style={{ color: colors.utility.primaryText }}
                           >
                             {tb.block.name}
+                            {tb.isNew && (
+                              <span
+                                className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full"
+                                style={{ backgroundColor: `${colors.semantic.success}20`, color: colors.semantic.success }}
+                              >
+                                New
+                              </span>
+                            )}
                           </div>
                           <div
                             className="text-xs"
@@ -275,44 +305,181 @@ const CatalogStudioTemplatePage: React.FC = () => {
                   );
                 })}
 
-                {/* Add Block Button */}
-                <button
-                  className="w-full p-4 border-2 border-dashed rounded-xl flex items-center justify-center gap-2 transition-colors"
+                {/* Add Block Hint */}
+                <div
+                  className="p-4 border-2 border-dashed rounded-xl text-center"
                   style={{
                     borderColor: isDarkMode ? colors.utility.secondaryText : '#D1D5DB',
                     color: colors.utility.secondaryText,
                   }}
                 >
-                  <Plus className="w-4 h-4" />
-                  <span className="text-sm font-medium">Add Block from Catalog</span>
-                </button>
+                  <span className="text-sm">Double-click blocks in the catalog to add more</span>
+                </div>
               </div>
             )}
           </div>
         </div>
 
-        {/* Right Sidebar - Block Settings (when a block is selected) */}
-        {selectedTemplateBlock && (
+        {/* Right Sidebar - Preview Panel (when a block is previewed) */}
+        {previewBlock && (
           <div
-            className="w-72 border-l flex flex-col"
+            className="w-72 border-l flex flex-col animate-in slide-in-from-right-4 duration-200"
             style={{
-              backgroundColor: colors.utility.primaryBackground,
+              backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#FFFFFF',
               borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB',
             }}
           >
             <div
               className="px-4 py-3 border-b flex items-center justify-between"
-              style={{ borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB' }}
+              style={{
+                backgroundColor: isDarkMode ? colors.utility.secondaryBackground : `${colors.brand.primary}08`,
+                borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB'
+              }}
+            >
+              <div className="flex items-center gap-2">
+                <Info className="w-4 h-4" style={{ color: colors.brand.primary }} />
+                <h3 className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
+                  Block Preview
+                </h3>
+              </div>
+              <button
+                onClick={() => setPreviewBlock(null)}
+                className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                style={{ color: colors.utility.secondaryText }}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-4 flex-1 overflow-y-auto">
+              {(() => {
+                const category = getBlockCategory(previewBlock);
+                const BlockIcon = getIconComponent(previewBlock.icon);
+                return (
+                  <>
+                    <div className="flex items-center gap-3 mb-4">
+                      <div
+                        className="w-12 h-12 rounded-lg flex items-center justify-center"
+                        style={{ backgroundColor: category?.bgColor || '#F3F4F6' }}
+                      >
+                        <BlockIcon
+                          className="w-6 h-6"
+                          style={{ color: category?.color || colors.utility.secondaryText }}
+                        />
+                      </div>
+                      <div>
+                        <div className="font-semibold" style={{ color: colors.utility.primaryText }}>
+                          {previewBlock.name}
+                        </div>
+                        <div className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                          {category?.name}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div>
+                        <div className="text-xs font-medium mb-1" style={{ color: colors.utility.secondaryText }}>
+                          Description
+                        </div>
+                        <p className="text-sm" style={{ color: colors.utility.primaryText }}>
+                          {previewBlock.description}
+                        </p>
+                      </div>
+
+                      {previewBlock.price && (
+                        <div>
+                          <div className="text-xs font-medium mb-1" style={{ color: colors.utility.secondaryText }}>
+                            Price
+                          </div>
+                          <p className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
+                            {previewBlock.currency === 'INR' ? '₹' : previewBlock.currency === 'USD' ? '$' : '€'}
+                            {previewBlock.price.toLocaleString()}
+                          </p>
+                        </div>
+                      )}
+
+                      {previewBlock.duration && (
+                        <div>
+                          <div className="text-xs font-medium mb-1" style={{ color: colors.utility.secondaryText }}>
+                            Duration
+                          </div>
+                          <p className="text-sm" style={{ color: colors.utility.primaryText }}>
+                            {previewBlock.duration} {previewBlock.durationUnit}
+                          </p>
+                        </div>
+                      )}
+
+                      {previewBlock.tags && previewBlock.tags.length > 0 && (
+                        <div>
+                          <div className="text-xs font-medium mb-1" style={{ color: colors.utility.secondaryText }}>
+                            Tags
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            {previewBlock.tags.map((tag, i) => (
+                              <span
+                                key={i}
+                                className="text-[10px] px-2 py-0.5 rounded"
+                                style={{
+                                  backgroundColor: isDarkMode ? colors.utility.secondaryBackground : '#F3F4F6',
+                                  color: colors.utility.secondaryText
+                                }}
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div
+                        className="pt-4 border-t"
+                        style={{ borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB' }}
+                      >
+                        <button
+                          onClick={() => {
+                            handleBlockAdd(previewBlock);
+                            setPreviewBlock(null);
+                          }}
+                          className="w-full px-4 py-2 text-sm font-medium text-white rounded-lg flex items-center justify-center gap-2"
+                          style={{ backgroundColor: colors.brand.primary }}
+                        >
+                          <Plus className="w-4 h-4" />
+                          Add to Template
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        )}
+
+        {/* Right Sidebar - Block Settings (when a template block is selected) */}
+        {selectedTemplateBlock && !previewBlock && (
+          <div
+            className="w-72 border-l flex flex-col"
+            style={{
+              backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#FFFFFF',
+              borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB',
+            }}
+          >
+            <div
+              className="px-4 py-3 border-b flex items-center justify-between"
+              style={{
+                backgroundColor: isDarkMode ? colors.utility.secondaryBackground : `${colors.brand.primary}08`,
+                borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB'
+              }}
             >
               <h3 className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
                 Block Settings
               </h3>
               <button
                 onClick={() => setSelectedTemplateBlock(null)}
-                className="text-xs"
+                className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
                 style={{ color: colors.utility.secondaryText }}
               >
-                Close
+                <X className="w-4 h-4" />
               </button>
             </div>
             <div className="p-4">
