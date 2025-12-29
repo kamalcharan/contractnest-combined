@@ -122,7 +122,7 @@ const BlockWizard: React.FC<BlockWizardProps> = ({
         }
         break;
 
-      case 'content':
+      case 'text':
         switch (currentStep) {
           case 3: return <ContentStep formData={formData} onChange={handleFormChange} />;
           case 4: return <ContentSettingsStep formData={formData} onChange={handleFormChange} />;

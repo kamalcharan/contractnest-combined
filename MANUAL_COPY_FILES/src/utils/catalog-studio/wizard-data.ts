@@ -23,7 +23,7 @@ export const WIZARD_STEPS: Record<string, WizardStep[]> = {
     { id: 4, label: 'Schedule' },
     { id: 5, label: 'Automation' },
   ],
-  content: [
+  text: [
     { id: 1, label: 'Type' },
     { id: 2, label: 'Basic Info' },
     { id: 3, label: 'Content' },

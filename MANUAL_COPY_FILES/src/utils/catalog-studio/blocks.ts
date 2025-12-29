@@ -32,3 +32,7 @@ export const getBlocksByCategory = (categoryId: string): Block[] => {
 export const getBlockById = (id: string): Block | undefined => {
   return DUMMY_BLOCKS.find((block) => block.id === id);
 };
+
+export const getAllBlocks = (): Block[] => {
+  return DUMMY_BLOCKS;
+};
