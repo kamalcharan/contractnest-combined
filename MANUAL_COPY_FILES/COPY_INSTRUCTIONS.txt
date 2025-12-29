@@ -30,6 +30,14 @@ Run this SQL in Supabase SQL Editor:
   ADD COLUMN IF NOT EXISTS contact_first_name VARCHAR(100),
   ADD COLUMN IF NOT EXISTS contact_last_name VARCHAR(100);
 
+FILE: migrations/012_fix_tenant_profiles_rls.sql
+Fix RLS policies for t_tenant_profiles:
+  - Removed dependency on get_current_tenant_id() which may return NULL
+  - SELECT: Any active tenant member can read their profile
+  - INSERT/UPDATE: Only Owner/Admin can modify
+  - DELETE: Only Owner can delete
+  - Service role: Full access (for Edge Functions)
+
 ═══════════════════════════════════════════════════
 UI FILES TO COPY
 ═══════════════════════════════════════════════════
