@@ -1,18 +1,48 @@
 // src/pages/catalog-studio/template.tsx
-import React, { useState } from 'react';
-import { Plus, Download, Save, Eye, MoreVertical, Settings, GripVertical, Trash2, LayoutTemplate, FileText, X, Info } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Plus, Download, Save, Eye, MoreVertical, Settings, GripVertical, Trash2, LayoutTemplate, FileText, X, Info, DollarSign, Clock, Camera, FileCheck, AlertCircle, Package, CreditCard, Type, Video, Image, CheckSquare, Paperclip, ToggleLeft, ToggleRight } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Block } from '../../types/catalogStudio';
 import { BLOCK_CATEGORIES, getAllBlocks } from '../../utils/catalog-studio';
 import { ServiceCatalogTree } from '../../components/catalog-studio';
 
+interface BlockConfig {
+  // Service block overrides
+  priceOverride?: number;
+  durationOverride?: number;
+  evidenceRequired?: {
+    photo?: boolean;
+    signature?: boolean;
+    gps?: boolean;
+    otp?: boolean;
+  };
+  // Spare block settings
+  quantity?: number;
+  warrantyMonths?: number;
+  // Billing settings
+  paymentTermsDays?: number;
+  autoInvoice?: boolean;
+  // Text/Document settings
+  isRequired?: boolean;
+  requireSignature?: boolean;
+  // Media settings
+  autoPlay?: boolean;
+  showControls?: boolean;
+  // Checklist settings
+  enforceOrder?: boolean;
+  requirePhoto?: boolean;
+  // General
+  notes?: string;
+  isVisible?: boolean;
+}
+
 interface TemplateBlock {
   id: string;
   blockId: string;
   block: Block;
   order: number;
-  config?: Record<string, unknown>;
+  config: BlockConfig;
   isNew?: boolean;
 }
 
@@ -33,6 +63,37 @@ const CatalogStudioTemplatePage: React.FC = () => {
   const [selectedTemplateBlock, setSelectedTemplateBlock] = useState<string | null>(null);
   const [previewBlock, setPreviewBlock] = useState<Block | null>(null);
 
+  // Get default config based on block category
+  const getDefaultConfig = (block: Block): BlockConfig => {
+    const baseConfig: BlockConfig = { isVisible: true };
+
+    switch (block.categoryId) {
+      case 'service':
+        return {
+          ...baseConfig,
+          priceOverride: block.price,
+          durationOverride: block.duration,
+          evidenceRequired: { photo: true, signature: false, gps: false, otp: false },
+        };
+      case 'spare':
+        return { ...baseConfig, quantity: 1, warrantyMonths: 6 };
+      case 'billing':
+        return { ...baseConfig, paymentTermsDays: 30, autoInvoice: true };
+      case 'text':
+        return { ...baseConfig, isRequired: true, requireSignature: false };
+      case 'video':
+        return { ...baseConfig, autoPlay: false, showControls: true };
+      case 'image':
+        return { ...baseConfig, showControls: true };
+      case 'checklist':
+        return { ...baseConfig, enforceOrder: false, requirePhoto: false };
+      case 'document':
+        return { ...baseConfig, isRequired: false };
+      default:
+        return baseConfig;
+    }
+  };
+
   // Handle double-click add from tree
   const handleBlockAdd = (block: Block) => {
     const newTemplateBlock: TemplateBlock = {
@@ -40,6 +101,7 @@ const CatalogStudioTemplatePage: React.FC = () => {
       blockId: block.id,
       block,
       order: templateBlocks.length,
+      config: getDefaultConfig(block),
       isNew: true,
     };
     setTemplateBlocks([...templateBlocks, newTemplateBlock]);
@@ -51,6 +113,20 @@ const CatalogStudioTemplatePage: React.FC = () => {
       );
     }, 1000);
   };
+
+  // Update block config
+  const updateBlockConfig = (templateBlockId: string, updates: Partial<BlockConfig>) => {
+    setTemplateBlocks((prev) =>
+      prev.map((tb) =>
+        tb.id === templateBlockId ? { ...tb, config: { ...tb.config, ...updates } } : tb
+      )
+    );
+  };
+
+  // Get selected template block
+  const selectedBlock = useMemo(() => {
+    return templateBlocks.find((tb) => tb.id === selectedTemplateBlock);
+  }, [templateBlocks, selectedTemplateBlock]);
 
   // Handle single-click preview from tree
   const handleBlockPreview = (block: Block) => {
@@ -456,9 +532,9 @@ const CatalogStudioTemplatePage: React.FC = () => {
         )}
 
         {/* Right Sidebar - Block Settings (when a template block is selected) */}
-        {selectedTemplateBlock && !previewBlock && (
+        {selectedTemplateBlock && !previewBlock && selectedBlock && (
           <div
-            className="w-72 border-l flex flex-col"
+            className="w-80 border-l flex flex-col animate-in slide-in-from-right-4 duration-200"
             style={{
               backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#FFFFFF',
               borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB',
@@ -471,9 +547,12 @@ const CatalogStudioTemplatePage: React.FC = () => {
                 borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB'
               }}
             >
-              <h3 className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
-                Block Settings
-              </h3>
+              <div className="flex items-center gap-2">
+                <Settings className="w-4 h-4" style={{ color: colors.brand.primary }} />
+                <h3 className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
+                  Block Settings
+                </h3>
+              </div>
               <button
                 onClick={() => setSelectedTemplateBlock(null)}
                 className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
@@ -482,10 +561,446 @@ const CatalogStudioTemplatePage: React.FC = () => {
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="p-4">
-              <p className="text-sm" style={{ color: colors.utility.secondaryText }}>
-                Configure block-specific settings here. Override default values for this template instance.
-              </p>
+            <div className="flex-1 overflow-y-auto">
+              {/* Block Info Header */}
+              <div className="p-4 border-b" style={{ borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB' }}>
+                <div className="flex items-center gap-3">
+                  {(() => {
+                    const category = getBlockCategory(selectedBlock.block);
+                    const BlockIcon = getIconComponent(selectedBlock.block.icon);
+                    return (
+                      <>
+                        <div
+                          className="w-10 h-10 rounded-lg flex items-center justify-center"
+                          style={{ backgroundColor: category?.bgColor || '#F3F4F6' }}
+                        >
+                          <BlockIcon className="w-5 h-5" style={{ color: category?.color || colors.utility.secondaryText }} />
+                        </div>
+                        <div>
+                          <div className="font-semibold text-sm" style={{ color: colors.utility.primaryText }}>
+                            {selectedBlock.block.name}
+                          </div>
+                          <div className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                            {category?.name}
+                          </div>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* Common Settings */}
+              <div className="p-4 space-y-4">
+                {/* Visibility Toggle */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Eye className="w-4 h-4" style={{ color: colors.utility.secondaryText }} />
+                    <span className="text-sm" style={{ color: colors.utility.primaryText }}>Visible in contract</span>
+                  </div>
+                  <button
+                    onClick={() => updateBlockConfig(selectedBlock.id, { isVisible: !selectedBlock.config.isVisible })}
+                    className="text-xl"
+                  >
+                    {selectedBlock.config.isVisible ? (
+                      <ToggleRight className="w-8 h-8" style={{ color: colors.brand.primary }} />
+                    ) : (
+                      <ToggleLeft className="w-8 h-8" style={{ color: colors.utility.secondaryText }} />
+                    )}
+                  </button>
+                </div>
+
+                {/* Service Block Settings */}
+                {selectedBlock.block.categoryId === 'service' && (
+                  <>
+                    <div className="pt-3 border-t" style={{ borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB' }}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <DollarSign className="w-4 h-4" style={{ color: colors.brand.primary }} />
+                        <span className="text-xs font-semibold uppercase" style={{ color: colors.utility.secondaryText }}>
+                          Pricing Override
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm" style={{ color: colors.utility.secondaryText }}>₹</span>
+                        <input
+                          type="number"
+                          value={selectedBlock.config.priceOverride || ''}
+                          onChange={(e) => updateBlockConfig(selectedBlock.id, { priceOverride: Number(e.target.value) })}
+                          placeholder={String(selectedBlock.block.price || 0)}
+                          className="flex-1 px-3 py-2 text-sm border rounded-lg"
+                          style={{
+                            backgroundColor: colors.utility.primaryBackground,
+                            borderColor: isDarkMode ? colors.utility.secondaryBackground : '#D1D5DB',
+                            color: colors.utility.primaryText,
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Clock className="w-4 h-4" style={{ color: colors.brand.primary }} />
+                        <span className="text-xs font-semibold uppercase" style={{ color: colors.utility.secondaryText }}>
+                          Duration Override
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          value={selectedBlock.config.durationOverride || ''}
+                          onChange={(e) => updateBlockConfig(selectedBlock.id, { durationOverride: Number(e.target.value) })}
+                          placeholder={String(selectedBlock.block.duration || 0)}
+                          className="flex-1 px-3 py-2 text-sm border rounded-lg"
+                          style={{
+                            backgroundColor: colors.utility.primaryBackground,
+                            borderColor: isDarkMode ? colors.utility.secondaryBackground : '#D1D5DB',
+                            color: colors.utility.primaryText,
+                          }}
+                        />
+                        <span className="text-sm" style={{ color: colors.utility.secondaryText }}>min</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Camera className="w-4 h-4" style={{ color: colors.brand.primary }} />
+                        <span className="text-xs font-semibold uppercase" style={{ color: colors.utility.secondaryText }}>
+                          Required Evidence
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {['photo', 'signature', 'gps', 'otp'].map((evType) => {
+                          const isChecked = selectedBlock.config.evidenceRequired?.[evType as keyof typeof selectedBlock.config.evidenceRequired];
+                          return (
+                            <label
+                              key={evType}
+                              className="flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors"
+                              style={{
+                                backgroundColor: isChecked ? `${colors.brand.primary}10` : (isDarkMode ? colors.utility.secondaryBackground : '#F3F4F6'),
+                                border: `1px solid ${isChecked ? colors.brand.primary : 'transparent'}`,
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isChecked || false}
+                                onChange={(e) => updateBlockConfig(selectedBlock.id, {
+                                  evidenceRequired: {
+                                    ...selectedBlock.config.evidenceRequired,
+                                    [evType]: e.target.checked,
+                                  },
+                                })}
+                                className="rounded"
+                                style={{ accentColor: colors.brand.primary }}
+                              />
+                              <span className="text-xs capitalize" style={{ color: colors.utility.primaryText }}>
+                                {evType === 'gps' ? 'GPS' : evType === 'otp' ? 'OTP' : evType}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Spare Block Settings */}
+                {selectedBlock.block.categoryId === 'spare' && (
+                  <>
+                    <div className="pt-3 border-t" style={{ borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB' }}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Package className="w-4 h-4" style={{ color: colors.brand.primary }} />
+                        <span className="text-xs font-semibold uppercase" style={{ color: colors.utility.secondaryText }}>
+                          Quantity
+                        </span>
+                      </div>
+                      <input
+                        type="number"
+                        min="1"
+                        value={selectedBlock.config.quantity || 1}
+                        onChange={(e) => updateBlockConfig(selectedBlock.id, { quantity: Number(e.target.value) })}
+                        className="w-full px-3 py-2 text-sm border rounded-lg"
+                        style={{
+                          backgroundColor: colors.utility.primaryBackground,
+                          borderColor: isDarkMode ? colors.utility.secondaryBackground : '#D1D5DB',
+                          color: colors.utility.primaryText,
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <FileCheck className="w-4 h-4" style={{ color: colors.brand.primary }} />
+                        <span className="text-xs font-semibold uppercase" style={{ color: colors.utility.secondaryText }}>
+                          Warranty Period
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min="0"
+                          value={selectedBlock.config.warrantyMonths || 0}
+                          onChange={(e) => updateBlockConfig(selectedBlock.id, { warrantyMonths: Number(e.target.value) })}
+                          className="flex-1 px-3 py-2 text-sm border rounded-lg"
+                          style={{
+                            backgroundColor: colors.utility.primaryBackground,
+                            borderColor: isDarkMode ? colors.utility.secondaryBackground : '#D1D5DB',
+                            color: colors.utility.primaryText,
+                          }}
+                        />
+                        <span className="text-sm" style={{ color: colors.utility.secondaryText }}>months</span>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Billing Block Settings */}
+                {selectedBlock.block.categoryId === 'billing' && (
+                  <>
+                    <div className="pt-3 border-t" style={{ borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB' }}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <CreditCard className="w-4 h-4" style={{ color: colors.brand.primary }} />
+                        <span className="text-xs font-semibold uppercase" style={{ color: colors.utility.secondaryText }}>
+                          Payment Terms
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm" style={{ color: colors.utility.secondaryText }}>Net</span>
+                        <input
+                          type="number"
+                          min="0"
+                          value={selectedBlock.config.paymentTermsDays || 30}
+                          onChange={(e) => updateBlockConfig(selectedBlock.id, { paymentTermsDays: Number(e.target.value) })}
+                          className="flex-1 px-3 py-2 text-sm border rounded-lg"
+                          style={{
+                            backgroundColor: colors.utility.primaryBackground,
+                            borderColor: isDarkMode ? colors.utility.secondaryBackground : '#D1D5DB',
+                            color: colors.utility.primaryText,
+                          }}
+                        />
+                        <span className="text-sm" style={{ color: colors.utility.secondaryText }}>days</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <FileCheck className="w-4 h-4" style={{ color: colors.utility.secondaryText }} />
+                        <span className="text-sm" style={{ color: colors.utility.primaryText }}>Auto-generate invoice</span>
+                      </div>
+                      <button
+                        onClick={() => updateBlockConfig(selectedBlock.id, { autoInvoice: !selectedBlock.config.autoInvoice })}
+                      >
+                        {selectedBlock.config.autoInvoice ? (
+                          <ToggleRight className="w-8 h-8" style={{ color: colors.brand.primary }} />
+                        ) : (
+                          <ToggleLeft className="w-8 h-8" style={{ color: colors.utility.secondaryText }} />
+                        )}
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {/* Text Block Settings */}
+                {selectedBlock.block.categoryId === 'text' && (
+                  <>
+                    <div className="pt-3 border-t space-y-3" style={{ borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB' }}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Type className="w-4 h-4" style={{ color: colors.brand.primary }} />
+                        <span className="text-xs font-semibold uppercase" style={{ color: colors.utility.secondaryText }}>
+                          Text Settings
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4" style={{ color: colors.utility.secondaryText }} />
+                          <span className="text-sm" style={{ color: colors.utility.primaryText }}>Required reading</span>
+                        </div>
+                        <button
+                          onClick={() => updateBlockConfig(selectedBlock.id, { isRequired: !selectedBlock.config.isRequired })}
+                        >
+                          {selectedBlock.config.isRequired ? (
+                            <ToggleRight className="w-8 h-8" style={{ color: colors.brand.primary }} />
+                          ) : (
+                            <ToggleLeft className="w-8 h-8" style={{ color: colors.utility.secondaryText }} />
+                          )}
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <FileCheck className="w-4 h-4" style={{ color: colors.utility.secondaryText }} />
+                          <span className="text-sm" style={{ color: colors.utility.primaryText }}>Require signature</span>
+                        </div>
+                        <button
+                          onClick={() => updateBlockConfig(selectedBlock.id, { requireSignature: !selectedBlock.config.requireSignature })}
+                        >
+                          {selectedBlock.config.requireSignature ? (
+                            <ToggleRight className="w-8 h-8" style={{ color: colors.brand.primary }} />
+                          ) : (
+                            <ToggleLeft className="w-8 h-8" style={{ color: colors.utility.secondaryText }} />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Video Block Settings */}
+                {selectedBlock.block.categoryId === 'video' && (
+                  <>
+                    <div className="pt-3 border-t space-y-3" style={{ borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB' }}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Video className="w-4 h-4" style={{ color: colors.brand.primary }} />
+                        <span className="text-xs font-semibold uppercase" style={{ color: colors.utility.secondaryText }}>
+                          Video Settings
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm" style={{ color: colors.utility.primaryText }}>Auto-play</span>
+                        <button
+                          onClick={() => updateBlockConfig(selectedBlock.id, { autoPlay: !selectedBlock.config.autoPlay })}
+                        >
+                          {selectedBlock.config.autoPlay ? (
+                            <ToggleRight className="w-8 h-8" style={{ color: colors.brand.primary }} />
+                          ) : (
+                            <ToggleLeft className="w-8 h-8" style={{ color: colors.utility.secondaryText }} />
+                          )}
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm" style={{ color: colors.utility.primaryText }}>Show controls</span>
+                        <button
+                          onClick={() => updateBlockConfig(selectedBlock.id, { showControls: !selectedBlock.config.showControls })}
+                        >
+                          {selectedBlock.config.showControls ? (
+                            <ToggleRight className="w-8 h-8" style={{ color: colors.brand.primary }} />
+                          ) : (
+                            <ToggleLeft className="w-8 h-8" style={{ color: colors.utility.secondaryText }} />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Image Block Settings */}
+                {selectedBlock.block.categoryId === 'image' && (
+                  <>
+                    <div className="pt-3 border-t space-y-3" style={{ borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB' }}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Image className="w-4 h-4" style={{ color: colors.brand.primary }} />
+                        <span className="text-xs font-semibold uppercase" style={{ color: colors.utility.secondaryText }}>
+                          Image Settings
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm" style={{ color: colors.utility.primaryText }}>Show zoom controls</span>
+                        <button
+                          onClick={() => updateBlockConfig(selectedBlock.id, { showControls: !selectedBlock.config.showControls })}
+                        >
+                          {selectedBlock.config.showControls ? (
+                            <ToggleRight className="w-8 h-8" style={{ color: colors.brand.primary }} />
+                          ) : (
+                            <ToggleLeft className="w-8 h-8" style={{ color: colors.utility.secondaryText }} />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Checklist Block Settings */}
+                {selectedBlock.block.categoryId === 'checklist' && (
+                  <>
+                    <div className="pt-3 border-t space-y-3" style={{ borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB' }}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <CheckSquare className="w-4 h-4" style={{ color: colors.brand.primary }} />
+                        <span className="text-xs font-semibold uppercase" style={{ color: colors.utility.secondaryText }}>
+                          Checklist Settings
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm" style={{ color: colors.utility.primaryText }}>Enforce completion order</span>
+                        <button
+                          onClick={() => updateBlockConfig(selectedBlock.id, { enforceOrder: !selectedBlock.config.enforceOrder })}
+                        >
+                          {selectedBlock.config.enforceOrder ? (
+                            <ToggleRight className="w-8 h-8" style={{ color: colors.brand.primary }} />
+                          ) : (
+                            <ToggleLeft className="w-8 h-8" style={{ color: colors.utility.secondaryText }} />
+                          )}
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm" style={{ color: colors.utility.primaryText }}>Require photo per item</span>
+                        <button
+                          onClick={() => updateBlockConfig(selectedBlock.id, { requirePhoto: !selectedBlock.config.requirePhoto })}
+                        >
+                          {selectedBlock.config.requirePhoto ? (
+                            <ToggleRight className="w-8 h-8" style={{ color: colors.brand.primary }} />
+                          ) : (
+                            <ToggleLeft className="w-8 h-8" style={{ color: colors.utility.secondaryText }} />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Document Block Settings */}
+                {selectedBlock.block.categoryId === 'document' && (
+                  <>
+                    <div className="pt-3 border-t space-y-3" style={{ borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB' }}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Paperclip className="w-4 h-4" style={{ color: colors.brand.primary }} />
+                        <span className="text-xs font-semibold uppercase" style={{ color: colors.utility.secondaryText }}>
+                          Document Settings
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm" style={{ color: colors.utility.primaryText }}>Required document</span>
+                        <button
+                          onClick={() => updateBlockConfig(selectedBlock.id, { isRequired: !selectedBlock.config.isRequired })}
+                        >
+                          {selectedBlock.config.isRequired ? (
+                            <ToggleRight className="w-8 h-8" style={{ color: colors.brand.primary }} />
+                          ) : (
+                            <ToggleLeft className="w-8 h-8" style={{ color: colors.utility.secondaryText }} />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Notes Section - Common to all */}
+                <div className="pt-3 border-t" style={{ borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB' }}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <FileText className="w-4 h-4" style={{ color: colors.brand.primary }} />
+                    <span className="text-xs font-semibold uppercase" style={{ color: colors.utility.secondaryText }}>
+                      Internal Notes
+                    </span>
+                  </div>
+                  <textarea
+                    value={selectedBlock.config.notes || ''}
+                    onChange={(e) => updateBlockConfig(selectedBlock.id, { notes: e.target.value })}
+                    placeholder="Add notes for this block..."
+                    rows={3}
+                    className="w-full px-3 py-2 text-sm border rounded-lg resize-none"
+                    style={{
+                      backgroundColor: colors.utility.primaryBackground,
+                      borderColor: isDarkMode ? colors.utility.secondaryBackground : '#D1D5DB',
+                      color: colors.utility.primaryText,
+                    }}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         )}

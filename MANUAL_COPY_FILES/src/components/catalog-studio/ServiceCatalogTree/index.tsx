@@ -240,6 +240,91 @@ const TreeNodeItem: React.FC<TreeNodeItemProps> = ({
   );
 };
 
+// Grid Item Component for Grid View
+interface GridItemProps {
+  block: Block;
+  category: BlockCategory;
+  isPreviewing: boolean;
+  isAdding: boolean;
+  onSelect: () => void;
+  onDoubleClick: () => void;
+}
+
+const GridItem: React.FC<GridItemProps> = ({
+  block,
+  category,
+  isPreviewing,
+  isAdding,
+  onSelect,
+  onDoubleClick,
+}) => {
+  const { isDarkMode, currentTheme } = useTheme();
+  const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
+  const IconComponent = getIconComponent(block.icon);
+
+  return (
+    <div
+      className={`group p-2 rounded-lg cursor-pointer transition-all border ${
+        isPreviewing ? 'ring-1' : ''
+      } ${isAdding ? 'animate-pulse scale-95' : ''}`}
+      style={{
+        backgroundColor: isAdding
+          ? `${colors.semantic.success}10`
+          : isPreviewing
+            ? `${colors.brand.primary}10`
+            : (isDarkMode ? colors.utility.secondaryBackground : '#FFFFFF'),
+        borderColor: isPreviewing
+          ? colors.brand.primary
+          : isAdding
+            ? colors.semantic.success
+            : (isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB'),
+      }}
+      onClick={onSelect}
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        onDoubleClick();
+      }}
+    >
+      <div className="flex flex-col items-center text-center">
+        <div
+          className={`w-8 h-8 rounded-lg flex items-center justify-center mb-1.5 transition-all ${
+            isAdding ? 'scale-110' : ''
+          }`}
+          style={{
+            backgroundColor: isAdding
+              ? `${colors.semantic.success}30`
+              : category.bgColor || '#F3F4F6',
+          }}
+        >
+          {isAdding ? (
+            <CheckCircle2
+              className="w-4 h-4 animate-in zoom-in duration-200"
+              style={{ color: colors.semantic.success }}
+            />
+          ) : (
+            <IconComponent
+              className="w-4 h-4"
+              style={{ color: category.color || colors.utility.secondaryText }}
+            />
+          )}
+        </div>
+        <span
+          className="text-[10px] font-medium truncate w-full"
+          style={{ color: isAdding ? colors.semantic.success : colors.utility.primaryText }}
+        >
+          {isAdding ? 'Added!' : block.name}
+        </span>
+        <span
+          className="text-[9px] truncate w-full"
+          style={{ color: colors.utility.secondaryText }}
+        >
+          {category.name}
+        </span>
+      </div>
+    </div>
+  );
+};
+
 const ServiceCatalogTree: React.FC<ServiceCatalogTreeProps> = ({
   categories,
   blocks,
@@ -258,8 +343,9 @@ const ServiceCatalogTree: React.FC<ServiceCatalogTreeProps> = ({
 
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set(['root']));
   const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<'tree' | 'list'>('tree');
+  const [viewMode, setViewMode] = useState<'tree' | 'grid'>('tree');
   const [addingBlockId, setAddingBlockId] = useState<string | null>(null);
+  const [selectedGridCategory, setSelectedGridCategory] = useState<string | null>(null);
 
   // Build tree structure from categories and blocks
   const buildTree = (): TreeNode[] => {
@@ -326,6 +412,17 @@ const ServiceCatalogTree: React.FC<ServiceCatalogTreeProps> = ({
     }
   };
 
+  // Handle block click/double-click in grid view
+  const handleGridBlockClick = (block: Block) => {
+    onBlockPreview?.(block);
+  };
+
+  const handleGridBlockDoubleClick = (block: Block) => {
+    setAddingBlockId(block.id);
+    onBlockAdd?.(block);
+    setTimeout(() => setAddingBlockId(null), 800);
+  };
+
   const handleNodeAction = (node: TreeNode, action: string) => {
     console.log(`Action ${action} on node:`, node);
   };
@@ -349,7 +446,26 @@ const ServiceCatalogTree: React.FC<ServiceCatalogTreeProps> = ({
     }, []);
   };
 
+  // Filter blocks for grid view
+  const getFilteredBlocks = () => {
+    let filteredBlocks = blocks;
+
+    if (searchQuery) {
+      filteredBlocks = filteredBlocks.filter((b) =>
+        b.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        b.description.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    if (selectedGridCategory) {
+      filteredBlocks = filteredBlocks.filter((b) => b.categoryId === selectedGridCategory);
+    }
+
+    return filteredBlocks;
+  };
+
   const filteredTree = filterTree(treeData, searchQuery);
+  const filteredBlocks = getFilteredBlocks();
 
   const renderTree = (nodes: TreeNode[], level: number = 0) => {
     return nodes.map((node) => (
@@ -379,6 +495,74 @@ const ServiceCatalogTree: React.FC<ServiceCatalogTreeProps> = ({
     ));
   };
 
+  const renderGridView = () => {
+    return (
+      <div className="p-2 space-y-3">
+        {/* Category Filter Pills */}
+        <div className="flex flex-wrap gap-1">
+          <button
+            onClick={() => setSelectedGridCategory(null)}
+            className={`px-2 py-1 text-[10px] rounded-full transition-colors ${
+              !selectedGridCategory ? 'font-medium' : ''
+            }`}
+            style={{
+              backgroundColor: !selectedGridCategory ? colors.brand.primary : (isDarkMode ? colors.utility.secondaryBackground : '#F3F4F6'),
+              color: !selectedGridCategory ? '#FFFFFF' : colors.utility.secondaryText,
+            }}
+          >
+            All
+          </button>
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedGridCategory(cat.id)}
+              className={`px-2 py-1 text-[10px] rounded-full transition-colors ${
+                selectedGridCategory === cat.id ? 'font-medium' : ''
+              }`}
+              style={{
+                backgroundColor: selectedGridCategory === cat.id ? cat.color : (isDarkMode ? colors.utility.secondaryBackground : '#F3F4F6'),
+                color: selectedGridCategory === cat.id ? '#FFFFFF' : colors.utility.secondaryText,
+              }}
+            >
+              {cat.name}
+            </button>
+          ))}
+        </div>
+
+        {/* Grid of Blocks */}
+        <div className="grid grid-cols-3 gap-2">
+          {filteredBlocks.map((block) => {
+            const category = categories.find((c) => c.id === block.categoryId);
+            if (!category) return null;
+            return (
+              <GridItem
+                key={block.id}
+                block={block}
+                category={category}
+                isPreviewing={previewBlockId === block.id}
+                isAdding={addingBlockId === block.id}
+                onSelect={() => handleGridBlockClick(block)}
+                onDoubleClick={() => handleGridBlockDoubleClick(block)}
+              />
+            );
+          })}
+        </div>
+
+        {filteredBlocks.length === 0 && (
+          <div className="text-center py-6">
+            <LucideIcons.PackageSearch
+              className="w-8 h-8 mx-auto mb-2"
+              style={{ color: colors.utility.secondaryText }}
+            />
+            <p className="text-xs" style={{ color: colors.utility.secondaryText }}>
+              No blocks found
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div
       className="w-72 border-r flex flex-col h-full overflow-hidden"
@@ -402,15 +586,23 @@ const ServiceCatalogTree: React.FC<ServiceCatalogTreeProps> = ({
           <div className="flex items-center gap-1">
             <button
               onClick={() => setViewMode('tree')}
-              className={`p-1.5 rounded transition-colors ${viewMode === 'tree' ? 'bg-gray-200 dark:bg-gray-700' : ''}`}
-              style={{ color: colors.utility.secondaryText }}
+              className={`p-1.5 rounded transition-colors`}
+              style={{
+                backgroundColor: viewMode === 'tree' ? (isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB') : 'transparent',
+                color: viewMode === 'tree' ? colors.utility.primaryText : colors.utility.secondaryText,
+              }}
+              title="Tree View"
             >
               <List className="w-4 h-4" />
             </button>
             <button
-              onClick={() => setViewMode('list')}
-              className={`p-1.5 rounded transition-colors ${viewMode === 'list' ? 'bg-gray-200 dark:bg-gray-700' : ''}`}
-              style={{ color: colors.utility.secondaryText }}
+              onClick={() => setViewMode('grid')}
+              className={`p-1.5 rounded transition-colors`}
+              style={{
+                backgroundColor: viewMode === 'grid' ? (isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB') : 'transparent',
+                color: viewMode === 'grid' ? colors.utility.primaryText : colors.utility.secondaryText,
+              }}
+              title="Grid View"
             >
               <Grid3X3 className="w-4 h-4" />
             </button>
@@ -448,20 +640,26 @@ const ServiceCatalogTree: React.FC<ServiceCatalogTreeProps> = ({
         💡 <strong>Click</strong> to preview • <strong>Double-click</strong> to add
       </div>
 
-      {/* Tree Content */}
-      <div className="flex-1 overflow-y-auto py-2">
-        {filteredTree.length > 0 ? (
-          renderTree(filteredTree)
-        ) : (
-          <div className="text-center py-8">
-            <LucideIcons.FolderSearch
-              className="w-10 h-10 mx-auto mb-2"
-              style={{ color: colors.utility.secondaryText }}
-            />
-            <p className="text-xs" style={{ color: colors.utility.secondaryText }}>
-              No blocks found
-            </p>
+      {/* Content - Tree or Grid */}
+      <div className="flex-1 overflow-y-auto">
+        {viewMode === 'tree' ? (
+          <div className="py-2">
+            {filteredTree.length > 0 ? (
+              renderTree(filteredTree)
+            ) : (
+              <div className="text-center py-8">
+                <LucideIcons.FolderSearch
+                  className="w-10 h-10 mx-auto mb-2"
+                  style={{ color: colors.utility.secondaryText }}
+                />
+                <p className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                  No blocks found
+                </p>
+              </div>
+            )}
           </div>
+        ) : (
+          renderGridView()
         )}
       </div>
 
