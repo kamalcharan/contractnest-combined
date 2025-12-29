@@ -20,10 +20,27 @@ FROM: MANUAL_COPY_FILES\BusinessProfilePage_index.tsx
 TO:   contractnest-ui\src\pages\settings\business-profile\index.tsx
 
 ═══════════════════════════════════════════════════
+EDGE FUNCTION FIX (CRITICAL - Deploy to Supabase)
+═══════════════════════════════════════════════════
+
+FILE 4: product-masterdata/index.ts (Edge Function)
+─────────────────────────────────
+FROM: MANUAL_COPY_FILES\product-masterdata_index.ts
+TO:   contractnest-edge\supabase\functions\product-masterdata\index.ts
+
+BUG FIXED: The edge function was incorrectly requiring 'category_name'
+parameter for /industries endpoint. This fix excludes /industries,
+/all-categories, and /industry-categories from the category_name validation.
+
+After copying, deploy the edge function:
+  cd contractnest-edge
+  supabase functions deploy product-masterdata
+
+═══════════════════════════════════════════════════
 CHANGES MADE
 ═══════════════════════════════════════════════════
 
-All files were updated to:
+UI FILES (1-3):
 1. Replace: import { industries } from '@/utils/constants/industries'
    With:    import { useIndustries } from '@/hooks/queries/useProductMasterdata'
 
@@ -34,5 +51,11 @@ All files were updated to:
 3. IndustrySelector.tsx also includes:
    - Loading state with skeleton UI
    - Error state with retry button
+
+EDGE FUNCTION (4):
+Fixed routing bug (lines 82-91):
+- Added checks to exclude /industries, /all-categories, /industry-categories
+  from requiring category_name parameter
+- These endpoints query specific tables that don't use category_name
 
 This migrates industries data source from static constants to database API.
