@@ -1,11 +1,12 @@
 // src/pages/catalog-studio/template.tsx
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
-import { Plus, Download, Save, Eye, MoreVertical, Settings, GripVertical, Trash2, LayoutTemplate, FileText, X, Info, DollarSign, Clock, Camera, FileCheck, AlertCircle, Package, CreditCard, Type, Video, Image, CheckSquare, Paperclip, ToggleLeft, ToggleRight, Square, CheckSquare as CheckedSquare, Copy, EyeOff, Undo2, Keyboard, Check, AlertTriangle, Loader2 } from 'lucide-react';
+import { Plus, Download, Save, Eye, MoreVertical, Settings, GripVertical, Trash2, LayoutTemplate, FileText, X, Info, DollarSign, Clock, Camera, FileCheck, AlertCircle, Package, CreditCard, Type, Video, Image, CheckSquare, Paperclip, ToggleLeft, ToggleRight, Square, CheckSquare as CheckedSquare, Copy, EyeOff, Undo2, Keyboard, Check, AlertTriangle, Loader2, Edit3, Upload, ListChecks } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Block } from '../../types/catalogStudio';
 import { BLOCK_CATEGORIES, getAllBlocks } from '../../utils/catalog-studio';
 import { ServiceCatalogTree } from '../../components/catalog-studio';
+import { RichTextEditor, MediaUpload, ChecklistBuilder } from '../../components/catalog-studio/ContentEnhancements';
 
 // Toast notification types
 interface Toast {
@@ -165,6 +166,26 @@ const ConfirmDialog: React.FC<{
   );
 };
 
+// Media file interface for upload
+interface MediaFile {
+  id: string;
+  name: string;
+  type: 'image' | 'video';
+  url: string;
+  size: number;
+  thumbnail?: string;
+}
+
+// Checklist item interface
+interface ChecklistItem {
+  id: string;
+  text: string;
+  isRequired: boolean;
+  requiresPhoto: boolean;
+  requiresNotes: boolean;
+  order: number;
+}
+
 interface BlockConfig {
   // Service block overrides
   priceOverride?: number;
@@ -184,12 +205,15 @@ interface BlockConfig {
   // Text/Document settings
   isRequired?: boolean;
   requireSignature?: boolean;
+  richTextContent?: string; // Rich text editor content
   // Media settings
   autoPlay?: boolean;
   showControls?: boolean;
+  mediaFiles?: MediaFile[]; // Uploaded media files
   // Checklist settings
   enforceOrder?: boolean;
   requirePhoto?: boolean;
+  checklistItems?: ChecklistItem[]; // Checklist items
   // General
   notes?: string;
   isVisible?: boolean;
@@ -1440,6 +1464,25 @@ const CatalogStudioTemplatePage: React.FC = () => {
                         </button>
                       </div>
                     </div>
+
+                    {/* Rich Text Editor */}
+                    <div className="pt-3 border-t" style={{ borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB' }}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Edit3 className="w-4 h-4" style={{ color: colors.brand.primary }} />
+                        <span className="text-xs font-semibold uppercase" style={{ color: colors.utility.secondaryText }}>
+                          Content Editor
+                        </span>
+                      </div>
+                      <RichTextEditor
+                        value={selectedBlock.config.richTextContent || ''}
+                        onChange={(content) => updateBlockConfig(selectedBlock.id, { richTextContent: content })}
+                        placeholder="Enter your text content here..."
+                        minHeight={120}
+                        maxHeight={300}
+                        colors={colors}
+                        isDarkMode={isDarkMode}
+                      />
+                    </div>
                   </>
                 )}
 
@@ -1480,6 +1523,25 @@ const CatalogStudioTemplatePage: React.FC = () => {
                         </button>
                       </div>
                     </div>
+
+                    {/* Video Upload */}
+                    <div className="pt-3 border-t" style={{ borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB' }}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Upload className="w-4 h-4" style={{ color: colors.brand.primary }} />
+                        <span className="text-xs font-semibold uppercase" style={{ color: colors.utility.secondaryText }}>
+                          Upload Videos
+                        </span>
+                      </div>
+                      <MediaUpload
+                        files={selectedBlock.config.mediaFiles || []}
+                        onFilesChange={(files) => updateBlockConfig(selectedBlock.id, { mediaFiles: files })}
+                        mediaType="video"
+                        maxFiles={3}
+                        maxSizeMB={50}
+                        colors={colors}
+                        isDarkMode={isDarkMode}
+                      />
+                    </div>
                   </>
                 )}
 
@@ -1506,6 +1568,25 @@ const CatalogStudioTemplatePage: React.FC = () => {
                           )}
                         </button>
                       </div>
+                    </div>
+
+                    {/* Image Upload */}
+                    <div className="pt-3 border-t" style={{ borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB' }}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <Upload className="w-4 h-4" style={{ color: colors.brand.primary }} />
+                        <span className="text-xs font-semibold uppercase" style={{ color: colors.utility.secondaryText }}>
+                          Upload Images
+                        </span>
+                      </div>
+                      <MediaUpload
+                        files={selectedBlock.config.mediaFiles || []}
+                        onFilesChange={(files) => updateBlockConfig(selectedBlock.id, { mediaFiles: files })}
+                        mediaType="image"
+                        maxFiles={5}
+                        maxSizeMB={10}
+                        colors={colors}
+                        isDarkMode={isDarkMode}
+                      />
                     </div>
                   </>
                 )}
@@ -1546,6 +1627,23 @@ const CatalogStudioTemplatePage: React.FC = () => {
                           )}
                         </button>
                       </div>
+                    </div>
+
+                    {/* Checklist Builder */}
+                    <div className="pt-3 border-t" style={{ borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB' }}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <ListChecks className="w-4 h-4" style={{ color: colors.brand.primary }} />
+                        <span className="text-xs font-semibold uppercase" style={{ color: colors.utility.secondaryText }}>
+                          Checklist Items
+                        </span>
+                      </div>
+                      <ChecklistBuilder
+                        items={selectedBlock.config.checklistItems || []}
+                        onItemsChange={(items) => updateBlockConfig(selectedBlock.id, { checklistItems: items })}
+                        colors={colors}
+                        isDarkMode={isDarkMode}
+                        maxItems={20}
+                      />
                     </div>
                   </>
                 )}
