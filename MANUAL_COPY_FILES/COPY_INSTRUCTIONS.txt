@@ -1,15 +1,20 @@
 ═══════════════════════════════════════════════════
-INDUSTRIES MIGRATION - BUSINESS PROFILE FILES
+INDUSTRIES MIGRATION - ALL FILES (Business Profile + Edit/Onboarding)
 ═══════════════════════════════════════════════════
 
 Copy these files to their destinations:
 
-FILE 1: TenantProfileView.tsx
+FILE 1: IndustrySelector.tsx (MAIN - Industry Selection Grid)
+─────────────────────────────────
+FROM: MANUAL_COPY_FILES\IndustrySelector.tsx
+TO:   contractnest-ui\src\components\tenantprofile\IndustrySelector.tsx
+
+FILE 2: TenantProfileView.tsx (View Profile)
 ─────────────────────────────────
 FROM: MANUAL_COPY_FILES\TenantProfileView.tsx
 TO:   contractnest-ui\src\components\tenantprofile\TenantProfileView.tsx
 
-FILE 2: BusinessProfilePage index.tsx
+FILE 3: BusinessProfilePage index.tsx (Settings Page)
 ─────────────────────────────────
 FROM: MANUAL_COPY_FILES\BusinessProfilePage_index.tsx
 TO:   contractnest-ui\src\pages\settings\business-profile\index.tsx
@@ -18,12 +23,16 @@ TO:   contractnest-ui\src\pages\settings\business-profile\index.tsx
 CHANGES MADE
 ═══════════════════════════════════════════════════
 
-Both files were updated to:
+All files were updated to:
 1. Replace: import { industries } from '@/utils/constants/industries'
    With:    import { useIndustries } from '@/hooks/queries/useProductMasterdata'
 
 2. Add hook call inside component:
-   const { data: industriesResponse, isLoading: industriesLoading } = useIndustries();
+   const { data: industriesResponse, isLoading, error, refetch } = useIndustries();
    const industries = industriesResponse?.data || [];
+
+3. IndustrySelector.tsx also includes:
+   - Loading state with skeleton UI
+   - Error state with retry button
 
 This migrates industries data source from static constants to database API.
