@@ -1,9 +1,19 @@
 // src/hooks/contracts/useTemplates.ts
-// Re-export from service-contracts hooks
+// Re-export from queries hooks (TanStack Query based)
 export {
   useTemplates,
   useTemplateSelection,
-  useTemplateAnalytics
-} from '../service-contracts/templates/useTemplates';
+  useTemplateAnalytics,
+  INDUSTRIES,
+  TEMPLATE_COMPLEXITY_LABELS,
+  CONTRACT_TYPE_LABELS,
+  ITEMS_PER_PAGE_OPTIONS,
+  templateKeys
+} from '../queries/useTemplates';
 
-export type { TemplateContext } from '../service-contracts/templates/useTemplates';
+export type {
+  Template,
+  TemplateFilters,
+  TemplateStats,
+  TemplateContext
+} from '../queries/useTemplates';
