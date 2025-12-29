@@ -4,7 +4,7 @@ import { Plus, Download } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Block, WizardMode } from '../../types/catalogStudio';
 import { BLOCK_CATEGORIES, getBlocksByCategory, getCategoryById } from '../../utils/catalog-studio';
-import { CategoryPanel, BlockGrid, BlockWizard } from '../../components/catalog-studio';
+import { CategoryPanel, BlockGrid, BlockWizard, BlockEditorPanel } from '../../components/catalog-studio';
 
 const CatalogStudioConfigurePage: React.FC = () => {
   const { isDarkMode, currentTheme } = useTheme();
@@ -16,6 +16,10 @@ const CatalogStudioConfigurePage: React.FC = () => {
   const [wizardMode, setWizardMode] = useState<WizardMode>('create');
   const [wizardBlockType, setWizardBlockType] = useState<string>('service');
   const [editingBlock, setEditingBlock] = useState<Block | null>(null);
+
+  // Block Editor Panel state
+  const [selectedBlock, setSelectedBlock] = useState<Block | null>(null);
+  const [isEditorPanelOpen, setIsEditorPanelOpen] = useState<boolean>(false);
 
   const currentCategory = getCategoryById(selectedCategory) || BLOCK_CATEGORIES[0];
   const categoryBlocks = getBlocksByCategory(selectedCategory);
@@ -38,11 +42,44 @@ const CatalogStudioConfigurePage: React.FC = () => {
   };
 
   const handleBlockClick = (block: Block) => {
+    // Open editor panel instead of wizard for quick edits
+    setSelectedBlock(block);
+    setIsEditorPanelOpen(true);
+  };
+
+  const handleBlockDoubleClick = (block: Block) => {
+    // Open full wizard for complete editing
     openWizard('edit', block.categoryId, block);
   };
 
   const handleAddBlock = () => {
     openWizard('create', selectedCategory);
+  };
+
+  const handleEditorPanelClose = () => {
+    setIsEditorPanelOpen(false);
+    setSelectedBlock(null);
+  };
+
+  const handleEditorPanelSave = (block: Block) => {
+    console.log('Saving block from editor panel:', block);
+    // In a real app, this would update the block in state/backend
+    setIsEditorPanelOpen(false);
+    setSelectedBlock(null);
+  };
+
+  const handleBlockDelete = (blockId: string) => {
+    console.log('Deleting block:', blockId);
+    // In a real app, this would delete the block
+    setIsEditorPanelOpen(false);
+    setSelectedBlock(null);
+  };
+
+  const handleBlockDuplicate = (block: Block) => {
+    console.log('Duplicating block:', block);
+    // In a real app, this would create a copy of the block
+    setIsEditorPanelOpen(false);
+    setSelectedBlock(null);
   };
 
   return (
@@ -120,7 +157,19 @@ const CatalogStudioConfigurePage: React.FC = () => {
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onBlockClick={handleBlockClick}
+          onBlockDoubleClick={handleBlockDoubleClick}
           onAddBlock={handleAddBlock}
+          selectedBlockId={selectedBlock?.id}
+        />
+
+        {/* Block Editor Panel (Right Sidebar) */}
+        <BlockEditorPanel
+          block={selectedBlock}
+          isOpen={isEditorPanelOpen}
+          onClose={handleEditorPanelClose}
+          onSave={handleEditorPanelSave}
+          onDelete={handleBlockDelete}
+          onDuplicate={handleBlockDuplicate}
         />
       </div>
 

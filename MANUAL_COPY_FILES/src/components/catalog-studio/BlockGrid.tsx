@@ -12,7 +12,9 @@ interface BlockGridProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onBlockClick: (block: Block) => void;
+  onBlockDoubleClick?: (block: Block) => void;
   onAddBlock: () => void;
+  selectedBlockId?: string;
 }
 
 // Helper to get Lucide icon component by name
@@ -27,7 +29,9 @@ const BlockGrid: React.FC<BlockGridProps> = ({
   searchQuery,
   onSearchChange,
   onBlockClick,
+  onBlockDoubleClick,
   onAddBlock,
+  selectedBlockId,
 }) => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
@@ -104,6 +108,8 @@ const BlockGrid: React.FC<BlockGridProps> = ({
               block={block}
               category={category}
               onClick={() => onBlockClick(block)}
+              onDoubleClick={() => onBlockDoubleClick?.(block)}
+              isSelected={selectedBlockId === block.id}
             />
           ))}
           <div

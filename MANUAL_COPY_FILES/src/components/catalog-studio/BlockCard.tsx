@@ -8,6 +8,8 @@ interface BlockCardProps {
   block: Block;
   category: BlockCategory;
   onClick: () => void;
+  onDoubleClick?: () => void;
+  isSelected?: boolean;
 }
 
 // Helper to get Lucide icon component by name
@@ -21,7 +23,7 @@ const formatCurrency = (amount: number, currency: string = 'INR') => {
   return `${symbols[currency] || currency}${amount.toLocaleString()}`;
 };
 
-const BlockCard: React.FC<BlockCardProps> = ({ block, category, onClick }) => {
+const BlockCard: React.FC<BlockCardProps> = ({ block, category, onClick, onDoubleClick, isSelected }) => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
   const IconComponent = getIconComponent(block.icon);
@@ -29,10 +31,12 @@ const BlockCard: React.FC<BlockCardProps> = ({ block, category, onClick }) => {
   return (
     <div
       onClick={onClick}
-      className="rounded-xl shadow-sm border overflow-hidden cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
+      onDoubleClick={onDoubleClick}
+      className="rounded-xl shadow-sm border-2 overflow-hidden cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
       style={{
         backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#FFFFFF',
-        borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB'
+        borderColor: isSelected ? colors.brand.primary : (isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB'),
+        boxShadow: isSelected ? `0 0 0 1px ${colors.brand.primary}` : undefined
       }}
     >
       <div className="p-4 flex items-start gap-3">
