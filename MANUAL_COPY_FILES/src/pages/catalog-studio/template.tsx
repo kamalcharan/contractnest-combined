@@ -1,11 +1,169 @@
 // src/pages/catalog-studio/template.tsx
-import React, { useState, useMemo } from 'react';
-import { Plus, Download, Save, Eye, MoreVertical, Settings, GripVertical, Trash2, LayoutTemplate, FileText, X, Info, DollarSign, Clock, Camera, FileCheck, AlertCircle, Package, CreditCard, Type, Video, Image, CheckSquare, Paperclip, ToggleLeft, ToggleRight, Square, CheckSquare as CheckedSquare, Copy, EyeOff } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { Plus, Download, Save, Eye, MoreVertical, Settings, GripVertical, Trash2, LayoutTemplate, FileText, X, Info, DollarSign, Clock, Camera, FileCheck, AlertCircle, Package, CreditCard, Type, Video, Image, CheckSquare, Paperclip, ToggleLeft, ToggleRight, Square, CheckSquare as CheckedSquare, Copy, EyeOff, Undo2, Keyboard, Check, AlertTriangle, Loader2 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Block } from '../../types/catalogStudio';
 import { BLOCK_CATEGORIES, getAllBlocks } from '../../utils/catalog-studio';
 import { ServiceCatalogTree } from '../../components/catalog-studio';
+
+// Toast notification types
+interface Toast {
+  id: string;
+  type: 'success' | 'error' | 'info' | 'warning';
+  title: string;
+  description?: string;
+}
+
+// Toast Notification Component
+const ToastNotification: React.FC<{
+  toast: Toast;
+  onDismiss: (id: string) => void;
+  colors: Record<string, any>;
+  isDarkMode: boolean;
+}> = ({ toast, onDismiss, colors, isDarkMode }) => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      onDismiss(toast.id);
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [toast.id, onDismiss]);
+
+  const getToastStyles = () => {
+    switch (toast.type) {
+      case 'success':
+        return { bg: colors.semantic.success, icon: <Check className="w-4 h-4" /> };
+      case 'error':
+        return { bg: colors.semantic.error, icon: <AlertCircle className="w-4 h-4" /> };
+      case 'warning':
+        return { bg: colors.semantic.warning, icon: <AlertTriangle className="w-4 h-4" /> };
+      default:
+        return { bg: colors.brand.primary, icon: <Info className="w-4 h-4" /> };
+    }
+  };
+
+  const styles = getToastStyles();
+
+  return (
+    <div
+      className="flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg animate-in slide-in-from-right-4 duration-300 min-w-[280px]"
+      style={{
+        backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#FFFFFF',
+        border: `1px solid ${styles.bg}40`,
+      }}
+    >
+      <div
+        className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+        style={{ backgroundColor: `${styles.bg}20`, color: styles.bg }}
+      >
+        {styles.icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium" style={{ color: colors.utility.primaryText }}>
+          {toast.title}
+        </p>
+        {toast.description && (
+          <p className="text-xs mt-0.5" style={{ color: colors.utility.secondaryText }}>
+            {toast.description}
+          </p>
+        )}
+      </div>
+      <button
+        onClick={() => onDismiss(toast.id)}
+        className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
+        style={{ color: colors.utility.secondaryText }}
+      >
+        <X className="w-4 h-4" />
+      </button>
+    </div>
+  );
+};
+
+// Confirmation Dialog Component
+const ConfirmDialog: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  description: string;
+  confirmText: string;
+  type?: 'danger' | 'warning' | 'primary';
+  isLoading?: boolean;
+  colors: Record<string, any>;
+  isDarkMode: boolean;
+}> = ({ isOpen, onClose, onConfirm, title, description, confirmText, type = 'danger', isLoading, colors, isDarkMode }) => {
+  if (!isOpen) return null;
+
+  const getButtonStyle = () => {
+    switch (type) {
+      case 'danger':
+        return { background: colors.semantic.error };
+      case 'warning':
+        return { background: colors.semantic.warning };
+      default:
+        return { background: colors.brand.primary };
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div
+        className="fixed inset-0 backdrop-blur-sm transition-opacity"
+        style={{ backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.5)' }}
+        onClick={onClose}
+      />
+      <div className="flex min-h-full items-center justify-center p-4">
+        <div
+          className="relative transform rounded-lg border px-6 py-5 shadow-xl transition-all w-full max-w-md animate-in zoom-in-95 duration-200"
+          style={{
+            backgroundColor: colors.utility.secondaryBackground,
+            borderColor: colors.utility.secondaryText + '20',
+          }}
+        >
+          <div className="flex items-start gap-4">
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: `${type === 'danger' ? colors.semantic.error : colors.semantic.warning}15` }}
+            >
+              <AlertTriangle className="w-5 h-5" style={{ color: type === 'danger' ? colors.semantic.error : colors.semantic.warning }} />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-base font-semibold" style={{ color: colors.utility.primaryText }}>
+                {title}
+              </h3>
+              <p className="mt-2 text-sm" style={{ color: colors.utility.secondaryText }}>
+                {description}
+              </p>
+            </div>
+          </div>
+          <div className="mt-5 flex justify-end gap-3">
+            <button
+              onClick={onClose}
+              disabled={isLoading}
+              className="px-4 py-2 text-sm font-medium border rounded-lg transition-colors disabled:opacity-50"
+              style={{
+                backgroundColor: colors.utility.secondaryBackground,
+                borderColor: colors.utility.secondaryText + '40',
+                color: colors.utility.primaryText,
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onConfirm}
+              disabled={isLoading}
+              className="px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2"
+              style={getButtonStyle()}
+            >
+              {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+              {confirmText}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 interface BlockConfig {
   // Service block overrides
@@ -71,6 +229,126 @@ const CatalogStudioTemplatePage: React.FC = () => {
   const [selectedBlockIds, setSelectedBlockIds] = useState<Set<string>>(new Set());
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
 
+  // Preview mode state
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
+
+  // Toast notifications state
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  // Confirmation dialogs state
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; blockId: string | null }>({ isOpen: false, blockId: null });
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+
+  // Save state
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Undo history
+  const [history, setHistory] = useState<TemplateBlock[][]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
+  const maxHistorySize = 50;
+
+  // Toast helper
+  const showToast = useCallback((type: Toast['type'], title: string, description?: string) => {
+    const id = `toast-${Date.now()}`;
+    setToasts((prev) => [...prev, { id, type, title, description }]);
+  }, []);
+
+  const dismissToast = useCallback((id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  }, []);
+
+  // History management
+  const saveToHistory = useCallback((blocks: TemplateBlock[]) => {
+    setHistory((prev) => {
+      const newHistory = prev.slice(0, historyIndex + 1);
+      newHistory.push(JSON.parse(JSON.stringify(blocks)));
+      if (newHistory.length > maxHistorySize) {
+        newHistory.shift();
+      }
+      return newHistory;
+    });
+    setHistoryIndex((prev) => Math.min(prev + 1, maxHistorySize - 1));
+  }, [historyIndex]);
+
+  const undo = useCallback(() => {
+    if (historyIndex > 0) {
+      const newIndex = historyIndex - 1;
+      setHistoryIndex(newIndex);
+      setTemplateBlocks(JSON.parse(JSON.stringify(history[newIndex])));
+      showToast('info', 'Undone', 'Previous action was reverted');
+    }
+  }, [historyIndex, history, showToast]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if focused on input/textarea
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+
+      // Cmd/Ctrl + Z - Undo
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+        return;
+      }
+
+      // Delete/Backspace - Delete selected block(s)
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        if (selectedBlockIds.size > 0) {
+          setBulkDeleteConfirm(true);
+        } else if (selectedTemplateBlock) {
+          setDeleteConfirm({ isOpen: true, blockId: selectedTemplateBlock });
+        }
+        return;
+      }
+
+      // Cmd/Ctrl + D - Duplicate selected
+      if ((e.metaKey || e.ctrlKey) && e.key === 'd') {
+        e.preventDefault();
+        if (selectedBlockIds.size > 0) {
+          duplicateSelectedBlocks();
+        } else if (selectedTemplateBlock) {
+          const block = templateBlocks.find((tb) => tb.id === selectedTemplateBlock);
+          if (block) {
+            const newBlock: TemplateBlock = {
+              ...block,
+              id: `tb-${Date.now()}`,
+              order: templateBlocks.length,
+              isNew: true,
+            };
+            const newBlocks = [...templateBlocks, newBlock];
+            saveToHistory(templateBlocks);
+            setTemplateBlocks(newBlocks);
+            showToast('success', 'Block duplicated', block.block.name);
+            setTimeout(() => {
+              setTemplateBlocks((prev) =>
+                prev.map((tb) => (tb.id === newBlock.id ? { ...tb, isNew: false } : tb))
+              );
+            }, 1000);
+          }
+        }
+        return;
+      }
+
+      // Escape - Clear selection / Close preview
+      if (e.key === 'Escape') {
+        if (isPreviewMode) {
+          setIsPreviewMode(false);
+        } else if (selectedBlockIds.size > 0) {
+          clearSelection();
+        } else if (selectedTemplateBlock) {
+          setSelectedTemplateBlock(null);
+        }
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [undo, selectedBlockIds, selectedTemplateBlock, templateBlocks, isPreviewMode, saveToHistory, showToast]);
+
   // Get default config based on block category
   const getDefaultConfig = (block: Block): BlockConfig => {
     const baseConfig: BlockConfig = { isVisible: true };
@@ -112,7 +390,9 @@ const CatalogStudioTemplatePage: React.FC = () => {
       config: getDefaultConfig(block),
       isNew: true,
     };
+    saveToHistory(templateBlocks);
     setTemplateBlocks([...templateBlocks, newTemplateBlock]);
+    showToast('success', 'Block added', block.name);
 
     // Remove the "new" flag after animation
     setTimeout(() => {
@@ -120,6 +400,52 @@ const CatalogStudioTemplatePage: React.FC = () => {
         prev.map((tb) => (tb.id === newTemplateBlock.id ? { ...tb, isNew: false } : tb))
       );
     }, 1000);
+  };
+
+  // Save template handler
+  const handleSaveTemplate = async () => {
+    if (templateBlocks.length === 0) {
+      showToast('warning', 'Cannot save empty template', 'Add at least one block');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      showToast('success', 'Template saved', `"${templateName}" has been saved successfully`);
+    } catch {
+      showToast('error', 'Save failed', 'An error occurred while saving');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Confirm delete single block
+  const confirmDeleteBlock = () => {
+    if (deleteConfirm.blockId) {
+      const block = templateBlocks.find((tb) => tb.id === deleteConfirm.blockId);
+      saveToHistory(templateBlocks);
+      setTemplateBlocks(templateBlocks.filter((tb) => tb.id !== deleteConfirm.blockId));
+      if (selectedTemplateBlock === deleteConfirm.blockId) {
+        setSelectedTemplateBlock(null);
+      }
+      showToast('success', 'Block removed', block?.block.name || 'Block');
+    }
+    setDeleteConfirm({ isOpen: false, blockId: null });
+  };
+
+  // Confirm bulk delete
+  const confirmBulkDelete = () => {
+    const count = selectedBlockIds.size;
+    saveToHistory(templateBlocks);
+    setTemplateBlocks(templateBlocks.filter((tb) => !selectedBlockIds.has(tb.id)));
+    if (selectedTemplateBlock && selectedBlockIds.has(selectedTemplateBlock)) {
+      setSelectedTemplateBlock(null);
+    }
+    clearSelection();
+    showToast('success', `${count} blocks removed`);
+    setBulkDeleteConfirm(false);
   };
 
   // Update block config
@@ -142,10 +468,8 @@ const CatalogStudioTemplatePage: React.FC = () => {
   };
 
   const handleRemoveBlock = (templateBlockId: string) => {
-    setTemplateBlocks(templateBlocks.filter((tb) => tb.id !== templateBlockId));
-    if (selectedTemplateBlock === templateBlockId) {
-      setSelectedTemplateBlock(null);
-    }
+    // Show confirmation dialog
+    setDeleteConfirm({ isOpen: true, blockId: templateBlockId });
   };
 
   // Drag-drop handlers
@@ -184,6 +508,9 @@ const CatalogStudioTemplatePage: React.FC = () => {
     const targetIndex = templateBlocks.findIndex((tb) => tb.id === targetBlockId);
 
     if (draggedIndex === -1 || targetIndex === -1) return;
+
+    // Save to history before reordering
+    saveToHistory(templateBlocks);
 
     // Reorder blocks
     const newBlocks = [...templateBlocks];
@@ -229,11 +556,8 @@ const CatalogStudioTemplatePage: React.FC = () => {
   };
 
   const deleteSelectedBlocks = () => {
-    setTemplateBlocks(templateBlocks.filter((tb) => !selectedBlockIds.has(tb.id)));
-    if (selectedTemplateBlock && selectedBlockIds.has(selectedTemplateBlock)) {
-      setSelectedTemplateBlock(null);
-    }
-    clearSelection();
+    // Show bulk delete confirmation
+    setBulkDeleteConfirm(true);
   };
 
   const duplicateSelectedBlocks = () => {
@@ -244,7 +568,9 @@ const CatalogStudioTemplatePage: React.FC = () => {
       order: templateBlocks.length + blocksToDuplicate.indexOf(tb),
       isNew: true,
     }));
+    saveToHistory(templateBlocks);
     setTemplateBlocks([...templateBlocks, ...newBlocks]);
+    showToast('success', `${newBlocks.length} blocks duplicated`);
     clearSelection();
 
     // Remove "new" flag after animation
@@ -256,11 +582,13 @@ const CatalogStudioTemplatePage: React.FC = () => {
   };
 
   const hideSelectedBlocks = () => {
+    saveToHistory(templateBlocks);
     setTemplateBlocks(
       templateBlocks.map((tb) =>
         selectedBlockIds.has(tb.id) ? { ...tb, config: { ...tb.config, isVisible: false } } : tb
       )
     );
+    showToast('info', `${selectedBlockIds.size} blocks hidden`);
     clearSelection();
   };
 
@@ -307,8 +635,24 @@ const CatalogStudioTemplatePage: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {/* Undo button */}
           <button
-            className="px-4 py-2 text-sm font-medium border rounded-lg flex items-center gap-2 transition-colors"
+            onClick={undo}
+            disabled={historyIndex <= 0}
+            className="p-2 text-sm font-medium border rounded-lg transition-colors disabled:opacity-40"
+            style={{
+              backgroundColor: colors.utility.primaryBackground,
+              borderColor: isDarkMode ? colors.utility.secondaryText : '#D1D5DB',
+              color: colors.utility.primaryText
+            }}
+            title="Undo (Cmd+Z)"
+          >
+            <Undo2 className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setIsPreviewMode(true)}
+            disabled={templateBlocks.length === 0}
+            className="px-4 py-2 text-sm font-medium border rounded-lg flex items-center gap-2 transition-colors disabled:opacity-40"
             style={{
               backgroundColor: colors.utility.primaryBackground,
               borderColor: isDarkMode ? colors.utility.secondaryText : '#D1D5DB',
@@ -330,11 +674,22 @@ const CatalogStudioTemplatePage: React.FC = () => {
             Export
           </button>
           <button
-            className="px-4 py-2 text-sm font-medium text-white rounded-lg flex items-center gap-2 transition-colors"
+            onClick={handleSaveTemplate}
+            disabled={isSaving}
+            className="px-4 py-2 text-sm font-medium text-white rounded-lg flex items-center gap-2 transition-colors disabled:opacity-70"
             style={{ backgroundColor: colors.brand.primary }}
           >
-            <Save className="w-4 h-4" />
-            Save Template
+            {isSaving ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                Save Template
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -1248,6 +1603,255 @@ const CatalogStudioTemplatePage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Template Preview Modal */}
+      {isPreviewMode && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div
+            className="fixed inset-0 backdrop-blur-sm"
+            style={{ backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.8)' : 'rgba(0, 0, 0, 0.6)' }}
+            onClick={() => setIsPreviewMode(false)}
+          />
+          <div className="flex min-h-full items-center justify-center p-4">
+            <div
+              className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl border shadow-2xl animate-in zoom-in-95 duration-300"
+              style={{
+                backgroundColor: colors.utility.primaryBackground,
+                borderColor: colors.utility.secondaryText + '20',
+              }}
+            >
+              {/* Preview Header */}
+              <div
+                className="sticky top-0 z-10 px-6 py-4 border-b flex items-center justify-between"
+                style={{
+                  backgroundColor: colors.utility.primaryBackground,
+                  borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB',
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-10 h-10 rounded-lg flex items-center justify-center"
+                    style={{ backgroundColor: `${colors.brand.primary}15` }}
+                  >
+                    <Eye className="w-5 h-5" style={{ color: colors.brand.primary }} />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold" style={{ color: colors.utility.primaryText }}>
+                      Template Preview
+                    </h2>
+                    <p className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                      {templateName} • {templateBlocks.filter((b) => b.config.isVisible !== false).length} visible blocks
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs px-2 py-1 rounded" style={{ backgroundColor: `${colors.semantic.info}15`, color: colors.semantic.info }}>
+                    Press ESC to close
+                  </span>
+                  <button
+                    onClick={() => setIsPreviewMode(false)}
+                    className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                    style={{ color: colors.utility.secondaryText }}
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Preview Content */}
+              <div className="p-6 space-y-4">
+                {templateBlocks
+                  .filter((tb) => tb.config.isVisible !== false)
+                  .map((tb, index) => {
+                    const category = getBlockCategory(tb.block);
+                    const BlockIcon = getIconComponent(tb.block.icon);
+                    return (
+                      <div
+                        key={tb.id}
+                        className="p-5 rounded-xl border transition-all"
+                        style={{
+                          backgroundColor: isDarkMode ? colors.utility.secondaryBackground : '#FAFAFA',
+                          borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB',
+                        }}
+                      >
+                        <div className="flex items-start gap-4">
+                          <div
+                            className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
+                            style={{ backgroundColor: category?.bgColor || '#F3F4F6' }}
+                          >
+                            <BlockIcon
+                              className="w-6 h-6"
+                              style={{ color: category?.color || colors.utility.secondaryText }}
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span
+                                className="text-xs font-medium px-2 py-0.5 rounded"
+                                style={{
+                                  backgroundColor: `${colors.brand.primary}15`,
+                                  color: colors.brand.primary,
+                                }}
+                              >
+                                #{index + 1}
+                              </span>
+                              <span
+                                className="text-xs px-2 py-0.5 rounded"
+                                style={{
+                                  backgroundColor: category?.bgColor || '#F3F4F6',
+                                  color: category?.color || colors.utility.secondaryText,
+                                }}
+                              >
+                                {category?.name}
+                              </span>
+                            </div>
+                            <h4 className="font-semibold" style={{ color: colors.utility.primaryText }}>
+                              {tb.block.name}
+                            </h4>
+                            <p className="text-sm mt-1" style={{ color: colors.utility.secondaryText }}>
+                              {tb.block.description}
+                            </p>
+
+                            {/* Show relevant config info */}
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {tb.block.price && (
+                                <span
+                                  className="text-xs px-2 py-1 rounded flex items-center gap-1"
+                                  style={{ backgroundColor: `${colors.semantic.success}15`, color: colors.semantic.success }}
+                                >
+                                  <DollarSign className="w-3 h-3" />
+                                  ₹{(tb.config.priceOverride || tb.block.price).toLocaleString()}
+                                </span>
+                              )}
+                              {tb.block.duration && (
+                                <span
+                                  className="text-xs px-2 py-1 rounded flex items-center gap-1"
+                                  style={{ backgroundColor: `${colors.semantic.info}15`, color: colors.semantic.info }}
+                                >
+                                  <Clock className="w-3 h-3" />
+                                  {tb.config.durationOverride || tb.block.duration} {tb.block.durationUnit}
+                                </span>
+                              )}
+                              {tb.config.quantity && tb.config.quantity > 1 && (
+                                <span
+                                  className="text-xs px-2 py-1 rounded flex items-center gap-1"
+                                  style={{ backgroundColor: `${colors.semantic.warning}15`, color: colors.semantic.warning }}
+                                >
+                                  <Package className="w-3 h-3" />
+                                  Qty: {tb.config.quantity}
+                                </span>
+                              )}
+                              {tb.config.isRequired && (
+                                <span
+                                  className="text-xs px-2 py-1 rounded flex items-center gap-1"
+                                  style={{ backgroundColor: `${colors.semantic.error}15`, color: colors.semantic.error }}
+                                >
+                                  <AlertCircle className="w-3 h-3" />
+                                  Required
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                {templateBlocks.filter((tb) => tb.config.isVisible !== false).length === 0 && (
+                  <div className="text-center py-12">
+                    <EyeOff className="w-12 h-12 mx-auto mb-3" style={{ color: colors.utility.secondaryText }} />
+                    <p style={{ color: colors.utility.secondaryText }}>All blocks are hidden</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Preview Footer */}
+              <div
+                className="sticky bottom-0 px-6 py-4 border-t flex justify-between items-center"
+                style={{
+                  backgroundColor: colors.utility.primaryBackground,
+                  borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB',
+                }}
+              >
+                <div className="text-sm" style={{ color: colors.utility.secondaryText }}>
+                  Total: {templateBlocks.filter((b) => b.config.isVisible !== false).length} blocks
+                  {templateBlocks.some((b) => b.config.isVisible === false) && (
+                    <span className="ml-2">({templateBlocks.filter((b) => b.config.isVisible === false).length} hidden)</span>
+                  )}
+                </div>
+                <button
+                  onClick={() => setIsPreviewMode(false)}
+                  className="px-4 py-2 text-sm font-medium text-white rounded-lg"
+                  style={{ backgroundColor: colors.brand.primary }}
+                >
+                  Close Preview
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notifications Container */}
+      <div className="fixed bottom-4 right-4 z-[60] flex flex-col gap-2">
+        {toasts.map((toast) => (
+          <ToastNotification
+            key={toast.id}
+            toast={toast}
+            onDismiss={dismissToast}
+            colors={colors}
+            isDarkMode={isDarkMode}
+          />
+        ))}
+      </div>
+
+      {/* Confirmation Dialogs */}
+      <ConfirmDialog
+        isOpen={deleteConfirm.isOpen}
+        onClose={() => setDeleteConfirm({ isOpen: false, blockId: null })}
+        onConfirm={confirmDeleteBlock}
+        title="Remove Block"
+        description="Are you sure you want to remove this block from the template? This action can be undone with Cmd+Z."
+        confirmText="Remove Block"
+        type="danger"
+        colors={colors}
+        isDarkMode={isDarkMode}
+      />
+
+      <ConfirmDialog
+        isOpen={bulkDeleteConfirm}
+        onClose={() => setBulkDeleteConfirm(false)}
+        onConfirm={confirmBulkDelete}
+        title={`Remove ${selectedBlockIds.size} Blocks`}
+        description={`Are you sure you want to remove ${selectedBlockIds.size} selected blocks from the template? This action can be undone with Cmd+Z.`}
+        confirmText="Remove All"
+        type="danger"
+        colors={colors}
+        isDarkMode={isDarkMode}
+      />
+
+      {/* Keyboard Shortcuts Help - shown in empty state */}
+      {templateBlocks.length === 0 && (
+        <div
+          className="fixed bottom-4 left-4 text-xs p-3 rounded-lg border"
+          style={{
+            backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#FFFFFF',
+            borderColor: colors.utility.secondaryText + '20',
+            color: colors.utility.secondaryText,
+          }}
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <Keyboard className="w-4 h-4" />
+            <span className="font-medium">Keyboard Shortcuts</span>
+          </div>
+          <div className="space-y-1">
+            <div><kbd className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800">⌘Z</kbd> Undo</div>
+            <div><kbd className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800">⌘D</kbd> Duplicate</div>
+            <div><kbd className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800">Del</kbd> Delete</div>
+            <div><kbd className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800">Esc</kbd> Clear selection</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
