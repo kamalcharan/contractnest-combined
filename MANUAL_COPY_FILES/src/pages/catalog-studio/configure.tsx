@@ -48,13 +48,13 @@ const CatalogStudioConfigurePage: React.FC = () => {
   return (
     <div
       className="h-full flex flex-col"
-      style={{ backgroundColor: isDarkMode ? colors.utility.secondaryBackground : '#F9FAFB' }}
+      style={{ backgroundColor: isDarkMode ? colors.utility.secondaryBackground : colors.utility.secondaryBackground }}
     >
       {/* Top Bar */}
       <div
         className="border-b px-6 py-4 flex justify-between items-center"
         style={{
-          backgroundColor: colors.utility.primaryBackground,
+          backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#FFFFFF',
           borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB'
         }}
       >

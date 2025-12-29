@@ -31,7 +31,7 @@ const BlockCard: React.FC<BlockCardProps> = ({ block, category, onClick }) => {
       onClick={onClick}
       className="rounded-xl shadow-sm border overflow-hidden cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
       style={{
-        backgroundColor: colors.utility.primaryBackground,
+        backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#FFFFFF',
         borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB'
       }}
     >

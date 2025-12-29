@@ -28,7 +28,7 @@ const CategoryPanel: React.FC<CategoryPanelProps> = ({
     <div
       className="w-56 flex flex-col border-r"
       style={{
-        backgroundColor: colors.utility.primaryBackground,
+        backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#FFFFFF',
         borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB'
       }}
     >
