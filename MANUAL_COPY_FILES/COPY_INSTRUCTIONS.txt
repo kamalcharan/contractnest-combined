@@ -1,13 +1,23 @@
 ═══════════════════════════════════════════════════
-BUSINESS PROFILE FORM IMPROVEMENTS
+BUSINESS PROFILE - 3-CARD LAYOUT
 ═══════════════════════════════════════════════════
 
-CHANGES MADE:
-1. Organization Name - Reduced field size (single column instead of full width)
-2. Short Description - Hidden (removed from form)
-3. Contact Person - Added First Name and Last Name fields (NEW)
-4. WhatsApp Country Code - Aligned with Phone format (shows "IN +91" instead of just "+91")
-5. Overall layout - Made more compact to reduce scrolling
+CARD 1: Organization Identity
+  - Logo
+  - Organization Name
+  - Brand Colors (compact inline picker)
+
+CARD 2: Contact Information
+  - Contact Person (First Name + Last Name)
+  - Email
+  - Phone (with country code)
+  - WhatsApp (with country code - same format as Phone)
+  - Website
+  - Booking URL
+
+CARD 3: Address
+  - Address Line 1, Line 2
+  - Country, State, City, Postal Code
 
 ═══════════════════════════════════════════════════
 DATABASE MIGRATION (Run First!)
@@ -24,23 +34,23 @@ Run this SQL in Supabase SQL Editor:
 UI FILES TO COPY
 ═══════════════════════════════════════════════════
 
-FILE 1: useTenantProfile.ts (Hook with updated interface)
+FILE 1: useTenantProfile.ts (Interface with contact name fields)
 ─────────────────────────────────
 FROM: MANUAL_COPY_FILES\useTenantProfile.ts
 TO:   contractnest-ui\src\hooks\useTenantProfile.ts
 
-FILE 2: OrganizationDetailsForm.tsx (Main form component)
+FILE 2: OrganizationDetailsForm.tsx (NEW 3-Card Layout)
 ─────────────────────────────────
 FROM: MANUAL_COPY_FILES\OrganizationDetailsForm.tsx
 TO:   contractnest-ui\src\components\tenantprofile\OrganizationDetailsForm.tsx
 
-FILE 3: ContactFields.tsx (Contact fields with aligned WhatsApp)
+FILE 3: BrandColorPicker.tsx (Added compact mode)
 ─────────────────────────────────
-FROM: MANUAL_COPY_FILES\ContactFields.tsx
-TO:   contractnest-ui\src\components\tenantprofile\shared\ContactFields.tsx
+FROM: MANUAL_COPY_FILES\BrandColorPicker.tsx
+TO:   contractnest-ui\src\components\tenantprofile\shared\BrandColorPicker.tsx
 
 ═══════════════════════════════════════════════════
-PREVIOUS FILES (Industries Migration)
+PREVIOUS FILES (Industries Migration + Edge Fix)
 ═══════════════════════════════════════════════════
 
 FILE 4: IndustrySelector.tsx
@@ -64,18 +74,21 @@ FROM: MANUAL_COPY_FILES\product-masterdata_index.ts
 TO:   contractnest-edge\supabase\functions\product-masterdata\index.ts
 
 ═══════════════════════════════════════════════════
-SUMMARY OF ALL CHANGES
+WHAT CHANGED
 ═══════════════════════════════════════════════════
 
-TenantProfile Interface (useTenantProfile.ts):
-- Added contact_first_name and contact_last_name fields
+1. OrganizationDetailsForm.tsx - Complete rewrite:
+   - 3 visual cards with headers and icons
+   - Card 1: Logo + Name + Brand Colors (compact)
+   - Card 2: All contact fields including new Contact Person name
+   - Card 3: Address fields in compact 4-column layout
+   - Removed Short Description
+   - Removed separate ContactFields component usage
+   - Phone/WhatsApp country codes aligned (same format)
 
-OrganizationDetailsForm.tsx:
-- Organization Name: Changed from full width to single column
-- Short Description: Removed/hidden
-- Contact Person section: Added with First Name and Last Name fields
-- Reduced spacing (gap-6 to gap-4) for more compact layout
+2. BrandColorPicker.tsx:
+   - Added compact prop for inline color picker
+   - Used in Card 1 for space efficiency
 
-ContactFields.tsx:
-- WhatsApp country code dropdown: w-24 → w-32
-- WhatsApp country code format: "+91" → "IN +91" (matches Phone)
+3. useTenantProfile.ts:
+   - Added contact_first_name and contact_last_name to interface
