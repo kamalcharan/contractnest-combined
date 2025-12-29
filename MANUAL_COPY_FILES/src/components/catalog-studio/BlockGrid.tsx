@@ -95,7 +95,7 @@ const BlockGrid: React.FC<BlockGridProps> = ({
       </div>
       <div
         className="flex-1 overflow-y-auto p-6"
-        style={{ backgroundColor: isDarkMode ? colors.utility.secondaryBackground : colors.utility.secondaryBackground }}
+        style={{ backgroundColor: isDarkMode ? colors.utility.secondaryBackground : '#F3F4F6' }}
       >
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filteredBlocks.map((block) => (
