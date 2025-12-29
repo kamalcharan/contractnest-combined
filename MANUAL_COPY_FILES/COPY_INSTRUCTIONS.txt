@@ -28,9 +28,19 @@ FILE 4: product-masterdata/index.ts (Edge Function)
 FROM: MANUAL_COPY_FILES\product-masterdata_index.ts
 TO:   contractnest-edge\supabase\functions\product-masterdata\index.ts
 
-BUG FIXED: The edge function was incorrectly requiring 'category_name'
-parameter for /industries endpoint. This fix excludes /industries,
-/all-categories, and /industry-categories from the category_name validation.
+TWO BUGS FIXED:
+
+BUG 1 - Validation Check:
+The edge function incorrectly required 'category_name' for /industries.
+Fix: Added exclusion for /industries, /all-categories, /industry-categories
+
+BUG 2 - Routing Order (CRITICAL):
+URL /product-masterdata/industries matched /product-masterdata FIRST
+causing getProductMasterData() to be called (queries m_category_master)
+instead of getIndustries() (queries m_catalog_industries).
+
+Fix: Reordered route checks - specific routes (/industries, /all-categories,
+/industry-categories) are now checked BEFORE generic /product-masterdata.
 
 After copying, deploy the edge function:
   cd contractnest-edge
@@ -53,9 +63,7 @@ UI FILES (1-3):
    - Error state with retry button
 
 EDGE FUNCTION (4):
-Fixed routing bug (lines 82-91):
-- Added checks to exclude /industries, /all-categories, /industry-categories
-  from requiring category_name parameter
-- These endpoints query specific tables that don't use category_name
+- Fixed validation to not require category_name for /industries endpoint
+- Fixed routing order so /industries calls getIndustries() -> m_catalog_industries
 
 This migrates industries data source from static constants to database API.
