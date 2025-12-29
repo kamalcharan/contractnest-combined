@@ -18,7 +18,7 @@ export const defaultMenuItems: MenuItem[] = [
   id: 'getting-started',
   label: 'Getting Started',
   icon: 'Compass',
-  path: '/onboarding/welcome',
+  path: '/onboarding/welcome', 
   hasSubmenu: false
 },
   {
@@ -163,7 +163,7 @@ export const defaultMenuItems: MenuItem[] = [
         icon: 'LayoutDashboard',
         path: '/vani/dashboard'
       },
-
+      
       // Process Management
       {
         id: 'vani-jobs',
@@ -189,7 +189,7 @@ export const defaultMenuItems: MenuItem[] = [
         icon: 'Zap',
         path: '/vani/webhooks'
       },
-
+      
       // Business Views
       {
         id: 'vani-receivables',
@@ -203,7 +203,7 @@ export const defaultMenuItems: MenuItem[] = [
         icon: 'Calendar',
         path: '/vani/operations/services'
       },
-
+      
       // Configuration
       {
         id: 'vani-templates',
@@ -447,7 +447,6 @@ export const industryMenuOverrides: Record<string, Partial<Record<string, { labe
     'contacts-partners': { label: 'Medical Partners', icon: 'Stethoscope' },
     'contacts-service-providers': { label: 'Healthcare Providers', icon: 'UserCheck' },
     contracts: { label: 'Care Packages', icon: 'Stethoscope' },
-    'contracts-create': { label: 'Create Care Package', icon: 'FilePlus' },
     templates: { label: 'Care Templates', icon: 'FileTemplate' },
     'my-templates': { label: 'My Care Templates', icon: 'FolderOpen' },
     'template-designer': { label: 'Care Template Designer', icon: 'Edit' },
@@ -460,7 +459,6 @@ export const industryMenuOverrides: Record<string, Partial<Record<string, { labe
     'contacts-partners': { label: 'Financial Partners', icon: 'Handshake' },
     'contacts-service-providers': { label: 'Service Providers', icon: 'Building2' },
     contracts: { label: 'Financial Agreements', icon: 'DollarSign' },
-    'contracts-create': { label: 'Create Agreement', icon: 'FilePlus' },
     templates: { label: 'Agreement Templates', icon: 'FileTemplate' },
     'my-templates': { label: 'My Agreement Templates', icon: 'FolderOpen' },
     'template-designer': { label: 'Agreement Designer', icon: 'Edit' },
@@ -473,7 +471,6 @@ export const industryMenuOverrides: Record<string, Partial<Record<string, { labe
     'contacts-partners': { label: 'Education Partners', icon: 'Handshake' },
     'contacts-service-providers': { label: 'Faculty & Staff', icon: 'UserCheck' },
     contracts: { label: 'Learning Programs', icon: 'GraduationCap' },
-    'contracts-create': { label: 'Create Program', icon: 'FilePlus' },
     templates: { label: 'Program Templates', icon: 'FileTemplate' },
     'my-templates': { label: 'My Program Templates', icon: 'FolderOpen' },
     'template-designer': { label: 'Program Designer', icon: 'Edit' },
@@ -486,7 +483,6 @@ export const industryMenuOverrides: Record<string, Partial<Record<string, { labe
     'contacts-partners': { label: 'Construction Partners', icon: 'Handshake' },
     'contacts-service-providers': { label: 'Contractors', icon: 'Hammer' },
     contracts: { label: 'Project Contracts', icon: 'Hammer' },
-    'contracts-create': { label: 'Create Project Contract', icon: 'FilePlus' },
     templates: { label: 'Project Templates', icon: 'FileTemplate' },
     'my-templates': { label: 'My Project Templates', icon: 'FolderOpen' },
     'template-designer': { label: 'Project Designer', icon: 'Edit' },
@@ -498,10 +494,10 @@ export const industryMenuOverrides: Record<string, Partial<Record<string, { labe
 // Get industry-specific menu items (keeping original function signature)
 export const getMenuItemsForIndustry = (industryId: string | undefined): MenuItem[] => {
   if (!industryId) return defaultMenuItems;
-
+  
   // Start with the default menu items
   const menuItems = [...defaultMenuItems];
-
+  
   // Apply industry-specific overrides if they exist
   const overrides = industryMenuOverrides[industryId];
   if (overrides) {
@@ -511,7 +507,7 @@ export const getMenuItemsForIndustry = (industryId: string | undefined): MenuIte
         item.label = override.label || item.label;
         item.icon = override.icon || item.icon;
       }
-
+      
       // Also check submenu items
       if (item.hasSubmenu && item.submenuItems) {
         item.submenuItems.forEach(subItem => {
@@ -524,6 +520,6 @@ export const getMenuItemsForIndustry = (industryId: string | undefined): MenuIte
       }
     });
   }
-
+  
   return menuItems;
 };

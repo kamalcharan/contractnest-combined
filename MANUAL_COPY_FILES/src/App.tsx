@@ -97,7 +97,7 @@ import GroupsListPage from './pages/settings/customer-channels/GroupsListPage';
 import GroupProfileDashboard from './pages/settings/customer-channels/GroupProfileDashboard';
 
 // MISC Pages
-import {
+import { 
   NotFoundPage,
   MaintenancePage,
   UnauthorizedPage,
@@ -112,8 +112,8 @@ import SequencingSettingsPage from './pages/settings/sequencing';
 
 // Main pages
 import Dashboard from './pages/Dashboard';
-import SettingsPage from './pages/settings';
-import ListOfValuesPage from './pages/settings/LOV';
+import SettingsPage from './pages/settings'; 
+import ListOfValuesPage from './pages/settings/LOV'; 
 import StorageSettingsPage from './pages/settings/storagesettings';
 
 // ✅ FIXED: Import the actual Resources page instead of placeholder
@@ -128,7 +128,7 @@ import TemplateDesignerPage from './pages/service-contracts/templates/designer';
 // Service Contracts - Contracts
 import ContractsPage from './pages/service-contracts/contracts';
 
-// ✅ NEW: Contract Builder
+// Contract Builder
 import ContractCreatePage from './pages/contracts/create';
 
 // Team Management pages (using existing components)
@@ -192,7 +192,7 @@ const queryClient = new QueryClient({
 const testAPIConnection = () => {
   console.log('Testing API connection...');
   console.log('VITE_API_URL:', import.meta.env.VITE_API_URL);
-
+  
   // Test with your api service
   import('./services/api').then(({ default: api }) => {
     api.get('/')
@@ -214,27 +214,27 @@ const TeamEditPage = () => <div className="p-8">Edit Team Member Page (Coming So
 const SmartHomePage: React.FC = () => {
   const { isAuthenticated, isLoading, currentTenant } = useAuth();
   const location = useLocation();
-
+  
   // ✅ Don't redirect if user is on auth pages
   const isAuthPage = ['/login', '/signup', '/register', '/forgot-password', '/reset-password'].includes(location.pathname);
-
+  
   if (isLoading) {
     return <LoadingSpinner />;
   }
-
+  
   if (isAuthPage) {
     // Let auth pages handle themselves
     return null;
   }
-
+  
   if (isAuthenticated && currentTenant) {
     return <Navigate to="/dashboard" replace />;
   }
-
+  
   if (isAuthenticated && !currentTenant) {
     return <Navigate to="/select-tenant" replace />;
   }
-
+  
   // Not authenticated - show landing page
   return <LandingPage />;
 };
@@ -248,33 +248,33 @@ const NetworkStatusHandler: React.FC = () => {
       // Optionally show a toast notification
       // toast.success('Connection restored', { duration: 2000 });
     };
-
+    
     const handleOffline = () => {
       console.log('Gone offline');
       // The MiscPageWrapper will handle showing the no-internet page
     };
-
+    
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-
+    
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
-
+  
   return null;
 };
 
 // App content component that has access to auth context
 const AppContent: React.FC = () => {
   const { isLocked, isAuthenticated } = useAuth();
-
+  
   return (
     <>
       {/* Show lock screen overlay when locked */}
       {isAuthenticated && isLocked && <LockScreen />}
-
+      
       <NetworkStatusHandler />
       <SessionConflictNotification />
       <EnvironmentSwitchModal />
@@ -292,7 +292,7 @@ const AppContent: React.FC = () => {
 
           {/* Root Route - Smart Landing/Dashboard */}
           <Route path="/" element={<SmartHomePage />} />
-
+          
           {/* Public Routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
@@ -318,7 +318,7 @@ const AppContent: React.FC = () => {
               </ProtectedRoute>
             }
           />
-
+          
           {/* Onboarding Pending - for non-owners when onboarding is not complete */}
           <Route
             path="/onboarding-pending"
@@ -344,7 +344,7 @@ const AppContent: React.FC = () => {
   <Route path="user-profile" element={<UserProfileStep />} />
  <Route path="/onboarding/theme-selection" element={<ThemeSelectionStep />} />
  <Route path="/onboarding/business-basic" element={<BusinessBasicStep />} />
-<Route path="business-branding" element={<BusinessBrandingStep />} />
+<Route path="business-branding" element={<BusinessBrandingStep />} />              
 <Route path="business-preferences" element={<BusinessPreferencesStep />} />
 <Route path="sequence-numbers" element={<SequenceNumbersStep />} />
   <Route path="master-data" element={<div>Master Data Step (Coming Soon)</div>} />
@@ -399,7 +399,7 @@ const AppContent: React.FC = () => {
           >
             <Route index element={<Navigate to="templates" replace />} />
             <Route path="contracts" element={<ContractsPage />} />
-
+            
             {/* Service Contracts - Templates Routes */}
             <Route path="templates">
               <Route index element={<MyTemplatesPage />} />
@@ -413,17 +413,6 @@ const AppContent: React.FC = () => {
               </Route>
             </Route>
           </Route>
-
-          {/* ✅ NEW: Contract Builder Route - Full page without sidebar */}
-          <Route
-            path="/contracts/create"
-            element={
-              <ProtectedRoute>
-                <ContractCreatePage />
-              </ProtectedRoute>
-            }
-          />
-
           {/* Catalog Studio Routes */}
           <Route path="/catalog-studio" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
             <Route index element={<Navigate to="configure" replace />} />
@@ -431,11 +420,23 @@ const AppContent: React.FC = () => {
             <Route path="template" element={<CatalogStudioTemplatePage />} />
             <Route path="templates-list" element={<CatalogStudioTemplatesListPage />} />
           </Route>
+          {/* Contract Builder Routes */}
+          <Route
+            path="/contracts"
+            element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Navigate to="/service-contracts/contracts" replace />} />
+            <Route path="create" element={<ContractCreatePage />} />
+            <Route path="templates" element={<Navigate to="/service-contracts/templates" replace />} />
+          </Route>
 
           {/* Legacy support for old routes - redirect to new structure */}
-          <Route path="/contracts" element={<Navigate to="/service-contracts/contracts" replace />} />
           <Route path="/templates" element={<Navigate to="/service-contracts/templates" replace />} />
-
+          
           {/* Settings routes */}
           <Route
             path="/settings"
@@ -449,7 +450,7 @@ const AppContent: React.FC = () => {
             <Route path="configure" element={<SettingsPage />} />
             <Route path="configure/lovs" element={<ListOfValuesPage />} />
             <Route path="configure/resources" element={<ResourcesPage />} />
-
+            
             {/* Team Management Routes */}
             <Route path="users" element={<UsersPage />} />
             <Route path="users/view/:id" element={<UserViewPage />} />
@@ -461,7 +462,7 @@ const AppContent: React.FC = () => {
             <Route path="business-profile/edit" element={<EditBusinessProfilePage />} />
             <Route path="business-profile/smart-profile" element={<SmartProfilePage />} />
 
-
+            
             {/* Storage Settings */}
             <Route path="configure/storage" element={<StorageSettingsPage />} />
 
@@ -476,7 +477,7 @@ const AppContent: React.FC = () => {
             <Route path="storage/storagecomplete" element={<StorageCompletePage />} />
             <Route path="storage/storagemanagement" element={<StorageManagementPage />} />
             <Route path="storage/categoryfiles/:categoryId" element={<CategoryFilesPage />} />
-
+            
             {/* Integration Settings */}
             <Route path="integrations" element={<IntegrationsPage />} />
 
@@ -485,19 +486,19 @@ const AppContent: React.FC = () => {
             <Route path="configure/customer-channels/groups/:groupId" element={<GroupProfileDashboard />} />
 
             {/* Business Model Routes */}
-
+            
             {/* Admin - Pricing Plans Management */}
             <Route path="businessmodel/admin/pricing-plans" element={<PricingPlansAdminPage />} />
             <Route path="businessmodel/admin/pricing-plans/create" element={<PricingPlanForm />} />
             <Route path="businessmodel/admin/pricing-plans/:id" element={<PlanDetailView />} />
             <Route path="businessmodel/admin/pricing-plans/:id/edit" element={<EditPlanPage />} />
             <Route path="businessmodel/admin/pricing-plans/:id/assign" element={<AssignPlanPage />} />
-
+            
             {/* Admin - Plan Versions */}
             <Route path="businessmodel/admin/pricing-plans/:id/versions" element={<PlanVersionsPage />} />
             <Route path="businessmodel/admin/pricing-plans/:id/versions/create" element={<CreateVersionPage />} />
             <Route path="businessmodel/admin/pricing-plans/:id/versions/migrate" element={<MigrationDashboardPage />} />
-
+            
             {/* Admin - Billing Management */}
             <Route path="businessmodel/admin/billing" element={<BillingDashboardPage />} />
             <Route path="businessmodel/admin/billing/create-invoice" element={<CreateInvoicePage />} />
@@ -543,7 +544,7 @@ const AppContent: React.FC = () => {
             <Route path="channels/website" element={<WebsiteIntegrationPage />} />
             <Route path="channels/chatbot" element={<ChatBotIntegrationPage />} />
             <Route path="channels/whatsapp" element={<WhatsAppIntegrationPage />} />
-
+            
             {/* ✅ NEW: BBB Directory Routes */}
             <Route path="channels/bbb/onboarding" element={<BBBProfileOnboardingPage />} />
             <Route path="channels/bbb/admin" element={<BBBAdminDashboard />} />
@@ -566,7 +567,7 @@ const AppContent: React.FC = () => {
             <Route path="chat" element={<ChatPage />} />
             <Route path="chat/:conversationId" element={<ChatPage />} />
           </Route>
-
+          
           {/* Tenant - Pricing Plans & Subscription */}
           <Route
             path="/businessmodel/tenants/pricing-plans"
@@ -578,7 +579,7 @@ const AppContent: React.FC = () => {
           >
             <Route index element={<PricingPlansPage />} />
           </Route>
-
+          
           <Route
             path="/businessmodel/tenants/subscription"
             element={
@@ -589,10 +590,10 @@ const AppContent: React.FC = () => {
           >
             <Route index element={<SubscriptionPage />} />
           </Route>
-
+          
           {/* Legacy routes - redirect to new structure */}
           <Route path="/implementation/configure-plan" element={<Navigate to="/settings/businessmodel/admin/pricing-plans" replace />} />
-
+          
           {/* 404 Page - Must be last */}
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
