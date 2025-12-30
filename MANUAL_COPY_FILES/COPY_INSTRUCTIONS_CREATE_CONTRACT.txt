@@ -1,0 +1,58 @@
+===============================================================
+CREATE CONTRACT WIRING - COPY INSTRUCTIONS
+===============================================================
+Date: 2024-12-30
+Feature: Wire up Create Contract page with existing step components
+
+SUMMARY:
+- Created missing ContractBuilderContext.tsx
+- Updated index.tsx to use real step components instead of placeholders
+- Updated TemplatesStep to accept parent callbacks
+- Fixed Dashboard link from /contracts/new to /contracts/create
+
+===============================================================
+FILES TO COPY (4 files)
+===============================================================
+
+1. ContractBuilderContext.tsx (NEW FILE)
+   FROM: MANUAL_COPY_FILES/contractnest-ui/src/contexts/ContractBuilderContext.tsx
+   TO:   contractnest-ui/src/contexts/ContractBuilderContext.tsx
+
+2. Create Contract Page (UPDATED)
+   FROM: MANUAL_COPY_FILES/contractnest-ui/src/pages/contracts/create/index.tsx
+   TO:   contractnest-ui/src/pages/contracts/create/index.tsx
+
+3. Templates Step (UPDATED)
+   FROM: MANUAL_COPY_FILES/contractnest-ui/src/pages/contracts/create/templates/index.tsx
+   TO:   contractnest-ui/src/pages/contracts/create/templates/index.tsx
+
+4. Dashboard (UPDATED)
+   FROM: MANUAL_COPY_FILES/contractnest-ui/src/pages/Dashboard.tsx
+   TO:   contractnest-ui/src/pages/Dashboard.tsx
+
+===============================================================
+WHAT WAS CHANGED
+===============================================================
+
+ContractBuilderContext.tsx (NEW):
+- Created React context for contract builder state management
+- Provides state and dispatch to all step components
+- Supports actions: UPDATE_CONTRACT_DATA, MARK_STEP_COMPLETED, SET_TEMPLATE, etc.
+
+index.tsx (Create Contract page):
+- Removed inline placeholder components
+- Added imports for real step components from ./steps
+- Added import for ContractBuilderProvider
+- Implemented handleTemplateSelect function
+- Wrapped content with ContractBuilderProvider
+- Connected step components with onNext/onBack props
+
+templates/index.tsx (Templates Step):
+- Added props interface: onTemplateSelect, onNext, onBack
+- Updated handleTemplateSelect to call parent callback
+- Prevents navigation when used within contract builder flow
+
+Dashboard.tsx:
+- Fixed quick action link: /contracts/new -> /contracts/create
+
+===============================================================
