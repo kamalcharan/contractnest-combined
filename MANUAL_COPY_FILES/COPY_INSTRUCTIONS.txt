@@ -1,24 +1,68 @@
 ═══════════════════════════════════════════════════
-FILES TO COPY - Navigation Flow Fix
+FILES TO COPY - Auth & Onboarding Redesign
 ═══════════════════════════════════════════════════
 
-SplashScreen.tsx
-  FROM: MANUAL_COPY_FILES/FamilyKnows/src/features/auth/screens/SplashScreen.tsx
-  TO:   FamilyKnows/src/features/auth/screens/SplashScreen.tsx
+1. IntroScreens.tsx (COMPLETE REDESIGN)
+   FROM: MANUAL_COPY_FILES/FamilyKnows/src/features/auth/screens/IntroScreens.tsx
+   TO:   FamilyKnows/src/features/auth/screens/IntroScreens.tsx
 
-  CHANGE: Line 128 - navigation.replace('Intro') instead of 'StoryOnboarding'
+   CHANGES:
+   - Complete redesign with StoryOnboarding immersive style
+   - Dark gradient background with stars
+   - Vertical scroll with parallax animations
+   - 4 sections: Welcome, Features, Security, Categories
+   - Glassmorphic feature cards
+   - Floating category bubbles
 
-IntroScreens.tsx
-  FROM: MANUAL_COPY_FILES/FamilyKnows/src/features/auth/screens/IntroScreens.tsx
-  TO:   FamilyKnows/src/features/auth/screens/IntroScreens.tsx
+2. LoginScreen.tsx (GOOGLE ONLY)
+   FROM: MANUAL_COPY_FILES/FamilyKnows/src/features/auth/screens/LoginScreen.tsx
+   TO:   FamilyKnows/src/features/auth/screens/LoginScreen.tsx
 
-  CHANGE: Line 151 - navigation.replace('Login') instead of 'StoryOnboarding'
+   CHANGES:
+   - Removed "Sign in with Phone" option
+   - Removed "or" divider
+   - Google sign-in only
+   - Matches immersive dark theme
+
+3. PhoneAuthScreen.tsx (VERIFICATION, NOT SIGNUP)
+   FROM: MANUAL_COPY_FILES/FamilyKnows/src/features/onboarding/screens/PhoneAuthScreen.tsx
+   TO:   FamilyKnows/src/features/onboarding/screens/PhoneAuthScreen.tsx
+
+   CHANGES:
+   - Updated title: "Verify Your Mobile"
+   - Updated subtitle: "Link your mobile number for account recovery and notifications"
+   - This is now for verification after Google auth, not signup
+
+4. SplashScreen.tsx (NAVIGATION FIX - from previous commit)
+   FROM: MANUAL_COPY_FILES/FamilyKnows/src/features/auth/screens/SplashScreen.tsx
+   TO:   FamilyKnows/src/features/auth/screens/SplashScreen.tsx
+
+   CHANGE: Navigates to 'Intro' instead of 'StoryOnboarding'
 
 ═══════════════════════════════════════════════════
-SUMMARY
+NEW AUTH FLOW
 ═══════════════════════════════════════════════════
 
-Purpose: Fix navigation flow to restore original sequence
-New Flow: Splash (3s) -> IntroScreens (3 pages) -> Login
+Splash (3s)
+    ↓
+IntroScreens (immersive scroll - 4 sections)
+    ↓
+Login (Google only)
+    ↓
+PhoneAuth (mobile verification)
+    ↓
+Onboarding (UserProfile, Theme, Family, etc.)
+    ↓
+Main App
+
+═══════════════════════════════════════════════════
+KEY DESIGN DECISIONS
+═══════════════════════════════════════════════════
+
+1. Auth before data collection (proper separation)
+2. Google as primary auth method
+3. Phone for verification, not signup
+4. Immersive dark theme throughout intro flow
+5. Collect user details AFTER authentication
 
 ═══════════════════════════════════════════════════
