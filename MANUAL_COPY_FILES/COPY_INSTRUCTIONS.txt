@@ -1,43 +1,135 @@
 ═══════════════════════════════════════════════════
-FILES TO COPY - Auth & Onboarding Redesign
+FILES TO COPY - Complete Auth Implementation
 ═══════════════════════════════════════════════════
 
-1. IntroScreens.tsx (COMPLETE REDESIGN)
-   FROM: MANUAL_COPY_FILES/FamilyKnows/src/features/auth/screens/IntroScreens.tsx
-   TO:   FamilyKnows/src/features/auth/screens/IntroScreens.tsx
+PHASE 1: CORE AUTH INFRASTRUCTURE
+─────────────────────────────────
+
+1. App.tsx (UPDATED - AuthProvider added)
+   FROM: MANUAL_COPY_FILES/FamilyKnows/App.tsx
+   TO:   FamilyKnows/App.tsx
 
    CHANGES:
-   - Complete redesign with StoryOnboarding immersive style
-   - Dark gradient background with stars
-   - Vertical scroll with parallax animations
-   - 4 sections: Welcome, Features, Security, Categories
-   - Glassmorphic feature cards
-   - Floating category bubbles
+   - Added AuthProvider wrapper
+   - Auth context now available throughout app
 
-2. LoginScreen.tsx (GOOGLE ONLY)
+2. API Service (NEW)
+   FROM: MANUAL_COPY_FILES/FamilyKnows/src/services/api.ts
+   TO:   FamilyKnows/src/services/api.ts
+
+   FEATURES:
+   - x-product: familyknows header
+   - Token management (auth, refresh)
+   - Auto token refresh on 401
+   - Session timeout tracking
+   - All auth API endpoints
+
+3. Services Index (UPDATED)
+   FROM: MANUAL_COPY_FILES/FamilyKnows/src/services/index.ts
+   TO:   FamilyKnows/src/services/index.ts
+
+4. AuthContext (NEW)
+   FROM: MANUAL_COPY_FILES/FamilyKnows/src/context/AuthContext.tsx
+   TO:   FamilyKnows/src/context/AuthContext.tsx
+
+   FEATURES:
+   - User state management
+   - Tenant management
+   - Login/Register/Logout methods
+   - Session timeout (10 min inactivity)
+   - App state handling (background/foreground)
+   - AsyncStorage persistence
+
+5. Context Index (UPDATED)
+   FROM: MANUAL_COPY_FILES/FamilyKnows/src/context/index.ts
+   TO:   FamilyKnows/src/context/index.ts
+
+
+PHASE 2: AUTH SCREENS
+─────────────────────
+
+6. LoginScreen.tsx (UPDATED - Email/Password)
    FROM: MANUAL_COPY_FILES/FamilyKnows/src/features/auth/screens/LoginScreen.tsx
    TO:   FamilyKnows/src/features/auth/screens/LoginScreen.tsx
 
    CHANGES:
-   - Removed "Sign in with Phone" option
-   - Removed "or" divider
-   - Google sign-in only
-   - Matches immersive dark theme
+   - Email + Password form
+   - Form validation
+   - AuthContext integration
+   - Link to Signup
+   - Link to Forgot Password
+   - Same immersive dark theme
 
-3. PhoneAuthScreen.tsx (VERIFICATION, NOT SIGNUP)
-   FROM: MANUAL_COPY_FILES/FamilyKnows/src/features/onboarding/screens/PhoneAuthScreen.tsx
-   TO:   FamilyKnows/src/features/onboarding/screens/PhoneAuthScreen.tsx
+7. SignupScreen.tsx (NEW)
+   FROM: MANUAL_COPY_FILES/FamilyKnows/src/features/auth/screens/SignupScreen.tsx
+   TO:   FamilyKnows/src/features/auth/screens/SignupScreen.tsx
+
+   FEATURES:
+   - First/Last name
+   - Email + Password (with confirmation)
+   - Family name (workspace name)
+   - Password strength validation
+   - AuthContext integration
+
+8. ForgotPasswordScreen.tsx (NEW)
+   FROM: MANUAL_COPY_FILES/FamilyKnows/src/features/auth/screens/ForgotPasswordScreen.tsx
+   TO:   FamilyKnows/src/features/auth/screens/ForgotPasswordScreen.tsx
+
+   FEATURES:
+   - Email input for password reset
+   - Success state with confirmation
+   - API integration
+
+
+PHASE 3: NAVIGATION
+───────────────────
+
+9. Navigation Types (UPDATED)
+   FROM: MANUAL_COPY_FILES/FamilyKnows/src/navigation/types.ts
+   TO:   FamilyKnows/src/navigation/types.ts
 
    CHANGES:
-   - Updated title: "Verify Your Mobile"
-   - Updated subtitle: "Link your mobile number for account recovery and notifications"
-   - This is now for verification after Google auth, not signup
+   - Added Signup, ForgotPassword routes
+   - Added Settings screen types
 
-4. SplashScreen.tsx (NAVIGATION FIX - from previous commit)
-   FROM: MANUAL_COPY_FILES/FamilyKnows/src/features/auth/screens/SplashScreen.tsx
-   TO:   FamilyKnows/src/features/auth/screens/SplashScreen.tsx
+10. AuthStack.tsx (UPDATED)
+    FROM: MANUAL_COPY_FILES/FamilyKnows/src/navigation/stacks/AuthStack.tsx
+    TO:   FamilyKnows/src/navigation/stacks/AuthStack.tsx
 
-   CHANGE: Navigates to 'Intro' instead of 'StoryOnboarding'
+    CHANGES:
+    - Added Signup screen
+    - Added ForgotPassword screen
+
+
+PHASE 4: COMPONENTS
+───────────────────
+
+11. MenuDrawer.tsx (UPDATED - Proper Logout)
+    FROM: MANUAL_COPY_FILES/FamilyKnows/src/components/navigation/MenuDrawer.tsx
+    TO:   FamilyKnows/src/components/navigation/MenuDrawer.tsx
+
+    CHANGES:
+    - Uses AuthContext for user info
+    - Proper logout with confirmation
+    - Calls logout API
+    - Clears all auth state
+
+
+PHASE 5: PREVIOUS FILES (from earlier commit)
+──────────────────────────────────────────────
+
+12. IntroScreens.tsx (COMPLETE REDESIGN)
+    FROM: MANUAL_COPY_FILES/FamilyKnows/src/features/auth/screens/IntroScreens.tsx
+    TO:   FamilyKnows/src/features/auth/screens/IntroScreens.tsx
+
+13. PhoneAuthScreen.tsx (VERIFICATION, NOT SIGNUP)
+    FROM: MANUAL_COPY_FILES/FamilyKnows/src/features/onboarding/screens/PhoneAuthScreen.tsx
+    TO:   FamilyKnows/src/features/onboarding/screens/PhoneAuthScreen.tsx
+
+14. SplashScreen.tsx (NAVIGATION FIX)
+    FROM: MANUAL_COPY_FILES/FamilyKnows/src/features/auth/screens/SplashScreen.tsx
+    TO:   FamilyKnows/src/features/auth/screens/SplashScreen.tsx
+
 
 ═══════════════════════════════════════════════════
 NEW AUTH FLOW
@@ -45,24 +137,71 @@ NEW AUTH FLOW
 
 Splash (3s)
     ↓
-IntroScreens (immersive scroll - 4 sections)
+IntroScreens (immersive scroll)
     ↓
-Login (Google only)
+Login (Email/Password)  ←→  Signup (New users)
+    ↓                           ↓
+    └─── Forgot Password ───────┘
     ↓
-PhoneAuth (mobile verification)
+PhoneAuth (mobile verification via OTP)
     ↓
 Onboarding (UserProfile, Theme, Family, etc.)
     ↓
 Main App
 
+Sign Out (from MenuDrawer)
+    ↓
+Login Screen
+
+
 ═══════════════════════════════════════════════════
-KEY DESIGN DECISIONS
+ENVIRONMENT SETUP
 ═══════════════════════════════════════════════════
 
-1. Auth before data collection (proper separation)
-2. Google as primary auth method
-3. Phone for verification, not signup
-4. Immersive dark theme throughout intro flow
-5. Collect user details AFTER authentication
+Add to FamilyKnows .env:
+
+EXPO_PUBLIC_API_URL=https://contractnest-api-production.up.railway.app
+EXPO_PUBLIC_SESSION_TIMEOUT_MINUTES=10
+
+
+═══════════════════════════════════════════════════
+API ENDPOINTS USED
+═══════════════════════════════════════════════════
+
+POST /api/auth/login          - Email/Password login
+POST /api/auth/register       - New user registration
+POST /api/auth/signout        - Logout
+POST /api/auth/refresh-token  - Token refresh
+GET  /api/auth/user           - Get current user
+POST /api/auth/reset-password - Forgot password
+PATCH /api/users/me           - Update profile
+
+All requests include:
+- x-product: familyknows
+- x-tenant-id: (tenant UUID)
+- x-environment: live|test
+- Authorization: Bearer <token>
+
+
+═══════════════════════════════════════════════════
+COPY COMMAND (from project root)
+═══════════════════════════════════════════════════
+
+# Run from contractnest-combined directory:
+
+cp MANUAL_COPY_FILES/FamilyKnows/App.tsx FamilyKnows/App.tsx
+cp MANUAL_COPY_FILES/FamilyKnows/src/services/api.ts FamilyKnows/src/services/api.ts
+cp MANUAL_COPY_FILES/FamilyKnows/src/services/index.ts FamilyKnows/src/services/index.ts
+cp MANUAL_COPY_FILES/FamilyKnows/src/context/AuthContext.tsx FamilyKnows/src/context/AuthContext.tsx
+cp MANUAL_COPY_FILES/FamilyKnows/src/context/index.ts FamilyKnows/src/context/index.ts
+cp MANUAL_COPY_FILES/FamilyKnows/src/features/auth/screens/LoginScreen.tsx FamilyKnows/src/features/auth/screens/LoginScreen.tsx
+cp MANUAL_COPY_FILES/FamilyKnows/src/features/auth/screens/SignupScreen.tsx FamilyKnows/src/features/auth/screens/SignupScreen.tsx
+cp MANUAL_COPY_FILES/FamilyKnows/src/features/auth/screens/ForgotPasswordScreen.tsx FamilyKnows/src/features/auth/screens/ForgotPasswordScreen.tsx
+cp MANUAL_COPY_FILES/FamilyKnows/src/features/auth/screens/IntroScreens.tsx FamilyKnows/src/features/auth/screens/IntroScreens.tsx
+cp MANUAL_COPY_FILES/FamilyKnows/src/features/auth/screens/SplashScreen.tsx FamilyKnows/src/features/auth/screens/SplashScreen.tsx
+cp MANUAL_COPY_FILES/FamilyKnows/src/features/onboarding/screens/PhoneAuthScreen.tsx FamilyKnows/src/features/onboarding/screens/PhoneAuthScreen.tsx
+cp MANUAL_COPY_FILES/FamilyKnows/src/navigation/types.ts FamilyKnows/src/navigation/types.ts
+cp MANUAL_COPY_FILES/FamilyKnows/src/navigation/stacks/AuthStack.tsx FamilyKnows/src/navigation/stacks/AuthStack.tsx
+cp MANUAL_COPY_FILES/FamilyKnows/src/components/navigation/MenuDrawer.tsx FamilyKnows/src/components/navigation/MenuDrawer.tsx
 
 ═══════════════════════════════════════════════════
