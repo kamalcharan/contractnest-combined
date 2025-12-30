@@ -1,0 +1,64 @@
+================================================================================
+ContractNest API - Multi-Product Supabase Routing Fix
+================================================================================
+
+PURPOSE:
+These files fix the x-product header routing issue where FamilyKnows requests
+were hitting the ContractNest database instead of the FamilyKnows database.
+
+WHAT CHANGED:
+- auth.ts middleware now uses product-specific Supabase clients
+- authController.ts routes API calls to correct Supabase based on x-product header
+
+HOW IT WORKS:
+- x-product: familyknows → FK_SUPABASE_URL / FK_SUPABASE_KEY
+- x-product: contractnest (or no header) → SUPABASE_URL / SUPABASE_KEY
+
+PREREQUISITES:
+Ensure your .env file has the FamilyKnows Supabase credentials:
+  FK_SUPABASE_URL=https://your-familyknows-project.supabase.co
+  FK_SUPABASE_KEY=your-familyknows-anon-key
+
+================================================================================
+COPY INSTRUCTIONS
+================================================================================
+
+Copy these files to the contractnest-api repository:
+
+1. src/middleware/auth.ts
+   FROM: MANUAL_COPY_FILES/ContractNestAPI/src/middleware/auth.ts
+   TO:   contractnest-api/src/middleware/auth.ts
+
+2. src/controllers/authController.ts
+   FROM: MANUAL_COPY_FILES/ContractNestAPI/src/controllers/authController.ts
+   TO:   contractnest-api/src/controllers/authController.ts
+
+================================================================================
+VERIFICATION
+================================================================================
+
+After copying, verify the changes work:
+
+1. Start the API server
+2. Test ContractNest login (should use SUPABASE_URL):
+   curl -X POST http://localhost:3000/api/auth/login \
+     -H "Content-Type: application/json" \
+     -d '{"email":"test@example.com","password":"test123"}'
+
+3. Test FamilyKnows login (should use FK_SUPABASE_URL):
+   curl -X POST http://localhost:3000/api/auth/login \
+     -H "Content-Type: application/json" \
+     -H "x-product: familyknows" \
+     -d '{"email":"test@example.com","password":"test123"}'
+
+4. Check server logs - should show:
+   - "Processing login for: test@example.com (product: contractnest)"
+   - "Processing login for: test@example.com (product: familyknows)"
+
+================================================================================
+BACKWARD COMPATIBILITY
+================================================================================
+
+These changes are fully backward compatible:
+- No x-product header → defaults to 'contractnest' → uses SUPABASE_URL
+- Existing ContractNest clients will continue to work without changes
