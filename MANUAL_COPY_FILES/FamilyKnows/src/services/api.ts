@@ -167,7 +167,7 @@ class ApiService {
         return false;
       }
 
-      const response = await fetch(`${this.baseUrl}/api/auth/refresh-token`, {
+      const response = await fetch(`${this.baseUrl}/api/FKauth/refresh-token`, {
         method: 'POST',
         headers: this.defaultHeaders,
         body: JSON.stringify({ refresh_token: refreshToken }),
