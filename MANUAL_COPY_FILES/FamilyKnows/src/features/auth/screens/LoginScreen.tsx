@@ -89,11 +89,72 @@ export const LoginScreen: React.FC = () => {
     ]).start();
   }, []);
 
-  // Navigate when authenticated
+  // Navigate when authenticated - check onboarding status
   useEffect(() => {
-    if (isAuthenticated) {
-      navigation.replace('PhoneAuth' as any, { isFromSettings: false });
-    }
+    const checkOnboardingAndNavigate = async () => {
+      if (isAuthenticated) {
+        try {
+          // Check onboarding status from API
+          const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://contractnest-api-production.up.railway.app'}/api/FKonboarding/status`, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              // Auth header will be added by API interceptor
+            },
+          });
+
+          const data = await response.json();
+
+          if (data.is_completed) {
+            // Onboarding complete - go to main app
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'Main' }],
+            });
+          } else {
+            // Find first incomplete required step
+            // Steps: mobile, personal-profile, theme, language
+            const incompleteStep = data.steps?.find((s: any) =>
+              s.status === 'pending' &&
+              ['mobile', 'personal-profile', 'theme', 'language'].includes(s.step_id)
+            );
+
+            if (incompleteStep) {
+              // Navigate to the appropriate onboarding screen
+              // Route mapping: PhoneAuth->Mobile, UserProfile->Profile, ThemeSelection->Theme, LanguageSelection->Language
+              switch (incompleteStep.step_id) {
+                case 'mobile':
+                  navigation.replace('PhoneAuth' as any, { isFromSettings: false });
+                  break;
+                case 'personal-profile':
+                  navigation.replace('UserProfile' as any, { isFromSettings: false });
+                  break;
+                case 'theme':
+                  navigation.replace('ThemeSelection' as any, { isFromSettings: false });
+                  break;
+                case 'language':
+                  navigation.replace('LanguageSelection' as any, { isFromSettings: false });
+                  break;
+                default:
+                  navigation.replace('PhoneAuth' as any, { isFromSettings: false });
+              }
+            } else {
+              // Default to main if no pending steps
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Main' }],
+              });
+            }
+          }
+        } catch (error) {
+          console.log('Error checking onboarding status, defaulting to onboarding:', error);
+          // Default to onboarding flow on error
+          navigation.replace('PhoneAuth' as any, { isFromSettings: false });
+        }
+      }
+    };
+
+    checkOnboardingAndNavigate();
   }, [isAuthenticated, navigation]);
 
   const validateForm = (): boolean => {
@@ -134,8 +195,7 @@ export const LoginScreen: React.FC = () => {
   };
 
   const handleSignUp = () => {
-    // Navigate to StoryOnboarding to capture name and family space before signup
-    navigation.navigate('StoryOnboarding' as any);
+    navigation.navigate('Signup' as any);
   };
 
   const handleForgotPassword = () => {

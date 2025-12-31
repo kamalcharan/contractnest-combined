@@ -20,9 +20,9 @@ import {
   ScrollView,
 } from 'react-native';
 import { Text } from '@rneui/themed';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { AuthStackParamList, OnboardingPrefillData } from '../../../navigation/types';
+import { AuthStackParamList } from '../../../navigation/types';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,7 +31,6 @@ import { useAuth } from '../../../context/AuthContext';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 type SignupScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Signup'>;
-type SignupScreenRouteProp = RouteProp<AuthStackParamList, 'Signup'>;
 
 interface FormErrors {
   email?: string;
@@ -41,14 +40,8 @@ interface FormErrors {
 
 export const SignupScreen: React.FC = () => {
   const navigation = useNavigation<SignupScreenNavigationProp>();
-  const route = useRoute<SignupScreenRouteProp>();
   const insets = useSafeAreaInsets();
   const { register, isAuthenticated } = useAuth();
-
-  // Get prefill data from StoryOnboarding
-  const prefillFirstName = route.params?.prefillFirstName || '';
-  const prefillLastName = route.params?.prefillLastName || '';
-  const prefillSpaceName = route.params?.prefillSpaceName || '';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -86,8 +79,8 @@ export const SignupScreen: React.FC = () => {
   // Navigate when authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      // Go to first onboarding step (mobile capture)
-      navigation.replace('MobileCapture' as any, { isFromSettings: false });
+      // Go to first onboarding step (mobile capture - storyboard style)
+      navigation.replace('PhoneAuth' as any, { isFromSettings: false });
     }
   }, [isAuthenticated, navigation]);
 
@@ -123,13 +116,10 @@ export const SignupScreen: React.FC = () => {
 
     setIsLoading(true);
     try {
-      // FamilyKnows: Send email, password, and prefill data from StoryOnboarding
+      // FamilyKnows: Only send email + password
       await register({
         email: email.trim().toLowerCase(),
         password,
-        firstName: prefillFirstName,
-        lastName: prefillLastName,
-        workspaceName: prefillSpaceName,
       });
       // Navigation will happen via useEffect when isAuthenticated changes
     } catch (error: any) {
@@ -205,12 +195,8 @@ export const SignupScreen: React.FC = () => {
               <Ionicons name="arrow-back" size={24} color="#FFF" />
             </TouchableOpacity>
             <View style={styles.headerTextContainer}>
-              <Text style={styles.headerTitle}>
-                {prefillFirstName ? `Welcome, ${prefillFirstName}!` : 'Create Account'}
-              </Text>
-              <Text style={styles.headerSubtitle}>
-                {prefillSpaceName ? `Setting up "${prefillSpaceName}"` : 'Join FamilyKnows today'}
-              </Text>
+              <Text style={styles.headerTitle}>Create Account</Text>
+              <Text style={styles.headerSubtitle}>Join FamilyKnows today</Text>
             </View>
           </View>
 
