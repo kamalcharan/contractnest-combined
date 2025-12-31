@@ -69,10 +69,8 @@ export const ThemeSetupScreen: React.FC = () => {
       setTheme(selectedThemeId);
 
       // Save to API
-      await api.post('/api/FKonboarding/step', {
-        step_id: 'theme',
-        tenant_id: currentTenant?.id,
-        user_id: user?.id,
+      await api.post('/api/FKonboarding/complete-step', {
+        stepId: 'theme',
         data: {
           theme: selectedThemeId,
           is_dark_mode: isDarkMode,

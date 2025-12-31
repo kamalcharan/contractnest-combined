@@ -101,11 +101,10 @@ export const MobileNumberScreen: React.FC = () => {
 
     setIsLoading(true);
     try {
-      // Call FKonboarding API to update mobile step
-      await api.post('/api/FKonboarding/step', {
-        step_id: 'mobile',
-        tenant_id: currentTenant?.id,
-        user_id: user?.id,
+      // Call FKonboarding API to complete personal-profile step
+      // Note: Mobile number is part of personal-profile step in FamilyKnows
+      await api.post('/api/FKonboarding/complete-step', {
+        stepId: 'personal-profile',
         data: {
           country_code: selectedCountry.dialCode,
           mobile_number: phoneNumber,

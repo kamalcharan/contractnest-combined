@@ -303,11 +303,9 @@ export const ProfileSetupScreen: React.FC = () => {
   const handleContinue = async () => {
     setIsLoading(true);
     try {
-      // Call FKonboarding API to update profile step
-      await api.post('/api/FKonboarding/step', {
-        step_id: 'personal-profile',
-        tenant_id: currentTenant?.id,
-        user_id: user?.id,
+      // Call FKonboarding API to complete personal-profile step
+      await api.post('/api/FKonboarding/complete-step', {
+        stepId: 'personal-profile',
         data: {
           first_name: firstName,
           last_name: lastName,

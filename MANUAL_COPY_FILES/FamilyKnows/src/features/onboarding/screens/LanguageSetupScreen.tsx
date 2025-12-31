@@ -82,10 +82,8 @@ export const LanguageSetupScreen: React.FC = () => {
     setIsLoading(true);
     try {
       // Save to API
-      await api.post('/api/FKonboarding/step', {
-        step_id: 'language',
-        tenant_id: currentTenant?.id,
-        user_id: user?.id,
+      await api.post('/api/FKonboarding/complete-step', {
+        stepId: 'language',
         data: {
           language: selectedLanguage,
           user_id: user?.id,
