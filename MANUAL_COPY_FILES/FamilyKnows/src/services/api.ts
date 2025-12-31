@@ -227,18 +227,19 @@ class ApiService {
 export const api = new ApiService();
 
 // API Endpoints
+// FamilyKnows uses FKauth Edge Function for authentication
 export const API_ENDPOINTS = {
   AUTH: {
-    LOGIN: '/api/auth/login',
-    REGISTER: '/api/auth/register',
-    SIGNOUT: '/api/auth/signout',
-    REFRESH_TOKEN: '/api/auth/refresh-token',
-    USER: '/api/auth/user',
-    RESET_PASSWORD: '/api/auth/reset-password',
-    CHANGE_PASSWORD: '/api/auth/change-password',
-    VERIFY_PASSWORD: '/api/auth/verify-password',
-    COMPLETE_REGISTRATION: '/api/auth/complete-registration',
-    UPDATE_PREFERENCES: '/api/auth/preferences',
+    LOGIN: '/api/FKauth/login',
+    REGISTER: '/api/FKauth/register',
+    SIGNOUT: '/api/FKauth/signout',
+    REFRESH_TOKEN: '/api/FKauth/refresh-token',
+    USER: '/api/FKauth/user',
+    RESET_PASSWORD: '/api/FKauth/reset-password',
+    CHANGE_PASSWORD: '/api/FKauth/change-password',
+    VERIFY_PASSWORD: '/api/FKauth/verify-password',
+    COMPLETE_REGISTRATION: '/api/FKauth/complete-registration',
+    UPDATE_PREFERENCES: '/api/FKauth/preferences',
   },
   TENANTS: {
     LIST: '/api/tenants',

@@ -134,9 +134,12 @@ export async function handleRegister(supabase: any, data: RegisterData) {
     console.log('User created successfully:', authData.user.id);
 
     // Create minimal user profile - will be updated during onboarding
+    // Include empty strings for fields that may have NOT NULL constraints
     const profileData = {
       user_id: authData.user.id,
       email: authData.user.email,
+      first_name: '',  // Will be set in onboarding
+      last_name: '',   // Will be set in onboarding
       is_active: true,
       // FamilyKnows defaults
       preferred_theme: 'light',
