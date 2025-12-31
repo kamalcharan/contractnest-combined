@@ -273,8 +273,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Register
   const register = useCallback(async (data: RegisterData) => {
     try {
-      // FamilyKnows: Send email, password, and prefill data from StoryOnboarding
-      // This allows tenant to be created during signup
+      // FamilyKnows: Send email + password + optional workspace_name
+      // If workspaceName provided, tenant is created during registration
       const response = await api.post<{
         access_token: string;
         refresh_token: string;
@@ -285,9 +285,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }>(API_ENDPOINTS.AUTH.REGISTER, {
         email: data.email,
         password: data.password,
+        workspace_name: data.workspaceName,
         first_name: data.firstName,
         last_name: data.lastName,
-        workspace_name: data.workspaceName,
       });
 
       const { access_token, refresh_token, user: userData, tenant, tenants: userTenants } = response.data;

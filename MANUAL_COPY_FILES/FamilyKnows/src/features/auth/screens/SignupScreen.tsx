@@ -116,10 +116,15 @@ export const SignupScreen: React.FC = () => {
 
     setIsLoading(true);
     try {
-      // FamilyKnows: Only send email + password
+      // FamilyKnows: Send email + password + default workspace name
+      // This creates a family space during registration
+      const emailUsername = email.split('@')[0];
+      const defaultWorkspaceName = `${emailUsername}'s Family`;
+
       await register({
         email: email.trim().toLowerCase(),
         password,
+        workspaceName: defaultWorkspaceName,
       });
       // Navigation will happen via useEffect when isAuthenticated changes
     } catch (error: any) {
