@@ -44,9 +44,10 @@ export interface Tenant {
 export interface RegisterData {
   email: string;
   password: string;
-  firstName: string;
-  lastName: string;
-  workspaceName: string;
+  // Optional fields - captured during onboarding
+  firstName?: string;
+  lastName?: string;
+  workspaceName?: string;
   countryCode?: string;
   mobileNumber?: string;
 }
@@ -272,37 +273,44 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Register
   const register = useCallback(async (data: RegisterData) => {
     try {
+      // FamilyKnows: Only send email + password
+      // Other fields are captured during onboarding
       const response = await api.post<{
         access_token: string;
         refresh_token: string;
         user: User;
-        tenant: Tenant;
+        tenant: Tenant | null;
+        tenants: Tenant[];
+        needs_onboarding: boolean;
       }>(API_ENDPOINTS.AUTH.REGISTER, {
         email: data.email,
         password: data.password,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        workspaceName: data.workspaceName,
-        countryCode: data.countryCode,
-        mobileNumber: data.mobileNumber,
       });
 
-      const { access_token, refresh_token, user: userData, tenant } = response.data;
+      const { access_token, refresh_token, user: userData, tenant, tenants: userTenants } = response.data;
 
-      // Store tokens
-      await AsyncStorage.multiSet([
+      // Store tokens (tenant may be null for FamilyKnows until onboarding completes)
+      const storageItems: [string, string][] = [
         [STORAGE_KEYS.AUTH_TOKEN, access_token],
         [STORAGE_KEYS.REFRESH_TOKEN, refresh_token],
         [STORAGE_KEYS.USER_DATA, JSON.stringify(userData)],
         [STORAGE_KEYS.USER_ID, userData.id],
-        [STORAGE_KEYS.TENANT_ID, tenant.id],
-        [STORAGE_KEYS.CURRENT_TENANT, JSON.stringify(tenant)],
         [STORAGE_KEYS.LAST_ACTIVITY, Date.now().toString()],
-      ]);
+      ];
+
+      // Only store tenant if it exists (FamilyKnows creates tenant during onboarding)
+      if (tenant) {
+        storageItems.push([STORAGE_KEYS.TENANT_ID, tenant.id]);
+        storageItems.push([STORAGE_KEYS.CURRENT_TENANT, JSON.stringify(tenant)]);
+        setCurrentTenantState(tenant);
+        setTenants([tenant]);
+      } else {
+        setTenants(userTenants || []);
+      }
+
+      await AsyncStorage.multiSet(storageItems);
 
       setUser(userData);
-      setTenants([tenant]);
-      setCurrentTenantState(tenant);
       setIsAuthenticated(true);
       setIsSessionExpired(false);
       resetSessionTimer();

@@ -86,12 +86,14 @@ async function initializeFKOnboarding(supabase: any, tenantId: string): Promise<
 }
 
 export async function handleRegister(supabase: any, data: RegisterData) {
-  const { email, password, firstName, lastName, workspaceName, countryCode, mobileNumber } = data;
+  // FamilyKnows: Only email + password required at signup
+  // Name, mobile, family-space etc. are captured during onboarding
+  const { email, password } = data;
 
-  // Validate required fields
+  // Validate required fields - only email and password
   const validationError = validateRequired(
-    { email, password, workspaceName, firstName, lastName },
-    ['email', 'password', 'workspaceName', 'firstName', 'lastName']
+    { email, password },
+    ['email', 'password']
   );
 
   if (validationError) {
@@ -110,28 +112,16 @@ export async function handleRegister(supabase: any, data: RegisterData) {
   }
 
   try {
-    // Check if workspace name already exists
-    const { data: existingTenants } = await supabase
-      .from('t_tenants')
-      .select('id')
-      .ilike('name', workspaceName)
-      .limit(1);
-
-    if (existingTenants && existingTenants.length > 0) {
-      return errorResponse('Family space name already exists. Please choose a different name.');
-    }
-
     console.log('Creating FamilyKnows user with email:', email);
 
-    // Create user
+    // Create user with minimal metadata
+    // Name and family space will be captured during onboarding
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
       user_metadata: {
-        first_name: firstName || '',
-        last_name: lastName || '',
-        registration_status: 'complete',
+        registration_status: 'pending_onboarding',
         product: 'familyknows'
       }
     });
@@ -143,49 +133,15 @@ export async function handleRegister(supabase: any, data: RegisterData) {
 
     console.log('User created successfully:', authData.user.id);
 
-    // Generate workspace code (family space code)
-    const workspaceCode = generateWorkspaceCode(workspaceName);
-
-    // Create tenant (family space)
-    const { data: tenant, error: tenantError } = await supabase
-      .from('t_tenants')
-      .insert({
-        name: workspaceName,
-        workspace_code: workspaceCode,
-        status: 'active',
-        created_by: authData.user.id,
-        is_admin: false
-      })
-      .select()
-      .single();
-
-    if (tenantError) {
-      console.error('Family space creation error:', tenantError.message);
-      throw new Error(`Error creating family space: ${tenantError.message}`);
-    }
-
-    console.log('Family space created successfully:', tenant.id);
-
-    // ============================================
-    // FAMILYKNOWS: Initialize FK-specific onboarding
-    // This replaces the ContractNest trigger behavior
-    // ============================================
-    await initializeFKOnboarding(supabase, tenant.id);
-
-    // Create user profile
+    // Create minimal user profile - will be updated during onboarding
     const profileData = {
       user_id: authData.user.id,
-      first_name: firstName || '',
-      last_name: lastName || '',
       email: authData.user.email,
       is_active: true,
-      user_code: generateUserCode(firstName, lastName),
       // FamilyKnows defaults
       preferred_theme: 'light',
       is_dark_mode: false,
-      preferred_language: 'en',
-      ...(countryCode && { country_code: countryCode }),
-      ...(mobileNumber && { mobile_number: mobileNumber })
+      preferred_language: 'en'
     };
 
     const { data: profile, error: profileError } = await supabase
@@ -219,26 +175,6 @@ export async function handleRegister(supabase: any, data: RegisterData) {
         ignoreDuplicates: false
       });
 
-    // Link user to tenant (family space)
-    const { data: userTenant, error: linkError } = await supabase
-      .from('t_user_tenants')
-      .insert({
-        user_id: authData.user.id,
-        tenant_id: tenant.id,
-        is_default: true,
-        status: 'active'
-      })
-      .select()
-      .single();
-
-    if (linkError) {
-      console.error('User-family space link error:', linkError.message);
-      throw new Error(`Error linking user to family space: ${linkError.message}`);
-    }
-
-    // Create default roles
-    await createDefaultRolesForTenant(supabase, tenant.id, userTenant.id);
-
     // Sign in the user
     const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
       email,
@@ -250,6 +186,7 @@ export async function handleRegister(supabase: any, data: RegisterData) {
       throw new Error(`Error signing in: ${signInError.message}`);
     }
 
+    // NOTE: No tenant created yet - will be created in family-space onboarding step
     return successResponse({
       user_id: authData.user.id,
       email: authData.user.email,
@@ -257,10 +194,8 @@ export async function handleRegister(supabase: any, data: RegisterData) {
       refresh_token: signInData.session.refresh_token,
       expires_in: signInData.session.expires_in,
       user: profile || profileData,
-      tenant: {
-        ...tenant,
-        is_admin: tenant.is_admin || false
-      },
+      tenant: null,
+      tenants: [],
       // FamilyKnows-specific: indicate onboarding is needed
       needs_onboarding: true,
       onboarding_type: 'family'

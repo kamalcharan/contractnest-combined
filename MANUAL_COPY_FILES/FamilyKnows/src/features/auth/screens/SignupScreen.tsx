@@ -1,5 +1,7 @@
 // src/features/auth/screens/SignupScreen.tsx
 // Email/Password Signup Screen for FamilyKnows
+// Simplified: Only email + password + confirm password
+// Name, mobile, family-space are captured during onboarding
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
@@ -31,12 +33,9 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 type SignupScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Signup'>;
 
 interface FormErrors {
-  firstName?: string;
-  lastName?: string;
   email?: string;
   password?: string;
   confirmPassword?: string;
-  familyName?: string;
 }
 
 export const SignupScreen: React.FC = () => {
@@ -44,23 +43,17 @@ export const SignupScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { register, isAuthenticated } = useAuth();
 
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [familyName, setFamilyName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
 
   // Refs for input focus
-  const lastNameRef = useRef<TextInput>(null);
-  const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const confirmPasswordRef = useRef<TextInput>(null);
-  const familyNameRef = useRef<TextInput>(null);
 
   // Entrance animations
   const cardOpacity = useRef(new Animated.Value(0)).current;
@@ -86,20 +79,13 @@ export const SignupScreen: React.FC = () => {
   // Navigate when authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigation.replace('PhoneAuth' as any, { isFromSettings: false });
+      // Go to first onboarding step (mobile capture)
+      navigation.replace('MobileCapture' as any, { isFromSettings: false });
     }
   }, [isAuthenticated, navigation]);
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
-
-    if (!firstName.trim()) {
-      newErrors.firstName = 'First name is required';
-    }
-
-    if (!lastName.trim()) {
-      newErrors.lastName = 'Last name is required';
-    }
 
     if (!email.trim()) {
       newErrors.email = 'Email is required';
@@ -121,10 +107,6 @@ export const SignupScreen: React.FC = () => {
       newErrors.confirmPassword = 'Passwords do not match';
     }
 
-    if (!familyName.trim()) {
-      newErrors.familyName = 'Family name is required';
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -134,12 +116,10 @@ export const SignupScreen: React.FC = () => {
 
     setIsLoading(true);
     try {
+      // FamilyKnows: Only send email + password
       await register({
         email: email.trim().toLowerCase(),
         password,
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        workspaceName: familyName.trim(),
       });
       // Navigation will happen via useEffect when isAuthenticated changes
     } catch (error: any) {
@@ -230,57 +210,11 @@ export const SignupScreen: React.FC = () => {
               }
             ]}
           >
-            {/* Name Row */}
-            <View style={styles.nameRow}>
-              <View style={[styles.inputContainer, styles.halfInput]}>
-                <View style={[styles.inputWrapper, errors.firstName && styles.inputError]}>
-                  <Ionicons name="person-outline" size={18} color="rgba(255,255,255,0.5)" />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="First name"
-                    placeholderTextColor="rgba(255,255,255,0.4)"
-                    value={firstName}
-                    onChangeText={(text) => {
-                      setFirstName(text);
-                      clearError('firstName');
-                    }}
-                    autoCapitalize="words"
-                    returnKeyType="next"
-                    onSubmitEditing={() => lastNameRef.current?.focus()}
-                    editable={!isLoading}
-                  />
-                </View>
-                {errors.firstName && <Text style={styles.errorText}>{errors.firstName}</Text>}
-              </View>
-
-              <View style={[styles.inputContainer, styles.halfInput]}>
-                <View style={[styles.inputWrapper, errors.lastName && styles.inputError]}>
-                  <TextInput
-                    ref={lastNameRef}
-                    style={[styles.input, { paddingLeft: 0 }]}
-                    placeholder="Last name"
-                    placeholderTextColor="rgba(255,255,255,0.4)"
-                    value={lastName}
-                    onChangeText={(text) => {
-                      setLastName(text);
-                      clearError('lastName');
-                    }}
-                    autoCapitalize="words"
-                    returnKeyType="next"
-                    onSubmitEditing={() => emailRef.current?.focus()}
-                    editable={!isLoading}
-                  />
-                </View>
-                {errors.lastName && <Text style={styles.errorText}>{errors.lastName}</Text>}
-              </View>
-            </View>
-
             {/* Email Input */}
             <View style={styles.inputContainer}>
               <View style={[styles.inputWrapper, errors.email && styles.inputError]}>
                 <Ionicons name="mail-outline" size={20} color="rgba(255,255,255,0.5)" />
                 <TextInput
-                  ref={emailRef}
                   style={styles.input}
                   placeholder="Email address"
                   placeholderTextColor="rgba(255,255,255,0.4)"
@@ -350,8 +284,8 @@ export const SignupScreen: React.FC = () => {
                   }}
                   secureTextEntry={!showConfirmPassword}
                   autoCapitalize="none"
-                  returnKeyType="next"
-                  onSubmitEditing={() => familyNameRef.current?.focus()}
+                  returnKeyType="done"
+                  onSubmitEditing={handleSignup}
                   editable={!isLoading}
                 />
                 <TouchableOpacity
@@ -368,29 +302,10 @@ export const SignupScreen: React.FC = () => {
               {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
             </View>
 
-            {/* Family/Workspace Name */}
-            <View style={styles.inputContainer}>
-              <View style={[styles.inputWrapper, errors.familyName && styles.inputError]}>
-                <MaterialCommunityIcons name="home-heart" size={20} color="rgba(255,255,255,0.5)" />
-                <TextInput
-                  ref={familyNameRef}
-                  style={styles.input}
-                  placeholder="Family name (e.g., The Smiths)"
-                  placeholderTextColor="rgba(255,255,255,0.4)"
-                  value={familyName}
-                  onChangeText={(text) => {
-                    setFamilyName(text);
-                    clearError('familyName');
-                  }}
-                  autoCapitalize="words"
-                  returnKeyType="done"
-                  onSubmitEditing={handleSignup}
-                  editable={!isLoading}
-                />
-              </View>
-              {errors.familyName && <Text style={styles.errorText}>{errors.familyName}</Text>}
-              <Text style={styles.helperText}>
-                This will be your family vault name
+            {/* Password Requirements Hint */}
+            <View style={styles.hintContainer}>
+              <Text style={styles.hintText}>
+                Password must be at least 8 characters with uppercase, lowercase, and number
               </Text>
             </View>
 
@@ -461,7 +376,7 @@ const styles = StyleSheet.create({
   headerSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 32,
   },
   backButton: {
     width: 44,
@@ -499,17 +414,9 @@ const styles = StyleSheet.create({
     shadowRadius: 24,
     elevation: 12,
   },
-  nameRow: {
-    flexDirection: 'row',
-    gap: 12,
-    width: '100%',
-  },
-  halfInput: {
-    flex: 1,
-  },
   inputContainer: {
     width: '100%',
-    marginBottom: 14,
+    marginBottom: 16,
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -517,7 +424,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.08)',
     borderRadius: 14,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
     gap: 10,
@@ -528,19 +435,22 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     color: '#FFF',
-    fontSize: 15,
+    fontSize: 16,
   },
   errorText: {
     color: '#EF4444',
-    fontSize: 11,
+    fontSize: 12,
     marginTop: 4,
     marginLeft: 4,
   },
-  helperText: {
+  hintContainer: {
+    width: '100%',
+    marginBottom: 20,
+  },
+  hintText: {
     color: 'rgba(255,255,255,0.4)',
-    fontSize: 11,
-    marginTop: 4,
-    marginLeft: 4,
+    fontSize: 12,
+    textAlign: 'center',
   },
   signupButton: {
     width: '100%',
@@ -549,7 +459,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
     marginBottom: 16,
     shadowColor: '#4ADE80',
     shadowOffset: { width: 0, height: 4 },
@@ -594,7 +503,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   footer: {
-    marginTop: 20,
+    marginTop: 24,
     paddingHorizontal: 20,
   },
   termsText: {
