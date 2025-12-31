@@ -25,6 +25,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../../context/AuthContext';
+import { api } from '../../../services/api';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -94,18 +95,18 @@ export const LoginScreen: React.FC = () => {
     const checkOnboardingAndNavigate = async () => {
       if (isAuthenticated) {
         try {
-          // Check onboarding status from API
-          const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://contractnest-api-production.up.railway.app'}/api/FKonboarding/status`, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              // Auth header will be added by API interceptor
-            },
-          });
+          // Check onboarding status from API (uses api service with auth token)
+          const response = await api.get<{
+            needs_onboarding: boolean;
+            data: {
+              is_complete: boolean;
+              steps: Record<string, { id: string; status: string; is_required: boolean; sequence: number }>;
+            };
+          }>('/api/FKonboarding/status');
 
-          const data = await response.json();
+          const result = response.data;
 
-          if (data.is_completed) {
+          if (!result.needs_onboarding || result.data?.is_complete) {
             // Onboarding complete - go to main app
             navigation.reset({
               index: 0,
@@ -113,16 +114,23 @@ export const LoginScreen: React.FC = () => {
             });
           } else {
             // Find first incomplete required step
-            // Steps: mobile, personal-profile, theme, language
-            const incompleteStep = data.steps?.find((s: any) =>
-              s.status === 'pending' &&
-              ['mobile', 'personal-profile', 'theme', 'language'].includes(s.step_id)
-            );
+            // Steps object: { mobile: {...}, 'personal-profile': {...}, theme: {...}, language: {...} }
+            const stepOrder = ['mobile', 'personal-profile', 'theme', 'language'];
+            const steps = result.data?.steps || {};
 
-            if (incompleteStep) {
+            let firstIncompleteStep: string | null = null;
+            for (const stepId of stepOrder) {
+              const step = steps[stepId];
+              if (step && step.status === 'pending') {
+                firstIncompleteStep = stepId;
+                break;
+              }
+            }
+
+            if (firstIncompleteStep) {
               // Navigate to the appropriate onboarding screen
               // Route mapping: PhoneAuth->Mobile, UserProfile->Profile, ThemeSelection->Theme, LanguageSelection->Language
-              switch (incompleteStep.step_id) {
+              switch (firstIncompleteStep) {
                 case 'mobile':
                   navigation.replace('PhoneAuth' as any, { isFromSettings: false });
                   break;
@@ -139,11 +147,8 @@ export const LoginScreen: React.FC = () => {
                   navigation.replace('PhoneAuth' as any, { isFromSettings: false });
               }
             } else {
-              // Default to main if no pending steps
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'Main' }],
-              });
+              // No pending steps found but needs_onboarding is true - start from beginning
+              navigation.replace('PhoneAuth' as any, { isFromSettings: false });
             }
           }
         } catch (error) {
