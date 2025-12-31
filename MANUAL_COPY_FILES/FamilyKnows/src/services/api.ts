@@ -83,7 +83,7 @@ class ApiService {
   }
 
   // Generic request method
-  private async request<T>(endpoint: string, config: RequestConfig): Promise<ApiResponse<T>> {
+  private async request<T>(endpoint: string, config: RequestConfig, isRetry: boolean = false): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}${endpoint}`;
     const headers = await this.getAuthHeaders();
 
@@ -110,15 +110,21 @@ class ApiService {
         await this.updateLastActivity();
       }
 
-      // Handle 401 - Unauthorized
-      if (response.status === 401) {
+      // Handle 401 - Unauthorized (only retry once)
+      if (response.status === 401 && !isRetry) {
         // Token expired, try to refresh
         const refreshed = await this.refreshToken();
         if (refreshed) {
-          // Retry the original request
-          return this.request<T>(endpoint, config);
+          // Retry the original request (mark as retry to prevent infinite loop)
+          return this.request<T>(endpoint, config, true);
         }
         // Refresh failed, clear auth
+        await this.clearAuth();
+        throw new Error('Session expired. Please login again.');
+      }
+
+      // If still 401 after retry, clear auth and throw
+      if (response.status === 401 && isRetry) {
         await this.clearAuth();
         throw new Error('Session expired. Please login again.');
       }
@@ -161,7 +167,7 @@ class ApiService {
         return false;
       }
 
-      const response = await fetch(`${this.baseUrl}/api/FKauth/refresh-token`, {
+      const response = await fetch(`${this.baseUrl}/api/auth/refresh-token`, {
         method: 'POST',
         headers: this.defaultHeaders,
         body: JSON.stringify({ refresh_token: refreshToken }),
