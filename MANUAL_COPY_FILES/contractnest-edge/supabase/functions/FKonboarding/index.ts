@@ -3,23 +3,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 
-// Generate a user code from first and last name
-function generateUserCode(firstName: string, lastName: string): string {
-  const cleanFirst = (firstName || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-  const cleanLast = (lastName || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-
-  if (!cleanFirst && !cleanLast) {
-    const timestamp = Date.now().toString(36).slice(-4).toUpperCase();
-    const random = Math.random().toString(36).substring(2, 6).toUpperCase();
-    return timestamp + random;
-  }
-
-  const firstPart = cleanFirst.substring(0, 4).padEnd(4, Math.random().toString(36).substring(2, 3).toUpperCase());
-  const lastPart = cleanLast.substring(0, 4).padEnd(4, Math.random().toString(36).substring(2, 3).toUpperCase());
-
-  return firstPart + lastPart;
-}
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-tenant-id, x-internal-signature, idempotency-key',
@@ -32,7 +15,7 @@ const FK_ONBOARDING_CONFIG = {
   totalSteps: 6,
   steps: [
     { step_id: 'personal-profile', step_sequence: 1, required: true },
-    { step_id: 'theme', step_sequence: 2, required: true, default_value: 'light' },
+    { step_id: 'theme', step_sequence: 2, required: true, default_value: 'purple-tone' },
     { step_id: 'language', step_sequence: 3, required: true, default_value: 'en' },
     { step_id: 'family-space', step_sequence: 4, required: true },
     { step_id: 'storage', step_sequence: 5, required: false },
@@ -358,7 +341,7 @@ async function handleInitialize(supabase: any, tenantId: string) {
         skipped_steps: [],
         step_data: {
           // Set default values for steps that have them
-          theme: { value: 'light', is_dark_mode: false },
+          theme: { value: 'purple-tone', is_dark_mode: false },
           language: { value: 'en' }
         },
         is_completed: false
@@ -566,15 +549,6 @@ async function handleStepDataUpdate(supabase: any, tenantId: string, stepId: str
           if (data.country_code) profileUpdate.country_code = data.country_code;
           if (data.mobile_number) profileUpdate.mobile_number = data.mobile_number;
 
-          // Generate user_code when first_name or last_name is provided
-          if (data.first_name || data.last_name) {
-            profileUpdate.user_code = generateUserCode(
-              data.first_name || '',
-              data.last_name || ''
-            );
-            console.log(`Generated user_code: ${profileUpdate.user_code} for user: ${data.user_id}`);
-          }
-
           if (Object.keys(profileUpdate).length > 0) {
             profileUpdate.updated_at = new Date().toISOString();
             await supabase
@@ -591,7 +565,7 @@ async function handleStepDataUpdate(supabase: any, tenantId: string, stepId: str
           await supabase
             .from('t_user_profiles')
             .update({
-              preferred_theme: data.theme || data.value || 'light',
+              preferred_theme: data.theme || data.value || 'purple-tone',
               is_dark_mode: data.is_dark_mode || false,
               updated_at: new Date().toISOString()
             })
