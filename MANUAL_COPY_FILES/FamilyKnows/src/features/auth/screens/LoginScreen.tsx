@@ -105,7 +105,9 @@ export const LoginScreen: React.FC = () => {
           }>('/api/FKonboarding/status');
 
           const result = response.data;
+          console.log('Onboarding status:', JSON.stringify(result, null, 2));
 
+          // Check if onboarding is complete
           if (!result.needs_onboarding || result.data?.is_complete) {
             // Onboarding complete - go to main app
             navigation.reset({
@@ -114,7 +116,7 @@ export const LoginScreen: React.FC = () => {
             });
           } else {
             // Find first incomplete required step
-            // Steps object: { mobile: {...}, 'personal-profile': {...}, theme: {...}, language: {...} }
+            // Steps is an OBJECT: { mobile: {...}, 'personal-profile': {...}, theme: {...}, language: {...} }
             const stepOrder = ['mobile', 'personal-profile', 'theme', 'language'];
             const steps = result.data?.steps || {};
 
@@ -127,9 +129,10 @@ export const LoginScreen: React.FC = () => {
               }
             }
 
+            console.log('First incomplete step:', firstIncompleteStep);
+
             if (firstIncompleteStep) {
               // Navigate to the appropriate onboarding screen
-              // Route mapping: PhoneAuth->Mobile, UserProfile->Profile, ThemeSelection->Theme, LanguageSelection->Language
               switch (firstIncompleteStep) {
                 case 'mobile':
                   navigation.replace('PhoneAuth' as any, { isFromSettings: false });
