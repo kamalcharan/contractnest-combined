@@ -1,3 +1,4 @@
+// backend/src/modules/catalog-studio/index.ts
 /**
  * Catalog Studio API
  * Main entry point for catalog studio module
