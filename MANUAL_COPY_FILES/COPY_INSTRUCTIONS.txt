@@ -36,11 +36,37 @@ EDGE FUNCTIONS (Deploy via Supabase CLI):
    FROM: MANUAL_COPY_FILES\edge-functions\cat-templates\index.ts
    TO:   contractnest-edge\supabase\functions\cat-templates\index.ts
 
+API FILES (Copy to contractnest-api):
+8. catalogStudioTypes.ts
+   FROM: MANUAL_COPY_FILES\api\catalog-studio\catalogStudioTypes.ts
+   TO:   contractnest-api\src\types\catalogStudioTypes.ts
+
+9. catBlocksService.ts
+   FROM: MANUAL_COPY_FILES\api\catalog-studio\catBlocksService.ts
+   TO:   contractnest-api\src\services\catBlocksService.ts
+
+10. catTemplatesService.ts
+    FROM: MANUAL_COPY_FILES\api\catalog-studio\catTemplatesService.ts
+    TO:   contractnest-api\src\services\catTemplatesService.ts
+
+11. catalogStudioController.ts
+    FROM: MANUAL_COPY_FILES\api\catalog-studio\catalogStudioController.ts
+    TO:   contractnest-api\src\controllers\catalogStudioController.ts
+
+12. catalogStudioRoutes.ts
+    FROM: MANUAL_COPY_FILES\api\catalog-studio\catalogStudioRoutes.ts
+    TO:   contractnest-api\src\routes\catalogStudioRoutes.ts
+
+13. index.ts (API module entry)
+    FROM: MANUAL_COPY_FILES\api\catalog-studio\index.ts
+    TO:   contractnest-api\src\modules\catalog-studio\index.ts
+
 ═══════════════════════════════════════════════════
 Submodules Affected:
 ──────────────
 - ClaudeDocumentation (Sprint plan + DB schema documents)
 - contractnest-edge (Migration SQL files + Edge functions)
+- contractnest-api (API routes, controllers, services)
 
 ═══════════════════════════════════════════════════
 Tables Created:
@@ -84,7 +110,43 @@ Required Headers:
 - x-timestamp (Unix timestamp for replay protection)
 - x-tenant-id (Tenant UUID)
 - x-user-id (User UUID)
+- x-product (default: contractnest)
 - x-is-admin (true/false)
 - x-environment (live/test) - for cat-templates only
+
+═══════════════════════════════════════════════════
+API Endpoints (via Express):
+──────────────
+Base: /api/catalog-studio
+
+BLOCKS:
+  GET    /blocks           - List blocks (filtered by isAdmin)
+  GET    /blocks/:id       - Get single block
+  POST   /blocks           - Create block (admin only)
+  PATCH  /blocks/:id       - Update block (admin only)
+  DELETE /blocks/:id       - Soft delete (admin only)
+
+TEMPLATES:
+  GET    /templates        - List tenant templates
+  GET    /templates/system - List system templates
+  GET    /templates/public - List public templates
+  GET    /templates/:id    - Get single template
+  POST   /templates        - Create template
+  POST   /templates/:id/copy - Copy system template
+  PATCH  /templates/:id    - Update template
+  DELETE /templates/:id    - Soft delete
+
+HEALTH:
+  GET    /health           - Health check
+
+═══════════════════════════════════════════════════
+Integration in contractnest-api/src/index.ts:
+──────────────
+Add the following to register routes:
+
+  import catalogStudioRoutes from './routes/catalogStudioRoutes';
+
+  // In route registration section:
+  app.use('/api/catalog-studio', authenticate, catalogStudioRoutes);
 
 ═══════════════════════════════════════════════════
