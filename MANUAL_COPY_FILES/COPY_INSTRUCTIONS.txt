@@ -86,6 +86,16 @@ UI FILES (Copy to contractnest-ui):
     FROM: MANUAL_COPY_FILES\ui\catalog-studio\hooks\mutations\useCatTemplatesMutations.ts
     TO:   contractnest-ui\src\hooks\mutations\useCatTemplatesMutations.ts
 
+20. queries/index.ts (Queries barrel export - OPTIONAL)
+    FROM: MANUAL_COPY_FILES\ui\catalog-studio\hooks\queries\index.ts
+    ACTION: Add exports to existing contractnest-ui\src\hooks\queries\index.ts
+            (if index.ts exists, merge exports; if not, create it)
+
+21. mutations/index.ts (Mutations barrel export - OPTIONAL)
+    FROM: MANUAL_COPY_FILES\ui\catalog-studio\hooks\mutations\index.ts
+    ACTION: Add exports to existing contractnest-ui\src\hooks\mutations\index.ts
+            (if index.ts exists, merge exports; if not, create it)
+
 ═══════════════════════════════════════════════════
 Submodules Affected:
 ──────────────
