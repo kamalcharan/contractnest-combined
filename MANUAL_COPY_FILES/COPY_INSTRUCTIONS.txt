@@ -61,6 +61,10 @@ API FILES (Copy to contractnest-api):
     FROM: MANUAL_COPY_FILES\api\catalog-studio\index.ts
     TO:   contractnest-api\src\modules\catalog-studio\index.ts
 
+14. index.ts.integration.md (Integration Guide)
+    FROM: MANUAL_COPY_FILES\api\catalog-studio\index.ts.integration.md
+    ACTION: Follow steps to update contractnest-api\src\index.ts
+
 ═══════════════════════════════════════════════════
 Submodules Affected:
 ──────────────
@@ -142,11 +146,17 @@ HEALTH:
 ═══════════════════════════════════════════════════
 Integration in contractnest-api/src/index.ts:
 ──────────────
-Add the following to register routes:
+See: MANUAL_COPY_FILES\api\catalog-studio\index.ts.integration.md
 
-  import catalogStudioRoutes from './routes/catalogStudioRoutes';
-
-  // In route registration section:
-  app.use('/api/catalog-studio', authenticate, catalogStudioRoutes);
+Quick Summary (9 steps):
+1. Add route loading (~line 270)
+2. Add route registration (~line 560)
+3. Update health check services object (~line 600)
+4. Update health check features object (~line 612)
+5. Update health check try block (~line 698)
+6. Update root endpoint services (~line 732)
+7. Update root endpoint endpoints (~line 741)
+8. Add console logging (~line 1071)
+9. Update 404 handler endpoints (~line 778)
 
 ═══════════════════════════════════════════════════
