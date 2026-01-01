@@ -130,6 +130,17 @@ export const SignupScreen: React.FC = () => {
 
     setIsLoading(true);
     try {
+      // Debug logging for API diagnostics
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'https://contractnest-api-production.up.railway.app';
+      console.log('=== SIGNUP DEBUG ===');
+      console.log('API URL:', apiUrl);
+      console.log('Registration data:', {
+        email: email.trim().toLowerCase(),
+        firstName: prefillFirstName,
+        lastName: prefillLastName,
+        workspaceName: prefillSpaceName,
+      });
+
       // Use data from StoryOnboarding screen (user-provided, not auto-generated)
       await register({
         email: email.trim().toLowerCase(),
@@ -138,8 +149,12 @@ export const SignupScreen: React.FC = () => {
         lastName: prefillLastName,
         workspaceName: prefillSpaceName,
       });
+      console.log('Registration successful!');
       // Navigation will happen via useEffect when isAuthenticated changes
     } catch (error: any) {
+      console.log('Registration error:', error);
+      console.log('Error name:', error.name);
+      console.log('Error message:', error.message);
       Alert.alert(
         'Registration Failed',
         error.message || 'Please check your information and try again.',

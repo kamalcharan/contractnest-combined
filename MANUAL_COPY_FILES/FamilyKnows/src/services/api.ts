@@ -92,16 +92,28 @@ class ApiService {
       Object.assign(headers, config.headers);
     }
 
+    // Debug logging
+    console.log('=== API REQUEST DEBUG ===');
+    console.log('Base URL:', this.baseUrl);
+    console.log('Full URL:', url);
+    console.log('Method:', config.method);
+    console.log('Headers:', JSON.stringify(headers, null, 2));
+    if (config.body) {
+      console.log('Body:', JSON.stringify(config.body, null, 2));
+    }
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), config.timeout || DEFAULT_TIMEOUT);
 
     try {
+      console.log('Initiating fetch...');
       const response = await fetch(url, {
         method: config.method,
         headers,
         body: config.body ? JSON.stringify(config.body) : undefined,
         signal: controller.signal,
       });
+      console.log('Fetch completed - Status:', response.status);
 
       clearTimeout(timeoutId);
 
@@ -150,9 +162,18 @@ class ApiService {
       };
     } catch (error: any) {
       clearTimeout(timeoutId);
+      console.log('=== API REQUEST ERROR ===');
+      console.log('Error name:', error.name);
+      console.log('Error message:', error.message);
+      console.log('Full error:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
 
       if (error.name === 'AbortError') {
         throw new Error('Request timeout');
+      }
+
+      // Provide more helpful error message for network failures
+      if (error.message === 'Network request failed') {
+        throw new Error('Unable to connect to server. Please check your internet connection and try again.');
       }
 
       throw error;
