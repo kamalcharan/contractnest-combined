@@ -65,12 +65,34 @@ API FILES (Copy to contractnest-api):
     FROM: MANUAL_COPY_FILES\api\catalog-studio\index.ts.integration.md
     ACTION: Follow steps to update contractnest-api\src\index.ts
 
+UI FILES (Copy to contractnest-ui):
+15. serviceURLs.addition.ts (Add to existing serviceURLs.ts)
+    FROM: MANUAL_COPY_FILES\ui\catalog-studio\serviceURLs.addition.ts
+    ACTION: Merge CATALOG_STUDIO section into contractnest-ui\src\services\serviceURLs.ts
+
+16. useCatBlocks.ts (Query hook for blocks)
+    FROM: MANUAL_COPY_FILES\ui\catalog-studio\hooks\queries\useCatBlocks.ts
+    TO:   contractnest-ui\src\hooks\queries\useCatBlocks.ts
+
+17. useCatTemplates.ts (Query hook for templates)
+    FROM: MANUAL_COPY_FILES\ui\catalog-studio\hooks\queries\useCatTemplates.ts
+    TO:   contractnest-ui\src\hooks\queries\useCatTemplates.ts
+
+18. useCatBlocksMutations.ts (Mutations for blocks - admin only)
+    FROM: MANUAL_COPY_FILES\ui\catalog-studio\hooks\mutations\useCatBlocksMutations.ts
+    TO:   contractnest-ui\src\hooks\mutations\useCatBlocksMutations.ts
+
+19. useCatTemplatesMutations.ts (Mutations for templates)
+    FROM: MANUAL_COPY_FILES\ui\catalog-studio\hooks\mutations\useCatTemplatesMutations.ts
+    TO:   contractnest-ui\src\hooks\mutations\useCatTemplatesMutations.ts
+
 ═══════════════════════════════════════════════════
 Submodules Affected:
 ──────────────
 - ClaudeDocumentation (Sprint plan + DB schema documents)
 - contractnest-edge (Migration SQL files + Edge functions)
 - contractnest-api (API routes, controllers, services)
+- contractnest-ui (Hooks for queries and mutations)
 
 ═══════════════════════════════════════════════════
 Tables Created:
@@ -158,5 +180,37 @@ Quick Summary (9 steps):
 7. Update root endpoint endpoints (~line 741)
 8. Add console logging (~line 1071)
 9. Update 404 handler endpoints (~line 778)
+
+═══════════════════════════════════════════════════
+UI Hooks Created:
+──────────────
+Query Hooks (TanStack Query):
+- useCatBlocks() - Fetch blocks list with filters
+- useCatBlock(id) - Fetch single block
+- useCatBlocksForDropdown() - Blocks formatted for select
+- useSearchCatBlocks(query) - Search blocks
+- useCatBlocksByType(typeId) - Filter by block type
+
+- useCatTemplates() - Fetch tenant templates
+- useCatTemplate(id) - Fetch single template
+- useCatSystemTemplates() - Fetch system templates
+- useCatPublicTemplates() - Fetch public templates
+- useCatTemplatesForDropdown() - Templates for select
+- useAllAvailableTemplates() - All templates combined
+
+Mutation Hooks:
+- useCreateCatBlock() - Create block (admin only)
+- useUpdateCatBlock() - Update block (admin only)
+- useDeleteCatBlock() - Delete block (admin only)
+- useToggleCatBlockStatus() - Toggle active (admin)
+- useCatBlockMutationOperations() - All block mutations
+
+- useCreateCatTemplate() - Create template
+- useUpdateCatTemplate() - Update template
+- useDeleteCatTemplate() - Delete template
+- useCopyCatTemplate() - Copy system template
+- useToggleCatTemplatePublic() - Toggle public
+- useCatTemplateMutationOperations() - All template mutations
+- useSaveTemplate() - Create or update (smart)
 
 ═══════════════════════════════════════════════════
