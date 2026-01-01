@@ -275,6 +275,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       // FamilyKnows: Send email + password + optional workspace_name
       // If workspaceName provided, tenant is created during registration
+      console.log('=== REGISTER DEBUG ===');
+      console.log('Sending registration data:', {
+        email: data.email,
+        workspace_name: data.workspaceName,
+        first_name: data.firstName,
+        last_name: data.lastName,
+      });
+
       const response = await api.post<{
         access_token: string;
         refresh_token: string;
@@ -290,7 +298,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         last_name: data.lastName,
       });
 
+      console.log('Registration response:', JSON.stringify(response.data, null, 2));
+
       const { access_token, refresh_token, user: userData, tenant, tenants: userTenants } = response.data;
+
+      console.log('Extracted tenant:', tenant);
+      console.log('Extracted tenants:', userTenants);
 
       // Store tokens (tenant may be null for FamilyKnows until onboarding completes)
       const storageItems: [string, string][] = [
@@ -303,15 +316,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       // Only store tenant if it exists (FamilyKnows creates tenant during onboarding)
       if (tenant) {
+        console.log('Storing tenant ID:', tenant.id);
         storageItems.push([STORAGE_KEYS.TENANT_ID, tenant.id]);
         storageItems.push([STORAGE_KEYS.CURRENT_TENANT, JSON.stringify(tenant)]);
         setCurrentTenantState(tenant);
         setTenants([tenant]);
       } else {
+        console.log('WARNING: No tenant returned from registration!');
         setTenants(userTenants || []);
       }
 
       await AsyncStorage.multiSet(storageItems);
+      console.log('Storage items saved successfully');
+
+      // Verify tenant was stored
+      const storedTenantId = await AsyncStorage.getItem(STORAGE_KEYS.TENANT_ID);
+      console.log('Verified stored tenant ID:', storedTenantId);
 
       setUser(userData);
       setIsAuthenticated(true);
