@@ -96,6 +96,27 @@ UI FILES (Copy to contractnest-ui):
     ACTION: Add exports to existing contractnest-ui\src\hooks\mutations\index.ts
             (if index.ts exists, merge exports; if not, create it)
 
+UI UTILITIES (Adapters for API integration):
+22. catBlockAdapter.ts (Converts API CatBlock to UI Block format)
+    FROM: MANUAL_COPY_FILES\ui\catalog-studio\utils\catBlockAdapter.ts
+    TO:   contractnest-ui\src\utils\catalog-studio\catBlockAdapter.ts
+
+23. catTemplateAdapter.ts (Converts API CatTemplate to UI Template format)
+    FROM: MANUAL_COPY_FILES\ui\catalog-studio\utils\catTemplateAdapter.ts
+    TO:   contractnest-ui\src\utils\catalog-studio\catTemplateAdapter.ts
+
+24. utils/index.ts (Utils barrel export)
+    FROM: MANUAL_COPY_FILES\ui\catalog-studio\utils\index.ts
+    TO:   contractnest-ui\src\utils\catalog-studio\index.ts
+
+UI INTEGRATION GUIDE:
+25. UI_INTEGRATION_GUIDE.md
+    FROM: MANUAL_COPY_FILES\ui\catalog-studio\UI_INTEGRATION_GUIDE.md
+    ACTION: Follow steps to integrate hooks into existing pages:
+            - blocks.tsx
+            - templates-list.tsx
+            - template.tsx
+
 ═══════════════════════════════════════════════════
 Submodules Affected:
 ──────────────
@@ -222,5 +243,37 @@ Mutation Hooks:
 - useToggleCatTemplatePublic() - Toggle public
 - useCatTemplateMutationOperations() - All template mutations
 - useSaveTemplate() - Create or update (smart)
+
+═══════════════════════════════════════════════════
+UI Adapters Created:
+──────────────
+catBlockAdapter.ts:
+- catBlockToBlock() - Convert API CatBlock to UI Block
+- catBlocksToBlocks() - Convert array
+- blockToCreateData() - Convert UI Block to API create format
+- blockToUpdateData() - Convert UI Block updates to API format
+
+catTemplateAdapter.ts:
+- catTemplateToUITemplate() - Convert API CatTemplate to UI format
+- catTemplatesToUITemplates() - Convert array
+- uiTemplateToCreateData() - Convert UI template to API create format
+- uiTemplateToUpdateData() - Convert UI updates to API format
+- createTemplateBlock() - Create API TemplateBlock from UI data
+
+═══════════════════════════════════════════════════
+UI Page Integration:
+──────────────
+See: UI_INTEGRATION_GUIDE.md for detailed steps
+
+Pages requiring hook integration:
+1. blocks.tsx - Replace getAllBlocks() with useCatBlocks()
+2. templates-list.tsx - Replace MOCK_TEMPLATES with useCatTemplates()
+3. template.tsx - Add useCatBlocks() + useSaveTemplate()
+
+Key changes for each page:
+- Import hooks and adapters
+- Replace mock data with hook calls
+- Add loading/error states
+- Connect mutation hooks for CRUD
 
 ═══════════════════════════════════════════════════
