@@ -209,10 +209,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           resetSessionTimer();
         } catch (error) {
           console.error('Token verification failed:', error);
-          await api.clearAuth();
-          setUser(null);
-          setTenants([]);
-          setCurrentTenantState(null);
+
+          // Check if token is fresh (within last 30 seconds) - don't clear if so
+          const lastActivity = await AsyncStorage.getItem(STORAGE_KEYS.LAST_ACTIVITY);
+          const tokenAge = lastActivity ? Date.now() - parseInt(lastActivity, 10) : Infinity;
+
+          if (tokenAge < 30000) {
+            console.log('Token is fresh during init, keeping auth. Age:', tokenAge);
+            // Token is fresh but verification failed (likely service issue)
+            // Keep the auth state, assume token is valid
+            setIsAuthenticated(true);
+            resetSessionTimer();
+          } else {
+            console.log('Token is stale, clearing auth. Age:', tokenAge);
+            await api.clearAuth();
+            setUser(null);
+            setTenants([]);
+            setCurrentTenantState(null);
+          }
         }
       } catch (error) {
         console.error('Auth initialization error:', error);

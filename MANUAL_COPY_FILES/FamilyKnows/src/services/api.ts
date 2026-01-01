@@ -55,11 +55,18 @@ class ApiService {
 
     try {
       const authToken = await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+      const tenantId = await AsyncStorage.getItem(STORAGE_KEYS.TENANT_ID);
+
+      console.log('=== AUTH HEADERS DEBUG ===');
+      console.log('Auth token present:', !!authToken, authToken ? `(${authToken.substring(0, 20)}...)` : '');
+      console.log('Tenant ID:', tenantId);
+
       if (authToken) {
         headers['Authorization'] = `Bearer ${authToken}`;
+      } else {
+        console.warn('WARNING: No auth token found in storage!');
       }
 
-      const tenantId = await AsyncStorage.getItem(STORAGE_KEYS.TENANT_ID);
       if (tenantId) {
         headers['x-tenant-id'] = tenantId;
       }
