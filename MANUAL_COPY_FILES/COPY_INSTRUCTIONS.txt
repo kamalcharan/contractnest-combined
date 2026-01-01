@@ -9,10 +9,14 @@ Files to Copy:
    FROM: MANUAL_COPY_FILES\CatalogStudio-SprintPlan-v1.0.md
    TO:   ClaudeDocumentation\contractUI\CatalogStudio-SprintPlan-v1.0.md
 
+2. CatalogStudio-Database-Schema-v1.0.md
+   FROM: MANUAL_COPY_FILES\CatalogStudio-Database-Schema-v1.0.md
+   TO:   ClaudeDocumentation\contractUI\CatalogStudio-Database-Schema-v1.0.md
+
 ═══════════════════════════════════════════════════
 Submodules Affected:
 ──────────────
-- ClaudeDocumentation (Sprint plan document)
+- ClaudeDocumentation (Sprint plan + DB schema documents)
 
 ═══════════════════════════════════════════════════
 Purpose:
