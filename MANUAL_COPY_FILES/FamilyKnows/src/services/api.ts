@@ -124,6 +124,19 @@ class ApiService {
 
       // Handle 401 - Unauthorized (only retry once)
       if (response.status === 401 && !isRetry) {
+        console.log('Got 401, checking if token is fresh...');
+
+        // Check if token was just created (within last 30 seconds)
+        const lastActivity = await AsyncStorage.getItem(STORAGE_KEYS.LAST_ACTIVITY);
+        const tokenAge = lastActivity ? Date.now() - parseInt(lastActivity, 10) : Infinity;
+
+        if (tokenAge < 30000) {
+          // Token is fresh - don't clear auth, just throw error
+          // This handles cases where Edge Function JWT validation fails due to config issues
+          console.log('Token is fresh (age: ' + tokenAge + 'ms), not clearing auth');
+          throw new Error('Service temporarily unavailable. Please try again.');
+        }
+
         // Token expired, try to refresh
         const refreshed = await this.refreshToken();
         if (refreshed) {
