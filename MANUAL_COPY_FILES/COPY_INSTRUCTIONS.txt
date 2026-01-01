@@ -1,10 +1,11 @@
 ═══════════════════════════════════════════════════
-COPY INSTRUCTIONS - Catalog Studio Sprint Plan
+COPY INSTRUCTIONS - Catalog Studio Database Tables
 ═══════════════════════════════════════════════════
 
 Files to Copy:
 ──────────────
 
+DOCUMENTATION:
 1. CatalogStudio-SprintPlan-v1.0.md
    FROM: MANUAL_COPY_FILES\CatalogStudio-SprintPlan-v1.0.md
    TO:   ClaudeDocumentation\contractUI\CatalogStudio-SprintPlan-v1.0.md
@@ -13,25 +14,40 @@ Files to Copy:
    FROM: MANUAL_COPY_FILES\CatalogStudio-Database-Schema-v1.0.md
    TO:   ClaudeDocumentation\contractUI\CatalogStudio-Database-Schema-v1.0.md
 
+MIGRATIONS (Run in Supabase SQL Editor in order):
+3. 001_create_cat_blocks.sql
+   FROM: MANUAL_COPY_FILES\migrations\catalog-studio\001_create_cat_blocks.sql
+   TO:   contractnest-edge\supabase\migrations\catalog-studio\001_create_cat_blocks.sql
+
+4. 002_create_cat_templates.sql
+   FROM: MANUAL_COPY_FILES\migrations\catalog-studio\002_create_cat_templates.sql
+   TO:   contractnest-edge\supabase\migrations\catalog-studio\002_create_cat_templates.sql
+
+5. 003_seed_master_data.sql
+   FROM: MANUAL_COPY_FILES\migrations\catalog-studio\003_seed_master_data.sql
+   TO:   contractnest-edge\supabase\migrations\catalog-studio\003_seed_master_data.sql
+
 ═══════════════════════════════════════════════════
 Submodules Affected:
 ──────────────
 - ClaudeDocumentation (Sprint plan + DB schema documents)
+- contractnest-edge (Migration SQL files)
 
 ═══════════════════════════════════════════════════
-Purpose:
+Tables Created:
 ──────────────
-Comprehensive 3-sprint implementation plan for Catalog Studio:
-- Sprint 1: Foundation (Blocks + Resources + Buyers)
-- Sprint 2: Core Flow (Templates + Contracts)
-- Sprint 3: Execution (Tasks + Automation)
+1. cat_blocks - Global blocks library (service, spare, billing, etc.)
+2. cat_templates - Templates built from blocks (tenant + global)
 
-Includes:
-- Database schemas for all tables
-- Edge function specifications
-- API endpoint definitions
-- UI component hierarchy
-- Type definitions
-- Deliverable checklists per sprint
+Master Data Seeded (in m_category_master/details):
+- cat_block_type (8 types)
+- cat_pricing_mode (4 modes)
+- cat_price_type (5 types)
+- cat_block_status (3 statuses)
+- cat_template_status (3 statuses)
+- cat_evidence_type (7 types)
+- cat_location_type (3 types)
+- cat_currency (6 currencies)
+- cat_payment_type (5 types)
 
 ═══════════════════════════════════════════════════
