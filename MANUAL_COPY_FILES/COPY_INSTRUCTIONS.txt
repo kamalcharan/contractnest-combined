@@ -27,11 +27,20 @@ MIGRATIONS (Run in Supabase SQL Editor in order):
    FROM: MANUAL_COPY_FILES\migrations\catalog-studio\003_seed_master_data.sql
    TO:   contractnest-edge\supabase\migrations\catalog-studio\003_seed_master_data.sql
 
+EDGE FUNCTIONS (Deploy via Supabase CLI):
+6. cat-blocks/index.ts
+   FROM: MANUAL_COPY_FILES\edge-functions\cat-blocks\index.ts
+   TO:   contractnest-edge\supabase\functions\cat-blocks\index.ts
+
+7. cat-templates/index.ts
+   FROM: MANUAL_COPY_FILES\edge-functions\cat-templates\index.ts
+   TO:   contractnest-edge\supabase\functions\cat-templates\index.ts
+
 ═══════════════════════════════════════════════════
 Submodules Affected:
 ──────────────
 - ClaudeDocumentation (Sprint plan + DB schema documents)
-- contractnest-edge (Migration SQL files)
+- contractnest-edge (Migration SQL files + Edge functions)
 
 ═══════════════════════════════════════════════════
 Tables Created:
@@ -49,5 +58,33 @@ Master Data Seeded (in m_category_master/details):
 - cat_location_type (3 types)
 - cat_currency (6 currencies)
 - cat_payment_type (5 types)
+
+═══════════════════════════════════════════════════
+Edge Functions Created:
+──────────────
+1. cat-blocks - Global blocks CRUD
+   - GET /cat-blocks - List all blocks (filtered by is_admin)
+   - GET /cat-blocks/:id - Get single block
+   - POST /cat-blocks - Create block (admin only)
+   - PATCH /cat-blocks/:id - Update block (admin only)
+   - DELETE /cat-blocks/:id - Soft delete (admin only)
+
+2. cat-templates - Templates CRUD with tenant isolation
+   - GET /cat-templates - List tenant templates
+   - GET /cat-templates/system - List system templates
+   - GET /cat-templates/public - List public templates
+   - GET /cat-templates/:id - Get single template
+   - POST /cat-templates - Create template
+   - POST /cat-templates/:id/copy - Copy system template to tenant
+   - PATCH /cat-templates/:id - Update template
+   - DELETE /cat-templates/:id - Soft delete
+
+Required Headers:
+- x-signature (HMAC signature using INTERNAL_SIGNING_SECRET)
+- x-timestamp (Unix timestamp for replay protection)
+- x-tenant-id (Tenant UUID)
+- x-user-id (User UUID)
+- x-is-admin (true/false)
+- x-environment (live/test) - for cat-templates only
 
 ═══════════════════════════════════════════════════
