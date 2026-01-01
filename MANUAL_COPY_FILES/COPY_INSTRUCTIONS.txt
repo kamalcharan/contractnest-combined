@@ -109,13 +109,27 @@ UI UTILITIES (Adapters for API integration):
     FROM: MANUAL_COPY_FILES\ui\catalog-studio\utils\index.ts
     TO:   contractnest-ui\src\utils\catalog-studio\index.ts
 
-UI INTEGRATION GUIDE:
-25. UI_INTEGRATION_GUIDE.md
+UI PAGES (Fully integrated with API hooks - REPLACE existing files):
+25. blocks.tsx (Blocks Library Page)
+    FROM: MANUAL_COPY_FILES\ui\catalog-studio\pages\blocks.tsx
+    TO:   contractnest-ui\src\pages\catalog-studio\blocks.tsx
+    NOTE: Fully integrated with useCatBlocks, useCreateCatBlock, useUpdateCatBlock, useDeleteCatBlock
+
+26. templates-list.tsx (Templates List Page)
+    FROM: MANUAL_COPY_FILES\ui\catalog-studio\pages\templates-list.tsx
+    TO:   contractnest-ui\src\pages\catalog-studio\templates-list.tsx
+    NOTE: Fully integrated with useCatTemplates, useCatSystemTemplates, useDeleteCatTemplate, useCopyCatTemplate
+
+27. template.tsx (Template Builder Page)
+    FROM: MANUAL_COPY_FILES\ui\catalog-studio\pages\template.tsx
+    TO:   contractnest-ui\src\pages\catalog-studio\template.tsx
+    NOTE: Fully integrated with useCatBlocks, useCatTemplate, useSaveTemplate
+          Supports edit mode via URL params: ?templateId=xxx&edit=true
+
+UI INTEGRATION GUIDE (Reference only):
+28. UI_INTEGRATION_GUIDE.md
     FROM: MANUAL_COPY_FILES\ui\catalog-studio\UI_INTEGRATION_GUIDE.md
-    ACTION: Follow steps to integrate hooks into existing pages:
-            - blocks.tsx
-            - templates-list.tsx
-            - template.tsx
+    ACTION: Reference document - pages are now pre-integrated (items 25-27 above)
 
 ═══════════════════════════════════════════════════
 Submodules Affected:
@@ -261,19 +275,28 @@ catTemplateAdapter.ts:
 - createTemplateBlock() - Create API TemplateBlock from UI data
 
 ═══════════════════════════════════════════════════
-UI Page Integration:
+UI Pages (Pre-Integrated):
 ──────────────
-See: UI_INTEGRATION_GUIDE.md for detailed steps
+Pages are now fully integrated with API hooks and ready for copy:
 
-Pages requiring hook integration:
-1. blocks.tsx - Replace getAllBlocks() with useCatBlocks()
-2. templates-list.tsx - Replace MOCK_TEMPLATES with useCatTemplates()
-3. template.tsx - Add useCatBlocks() + useSaveTemplate()
+1. blocks.tsx (Items #25)
+   - Uses useCatBlocks() for fetching blocks
+   - Uses useCreateCatBlock(), useUpdateCatBlock(), useDeleteCatBlock()
+   - Uses catBlocksToBlocks() adapter for type conversion
+   - Includes loading states, error handling, and refetch capability
 
-Key changes for each page:
-- Import hooks and adapters
-- Replace mock data with hook calls
-- Add loading/error states
-- Connect mutation hooks for CRUD
+2. templates-list.tsx (Item #26)
+   - Uses useCatTemplates(), useCatSystemTemplates(), useCatPublicTemplates()
+   - Uses useDeleteCatTemplate(), useCopyCatTemplate()
+   - Uses catTemplatesToUITemplates() adapter for type conversion
+   - Combines tenant, system, and public templates
+
+3. template.tsx (Item #27)
+   - Uses useCatBlocks() for blocks library
+   - Uses useCatTemplate() for edit mode loading
+   - Uses useSaveTemplate() for create/update
+   - Supports edit mode via URL: ?templateId=xxx&edit=true
+   - Includes Cmd+S keyboard shortcut for saving
+   - Tracks unsaved changes
 
 ═══════════════════════════════════════════════════
