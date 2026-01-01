@@ -203,7 +203,8 @@ export const LoginScreen: React.FC = () => {
   };
 
   const handleSignUp = () => {
-    navigation.navigate('Signup' as any);
+    // Navigate to StoryOnboarding to capture name + family space first
+    navigation.navigate('StoryOnboarding' as any);
   };
 
   const handleForgotPassword = () => {

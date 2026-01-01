@@ -1,7 +1,6 @@
 // src/features/auth/screens/SignupScreen.tsx
 // Email/Password Signup Screen for FamilyKnows
-// Simplified: Only email + password + confirm password
-// Name, mobile, family-space are captured during onboarding
+// Receives firstName, lastName, spaceName from StoryOnboarding screen
 
 import React, { useState, useEffect, useRef } from 'react';
 import {
@@ -20,7 +19,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Text } from '@rneui/themed';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../../navigation/types';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -31,6 +30,7 @@ import { useAuth } from '../../../context/AuthContext';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 type SignupScreenNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Signup'>;
+type SignupScreenRouteProp = RouteProp<AuthStackParamList, 'Signup'>;
 
 interface FormErrors {
   email?: string;
@@ -40,8 +40,12 @@ interface FormErrors {
 
 export const SignupScreen: React.FC = () => {
   const navigation = useNavigation<SignupScreenNavigationProp>();
+  const route = useRoute<SignupScreenRouteProp>();
   const insets = useSafeAreaInsets();
   const { register, isAuthenticated } = useAuth();
+
+  // Get prefill data from StoryOnboarding
+  const { prefillFirstName, prefillLastName, prefillSpaceName } = route.params || {};
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -114,17 +118,25 @@ export const SignupScreen: React.FC = () => {
   const handleSignup = async () => {
     if (!validateForm()) return;
 
+    // Validate that we have the required data from StoryOnboarding
+    if (!prefillFirstName || !prefillLastName || !prefillSpaceName) {
+      Alert.alert(
+        'Missing Information',
+        'Please go back and complete your profile information first.',
+        [{ text: 'OK', onPress: () => navigation.navigate('StoryOnboarding' as any) }]
+      );
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // FamilyKnows: Send email + password + default workspace name
-      // This creates a family space during registration
-      const emailUsername = email.split('@')[0];
-      const defaultWorkspaceName = `${emailUsername}'s Family`;
-
+      // Use data from StoryOnboarding screen (user-provided, not auto-generated)
       await register({
         email: email.trim().toLowerCase(),
         password,
-        workspaceName: defaultWorkspaceName,
+        firstName: prefillFirstName,
+        lastName: prefillLastName,
+        workspaceName: prefillSpaceName,
       });
       // Navigation will happen via useEffect when isAuthenticated changes
     } catch (error: any) {
@@ -201,9 +213,19 @@ export const SignupScreen: React.FC = () => {
             </TouchableOpacity>
             <View style={styles.headerTextContainer}>
               <Text style={styles.headerTitle}>Create Account</Text>
-              <Text style={styles.headerSubtitle}>Join FamilyKnows today</Text>
+              <Text style={styles.headerSubtitle}>
+                {prefillFirstName ? `Welcome, ${prefillFirstName}!` : 'Join FamilyKnows today'}
+              </Text>
             </View>
           </View>
+
+          {/* Show Family Space Info */}
+          {prefillSpaceName && (
+            <View style={styles.familyInfoBanner}>
+              <MaterialCommunityIcons name="home-heart" size={20} color="#8B5CF6" />
+              <Text style={styles.familyInfoText}>{prefillSpaceName}</Text>
+            </View>
+          )}
 
           {/* GLASSMORPHIC SIGNUP CARD */}
           <Animated.View
@@ -404,6 +426,23 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.5)',
+  },
+  familyInfoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(139, 92, 246, 0.15)',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginBottom: 20,
+    gap: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.3)',
+  },
+  familyInfoText: {
+    color: '#C4B5FD',
+    fontSize: 15,
+    fontWeight: '600',
   },
   glassCard: {
     width: '100%',
