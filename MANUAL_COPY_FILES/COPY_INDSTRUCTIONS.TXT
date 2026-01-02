@@ -1,0 +1,21 @@
+UI PAGES (Fully integrated with API hooks - REPLACE existing files):
+25. blocks.tsx (Blocks Library Page)
+    FROM: MANUAL_COPY_FILES\ui\catalog-studio\pages\blocks.tsx
+    TO:   contractnest-ui\src\pages\catalog-studio\blocks.tsx
+    NOTE: Fully integrated with useCatBlocks, useCreateCatBlock, useUpdateCatBlock, useDeleteCatBlock
+
+26. templates-list.tsx (Templates List Page)
+    FROM: MANUAL_COPY_FILES\ui\catalog-studio\pages\templates-list.tsx
+    TO:   contractnest-ui\src\pages\catalog-studio\templates-list.tsx
+    NOTE: Fully integrated with useCatTemplates, useCatSystemTemplates, useDeleteCatTemplate, useCopyCatTemplate
+
+27. template.tsx (Template Builder Page)
+    FROM: MANUAL_COPY_FILES\ui\catalog-studio\pages\template.tsx
+    TO:   contractnest-ui\src\pages\catalog-studio\template.tsx
+    NOTE: Fully integrated with useCatBlocks, useCatTemplate, useSaveTemplate
+          Supports edit mode via URL params: ?templateId=xxx&edit=true
+
+UI Pages (Pre-Integrated):
+1. blocks.tsx - Uses useCatBlocks() for fetching, mutation hooks for CRUD
+2. templates-list.tsx - Uses useCatTemplates(), useCatSystemTemplates(), useCatPublicTemplates()
+3. template.tsx - Uses useCatBlocks(), useCatTemplate(), useSaveTemplate(), Cmd+S shortcut
