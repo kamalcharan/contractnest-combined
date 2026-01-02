@@ -5,6 +5,7 @@
  */
 
 import express, { Request, Response, NextFunction } from 'express';
+import { authenticate } from '../middleware/auth';
 import catalogStudioController from '../controllers/catalogStudioController';
 
 const router = express.Router();
@@ -13,20 +14,14 @@ const router = express.Router();
 // Middleware
 // ============================================
 
-/**
- * Validate required headers
- */
-const validateHeaders = (req: Request, res: Response, next: NextFunction): void => {
-  const authHeader = req.headers.authorization;
-  const tenantId = req.headers['x-tenant-id'];
+// Apply authentication to all routes
+router.use(authenticate);
 
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    res.status(401).json({
-      success: false,
-      error: { code: 'UNAUTHORIZED', message: 'Authorization header is required' },
-    });
-    return;
-  }
+/**
+ * Validate required tenant header
+ */
+const validateTenant = (req: Request, res: Response, next: NextFunction): void => {
+  const tenantId = req.headers['x-tenant-id'];
 
   if (!tenantId) {
     res.status(400).json({
@@ -83,14 +78,14 @@ const requireAdmin = (req: Request, res: Response, next: NextFunction): void => 
 // GET /blocks - List all blocks
 router.get(
   '/blocks',
-  validateHeaders,
+  validateTenant,
   catalogStudioController.getBlocks
 );
 
 // GET /blocks/:id - Get single block
 router.get(
   '/blocks/:id',
-  validateHeaders,
+  validateTenant,
   validateUUID('id'),
   catalogStudioController.getBlockById
 );
@@ -98,7 +93,7 @@ router.get(
 // POST /blocks - Create block (admin only)
 router.post(
   '/blocks',
-  validateHeaders,
+  validateTenant,
   requireAdmin,
   catalogStudioController.createBlock
 );
@@ -106,7 +101,7 @@ router.post(
 // PATCH /blocks/:id - Update block (admin only)
 router.patch(
   '/blocks/:id',
-  validateHeaders,
+  validateTenant,
   requireAdmin,
   validateUUID('id'),
   catalogStudioController.updateBlock
@@ -115,7 +110,7 @@ router.patch(
 // DELETE /blocks/:id - Delete block (admin only)
 router.delete(
   '/blocks/:id',
-  validateHeaders,
+  validateTenant,
   requireAdmin,
   validateUUID('id'),
   catalogStudioController.deleteBlock
@@ -128,28 +123,28 @@ router.delete(
 // GET /templates - List tenant templates
 router.get(
   '/templates',
-  validateHeaders,
+  validateTenant,
   catalogStudioController.getTemplates
 );
 
 // GET /templates/system - List system templates
 router.get(
   '/templates/system',
-  validateHeaders,
+  validateTenant,
   catalogStudioController.getSystemTemplates
 );
 
 // GET /templates/public - List public templates
 router.get(
   '/templates/public',
-  validateHeaders,
+  validateTenant,
   catalogStudioController.getPublicTemplates
 );
 
 // GET /templates/:id - Get single template
 router.get(
   '/templates/:id',
-  validateHeaders,
+  validateTenant,
   validateUUID('id'),
   catalogStudioController.getTemplateById
 );
@@ -157,14 +152,14 @@ router.get(
 // POST /templates - Create template
 router.post(
   '/templates',
-  validateHeaders,
+  validateTenant,
   catalogStudioController.createTemplate
 );
 
 // POST /templates/:id/copy - Copy system template to tenant
 router.post(
   '/templates/:id/copy',
-  validateHeaders,
+  validateTenant,
   validateUUID('id'),
   catalogStudioController.copyTemplate
 );
@@ -172,7 +167,7 @@ router.post(
 // PATCH /templates/:id - Update template
 router.patch(
   '/templates/:id',
-  validateHeaders,
+  validateTenant,
   validateUUID('id'),
   catalogStudioController.updateTemplate
 );
@@ -180,7 +175,7 @@ router.patch(
 // DELETE /templates/:id - Delete template
 router.delete(
   '/templates/:id',
-  validateHeaders,
+  validateTenant,
   validateUUID('id'),
   catalogStudioController.deleteTemplate
 );

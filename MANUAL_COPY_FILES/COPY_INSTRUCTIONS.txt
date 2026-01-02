@@ -35,6 +35,9 @@ FILES TO COPY:
 
    CHANGES:
    - Fixed import path: './catalogStudioController' -> '../controllers/catalogStudioController'
+   - Added proper auth middleware: import { authenticate } from '../middleware/auth'
+   - Added router.use(authenticate) to validate tokens with Supabase
+   - Renamed validateHeaders to validateTenant (auth header now validated by authenticate middleware)
 
 4. catBlocksService.ts
    SOURCE: MANUAL_COPY_FILES\catBlocksService.ts
