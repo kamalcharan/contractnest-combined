@@ -36,4 +36,29 @@ FILES TO COPY:
    CHANGES:
    - Fixed import path: './catalogStudioController' -> '../controllers/catalogStudioController'
 
+4. catBlocksService.ts
+   SOURCE: MANUAL_COPY_FILES\catBlocksService.ts
+   DESTINATION: contractnest-api\src\services\catBlocksService.ts
+
+   CHANGES:
+   - Fixed import path: './catalogStudioTypes' -> '../types/catalogStudioTypes'
+
+5. catTemplatesService.ts
+   SOURCE: MANUAL_COPY_FILES\catTemplatesService.ts
+   DESTINATION: contractnest-api\src\services\catTemplatesService.ts
+
+   CHANGES:
+   - Fixed import path: './catalogStudioTypes' -> '../types/catalogStudioTypes'
+
+═══════════════════════════════════════════════════════════════════════════
+
+SUMMARY OF ALL IMPORT PATH FIXES:
+═══════════════════════════════════════════════════════════════════════════
+The original code had all files in the same directory (modules/catalog-studio/).
+When split into standard Express.js structure (controllers/, routes/, services/, types/),
+the relative import paths needed to be updated:
+
+Controller:  '../services/...' and '../types/...'
+Routes:      '../controllers/...'
+Services:    '../types/...'
 ═══════════════════════════════════════════════════════════════════════════
