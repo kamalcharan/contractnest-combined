@@ -1,0 +1,87 @@
+================================================================================
+CATALOG STUDIO - PHASE 1: DATABASE & BACKEND FOUNDATION
+================================================================================
+Date: 2026-01-03
+Branch: claude/init-submodules-catalog-5Tvwk
+
+SUMMARY OF CHANGES:
+==================
+
+1. SCHEMA MIGRATION (NEW) - Add tenant_id and is_seed fields to cat_blocks
+2. EDGE FUNCTION (ENHANCE) - Remove isAdmin CRUD checks, add tenant_id handling
+3. API CONTROLLER (ENHANCE) - Remove isAdmin checks for CRUD operations
+4. API SERVICE (ENHANCE) - Remove isAdmin checks, add tenant_id handling
+
+================================================================================
+FILE COPY INSTRUCTIONS
+================================================================================
+
+EDGE FUNCTION FILES (contractnest-edge):
+----------------------------------------
+
+1. 004_add_tenant_fields.sql (NEW MIGRATION)
+   FROM: Manual_Copy/Catalog-Studio/contractnest-edge/supabase/migrations/catalog-studio/004_add_tenant_fields.sql
+   TO:   contractnest-edge/supabase/migrations/catalog-studio/004_add_tenant_fields.sql
+
+2. index.ts (UPDATED EDGE FUNCTION)
+   FROM: Manual_Copy/Catalog-Studio/contractnest-edge/supabase/functions/cat-blocks/index.ts
+   TO:   contractnest-edge/supabase/functions/cat-blocks/index.ts
+
+
+API FILES (contractnest-api):
+-----------------------------
+
+3. catalogStudioController.ts (UPDATED)
+   FROM: Manual_Copy/Catalog-Studio/contractnest-api/src/controllers/catalogStudioController.ts
+   TO:   contractnest-api/src/controllers/catalogStudioController.ts
+
+4. catBlocksService.ts (UPDATED)
+   FROM: Manual_Copy/Catalog-Studio/contractnest-api/src/services/catBlocksService.ts
+   TO:   contractnest-api/src/services/catBlocksService.ts
+
+
+================================================================================
+CHANGES DETAIL
+================================================================================
+
+1. 004_add_tenant_fields.sql:
+   - Adds tenant_id UUID column (references tenants table)
+   - Adds is_seed BOOLEAN column (default false)
+   - Creates indexes for new columns
+   - Updates RLS policies for multi-tenancy
+
+2. cat-blocks/index.ts (Edge Function):
+   - REMOVED isAdmin checks for POST, PATCH, DELETE operations
+   - ADDED tenant_id handling in create/update/delete
+   - ADDED permission logic: users can CRUD their tenant's blocks
+   - ADDED: only admin can create/update/delete global or seed blocks
+   - KEPT: isAdmin visibility logic for GET (non-admin see active+visible only)
+
+3. catalogStudioController.ts:
+   - REMOVED isAdmin checks from createBlock (was line 147-153)
+   - REMOVED isAdmin checks from updateBlock (was line 185-191)
+   - REMOVED isAdmin checks from deleteBlock (was line 223-229)
+   - Permission checks now delegated to Edge Function
+
+4. catBlocksService.ts:
+   - REMOVED isAdmin checks from createBlock (was line 156-161)
+   - REMOVED isAdmin checks from updateBlock (was line 190-195)
+   - REMOVED isAdmin checks from deleteBlock (was line 222-227)
+   - ADDED tenant_id from context when creating blocks
+   - ADDED updated_by from context when updating blocks
+
+================================================================================
+DATABASE MIGRATION NOTES
+================================================================================
+
+IMPORTANT: Run the migration 004_add_tenant_fields.sql on Supabase
+
+This migration:
+1. Adds tenant_id column (nullable for global blocks)
+2. Adds is_seed column (for seed/template blocks)
+3. Creates performance indexes
+4. Updates RLS policies for multi-tenant access
+
+The migration is idempotent (uses IF NOT EXISTS).
+
+================================================================================
