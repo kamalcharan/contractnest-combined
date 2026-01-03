@@ -26,6 +26,7 @@ PHASE 3: BLOCK TYPES FROM DATABASE
 
 7. useBlockTypes.ts (NEW) - Hook to fetch block types from m_category_details
 8. categories.ts (ENHANCE) - Use DB data with fallback to hardcoded categories
+9. 005_seed_block_types.sql (NEW) - Seed block types into m_category_master/details
 
 ================================================================================
 FILE COPY INSTRUCTIONS
@@ -42,15 +43,19 @@ EDGE FUNCTION FILES (contractnest-edge):
    FROM: Manual_Copy/Catalog-Studio/contractnest-edge/supabase/functions/cat-blocks/index.ts
    TO:   contractnest-edge/supabase/functions/cat-blocks/index.ts
 
+3. 005_seed_block_types.sql (NEW MIGRATION - PHASE 3)
+   FROM: Manual_Copy/Catalog-Studio/contractnest-edge/supabase/migrations/catalog-studio/005_seed_block_types.sql
+   TO:   contractnest-edge/supabase/migrations/catalog-studio/005_seed_block_types.sql
+
 
 API FILES (contractnest-api):
 -----------------------------
 
-3. catalogStudioController.ts (UPDATED)
+4. catalogStudioController.ts (UPDATED)
    FROM: Manual_Copy/Catalog-Studio/contractnest-api/src/controllers/catalogStudioController.ts
    TO:   contractnest-api/src/controllers/catalogStudioController.ts
 
-4. catBlocksService.ts (UPDATED)
+5. catBlocksService.ts (UPDATED)
    FROM: Manual_Copy/Catalog-Studio/contractnest-api/src/services/catBlocksService.ts
    TO:   contractnest-api/src/services/catBlocksService.ts
 
@@ -58,19 +63,19 @@ API FILES (contractnest-api):
 UI FILES (contractnest-ui):
 ---------------------------
 
-5. useCatBlocks.ts (UPDATED - CRITICAL FIX)
+6. useCatBlocks.ts (UPDATED - CRITICAL FIX)
    FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/hooks/queries/useCatBlocks.ts
    TO:   contractnest-ui/src/hooks/queries/useCatBlocks.ts
 
-6. useCatBlocksMutations.ts (UPDATED)
+7. useCatBlocksMutations.ts (UPDATED)
    FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/hooks/mutations/useCatBlocksMutations.ts
    TO:   contractnest-ui/src/hooks/mutations/useCatBlocksMutations.ts
 
-7. useBlockTypes.ts (NEW - PHASE 3)
+8. useBlockTypes.ts (NEW - PHASE 3)
    FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/hooks/queries/useBlockTypes.ts
    TO:   contractnest-ui/src/hooks/queries/useBlockTypes.ts
 
-8. categories.ts (UPDATED - PHASE 3)
+9. categories.ts (UPDATED - PHASE 3)
    FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/utils/catalog-studio/categories.ts
    TO:   contractnest-ui/src/utils/catalog-studio/categories.ts
 
@@ -158,6 +163,20 @@ PHASE 3 CHANGES DETAIL
      * getDefaultPricingMode()
      * supportsResources()
      * supportsVariants()
+
+9. 005_seed_block_types.sql (NEW MIGRATION):
+   - Inserts 'cat_block_type' into m_category_master
+   - Inserts 8 block types into m_category_details:
+     * service (Briefcase, #4F46E5) - Deliverable work items with SLA
+     * spare (Package, #059669) - Physical products with inventory
+     * billing (CreditCard, #D97706) - Payment structures
+     * text (FileText, #6B7280) - Terms, conditions, policies
+     * video (Video, #DC2626) - Embedded video content
+     * image (Image, #7C3AED) - Photos and diagrams
+     * checklist (CheckSquare, #0891B2) - Task verification lists
+     * document (Paperclip, #64748B) - File attachments
+   - Uses UPSERT logic (ON CONFLICT DO UPDATE)
+   - Safe to run multiple times (idempotent)
 
 
 ================================================================================
