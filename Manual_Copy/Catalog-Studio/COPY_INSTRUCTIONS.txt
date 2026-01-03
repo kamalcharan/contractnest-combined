@@ -1,5 +1,5 @@
 ================================================================================
-CATALOG STUDIO - PHASES 1, 2 & 3: DATABASE, BACKEND, UI HOOKS & BLOCK TYPES
+CATALOG STUDIO - PHASES 1, 2, 3 & 4: DATABASE, UI HOOKS, BLOCK TYPES & FULL PAGE
 ================================================================================
 Date: 2026-01-03
 Branch: claude/init-submodules-catalog-5Tvwk
@@ -27,6 +27,15 @@ PHASE 3: BLOCK TYPES FROM DATABASE
 7. useBlockTypes.ts (NEW) - Hook to fetch block types from m_category_details
 8. categories.ts (ENHANCE) - Use DB data with fallback to hardcoded categories
 9. 005_seed_block_types.sql (NEW) - Seed block types into m_category_master/details
+
+================================================================================
+PHASE 4: FULL PAGE WIZARD
+================================================================================
+
+10. BlockWizardContent.tsx (NEW) - Embeddable wizard content without modal
+11. index.tsx (ENHANCE) - BlockWizard now exports both modal and content versions
+12. new.tsx (NEW) - Full page block creation route
+13. edit.tsx (NEW) - Full page block editing route
 
 ================================================================================
 FILE COPY INSTRUCTIONS
@@ -78,6 +87,22 @@ UI FILES (contractnest-ui):
 9. categories.ts (UPDATED - PHASE 3)
    FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/utils/catalog-studio/categories.ts
    TO:   contractnest-ui/src/utils/catalog-studio/categories.ts
+
+10. BlockWizardContent.tsx (NEW - PHASE 4)
+    FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/components/catalog-studio/BlockWizard/BlockWizardContent.tsx
+    TO:   contractnest-ui/src/components/catalog-studio/BlockWizard/BlockWizardContent.tsx
+
+11. BlockWizard/index.tsx (UPDATED - PHASE 4)
+    FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/components/catalog-studio/BlockWizard/index.tsx
+    TO:   contractnest-ui/src/components/catalog-studio/BlockWizard/index.tsx
+
+12. blocks/new.tsx (NEW - PHASE 4)
+    FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/pages/catalog-studio/blocks/new.tsx
+    TO:   contractnest-ui/src/pages/catalog-studio/blocks/new.tsx
+
+13. blocks/[id]/edit.tsx (NEW - PHASE 4)
+    FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/pages/catalog-studio/blocks/[id]/edit.tsx
+    TO:   contractnest-ui/src/pages/catalog-studio/blocks/[id]/edit.tsx
 
 
 ================================================================================
@@ -238,6 +263,108 @@ PROBLEM 4: Hardcoded Block Types
    - No way to add/modify block types without code change
 
 FIX: Fetch from m_category_details (cat_block_type) with fallback to hardcoded.
+
+
+================================================================================
+PHASE 4 CHANGES DETAIL
+================================================================================
+
+10. BlockWizardContent.tsx (NEW):
+    - Embeddable wizard content component WITHOUT modal wrapper
+    - Same step logic as original BlockWizard but can be used in full page layouts
+    - Props:
+      * mode: WizardMode ('create' | 'edit')
+      * blockType: string
+      * editingBlock?: Block | null
+      * initialStep?: number (default 1)
+      * categories?: BlockCategory[] (defaults to BLOCK_CATEGORIES)
+      * showTypeSelection?: boolean (default true)
+      * onSave: (block: Partial<Block>) => void
+      * onCancel: () => void
+      * onBlockTypeChange: (type: string) => void
+      * onStepChange?: (step: number) => void
+      * onFormDataChange?: (data: Partial<Block>) => void
+    - Includes WizardProgress and WizardFooter inline
+    - Renders all step components based on blockType
+
+11. BlockWizard/index.tsx (ENHANCED):
+    - Keeps original modal wrapper for backward compatibility
+    - NOW EXPORTS BlockWizardContent for full-page use
+    - Exports all sub-components: WizardHeader, WizardProgress, WizardFooter
+    - Exports all step components for potential reuse
+
+12. blocks/new.tsx (NEW PAGE):
+    - Full page route: /catalog-studio/blocks/new
+    - URL query param: ?type=service (sets initial block type)
+    - Uses BlockWizardContent for wizard functionality
+    - Page header with Back button and Cancel
+    - Uses useBlockCategories() hook for DB-driven categories
+    - Creates block via useCreateCatBlock mutation
+    - Navigates back to /catalog-studio/blocks on success
+
+13. blocks/[id]/edit.tsx (NEW PAGE):
+    - Full page route: /catalog-studio/blocks/:id/edit
+    - Fetches block by ID from useCatBlocks()
+    - Uses BlockWizardContent with showTypeSelection=false
+    - Starts at step 2 (basic info) since type is already set
+    - Includes delete confirmation modal
+    - Updates block via useUpdateCatBlock mutation
+    - Deletes block via useDeleteCatBlock mutation
+
+
+================================================================================
+HOW TO USE FULL PAGE WIZARD
+================================================================================
+
+1. Navigation from blocks.tsx:
+   ```tsx
+   // Instead of opening modal
+   // setIsWizardOpen(true);
+
+   // Navigate to full page
+   navigate('/catalog-studio/blocks/new');
+   navigate('/catalog-studio/blocks/new?type=spare');
+   navigate(`/catalog-studio/blocks/${block.id}/edit`);
+   ```
+
+2. Router Setup (add to App.tsx or routes file):
+   ```tsx
+   import NewBlockPage from './pages/catalog-studio/blocks/new';
+   import EditBlockPage from './pages/catalog-studio/blocks/[id]/edit';
+
+   <Route path="/catalog-studio/blocks/new" element={<NewBlockPage />} />
+   <Route path="/catalog-studio/blocks/:id/edit" element={<EditBlockPage />} />
+   ```
+
+3. Both modal and full page options remain available:
+   - Modal: <BlockWizard isOpen={...} ... />  (for quick create)
+   - Full Page: Navigate to /blocks/new (for complex editing)
+
+
+================================================================================
+ROUTER INTEGRATION NOTE
+================================================================================
+
+The new pages use react-router-dom. Add these routes to your router config:
+
+```tsx
+// In your routes configuration (e.g., App.tsx)
+import { Routes, Route } from 'react-router-dom';
+
+// Import the new pages
+import NewBlockPage from './pages/catalog-studio/blocks/new';
+import EditBlockPage from './pages/catalog-studio/blocks/[id]/edit';
+
+// Add routes
+<Routes>
+  {/* Existing routes */}
+  <Route path="/catalog-studio/blocks" element={<CatalogStudioBlocksPage />} />
+
+  {/* New full page wizard routes */}
+  <Route path="/catalog-studio/blocks/new" element={<NewBlockPage />} />
+  <Route path="/catalog-studio/blocks/:id/edit" element={<EditBlockPage />} />
+</Routes>
+```
 
 
 ================================================================================
