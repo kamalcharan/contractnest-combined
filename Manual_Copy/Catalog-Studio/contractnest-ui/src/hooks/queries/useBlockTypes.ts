@@ -143,7 +143,8 @@ export const useBlockTypes = () => {
 
       try {
         // Use the product-masterdata endpoint pattern
-        const url = `/api/product-masterdata/global/${BLOCK_TYPES_CATEGORY}?is_active=true`;
+        // ✅ FIX: category_name is a query parameter, not a path parameter
+        const url = `/api/product-masterdata/global?category_name=${BLOCK_TYPES_CATEGORY}&is_active=true`;
 
         const response = await api.get(url);
 
