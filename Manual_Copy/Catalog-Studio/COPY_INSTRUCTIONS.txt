@@ -1,5 +1,5 @@
 ================================================================================
-CATALOG STUDIO - PHASE 1 & 2: DATABASE, BACKEND & UI HOOKS
+CATALOG STUDIO - PHASES 1, 2 & 3: DATABASE, BACKEND, UI HOOKS & BLOCK TYPES
 ================================================================================
 Date: 2026-01-03
 Branch: claude/init-submodules-catalog-5Tvwk
@@ -19,6 +19,13 @@ PHASE 2: UI HOOK FIXES
 
 5. useCatBlocks.ts (ENHANCE) - Remove x-is-admin header, don't throw in queryFn
 6. useCatBlocksMutations.ts (ENHANCE) - Remove isAdmin checks from mutations
+
+================================================================================
+PHASE 3: BLOCK TYPES FROM DATABASE
+================================================================================
+
+7. useBlockTypes.ts (NEW) - Hook to fetch block types from m_category_details
+8. categories.ts (ENHANCE) - Use DB data with fallback to hardcoded categories
 
 ================================================================================
 FILE COPY INSTRUCTIONS
@@ -58,6 +65,14 @@ UI FILES (contractnest-ui):
 6. useCatBlocksMutations.ts (UPDATED)
    FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/hooks/mutations/useCatBlocksMutations.ts
    TO:   contractnest-ui/src/hooks/mutations/useCatBlocksMutations.ts
+
+7. useBlockTypes.ts (NEW - PHASE 3)
+   FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/hooks/queries/useBlockTypes.ts
+   TO:   contractnest-ui/src/hooks/queries/useBlockTypes.ts
+
+8. categories.ts (UPDATED - PHASE 3)
+   FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/utils/catalog-studio/categories.ts
+   TO:   contractnest-ui/src/utils/catalog-studio/categories.ts
 
 
 ================================================================================
@@ -112,6 +127,70 @@ PHASE 2 CHANGES DETAIL
 
 
 ================================================================================
+PHASE 3 CHANGES DETAIL
+================================================================================
+
+7. useBlockTypes.ts (NEW):
+   - Fetches block types from m_category_details (cat_block_type category)
+   - Uses global product-masterdata endpoint pattern
+   - Maps DB fields to BlockCategory type:
+     * sub_cat_name → id
+     * display_name → name
+     * icon_name → icon
+     * hexcolor → color
+     * description → description
+   - Auto-generates bgColor from hexcolor
+   - Returns empty data on error (per CLAUDE_CODE_GUIDELINES.md)
+   - Provides useBlockCategories() hook for easy consumption
+   - Provides useBlockTypesDropdown() for select components
+
+8. categories.ts (ENHANCED):
+   - KEPT BLOCK_CATEGORIES as fallback data
+   - ADDED mergeWithFallback() to combine DB + fallback data
+   - ADDED generateBgColorFromHex() utility
+   - ADDED CATEGORY_METADATA with wizard config per block type:
+     * wizardSteps: Which steps to show in wizard
+     * defaultPricingMode: Default pricing mode
+     * supportsResources: Whether resources are supported
+     * supportsVariants: Whether variants are supported
+   - ADDED helper functions:
+     * getWizardSteps()
+     * getDefaultPricingMode()
+     * supportsResources()
+     * supportsVariants()
+
+
+================================================================================
+HOW BLOCK TYPES WORK NOW
+================================================================================
+
+BEFORE (Hardcoded):
+   - BLOCK_CATEGORIES array in categories.ts
+   - Static data, no DB connection
+
+AFTER (Database-driven with fallback):
+   1. useBlockTypes() fetches from: /api/product-masterdata/global/cat_block_type
+   2. Data comes from m_category_details table (seeded in 003_seed_master_data.sql)
+   3. If fetch fails, BLOCK_CATEGORIES used as fallback
+   4. mergeWithFallback() ensures no missing categories
+
+USAGE IN COMPONENTS:
+   ```tsx
+   import { useBlockCategories } from '@/hooks/queries/useBlockTypes';
+   import { BLOCK_CATEGORIES } from '@/utils/catalog-studio/categories';
+
+   const MyComponent = () => {
+     const { categories, isLoading } = useBlockCategories();
+
+     // Use categories from DB, or fallback during loading
+     const blockTypes = isLoading ? BLOCK_CATEGORIES : categories;
+
+     return <BlockTypeList items={blockTypes} />;
+   };
+   ```
+
+
+================================================================================
 WHY THESE FIXES MATTER (per CLAUDE_CODE_GUIDELINES.md)
 ================================================================================
 
@@ -134,6 +213,12 @@ PROBLEM 3: Admin Access Required
    - Users couldn't save blocks even for their own tenant
 
 FIX: Remove isAdmin checks from UI/API/Service. Let Edge function enforce permissions.
+
+PROBLEM 4: Hardcoded Block Types
+   - Block types were hardcoded in categories.ts
+   - No way to add/modify block types without code change
+
+FIX: Fetch from m_category_details (cat_block_type) with fallback to hardcoded.
 
 
 ================================================================================
