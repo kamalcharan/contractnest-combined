@@ -1,16 +1,24 @@
 ================================================================================
-CATALOG STUDIO - PHASE 1: DATABASE & BACKEND FOUNDATION
+CATALOG STUDIO - PHASE 1 & 2: DATABASE, BACKEND & UI HOOKS
 ================================================================================
 Date: 2026-01-03
 Branch: claude/init-submodules-catalog-5Tvwk
 
-SUMMARY OF CHANGES:
-==================
+================================================================================
+PHASE 1: DATABASE & BACKEND FOUNDATION
+================================================================================
 
 1. SCHEMA MIGRATION (NEW) - Add tenant_id and is_seed fields to cat_blocks
 2. EDGE FUNCTION (ENHANCE) - Remove isAdmin CRUD checks, add tenant_id handling
 3. API CONTROLLER (ENHANCE) - Remove isAdmin checks for CRUD operations
 4. API SERVICE (ENHANCE) - Remove isAdmin checks, add tenant_id handling
+
+================================================================================
+PHASE 2: UI HOOK FIXES
+================================================================================
+
+5. useCatBlocks.ts (ENHANCE) - Remove x-is-admin header, don't throw in queryFn
+6. useCatBlocksMutations.ts (ENHANCE) - Remove isAdmin checks from mutations
 
 ================================================================================
 FILE COPY INSTRUCTIONS
@@ -40,12 +48,24 @@ API FILES (contractnest-api):
    TO:   contractnest-api/src/services/catBlocksService.ts
 
 
+UI FILES (contractnest-ui):
+---------------------------
+
+5. useCatBlocks.ts (UPDATED - CRITICAL FIX)
+   FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/hooks/queries/useCatBlocks.ts
+   TO:   contractnest-ui/src/hooks/queries/useCatBlocks.ts
+
+6. useCatBlocksMutations.ts (UPDATED)
+   FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/hooks/mutations/useCatBlocksMutations.ts
+   TO:   contractnest-ui/src/hooks/mutations/useCatBlocksMutations.ts
+
+
 ================================================================================
-CHANGES DETAIL
+PHASE 1 CHANGES DETAIL
 ================================================================================
 
 1. 004_add_tenant_fields.sql:
-   - Adds tenant_id UUID column (references tenants table)
+   - Adds tenant_id UUID column (references t_tenants table)
    - Adds is_seed BOOLEAN column (default false)
    - Creates indexes for new columns
    - Updates RLS policies for multi-tenancy
@@ -70,18 +90,50 @@ CHANGES DETAIL
    - ADDED tenant_id from context when creating blocks
    - ADDED updated_by from context when updating blocks
 
+
 ================================================================================
-DATABASE MIGRATION NOTES
+PHASE 2 CHANGES DETAIL
 ================================================================================
 
-IMPORTANT: Run the migration 004_add_tenant_fields.sql on Supabase
+5. useCatBlocks.ts (CRITICAL FIX per CLAUDE_CODE_GUIDELINES.md):
+   - REMOVED x-is-admin custom header (was line 154-156, 198-200)
+     * This header is NOT in CORS allowedHeaders and caused CORS errors
+   - FIXED queryFn to return empty data instead of throwing (was line 169, 213)
+     * Throwing in queryFn crashes the page
+   - Uses !!currentTenant for enabled check (correct pattern)
+   - Added tenant_id and is_seed to CatBlock interface
 
-This migration:
-1. Adds tenant_id column (nullable for global blocks)
-2. Adds is_seed column (for seed/template blocks)
-3. Creates performance indexes
-4. Updates RLS policies for multi-tenant access
+6. useCatBlocksMutations.ts:
+   - REMOVED isAdmin check from useCreateCatBlock (was line 92-94)
+   - REMOVED isAdmin check from useUpdateCatBlock (was line 141-143)
+   - REMOVED isAdmin check from useDeleteCatBlock (was line 196-198)
+   - Updated error messages (no more "Admin access required")
+   - Added tenant_id and is_seed to CreateBlockData/UpdateBlockData types
 
-The migration is idempotent (uses IF NOT EXISTS).
+
+================================================================================
+WHY THESE FIXES MATTER (per CLAUDE_CODE_GUIDELINES.md)
+================================================================================
+
+PROBLEM 1: CORS Errors
+   - x-is-admin header was being sent from UI to API
+   - This header is NOT in the Edge function's corsHeaders allowedHeaders
+   - Result: CORS preflight fails, API calls blocked
+
+FIX: Remove custom headers from UI hooks. Let api.ts interceptor handle auth.
+
+PROBLEM 2: Page Crashes
+   - queryFn was throwing errors on API failures
+   - TanStack Query expects queryFn to either succeed or throw
+   - But throwing causes the error boundary to trigger, crashing the page
+
+FIX: Return empty data on error instead of throwing.
+
+PROBLEM 3: Admin Access Required
+   - isAdmin checks were blocking all CRUD operations
+   - Users couldn't save blocks even for their own tenant
+
+FIX: Remove isAdmin checks from UI/API/Service. Let Edge function enforce permissions.
+
 
 ================================================================================

@@ -1,0 +1,328 @@
+// src/hooks/mutations/useCatBlocksMutations.ts
+// TanStack Query mutations for Catalog Studio Blocks
+// FIXED: Removed isAdmin checks - permission enforced by Edge Function
+
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/context/AuthContext';
+import api from '@/services/api';
+import { API_ENDPOINTS } from '@/services/serviceURLs';
+import toast from 'react-hot-toast';
+import { catBlockKeys, CatBlock, BlockConfig, ResourcePricingConfig, VariantPricingConfig } from '../queries/useCatBlocks';
+
+// =================================================================
+// TYPES
+// =================================================================
+
+export interface CreateBlockData {
+  name: string;
+  description?: string;
+  block_type_id: string;
+  pricing_mode_id: string;
+  is_admin?: boolean;
+  visible?: boolean;
+  config: BlockConfig;
+  resource_pricing?: ResourcePricingConfig;
+  variant_pricing?: VariantPricingConfig;
+  tags?: string[];
+  // NEW FIELDS for Phase 1
+  tenant_id?: string | null;  // null for global blocks (admin only)
+  is_seed?: boolean;          // seed blocks (admin only)
+}
+
+export interface UpdateBlockData {
+  name?: string;
+  description?: string;
+  block_type_id?: string;
+  pricing_mode_id?: string;
+  is_admin?: boolean;
+  visible?: boolean;
+  is_active?: boolean;
+  config?: BlockConfig;
+  resource_pricing?: ResourcePricingConfig;
+  variant_pricing?: VariantPricingConfig;
+  tags?: string[];
+  // NEW FIELDS for Phase 1
+  tenant_id?: string | null;
+  is_seed?: boolean;
+}
+
+export interface MutationResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: {
+    code: string;
+    message: string;
+    details?: any;
+  };
+}
+
+// =================================================================
+// HELPER FUNCTIONS
+// =================================================================
+
+/**
+ * Handle mutation errors and show appropriate messages
+ */
+const handleMutationError = (error: any, operation: string) => {
+  console.error(`Failed to ${operation}:`, error);
+
+  const errorMessage = error.response?.data?.error?.message || error.message;
+
+  if (errorMessage?.includes('authentication') || errorMessage?.includes('unauthorized')) {
+    toast.error('Authentication required. Please log in again.');
+  } else if (errorMessage?.includes('permission') || errorMessage?.includes('forbidden')) {
+    // UPDATED: More specific message about tenant permissions
+    toast.error('You do not have permission for this action.');
+  } else if (errorMessage?.includes('validation')) {
+    toast.error('Please check your input and try again.');
+  } else {
+    toast.error(errorMessage || `Failed to ${operation}. Please try again.`);
+  }
+};
+
+// =================================================================
+// CREATE MUTATION
+// =================================================================
+
+/**
+ * Create new block
+ * FIXED: Removed isAdmin check - anyone can create blocks for their tenant
+ * Edge function enforces: only admin can create global/seed blocks
+ */
+export const useCreateCatBlock = () => {
+  const { currentTenant } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (blockData: CreateBlockData): Promise<MutationResponse<CatBlock>> => {
+      if (!currentTenant?.id) {
+        throw new Error('No tenant selected');
+      }
+
+      // ✅ REMOVED: isAdmin check - permission enforced by Edge Function
+      // Users can create blocks for their tenant
+      // Only admin can create global (tenant_id = null) or seed blocks
+
+      console.log('🔄 Creating block:', blockData.name);
+
+      const response = await api.post(
+        API_ENDPOINTS.CATALOG_STUDIO.BLOCKS.CREATE,
+        blockData
+      );
+
+      if (!response.data?.success) {
+        throw new Error(response.data?.error?.message || 'Failed to create block');
+      }
+
+      return response.data;
+    },
+    onSuccess: (data, variables) => {
+      toast.success(`Block "${variables.name}" created successfully!`);
+
+      // Invalidate and refetch blocks list
+      queryClient.invalidateQueries({ queryKey: catBlockKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: catBlockKeys.all });
+
+      console.log('✅ Block created successfully:', data.data?.id);
+    },
+    onError: (error: Error) => {
+      handleMutationError(error, 'create block');
+    },
+  });
+};
+
+// =================================================================
+// UPDATE MUTATION
+// =================================================================
+
+/**
+ * Update existing block
+ * FIXED: Removed isAdmin check - anyone can update their tenant's blocks
+ * Edge function enforces: can only update own tenant's blocks unless admin
+ */
+export const useUpdateCatBlock = () => {
+  const { currentTenant } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: UpdateBlockData }): Promise<MutationResponse<CatBlock>> => {
+      if (!currentTenant?.id) {
+        throw new Error('No tenant selected');
+      }
+
+      // ✅ REMOVED: isAdmin check - permission enforced by Edge Function
+
+      if (!id) {
+        throw new Error('Block ID is required');
+      }
+
+      console.log('🔄 Updating block:', id);
+
+      const response = await api.patch(
+        API_ENDPOINTS.CATALOG_STUDIO.BLOCKS.UPDATE(id),
+        data
+      );
+
+      if (!response.data?.success) {
+        throw new Error(response.data?.error?.message || 'Failed to update block');
+      }
+
+      return response.data;
+    },
+    onSuccess: (data, variables) => {
+      toast.success('Block updated successfully!');
+
+      // Update specific block in cache
+      queryClient.invalidateQueries({ queryKey: catBlockKeys.detail(variables.id) });
+
+      // Invalidate list queries
+      queryClient.invalidateQueries({ queryKey: catBlockKeys.lists() });
+
+      console.log('✅ Block updated successfully:', variables.id);
+    },
+    onError: (error: Error) => {
+      handleMutationError(error, 'update block');
+    },
+  });
+};
+
+// =================================================================
+// DELETE MUTATION
+// =================================================================
+
+/**
+ * Delete block - soft delete
+ * FIXED: Removed isAdmin check - anyone can delete their tenant's blocks
+ * Edge function enforces: can only delete own tenant's blocks unless admin
+ */
+export const useDeleteCatBlock = () => {
+  const { currentTenant } = useAuth();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (blockId: string): Promise<MutationResponse<{ deleted: boolean }>> => {
+      if (!currentTenant?.id) {
+        throw new Error('No tenant selected');
+      }
+
+      // ✅ REMOVED: isAdmin check - permission enforced by Edge Function
+
+      if (!blockId) {
+        throw new Error('Block ID is required');
+      }
+
+      console.log('🗑️ Deleting block:', blockId);
+
+      const response = await api.delete(
+        API_ENDPOINTS.CATALOG_STUDIO.BLOCKS.DELETE(blockId)
+      );
+
+      if (!response.data?.success) {
+        throw new Error(response.data?.error?.message || 'Failed to delete block');
+      }
+
+      return response.data;
+    },
+    onSuccess: (data, blockId) => {
+      toast.success('Block deleted successfully!');
+
+      // Remove from cache
+      queryClient.removeQueries({ queryKey: catBlockKeys.detail(blockId) });
+
+      // Invalidate list queries
+      queryClient.invalidateQueries({ queryKey: catBlockKeys.lists() });
+
+      console.log('✅ Block deleted successfully:', blockId);
+    },
+    onError: (error: Error) => {
+      handleMutationError(error, 'delete block');
+    },
+  });
+};
+
+// =================================================================
+// TOGGLE STATUS MUTATION
+// =================================================================
+
+/**
+ * Toggle block active status
+ */
+export const useToggleCatBlockStatus = () => {
+  const updateBlockMutation = useUpdateCatBlock();
+
+  return useMutation({
+    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
+      return updateBlockMutation.mutateAsync({
+        id,
+        data: { is_active: isActive },
+      });
+    },
+    onSuccess: (data, variables) => {
+      const status = variables.isActive ? 'activated' : 'deactivated';
+      toast.success(`Block ${status} successfully!`);
+    },
+    onError: (error: Error) => {
+      handleMutationError(error, 'toggle block status');
+    },
+  });
+};
+
+// =================================================================
+// HELPER HOOKS
+// =================================================================
+
+/**
+ * Block mutation operations helper
+ */
+export const useCatBlockMutationOperations = () => {
+  const createMutation = useCreateCatBlock();
+  const updateMutation = useUpdateCatBlock();
+  const deleteMutation = useDeleteCatBlock();
+  const toggleStatusMutation = useToggleCatBlockStatus();
+
+  const createBlock = async (data: CreateBlockData) => {
+    return createMutation.mutateAsync(data);
+  };
+
+  const updateBlock = async (id: string, data: UpdateBlockData) => {
+    return updateMutation.mutateAsync({ id, data });
+  };
+
+  const deleteBlock = async (id: string) => {
+    return deleteMutation.mutateAsync(id);
+  };
+
+  const toggleBlockStatus = async (id: string, isActive: boolean) => {
+    return toggleStatusMutation.mutateAsync({ id, isActive });
+  };
+
+  const isLoading =
+    createMutation.isPending ||
+    updateMutation.isPending ||
+    deleteMutation.isPending ||
+    toggleStatusMutation.isPending;
+
+  return {
+    createBlock,
+    updateBlock,
+    deleteBlock,
+    toggleBlockStatus,
+    isLoading,
+    createError: createMutation.error,
+    updateError: updateMutation.error,
+    deleteError: deleteMutation.error,
+    toggleError: toggleStatusMutation.error,
+  };
+};
+
+// =================================================================
+// EXPORTS
+// =================================================================
+
+export default {
+  useCreateCatBlock,
+  useUpdateCatBlock,
+  useDeleteCatBlock,
+  useToggleCatBlockStatus,
+  useCatBlockMutationOperations,
+};
