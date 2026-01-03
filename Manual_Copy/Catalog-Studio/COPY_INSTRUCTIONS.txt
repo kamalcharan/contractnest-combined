@@ -1,5 +1,5 @@
 ================================================================================
-CATALOG STUDIO - PHASES 1-7: DATABASE, UI, WIZARD, PRICING & BUSINESS RULES
+CATALOG STUDIO - PHASES 1-8: DATABASE, UI, WIZARD, PRICING & BUSINESS RULES
 ================================================================================
 Date: 2026-01-03
 Branch: claude/init-submodules-catalog-5Tvwk
@@ -59,6 +59,24 @@ PHASE 7: BUSINESS RULES STEP
 
 20. BusinessRulesStep.tsx (NEW) - Followup, warranty, cancellation, reschedule
 21. service/index.ts (ENHANCE) - Export BusinessRulesStep
+
+================================================================================
+PHASE 8: CRITICAL FIXES - Full Page, DB Categories, Multi-Currency
+================================================================================
+
+22. BlockWizard/index.tsx (CRITICAL FIX):
+    - Uses useBlockCategories() hook for DB-driven block types
+    - Integrates ResourceDependencyStep into wizard flow (step 3)
+    - Integrates BusinessRulesStep into wizard flow (step 8)
+    - NEW fullPage prop for true full-page layout (not modal)
+
+23. PricingStep.tsx (CRITICAL FIX - Aligned with service-catalog):
+    - pricing_records array (NOT single currency)
+    - Different price per currency (INR ₹8000, USD $100, etc.)
+    - Tax rate per pricing record (per currency)
+    - Tax inclusion (inclusive/exclusive) per record
+    - Resource-based: per-resource, per-currency pricing
+    - Resource tax rate per currency
 
 ================================================================================
 FILE COPY INSTRUCTIONS
