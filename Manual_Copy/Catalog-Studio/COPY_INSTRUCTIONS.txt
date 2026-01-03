@@ -1,5 +1,5 @@
 ================================================================================
-CATALOG STUDIO - PHASES 1, 2, 3 & 4: DATABASE, UI HOOKS, BLOCK TYPES & FULL PAGE
+CATALOG STUDIO - PHASES 1-5: DATABASE, UI HOOKS, BLOCK TYPES, FULL PAGE & WIZARD
 ================================================================================
 Date: 2026-01-03
 Branch: claude/init-submodules-catalog-5Tvwk
@@ -36,6 +36,15 @@ PHASE 4: FULL PAGE WIZARD
 11. index.tsx (ENHANCE) - BlockWizard now exports both modal and content versions
 12. new.tsx (NEW) - Full page block creation route
 13. edit.tsx (NEW) - Full page block editing route
+
+================================================================================
+PHASE 5: SERVICE BLOCK - BASICINFOSTEP ENHANCEMENTS
+================================================================================
+
+14. IconPicker.tsx (NEW) - Icon picker with all Lucide icons, search, grid layout
+15. BasicInfoStep.tsx (ENHANCE) - RichTextEditor, Image Upload, IconPicker, T&C
+16. ResourceDependencyStep.tsx (NEW) - Independent vs Resource Dependent config
+17. steps/index.ts (ENHANCE) - Export ResourceDependencyStep
 
 ================================================================================
 FILE COPY INSTRUCTIONS
@@ -103,6 +112,22 @@ UI FILES (contractnest-ui):
 13. blocks/[id]/edit.tsx (NEW - PHASE 4)
     FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/pages/catalog-studio/blocks/[id]/edit.tsx
     TO:   contractnest-ui/src/pages/catalog-studio/blocks/[id]/edit.tsx
+
+14. IconPicker.tsx (NEW - PHASE 5)
+    FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/components/catalog-studio/IconPicker.tsx
+    TO:   contractnest-ui/src/components/catalog-studio/IconPicker.tsx
+
+15. BasicInfoStep.tsx (UPDATED - PHASE 5)
+    FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/components/catalog-studio/BlockWizard/steps/BasicInfoStep.tsx
+    TO:   contractnest-ui/src/components/catalog-studio/BlockWizard/steps/BasicInfoStep.tsx
+
+16. ResourceDependencyStep.tsx (NEW - PHASE 5)
+    FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/components/catalog-studio/BlockWizard/steps/ResourceDependencyStep.tsx
+    TO:   contractnest-ui/src/components/catalog-studio/BlockWizard/steps/ResourceDependencyStep.tsx
+
+17. steps/index.ts (UPDATED - PHASE 5)
+    FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/components/catalog-studio/BlockWizard/steps/index.ts
+    TO:   contractnest-ui/src/components/catalog-studio/BlockWizard/steps/index.ts
 
 
 ================================================================================
@@ -365,6 +390,94 @@ import EditBlockPage from './pages/catalog-studio/blocks/[id]/edit';
   <Route path="/catalog-studio/blocks/:id/edit" element={<EditBlockPage />} />
 </Routes>
 ```
+
+
+================================================================================
+PHASE 5 CHANGES DETAIL
+================================================================================
+
+14. IconPicker.tsx (NEW):
+    - Searchable grid of 150+ Lucide icons
+    - Categories: Business, People, Home, Medical, Technology, Tools, etc.
+    - Features:
+      * Search/filter functionality
+      * Grid layout (8 columns default)
+      * Selected icon preview
+      * Keyboard navigation support
+    - Props:
+      * value: string (icon name)
+      * onChange: (iconName: string) => void
+      * label?: string
+      * placeholder?: string
+      * disabled?: boolean
+      * showLabel?: boolean
+      * maxHeight?: number
+      * columns?: number
+
+15. BasicInfoStep.tsx (ENHANCED):
+    - ADDED: Conditional label based on blockType ("Service Block Name", etc.)
+    - ADDED: RichTextEditor for Description (was plain textarea)
+      * Supports bold, italic, underline, lists
+      * Character count and fullscreen mode
+    - ADDED: RichTextEditor for T&C (optional, for service/spare blocks)
+    - ADDED: Image Upload with drag-drop
+      * Buffered upload (doesn't upload until save)
+      * Preview with overlay actions
+      * File size validation (10MB max)
+    - ADDED: IconPicker component (replaces 6-icon grid)
+    - KEPT: Block-specific fields (duration for service, SKU for spare, etc.)
+    - KEPT: Tags input field
+
+16. ResourceDependencyStep.tsx (NEW):
+    - Radio selection: Independent vs Resource Dependent
+    - If Resource Dependent:
+      * Grid of resource types with checkboxes
+      * Quantity input per selected type
+      * Summary card showing configuration
+    - Resource types (fallback data):
+      * Team Staff (hourly, requires human assignment)
+      * Equipment (per_unit)
+      * Consumables (per_unit)
+      * Vehicle (per_unit)
+      * Facility (per_unit)
+      * Software (fixed)
+    - Stores in formData.meta:
+      * pricingMode: 'independent' | 'resource_based'
+      * resourceTypes: string[]
+      * resourceQuantities: Record<string, number>
+
+17. steps/index.ts (ENHANCED):
+    - ADDED: export { default as ResourceDependencyStep } from './ResourceDependencyStep';
+
+
+================================================================================
+HOW TO ADD RESOURCE DEPENDENCY STEP TO WIZARD
+================================================================================
+
+To include ResourceDependencyStep in the service block wizard flow:
+
+1. Update WIZARD_STEPS in wizard-data.ts:
+   ```tsx
+   service: [
+     { id: 1, label: 'Type' },
+     { id: 2, label: 'Basic Info' },
+     { id: 3, label: 'Resources' },  // NEW STEP
+     { id: 4, label: 'Delivery' },
+     { id: 5, label: 'Pricing' },
+     { id: 6, label: 'Evidence' },
+     { id: 7, label: 'Rules' },
+   ],
+   ```
+
+2. Update BlockWizardContent.tsx renderStepContent():
+   ```tsx
+   case 'service':
+     switch (currentStep) {
+       case 3: return <ResourceDependencyStep formData={formData} onChange={handleFormChange} />;
+       case 4: return <DeliveryStep formData={formData} onChange={handleFormChange} />;
+       // ... adjust step numbers
+     }
+   ```
 
 
 ================================================================================
