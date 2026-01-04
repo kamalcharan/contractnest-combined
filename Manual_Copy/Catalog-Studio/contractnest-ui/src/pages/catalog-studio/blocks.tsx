@@ -1051,6 +1051,7 @@ const CatalogStudioBlocksPage: React.FC = () => {
           blockType={wizardBlockType}
           editingBlock={editingBlock}
           onBlockTypeChange={setWizardBlockType}
+          fullPage={true}
         />
       )}
 

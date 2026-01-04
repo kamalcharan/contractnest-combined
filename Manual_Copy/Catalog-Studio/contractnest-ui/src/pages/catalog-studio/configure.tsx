@@ -8,7 +8,6 @@ import { useCatBlockMutationOperations } from '@/hooks/mutations/useCatBlocksMut
 import { Block, WizardMode } from '@/types/catalogStudio';
 import { BLOCK_CATEGORIES, getCategoryById } from '@/utils/catalog-studio';
 import { CategoryPanel, BlockGrid, BlockWizard, BlockEditorPanel } from '@/components/catalog-studio';
-import { useBlockCategories } from '@/hooks/queries/useBlockTypes';
 
 const CatalogStudioConfigurePage: React.FC = () => {
   const { isDarkMode, currentTheme } = useTheme();
@@ -18,10 +17,6 @@ const CatalogStudioConfigurePage: React.FC = () => {
   // API Hooks
   const { data: blocksResponse, isLoading, error, refetch } = useCatBlocksTest();
   const allBlocks: Block[] = blocksResponse?.data?.blocks || [];
-
-  // DB-driven categories with fallback
-  const { categories: dbCategories, isLoading: categoriesLoading } = useBlockCategories();
-  const baseCategories = dbCategories.length > 0 ? dbCategories : BLOCK_CATEGORIES;
 
   // Mutations
   const {
@@ -41,10 +36,10 @@ const CatalogStudioConfigurePage: React.FC = () => {
   const [selectedBlock, setSelectedBlock] = useState<Block | null>(null);
   const [isEditorPanelOpen, setIsEditorPanelOpen] = useState<boolean>(false);
 
-  // Computed - use DB-driven categories
-  const currentCategory = baseCategories.find(c => c.id === selectedCategory) || baseCategories[0];
+  // Computed
+  const currentCategory = getCategoryById(selectedCategory) || BLOCK_CATEGORIES[0];
   const categoryBlocks = allBlocks.filter(block => block.categoryId === selectedCategory);
-  const categoriesWithCounts = baseCategories.map(cat => ({
+  const categoriesWithCounts = BLOCK_CATEGORIES.map(cat => ({
     ...cat,
     count: allBlocks.filter(block => block.categoryId === cat.id).length
   }));
@@ -218,6 +213,7 @@ const CatalogStudioConfigurePage: React.FC = () => {
         onClose={closeWizard}
         onSave={handleSaveBlock}
         onBlockTypeChange={setWizardBlockType}
+        fullPage={true}
       />
     </div>
   );
