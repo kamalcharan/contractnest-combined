@@ -1,7 +1,6 @@
 // src/components/catalog-studio/BlockWizard/steps/service/PricingStep.tsx
-// ✅ Phase 8: Updated for resource_requirements structure
-// Per-resource pricing: Each specific resource gets its own price
-// Example: Consultation by Dr. Bhavana - 500 Rs, Consultation by Dr. Hema - 600 Rs
+// ✅ Phase 8: Multi-currency, multi-tax (tag style), price breakdown
+// Updated UI: White background for controls
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -13,54 +12,44 @@ import {
   Lightbulb,
   Users,
   Globe,
-  User,
-  Loader2,
+  X,
+  Receipt,
 } from 'lucide-react';
 import { useTheme } from '../../../../../contexts/ThemeContext';
 import { Block } from '../../../../../types/catalogStudio';
-import { currencyOptions, getCurrencySymbol } from '../../../../../utils/constants/currencies';
+import { currencyOptions } from '../../../../../utils/constants/currencies';
 import { useTaxRatesDropdown } from '../../../../../hooks/queries/useProductMasterdata';
 
 // =================================================================
 // TYPES
 // =================================================================
 
-// Resource requirement from ResourceDependencyStep
-interface ResourceRequirement {
-  resource_id: string;
-  resource_type_id: string;
-  resource_name?: string;
-  quantity: number;
-  is_required: boolean;
-  select_all?: boolean;
+interface TaxEntry {
+  id: string;
+  name: string;
+  rate: number;
 }
 
-// Pricing record for independent pricing
 interface PricingRecord {
   id: string;
   currency: string;
   amount: number;
   price_type: 'fixed' | 'hourly' | 'per_unit' | 'price_range';
   tax_inclusion: 'inclusive' | 'exclusive';
-  tax_rate_id?: string;
-  tax_rate?: number;
+  taxes: TaxEntry[];  // Multiple taxes as array
   billing_cycle?: string;
   is_active: boolean;
 }
 
-// Pricing for a specific resource (e.g., Dr. Bhavana - 500 Rs)
-interface ResourcePricingEntry {
+interface ResourcePricingRecord {
   id: string;
-  resource_id: string;           // The specific resource ID
-  resource_name: string;         // Display name (e.g., "Dr. Bhavana")
-  resource_type_id: string;      // Type (e.g., "team_staff")
+  resourceTypeId: string;
+  resourceTypeName: string;
   currency: string;
-  amount: number;
-  price_type: 'fixed' | 'hourly' | 'per_unit';
+  pricePerUnit: number;
+  pricingModel: 'hourly' | 'per_unit' | 'fixed';
   tax_inclusion: 'inclusive' | 'exclusive';
-  tax_rate_id?: string;
-  tax_rate?: number;
-  is_active: boolean;
+  taxes: TaxEntry[];
 }
 
 interface PricingTier {
@@ -89,170 +78,123 @@ const PricingStep: React.FC<PricingStepProps> = ({ formData, onChange }) => {
   // Tax rates from API
   const { options: taxRateOptions, isLoading: taxLoading } = useTaxRatesDropdown();
 
-  // Get service type and resource requirements from formData (set in ResourceDependencyStep)
-  const serviceType = (formData.service_type as string) || 'independent';
-  const resourceRequirements = (formData.resource_requirements as ResourceRequirement[]) || [];
+  // Get resource types from formData
+  const selectedResourceTypes = (formData.meta?.resourceTypes as string[]) || [];
+  const resourceQuantities = (formData.meta?.resourceQuantities as Record<string, number>) || {};
+  const pricingMode = (formData.meta?.pricingMode as string) || 'independent';
 
-  // Default currency
   const defaultCurrency = 'INR';
 
   // =================================================================
-  // STATE - Independent Pricing Records
+  // STATE
   // =================================================================
 
   const [pricingRecords, setPricingRecords] = useState<PricingRecord[]>(() => {
-    const existing = formData.pricing_records as PricingRecord[];
+    const existing = formData.meta?.pricingRecords as PricingRecord[];
     if (existing && existing.length > 0) return existing;
-    return [
-      {
-        id: '1',
-        currency: defaultCurrency,
-        amount: 0,
-        price_type: 'fixed',
-        tax_inclusion: 'exclusive',
-        is_active: true,
-      },
-    ];
-  });
-
-  // =================================================================
-  // STATE - Resource-Based Pricing (per specific resource)
-  // =================================================================
-
-  const [resourcePricing, setResourcePricing] = useState<ResourcePricingEntry[]>(() => {
-    const existing = formData.resource_pricing as ResourcePricingEntry[];
-    if (existing && existing.length > 0) return existing;
-
-    // Initialize from resource requirements
-    return resourceRequirements.map((req, idx) => ({
-      id: `rp-${idx}-${Date.now()}`,
-      resource_id: req.resource_id,
-      resource_name: req.resource_name || 'Unknown Resource',
-      resource_type_id: req.resource_type_id,
+    return [{
+      id: '1',
       currency: defaultCurrency,
       amount: 0,
-      price_type: 'fixed' as const,
-      tax_inclusion: 'exclusive' as const,
+      price_type: 'fixed',
+      tax_inclusion: 'exclusive',
+      taxes: [],
       is_active: true,
+    }];
+  });
+
+  const [resourcePricingRecords, setResourcePricingRecords] = useState<ResourcePricingRecord[]>(() => {
+    const existing = formData.meta?.resourcePricingRecords as ResourcePricingRecord[];
+    if (existing && existing.length > 0) return existing;
+    return selectedResourceTypes.map((typeId, idx) => ({
+      id: `rp-${idx}`,
+      resourceTypeId: typeId,
+      resourceTypeName: typeId.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
+      currency: defaultCurrency,
+      pricePerUnit: 0,
+      pricingModel: 'hourly' as const,
+      tax_inclusion: 'exclusive' as const,
+      taxes: [],
     }));
   });
 
-  // Tiered pricing
   const [tiers, setTiers] = useState<PricingTier[]>(
-    (formData.pricing_tiers as PricingTier[]) || []
+    (formData.meta?.pricingTiers as PricingTier[]) || []
   );
 
   const [priceType, setPriceType] = useState<PriceType>(
-    (formData.price_type as PriceType) || 'fixed'
+    (formData.meta?.priceType as PriceType) || 'fixed'
   );
 
-  // Dropdown states
   const [addCurrencyDropdown, setAddCurrencyDropdown] = useState(false);
-  const [expandedResource, setExpandedResource] = useState<string | null>(null);
+  const [taxDropdownOpen, setTaxDropdownOpen] = useState<string | null>(null);
+  const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
 
-  // "Apply to All" pricing mode
-  const [useUniformPricing, setUseUniformPricing] = useState<boolean>(
-    (formData.use_uniform_pricing as boolean) || false
-  );
-  const [uniformPrice, setUniformPrice] = useState<number>(
-    (formData.uniform_price as number) || 0
-  );
-  const [uniformCurrency, setUniformCurrency] = useState<string>(
-    (formData.uniform_currency as string) || defaultCurrency
-  );
-  const [uniformPriceType, setUniformPriceType] = useState<'fixed' | 'hourly' | 'per_unit'>(
-    (formData.uniform_price_type as 'fixed' | 'hourly' | 'per_unit') || 'fixed'
-  );
-  const [uniformTaxRateId, setUniformTaxRateId] = useState<string>(
-    (formData.uniform_tax_rate_id as string) || ''
-  );
-  const [uniformTaxInclusion, setUniformTaxInclusion] = useState<'inclusive' | 'exclusive'>(
-    (formData.uniform_tax_inclusion as 'inclusive' | 'exclusive') || 'exclusive'
-  );
-
-  // =================================================================
-  // SYNC STATE TO FORM DATA
-  // =================================================================
+  // Sync to formData
+  useEffect(() => {
+    onChange('meta', {
+      ...formData.meta,
+      pricingRecords,
+      priceType,
+      pricingTiers: tiers,
+    });
+  }, [pricingRecords, priceType, tiers]);
 
   useEffect(() => {
-    if (serviceType === 'independent') {
-      onChange('pricing_records', pricingRecords);
-      onChange('price_type', priceType);
-      onChange('pricing_tiers', tiers);
+    if (pricingMode === 'resource_based') {
+      onChange('meta', {
+        ...formData.meta,
+        resourcePricingRecords,
+      });
     }
-  }, [pricingRecords, priceType, tiers, serviceType]);
-
-  useEffect(() => {
-    if (serviceType === 'resource_based') {
-      onChange('resource_pricing', resourcePricing);
-      onChange('use_uniform_pricing', useUniformPricing);
-      if (useUniformPricing) {
-        onChange('uniform_price', uniformPrice);
-        onChange('uniform_currency', uniformCurrency);
-        onChange('uniform_price_type', uniformPriceType);
-        onChange('uniform_tax_rate_id', uniformTaxRateId);
-        onChange('uniform_tax_inclusion', uniformTaxInclusion);
-      }
-    }
-  }, [resourcePricing, serviceType, useUniformPricing, uniformPrice, uniformCurrency, uniformPriceType, uniformTaxRateId, uniformTaxInclusion]);
-
-  // Update resource pricing when requirements change
-  useEffect(() => {
-    if (serviceType === 'resource_based' && resourceRequirements.length > 0) {
-      // Add pricing entries for new resources
-      const existingResourceIds = resourcePricing.map(rp => rp.resource_id);
-      const newRequirements = resourceRequirements.filter(
-        req => !existingResourceIds.includes(req.resource_id)
-      );
-
-      if (newRequirements.length > 0) {
-        const newEntries: ResourcePricingEntry[] = newRequirements.map((req, idx) => ({
-          id: `rp-new-${idx}-${Date.now()}`,
-          resource_id: req.resource_id,
-          resource_name: req.resource_name || 'Unknown Resource',
-          resource_type_id: req.resource_type_id,
-          currency: defaultCurrency,
-          amount: 0,
-          price_type: 'fixed' as const,
-          tax_inclusion: 'exclusive' as const,
-          is_active: true,
-        }));
-        setResourcePricing(prev => [...prev, ...newEntries]);
-      }
-
-      // Remove pricing for resources no longer in requirements
-      const currentResourceIds = resourceRequirements.map(req => req.resource_id);
-      setResourcePricing(prev => prev.filter(rp => currentResourceIds.includes(rp.resource_id)));
-    }
-  }, [resourceRequirements, serviceType]);
+  }, [resourcePricingRecords, pricingMode]);
 
   // =================================================================
-  // STYLES
+  // STYLES - White background for inputs
   // =================================================================
 
   const inputStyle = {
-    backgroundColor: colors.utility.primaryBackground,
+    backgroundColor: isDarkMode ? colors.utility.secondaryBackground : '#FFFFFF',
     borderColor: isDarkMode ? colors.utility.secondaryBackground : '#D1D5DB',
     color: colors.utility.primaryText,
   };
 
-  const labelStyle = { color: colors.utility.primaryText };
+  const cardStyle = {
+    backgroundColor: isDarkMode ? colors.utility.secondaryBackground : '#FFFFFF',
+    borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB',
+  };
 
   // =================================================================
-  // INDEPENDENT PRICING HANDLERS
+  // PRICE BREAKDOWN CALCULATION
+  // =================================================================
+
+  const calculateBreakdown = useCallback((amount: number, taxes: TaxEntry[], taxInclusion: 'inclusive' | 'exclusive') => {
+    const totalTaxRate = taxes.reduce((sum, t) => sum + t.rate, 0);
+    if (taxInclusion === 'inclusive') {
+      const baseAmount = amount / (1 + totalTaxRate / 100);
+      const taxAmount = amount - baseAmount;
+      return { subtotal: baseAmount, taxAmount, total: amount, taxRate: totalTaxRate };
+    } else {
+      const taxAmount = (amount * totalTaxRate) / 100;
+      return { subtotal: amount, taxAmount, total: amount + taxAmount, taxRate: totalTaxRate };
+    }
+  }, []);
+
+  // =================================================================
+  // HANDLERS
   // =================================================================
 
   const addPricingRecord = useCallback((currency: string) => {
     if (pricingRecords.some((r) => r.currency === currency)) return;
-    const newRecord: PricingRecord = {
+    setPricingRecords([...pricingRecords, {
       id: Date.now().toString(),
       currency,
       amount: 0,
       price_type: priceType === 'tiered' ? 'fixed' : (priceType as 'fixed' | 'hourly'),
       tax_inclusion: 'exclusive',
+      taxes: [],
       is_active: true,
-    };
-    setPricingRecords([...pricingRecords, newRecord]);
+    }]);
     setAddCurrencyDropdown(false);
   }, [pricingRecords, priceType]);
 
@@ -262,61 +204,68 @@ const PricingStep: React.FC<PricingStepProps> = ({ formData, onChange }) => {
   }, [pricingRecords]);
 
   const updatePricingRecord = useCallback((id: string, field: keyof PricingRecord, value: unknown) => {
-    setPricingRecords(prev =>
-      prev.map((r) => (r.id === id ? { ...r, [field]: value } : r))
-    );
+    setPricingRecords(prev => prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
   }, []);
 
-  // =================================================================
-  // RESOURCE PRICING HANDLERS
-  // =================================================================
+  const addTaxToRecord = useCallback((recordId: string, taxOption: { value: string; label: string; rate?: number }) => {
+    setPricingRecords(prev => prev.map((r) => {
+      if (r.id !== recordId) return r;
+      if (r.taxes.some(t => t.id === taxOption.value)) return r;
+      return { ...r, taxes: [...r.taxes, { id: taxOption.value, name: taxOption.label, rate: taxOption.rate || 0 }] };
+    }));
+    setTaxDropdownOpen(null);
+  }, []);
 
-  const addResourcePricingCurrency = useCallback((resourceId: string, currency: string) => {
-    // Check if this resource+currency combo already exists
-    if (resourcePricing.some(r => r.resource_id === resourceId && r.currency === currency)) {
-      return;
-    }
+  const removeTaxFromRecord = useCallback((recordId: string, taxId: string) => {
+    setPricingRecords(prev => prev.map((r) => {
+      if (r.id !== recordId) return r;
+      return { ...r, taxes: r.taxes.filter(t => t.id !== taxId) };
+    }));
+  }, []);
 
-    const existingForResource = resourcePricing.find(r => r.resource_id === resourceId);
-    if (!existingForResource) return;
-
-    const newEntry: ResourcePricingEntry = {
+  // Resource pricing handlers
+  const addResourcePricingCurrency = useCallback((resourceTypeId: string, currency: string) => {
+    if (resourcePricingRecords.some(r => r.resourceTypeId === resourceTypeId && r.currency === currency)) return;
+    const existing = resourcePricingRecords.find(r => r.resourceTypeId === resourceTypeId);
+    setResourcePricingRecords([...resourcePricingRecords, {
       id: `rp-${Date.now()}`,
-      resource_id: resourceId,
-      resource_name: existingForResource.resource_name,
-      resource_type_id: existingForResource.resource_type_id,
+      resourceTypeId,
+      resourceTypeName: existing?.resourceTypeName || resourceTypeId,
       currency,
-      amount: 0,
-      price_type: existingForResource.price_type,
+      pricePerUnit: 0,
+      pricingModel: existing?.pricingModel || 'hourly',
       tax_inclusion: 'exclusive',
-      is_active: true,
-    };
-    setResourcePricing(prev => [...prev, newEntry]);
-    setExpandedResource(null);
-  }, [resourcePricing]);
+      taxes: [],
+    }]);
+  }, [resourcePricingRecords]);
 
-  const removeResourcePricingEntry = useCallback((id: string) => {
-    setResourcePricing(prev => prev.filter(r => r.id !== id));
+  const updateResourcePricing = useCallback((id: string, field: keyof ResourcePricingRecord, value: unknown) => {
+    setResourcePricingRecords(prev => prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
   }, []);
 
-  const updateResourcePricing = useCallback((id: string, field: keyof ResourcePricingEntry, value: unknown) => {
-    setResourcePricing(prev =>
-      prev.map((r) => (r.id === id ? { ...r, [field]: value } : r))
-    );
+  const addTaxToResourceRecord = useCallback((recordId: string, taxOption: { value: string; label: string; rate?: number }) => {
+    setResourcePricingRecords(prev => prev.map((r) => {
+      if (r.id !== recordId) return r;
+      if (r.taxes.some(t => t.id === taxOption.value)) return r;
+      return { ...r, taxes: [...r.taxes, { id: taxOption.value, name: taxOption.label, rate: taxOption.rate || 0 }] };
+    }));
+    setTaxDropdownOpen(null);
   }, []);
 
-  // =================================================================
-  // TIERED PRICING HANDLERS
-  // =================================================================
+  const removeTaxFromResourceRecord = useCallback((recordId: string, taxId: string) => {
+    setResourcePricingRecords(prev => prev.map((r) => {
+      if (r.id !== recordId) return r;
+      return { ...r, taxes: r.taxes.filter(t => t.id !== taxId) };
+    }));
+  }, []);
 
   const addTier = useCallback((currency: string) => {
-    const newTier: PricingTier = {
+    setTiers([...tiers, {
       id: Date.now().toString(),
       name: `Tier ${tiers.filter((t) => t.currency === currency).length + 1}`,
       price: 0,
       currency,
-    };
-    setTiers([...tiers, newTier]);
+    }]);
   }, [tiers]);
 
   const removeTier = useCallback((id: string) => {
@@ -327,31 +276,15 @@ const PricingStep: React.FC<PricingStepProps> = ({ formData, onChange }) => {
     setTiers(tiers.map((t) => (t.id === id ? { ...t, [field]: value } : t)));
   }, [tiers]);
 
-  // =================================================================
-  // GET AVAILABLE CURRENCIES
-  // =================================================================
-
   const getAvailableCurrencies = useCallback(() => {
-    const usedCurrencies = pricingRecords.map((r) => r.currency);
-    return currencyOptions.filter((c) => !usedCurrencies.includes(c.code));
+    const used = pricingRecords.map((r) => r.currency);
+    return currencyOptions.filter((c) => !used.includes(c.code));
   }, [pricingRecords]);
 
-  const getAvailableCurrenciesForResource = useCallback((resourceId: string) => {
-    const usedCurrencies = resourcePricing
-      .filter((r) => r.resource_id === resourceId)
-      .map((r) => r.currency);
-    return currencyOptions.filter((c) => !usedCurrencies.includes(c.code));
-  }, [resourcePricing]);
-
-  // Group resource pricing by resource
-  const groupedResourcePricing = resourceRequirements.map(req => ({
-    requirement: req,
-    pricingEntries: resourcePricing.filter(rp => rp.resource_id === req.resource_id),
-  }));
-
-  // =================================================================
-  // PRICING MODEL OPTIONS
-  // =================================================================
+  const getAvailableCurrenciesForResource = useCallback((resourceTypeId: string) => {
+    const used = resourcePricingRecords.filter((r) => r.resourceTypeId === resourceTypeId).map((r) => r.currency);
+    return currencyOptions.filter((c) => !used.includes(c.code));
+  }, [resourcePricingRecords]);
 
   const pricingOptions = [
     { id: 'fixed', icon: DollarSign, label: 'Fixed', description: 'One price' },
@@ -359,6 +292,135 @@ const PricingStep: React.FC<PricingStepProps> = ({ formData, onChange }) => {
     { id: 'tiered', icon: Percent, label: 'Tiered', description: 'Multiple tiers' },
     { id: 'custom', icon: Lightbulb, label: 'Quote', description: 'Custom quote' },
   ];
+
+  // =================================================================
+  // TAX TAGS COMPONENT
+  // =================================================================
+
+  const TaxTags: React.FC<{
+    taxes: TaxEntry[];
+    onRemove: (taxId: string) => void;
+    recordId: string;
+    onAddTax: (recordId: string, tax: { value: string; label: string; rate?: number }) => void;
+    availableTaxes: { value: string; label: string; rate?: number }[];
+  }> = ({ taxes, onRemove, recordId, onAddTax, availableTaxes }) => {
+    const unused = availableTaxes.filter(t => !taxes.some(existing => existing.id === t.value));
+
+    return (
+      <div>
+        <label className="block text-xs font-medium mb-1.5" style={{ color: colors.utility.secondaryText }}>
+          Tax Rates (select multiple)
+        </label>
+        <div className="flex flex-wrap gap-1.5 items-center min-h-[40px] p-2 border rounded-lg" style={inputStyle}>
+          {taxes.map((tax) => (
+            <span
+              key={tax.id}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium"
+              style={{ backgroundColor: `${colors.brand.primary}15`, color: colors.brand.primary }}
+            >
+              {tax.name} ({tax.rate}%)
+              <button type="button" onClick={() => onRemove(tax.id)} className="hover:opacity-70">
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          ))}
+
+          {unused.length > 0 && (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setTaxDropdownOpen(taxDropdownOpen === recordId ? null : recordId)}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs border border-dashed hover:border-solid transition-all"
+                style={{ borderColor: colors.brand.primary, color: colors.brand.primary }}
+              >
+                <Plus className="w-3 h-3" />
+                Add Tax
+              </button>
+
+              {taxDropdownOpen === recordId && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setTaxDropdownOpen(null)} />
+                  <div
+                    className="absolute left-0 z-50 mt-1 w-48 max-h-48 overflow-y-auto rounded-lg border shadow-lg"
+                    style={{
+                      backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#FFFFFF',
+                      borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB',
+                    }}
+                  >
+                    {unused.map((tax) => (
+                      <button
+                        key={tax.value}
+                        type="button"
+                        onClick={() => onAddTax(recordId, tax)}
+                        className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
+                      >
+                        <span>{tax.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {taxes.length === 0 && unused.length === 0 && (
+            <span className="text-xs" style={{ color: colors.utility.secondaryText }}>No taxes available</span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // =================================================================
+  // PRICE BREAKDOWN COMPONENT
+  // =================================================================
+
+  const PriceBreakdown: React.FC<{
+    amount: number;
+    taxes: TaxEntry[];
+    taxInclusion: 'inclusive' | 'exclusive';
+    currencySymbol: string;
+  }> = ({ amount, taxes, taxInclusion, currencySymbol }) => {
+    const breakdown = calculateBreakdown(amount, taxes, taxInclusion);
+    if (amount <= 0) return null;
+
+    return (
+      <div
+        className="mt-3 p-3 rounded-lg border"
+        style={{ backgroundColor: `${colors.semantic.success}08`, borderColor: `${colors.semantic.success}30` }}
+      >
+        <div className="flex items-center gap-2 mb-2">
+          <Receipt className="w-4 h-4" style={{ color: colors.semantic.success }} />
+          <span className="text-xs font-semibold" style={{ color: colors.utility.primaryText }}>Price Breakdown</span>
+        </div>
+        <div className="space-y-1 text-xs" style={{ color: colors.utility.secondaryText }}>
+          <div className="flex justify-between">
+            <span>Subtotal</span>
+            <span style={{ color: colors.utility.primaryText }}>{currencySymbol} {breakdown.subtotal.toFixed(2)}</span>
+          </div>
+          {taxes.map((tax) => (
+            <div key={tax.id} className="flex justify-between">
+              <span>{tax.name} ({tax.rate}%)</span>
+              <span style={{ color: colors.utility.primaryText }}>{currencySymbol} {((breakdown.subtotal * tax.rate) / 100).toFixed(2)}</span>
+            </div>
+          ))}
+          {taxes.length > 1 && (
+            <div className="flex justify-between pt-1 border-t" style={{ borderColor: isDarkMode ? '#374151' : '#E5E7EB' }}>
+              <span>Total Tax ({breakdown.taxRate}%)</span>
+              <span style={{ color: colors.utility.primaryText }}>{currencySymbol} {breakdown.taxAmount.toFixed(2)}</span>
+            </div>
+          )}
+          <div className="flex justify-between pt-1 border-t font-semibold" style={{ borderColor: isDarkMode ? '#374151' : '#E5E7EB', color: colors.utility.primaryText }}>
+            <span>Total</span>
+            <span style={{ color: colors.semantic.success }}>{currencySymbol} {breakdown.total.toFixed(2)}</span>
+          </div>
+          {taxInclusion === 'inclusive' && (
+            <div className="text-[10px] italic" style={{ color: colors.utility.secondaryText }}>* Price is tax inclusive</div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   // =================================================================
   // RENDER
@@ -370,350 +432,202 @@ const PricingStep: React.FC<PricingStepProps> = ({ formData, onChange }) => {
         Pricing Configuration
       </h2>
       <p className="text-sm mb-6" style={{ color: colors.utility.secondaryText }}>
-        {serviceType === 'resource_based'
-          ? 'Set prices for each resource. Each resource can have different rates per currency.'
-          : 'Set different prices for each currency. Each currency can have its own tax settings.'}
+        Set prices for each currency. Add multiple taxes per pricing record.
       </p>
 
       <div className="space-y-6">
-        {/* ============================================================= */}
-        {/* RESOURCE-BASED PRICING - Per specific resource */}
-        {/* ============================================================= */}
-        {serviceType === 'resource_based' && resourceRequirements.length > 0 && (
+        {/* Resource-based Pricing Notice */}
+        {pricingMode === 'resource_based' && selectedResourceTypes.length > 0 && (
+          <div className="flex items-start gap-3 p-4 rounded-xl border shadow-sm" style={cardStyle}>
+            <Users className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: colors.brand.primary }} />
+            <div>
+              <h4 className="font-semibold text-sm" style={{ color: colors.utility.primaryText }}>Resource-Based Pricing Active</h4>
+              <p className="text-xs mt-1" style={{ color: colors.utility.secondaryText }}>Configure pricing for each resource type. Multiple taxes can be applied.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Pricing Model Selection */}
+        {pricingMode !== 'resource_based' && (
+          <div>
+            <label className="block text-sm font-medium mb-3" style={{ color: colors.utility.primaryText }}>
+              Pricing Model <span style={{ color: colors.semantic.error }}>*</span>
+            </label>
+            <div className="grid grid-cols-4 gap-3">
+              {pricingOptions.map((option) => {
+                const IconComp = option.icon;
+                const isSelected = priceType === option.id;
+                return (
+                  <div
+                    key={option.id}
+                    onClick={() => setPriceType(option.id as PriceType)}
+                    className="p-3 border-2 rounded-xl cursor-pointer text-center transition-all shadow-sm"
+                    style={{
+                      backgroundColor: isSelected ? `${colors.brand.primary}10` : (isDarkMode ? colors.utility.secondaryBackground : '#FFFFFF'),
+                      borderColor: isSelected ? colors.brand.primary : (isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB'),
+                    }}
+                  >
+                    <IconComp className="w-6 h-6 mx-auto mb-1" style={{ color: colors.brand.primary }} />
+                    <div className="text-sm font-bold" style={{ color: colors.utility.primaryText }}>{option.label}</div>
+                    <div className="text-xs" style={{ color: colors.utility.secondaryText }}>{option.description}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* MULTI-CURRENCY PRICING RECORDS */}
+        {pricingMode !== 'resource_based' && priceType !== 'custom' && (
           <div className="space-y-4">
-            {/* Pricing Mode Toggle: Uniform vs Per-Resource */}
-            <div
-              className="p-4 rounded-xl border"
-              style={{
-                backgroundColor: colors.utility.primaryBackground,
-                borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB',
-              }}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h4 className="font-semibold text-sm" style={{ color: colors.utility.primaryText }}>
-                    Pricing Mode
-                  </h4>
-                  <p className="text-xs mt-0.5" style={{ color: colors.utility.secondaryText }}>
-                    Choose how to configure prices for resources
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                {/* Same Price for All */}
-                <div
-                  onClick={() => setUseUniformPricing(true)}
-                  className="p-3 border-2 rounded-xl cursor-pointer transition-all"
-                  style={{
-                    backgroundColor: useUniformPricing
-                      ? `${colors.brand.primary}10`
-                      : colors.utility.primaryBackground,
-                    borderColor: useUniformPricing
-                      ? colors.brand.primary
-                      : isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB',
-                  }}
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold flex items-center gap-2" style={{ color: colors.utility.primaryText }}>
+                <Globe className="w-4 h-4" />
+                Currency-Specific Pricing
+              </h4>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setAddCurrencyDropdown(!addCurrencyDropdown)}
+                  className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg border shadow-sm"
+                  style={{ backgroundColor: isDarkMode ? colors.utility.secondaryBackground : '#FFFFFF', color: colors.brand.primary, borderColor: colors.brand.primary }}
+                  disabled={getAvailableCurrencies().length === 0}
                 >
-                  <div className="flex items-center gap-2 mb-1">
-                    <Globe className="w-4 h-4" style={{ color: colors.brand.primary }} />
-                    <span className="font-semibold text-sm" style={{ color: colors.utility.primaryText }}>
-                      Same Price for All
-                    </span>
-                  </div>
-                  <p className="text-xs" style={{ color: colors.utility.secondaryText }}>
-                    All resources have the same rate
-                  </p>
-                </div>
-
-                {/* Different Prices */}
-                <div
-                  onClick={() => setUseUniformPricing(false)}
-                  className="p-3 border-2 rounded-xl cursor-pointer transition-all"
-                  style={{
-                    backgroundColor: !useUniformPricing
-                      ? `${colors.brand.primary}10`
-                      : colors.utility.primaryBackground,
-                    borderColor: !useUniformPricing
-                      ? colors.brand.primary
-                      : isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB',
-                  }}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <User className="w-4 h-4" style={{ color: colors.brand.primary }} />
-                    <span className="font-semibold text-sm" style={{ color: colors.utility.primaryText }}>
-                      Per-Resource Pricing
-                    </span>
-                  </div>
-                  <p className="text-xs" style={{ color: colors.utility.secondaryText }}>
-                    Each resource has a different rate
-                  </p>
-                </div>
+                  <Plus className="w-4 h-4" />
+                  Add Currency
+                </button>
+                {addCurrencyDropdown && getAvailableCurrencies().length > 0 && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setAddCurrencyDropdown(false)} />
+                    <div className="absolute right-0 z-50 mt-1 w-56 max-h-60 overflow-y-auto rounded-lg border shadow-lg" style={{ backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#FFFFFF', borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB' }}>
+                      {getAvailableCurrencies().map((currency) => (
+                        <button key={currency.code} type="button" onClick={() => addPricingRecord(currency.code)} className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-800">
+                          <span className="w-8 font-semibold">{currency.symbol}</span>
+                          <span className="text-sm">{currency.name} ({currency.code})</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
-            {/* Uniform Pricing Form */}
-            {useUniformPricing && (
-              <div
-                className="p-4 rounded-xl border"
-                style={{
-                  backgroundColor: isDarkMode ? colors.utility.secondaryBackground : '#F9FAFB',
-                  borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB',
-                }}
-              >
-                <h4 className="font-semibold text-sm mb-4" style={{ color: colors.utility.primaryText }}>
-                  Uniform Price (applies to all {resourceRequirements.length} resources)
-                </h4>
+            <div className="space-y-4">
+              {pricingRecords.map((record) => {
+                const currencyInfo = currencyOptions.find((c) => c.code === record.currency);
+                const currencySymbol = currencyInfo?.symbol || record.currency;
 
-                <div className="grid grid-cols-4 gap-3">
-                  {/* Currency */}
-                  <div>
-                    <label className="block text-xs font-medium mb-1" style={{ color: colors.utility.secondaryText }}>
-                      Currency
-                    </label>
-                    <select
-                      value={uniformCurrency}
-                      onChange={(e) => setUniformCurrency(e.target.value)}
-                      className="w-full px-2 py-2 border rounded-lg text-sm"
-                      style={inputStyle}
-                    >
-                      {currencyOptions.map((c) => (
-                        <option key={c.code} value={c.code}>{c.symbol} {c.code}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Price Type */}
-                  <div>
-                    <label className="block text-xs font-medium mb-1" style={{ color: colors.utility.secondaryText }}>
-                      Type
-                    </label>
-                    <select
-                      value={uniformPriceType}
-                      onChange={(e) => setUniformPriceType(e.target.value as 'fixed' | 'hourly' | 'per_unit')}
-                      className="w-full px-2 py-2 border rounded-lg text-sm"
-                      style={inputStyle}
-                    >
-                      <option value="fixed">Fixed</option>
-                      <option value="hourly">Per Hour</option>
-                      <option value="per_unit">Per Unit</option>
-                    </select>
-                  </div>
-
-                  {/* Amount */}
-                  <div>
-                    <label className="block text-xs font-medium mb-1" style={{ color: colors.utility.secondaryText }}>
-                      Amount <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <span
-                        className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm font-medium"
-                        style={{ color: colors.utility.secondaryText }}
-                      >
-                        {currencyOptions.find(c => c.code === uniformCurrency)?.symbol || uniformCurrency}
-                      </span>
-                      <input
-                        type="number"
-                        value={uniformPrice || ''}
-                        onChange={(e) => setUniformPrice(parseFloat(e.target.value) || 0)}
-                        className="w-full pl-8 pr-2 py-2 border rounded-lg text-sm"
-                        style={inputStyle}
-                        placeholder="0.00"
-                      />
+                return (
+                  <div key={record.id} className="p-4 rounded-xl border shadow-sm" style={cardStyle}>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <span className="w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold" style={{ backgroundColor: `${colors.brand.primary}20`, color: colors.brand.primary }}>
+                          {currencySymbol}
+                        </span>
+                        <div>
+                          <div className="font-semibold" style={{ color: colors.utility.primaryText }}>{currencyInfo?.name || record.currency}</div>
+                          <div className="text-xs" style={{ color: colors.utility.secondaryText }}>{record.currency}</div>
+                        </div>
+                      </div>
+                      {pricingRecords.length > 1 && (
+                        <button type="button" onClick={() => removePricingRecord(record.id)} className="p-2 rounded-lg hover:bg-red-50 transition-colors" title="Remove">
+                          <Trash2 className="w-4 h-4" style={{ color: colors.semantic.error }} />
+                        </button>
+                      )}
                     </div>
-                  </div>
 
-                  {/* Tax Rate */}
-                  <div>
-                    <label className="block text-xs font-medium mb-1" style={{ color: colors.utility.secondaryText }}>
-                      Tax Rate
-                    </label>
-                    {taxRateOptions.length > 0 ? (
-                      <select
-                        value={uniformTaxRateId}
-                        onChange={(e) => setUniformTaxRateId(e.target.value)}
-                        className="w-full px-2 py-2 border rounded-lg text-sm"
-                        style={inputStyle}
-                      >
-                        <option value="">No Tax</option>
-                        {taxRateOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <input
-                        type="text"
-                        className="w-full px-2 py-2 border rounded-lg text-sm"
-                        style={inputStyle}
-                        placeholder="N/A"
-                        disabled
-                      />
-                    )}
-                  </div>
-                </div>
-
-                {/* Tax Inclusion */}
-                <div className="mt-3 flex items-center gap-4">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      checked={uniformTaxInclusion === 'inclusive'}
-                      onChange={() => setUniformTaxInclusion('inclusive')}
-                      style={{ accentColor: colors.brand.primary }}
-                    />
-                    <span className="text-xs" style={{ color: colors.utility.primaryText }}>
-                      Tax Inclusive
-                    </span>
-                  </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      checked={uniformTaxInclusion === 'exclusive'}
-                      onChange={() => setUniformTaxInclusion('exclusive')}
-                      style={{ accentColor: colors.brand.primary }}
-                    />
-                    <span className="text-xs" style={{ color: colors.utility.primaryText }}>
-                      Tax Exclusive
-                    </span>
-                  </label>
-                </div>
-
-                {/* Resources Summary */}
-                <div className="mt-4 pt-3 border-t" style={{ borderColor: isDarkMode ? '#374151' : '#E5E7EB' }}>
-                  <p className="text-xs font-medium mb-2" style={{ color: colors.utility.secondaryText }}>
-                    This price applies to:
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {resourceRequirements.map((req) => (
-                      <span
-                        key={req.resource_id}
-                        className="text-xs px-2 py-1 rounded-full"
-                        style={{
-                          backgroundColor: `${colors.brand.primary}10`,
-                          color: colors.brand.primary,
-                        }}
-                      >
-                        {req.resource_name || 'Unknown'}
-                        {req.select_all && ' (Any)'}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Per-Resource Pricing Cards (only shown when not using uniform pricing) */}
-            {!useUniformPricing && (
-              <>
-                {/* Info Banner */}
-                <div
-                  className="flex items-start gap-3 p-4 rounded-xl border"
-                  style={{
-                    backgroundColor: `${colors.brand.primary}08`,
-                    borderColor: `${colors.brand.primary}30`,
-                  }}
-                >
-                  <Users className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: colors.brand.primary }} />
-                  <div>
-                    <h4 className="font-semibold text-sm" style={{ color: colors.utility.primaryText }}>
-                      Per-Resource Pricing
-                    </h4>
-                    <p className="text-xs mt-1" style={{ color: colors.utility.secondaryText }}>
-                      Each resource has its own price. For example: "Consultation by Dr. Bhavana - ₹500" and "Consultation by Dr. Hema - ₹600"
-                    </p>
-                  </div>
-                </div>
-
-            {/* Per-Resource Pricing Cards */}
-            {groupedResourcePricing.map(({ requirement, pricingEntries }) => {
-              const availableCurrencies = getAvailableCurrenciesForResource(requirement.resource_id);
-              const isAnyResource = requirement.select_all;
-
-              return (
-                <div
-                  key={requirement.resource_id}
-                  className="p-4 rounded-xl border"
-                  style={{
-                    backgroundColor: colors.utility.primaryBackground,
-                    borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB',
-                  }}
-                >
-                  {/* Resource Header */}
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-10 h-10 rounded-full flex items-center justify-center"
-                        style={{ backgroundColor: `${colors.brand.primary}15` }}
-                      >
-                        <User className="w-5 h-5" style={{ color: colors.brand.primary }} />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium mb-1.5" style={{ color: colors.utility.secondaryText }}>
+                          {priceType === 'hourly' ? 'Hourly Rate' : 'Price'} <span className="text-red-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 font-semibold" style={{ color: colors.utility.secondaryText }}>{currencySymbol}</span>
+                          <input type="number" value={record.amount || ''} onChange={(e) => updatePricingRecord(record.id, 'amount', parseFloat(e.target.value) || 0)} className="w-full pl-10 pr-3 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2" style={inputStyle} placeholder="0.00" />
+                        </div>
                       </div>
                       <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold" style={{ color: colors.utility.primaryText }}>
-                            {requirement.resource_name || 'Unknown Resource'}
-                          </span>
-                          {isAnyResource && (
-                            <span
-                              className="text-xs px-2 py-0.5 rounded-full"
-                              style={{
-                                backgroundColor: `${colors.semantic.info}15`,
-                                color: colors.semantic.info,
-                              }}
-                            >
-                              ANY
-                            </span>
-                          )}
-                          {requirement.quantity > 1 && (
-                            <span
-                              className="text-xs px-2 py-0.5 rounded-full"
-                              style={{
-                                backgroundColor: `${colors.brand.primary}15`,
-                                color: colors.brand.primary,
-                              }}
-                            >
-                              ×{requirement.quantity}
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
-                          {requirement.is_required ? 'Required' : 'Optional'}
-                        </span>
+                        <label className="block text-xs font-medium mb-1.5" style={{ color: colors.utility.secondaryText }}>Tax Treatment</label>
+                        <select value={record.tax_inclusion} onChange={(e) => updatePricingRecord(record.id, 'tax_inclusion', e.target.value)} className="w-full px-3 py-2.5 border rounded-lg text-sm" style={inputStyle}>
+                          <option value="exclusive">Tax Exclusive</option>
+                          <option value="inclusive">Tax Inclusive</option>
+                        </select>
                       </div>
                     </div>
 
-                    {/* Add Currency Button */}
-                    {availableCurrencies.length > 0 && (
-                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={() => setExpandedResource(
-                            expandedResource === requirement.resource_id ? null : requirement.resource_id
+                    <div className="mt-4">
+                      <TaxTags taxes={record.taxes} onRemove={(taxId) => removeTaxFromRecord(record.id, taxId)} recordId={record.id} onAddTax={addTaxToRecord} availableTaxes={taxRateOptions} />
+                    </div>
+
+                    <PriceBreakdown amount={record.amount} taxes={record.taxes} taxInclusion={record.tax_inclusion} currencySymbol={currencySymbol} />
+
+                    {priceType === 'tiered' && (
+                      <div className="mt-4 pt-4 border-t" style={{ borderColor: isDarkMode ? '#374151' : '#E5E7EB' }}>
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-xs font-medium" style={{ color: colors.utility.secondaryText }}>Pricing Tiers ({currencySymbol})</span>
+                          <button type="button" onClick={() => addTier(record.currency)} className="text-xs flex items-center gap-1 px-2 py-1 rounded" style={{ color: colors.brand.primary, backgroundColor: `${colors.brand.primary}10` }}>
+                            <Plus className="w-3 h-3" /> Add Tier
+                          </button>
+                        </div>
+                        <div className="space-y-2">
+                          {tiers.filter((t) => t.currency === record.currency).map((tier, idx) => (
+                            <div key={tier.id} className="flex items-center gap-2">
+                              <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold" style={{ backgroundColor: `${colors.brand.primary}15`, color: colors.brand.primary }}>{idx + 1}</span>
+                              <input type="text" value={tier.name} onChange={(e) => updateTier(tier.id, 'name', e.target.value)} className="flex-1 px-2 py-1.5 border rounded-lg text-sm" style={inputStyle} placeholder="Tier name" />
+                              <div className="relative w-28">
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs" style={{ color: colors.utility.secondaryText }}>{currencySymbol}</span>
+                                <input type="number" value={tier.price || ''} onChange={(e) => updateTier(tier.id, 'price', parseFloat(e.target.value) || 0)} className="w-full pl-6 pr-2 py-1.5 border rounded-lg text-sm" style={inputStyle} />
+                              </div>
+                              <button type="button" onClick={() => removeTier(tier.id)} className="p-1">
+                                <Trash2 className="w-3 h-3" style={{ color: colors.utility.secondaryText }} />
+                              </button>
+                            </div>
+                          ))}
+                          {tiers.filter((t) => t.currency === record.currency).length === 0 && (
+                            <p className="text-xs italic" style={{ color: colors.utility.secondaryText }}>No tiers added. Click "Add Tier" to create pricing tiers.</p>
                           )}
-                          className="text-xs flex items-center gap-1 px-3 py-1.5 rounded-lg border"
-                          style={{ color: colors.brand.primary, borderColor: colors.brand.primary }}
-                        >
-                          <Plus className="w-3 h-3" /> Add Currency
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* RESOURCE-BASED PRICING */}
+        {pricingMode === 'resource_based' && selectedResourceTypes.length > 0 && (
+          <div className="space-y-6">
+            {selectedResourceTypes.map((resourceTypeId) => {
+              const resourceName = resourceTypeId.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+              const records = resourcePricingRecords.filter((r) => r.resourceTypeId === resourceTypeId);
+              const available = getAvailableCurrenciesForResource(resourceTypeId);
+
+              return (
+                <div key={resourceTypeId} className="p-4 rounded-xl border shadow-sm" style={cardStyle}>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <Users className="w-5 h-5" style={{ color: colors.brand.primary }} />
+                      <div>
+                        <span className="font-semibold" style={{ color: colors.utility.primaryText }}>{resourceName}</span>
+                        {resourceQuantities[resourceTypeId] > 1 && (
+                          <span className="ml-2 text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: `${colors.brand.primary}15`, color: colors.brand.primary }}>x{resourceQuantities[resourceTypeId]}</span>
+                        )}
+                      </div>
+                    </div>
+                    {available.length > 0 && (
+                      <div className="relative">
+                        <button type="button" onClick={() => setEditingRecordId(editingRecordId === resourceTypeId ? null : resourceTypeId)} className="text-xs flex items-center gap-1 px-2 py-1 rounded border shadow-sm" style={{ color: colors.brand.primary, borderColor: colors.brand.primary, backgroundColor: isDarkMode ? colors.utility.secondaryBackground : '#FFFFFF' }}>
+                          <Plus className="w-3 h-3" /> Currency
                         </button>
-                        {expandedResource === requirement.resource_id && (
+                        {editingRecordId === resourceTypeId && (
                           <>
-                            <div className="fixed inset-0 z-40" onClick={() => setExpandedResource(null)} />
-                            <div
-                              className="absolute right-0 z-50 mt-1 w-48 max-h-48 overflow-y-auto rounded-lg border shadow-lg"
-                              style={{
-                                backgroundColor: colors.utility.primaryBackground,
-                                borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB',
-                              }}
-                            >
-                              {availableCurrencies.map((currency) => (
-                                <button
-                                  key={currency.code}
-                                  type="button"
-                                  onClick={() => addResourcePricingCurrency(requirement.resource_id, currency.code)}
-                                  className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-800 text-sm"
-                                >
-                                  <span className="font-semibold w-6">{currency.symbol}</span>
-                                  <span>{currency.name} ({currency.code})</span>
+                            <div className="fixed inset-0 z-40" onClick={() => setEditingRecordId(null)} />
+                            <div className="absolute right-0 z-50 mt-1 w-48 max-h-48 overflow-y-auto rounded-lg border shadow-lg" style={{ backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#FFFFFF', borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB' }}>
+                              {available.map((c) => (
+                                <button key={c.code} type="button" onClick={() => { addResourcePricingCurrency(resourceTypeId, c.code); setEditingRecordId(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-800 text-sm">
+                                  <span className="font-semibold">{c.symbol}</span><span>{c.code}</span>
                                 </button>
                               ))}
                             </div>
@@ -723,567 +637,91 @@ const PricingStep: React.FC<PricingStepProps> = ({ formData, onChange }) => {
                     )}
                   </div>
 
-                  {/* Pricing Entries for this resource */}
                   <div className="space-y-3">
-                    {pricingEntries.length > 0 ? (
-                      pricingEntries.map((entry) => {
-                        const currencyInfo = currencyOptions.find((c) => c.code === entry.currency);
-                        const currencySymbol = currencyInfo?.symbol || entry.currency;
-
-                        return (
-                          <div
-                            key={entry.id}
-                            className="p-3 rounded-lg border"
-                            style={{
-                              backgroundColor: isDarkMode ? colors.utility.secondaryBackground : '#F9FAFB',
-                              borderColor: isDarkMode ? '#374151' : '#E5E7EB',
-                            }}
-                          >
-                            {/* Currency Header */}
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
-                                  style={{ backgroundColor: `${colors.brand.primary}20`, color: colors.brand.primary }}
-                                >
-                                  {currencySymbol}
-                                </span>
-                                <span className="font-medium text-sm" style={{ color: colors.utility.primaryText }}>
-                                  {currencyInfo?.name || entry.currency}
-                                </span>
-                              </div>
-                              {pricingEntries.length > 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() => removeResourcePricingEntry(entry.id)}
-                                  className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
-                                >
-                                  <Trash2 className="w-4 h-4" style={{ color: colors.semantic.error }} />
-                                </button>
-                              )}
+                    {records.map((record) => {
+                      const info = currencyOptions.find((c) => c.code === record.currency);
+                      const sym = info?.symbol || record.currency;
+                      return (
+                        <div key={record.id} className="p-3 rounded-lg border" style={{ backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#FAFAFA', borderColor: isDarkMode ? '#374151' : '#E5E7EB' }}>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium" style={{ color: colors.utility.primaryText }}>{sym} {record.currency}</span>
+                            {records.length > 1 && (
+                              <button type="button" onClick={() => setResourcePricingRecords(prev => prev.filter(r => r.id !== record.id))} className="p-1">
+                                <Trash2 className="w-3 h-3" style={{ color: colors.semantic.error }} />
+                              </button>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-3 gap-3">
+                            <div>
+                              <label className="block text-xs mb-1" style={{ color: colors.utility.secondaryText }}>Model</label>
+                              <select value={record.pricingModel} onChange={(e) => updateResourcePricing(record.id, 'pricingModel', e.target.value)} className="w-full px-2 py-1.5 border rounded text-sm" style={inputStyle}>
+                                <option value="hourly">Per Hour</option>
+                                <option value="per_unit">Per Unit</option>
+                                <option value="fixed">Fixed</option>
+                              </select>
                             </div>
-
-                            {/* Pricing Fields */}
-                            <div className="grid grid-cols-3 gap-3">
-                              {/* Price Type */}
-                              <div>
-                                <label className="block text-xs font-medium mb-1" style={{ color: colors.utility.secondaryText }}>
-                                  Type
-                                </label>
-                                <select
-                                  value={entry.price_type}
-                                  onChange={(e) => updateResourcePricing(entry.id, 'price_type', e.target.value)}
-                                  className="w-full px-2 py-2 border rounded-lg text-sm"
-                                  style={inputStyle}
-                                >
-                                  <option value="fixed">Fixed</option>
-                                  <option value="hourly">Per Hour</option>
-                                  <option value="per_unit">Per Unit</option>
-                                </select>
-                              </div>
-
-                              {/* Amount */}
-                              <div>
-                                <label className="block text-xs font-medium mb-1" style={{ color: colors.utility.secondaryText }}>
-                                  Amount <span className="text-red-500">*</span>
-                                </label>
-                                <div className="relative">
-                                  <span
-                                    className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm font-medium"
-                                    style={{ color: colors.utility.secondaryText }}
-                                  >
-                                    {currencySymbol}
-                                  </span>
-                                  <input
-                                    type="number"
-                                    value={entry.amount || ''}
-                                    onChange={(e) => updateResourcePricing(entry.id, 'amount', parseFloat(e.target.value) || 0)}
-                                    className="w-full pl-8 pr-2 py-2 border rounded-lg text-sm"
-                                    style={inputStyle}
-                                    placeholder="0.00"
-                                  />
-                                </div>
-                              </div>
-
-                              {/* Tax Rate */}
-                              <div>
-                                <label className="block text-xs font-medium mb-1" style={{ color: colors.utility.secondaryText }}>
-                                  Tax Rate
-                                </label>
-                                {taxLoading ? (
-                                  <div className="flex items-center justify-center py-2">
-                                    <Loader2 className="w-4 h-4 animate-spin" style={{ color: colors.brand.primary }} />
-                                  </div>
-                                ) : taxRateOptions.length > 0 ? (
-                                  <select
-                                    value={entry.tax_rate_id || ''}
-                                    onChange={(e) => {
-                                      const selectedRate = taxRateOptions.find((r) => r.value === e.target.value);
-                                      updateResourcePricing(entry.id, 'tax_rate_id', e.target.value);
-                                      updateResourcePricing(entry.id, 'tax_rate', selectedRate?.rate || 0);
-                                    }}
-                                    className="w-full px-2 py-2 border rounded-lg text-sm"
-                                    style={inputStyle}
-                                  >
-                                    <option value="">No Tax</option>
-                                    {taxRateOptions.map((option) => (
-                                      <option key={option.value} value={option.value}>
-                                        {option.label}
-                                      </option>
-                                    ))}
-                                  </select>
-                                ) : (
-                                  <div className="flex items-center gap-1">
-                                    <input
-                                      type="number"
-                                      value={entry.tax_rate || ''}
-                                      onChange={(e) => updateResourcePricing(entry.id, 'tax_rate', parseFloat(e.target.value) || 0)}
-                                      className="w-full px-2 py-2 border rounded-lg text-sm"
-                                      style={inputStyle}
-                                      placeholder="0"
-                                    />
-                                    <span className="text-sm" style={{ color: colors.utility.secondaryText }}>%</span>
-                                  </div>
-                                )}
+                            <div>
+                              <label className="block text-xs mb-1" style={{ color: colors.utility.secondaryText }}>Rate</label>
+                              <div className="relative">
+                                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs" style={{ color: colors.utility.secondaryText }}>{sym}</span>
+                                <input type="number" value={record.pricePerUnit || ''} onChange={(e) => updateResourcePricing(record.id, 'pricePerUnit', parseFloat(e.target.value) || 0)} className="w-full pl-6 pr-2 py-1.5 border rounded text-sm" style={inputStyle} placeholder="0" />
                               </div>
                             </div>
-
-                            {/* Tax Inclusion Toggle */}
-                            <div className="mt-3 flex items-center gap-4">
-                              <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                  type="radio"
-                                  name={`tax-${entry.id}`}
-                                  checked={entry.tax_inclusion === 'inclusive'}
-                                  onChange={() => updateResourcePricing(entry.id, 'tax_inclusion', 'inclusive')}
-                                  style={{ accentColor: colors.brand.primary }}
-                                />
-                                <span className="text-xs" style={{ color: colors.utility.primaryText }}>
-                                  Tax Inclusive
-                                </span>
-                              </label>
-                              <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                  type="radio"
-                                  name={`tax-${entry.id}`}
-                                  checked={entry.tax_inclusion === 'exclusive'}
-                                  onChange={() => updateResourcePricing(entry.id, 'tax_inclusion', 'exclusive')}
-                                  style={{ accentColor: colors.brand.primary }}
-                                />
-                                <span className="text-xs" style={{ color: colors.utility.primaryText }}>
-                                  Tax Exclusive
-                                </span>
-                              </label>
+                            <div>
+                              <label className="block text-xs mb-1" style={{ color: colors.utility.secondaryText }}>Tax Mode</label>
+                              <select value={record.tax_inclusion} onChange={(e) => updateResourcePricing(record.id, 'tax_inclusion', e.target.value)} className="w-full px-2 py-1.5 border rounded text-sm" style={inputStyle}>
+                                <option value="exclusive">Exclusive</option>
+                                <option value="inclusive">Inclusive</option>
+                              </select>
                             </div>
                           </div>
-                        );
-                      })
-                    ) : (
-                      <div
-                        className="p-4 rounded-lg border-2 border-dashed text-center"
-                        style={{ borderColor: isDarkMode ? '#374151' : '#E5E7EB' }}
-                      >
-                        <p className="text-sm" style={{ color: colors.utility.secondaryText }}>
-                          No pricing configured. Click "Add Currency" to set prices.
-                        </p>
+                          <div className="mt-3">
+                            <TaxTags taxes={record.taxes} onRemove={(taxId) => removeTaxFromResourceRecord(record.id, taxId)} recordId={record.id} onAddTax={addTaxToResourceRecord} availableTaxes={taxRateOptions} />
+                          </div>
+                          <PriceBreakdown amount={record.pricePerUnit} taxes={record.taxes} taxInclusion={record.tax_inclusion} currencySymbol={sym} />
+                        </div>
+                      );
+                    })}
+                    {records.length === 0 && (
+                      <div className="p-3 rounded-lg border-2 border-dashed text-center" style={{ borderColor: isDarkMode ? '#374151' : '#E5E7EB' }}>
+                        <p className="text-sm" style={{ color: colors.utility.secondaryText }}>No pricing configured. Click "+ Currency" to add pricing.</p>
                       </div>
                     )}
                   </div>
                 </div>
               );
             })}
-              </>
-            )}
-
-            {resourceRequirements.length === 0 && (
-              <div
-                className="p-6 rounded-xl border text-center"
-                style={{
-                  backgroundColor: `${colors.semantic.warning}10`,
-                  borderColor: `${colors.semantic.warning}30`,
-                }}
-              >
-                <p className="text-sm" style={{ color: colors.utility.primaryText }}>
-                  No resources selected. Please go back to the Resource Dependency step and add resources.
-                </p>
-              </div>
-            )}
           </div>
         )}
 
-        {/* ============================================================= */}
-        {/* INDEPENDENT PRICING (Original behavior) */}
-        {/* ============================================================= */}
-        {serviceType === 'independent' && (
-          <>
-            {/* Pricing Model Selection */}
-            <div>
-              <label className="block text-sm font-medium mb-3" style={labelStyle}>
-                Pricing Model <span style={{ color: colors.semantic.error }}>*</span>
-              </label>
-              <div className="grid grid-cols-4 gap-3">
-                {pricingOptions.map((option) => {
-                  const IconComp = option.icon;
-                  const isSelected = priceType === option.id;
-                  return (
-                    <div
-                      key={option.id}
-                      onClick={() => setPriceType(option.id as PriceType)}
-                      className="p-3 border-2 rounded-xl cursor-pointer text-center transition-all"
-                      style={{
-                        backgroundColor: isSelected
-                          ? `${colors.brand.primary}10`
-                          : colors.utility.primaryBackground,
-                        borderColor: isSelected
-                          ? colors.brand.primary
-                          : isDarkMode
-                          ? colors.utility.secondaryBackground
-                          : '#E5E7EB',
-                      }}
-                    >
-                      <IconComp className="w-6 h-6 mx-auto mb-1" style={{ color: colors.brand.primary }} />
-                      <div className="text-sm font-bold" style={{ color: colors.utility.primaryText }}>
-                        {option.label}
-                      </div>
-                      <div className="text-xs" style={{ color: colors.utility.secondaryText }}>
-                        {option.description}
-                      </div>
-                    </div>
-                  );
-                })}
+        {/* Custom Quote Mode */}
+        {priceType === 'custom' && pricingMode !== 'resource_based' && (
+          <div className="p-4 rounded-lg border shadow-sm" style={{ ...cardStyle, borderColor: `${colors.semantic.warning}40` }}>
+            <div className="flex gap-3">
+              <Lightbulb className="w-5 h-5 flex-shrink-0" style={{ color: colors.semantic.warning }} />
+              <div>
+                <div className="font-semibold" style={{ color: colors.utility.primaryText }}>Custom Quote Mode</div>
+                <p className="text-sm mt-1" style={{ color: colors.utility.secondaryText }}>Price will be determined per contract. A quote request form will be shown to customers.</p>
               </div>
             </div>
-
-            {/* Multi-Currency Pricing Records */}
-            {priceType !== 'custom' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-semibold flex items-center gap-2" style={{ color: colors.utility.primaryText }}>
-                    <Globe className="w-4 h-4" />
-                    Currency-Specific Pricing
-                  </h4>
-
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setAddCurrencyDropdown(!addCurrencyDropdown)}
-                      className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg border"
-                      style={{
-                        color: colors.brand.primary,
-                        borderColor: colors.brand.primary,
-                      }}
-                      disabled={getAvailableCurrencies().length === 0}
-                    >
-                      <Plus className="w-4 h-4" />
-                      Add Currency
-                    </button>
-
-                    {addCurrencyDropdown && getAvailableCurrencies().length > 0 && (
-                      <>
-                        <div className="fixed inset-0 z-40" onClick={() => setAddCurrencyDropdown(false)} />
-                        <div
-                          className="absolute right-0 z-50 mt-1 w-56 max-h-60 overflow-y-auto rounded-lg border shadow-lg"
-                          style={{
-                            backgroundColor: colors.utility.primaryBackground,
-                            borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB',
-                          }}
-                        >
-                          {getAvailableCurrencies().map((currency) => (
-                            <button
-                              key={currency.code}
-                              type="button"
-                              onClick={() => addPricingRecord(currency.code)}
-                              className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-800"
-                            >
-                              <span className="w-8 font-semibold">{currency.symbol}</span>
-                              <span className="text-sm">{currency.name} ({currency.code})</span>
-                            </button>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {/* Pricing Records List */}
-                <div className="space-y-4">
-                  {pricingRecords.map((record) => {
-                    const currencyInfo = currencyOptions.find((c) => c.code === record.currency);
-                    const currencySymbol = currencyInfo?.symbol || record.currency;
-
-                    return (
-                      <div
-                        key={record.id}
-                        className="p-4 rounded-xl border"
-                        style={{
-                          backgroundColor: isDarkMode ? colors.utility.secondaryBackground : '#F9FAFB',
-                          borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB',
-                        }}
-                      >
-                        {/* Currency Header */}
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className="w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold"
-                              style={{ backgroundColor: `${colors.brand.primary}20`, color: colors.brand.primary }}
-                            >
-                              {currencySymbol}
-                            </span>
-                            <div>
-                              <div className="font-semibold" style={{ color: colors.utility.primaryText }}>
-                                {currencyInfo?.name || record.currency}
-                              </div>
-                              <div className="text-xs" style={{ color: colors.utility.secondaryText }}>
-                                {record.currency}
-                              </div>
-                            </div>
-                          </div>
-                          {pricingRecords.length > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => removePricingRecord(record.id)}
-                              className="p-2 rounded-lg hover:bg-red-50 transition-colors"
-                              title="Remove this currency"
-                            >
-                              <Trash2 className="w-4 h-4" style={{ color: colors.semantic.error }} />
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Price & Settings */}
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-xs font-medium mb-1" style={{ color: colors.utility.secondaryText }}>
-                              {priceType === 'hourly' ? 'Hourly Rate' : 'Price'} <span className="text-red-500">*</span>
-                            </label>
-                            <div className="relative">
-                              <span
-                                className="absolute left-3 top-1/2 -translate-y-1/2 font-semibold"
-                                style={{ color: colors.utility.secondaryText }}
-                              >
-                                {currencySymbol}
-                              </span>
-                              <input
-                                type="number"
-                                value={record.amount || ''}
-                                onChange={(e) => updatePricingRecord(record.id, 'amount', parseFloat(e.target.value) || 0)}
-                                className="w-full pl-10 pr-3 py-2.5 border rounded-lg text-sm focus:outline-none focus:ring-2"
-                                style={inputStyle}
-                                placeholder="0.00"
-                              />
-                            </div>
-                          </div>
-
-                          <div>
-                            <label className="block text-xs font-medium mb-1" style={{ color: colors.utility.secondaryText }}>
-                              Tax Rate
-                            </label>
-                            {taxLoading ? (
-                              <div className="px-3 py-2.5 border rounded-lg text-sm" style={inputStyle}>
-                                Loading...
-                              </div>
-                            ) : taxRateOptions.length > 0 ? (
-                              <select
-                                value={record.tax_rate_id || ''}
-                                onChange={(e) => {
-                                  const selectedRate = taxRateOptions.find((r) => r.value === e.target.value);
-                                  updatePricingRecord(record.id, 'tax_rate_id', e.target.value);
-                                  updatePricingRecord(record.id, 'tax_rate', selectedRate?.rate || 0);
-                                }}
-                                className="w-full px-3 py-2.5 border rounded-lg text-sm"
-                                style={inputStyle}
-                              >
-                                <option value="">No Tax</option>
-                                {taxRateOptions.map((option) => (
-                                  <option key={option.value} value={option.value}>
-                                    {option.label}
-                                  </option>
-                                ))}
-                              </select>
-                            ) : (
-                              <div className="flex items-center gap-1">
-                                <input
-                                  type="number"
-                                  value={record.tax_rate || ''}
-                                  onChange={(e) => updatePricingRecord(record.id, 'tax_rate', parseFloat(e.target.value) || 0)}
-                                  className="w-full px-3 py-2.5 border rounded-lg text-sm"
-                                  style={inputStyle}
-                                  placeholder="0"
-                                />
-                                <span className="text-sm" style={{ color: colors.utility.secondaryText }}>%</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Tax Inclusion Toggle */}
-                        <div className="mt-3 flex items-center gap-4">
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              name={`tax-${record.id}`}
-                              checked={record.tax_inclusion === 'inclusive'}
-                              onChange={() => updatePricingRecord(record.id, 'tax_inclusion', 'inclusive')}
-                              style={{ accentColor: colors.brand.primary }}
-                            />
-                            <span className="text-sm" style={{ color: colors.utility.primaryText }}>
-                              Tax Inclusive
-                            </span>
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                              type="radio"
-                              name={`tax-${record.id}`}
-                              checked={record.tax_inclusion === 'exclusive'}
-                              onChange={() => updatePricingRecord(record.id, 'tax_inclusion', 'exclusive')}
-                              style={{ accentColor: colors.brand.primary }}
-                            />
-                            <span className="text-sm" style={{ color: colors.utility.primaryText }}>
-                              Tax Exclusive
-                            </span>
-                          </label>
-                        </div>
-
-                        {/* Tiered Pricing for this currency */}
-                        {priceType === 'tiered' && (
-                          <div className="mt-4 pt-4 border-t" style={{ borderColor: isDarkMode ? '#374151' : '#E5E7EB' }}>
-                            <div className="flex items-center justify-between mb-3">
-                              <span className="text-xs font-medium" style={{ color: colors.utility.secondaryText }}>
-                                Pricing Tiers ({currencySymbol})
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => addTier(record.currency)}
-                                className="text-xs flex items-center gap-1"
-                                style={{ color: colors.brand.primary }}
-                              >
-                                <Plus className="w-3 h-3" /> Add Tier
-                              </button>
-                            </div>
-                            <div className="space-y-2">
-                              {tiers
-                                .filter((t) => t.currency === record.currency)
-                                .map((tier, idx) => (
-                                  <div key={tier.id} className="flex items-center gap-2">
-                                    <span
-                                      className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold"
-                                      style={{ backgroundColor: `${colors.brand.primary}15`, color: colors.brand.primary }}
-                                    >
-                                      {idx + 1}
-                                    </span>
-                                    <input
-                                      type="text"
-                                      value={tier.name}
-                                      onChange={(e) => updateTier(tier.id, 'name', e.target.value)}
-                                      className="flex-1 px-2 py-1.5 border rounded-lg text-sm"
-                                      style={inputStyle}
-                                      placeholder="Tier name"
-                                    />
-                                    <div className="relative w-28">
-                                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs" style={{ color: colors.utility.secondaryText }}>
-                                        {currencySymbol}
-                                      </span>
-                                      <input
-                                        type="number"
-                                        value={tier.price || ''}
-                                        onChange={(e) => updateTier(tier.id, 'price', parseFloat(e.target.value) || 0)}
-                                        className="w-full pl-6 pr-2 py-1.5 border rounded-lg text-sm"
-                                        style={inputStyle}
-                                      />
-                                    </div>
-                                    <button
-                                      type="button"
-                                      onClick={() => removeTier(tier.id)}
-                                      className="p-1"
-                                    >
-                                      <Trash2 className="w-3 h-3" style={{ color: colors.utility.secondaryText }} />
-                                    </button>
-                                  </div>
-                                ))}
-                              {tiers.filter((t) => t.currency === record.currency).length === 0 && (
-                                <p className="text-xs italic" style={{ color: colors.utility.secondaryText }}>
-                                  No tiers added. Click "Add Tier" to create pricing tiers.
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Custom Quote Mode */}
-            {priceType === 'custom' && (
-              <div
-                className="p-4 rounded-lg border"
-                style={{
-                  backgroundColor: `${colors.semantic.warning}10`,
-                  borderColor: `${colors.semantic.warning}40`,
-                }}
-              >
-                <div className="flex gap-3">
-                  <Lightbulb className="w-5 h-5 flex-shrink-0" style={{ color: colors.semantic.warning }} />
-                  <div>
-                    <div className="font-semibold" style={{ color: colors.utility.primaryText }}>
-                      Custom Quote Mode
-                    </div>
-                    <p className="text-sm mt-1" style={{ color: colors.utility.secondaryText }}>
-                      Price will be determined per contract. A quote request form will be shown to customers.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
+          </div>
         )}
 
         {/* Discount Options */}
-        <div
-          className="border-t pt-6"
-          style={{ borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB' }}
-        >
-          <h4 className="text-sm font-semibold mb-4" style={{ color: colors.utility.primaryText }}>
-            Discount Options
-          </h4>
-          <div className="space-y-3">
+        <div className="border-t pt-6" style={{ borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB' }}>
+          <h4 className="text-sm font-semibold mb-4" style={{ color: colors.utility.primaryText }}>Discount Options</h4>
+          <div className="p-4 rounded-xl border shadow-sm space-y-3" style={cardStyle}>
             <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={(formData.allow_coupons as boolean) || false}
-                onChange={(e) => onChange('allow_coupons', e.target.checked)}
-                className="w-4 h-4 rounded"
-                style={{ accentColor: colors.brand.primary }}
-              />
-              <span className="text-sm" style={{ color: colors.utility.primaryText }}>
-                Allow coupon codes
-              </span>
+              <input type="checkbox" checked={(formData.meta?.allowCoupons as boolean) || false} onChange={(e) => onChange('meta', { ...formData.meta, allowCoupons: e.target.checked })} className="w-4 h-4 rounded" style={{ accentColor: colors.brand.primary }} />
+              <span className="text-sm" style={{ color: colors.utility.primaryText }}>Allow coupon codes</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={(formData.allow_bulk_discount as boolean) || false}
-                onChange={(e) => onChange('allow_bulk_discount', e.target.checked)}
-                className="w-4 h-4 rounded"
-                style={{ accentColor: colors.brand.primary }}
-              />
-              <span className="text-sm" style={{ color: colors.utility.primaryText }}>
-                Allow bulk/quantity discounts
-              </span>
+              <input type="checkbox" checked={(formData.meta?.allowBulkDiscount as boolean) || false} onChange={(e) => onChange('meta', { ...formData.meta, allowBulkDiscount: e.target.checked })} className="w-4 h-4 rounded" style={{ accentColor: colors.brand.primary }} />
+              <span className="text-sm" style={{ color: colors.utility.primaryText }}>Allow bulk/quantity discounts</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={(formData.allow_negotiated_pricing as boolean) || false}
-                onChange={(e) => onChange('allow_negotiated_pricing', e.target.checked)}
-                className="w-4 h-4 rounded"
-                style={{ accentColor: colors.brand.primary }}
-              />
-              <span className="text-sm" style={{ color: colors.utility.primaryText }}>
-                Enable negotiated pricing
-              </span>
+              <input type="checkbox" checked={(formData.meta?.allowNegotiatedPricing as boolean) || false} onChange={(e) => onChange('meta', { ...formData.meta, allowNegotiatedPricing: e.target.checked })} className="w-4 h-4 rounded" style={{ accentColor: colors.brand.primary }} />
+              <span className="text-sm" style={{ color: colors.utility.primaryText }}>Enable negotiated pricing</span>
             </label>
           </div>
         </div>
