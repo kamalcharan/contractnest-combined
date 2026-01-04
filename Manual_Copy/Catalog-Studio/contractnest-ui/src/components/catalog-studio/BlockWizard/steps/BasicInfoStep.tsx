@@ -67,9 +67,9 @@ const BasicInfoStep: React.FC<BasicInfoStepProps> = ({ blockType, formData, onCh
     }
   }, [formData.meta?.image, formData.meta?.image_url]);
 
-  // Input styles
+  // Input styles - white background for light mode
   const inputStyle = {
-    backgroundColor: colors.utility.primaryBackground,
+    backgroundColor: isDarkMode ? colors.utility.secondaryBackground : '#FFFFFF',
     borderColor: isDarkMode ? colors.utility.secondaryBackground : '#D1D5DB',
     color: colors.utility.primaryText,
   };
@@ -197,7 +197,7 @@ const BasicInfoStep: React.FC<BasicInfoStepProps> = ({ blockType, formData, onCh
                 : (isDarkMode ? colors.utility.secondaryBackground : '#D1D5DB'),
               backgroundColor: isDragging
                 ? colors.brand.primary + '10'
-                : colors.utility.primaryBackground,
+                : (isDarkMode ? colors.utility.secondaryBackground : '#FFFFFF'),
             }}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
