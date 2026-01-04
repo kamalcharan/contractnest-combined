@@ -1,0 +1,698 @@
+================================================================================
+CATALOG STUDIO - PHASES 1-8: DATABASE, UI, WIZARD, PRICING & BUSINESS RULES
+================================================================================
+Date: 2026-01-03
+Branch: claude/init-submodules-catalog-5Tvwk
+
+================================================================================
+PHASE 1: DATABASE & BACKEND FOUNDATION
+================================================================================
+
+1. SCHEMA MIGRATION (NEW) - Add tenant_id and is_seed fields to cat_blocks
+2. EDGE FUNCTION (ENHANCE) - Remove isAdmin CRUD checks, add tenant_id handling
+3. API CONTROLLER (ENHANCE) - Remove isAdmin checks for CRUD operations
+4. API SERVICE (ENHANCE) - Remove isAdmin checks, add tenant_id handling
+
+================================================================================
+PHASE 2: UI HOOK FIXES
+================================================================================
+
+5. useCatBlocks.ts (ENHANCE) - Remove x-is-admin header, don't throw in queryFn
+6. useCatBlocksMutations.ts (ENHANCE) - Remove isAdmin checks from mutations
+
+================================================================================
+PHASE 3: BLOCK TYPES FROM DATABASE
+================================================================================
+
+7. useBlockTypes.ts (NEW) - Hook to fetch block types from m_category_details
+8. categories.ts (ENHANCE) - Use DB data with fallback to hardcoded categories
+9. 005_seed_block_types.sql (NEW) - Seed block types into m_category_master/details
+
+================================================================================
+PHASE 4: FULL PAGE WIZARD
+================================================================================
+
+10. BlockWizardContent.tsx (NEW) - Embeddable wizard content without modal
+11. index.tsx (ENHANCE) - BlockWizard now exports both modal and content versions
+12. new.tsx (NEW) - Full page block creation route
+13. edit.tsx (NEW) - Full page block editing route
+
+================================================================================
+PHASE 5: SERVICE BLOCK - BASICINFOSTEP ENHANCEMENTS
+================================================================================
+
+14. IconPicker.tsx (NEW) - Icon picker with all Lucide icons, search, grid layout
+15. BasicInfoStep.tsx (ENHANCE) - RichTextEditor, Image Upload, IconPicker, T&C
+16. ResourceDependencyStep.tsx (NEW) - Independent vs Resource Dependent config
+17. steps/index.ts (ENHANCE) - Export ResourceDependencyStep
+
+================================================================================
+PHASE 6: PRICING STEP ENHANCEMENTS
+================================================================================
+
+18. PricingStep.tsx (ENHANCE) - Multi-currency, tax integration, resource pricing
+19. catalogStudio.ts (ENHANCE) - Add pricing, resource, business rules types
+
+================================================================================
+PHASE 7: BUSINESS RULES STEP
+================================================================================
+
+20. BusinessRulesStep.tsx (NEW) - Followup, warranty, cancellation, reschedule
+21. service/index.ts (ENHANCE) - Export BusinessRulesStep
+
+================================================================================
+PHASE 8: CRITICAL FIXES - Full Page, DB Categories, Multi-Currency
+================================================================================
+
+22. BlockWizard/index.tsx (CRITICAL FIX):
+    - Uses useBlockCategories() hook for DB-driven block types
+    - Integrates ResourceDependencyStep into wizard flow (step 3)
+    - Integrates BusinessRulesStep into wizard flow (step 8)
+    - NEW fullPage prop for true full-page layout (not modal)
+
+23. PricingStep.tsx (CRITICAL FIX - Aligned with service-catalog):
+    - pricing_records array (NOT single currency)
+    - Different price per currency (INR ₹8000, USD $100, etc.)
+    - Tax rate per pricing record (per currency)
+    - Tax inclusion (inclusive/exclusive) per record
+    - Resource-based: per-resource, per-currency pricing
+    - Resource tax rate per currency
+
+================================================================================
+FILE COPY INSTRUCTIONS
+================================================================================
+
+EDGE FUNCTION FILES (contractnest-edge):
+----------------------------------------
+
+1. 004_add_tenant_fields.sql (NEW MIGRATION)
+   FROM: Manual_Copy/Catalog-Studio/contractnest-edge/supabase/migrations/catalog-studio/004_add_tenant_fields.sql
+   TO:   contractnest-edge/supabase/migrations/catalog-studio/004_add_tenant_fields.sql
+
+2. index.ts (UPDATED EDGE FUNCTION)
+   FROM: Manual_Copy/Catalog-Studio/contractnest-edge/supabase/functions/cat-blocks/index.ts
+   TO:   contractnest-edge/supabase/functions/cat-blocks/index.ts
+
+3. 005_seed_block_types.sql (NEW MIGRATION - PHASE 3)
+   FROM: Manual_Copy/Catalog-Studio/contractnest-edge/supabase/migrations/catalog-studio/005_seed_block_types.sql
+   TO:   contractnest-edge/supabase/migrations/catalog-studio/005_seed_block_types.sql
+
+
+API FILES (contractnest-api):
+-----------------------------
+
+4. catalogStudioController.ts (UPDATED)
+   FROM: Manual_Copy/Catalog-Studio/contractnest-api/src/controllers/catalogStudioController.ts
+   TO:   contractnest-api/src/controllers/catalogStudioController.ts
+
+5. catBlocksService.ts (UPDATED)
+   FROM: Manual_Copy/Catalog-Studio/contractnest-api/src/services/catBlocksService.ts
+   TO:   contractnest-api/src/services/catBlocksService.ts
+
+
+UI FILES (contractnest-ui):
+---------------------------
+
+6. useCatBlocks.ts (UPDATED - CRITICAL FIX)
+   FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/hooks/queries/useCatBlocks.ts
+   TO:   contractnest-ui/src/hooks/queries/useCatBlocks.ts
+
+7. useCatBlocksMutations.ts (UPDATED)
+   FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/hooks/mutations/useCatBlocksMutations.ts
+   TO:   contractnest-ui/src/hooks/mutations/useCatBlocksMutations.ts
+
+8. useBlockTypes.ts (NEW - PHASE 3)
+   FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/hooks/queries/useBlockTypes.ts
+   TO:   contractnest-ui/src/hooks/queries/useBlockTypes.ts
+
+9. categories.ts (UPDATED - PHASE 3)
+   FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/utils/catalog-studio/categories.ts
+   TO:   contractnest-ui/src/utils/catalog-studio/categories.ts
+
+10. BlockWizardContent.tsx (NEW - PHASE 4)
+    FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/components/catalog-studio/BlockWizard/BlockWizardContent.tsx
+    TO:   contractnest-ui/src/components/catalog-studio/BlockWizard/BlockWizardContent.tsx
+
+11. BlockWizard/index.tsx (UPDATED - PHASE 4)
+    FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/components/catalog-studio/BlockWizard/index.tsx
+    TO:   contractnest-ui/src/components/catalog-studio/BlockWizard/index.tsx
+
+12. blocks/new.tsx (NEW - PHASE 4)
+    FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/pages/catalog-studio/blocks/new.tsx
+    TO:   contractnest-ui/src/pages/catalog-studio/blocks/new.tsx
+
+13. blocks/[id]/edit.tsx (NEW - PHASE 4)
+    FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/pages/catalog-studio/blocks/[id]/edit.tsx
+    TO:   contractnest-ui/src/pages/catalog-studio/blocks/[id]/edit.tsx
+
+14. IconPicker.tsx (NEW - PHASE 5)
+    FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/components/catalog-studio/IconPicker.tsx
+    TO:   contractnest-ui/src/components/catalog-studio/IconPicker.tsx
+
+15. BasicInfoStep.tsx (UPDATED - PHASE 5)
+    FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/components/catalog-studio/BlockWizard/steps/BasicInfoStep.tsx
+    TO:   contractnest-ui/src/components/catalog-studio/BlockWizard/steps/BasicInfoStep.tsx
+
+16. ResourceDependencyStep.tsx (NEW - PHASE 5)
+    FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/components/catalog-studio/BlockWizard/steps/ResourceDependencyStep.tsx
+    TO:   contractnest-ui/src/components/catalog-studio/BlockWizard/steps/ResourceDependencyStep.tsx
+
+17. steps/index.ts (UPDATED - PHASE 5)
+    FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/components/catalog-studio/BlockWizard/steps/index.ts
+    TO:   contractnest-ui/src/components/catalog-studio/BlockWizard/steps/index.ts
+
+18. PricingStep.tsx (UPDATED - PHASE 6)
+    FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/components/catalog-studio/BlockWizard/steps/service/PricingStep.tsx
+    TO:   contractnest-ui/src/components/catalog-studio/BlockWizard/steps/service/PricingStep.tsx
+
+19. catalogStudio.ts (UPDATED - PHASE 6)
+    FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/types/catalogStudio.ts
+    TO:   contractnest-ui/src/types/catalogStudio.ts
+
+20. BusinessRulesStep.tsx (NEW - PHASE 7)
+    FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/components/catalog-studio/BlockWizard/steps/service/BusinessRulesStep.tsx
+    TO:   contractnest-ui/src/components/catalog-studio/BlockWizard/steps/service/BusinessRulesStep.tsx
+
+21. service/index.ts (UPDATED - PHASE 6/7)
+    FROM: Manual_Copy/Catalog-Studio/contractnest-ui/src/components/catalog-studio/BlockWizard/steps/service/index.ts
+    TO:   contractnest-ui/src/components/catalog-studio/BlockWizard/steps/service/index.ts
+
+
+================================================================================
+PHASE 1 CHANGES DETAIL
+================================================================================
+
+1. 004_add_tenant_fields.sql:
+   - Adds tenant_id UUID column (references t_tenants table)
+   - Adds is_seed BOOLEAN column (default false)
+   - Creates indexes for new columns
+   - Updates RLS policies for multi-tenancy
+
+2. cat-blocks/index.ts (Edge Function):
+   - REMOVED isAdmin checks for POST, PATCH, DELETE operations
+   - ADDED tenant_id handling in create/update/delete
+   - ADDED permission logic: users can CRUD their tenant's blocks
+   - ADDED: only admin can create/update/delete global or seed blocks
+   - KEPT: isAdmin visibility logic for GET (non-admin see active+visible only)
+
+3. catalogStudioController.ts:
+   - REMOVED isAdmin checks from createBlock (was line 147-153)
+   - REMOVED isAdmin checks from updateBlock (was line 185-191)
+   - REMOVED isAdmin checks from deleteBlock (was line 223-229)
+   - Permission checks now delegated to Edge Function
+
+4. catBlocksService.ts:
+   - REMOVED isAdmin checks from createBlock (was line 156-161)
+   - REMOVED isAdmin checks from updateBlock (was line 190-195)
+   - REMOVED isAdmin checks from deleteBlock (was line 222-227)
+   - ADDED tenant_id from context when creating blocks
+   - ADDED updated_by from context when updating blocks
+
+
+================================================================================
+PHASE 2 CHANGES DETAIL
+================================================================================
+
+5. useCatBlocks.ts (CRITICAL FIX per CLAUDE_CODE_GUIDELINES.md):
+   - REMOVED x-is-admin custom header (was line 154-156, 198-200)
+     * This header is NOT in CORS allowedHeaders and caused CORS errors
+   - FIXED queryFn to return empty data instead of throwing (was line 169, 213)
+     * Throwing in queryFn crashes the page
+   - Uses !!currentTenant for enabled check (correct pattern)
+   - Added tenant_id and is_seed to CatBlock interface
+
+6. useCatBlocksMutations.ts:
+   - REMOVED isAdmin check from useCreateCatBlock (was line 92-94)
+   - REMOVED isAdmin check from useUpdateCatBlock (was line 141-143)
+   - REMOVED isAdmin check from useDeleteCatBlock (was line 196-198)
+   - Updated error messages (no more "Admin access required")
+   - Added tenant_id and is_seed to CreateBlockData/UpdateBlockData types
+
+
+================================================================================
+PHASE 3 CHANGES DETAIL
+================================================================================
+
+7. useBlockTypes.ts (NEW):
+   - Fetches block types from m_category_details (cat_block_type category)
+   - Uses global product-masterdata endpoint pattern
+   - Maps DB fields to BlockCategory type:
+     * sub_cat_name → id
+     * display_name → name
+     * icon_name → icon
+     * hexcolor → color
+     * description → description
+   - Auto-generates bgColor from hexcolor
+   - Returns empty data on error (per CLAUDE_CODE_GUIDELINES.md)
+   - Provides useBlockCategories() hook for easy consumption
+   - Provides useBlockTypesDropdown() for select components
+
+8. categories.ts (ENHANCED):
+   - KEPT BLOCK_CATEGORIES as fallback data
+   - ADDED mergeWithFallback() to combine DB + fallback data
+   - ADDED generateBgColorFromHex() utility
+   - ADDED CATEGORY_METADATA with wizard config per block type:
+     * wizardSteps: Which steps to show in wizard
+     * defaultPricingMode: Default pricing mode
+     * supportsResources: Whether resources are supported
+     * supportsVariants: Whether variants are supported
+   - ADDED helper functions:
+     * getWizardSteps()
+     * getDefaultPricingMode()
+     * supportsResources()
+     * supportsVariants()
+
+9. 005_seed_block_types.sql (NEW MIGRATION):
+   - Inserts 'cat_block_type' into m_category_master
+   - Inserts 8 block types into m_category_details:
+     * service (Briefcase, #4F46E5) - Deliverable work items with SLA
+     * spare (Package, #059669) - Physical products with inventory
+     * billing (CreditCard, #D97706) - Payment structures
+     * text (FileText, #6B7280) - Terms, conditions, policies
+     * video (Video, #DC2626) - Embedded video content
+     * image (Image, #7C3AED) - Photos and diagrams
+     * checklist (CheckSquare, #0891B2) - Task verification lists
+     * document (Paperclip, #64748B) - File attachments
+   - Uses UPSERT logic (ON CONFLICT DO UPDATE)
+   - Safe to run multiple times (idempotent)
+
+
+================================================================================
+HOW BLOCK TYPES WORK NOW
+================================================================================
+
+BEFORE (Hardcoded):
+   - BLOCK_CATEGORIES array in categories.ts
+   - Static data, no DB connection
+
+AFTER (Database-driven with fallback):
+   1. useBlockTypes() fetches from: /api/product-masterdata/global/cat_block_type
+   2. Data comes from m_category_details table (seeded in 003_seed_master_data.sql)
+   3. If fetch fails, BLOCK_CATEGORIES used as fallback
+   4. mergeWithFallback() ensures no missing categories
+
+USAGE IN COMPONENTS:
+   ```tsx
+   import { useBlockCategories } from '@/hooks/queries/useBlockTypes';
+   import { BLOCK_CATEGORIES } from '@/utils/catalog-studio/categories';
+
+   const MyComponent = () => {
+     const { categories, isLoading } = useBlockCategories();
+
+     // Use categories from DB, or fallback during loading
+     const blockTypes = isLoading ? BLOCK_CATEGORIES : categories;
+
+     return <BlockTypeList items={blockTypes} />;
+   };
+   ```
+
+
+================================================================================
+WHY THESE FIXES MATTER (per CLAUDE_CODE_GUIDELINES.md)
+================================================================================
+
+PROBLEM 1: CORS Errors
+   - x-is-admin header was being sent from UI to API
+   - This header is NOT in the Edge function's corsHeaders allowedHeaders
+   - Result: CORS preflight fails, API calls blocked
+
+FIX: Remove custom headers from UI hooks. Let api.ts interceptor handle auth.
+
+PROBLEM 2: Page Crashes
+   - queryFn was throwing errors on API failures
+   - TanStack Query expects queryFn to either succeed or throw
+   - But throwing causes the error boundary to trigger, crashing the page
+
+FIX: Return empty data on error instead of throwing.
+
+PROBLEM 3: Admin Access Required
+   - isAdmin checks were blocking all CRUD operations
+   - Users couldn't save blocks even for their own tenant
+
+FIX: Remove isAdmin checks from UI/API/Service. Let Edge function enforce permissions.
+
+PROBLEM 4: Hardcoded Block Types
+   - Block types were hardcoded in categories.ts
+   - No way to add/modify block types without code change
+
+FIX: Fetch from m_category_details (cat_block_type) with fallback to hardcoded.
+
+
+================================================================================
+PHASE 4 CHANGES DETAIL
+================================================================================
+
+10. BlockWizardContent.tsx (NEW):
+    - Embeddable wizard content component WITHOUT modal wrapper
+    - Same step logic as original BlockWizard but can be used in full page layouts
+    - Props:
+      * mode: WizardMode ('create' | 'edit')
+      * blockType: string
+      * editingBlock?: Block | null
+      * initialStep?: number (default 1)
+      * categories?: BlockCategory[] (defaults to BLOCK_CATEGORIES)
+      * showTypeSelection?: boolean (default true)
+      * onSave: (block: Partial<Block>) => void
+      * onCancel: () => void
+      * onBlockTypeChange: (type: string) => void
+      * onStepChange?: (step: number) => void
+      * onFormDataChange?: (data: Partial<Block>) => void
+    - Includes WizardProgress and WizardFooter inline
+    - Renders all step components based on blockType
+
+11. BlockWizard/index.tsx (ENHANCED):
+    - Keeps original modal wrapper for backward compatibility
+    - NOW EXPORTS BlockWizardContent for full-page use
+    - Exports all sub-components: WizardHeader, WizardProgress, WizardFooter
+    - Exports all step components for potential reuse
+
+12. blocks/new.tsx (NEW PAGE):
+    - Full page route: /catalog-studio/blocks/new
+    - URL query param: ?type=service (sets initial block type)
+    - Uses BlockWizardContent for wizard functionality
+    - Page header with Back button and Cancel
+    - Uses useBlockCategories() hook for DB-driven categories
+    - Creates block via useCreateCatBlock mutation
+    - Navigates back to /catalog-studio/blocks on success
+
+13. blocks/[id]/edit.tsx (NEW PAGE):
+    - Full page route: /catalog-studio/blocks/:id/edit
+    - Fetches block by ID from useCatBlocks()
+    - Uses BlockWizardContent with showTypeSelection=false
+    - Starts at step 2 (basic info) since type is already set
+    - Includes delete confirmation modal
+    - Updates block via useUpdateCatBlock mutation
+    - Deletes block via useDeleteCatBlock mutation
+
+
+================================================================================
+HOW TO USE FULL PAGE WIZARD
+================================================================================
+
+1. Navigation from blocks.tsx:
+   ```tsx
+   // Instead of opening modal
+   // setIsWizardOpen(true);
+
+   // Navigate to full page
+   navigate('/catalog-studio/blocks/new');
+   navigate('/catalog-studio/blocks/new?type=spare');
+   navigate(`/catalog-studio/blocks/${block.id}/edit`);
+   ```
+
+2. Router Setup (add to App.tsx or routes file):
+   ```tsx
+   import NewBlockPage from './pages/catalog-studio/blocks/new';
+   import EditBlockPage from './pages/catalog-studio/blocks/[id]/edit';
+
+   <Route path="/catalog-studio/blocks/new" element={<NewBlockPage />} />
+   <Route path="/catalog-studio/blocks/:id/edit" element={<EditBlockPage />} />
+   ```
+
+3. Both modal and full page options remain available:
+   - Modal: <BlockWizard isOpen={...} ... />  (for quick create)
+   - Full Page: Navigate to /blocks/new (for complex editing)
+
+
+================================================================================
+ROUTER INTEGRATION NOTE
+================================================================================
+
+The new pages use react-router-dom. Add these routes to your router config:
+
+```tsx
+// In your routes configuration (e.g., App.tsx)
+import { Routes, Route } from 'react-router-dom';
+
+// Import the new pages
+import NewBlockPage from './pages/catalog-studio/blocks/new';
+import EditBlockPage from './pages/catalog-studio/blocks/[id]/edit';
+
+// Add routes
+<Routes>
+  {/* Existing routes */}
+  <Route path="/catalog-studio/blocks" element={<CatalogStudioBlocksPage />} />
+
+  {/* New full page wizard routes */}
+  <Route path="/catalog-studio/blocks/new" element={<NewBlockPage />} />
+  <Route path="/catalog-studio/blocks/:id/edit" element={<EditBlockPage />} />
+</Routes>
+```
+
+
+================================================================================
+PHASE 5 CHANGES DETAIL
+================================================================================
+
+14. IconPicker.tsx (NEW):
+    - Searchable grid of 150+ Lucide icons
+    - Categories: Business, People, Home, Medical, Technology, Tools, etc.
+    - Features:
+      * Search/filter functionality
+      * Grid layout (8 columns default)
+      * Selected icon preview
+      * Keyboard navigation support
+    - Props:
+      * value: string (icon name)
+      * onChange: (iconName: string) => void
+      * label?: string
+      * placeholder?: string
+      * disabled?: boolean
+      * showLabel?: boolean
+      * maxHeight?: number
+      * columns?: number
+
+15. BasicInfoStep.tsx (ENHANCED):
+    - ADDED: Conditional label based on blockType ("Service Block Name", etc.)
+    - ADDED: RichTextEditor for Description (was plain textarea)
+      * Supports bold, italic, underline, lists
+      * Character count and fullscreen mode
+    - ADDED: RichTextEditor for T&C (optional, for service/spare blocks)
+    - ADDED: Image Upload with drag-drop
+      * Buffered upload (doesn't upload until save)
+      * Preview with overlay actions
+      * File size validation (10MB max)
+    - ADDED: IconPicker component (replaces 6-icon grid)
+    - KEPT: Block-specific fields (duration for service, SKU for spare, etc.)
+    - KEPT: Tags input field
+
+16. ResourceDependencyStep.tsx (NEW):
+    - Radio selection: Independent vs Resource Dependent
+    - If Resource Dependent:
+      * Grid of resource types with checkboxes
+      * Quantity input per selected type
+      * Summary card showing configuration
+    - Resource types (fallback data):
+      * Team Staff (hourly, requires human assignment)
+      * Equipment (per_unit)
+      * Consumables (per_unit)
+      * Vehicle (per_unit)
+      * Facility (per_unit)
+      * Software (fixed)
+    - Stores in formData.meta:
+      * pricingMode: 'independent' | 'resource_based'
+      * resourceTypes: string[]
+      * resourceQuantities: Record<string, number>
+
+17. steps/index.ts (ENHANCED):
+    - ADDED: export { default as ResourceDependencyStep } from './ResourceDependencyStep';
+
+
+================================================================================
+HOW TO ADD RESOURCE DEPENDENCY STEP TO WIZARD
+================================================================================
+
+To include ResourceDependencyStep in the service block wizard flow:
+
+1. Update WIZARD_STEPS in wizard-data.ts:
+   ```tsx
+   service: [
+     { id: 1, label: 'Type' },
+     { id: 2, label: 'Basic Info' },
+     { id: 3, label: 'Resources' },  // NEW STEP
+     { id: 4, label: 'Delivery' },
+     { id: 5, label: 'Pricing' },
+     { id: 6, label: 'Evidence' },
+     { id: 7, label: 'Rules' },
+   ],
+   ```
+
+2. Update BlockWizardContent.tsx renderStepContent():
+   ```tsx
+   case 'service':
+     switch (currentStep) {
+       case 3: return <ResourceDependencyStep formData={formData} onChange={handleFormChange} />;
+       case 4: return <DeliveryStep formData={formData} onChange={handleFormChange} />;
+       // ... adjust step numbers
+     }
+   ```
+
+
+================================================================================
+PHASE 6 CHANGES DETAIL
+================================================================================
+
+18. PricingStep.tsx (ENHANCED):
+    - ADDED: Multi-currency dropdown
+      * Uses currencyOptions from utils/constants/currencies.ts (18 currencies)
+      * Uses getCurrencySymbol() for dynamic symbol display
+      * Stores currency code in formData.meta.currency
+    - ADDED: Resource-specific pricing section
+      * Shows when pricingMode is 'resource_based'
+      * Resource type cards with individual pricing inputs
+      * Supports different pricing models per resource (hourly, fixed, per_unit)
+    - ADDED: Tax integration
+      * Uses useTaxRatesDropdown() from useProductMasterdata hook
+      * Dropdown to select tax rate from DB (e.g., "GST 18%", "VAT 20%")
+      * Tax inclusive/exclusive toggle
+      * Stores taxRateId and taxInclusive in formData.meta
+    - ADDED: Tax calculation preview
+      * Shows base price, tax amount, total
+      * Updates dynamically as user changes values
+    - Key imports:
+      * currencyOptions, getCurrencySymbol from '@/utils/constants/currencies'
+      * useTaxRatesDropdown from '@/hooks/queries/useProductMasterdata'
+
+19. catalogStudio.ts (ENHANCED - Types):
+    - ADDED: PriceType = 'fixed' | 'hourly' | 'per_unit' | 'per_session' | 'custom'
+    - ADDED: PricingModel = 'independent' | 'resource_based' | 'variant_based'
+    - ADDED: BlockPricing interface:
+      * basePrice, currency, priceType, pricingModel
+      * taxRateId, taxInclusive, minPrice, maxPrice
+      * discountEnabled, discountType, discountValue
+    - ADDED: ResourcePricing interface:
+      * resourceTypeId, resourceName, pricePerUnit
+      * pricingModel, currency, quantity
+    - ADDED: ResourceDependency interface:
+      * pricingMode, resourceTypes[], resourceQuantities
+      * requiresAllResources, allowPartialAssignment
+    - ADDED: FollowupConfig interface:
+      * enabled, freeFollowupCount, followupPeriodDays
+      * conditions[], chargesAfterFree
+    - ADDED: WarrantyConfig interface:
+      * enabled, warrantyPeriodDays, warrantyType, termsAndConditions
+    - ADDED: CancellationConfig interface:
+      * allowCancellation, cancellationPeriodHours
+      * refundPercentage, cancellationFee, policy
+    - ADDED: RescheduleConfig interface:
+      * allowReschedule, maxReschedules, reschedulePeriodHours
+      * rescheduleFee, policy
+    - ADDED: BlockBusinessRules interface:
+      * followup, warranty, cancellation, reschedule
+      * autoApproveBooking, requiresOTPConfirmation, requiresDeposit, depositAmount
+    - ADDED: BlockMeta interface:
+      * pricing: BlockPricing
+      * resources: ResourceDependency
+      * resourcePricing: ResourcePricing[]
+      * businessRules: BlockBusinessRules
+
+
+================================================================================
+PHASE 7 CHANGES DETAIL
+================================================================================
+
+20. BusinessRulesStep.tsx (NEW):
+    - Accordion-style sections for each rule category:
+
+    A. FREE FOLLOW-UP CONFIGURATION:
+       - Enable/disable toggle
+       - Number of free follow-ups (0-10 slider + input)
+       - Follow-up period (days dropdown: 7, 14, 30, 60, 90)
+       - Conditions multi-select:
+         * Within warranty period
+         * Same issue reported
+         * Same technician assigned
+         * Service not modified
+       - Charges after free exhausted (amount input)
+
+    B. WARRANTY CONFIGURATION:
+       - Enable/disable toggle
+       - Warranty period dropdown (30, 60, 90, 180, 365 days)
+       - Warranty type dropdown:
+         * Full replacement
+         * Parts only
+         * Labor only
+         * Repair or replace
+       - Terms & conditions textarea
+
+    C. CANCELLATION POLICY:
+       - Enable/disable toggle
+       - Policy presets:
+         * Flexible (24h notice, 100% refund)
+         * Moderate (48h notice, 50% refund)
+         * Strict (72h notice, no refund)
+         * Custom
+       - Custom options when "Custom" selected:
+         * Cancellation period (hours)
+         * Refund percentage (0-100% slider)
+         * Cancellation fee input
+
+    D. RESCHEDULE RULES:
+       - Enable/disable toggle
+       - Max reschedules allowed (1-5)
+       - Advance notice period (hours)
+       - Reschedule fee (optional)
+
+    E. ADDITIONAL OPTIONS (toggles):
+       - Auto-approve bookings
+       - Require OTP confirmation
+       - Require deposit (with deposit amount input)
+
+    - All configs stored in formData.meta.businessRules
+
+21. service/index.ts (ENHANCED):
+    - ADDED: export { default as BusinessRulesStep } from './BusinessRulesStep';
+
+
+================================================================================
+HOW TO ADD BUSINESS RULES STEP TO WIZARD
+================================================================================
+
+To include BusinessRulesStep in the service block wizard flow:
+
+1. Update WIZARD_STEPS in wizard-data.ts:
+   ```tsx
+   service: [
+     { id: 1, label: 'Type' },
+     { id: 2, label: 'Basic Info' },
+     { id: 3, label: 'Resources' },
+     { id: 4, label: 'Delivery' },
+     { id: 5, label: 'Pricing' },
+     { id: 6, label: 'Evidence' },
+     { id: 7, label: 'Rules' },
+     { id: 8, label: 'Business Rules' },  // NEW STEP
+   ],
+   ```
+
+2. Update BlockWizardContent.tsx renderStepContent():
+   ```tsx
+   case 'service':
+     switch (currentStep) {
+       // ... existing steps
+       case 8: return <BusinessRulesStep formData={formData} onChange={handleFormChange} />;
+     }
+   ```
+
+
+================================================================================
+POWERSHELL COPY COMMANDS (PHASE 5-7)
+================================================================================
+
+Run these commands from the project root to copy files:
+
+Phase 5:
+Copy-Item "Manual_Copy\Catalog-Studio\contractnest-ui\src\components\catalog-studio\IconPicker.tsx" -Destination "contractnest-ui\src\components\catalog-studio\IconPicker.tsx"
+Copy-Item "Manual_Copy\Catalog-Studio\contractnest-ui\src\components\catalog-studio\BlockWizard\steps\BasicInfoStep.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\BasicInfoStep.tsx"
+Copy-Item "Manual_Copy\Catalog-Studio\contractnest-ui\src\components\catalog-studio\BlockWizard\steps\ResourceDependencyStep.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\ResourceDependencyStep.tsx"
+Copy-Item "Manual_Copy\Catalog-Studio\contractnest-ui\src\components\catalog-studio\BlockWizard\steps\index.ts" -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\index.ts"
+
+Phase 6:
+Copy-Item "Manual_Copy\Catalog-Studio\contractnest-ui\src\components\catalog-studio\BlockWizard\steps\service\PricingStep.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\service\PricingStep.tsx"
+Copy-Item "Manual_Copy\Catalog-Studio\contractnest-ui\src\types\catalogStudio.ts" -Destination "contractnest-ui\src\types\catalogStudio.ts"
+
+Phase 7:
+Copy-Item "Manual_Copy\Catalog-Studio\contractnest-ui\src\components\catalog-studio\BlockWizard\steps\service\BusinessRulesStep.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\service\BusinessRulesStep.tsx"
+Copy-Item "Manual_Copy\Catalog-Studio\contractnest-ui\src\components\catalog-studio\BlockWizard\steps\service\index.ts" -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\service\index.ts"
+
+
+================================================================================
