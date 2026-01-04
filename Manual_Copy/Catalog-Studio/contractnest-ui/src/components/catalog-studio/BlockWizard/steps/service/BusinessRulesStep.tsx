@@ -73,9 +73,9 @@ const BusinessRulesStep: React.FC<BusinessRulesStepProps> = ({ formData, onChang
     freeReschedules: 1,
   };
 
-  // Styles
+  // Styles - white background for light mode
   const inputStyle = {
-    backgroundColor: colors.utility.primaryBackground,
+    backgroundColor: isDarkMode ? colors.utility.secondaryBackground : '#FFFFFF',
     borderColor: isDarkMode ? colors.utility.secondaryBackground : '#D1D5DB',
     color: colors.utility.primaryText,
   };
@@ -480,7 +480,7 @@ const BusinessRulesStep: React.FC<BusinessRulesStepProps> = ({ formData, onChang
                       style={{
                         backgroundColor: isSelected
                           ? `${colors.brand.primary}08`
-                          : colors.utility.primaryBackground,
+                          : (isDarkMode ? colors.utility.secondaryBackground : '#FFFFFF'),
                         borderColor: isSelected
                           ? colors.brand.primary
                           : isDarkMode
