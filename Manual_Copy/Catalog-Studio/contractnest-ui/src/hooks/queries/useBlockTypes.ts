@@ -11,21 +11,27 @@ import { BlockCategory } from '@/types/catalogStudio';
 // TYPES
 // =================================================================
 
-// Raw data from m_category_details table
+// Raw data from m_category_details table (via product-masterdata API)
+// API transforms: sub_cat_name -> detail_name, adds display_name
 export interface BlockTypeDetail {
   id: string;
   category_id: string;
-  sub_cat_name: string;      // e.g., 'service', 'spare', 'billing'
-  display_name: string;      // e.g., 'Service', 'Spare Part', 'Billing'
+  // API returns these field names:
+  detail_name: string;       // e.g., 'service', 'spare', 'billing' (was sub_cat_name)
+  detail_value?: string;     // Optional value
+  display_name: string;      // e.g., 'Service', 'Spare Parts', 'Billing'
   description: string | null;
-  icon_name: string | null;  // Lucide icon name e.g., 'Briefcase'
-  hexcolor: string | null;   // e.g., '#4F46E5'
+  icon_name?: string | null;  // Lucide icon name e.g., 'Briefcase' (may not be in API)
+  hexcolor?: string | null;   // e.g., '#4F46E5' (may not be in API)
   sequence_no: number;
   is_active: boolean;
-  is_deletable: boolean;
+  is_deletable?: boolean;
+  is_selectable?: boolean;   // Added by API transform
   tags?: Record<string, any>;
   created_at: string;
   updated_at: string;
+  // Legacy field names (for backwards compatibility)
+  sub_cat_name?: string;
 }
 
 export interface BlockTypesResponse {
@@ -108,15 +114,18 @@ const generateBgColor = (hexColor: string): string => {
 
 /**
  * Map m_category_details to BlockCategory format
+ * API returns detail_name (was sub_cat_name in DB)
  */
 export const mapDetailToBlockCategory = (detail: BlockTypeDetail): BlockCategory => {
-  const defaultColors = DEFAULT_COLORS[detail.sub_cat_name] || { color: '#6B7280', bgColor: '#F9FAFB' };
+  // Use detail_name (from API) or sub_cat_name (legacy) as the ID
+  const typeId = detail.detail_name || detail.sub_cat_name || 'unknown';
+  const defaultColors = DEFAULT_COLORS[typeId] || { color: '#6B7280', bgColor: '#F9FAFB' };
   const color = detail.hexcolor || defaultColors.color;
 
   return {
-    id: detail.sub_cat_name,
+    id: typeId,
     name: detail.display_name,
-    icon: detail.icon_name || DEFAULT_ICONS[detail.sub_cat_name] || 'Box',
+    icon: detail.icon_name || DEFAULT_ICONS[typeId] || 'Box',
     count: 0, // Will be updated with actual block count if needed
     color: color,
     bgColor: detail.hexcolor ? generateBgColor(detail.hexcolor) : defaultColors.bgColor,
