@@ -8,7 +8,7 @@ import {
   TestTube2,
   Package,
   Rocket,
-  Clock,
+  Wrench,
   CheckCircle2,
   ArrowRight
 } from 'lucide-react';
@@ -25,38 +25,33 @@ const MasterDataStep: React.FC = () => {
 
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
 
-  const upcomingFeatures = [
+  const plannedFeatures = [
     {
       icon: FileSpreadsheet,
       title: 'Import Master Data',
-      description: 'Bulk import your contacts, services, and pricing from Excel/CSV files',
-      status: 'coming-soon'
+      description: 'Bulk import your contacts, services, and pricing from Excel/CSV files'
     },
     {
       icon: Package,
       title: 'Seed Data Packages',
-      description: 'Pre-configured industry templates with sample services, categories, and workflows',
-      status: 'coming-soon'
+      description: 'Pre-configured industry templates with sample services, categories, and workflows'
     },
     {
       icon: TestTube2,
       title: 'Sample Test Data',
-      description: 'Generate realistic sample data to explore features before going live',
-      status: 'coming-soon'
+      description: 'Generate realistic sample data to explore features before going live'
     },
     {
       icon: Database,
       title: 'Quick Start Templates',
-      description: 'Industry-specific starter kits with pre-built contracts and service templates',
-      status: 'coming-soon'
+      description: 'Industry-specific starter kits with pre-built contracts and service templates'
     }
   ];
 
   const handleContinue = () => {
-    // Mark as completed (even though it's a placeholder)
     onComplete({
       step: 'master-data',
-      skipped_reason: 'feature_coming_soon',
+      skipped_reason: 'feature_in_progress',
       completed_at: new Date().toISOString()
     });
   };
@@ -93,26 +88,26 @@ const MasterDataStep: React.FC = () => {
             </p>
           </div>
 
-          {/* Coming Soon Badge */}
+          {/* In Progress Badge */}
           <div
             className="flex items-center justify-center gap-2 mb-8 py-3 px-6 rounded-full mx-auto w-fit"
             style={{
-              backgroundColor: colors.semantic.warning + '15',
-              border: `1px solid ${colors.semantic.warning}30`
+              backgroundColor: colors.brand.primary + '15',
+              border: `1px solid ${colors.brand.primary}30`
             }}
           >
-            <Clock className="w-4 h-4" style={{ color: colors.semantic.warning }} />
+            <Wrench className="w-4 h-4" style={{ color: colors.brand.primary }} />
             <span
               className="text-sm font-medium"
-              style={{ color: colors.semantic.warning }}
+              style={{ color: colors.brand.primary }}
             >
-              These features are coming soon!
+              These features are being built and will be available shortly
             </span>
           </div>
 
           {/* Feature Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-            {upcomingFeatures.map((feature, index) => {
+            {plannedFeatures.map((feature, index) => {
               const Icon = feature.icon;
               return (
                 <div
@@ -123,7 +118,7 @@ const MasterDataStep: React.FC = () => {
                     borderColor: colors.utility.primaryText + '10'
                   }}
                 >
-                  {/* Coming Soon Ribbon */}
+                  {/* Planned Badge */}
                   <div
                     className="absolute top-3 right-3 text-xs px-2 py-1 rounded-full"
                     style={{
@@ -131,7 +126,7 @@ const MasterDataStep: React.FC = () => {
                       color: colors.brand.primary
                     }}
                   >
-                    Coming Soon
+                    Planned
                   </div>
 
                   <div
@@ -191,7 +186,7 @@ const MasterDataStep: React.FC = () => {
                   className="text-sm mb-3"
                   style={{ color: colors.utility.secondaryText }}
                 >
-                  While we're building these exciting features, you can start using ContractNest right away:
+                  You can start using ContractNest right away:
                 </p>
                 <ul className="space-y-2">
                   {[
