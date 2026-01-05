@@ -36,8 +36,6 @@ router.all('/:path(*)', async (req: Request, res: Response) => {
     const targetUrl = `${FK_EDGE_URL}/${path}`;
 
     console.log(`[FKonboarding Proxy] ${req.method} ${path} -> ${targetUrl}`);
-    console.log(`[FKonboarding Proxy] Incoming x-tenant-id: "${req.headers['x-tenant-id']}"`);
-    console.log(`[FKonboarding Proxy] Incoming authorization: ${req.headers.authorization ? 'present' : 'missing'}`);
 
     // Forward headers (exclude host and content-length as they'll be set by fetch)
     const forwardHeaders: Record<string, string> = {
@@ -48,9 +46,6 @@ router.all('/:path(*)', async (req: Request, res: Response) => {
     // Forward x-tenant-id if present
     if (req.headers['x-tenant-id']) {
       forwardHeaders['x-tenant-id'] = req.headers['x-tenant-id'] as string;
-      console.log(`[FKonboarding Proxy] Forwarding x-tenant-id: "${forwardHeaders['x-tenant-id']}"`);
-    } else {
-      console.log(`[FKonboarding Proxy] WARNING: No x-tenant-id header in request!`);
     }
 
     // Add Supabase anon key for Edge Function access
@@ -85,6 +80,11 @@ router.all('/:path(*)', async (req: Request, res: Response) => {
       data = await response.json();
     } else {
       data = await response.text();
+    }
+
+    // Log error responses for debugging
+    if (!response.ok) {
+      console.log(`[FKonboarding Proxy] Error response ${response.status}:`, JSON.stringify(data));
     }
 
     // Forward response status and data
