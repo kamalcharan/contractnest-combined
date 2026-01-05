@@ -9,7 +9,7 @@ import { sendMultiChannelInvitation } from "./jtd-integration.ts";
 
 const corsHeaders = {
  'Access-Control-Allow-Origin': '*',
- 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-tenant-id',
+ 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-tenant-id, x-environment',
  'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS'
 };
 
@@ -73,6 +73,8 @@ serve(async (req) => {
    // Get headers
    const authHeader = req.headers.get('Authorization');
    const tenantId = req.headers.get('x-tenant-id');
+   const xEnvironment = req.headers.get('x-environment');
+   const isLive = xEnvironment === 'live'; // true if 'live', false otherwise (test/sandbox)
    const token = authHeader?.replace('Bearer ', '');
 
    // Debug: Log all incoming headers
@@ -131,13 +133,13 @@ serve(async (req) => {
    // Route: POST /user-invitations - Create invitation
    if (req.method === 'POST' && pathSegments.length === 1) {
      const body = await req.json();
-     return await createInvitation(supabase, tenantId, userId, body);
+     return await createInvitation(supabase, tenantId, userId, body, isLive);
    }
    
    // Route: POST /user-invitations/:id/resend - Resend invitation
    if (req.method === 'POST' && pathSegments.length === 3 && pathSegments[2] === 'resend') {
      const invitationId = pathSegments[1];
-     return await resendInvitation(supabase, tenantId, userId, invitationId);
+     return await resendInvitation(supabase, tenantId, userId, invitationId, isLive);
    }
    
    // Route: POST /user-invitations/:id/cancel - Cancel invitation
@@ -324,7 +326,7 @@ async function getInvitation(supabase: any, tenantId: string, invitationId: stri
 }
 
 // Create new invitation
-async function createInvitation(supabase: any, tenantId: string, userId: string, body: any) {
+async function createInvitation(supabase: any, tenantId: string, userId: string, body: any, isLive: boolean) {
  try {
    const { email, mobile_number, country_code, phone_code, invitation_method, role_id, custom_message } = body;
    
@@ -466,7 +468,7 @@ async function createInvitation(supabase: any, tenantId: string, userId: string,
        workspaceName: tenant?.name || 'Workspace',
        invitationLink,
        customMessage: custom_message,
-       primaryChannel: invitation_method || 'email'
+       isLive // from x-environment header
      });
 
      jtdSuccess = jtdResult.anySuccess;
@@ -931,7 +933,7 @@ This invitation expires in 48 hours.
 }
 
 // Resend invitation
-async function resendInvitation(supabase: any, tenantId: string, userId: string, invitationId: string) {
+async function resendInvitation(supabase: any, tenantId: string, userId: string, invitationId: string, isLive: boolean) {
  try {
    // Get invitation
    const { data: invitation, error } = await supabase
@@ -1019,7 +1021,7 @@ async function resendInvitation(supabase: any, tenantId: string, userId: string,
        workspaceName: tenant?.name || 'Workspace',
        invitationLink,
        customMessage: invitation.metadata?.custom_message,
-       primaryChannel: invitation.invitation_method || 'email'
+       isLive // from x-environment header
      });
 
      jtdSuccess = jtdResult.anySuccess;

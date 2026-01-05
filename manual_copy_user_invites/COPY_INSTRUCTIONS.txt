@@ -28,12 +28,19 @@ EDGE FUNCTIONS:
    - Added sendMultiChannelInvitation() function
    - Fixed template_data order for WhatsApp: {{1}}=recipient_name, {{2}}=inviter_name,
      {{3}}=workspace_name, {{4}}=invitation_link
+   - Uses n_jtd_tenant_config.channels_enabled (JSON) for channel enablement
+   - Channel selection based on contact info provided:
+     * Email provided → email channel
+     * Mobile provided → whatsapp channel
+     * Both → both channels
 
 2. user-invitations-index.ts:
    - Added import for sendMultiChannelInvitation
    - createInvitation() now queues via JTD (async, non-blocking)
    - resendInvitation() now queues via JTD (async, non-blocking)
    - Response includes jtd_channels array with JTD IDs
+   - isLive comes from x-environment header (sessionStorage in UI)
+   - Added x-environment to CORS allowed headers
 
 UI COMPONENTS:
 3. InvitationDetailsModal.tsx:
