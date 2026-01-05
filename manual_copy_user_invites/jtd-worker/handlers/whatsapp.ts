@@ -155,10 +155,10 @@ export async function handleWhatsApp(request: WhatsAppRequest): Promise<ProcessR
       };
     }
 
-    console.error('[JTD WhatsApp] MSG91 error:', result);
+    console.error('[JTD WhatsApp] MSG91 error:', JSON.stringify(result));
     return {
       success: false,
-      error: result.message || 'Failed to send WhatsApp message'
+      error: `MSG91: ${JSON.stringify(result)}`
     };
 
   } catch (error) {
