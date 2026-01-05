@@ -100,21 +100,19 @@ serve(async (req) => {
       );
     }
 
-    // First, verify the user's auth token
-    const userClient = createClient(supabaseUrl, supabaseKey, {
-      global: {
-        headers: {
-          Authorization: authHeader
-        }
-      },
+    // Extract token from Authorization header
+    const token = authHeader.replace('Bearer ', '');
+
+    // Create service role client for auth verification
+    const authClient = createClient(supabaseUrl, supabaseKey, {
       auth: {
         persistSession: false,
         autoRefreshToken: false
       }
     });
 
-    // Verify the user is authenticated
-    const { data: { user }, error: authError } = await userClient.auth.getUser();
+    // Verify user token
+    const { data: { user }, error: authError } = await authClient.auth.getUser(token);
     if (authError || !user) {
       console.error('Auth verification failed:', authError?.message);
       return new Response(
@@ -125,14 +123,8 @@ serve(async (req) => {
 
     console.log('User authenticated:', user.id);
 
-    // Create a pure service role client for database operations
-    // Do NOT pass Authorization header to avoid JWT validation issues
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false
-      }
-    });
+    // Use same client for database operations (service role)
+    const supabase = authClient;
 
     // Parse URL and route
     const url = new URL(req.url);
