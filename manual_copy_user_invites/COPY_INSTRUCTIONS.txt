@@ -1,0 +1,41 @@
+═══════════════════════════════════════════════════════════════════════════════
+MANUAL COPY INSTRUCTIONS - User Invitations JTD Integration
+═══════════════════════════════════════════════════════════════════════════════
+
+FILES IN THIS FOLDER:
+─────────────────────────────────────────────────────────────────────────────────
+1. user-invitations-index.ts
+   → COPY TO: contractnest-edge/supabase/functions/user-invitations/index.ts
+
+2. jtd-integration.ts
+   → COPY TO: contractnest-edge/supabase/functions/user-invitations/jtd-integration.ts
+
+═══════════════════════════════════════════════════════════════════════════════
+WHAT CHANGED:
+═══════════════════════════════════════════════════════════════════════════════
+
+1. jtd-integration.ts:
+   - Added sendMultiChannelInvitation() function (lines 311-456)
+   - Sends via multiple channels based on tenant configuration
+   - Email invites → Email channel only
+   - Mobile invites → WhatsApp channel (SMS deprioritized)
+
+2. user-invitations-index.ts:
+   - Added import for sendMultiChannelInvitation (line 8)
+   - createInvitation() now queues via JTD (lines 444-533)
+   - resendInvitation() now queues via JTD (lines 978-1058)
+   - Response includes jtd_channels array with JTD IDs
+
+═══════════════════════════════════════════════════════════════════════════════
+ARCHITECTURE CHANGE:
+═══════════════════════════════════════════════════════════════════════════════
+
+BEFORE (Blocking - 2-5 seconds):
+User → Create Invite → [WAIT] MSG91 API → Response
+
+AFTER (Async - <100ms):
+User → Create Invite → [FAST] JTD Record → Response
+                            ↓
+                    [Background] PGMQ Worker → MSG91 API
+
+═══════════════════════════════════════════════════════════════════════════════
