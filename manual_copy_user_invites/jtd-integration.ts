@@ -63,6 +63,9 @@ export async function createInvitationJTD(
     }
 
     // Build payload with template_data for rendering
+    // IMPORTANT: For WhatsApp templates, the ORDER of keys in template_data matters!
+    // MSG91 uses Object.values() which respects insertion order.
+    // Template: {{1}}=recipient_name, {{2}}=inviter_name, {{3}}=workspace_name, {{4}}=invitation_link
     const payload = {
       recipient_data: {
         email: recipientEmail,
@@ -70,11 +73,12 @@ export async function createInvitationJTD(
         name: derivedRecipientName
       },
       template_data: {
-        inviter_name: inviterName,
-        workspace_name: workspaceName,
-        invitation_link: invitationLink,
-        custom_message: customMessage || '',
-        recipient_name: derivedRecipientName
+        // Order MUST match WhatsApp template placeholders: {{1}}, {{2}}, {{3}}, {{4}}
+        recipient_name: derivedRecipientName,   // {{1}}
+        inviter_name: inviterName,              // {{2}}
+        workspace_name: workspaceName,          // {{3}}
+        invitation_link: invitationLink,        // {{4}}
+        custom_message: customMessage || ''     // Not used in WhatsApp template
       }
     };
 
