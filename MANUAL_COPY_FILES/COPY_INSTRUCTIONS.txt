@@ -30,11 +30,54 @@ ISSUE: Data Setup step (master-data) was showing empty page
 
 FIX APPLIED:
 Created a professional placeholder UI for the Data Setup step showing:
-- Coming Soon features (Import Master Data, Seed Data Packages, Sample Test Data,
+- Planned features (Import Master Data, Seed Data Packages, Sample Test Data,
   Quick Start Templates)
 - What users can do now section
 - Proper styling matching the rest of onboarding
 - Continue button to proceed to completion
+
+───────────────────────────────────────────────────────────────────────────────
+FIX 3: FamilyKnows Login Error Messages
+───────────────────────────────────────────────────────────────────────────────
+
+ISSUE: Login with invalid credentials shows "Session expired" instead of
+       "Invalid email or password"
+
+ROOT CAUSE:
+The API interceptor in api.ts was treating ALL 401 responses as session
+expiration. For auth endpoints (login, register), 401 means invalid credentials,
+not expired session. The interceptor threw hardcoded "Session expired" message
+BEFORE extracting the actual error from the response body.
+
+FIX APPLIED:
+1. Added AUTH_ENDPOINTS list to identify auth-related endpoints
+2. For auth endpoints, extract error from response body FIRST before any 401 logic
+3. For non-auth endpoints, keep the session refresh/retry logic
+
+───────────────────────────────────────────────────────────────────────────────
+FIX 4: FamilyKnows Toast Component
+───────────────────────────────────────────────────────────────────────────────
+
+ISSUE: Errors shown via Alert.alert() - not professional toast notifications
+
+FIX APPLIED:
+1. Created new Toast.tsx component with ThemeContext support
+2. Supports 4 types: success, error, warning, info
+3. Animated slide-in/slide-out with proper styling
+4. Auto-dismiss with configurable duration
+5. Close button for manual dismiss
+
+───────────────────────────────────────────────────────────────────────────────
+FIX 5: FamilyKnows Login/Signup Screens
+───────────────────────────────────────────────────────────────────────────────
+
+ISSUE: Screens used Alert.alert() for errors
+
+FIX APPLIED:
+1. Updated LoginScreen.tsx to use Toast component
+2. Updated SignupScreen.tsx to use Toast component
+3. Added smart error message detection (invalid credentials, network, timeout)
+4. Shows appropriate toast type based on error
 
 ═══════════════════════════════════════════════════════════════════════════════
 FILES TO COPY
@@ -43,15 +86,28 @@ FILES TO COPY
 SOURCE → DESTINATION
 ─────────────────────
 
-EDGE FUNCTION:
+CONTRACTNEST-EDGE:
 MANUAL_COPY_FILES\contractnest-edge\supabase\functions\tenant-profile\index.ts
 → contractnest-edge\supabase\functions\tenant-profile\index.ts
 
-UI FILES:
+CONTRACTNEST-UI:
 MANUAL_COPY_FILES\contractnest-ui\src\pages\onboarding\steps\MasterDataStep.tsx
 → contractnest-ui\src\pages\onboarding\steps\MasterDataStep.tsx (NEW FILE)
 
 MANUAL_COPY_FILES\contractnest-ui\src\App.tsx
 → contractnest-ui\src\App.tsx
+
+FAMILYKNOWS:
+MANUAL_COPY_FILES\FamilyKnows\src\services\api.ts
+→ FamilyKnows\src\services\api.ts
+
+MANUAL_COPY_FILES\FamilyKnows\src\components\Toast.tsx
+→ FamilyKnows\src\components\Toast.tsx (NEW FILE)
+
+MANUAL_COPY_FILES\FamilyKnows\src\features\auth\screens\LoginScreen.tsx
+→ FamilyKnows\src\features\auth\screens\LoginScreen.tsx
+
+MANUAL_COPY_FILES\FamilyKnows\src\features\auth\screens\SignupScreen.tsx
+→ FamilyKnows\src\features\auth\screens\SignupScreen.tsx
 
 ═══════════════════════════════════════════════════════════════════════════════
