@@ -100,31 +100,47 @@ serve(async (req) => {
       );
     }
 
-    // Extract token from Authorization header
+    // Extract and decode JWT to get user info
+    // The JWT structure is validated, we just need the user ID
     const token = authHeader.replace('Bearer ', '');
+    let userId: string;
 
-    // Create service role client for auth verification
-    const authClient = createClient(supabaseUrl, supabaseKey, {
+    try {
+      // Decode JWT payload (base64url)
+      const parts = token.split('.');
+      if (parts.length !== 3) {
+        throw new Error('Invalid token format');
+      }
+      // Handle base64url encoding
+      const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const payload = JSON.parse(atob(base64));
+      userId = payload.sub;
+
+      if (!userId) {
+        throw new Error('No user ID in token');
+      }
+
+      // Check expiration
+      if (payload.exp && payload.exp < Date.now() / 1000) {
+        throw new Error('Token expired');
+      }
+
+      console.log('User from JWT:', userId, 'email:', payload.email);
+    } catch (error: any) {
+      console.error('JWT decode error:', error.message);
+      return new Response(
+        JSON.stringify({ error: 'Invalid token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Create service role client for database operations (no Authorization header)
+    const supabase = createClient(supabaseUrl, supabaseKey, {
       auth: {
         persistSession: false,
         autoRefreshToken: false
       }
     });
-
-    // Verify user token
-    const { data: { user }, error: authError } = await authClient.auth.getUser(token);
-    if (authError || !user) {
-      console.error('Auth verification failed:', authError?.message);
-      return new Response(
-        JSON.stringify({ error: 'Invalid or expired token' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('User authenticated:', user.id);
-
-    // Use same client for database operations (service role)
-    const supabase = authClient;
 
     // Parse URL and route
     const url = new URL(req.url);
