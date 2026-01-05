@@ -1,113 +1,45 @@
 ═══════════════════════════════════════════════════════════════════════════════
-ONBOARDING FIXES - January 5, 2026
+MANUAL COPY INSTRUCTIONS - Gender Selection Screen for FamilyKnows Onboarding
 ═══════════════════════════════════════════════════════════════════════════════
 
-───────────────────────────────────────────────────────────────────────────────
-FIX 1: RLS Violation When Creating Tenant Profile
-───────────────────────────────────────────────────────────────────────────────
+FILES TO COPY:
+══════════════
 
-ISSUE: Error code 42501 - "new row violates row-level security policy for
-       table t_tenant_profiles"
+1. FamilyKnows/src/features/onboarding/screens/GenderSelectionScreen.tsx (NEW)
+   → Copy to: FamilyKnows/src/features/onboarding/screens/GenderSelectionScreen.tsx
 
-ROOT CAUSE:
-The tenant-profile edge function was passing user's Authorization header in
-global.headers, which overrode the service role context. This made database
-queries run as the authenticated user instead of service_role, triggering
-RLS policy checks that require Owner/Admin role assignment - which may not
-be complete during onboarding.
+2. FamilyKnows/src/features/onboarding/screens/ProfileSetupScreen.tsx (MODIFIED)
+   → Copy to: FamilyKnows/src/features/onboarding/screens/ProfileSetupScreen.tsx
 
-FIX APPLIED:
-1. Verify user authentication via their token first
-2. Verify user has access to the tenant (t_user_tenants check)
-3. Use pure service role client (without user auth header) for database operations
-   to bypass RLS while maintaining security
+3. FamilyKnows/src/navigation/stacks/AuthStack.tsx (MODIFIED)
+   → Copy to: FamilyKnows/src/navigation/stacks/AuthStack.tsx
 
-───────────────────────────────────────────────────────────────────────────────
-FIX 2: Data Setup Step Placeholder
-───────────────────────────────────────────────────────────────────────────────
+4. FamilyKnows/src/navigation/types.ts (MODIFIED)
+   → Copy to: FamilyKnows/src/navigation/types.ts
 
-ISSUE: Data Setup step (master-data) was showing empty page
+5. contractnest-edge/supabase/functions/FKonboarding/index.ts (MODIFIED)
+   → Copy to: contractnest-edge/supabase/functions/FKonboarding/index.ts
 
-FIX APPLIED:
-Created a professional placeholder UI for the Data Setup step showing:
-- Planned features (Import Master Data, Seed Data Packages, Sample Test Data,
-  Quick Start Templates)
-- What users can do now section
-- Proper styling matching the rest of onboarding
-- Continue button to proceed to completion
 
-───────────────────────────────────────────────────────────────────────────────
-FIX 3: FamilyKnows Login Error Messages
-───────────────────────────────────────────────────────────────────────────────
+CHANGES SUMMARY:
+═══════════════
 
-ISSUE: Login with invalid credentials shows "Session expired" instead of
-       "Invalid email or password"
+FamilyKnows (Mobile App):
+- NEW: GenderSelectionScreen.tsx - Gender selection with Male/Female/Prefer not to say
+- ProfileSetupScreen.tsx - Now navigates to GenderSelection instead of ThemeSelection
+- AuthStack.tsx - Added GenderSelectionScreen to navigator
+- types.ts - Added GenderSelection route type
 
-ROOT CAUSE:
-The API interceptor in api.ts was treating ALL 401 responses as session
-expiration. For auth endpoints (login, register), 401 means invalid credentials,
-not expired session. The interceptor threw hardcoded "Session expired" message
-BEFORE extracting the actual error from the response body.
+contractnest-edge (Edge Functions):
+- FKonboarding/index.ts - Added gender step to config, added gender handler
 
-FIX APPLIED:
-1. Added AUTH_ENDPOINTS list to identify auth-related endpoints
-2. For auth endpoints, extract error from response body FIRST before any 401 logic
-3. For non-auth endpoints, keep the session refresh/retry logic
 
-───────────────────────────────────────────────────────────────────────────────
-FIX 4: FamilyKnows Toast Component
-───────────────────────────────────────────────────────────────────────────────
+NEW ONBOARDING FLOW:
+═══════════════════
+Phone → Profile (DOB) → Gender → Theme → Language → Family Space → Storage
 
-ISSUE: Errors shown via Alert.alert() - not professional toast notifications
 
-FIX APPLIED:
-1. Created new Toast.tsx component with ThemeContext support
-2. Supports 4 types: success, error, warning, info
-3. Animated slide-in/slide-out with proper styling
-4. Auto-dismiss with configurable duration
-5. Close button for manual dismiss
-
-───────────────────────────────────────────────────────────────────────────────
-FIX 5: FamilyKnows Login/Signup Screens
-───────────────────────────────────────────────────────────────────────────────
-
-ISSUE: Screens used Alert.alert() for errors
-
-FIX APPLIED:
-1. Updated LoginScreen.tsx to use Toast component
-2. Updated SignupScreen.tsx to use Toast component
-3. Added smart error message detection (invalid credentials, network, timeout)
-4. Shows appropriate toast type based on error
-
-═══════════════════════════════════════════════════════════════════════════════
-FILES TO COPY
-═══════════════════════════════════════════════════════════════════════════════
-
-SOURCE → DESTINATION
-─────────────────────
-
-CONTRACTNEST-EDGE:
-MANUAL_COPY_FILES\contractnest-edge\supabase\functions\tenant-profile\index.ts
-→ contractnest-edge\supabase\functions\tenant-profile\index.ts
-
-CONTRACTNEST-UI:
-MANUAL_COPY_FILES\contractnest-ui\src\pages\onboarding\steps\MasterDataStep.tsx
-→ contractnest-ui\src\pages\onboarding\steps\MasterDataStep.tsx (NEW FILE)
-
-MANUAL_COPY_FILES\contractnest-ui\src\App.tsx
-→ contractnest-ui\src\App.tsx
-
-FAMILYKNOWS:
-MANUAL_COPY_FILES\FamilyKnows\src\services\api.ts
-→ FamilyKnows\src\services\api.ts
-
-MANUAL_COPY_FILES\FamilyKnows\src\components\Toast.tsx
-→ FamilyKnows\src\components\Toast.tsx (NEW FILE)
-
-MANUAL_COPY_FILES\FamilyKnows\src\features\auth\screens\LoginScreen.tsx
-→ FamilyKnows\src\features\auth\screens\LoginScreen.tsx
-
-MANUAL_COPY_FILES\FamilyKnows\src\features\auth\screens\SignupScreen.tsx
-→ FamilyKnows\src\features\auth\screens\SignupScreen.tsx
-
-═══════════════════════════════════════════════════════════════════════════════
+POST-DEPLOY:
+═══════════
+After copying edge function, redeploy:
+  supabase functions deploy FKonboarding
