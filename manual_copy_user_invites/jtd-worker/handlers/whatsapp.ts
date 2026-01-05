@@ -1,5 +1,5 @@
 // supabase/functions/jtd-worker/handlers/whatsapp.ts
-// WhatsApp handler using MSG91 - matches contractnest-api/src/services/whatsapp.service.ts
+// WhatsApp handler using MSG91 - matches working n8n workflow format
 
 interface WhatsAppRequest {
   to: string;
@@ -15,13 +15,13 @@ interface ProcessResult {
   error?: string;
 }
 
-// MSG91 WhatsApp Configuration (same as whatsapp.service.ts)
+// MSG91 WhatsApp Configuration
 const MSG91_AUTH_KEY = Deno.env.get('MSG91_AUTH_KEY');
 const MSG91_WHATSAPP_NUMBER = Deno.env.get('MSG91_WHATSAPP_NUMBER');
 const MSG91_COUNTRY_CODE = Deno.env.get('MSG91_COUNTRY_CODE') || '91';
 
 /**
- * Format mobile number (same as whatsapp.service.ts)
+ * Format mobile number
  */
 function formatMobile(num: string): string {
   const cleaned = num.replace(/\D/g, '');
@@ -33,12 +33,12 @@ function formatMobile(num: string): string {
 
 /**
  * Send WhatsApp message via MSG91
- * Matches: contractnest-api/src/services/whatsapp.service.ts
+ * Format matches working n8n workflow (BBBWhatsApp)
  */
 export async function handleWhatsApp(request: WhatsAppRequest): Promise<ProcessResult> {
   const { to, templateName, templateData, mediaUrl, metadata } = request;
 
-  // Validation (same as whatsapp.service.ts)
+  // Validation
   if (!MSG91_AUTH_KEY) {
     console.error('MSG91_AUTH_KEY is not configured');
     return {
@@ -65,23 +65,15 @@ export async function handleWhatsApp(request: WhatsAppRequest): Promise<ProcessR
   try {
     const formattedMobile = formatMobile(to);
 
-    // MSG91 WhatsApp API endpoint (same as whatsapp.service.ts)
-    const url = 'https://control.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/';
+    // MSG91 WhatsApp API endpoint - use api.msg91.com (same as working n8n workflow)
+    const url = 'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/';
 
-    // Build payload (same as whatsapp.service.ts)
-    const payload: Record<string, any> = {
-      integrated_number: MSG91_WHATSAPP_NUMBER,
-      content_type: 'template',
-      payload: {
-        to: formattedMobile,
-        type: 'template',
-        template: {
-          name: templateName,
-          language: {
-            code: 'en',
-            policy: 'deterministic'
-          }
-        }
+    // Build template object
+    const template: Record<string, any> = {
+      name: templateName,
+      language: {
+        code: 'en',
+        policy: 'deterministic'
       }
     };
 
@@ -89,8 +81,6 @@ export async function handleWhatsApp(request: WhatsAppRequest): Promise<ProcessR
     // IMPORTANT: MSG91 WhatsApp templates use positional placeholders {{1}}, {{2}}, etc.
     // We must send parameters in the EXACT order the template expects.
     if (templateData && Object.keys(templateData).length > 0) {
-      // For user_invitation template, order is: {{1}}=recipient_name, {{2}}=inviter_name, {{3}}=workspace_name, {{4}}=invitation_link
-      // Build ordered array based on template name
       let orderedValues: string[];
 
       if (templateName === 'user_invitation') {
@@ -107,7 +97,7 @@ export async function handleWhatsApp(request: WhatsAppRequest): Promise<ProcessR
         orderedValues = Object.values(templateData).map(v => String(v));
       }
 
-      payload.payload.template.components = [
+      template.components = [
         {
           type: 'body',
           parameters: orderedValues.map(value => ({
@@ -118,10 +108,10 @@ export async function handleWhatsApp(request: WhatsAppRequest): Promise<ProcessR
       ];
     }
 
-    // Add media if provided (same as whatsapp.service.ts)
+    // Add media if provided
     if (mediaUrl) {
-      payload.payload.template.components = payload.payload.template.components || [];
-      payload.payload.template.components.push({
+      template.components = template.components || [];
+      template.components.push({
         type: 'header',
         parameters: [
           {
@@ -134,7 +124,18 @@ export async function handleWhatsApp(request: WhatsAppRequest): Promise<ProcessR
       });
     }
 
+    // Build payload - FLAT structure matching working n8n workflow
+    // NOT nested payload structure
+    const payload: Record<string, any> = {
+      integrated_number: MSG91_WHATSAPP_NUMBER,
+      recipient_number: formattedMobile,  // NOT payload.to
+      content_type: 'template',
+      type: 'template',
+      template: template                   // NOT payload.template
+    };
+
     console.log(`[JTD WhatsApp] Sending to ${formattedMobile}, template: ${templateName}`);
+    console.log(`[JTD WhatsApp] Payload:`, JSON.stringify(payload));
 
     const response = await fetch(url, {
       method: 'POST',
