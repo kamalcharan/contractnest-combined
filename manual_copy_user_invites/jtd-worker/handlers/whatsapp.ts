@@ -85,14 +85,34 @@ export async function handleWhatsApp(request: WhatsAppRequest): Promise<ProcessR
       }
     };
 
-    // Add variables if provided (same as whatsapp.service.ts)
+    // Add variables if provided
+    // IMPORTANT: MSG91 WhatsApp templates use positional placeholders {{1}}, {{2}}, etc.
+    // We must send parameters in the EXACT order the template expects.
     if (templateData && Object.keys(templateData).length > 0) {
+      // For user_invitation template, order is: {{1}}=recipient_name, {{2}}=inviter_name, {{3}}=workspace_name, {{4}}=invitation_link
+      // Build ordered array based on template name
+      let orderedValues: string[];
+
+      if (templateName === 'user_invitation') {
+        // Extract values in the correct order for user_invitation template
+        orderedValues = [
+          String(templateData.recipient_name || ''),      // {{1}}
+          String(templateData.inviter_name || ''),        // {{2}}
+          String(templateData.workspace_name || ''),      // {{3}}
+          String(templateData.invitation_link || '')      // {{4}}
+        ];
+        console.log(`[JTD WhatsApp] user_invitation template variables in order:`, orderedValues);
+      } else {
+        // For other templates, use Object.values (may need template-specific ordering)
+        orderedValues = Object.values(templateData).map(v => String(v));
+      }
+
       payload.payload.template.components = [
         {
           type: 'body',
-          parameters: Object.values(templateData).map(value => ({
+          parameters: orderedValues.map(value => ({
             type: 'text',
-            text: String(value)
+            text: value
           }))
         }
       ];

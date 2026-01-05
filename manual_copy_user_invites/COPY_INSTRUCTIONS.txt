@@ -18,8 +18,9 @@ EDGE FUNCTIONS (contractnest-edge):
 4. jtd-worker/handlers/email.ts
    → COPY TO: contractnest-edge/supabase/functions/jtd-worker/handlers/email.ts
 
-5. jtd-worker/handlers/whatsapp.ts
+5. jtd-worker/handlers/whatsapp.ts  **UPDATED**
    → COPY TO: contractnest-edge/supabase/functions/jtd-worker/handlers/whatsapp.ts
+   → FIX: Template variable ordering for MSG91 positional placeholders
 
 6. jtd-worker/handlers/sms.ts
    → COPY TO: contractnest-edge/supabase/functions/jtd-worker/handlers/sms.ts
@@ -63,6 +64,16 @@ EDGE FUNCTIONS:
    - Fixed field names: event_type → event_type_code, channel → channel_code
    - Added fetchJTDRecord() to get full record from DB (queue message has basic info only)
    - Now fetches payload, template_variables, metadata from n_jtd record
+
+4. jtd-worker/handlers/whatsapp.ts:
+   - FIX: Template variable ordering for MSG91 WhatsApp templates
+   - MSG91 uses positional placeholders: {{1}}, {{2}}, {{3}}, {{4}}
+   - Object.values() doesn't preserve order on JSONB data
+   - Now explicitly orders variables for user_invitation template:
+     * {{1}} = recipient_name
+     * {{2}} = inviter_name
+     * {{3}} = workspace_name
+     * {{4}} = invitation_link
 
 UI COMPONENTS:
 3. InvitationDetailsModal.tsx:
