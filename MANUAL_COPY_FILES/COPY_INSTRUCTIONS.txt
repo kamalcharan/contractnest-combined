@@ -1,8 +1,13 @@
 ═══════════════════════════════════════════════════════════════════════════════
-FIX: RLS Violation When Creating Tenant Profile During Onboarding
+ONBOARDING FIXES - January 5, 2026
 ═══════════════════════════════════════════════════════════════════════════════
 
-ISSUE: Error code 42501 - "new row violates row-level security policy for table t_tenant_profiles"
+───────────────────────────────────────────────────────────────────────────────
+FIX 1: RLS Violation When Creating Tenant Profile
+───────────────────────────────────────────────────────────────────────────────
+
+ISSUE: Error code 42501 - "new row violates row-level security policy for
+       table t_tenant_profiles"
 
 ROOT CAUSE:
 The tenant-profile edge function was passing user's Authorization header in
@@ -17,6 +22,20 @@ FIX APPLIED:
 3. Use pure service role client (without user auth header) for database operations
    to bypass RLS while maintaining security
 
+───────────────────────────────────────────────────────────────────────────────
+FIX 2: Data Setup Step Placeholder
+───────────────────────────────────────────────────────────────────────────────
+
+ISSUE: Data Setup step (master-data) was showing empty page
+
+FIX APPLIED:
+Created a professional placeholder UI for the Data Setup step showing:
+- Coming Soon features (Import Master Data, Seed Data Packages, Sample Test Data,
+  Quick Start Templates)
+- What users can do now section
+- Proper styling matching the rest of onboarding
+- Continue button to proceed to completion
+
 ═══════════════════════════════════════════════════════════════════════════════
 FILES TO COPY
 ═══════════════════════════════════════════════════════════════════════════════
@@ -24,7 +43,15 @@ FILES TO COPY
 SOURCE → DESTINATION
 ─────────────────────
 
+EDGE FUNCTION:
 MANUAL_COPY_FILES\contractnest-edge\supabase\functions\tenant-profile\index.ts
 → contractnest-edge\supabase\functions\tenant-profile\index.ts
+
+UI FILES:
+MANUAL_COPY_FILES\contractnest-ui\src\pages\onboarding\steps\MasterDataStep.tsx
+→ contractnest-ui\src\pages\onboarding\steps\MasterDataStep.tsx (NEW FILE)
+
+MANUAL_COPY_FILES\contractnest-ui\src\App.tsx
+→ contractnest-ui\src\App.tsx
 
 ═══════════════════════════════════════════════════════════════════════════════

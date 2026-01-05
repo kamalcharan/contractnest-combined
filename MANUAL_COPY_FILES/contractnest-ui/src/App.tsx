@@ -7,7 +7,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { MasterDataProvider } from './contexts/MasterDataContext';
 import { QueryProvider } from './providers/QueryProvider'; // ✅ NEW: TanStack Query Provider
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'; // Add this import
+
 import './styles/globals.css';
 import './styles/layout.css';
 import { Toaster } from 'react-hot-toast';
@@ -30,6 +30,10 @@ import MainLayout from './components/layout/MainLayout';
 import CatalogPage from './pages/catalog/index';
 import ServiceViewPage from './pages/catalog/view';
 import CatalogServiceFormPage from './pages/catalog/catalogService-form';
+import CatalogStudioConfigurePage from './pages/catalog-studio/configure';
+import CatalogStudioBlocksPage from './pages/catalog-studio/blocks';
+import CatalogStudioTemplatePage from './pages/catalog-studio/template';
+import CatalogStudioTemplatesListPage from './pages/catalog-studio/templates-list';
 
 
 // Auth Pages
@@ -47,13 +51,16 @@ import CreateTenantPage from './pages/auth/CreateTenantPage';
 import WelcomeStep from './pages/onboarding/steps/WelcomeStep';
 import OnboardingIndexPage from './pages/onboarding/index';
 import OnboardingLayout from './components/onboarding/OnboardingLayout';
+import OnboardingPendingPage from './pages/onboarding/OnboardingPendingPage';
 import StorageSetupStep from './pages/onboarding/steps/StorageSetupStep';
-import UserProfileStep from '@/pages/onboarding/steps/UserProfileStep';
+import UserProfileStep from '@/pages/onboarding/steps/userProfileStep';
 import ThemeSelectionStep from '@/pages/onboarding/steps/ThemeSelectionStep';
 import BusinessBasicStep from '@/pages/onboarding/steps/BusinessBasicStep';
-import BusinessBrandingStep from '@/pages/onboarding/steps/BusinessBrandingStep';     
+import BusinessBrandingStep from '@/pages/onboarding/steps/BusinessBrandingStep';
 import BusinessPreferencesStep from '@/pages/onboarding/steps/BusinessPreferencesStep';
 import SequenceNumbersStep from '@/pages/onboarding/steps/SequenceNumbersStep';
+import MasterDataStep from '@/pages/onboarding/steps/MasterDataStep';
+import CompleteStep from '@/pages/onboarding/steps/CompleteStep';
 
 
 //VaNi Pages
@@ -82,12 +89,17 @@ import WhatsAppIntegrationPage from './vani/pages/channels/WhatsAppIntegrationPa
 // ✅ NEW: BBB Directory Pages
 import BBBProfileOnboardingPage from './pages/VaNi/channels/BBBProfileOnboardingPage';
 import BBBAdminDashboard from './pages/VaNi/channels/BBBAdminDashboard';
+import VaNiChatPage from './pages/VaNi/channels/VaNiChatPage';
 
 // ✅ Implementation Toolkit
 import TenantProfilesPage from './pages/VaNi/TenantProfilesPage';
 
+// ✅ NEW: Groups Pages (Customer Channels)
+import GroupsListPage from './pages/settings/customer-channels/GroupsListPage';
+import GroupProfileDashboard from './pages/settings/customer-channels/GroupProfileDashboard';
+
 // MISC Pages
-import { 
+import {
   NotFoundPage,
   MaintenancePage,
   UnauthorizedPage,
@@ -102,8 +114,8 @@ import SequencingSettingsPage from './pages/settings/sequencing';
 
 // Main pages
 import Dashboard from './pages/Dashboard';
-import SettingsPage from './pages/settings'; 
-import ListOfValuesPage from './pages/settings/LOV'; 
+import SettingsPage from './pages/settings';
+import ListOfValuesPage from './pages/settings/LOV';
 import StorageSettingsPage from './pages/settings/storagesettings';
 
 // ✅ FIXED: Import the actual Resources page instead of placeholder
@@ -118,15 +130,26 @@ import TemplateDesignerPage from './pages/service-contracts/templates/designer';
 // Service Contracts - Contracts
 import ContractsPage from './pages/service-contracts/contracts';
 
+// ✅ NEW: Contract Builder
+import ContractCreatePage from './pages/contracts/create';
+
+// ✅ NEW: Contract Preview, PDF View, Ops Cockpit, Invite Sellers
+import ContractPreviewPage from './pages/contracts/preview';
+import PDFViewPage from './pages/contracts/pdf-view';
+import OpsCockpitPage from './pages/ops/cockpit';
+import InviteSellersPage from './pages/contracts/invite';
+
 // Team Management pages (using existing components)
 import UsersPage from './pages/settings/users';
-import UserViewPage from './pages/settings/users/userview';
+import UserViewPage from './pages/settings/users/userView';
 import UserProfilePage from './pages/settings/users/user-profile';
 
 // Business Profile pages
 import BusinessProfilePage from './pages/settings/business-profile';
 import EditBusinessProfilePage from './pages/settings/business-profile/edit';
 import OnboardingBusinessProfilePage from './pages/onboarding/business-profile';
+import SmartProfilePage from './pages/settings/business-profile/smart-profile';
+
 
 // Integration pages
 import IntegrationsPage from './pages/settings/integrations';
@@ -163,21 +186,12 @@ import ContactsPage from './pages/contacts/index';
 import ContactViewPage from './pages/contacts/view';
 import ContactCreateForm from './pages/contacts/create';
 
-// Create QueryClient
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      retry: 3,
-    },
-  },
-});
 
 // Temporary API test
 const testAPIConnection = () => {
   console.log('Testing API connection...');
   console.log('VITE_API_URL:', import.meta.env.VITE_API_URL);
-  
+
   // Test with your api service
   import('./services/api').then(({ default: api }) => {
     api.get('/')
@@ -199,27 +213,27 @@ const TeamEditPage = () => <div className="p-8">Edit Team Member Page (Coming So
 const SmartHomePage: React.FC = () => {
   const { isAuthenticated, isLoading, currentTenant } = useAuth();
   const location = useLocation();
-  
+
   // ✅ Don't redirect if user is on auth pages
   const isAuthPage = ['/login', '/signup', '/register', '/forgot-password', '/reset-password'].includes(location.pathname);
-  
+
   if (isLoading) {
     return <LoadingSpinner />;
   }
-  
+
   if (isAuthPage) {
     // Let auth pages handle themselves
     return null;
   }
-  
+
   if (isAuthenticated && currentTenant) {
     return <Navigate to="/dashboard" replace />;
   }
-  
+
   if (isAuthenticated && !currentTenant) {
     return <Navigate to="/select-tenant" replace />;
   }
-  
+
   // Not authenticated - show landing page
   return <LandingPage />;
 };
@@ -233,33 +247,33 @@ const NetworkStatusHandler: React.FC = () => {
       // Optionally show a toast notification
       // toast.success('Connection restored', { duration: 2000 });
     };
-    
+
     const handleOffline = () => {
       console.log('Gone offline');
       // The MiscPageWrapper will handle showing the no-internet page
     };
-    
+
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-    
+
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
-  
+
   return null;
 };
 
 // App content component that has access to auth context
 const AppContent: React.FC = () => {
   const { isLocked, isAuthenticated } = useAuth();
-  
+
   return (
     <>
       {/* Show lock screen overlay when locked */}
       {isAuthenticated && isLocked && <LockScreen />}
-      
+
       <NetworkStatusHandler />
       <SessionConflictNotification />
       <EnvironmentSwitchModal />
@@ -277,7 +291,7 @@ const AppContent: React.FC = () => {
 
           {/* Root Route - Smart Landing/Dashboard */}
           <Route path="/" element={<SmartHomePage />} />
-          
+
           {/* Public Routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
@@ -303,7 +317,17 @@ const AppContent: React.FC = () => {
               </ProtectedRoute>
             }
           />
-          
+
+          {/* Onboarding Pending - for non-owners when onboarding is not complete */}
+          <Route
+            path="/onboarding-pending"
+            element={
+              <ProtectedRoute requireTenant={true}>
+                <OnboardingPendingPage />
+              </ProtectedRoute>
+            }
+          />
+
           {/* Complete Onboarding Routes - with Layout */}
           <Route
   path="/onboarding"
@@ -319,14 +343,11 @@ const AppContent: React.FC = () => {
   <Route path="user-profile" element={<UserProfileStep />} />
  <Route path="/onboarding/theme-selection" element={<ThemeSelectionStep />} />
  <Route path="/onboarding/business-basic" element={<BusinessBasicStep />} />
-<Route path="business-branding" element={<BusinessBrandingStep />} />              
+<Route path="business-branding" element={<BusinessBrandingStep />} />
 <Route path="business-preferences" element={<BusinessPreferencesStep />} />
 <Route path="sequence-numbers" element={<SequenceNumbersStep />} />
-  <Route path="master-data" element={<div>Master Data Step (Coming Soon)</div>} />
-  <Route path="team-invite" element={<div>Team Invite Step (Coming Soon)</div>} />
-  <Route path="product-tour" element={<div>Product Tour Step (Coming Soon)</div>} />
-  <Route path="sample-contract" element={<div>Sample Contract Step (Coming Soon)</div>} />
-  <Route path="complete" element={<div>Complete Step (Coming Soon)</div>} />
+  <Route path="master-data" element={<MasterDataStep />} />
+  <Route path="complete" element={<CompleteStep />} />
 </Route>
           {/* Protected Routes with MainLayout - Your Original Structure */}
           <Route
@@ -377,7 +398,7 @@ const AppContent: React.FC = () => {
           >
             <Route index element={<Navigate to="templates" replace />} />
             <Route path="contracts" element={<ContractsPage />} />
-            
+
             {/* Service Contracts - Templates Routes */}
             <Route path="templates">
               <Route index element={<MyTemplatesPage />} />
@@ -391,11 +412,80 @@ const AppContent: React.FC = () => {
               </Route>
             </Route>
           </Route>
-          
+
+          {/* ✅ NEW: Contract Builder Route - Full page without sidebar */}
+          <Route
+            path="/contracts/create"
+            element={
+              <ProtectedRoute>
+                <ContractCreatePage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* ✅ NEW: Contract Preview Route */}
+          <Route
+            path="/contracts/preview"
+            element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<ContractPreviewPage />} />
+            <Route path=":id" element={<ContractPreviewPage />} />
+          </Route>
+
+          {/* ✅ NEW: PDF View Route */}
+          <Route
+            path="/contracts/pdf"
+            element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<PDFViewPage />} />
+            <Route path=":id" element={<PDFViewPage />} />
+          </Route>
+
+          {/* ✅ NEW: Ops Cockpit Route */}
+          <Route
+            path="/ops/cockpit"
+            element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<OpsCockpitPage />} />
+          </Route>
+
+          {/* ✅ NEW: Invite Sellers Route */}
+          <Route
+            path="/contracts/invite"
+            element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<InviteSellersPage />} />
+          </Route>
+
+         {/* Catalog Studio Routes */}
+<Route path="/catalog-studio" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+  <Route index element={<Navigate to="configure" replace />} />
+  <Route path="configure" element={<CatalogStudioConfigurePage />} />  {/* ✅ FIXED */}
+  <Route path="blocks" element={<CatalogStudioBlocksPage />} />        {/* ✅ ADD THIS */}
+  <Route path="template" element={<CatalogStudioTemplatePage />} />
+  <Route path="templates-list" element={<CatalogStudioTemplatesListPage />} />
+</Route>
+
           {/* Legacy support for old routes - redirect to new structure */}
           <Route path="/contracts" element={<Navigate to="/service-contracts/contracts" replace />} />
           <Route path="/templates" element={<Navigate to="/service-contracts/templates" replace />} />
-          
+
           {/* Settings routes */}
           <Route
             path="/settings"
@@ -409,7 +499,7 @@ const AppContent: React.FC = () => {
             <Route path="configure" element={<SettingsPage />} />
             <Route path="configure/lovs" element={<ListOfValuesPage />} />
             <Route path="configure/resources" element={<ResourcesPage />} />
-            
+
             {/* Team Management Routes */}
             <Route path="users" element={<UsersPage />} />
             <Route path="users/view/:id" element={<UserViewPage />} />
@@ -419,7 +509,9 @@ const AppContent: React.FC = () => {
             {/* Business Profile Settings */}
             <Route path="business-profile" element={<BusinessProfilePage />} />
             <Route path="business-profile/edit" element={<EditBusinessProfilePage />} />
-            
+            <Route path="business-profile/smart-profile" element={<SmartProfilePage />} />
+
+
             {/* Storage Settings */}
             <Route path="configure/storage" element={<StorageSettingsPage />} />
 
@@ -434,24 +526,28 @@ const AppContent: React.FC = () => {
             <Route path="storage/storagecomplete" element={<StorageCompletePage />} />
             <Route path="storage/storagemanagement" element={<StorageManagementPage />} />
             <Route path="storage/categoryfiles/:categoryId" element={<CategoryFilesPage />} />
-            
+
             {/* Integration Settings */}
             <Route path="integrations" element={<IntegrationsPage />} />
-            
+
+            {/* ✅ NEW: Customer Channels - Groups */}
+            <Route path="configure/customer-channels/groups" element={<GroupsListPage />} />
+            <Route path="configure/customer-channels/groups/:groupId" element={<GroupProfileDashboard />} />
+
             {/* Business Model Routes */}
-            
+
             {/* Admin - Pricing Plans Management */}
             <Route path="businessmodel/admin/pricing-plans" element={<PricingPlansAdminPage />} />
             <Route path="businessmodel/admin/pricing-plans/create" element={<PricingPlanForm />} />
             <Route path="businessmodel/admin/pricing-plans/:id" element={<PlanDetailView />} />
             <Route path="businessmodel/admin/pricing-plans/:id/edit" element={<EditPlanPage />} />
             <Route path="businessmodel/admin/pricing-plans/:id/assign" element={<AssignPlanPage />} />
-            
+
             {/* Admin - Plan Versions */}
             <Route path="businessmodel/admin/pricing-plans/:id/versions" element={<PlanVersionsPage />} />
             <Route path="businessmodel/admin/pricing-plans/:id/versions/create" element={<CreateVersionPage />} />
             <Route path="businessmodel/admin/pricing-plans/:id/versions/migrate" element={<MigrationDashboardPage />} />
-            
+
             {/* Admin - Billing Management */}
             <Route path="businessmodel/admin/billing" element={<BillingDashboardPage />} />
             <Route path="businessmodel/admin/billing/create-invoice" element={<CreateInvoicePage />} />
@@ -497,10 +593,11 @@ const AppContent: React.FC = () => {
             <Route path="channels/website" element={<WebsiteIntegrationPage />} />
             <Route path="channels/chatbot" element={<ChatBotIntegrationPage />} />
             <Route path="channels/whatsapp" element={<WhatsAppIntegrationPage />} />
-            
+
             {/* ✅ NEW: BBB Directory Routes */}
             <Route path="channels/bbb/onboarding" element={<BBBProfileOnboardingPage />} />
             <Route path="channels/bbb/admin" element={<BBBAdminDashboard />} />
+            <Route path="channels/bbb/chat" element={<VaNiChatPage />} />
 
             {/* ✅ Implementation Toolkit Routes */}
             <Route path="tenant-profiles" element={<TenantProfilesPage />} />
@@ -519,7 +616,7 @@ const AppContent: React.FC = () => {
             <Route path="chat" element={<ChatPage />} />
             <Route path="chat/:conversationId" element={<ChatPage />} />
           </Route>
-          
+
           {/* Tenant - Pricing Plans & Subscription */}
           <Route
             path="/businessmodel/tenants/pricing-plans"
@@ -531,7 +628,7 @@ const AppContent: React.FC = () => {
           >
             <Route index element={<PricingPlansPage />} />
           </Route>
-          
+
           <Route
             path="/businessmodel/tenants/subscription"
             element={
@@ -542,10 +639,10 @@ const AppContent: React.FC = () => {
           >
             <Route index element={<SubscriptionPage />} />
           </Route>
-          
+
           {/* Legacy routes - redirect to new structure */}
           <Route path="/implementation/configure-plan" element={<Navigate to="/settings/businessmodel/admin/pricing-plans" replace />} />
-          
+
           {/* 404 Page - Must be last */}
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
@@ -562,13 +659,13 @@ const App: React.FC = () => {
         <ThemeProvider>
           <Router>
             <AuthProvider>
-              <QueryClientProvider client={queryClient}>
+              
                 <QueryProvider> {/* ✅ NEW: Wrap with QueryProvider */}
                   <MasterDataProvider>
                     <AppContent />
                   </MasterDataProvider>
                 </QueryProvider>
-              </QueryClientProvider>
+             
             </AuthProvider>
           </Router>
         </ThemeProvider>
