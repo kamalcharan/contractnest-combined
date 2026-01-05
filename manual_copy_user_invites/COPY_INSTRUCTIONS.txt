@@ -12,6 +12,21 @@ EDGE FUNCTIONS (contractnest-edge):
 2. jtd-integration.ts
    → COPY TO: contractnest-edge/supabase/functions/user-invitations/jtd-integration.ts
 
+3. jtd-worker/index.ts
+   → COPY TO: contractnest-edge/supabase/functions/jtd-worker/index.ts
+
+4. jtd-worker/handlers/email.ts
+   → COPY TO: contractnest-edge/supabase/functions/jtd-worker/handlers/email.ts
+
+5. jtd-worker/handlers/whatsapp.ts
+   → COPY TO: contractnest-edge/supabase/functions/jtd-worker/handlers/whatsapp.ts
+
+6. jtd-worker/handlers/sms.ts
+   → COPY TO: contractnest-edge/supabase/functions/jtd-worker/handlers/sms.ts
+
+7. jtd-worker/handlers/inapp.ts
+   → COPY TO: contractnest-edge/supabase/functions/jtd-worker/handlers/inapp.ts
+
 UI COMPONENTS (contractnest-ui):
 3. InvitationDetailsModal.tsx
    → COPY TO: contractnest-ui/src/components/users/InvitationDetailsModal.tsx
@@ -41,6 +56,13 @@ EDGE FUNCTIONS:
    - Response includes jtd_channels array with JTD IDs
    - isLive comes from x-environment header (sessionStorage in UI)
    - Added x-environment to CORS allowed headers
+
+3. jtd-worker/index.ts:
+   - Fixed column names: current_status → status_code
+   - Fixed column names: sent_at → executed_at, delivered_at → completed_at
+   - Fixed field names: event_type → event_type_code, channel → channel_code
+   - Added fetchJTDRecord() to get full record from DB (queue message has basic info only)
+   - Now fetches payload, template_variables, metadata from n_jtd record
 
 UI COMPONENTS:
 3. InvitationDetailsModal.tsx:
