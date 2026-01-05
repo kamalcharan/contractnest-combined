@@ -4,38 +4,59 @@ MANUAL COPY INSTRUCTIONS - User Invitations JTD Integration
 
 FILES IN THIS FOLDER:
 ─────────────────────────────────────────────────────────────────────────────────
+
+EDGE FUNCTIONS (contractnest-edge):
 1. user-invitations-index.ts
    → COPY TO: contractnest-edge/supabase/functions/user-invitations/index.ts
 
 2. jtd-integration.ts
    → COPY TO: contractnest-edge/supabase/functions/user-invitations/jtd-integration.ts
 
+UI COMPONENTS (contractnest-ui):
+3. InvitationDetailsModal.tsx
+   → COPY TO: contractnest-ui/src/components/users/InvitationDetailsModal.tsx
+
+4. InvitationsList.tsx
+   → COPY TO: contractnest-ui/src/components/users/InvitationsList.tsx
+
 ═══════════════════════════════════════════════════════════════════════════════
 WHAT CHANGED:
 ═══════════════════════════════════════════════════════════════════════════════
 
+EDGE FUNCTIONS:
 1. jtd-integration.ts:
-   - Added sendMultiChannelInvitation() function (lines 311-456)
-   - Sends via multiple channels based on tenant configuration
-   - Email invites → Email channel only
-   - Mobile invites → WhatsApp channel (SMS deprioritized)
+   - Added sendMultiChannelInvitation() function
+   - Fixed template_data order for WhatsApp: {{1}}=recipient_name, {{2}}=inviter_name,
+     {{3}}=workspace_name, {{4}}=invitation_link
 
 2. user-invitations-index.ts:
-   - Added import for sendMultiChannelInvitation (line 8)
-   - createInvitation() now queues via JTD (lines 444-533)
-   - resendInvitation() now queues via JTD (lines 978-1058)
+   - Added import for sendMultiChannelInvitation
+   - createInvitation() now queues via JTD (async, non-blocking)
+   - resendInvitation() now queues via JTD (async, non-blocking)
    - Response includes jtd_channels array with JTD IDs
 
+UI COMPONENTS:
+3. InvitationDetailsModal.tsx:
+   - Added mobile number display with phone icon
+   - Shows phone_code + mobile_number format (e.g., +91 9876543210)
+
+4. InvitationsList.tsx:
+   - Added mobile number display in invitation cards
+   - Shows below the main recipient line for SMS/WhatsApp invites
+
 ═══════════════════════════════════════════════════════════════════════════════
-ARCHITECTURE CHANGE:
+JTD TABLES - WHERE TO FIND INVITATION DATA:
 ═══════════════════════════════════════════════════════════════════════════════
 
-BEFORE (Blocking - 2-5 seconds):
-User → Create Invite → [WAIT] MSG91 API → Response
+After creating an invitation, check these tables:
 
-AFTER (Async - <100ms):
-User → Create Invite → [FAST] JTD Record → Response
-                            ↓
-                    [Background] PGMQ Worker → MSG91 API
+1. n_jtd - Main JTD records
+   SELECT * FROM n_jtd WHERE source_type = 'user_invite' ORDER BY created_at DESC;
+
+2. pgmq.jtd_queue - Messages waiting for worker
+   SELECT * FROM pgmq.read('jtd_queue', 60, 10);
+
+3. pgmq.jtd_dlq - Failed messages (after 3 retries)
+   SELECT * FROM pgmq.jtd_dlq;
 
 ═══════════════════════════════════════════════════════════════════════════════
