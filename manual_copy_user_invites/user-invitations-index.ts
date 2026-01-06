@@ -1603,7 +1603,7 @@ function generateSecretCode(length: number = 5): string {
 
 function generateInvitationLink(userCode: string, secretCode: string): string {
  const baseUrl = Deno.env.get('FRONTEND_URL') || 'http://localhost:3000';
- return `${baseUrl}/accept-invitation?code=${userCode}&secret=${secretCode}`;
+ return `${baseUrl}/register-invitation?code=${userCode}&secret=${secretCode}`;
 }
 
 function getTimeRemaining(expiresAt: string): string {
