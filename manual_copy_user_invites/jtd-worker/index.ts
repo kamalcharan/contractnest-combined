@@ -174,16 +174,19 @@ async function updateJTDStatus(
 
   // Increment retry_count separately if needed
   if (incrementRetry) {
-    const { error: retryError } = await supabase.rpc('increment_jtd_retry_count', {
-      p_jtd_id: jtdId
-    });
-    if (retryError) {
-      // Fallback: direct update
-      await supabase
-        .from('n_jtd')
-        .update({ retry_count: supabase.raw('retry_count + 1') })
-        .eq('id', jtdId);
-    }
+    // Fetch current retry_count and increment
+    const { data: currentRecord } = await supabase
+      .from('n_jtd')
+      .select('retry_count')
+      .eq('id', jtdId)
+      .single();
+
+    const newRetryCount = (currentRecord?.retry_count || 0) + 1;
+
+    await supabase
+      .from('n_jtd')
+      .update({ retry_count: newRetryCount })
+      .eq('id', jtdId);
   }
 }
 
