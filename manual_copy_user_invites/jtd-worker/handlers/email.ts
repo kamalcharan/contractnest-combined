@@ -75,6 +75,7 @@ export async function handleEmail(request: EmailRequest): Promise<ProcessResult>
     };
 
     console.log(`[JTD Email] Sending to ${to}: ${subject}`);
+    console.log(`[JTD Email] Payload:`, JSON.stringify(payload, null, 2));
 
     const response = await fetch(url, {
       method: 'POST',
@@ -87,6 +88,8 @@ export async function handleEmail(request: EmailRequest): Promise<ProcessResult>
 
     const result = await response.json();
 
+    console.log(`[JTD Email] MSG91 Response:`, JSON.stringify(result));
+
     if (result && result.type === 'success') {
       console.log(`[JTD Email] Sent successfully to ${to}, request_id: ${result.request_id || result.data?.request_id}`);
       return {
@@ -95,10 +98,10 @@ export async function handleEmail(request: EmailRequest): Promise<ProcessResult>
       };
     }
 
-    console.error('[JTD Email] MSG91 error:', result);
+    console.error('[JTD Email] MSG91 error:', JSON.stringify(result));
     return {
       success: false,
-      error: result.message || 'Failed to send email'
+      error: `MSG91: ${JSON.stringify(result)}`
     };
 
   } catch (error) {
