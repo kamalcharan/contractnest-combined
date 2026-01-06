@@ -1,5 +1,5 @@
 // supabase/functions/jtd-worker/handlers/whatsapp.ts
-// WhatsApp handler using MSG91 - matches working n8n workflow format
+// WhatsApp handler using MSG91 - based on MSG91 official documentation
 
 interface WhatsAppRequest {
   to: string;
@@ -33,7 +33,7 @@ function formatMobile(num: string): string {
 
 /**
  * Send WhatsApp message via MSG91
- * Format matches working n8n workflow (BBBWhatsApp)
+ * Based on MSG91 documentation: https://docs.msg91.com/reference/send-whatsapp-message
  */
 export async function handleWhatsApp(request: WhatsAppRequest): Promise<ProcessResult> {
   const { to, templateName, templateData, mediaUrl, metadata } = request;
@@ -65,94 +65,92 @@ export async function handleWhatsApp(request: WhatsAppRequest): Promise<ProcessR
   try {
     const formattedMobile = formatMobile(to);
 
-    // MSG91 WhatsApp API endpoint - use api.msg91.com (same as working n8n workflow)
-    const url = 'https://api.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/';
+    // MSG91 WhatsApp API endpoint (bulk endpoint for templates)
+    const url = 'https://control.msg91.com/api/v5/whatsapp/whatsapp-outbound-message/bulk/';
 
-    // Build template object
-    const template: Record<string, any> = {
-      name: templateName,
-      language: {
-        code: 'en',
-        policy: 'deterministic'
-      }
-    };
+    // Build components object based on template variables
+    // MSG91 uses body_1, body_2, etc. for template placeholders
+    const components: Record<string, { type: string; value: string }> = {};
 
-    // Add variables if provided
-    // IMPORTANT: MSG91 WhatsApp templates use positional placeholders {{1}}, {{2}}, etc.
-    // We must send parameters in the EXACT order the template expects.
     if (templateData && Object.keys(templateData).length > 0) {
       let orderedValues: string[];
 
       if (templateName === 'user_invitation') {
-        // Extract values in the correct order for user_invitation template
+        // user_invitation template: {{1}}=recipient_name, {{2}}=inviter_name, {{3}}=workspace_name, {{4}}=invitation_link
         orderedValues = [
-          String(templateData.recipient_name || ''),      // {{1}}
-          String(templateData.inviter_name || ''),        // {{2}}
-          String(templateData.workspace_name || ''),      // {{3}}
-          String(templateData.invitation_link || '')      // {{4}}
+          String(templateData.recipient_name || ''),
+          String(templateData.inviter_name || ''),
+          String(templateData.workspace_name || ''),
+          String(templateData.invitation_link || '')
         ];
-        console.log(`[JTD WhatsApp] user_invitation template variables in order:`, orderedValues);
+        console.log(`[JTD WhatsApp] user_invitation variables:`, orderedValues);
       } else {
-        // For other templates, use Object.values (may need template-specific ordering)
+        // For other templates, use Object.values
         orderedValues = Object.values(templateData).map(v => String(v));
       }
 
-      template.components = [
-        {
-          type: 'body',
-          parameters: orderedValues.map(value => ({
-            type: 'text',
-            text: value
-          }))
-        }
-      ];
-    }
-
-    // Add media if provided
-    if (mediaUrl) {
-      template.components = template.components || [];
-      template.components.push({
-        type: 'header',
-        parameters: [
-          {
-            type: 'image',
-            image: {
-              link: mediaUrl
-            }
-          }
-        ]
+      // Convert to MSG91 format: body_1, body_2, etc.
+      orderedValues.forEach((value, index) => {
+        components[`body_${index + 1}`] = {
+          type: 'text',
+          value: value
+        };
       });
     }
 
-    // Build payload - FLAT structure matching working n8n workflow
-    // NOT nested payload structure
-    const payload: Record<string, any> = {
+    // Add header component if media URL provided
+    if (mediaUrl) {
+      components['header_1'] = {
+        type: 'image',
+        value: mediaUrl
+      };
+    }
+
+    // Build payload per MSG91 documentation
+    const payload = {
       integrated_number: MSG91_WHATSAPP_NUMBER,
-      recipient_number: formattedMobile,  // NOT payload.to
       content_type: 'template',
-      type: 'template',
-      template: template                   // NOT payload.template
+      payload: {
+        type: 'template',
+        template: {
+          name: templateName,
+          language: {
+            code: 'en',
+            policy: 'deterministic'
+          },
+          to_and_components: [
+            {
+              to: [formattedMobile],
+              components: components
+            }
+          ]
+        },
+        messaging_product: 'whatsapp'  // REQUIRED by MSG91/WhatsApp
+      }
     };
 
     console.log(`[JTD WhatsApp] Sending to ${formattedMobile}, template: ${templateName}`);
-    console.log(`[JTD WhatsApp] Payload:`, JSON.stringify(payload));
+    console.log(`[JTD WhatsApp] Payload:`, JSON.stringify(payload, null, 2));
 
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'authkey': MSG91_AUTH_KEY,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'accept': 'application/json'
       },
       body: JSON.stringify(payload)
     });
 
     const result = await response.json();
 
-    if (result && result.type === 'success') {
+    console.log(`[JTD WhatsApp] MSG91 Response:`, JSON.stringify(result));
+
+    if (result && (result.type === 'success' || result.status === 'success')) {
       console.log(`[JTD WhatsApp] Sent successfully to ${formattedMobile}`);
       return {
         success: true,
-        provider_message_id: result.data?.id || result.request_id
+        provider_message_id: result.data?.id || result.request_id || result.message_id
       };
     }
 
