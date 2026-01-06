@@ -47,6 +47,8 @@ interface JTDRecord {
   template_variables: Record<string, any>;
   metadata: Record<string, any>;
   is_live: boolean;
+  retry_count: number;
+  max_retries: number;
 }
 
 interface ProcessResult {
@@ -58,7 +60,7 @@ interface ProcessResult {
 // Constants
 const BATCH_SIZE = 10;
 const VISIBILITY_TIMEOUT = 60; // seconds
-const MAX_RETRIES = 3;
+const DEFAULT_MAX_RETRIES = 3;
 const VANI_UUID = '00000000-0000-0000-0000-000000000001';
 
 // Initialize Supabase client with service role
@@ -85,12 +87,12 @@ async function readQueue(batchSize: number = BATCH_SIZE): Promise<JTDQueueMessag
 }
 
 /**
- * Fetch full JTD record from database
+ * Fetch full JTD record from database including retry info
  */
 async function fetchJTDRecord(jtdId: string): Promise<JTDRecord | null> {
   const { data, error } = await supabase
     .from('n_jtd')
-    .select('id, tenant_id, event_type_code, channel_code, source_type_code, recipient_name, recipient_contact, payload, template_key, template_variables, metadata, is_live')
+    .select('id, tenant_id, event_type_code, channel_code, source_type_code, recipient_name, recipient_contact, payload, template_key, template_variables, metadata, is_live, retry_count, max_retries')
     .eq('id', jtdId)
     .single();
 
@@ -103,7 +105,7 @@ async function fetchJTDRecord(jtdId: string): Promise<JTDRecord | null> {
 }
 
 /**
- * Delete message from queue after successful processing
+ * Delete message from queue (ALWAYS call this after processing)
  */
 async function deleteMessage(msgId: number): Promise<void> {
   const { error } = await supabase.rpc('jtd_delete_message', {
@@ -112,7 +114,7 @@ async function deleteMessage(msgId: number): Promise<void> {
 
   if (error) {
     console.error('Error deleting message:', error);
-    throw error;
+    // Don't throw - we want to continue even if delete fails
   }
 }
 
@@ -127,19 +129,19 @@ async function archiveToDLQ(msgId: number, errorMessage: string): Promise<void> 
 
   if (error) {
     console.error('Error archiving to DLQ:', error);
-    throw error;
   }
 }
 
 /**
  * Update JTD status in database
- * Column names: status_code, executed_at, completed_at, error_message
+ * Column names: status_code, executed_at, completed_at, error_message, retry_count
  */
 async function updateJTDStatus(
   jtdId: string,
   status: string,
   providerMessageId?: string,
-  errorMessage?: string
+  errorMessage?: string,
+  incrementRetry: boolean = false
 ): Promise<void> {
   const updateData: Record<string, any> = {
     status_code: status,
@@ -157,19 +159,32 @@ async function updateJTDStatus(
     updateData.completed_at = new Date().toISOString();
   } else if (status === 'failed') {
     updateData.error_message = errorMessage;
+    updateData.last_retry_at = new Date().toISOString();
   }
 
-  const { error } = await supabase
-    .from('n_jtd')
-    .update(updateData)
-    .eq('id', jtdId);
+  // Build query
+  let query = supabase.from('n_jtd').update(updateData).eq('id', jtdId);
+
+  const { error } = await query;
 
   if (error) {
     console.error('Error updating JTD status:', error);
     throw error;
   }
 
-  // Status history is handled by database trigger
+  // Increment retry_count separately if needed
+  if (incrementRetry) {
+    const { error: retryError } = await supabase.rpc('increment_jtd_retry_count', {
+      p_jtd_id: jtdId
+    });
+    if (retryError) {
+      // Fallback: direct update
+      await supabase
+        .from('n_jtd')
+        .update({ retry_count: supabase.raw('retry_count + 1') })
+        .eq('id', jtdId);
+    }
+  }
 }
 
 /**
@@ -243,7 +258,19 @@ async function processMessage(msg: JTDQueueMessage): Promise<void> {
     // Fetch full JTD record from database (queue message only has basic info)
     const jtdRecord = await fetchJTDRecord(jtd_id);
     if (!jtdRecord) {
-      throw new Error(`JTD record not found: ${jtd_id}`);
+      console.error(`JTD record not found: ${jtd_id}, deleting from queue`);
+      await deleteMessage(msg.msg_id);
+      return;
+    }
+
+    // Check retry limit BEFORE processing
+    const maxRetries = jtdRecord.max_retries || DEFAULT_MAX_RETRIES;
+    if (jtdRecord.retry_count >= maxRetries) {
+      console.log(`JTD ${jtd_id} exceeded max retries (${jtdRecord.retry_count}/${maxRetries}), marking as failed`);
+      await updateJTDStatus(jtd_id, 'failed', undefined, `Max retries (${maxRetries}) exceeded`);
+      await archiveToDLQ(msg.msg_id, `Max retries exceeded`);
+      await deleteMessage(msg.msg_id);
+      return;
     }
 
     const {
@@ -267,7 +294,7 @@ async function processMessage(msg: JTDQueueMessage): Promise<void> {
     // Use template_variables from record
     const template_data = template_variables || payload?.template_data || {};
 
-    console.log(`Processing JTD ${jtd_id} - ${source_type_code} via ${channel_code}`);
+    console.log(`Processing JTD ${jtd_id} - ${source_type_code} via ${channel_code} (retry ${jtdRecord.retry_count}/${maxRetries})`);
 
     // Update status to 'processing'
     await updateJTDStatus(jtd_id, 'processing');
@@ -331,28 +358,53 @@ async function processMessage(msg: JTDQueueMessage): Promise<void> {
         throw new Error(`Unknown channel: ${channel_code}`);
     }
 
+    // ALWAYS delete from queue after processing (success or failure)
+    await deleteMessage(msg.msg_id);
+
     if (result.success) {
-      // Success - update status and delete from queue
+      // Success - update status
       await updateJTDStatus(jtd_id, 'sent', result.provider_message_id);
-      await deleteMessage(msg.msg_id);
       console.log(`JTD ${jtd_id} sent successfully`);
     } else {
-      throw new Error(result.error || 'Unknown error');
+      // Failure - increment retry count and update status
+      const newRetryCount = jtdRecord.retry_count + 1;
+
+      if (newRetryCount >= maxRetries) {
+        // Max retries reached
+        await updateJTDStatus(jtd_id, 'failed', undefined, result.error, true);
+        await archiveToDLQ(msg.msg_id, result.error || 'Unknown error');
+        console.log(`JTD ${jtd_id} FAILED permanently after ${newRetryCount} retries: ${result.error}`);
+      } else {
+        // More retries available - update status but DON'T re-queue
+        // The scheduled job will pick it up based on status/retry_count
+        await updateJTDStatus(jtd_id, 'failed', undefined, result.error, true);
+        console.log(`JTD ${jtd_id} failed (retry ${newRetryCount}/${maxRetries}): ${result.error}`);
+      }
     }
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     console.error(`Error processing JTD ${jtd_id}:`, errorMessage);
 
-    // Check retry count
-    if (msg.read_ct >= MAX_RETRIES) {
-      // Max retries exceeded - move to DLQ
-      await updateJTDStatus(jtd_id, 'failed', undefined, errorMessage);
-      await archiveToDLQ(msg.msg_id, errorMessage);
-      console.log(`JTD ${jtd_id} moved to DLQ after ${msg.read_ct} of ${MAX_RETRIES} retries`);
-    } else {
-      // Will be retried after visibility timeout expires
-      console.log(`JTD ${jtd_id} will be retried (attempt ${msg.read_ct} of ${MAX_RETRIES})`);
+    // ALWAYS delete from queue to prevent infinite retry loop
+    await deleteMessage(msg.msg_id);
+
+    // Update status with error
+    try {
+      const jtdRecord = await fetchJTDRecord(jtd_id);
+      const maxRetries = jtdRecord?.max_retries || DEFAULT_MAX_RETRIES;
+      const currentRetry = jtdRecord?.retry_count || 0;
+
+      if (currentRetry + 1 >= maxRetries) {
+        await updateJTDStatus(jtd_id, 'failed', undefined, errorMessage, true);
+        await archiveToDLQ(msg.msg_id, errorMessage);
+        console.log(`JTD ${jtd_id} FAILED permanently: ${errorMessage}`);
+      } else {
+        await updateJTDStatus(jtd_id, 'failed', undefined, errorMessage, true);
+        console.log(`JTD ${jtd_id} failed, retry ${currentRetry + 1}/${maxRetries}`);
+      }
+    } catch (updateError) {
+      console.error(`Failed to update JTD ${jtd_id} status:`, updateError);
     }
   }
 }
