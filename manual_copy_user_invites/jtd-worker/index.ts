@@ -324,8 +324,11 @@ async function processMessage(msg: JTDQueueMessage): Promise<void> {
       case 'email':
         result = await handleEmail({
           to: recipient_data.email || recipient_contact,
+          toName: recipient_name,
           subject: renderedSubject || `Notification: ${source_type_code}`,
-          body: renderedBodyHtml || renderedBody, // Prefer HTML for email
+          body: renderedBodyHtml || renderedBody,
+          templateId: template.providerTemplateId,
+          templateVariables: template_data,
           metadata
         });
         break;
