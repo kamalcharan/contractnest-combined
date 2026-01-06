@@ -1,0 +1,16 @@
+===============================================================
+MANUAL COPY INSTRUCTIONS - PRD Documents
+===============================================================
+
+FILES IN THIS FOLDER:
+---------------------------------------------------------------
+
+1. PRD-FamilyKnows-I18N.md
+   -> Copy to: ClaudeDocumentation\PRD-FamilyKnows-I18N.md
+   -> Purpose: i18n implementation strategy for FamilyKnows
+
+2. PRD-FamilyKnows-UserInvites-JTD.md
+   -> Copy to: ClaudeDocumentation\PRD-FamilyKnows-UserInvites-JTD.md
+   -> Purpose: UserInvites and JTD framework for FamilyKnows
+
+===============================================================
