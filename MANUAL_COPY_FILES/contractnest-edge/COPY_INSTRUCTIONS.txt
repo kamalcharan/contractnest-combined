@@ -1,0 +1,58 @@
+===============================================================
+CONTRACTNEST-EDGE - x-tenant-id HEADER FIX
+===============================================================
+
+Issue: x-tenant-id header not being used in FKauth handlers
+Fix: Updated handlers to read, validate, and use x-tenant-id
+
+===============================================================
+FILES TO COPY
+===============================================================
+
+FILE 1: FKauth/index.ts
+-----------------------------------------------------------------
+FROM: MANUAL_COPY_FILES/contractnest-edge/supabase/functions/FKauth/index.ts
+TO:   contractnest-edge/supabase/functions/FKauth/index.ts
+
+CHANGES:
+  - Pass `req` to handleLogin (line 108)
+  - Pass `req` to handleUpdatePreferences (line 139)
+
+FILE 2: FKauth/handlers/authentication.ts
+-----------------------------------------------------------------
+FROM: MANUAL_COPY_FILES/contractnest-edge/supabase/functions/FKauth/handlers/authentication.ts
+TO:   contractnest-edge/supabase/functions/FKauth/handlers/authentication.ts
+
+CHANGES:
+  - Accept `req` parameter in handleLogin
+  - Read x-tenant-id from header
+  - Use requested tenant as active tenant if valid
+  - Return active_tenant in response
+
+FILE 3: FKauth/handlers/profile.ts
+-----------------------------------------------------------------
+FROM: MANUAL_COPY_FILES/contractnest-edge/supabase/functions/FKauth/handlers/profile.ts
+TO:   contractnest-edge/supabase/functions/FKauth/handlers/profile.ts
+
+CHANGES:
+  - Validate user belongs to tenant (403 if not)
+  - Fetch user roles for tenant
+  - Return current_tenant and user_roles in response
+
+FILE 4: FKauth/handlers/preferences.ts
+-----------------------------------------------------------------
+FROM: MANUAL_COPY_FILES/contractnest-edge/supabase/functions/FKauth/handlers/preferences.ts
+TO:   contractnest-edge/supabase/functions/FKauth/handlers/preferences.ts
+
+CHANGES:
+  - Accept `req` parameter
+  - Validate user belongs to tenant before updating
+  - Log tenant context for debugging
+
+===============================================================
+AFTER COPYING - DEPLOY EDGE FUNCTIONS
+===============================================================
+
+supabase functions deploy FKauth
+
+===============================================================
