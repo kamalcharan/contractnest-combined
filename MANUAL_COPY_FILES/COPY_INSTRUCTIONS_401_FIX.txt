@@ -1,14 +1,17 @@
 ===============================================================================
-FamilyKnows 401 Error Fix - Authorization Header Not Being Sent
+FamilyKnows 401 Error Fix - AsyncStorage Race Condition
 ===============================================================================
 
 ROOT CAUSE:
-After login/register, tokens were stored in AsyncStorage but the api instance
-headers were NEVER set. So API calls went out without Authorization header.
+After login/register, tokens were stored via AsyncStorage.multiSet() (async).
+But navigation to next screen happened IMMEDIATELY, and the next API call
+fired BEFORE AsyncStorage completed. Result: No token found -> 401 error.
 
 FIX:
-1. AuthContext.tsx - Added api.setAuthToken() and api.setTenantId() calls
-2. api.ts - Created complete api service with proper header management
+1. api.ts - Added in-memory caching with setAuthToken() and setTenantId()
+2. AuthContext.tsx - Call api.setAuthToken/setTenantId IMMEDIATELY after auth
+
+The in-memory cache is checked FIRST (instant), then falls back to AsyncStorage.
 
 ===============================================================================
 FILES TO COPY:
@@ -46,24 +49,29 @@ AFTER setCurrentTenant (line ~388):
 + api.setTenantId(tenant.id);
 
 ===============================================================================
-WHAT api.ts PROVIDES:
+WHAT CHANGED IN api.ts (YOUR ORIGINAL CODE, UPDATED):
 ===============================================================================
 
-- api.get(), api.post(), api.put(), api.patch(), api.delete() - HTTP methods
-- api.setAuthToken(token) - Sets Authorization header on api instance
-- api.setTenantId(id) - Sets x-tenant-id header on api instance
-- api.clearAuth() - Clears all auth data (called on logout)
-- api.getAuthState() - Debug helper to check current auth state
+NEW PROPERTIES ADDED:
+- cachedAuthToken: string | null  // In-memory cache
+- cachedTenantId: string | null   // In-memory cache
 
-Request interceptor that:
-- Reads token from in-memory cache first (fast)
-- Falls back to AsyncStorage if needed
-- Sets Authorization and x-tenant-id headers
+NEW METHODS ADDED:
+- api.setAuthToken(token) - Caches token in memory (instant, no async)
+- api.setTenantId(id) - Caches tenant ID in memory (instant, no async)
+- api.getAuthState() - Debug helper: { hasToken, hasTenant }
 
-Response interceptor that:
-- Handles 401 errors with token freshness check
-- Attempts token refresh for stale tokens
-- Returns meaningful error messages
+MODIFIED METHOD - getAuthHeaders():
+- NOW checks in-memory cache FIRST (instant)
+- Falls back to AsyncStorage only if cache is empty
+- Logs source: "in-memory cache" or "AsyncStorage"
+
+MODIFIED METHOD - clearAuth():
+- NOW clears in-memory cache first (immediate)
+- Then clears AsyncStorage
+
+MODIFIED METHOD - refreshToken():
+- NOW updates in-memory cache after refresh too
 
 ===============================================================================
 IMPORTANT NOTES:
