@@ -49,50 +49,13 @@ export const LanguageSetupScreen: React.FC = () => {
   // Determine variant: glass for onboarding, normal for settings
   const variant: ScreenVariant = isFromSettings ? 'normal' : 'glass';
 
-  // Default to English, or use user's saved language (preferred_language is the correct field)
-  const [selectedLanguage, setSelectedLanguage] = useState(user?.preferred_language || 'en');
+  // Default to English, or use user's saved language
+  const [selectedLanguage, setSelectedLanguage] = useState(user?.language || 'en');
   const [isLoading, setIsLoading] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
-
-  // Fetch existing data to determine CREATE vs EDIT mode
-  useEffect(() => {
-    const fetchExistingData = async () => {
-      try {
-        const response = await api.get<{
-          data: {
-            step_data?: { language?: { language?: string; value?: string } };
-            steps?: Record<string, { status: string }>;
-          };
-        }>('/api/FKonboarding/status');
-
-        const stepData = response.data?.data?.step_data?.language;
-        const stepStatus = response.data?.data?.steps?.language;
-
-        // If step is completed or has data, we're in EDIT mode
-        if (stepStatus?.status === 'completed' || stepData) {
-          setIsEditMode(true);
-          // Pre-populate with saved value
-          const savedLang = stepData?.language || stepData?.value || user?.preferred_language;
-          if (savedLang) {
-            setSelectedLanguage(savedLang);
-          }
-        }
-      } catch (error) {
-        console.log('Could not fetch onboarding status for language step:', error);
-        // Fall back to user profile data
-        if (user?.preferred_language) {
-          setIsEditMode(true);
-          setSelectedLanguage(user.preferred_language);
-        }
-      }
-    };
-
-    fetchExistingData();
-  }, [user?.preferred_language]);
 
   useEffect(() => {
     Animated.parallel([
@@ -331,13 +294,10 @@ export const LanguageSetupScreen: React.FC = () => {
             ) : (
               <>
                 <Text style={styles.finishButtonText}>
-                  {variant === 'normal' ? 'Save' : (isEditMode ? 'Update & Continue' : 'Get Started')}
+                  {variant === 'normal' ? 'Save' : 'Get Started'}
                 </Text>
-                {variant === 'glass' && !isEditMode && (
+                {variant === 'glass' && (
                   <MaterialCommunityIcons name="rocket-launch" size={20} color="#FFF" />
-                )}
-                {variant === 'glass' && isEditMode && (
-                  <MaterialCommunityIcons name="check" size={20} color="#FFF" />
                 )}
               </>
             )}
