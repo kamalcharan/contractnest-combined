@@ -1,0 +1,47 @@
+===============================================
+FIX: 401 Infinite Loop on Login
+===============================================
+Date: 2026-01-07
+Branch: fix-401-loop
+
+PROBLEM:
+- After login, onboarding status check returns 401
+- Token freshness check prevents auth from being cleared
+- Causes infinite retry loop (5-6 cycles observed)
+
+SOLUTION:
+1. api.ts: Track consecutive 401s on fresh tokens
+   - After 2 consecutive 401s, clear auth (token is truly invalid)
+   - Reset counter on successful requests and new tokens
+
+2. LoginScreen.tsx: Add retry counter for onboarding check
+   - After 2 failed attempts, show error toast and clear auth
+   - Prevents infinite loop at the UI level
+
+FILES TO COPY:
+===============================================
+
+FamilyKnows/src/services/api.ts
+  -> Tracks consecutive 401s
+  -> Clears auth after 2 consecutive 401s on fresh token
+
+FamilyKnows/src/features/auth/screens/LoginScreen.tsx
+  -> Retry counter for onboarding check
+  -> Shows error toast after max retries
+  -> Clears auth to break loop
+
+COPY COMMAND (PowerShell):
+===============================================
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\fix-401-loop\FamilyKnows\*" -Destination "FamilyKnows\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+TESTING CHECKLIST:
+===============================================
+[ ] Login with valid credentials
+[ ] Observe logs - should NOT see infinite 401 loop
+[ ] After max 2 retries, should see error toast OR proceed to onboarding
+[ ] Auth should be cleared after repeated 401s
+[ ] User can try fresh login after error
