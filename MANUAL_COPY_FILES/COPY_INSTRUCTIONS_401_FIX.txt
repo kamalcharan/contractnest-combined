@@ -1,96 +1,126 @@
 ===============================================================================
-FamilyKnows 401 Error Fix - AsyncStorage Race Condition
+FamilyKnows 401 Error Fix - Complete Solution
 ===============================================================================
 
-ROOT CAUSE:
-After login/register, tokens were stored via AsyncStorage.multiSet() (async).
-But navigation to next screen happened IMMEDIATELY, and the next API call
-fired BEFORE AsyncStorage completed. Result: No token found -> 401 error.
-
-FIX:
-1. api.ts - Added in-memory caching with setAuthToken() and setTenantId()
-2. AuthContext.tsx - Call api.setAuthToken/setTenantId IMMEDIATELY after auth
-
-The in-memory cache is checked FIRST (instant), then falls back to AsyncStorage.
+ROOT CAUSES FIXED:
+1. Edge Functions deployed as 'fkauth'/'fkonboarding' (lowercase) instead of
+   'FKauth'/'FKonboarding' (PascalCase) - YOU FIXED THIS
+2. api.ts ONBOARDING endpoints pointed to /api/onboarding/* instead of
+   /api/FKonboarding/*
+3. AsyncStorage race condition: tokens stored async, but API calls fired
+   before storage completed
 
 ===============================================================================
 FILES TO COPY:
 ===============================================================================
 
-1. FamilyKnows Mobile App - AuthContext
-   FROM: MANUAL_COPY_FILES/FamilyKnows/src/context/AuthContext.tsx
-   TO:   FamilyKnows/src/context/AuthContext.tsx
-
-2. FamilyKnows Mobile App - API Service (NEW FILE)
+1. FamilyKnows Mobile App - API Service
    FROM: MANUAL_COPY_FILES/FamilyKnows/src/services/api.ts
    TO:   FamilyKnows/src/services/api.ts
 
-3. FKonboarding Edge Function (for reference - already deployed)
-   FROM: MANUAL_COPY_FILES/contractnest-edge/supabase/functions/FKonboarding/index.ts
-   TO:   contractnest-edge/supabase/functions/FKonboarding/index.ts
+2. FamilyKnows Mobile App - AuthContext
+   FROM: MANUAL_COPY_FILES/FamilyKnows/src/context/AuthContext.tsx
+   TO:   FamilyKnows/src/context/AuthContext.tsx
+
+===============================================================================
+WHAT CHANGED IN api.ts:
+===============================================================================
+
+1. ADDED IN-MEMORY CACHE (lines 53-56):
+   - cachedAuthToken: string | null
+   - cachedTenantId: string | null
+
+2. ADDED NEW METHODS (lines 66-84):
+   - setAuthToken(token) - Caches token in memory (instant, no async)
+   - setTenantId(id) - Caches tenant ID in memory (instant, no async)
+   - getAuthState() - Debug helper: { hasToken, hasTenant }
+
+3. MODIFIED getAuthHeaders() (lines 91-137):
+   - NOW checks in-memory cache FIRST (instant)
+   - Falls back to AsyncStorage only if cache is empty
+   - Logs source: "in-memory cache" or "AsyncStorage"
+
+4. MODIFIED refreshToken() (lines 250-252):
+   - NOW updates in-memory cache after refresh too
+
+5. MODIFIED clearAuth() (lines 265-282):
+   - NOW clears in-memory cache first (immediate)
+   - Then clears AsyncStorage
+
+6. FIXED ONBOARDING ENDPOINTS (lines 323-328):
+   OLD:
+     STATUS: '/api/onboarding/status',
+     INITIALIZE: '/api/onboarding/initialize',
+     COMPLETE: '/api/onboarding/complete',
+     STEP_COMPLETE: '/api/onboarding/step/complete',
+
+   NEW:
+     STATUS: '/api/FKonboarding/status',
+     INITIALIZE: '/api/FKonboarding/initialize',
+     COMPLETE: '/api/FKonboarding/complete',
+     STEP_COMPLETE: '/api/FKonboarding/complete-step',
 
 ===============================================================================
 WHAT CHANGED IN AuthContext.tsx:
 ===============================================================================
 
-AFTER login (line ~218):
-+ api.setAuthToken(access_token);
+1. AFTER LOGIN (lines 216-230):
+   + api.setAuthToken(access_token);
+   + api.setTenantId(defaultTenant.id);  // if tenant available
 
-AFTER login with tenant (line ~230):
-+ api.setTenantId(defaultTenant.id);
+2. AFTER REGISTER (lines 288-310):
+   + api.setAuthToken(access_token);
+   + api.setTenantId(tenant.id);  // if tenant available
+   + api.setTenantId(firstTenant.id);  // fallback if userTenants available
 
-AFTER register (line ~290):
-+ api.setAuthToken(access_token);
-
-AFTER register with tenant (line ~301):
-+ api.setTenantId(tenant.id);
-
-AFTER setCurrentTenant (line ~388):
-+ api.setTenantId(tenant.id);
+3. IN setCurrentTenant (lines 386-388):
+   + api.setTenantId(tenant.id);
 
 ===============================================================================
-WHAT CHANGED IN api.ts (YOUR ORIGINAL CODE, UPDATED):
+HOW THE FIX WORKS:
 ===============================================================================
 
-NEW PROPERTIES ADDED:
-- cachedAuthToken: string | null  // In-memory cache
-- cachedTenantId: string | null   // In-memory cache
+BEFORE (Race Condition):
+1. Login completes, access_token received
+2. AsyncStorage.multiSet() called (ASYNC - takes time)
+3. Navigation to next screen happens IMMEDIATELY
+4. Next API call fires BEFORE AsyncStorage completes
+5. getAuthHeaders() reads from AsyncStorage -> NO TOKEN FOUND
+6. 401 Error!
 
-NEW METHODS ADDED:
-- api.setAuthToken(token) - Caches token in memory (instant, no async)
-- api.setTenantId(id) - Caches tenant ID in memory (instant, no async)
-- api.getAuthState() - Debug helper: { hasToken, hasTenant }
-
-MODIFIED METHOD - getAuthHeaders():
-- NOW checks in-memory cache FIRST (instant)
-- Falls back to AsyncStorage only if cache is empty
-- Logs source: "in-memory cache" or "AsyncStorage"
-
-MODIFIED METHOD - clearAuth():
-- NOW clears in-memory cache first (immediate)
-- Then clears AsyncStorage
-
-MODIFIED METHOD - refreshToken():
-- NOW updates in-memory cache after refresh too
-
-===============================================================================
-IMPORTANT NOTES:
-===============================================================================
-
-1. The api.ts uses in-memory caching for fast header access
-2. AsyncStorage is fallback, not primary (avoids async delays)
-3. After login/register, headers are set immediately via setAuthToken/setTenantId
-4. The banking-style clear on app start is PRESERVED and correct
+AFTER (Fixed):
+1. Login completes, access_token received
+2. api.setAuthToken(access_token) called -> INSTANT in-memory cache
+3. AsyncStorage.multiSet() called (ASYNC - takes time)
+4. Navigation to next screen happens IMMEDIATELY
+5. Next API call fires
+6. getAuthHeaders() reads from IN-MEMORY CACHE FIRST -> TOKEN FOUND!
+7. Success!
 
 ===============================================================================
 TESTING CHECKLIST:
 ===============================================================================
 
-[ ] Login - should set auth token and tenant ID
-[ ] Navigate to onboarding screens - should NOT get 401
-[ ] Theme selection - should complete step successfully
-[ ] Language selection - should complete step successfully
+[ ] Fresh app install / clear app data
+[ ] Login with valid credentials
+[ ] Verify console shows "api.setAuthToken: Setting token in memory"
+[ ] Navigate to onboarding screens
+[ ] Verify NO 401 errors
+[ ] Theme selection completes successfully
+[ ] Language selection completes successfully
+[ ] Family space creation completes successfully
 [ ] Logout and login again - should work correctly
-[ ] Check console logs for "Setting auth token on api instance"
+
+===============================================================================
+EDGE FUNCTION NAMING (YOUR FIX):
+===============================================================================
+
+CORRECT (PascalCase):
+- FKauth (not fkauth)
+- FKonboarding (not fkonboarding)
+
+The Express API proxy routes expect:
+- /api/FKauth/* -> ${FK_SUPABASE_URL}/functions/v1/FKauth
+- /api/FKonboarding/* -> ${FK_SUPABASE_URL}/functions/v1/FKonboarding
 
 ===============================================================================

@@ -1,6 +1,5 @@
 // src/services/api.ts
 // API Service with x-product header for FamilyKnows
-// UPDATED: Added in-memory token caching to fix race condition with AsyncStorage
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -64,19 +63,19 @@ class ApiService {
     };
   }
 
-  // NEW: Set auth token immediately (called from AuthContext after login/register)
+  // Set auth token immediately (called from AuthContext after login/register)
   setAuthToken(token: string): void {
     console.log('api.setAuthToken: Setting token in memory');
     this.cachedAuthToken = token;
   }
 
-  // NEW: Set tenant ID immediately (called from AuthContext after login/register)
+  // Set tenant ID immediately (called from AuthContext after login/register)
   setTenantId(tenantId: string): void {
     console.log('api.setTenantId: Setting tenant ID in memory:', tenantId);
     this.cachedTenantId = tenantId;
   }
 
-  // NEW: Get current auth state (for debugging)
+  // Get current auth state (for debugging)
   getAuthState(): { hasToken: boolean; hasTenant: boolean } {
     return {
       hasToken: !!this.cachedAuthToken,
@@ -116,7 +115,7 @@ class ApiService {
       console.log('=== AUTH HEADERS DEBUG ===');
       console.log('Auth token present:', !!authToken, authToken ? `(${authToken.substring(0, 20)}...)` : '');
       console.log('Tenant ID:', tenantId);
-      console.log('Source: ', this.cachedAuthToken ? 'in-memory cache' : 'AsyncStorage');
+      console.log('Source:', this.cachedAuthToken ? 'in-memory cache' : 'AsyncStorage');
 
       if (authToken) {
         headers['Authorization'] = `Bearer ${authToken}`;
@@ -222,9 +221,7 @@ class ApiService {
         if (tokenAge < 30000) {
           // Token is fresh - don't clear auth, just throw error
           console.log('Token is fresh (age: ' + tokenAge + 'ms), not clearing auth');
-          // Return the actual error from the server if available
-          const errorMessage = (data as any)?.error || (data as any)?.message || 'Service temporarily unavailable. Please try again.';
-          throw new Error(errorMessage);
+          throw new Error('Service temporarily unavailable. Please try again.');
         }
 
         // Token expired, try to refresh
@@ -379,10 +376,10 @@ export const API_ENDPOINTS = {
     GET: (id: string) => `/api/tenants/${id}`,
   },
   ONBOARDING: {
-    STATUS: '/api/onboarding/status',
-    INITIALIZE: '/api/onboarding/initialize',
-    COMPLETE: '/api/onboarding/complete',
-    STEP_COMPLETE: '/api/onboarding/step/complete',
+    STATUS: '/api/FKonboarding/status',
+    INITIALIZE: '/api/FKonboarding/initialize',
+    COMPLETE: '/api/FKonboarding/complete',
+    STEP_COMPLETE: '/api/FKonboarding/complete-step',
   },
   USER: {
     PROFILE: '/api/users/me',
