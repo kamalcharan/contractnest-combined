@@ -11,6 +11,7 @@ import {
   Animated,
   ScrollView,
   Switch,
+  Alert,
 } from 'react-native';
 import { Text } from '@rneui/themed';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -78,19 +79,30 @@ export const ThemeSetupScreen: React.FC = () => {
         },
       });
 
-      if (isFromSettings) {
-        navigation.goBack();
-      } else {
-        navigation.navigate('LanguageSelection', { isFromSettings: false });
-      }
+      // Show success message
+      Alert.alert(
+        'Success',
+        'Theme saved successfully!',
+        [
+          {
+            text: 'Continue',
+            onPress: () => {
+              if (isFromSettings) {
+                navigation.goBack();
+              } else {
+                navigation.navigate('LanguageSelection', { isFromSettings: false });
+              }
+            },
+          },
+        ]
+      );
     } catch (err: any) {
       console.error('Error saving theme:', err);
-      // Still navigate even if save fails
-      if (isFromSettings) {
-        navigation.goBack();
-      } else {
-        navigation.navigate('LanguageSelection', { isFromSettings: false });
-      }
+      Alert.alert(
+        'Error',
+        err.message || 'Failed to save theme. Please try again.',
+        [{ text: 'OK' }]
+      );
     } finally {
       setIsLoading(false);
     }

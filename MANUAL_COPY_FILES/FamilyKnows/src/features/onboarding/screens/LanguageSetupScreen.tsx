@@ -10,6 +10,7 @@ import {
   StatusBar,
   Animated,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { Text } from '@rneui/themed';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -85,37 +86,35 @@ export const LanguageSetupScreen: React.FC = () => {
         },
       });
 
-      Toast.show({
-        type: 'success',
-        text1: 'Language Updated',
-        text2: 'Your language preference has been saved.',
-      });
-
-      if (isFromSettings) {
-        navigation.goBack();
-      } else {
-        // Onboarding complete - go to main app
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Main' }],
-        });
-      }
+      // Show success message and navigate
+      Alert.alert(
+        'Success',
+        'Language preference saved successfully!',
+        [
+          {
+            text: 'Continue',
+            onPress: () => {
+              if (isFromSettings) {
+                navigation.goBack();
+              } else {
+                // Onboarding complete - go to main app
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'Main' }],
+                });
+              }
+            },
+          },
+        ]
+      );
     } catch (err: any) {
       console.error('Error saving language:', err);
-      Toast.show({
-        type: 'error',
-        text1: 'Save Failed',
-        text2: 'Could not save language preference. Please try again.',
-      });
-      // Still navigate even if save fails
-      if (isFromSettings) {
-        navigation.goBack();
-      } else {
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Main' }],
-        });
-      }
+      // Show error and let user retry (don't navigate)
+      Alert.alert(
+        'Error',
+        err.message || 'Could not save language preference. Please try again.',
+        [{ text: 'OK' }]
+      );
     } finally {
       setIsLoading(false);
     }
