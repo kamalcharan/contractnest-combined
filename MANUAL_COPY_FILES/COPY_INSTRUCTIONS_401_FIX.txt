@@ -1,0 +1,88 @@
+===============================================================================
+FamilyKnows 401 Error Fix - Authorization Header Not Being Sent
+===============================================================================
+
+ROOT CAUSE:
+After login/register, tokens were stored in AsyncStorage but the api instance
+headers were NEVER set. So API calls went out without Authorization header.
+
+FIX:
+1. AuthContext.tsx - Added api.setAuthToken() and api.setTenantId() calls
+2. api.ts - Created complete api service with proper header management
+
+===============================================================================
+FILES TO COPY:
+===============================================================================
+
+1. FamilyKnows Mobile App - AuthContext
+   FROM: MANUAL_COPY_FILES/FamilyKnows/src/context/AuthContext.tsx
+   TO:   FamilyKnows/src/context/AuthContext.tsx
+
+2. FamilyKnows Mobile App - API Service (NEW FILE)
+   FROM: MANUAL_COPY_FILES/FamilyKnows/src/services/api.ts
+   TO:   FamilyKnows/src/services/api.ts
+
+3. FKonboarding Edge Function (for reference - already deployed)
+   FROM: MANUAL_COPY_FILES/contractnest-edge/supabase/functions/FKonboarding/index.ts
+   TO:   contractnest-edge/supabase/functions/FKonboarding/index.ts
+
+===============================================================================
+WHAT CHANGED IN AuthContext.tsx:
+===============================================================================
+
+AFTER login (line ~218):
++ api.setAuthToken(access_token);
+
+AFTER login with tenant (line ~230):
++ api.setTenantId(defaultTenant.id);
+
+AFTER register (line ~290):
++ api.setAuthToken(access_token);
+
+AFTER register with tenant (line ~301):
++ api.setTenantId(tenant.id);
+
+AFTER setCurrentTenant (line ~388):
++ api.setTenantId(tenant.id);
+
+===============================================================================
+WHAT api.ts PROVIDES:
+===============================================================================
+
+- api.get(), api.post(), api.put(), api.patch(), api.delete() - HTTP methods
+- api.setAuthToken(token) - Sets Authorization header on api instance
+- api.setTenantId(id) - Sets x-tenant-id header on api instance
+- api.clearAuth() - Clears all auth data (called on logout)
+- api.getAuthState() - Debug helper to check current auth state
+
+Request interceptor that:
+- Reads token from in-memory cache first (fast)
+- Falls back to AsyncStorage if needed
+- Sets Authorization and x-tenant-id headers
+
+Response interceptor that:
+- Handles 401 errors with token freshness check
+- Attempts token refresh for stale tokens
+- Returns meaningful error messages
+
+===============================================================================
+IMPORTANT NOTES:
+===============================================================================
+
+1. The api.ts uses in-memory caching for fast header access
+2. AsyncStorage is fallback, not primary (avoids async delays)
+3. After login/register, headers are set immediately via setAuthToken/setTenantId
+4. The banking-style clear on app start is PRESERVED and correct
+
+===============================================================================
+TESTING CHECKLIST:
+===============================================================================
+
+[ ] Login - should set auth token and tenant ID
+[ ] Navigate to onboarding screens - should NOT get 401
+[ ] Theme selection - should complete step successfully
+[ ] Language selection - should complete step successfully
+[ ] Logout and login again - should work correctly
+[ ] Check console logs for "Setting auth token on api instance"
+
+===============================================================================
