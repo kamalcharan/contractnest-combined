@@ -1,0 +1,82 @@
+═══════════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS - Git Helper Scripts
+═══════════════════════════════════════════════════════════════════
+
+FILES INCLUDED:
+─────────────────────────────────────────────────────────────────────
+1. sync-status.ps1    - Check status of all repos
+2. pull-safe.ps1      - Safe pull without surprises
+3. push-feature.ps1   - Push while on feature branch
+4. push-main.ps1      - Push to main (releases)
+5. merge-feature.ps1  - Merge feature to master
+6. README.md          - Usage guide
+
+DESTINATION:
+─────────────────────────────────────────────────────────────────────
+D:\projects\core projects\ContractNest\contractnest-combined\scripts\
+
+═══════════════════════════════════════════════════════════════════
+POWERSHELL COMMANDS (Copy & Paste)
+═══════════════════════════════════════════════════════════════════
+
+# Step 1: Navigate to project
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Step 2: Create scripts folder (if not exists)
+New-Item -ItemType Directory -Force -Path "scripts"
+
+# Step 3: Copy all scripts (assuming downloaded to Downloads)
+Copy-Item "$env:USERPROFILE\Downloads\sync-status.ps1" -Destination "scripts\" -Force
+Copy-Item "$env:USERPROFILE\Downloads\pull-safe.ps1" -Destination "scripts\" -Force
+Copy-Item "$env:USERPROFILE\Downloads\push-feature.ps1" -Destination "scripts\" -Force
+Copy-Item "$env:USERPROFILE\Downloads\push-main.ps1" -Destination "scripts\" -Force
+Copy-Item "$env:USERPROFILE\Downloads\merge-feature.ps1" -Destination "scripts\" -Force
+Copy-Item "$env:USERPROFILE\Downloads\README.md" -Destination "scripts\GIT-SCRIPTS-README.md" -Force
+
+Write-Host "✅ All scripts copied to scripts folder!" -ForegroundColor Green
+
+# Step 4: Allow PowerShell scripts (one-time, run as Admin if needed)
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+# Step 5: Verify
+ls scripts/
+
+═══════════════════════════════════════════════════════════════════
+QUICK TEST
+═══════════════════════════════════════════════════════════════════
+
+# Test sync-status
+.\scripts\sync-status.ps1
+
+# Should show colorful output with status of all repos
+
+═══════════════════════════════════════════════════════════════════
+OPTIONAL: COMMIT SCRIPTS TO REPO
+═══════════════════════════════════════════════════════════════════
+
+git add scripts/
+git commit -m "chore: add git helper scripts"
+git push origin master
+
+═══════════════════════════════════════════════════════════════════
+USAGE QUICK REFERENCE
+═══════════════════════════════════════════════════════════════════
+
+DAILY WORKFLOW:
+  .\scripts\sync-status.ps1              # Check status first
+  .\scripts\pull-safe.ps1                # Pull latest
+  .\scripts\push-feature.ps1             # Push your work
+
+RELEASE WORKFLOW:
+  .\scripts\push-main.ps1                # Push to main branches
+  
+AFTER TESTING:
+  .\scripts\merge-feature.ps1            # Merge feature to master
+  .\scripts\merge-feature.ps1 -DeleteBranch  # Merge and cleanup
+
+WITH CUSTOM MESSAGE:
+  .\scripts\push-feature.ps1 -Message "feat: add dashboard"
+  .\scripts\push-main.ps1 -Message "release: v2.0"
+
+DRY RUN (see what would happen):
+  .\scripts\push-feature.ps1 -DryRun

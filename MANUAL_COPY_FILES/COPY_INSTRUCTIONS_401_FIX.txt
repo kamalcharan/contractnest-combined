@@ -1,0 +1,126 @@
+===============================================================================
+FamilyKnows 401 Error Fix - Complete Solution
+===============================================================================
+
+ROOT CAUSES FIXED:
+1. Edge Functions deployed as 'fkauth'/'fkonboarding' (lowercase) instead of
+   'FKauth'/'FKonboarding' (PascalCase) - YOU FIXED THIS
+2. api.ts ONBOARDING endpoints pointed to /api/onboarding/* instead of
+   /api/FKonboarding/*
+3. AsyncStorage race condition: tokens stored async, but API calls fired
+   before storage completed
+
+===============================================================================
+FILES TO COPY:
+===============================================================================
+
+1. FamilyKnows Mobile App - API Service
+   FROM: MANUAL_COPY_FILES/FamilyKnows/src/services/api.ts
+   TO:   FamilyKnows/src/services/api.ts
+
+2. FamilyKnows Mobile App - AuthContext
+   FROM: MANUAL_COPY_FILES/FamilyKnows/src/context/AuthContext.tsx
+   TO:   FamilyKnows/src/context/AuthContext.tsx
+
+===============================================================================
+WHAT CHANGED IN api.ts:
+===============================================================================
+
+1. ADDED IN-MEMORY CACHE (lines 53-56):
+   - cachedAuthToken: string | null
+   - cachedTenantId: string | null
+
+2. ADDED NEW METHODS (lines 66-84):
+   - setAuthToken(token) - Caches token in memory (instant, no async)
+   - setTenantId(id) - Caches tenant ID in memory (instant, no async)
+   - getAuthState() - Debug helper: { hasToken, hasTenant }
+
+3. MODIFIED getAuthHeaders() (lines 91-137):
+   - NOW checks in-memory cache FIRST (instant)
+   - Falls back to AsyncStorage only if cache is empty
+   - Logs source: "in-memory cache" or "AsyncStorage"
+
+4. MODIFIED refreshToken() (lines 250-252):
+   - NOW updates in-memory cache after refresh too
+
+5. MODIFIED clearAuth() (lines 265-282):
+   - NOW clears in-memory cache first (immediate)
+   - Then clears AsyncStorage
+
+6. FIXED ONBOARDING ENDPOINTS (lines 323-328):
+   OLD:
+     STATUS: '/api/onboarding/status',
+     INITIALIZE: '/api/onboarding/initialize',
+     COMPLETE: '/api/onboarding/complete',
+     STEP_COMPLETE: '/api/onboarding/step/complete',
+
+   NEW:
+     STATUS: '/api/FKonboarding/status',
+     INITIALIZE: '/api/FKonboarding/initialize',
+     COMPLETE: '/api/FKonboarding/complete',
+     STEP_COMPLETE: '/api/FKonboarding/complete-step',
+
+===============================================================================
+WHAT CHANGED IN AuthContext.tsx:
+===============================================================================
+
+1. AFTER LOGIN (lines 216-230):
+   + api.setAuthToken(access_token);
+   + api.setTenantId(defaultTenant.id);  // if tenant available
+
+2. AFTER REGISTER (lines 288-310):
+   + api.setAuthToken(access_token);
+   + api.setTenantId(tenant.id);  // if tenant available
+   + api.setTenantId(firstTenant.id);  // fallback if userTenants available
+
+3. IN setCurrentTenant (lines 386-388):
+   + api.setTenantId(tenant.id);
+
+===============================================================================
+HOW THE FIX WORKS:
+===============================================================================
+
+BEFORE (Race Condition):
+1. Login completes, access_token received
+2. AsyncStorage.multiSet() called (ASYNC - takes time)
+3. Navigation to next screen happens IMMEDIATELY
+4. Next API call fires BEFORE AsyncStorage completes
+5. getAuthHeaders() reads from AsyncStorage -> NO TOKEN FOUND
+6. 401 Error!
+
+AFTER (Fixed):
+1. Login completes, access_token received
+2. api.setAuthToken(access_token) called -> INSTANT in-memory cache
+3. AsyncStorage.multiSet() called (ASYNC - takes time)
+4. Navigation to next screen happens IMMEDIATELY
+5. Next API call fires
+6. getAuthHeaders() reads from IN-MEMORY CACHE FIRST -> TOKEN FOUND!
+7. Success!
+
+===============================================================================
+TESTING CHECKLIST:
+===============================================================================
+
+[ ] Fresh app install / clear app data
+[ ] Login with valid credentials
+[ ] Verify console shows "api.setAuthToken: Setting token in memory"
+[ ] Navigate to onboarding screens
+[ ] Verify NO 401 errors
+[ ] Theme selection completes successfully
+[ ] Language selection completes successfully
+[ ] Family space creation completes successfully
+[ ] Logout and login again - should work correctly
+
+===============================================================================
+EDGE FUNCTION NAMING (YOUR FIX):
+===============================================================================
+
+CORRECT (PascalCase):
+- FKauth (not fkauth)
+- FKonboarding (not fkonboarding)
+
+The Express API proxy routes expect:
+- /api/FKauth/* -> ${FK_SUPABASE_URL}/functions/v1/FKauth
+- /api/FKonboarding/* -> ${FK_SUPABASE_URL}/functions/v1/FKonboarding
+
+===============================================================================

@@ -213,6 +213,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         [STORAGE_KEYS.LAST_ACTIVITY, Date.now().toString()],
       ]);
 
+      // CRITICAL: Set auth token on api instance for subsequent requests
+      console.log('Setting auth token on api instance');
+      api.setAuthToken(access_token);
+
       // Set default tenant if available
       if (userTenants && userTenants.length > 0) {
         const defaultTenant = userTenants.find(t => t.is_default) || userTenants[0];
@@ -221,6 +225,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           [STORAGE_KEYS.CURRENT_TENANT, JSON.stringify(defaultTenant)],
         ]);
         setCurrentTenantState(defaultTenant);
+        // CRITICAL: Set tenant ID on api instance
+        console.log('Setting tenant ID on api instance:', defaultTenant.id);
+        api.setTenantId(defaultTenant.id);
       }
 
       setUser(userData);
@@ -278,6 +285,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         [STORAGE_KEYS.LAST_ACTIVITY, Date.now().toString()],
       ];
 
+      // CRITICAL: Set auth token on api instance IMMEDIATELY after getting it
+      console.log('Setting auth token on api instance after registration');
+      api.setAuthToken(access_token);
+
       // Only store tenant if it exists (FamilyKnows creates tenant during onboarding)
       if (tenant) {
         console.log('Storing tenant ID:', tenant.id);
@@ -285,9 +296,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         storageItems.push([STORAGE_KEYS.CURRENT_TENANT, JSON.stringify(tenant)]);
         setCurrentTenantState(tenant);
         setTenants([tenant]);
+        // CRITICAL: Set tenant ID on api instance
+        console.log('Setting tenant ID on api instance:', tenant.id);
+        api.setTenantId(tenant.id);
       } else {
         console.log('WARNING: No tenant returned from registration!');
         setTenants(userTenants || []);
+        // Even without tenant, try to set first available tenant if any
+        if (userTenants && userTenants.length > 0) {
+          const firstTenant = userTenants[0];
+          console.log('Setting first available tenant ID:', firstTenant.id);
+          api.setTenantId(firstTenant.id);
+        }
       }
 
       await AsyncStorage.multiSet(storageItems);
@@ -363,6 +383,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         [STORAGE_KEYS.CURRENT_TENANT, JSON.stringify(tenant)],
       ]);
       setCurrentTenantState(tenant);
+      // CRITICAL: Update api instance with new tenant ID
+      console.log('Updating tenant ID on api instance:', tenant.id);
+      api.setTenantId(tenant.id);
     } catch (error) {
       console.error('Set tenant error:', error);
       throw error;
