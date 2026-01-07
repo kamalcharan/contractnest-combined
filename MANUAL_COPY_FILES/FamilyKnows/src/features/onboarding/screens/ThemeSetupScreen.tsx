@@ -38,49 +38,13 @@ export const ThemeSetupScreen: React.FC = () => {
 
   const isFromSettings = route?.params?.isFromSettings || false;
 
-  // Default to purple-tone or current theme
+  // Default to purple-tone
   const [selectedThemeId, setSelectedThemeId] = useState(currentThemeId || 'purple-tone');
   const [isLoading, setIsLoading] = useState(false);
-  const [isEditMode, setIsEditMode] = useState(false);
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
-
-  // Fetch existing data to determine CREATE vs EDIT mode
-  useEffect(() => {
-    const fetchExistingData = async () => {
-      try {
-        const response = await api.get<{
-          data: {
-            step_data?: { theme?: { theme?: string; value?: string; is_dark_mode?: boolean } };
-            steps?: Record<string, { status: string }>;
-          };
-        }>('/api/FKonboarding/status');
-
-        const stepData = response.data?.data?.step_data?.theme;
-        const stepStatus = response.data?.data?.steps?.theme;
-
-        // If step is completed or has data, we're in EDIT mode
-        if (stepStatus?.status === 'completed' || stepData) {
-          setIsEditMode(true);
-          // Pre-populate with saved value
-          const savedTheme = stepData?.theme || stepData?.value || currentThemeId;
-          if (savedTheme) {
-            setSelectedThemeId(savedTheme);
-          }
-        }
-      } catch (error) {
-        console.log('Could not fetch onboarding status for theme step:', error);
-        // Fall back to current theme if available
-        if (currentThemeId && currentThemeId !== 'purple-tone') {
-          setIsEditMode(true);
-        }
-      }
-    };
-
-    fetchExistingData();
-  }, [currentThemeId]);
 
   useEffect(() => {
     Animated.parallel([
@@ -283,10 +247,8 @@ export const ThemeSetupScreen: React.FC = () => {
               <Text style={styles.continueButtonText}>Saving...</Text>
             ) : (
               <>
-                <Text style={styles.continueButtonText}>
-                  {isEditMode ? 'Update & Continue' : 'Continue'}
-                </Text>
-                <MaterialCommunityIcons name={isEditMode ? 'check' : 'arrow-right'} size={20} color="#0F172A" />
+                <Text style={styles.continueButtonText}>Continue</Text>
+                <MaterialCommunityIcons name="arrow-right" size={20} color="#0F172A" />
               </>
             )}
           </TouchableOpacity>
