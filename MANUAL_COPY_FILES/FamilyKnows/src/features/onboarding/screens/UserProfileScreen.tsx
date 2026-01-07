@@ -20,7 +20,6 @@ import { OnboardingStackParamList } from '../../../navigation/types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import GenderSelector from '../components/GenderSelector';
-import api from '../../../services/api';
 
 type UserProfileNavigationProp = NativeStackNavigationProp<
   OnboardingStackParamList,
@@ -58,59 +57,11 @@ export const UserProfileScreen: React.FC<Props> = ({ navigation, route }) => {
   const [dob, setDob] = useState<Date | undefined>(undefined);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [errors, setErrors] = useState<{[key: string]: string}>({});
-  const [isEditMode, setIsEditMode] = useState(false);
 
   // Entrance animations
   const headerOpacity = useRef(new Animated.Value(0)).current;
   const headerTranslateY = useRef(new Animated.Value(30)).current;
   const contentOpacity = useRef(new Animated.Value(0)).current;
-
-  // Fetch existing data to determine CREATE vs EDIT mode
-  useEffect(() => {
-    const fetchExistingData = async () => {
-      try {
-        const response = await api.get<{
-          data: {
-            step_data?: {
-              'personal-profile'?: {
-                first_name?: string;
-                last_name?: string;
-                gender?: string;
-                date_of_birth?: string;
-              };
-            };
-            steps?: Record<string, { status: string }>;
-          };
-        }>('/api/FKonboarding/status');
-
-        const stepData = response.data?.data?.step_data?.['personal-profile'];
-        const stepStatus = response.data?.data?.steps?.['personal-profile'];
-
-        // If step has data, we're in EDIT mode - pre-populate fields
-        if (stepData) {
-          setIsEditMode(true);
-          if (stepData.first_name && !firstName) {
-            setFirstName(stepData.first_name);
-          }
-          if (stepData.last_name && !lastName) {
-            setLastName(stepData.last_name);
-          }
-          if (stepData.gender) {
-            setSelectedGender(stepData.gender);
-          }
-          if (stepData.date_of_birth) {
-            setDob(new Date(stepData.date_of_birth));
-          }
-        } else if (stepStatus?.status === 'completed') {
-          setIsEditMode(true);
-        }
-      } catch (error) {
-        console.log('Could not fetch onboarding status for profile step:', error);
-      }
-    };
-
-    fetchExistingData();
-  }, []);
 
   useEffect(() => {
     Animated.sequence([
@@ -151,27 +102,54 @@ export const UserProfileScreen: React.FC<Props> = ({ navigation, route }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleContinue = () => {
-    if (validate()) {
-      // Save profile data (we'll implement this with SQLite later)
-      const profileData = {
-        firstName,
-        lastName,
-        gender: selectedGender,
-        dob: dob?.toISOString(),
-        profileImage,
-      };
+  const [isLoading, setIsLoading] = useState(false);
 
-      if (isFromSettings) {
-        // If from settings, just go back
-        navigation.goBack();
-      } else {
-        // Continue onboarding - navigate to Gender Selection
-        navigation.navigate('GenderSelection', {
-          isFromSettings: false,
-          prefillFamily,
-        });
-      }
+  const handleContinue = async () => {
+    if (!validate()) return;
+
+    setIsLoading(true);
+    try {
+      // Save profile data via FKonboarding API
+      await api.post('/api/FKonboarding/complete-step', {
+        stepId: 'personal-profile',
+        data: {
+          first_name: firstName,
+          last_name: lastName,
+          gender: selectedGender,
+          date_of_birth: dob?.toISOString(),
+          profile_image: profileImage,
+        },
+      });
+
+      // Show success message
+      Alert.alert(
+        'Success',
+        'Profile saved successfully!',
+        [
+          {
+            text: 'Continue',
+            onPress: () => {
+              if (isFromSettings) {
+                navigation.goBack();
+              } else {
+                navigation.navigate('GenderSelection', {
+                  isFromSettings: false,
+                  prefillFamily,
+                });
+              }
+            },
+          },
+        ]
+      );
+    } catch (err: any) {
+      console.error('Error saving profile:', err);
+      Alert.alert(
+        'Error',
+        err.message || 'Failed to save profile. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsLoading(false);
     }
   };
 

@@ -15,6 +15,7 @@ import {
   ScrollView,
   Modal,
   FlatList,
+  Alert,
 } from 'react-native';
 import { Text } from '@rneui/themed';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -48,54 +49,11 @@ export const MobileNumberScreen: React.FC = () => {
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [isEditMode, setIsEditMode] = useState(false);
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const floatAnim = useRef(new Animated.Value(0)).current;
-
-  // Fetch existing data to determine CREATE vs EDIT mode
-  useEffect(() => {
-    const fetchExistingData = async () => {
-      try {
-        const response = await api.get<{
-          data: {
-            step_data?: {
-              'personal-profile'?: {
-                mobile_number?: string;
-                country_code?: string;
-              };
-            };
-            steps?: Record<string, { status: string }>;
-          };
-        }>('/api/FKonboarding/status');
-
-        const stepData = response.data?.data?.step_data?.['personal-profile'];
-        const stepStatus = response.data?.data?.steps?.['personal-profile'];
-
-        // If step has data, we're in EDIT mode
-        if (stepData?.mobile_number) {
-          setIsEditMode(true);
-          setPhoneNumber(stepData.mobile_number);
-
-          // Find and set country code if it exists
-          if (stepData.country_code) {
-            const country = countryCodes.find(c => c.dialCode === stepData.country_code);
-            if (country) {
-              setSelectedCountry(country);
-            }
-          }
-        } else if (stepStatus?.status === 'completed') {
-          setIsEditMode(true);
-        }
-      } catch (error) {
-        console.log('Could not fetch onboarding status for mobile step:', error);
-      }
-    };
-
-    fetchExistingData();
-  }, []);
 
   useEffect(() => {
     // Entrance animation
@@ -143,6 +101,7 @@ export const MobileNumberScreen: React.FC = () => {
     if (!validatePhone()) return;
 
     setIsLoading(true);
+    setError('');
     try {
       // Call FKonboarding API to complete personal-profile step
       // Note: Mobile number is part of personal-profile step in FamilyKnows
@@ -155,17 +114,39 @@ export const MobileNumberScreen: React.FC = () => {
         },
       });
 
-      // Navigate to next step
-      if (isFromSettings) {
-        navigation.goBack();
-      } else {
-        navigation.navigate('UserProfile', {
-          isFromSettings: false,
-        });
-      }
+      // Show success message
+      Alert.alert(
+        'Success',
+        'Mobile number saved successfully!',
+        [
+          {
+            text: 'Continue',
+            onPress: () => {
+              // Navigate to next step
+              if (isFromSettings) {
+                navigation.goBack();
+              } else {
+                navigation.navigate('UserProfile', {
+                  isFromSettings: false,
+                });
+              }
+            },
+          },
+        ]
+      );
     } catch (err: any) {
       console.error('Error saving mobile:', err);
-      setError(err.message || 'Failed to save mobile number');
+      const errorMessage = err.message || 'Failed to save mobile number';
+      setError(errorMessage);
+
+      // Show error alert for better visibility
+      Alert.alert(
+        'Error',
+        errorMessage.includes('duplicate') || errorMessage.includes('already exists')
+          ? 'This mobile number is already registered. Please use a different number.'
+          : errorMessage,
+        [{ text: 'OK' }]
+      );
     } finally {
       setIsLoading(false);
     }
