@@ -1,0 +1,53 @@
+═══════════════════════════════════════════════════
+📦 FamilyKnows User-Invite Feature
+═══════════════════════════════════════════════════
+Date: 2025-01-07
+
+═══════════════════════════════════════════════════
+📁 FILES TO COPY
+═══════════════════════════════════════════════════
+
+SUBMODULE: contractnest-api
+─────────────────────────────────────────
+  NEW:    src/seeds/relationships.seed.ts
+  REPLACE: src/seeds/SeedRegistry.ts
+  REPLACE: src/seeds/index.ts
+
+SUBMODULE: contractnest-edge
+─────────────────────────────────────────
+  NEW:    supabase/migrations/familyknows-user-invite/001_create_user_invitations.sql
+  NEW:    supabase/migrations/familyknows-user-invite/002_seed_fk_relationships.sql
+  NEW:    supabase/migrations/familyknows-user-invite/003_rpc_user_invite.sql
+  REPLACE: supabase/functions/FKauth/handlers/roles.ts
+
+═══════════════════════════════════════════════════
+💻 COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\fk-user-invite\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\fk-user-invite\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "✅ Files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+🗄️ RUN MIGRATIONS (Supabase SQL Editor - in order)
+═══════════════════════════════════════════════════
+
+1. 001_create_user_invitations.sql
+2. 002_seed_fk_relationships.sql
+3. 003_rpc_user_invite.sql
+
+═══════════════════════════════════════════════════
+📋 RELATIONSHIPS SEEDED
+═══════════════════════════════════════════════════
+  1. OWNER       - Family Head     (#32e275)
+  2. PARENT      - Parent          (#3B82F6)
+  3. SPOUSE      - Spouse          (#EC4899)
+  4. CHILD       - Child           (#F59E0B)
+  5. GRANDPARENT - Grandparent     (#8B5CF6)
+  6. SIBLING     - Sibling         (#06B6D4)
+  7. OTHER       - Other           (#64748B)
+
+═══════════════════════════════════════════════════
