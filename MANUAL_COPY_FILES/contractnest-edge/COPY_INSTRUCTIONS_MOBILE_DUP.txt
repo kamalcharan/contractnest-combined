@@ -1,0 +1,37 @@
+═══════════════════════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS - Mobile Number Duplicate Validation
+═══════════════════════════════════════════════════════════════════════════════
+
+Date: 2026-01-07
+Branch: claude/init-familyknows-modules-854zT
+Change: Added duplicate mobile number validation to FKonboarding
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════════════════════════════════
+
+Source → Destination:
+
+1. MANUAL_COPY_FILES/contractnest-edge/supabase/functions/FKonboarding/index.ts
+   → contractnest-edge/supabase/functions/FKonboarding/index.ts
+
+═══════════════════════════════════════════════════════════════════════════════
+CHANGES MADE
+═══════════════════════════════════════════════════════════════════════════════
+
+FKonboarding/index.ts:
+- Modified handleCompleteStep() to catch validation errors from handleStepDataUpdate
+- Modified handleStepDataUpdate() to return validation errors instead of silently failing
+- Added duplicate mobile number check BEFORE updating t_user_profiles
+- Checks if mobile_number already exists for a DIFFERENT user
+- Returns clear error message: "This mobile number is already registered to another user"
+- Also catches unique constraint violations from database as fallback
+
+═══════════════════════════════════════════════════════════════════════════════
+AFTER COPYING - DEPLOY TO SUPABASE
+═══════════════════════════════════════════════════════════════════════════════
+
+cd contractnest-edge
+supabase functions deploy FKonboarding
+
+═══════════════════════════════════════════════════════════════════════════════
