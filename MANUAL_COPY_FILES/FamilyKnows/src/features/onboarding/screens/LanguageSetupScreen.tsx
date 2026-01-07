@@ -10,7 +10,6 @@ import {
   StatusBar,
   Animated,
   ScrollView,
-  Alert,
 } from 'react-native';
 import { Text } from '@rneui/themed';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -21,8 +20,10 @@ import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../../context/AuthContext';
 import { useTheme } from '../../../theme/ThemeContext';
+import { useLanguage } from '../../../context/LanguageContext';
+import { dialog } from '../../../components/ConfirmDialog';
+import { toast } from '../../../components/Toast';
 import api from '../../../services/api';
-import Toast from 'react-native-toast-message';
 // Single source of truth for languages
 import { supportedLanguages, Language } from '../../../constants/languages';
 
@@ -43,15 +44,16 @@ export const LanguageSetupScreen: React.FC = () => {
   const navigation = useNavigation<LanguageSetupNavigationProp>();
   const route = useRoute<LanguageSetupRouteProp>();
   const insets = useSafeAreaInsets();
-  const { user, currentTenant } = useAuth();
-  const { theme } = useTheme();
+  const { user } = useAuth();
+  const { theme, isDarkMode } = useTheme();
+  const { currentLanguage, setLanguage } = useLanguage();
 
   const isFromSettings = route?.params?.isFromSettings || false;
   // Determine variant: glass for onboarding, normal for settings
   const variant: ScreenVariant = isFromSettings ? 'normal' : 'glass';
 
-  // Default to English, or use user's saved language
-  const [selectedLanguage, setSelectedLanguage] = useState(user?.language || 'en');
+  // Default to current language from context
+  const [selectedLanguage, setSelectedLanguage] = useState(currentLanguage || 'en');
   const [isLoading, setIsLoading] = useState(false);
 
   // Animations
@@ -77,6 +79,9 @@ export const LanguageSetupScreen: React.FC = () => {
   const handleContinue = async () => {
     setIsLoading(true);
     try {
+      // Save to LanguageContext (this persists to AsyncStorage)
+      await setLanguage(selectedLanguage);
+
       // Save to API
       await api.post('/api/FKonboarding/complete-step', {
         stepId: 'language',
@@ -87,33 +92,26 @@ export const LanguageSetupScreen: React.FC = () => {
       });
 
       // Show success message and navigate
-      Alert.alert(
-        'Success',
-        'Language preference saved successfully!',
-        [
-          {
-            text: 'Continue',
-            onPress: () => {
-              if (isFromSettings) {
-                navigation.goBack();
-              } else {
-                // Onboarding complete - go to main app
-                navigation.reset({
-                  index: 0,
-                  routes: [{ name: 'Main' }],
-                });
-              }
-            },
-          },
-        ]
-      );
+      if (variant === 'normal') {
+        // Use toast for settings mode
+        toast.success('Language Updated', 'Your language preference has been saved.');
+        navigation.goBack();
+      } else {
+        // Use dialog for onboarding
+        dialog.success(
+          'Language Saved',
+          'Your language preference has been saved. Welcome to FamilyKnows!',
+          () => navigation.reset({
+            index: 0,
+            routes: [{ name: 'Main' }],
+          })
+        );
+      }
     } catch (err: any) {
       console.error('Error saving language:', err);
-      // Show error and let user retry (don't navigate)
-      Alert.alert(
-        'Error',
-        err.message || 'Could not save language preference. Please try again.',
-        [{ text: 'OK' }]
+      dialog.error(
+        'Save Failed',
+        err.message || 'Could not save language preference. Please try again.'
       );
     } finally {
       setIsLoading(false);
@@ -135,7 +133,7 @@ export const LanguageSetupScreen: React.FC = () => {
         textColor: theme.colors.utility.primaryText,
         secondaryTextColor: theme.colors.utility.secondaryText,
         cardBg: theme.colors.utility.secondaryBackground,
-        statusBarStyle: theme.isDark ? 'light-content' : 'dark-content',
+        statusBarStyle: isDarkMode ? 'light-content' : 'dark-content',
       };
     }
     // Glass variant (default onboarding style)

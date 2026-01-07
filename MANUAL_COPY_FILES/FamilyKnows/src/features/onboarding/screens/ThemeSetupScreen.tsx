@@ -1,5 +1,5 @@
 // src/features/onboarding/screens/ThemeSetupScreen.tsx
-// Storyboard-style theme selection with purple-tone default
+// Theme selection with variant support for onboarding (glass) and settings (normal) styles
 
 import React, { useState, useRef, useEffect } from 'react';
 import {
@@ -11,7 +11,6 @@ import {
   Animated,
   ScrollView,
   Switch,
-  Alert,
 } from 'react-native';
 import { Text } from '@rneui/themed';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -22,6 +21,8 @@ import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../theme/ThemeContext';
 import { useAuth } from '../../../context/AuthContext';
+import { dialog } from '../../../components/ConfirmDialog';
+import { toast } from '../../../components/Toast';
 import api from '../../../services/api';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -30,16 +31,21 @@ const CARD_WIDTH = (SCREEN_WIDTH - 72) / 2;
 type ThemeSetupNavigationProp = NativeStackNavigationProp<AuthStackParamList, 'ThemeSelection'>;
 type ThemeSetupRouteProp = RouteProp<AuthStackParamList, 'ThemeSelection'>;
 
+// Variant types for different visual styles
+type ScreenVariant = 'glass' | 'normal';
+
 export const ThemeSetupScreen: React.FC = () => {
   const navigation = useNavigation<ThemeSetupNavigationProp>();
   const route = useRoute<ThemeSetupRouteProp>();
   const insets = useSafeAreaInsets();
-  const { setTheme, isDarkMode, toggleDarkMode, availableThemes, currentThemeId } = useTheme();
-  const { user, currentTenant } = useAuth();
+  const { theme, setTheme, isDarkMode, toggleDarkMode, availableThemes, currentThemeId } = useTheme();
+  const { user } = useAuth();
 
   const isFromSettings = route?.params?.isFromSettings || false;
+  // Determine variant: glass for onboarding, normal for settings
+  const variant: ScreenVariant = isFromSettings ? 'normal' : 'glass';
 
-  // Default to purple-tone
+  // Default to current theme or purple-tone
   const [selectedThemeId, setSelectedThemeId] = useState(currentThemeId || 'purple-tone');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -63,6 +69,35 @@ export const ThemeSetupScreen: React.FC = () => {
     ]).start();
   }, []);
 
+  // Dynamic styles based on variant
+  const getVariantStyles = () => {
+    if (variant === 'normal') {
+      return {
+        backgroundColor: theme.colors.utility.primaryBackground,
+        textColor: theme.colors.utility.primaryText,
+        secondaryTextColor: theme.colors.utility.secondaryText,
+        cardBg: theme.colors.utility.secondaryBackground,
+        statusBarStyle: isDarkMode ? 'light-content' : 'dark-content',
+        iconColor: theme.colors.brand.primary,
+        buttonBg: theme.colors.brand.primary,
+        buttonTextColor: '#FFFFFF',
+      };
+    }
+    // Glass variant (default onboarding style)
+    return {
+      backgroundColor: '#0F172A',
+      textColor: '#FFF',
+      secondaryTextColor: 'rgba(255,255,255,0.6)',
+      cardBg: 'rgba(30, 41, 59, 0.8)',
+      statusBarStyle: 'light-content',
+      iconColor: '#F59E0B',
+      buttonBg: '#F59E0B',
+      buttonTextColor: '#0F172A',
+    };
+  };
+
+  const variantStyles = getVariantStyles();
+
   const handleContinue = async () => {
     setIsLoading(true);
     try {
@@ -80,28 +115,23 @@ export const ThemeSetupScreen: React.FC = () => {
       });
 
       // Show success message
-      Alert.alert(
-        'Success',
-        'Theme saved successfully!',
-        [
-          {
-            text: 'Continue',
-            onPress: () => {
-              if (isFromSettings) {
-                navigation.goBack();
-              } else {
-                navigation.navigate('LanguageSelection', { isFromSettings: false });
-              }
-            },
-          },
-        ]
-      );
+      if (variant === 'normal') {
+        // Use toast for settings mode
+        toast.success('Theme Updated', 'Your theme preference has been saved.');
+        navigation.goBack();
+      } else {
+        // Use dialog for onboarding
+        dialog.success(
+          'Theme Saved',
+          'Your theme has been saved successfully!',
+          () => navigation.navigate('LanguageSelection', { isFromSettings: false })
+        );
+      }
     } catch (err: any) {
       console.error('Error saving theme:', err);
-      Alert.alert(
-        'Error',
-        err.message || 'Failed to save theme. Please try again.',
-        [{ text: 'OK' }]
+      dialog.error(
+        'Save Failed',
+        err.message || 'Could not save theme. Please try again.'
       );
     } finally {
       setIsLoading(false);
@@ -121,7 +151,8 @@ export const ThemeSetupScreen: React.FC = () => {
         key={themeItem.id}
         style={[
           styles.themeCard,
-          isSelected && styles.themeCardSelected,
+          { backgroundColor: variantStyles.cardBg },
+          isSelected && [styles.themeCardSelected, { borderColor: theme.colors.semantic.success }],
         ]}
         onPress={() => setSelectedThemeId(themeItem.id)}
         activeOpacity={0.8}
@@ -137,13 +168,13 @@ export const ThemeSetupScreen: React.FC = () => {
         </View>
 
         {/* Theme Name */}
-        <Text style={styles.themeName} numberOfLines={1}>
+        <Text style={[styles.themeName, { color: variantStyles.textColor }]} numberOfLines={1}>
           {themeItem.name}
         </Text>
 
         {/* Selected Indicator */}
         {isSelected && (
-          <View style={styles.selectedBadge}>
+          <View style={[styles.selectedBadge, { backgroundColor: theme.colors.semantic.success }]}>
             <Ionicons name="checkmark" size={14} color="#FFF" />
           </View>
         )}
@@ -152,49 +183,65 @@ export const ThemeSetupScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
+    <View style={[styles.container, { backgroundColor: variantStyles.backgroundColor }]}>
+      <StatusBar barStyle={variantStyles.statusBarStyle as any} />
 
-      {/* Gradient Background */}
-      <LinearGradient
-        colors={['#0F172A', '#1E293B', '#0F172A']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
-
-      {/* Stars Background */}
-      <View style={styles.starsContainer}>
-        {[...Array(40)].map((_, i) => (
-          <View
-            key={i}
-            style={[
-              styles.star,
-              {
-                left: Math.random() * SCREEN_WIDTH,
-                top: Math.random() * SCREEN_HEIGHT,
-                opacity: 0.2 + Math.random() * 0.4,
-                width: 1 + Math.random() * 2,
-                height: 1 + Math.random() * 2,
-              },
-            ]}
+      {/* Gradient Background - only for glass variant */}
+      {variant === 'glass' && (
+        <>
+          <LinearGradient
+            colors={['#0F172A', '#1E293B', '#0F172A']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
           />
-        ))}
-      </View>
 
-      {/* Progress Indicator */}
-      <View style={[styles.progressContainer, { top: insets.top + 20 }]}>
-        <View style={styles.progressDots}>
-          <View style={[styles.progressDot, styles.progressDotCompleted]} />
-          <View style={[styles.progressDot, styles.progressDotCompleted]} />
-          <View style={[styles.progressDot, styles.progressDotActive]} />
-          <View style={styles.progressDot} />
+          {/* Stars Background */}
+          <View style={styles.starsContainer}>
+            {[...Array(40)].map((_, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.star,
+                  {
+                    left: Math.random() * SCREEN_WIDTH,
+                    top: Math.random() * SCREEN_HEIGHT,
+                    opacity: 0.2 + Math.random() * 0.4,
+                    width: 1 + Math.random() * 2,
+                    height: 1 + Math.random() * 2,
+                  },
+                ]}
+              />
+            ))}
+          </View>
+        </>
+      )}
+
+      {/* Progress Indicator - only for onboarding (glass variant) */}
+      {variant === 'glass' && (
+        <View style={[styles.progressContainer, { top: insets.top + 20 }]}>
+          <View style={styles.progressDots}>
+            <View style={[styles.progressDot, styles.progressDotCompleted]} />
+            <View style={[styles.progressDot, styles.progressDotCompleted]} />
+            <View style={[styles.progressDot, styles.progressDotActive]} />
+            <View style={styles.progressDot} />
+          </View>
+          <Text style={styles.stepText}>Step 3 of 4</Text>
         </View>
-        <Text style={styles.stepText}>Step 3 of 4</Text>
-      </View>
+      )}
 
-      {/* Skip Button */}
-      {!isFromSettings && (
+      {/* Back Button for settings variant */}
+      {variant === 'normal' && (
+        <TouchableOpacity
+          style={[styles.backButton, { top: insets.top + 10 }]}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color={variantStyles.textColor} />
+        </TouchableOpacity>
+      )}
+
+      {/* Skip Button - only for onboarding */}
+      {variant === 'glass' && (
         <TouchableOpacity
           style={[styles.skipButton, { top: insets.top + 20 }]}
           onPress={handleSkip}
@@ -204,7 +251,7 @@ export const ThemeSetupScreen: React.FC = () => {
       )}
 
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 80 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + (variant === 'normal' ? 60 : 80) }]}
         showsVerticalScrollIndicator={false}
       >
         <Animated.View
@@ -217,28 +264,45 @@ export const ThemeSetupScreen: React.FC = () => {
           ]}
         >
           {/* Icon */}
-          <View style={styles.iconContainer}>
-            <MaterialCommunityIcons name="palette-outline" size={48} color="#F59E0B" />
+          <View style={[
+            styles.iconContainer,
+            variant === 'normal' && {
+              backgroundColor: theme.colors.brand.primary + '15',
+              borderColor: theme.colors.brand.primary + '30'
+            }
+          ]}>
+            <MaterialCommunityIcons
+              name="palette-outline"
+              size={48}
+              color={variantStyles.iconColor}
+            />
           </View>
 
           {/* Title */}
-          <Text style={styles.title}>Choose Your Theme</Text>
-          <Text style={styles.subtitle}>Personalize your experience</Text>
+          <Text style={[styles.title, { color: variantStyles.textColor }]}>
+            {variant === 'normal' ? 'Theme' : 'Choose Your Theme'}
+          </Text>
+          <Text style={[styles.subtitle, { color: variantStyles.secondaryTextColor }]}>
+            Personalize your experience
+          </Text>
 
           {/* Dark Mode Toggle */}
-          <View style={styles.darkModeCard}>
+          <View style={[styles.darkModeCard, { backgroundColor: variantStyles.cardBg }]}>
             <View style={styles.darkModeLeft}>
               <MaterialCommunityIcons
                 name={isDarkMode ? 'weather-night' : 'white-balance-sunny'}
                 size={24}
                 color={isDarkMode ? '#8B5CF6' : '#F59E0B'}
               />
-              <Text style={styles.darkModeText}>Dark Mode</Text>
+              <Text style={[styles.darkModeText, { color: variantStyles.textColor }]}>Dark Mode</Text>
             </View>
             <Switch
               value={isDarkMode}
               onValueChange={toggleDarkMode}
-              trackColor={{ false: 'rgba(255,255,255,0.2)', true: 'rgba(139,92,246,0.4)' }}
+              trackColor={{
+                false: variant === 'normal' ? theme.colors.utility.secondaryText + '40' : 'rgba(255,255,255,0.2)',
+                true: 'rgba(139,92,246,0.4)'
+              }}
               thumbColor={isDarkMode ? '#8B5CF6' : '#FFF'}
             />
           </View>
@@ -250,17 +314,27 @@ export const ThemeSetupScreen: React.FC = () => {
 
           {/* Continue Button */}
           <TouchableOpacity
-            style={[styles.continueButton, isLoading && styles.buttonLoading]}
+            style={[
+              styles.continueButton,
+              { backgroundColor: variantStyles.buttonBg },
+              isLoading && styles.buttonLoading
+            ]}
             onPress={handleContinue}
             disabled={isLoading}
             activeOpacity={0.8}
           >
             {isLoading ? (
-              <Text style={styles.continueButtonText}>Saving...</Text>
+              <Text style={[styles.continueButtonText, { color: variantStyles.buttonTextColor }]}>
+                Saving...
+              </Text>
             ) : (
               <>
-                <Text style={styles.continueButtonText}>Continue</Text>
-                <MaterialCommunityIcons name="arrow-right" size={20} color="#0F172A" />
+                <Text style={[styles.continueButtonText, { color: variantStyles.buttonTextColor }]}>
+                  {variant === 'normal' ? 'Save' : 'Continue'}
+                </Text>
+                {variant === 'glass' && (
+                  <MaterialCommunityIcons name="arrow-right" size={20} color={variantStyles.buttonTextColor} />
+                )}
               </>
             )}
           </TouchableOpacity>
@@ -316,6 +390,12 @@ const styles = StyleSheet.create({
     zIndex: 10,
     paddingVertical: 8,
     paddingHorizontal: 16,
+  },
+  backButton: {
+    position: 'absolute',
+    left: 16,
+    zIndex: 10,
+    padding: 8,
   },
   skipText: {
     color: 'rgba(255,255,255,0.6)',
