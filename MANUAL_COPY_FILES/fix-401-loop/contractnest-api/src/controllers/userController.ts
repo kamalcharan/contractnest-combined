@@ -2,7 +2,7 @@
 import { Request, Response } from 'express';
 import axios from 'axios';
 import { captureException } from '../utils/sentry';
-import { validateSupabaseConfig, getSupabaseConfigForRequest } from '../utils/supabaseConfig';
+import { SUPABASE_URL, validateSupabaseConfig, getSupabaseConfigForRequest } from '../utils/supabaseConfig';
 
 /**
  * List all users for the current tenant
@@ -71,10 +71,7 @@ export const listUsers = async (req: Request, res: Response) => {
  */
 export const getCurrentUserProfile = async (req: Request, res: Response) => {
   try {
-    // Get product-specific Supabase config
-    const { url: SUPABASE_URL, key: SUPABASE_KEY } = getSupabaseConfigForRequest(req);
-
-    if (!SUPABASE_URL) {
+    if (!validateSupabaseConfig('api_users', 'getCurrentUserProfile')) {
       return res.status(500).json({
         error: 'Server configuration error: Missing Supabase configuration'
       });
@@ -87,12 +84,14 @@ export const getCurrentUserProfile = async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Authorization header is required' });
     }
 
+    // Get product-specific Supabase URL
+    const { url: supabaseUrl } = getSupabaseConfigForRequest(req);
+
     const response = await axios.get(
-      `${SUPABASE_URL}/functions/v1/user-management/me`,
+      `${supabaseUrl}/functions/v1/user-management/me`,
       {
         headers: {
           Authorization: authHeader,
-          apikey: SUPABASE_KEY,
           ...(tenantId && { 'x-tenant-id': tenantId }),
           'Content-Type': 'application/json'
         }
@@ -120,10 +119,7 @@ export const getCurrentUserProfile = async (req: Request, res: Response) => {
  */
 export const updateCurrentUserProfile = async (req: Request, res: Response) => {
   try {
-    // Get product-specific Supabase config
-    const { url: SUPABASE_URL, key: SUPABASE_KEY } = getSupabaseConfigForRequest(req);
-
-    if (!SUPABASE_URL) {
+    if (!validateSupabaseConfig('api_users', 'updateCurrentUserProfile')) {
       return res.status(500).json({
         error: 'Server configuration error: Missing Supabase configuration'
       });
@@ -135,13 +131,15 @@ export const updateCurrentUserProfile = async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Authorization header is required' });
     }
 
+    // Get product-specific Supabase URL
+    const { url: supabaseUrl } = getSupabaseConfigForRequest(req);
+
     const response = await axios.patch(
-      `${SUPABASE_URL}/functions/v1/user-management/me`,
+      `${supabaseUrl}/functions/v1/user-management/me`,
       req.body,
       {
         headers: {
           Authorization: authHeader,
-          apikey: SUPABASE_KEY,
           'Content-Type': 'application/json'
         }
       }
