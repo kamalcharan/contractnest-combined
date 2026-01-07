@@ -1,15 +1,15 @@
 ===============================================
-FIX: 401 Infinite Loop on Login
+FIX: 401 Infinite Loop on Login + FKonboarding 401
 ===============================================
 Date: 2026-01-07
 Branch: fix-401-loop
 
-PROBLEM:
+PROBLEM 1 - INFINITE LOOP (FIXED):
 - After login, onboarding status check returns 401
 - Token freshness check prevents auth from being cleared
 - Causes infinite retry loop (5-6 cycles observed)
 
-SOLUTION:
+SOLUTION 1:
 1. api.ts: Track consecutive 401s on fresh tokens
    - After 2 consecutive 401s, clear auth (token is truly invalid)
    - Reset counter on successful requests and new tokens
@@ -18,6 +18,17 @@ SOLUTION:
    - After 2 failed attempts, show error toast and clear auth
    - Prevents infinite loop at the UI level
 
+PROBLEM 2 - FKONBOARDING 401 (ROOT CAUSE):
+- Supabase Edge Functions have verify_jwt = true by default
+- Supabase gateway validates JWT BEFORE Edge Function runs
+- JWT validation failing causes 401
+
+SOLUTION 2:
+- Update config.toml to set verify_jwt = false for FKauth and FKonboarding
+- Edge Functions already handle their own auth validation
+- REQUIRES REDEPLOYMENT of Edge Functions
+
+===============================================
 FILES TO COPY:
 ===============================================
 
@@ -30,18 +41,60 @@ FamilyKnows/src/features/auth/screens/LoginScreen.tsx
   -> Shows error toast after max retries
   -> Clears auth to break loop
 
-COPY COMMAND (PowerShell):
+contractnest-edge/supabase/config.toml
+  -> Added verify_jwt = false for FKauth and FKonboarding
+
+===============================================
+COPY COMMANDS (PowerShell):
 ===============================================
 cd "D:\projects\core projects\ContractNest\contractnest-combined"
 
+# Copy FamilyKnows files
 Copy-Item "MANUAL_COPY_FILES\fix-401-loop\FamilyKnows\*" -Destination "FamilyKnows\" -Recurse -Force
+
+# Copy Edge config
+Copy-Item "MANUAL_COPY_FILES\fix-401-loop\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
 
 Write-Host "Files copied!" -ForegroundColor Green
 
+===============================================
+CRITICAL: REDEPLOY EDGE FUNCTIONS
+===============================================
+
+The Edge Functions MUST be redeployed for the 401 fix to work!
+
+Option A - Deploy with --no-verify-jwt flag (Recommended):
+
+cd contractnest-edge
+
+# Deploy FKauth without JWT verification
+npx supabase functions deploy FKauth --no-verify-jwt --project-ref YOUR_PROJECT_REF
+
+# Deploy FKonboarding without JWT verification
+npx supabase functions deploy FKonboarding --no-verify-jwt --project-ref YOUR_PROJECT_REF
+
+
+Option B - If using Supabase Dashboard:
+1. Go to your Supabase project dashboard
+2. Navigate to Edge Functions
+3. Select FKauth function
+4. In settings, disable "Verify JWT"
+5. Repeat for FKonboarding
+
+===============================================
 TESTING CHECKLIST:
 ===============================================
-[ ] Login with valid credentials
-[ ] Observe logs - should NOT see infinite 401 loop
-[ ] After max 2 retries, should see error toast OR proceed to onboarding
-[ ] Auth should be cleared after repeated 401s
-[ ] User can try fresh login after error
+- [ ] Edge Functions redeployed with --no-verify-jwt
+- [ ] Login with valid credentials
+- [ ] Observe logs - should NOT see infinite 401 loop
+- [ ] Should be able to save theme in onboarding
+- [ ] All FKonboarding endpoints should work (status, complete-step, etc.)
+
+===============================================
+WHY THIS WORKS:
+===============================================
+- By default, Supabase validates JWT at the gateway level
+- If validation fails, request never reaches Edge Function (401)
+- With verify_jwt = false, gateway allows request through
+- Edge Function validates auth header manually (it already does this)
+- RLS still works because we pass the user's token to the Supabase client
