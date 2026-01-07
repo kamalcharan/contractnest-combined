@@ -18,17 +18,21 @@ export async function handleGetUserProfile(supabaseAdmin: any, authHeader: strin
       // Try to get user from token
       const { data, error } = await supabaseAdmin.auth.getUser(token);
 
-      if (!error && data?.user) {
+      if (error) {
+        console.error('Token verification error:', error.message);
+        return errorResponse('Invalid or expired token', 401);
+      }
+
+      if (data?.user) {
         user = data.user;
         console.log('User authenticated successfully');
+      } else {
+        console.error('No user data returned from token verification');
+        return errorResponse('User not found', 401);
       }
-    } catch (error) {
-      console.error('Token verification failed:', error);
+    } catch (error: any) {
+      console.error('Token verification failed:', error?.message || error);
       return errorResponse('Invalid or expired token', 401);
-    }
-
-    if (!user) {
-      return errorResponse('User not found', 401);
     }
 
     console.log('User authenticated successfully:', user.id);
