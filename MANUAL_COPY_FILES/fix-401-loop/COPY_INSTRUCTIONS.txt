@@ -1,100 +1,89 @@
 ===============================================
-FIX: 401 Infinite Loop on Login + FKonboarding 401
+FIX: 401 Loop + FKonboarding + User Profile Updates
 ===============================================
 Date: 2026-01-07
 Branch: fix-401-loop
 
-PROBLEM 1 - INFINITE LOOP (FIXED):
-- After login, onboarding status check returns 401
-- Token freshness check prevents auth from being cleared
-- Causes infinite retry loop (5-6 cycles observed)
+PROBLEMS FIXED:
+===============================================
 
-SOLUTION 1:
-1. api.ts: Track consecutive 401s on fresh tokens
-   - After 2 consecutive 401s, clear auth (token is truly invalid)
-   - Reset counter on successful requests and new tokens
+1. INFINITE LOOP ON LOGIN (Mobile App)
+   - Token freshness check prevented auth clearing
+   - Added consecutive 401 tracking
 
-2. LoginScreen.tsx: Add retry counter for onboarding check
-   - After 2 failed attempts, show error toast and clear auth
-   - Prevents infinite loop at the UI level
+2. FKONBOARDING 401 (Edge Function)
+   - Supabase gateway JWT verification was blocking requests
+   - Disabled via Dashboard
 
-PROBLEM 2 - FKONBOARDING 401 (ROOT CAUSE):
-- Supabase Edge Functions have verify_jwt = true by default
-- Supabase gateway validates JWT BEFORE Edge Function runs
-- JWT validation failing causes 401
-
-SOLUTION 2:
-- Update config.toml to set verify_jwt = false for FKauth and FKonboarding
-- Edge Functions already handle their own auth validation
-- REQUIRES REDEPLOYMENT of Edge Functions
+3. USER PROFILE UPDATE 401 (API)
+   - userController was hardcoded to ContractNest Supabase URL
+   - Now uses product-aware getSupabaseConfigForRequest()
 
 ===============================================
 FILES TO COPY:
 ===============================================
 
-FamilyKnows/src/services/api.ts
-  -> Tracks consecutive 401s
-  -> Clears auth after 2 consecutive 401s on fresh token
+MOBILE APP (FamilyKnows):
+- FamilyKnows/src/services/api.ts
+- FamilyKnows/src/features/auth/screens/LoginScreen.tsx
 
-FamilyKnows/src/features/auth/screens/LoginScreen.tsx
-  -> Retry counter for onboarding check
-  -> Shows error toast after max retries
-  -> Clears auth to break loop
+API (contractnest-api):
+- contractnest-api/src/controllers/userController.ts
 
-contractnest-edge/supabase/config.toml
-  -> Added verify_jwt = false for FKauth and FKonboarding
+EDGE CONFIG (reference only):
+- contractnest-edge/supabase/config.toml
 
 ===============================================
 COPY COMMANDS (PowerShell):
 ===============================================
 cd "D:\projects\core projects\ContractNest\contractnest-combined"
 
-# Copy FamilyKnows files
+# Copy FamilyKnows mobile app files
 Copy-Item "MANUAL_COPY_FILES\fix-401-loop\FamilyKnows\*" -Destination "FamilyKnows\" -Recurse -Force
 
-# Copy Edge config
-Copy-Item "MANUAL_COPY_FILES\fix-401-loop\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+# Copy API files
+Copy-Item "MANUAL_COPY_FILES\fix-401-loop\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
 
 Write-Host "Files copied!" -ForegroundColor Green
 
 ===============================================
-CRITICAL: REDEPLOY EDGE FUNCTIONS
+SUPABASE DASHBOARD: DISABLE JWT VERIFICATION
 ===============================================
 
-The Edge Functions MUST be redeployed for the 401 fix to work!
+In FamilyKnows Supabase Dashboard → Edge Functions:
 
-Option A - Deploy with --no-verify-jwt flag (Recommended):
+[x] FKauth - Enforce JWT = OFF
+[x] FKonboarding - Enforce JWT = OFF
+[x] auth - Enforce JWT = OFF
+[ ] user-management - Enforce JWT = OFF  ← DO THIS!
 
-cd contractnest-edge
+===============================================
+DEPLOY API CHANGES
+===============================================
 
-# Deploy FKauth without JWT verification
-npx supabase functions deploy FKauth --no-verify-jwt --project-ref YOUR_PROJECT_REF
+After copying the API files, redeploy the API:
 
-# Deploy FKonboarding without JWT verification
-npx supabase functions deploy FKonboarding --no-verify-jwt --project-ref YOUR_PROJECT_REF
+cd contractnest-api
+git add .
+git commit -m "fix: make userController product-aware for FamilyKnows"
+git push origin main
 
-
-Option B - If using Supabase Dashboard:
-1. Go to your Supabase project dashboard
-2. Navigate to Edge Functions
-3. Select FKauth function
-4. In settings, disable "Verify JWT"
-5. Repeat for FKonboarding
+# Redeploy to Railway/hosting platform
 
 ===============================================
 TESTING CHECKLIST:
 ===============================================
-- [ ] Edge Functions redeployed with --no-verify-jwt
-- [ ] Login with valid credentials
-- [ ] Observe logs - should NOT see infinite 401 loop
-- [ ] Should be able to save theme in onboarding
-- [ ] All FKonboarding endpoints should work (status, complete-step, etc.)
+- [ ] Login works without infinite loop
+- [ ] Theme/Language changes work (FKonboarding)
+- [ ] Personal info update works (user-management)
+- [ ] DOB change works
+- [ ] All profile fields can be updated
 
 ===============================================
-WHY THIS WORKS:
+SUMMARY OF JWT FUNCTIONS TO DISABLE:
 ===============================================
-- By default, Supabase validates JWT at the gateway level
-- If validation fails, request never reaches Edge Function (401)
-- With verify_jwt = false, gateway allows request through
-- Edge Function validates auth header manually (it already does this)
-- RLS still works because we pass the user's token to the Supabase client
+FamilyKnows Supabase needs these Edge Functions with JWT OFF:
+1. FKauth
+2. FKonboarding
+3. auth
+4. user-management
