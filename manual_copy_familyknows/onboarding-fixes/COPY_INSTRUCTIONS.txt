@@ -1,0 +1,56 @@
+===============================================================
+MANUAL COPY INSTRUCTIONS - Onboarding UX Fixes
+===============================================================
+
+FEATURE: Onboarding and Settings UX Improvements
+- Fix Get Started button in IntroScreens (touch events)
+- Add registration_status check to route authenticated users correctly
+- LanguageSetupScreen uses constants as single source, variant prop for styles
+- Native DatePicker for DOB in UnifiedProfileScreen
+- Toast notifications for API failures
+- Navigate to language screen instead of Alert dialog
+
+FILES IN THIS FOLDER:
+---------------------------------------------------------------
+
+1. IntroScreens.tsx (MODIFIED)
+   -> Copy to: FamilyKnows\src\features\auth\screens\IntroScreens.tsx
+   -> Changes: Get Started button moved to separate layer for touch events
+
+2. SplashScreen.tsx (MODIFIED)
+   -> Copy to: FamilyKnows\src\features\auth\screens\SplashScreen.tsx
+   -> Changes: Added registration_status check to route users correctly
+
+3. LanguageSetupScreen.tsx (MODIFIED)
+   -> Copy to: FamilyKnows\src\features\onboarding\screens\LanguageSetupScreen.tsx
+   -> Changes: Uses constants/languages.ts, variant prop (glass/normal), filtered to en+te
+
+4. UnifiedProfileScreen.tsx (MODIFIED)
+   -> Copy to: FamilyKnows\src\features\settings\screens\UnifiedProfileScreen.tsx
+   -> Changes: Native DatePicker, toast notifications, navigate to language screen
+
+===============================================================
+POWERSHELL COPY COMMANDS:
+===============================================================
+
+# Step 1: Copy all files
+Copy-Item "manual_copy_familyknows\onboarding-fixes\IntroScreens.tsx" -Destination "FamilyKnows\src\features\auth\screens\IntroScreens.tsx" -Force
+
+Copy-Item "manual_copy_familyknows\onboarding-fixes\SplashScreen.tsx" -Destination "FamilyKnows\src\features\auth\screens\SplashScreen.tsx" -Force
+
+Copy-Item "manual_copy_familyknows\onboarding-fixes\LanguageSetupScreen.tsx" -Destination "FamilyKnows\src\features\onboarding\screens\LanguageSetupScreen.tsx" -Force
+
+Copy-Item "manual_copy_familyknows\onboarding-fixes\UnifiedProfileScreen.tsx" -Destination "FamilyKnows\src\features\settings\screens\UnifiedProfileScreen.tsx" -Force
+
+Write-Host "All files copied successfully!" -ForegroundColor Green
+
+===============================================================
+DEPENDENCIES:
+===============================================================
+
+The following packages should already be installed. If not, run:
+
+npx expo install @react-native-community/datetimepicker
+npm install react-native-toast-message
+
+===============================================================

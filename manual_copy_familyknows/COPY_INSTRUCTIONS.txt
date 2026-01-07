@@ -1,0 +1,26 @@
+═══════════════════════════════════════════════════
+MANUAL COPY INSTRUCTIONS - FamilyKnows Onboarding UX Fixes
+═══════════════════════════════════════════════════
+
+FILES IN THIS FOLDER:
+─────────────────────────────────
+1. IntroScreens.tsx
+   → Copy to: FamilyKnows\src\features\auth\screens\IntroScreens.tsx
+   → Change: Fixed 'Get Started' button not clickable (pointerEvents fix)
+
+2. StoryOnboardingScreen.tsx
+   → Copy to: FamilyKnows\src\features\onboarding\screens\StoryOnboardingScreen.tsx
+   → Changes:
+     - Dynamic placeholder shows user's firstname in "Name your space"
+     - Added scroll indicators after "who are you" section
+     - Added scroll indicators after "name your space" section
+
+═══════════════════════════════════════════════════
+POWERSHELL COPY COMMANDS:
+═══════════════════════════════════════════════════
+
+Copy-Item "MANUAL_COPY_FILES\IntroScreens.tsx" -Destination "FamilyKnows\src\features\auth\screens\IntroScreens.tsx" -Force
+
+Copy-Item "MANUAL_COPY_FILES\StoryOnboardingScreen.tsx" -Destination "FamilyKnows\src\features\onboarding\screens\StoryOnboardingScreen.tsx" -Force
+
+═══════════════════════════════════════════════════

@@ -1,124 +1,16 @@
-═══════════════════════════════════════════════════
-BUSINESS PROFILE - 3-CARD LAYOUT
-═══════════════════════════════════════════════════
+===============================================================
+MANUAL COPY INSTRUCTIONS - PRD Documents
+===============================================================
 
-CARD 1: Organization Identity
-  - Logo
-  - Organization Name
-  - Brand Colors (compact inline picker)
+FILES IN THIS FOLDER:
+---------------------------------------------------------------
 
-CARD 2: Contact Information
-  - Contact Person (First Name + Last Name)
-  - Email
-  - Phone (with country code)
-  - WhatsApp (with country code - same format as Phone)
-  - Website
-  - Booking URL
+1. PRD-FamilyKnows-I18N.md
+   -> Copy to: ClaudeDocumentation\PRD-FamilyKnows-I18N.md
+   -> Purpose: i18n implementation strategy for FamilyKnows
 
-CARD 3: Address
-  - Address Line 1, Line 2
-  - Country, State, City, Postal Code
+2. PRD-FamilyKnows-UserInvites-JTD.md
+   -> Copy to: ClaudeDocumentation\PRD-FamilyKnows-UserInvites-JTD.md
+   -> Purpose: UserInvites and JTD framework for FamilyKnows
 
-═══════════════════════════════════════════════════
-DATABASE MIGRATION (Run First!)
-═══════════════════════════════════════════════════
-
-FILE: migrations/011_add_contact_name_fields.sql
-Run this SQL in Supabase SQL Editor:
-
-  ALTER TABLE t_tenant_profiles
-  ADD COLUMN IF NOT EXISTS contact_first_name VARCHAR(100),
-  ADD COLUMN IF NOT EXISTS contact_last_name VARCHAR(100);
-
-═══════════════════════════════════════════════════
-UI FILES TO COPY
-═══════════════════════════════════════════════════
-
-FILE 1: useTenantProfile.ts (Interface with contact name fields)
-─────────────────────────────────
-FROM: MANUAL_COPY_FILES\useTenantProfile.ts
-TO:   contractnest-ui\src\hooks\useTenantProfile.ts
-
-FILE 2: OrganizationDetailsForm.tsx (NEW 3-Card Layout)
-─────────────────────────────────
-FROM: MANUAL_COPY_FILES\OrganizationDetailsForm.tsx
-TO:   contractnest-ui\src\components\tenantprofile\OrganizationDetailsForm.tsx
-
-FILE 3: BrandColorPicker.tsx (Added compact mode)
-─────────────────────────────────
-FROM: MANUAL_COPY_FILES\BrandColorPicker.tsx
-TO:   contractnest-ui\src\components\tenantprofile\shared\BrandColorPicker.tsx
-
-═══════════════════════════════════════════════════
-ONBOARDING FIX
-═══════════════════════════════════════════════════
-
-FILE 4: BusinessPreferencesStep.tsx (WhatsApp field fix)
-─────────────────────────────────
-FROM: MANUAL_COPY_FILES\BusinessPreferencesStep.tsx
-TO:   contractnest-ui\src\pages\onboarding\steps\BusinessPreferencesStep.tsx
-
-BUG FIXED:
-  - handleWhatsAppChange: 'whatsapp_number' → 'business_whatsapp'
-  - handleWhatsAppCountryCodeChange: 'whatsapp_country_code' → 'business_whatsapp_country_code'
-  - Added WhatsApp data to dataToSend in handleContinue (was missing!)
-
-═══════════════════════════════════════════════════
-GROUPS 500 ERROR FIX (Settings > Configure > Groups)
-═══════════════════════════════════════════════════
-
-FILE 5: groups/index.ts (Edge Function - RLS bypass fix)
-─────────────────────────────────
-FROM: MANUAL_COPY_FILES\contractnest-edge\supabase\functions\groups\index.ts
-TO:   contractnest-edge\supabase\functions\groups\index.ts
-
-BUG FIXED:
-  - Changed 'supabase' to 'supabaseAdmin' for GET / groups query
-  - RLS policy was blocking t_business_groups read access
-  - Now bypasses RLS since groups list should be public to all authenticated users
-
-DEPLOY: After copying, run: supabase functions deploy groups
-
-═══════════════════════════════════════════════════
-PREVIOUS FILES (Industries Migration + Edge Fix)
-═══════════════════════════════════════════════════
-
-FILE 6: IndustrySelector.tsx
-─────────────────────────────────
-FROM: MANUAL_COPY_FILES\IndustrySelector.tsx
-TO:   contractnest-ui\src\components\tenantprofile\IndustrySelector.tsx
-
-FILE 7: TenantProfileView.tsx
-─────────────────────────────────
-FROM: MANUAL_COPY_FILES\TenantProfileView.tsx
-TO:   contractnest-ui\src\components\tenantprofile\TenantProfileView.tsx
-
-FILE 8: BusinessProfilePage_index.tsx
-─────────────────────────────────
-FROM: MANUAL_COPY_FILES\BusinessProfilePage_index.tsx
-TO:   contractnest-ui\src\pages\settings\business-profile\index.tsx
-
-FILE 9: product-masterdata_index.ts (Edge Function)
-─────────────────────────────────
-FROM: MANUAL_COPY_FILES\product-masterdata_index.ts
-TO:   contractnest-edge\supabase\functions\product-masterdata\index.ts
-
-═══════════════════════════════════════════════════
-WHAT CHANGED
-═══════════════════════════════════════════════════
-
-1. OrganizationDetailsForm.tsx - Complete rewrite:
-   - 3 visual cards with headers and icons
-   - Card 1: Logo + Name + Brand Colors (compact)
-   - Card 2: All contact fields including new Contact Person name
-   - Card 3: Address fields in compact 4-column layout
-   - Removed Short Description
-   - Removed separate ContactFields component usage
-   - Phone/WhatsApp country codes aligned (same format)
-
-2. BrandColorPicker.tsx:
-   - Added compact prop for inline color picker
-   - Used in Card 1 for space efficiency
-
-3. useTenantProfile.ts:
-   - Added contact_first_name and contact_last_name to interface
+===============================================================

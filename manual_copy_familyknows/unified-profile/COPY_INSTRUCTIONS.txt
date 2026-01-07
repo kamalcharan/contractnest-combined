@@ -1,0 +1,47 @@
+===============================================================
+MANUAL COPY INSTRUCTIONS - Unified Profile View
+===============================================================
+
+FEATURE: Unified Profile Screen
+- Consolidates 7 separate menu items into 1 "My Profile" view
+- Sections: Account (read-only), Personal Info, Preferences, Connected Accounts
+- Clean, modern UI with inline editing
+
+FILES IN THIS FOLDER:
+---------------------------------------------------------------
+
+1. UnifiedProfileScreen.tsx (NEW FILE)
+   -> Create folder: FamilyKnows\src\features\settings\screens\
+   -> Copy to: FamilyKnows\src\features\settings\screens\UnifiedProfileScreen.tsx
+
+2. MenuDrawer.tsx (MODIFIED)
+   -> Copy to: FamilyKnows\src\components\navigation\MenuDrawer.tsx
+   -> Changes: Simplified menu items with subtitles, new icon styling
+
+3. types.ts (MODIFIED)
+   -> Copy to: FamilyKnows\src\navigation\types.ts
+   -> Changes: Added UnifiedProfile screen type
+
+4. AuthStack.tsx (MODIFIED)
+   -> Copy to: FamilyKnows\src\navigation\stacks\AuthStack.tsx
+   -> Changes: Added UnifiedProfile + Settings screen registrations
+
+===============================================================
+POWERSHELL COPY COMMANDS:
+===============================================================
+
+# Step 1: Create the settings screens folder
+New-Item -ItemType Directory -Force -Path "FamilyKnows\src\features\settings\screens"
+
+# Step 2: Copy all files
+Copy-Item "manual_copy_familyknows\unified-profile\UnifiedProfileScreen.tsx" -Destination "FamilyKnows\src\features\settings\screens\UnifiedProfileScreen.tsx" -Force
+
+Copy-Item "manual_copy_familyknows\unified-profile\MenuDrawer.tsx" -Destination "FamilyKnows\src\components\navigation\MenuDrawer.tsx" -Force
+
+Copy-Item "manual_copy_familyknows\unified-profile\types.ts" -Destination "FamilyKnows\src\navigation\types.ts" -Force
+
+Copy-Item "manual_copy_familyknows\unified-profile\AuthStack.tsx" -Destination "FamilyKnows\src\navigation\stacks\AuthStack.tsx" -Force
+
+Write-Host "All files copied successfully!" -ForegroundColor Green
+
+===============================================================
