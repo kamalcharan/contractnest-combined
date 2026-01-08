@@ -1,0 +1,2042 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ContractNest - Simplified Landing Page v2</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --brand: #0F172A;
+            --brand-light: #1E293B;
+            --primary: #EF4444;
+            --primary-dark: #DC2626;
+            --primary-light: #FEE2E2;
+            --secondary: #6366F1;
+            --secondary-light: #E0E7FF;
+            --success: #10B981;
+            --success-light: #D1FAE5;
+            --warning: #F59E0B;
+            --warning-light: #FEF3C7;
+            --info: #3B82F6;
+            --info-light: #DBEAFE;
+            --bg: #F8FAFC;
+            --surface: #FFFFFF;
+            --border: #E2E8F0;
+            --border-light: #F1F5F9;
+            --text: #1E293B;
+            --text-light: #64748B;
+            --text-muted: #94A3B8;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+            --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1);
+            --radius: 8px;
+            --radius-lg: 12px;
+            --radius-xl: 16px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        /* ========== NAVIGATION ========== */
+        .navbar {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 0.75rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            font-size: 1.25rem;
+            color: var(--brand);
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--primary);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.1rem;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .nav-link {
+            color: var(--text-light);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+
+        .nav-link:hover { color: var(--primary); }
+
+        .nav-buttons {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        /* ========== BUTTONS ========== */
+        .btn {
+            padding: 0.6rem 1.25rem;
+            border-radius: var(--radius);
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid var(--border);
+            color: var(--text);
+        }
+
+        .btn-outline:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .btn-lg {
+            padding: 1rem 2.5rem;
+            font-size: 1.1rem;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn-secondary {
+            background: var(--secondary);
+            color: white;
+        }
+
+        /* ========== HERO SECTION ========== */
+        .hero {
+            padding: 3rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--success-light);
+            color: #047857;
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+        }
+
+        .hero-title {
+            font-size: 3rem;
+            font-weight: 800;
+            color: var(--brand);
+            line-height: 1.2;
+            margin-bottom: 1rem;
+        }
+
+        .hero-title span {
+            color: var(--primary);
+        }
+
+        .hero-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-light);
+            max-width: 600px;
+            margin: 0 auto 2rem;
+        }
+
+        .hero-cta {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        /* ========== CONTRACT SHOWCASE SECTION ========== */
+        .showcase-section {
+            padding: 4rem 2rem;
+            background: var(--surface);
+        }
+
+        .showcase-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--brand);
+            margin-bottom: 0.5rem;
+        }
+
+        .section-subtitle {
+            color: var(--text-light);
+            font-size: 1.1rem;
+        }
+
+        /* Contract Tabs */
+        .contract-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .contract-tab {
+            padding: 0.75rem 1.5rem;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: 2px solid var(--border);
+            background: var(--surface);
+            color: var(--text-light);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .contract-tab:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .contract-tab.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        /* Contract Display */
+        .contract-display {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        /* Contract Card */
+        .contract-card {
+            background: var(--surface);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .contract-header {
+            background: linear-gradient(135deg, var(--brand) 0%, var(--brand-light) 100%);
+            color: white;
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .contract-id {
+            font-size: 0.75rem;
+            opacity: 0.8;
+        }
+
+        .contract-title {
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-top: 0.25rem;
+        }
+
+        .contract-status {
+            background: var(--success);
+            padding: 0.35rem 0.75rem;
+            border-radius: 50px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .contract-body {
+            padding: 1.25rem;
+        }
+
+        .contract-info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .contract-info-item {
+            background: var(--bg);
+            padding: 0.875rem;
+            border-radius: var(--radius);
+        }
+
+        .contract-info-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .contract-info-value {
+            font-weight: 600;
+            color: var(--text);
+            font-size: 0.9rem;
+        }
+
+        .contract-info-value.highlight {
+            color: var(--primary);
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        .contract-services {
+            background: var(--bg);
+            padding: 1rem;
+            border-radius: var(--radius);
+        }
+
+        .contract-services-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+        }
+
+        .service-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.35rem 0.6rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 0.75rem;
+            color: var(--text);
+            margin: 0.25rem 0.25rem 0.25rem 0;
+        }
+
+        /* Timeline */
+        .timeline-card {
+            background: var(--surface);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+        }
+
+        .timeline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .timeline-title {
+            font-weight: 700;
+            color: var(--brand);
+            font-size: 1rem;
+        }
+
+        .timeline-billing-badge {
+            font-size: 0.7rem;
+            padding: 0.35rem 0.75rem;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+
+        .timeline-billing-badge.prepaid {
+            background: var(--success-light);
+            color: #047857;
+        }
+
+        .timeline-billing-badge.postpaid {
+            background: var(--info-light);
+            color: #1d4ed8;
+        }
+
+        .timeline-billing-badge.monthly {
+            background: var(--warning-light);
+            color: #b45309;
+        }
+
+        .timeline-billing-badge.quarterly {
+            background: var(--secondary-light);
+            color: #4338ca;
+        }
+
+        /* Simple Timeline */
+        .timeline-simple {
+            position: relative;
+            padding-left: 1.5rem;
+        }
+
+        .timeline-simple::before {
+            content: '';
+            position: absolute;
+            left: 5px;
+            top: 8px;
+            bottom: 8px;
+            width: 2px;
+            background: var(--border);
+        }
+
+        .timeline-item {
+            position: relative;
+            padding: 0.5rem 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .timeline-dot {
+            position: absolute;
+            left: -1.5rem;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--border);
+            border: 2px solid var(--surface);
+            z-index: 1;
+        }
+
+        .timeline-item.completed .timeline-dot {
+            background: var(--success);
+        }
+
+        .timeline-item.current .timeline-dot {
+            background: var(--warning);
+            box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.2);
+        }
+
+        .timeline-item.pending .timeline-dot {
+            background: var(--border);
+        }
+
+        .timeline-event {
+            font-size: 0.85rem;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .timeline-item.completed .timeline-event {
+            color: var(--text-light);
+        }
+
+        .timeline-item.current .timeline-event {
+            font-weight: 600;
+            color: var(--warning);
+        }
+
+        .timeline-date {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .timeline-amount {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--success);
+            background: var(--success-light);
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            margin-left: 0.5rem;
+        }
+
+        /* ========== PLAYGROUND SECTION ========== */
+        .playground-section {
+            padding: 4rem 2rem;
+            background: linear-gradient(135deg, var(--brand) 0%, var(--brand-light) 100%);
+        }
+
+        .playground-container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .playground-card {
+            background: var(--surface);
+            border-radius: var(--radius-xl);
+            padding: 3rem;
+            text-align: center;
+            box-shadow: var(--shadow-xl);
+        }
+
+        .playground-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .playground-title {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--brand);
+            margin-bottom: 0.5rem;
+        }
+
+        .playground-subtitle {
+            color: var(--text-light);
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+        }
+
+        /* Workflow Visual */
+        .workflow-visual {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: var(--bg);
+            border-radius: var(--radius-lg);
+        }
+
+        .workflow-step {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem 1rem;
+            background: var(--surface);
+            border-radius: var(--radius);
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .workflow-step-icon {
+            font-size: 1.1rem;
+        }
+
+        .workflow-arrow {
+            color: var(--text-muted);
+            font-size: 1.25rem;
+        }
+
+        .workflow-step.final {
+            background: var(--success-light);
+            border-color: var(--success);
+            color: #047857;
+        }
+
+        .playground-cta-btn {
+            padding: 1.25rem 3rem;
+            font-size: 1.25rem;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border: none;
+            border-radius: var(--radius-lg);
+            cursor: pointer;
+            font-weight: 700;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+        }
+
+        .playground-cta-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5);
+        }
+
+        .playground-note {
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        /* ========== BUILDER SECTION ========== */
+        .builder-section {
+            display: none;
+            padding: 2rem;
+            background: var(--bg);
+            border-top: 1px solid var(--border);
+        }
+
+        .builder-section.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .builder-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* User Form */
+        .user-form-section {
+            max-width: 600px;
+            margin: 0 auto 2rem;
+            background: var(--surface);
+            padding: 2rem;
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-md);
+        }
+
+        .user-form-section.hidden {
+            display: none;
+        }
+
+        .form-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--brand);
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 0.35rem;
+        }
+
+        .form-input {
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 0.9rem;
+            transition: border 0.2s, box-shadow 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+        }
+
+        .phone-group {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .phone-prefix {
+            width: 60px;
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--bg);
+            font-size: 0.9rem;
+            color: var(--text-light);
+            text-align: center;
+        }
+
+        .form-submit-btn {
+            width: 100%;
+            padding: 1rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .form-submit-btn:hover {
+            background: var(--primary-dark);
+        }
+
+        /* Builder Layout */
+        .builder-layout {
+            display: none;
+            grid-template-columns: 280px 1fr 320px;
+            gap: 1.5rem;
+            min-height: 500px;
+        }
+
+        .builder-layout.show {
+            display: grid;
+        }
+
+        /* Block Palette */
+        .block-palette {
+            background: var(--surface);
+            border-radius: var(--radius-xl);
+            padding: 1.25rem;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border);
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .palette-header {
+            margin-bottom: 1rem;
+        }
+
+        .palette-title {
+            font-weight: 700;
+            color: var(--brand);
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .palette-subtitle {
+            font-size: 0.8rem;
+            color: var(--text-light);
+        }
+
+        .block-category {
+            margin-bottom: 1.25rem;
+        }
+
+        .block-category-title {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .draggable-block {
+            background: var(--bg);
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            padding: 0.75rem;
+            cursor: grab;
+            transition: all 0.2s;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+        }
+
+        .draggable-block:hover {
+            border-color: var(--primary);
+            transform: translateX(4px);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .draggable-block:active {
+            cursor: grabbing;
+        }
+
+        .draggable-block.dragging {
+            opacity: 0.5;
+        }
+
+        .block-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .block-icon.customer { background: var(--info-light); }
+        .block-icon.service { background: var(--secondary-light); }
+        .block-icon.billing { background: var(--success-light); }
+        .block-icon.terms { background: var(--warning-light); }
+
+        .block-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .block-name {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--text);
+        }
+
+        .block-desc {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        .block-drag-handle {
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+
+        /* Canvas Area */
+        .canvas-area {
+            background: var(--surface);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .canvas-header {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .canvas-title {
+            font-weight: 700;
+            color: var(--brand);
+        }
+
+        .canvas-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .canvas-body {
+            flex: 1;
+            padding: 1.25rem;
+            background: var(--bg);
+            overflow-y: auto;
+        }
+
+        .drop-section {
+            margin-bottom: 1rem;
+        }
+
+        .drop-section-title {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .drop-zone {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius);
+            min-height: 60px;
+            padding: 0.75rem;
+            transition: all 0.2s;
+        }
+
+        .drop-zone.drag-over {
+            border-color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        .drop-zone.has-items {
+            border-style: solid;
+            border-color: var(--border-light);
+            background: var(--surface);
+        }
+
+        .drop-placeholder {
+            text-align: center;
+            padding: 0.75rem;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        .dropped-block {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            animation: fadeIn 0.3s ease;
+            position: relative;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .dropped-block-info {
+            flex: 1;
+        }
+
+        .dropped-block-name {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--text);
+        }
+
+        .dropped-block-config {
+            font-size: 0.75rem;
+            color: var(--text-light);
+        }
+
+        .remove-block {
+            position: absolute;
+            top: 0.35rem;
+            right: 0.35rem;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            transition: all 0.2s;
+        }
+
+        .remove-block:hover {
+            background: var(--primary-light);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        /* Preview Panel */
+        .preview-panel {
+            background: var(--surface);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .preview-header {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .preview-title {
+            font-weight: 700;
+            color: var(--brand);
+            font-size: 1rem;
+        }
+
+        .preview-body {
+            flex: 1;
+            padding: 1.25rem;
+            overflow-y: auto;
+        }
+
+        .preview-contract {
+            background: var(--bg);
+            border-radius: var(--radius);
+            padding: 1rem;
+        }
+
+        .preview-contract-header {
+            background: var(--brand);
+            color: white;
+            padding: 0.875rem;
+            border-radius: var(--radius) var(--radius) 0 0;
+            margin: -1rem -1rem 1rem -1rem;
+        }
+
+        .preview-contract-title {
+            font-weight: 700;
+            font-size: 0.9rem;
+        }
+
+        .preview-contract-id {
+            font-size: 0.7rem;
+            opacity: 0.8;
+        }
+
+        .preview-section {
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .preview-section:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+
+        .preview-section-title {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .preview-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            color: var(--text);
+            padding: 0.35rem 0;
+        }
+
+        .preview-item-icon {
+            font-size: 0.9rem;
+        }
+
+        .preview-empty {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            font-style: italic;
+        }
+
+        .preview-footer {
+            padding: 1rem 1.25rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .send-btn {
+            width: 100%;
+            padding: 0.875rem;
+            background: var(--success);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .send-btn:hover {
+            background: #059669;
+        }
+
+        .send-btn:disabled {
+            background: var(--border);
+            cursor: not-allowed;
+        }
+
+        /* Success Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--surface);
+            border-radius: var(--radius-xl);
+            padding: 2.5rem;
+            max-width: 450px;
+            text-align: center;
+            animation: modalIn 0.3s ease;
+        }
+
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .modal-icon {
+            width: 80px;
+            height: 80px;
+            background: var(--success-light);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            margin: 0 auto 1.5rem;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--brand);
+            margin-bottom: 0.5rem;
+        }
+
+        .modal-text {
+            color: var(--text-light);
+            font-size: 0.95rem;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        /* ========== FOOTER ========== */
+        .footer {
+            background: var(--brand);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .footer-text {
+            opacity: 0.7;
+            font-size: 0.85rem;
+        }
+
+        /* ========== RESPONSIVE ========== */
+        @media (max-width: 1200px) {
+            .builder-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .block-palette {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1rem;
+                max-height: none;
+            }
+
+            .block-category {
+                margin-bottom: 0;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .contract-display {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-title {
+                font-size: 2rem;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .workflow-visual {
+                flex-direction: column;
+            }
+
+            .workflow-arrow {
+                transform: rotate(90deg);
+            }
+        }
+
+        @media (max-width: 600px) {
+            .navbar {
+                padding: 0.75rem 1rem;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .hero {
+                padding: 2rem 1rem;
+            }
+
+            .hero-title {
+                font-size: 1.75rem;
+            }
+
+            .contract-tabs {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .contract-tab {
+                justify-content: center;
+            }
+
+            .playground-card {
+                padding: 1.5rem;
+            }
+
+            .playground-title {
+                font-size: 1.5rem;
+            }
+
+            .playground-cta-btn {
+                padding: 1rem 2rem;
+                font-size: 1rem;
+            }
+
+            .block-palette {
+                grid-template-columns: 1fr;
+            }
+
+            .contract-info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAVIGATION -->
+    <nav class="navbar">
+        <div class="logo">
+            <div class="logo-icon">📋</div>
+            ContractNest
+        </div>
+        <div class="nav-links">
+            <a href="#showcase" class="nav-link">Examples</a>
+            <a href="#playground" class="nav-link">Playground</a>
+        </div>
+        <div class="nav-buttons">
+            <a href="#" class="btn btn-outline">Sign In</a>
+            <a href="#" class="btn btn-primary">Start Free</a>
+        </div>
+    </nav>
+
+    <!-- HERO SECTION -->
+    <section class="hero">
+        <div class="hero-badge">
+            ✨ First 10 Contracts Free - No Credit Card Required
+        </div>
+        <h1 class="hero-title">
+            Manage All Your Service Contracts<br>
+            <span>In One Place</span>
+        </h1>
+        <p class="hero-subtitle">
+            Stop losing money on forgotten renewals, missed deadlines, and manual invoicing.
+        </p>
+        <div class="hero-cta">
+            <a href="#playground" class="btn btn-primary btn-lg">
+                🎮 Try the Playground
+            </a>
+            <a href="#showcase" class="btn btn-outline btn-lg">
+                📄 See Examples
+            </a>
+        </div>
+    </section>
+
+    <!-- CONTRACT SHOWCASE SECTION -->
+    <section class="showcase-section" id="showcase">
+        <div class="showcase-container">
+            <div class="section-header">
+                <h2 class="section-title">See How Contracts Work</h2>
+                <p class="section-subtitle">Different industries, different billing - one platform</p>
+            </div>
+
+            <!-- Contract Type Tabs -->
+            <div class="contract-tabs">
+                <button class="contract-tab active" data-tab="wellness">
+                    <span>🧘</span> Wellness
+                </button>
+                <button class="contract-tab" data-tab="equipment">
+                    <span>🔧</span> Equipment AMC
+                </button>
+                <button class="contract-tab" data-tab="lease">
+                    <span>🏢</span> Lease
+                </button>
+                <button class="contract-tab" data-tab="opex">
+                    <span>💻</span> OpEx Services
+                </button>
+            </div>
+
+            <!-- Contract Display -->
+            <div class="contract-display">
+                <!-- Contract Card (Left) -->
+                <div class="contract-card" id="contractCard">
+                    <!-- Content populated by JS -->
+                </div>
+
+                <!-- Timeline (Right) -->
+                <div class="timeline-card" id="timelineCard">
+                    <!-- Content populated by JS -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PLAYGROUND CTA SECTION -->
+    <section class="playground-section" id="playground">
+        <div class="playground-container">
+            <div class="playground-card">
+                <div class="playground-icon">🎮</div>
+                <h2 class="playground-title">Playground</h2>
+                <p class="playground-subtitle">This is how you maintain simple contracts</p>
+
+                <!-- Workflow Visual -->
+                <div class="workflow-visual">
+                    <div class="workflow-step">
+                        <span class="workflow-step-icon">📝</span>
+                        <span>Seller Creates</span>
+                    </div>
+                    <span class="workflow-arrow">→</span>
+                    <div class="workflow-step">
+                        <span class="workflow-step-icon">📤</span>
+                        <span>Sends to Buyer</span>
+                    </div>
+                    <span class="workflow-arrow">→</span>
+                    <div class="workflow-step">
+                        <span class="workflow-step-icon">✅</span>
+                        <span>Review & Accept</span>
+                    </div>
+                    <span class="workflow-arrow">→</span>
+                    <div class="workflow-step final">
+                        <span class="workflow-step-icon">🎉</span>
+                        <span>Contract Active!</span>
+                    </div>
+                </div>
+
+                <button class="playground-cta-btn" onclick="openPlayground()">
+                    👁️ See For Yourself - Try Now
+                </button>
+
+                <p class="playground-note">Build a sample contract and we'll email it to you</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- BUILDER SECTION (Hidden initially) -->
+    <section class="builder-section" id="builderSection">
+        <div class="builder-container">
+            <!-- User Form -->
+            <div class="user-form-section" id="userForm">
+                <div class="form-title">👤 Enter Your Details to Start</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Mobile</label>
+                        <div class="phone-group">
+                            <span class="phone-prefix">+91</span>
+                            <input type="tel" class="form-input" id="mobile" placeholder="98765 43210" maxlength="10">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Your Name</label>
+                        <input type="text" class="form-input" id="userName" placeholder="Rajesh Kumar">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Company</label>
+                        <input type="text" class="form-input" id="company" placeholder="ABC Pvt Ltd">
+                    </div>
+                </div>
+                <button class="form-submit-btn" onclick="startBuilder()">
+                    Start Building →
+                </button>
+            </div>
+
+            <!-- Builder Layout -->
+            <div class="builder-layout" id="builderLayout">
+                <!-- Block Palette -->
+                <div class="block-palette">
+                    <div class="palette-header">
+                        <div class="palette-title">🧱 Building Blocks</div>
+                        <div class="palette-subtitle">Drag blocks to canvas</div>
+                    </div>
+
+                    <!-- Customer Block -->
+                    <div class="block-category">
+                        <div class="block-category-title">👤 Customer</div>
+                        <div class="draggable-block" draggable="true" data-type="customer" data-id="customer-basic" data-name="Customer Details" data-icon="👤" data-config="Name, Contact, Address">
+                            <div class="block-icon customer">👤</div>
+                            <div class="block-info">
+                                <div class="block-name">Customer Details</div>
+                                <div class="block-desc">Name, Contact, Address</div>
+                            </div>
+                            <span class="block-drag-handle">⋮⋮</span>
+                        </div>
+                    </div>
+
+                    <!-- Service Blocks -->
+                    <div class="block-category">
+                        <div class="block-category-title">🔧 Services</div>
+                        <div class="draggable-block" draggable="true" data-type="service" data-id="service-visit" data-name="Service Visit" data-icon="🔧" data-config="On-site service call">
+                            <div class="block-icon service">🔧</div>
+                            <div class="block-info">
+                                <div class="block-name">Service Visit</div>
+                                <div class="block-desc">On-site service call</div>
+                            </div>
+                            <span class="block-drag-handle">⋮⋮</span>
+                        </div>
+                        <div class="draggable-block" draggable="true" data-type="service" data-id="maintenance" data-name="Maintenance" data-icon="🛡️" data-config="Preventive maintenance">
+                            <div class="block-icon service">🛡️</div>
+                            <div class="block-info">
+                                <div class="block-name">Maintenance</div>
+                                <div class="block-desc">Preventive maintenance</div>
+                            </div>
+                            <span class="block-drag-handle">⋮⋮</span>
+                        </div>
+                    </div>
+
+                    <!-- Billing Blocks -->
+                    <div class="block-category">
+                        <div class="block-category-title">💰 Billing</div>
+                        <div class="draggable-block" draggable="true" data-type="billing" data-id="monthly" data-name="Monthly Billing" data-icon="📅" data-config="Bill every month">
+                            <div class="block-icon billing">📅</div>
+                            <div class="block-info">
+                                <div class="block-name">Monthly Billing</div>
+                                <div class="block-desc">Bill every month</div>
+                            </div>
+                            <span class="block-drag-handle">⋮⋮</span>
+                        </div>
+                        <div class="draggable-block" draggable="true" data-type="billing" data-id="milestone" data-name="Milestone Payment" data-icon="🎯" data-config="Pay on completion">
+                            <div class="block-icon billing">🎯</div>
+                            <div class="block-info">
+                                <div class="block-name">Milestone Payment</div>
+                                <div class="block-desc">Pay on completion</div>
+                            </div>
+                            <span class="block-drag-handle">⋮⋮</span>
+                        </div>
+                    </div>
+
+                    <!-- Terms Blocks -->
+                    <div class="block-category">
+                        <div class="block-category-title">📋 Terms</div>
+                        <div class="draggable-block" draggable="true" data-type="terms" data-id="sla" data-name="SLA Terms" data-icon="⏱️" data-config="Response time guarantee">
+                            <div class="block-icon terms">⏱️</div>
+                            <div class="block-info">
+                                <div class="block-name">SLA Terms</div>
+                                <div class="block-desc">Response time guarantee</div>
+                            </div>
+                            <span class="block-drag-handle">⋮⋮</span>
+                        </div>
+                        <div class="draggable-block" draggable="true" data-type="terms" data-id="cancellation" data-name="Cancellation Policy" data-icon="🚫" data-config="Terms for cancellation">
+                            <div class="block-icon terms">🚫</div>
+                            <div class="block-info">
+                                <div class="block-name">Cancellation Policy</div>
+                                <div class="block-desc">Terms for cancellation</div>
+                            </div>
+                            <span class="block-drag-handle">⋮⋮</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Canvas Area -->
+                <div class="canvas-area">
+                    <div class="canvas-header">
+                        <div class="canvas-title">📄 Build Your Contract</div>
+                        <div class="canvas-actions">
+                            <button class="btn btn-outline" onclick="clearCanvas()" style="padding: 0.4rem 0.75rem; font-size: 0.75rem;">
+                                Clear All
+                            </button>
+                        </div>
+                    </div>
+                    <div class="canvas-body">
+                        <!-- Customer Section -->
+                        <div class="drop-section">
+                            <div class="drop-section-title">👤 Customer</div>
+                            <div class="drop-zone" id="customerZone" data-section="customer">
+                                <div class="drop-placeholder">Drop customer block here</div>
+                            </div>
+                        </div>
+
+                        <!-- Services Section -->
+                        <div class="drop-section">
+                            <div class="drop-section-title">🔧 Services</div>
+                            <div class="drop-zone" id="serviceZone" data-section="service">
+                                <div class="drop-placeholder">Drop service blocks here</div>
+                            </div>
+                        </div>
+
+                        <!-- Billing Section -->
+                        <div class="drop-section">
+                            <div class="drop-section-title">💰 Billing</div>
+                            <div class="drop-zone" id="billingZone" data-section="billing">
+                                <div class="drop-placeholder">Drop billing block here</div>
+                            </div>
+                        </div>
+
+                        <!-- Terms Section -->
+                        <div class="drop-section">
+                            <div class="drop-section-title">📋 Terms & Conditions</div>
+                            <div class="drop-zone" id="termsZone" data-section="terms">
+                                <div class="drop-placeholder">Drop T&C blocks here</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Preview Panel -->
+                <div class="preview-panel">
+                    <div class="preview-header">
+                        <div class="preview-title">📋 Contract Preview</div>
+                    </div>
+                    <div class="preview-body">
+                        <div class="preview-contract">
+                            <div class="preview-contract-header">
+                                <div class="preview-contract-title" id="previewTitle">New Contract</div>
+                                <div class="preview-contract-id">DRAFT</div>
+                            </div>
+
+                            <div class="preview-section">
+                                <div class="preview-section-title">Customer</div>
+                                <div id="previewCustomer">
+                                    <span class="preview-empty">No customer added</span>
+                                </div>
+                            </div>
+
+                            <div class="preview-section">
+                                <div class="preview-section-title">Services</div>
+                                <div id="previewServices">
+                                    <span class="preview-empty">No services added</span>
+                                </div>
+                            </div>
+
+                            <div class="preview-section">
+                                <div class="preview-section-title">Billing</div>
+                                <div id="previewBilling">
+                                    <span class="preview-empty">No billing terms</span>
+                                </div>
+                            </div>
+
+                            <div class="preview-section">
+                                <div class="preview-section-title">Terms</div>
+                                <div id="previewTerms">
+                                    <span class="preview-empty">No T&C added</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="preview-footer">
+                        <button class="send-btn" id="sendBtn" onclick="sendContract()" disabled>
+                            📧 Send Contract to My Email
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SUCCESS MODAL -->
+    <div class="modal-overlay" id="successModal">
+        <div class="modal">
+            <div class="modal-icon">✅</div>
+            <div class="modal-title">Contract Sent!</div>
+            <div class="modal-text">
+                We've emailed your sample contract. This is exactly how your buyers will receive contracts from you!
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-primary btn-lg" onclick="closeModal()">
+                    🚀 Start Free Trial
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <p class="footer-text">
+            © 2024 ContractNest by Vikuna Technologies. Made with ❤️ in Hyderabad, India.
+        </p>
+    </footer>
+
+    <script>
+        // ========== CONTRACT DATA ==========
+        const contractData = {
+            wellness: {
+                card: {
+                    id: 'CN-2024-W001',
+                    title: 'PCOD Balance Program',
+                    status: 'Active',
+                    customer: 'Anita Sharma',
+                    contact: '+91 98765 43210',
+                    duration: '3 Months',
+                    value: '₹12,000',
+                    billing: 'Quarterly',
+                    services: ['🧘 Yoga Sessions (8)', '🥗 Nutrition Planning', '🩺 Gynec Consultation (2)']
+                },
+                timeline: {
+                    billingType: 'quarterly',
+                    billingLabel: '100% Prepaid',
+                    items: [
+                        { event: 'Contract Start', date: 'Dec 20', status: 'completed', amount: '₹12,000 Paid' },
+                        { event: 'Yoga Session #1', date: 'Dec 22', status: 'completed' },
+                        { event: 'Nutrition Consultation', date: 'Dec 26', status: 'completed' },
+                        { event: 'Yoga Session #2', date: 'Dec 29', status: 'completed' },
+                        { event: 'Yoga Session #3', date: 'Jan 5', status: 'current' },
+                        { event: 'Gynec Consultation #1', date: 'Jan 10', status: 'pending' },
+                        { event: 'Yoga Session #4', date: 'Jan 12', status: 'pending' },
+                        { event: 'Yoga Session #5', date: 'Jan 19', status: 'pending' },
+                        { event: 'Gynec Consultation #2', date: 'Feb 15', status: 'pending' },
+                        { event: 'Contract End', date: 'Mar 20', status: 'pending' }
+                    ]
+                }
+            },
+            equipment: {
+                card: {
+                    id: 'CN-2024-E042',
+                    title: 'CT Scanner AMC',
+                    status: 'Active',
+                    customer: 'Apollo Hospitals',
+                    contact: '+91 87654 32109',
+                    duration: '12 Months',
+                    value: '₹4,80,000',
+                    billing: 'Post-Service',
+                    services: ['🔧 Quarterly PM (4)', '🚨 Emergency Support', '⚙️ Parts Coverage']
+                },
+                timeline: {
+                    billingType: 'postpaid',
+                    billingLabel: 'Post-Service Billing',
+                    items: [
+                        { event: 'Contract Signed', date: 'Jan 15', status: 'completed' },
+                        { event: 'Q1 PM Visit', date: 'Mar 20', status: 'completed' },
+                        { event: 'Q1 Invoice Raised', date: 'Mar 21', status: 'completed', amount: '₹1,20,000' },
+                        { event: 'Q1 Payment Received', date: 'Apr 5', status: 'completed' },
+                        { event: 'Emergency Call - Resolved', date: 'May 10', status: 'completed' },
+                        { event: 'Q2 PM Visit', date: 'Jun 18', status: 'completed' },
+                        { event: 'Q2 Invoice Raised', date: 'Jun 19', status: 'current', amount: '₹1,20,000' },
+                        { event: 'Q3 PM Visit', date: 'Sep 15', status: 'pending' },
+                        { event: 'Q4 PM Visit', date: 'Dec 15', status: 'pending' },
+                        { event: 'Contract Renewal', date: 'Jan 14', status: 'pending' }
+                    ]
+                }
+            },
+            lease: {
+                card: {
+                    id: 'CN-2024-L015',
+                    title: 'Office Space Lease',
+                    status: 'Active',
+                    customer: 'TechStartup Pvt Ltd',
+                    contact: '+91 99887 76655',
+                    duration: '24 Months',
+                    value: '₹24,00,000',
+                    billing: 'Monthly',
+                    services: ['🏢 5000 sq.ft Office', '🅿️ 10 Parking Slots', '🧹 Maintenance Included']
+                },
+                timeline: {
+                    billingType: 'monthly',
+                    billingLabel: 'Monthly Fixed',
+                    items: [
+                        { event: 'Lease Start', date: 'Jan 1', status: 'completed', amount: '₹2L Deposit' },
+                        { event: 'Jan Rent', date: 'Jan 5', status: 'completed', amount: '₹1,00,000' },
+                        { event: 'Feb Rent', date: 'Feb 5', status: 'completed', amount: '₹1,00,000' },
+                        { event: 'Mar Rent', date: 'Mar 5', status: 'completed', amount: '₹1,00,000' },
+                        { event: 'Apr Rent', date: 'Apr 5', status: 'completed', amount: '₹1,00,000' },
+                        { event: 'May Rent', date: 'May 5', status: 'current', amount: '₹1,00,000' },
+                        { event: 'Jun Rent', date: 'Jun 5', status: 'pending' },
+                        { event: 'Annual Review', date: 'Jul 1', status: 'pending' },
+                        { event: 'Jul Rent', date: 'Jul 5', status: 'pending' },
+                        { event: 'Lease Renewal Review', date: 'Dec 1', status: 'pending' }
+                    ]
+                }
+            },
+            opex: {
+                card: {
+                    id: 'CN-2024-O089',
+                    title: 'IT Support Contract',
+                    status: 'Active',
+                    customer: 'GlobalTrade Corp',
+                    contact: '+91 77665 54433',
+                    duration: '12 Months',
+                    value: '₹6,00,000',
+                    billing: 'Monthly',
+                    services: ['💻 24/7 Helpdesk', '🔒 Security Monitoring', '☁️ Cloud Management', '🔄 Backup Services']
+                },
+                timeline: {
+                    billingType: 'monthly',
+                    billingLabel: 'Monthly Billing',
+                    items: [
+                        { event: 'Contract Start', date: 'Feb 1', status: 'completed' },
+                        { event: 'Feb Invoice', date: 'Feb 28', status: 'completed', amount: '₹50,000' },
+                        { event: 'Mar Invoice', date: 'Mar 31', status: 'completed', amount: '₹50,000' },
+                        { event: 'Apr Invoice', date: 'Apr 30', status: 'completed', amount: '₹50,000' },
+                        { event: 'Security Audit - Q1', date: 'Apr 15', status: 'completed' },
+                        { event: 'May Invoice', date: 'May 31', status: 'current', amount: '₹50,000' },
+                        { event: 'Jun Invoice', date: 'Jun 30', status: 'pending' },
+                        { event: 'Security Audit - Q2', date: 'Jul 15', status: 'pending' },
+                        { event: 'Jul Invoice', date: 'Jul 31', status: 'pending' },
+                        { event: 'Mid-Year Review', date: 'Aug 1', status: 'pending' }
+                    ]
+                }
+            }
+        };
+
+        // ========== RENDER FUNCTIONS ==========
+        function renderContractCard(data) {
+            const card = document.getElementById('contractCard');
+            card.innerHTML = `
+                <div class="contract-header">
+                    <div>
+                        <div class="contract-id">${data.id}</div>
+                        <div class="contract-title">${data.title}</div>
+                    </div>
+                    <div class="contract-status">${data.status}</div>
+                </div>
+                <div class="contract-body">
+                    <div class="contract-info-grid">
+                        <div class="contract-info-item">
+                            <div class="contract-info-label">Customer</div>
+                            <div class="contract-info-value">${data.customer}</div>
+                        </div>
+                        <div class="contract-info-item">
+                            <div class="contract-info-label">Contact</div>
+                            <div class="contract-info-value">${data.contact}</div>
+                        </div>
+                        <div class="contract-info-item">
+                            <div class="contract-info-label">Duration</div>
+                            <div class="contract-info-value">${data.duration}</div>
+                        </div>
+                        <div class="contract-info-item">
+                            <div class="contract-info-label">Contract Value</div>
+                            <div class="contract-info-value highlight">${data.value}</div>
+                        </div>
+                    </div>
+                    <div class="contract-services">
+                        <div class="contract-services-title">Services Included</div>
+                        ${data.services.map(s => `<span class="service-tag">${s}</span>`).join('')}
+                    </div>
+                    <div class="contract-info-item" style="margin-top: 1rem;">
+                        <div class="contract-info-label">Billing Type</div>
+                        <div class="contract-info-value">${data.billing}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderTimeline(data) {
+            const card = document.getElementById('timelineCard');
+            card.innerHTML = `
+                <div class="timeline-header">
+                    <div class="timeline-title">📊 Execution Timeline</div>
+                    <span class="timeline-billing-badge ${data.billingType}">${data.billingLabel}</span>
+                </div>
+                <div class="timeline-simple">
+                    ${data.items.map(item => `
+                        <div class="timeline-item ${item.status}">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-event">
+                                <span>${item.status === 'completed' ? '✓' : item.status === 'current' ? '●' : '○'}</span>
+                                <span>${item.event}</span>
+                                ${item.amount ? `<span class="timeline-amount">${item.amount}</span>` : ''}
+                            </div>
+                            <span class="timeline-date">${item.date}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // ========== TAB SWITCHING ==========
+        document.querySelectorAll('.contract-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.contract-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+
+                const tabType = this.dataset.tab;
+                const data = contractData[tabType];
+                renderContractCard(data.card);
+                renderTimeline(data.timeline);
+            });
+        });
+
+        // Initial render
+        renderContractCard(contractData.wellness.card);
+        renderTimeline(contractData.wellness.timeline);
+
+        // ========== PLAYGROUND FUNCTIONS ==========
+        function openPlayground() {
+            const builderSection = document.getElementById('builderSection');
+            builderSection.classList.add('show');
+            builderSection.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function startBuilder() {
+            const mobile = document.getElementById('mobile').value;
+            const name = document.getElementById('userName').value;
+            const company = document.getElementById('company').value;
+
+            if (!mobile || mobile.length < 10) {
+                alert('Please enter a valid mobile number');
+                return;
+            }
+
+            if (!name) {
+                alert('Please enter your name');
+                return;
+            }
+
+            // Hide form, show builder
+            document.getElementById('userForm').classList.add('hidden');
+            document.getElementById('builderLayout').classList.add('show');
+
+            // Update preview title
+            document.getElementById('previewTitle').textContent = company || name + "'s Contract";
+
+            // Initialize drag and drop
+            initDragDrop();
+        }
+
+        // ========== DRAG AND DROP ==========
+        let canvasBlocks = { customer: [], service: [], billing: [], terms: [] };
+        let draggedBlock = null;
+
+        function initDragDrop() {
+            document.querySelectorAll('.draggable-block').forEach(block => {
+                block.addEventListener('dragstart', handleDragStart);
+                block.addEventListener('dragend', handleDragEnd);
+            });
+
+            document.querySelectorAll('.drop-zone').forEach(zone => {
+                zone.addEventListener('dragover', handleDragOver);
+                zone.addEventListener('dragleave', handleDragLeave);
+                zone.addEventListener('drop', handleDrop);
+            });
+        }
+
+        function handleDragStart(e) {
+            draggedBlock = {
+                id: this.dataset.id,
+                type: this.dataset.type,
+                name: this.dataset.name,
+                icon: this.dataset.icon,
+                config: this.dataset.config
+            };
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'copy';
+        }
+
+        function handleDragEnd() {
+            this.classList.remove('dragging');
+            document.querySelectorAll('.drop-zone').forEach(z => z.classList.remove('drag-over'));
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            if (draggedBlock && this.dataset.section === draggedBlock.type) {
+                this.classList.add('drag-over');
+            }
+        }
+
+        function handleDragLeave() {
+            this.classList.remove('drag-over');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+
+            if (!draggedBlock || this.dataset.section !== draggedBlock.type) return;
+
+            // Check limits
+            const section = draggedBlock.type;
+            if (section === 'customer' && canvasBlocks.customer.length >= 1) {
+                alert('Only one customer block allowed');
+                return;
+            }
+            if (section === 'billing' && canvasBlocks.billing.length >= 1) {
+                alert('Only one billing block allowed');
+                return;
+            }
+
+            // Check for duplicate
+            const exists = canvasBlocks[section].find(b => b.id === draggedBlock.id);
+            if (exists) {
+                alert('This block is already added');
+                return;
+            }
+
+            canvasBlocks[section].push({ ...draggedBlock });
+            renderCanvasBlocks();
+            updatePreview();
+        }
+
+        function renderCanvasBlocks() {
+            const sections = ['customer', 'service', 'billing', 'terms'];
+            const zoneIds = {
+                customer: 'customerZone',
+                service: 'serviceZone',
+                billing: 'billingZone',
+                terms: 'termsZone'
+            };
+
+            sections.forEach(section => {
+                const zone = document.getElementById(zoneIds[section]);
+                const blocks = canvasBlocks[section];
+
+                if (blocks.length === 0) {
+                    zone.innerHTML = `<div class="drop-placeholder">Drop ${section} block${section !== 'customer' && section !== 'billing' ? 's' : ''} here</div>`;
+                    zone.classList.remove('has-items');
+                } else {
+                    zone.innerHTML = blocks.map((b, i) => `
+                        <div class="dropped-block">
+                            <div class="block-icon ${section}">${b.icon}</div>
+                            <div class="dropped-block-info">
+                                <div class="dropped-block-name">${b.name}</div>
+                                <div class="dropped-block-config">${b.config}</div>
+                            </div>
+                            <button class="remove-block" onclick="removeBlock('${section}', ${i})">✕</button>
+                        </div>
+                    `).join('');
+                    zone.classList.add('has-items');
+                }
+            });
+        }
+
+        function removeBlock(section, index) {
+            canvasBlocks[section].splice(index, 1);
+            renderCanvasBlocks();
+            updatePreview();
+        }
+
+        function clearCanvas() {
+            canvasBlocks = { customer: [], service: [], billing: [], terms: [] };
+            renderCanvasBlocks();
+            updatePreview();
+        }
+
+        function updatePreview() {
+            // Customer
+            const customerPreview = document.getElementById('previewCustomer');
+            if (canvasBlocks.customer.length > 0) {
+                customerPreview.innerHTML = canvasBlocks.customer.map(b =>
+                    `<div class="preview-item"><span class="preview-item-icon">${b.icon}</span>${b.name}</div>`
+                ).join('');
+            } else {
+                customerPreview.innerHTML = '<span class="preview-empty">No customer added</span>';
+            }
+
+            // Services
+            const servicesPreview = document.getElementById('previewServices');
+            if (canvasBlocks.service.length > 0) {
+                servicesPreview.innerHTML = canvasBlocks.service.map(b =>
+                    `<div class="preview-item"><span class="preview-item-icon">${b.icon}</span>${b.name}</div>`
+                ).join('');
+            } else {
+                servicesPreview.innerHTML = '<span class="preview-empty">No services added</span>';
+            }
+
+            // Billing
+            const billingPreview = document.getElementById('previewBilling');
+            if (canvasBlocks.billing.length > 0) {
+                billingPreview.innerHTML = canvasBlocks.billing.map(b =>
+                    `<div class="preview-item"><span class="preview-item-icon">${b.icon}</span>${b.name}</div>`
+                ).join('');
+            } else {
+                billingPreview.innerHTML = '<span class="preview-empty">No billing terms</span>';
+            }
+
+            // Terms
+            const termsPreview = document.getElementById('previewTerms');
+            if (canvasBlocks.terms.length > 0) {
+                termsPreview.innerHTML = canvasBlocks.terms.map(b =>
+                    `<div class="preview-item"><span class="preview-item-icon">${b.icon}</span>${b.name}</div>`
+                ).join('');
+            } else {
+                termsPreview.innerHTML = '<span class="preview-empty">No T&C added</span>';
+            }
+
+            // Enable/disable send button
+            const hasContent = canvasBlocks.customer.length > 0 ||
+                              canvasBlocks.service.length > 0 ||
+                              canvasBlocks.billing.length > 0;
+            document.getElementById('sendBtn').disabled = !hasContent;
+        }
+
+        function sendContract() {
+            const mobile = document.getElementById('mobile').value;
+            const name = document.getElementById('userName').value;
+
+            if (!mobile || !name) {
+                alert('Please fill in your details');
+                return;
+            }
+
+            // Show success modal
+            document.getElementById('successModal').classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('successModal').classList.remove('show');
+            // Could redirect to signup here
+        }
+
+        // Close modal on overlay click
+        document.getElementById('successModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+    </script>
+
+</body>
+</html>
