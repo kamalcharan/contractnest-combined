@@ -228,301 +228,382 @@ export const catBlocksToBlocks = (catBlocks: CatBlock[]): Block[] => {
 // =================================================================
 
 /**
+ * Helper to get value from block (checks both top-level and meta)
+ * Wizard steps set data at top-level, but existing blocks have data in meta
+ */
+const getField = (block: Partial<Block>, field: string): unknown => {
+  const topLevel = (block as Record<string, unknown>)[field];
+  if (topLevel !== undefined) return topLevel;
+  return block.meta?.[field];
+};
+
+/**
  * Build config JSONB for SERVICE block
+ * Checks both top-level fields (from wizard) and meta fields (from existing blocks)
  */
 const buildServiceConfig = (block: Partial<Block>): Record<string, unknown> => {
-  const meta = block.meta || {};
   const config: Record<string, unknown> = {};
 
   // Icon (also saved at top level)
   if (block.icon) config.icon = block.icon;
 
-  // Duration
-  if (block.duration || meta.duration) {
+  // Duration - check both locations
+  const duration = getField(block, 'duration') || block.duration;
+  const durationUnit = getField(block, 'durationUnit') || block.durationUnit;
+  if (duration) {
     config.duration = {
-      value: block.duration || meta.duration,
-      unit: block.durationUnit || meta.durationUnit || 'minutes',
+      value: duration,
+      unit: durationUnit || 'minutes',
     };
   }
 
   // Buffer time
-  if (meta.bufferTime) config.buffer = meta.bufferTime;
+  const bufferTime = getField(block, 'bufferTime') || getField(block, 'schedulingBuffer');
+  if (bufferTime) config.buffer = bufferTime;
 
-  // Location/Delivery mode
-  if (meta.deliveryMode || meta.location) {
-    config.location = meta.location || {
-      type: meta.deliveryMode || 'onsite',
-      onsite_config: meta.deliveryMode === 'onsite' || meta.deliveryMode === 'hybrid' ? {
-        require_gps: meta.requiresGPS || false,
+  // Location/Delivery mode - wizard sets at top level
+  const deliveryMode = getField(block, 'deliveryMode');
+  const location = getField(block, 'location');
+  if (deliveryMode || location) {
+    config.location = location || {
+      type: deliveryMode || 'onsite',
+      onsite_config: deliveryMode === 'on-site' || deliveryMode === 'onsite' || deliveryMode === 'hybrid' ? {
+        require_gps: getField(block, 'requiresGPS') || false,
       } : undefined,
-      virtual_config: meta.deliveryMode === 'virtual' || meta.deliveryMode === 'hybrid' ? {
-        platform: meta.virtualPlatform || 'zoom',
+      virtual_config: deliveryMode === 'virtual' || deliveryMode === 'hybrid' ? {
+        platform: getField(block, 'virtualPlatform') || 'zoom',
       } : undefined,
     };
-    config.deliveryMode = meta.deliveryMode;
+    config.deliveryMode = deliveryMode;
   }
 
-  // Service cycles
-  if (meta.serviceCycles) config.serviceCycles = meta.serviceCycles;
+  // Service cycles - wizard sets requiresCycles, cycleDays, cycleGracePeriod
+  const requiresCycles = getField(block, 'requiresCycles');
+  const cycleDays = getField(block, 'cycleDays');
+  const serviceCycles = getField(block, 'serviceCycles');
+  if (requiresCycles || serviceCycles) {
+    config.serviceCycles = serviceCycles || {
+      enabled: requiresCycles,
+      days: cycleDays,
+      gracePeriod: getField(block, 'cycleGracePeriod'),
+    };
+  }
 
   // Assignment
-  if (meta.assignment) config.assignment = meta.assignment;
+  const assignment = getField(block, 'assignment');
+  if (assignment) config.assignment = assignment;
 
-  // Evidence configuration
-  if (meta.evidence || block.evidenceTags?.length) {
-    config.evidence = meta.evidence || (block.evidenceTags || []).map((type: string) => ({
+  // Evidence configuration - wizard sets evidenceRequired, evidenceTypes
+  const evidenceRequired = getField(block, 'evidenceRequired');
+  const evidenceTypes = getField(block, 'evidenceTypes') || block.evidenceTags;
+  const evidence = getField(block, 'evidence');
+  if (evidence || evidenceTypes?.length || evidenceRequired) {
+    config.evidence = evidence || (evidenceTypes || []).map((type: string) => ({
       type,
       config: { required: true },
     }));
-    config.evidence_types = block.evidenceTags;
+    config.evidence_types = evidenceTypes;
+    config.evidenceRequired = evidenceRequired;
   }
 
   // OTP requirement
-  if (meta.requiresOTP !== undefined) {
-    config.requiresOTP = meta.requiresOTP;
-    config.otpConfig = meta.otpConfig;
+  const requiresOTP = getField(block, 'requiresOTP');
+  if (requiresOTP !== undefined) {
+    config.requiresOTP = requiresOTP;
+    config.otpConfig = getField(block, 'otpConfig');
   }
 
   // SLA
-  if (meta.sla) config.sla = meta.sla;
+  const sla = getField(block, 'sla');
+  if (sla) config.sla = sla;
 
   // Automation
-  if (meta.automation) config.automation = meta.automation;
+  const automation = getField(block, 'automation');
+  if (automation) config.automation = automation;
 
-  // Business rules
-  if (meta.followup) config.followup = meta.followup;
-  if (meta.warranty) config.warranty = meta.warranty;
-  if (meta.cancellation) config.cancellation = meta.cancellation;
-  if (meta.reschedule) config.reschedule = meta.reschedule;
-  if (meta.autoApprove !== undefined) config.autoApprove = meta.autoApprove;
-  if (meta.requiresDeposit !== undefined) {
-    config.requiresDeposit = meta.requiresDeposit;
-    config.depositPercentage = meta.depositPercentage;
+  // Business rules - wizard sets these at top level
+  const followup = getField(block, 'followup');
+  const warranty = getField(block, 'warranty');
+  const cancellation = getField(block, 'cancellation');
+  const reschedule = getField(block, 'reschedule') || getField(block, 'allowReschedule');
+  const autoApprove = getField(block, 'autoApprove');
+  const requiresDeposit = getField(block, 'requiresDeposit');
+
+  if (followup) config.followup = followup;
+  if (warranty) config.warranty = warranty;
+  if (cancellation) config.cancellation = cancellation;
+  if (reschedule !== undefined) config.reschedule = reschedule;
+  if (autoApprove !== undefined) config.autoApprove = autoApprove;
+  if (requiresDeposit !== undefined) {
+    config.requiresDeposit = requiresDeposit;
+    config.depositPercentage = getField(block, 'depositPercentage');
   }
 
-  // Pricing mode and records
-  if (meta.pricingMode) config.pricingMode = meta.pricingMode;
-  if (meta.priceType) config.priceType = meta.priceType;
-  if (meta.pricingRecords) config.pricingRecords = meta.pricingRecords;
-  if (meta.resourcePricingRecords) config.resourcePricingRecords = meta.resourcePricingRecords;
-  if (meta.pricingTiers) config.pricingTiers = meta.pricingTiers;
+  // Pricing mode and records - wizard may set at top level
+  const pricingMode = getField(block, 'pricingMode');
+  const priceType = getField(block, 'priceType');
+  const pricingRecords = getField(block, 'pricingRecords');
+  const resourcePricingRecords = getField(block, 'resourcePricingRecords');
+  const pricingTiers = getField(block, 'pricingTiers');
 
-  // Selected resources (from ResourceDependencyStep)
-  if (meta.selectedResources) config.selectedResources = meta.selectedResources;
-  if (meta.resourceTypes) config.resourceTypes = meta.resourceTypes;
+  if (pricingMode) config.pricingMode = pricingMode;
+  if (priceType) config.priceType = priceType;
+  if (pricingRecords) config.pricingRecords = pricingRecords;
+  if (resourcePricingRecords) config.resourcePricingRecords = resourcePricingRecords;
+  if (pricingTiers) config.pricingTiers = pricingTiers;
+
+  // Selected resources (from ResourceDependencyStep) - wizard sets at top level
+  const selectedResources = getField(block, 'selectedResources');
+  const resourceTypes = getField(block, 'resourceTypes');
+  if (selectedResources) config.selectedResources = selectedResources;
+  if (resourceTypes) config.resourceTypes = resourceTypes;
 
   // Terms
-  if (meta.terms) config.terms = meta.terms;
+  const terms = getField(block, 'terms');
+  if (terms) config.terms = terms;
 
   // Image
-  if (meta.image_url) config.image_url = meta.image_url;
+  const imageUrl = getField(block, 'image_url') || getField(block, 'imageUrl');
+  if (imageUrl) config.image_url = imageUrl;
 
   return config;
 };
 
 /**
  * Build config JSONB for SPARE block
+ * Checks both top-level fields (from wizard) and meta fields (from existing blocks)
  */
 const buildSpareConfig = (block: Partial<Block>): Record<string, unknown> => {
-  const meta = block.meta || {};
   const config: Record<string, unknown> = {};
 
   // Icon
   if (block.icon) config.icon = block.icon;
 
-  // Product identification
-  if (meta.sku) config.sku = meta.sku;
-  if (meta.hsn) config.hsn = meta.hsn;
-  if (meta.brand) config.brand = meta.brand;
-  if (meta.uom) config.uom = meta.uom || 'each';
-  if (meta.barcode) config.barcode = meta.barcode;
+  // Product identification - wizard sets these at top level
+  const sku = getField(block, 'sku');
+  const hsn = getField(block, 'hsn');
+  const brand = getField(block, 'brand');
+  const uom = getField(block, 'uom');
+  const barcode = getField(block, 'barcode');
 
-  // Inventory
-  config.inventory = {
-    track: meta.trackInventory !== false,
-    current: meta.stockQty || meta.stockQuantity || 0,
-    reorder_level: meta.reorderLevel || 5,
-    reorder_qty: meta.reorderQty || 10,
-    alert_on_low: meta.alertOnLow !== false,
+  if (sku) config.sku = sku;
+  if (hsn) config.hsn = hsn;
+  if (brand) config.brand = brand;
+  if (uom) config.uom = uom;
+  if (barcode) config.barcode = barcode;
+
+  // Inventory - wizard sets trackInventory, stockQty, reorderLevel
+  const trackInventory = getField(block, 'trackInventory');
+  const stockQty = getField(block, 'stockQty') || getField(block, 'stockQuantity');
+  const reorderLevel = getField(block, 'reorderLevel');
+  const inventory = getField(block, 'inventory');
+
+  config.inventory = inventory || {
+    track: trackInventory !== false,
+    current: stockQty || 0,
+    reorder_level: reorderLevel || 5,
+    reorder_qty: getField(block, 'reorderQty') || 10,
+    alert_on_low: getField(block, 'alertOnLow') !== false,
   };
 
-  // Fulfillment
-  if (meta.fulfillment) {
-    config.fulfillment = meta.fulfillment;
-  } else {
+  // Fulfillment - wizard sets includeInService, allowPickup, allowShipping
+  const fulfillment = getField(block, 'fulfillment');
+  const includeInService = getField(block, 'includeInService');
+  const allowPickup = getField(block, 'allowPickup');
+  const allowShipping = getField(block, 'allowShipping');
+
+  if (fulfillment) {
+    config.fulfillment = fulfillment;
+  } else if (includeInService !== undefined || allowPickup !== undefined || allowShipping !== undefined) {
     config.fulfillment = {
-      include_in_service: meta.includeInService !== false,
-      pickup: meta.allowPickup || false,
-      ship: meta.allowShipping || false,
+      include_in_service: includeInService !== false,
+      pickup: allowPickup || false,
+      ship: allowShipping || false,
     };
   }
 
   // Warranty
-  if (meta.warranty) {
-    config.warranty = meta.warranty;
-  } else if (meta.warrantyMonths) {
+  const warranty = getField(block, 'warranty');
+  const warrantyMonths = getField(block, 'warrantyMonths');
+  if (warranty) {
+    config.warranty = warranty;
+  } else if (warrantyMonths) {
     config.warranty = {
-      months: meta.warrantyMonths,
-      type: meta.warrantyType || 'manufacturing_defect',
+      months: warrantyMonths,
+      type: getField(block, 'warrantyType') || 'manufacturing_defect',
     };
   }
 
   // Warehouse location
-  if (meta.warehouseLocation) config.warehouseLocation = meta.warehouseLocation;
+  const warehouseLocation = getField(block, 'warehouseLocation');
+  if (warehouseLocation) config.warehouseLocation = warehouseLocation;
 
   // Category
-  if (meta.spareCategory) config.spareCategory = meta.spareCategory;
+  const spareCategory = getField(block, 'spareCategory');
+  if (spareCategory) config.spareCategory = spareCategory;
 
   // Pricing records
-  if (meta.pricingRecords) config.pricingRecords = meta.pricingRecords;
-  if (meta.priceType) config.priceType = meta.priceType;
+  const pricingRecords = getField(block, 'pricingRecords');
+  const priceType = getField(block, 'priceType');
+  if (pricingRecords) config.pricingRecords = pricingRecords;
+  if (priceType) config.priceType = priceType;
 
   // Terms
-  if (meta.terms) config.terms = meta.terms;
+  const terms = getField(block, 'terms');
+  if (terms) config.terms = terms;
 
   // Image
-  if (meta.image_url) config.image_url = meta.image_url;
+  const imageUrl = getField(block, 'image_url') || getField(block, 'imageUrl');
+  if (imageUrl) config.image_url = imageUrl;
 
   return config;
 };
 
 /**
  * Build config JSONB for BILLING block
+ * Checks both top-level fields (from wizard) and meta fields (from existing blocks)
  */
 const buildBillingConfig = (block: Partial<Block>): Record<string, unknown> => {
-  const meta = block.meta || {};
   const config: Record<string, unknown> = {};
 
   // Icon
   if (block.icon) config.icon = block.icon;
 
-  // Payment type
-  config.payment_type = meta.paymentType || 'upfront';
+  // Payment type - wizard sets at top level
+  const paymentType = getField(block, 'paymentType');
+  config.payment_type = paymentType || 'upfront';
 
   // Structure based on payment type
-  if (meta.paymentType === 'emi' || meta.paymentType === 'milestone') {
-    config.installments = meta.numInstallments || meta.numMilestones || 3;
-    config.frequency = meta.recurringFrequency || 'monthly';
+  if (paymentType === 'emi' || paymentType === 'milestone') {
+    config.installments = getField(block, 'numInstallments') || getField(block, 'numMilestones') || 3;
+    config.frequency = getField(block, 'recurringFrequency') || 'monthly';
   }
 
   // Schedule
-  if (meta.schedule) {
-    config.schedule = meta.schedule;
-  }
+  const schedule = getField(block, 'schedule');
+  if (schedule) config.schedule = schedule;
 
   // Auto invoice
-  config.auto_invoice = meta.autoInvoice !== false;
+  const autoInvoice = getField(block, 'autoInvoice');
+  config.auto_invoice = autoInvoice !== false;
 
   // Late fee
-  if (meta.lateFee) {
-    config.late_fee = meta.lateFee;
-  }
+  const lateFee = getField(block, 'lateFee');
+  if (lateFee) config.late_fee = lateFee;
 
   // Payment methods
-  if (meta.paymentMethods) {
-    config.payment_methods = meta.paymentMethods;
-  }
+  const paymentMethods = getField(block, 'paymentMethods');
+  if (paymentMethods) config.payment_methods = paymentMethods;
 
   // Billing frequency for recurring
-  if (meta.recurringFrequency) {
-    config.billing_frequency = meta.recurringFrequency;
-  }
+  const recurringFrequency = getField(block, 'recurringFrequency');
+  if (recurringFrequency) config.billing_frequency = recurringFrequency;
 
   // Upfront percentage
-  if (meta.upfrontPercent) {
-    config.upfront_percent = meta.upfrontPercent;
-  }
+  const upfrontPercent = getField(block, 'upfrontPercent');
+  if (upfrontPercent) config.upfront_percent = upfrontPercent;
 
   return config;
 };
 
 /**
  * Build config JSONB for TEXT block
+ * Checks both top-level fields (from wizard) and meta fields (from existing blocks)
  */
 const buildTextConfig = (block: Partial<Block>): Record<string, unknown> => {
-  const meta = block.meta || {};
   const config: Record<string, unknown> = {};
 
   // Icon
   if (block.icon) config.icon = block.icon;
 
-  // Content
-  config.content = meta.content || '';
-  config.content_type = meta.contentType || 'rich';
+  // Content - wizard sets at top level
+  config.content = getField(block, 'content') || '';
+  config.content_type = getField(block, 'contentType') || 'rich';
 
   // Acceptance
-  if (meta.requireAcceptance) {
+  const requireAcceptance = getField(block, 'requireAcceptance');
+  if (requireAcceptance) {
     config.require_acceptance = true;
-    config.acceptance_label = meta.acceptanceLabel || 'I agree';
+    config.acceptance_label = getField(block, 'acceptanceLabel') || 'I agree';
   }
 
   // Variables
-  if (meta.variables) {
-    config.variables = meta.variables;
-  }
+  const variables = getField(block, 'variables');
+  if (variables) config.variables = variables;
 
   return config;
 };
 
 /**
  * Build config JSONB for CHECKLIST block
+ * Checks both top-level fields (from wizard) and meta fields (from existing blocks)
  */
 const buildChecklistConfig = (block: Partial<Block>): Record<string, unknown> => {
-  const meta = block.meta || {};
   const config: Record<string, unknown> = {};
 
   // Icon
   if (block.icon) config.icon = block.icon;
 
-  // Items
-  config.items = meta.items || [];
+  // Items - wizard sets at top level
+  config.items = getField(block, 'items') || [];
 
   // Settings
-  config.require_all = meta.requireAll !== false;
-  config.allow_notes = meta.allowNotes !== false;
+  const requireAll = getField(block, 'requireAll');
+  const allowNotes = getField(block, 'allowNotes');
+  config.require_all = requireAll !== false;
+  config.allow_notes = allowNotes !== false;
 
   return config;
 };
 
 /**
  * Build config JSONB for MEDIA (video/image) block
+ * Checks both top-level fields (from wizard) and meta fields (from existing blocks)
  */
 const buildMediaConfig = (block: Partial<Block>): Record<string, unknown> => {
-  const meta = block.meta || {};
   const config: Record<string, unknown> = {};
 
   // Icon
   if (block.icon) config.icon = block.icon;
 
-  // Media URLs
-  if (meta.mediaUrl) config.media_url = meta.mediaUrl;
-  if (meta.thumbnailUrl) config.thumbnail_url = meta.thumbnailUrl;
-  if (meta.image_url) config.image_url = meta.image_url;
+  // Media URLs - wizard sets at top level
+  const mediaUrl = getField(block, 'mediaUrl');
+  const thumbnailUrl = getField(block, 'thumbnailUrl');
+  const imageUrl = getField(block, 'image_url') || getField(block, 'imageUrl');
+
+  if (mediaUrl) config.media_url = mediaUrl;
+  if (thumbnailUrl) config.thumbnail_url = thumbnailUrl;
+  if (imageUrl) config.image_url = imageUrl;
 
   // Display settings
-  if (meta.displaySettings) {
-    config.displaySettings = meta.displaySettings;
-  }
+  const displaySettings = getField(block, 'displaySettings');
+  if (displaySettings) config.displaySettings = displaySettings;
 
   return config;
 };
 
 /**
  * Build config JSONB for DOCUMENT block
+ * Checks both top-level fields (from wizard) and meta fields (from existing blocks)
  */
 const buildDocumentConfig = (block: Partial<Block>): Record<string, unknown> => {
-  const meta = block.meta || {};
   const config: Record<string, unknown> = {};
 
   // Icon
   if (block.icon) config.icon = block.icon;
 
-  // File settings
-  if (meta.fileUrl) config.file_url = meta.fileUrl;
-  if (meta.fileType) config.file_type = meta.fileType;
-  if (meta.fileSize) config.file_size = meta.fileSize;
-  if (meta.allowDownload !== undefined) config.allow_download = meta.allowDownload;
-  if (meta.requireSignature !== undefined) config.require_signature = meta.requireSignature;
+  // File settings - wizard sets at top level
+  const fileUrl = getField(block, 'fileUrl');
+  const fileType = getField(block, 'fileType');
+  const fileSize = getField(block, 'fileSize');
+  const allowDownload = getField(block, 'allowDownload');
+  const requireSignature = getField(block, 'requireSignature');
+
+  if (fileUrl) config.file_url = fileUrl;
+  if (fileType) config.file_type = fileType;
+  if (fileSize) config.file_size = fileSize;
+  if (allowDownload !== undefined) config.allow_download = allowDownload;
+  if (requireSignature !== undefined) config.require_signature = requireSignature;
 
   return config;
 };
@@ -611,19 +692,32 @@ const buildResourcePricing = (block: Partial<Block>): Record<string, unknown> | 
 /**
  * Convert UI Block data to API CreateBlockData format
  * Maps ALL fields properly to database schema
+ * Reads from both top-level (wizard) and meta (existing blocks)
  * Sends string block_type_id like 'service' - edge function will resolve to UUID
  */
 export const blockToCreateData = (block: Partial<Block> & { name: string }) => {
   const blockType = block.categoryId || 'service';
-  const meta = block.meta || {};
   const { price, currency } = extractPrimaryPrice(block);
 
-  // Get price type from meta
-  const pricingRecords = meta.pricingRecords as PricingRecord[] | undefined;
-  const priceType = meta.priceType || pricingRecords?.[0]?.price_type || 'fixed';
+  // Get pricing mode - check both top-level and meta
+  const pricingMode = getField(block, 'pricingMode') as string || 'independent';
+
+  // Get price type - check both top-level and meta
+  const pricingRecords = getField(block, 'pricingRecords') as PricingRecord[] | undefined;
+  const priceType = getField(block, 'priceType') as string || pricingRecords?.[0]?.price_type || 'fixed';
 
   // Map price_type to DB enum values
   const dbPriceType = priceType === 'hourly' ? 'per_hour' : priceType === 'fixed' ? 'per_session' : priceType;
+
+  // Get status - check both top-level and meta
+  const status = getField(block, 'status') as string || 'active';
+
+  // Get tax rate
+  const taxRate = getField(block, 'taxRate') as number || 18.00;
+
+  // Get visibility
+  const visible = getField(block, 'visible');
+  const isAdmin = getField(block, 'is_admin');
 
   return {
     // Required fields
@@ -638,24 +732,23 @@ export const blockToCreateData = (block: Partial<Block> & { name: string }) => {
     tags: block.tags || [],
 
     // Pricing at top level (for independent mode)
-    pricing_mode: (meta.pricingMode as string) || 'independent',
-    pricing_mode_id: (meta.pricingMode as string) || 'independent', // For edge function resolution
+    pricing_mode_id: pricingMode, // Edge expects pricing_mode_id
     base_price: price,
     currency: currency || 'INR',
-    price_type: dbPriceType,
+    price_type_id: dbPriceType, // Edge expects price_type_id
 
     // Tax
-    tax_rate: meta.taxRate || 18.00,
+    tax_rate: taxRate,
 
     // Resource pricing (for resource_based mode)
     resource_pricing: buildResourcePricing(block),
 
-    // Status - default to active
-    status: (meta.status as string) || 'active',
+    // Status - default to active (edge expects status_id)
+    status_id: status,
 
     // Visibility
-    visible: meta.visible !== 'false',
-    is_admin: meta.is_admin === 'true',
+    visible: visible !== 'false' && visible !== false,
+    is_admin: isAdmin === 'true' || isAdmin === true,
 
     // Type-specific config
     config: buildConfig(block, blockType),
@@ -682,9 +775,8 @@ export const blockToUpdateData = (updates: Partial<Block>) => {
     data.block_type_id = updates.categoryId;
   }
 
-  // Pricing mode
+  // Pricing mode (edge expects pricing_mode_id)
   if (meta.pricingMode !== undefined) {
-    data.pricing_mode = meta.pricingMode;
     data.pricing_mode_id = meta.pricingMode;
   }
 
@@ -693,17 +785,17 @@ export const blockToUpdateData = (updates: Partial<Block>) => {
   if (price !== undefined) data.base_price = price;
   if (currency !== undefined) data.currency = currency;
 
-  // Price type
+  // Price type (edge expects price_type_id)
   if (meta.priceType !== undefined) {
     const priceType = meta.priceType as string;
-    data.price_type = priceType === 'hourly' ? 'per_hour' : priceType === 'fixed' ? 'per_session' : priceType;
+    data.price_type_id = priceType === 'hourly' ? 'per_hour' : priceType === 'fixed' ? 'per_session' : priceType;
   }
 
   // Tax rate
   if (meta.taxRate !== undefined) data.tax_rate = meta.taxRate;
 
-  // Status
-  if (meta.status !== undefined) data.status = meta.status;
+  // Status (edge expects status_id)
+  if (meta.status !== undefined) data.status_id = meta.status;
 
   // Visibility
   if (meta.visible !== undefined) data.visible = meta.visible !== 'false';
