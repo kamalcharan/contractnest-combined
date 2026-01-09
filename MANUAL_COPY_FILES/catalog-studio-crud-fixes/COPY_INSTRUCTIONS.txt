@@ -1,8 +1,8 @@
 ═══════════════════════════════════════════════════
-📦 CATALOG STUDIO CRUD FIXES
+📦 CATALOG STUDIO CRUD FIXES - PRODUCTION READY
 ═══════════════════════════════════════════════════
 Branch: catalog-studio-crud-fixes
-Date: 2026-01-09
+Date: 2026-01-09 (Updated)
 
 Files Changed:
   - contractnest-ui/src/utils/catalog-studio/wizard-data.ts - Added ResourceDependencyStep, PricingStep
@@ -13,6 +13,7 @@ Files Changed:
   - contractnest-ui/src/components/catalog-studio/BlockWizard/BlockWizardContent.tsx - Wired all wizard steps
   - contractnest-ui/src/components/catalog-studio/SafeHtml.tsx - NEW: Safe HTML rendering component
   - contractnest-ui/src/hooks/queries/useCatBlocks.ts - Updated CatBlock interface
+  - contractnest-ui/src/pages/catalog-studio/configure.tsx - Fixed to use adapters properly
 
 Submodules Affected: contractnest-ui
 
@@ -39,7 +40,40 @@ KEY CHANGES
    - Correct field names (type, pricing_mode, base_price, etc.)
    - Type-specific config builders for each block type
    - Default status = 'active'
+   - getField() helper checks both top-level AND meta fields
+   - extractPrimaryPrice checks both locations for price data
 
 5. HTML sanitization utilities added:
    - stripHtml, sanitizeHtml, truncateText, etc.
    - SafeHtml component for rendering HTML descriptions
+
+6. configure.tsx Production-Ready Fixes:
+   - Uses blockToCreateData/blockToUpdateData adapters
+   - Passes userId from user?.id (AuthContext)
+   - Passes isLive from AuthContext
+   - Passes sequenceNo for ordering
+   - All CRUD operations properly mapped
+
+═══════════════════════════════════════════════════
+FIELDS NOW SAVED
+═══════════════════════════════════════════════════
+
+Top-level DB fields:
+  ✅ name, type, block_type_id, category
+  ✅ display_name, icon, description, tags
+  ✅ base_price, currency, pricing_mode_id
+  ✅ tax_rate, hsn_sac_code
+  ✅ resource_pricing (for resource-based blocks)
+  ✅ visible, is_admin
+  ✅ sequence_no, is_live
+  ✅ created_by, updated_by
+
+Config JSONB (type-specific):
+  ✅ Service: duration, deliveryMode, serviceCycles, evidence, sla, etc.
+  ✅ Spare: sku, hsn, brand, inventory, fulfillment, warranty
+  ✅ Billing: paymentType, installments, schedule, lateFee
+  ✅ Text: content, contentType, requireAcceptance
+  ✅ All: pricingRecords, resourcePricingRecords, selectedResources
+
+NOTE: price_type_id and status_id expect UUIDs in DB
+      - Stored as strings in config.priceType and config.status instead

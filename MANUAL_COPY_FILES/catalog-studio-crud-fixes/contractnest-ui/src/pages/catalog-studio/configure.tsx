@@ -19,7 +19,7 @@ import {
 const CatalogStudioConfigurePage: React.FC = () => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
-  const { currentTenant } = useAuth();
+  const { user, isLive } = useAuth();
 
   // API Hooks
   const { data: blocksResponse, isLoading, error, refetch } = useCatBlocksTest();
@@ -71,7 +71,7 @@ const CatalogStudioConfigurePage: React.FC = () => {
   };
 
   // Get current user ID for audit fields
-  const userId = currentTenant?.user_id || null;
+  const userId = user?.id || null;
 
   // Calculate next sequence number for new blocks
   const getNextSequenceNo = () => {
@@ -79,14 +79,14 @@ const CatalogStudioConfigurePage: React.FC = () => {
     return categoryBlocks.length;
   };
 
-  // ✅ FIX: Use adapter for proper field mapping with user tracking
+  // ✅ FIX: Use adapter for proper field mapping with user tracking and environment
   const handleSaveBlock = async (blockData: Partial<Block>) => {
     try {
       if (wizardMode === 'edit' && editingBlock) {
         // ✅ Use blockToUpdateData adapter for updates with userId
         await updateBlock(editingBlock.id, blockToUpdateData(blockData, { userId }));
       } else {
-        // ✅ Use blockToCreateData adapter for creates with userId and sequenceNo
+        // ✅ Use blockToCreateData adapter for creates with userId, sequenceNo, and isLive
         const fullBlockData = {
           ...blockData,
           categoryId: wizardBlockType,
@@ -95,6 +95,7 @@ const CatalogStudioConfigurePage: React.FC = () => {
         await createBlock(blockToCreateData(fullBlockData, {
           userId,
           sequenceNo: getNextSequenceNo(),
+          isLive, // ✅ Pass environment flag
         }));
       }
       closeWizard();
@@ -119,11 +120,11 @@ const CatalogStudioConfigurePage: React.FC = () => {
     }
   };
 
-  // ✅ FIX: Use adapter for duplicate with userId
+  // ✅ FIX: Use adapter for duplicate with userId and isLive
   const handleDuplicateBlock = async (block: Block) => {
     try {
       const duplicateData = {
-        ...blockToCreateData(block, { userId, sequenceNo: getNextSequenceNo() }),
+        ...blockToCreateData(block, { userId, sequenceNo: getNextSequenceNo(), isLive }),
         name: `${block.name} (Copy)`,
       };
       await createBlock(duplicateData);

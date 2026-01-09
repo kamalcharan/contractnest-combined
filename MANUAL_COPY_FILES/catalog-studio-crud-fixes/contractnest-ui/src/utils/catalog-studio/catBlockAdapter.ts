@@ -634,11 +634,12 @@ const buildConfig = (block: Partial<Block>, blockType: string): Record<string, u
 };
 
 /**
- * Extract primary price from pricing records
+ * Extract primary price from pricing records or direct fields
+ * Checks both top-level (wizard) and meta (existing blocks) fields
  */
 const extractPrimaryPrice = (block: Partial<Block>): { price?: number; currency?: string } => {
-  const meta = block.meta || {};
-  const pricingRecords = meta.pricingRecords as PricingRecord[] | undefined;
+  // First check pricingRecords - can be at top-level (wizard) or meta (existing)
+  const pricingRecords = getField(block, 'pricingRecords') as PricingRecord[] | undefined;
 
   if (pricingRecords && pricingRecords.length > 0) {
     const primary = pricingRecords.find(r => r.is_active) || pricingRecords[0];
@@ -648,23 +649,30 @@ const extractPrimaryPrice = (block: Partial<Block>): { price?: number; currency?
     };
   }
 
+  // Check direct price fields - wizard may set at top level
+  const directPrice = getField(block, 'price') as number | undefined;
+  const basePrice = getField(block, 'basePrice') as number | undefined;
+  const directCurrency = getField(block, 'currency') as string | undefined;
+
   return {
-    price: block.price,
-    currency: block.currency,
+    price: directPrice ?? basePrice ?? block.price,
+    currency: directCurrency ?? block.currency ?? 'INR',
   };
 };
 
 /**
  * Build resource_pricing JSONB for resource-based blocks
+ * Checks both top-level (wizard) and meta (existing blocks) fields
  */
 const buildResourcePricing = (block: Partial<Block>): Record<string, unknown> | undefined => {
-  const meta = block.meta || {};
-  const pricingMode = meta.pricingMode as string;
+  // Check pricingMode from both locations
+  const pricingMode = getField(block, 'pricingMode') as string;
 
   if (pricingMode !== 'resource_based') return undefined;
 
-  const selectedResources = meta.selectedResources as SelectedResource[] | undefined;
-  const resourcePricingRecords = meta.resourcePricingRecords as ResourcePricingRecord[] | undefined;
+  // Check selectedResources from both locations
+  const selectedResources = getField(block, 'selectedResources') as SelectedResource[] | undefined;
+  const resourcePricingRecords = getField(block, 'resourcePricingRecords') as ResourcePricingRecord[] | undefined;
 
   if (!selectedResources || selectedResources.length === 0) return undefined;
 
@@ -695,6 +703,7 @@ const buildResourcePricing = (block: Partial<Block>): Record<string, unknown> | 
 interface BlockOperationOptions {
   userId?: string;
   sequenceNo?: number;
+  isLive?: boolean;
 }
 
 /**
@@ -766,6 +775,9 @@ export const blockToCreateData = (
 
     // Ordering
     sequence_no: options.sequenceNo ?? 0,
+
+    // Environment
+    is_live: options.isLive ?? true,
 
     // Audit fields
     created_by: options.userId || null,
