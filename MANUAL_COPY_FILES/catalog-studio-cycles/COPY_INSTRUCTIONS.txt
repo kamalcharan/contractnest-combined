@@ -1,10 +1,10 @@
 ═══════════════════════════════════════════════════════════════════════════════
-CATALOG STUDIO - DELIVERY + PRICING + EVIDENCE + WIZARD FOOTER
+CATALOG STUDIO - ALL WIZARD STEPS UPDATED
 ═══════════════════════════════════════════════════════════════════════════════
 
 Branch: catalog-studio-cycles
 Date: January 2025
-Version: 4.0 (Added EvidenceStep redesign)
+Version: 5.0 (Added RulesStep hidden + BusinessRulesStep update)
 
 ───────────────────────────────────────────────────────────────────────────────
 FILES CHANGED
@@ -29,14 +29,33 @@ FILES CHANGED
    Changes:
    - HIDDEN: Before Photo, After Photo, Customer Signature, GPS, Time Tracking, Service Report
    - HIDDEN: Photo Settings section
-   - SHOWS: Only 3 options:
-     • Upload Form - Upload documents/files as proof
-     • OTP Confirmation - Customer OTP verification
-     • Service Form - With dropdown to select form template
+   - SHOWS: Only 3 options: Upload Form, OTP Confirmation, Service Form
    - REDESIGNED: Two-column layout with blue tips card
-   - ADDED: Form selector dropdown for Service Form type
 
-4. WizardFooter.tsx
+4. RulesStep.tsx (HIDDEN)
+   Location: contractnest-ui/src/components/catalog-studio/BlockWizard/steps/service/
+   Changes:
+   - COMPLETELY HIDDEN: Returns empty placeholder
+   - Original code preserved as comments
+
+5. BusinessRulesStep.tsx (UPDATED - Now used for Step 6)
+   Location: contractnest-ui/src/components/catalog-studio/BlockWizard/steps/service/
+   Changes:
+   - SHOWS: Free Follow-up section (mandatory fields when enabled)
+   - SHOWS: Warranty section (mandatory fields when enabled, text control for terms)
+   - HIDDEN: Cancellation Policy section
+   - HIDDEN: Reschedule Rules section
+   - HIDDEN: Auto-approve, Require OTP options
+   - SHOWS: Only "Require Advance Deposit" in payment options
+   - REDESIGNED: Two-column layout with amber tips card
+   - REMOVED: Price for additional followup field
+
+6. BlockWizardContent.tsx
+   Location: contractnest-ui/src/components/catalog-studio/BlockWizard/
+   Changes:
+   - Updated Step 6 to use BusinessRulesStep instead of RulesStep
+
+7. WizardFooter.tsx
    Location: contractnest-ui/src/components/catalog-studio/BlockWizard/
    Changes:
    - Back button: Gray background + border
@@ -50,14 +69,14 @@ SUBMODULES AFFECTED
 - contractnest-ui
 
 ───────────────────────────────────────────────────────────────────────────────
-COPY COMMAND
+COPY COMMAND (PowerShell)
 ───────────────────────────────────────────────────────────────────────────────
 
 cd "D:\projects\core projects\ContractNest\contractnest-combined"
 
 Copy-Item "MANUAL_COPY_FILES\catalog-studio-cycles\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
 
-Write-Host "Files copied successfully!" -ForegroundColor Green
+Write-Host "✅ All files copied!" -ForegroundColor Green
 
 ───────────────────────────────────────────────────────────────────────────────
 GIT PULL COMMAND (Alternative to Copy)
@@ -69,61 +88,87 @@ git checkout claude/review-catalog-studio-specs-XVcAF
 git pull origin claude/review-catalog-studio-specs-XVcAF
 
 ───────────────────────────────────────────────────────────────────────────────
-EVIDENCE STEP UI
+BUSINESS RULES STEP UI
 ───────────────────────────────────────────────────────────────────────────────
 
 ┌─────────────────────────────────────┬──────────────────────────────┐
 │  LEFT COLUMN (60%)                  │  RIGHT COLUMN (40%)          │
 │  ─────────────────────────          │  ───────────────────         │
-│  • Summary Card                     │  • Evidence Types Explained  │
-│    - Evidence count                 │    - Upload Form info        │
-│    - Required toggle                │    - OTP Confirmation info   │
-│                                     │    - Service Form info       │
-│  • Upload Form Card                 │                              │
-│    - Toggle enable/disable          │  • Why Evidence Matters      │
-│    - When: dropdown                 │    - Trust, disputes, etc.   │
-│    - Required checkbox              │                              │
+│  • Free Follow-up Section           │  • Business Rules Guide      │
+│    - Toggle on/off                  │    - Amber themed card       │
+│    - Free Followups (mandatory *)   │    - Follow-up info          │
+│    - Valid For (mandatory *)        │    - Warranty info           │
+│    - Period unit (mandatory *)      │    - Advance Deposit info    │
+│    - Conditions (optional)          │                              │
 │                                     │  • Best Practices            │
-│  • OTP Confirmation Card            │    - Usage tips              │
-│    - Toggle enable/disable          │                              │
-│    - When: dropdown                 │                              │
-│    - Required checkbox              │                              │
+│  • Warranty Section                 │    - Service tips            │
+│    - Toggle on/off                  │                              │
+│    - Period (mandatory *)           │  • Required Fields           │
+│    - Unit (mandatory *)             │    - Field requirements      │
+│    - Type (mandatory *)             │                              │
+│    - Terms (mandatory * - textarea) │                              │
 │                                     │                              │
-│  • Service Form Card                │                              │
-│    - Toggle enable/disable          │                              │
-│    - Form selector dropdown         │                              │
-│    - When: dropdown                 │                              │
-│    - Required checkbox              │                              │
+│  • Payment Options                  │                              │
+│    - Require Advance Deposit only   │                              │
+│    - Deposit Amount (%)             │                              │
 └─────────────────────────────────────┴──────────────────────────────┘
 
 ───────────────────────────────────────────────────────────────────────────────
 HIDDEN FEATURES (Code preserved, commented out)
 ───────────────────────────────────────────────────────────────────────────────
 
+RulesStep (entire component hidden):
+- Cancellation Policy
+- Rescheduling Rules
+- Verification & Security
+- Automation & Notifications
+- SLA section
+
+BusinessRulesStep hidden items:
+- Cancellation Policy section
+- Reschedule Rules section
+- Auto-approve bookings option
+- Require OTP verification option
+- Price for additional followup field
+
 EvidenceStep:
 - Before Photo, After Photo
 - Customer Signature
-- GPS Location
-- Time Tracking
-- Service Report
-- Photo Settings section (min photos, quality, watermarks)
+- GPS Location, Time Tracking, Service Report
+- Photo Settings section
 
 PricingStep:
-- Tiered pricing option
-- Quote (custom) pricing option
+- Tiered pricing, Quote pricing
 - Discount Options section
 
 DeliveryStep:
-- On-Site Settings
-- Virtual Settings
+- On-Site Settings, Virtual Settings
 - Scheduling Options
 
 ───────────────────────────────────────────────────────────────────────────────
-NEW FORM DATA FIELDS
+NEW/UPDATED FORM DATA FIELDS
 ───────────────────────────────────────────────────────────────────────────────
 
+BusinessRulesStep (formData.meta):
+  followup: {
+    enabled: boolean;
+    freeFollowups: number;      // mandatory when enabled
+    followupPeriod: number;     // mandatory when enabled
+    followupPeriodUnit: string; // mandatory when enabled
+    conditions: string[];
+  }
+  warranty: {
+    enabled: boolean;
+    warrantyPeriod: number;     // mandatory when enabled
+    warrantyPeriodUnit: string; // mandatory when enabled
+    warrantyType: string;       // mandatory when enabled
+    warrantyTerms: string;      // mandatory when enabled (textarea)
+  }
+  requiresDeposit: boolean;
+  depositPercentage: number;    // mandatory when deposit enabled
+
 EvidenceStep:
-  selectedServiceForm?: string;  // ID of selected form template
+  selectedServiceForm?: string;
 
 DeliveryStep:
   requiresCycles?: boolean;
@@ -134,12 +179,6 @@ DeliveryStep:
 FUTURE CONSIDERATION: SIDE WIZARD LAYOUT
 ───────────────────────────────────────────────────────────────────────────────
 
-The user mentioned that the top wizard causes fields to start at ~50% screen
-height. A side wizard layout would allow:
-- Full height for step content
-- Better scroll experience
-- Always-visible step navigation
-
-This is noted for future implementation if approved.
+Noted for future implementation.
 
 ═══════════════════════════════════════════════════════════════════════════════
