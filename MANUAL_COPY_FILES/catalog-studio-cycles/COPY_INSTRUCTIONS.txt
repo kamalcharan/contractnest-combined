@@ -1,9 +1,10 @@
 ═══════════════════════════════════════════════════════════════════════════════
-CATALOG STUDIO - DELIVERY STEP CYCLES FEATURE
+CATALOG STUDIO - DELIVERY STEP CYCLES FEATURE (REDESIGNED)
 ═══════════════════════════════════════════════════════════════════════════════
 
 Branch: catalog-studio-cycles
 Date: January 2025
+Version: 2.0 (Redesigned with two-column layout)
 
 ───────────────────────────────────────────────────────────────────────────────
 FILES CHANGED
@@ -13,10 +14,14 @@ contractnest-ui/src/components/catalog-studio/BlockWizard/steps/service/Delivery
   - HIDDEN: On-Site Settings section (commented out, code preserved)
   - HIDDEN: Virtual Settings section (commented out, code preserved)
   - HIDDEN: Scheduling Options section (commented out, code preserved)
-  - ADDED: Service Cycles explanation card with generic content
-  - ADDED: "Does this require Cycles?" Yes/No toggle
-  - ADDED: Cycle Period (days) input field
-  - ADDED: Grace Period (days) input field
+  - REDESIGNED: Two-column layout for Service Cycles section
+    - Left column (3/5): Yes/No toggle + Cycle configuration fields
+    - Right column (2/5): "What is a Service Cycle?" explanation card
+  - IMPROVED: White card backgrounds with subtle shadows
+  - IMPROVED: Better styled buttons (solid fill when selected)
+  - IMPROVED: Attractive indigo/purple themed explanation card
+  - IMPROVED: Icons for better visual hierarchy (RefreshCw, Clock, Bell, Lightbulb)
+  - IMPROVED: CheckCircle2 indicators for selected state
   - ADDED: New formData fields: requiresCycles, cycleDays, cycleGracePeriod
 
 ───────────────────────────────────────────────────────────────────────────────
@@ -36,6 +41,15 @@ Copy-Item "MANUAL_COPY_FILES\catalog-studio-cycles\contractnest-ui\*" -Destinati
 Write-Host "Files copied successfully!" -ForegroundColor Green
 
 ───────────────────────────────────────────────────────────────────────────────
+GIT PULL COMMAND (Alternative to Copy)
+───────────────────────────────────────────────────────────────────────────────
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git fetch origin claude/review-catalog-studio-specs-XVcAF
+git checkout claude/review-catalog-studio-specs-XVcAF
+git pull origin claude/review-catalog-studio-specs-XVcAF
+
+───────────────────────────────────────────────────────────────────────────────
 NEW FORM DATA FIELDS
 ───────────────────────────────────────────────────────────────────────────────
 
@@ -47,5 +61,27 @@ The following fields have been added to the DeliveryStep formData interface:
 
 NOTE: Parent components using DeliveryStep may need to be updated to handle
 these new fields if they need to persist to the database.
+
+───────────────────────────────────────────────────────────────────────────────
+UI DESIGN NOTES
+───────────────────────────────────────────────────────────────────────────────
+
+1. Two-Column Layout:
+   - Left (60%): Controls and inputs
+   - Right (40%): Explanation card
+
+2. Color Scheme:
+   - Cards: White background (#FFFFFF) with subtle shadow
+   - Explanation card: Indigo theme (#EEF2FF background, #C7D2FE border)
+   - Selected buttons: Solid brand.primary fill with white text
+   - Icons: Brand primary color with CheckCircle2 for selection state
+
+3. Responsive:
+   - On mobile (< lg breakpoint): Single column, explanation card below
+   - On desktop (>= lg breakpoint): Side-by-side two-column layout
+
+4. Dark Mode Support:
+   - Fully supports dark mode via useTheme() hook
+   - Colors adapt automatically based on isDarkMode
 
 ═══════════════════════════════════════════════════════════════════════════════
