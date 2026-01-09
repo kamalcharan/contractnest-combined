@@ -43,6 +43,7 @@ interface CanvasBlock extends PlaygroundBlock {
 
 interface LeadData {
   name: string;
+  email: string;
   mobile: string;
   company: string;
 }
@@ -83,7 +84,7 @@ const LandingPlayground: React.FC = () => {
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
 
   const [step, setStep] = useState<PlaygroundStep>('cta');
-  const [leadData, setLeadData] = useState<LeadData>({ name: '', mobile: '', company: '' });
+  const [leadData, setLeadData] = useState<LeadData>({ name: '', email: '', mobile: '', company: '' });
   const [canvasBlocks, setCanvasBlocks] = useState<CanvasBlock[]>([]);
   const [customerName, setCustomerName] = useState('');
   const [draggedBlock, setDraggedBlock] = useState<PlaygroundBlock | null>(null);
@@ -112,10 +113,36 @@ const LandingPlayground: React.FC = () => {
   // Form validation
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
-    if (!leadData.name.trim()) newErrors.name = 'Name is required';
-    if (!leadData.mobile.trim()) newErrors.mobile = 'Mobile is required';
-    else if (!/^[0-9]{10}$/.test(leadData.mobile.replace(/\s/g, ''))) newErrors.mobile = 'Enter valid 10-digit mobile';
-    if (!leadData.company.trim()) newErrors.company = 'Company is required';
+
+    // Name validation
+    if (!leadData.name.trim()) {
+      newErrors.name = 'Name is required';
+    } else if (leadData.name.trim().length < 2) {
+      newErrors.name = 'Name must be at least 2 characters';
+    }
+
+    // Email validation
+    if (!leadData.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(leadData.email.trim())) {
+      newErrors.email = 'Enter a valid email address';
+    }
+
+    // Mobile validation
+    if (!leadData.mobile.trim()) {
+      newErrors.mobile = 'Mobile number is required';
+    } else {
+      const cleanMobile = leadData.mobile.replace(/[\s-]/g, '');
+      if (!/^[0-9]{10}$/.test(cleanMobile)) {
+        newErrors.mobile = 'Enter valid 10-digit mobile number';
+      }
+    }
+
+    // Company validation
+    if (!leadData.company.trim()) {
+      newErrors.company = 'Company name is required';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -127,14 +154,21 @@ const LandingPlayground: React.FC = () => {
 
     try {
       // Save lead to Supabase
-      await supabase.from('leads_contractnest').insert([{
+      const cleanMobile = leadData.mobile.replace(/[\s-]/g, '');
+      const { data, error } = await supabase.from('leads_contractnest').insert([{
         name: leadData.name.trim(),
-        email: `${leadData.mobile}@playground.demo`,
-        phone: leadData.mobile.trim(),
+        email: leadData.email.trim(),
+        phone: cleanMobile,
         industry: 'equipment_amc',
         persona: 'seller',
         completed_demo: false,
-      }]);
+      }]).select();
+
+      if (error) {
+        console.error('Supabase Error:', error.message, error.details, error.hint);
+      } else {
+        console.log('Lead saved successfully:', data);
+      }
     } catch (err) {
       console.error('Error saving lead:', err);
     }
@@ -201,7 +235,8 @@ ${canvasBlocks.map(b => `<div class="block"><strong>${b.name}</strong><br><small
     setStep('cta');
     setCanvasBlocks([]);
     setCustomerName('');
-    setLeadData({ name: '', mobile: '', company: '' });
+    setLeadData({ name: '', email: '', mobile: '', company: '' });
+    setErrors({});
   };
 
   const canSend = customerName.trim() && canvasBlocks.length > 0;
@@ -289,7 +324,7 @@ ${canvasBlocks.map(b => `<div class="block"><strong>${b.name}</strong><br><small
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1.5" style={{ color: colors.utility.primaryText }}>
-                  Mobile Number
+                  Mobile Number <span className="text-red-500">*</span>
                 </label>
                 <div className="flex">
                   <span
@@ -321,7 +356,26 @@ ${canvasBlocks.map(b => `<div class="block"><strong>${b.name}</strong><br><small
 
               <div>
                 <label className="block text-sm font-medium mb-1.5" style={{ color: colors.utility.primaryText }}>
-                  Your Name
+                  Email Address <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  value={leadData.email}
+                  onChange={(e) => setLeadData({ ...leadData, email: e.target.value })}
+                  placeholder="rajesh@company.com"
+                  className="w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:ring-2"
+                  style={{
+                    backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#FFFFFF',
+                    borderColor: errors.email ? '#EF4444' : (isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB'),
+                    color: colors.utility.primaryText,
+                  }}
+                />
+                {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1.5" style={{ color: colors.utility.primaryText }}>
+                  Your Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -340,7 +394,7 @@ ${canvasBlocks.map(b => `<div class="block"><strong>${b.name}</strong><br><small
 
               <div>
                 <label className="block text-sm font-medium mb-1.5" style={{ color: colors.utility.primaryText }}>
-                  Company
+                  Company <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"

@@ -1,5 +1,5 @@
 ═══════════════════════════════════════════════════
-📦 PLAYGROUND - LANDING PAGE SECTION (UPDATED)
+📦 PLAYGROUND - LANDING PAGE SECTION (UPDATED v2)
 ═══════════════════════════════════════════════════
 Feature: Interactive Playground Section within Landing Page
 (NOT a separate page - integrated into landing page)
@@ -11,6 +11,13 @@ FILE TO MODIFY:
   - contractnest-ui/src/pages/public/LandingPage.tsx
 
 Submodules Affected: contractnest-ui
+
+FIXES IN THIS VERSION:
+  - Added Email field (required)
+  - Added proper validation for all fields
+  - All fields marked mandatory with * indicator
+  - Fixed Supabase integration with proper error logging
+  - Fixed form reset to include email
 
 ═══════════════════════════════════════════════════
 🗄️ SUPABASE SETUP (DO THIS FIRST!)
@@ -34,6 +41,10 @@ ALTER TABLE leads_contractnest ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow anonymous inserts" ON leads_contractnest
   FOR INSERT TO anon WITH CHECK (true);
 
+-- Also add select policy so .select() works after insert
+CREATE POLICY "Allow anonymous reads" ON leads_contractnest
+  FOR SELECT TO anon USING (true);
+
 ═══════════════════════════════════════════════════
 💻 COPY & INTEGRATE COMMANDS
 ═══════════════════════════════════════════════════
@@ -55,9 +66,19 @@ Open: contractnest-ui/src/pages/public/LandingPage.tsx
 ADD IMPORT (around line 18, after LandingFooter):
 import LandingPlayground from '../../components/landing/LandingPlayground';
 
-ADD COMPONENT (around line 593, BEFORE <LandingPricing):
+ADD COMPONENT (around line 565, AFTER </TheProblem> and BEFORE <DualPersonaTimeline):
+
         {/* Playground Section - Interactive Demo */}
         <LandingPlayground />
+
+        {/* Dual Persona Timeline - NEW! */}
+        <DualPersonaTimeline
+
+The CORRECT ORDER should be:
+  1. <TheProblem ... />         (line ~558-565)
+  2. <LandingPlayground />      <-- ADD HERE
+  3. <DualPersonaTimeline ...   (currently line ~590)
+  4. <LandingPricing ...
 
 STEP 4: Test
 ─────────────────────────────────
@@ -80,9 +101,20 @@ PLAYGROUND CTA:
 - [ ] "See For Yourself - Try Now" button
 
 USER FORM:
-- [ ] Mobile (+91), Name, Company fields
-- [ ] Validation works
-- [ ] "Start Building" advances
+- [ ] Mobile (+91) field with validation
+- [ ] Email field with validation
+- [ ] Name field with validation
+- [ ] Company field with validation
+- [ ] All fields show * for required
+- [ ] Validation error messages appear
+- [ ] "Start Building" advances only when valid
+
+SUPABASE:
+- [ ] Open browser console (F12 → Console)
+- [ ] Submit form and check for:
+      "Lead saved successfully: [...]" OR
+      "Supabase Error: [...]"
+- [ ] Check Supabase table for new record
 
 BUILDER:
 - [ ] Customer Name input
