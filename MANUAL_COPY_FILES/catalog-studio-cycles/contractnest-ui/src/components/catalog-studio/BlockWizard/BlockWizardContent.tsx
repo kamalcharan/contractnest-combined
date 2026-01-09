@@ -131,10 +131,24 @@ const BlockWizardContent: React.FC<BlockWizardContentProps> = ({
     // Block-specific step validations
     if (type === 'service') {
       // Step 3 - Delivery: No mandatory fields (cycles are optional)
-      // Step 4 - Pricing: Price is required (stored in meta.pricingRecords)
+      // Step 4 - Pricing: Price is required
+      // Supports both independent pricing (pricingRecords) and resource-based pricing (resourcePricingRecords)
       if (step === 4) {
-        const pricingRecords = data.meta?.pricingRecords as Array<{ amount: number }> | undefined;
-        const hasValidPrice = pricingRecords && pricingRecords.length > 0 && pricingRecords[0]?.amount > 0;
+        const pricingMode = data.meta?.pricingMode as string | undefined;
+        let hasValidPrice = false;
+
+        if (pricingMode === 'resource_based') {
+          // Check resourcePricingRecords for resource-based pricing
+          const resourcePricingRecords = data.meta?.resourcePricingRecords as Array<{ pricePerUnit: number }> | undefined;
+          hasValidPrice = resourcePricingRecords && resourcePricingRecords.length > 0 &&
+                          resourcePricingRecords.some(r => r.pricePerUnit > 0);
+        } else {
+          // Check pricingRecords for independent pricing (default)
+          const pricingRecords = data.meta?.pricingRecords as Array<{ amount: number }> | undefined;
+          hasValidPrice = pricingRecords && pricingRecords.length > 0 &&
+                          pricingRecords.some(r => r.amount > 0);
+        }
+
         if (!hasValidPrice) {
           errors.push('Price is required');
         }
