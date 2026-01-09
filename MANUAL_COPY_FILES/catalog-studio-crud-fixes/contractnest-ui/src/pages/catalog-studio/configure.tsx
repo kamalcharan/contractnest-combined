@@ -216,6 +216,10 @@ const CatalogStudioConfigurePage: React.FC = () => {
           isOpen={isEditorPanelOpen}
           onClose={() => { setIsEditorPanelOpen(false); setSelectedBlock(null); }}
           onSave={handleEditorSave}
+          onEdit={(block) => {
+            setIsEditorPanelOpen(false);
+            openWizard('edit', block.categoryId, block);
+          }}
           onDelete={() => selectedBlock && handleDeleteBlock(selectedBlock)}
           onDuplicate={() => selectedBlock && handleDuplicateBlock(selectedBlock)}
         />
