@@ -1,28 +1,41 @@
 ═══════════════════════════════════════════════════════════════════════════════
-CATALOG STUDIO - DELIVERY STEP CYCLES FEATURE (REDESIGNED)
+CATALOG STUDIO - DELIVERY STEP + PRICING STEP + WIZARD FOOTER
 ═══════════════════════════════════════════════════════════════════════════════
 
 Branch: catalog-studio-cycles
 Date: January 2025
-Version: 2.0 (Redesigned with two-column layout)
+Version: 3.0 (DeliveryStep + PricingStep redesign + WizardFooter buttons)
 
 ───────────────────────────────────────────────────────────────────────────────
 FILES CHANGED
 ───────────────────────────────────────────────────────────────────────────────
 
-contractnest-ui/src/components/catalog-studio/BlockWizard/steps/service/DeliveryStep.tsx
-  - HIDDEN: On-Site Settings section (commented out, code preserved)
-  - HIDDEN: Virtual Settings section (commented out, code preserved)
-  - HIDDEN: Scheduling Options section (commented out, code preserved)
-  - REDESIGNED: Two-column layout for Service Cycles section
-    - Left column (3/5): Yes/No toggle + Cycle configuration fields
-    - Right column (2/5): "What is a Service Cycle?" explanation card
-  - IMPROVED: White card backgrounds with subtle shadows
-  - IMPROVED: Better styled buttons (solid fill when selected)
-  - IMPROVED: Attractive indigo/purple themed explanation card
-  - IMPROVED: Icons for better visual hierarchy (RefreshCw, Clock, Bell, Lightbulb)
-  - IMPROVED: CheckCircle2 indicators for selected state
-  - ADDED: New formData fields: requiresCycles, cycleDays, cycleGracePeriod
+1. DeliveryStep.tsx
+   Location: contractnest-ui/src/components/catalog-studio/BlockWizard/steps/service/
+   Changes:
+   - HIDDEN: On-Site Settings section (commented out)
+   - HIDDEN: Virtual Settings section (commented out)
+   - HIDDEN: Scheduling Options section (commented out)
+   - REDESIGNED: Two-column layout for Service Cycles section
+   - ADDED: Service Cycles feature (Yes/No toggle, cycle days, grace period)
+
+2. PricingStep.tsx
+   Location: contractnest-ui/src/components/catalog-studio/BlockWizard/steps/service/
+   Changes:
+   - HIDDEN: "Tiered" pricing option (commented out)
+   - HIDDEN: "Quote" (custom) pricing option (commented out)
+   - HIDDEN: Discount Options section (commented out)
+   - REDESIGNED: Two-column layout (controls left, tips right)
+   - IMPROVED: Pricing model cards with better visual hierarchy
+   - ADDED: Green-themed "Pricing Best Practices" explanation card
+
+3. WizardFooter.tsx
+   Location: contractnest-ui/src/components/catalog-studio/BlockWizard/
+   Changes:
+   - IMPROVED: Back button - now has gray background + border (was plain text)
+   - IMPROVED: Save Draft button - now amber/yellow themed with Save icon
+   - IMPROVED: Continue button - added shadow and hover lift effect
+   - ADDED: Rounded corners (rounded-xl) to all buttons
 
 ───────────────────────────────────────────────────────────────────────────────
 SUBMODULES AFFECTED
@@ -50,38 +63,54 @@ git checkout claude/review-catalog-studio-specs-XVcAF
 git pull origin claude/review-catalog-studio-specs-XVcAF
 
 ───────────────────────────────────────────────────────────────────────────────
-NEW FORM DATA FIELDS
+UI CHANGES SUMMARY
 ───────────────────────────────────────────────────────────────────────────────
 
-The following fields have been added to the DeliveryStep formData interface:
+PRICING STEP:
+┌─────────────────────────────────────┬──────────────────────────────┐
+│  LEFT COLUMN (60%)                  │  RIGHT COLUMN (40%)          │
+│  ─────────────────────────          │  ───────────────────         │
+│  • Pricing Model Selection          │  • Pricing Best Practices    │
+│    - Fixed Price (card)             │    - Green themed card       │
+│    - Hourly Rate (card)             │    - Tips for each model     │
+│  • Currency-Specific Pricing        │    - Multi-currency tips     │
+│    - Add Currency button            │    - Tax configuration tips  │
+│    - Price input per currency       │                              │
+│    - Tax tags (multi-select)        │                              │
+│    - Price breakdown                │                              │
+└─────────────────────────────────────┴──────────────────────────────┘
 
-  requiresCycles?: boolean;    // Toggle: Does service require cycles?
-  cycleDays?: number;          // Ideal days for a cycle (e.g., 180)
-  cycleGracePeriod?: number;   // Grace period in days (e.g., 7)
-
-NOTE: Parent components using DeliveryStep may need to be updated to handle
-these new fields if they need to persist to the database.
+WIZARD FOOTER BUTTONS:
+┌─────────────────────────────────────────────────────────────────────┐
+│ [← Back]              [💾 Save Draft]              [Continue →]     │
+│  Gray bg               Amber/yellow                 Primary color   │
+│  with border           themed                       with shadow     │
+└─────────────────────────────────────────────────────────────────────┘
 
 ───────────────────────────────────────────────────────────────────────────────
-UI DESIGN NOTES
+HIDDEN FEATURES (Code preserved, commented out)
 ───────────────────────────────────────────────────────────────────────────────
 
-1. Two-Column Layout:
-   - Left (60%): Controls and inputs
-   - Right (40%): Explanation card
+PricingStep:
+- Tiered pricing option
+- Quote (custom) pricing option
+- Discount Options section (coupons, bulk discounts, negotiated pricing)
 
-2. Color Scheme:
-   - Cards: White background (#FFFFFF) with subtle shadow
-   - Explanation card: Indigo theme (#EEF2FF background, #C7D2FE border)
-   - Selected buttons: Solid brand.primary fill with white text
-   - Icons: Brand primary color with CheckCircle2 for selection state
+DeliveryStep:
+- On-Site Settings
+- Virtual Settings
+- Scheduling Options
 
-3. Responsive:
-   - On mobile (< lg breakpoint): Single column, explanation card below
-   - On desktop (>= lg breakpoint): Side-by-side two-column layout
+───────────────────────────────────────────────────────────────────────────────
+FUTURE CONSIDERATION: SIDE WIZARD LAYOUT
+───────────────────────────────────────────────────────────────────────────────
 
-4. Dark Mode Support:
-   - Fully supports dark mode via useTheme() hook
-   - Colors adapt automatically based on isDarkMode
+The user mentioned that the top wizard causes fields to start at ~50% screen
+height. A side wizard layout would allow:
+- Full height for step content
+- Better scroll experience
+- Always-visible step navigation
+
+This is noted for future implementation if approved.
 
 ═══════════════════════════════════════════════════════════════════════════════
