@@ -132,12 +132,12 @@ const BlockWizard: React.FC<BlockWizardProps> = ({
   if (fullPage) {
     return (
       <div
-        className="fixed inset-0 z-50 flex flex-col"
+        className="h-full flex flex-col"
         style={{ backgroundColor: colors.utility.primaryBackground }}
       >
         {/* Header with close button */}
         <div
-          className="flex items-center justify-between px-6 py-4 border-b"
+          className="flex items-center justify-between px-6 py-4 border-b flex-shrink-0"
           style={{
             backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#FFFFFF',
             borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB'

@@ -39,7 +39,8 @@ import {
   FileSettingsStep,
 } from './steps';
 
-// BusinessRulesStep removed - step 6 no longer exists in service wizard
+// Import BusinessRulesStep for step 6
+import BusinessRulesStep from './steps/service/BusinessRulesStep';
 
 // =================================================================
 // TYPES
@@ -278,7 +279,7 @@ const BlockWizardContent: React.FC<BlockWizardContentProps> = ({
           case 3: return <DeliveryStep formData={formData} onChange={handleFormChange} />;
           case 4: return <PricingStep formData={formData} onChange={handleFormChange} />;
           case 5: return <EvidenceStep formData={formData} onChange={handleFormChange} />;
-          // Step 6 removed - service wizard now ends at Evidence
+          case 6: return <BusinessRulesStep formData={formData} onChange={handleFormChange} />;
         }
         break;
 
@@ -382,6 +383,7 @@ const BlockWizardContent: React.FC<BlockWizardContentProps> = ({
           onPrevious={handlePrevious}
           onNext={handleNext}
           onSaveDraft={handleSaveDraft}
+          onCancel={onCancel}
           validationErrors={validationErrors}
         />
       </div>

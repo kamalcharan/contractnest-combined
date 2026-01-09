@@ -1,9 +1,10 @@
 // src/components/catalog-studio/BlockWizard/WizardFooter.tsx
 // Updated: Better styled buttons for Back and Save Draft
 // Updated: Added validation errors display
+// Updated: Added Cancel button
 
 import React from 'react';
-import { ChevronLeft, ChevronRight, Save, AlertCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Save, AlertCircle, X } from 'lucide-react';
 import { useTheme } from '../../../contexts/ThemeContext';
 
 interface WizardFooterProps {
@@ -12,6 +13,7 @@ interface WizardFooterProps {
   onPrevious: () => void;
   onNext: () => void;
   onSaveDraft: () => void;
+  onCancel?: () => void;
   validationErrors?: string[];
 }
 
@@ -21,6 +23,7 @@ const WizardFooter: React.FC<WizardFooterProps> = ({
   onPrevious,
   onNext,
   onSaveDraft,
+  onCancel,
   validationErrors = []
 }) => {
   const { isDarkMode, currentTheme } = useTheme();
@@ -96,32 +99,58 @@ const WizardFooter: React.FC<WizardFooterProps> = ({
 
       {/* Button Row */}
       <div className="px-6 py-4 flex justify-between items-center">
-        {/* Back Button - Now with background and border */}
-        <button
-        onClick={onPrevious}
-        disabled={isFirstStep}
-        className="px-4 py-2.5 text-sm font-medium flex items-center gap-2 rounded-xl border transition-all"
-        style={{
-          ...backButtonStyle,
-          cursor: isFirstStep ? 'not-allowed' : 'pointer',
-          opacity: isFirstStep ? 0.5 : 1,
-        }}
-        onMouseEnter={(e) => {
-          if (!isFirstStep) {
-            e.currentTarget.style.backgroundColor = isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB';
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (!isFirstStep) {
-            e.currentTarget.style.backgroundColor = isDarkMode ? colors.utility.secondaryBackground : '#F3F4F6';
-          }
-        }}
-      >
-        <ChevronLeft className="w-4 h-4" />
-        Back
-      </button>
+        {/* Left side buttons */}
+        <div className="flex gap-3">
+          {/* Back Button */}
+          <button
+            onClick={onPrevious}
+            disabled={isFirstStep}
+            className="px-4 py-2.5 text-sm font-medium flex items-center gap-2 rounded-xl border transition-all"
+            style={{
+              ...backButtonStyle,
+              cursor: isFirstStep ? 'not-allowed' : 'pointer',
+              opacity: isFirstStep ? 0.5 : 1,
+            }}
+            onMouseEnter={(e) => {
+              if (!isFirstStep) {
+                e.currentTarget.style.backgroundColor = isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isFirstStep) {
+                e.currentTarget.style.backgroundColor = isDarkMode ? colors.utility.secondaryBackground : '#F3F4F6';
+              }
+            }}
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Back
+          </button>
 
-      <div className="flex gap-3">
+          {/* Cancel Button */}
+          {onCancel && (
+            <button
+              onClick={onCancel}
+              className="px-4 py-2.5 text-sm font-medium flex items-center gap-2 rounded-xl border-2 transition-all"
+              style={{
+                backgroundColor: isDarkMode ? colors.semantic.error + '15' : '#FEF2F2',
+                borderColor: isDarkMode ? colors.semantic.error + '40' : '#FECACA',
+                color: isDarkMode ? colors.semantic.error : '#DC2626',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = isDarkMode ? colors.semantic.error + '25' : '#FEE2E2';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = isDarkMode ? colors.semantic.error + '15' : '#FEF2F2';
+              }}
+            >
+              <X className="w-4 h-4" />
+              Cancel
+            </button>
+          )}
+        </div>
+
+        {/* Right side buttons */}
+        <div className="flex gap-3">
         {/* Save Draft Button - Now with amber/yellow theme */}
         <button
           onClick={onSaveDraft}
