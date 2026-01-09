@@ -4,7 +4,7 @@
 // Updated: Use BusinessRulesStep for step 6 instead of RulesStep
 // Updated: Added mandatory field validation before proceeding to next step
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { Block, WizardMode, BlockCategory } from '../../../types/catalogStudio';
 import { BLOCK_CATEGORIES, WIZARD_STEPS } from '../../../utils/catalog-studio';
@@ -83,6 +83,14 @@ const BlockWizardContent: React.FC<BlockWizardContentProps> = ({
   const [currentStep, setCurrentStep] = useState(initialStep);
   const [formData, setFormData] = useState<Partial<Block>>(editingBlock || {});
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Scroll to top when step changes
+  useEffect(() => {
+    if (contentRef.current) {
+      contentRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [currentStep]);
 
   // Validation function for each step
   const validateStep = useCallback((step: number, type: string, data: Partial<Block>): string[] => {
@@ -123,13 +131,16 @@ const BlockWizardContent: React.FC<BlockWizardContentProps> = ({
     // Block-specific step validations
     if (type === 'service') {
       // Step 3 - Delivery: No mandatory fields (cycles are optional)
-      // Step 4 - Pricing: Price is required
+      // Step 4 - Pricing: Price is required (stored in meta.pricingRecords)
       if (step === 4) {
-        if (!data.price || data.price <= 0) {
+        const pricingRecords = data.meta?.pricingRecords as Array<{ amount: number }> | undefined;
+        const hasValidPrice = pricingRecords && pricingRecords.length > 0 && pricingRecords[0]?.amount > 0;
+        if (!hasValidPrice) {
           errors.push('Price is required');
         }
       }
-      // Step 5 - Evidence: No mandatory fields (last step for service)
+      // Step 5 - Evidence: No mandatory fields
+      // Step 6 - Business Rules: No mandatory fields
     }
 
     if (type === 'spare') {
@@ -372,7 +383,7 @@ const BlockWizardContent: React.FC<BlockWizardContentProps> = ({
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Step Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div ref={contentRef} className="flex-1 overflow-y-auto p-6">
           {renderStepContent()}
         </div>
 

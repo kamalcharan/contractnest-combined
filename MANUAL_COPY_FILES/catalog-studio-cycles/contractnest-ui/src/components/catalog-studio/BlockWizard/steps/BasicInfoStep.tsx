@@ -290,7 +290,7 @@ const BasicInfoStep: React.FC<BasicInfoStepProps> = ({ blockType, formData, onCh
             </p>
           </div>
 
-          {/* Description Card - Increased height */}
+          {/* Description Card */}
           <div className="p-5 rounded-xl border" style={cardStyle}>
             <RichTextEditor
               value={formData.description || ''}
@@ -302,8 +302,8 @@ const BasicInfoStep: React.FC<BasicInfoStepProps> = ({ blockType, formData, onCh
               showCharCount={true}
               allowFullscreen={true}
               toolbarButtons={['bold', 'italic', 'underline', 'bulletList', 'orderedList']}
-              minHeight={200}
-              maxHeight={300}
+              minHeight={150}
+              maxHeight={200}
             />
           </div>
 
@@ -483,8 +483,8 @@ const BasicInfoStep: React.FC<BasicInfoStepProps> = ({ blockType, formData, onCh
                 showCharCount={true}
                 allowFullscreen={true}
                 toolbarButtons={['bold', 'italic', 'bulletList']}
-                minHeight={100}
-                maxHeight={180}
+                minHeight={150}
+                maxHeight={200}
               />
             </div>
           )}
