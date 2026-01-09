@@ -1,135 +1,104 @@
 ═══════════════════════════════════════════════════
-📦 PLAYGROUND FEATURE - CHANGES SUMMARY
+📦 PLAYGROUND - LANDING PAGE SECTION (UPDATED)
 ═══════════════════════════════════════════════════
-Feature: Interactive Playground Demo (Equipment AMC Industry)
-Branch: playground
+Feature: Interactive Playground Section within Landing Page
+(NOT a separate page - integrated into landing page)
 
-Files Created:
-  - contractnest-ui/src/pages/public/PlaygroundPage.tsx - Main page orchestrator
-  - contractnest-ui/src/components/playground/PlaygroundWelcome.tsx - Welcome + persona selection
-  - contractnest-ui/src/components/playground/LeadCaptureForm.tsx - Lead capture form
-  - contractnest-ui/src/components/playground/SellerBuilder.tsx - Seller drag-drop builder
-  - contractnest-ui/src/components/playground/BuyerJourney.tsx - Buyer RFP flow
-  - contractnest-ui/src/components/playground/SendAnimation.tsx - Flying paper animation
-  - contractnest-ui/src/components/playground/SuccessModal.tsx - Success modal with CTA
-  - contractnest-ui/src/components/playground/types.ts - TypeScript types
-  - contractnest-ui/src/components/playground/index.ts - Component exports
-  - contractnest-ui/src/components/playground/data/dummyBlocks.ts - Demo blocks data
-  - contractnest-ui/src/components/playground/data/dummyVendors.ts - Demo vendors data
+NEW FILE:
+  - contractnest-ui/src/components/landing/LandingPlayground.tsx
 
-Files to Modify:
-  - contractnest-ui/src/App.tsx - Add /playground route (see APP_TSX_CHANGES.md)
+FILE TO MODIFY:
+  - contractnest-ui/src/pages/public/LandingPage.tsx
 
 Submodules Affected: contractnest-ui
-
-Production Checklist:
-  ✅ Transaction Management: N/A (demo only)
-  ✅ Race Condition Handling: N/A (demo only)
-  ✅ Error Handling: Yes - graceful fallback if DB save fails
-  ✅ Toasts: N/A (using custom animations)
-  ✅ Loaders: Yes - loading states in forms
 
 ═══════════════════════════════════════════════════
 🗄️ SUPABASE SETUP (DO THIS FIRST!)
 ═══════════════════════════════════════════════════
 
-1. Go to Supabase Dashboard → SQL Editor
-2. Run the SQL from: SUPABASE_TABLE.sql
-3. This creates the leads_contractnest table
+Go to Supabase Dashboard → SQL Editor and run:
+
+CREATE TABLE IF NOT EXISTS leads_contractnest (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  phone VARCHAR(20) NOT NULL,
+  industry VARCHAR(100) DEFAULT 'equipment_amc',
+  persona VARCHAR(20) NOT NULL,
+  completed_demo BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE leads_contractnest ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow anonymous inserts" ON leads_contractnest
+  FOR INSERT TO anon WITH CHECK (true);
 
 ═══════════════════════════════════════════════════
-💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+💻 COPY & INTEGRATE COMMANDS
 ═══════════════════════════════════════════════════
 
 STEP 1: Navigate to Project
 ─────────────────────────────────
 cd "D:\projects\core projects\ContractNest\contractnest-combined"
 
-STEP 2: Copy Playground Components
+STEP 2: Copy LandingPlayground Component
 ─────────────────────────────────
-Copy-Item "MANUAL_COPY_FILES\playground\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\playground\contractnest-ui\src\components\landing\LandingPlayground.tsx" -Destination "contractnest-ui\src\components\landing\" -Force
 
-Write-Host "✅ Playground components copied!" -ForegroundColor Green
+Write-Host "✅ LandingPlayground.tsx copied!" -ForegroundColor Green
 
-STEP 3: Update App.tsx (MANUAL EDIT REQUIRED)
+STEP 3: Edit LandingPage.tsx (MANUAL)
 ─────────────────────────────────
-Open: contractnest-ui/src/App.tsx
+Open: contractnest-ui/src/pages/public/LandingPage.tsx
 
-ADD IMPORT (around line 21, after LandingPage import):
-─────────────────────────────────
-import PlaygroundPage from './pages/public/PlaygroundPage';
+ADD IMPORT (around line 18, after LandingFooter):
+import LandingPlayground from '../../components/landing/LandingPlayground';
 
-ADD ROUTE (around line 301, in Public Routes section):
-─────────────────────────────────
-<Route path="/playground" element={<PlaygroundPage />} />
+ADD COMPONENT (around line 593, BEFORE <LandingPricing):
+        {/* Playground Section - Interactive Demo */}
+        <LandingPlayground />
 
-STEP 4: Start Dev Server & Test
+STEP 4: Test
 ─────────────────────────────────
 cd contractnest-ui
 npm run dev
 
-Navigate to: http://localhost:5173/playground
+Open: http://localhost:5173
+Scroll down OR click Hero "Try the Playground" button
 
 ═══════════════════════════════════════════════════
 🧪 TESTING CHECKLIST
 ═══════════════════════════════════════════════════
 
-WELCOME SCREEN:
-- [ ] Welcome card displays with "Experience ContractNest" title
-- [ ] "Equipment AMC" industry badge visible
-- [ ] "I'm a Seller" and "I'm a Buyer" cards visible
-- [ ] Hover effects work on persona cards
-- [ ] Clicking persona card advances to lead capture
+HERO:
+- [ ] Button scrolls to #playground section
 
-LEAD CAPTURE:
-- [ ] Back button returns to welcome
-- [ ] Form shows Name, Email, Phone fields
-- [ ] Validation works (required fields, email format, phone format)
-- [ ] "Start Demo" button submits and advances
-- [ ] Lead saved to Supabase (check table)
+PLAYGROUND CTA:
+- [ ] 🎮 icon and "Playground" title
+- [ ] Workflow visual (4 steps)
+- [ ] "See For Yourself - Try Now" button
 
-SELLER FLOW:
-- [ ] Block palette shows 4 categories (Services, Spare Parts, Billing, Terms)
-- [ ] Desktop: Drag-and-drop works
-- [ ] Mobile: Tap-to-add works (category accordion)
-- [ ] Blocks appear in canvas when added
-- [ ] Remove button works on canvas blocks
-- [ ] Customer name input works
-- [ ] Total value updates correctly
-- [ ] Live preview panel updates
-- [ ] "Send Contract" button enabled when valid
-- [ ] Flying paper animation plays
-- [ ] Success modal shows with download button
+USER FORM:
+- [ ] Mobile (+91), Name, Company fields
+- [ ] Validation works
+- [ ] "Start Building" advances
 
-BUYER FLOW:
-- [ ] RFP form shows all fields (equipment, quantity, location, budget, timeline)
-- [ ] Requirements checklist works (toggle on/off)
-- [ ] "Send to Verified Vendors" advances to matching
-- [ ] Matching animation shows (3 vendors found)
-- [ ] Quote comparison shows 3 vendor cards
-- [ ] Vendor selection works (highlight selected)
-- [ ] "Accept" button works
-- [ ] Flying paper animation plays
-- [ ] Success modal shows
+BUILDER:
+- [ ] Customer Name input
+- [ ] 4 block categories
+- [ ] Drag-drop (desktop) / Tap-to-add (mobile)
+- [ ] Total updates
+- [ ] "Send Contract" works
 
-MOBILE RESPONSIVENESS:
-- [ ] Welcome screen stacks cards vertically
-- [ ] Lead form is full-width
-- [ ] Seller builder uses accordion for blocks
-- [ ] Preview is accessible via button (bottom sheet)
-- [ ] Buyer RFP form is scrollable
-- [ ] Vendor cards stack vertically on mobile
-
-SUCCESS MODAL:
-- [ ] Shows contract/vendor summary
-- [ ] "Download Contract (HTML)" works (seller only)
-- [ ] "Start Free Trial" navigates to /register
-- [ ] "Try Again" restarts the demo
+SUCCESS:
+- [ ] Download HTML works
+- [ ] "Start Free Trial" → /register
+- [ ] "Try Again" restarts
 
 ═══════════════════════════════════════════════════
-⏸️ WAITING FOR CONFIRMATION
+⏸️ CONFIRM AFTER TESTING
 ═══════════════════════════════════════════════════
-Test locally and confirm:
-  → "Tested, working - proceed with merge"
-  → "Issue found: [describe problem]"
+  → "Tested, working"
+  → "Issue found: [describe]"
 ═══════════════════════════════════════════════════
