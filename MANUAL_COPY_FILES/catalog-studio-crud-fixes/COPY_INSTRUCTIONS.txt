@@ -5,17 +5,24 @@ Branch: catalog-studio-crud-fixes
 Date: 2026-01-09 (Updated)
 
 Files Changed:
-  - contractnest-ui/src/utils/catalog-studio/wizard-data.ts - Added ResourceDependencyStep, PricingStep
-  - contractnest-ui/src/utils/catalog-studio/catBlockAdapter.ts - Complete rewrite with all field mappings
-  - contractnest-ui/src/utils/catalog-studio/htmlUtils.ts - NEW: HTML sanitization utilities
-  - contractnest-ui/src/utils/catalog-studio/index.ts - Added htmlUtils exports
-  - contractnest-ui/src/components/catalog-studio/BlockWizard/index.tsx - Wired all wizard steps
-  - contractnest-ui/src/components/catalog-studio/BlockWizard/BlockWizardContent.tsx - Wired all wizard steps
-  - contractnest-ui/src/components/catalog-studio/SafeHtml.tsx - NEW: Safe HTML rendering component
-  - contractnest-ui/src/hooks/queries/useCatBlocks.ts - Updated CatBlock interface
-  - contractnest-ui/src/pages/catalog-studio/configure.tsx - Fixed to use adapters properly
+  FRONTEND (contractnest-ui):
+  - src/utils/catalog-studio/wizard-data.ts - Added ResourceDependencyStep, PricingStep
+  - src/utils/catalog-studio/catBlockAdapter.ts - Complete rewrite with all field mappings
+  - src/utils/catalog-studio/htmlUtils.ts - NEW: HTML sanitization utilities
+  - src/utils/catalog-studio/index.ts - Added htmlUtils exports
+  - src/components/catalog-studio/BlockWizard/index.tsx - Wired all wizard steps
+  - src/components/catalog-studio/BlockWizard/BlockWizardContent.tsx - Wired all wizard steps
+  - src/components/catalog-studio/SafeHtml.tsx - NEW: Safe HTML rendering component
+  - src/hooks/queries/useCatBlocks.ts - Updated CatBlock interface
+  - src/pages/catalog-studio/configure.tsx - Fixed to use adapters properly
 
-Submodules Affected: contractnest-ui
+  EDGE FUNCTION (contractnest-edge):
+  - supabase/functions/cat-blocks/index.ts - Added is_live field support
+
+  DATABASE MIGRATION (contractnest-edge):
+  - supabase/migrations/catalog-studio/006_add_is_live_column.sql - NEW: Add is_live column
+
+Submodules Affected: contractnest-ui, contractnest-edge
 
 Production Checklist:
   ✅ Transaction Management: N/A (frontend changes)
@@ -77,3 +84,27 @@ Config JSONB (type-specific):
 
 NOTE: price_type_id and status_id expect UUIDs in DB
       - Stored as strings in config.priceType and config.status instead
+
+═══════════════════════════════════════════════════
+DATABASE MIGRATION REQUIRED
+═══════════════════════════════════════════════════
+
+Run this migration to add is_live column:
+
+  supabase/migrations/catalog-studio/006_add_is_live_column.sql
+
+Or run directly in Supabase SQL editor:
+
+  ALTER TABLE cat_blocks
+  ADD COLUMN IF NOT EXISTS is_live BOOLEAN NOT NULL DEFAULT true;
+
+  CREATE INDEX IF NOT EXISTS idx_cat_blocks_is_live ON cat_blocks(is_live);
+
+═══════════════════════════════════════════════════
+EDGE FUNCTION DEPLOYMENT
+═══════════════════════════════════════════════════
+
+After copying the edge function, deploy to Supabase:
+
+  cd contractnest-edge
+  supabase functions deploy cat-blocks
