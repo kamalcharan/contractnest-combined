@@ -1,0 +1,35 @@
+═══════════════════════════════════════════════════
+SIMPLIFIED HERO SECTION - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════
+
+Branch: simplified-hero
+Files Changed:
+  - contractnest-ui/src/components/landing/LandingHero.tsx - Simplified hero with persona cards
+  - contractnest-ui/src/pages/public/LandingPage.tsx - Updated hero props
+
+Submodules Affected: contractnest-ui
+
+═══════════════════════════════════════════════════
+COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Copy LandingHero.tsx
+Copy-Item "MANUAL_COPY_FILES\simplified-hero\contractnest-ui\src\components\landing\LandingHero.tsx" -Destination "contractnest-ui\src\components\landing\LandingHero.tsx" -Force
+
+# Copy LandingPage.tsx
+Copy-Item "MANUAL_COPY_FILES\simplified-hero\contractnest-ui\src\pages\public\LandingPage.tsx" -Destination "contractnest-ui\src\pages\public\LandingPage.tsx" -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+START DEV SERVER
+═══════════════════════════════════════════════════
+
+cd contractnest-ui
+npm run dev
+
+# Open http://localhost:5173
+
+═══════════════════════════════════════════════════
