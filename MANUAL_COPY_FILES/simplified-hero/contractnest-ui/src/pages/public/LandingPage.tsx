@@ -7,6 +7,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 // Import all landing page components
 import LandingNavigation from '../../components/landing/LandingNavigation';
 import LandingHero from '../../components/landing/LandingHero';
+import TheProblem from '../../components/landing/TheProblem';
 import LandingStats from '../../components/landing/LandingStats';
 import LandingFeatures from '../../components/landing/LandingFeatures';
 import LandingTestimonials from '../../components/landing/LandingTestimonials';
@@ -553,10 +554,20 @@ const loginUrl = import.meta.env.VITE_LOGIN_URL || 'https://contractnest-ui-prod
           }}
         />
 
-        {/* Problem Statistics */}
-        <LandingStats
-          onCalculatorOpen={handleValueCalculatorOpen}
+        {/* The Problem Section - Dual Persona */}
+        <TheProblem
+          onCtaClick={() => {
+            const playgroundSection = document.getElementById('playground');
+            if (playgroundSection) {
+              playgroundSection.scrollIntoView({ behavior: 'smooth' });
+            }
+          }}
         />
+
+        {/* Problem Statistics - Can be removed if TheProblem covers it */}
+        {/* <LandingStats
+          onCalculatorOpen={handleValueCalculatorOpen}
+        /> */}
 
         {/* Solution Features */}
         <LandingFeatures
