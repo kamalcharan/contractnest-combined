@@ -2,8 +2,9 @@
 // Embeddable wizard content (no modal wrapper) for use in full page layouts
 // Phase 4: Full Page Wizard
 // Updated: Use BusinessRulesStep for step 6 instead of RulesStep
+// Updated: Added mandatory field validation before proceeding to next step
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { Block, WizardMode, BlockCategory } from '../../../types/catalogStudio';
 import { BLOCK_CATEGORIES, WIZARD_STEPS } from '../../../utils/catalog-studio';
@@ -81,6 +82,125 @@ const BlockWizardContent: React.FC<BlockWizardContentProps> = ({
 
   const [currentStep, setCurrentStep] = useState(initialStep);
   const [formData, setFormData] = useState<Partial<Block>>(editingBlock || {});
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+
+  // Validation function for each step
+  const validateStep = useCallback((step: number, type: string, data: Partial<Block>): string[] => {
+    const errors: string[] = [];
+
+    // Step 1 - Type Selection: Just need a type selected
+    if (step === 1 && showTypeSelection) {
+      if (!type) {
+        errors.push('Please select a block type');
+      }
+      return errors;
+    }
+
+    // Step 2 - Basic Info: Name and Description required
+    const basicInfoStep = showTypeSelection ? 2 : 1;
+    if (step === basicInfoStep) {
+      if (!data.name?.trim()) {
+        errors.push('Block name is required');
+      }
+      if (!data.description?.trim()) {
+        errors.push('Description is required');
+      }
+      // Block-specific validations for Basic Info
+      if (type === 'service') {
+        if (!data.duration || data.duration <= 0) {
+          errors.push('Duration is required');
+        }
+      }
+      if (type === 'spare') {
+        if (!data.meta?.sku?.toString().trim()) {
+          errors.push('SKU is required');
+        }
+      }
+      if (type === 'billing') {
+        if (!data.meta?.paymentType) {
+          errors.push('Payment type is required');
+        }
+      }
+      return errors;
+    }
+
+    // Block-specific step validations
+    if (type === 'service') {
+      // Step 3 - Delivery: No mandatory fields (cycles are optional)
+      // Step 4 - Pricing: Price is required
+      if (step === 4) {
+        if (!data.price || data.price <= 0) {
+          errors.push('Price is required');
+        }
+      }
+      // Step 5 - Evidence: No mandatory fields
+      // Step 6 - Business Rules: Conditional validation
+      if (step === 6) {
+        const meta = data.meta || {};
+        // If followup is enabled, validate required fields
+        if (meta.followup?.enabled) {
+          if (!meta.followup.freeFollowups || meta.followup.freeFollowups <= 0) {
+            errors.push('Number of free followups is required when followup is enabled');
+          }
+          if (!meta.followup.followupPeriod || meta.followup.followupPeriod <= 0) {
+            errors.push('Followup validity period is required when followup is enabled');
+          }
+          if (!meta.followup.followupPeriodUnit) {
+            errors.push('Followup period unit is required when followup is enabled');
+          }
+        }
+        // If warranty is enabled, validate required fields
+        if (meta.warranty?.enabled) {
+          if (!meta.warranty.warrantyPeriod || meta.warranty.warrantyPeriod <= 0) {
+            errors.push('Warranty period is required when warranty is enabled');
+          }
+          if (!meta.warranty.warrantyPeriodUnit) {
+            errors.push('Warranty period unit is required when warranty is enabled');
+          }
+          if (!meta.warranty.warrantyType) {
+            errors.push('Warranty type is required when warranty is enabled');
+          }
+          if (!meta.warranty.warrantyTerms?.trim()) {
+            errors.push('Warranty terms are required when warranty is enabled');
+          }
+        }
+        // If deposit is enabled, validate deposit percentage
+        if (meta.requiresDeposit) {
+          if (!meta.depositPercentage || meta.depositPercentage <= 0 || meta.depositPercentage > 100) {
+            errors.push('Valid deposit percentage (1-100) is required when deposit is enabled');
+          }
+        }
+      }
+    }
+
+    if (type === 'spare') {
+      // Step 3 - Inventory: Stock quantity required
+      if (step === 3) {
+        if (!data.meta?.stockQuantity || data.meta.stockQuantity < 0) {
+          errors.push('Stock quantity is required');
+        }
+      }
+      // Step 4 - Fulfillment: No mandatory fields
+    }
+
+    if (type === 'billing') {
+      // Step 3 - Structure: Billing structure required
+      if (step === 3) {
+        if (!data.meta?.billingStructure) {
+          errors.push('Billing structure is required');
+        }
+      }
+      // Step 4 - Schedule: Billing frequency required
+      if (step === 4) {
+        if (!data.meta?.billingFrequency) {
+          errors.push('Billing frequency is required');
+        }
+      }
+      // Step 5 - Automation: No mandatory fields
+    }
+
+    return errors;
+  }, [showTypeSelection]);
 
   // Get wizard steps based on block type
   const wizardSteps = WIZARD_STEPS[blockType] || WIZARD_STEPS.service;
@@ -117,12 +237,28 @@ const BlockWizardContent: React.FC<BlockWizardContentProps> = ({
   }, [formData, onFormDataChange]);
 
   const handleNext = () => {
+    // Validate current step before proceeding
+    const errors = validateStep(currentStep, blockType, formData);
+    setValidationErrors(errors);
+
+    if (errors.length > 0) {
+      // Don't proceed if there are validation errors
+      return;
+    }
+
     if (currentStep < totalSteps) {
       setCurrentStep(currentStep + 1);
     } else {
       onSave(formData);
     }
   };
+
+  // Clear validation errors when form data changes
+  useEffect(() => {
+    if (validationErrors.length > 0) {
+      setValidationErrors([]);
+    }
+  }, [formData]);
 
   const handlePrevious = () => {
     if (currentStep > 1) {
@@ -287,6 +423,7 @@ const BlockWizardContent: React.FC<BlockWizardContentProps> = ({
         onPrevious={handlePrevious}
         onNext={handleNext}
         onSaveDraft={handleSaveDraft}
+        validationErrors={validationErrors}
       />
     </div>
   );
