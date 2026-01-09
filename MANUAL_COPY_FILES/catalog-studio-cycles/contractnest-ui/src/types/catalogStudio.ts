@@ -3,8 +3,7 @@
 // Centralized types for Catalog Studio feature
 
 export interface BlockCategory {
-  id: string;           // Short identifier (e.g., 'service', 'spare')
-  dbId?: string;        // Actual UUID from m_category_details for database operations
+  id: string;
   name: string;
   icon: string; // Lucide icon name (e.g., 'Target', 'Package', 'Wallet')
   count: number;

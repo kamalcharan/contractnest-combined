@@ -5,7 +5,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useCatBlocksTest } from '@/hooks/queries/useCatBlocksTest';
 import { useCatBlockMutationOperations } from '@/hooks/mutations/useCatBlocksMutations';
-import { useBlockCategories } from '@/hooks/queries/useBlockTypes';
+import { useBlockCategories, usePricingModes } from '@/hooks/queries/useBlockTypes';
 import { Block, WizardMode } from '@/types/catalogStudio';
 import { BLOCK_CATEGORIES, getCategoryById } from '@/utils/catalog-studio';
 import { CategoryPanel, BlockGrid, BlockWizard, BlockEditorPanel } from '@/components/catalog-studio';
@@ -27,8 +27,9 @@ const CatalogStudioConfigurePage: React.FC = () => {
     isLoading: isMutating,
   } = useCatBlockMutationOperations();
 
-  // Block Types (for getting UUID from type string)
+  // Block Types and Pricing Modes (for getting UUIDs from type strings)
   const { getDbIdByType } = useBlockCategories();
+  const { getDbIdByMode } = usePricingModes();
 
   // State
   const [selectedCategory, setSelectedCategory] = useState<string>('service');
@@ -71,8 +72,10 @@ const CatalogStudioConfigurePage: React.FC = () => {
           tags: blockData.tags,
         });
       } else {
-        // Get the UUID for the block type from the database
+        // Get the UUIDs for block type and pricing mode from the database
         const blockTypeUuid = getDbIdByType(wizardBlockType);
+        const pricingModeUuid = getDbIdByMode(blockData.meta?.pricingMode || 'independent');
+
         if (!blockTypeUuid) {
           console.error('Block type UUID not found for:', wizardBlockType);
           return;
@@ -81,8 +84,8 @@ const CatalogStudioConfigurePage: React.FC = () => {
         await createBlock({
           name: blockData.name,
           description: blockData.description,
-          block_type_id: blockTypeUuid, // Use UUID, not string
-          pricing_mode_id: blockData.pricingMode || 'independent',
+          block_type_id: blockTypeUuid,
+          pricing_mode_id: pricingModeUuid || undefined, // Optional - may be null if not found
           config: blockData.config || {},
           tags: blockData.tags,
         });
@@ -113,6 +116,8 @@ const CatalogStudioConfigurePage: React.FC = () => {
     try {
       // Use existing blockTypeId if it's a UUID, otherwise look it up
       const blockTypeUuid = block.blockTypeId || getDbIdByType(block.categoryId || 'service');
+      const pricingModeUuid = getDbIdByMode(block.pricingMode || 'independent');
+
       if (!blockTypeUuid) {
         console.error('Block type UUID not found for duplication');
         return;
@@ -122,7 +127,7 @@ const CatalogStudioConfigurePage: React.FC = () => {
         name: `${block.name} (Copy)`,
         description: block.description,
         block_type_id: blockTypeUuid,
-        pricing_mode_id: block.pricingMode || 'independent',
+        pricing_mode_id: pricingModeUuid || undefined,
         config: block.config || {},
         tags: block.tags,
       });
