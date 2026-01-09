@@ -1,13 +1,20 @@
 ═══════════════════════════════════════════════════
-SIMPLIFIED HERO SECTION - COPY INSTRUCTIONS
+SIMPLIFIED HERO SECTION v2 - COMPACT (Above the Fold)
 ═══════════════════════════════════════════════════
 
 Branch: simplified-hero
 Files Changed:
-  - contractnest-ui/src/components/landing/LandingHero.tsx - Simplified hero with persona cards
+  - contractnest-ui/src/components/landing/LandingHero.tsx - Compact hero with persona cards
   - contractnest-ui/src/pages/public/LandingPage.tsx - Updated hero props
 
 Submodules Affected: contractnest-ui
+
+Changes in v2:
+  - Reduced vertical padding throughout
+  - Smaller typography sizes
+  - Compact persona cards (inline with icons)
+  - Cards are now clickable (entire card)
+  - Everything fits above the fold without scrolling
 
 ═══════════════════════════════════════════════════
 COPY COMMANDS (PowerShell)
@@ -31,5 +38,6 @@ cd contractnest-ui
 npm run dev
 
 # Open http://localhost:5173
+# Hard refresh: Ctrl+F5
 
 ═══════════════════════════════════════════════════
