@@ -1,10 +1,10 @@
 ═══════════════════════════════════════════════════════════════════════════════
-CATALOG STUDIO - DELIVERY STEP + PRICING STEP + WIZARD FOOTER
+CATALOG STUDIO - DELIVERY + PRICING + EVIDENCE + WIZARD FOOTER
 ═══════════════════════════════════════════════════════════════════════════════
 
 Branch: catalog-studio-cycles
 Date: January 2025
-Version: 3.0 (DeliveryStep + PricingStep redesign + WizardFooter buttons)
+Version: 4.0 (Added EvidenceStep redesign)
 
 ───────────────────────────────────────────────────────────────────────────────
 FILES CHANGED
@@ -13,29 +13,35 @@ FILES CHANGED
 1. DeliveryStep.tsx
    Location: contractnest-ui/src/components/catalog-studio/BlockWizard/steps/service/
    Changes:
-   - HIDDEN: On-Site Settings section (commented out)
-   - HIDDEN: Virtual Settings section (commented out)
-   - HIDDEN: Scheduling Options section (commented out)
-   - REDESIGNED: Two-column layout for Service Cycles section
+   - HIDDEN: On-Site Settings, Virtual Settings, Scheduling Options
+   - REDESIGNED: Two-column layout for Service Cycles
    - ADDED: Service Cycles feature (Yes/No toggle, cycle days, grace period)
 
 2. PricingStep.tsx
    Location: contractnest-ui/src/components/catalog-studio/BlockWizard/steps/service/
    Changes:
-   - HIDDEN: "Tiered" pricing option (commented out)
-   - HIDDEN: "Quote" (custom) pricing option (commented out)
-   - HIDDEN: Discount Options section (commented out)
-   - REDESIGNED: Two-column layout (controls left, tips right)
-   - IMPROVED: Pricing model cards with better visual hierarchy
-   - ADDED: Green-themed "Pricing Best Practices" explanation card
+   - HIDDEN: Tiered pricing, Quote pricing, Discount Options
+   - REDESIGNED: Two-column layout with green tips card
+   - SHOWS: Only Fixed Price and Hourly Rate options
 
-3. WizardFooter.tsx
+3. EvidenceStep.tsx
+   Location: contractnest-ui/src/components/catalog-studio/BlockWizard/steps/service/
+   Changes:
+   - HIDDEN: Before Photo, After Photo, Customer Signature, GPS, Time Tracking, Service Report
+   - HIDDEN: Photo Settings section
+   - SHOWS: Only 3 options:
+     • Upload Form - Upload documents/files as proof
+     • OTP Confirmation - Customer OTP verification
+     • Service Form - With dropdown to select form template
+   - REDESIGNED: Two-column layout with blue tips card
+   - ADDED: Form selector dropdown for Service Form type
+
+4. WizardFooter.tsx
    Location: contractnest-ui/src/components/catalog-studio/BlockWizard/
    Changes:
-   - IMPROVED: Back button - now has gray background + border (was plain text)
-   - IMPROVED: Save Draft button - now amber/yellow themed with Save icon
-   - IMPROVED: Continue button - added shadow and hover lift effect
-   - ADDED: Rounded corners (rounded-xl) to all buttons
+   - Back button: Gray background + border
+   - Save Draft: Amber/yellow themed with Save icon
+   - Continue: Shadow + hover lift effect
 
 ───────────────────────────────────────────────────────────────────────────────
 SUBMODULES AFFECTED
@@ -63,43 +69,66 @@ git checkout claude/review-catalog-studio-specs-XVcAF
 git pull origin claude/review-catalog-studio-specs-XVcAF
 
 ───────────────────────────────────────────────────────────────────────────────
-UI CHANGES SUMMARY
+EVIDENCE STEP UI
 ───────────────────────────────────────────────────────────────────────────────
 
-PRICING STEP:
 ┌─────────────────────────────────────┬──────────────────────────────┐
 │  LEFT COLUMN (60%)                  │  RIGHT COLUMN (40%)          │
 │  ─────────────────────────          │  ───────────────────         │
-│  • Pricing Model Selection          │  • Pricing Best Practices    │
-│    - Fixed Price (card)             │    - Green themed card       │
-│    - Hourly Rate (card)             │    - Tips for each model     │
-│  • Currency-Specific Pricing        │    - Multi-currency tips     │
-│    - Add Currency button            │    - Tax configuration tips  │
-│    - Price input per currency       │                              │
-│    - Tax tags (multi-select)        │                              │
-│    - Price breakdown                │                              │
+│  • Summary Card                     │  • Evidence Types Explained  │
+│    - Evidence count                 │    - Upload Form info        │
+│    - Required toggle                │    - OTP Confirmation info   │
+│                                     │    - Service Form info       │
+│  • Upload Form Card                 │                              │
+│    - Toggle enable/disable          │  • Why Evidence Matters      │
+│    - When: dropdown                 │    - Trust, disputes, etc.   │
+│    - Required checkbox              │                              │
+│                                     │  • Best Practices            │
+│  • OTP Confirmation Card            │    - Usage tips              │
+│    - Toggle enable/disable          │                              │
+│    - When: dropdown                 │                              │
+│    - Required checkbox              │                              │
+│                                     │                              │
+│  • Service Form Card                │                              │
+│    - Toggle enable/disable          │                              │
+│    - Form selector dropdown         │                              │
+│    - When: dropdown                 │                              │
+│    - Required checkbox              │                              │
 └─────────────────────────────────────┴──────────────────────────────┘
-
-WIZARD FOOTER BUTTONS:
-┌─────────────────────────────────────────────────────────────────────┐
-│ [← Back]              [💾 Save Draft]              [Continue →]     │
-│  Gray bg               Amber/yellow                 Primary color   │
-│  with border           themed                       with shadow     │
-└─────────────────────────────────────────────────────────────────────┘
 
 ───────────────────────────────────────────────────────────────────────────────
 HIDDEN FEATURES (Code preserved, commented out)
 ───────────────────────────────────────────────────────────────────────────────
 
+EvidenceStep:
+- Before Photo, After Photo
+- Customer Signature
+- GPS Location
+- Time Tracking
+- Service Report
+- Photo Settings section (min photos, quality, watermarks)
+
 PricingStep:
 - Tiered pricing option
 - Quote (custom) pricing option
-- Discount Options section (coupons, bulk discounts, negotiated pricing)
+- Discount Options section
 
 DeliveryStep:
 - On-Site Settings
 - Virtual Settings
 - Scheduling Options
+
+───────────────────────────────────────────────────────────────────────────────
+NEW FORM DATA FIELDS
+───────────────────────────────────────────────────────────────────────────────
+
+EvidenceStep:
+  selectedServiceForm?: string;  // ID of selected form template
+
+DeliveryStep:
+  requiresCycles?: boolean;
+  cycleDays?: number;
+  cycleGracePeriod?: number;
 
 ───────────────────────────────────────────────────────────────────────────────
 FUTURE CONSIDERATION: SIDE WIZARD LAYOUT
