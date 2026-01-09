@@ -1,0 +1,45 @@
+═══════════════════════════════════════════════════
+📦 CATALOG STUDIO CRUD FIXES
+═══════════════════════════════════════════════════
+Branch: catalog-studio-crud-fixes
+Date: 2026-01-09
+
+Files Changed:
+  - contractnest-ui/src/utils/catalog-studio/wizard-data.ts - Added ResourceDependencyStep, PricingStep
+  - contractnest-ui/src/utils/catalog-studio/catBlockAdapter.ts - Complete rewrite with all field mappings
+  - contractnest-ui/src/utils/catalog-studio/htmlUtils.ts - NEW: HTML sanitization utilities
+  - contractnest-ui/src/utils/catalog-studio/index.ts - Added htmlUtils exports
+  - contractnest-ui/src/components/catalog-studio/BlockWizard/index.tsx - Wired all wizard steps
+  - contractnest-ui/src/components/catalog-studio/BlockWizard/BlockWizardContent.tsx - Wired all wizard steps
+  - contractnest-ui/src/components/catalog-studio/SafeHtml.tsx - NEW: Safe HTML rendering component
+  - contractnest-ui/src/hooks/queries/useCatBlocks.ts - Updated CatBlock interface
+
+Submodules Affected: contractnest-ui
+
+Production Checklist:
+  ✅ Transaction Management: N/A (frontend changes)
+  ✅ Race Condition Handling: N/A (frontend changes)
+  ✅ Error Handling: Yes - validation in wizard steps
+  ✅ Toasts: Uses existing toast system
+  ✅ Loaders: Uses existing loader system
+
+═══════════════════════════════════════════════════
+KEY CHANGES
+═══════════════════════════════════════════════════
+
+1. ResourceDependencyStep restored (Step 3 for service blocks)
+   - Independent vs Resource-based pricing selection now works
+
+2. BusinessRulesStep wired (Step 7 for service blocks)
+
+3. PricingStep added for spare blocks (Step 4)
+
+4. catBlockAdapter completely rewritten:
+   - All wizard fields now properly saved to database
+   - Correct field names (type, pricing_mode, base_price, etc.)
+   - Type-specific config builders for each block type
+   - Default status = 'active'
+
+5. HTML sanitization utilities added:
+   - stripHtml, sanitizeHtml, truncateText, etc.
+   - SafeHtml component for rendering HTML descriptions
