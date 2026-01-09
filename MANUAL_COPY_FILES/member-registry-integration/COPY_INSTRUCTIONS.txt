@@ -1,0 +1,77 @@
+═══════════════════════════════════════════════════
+MEMBER REGISTRY INTEGRATION - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════
+
+Branch: member-registry-integration
+Date: 2026-01-09
+Submodules Affected: contractnest-ui
+
+═══════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════
+
+1. NEW FILE - Member Registry Service
+   FROM: MANUAL_COPY_FILES/member-registry-integration/contractnest-ui/src/services/memberRegistryService.ts
+   TO:   contractnest-ui/src/services/memberRegistryService.ts
+
+2. MODIFIED - BBB Profile Onboarding Page
+   FROM: MANUAL_COPY_FILES/member-registry-integration/contractnest-ui/src/pages/VaNi/channels/BBBProfileOnboardingPage.tsx
+   TO:   contractnest-ui/src/pages/VaNi/channels/BBBProfileOnboardingPage.tsx
+
+3. MODIFIED - BBB Admin Dashboard
+   FROM: MANUAL_COPY_FILES/member-registry-integration/contractnest-ui/src/pages/VaNi/channels/BBBAdminDashboard.tsx
+   TO:   contractnest-ui/src/pages/VaNi/channels/BBBAdminDashboard.tsx
+
+4. MODIFIED - Groups List Page
+   FROM: MANUAL_COPY_FILES/member-registry-integration/contractnest-ui/src/pages/settings/customer-channels/GroupsListPage.tsx
+   TO:   contractnest-ui/src/pages/settings/customer-channels/GroupsListPage.tsx
+
+═══════════════════════════════════════════════════
+POWERSHELL COPY COMMANDS
+═══════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Copy all files
+Copy-Item "MANUAL_COPY_FILES\member-registry-integration\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+CHANGES SUMMARY
+═══════════════════════════════════════════════════
+
+1. memberRegistryService.ts (NEW)
+   - Service for syncing member data with n8n webhook
+   - Endpoints: add(), update(), delete()
+   - Fire-and-forget pattern (non-blocking)
+   - Webhook URL: https://n8n.srv1096269.hstgr.cloud/webhook/member-registry
+
+2. BBBProfileOnboardingPage.tsx (MODIFIED)
+   - Added import for memberRegistryService
+   - Added registry sync after profile save (line ~440)
+   - Calls add() for new profiles, update() for existing
+
+3. BBBAdminDashboard.tsx (MODIFIED)
+   - Added import for memberRegistryService
+   - Registry update on handleAdminSave
+   - Registry update on handleAdminSaveEnhanced
+   - Registry update on handleStatusChange
+   - Registry delete on handleDelete
+
+4. GroupsListPage.tsx (MODIFIED)
+   - Disabled Chat button with "Coming Soon" tooltip
+   - Disabled Explore button with "Coming Soon" tooltip
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+
+- [ ] Navigate to Settings -> Configure -> Customer Channels -> Group
+- [ ] Verify Chat icon is disabled with "Coming Soon" tooltip
+- [ ] Verify Explore icon is disabled with "Coming Soon" tooltip
+- [ ] Create/Update a BBB profile
+- [ ] Check browser console for "Registry:" logs
+- [ ] (Admin) Change member status and verify registry sync
+
+═══════════════════════════════════════════════════
