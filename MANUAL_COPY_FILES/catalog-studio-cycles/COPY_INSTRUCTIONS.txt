@@ -1,0 +1,51 @@
+═══════════════════════════════════════════════════════════════════════════════
+CATALOG STUDIO - DELIVERY STEP CYCLES FEATURE
+═══════════════════════════════════════════════════════════════════════════════
+
+Branch: catalog-studio-cycles
+Date: January 2025
+
+───────────────────────────────────────────────────────────────────────────────
+FILES CHANGED
+───────────────────────────────────────────────────────────────────────────────
+
+contractnest-ui/src/components/catalog-studio/BlockWizard/steps/service/DeliveryStep.tsx
+  - HIDDEN: On-Site Settings section (commented out, code preserved)
+  - HIDDEN: Virtual Settings section (commented out, code preserved)
+  - HIDDEN: Scheduling Options section (commented out, code preserved)
+  - ADDED: Service Cycles explanation card with generic content
+  - ADDED: "Does this require Cycles?" Yes/No toggle
+  - ADDED: Cycle Period (days) input field
+  - ADDED: Grace Period (days) input field
+  - ADDED: New formData fields: requiresCycles, cycleDays, cycleGracePeriod
+
+───────────────────────────────────────────────────────────────────────────────
+SUBMODULES AFFECTED
+───────────────────────────────────────────────────────────────────────────────
+
+- contractnest-ui
+
+───────────────────────────────────────────────────────────────────────────────
+COPY COMMAND
+───────────────────────────────────────────────────────────────────────────────
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\catalog-studio-cycles\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Files copied successfully!" -ForegroundColor Green
+
+───────────────────────────────────────────────────────────────────────────────
+NEW FORM DATA FIELDS
+───────────────────────────────────────────────────────────────────────────────
+
+The following fields have been added to the DeliveryStep formData interface:
+
+  requiresCycles?: boolean;    // Toggle: Does service require cycles?
+  cycleDays?: number;          // Ideal days for a cycle (e.g., 180)
+  cycleGracePeriod?: number;   // Grace period in days (e.g., 7)
+
+NOTE: Parent components using DeliveryStep may need to be updated to handle
+these new fields if they need to persist to the database.
+
+═══════════════════════════════════════════════════════════════════════════════
