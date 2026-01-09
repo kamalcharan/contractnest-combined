@@ -1,0 +1,29 @@
+═══════════════════════════════════════════════════════════════════════════════
+FIX: Configure Page - Add Missing catBlocksToBlocks Adapter
+═══════════════════════════════════════════════════════════════════════════════
+
+ISSUE:
+- Configure page was not converting API response (CatBlock) to UI format (Block)
+- This caused categoryId to be undefined, resulting in 0 blocks showing
+- Block cards were not appearing in the grid
+
+ROOT CAUSE:
+- blocks.tsx and template.tsx use: catBlocksToBlocks(blocksResponse.data.blocks)
+- configure.tsx was using: blocksResponse?.data?.blocks (NO ADAPTER!)
+
+FIX APPLIED:
+- Added import: catBlocksToBlocks from '@/utils/catalog-studio/catBlockAdapter'
+- Wrapped blocks in useMemo with adapter conversion
+- Fixed handleDuplicateBlock to use categoryId correctly
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════════════════════════════════
+
+Source: MANUAL_COPY_FILES/fix-configure-adapter/contractnest-ui/
+Target: contractnest-ui/
+
+Files:
+  - src/pages/catalog-studio/configure.tsx
+
+═══════════════════════════════════════════════════════════════════════════════
