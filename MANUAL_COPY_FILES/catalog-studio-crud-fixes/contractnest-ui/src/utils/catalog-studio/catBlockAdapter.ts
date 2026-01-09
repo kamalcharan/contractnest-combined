@@ -690,12 +690,23 @@ const buildResourcePricing = (block: Partial<Block>): Record<string, unknown> | 
 };
 
 /**
+ * Options for block creation/update
+ */
+interface BlockOperationOptions {
+  userId?: string;
+  sequenceNo?: number;
+}
+
+/**
  * Convert UI Block data to API CreateBlockData format
  * Maps ALL fields properly to database schema
  * Reads from both top-level (wizard) and meta (existing blocks)
  * Sends string block_type_id like 'service' - edge function will resolve to UUID
  */
-export const blockToCreateData = (block: Partial<Block> & { name: string }) => {
+export const blockToCreateData = (
+  block: Partial<Block> & { name: string },
+  options: BlockOperationOptions = {}
+) => {
   const blockType = block.categoryId || 'service';
   const { price, currency } = extractPrimaryPrice(block);
 
@@ -719,11 +730,15 @@ export const blockToCreateData = (block: Partial<Block> & { name: string }) => {
   const visible = getField(block, 'visible');
   const isAdmin = getField(block, 'is_admin');
 
+  // Get HSN/SAC code for spare parts
+  const hsnSacCode = getField(block, 'hsn') as string || getField(block, 'hsnSacCode') as string;
+
   return {
     // Required fields
     name: block.name,
     type: blockType,  // Correct field name for DB
     block_type_id: blockType, // For edge function resolution
+    category: blockType, // Category field (same as block type)
 
     // Optional top-level fields
     display_name: block.name,
@@ -740,6 +755,7 @@ export const blockToCreateData = (block: Partial<Block> & { name: string }) => {
 
     // Tax
     tax_rate: taxRate,
+    hsn_sac_code: hsnSacCode || null,
 
     // Resource pricing (for resource_based mode)
     resource_pricing: buildResourcePricing(block),
@@ -747,6 +763,13 @@ export const blockToCreateData = (block: Partial<Block> & { name: string }) => {
     // Visibility
     visible: visible !== 'false' && visible !== false,
     is_admin: isAdmin === 'true' || isAdmin === true,
+
+    // Ordering
+    sequence_no: options.sequenceNo ?? 0,
+
+    // Audit fields
+    created_by: options.userId || null,
+    updated_by: options.userId || null,
 
     // Type-specific config (includes priceType and status as strings)
     config: {
@@ -761,7 +784,10 @@ export const blockToCreateData = (block: Partial<Block> & { name: string }) => {
  * Convert UI Block updates to API UpdateBlockData format
  * Only includes changed fields
  */
-export const blockToUpdateData = (updates: Partial<Block>) => {
+export const blockToUpdateData = (
+  updates: Partial<Block>,
+  options: BlockOperationOptions = {}
+) => {
   const data: Record<string, unknown> = {};
   const meta = updates.meta || {};
 
@@ -775,6 +801,7 @@ export const blockToUpdateData = (updates: Partial<Block>) => {
   if (updates.categoryId !== undefined) {
     data.type = updates.categoryId;
     data.block_type_id = updates.categoryId;
+    data.category = updates.categoryId;
   }
 
   // Pricing mode (edge expects pricing_mode_id)
@@ -792,6 +819,13 @@ export const blockToUpdateData = (updates: Partial<Block>) => {
 
   // Tax rate
   if (meta.taxRate !== undefined) data.tax_rate = meta.taxRate;
+
+  // HSN/SAC code
+  const hsnSacCode = getField(updates, 'hsn') || getField(updates, 'hsnSacCode');
+  if (hsnSacCode !== undefined) data.hsn_sac_code = hsnSacCode;
+
+  // Audit field
+  if (options.userId) data.updated_by = options.userId;
 
   // Visibility
   if (meta.visible !== undefined) data.visible = meta.visible !== 'false';

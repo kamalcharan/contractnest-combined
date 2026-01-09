@@ -70,21 +70,32 @@ const CatalogStudioConfigurePage: React.FC = () => {
     setEditingBlock(null);
   };
 
-  // ✅ FIX: Use adapter for proper field mapping
+  // Get current user ID for audit fields
+  const userId = currentTenant?.user_id || null;
+
+  // Calculate next sequence number for new blocks
+  const getNextSequenceNo = () => {
+    const categoryBlocks = allBlocks.filter(b => b.categoryId === wizardBlockType);
+    return categoryBlocks.length;
+  };
+
+  // ✅ FIX: Use adapter for proper field mapping with user tracking
   const handleSaveBlock = async (blockData: Partial<Block>) => {
     try {
       if (wizardMode === 'edit' && editingBlock) {
-        // ✅ Use blockToUpdateData adapter for updates
-        await updateBlock(editingBlock.id, blockToUpdateData(blockData));
+        // ✅ Use blockToUpdateData adapter for updates with userId
+        await updateBlock(editingBlock.id, blockToUpdateData(blockData, { userId }));
       } else {
-        // ✅ Use blockToCreateData adapter for creates
-        // Ensure categoryId is set from wizard block type
+        // ✅ Use blockToCreateData adapter for creates with userId and sequenceNo
         const fullBlockData = {
           ...blockData,
           categoryId: wizardBlockType,
           name: blockData.name || 'Untitled Block',
         } as Block;
-        await createBlock(blockToCreateData(fullBlockData));
+        await createBlock(blockToCreateData(fullBlockData, {
+          userId,
+          sequenceNo: getNextSequenceNo(),
+        }));
       }
       closeWizard();
       refetch();
@@ -108,11 +119,11 @@ const CatalogStudioConfigurePage: React.FC = () => {
     }
   };
 
-  // ✅ FIX: Use adapter for duplicate
+  // ✅ FIX: Use adapter for duplicate with userId
   const handleDuplicateBlock = async (block: Block) => {
     try {
       const duplicateData = {
-        ...blockToCreateData(block),
+        ...blockToCreateData(block, { userId, sequenceNo: getNextSequenceNo() }),
         name: `${block.name} (Copy)`,
       };
       await createBlock(duplicateData);
@@ -122,10 +133,10 @@ const CatalogStudioConfigurePage: React.FC = () => {
     }
   };
 
-  // ✅ FIX: Use adapter for editor save
+  // ✅ FIX: Use adapter for editor save with userId
   const handleEditorSave = async (updatedBlock: Block) => {
     try {
-      await updateBlock(updatedBlock.id, blockToUpdateData(updatedBlock));
+      await updateBlock(updatedBlock.id, blockToUpdateData(updatedBlock, { userId }));
       refetch();
     } catch (error) {
       console.error('Editor save failed:', error);
