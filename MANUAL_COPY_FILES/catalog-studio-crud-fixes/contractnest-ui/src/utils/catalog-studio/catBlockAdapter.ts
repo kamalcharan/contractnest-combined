@@ -732,10 +732,11 @@ export const blockToCreateData = (block: Partial<Block> & { name: string }) => {
     tags: block.tags || [],
 
     // Pricing at top level (for independent mode)
-    pricing_mode_id: pricingMode, // Edge expects pricing_mode_id
+    pricing_mode_id: pricingMode, // Edge expects pricing_mode_id - resolved by API
     base_price: price,
     currency: currency || 'INR',
-    price_type_id: dbPriceType, // Edge expects price_type_id
+    // NOTE: price_type_id expects UUID - store in config instead
+    // NOTE: status_id expects UUID - store in config instead
 
     // Tax
     tax_rate: taxRate,
@@ -743,15 +744,16 @@ export const blockToCreateData = (block: Partial<Block> & { name: string }) => {
     // Resource pricing (for resource_based mode)
     resource_pricing: buildResourcePricing(block),
 
-    // Status - default to active (edge expects status_id)
-    status_id: status,
-
     // Visibility
     visible: visible !== 'false' && visible !== false,
     is_admin: isAdmin === 'true' || isAdmin === true,
 
-    // Type-specific config
-    config: buildConfig(block, blockType),
+    // Type-specific config (includes priceType and status as strings)
+    config: {
+      ...buildConfig(block, blockType),
+      priceType: priceType,  // Store as string in config
+      status: status,        // Store as string in config
+    },
   };
 };
 
@@ -785,17 +787,11 @@ export const blockToUpdateData = (updates: Partial<Block>) => {
   if (price !== undefined) data.base_price = price;
   if (currency !== undefined) data.currency = currency;
 
-  // Price type (edge expects price_type_id)
-  if (meta.priceType !== undefined) {
-    const priceType = meta.priceType as string;
-    data.price_type_id = priceType === 'hourly' ? 'per_hour' : priceType === 'fixed' ? 'per_session' : priceType;
-  }
+  // NOTE: price_type_id expects UUID - store in config instead
+  // NOTE: status_id expects UUID - store in config instead
 
   // Tax rate
   if (meta.taxRate !== undefined) data.tax_rate = meta.taxRate;
-
-  // Status (edge expects status_id)
-  if (meta.status !== undefined) data.status_id = meta.status;
 
   // Visibility
   if (meta.visible !== undefined) data.visible = meta.visible !== 'false';
@@ -826,6 +822,7 @@ export const blockToUpdateData = (updates: Partial<Block>) => {
     if (meta.resourcePricingRecords !== undefined) configUpdates.resourcePricingRecords = meta.resourcePricingRecords;
     if (meta.priceType !== undefined) configUpdates.priceType = meta.priceType;
     if (meta.pricingMode !== undefined) configUpdates.pricingMode = meta.pricingMode;
+    if (meta.status !== undefined) configUpdates.status = meta.status; // Store in config as string
     if (meta.selectedResources !== undefined) configUpdates.selectedResources = meta.selectedResources;
     if (meta.resourceTypes !== undefined) configUpdates.resourceTypes = meta.resourceTypes;
     if (meta.deliveryMode !== undefined) configUpdates.deliveryMode = meta.deliveryMode;
