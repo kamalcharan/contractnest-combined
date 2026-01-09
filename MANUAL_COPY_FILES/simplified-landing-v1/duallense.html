@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ContractNest | Unified Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #EF4444;
+            --secondary: #6366F1;
+            --dark: #0F172A;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --bg: #F1F5F9;
+            --white: #FFFFFF;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--dark); display: flex; height: 100vh; overflow: hidden; }
+
+        /* SIDEBAR NAVIGATION */
+        .sidebar { width: 260px; background: var(--dark); color: white; padding: 24px; display: flex; flex-direction: column; }
+        .logo { font-weight: 800; font-size: 1.2rem; margin-bottom: 40px; display: flex; align-items: center; gap: 10px; }
+        .logo span { background: var(--primary); padding: 4px 8px; border-radius: 4px; }
+        .nav-item { padding: 12px; border-radius: 8px; cursor: pointer; margin-bottom: 8px; color: #94A3B8; transition: 0.3s; }
+        .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.1); color: white; }
+
+        /* MAIN CONTENT AREA */
+        .main { flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
+        
+        /* THE PERSPECTIVE SWITCHER */
+        .top-bar { background: white; padding: 16px 32px; border-bottom: 1px solid #E2E8F0; display: flex; justify-content: space-between; align-items: center; }
+        .lens-switcher { background: #F1F5F9; padding: 4px; border-radius: 50px; display: flex; gap: 4px; }
+        .lens-btn { padding: 8px 20px; border-radius: 50px; border: none; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: 0.3s; }
+        .lens-btn.active { background: var(--white); box-shadow: 0 2px 4px rgba(0,0,0,0.1); color: var(--dark); }
+
+        .content { padding: 32px; max-width: 1200px; margin: 0 auto; width: 100%; }
+
+        /* DASHBOARD GRID */
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 32px; }
+        .stat-card { background: white; padding: 24px; border-radius: 16px; border: 1px solid #E2E8F0; }
+        .stat-value { font-size: 2rem; font-weight: 800; margin-top: 8px; }
+        .stat-label { color: #64748B; font-size: 0.9rem; font-weight: 600; }
+
+        /* CONTEXTUAL CARDS */
+        .view-section { display: none; animation: fadeIn 0.4s; }
+        .view-section.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .action-card { background: white; border-radius: 16px; border: 1px solid #E2E8F0; overflow: hidden; margin-bottom: 24px; }
+        .card-header { padding: 16px 24px; background: #F8FAFC; border-bottom: 1px solid #E2E8F0; font-weight: 700; display: flex; justify-content: space-between; }
+        .status-pill { padding: 4px 12px; border-radius: 50px; font-size: 0.75rem; font-weight: 700; }
+        .status-green { background: #D1FAE5; color: #065F46; }
+        .status-red { background: #FEE2E2; color: #991B1B; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 16px 24px; color: #64748B; font-size: 0.8rem; text-transform: uppercase; }
+        td { padding: 16px 24px; border-top: 1px solid #F1F5F9; font-size: 0.9rem; }
+        
+        .btn-action { background: var(--primary); color: white; padding: 10px 20px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="logo"><span>CN</span> ContractNest</div>
+        <div class="nav-item active">🏠 Dashboard</div>
+        <div class="nav-item">📜 All Contracts</div>
+        <div class="nav-item">🔧 Service Schedule</div>
+        <div class="nav-item">💰 Financials</div>
+        <div class="nav-item">👥 Collaborators</div>
+    </div>
+
+    <div class="main">
+        <header class="top-bar">
+            <div class="lens-switcher">
+                <button class="lens-btn active" id="btn-buyer" onclick="switchLens('buyer')">Asset Manager (Buyer)</button>
+                <button class="lens-btn" id="btn-seller" onclick="switchLens('seller')">Service Provider (Seller)</button>
+            </div>
+            <div style="display:flex; gap:15px; align-items:center;">
+                <span style="font-size:0.8rem; font-weight:700; color:var(--primary);">● Live Feed</span>
+                <div style="width:32px; height:32px; border-radius:50%; background:#CBD5E1;"></div>
+            </div>
+        </header>
+
+        <div class="content">
+            
+            <div id="view-buyer" class="view-section active">
+                <div class="grid">
+                    <div class="stat-card">
+                        <span class="stat-label">Compliance Score</span>
+                        <div class="stat-value" style="color:var(--success)">94.2%</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Active AMCs</span>
+                        <div class="stat-value">128</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Upcoming Payments</span>
+                        <div class="stat-value">₹4.2L</div>
+                    </div>
+                </div>
+
+                <div class="action-card">
+                    <div class="card-header">
+                        <span>Physical Assets At Risk</span>
+                        <button class="btn-action" style="font-size:0.75rem;">Launch RFQ</button>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Asset Name</th>
+                                <th>Vendor</th>
+                                <th>SLA Status</th>
+                                <th>Next Service</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><b>CT Scanner (Zone A)</b></td>
+                                <td>MedEquip Pvt Ltd</td>
+                                <td><span class="status-pill status-red">Breached</span></td>
+                                <td>Expired 2 days ago</td>
+                            </tr>
+                            <tr>
+                                <td><b>Cleanroom Ventilation</b></td>
+                                <td>AirSafe Systems</td>
+                                <td><span class="status-pill status-green">Compliant</span></td>
+                                <td>Jan 24, 2026</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="view-seller" class="view-section">
+                <div class="grid">
+                    <div class="stat-card">
+                        <span class="stat-label">Total Pipeline</span>
+                        <div class="stat-value" style="color:var(--secondary)">₹52.8Cr</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Renewal Rate</span>
+                        <div class="stat-value">98.5%</div>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-label">Overdue Invoices</span>
+                        <div class="stat-value" style="color:var(--primary)">₹8.4L</div>
+                    </div>
+                </div>
+
+                <div class="action-card">
+                    <div class="card-header">
+                        <span>Commitment Queue (Pending Execution)</span>
+                        <button class="btn-action" style="font-size:0.75rem;">New Proposal</button>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Customer</th>
+                                <th>Milestone</th>
+                                <th>Assigned To</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><b>Apollo Hospitals</b></td>
+                                <td>Q1 Maintenance Visit</td>
+                                <td>Technician: Rajesh</td>
+                                <td><button class="btn-action" style="padding:4px 12px; font-size:0.7rem;">Upload Evidence</button></td>
+                            </tr>
+                            <tr>
+                                <td><b>City General</b></td>
+                                <td>Software Calibration</td>
+                                <td>Partner: Vikuna Tech</td>
+                                <td><button class="btn-action" style="padding:4px 12px; font-size:0.7rem;">Send Invoice</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        function switchLens(lens) {
+            // Hide all sections
+            document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.lens-btn').forEach(b => b.classList.remove('active'));
+
+            // Show selected section
+            if(lens === 'buyer') {
+                document.getElementById('view-buyer').classList.add('active');
+                document.getElementById('btn-buyer').classList.add('active');
+            } else {
+                document.getElementById('view-seller').classList.add('active');
+                document.getElementById('btn-seller').classList.add('active');
+            }
+        }
+    </script>
+</body>
+</html>

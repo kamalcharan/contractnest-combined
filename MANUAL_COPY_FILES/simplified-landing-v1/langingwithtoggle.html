@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ContractNest | The Service Exchange</title>
+    <style>
+        :root {
+            --primary: #EF4444; /* Your brand red */
+            --dark: #0F172A;
+            --gray: #64748B;
+            --bg: #F8FAFC;
+        }
+        body { font-family: 'Inter', sans-serif; margin: 0; background: var(--bg); color: var(--dark); }
+        
+        /* THE WOW FACTOR: THE TOGGLE */
+        .hero { text-align: center; padding: 100px 20px; background: white; }
+        .toggle-container {
+            display: inline-flex;
+            background: #E2E8F0;
+            padding: 5px;
+            border-radius: 50px;
+            margin-bottom: 40px;
+        }
+        .toggle-btn {
+            padding: 12px 30px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: 0.3s;
+            border: none;
+        }
+        .toggle-btn.active { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); }
+
+        /* DYNAMIC CONTENT */
+        .view-content { display: none; max-width: 1100px; margin: 0 auto; animation: fadeIn 0.5s; }
+        .view-content.active { display: block; }
+
+        .headline { font-size: 3.5rem; font-weight: 800; line-height: 1.1; margin-bottom: 20px; }
+        .subheadline { font-size: 1.25rem; color: var(--gray); margin-bottom: 40px; }
+
+        /* GRID FOR BOTH SIDES */
+        .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; margin-top: 60px; }
+        .feature-card { background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); text-align: left; }
+        .cta-primary { background: var(--primary); color: white; padding: 18px 40px; border-radius: 12px; font-weight: 700; text-decoration: none; display: inline-block; font-size: 1.1rem; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<section class="hero">
+    <div class="toggle-container">
+        <button class="toggle-btn active" onclick="switchView('buyer')">I Manage Assets (Buyer)</button>
+        <button class="toggle-btn" onclick="switchView('seller')">I Provide Services (Seller)</button>
+    </div>
+
+    <div id="buyer-view" class="view-content active">
+        <h1 class="headline">One Platform for Every<br><span style="color:var(--primary)">Physical Asset</span> You Own.</h1>
+        <p class="subheadline">Manage Lifts, CT Scanners, and Cleanrooms across multiple vendors. <br>Standardize RFQs, compare quotes, and ensure 100% compliance[cite: 158, 164, 171].</p>
+        <a href="#" class="cta-primary">Launch Your First RFQ</a>
+        
+        <div class="features">
+            <div class="feature-card">
+                <h3>📋 Smart RFQs</h3>
+                <p>Invite vendors to bid on your maintenance needs via WhatsApp. Standardized quotes for easy comparison[cite: 451].</p>
+            </div>
+            <div class="feature-card">
+                <h3>🏢 Total Visibility</h3>
+                <p>A single dashboard for your entire hospital or factory. Know what's due for service today[cite: 111, 468].</p>
+            </div>
+            <div class="feature-card">
+                <h3>🩺 Compliance Ready</h3>
+                <p>Digital service records for every machine, automatically updated by the vendor[cite: 14, 29].</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="seller-view" class="view-content">
+        <h1 class="headline">Turn Service Commitments Into<br><span style="color:var(--primary)">Profitable Relationships</span>.</h1>
+        <p class="subheadline">Stop losing money on missed renewals. Send digital, trackable proposals <br>and get paid faster with automated milestone invoicing[cite: 26, 62, 421].</p>
+        <a href="#" class="cta-primary">Start Your Free 10 Contracts</a>
+        
+        <div class="features">
+            <div class="feature-card">
+                <h3>⚡ Digital Proposals</h3>
+                <p>Build professional contracts in minutes using drag-and-drop blocks[cite: 70, 466].</p>
+            </div>
+            <div class="feature-card">
+                <h3>🔔 Auto-Renewals</h3>
+                <p>System alerts you and your customer before a contract expires. Never miss a billing cycle[cite: 28, 62].</p>
+            </div>
+            <div class="feature-card">
+                <h3>💰 Fast Collections</h3>
+                <p>Automated invoices sent directly to the client's dashboard upon service completion[cite: 65, 76].</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script>
+    function switchView(view) {
+        document.querySelectorAll('.view-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.toggle-btn').forEach(el => el.classList.remove('active'));
+        
+        if(view === 'buyer') {
+            document.getElementById('buyer-view').classList.add('active');
+            event.target.classList.add('active');
+        } else {
+            document.getElementById('seller-view').classList.add('active');
+            event.target.classList.add('active');
+        }
+    }
+</script>
+
+</body>
+</html>
