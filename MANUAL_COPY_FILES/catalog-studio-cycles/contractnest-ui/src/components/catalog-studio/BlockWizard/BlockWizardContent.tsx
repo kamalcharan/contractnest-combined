@@ -39,8 +39,7 @@ import {
   FileSettingsStep,
 } from './steps';
 
-// Import BusinessRulesStep for step 6
-import BusinessRulesStep from './steps/service/BusinessRulesStep';
+// BusinessRulesStep removed - step 6 no longer exists in service wizard
 
 // =================================================================
 // TYPES
@@ -106,11 +105,7 @@ const BlockWizardContent: React.FC<BlockWizardContentProps> = ({
         errors.push('Description is required');
       }
       // Block-specific validations for Basic Info
-      if (type === 'service') {
-        if (!data.duration || data.duration <= 0) {
-          errors.push('Duration is required');
-        }
-      }
+      // Duration removed for service blocks
       if (type === 'spare') {
         if (!data.meta?.sku?.toString().trim()) {
           errors.push('SKU is required');
@@ -133,44 +128,7 @@ const BlockWizardContent: React.FC<BlockWizardContentProps> = ({
           errors.push('Price is required');
         }
       }
-      // Step 5 - Evidence: No mandatory fields
-      // Step 6 - Business Rules: Conditional validation
-      if (step === 6) {
-        const meta = data.meta || {};
-        // If followup is enabled, validate required fields
-        if (meta.followup?.enabled) {
-          if (!meta.followup.freeFollowups || meta.followup.freeFollowups <= 0) {
-            errors.push('Number of free followups is required when followup is enabled');
-          }
-          if (!meta.followup.followupPeriod || meta.followup.followupPeriod <= 0) {
-            errors.push('Followup validity period is required when followup is enabled');
-          }
-          if (!meta.followup.followupPeriodUnit) {
-            errors.push('Followup period unit is required when followup is enabled');
-          }
-        }
-        // If warranty is enabled, validate required fields
-        if (meta.warranty?.enabled) {
-          if (!meta.warranty.warrantyPeriod || meta.warranty.warrantyPeriod <= 0) {
-            errors.push('Warranty period is required when warranty is enabled');
-          }
-          if (!meta.warranty.warrantyPeriodUnit) {
-            errors.push('Warranty period unit is required when warranty is enabled');
-          }
-          if (!meta.warranty.warrantyType) {
-            errors.push('Warranty type is required when warranty is enabled');
-          }
-          if (!meta.warranty.warrantyTerms?.trim()) {
-            errors.push('Warranty terms are required when warranty is enabled');
-          }
-        }
-        // If deposit is enabled, validate deposit percentage
-        if (meta.requiresDeposit) {
-          if (!meta.depositPercentage || meta.depositPercentage <= 0 || meta.depositPercentage > 100) {
-            errors.push('Valid deposit percentage (1-100) is required when deposit is enabled');
-          }
-        }
-      }
+      // Step 5 - Evidence: No mandatory fields (last step for service)
     }
 
     if (type === 'spare') {
@@ -320,8 +278,7 @@ const BlockWizardContent: React.FC<BlockWizardContentProps> = ({
           case 3: return <DeliveryStep formData={formData} onChange={handleFormChange} />;
           case 4: return <PricingStep formData={formData} onChange={handleFormChange} />;
           case 5: return <EvidenceStep formData={formData} onChange={handleFormChange} />;
-          // Step 6: Use BusinessRulesStep instead of RulesStep
-          case 6: return <BusinessRulesStep formData={formData} onChange={handleFormChange} />;
+          // Step 6 removed - service wizard now ends at Evidence
         }
         break;
 
@@ -402,8 +359,8 @@ const BlockWizardContent: React.FC<BlockWizardContentProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Progress Bar */}
+    <div className="flex h-full">
+      {/* Side Progress Bar */}
       <WizardProgress
         steps={wizardSteps}
         currentStep={currentStep}
@@ -411,20 +368,23 @@ const BlockWizardContent: React.FC<BlockWizardContentProps> = ({
         allowNavigation={mode === 'edit'}
       />
 
-      {/* Step Content */}
-      <div className="flex-1 overflow-y-auto p-6">
-        {renderStepContent()}
-      </div>
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Step Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {renderStepContent()}
+        </div>
 
-      {/* Footer */}
-      <WizardFooter
-        currentStep={currentStep}
-        totalSteps={totalSteps}
-        onPrevious={handlePrevious}
-        onNext={handleNext}
-        onSaveDraft={handleSaveDraft}
-        validationErrors={validationErrors}
-      />
+        {/* Footer */}
+        <WizardFooter
+          currentStep={currentStep}
+          totalSteps={totalSteps}
+          onPrevious={handlePrevious}
+          onNext={handleNext}
+          onSaveDraft={handleSaveDraft}
+          validationErrors={validationErrors}
+        />
+      </div>
     </div>
   );
 };

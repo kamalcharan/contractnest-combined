@@ -8,7 +8,7 @@ export const WIZARD_STEPS: Record<string, WizardStep[]> = {
     { id: 3, label: 'Delivery' },
     { id: 4, label: 'Pricing' },
     { id: 5, label: 'Evidence' },
-    { id: 6, label: 'Business Rules' }, // Renamed from 'Rules' to match BusinessRulesStep
+    // Step 6 (Rules/Business Rules) removed - content moved to other steps
   ],
   spare: [
     { id: 1, label: 'Type' },

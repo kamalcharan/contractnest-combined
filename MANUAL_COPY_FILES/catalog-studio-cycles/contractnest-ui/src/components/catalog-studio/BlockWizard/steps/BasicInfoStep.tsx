@@ -1,13 +1,11 @@
 // src/components/catalog-studio/BlockWizard/steps/BasicInfoStep.tsx
-// Phase 5: Enhanced with RichTextEditor, Image Upload, IconPicker
-// Updated: Two-column layout, white card backgrounds, consistent styling
+// Updated: Confined Quick Tips height, increased Description, Terms beside Description, removed Duration
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   Upload,
   Image as ImageIcon,
   X,
-  Clock,
   Tag,
   Lightbulb,
   Info,
@@ -54,9 +52,9 @@ const BasicInfoStep: React.FC<BasicInfoStepProps> = ({ blockType, formData, onCh
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isServiceBlock = blockType === 'service';
   const isSpareBlock = blockType === 'spare';
   const isBillingBlock = blockType === 'billing';
+  const isServiceBlock = blockType === 'service';
 
   // Get block type label
   const blockTypeLabel = BLOCK_TYPE_LABELS[blockType] || 'Block';
@@ -292,7 +290,7 @@ const BasicInfoStep: React.FC<BasicInfoStepProps> = ({ blockType, formData, onCh
             </p>
           </div>
 
-          {/* Description Card */}
+          {/* Description Card - Increased height */}
           <div className="p-5 rounded-xl border" style={cardStyle}>
             <RichTextEditor
               value={formData.description || ''}
@@ -304,84 +302,12 @@ const BasicInfoStep: React.FC<BasicInfoStepProps> = ({ blockType, formData, onCh
               showCharCount={true}
               allowFullscreen={true}
               toolbarButtons={['bold', 'italic', 'underline', 'bulletList', 'orderedList']}
-              minHeight={100}
-              maxHeight={200}
+              minHeight={200}
+              maxHeight={300}
             />
           </div>
 
-          {/* Terms & Conditions Card (Optional) */}
-          {(isServiceBlock || isSpareBlock) && (
-            <div className="p-5 rounded-xl border" style={cardStyle}>
-              <RichTextEditor
-                value={(formData.meta?.terms as string) || ''}
-                onChange={(value) => onChange('meta', { ...formData.meta, terms: value })}
-                label="Terms & Conditions"
-                placeholder="Enter any specific terms and conditions for this block..."
-                required={false}
-                maxLength={1000}
-                showCharCount={true}
-                allowFullscreen={true}
-                toolbarButtons={['bold', 'italic', 'bulletList']}
-                minHeight={80}
-                maxHeight={150}
-              />
-            </div>
-          )}
-
-          {/* Block-specific fields Card */}
-          {isServiceBlock && (
-            <div className="p-5 rounded-xl border" style={cardStyle}>
-              <h4 className="text-sm font-semibold mb-4 flex items-center gap-2" style={{ color: colors.utility.primaryText }}>
-                <Clock className="w-4 h-4" style={{ color: colors.brand.primary }} />
-                Duration Settings
-              </h4>
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={labelStyle}>
-                    Duration <span style={{ color: colors.semantic.error }}>*</span>
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.duration || 60}
-                    onChange={(e) => onChange('duration', parseInt(e.target.value))}
-                    className="w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2"
-                    style={inputStyle}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={labelStyle}>
-                    Unit <span style={{ color: colors.semantic.error }}>*</span>
-                  </label>
-                  <select
-                    value={formData.durationUnit || 'min'}
-                    onChange={(e) => onChange('durationUnit', e.target.value)}
-                    className="w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2"
-                    style={inputStyle}
-                  >
-                    <option value="min">Minutes</option>
-                    <option value="hours">Hours</option>
-                    <option value="days">Days</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={labelStyle}>Buffer Time</label>
-                  <select
-                    value={(formData.meta?.bufferTime as string) || '0'}
-                    onChange={(e) => onChange('meta', { ...formData.meta, bufferTime: e.target.value })}
-                    className="w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2"
-                    style={inputStyle}
-                  >
-                    <option value="0">No buffer</option>
-                    <option value="15">15 min</option>
-                    <option value="30">30 min</option>
-                    <option value="60">1 hour</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          )}
-
+          {/* Block-specific fields - Spare Parts */}
           {isSpareBlock && (
             <div className="p-5 rounded-xl border" style={cardStyle}>
               <h4 className="text-sm font-semibold mb-4 flex items-center gap-2" style={{ color: colors.utility.primaryText }}>
@@ -421,6 +347,7 @@ const BasicInfoStep: React.FC<BasicInfoStepProps> = ({ blockType, formData, onCh
             </div>
           )}
 
+          {/* Block-specific fields - Billing */}
           {isBillingBlock && (
             <div className="p-5 rounded-xl border" style={cardStyle}>
               <h4 className="text-sm font-semibold mb-4 flex items-center gap-2" style={{ color: colors.utility.primaryText }}>
@@ -481,73 +408,86 @@ const BasicInfoStep: React.FC<BasicInfoStepProps> = ({ blockType, formData, onCh
           </div>
         </div>
 
-        {/* Right Column (2/5) - Tips Card */}
-        <div className="lg:col-span-2">
+        {/* Right Column (2/5) - Tips Card + Terms */}
+        <div className="lg:col-span-2 space-y-5">
+          {/* Quick Tips Card - Confined height */}
           <div
-            className="p-6 rounded-xl border h-full"
+            className="p-5 rounded-xl border"
             style={{
               backgroundColor: isDarkMode ? `${colors.brand.primary}10` : '#F0F9FF',
               borderColor: isDarkMode ? `${colors.brand.primary}30` : '#BAE6FD'
             }}
           >
-            <div className="flex items-start gap-3 mb-4">
+            <div className="flex items-start gap-3 mb-3">
               <div
-                className="p-2.5 rounded-xl"
+                className="p-2 rounded-lg"
                 style={{
                   backgroundColor: isDarkMode ? colors.brand.primary : '#0284C7',
                 }}
               >
-                <Lightbulb className="w-5 h-5 text-white" />
+                <Lightbulb className="w-4 h-4 text-white" />
               </div>
               <div>
-                <h4 className="font-semibold text-base" style={{ color: isDarkMode ? colors.utility.primaryText : '#0C4A6E' }}>
+                <h4 className="font-semibold text-sm" style={{ color: isDarkMode ? colors.utility.primaryText : '#0C4A6E' }}>
                   Quick Tips
                 </h4>
               </div>
             </div>
 
-            <div className="space-y-4 text-sm" style={{ color: isDarkMode ? colors.utility.secondaryText : '#0369A1' }}>
-              <div className="space-y-3">
-                <div className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: isDarkMode ? colors.brand.primary : '#0284C7' }} />
-                  <span>Use clear, descriptive names that customers will understand</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: isDarkMode ? colors.brand.primary : '#0284C7' }} />
-                  <span>Add a high-quality image to make your block stand out</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: isDarkMode ? colors.brand.primary : '#0284C7' }} />
-                  <span>Write detailed descriptions for better customer understanding</span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: isDarkMode ? colors.brand.primary : '#0284C7' }} />
-                  <span>Use tags to organize similar blocks together</span>
-                </div>
+            <div className="space-y-2 text-sm" style={{ color: isDarkMode ? colors.utility.secondaryText : '#0369A1' }}>
+              <div className="flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: isDarkMode ? colors.brand.primary : '#0284C7' }} />
+                <span className="text-xs">Use clear, descriptive names</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: isDarkMode ? colors.brand.primary : '#0284C7' }} />
+                <span className="text-xs">Add a high-quality image</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: isDarkMode ? colors.brand.primary : '#0284C7' }} />
+                <span className="text-xs">Write detailed descriptions</span>
               </div>
             </div>
 
             <div
-              className="mt-5 p-4 rounded-xl"
+              className="mt-3 p-3 rounded-lg"
               style={{
                 backgroundColor: isDarkMode ? colors.utility.secondaryBackground : '#FFFFFF',
               }}
             >
-              <div className="flex items-center gap-2 mb-2">
-                <Info className="w-4 h-4" style={{ color: isDarkMode ? colors.brand.primary : '#0284C7' }} />
-                <span className="font-semibold text-sm" style={{ color: isDarkMode ? colors.utility.primaryText : '#0C4A6E' }}>
+              <div className="flex items-center gap-2 mb-1">
+                <Info className="w-3.5 h-3.5" style={{ color: isDarkMode ? colors.brand.primary : '#0284C7' }} />
+                <span className="font-semibold text-xs" style={{ color: isDarkMode ? colors.utility.primaryText : '#0C4A6E' }}>
                   Required Fields
                 </span>
               </div>
-              <ul className="text-xs space-y-1" style={{ color: isDarkMode ? colors.utility.secondaryText : '#0369A1' }}>
-                <li>• Block Name is required</li>
-                <li>• Description is required</li>
-                {isServiceBlock && <li>• Duration is required</li>}
-                {isSpareBlock && <li>• SKU is required</li>}
-                {isBillingBlock && <li>• Payment Type is required</li>}
+              <ul className="text-xs space-y-0.5" style={{ color: isDarkMode ? colors.utility.secondaryText : '#0369A1' }}>
+                <li>• Block Name</li>
+                <li>• Description</li>
+                {isSpareBlock && <li>• SKU</li>}
+                {isBillingBlock && <li>• Payment Type</li>}
               </ul>
             </div>
           </div>
+
+          {/* Terms & Conditions Card - Below Quick Tips */}
+          {(isServiceBlock || isSpareBlock) && (
+            <div className="p-5 rounded-xl border" style={cardStyle}>
+              <RichTextEditor
+                value={(formData.meta?.terms as string) || ''}
+                onChange={(value) => onChange('meta', { ...formData.meta, terms: value })}
+                label="Terms & Conditions"
+                placeholder="Enter any specific terms and conditions..."
+                required={false}
+                maxLength={1000}
+                showCharCount={true}
+                allowFullscreen={true}
+                toolbarButtons={['bold', 'italic', 'bulletList']}
+                minHeight={100}
+                maxHeight={180}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>
