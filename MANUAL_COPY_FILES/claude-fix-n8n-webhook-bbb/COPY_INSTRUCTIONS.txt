@@ -1,0 +1,27 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS - claude-fix-n8n-webhook-bbb
+═══════════════════════════════════════════════════
+
+Branch: claude/fix-n8n-webhook-bbb-OLAm7
+
+Files to Copy:
+─────────────────────────────────────────────────────
+1. contractnest-ui/src/services/memberRegistryService.ts
+   - Fixed: Prioritize business_whatsapp over business_phone for n8n webhook
+
+2. contractnest-ui/src/pages/settings/customer-channels/GroupsListPage.tsx
+   - Enabled: Chat button now navigates to /vani/channels/bbb/chat
+
+Submodules Affected: contractnest-ui
+
+═══════════════════════════════════════════════════
+COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\claude-fix-n8n-webhook-bbb\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════
