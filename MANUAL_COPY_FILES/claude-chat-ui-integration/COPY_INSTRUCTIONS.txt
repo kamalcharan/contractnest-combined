@@ -1,0 +1,57 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS - claude-chat-ui-integration
+═══════════════════════════════════════════════════
+
+Branch: claude/fix-n8n-webhook-bbb-OLAm7
+
+Files to Copy:
+─────────────────────────────────────────────────────
+1. contractnest-ui/src/services/aiAgentService.ts
+   - NEW: Direct n8n webhook integration
+   - Session management with sessionStorage
+   - Phone-based user identification
+   - All methods updated: welcome, chat, search, listSegments, listMembers, getContact, selectOption
+
+2. contractnest-ui/src/pages/VaNi/channels/VaNiChatPage.tsx
+   - Updated: Uses useTenantProfile to get user's WhatsApp number
+   - Updated: All aiAgentService calls now include phone parameter
+   - Updated: Session initialization waits for phone to be available
+   - Removed: chatService dependency
+
+3. contractnest-ui/src/pages/settings/customer-channels/GroupsListPage.tsx
+   - Updated: Chat button now passes groupId as query parameter
+
+Submodules Affected: contractnest-ui
+
+═══════════════════════════════════════════════════
+API INTEGRATION
+═══════════════════════════════════════════════════
+
+n8n Webhook URL: https://n8n.srv1096269.hstgr.cloud/webhook/group-discovery-agent
+
+Request Format:
+{
+  "message": "user message",
+  "phone": "user's WhatsApp number",
+  "group_id": "group UUID",
+  "channel": "chat",
+  "session_action": "start|continue|end"
+}
+
+Phone number is obtained from tenant profile (business_whatsapp || business_phone)
+
+═══════════════════════════════════════════════════
+COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\claude-chat-ui-integration\contractnest-ui\src\services\aiAgentService.ts" -Destination "contractnest-ui\src\services\aiAgentService.ts" -Force
+
+Copy-Item "MANUAL_COPY_FILES\claude-chat-ui-integration\contractnest-ui\src\pages\VaNi\channels\VaNiChatPage.tsx" -Destination "contractnest-ui\src\pages\VaNi\channels\VaNiChatPage.tsx" -Force
+
+Copy-Item "MANUAL_COPY_FILES\claude-chat-ui-integration\contractnest-ui\src\pages\settings\customer-channels\GroupsListPage.tsx" -Destination "contractnest-ui\src\pages\settings\customer-channels\GroupsListPage.tsx" -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════
