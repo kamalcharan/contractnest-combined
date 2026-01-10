@@ -1,0 +1,80 @@
+================================================================================
+INDUSTRY HIERARCHY - API LAYER UPDATES (Phase 3)
+================================================================================
+Branch: industry-hierarchy-api
+Date: 2025-01-10
+================================================================================
+
+SUMMARY OF CHANGES:
+-------------------
+This update adds industry hierarchy support (parent segments and sub-segments)
+to the API layer. It introduces:
+
+1. productMasterdataService.ts
+   - Updated Industry interface with hierarchy fields (parent_id, level,
+     segment_type, has_children, children_count)
+   - Updated getIndustries() method with level and parentId parameters
+   - Added new getSubSegments() method for dedicated sub-segment queries
+
+2. productMasterdataController.ts
+   - Updated getIndustries controller to extract level and parent_id parameters
+   - Added new getSubSegments controller method
+
+3. productMasterdataRoutes.ts
+   - Added new /sub-segments route with full Swagger documentation
+   - Updated /industries route Swagger docs with level and parent_id parameters
+
+================================================================================
+FILES TO COPY:
+================================================================================
+
+Copy the following files from this folder to the contractnest-api submodule:
+
+FROM: MANUAL_COPY_FILES/industry-hierarchy-api/contractnest-api/src/services/productMasterdataService.ts
+  TO: contractnest-api/src/services/productMasterdataService.ts
+
+FROM: MANUAL_COPY_FILES/industry-hierarchy-api/contractnest-api/src/controllers/productMasterdataController.ts
+  TO: contractnest-api/src/controllers/productMasterdataController.ts
+
+FROM: MANUAL_COPY_FILES/industry-hierarchy-api/contractnest-api/src/routes/productMasterdataRoutes.ts
+  TO: contractnest-api/src/routes/productMasterdataRoutes.ts
+
+================================================================================
+COPY COMMANDS (PowerShell):
+================================================================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\industry-hierarchy-api\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+
+Write-Host "API files copied!" -ForegroundColor Green
+
+================================================================================
+TESTING:
+================================================================================
+
+1. Start the API server:
+   cd contractnest-api && npm run dev
+
+2. Test the new endpoints:
+
+   # Get parent segments only (level 0)
+   GET /api/product-masterdata/industries?level=0
+
+   # Get sub-segments for a parent
+   GET /api/product-masterdata/sub-segments?parent_id=healthcare
+
+   # Get all industries (both levels)
+   GET /api/product-masterdata/industries
+
+   # Get sub-segments with search
+   GET /api/product-masterdata/sub-segments?parent_id=healthcare&search=dental
+
+================================================================================
+PREREQUISITES:
+================================================================================
+
+- Database migrations must be run first (Phase 1)
+- Edge function must be deployed first (Phase 2)
+
+================================================================================
