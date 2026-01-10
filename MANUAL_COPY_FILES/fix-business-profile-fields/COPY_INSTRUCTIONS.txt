@@ -1,0 +1,44 @@
+═══════════════════════════════════════════════════════════════════════════════
+FIX: Business Profile - booking_url, contact_first_name, contact_last_name
+═══════════════════════════════════════════════════════════════════════════════
+
+ISSUE: Fields booking_url, contact_first_name, and contact_last_name were not
+being saved in Business Profile because they were missing from Edge function
+mappings, API service interface, and API validators.
+
+FILES MODIFIED:
+───────────────────────────────────────────────────────────────────────────────
+
+1. contractnest-edge/supabase/functions/tenant-profile/index.ts
+   - Added booking_url, contact_first_name, contact_last_name to:
+     * GET handler response transformation (line ~147-150)
+     * POST handler dbRecord mapping (line ~197-200)
+     * POST handler response transformation (line ~264-267)
+     * PUT handler dbRecord mapping (line ~313-316)
+     * PUT handler response transformation (line ~382-385)
+
+2. contractnest-api/src/services/tenantProfileService.ts
+   - Added to TenantProfile interface (line ~27-29):
+     * booking_url: string | null
+     * contact_first_name: string | null
+     * contact_last_name: string | null
+
+3. contractnest-api/src/validators/tenantProfile.ts
+   - Added validation rules for createTenantProfileValidation (line ~84-97)
+   - Added validation rules for updateTenantProfileValidation (line ~181-194)
+
+COPY COMMANDS (PowerShell):
+───────────────────────────────────────────────────────────────────────────────
+
+Copy-Item "MANUAL_COPY_FILES\fix-business-profile-fields\contractnest-edge\supabase\functions\tenant-profile\index.ts" -Destination "contractnest-edge\supabase\functions\tenant-profile\index.ts" -Force
+
+Copy-Item "MANUAL_COPY_FILES\fix-business-profile-fields\contractnest-api\src\services\tenantProfileService.ts" -Destination "contractnest-api\src\services\tenantProfileService.ts" -Force
+
+Copy-Item "MANUAL_COPY_FILES\fix-business-profile-fields\contractnest-api\src\validators\tenantProfile.ts" -Destination "contractnest-api\src\validators\tenantProfile.ts" -Force
+
+SUBMODULES AFFECTED:
+───────────────────────────────────────────────────────────────────────────────
+- contractnest-edge
+- contractnest-api
+
+═══════════════════════════════════════════════════════════════════════════════
