@@ -1,0 +1,113 @@
+===============================================================================
+INDUSTRY HIERARCHY - PHASE 2 (EDGE FUNCTION)
+===============================================================================
+
+PURPOSE:
+Update product-masterdata Edge function to support industry hierarchy
+
+CHANGES MADE:
+-------------------------------------------------------------------------------
+
+1. NEW ENDPOINT: /sub-segments
+   - GET /sub-segments?parent_id=healthcare
+   - Returns sub-segments for a specific parent industry
+   - Includes parent_industry info in response
+
+2. UPDATED ENDPOINT: /industries
+   - NEW PARAMETERS:
+     * level=0 → Get only parent segments
+     * level=1 → Get only sub-segments
+     * parent_id=xxx → Filter by parent industry
+   - NEW RESPONSE FIELDS:
+     * has_children (boolean) - Whether industry has sub-segments
+     * children_count (number) - Count of sub-segments
+
+API EXAMPLES:
+-------------------------------------------------------------------------------
+
+# Get all parent segments (for Step 1 dropdown)
+GET /product-masterdata/industries?level=0
+
+# Get sub-segments for Healthcare (for Step 2 dropdown)
+GET /product-masterdata/sub-segments?parent_id=healthcare
+
+# Alternative: Get sub-segments via industries endpoint
+GET /product-masterdata/industries?parent_id=healthcare&level=1
+
+# Get all industries (backward compatible)
+GET /product-masterdata/industries
+
+RESPONSE EXAMPLE (/industries?level=0):
+-------------------------------------------------------------------------------
+{
+  "success": true,
+  "data": [
+    {
+      "id": "healthcare",
+      "name": "Healthcare",
+      "level": 0,
+      "segment_type": "segment",
+      "parent_id": null,
+      "has_children": true,
+      "children_count": 4,
+      "icon": "Stethoscope",
+      ...
+    }
+  ],
+  "pagination": { ... }
+}
+
+RESPONSE EXAMPLE (/sub-segments?parent_id=healthcare):
+-------------------------------------------------------------------------------
+{
+  "success": true,
+  "data": [
+    {
+      "id": "dental_surgeon",
+      "name": "Dental Surgeon",
+      "level": 1,
+      "segment_type": "sub_segment",
+      "parent_id": "healthcare",
+      ...
+    }
+  ],
+  "parent_industry": {
+    "id": "healthcare",
+    "name": "Healthcare"
+  },
+  "pagination": { ... }
+}
+
+FILES MODIFIED:
+-------------------------------------------------------------------------------
+contractnest-edge/supabase/functions/product-masterdata/index.ts
+  - Added level and parent_id parameters (lines 69-71)
+  - Added /sub-segments endpoint routing (lines 119-133)
+  - Updated /industries routing to pass hierarchy params (line 138)
+  - Rewrote getIndustries() with hierarchy support (lines 490-607)
+  - Added getSubSegments() function (lines 610-703)
+
+COPY COMMANDS (PowerShell):
+-------------------------------------------------------------------------------
+
+Copy-Item "MANUAL_COPY_FILES\industry-hierarchy-edge\contractnest-edge\supabase\functions\product-masterdata\index.ts" -Destination "contractnest-edge\supabase\functions\product-masterdata\index.ts" -Force
+
+DEPLOYMENT:
+-------------------------------------------------------------------------------
+
+cd contractnest-edge
+npx supabase functions deploy product-masterdata
+
+TESTING:
+-------------------------------------------------------------------------------
+
+# Test parent segments
+curl "https://YOUR_SUPABASE_URL/functions/v1/product-masterdata/industries?level=0"
+
+# Test sub-segments
+curl "https://YOUR_SUPABASE_URL/functions/v1/product-masterdata/sub-segments?parent_id=healthcare"
+
+# Test backward compatibility (all industries)
+curl "https://YOUR_SUPABASE_URL/functions/v1/product-masterdata/industries"
+
+===============================================================================
