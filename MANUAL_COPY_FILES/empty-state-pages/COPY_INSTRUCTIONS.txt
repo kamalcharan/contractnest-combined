@@ -1,0 +1,86 @@
+═══════════════════════════════════════════════════
+FEATURE: Empty State / Coming Soon Pages
+═══════════════════════════════════════════════════
+
+DESCRIPTION:
+─────────────────────────────────────────────────────
+Added "Coming Soon" empty state pages for pre-launch features.
+Each page shows a beautiful empty state with:
+- Contextual floating icons and animations
+- Feature highlights with CRO-focused descriptions
+- "Limited Early Access" messaging
+- Password unlock at bottom-left (password: bharathavarsha)
+- Theme-aware styling (light/dark mode)
+
+FILES TO COPY:
+─────────────────────────────────────────────────────
+
+1. ComingSoonWrapper.tsx (NEW - Reusable wrapper component)
+   FROM: MANUAL_COPY_FILES/empty-state-pages/contractnest-ui/src/components/common/ComingSoonWrapper.tsx
+   TO:   contractnest-ui/src/components/common/ComingSoonWrapper.tsx
+
+2. Contacts Page (UPDATED - wrapped with ComingSoonWrapper)
+   FROM: MANUAL_COPY_FILES/empty-state-pages/contractnest-ui/src/pages/contacts/index.tsx
+   TO:   contractnest-ui/src/pages/contacts/index.tsx
+
+3. Contracts Page (UPDATED - enhanced with ComingSoonWrapper)
+   FROM: MANUAL_COPY_FILES/empty-state-pages/contractnest-ui/src/pages/contracts/index.tsx
+   TO:   contractnest-ui/src/pages/contracts/index.tsx
+
+4. Operations Cockpit (UPDATED - wrapped with ComingSoonWrapper)
+   FROM: MANUAL_COPY_FILES/empty-state-pages/contractnest-ui/src/pages/ops/cockpit/index.tsx
+   TO:   contractnest-ui/src/pages/ops/cockpit/index.tsx
+
+5. Catalog Studio Configure (UPDATED - wrapped with ComingSoonWrapper)
+   FROM: MANUAL_COPY_FILES/empty-state-pages/contractnest-ui/src/pages/catalog-studio/configure.tsx
+   TO:   contractnest-ui/src/pages/catalog-studio/configure.tsx
+
+SUBMODULES AFFECTED:
+─────────────────────────────────────────────────────
+- contractnest-ui
+
+PASSWORD FOR EARLY ACCESS:
+─────────────────────────────────────────────────────
+bharathavarsha
+
+Each page has its own unlock state stored in localStorage:
+- comingsoon_unlocked_contacts
+- comingsoon_unlocked_contracts
+- comingsoon_unlocked_operations
+- comingsoon_unlocked_catalog-studio
+
+FEATURES PER PAGE:
+─────────────────────────────────────────────────────
+
+CONTACTS:
+- Unified Contact Management (highlighted)
+- Smart Search & Filters
+- Contact Classifications
+- Bulk Operations
+
+CONTRACTS:
+- Digital Contract Creation (highlighted)
+- Compliance & Audit Trail
+- Lifecycle Management
+- Contract Analytics
+
+OPERATIONS:
+- Real-time Operations Dashboard (highlighted)
+- Smart Alerts & Notifications
+- Performance Analytics
+- Quick Actions Hub
+
+CATALOG STUDIO:
+- Block Library Management (highlighted)
+- Template Builder
+- Dynamic Pricing Configuration
+- Brand Customization
+
+COMMIT MESSAGE:
+─────────────────────────────────────────────────────
+feat: add Coming Soon empty states for Contacts, Contracts, Operations, and Catalog Studio
+
+- Create reusable ComingSoonWrapper component with password unlock
+- Add contextual feature highlights and floating animations
+- Include "Limited Early Access" messaging for pre-launch
+- Store unlock state per page in localStorage
