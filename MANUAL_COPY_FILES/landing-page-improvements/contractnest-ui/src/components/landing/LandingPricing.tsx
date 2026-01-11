@@ -625,98 +625,29 @@ const signupUrl = import.meta.env.VITE_SIGNUP_URL || 'https://contractnest-ui-pr
             </div>
           </div>
 
-          {/* Comparison Table */}
+          {/* Comparison Table - Hidden for now */}
+          {/*
           <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden mb-16">
             <div className="p-8 pb-4">
               <h3 className="text-2xl font-bold text-gray-900 text-center mb-6">
                 Compare ContractNest vs Traditional Solutions
               </h3>
             </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Feature</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Manual Process</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">Traditional Software</th>
-                    <th className="px-6 py-4 text-center text-sm font-semibold text-green-700 bg-green-50">ContractNest</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  <tr>
-                    <td className="px-6 py-4 text-sm text-gray-900">Setup Time</td>
-                    <td className="px-6 py-4 text-center text-sm text-gray-600">Weeks</td>
-                    <td className="px-6 py-4 text-center text-sm text-gray-600">3-6 months</td>
-                    <td className="px-6 py-4 text-center text-sm font-semibold text-green-700">Same day</td>
-                  </tr>
-                  <tr className="bg-gray-50">
-                    <td className="px-6 py-4 text-sm text-gray-900">Monthly Cost (25 contracts)</td>
-                    <td className="px-6 py-4 text-center text-sm text-gray-600">₹50,000+ (staff time)</td>
-                    <td className="px-6 py-4 text-center text-sm text-gray-600">₹75,000+ (licenses)</td>
-                    <td className="px-6 py-4 text-center text-sm font-semibold text-green-700">₹1,250</td>
-                  </tr>
-                  <tr>
-                    <td className="px-6 py-4 text-sm text-gray-900">SLA Tracking</td>
-                    <td className="px-6 py-4 text-center text-sm text-red-600">Manual</td>
-                    <td className="px-6 py-4 text-center text-sm text-yellow-600">Basic</td>
-                    <td className="px-6 py-4 text-center text-sm font-semibold text-green-700">Automated</td>
-                  </tr>
-                  <tr className="bg-gray-50">
-                    <td className="px-6 py-4 text-sm text-gray-900">Integration</td>
-                    <td className="px-6 py-4 text-center text-sm text-red-600">None</td>
-                    <td className="px-6 py-4 text-center text-sm text-yellow-600">Limited</td>
-                    <td className="px-6 py-4 text-center text-sm font-semibold text-green-700">Comprehensive</td>
-                  </tr>
-                  <tr>
-                    <td className="px-6 py-4 text-sm text-gray-900">Support</td>
-                    <td className="px-6 py-4 text-center text-sm text-red-600">None</td>
-                    <td className="px-6 py-4 text-center text-sm text-yellow-600">Business hours</td>
-                    <td className="px-6 py-4 text-center text-sm font-semibold text-green-700">24/7</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            ...
           </div>
+          */}
 
-          {/* FAQ Section */}
+          {/* FAQ Section - Hidden for now */}
+          {/*
           <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-8 border border-blue-200 mb-16">
             <div className="text-center mb-8">
               <h3 className="text-2xl font-bold text-gray-900 mb-4">
                 Pricing Questions & Answers
               </h3>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-2">Why contract-based pricing?</h4>
-                <p className="text-sm text-gray-600 mb-4">
-                  You pay for what you use. Whether you have 1 user or 100 users managing contracts, 
-                  the price stays the same. This encourages collaboration and transparency.
-                </p>
-
-                <h4 className="font-semibold text-gray-900 mb-2">What happens after 10 free contracts?</h4>
-                <p className="text-sm text-gray-600 mb-4">
-                  Your first 10 contracts remain free forever. Starting with contract #11, 
-                  you pay ₹150 per contract per quarter (₹50/month per contract).
-                </p>
-              </div>
-
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-2">Can I cancel anytime?</h4>
-                <p className="text-sm text-gray-600 mb-4">
-                  Yes, absolutely. No long-term contracts or cancellation fees. 
-                  Your data remains accessible for 90 days after cancellation.
-                </p>
-
-                <h4 className="font-semibold text-gray-900 mb-2">Is there a setup fee?</h4>
-                <p className="text-sm text-gray-600 mb-4">
-                  No setup fees, no hidden costs. What you see is what you pay. 
-                  We believe in transparent, honest pricing.
-                </p>
-              </div>
-            </div>
+            ...
           </div>
+          */}
 
           {/* Final CTA - Hidden for now */}
         </div>
