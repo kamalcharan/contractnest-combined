@@ -556,7 +556,8 @@ const signupUrl = import.meta.env.VITE_SIGNUP_URL || 'https://contractnest-ui-pr
             </div>
           </div>
 
-          {/* Pricing Cards */}
+          {/* Pricing Cards - Hidden for now */}
+          {/*
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-16">
             {pricingPlans.map((plan, index) => (
               <PricingCard
@@ -568,14 +569,17 @@ const signupUrl = import.meta.env.VITE_SIGNUP_URL || 'https://contractnest-ui-pr
               />
             ))}
           </div>
+          */}
 
-          {/* ROI Calculator */}
+          {/* ROI Calculator - Hidden for now */}
+          {/*
           <div className="mb-16">
-            <ROICalculator 
+            <ROICalculator
               isVisible={isVisible}
               onCalculatorOpen={handleCalculatorOpen}
             />
           </div>
+          */}
 
           {/* Value Proposition */}
           <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-200 mb-16">
