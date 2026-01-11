@@ -1,0 +1,31 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS - fix-coming-soon-user-unlock
+═══════════════════════════════════════════════════
+
+CHANGES SUMMARY:
+- Fixed per-user unlock race condition in ComingSoonWrapper
+- Now waits for auth to load before checking localStorage
+- No longer uses 'anonymous' fallback - requires valid user ID
+- Shows loading state while auth is checking
+- Prevents cross-user unlock contamination
+
+SUBMODULES AFFECTED:
+- contractnest-ui
+
+═══════════════════════════════════════════════════
+FILES TO COPY:
+═══════════════════════════════════════════════════
+
+1. contractnest-ui/src/components/common/ComingSoonWrapper.tsx
+   FROM: MANUAL_COPY_FILES/fix-coming-soon-user-unlock/contractnest-ui/src/components/common/ComingSoonWrapper.tsx
+   TO:   contractnest-ui/src/components/common/ComingSoonWrapper.tsx
+
+═══════════════════════════════════════════════════
+IMPORTANT: Clear localStorage to test
+═══════════════════════════════════════════════════
+To test properly, clear existing unlock keys:
+1. Open DevTools → Application → Local Storage
+2. Delete all keys starting with 'comingsoon_unlocked_'
+3. Refresh and test with different users
+
+═══════════════════════════════════════════════════
