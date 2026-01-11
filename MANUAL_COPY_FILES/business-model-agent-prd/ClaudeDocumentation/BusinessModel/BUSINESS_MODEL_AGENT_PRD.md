@@ -1,46 +1,557 @@
 # Business Model Agent - Technical PRD
 
-> **Document Version**: 1.0
+> **Document Version**: 1.1
 > **Created**: January 2025
 > **Last Updated**: January 2025
 > **Status**: Draft - Pending Review
 > **Author**: Claude Code Session
+> **Owner**: Charan Kamal Bommakanti - Vikuna Technologies
 
 ---
 
 ## Table of Contents
 
-1. [Executive Summary](#1-executive-summary)
-2. [Current State Analysis](#2-current-state-analysis)
-3. [Vision & Goals](#3-vision--goals)
-4. [Product Billing Models](#4-product-billing-models)
-5. [Architecture Design](#5-architecture-design)
-6. [Database Schema](#6-database-schema)
-7. [API Design](#7-api-design)
-8. [Edge Functions](#8-edge-functions)
-9. [UI Design](#9-ui-design)
-10. [JTD Integration](#10-jtd-integration)
-11. [Razorpay Integration](#11-razorpay-integration)
-12. [Concurrency & Race Conditions](#12-concurrency--race-conditions)
-13. [Error Handling Strategy](#13-error-handling-strategy)
-14. [Bot-Friendly Architecture](#14-bot-friendly-architecture)
-15. [Implementation Phases](#15-implementation-phases)
-16. [Testing Strategy](#16-testing-strategy)
-17. [Rollback Plan](#17-rollback-plan)
-18. [Phase Completion Log](#18-phase-completion-log)
+1. [Vision & Business Context](#1-vision--business-context) ⭐ START HERE
+2. [Use Cases & User Stories](#2-use-cases--user-stories)
+3. [Key Decisions & Rationale](#3-key-decisions--rationale)
+4. [Executive Summary](#4-executive-summary)
+5. [Current State Analysis](#5-current-state-analysis)
+6. [Product Billing Models](#6-product-billing-models)
+7. [Architecture Design](#7-architecture-design)
+8. [Database Schema](#8-database-schema)
+9. [API Design](#9-api-design)
+10. [Edge Functions](#10-edge-functions)
+11. [UI Design](#11-ui-design)
+12. [JTD Integration](#12-jtd-integration)
+13. [Razorpay Integration](#13-razorpay-integration)
+14. [Concurrency & Race Conditions](#14-concurrency--race-conditions)
+15. [Error Handling Strategy](#15-error-handling-strategy)
+16. [Bot-Friendly Architecture](#16-bot-friendly-architecture)
+17. [Implementation Phases](#17-implementation-phases)
+18. [Testing Strategy](#18-testing-strategy)
+19. [Rollback Plan](#19-rollback-plan)
+20. [Phase Completion Log](#20-phase-completion-log)
 
 ---
 
-## 1. Executive Summary
+# ⭐ CONTEXT FOR NEW SESSIONS - READ THIS FIRST
 
-### 1.1 What is Business Model Agent?
+> **If you're starting a new Claude Code session**, read sections 1-3 first. They contain the business context, vision, use cases, and architectural decisions that inform all technical choices. The technical sections (4+) will make much more sense with this context.
+
+---
+
+## 1. Vision & Business Context
+
+### 1.1 The Problem We're Solving
+
+**Vikuna Technologies** is building multiple SaaS products:
+
+| Product | Purpose | Target Users |
+|---------|---------|--------------|
+| **ContractNest** | Contract lifecycle management platform | SMBs, enterprises managing vendor/customer contracts |
+| **FamilyKnows** | Family asset & document management | Families wanting to organize important information |
+| **Kaladristi** | AI-powered stock research | Individual investors seeking research insights |
+| **Custom Solutions** | Bespoke development for specific clients | Individual businesses with unique needs |
+
+**The Challenge**: Each product has a fundamentally different billing model, but we need:
+1. A unified billing infrastructure (not 4 separate systems)
+2. The ability to add new products without rebuilding billing
+3. Automated revenue collection (no more manual invoicing/chasing)
+4. Tenants should be able to bill their own customers (B2B2C capability)
+
+### 1.2 The Vision
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                                                                              │
+│   "One billing engine, infinite business models"                            │
+│                                                                              │
+│   The Business Model Agent is not just a billing system—it's a              │
+│   configurable revenue engine that can adapt to ANY pricing model           │
+│   through JSONB configuration, without code changes.                        │
+│                                                                              │
+│   It also empowers our TENANTS to bill THEIR customers, creating            │
+│   a revenue stream for the platform (transaction fees) while solving        │
+│   a real pain point for tenants (payment collection).                       │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 1.3 Real-World Trigger
+
+**The immediate trigger for this project**: A custom client who was paying monthly suddenly stopped paying. Without automated billing:
+- No automatic invoices were sent
+- No payment reminders went out
+- No escalation happened
+- Revenue was lost due to manual process failure
+
+**This system will ensure**: Every subscription, every invoice, every payment (or non-payment) is automatically tracked, notified, and escalated.
+
+### 1.4 Why This is NOT a Standard SaaS Billing System
+
+Most billing systems assume: **"Per user per month"**
+
+Our products require **composite billing**:
+
+```
+ContractNest Revenue =
+    Platform Fee (tiered by users: 2 users = ₹500, 5 users = ₹750, etc.)
+  + Per Contract Charge (tiered: first 50 = ₹150 each, next 150 = ₹120 each)
+  + Storage Overage (₹0.50 per MB above 40 MB included)
+  + Notification Credits (prepaid packs, deducted per use)
+  + Add-ons (VaNi AI = ₹5,000/month optional)
+  + RFP Feature (₹250 per contract if used)
+
+FamilyKnows Revenue =
+    Free tier (1 user, 25 assets) → ₹0
+    OR Family tier (4 users) → ₹200/month
+  + AI Add-on → ₹100/month optional
+
+Kaladristi Revenue =
+    Base subscription → ₹100/month
+  + Per AI Report → ₹50 each (usage-based)
+```
+
+**No off-the-shelf billing system handles this complexity elegantly.**
+
+### 1.5 The Two-Level Billing Model
+
+```
+LEVEL 1: PLATFORM BILLING (Us → Tenants)
+════════════════════════════════════════
+We bill tenants for using our products.
+- ContractNest tenant pays us for contracts, users, storage
+- FamilyKnows tenant pays us for family plan
+- Kaladristi tenant pays us for reports
+
+Payment goes to: OUR Razorpay account
+                 (configured in t_tenant WHERE admin=true)
+
+
+LEVEL 2: CONTRACT BILLING (Tenants → Their Customers)
+═════════════════════════════════════════════════════
+Tenants bill their own customers through our platform.
+- A ContractNest tenant creates a contract with their customer
+- They generate an invoice for milestone payment
+- Customer receives payment link
+- Payment is collected
+- We take 2-3% platform fee
+- Rest is settled to tenant
+
+Payment goes to: TENANT'S Razorpay account
+                 (configured in Settings → Integrations)
+
+THIS IS A KEY DIFFERENTIATOR - tenants get billing infrastructure for free!
+```
+
+### 1.6 Business Goals
+
+| Goal | Metric | Target |
+|------|--------|--------|
+| **Automate Revenue** | Manual invoicing effort | Zero manual invoices |
+| **Reduce Churn** | Payment failure → cancellation | < 5% (with dunning) |
+| **Enable Tenants** | Tenants using contract billing | 30% within 6 months |
+| **Platform Revenue** | Transaction fee income | Additional revenue stream |
+| **Scale Operations** | Tenants supported | 500+ without ops overhead |
+
+---
+
+## 2. Use Cases & User Stories
+
+### 2.1 ContractNest Use Cases
+
+#### UC-1: New Tenant Signup & Trial
+
+```
+ACTOR: New business signing up for ContractNest
+
+FLOW:
+1. Business signs up, selects "Professional" plan
+2. System creates subscription with 14-day trial
+3. Tenant gets full access to all features during trial
+4. Day 10: System sends "trial expiring" notification (JTD)
+5. Day 14: Trial ends
+   - If payment method added → First invoice generated
+   - If no payment method → Grace period starts
+6. Day 21 (grace end): Account suspended if no payment
+
+BILLING EVENTS:
+- trial_started (Day 0)
+- trial_expiring (Day 10)
+- trial_expired OR invoice_generated (Day 14)
+- grace_period_started (Day 14 if no payment)
+- account_suspended (Day 21 if still no payment)
+```
+
+#### UC-2: Monthly Usage & Billing
+
+```
+ACTOR: Active ContractNest tenant
+
+SCENARIO: Tenant has Professional plan, 4 users, creates 60 contracts in quarter
+
+MONTHLY ACTIVITY:
+- Creates 20 contracts (each triggers usage recording)
+- Sends 150 WhatsApp notifications (deducts from credits)
+- Uses 50 MB storage (10 MB overage)
+- Uses VaNi AI add-on
+
+END OF QUARTER BILLING:
+┌─────────────────────────────────────────────────┐
+│ INVOICE #INV-2025-Q1-00123                      │
+├─────────────────────────────────────────────────┤
+│ Platform Fee (4 users)          ₹2,250.00       │
+│   (₹750/month × 3 months)                       │
+│                                                 │
+│ Contract Charges                ₹8,700.00       │
+│   First 50 @ ₹150              ₹7,500.00       │
+│   Next 10 @ ₹120               ₹1,200.00       │
+│                                                 │
+│ Storage Overage                   ₹150.00       │
+│   30 MB × ₹0.50 × 3 months                     │
+│                                                 │
+│ VaNi AI Add-on                ₹15,000.00       │
+│   ₹5,000/month × 3 months                      │
+│                                                 │
+│ ─────────────────────────────────────────────── │
+│ TOTAL                         ₹26,100.00       │
+└─────────────────────────────────────────────────┘
+
+FLOW:
+1. pg_cron triggers billing-cycle-worker on April 1st
+2. Worker aggregates Q1 usage from t_bm_subscription_usage
+3. Pricing engine calculates using product config
+4. Invoice created in DB + Razorpay
+5. JTD sends invoice email with payment link
+6. Tenant pays via Razorpay
+7. Webhook updates invoice status
+8. JTD sends payment confirmation
+```
+
+#### UC-3: Tenant Bills Their Customer (Contract Billing)
+
+```
+ACTOR: ContractNest tenant (a construction company)
+
+SCENARIO: Tenant has contract with a customer for ₹5,00,000 project
+          Payment terms: 30% advance, 40% mid-project, 30% completion
+
+FLOW - MILESTONE 1 (Advance):
+1. Tenant opens contract in ContractNest
+2. Clicks "Generate Invoice" for Milestone 1
+3. Enters: Amount ₹1,50,000, Due date, Customer email
+4. System creates t_contract_invoice record
+5. System creates Razorpay payment link (using TENANT's Razorpay)
+6. JTD sends invoice to customer (deducts tenant's notification credit)
+7. Customer clicks link, pays ₹1,50,000
+8. Razorpay webhook received
+9. Platform fee calculated: ₹1,50,000 × 2.5% = ₹3,750
+10. Settlement queued: ₹1,46,250 to tenant
+11. JTD notifies tenant: "Payment received for [Contract]"
+12. Daily settlement job transfers ₹1,46,250 to tenant's account
+
+TENANT VALUE:
+- No manual invoicing
+- Automatic payment tracking
+- Professional payment experience for their customers
+
+PLATFORM VALUE:
+- ₹3,750 transaction fee
+- Increased tenant stickiness
+- Usage of notification credits (additional revenue)
+```
+
+#### UC-4: Payment Failure & Dunning
+
+```
+ACTOR: System (automated dunning)
+
+SCENARIO: Tenant's quarterly payment of ₹26,100 fails
+
+DAY 0 - Payment Attempt:
+1. Razorpay attempts charge → FAILED (insufficient funds)
+2. Webhook received: payment.failed
+3. System updates invoice status
+4. JTD sends: "Payment failed" email to tenant
+5. n8n workflow triggered: dunning_sequence
+
+DAY 3:
+- n8n triggers JTD: "Payment reminder" email
+
+DAY 7:
+- n8n triggers JTD: "Payment reminder" email + SMS
+- Invoice marked "overdue"
+
+DAY 14:
+- n8n triggers JTD: "Urgent - payment overdue" email + SMS + WhatsApp
+- System starts grace period
+- Tenant still has FULL access (grace_access: "full")
+- JTD sends: "Grace period started" notification
+
+DAY 18:
+- n8n triggers JTD: "Grace period ending in 3 days" all channels
+
+DAY 21:
+- Grace period ends
+- System calls suspendAccount(tenant)
+- Subscription status → "suspended"
+- Tenant sees "Account suspended" on login
+- JTD sends: "Account suspended" notification
+- Tenant can still log in but can't access features
+
+DAY 22+:
+- Tenant pays outstanding amount
+- System calls restoreAccount(tenant)
+- Full access restored
+- JTD sends: "Account restored" notification
+```
+
+### 2.2 FamilyKnows Use Cases
+
+#### UC-5: Free to Paid Upgrade
+
+```
+ACTOR: FamilyKnows user on free tier
+
+SCENARIO: User has 1 user, 20 assets. Wants to add family members.
+
+FLOW:
+1. User tries to add family member
+2. System shows: "Free tier limited to 1 user. Upgrade to Family plan?"
+3. User clicks upgrade
+4. Selects "Family of 4" plan @ ₹200/month
+5. System creates subscription
+6. Razorpay subscription created (recurring)
+7. First payment collected
+8. User can now add 3 more family members
+9. Asset limit removed
+```
+
+### 2.3 Kaladristi Use Cases
+
+#### UC-6: Usage-Based Billing
+
+```
+ACTOR: Kaladristi subscriber
+
+SCENARIO: User on ₹100/month base plan, wants AI reports
+
+FLOW:
+1. User requests AI research report for "RELIANCE"
+2. System checks: subscription active? ✓
+3. System generates report
+4. Usage recorded: metric='ai_report', quantity=1
+5. User requests 5 more reports during month
+
+END OF MONTH:
+┌─────────────────────────────────────────────────┐
+│ INVOICE                                          │
+├─────────────────────────────────────────────────┤
+│ Base Subscription               ₹100.00         │
+│ AI Research Reports (6)         ₹300.00         │
+│   6 reports × ₹50                               │
+│ ─────────────────────────────────────────────── │
+│ TOTAL                           ₹400.00         │
+└─────────────────────────────────────────────────┘
+```
+
+### 2.4 User Stories
+
+#### Platform Admin (Vikuna)
+
+```
+As a PLATFORM ADMIN, I want to:
+
+US-1: Create a new pricing plan for ContractNest with composite billing
+      so that I can configure base fees, per-contract charges, and add-ons
+
+US-2: View billing dashboard across all products
+      so that I can see MRR, ARR, churn, and payment failures
+
+US-3: Configure dunning sequences per product
+      so that payment recovery is automated
+
+US-4: Add a new product (e.g., Kaladristi) to the billing system
+      so that it can have its own billing model without code changes
+
+US-5: View and manage failed payments across all tenants
+      so that I can manually intervene if needed
+
+US-6: Generate billing reports for accounting
+      so that I can reconcile payments and file taxes
+```
+
+#### Tenant Admin (ContractNest Customer)
+
+```
+As a TENANT ADMIN, I want to:
+
+US-7: View my current subscription and usage
+      so that I know what I'm paying for
+
+US-8: See upcoming invoice estimate
+      so that I can budget for the payment
+
+US-9: Buy notification credit topups
+      so that I don't run out mid-month
+
+US-10: Generate invoices for MY customers
+       so that I can collect payments professionally
+
+US-11: Track which customers have paid
+       so that I know who to follow up with
+
+US-12: View my settlement history
+       so that I know when platform transferred my money
+
+US-13: Update my Razorpay credentials
+       so that customer payments come to my account
+```
+
+#### VaNi (AI Assistant)
+
+```
+As VANI (AI Assistant), I want to:
+
+US-14: Query tenant's billing status
+       so that I can answer "What's my current bill?"
+
+US-15: Suggest plan upgrades based on usage
+       so that I can say "You're at 90% contract limit, consider upgrading"
+
+US-16: Alert about low notification credits
+       so that I can say "You have 10 credits left, want to buy more?"
+
+US-17: Help with invoice disputes
+       so that I can pull up billing details when tenant asks
+
+US-18: Process simple billing requests
+       so that tenant can say "Buy 50 notification credits" and I execute it
+```
+
+#### External Customer (Tenant's Customer)
+
+```
+As an EXTERNAL CUSTOMER (being billed by a tenant), I want to:
+
+US-19: Receive professional invoices via email/WhatsApp
+       so that I know what I'm paying for
+
+US-20: Pay securely via payment link
+       so that I don't have to do bank transfers
+
+US-21: Get payment confirmation
+       so that I have proof of payment
+
+US-22: See payment history for a contract
+       so that I can track my payments
+```
+
+---
+
+## 3. Key Decisions & Rationale
+
+### 3.1 Architectural Decisions
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| **Redis for caching** | NO - Use PostgreSQL only | JTD already uses PGMQ. Adding Redis adds operational complexity. For 500 users, PostgreSQL with proper indexing is sufficient. Can add Redis later if needed. |
+| **Separate MCP Server** | NO - Service layer in API | Simpler deployment, no new container needed. The "agent" is a service class, not a separate process. Can extract to MCP later if AI integration deepens. |
+| **Razorpay credentials storage** | Use existing Integrations module | Already built! `t_tenant_integrations` stores encrypted credentials. Platform uses `admin=true` tenant's credentials. |
+| **Notification delivery** | Use JTD Framework | Already built! Production-ready with PGMQ, multi-channel, templates, status tracking. Don't reinvent. |
+| **Complex workflows (dunning)** | Use n8n | Already in Docker setup. n8n excels at multi-step, time-delayed workflows. Don't build custom workflow engine. |
+| **Billing cycle scheduling** | pg_cron | Already used for JTD worker. Consistent approach. No external scheduler needed. |
+| **Multi-product support** | JSONB product configs | One table `t_bm_product_config` with full billing model as JSON. Add product = add row, not code. |
+
+### 3.2 Why NOT Off-the-Shelf Billing (Stripe Billing, Chargebee, etc.)
+
+| Concern | Our Situation |
+|---------|---------------|
+| **Pricing Model Complexity** | Our composite model (base + usage + tiers + credits) is too complex for most platforms |
+| **Multi-Product** | We have 4+ products with different models. Most platforms assume one product. |
+| **Contract Billing (B2B2C)** | Tenants billing their customers is not supported by standard billing platforms |
+| **Razorpay India** | We need Razorpay for India payments. Most billing platforms don't integrate well. |
+| **Cost** | Billing platforms charge 0.5-1% of revenue. At scale, this is significant. |
+| **Control** | We want full control over billing logic, dunning, and customer experience |
+
+### 3.3 Database Design Decisions
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| **Store billing config** | JSONB in `t_bm_plan_version.billing_config` | Flexible schema, can evolve without migrations. Easy to query specific fields. |
+| **Credit balance tracking** | Separate table with row-level locking | Prevents race conditions on concurrent deductions. `FOR UPDATE` ensures atomicity. |
+| **Usage recording** | Append-only inserts | No update contention. Aggregate at billing time. Simple and fast. |
+| **Invoice line items** | JSONB array | Flexible, can have any number of line items. Easy to render in PDF. |
+
+### 3.4 Integration Decisions
+
+| Integration | Approach | Notes |
+|-------------|----------|-------|
+| **Razorpay** | REST API via service class | Standard API integration. Webhooks for async events. |
+| **Razorpay Credentials** | From `t_tenant_integrations` | Already encrypted, already has test/live flag, already has connection testing |
+| **Platform Razorpay** | From tenant where `admin=true` | Platform owner is a special tenant. Uses same integration flow. |
+| **Notifications** | Via JTD | Create JTD record → automatic delivery via existing worker |
+| **Dunning** | Via n8n | Webhook triggers n8n → n8n schedules delays → n8n calls API/JTD |
+
+### 3.5 Things We Explicitly Decided NOT To Build
+
+| Feature | Reason |
+|---------|--------|
+| **Real-time usage dashboard** | Not needed for billing. Aggregate monthly is fine. |
+| **Complex discount engine** | Start simple. Add coupons/discounts in v2 if needed. |
+| **Multi-currency dynamic conversion** | Store in INR. Handle multi-currency display only. |
+| **Proration for mid-cycle changes** | Complex. Handle manually for now. Add in v2. |
+| **Refund automation** | Manual refunds via Razorpay dashboard. Add automation in v2. |
+
+### 3.6 Important Context for Future Sessions
+
+```
+KEY POINTS TO REMEMBER:
+
+1. EXISTING CODE: There's already ~70% of billing UI/API built, but it's
+   standalone and not integrated into the product. We're EVOLVING, not
+   rebuilding.
+
+2. JTD IS THE NOTIFICATION BACKBONE: Never send emails/SMS directly.
+   Always create JTD records. The JTD worker handles delivery.
+
+3. INTEGRATIONS MODULE EXISTS: Don't build new payment credential storage.
+   Use Settings → Integrations → Razorpay.
+
+4. ADMIN TENANT: The platform itself is a tenant with admin=true.
+   Platform billing uses this tenant's Razorpay credentials.
+
+5. CONTRACT BILLING IS LEVEL 2: This is tenant→customer billing, separate
+   from platform→tenant billing. Both use the same infrastructure.
+
+6. n8n FOR WORKFLOWS: Complex multi-step processes (dunning) go in n8n,
+   not in code. n8n is already in Docker setup.
+
+7. NO REDIS NEEDED: We discussed this. PostgreSQL + PGMQ is sufficient
+   for our scale. Don't add Redis complexity.
+
+8. PRODUCT CONFIGS ARE JSONB: Adding a new product = inserting a row
+   with billing config JSON. No code changes needed.
+
+9. BILLING CYCLES: Quarterly and Annual only for ContractNest.
+   No monthly plans. Configured per product.
+
+10. GRACE PERIOD = FULL ACCESS: During grace period, tenants still have
+    full access. Only suspended accounts lose access.
+```
+
+---
+
+## 4. Executive Summary
+
+### 4.1 What is Business Model Agent?
 
 The Business Model Agent is a **dual-purpose billing infrastructure** that handles:
 
 1. **Platform Billing (Level 1)**: ContractNest/FamilyKnows/Kaladristi billing their tenants
 2. **Contract Billing (Level 2)**: Tenants billing their customers through the platform
 
-### 1.2 Key Objectives
+### 4.2 Key Objectives
 
 | Objective | Description |
 |-----------|-------------|
@@ -51,7 +562,7 @@ The Business Model Agent is a **dual-purpose billing infrastructure** that handl
 | **Scalability** | Support 500+ concurrent users with proper concurrency handling |
 | **Bot-Friendly** | AI/chatbot queryable for billing status, recommendations |
 
-### 1.3 Design Principles
+### 4.3 Design Principles
 
 1. **No Redis Dependency** - Use PostgreSQL + PGMQ for all operations
 2. **JTD-First Notifications** - All billing communications flow through JTD
@@ -61,9 +572,9 @@ The Business Model Agent is a **dual-purpose billing infrastructure** that handl
 
 ---
 
-## 2. Current State Analysis
+## 5. Current State Analysis
 
-### 2.1 Existing Code Inventory
+### 15.1 Existing Code Inventory
 
 #### UI Layer (`contractnest-ui`)
 
@@ -108,7 +619,7 @@ The Business Model Agent is a **dual-purpose billing infrastructure** that handl
 | `t_bm_feature_reference` | Exists | Reference data |
 | `t_bm_notification_reference` | Exists | Reference data |
 
-### 2.2 Existing Integrations Module
+### 15.2 Existing Integrations Module
 
 The integrations module already handles payment provider configuration:
 
@@ -125,7 +636,7 @@ Tables:
 - Connection testing functionality exists
 - Platform billing uses credentials from tenant where `t_tenant.admin = true`
 
-### 2.3 JTD Framework
+### 9.3 JTD Framework
 
 JTD (Jobs To Do) provides production-ready infrastructure:
 
@@ -143,7 +654,7 @@ JTD (Jobs To Do) provides production-ready infrastructure:
 - `payment_failed`, `payment_overdue`, `subscription_renewing`
 - `trial_expiring`, `grace_period_started`, `account_suspended`
 
-### 2.4 n8n Workflows
+### 5.4 n8n Workflows
 
 Available for complex multi-step workflows:
 - Dunning sequences (Day 0 → Day 3 → Day 7 → Day 14 → Day 21)
@@ -152,78 +663,9 @@ Available for complex multi-step workflows:
 
 ---
 
-## 3. Vision & Goals
+## 6. Product Billing Models
 
-### 3.1 Multi-Product Billing Platform
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    BUSINESS MODEL AGENT                              │
-│                                                                      │
-│   ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌───────────┐  │
-│   │ ContractNest│  │ FamilyKnows │  │ Kaladristi  │  │  Custom   │  │
-│   │   Config    │  │   Config    │  │   Config    │  │  Clients  │  │
-│   └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └─────┬─────┘  │
-│          │                │                │               │        │
-│          └────────────────┼────────────────┴───────────────┘        │
-│                           │                                          │
-│                           ▼                                          │
-│   ┌─────────────────────────────────────────────────────────────┐   │
-│   │                  PRICING ENGINE                              │   │
-│   │                                                              │   │
-│   │  • Base Fee Calculator    • Usage Aggregator                │   │
-│   │  • Tiered Pricing         • Credit Manager                  │   │
-│   │  • Add-on Handler         • Trial/Grace Manager             │   │
-│   │                                                              │   │
-│   └─────────────────────────────────────────────────────────────┘   │
-│                           │                                          │
-│          ┌────────────────┼────────────────┐                        │
-│          ▼                ▼                ▼                        │
-│   ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                 │
-│   │  Razorpay   │  │    JTD      │  │   n8n       │                 │
-│   │  Payments   │  │  Notifs     │  │  Workflows  │                 │
-│   └─────────────┘  └─────────────┘  └─────────────┘                 │
-│                                                                      │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-### 3.2 Dual-Level Billing
-
-```
-LEVEL 1: PLATFORM BILLING
-──────────────────────────
-ContractNest → Tenants
-FamilyKnows → Tenants
-Kaladristi → Tenants
-
-Payment flows to: Platform's Razorpay account
-                  (t_tenant WHERE admin = true)
-
-
-LEVEL 2: CONTRACT BILLING
-──────────────────────────
-Tenants → Their Customers
-
-Payment flows to: Tenant's Razorpay account
-                  (via Razorpay Route/Transfer)
-                  Platform takes 2-3% fee
-```
-
-### 3.3 Success Metrics
-
-| Metric | Target |
-|--------|--------|
-| Concurrent users | 500+ without degradation |
-| Invoice generation time | < 5 seconds per invoice |
-| Payment webhook processing | < 2 seconds |
-| Query response time (bot) | < 500ms |
-| System availability | 99.9% uptime |
-
----
-
-## 4. Product Billing Models
-
-### 4.1 ContractNest Billing Model
+### 18.1 ContractNest Billing Model
 
 ```json
 {
@@ -292,7 +734,7 @@ Payment flows to: Tenant's Razorpay account
 }
 ```
 
-### 4.2 FamilyKnows Billing Model
+### 18.2 FamilyKnows Billing Model
 
 ```json
 {
@@ -341,7 +783,7 @@ Payment flows to: Tenant's Razorpay account
 }
 ```
 
-### 4.3 Kaladristi Billing Model
+### 8.3 Kaladristi Billing Model
 
 ```json
 {
@@ -368,7 +810,7 @@ Payment flows to: Tenant's Razorpay account
 }
 ```
 
-### 4.4 Custom Client Model
+### 8.4 Custom Client Model
 
 ```json
 {
@@ -390,9 +832,9 @@ Payment flows to: Tenant's Razorpay account
 
 ---
 
-## 5. Architecture Design
+## 7. Architecture Design
 
-### 5.1 System Architecture
+### 15.1 System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -500,7 +942,7 @@ Payment flows to: Tenant's Razorpay account
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 5.2 Data Flow: Platform Billing
+### 15.2 Data Flow: Platform Billing
 
 ```
 1. USAGE RECORDING (Real-time)
@@ -585,7 +1027,7 @@ Payment flows to: Tenant's Razorpay account
              └────────────────────────────────────────────┘
 ```
 
-### 5.3 Data Flow: Contract Billing (Tenant → Customer)
+### 9.3 Data Flow: Contract Billing (Tenant → Customer)
 
 ```
 1. INVOICE CREATION
@@ -656,13 +1098,13 @@ Payment flows to: Tenant's Razorpay account
 
 ---
 
-## 6. Database Schema
+## 8. Database Schema
 
-### 6.1 Schema Evolution Strategy
+### 18.1 Schema Evolution Strategy
 
 **Principle**: Evolve existing tables, add new tables. No breaking changes.
 
-### 6.2 Existing Tables - Modifications
+### 18.2 Existing Tables - Modifications
 
 #### `t_bm_plan_version` - Enhanced tiers JSONB
 
@@ -760,7 +1202,7 @@ ALTER TABLE t_bm_invoice
   ADD COLUMN IF NOT EXISTS pdf_url TEXT;
 ```
 
-### 6.3 New Tables
+### 8.3 New Tables
 
 #### `t_bm_product_config`
 
@@ -944,7 +1386,7 @@ CREATE INDEX idx_billing_event_unprocessed ON t_bm_billing_event (event_type, pr
   WHERE processed = false;
 ```
 
-### 6.4 Database Functions
+### 8.4 Database Functions
 
 #### Credit Deduction with Locking
 
@@ -1037,9 +1479,9 @@ $$ LANGUAGE plpgsql;
 
 ---
 
-## 7. API Design
+## 9. API Design
 
-### 7.1 New Endpoints
+### 15.1 New Endpoints
 
 #### Billing Service Endpoints
 
@@ -1075,7 +1517,7 @@ GET    /api/billing/summary/:tenantId        # Detailed summary for bot
 GET    /api/billing/recommendations/:tenantId # AI recommendations
 ```
 
-### 7.2 Request/Response Examples
+### 15.2 Request/Response Examples
 
 #### Record Usage
 
@@ -1147,7 +1589,7 @@ GET    /api/billing/recommendations/:tenantId # AI recommendations
 }
 ```
 
-### 7.3 API Service Layer Structure
+### 9.3 API Service Layer Structure
 
 ```
 contractnest-api/src/services/billing/
@@ -1165,9 +1607,9 @@ contractnest-api/src/services/billing/
 
 ---
 
-## 8. Edge Functions
+## 10. Edge Functions
 
-### 8.1 New Edge Functions
+### 18.1 New Edge Functions
 
 #### `billing-cycle-worker`
 
@@ -1232,7 +1674,7 @@ interface BillingJob {
  */
 ```
 
-### 8.2 pg_cron Jobs
+### 18.2 pg_cron Jobs
 
 ```sql
 -- Billing cycle (1st of month at 00:05)
@@ -1273,9 +1715,9 @@ SELECT cron.schedule(
 
 ---
 
-## 9. UI Design
+## 11. UI Design
 
-### 9.1 Pages to Evolve
+### 15.1 Pages to Evolve
 
 | Current Page | Evolution |
 |--------------|-----------|
@@ -1286,7 +1728,7 @@ SELECT cron.schedule(
 | `tenants/Subscription/index.tsx` | Full subscription details + payment history |
 | `billing/index.tsx` | Enhanced dashboard with all billing metrics |
 
-### 9.2 New Components
+### 15.2 New Components
 
 ```
 components/businessModel/
@@ -1320,9 +1762,9 @@ components/businessModel/
 
 ---
 
-## 10. JTD Integration
+## 12. JTD Integration
 
-### 10.1 New Source Types
+### 18.1 New Source Types
 
 ```sql
 INSERT INTO n_jtd_source_types (code, name, description, default_channels) VALUES
@@ -1360,7 +1802,7 @@ INSERT INTO n_jtd_source_types (code, name, description, default_channels) VALUE
 ('contract_settlement_completed', 'Settlement Completed', 'Funds settled to tenant', '["email"]');
 ```
 
-### 10.2 Template Variables
+### 18.2 Template Variables
 
 ```typescript
 // For invoice_generated
@@ -1397,9 +1839,9 @@ INSERT INTO n_jtd_source_types (code, name, description, default_channels) VALUE
 
 ---
 
-## 11. Razorpay Integration
+## 13. Razorpay Integration
 
-### 11.1 Platform Billing Flow
+### 15.1 Platform Billing Flow
 
 ```typescript
 // Get platform Razorpay credentials
@@ -1424,7 +1866,7 @@ async function getPlatformRazorpayCredentials(): Promise<RazorpayCredentials> {
 }
 ```
 
-### 11.2 Tenant Billing Flow (Contract Level)
+### 15.2 Tenant Billing Flow (Contract Level)
 
 ```typescript
 // Get tenant's Razorpay credentials
@@ -1447,7 +1889,7 @@ async function getTenantRazorpayCredentials(tenantId: string): Promise<RazorpayC
 }
 ```
 
-### 11.3 Razorpay API Operations
+### 15.3 Razorpay API Operations
 
 ```typescript
 // razorpayService.ts
@@ -1470,7 +1912,7 @@ export class RazorpayService {
 }
 ```
 
-### 11.4 Webhook Events to Handle
+### 15.4 Webhook Events to Handle
 
 | Event | Action |
 |-------|--------|
@@ -1484,9 +1926,9 @@ export class RazorpayService {
 
 ---
 
-## 12. Concurrency & Race Conditions
+## 14. Concurrency & Race Conditions
 
-### 12.1 Critical Sections
+### 18.1 Critical Sections
 
 | Operation | Risk | Mitigation |
 |-----------|------|------------|
@@ -1496,7 +1938,7 @@ export class RazorpayService {
 | Payment processing | Double processing | Idempotency key + status check |
 | Subscription update | Race between webhook and UI | Optimistic locking with version |
 
-### 12.2 Credit Deduction (Detailed)
+### 18.2 Credit Deduction (Detailed)
 
 ```sql
 -- CORRECT: Using FOR UPDATE
@@ -1516,7 +1958,7 @@ SELECT balance FROM t_bm_credit_balance WHERE ...;
 UPDATE t_bm_credit_balance SET balance = balance - $1 WHERE ...;
 ```
 
-### 12.3 Webhook Idempotency
+### 18.3 Webhook Idempotency
 
 ```typescript
 async function processWebhook(event: RazorpayEvent) {
@@ -1547,7 +1989,7 @@ async function processWebhook(event: RazorpayEvent) {
 }
 ```
 
-### 12.4 Optimistic Locking for Subscriptions
+### 16.4 Optimistic Locking for Subscriptions
 
 ```sql
 -- Add version column
@@ -1562,7 +2004,7 @@ RETURNING version;
 -- If no rows returned, someone else updated it - retry or fail
 ```
 
-### 12.5 Parallel User Support (500+)
+### 14.5 Parallel User Support (500+)
 
 | Layer | Strategy |
 |-------|----------|
@@ -1574,9 +2016,9 @@ RETURNING version;
 
 ---
 
-## 13. Error Handling Strategy
+## 15. Error Handling Strategy
 
-### 13.1 Error Categories
+### 15.1 Error Categories
 
 | Category | Examples | Handling |
 |----------|----------|----------|
@@ -1586,7 +2028,7 @@ RETURNING version;
 | **Database** | Connection lost, constraint violation | Retry, alert on repeated failure |
 | **Authorization** | Invalid token, tenant mismatch | 401/403 response |
 
-### 13.2 Retry Strategy
+### 15.2 Retry Strategy
 
 ```typescript
 // For external API calls (Razorpay, MSG91)
@@ -1605,7 +2047,7 @@ const retryConfig = {
 // 4. Alert operations team
 ```
 
-### 13.3 Error Response Format
+### 15.3 Error Response Format
 
 ```typescript
 // Standard error response
@@ -1628,7 +2070,7 @@ const retryConfig = {
 }
 ```
 
-### 13.4 Logging & Monitoring
+### 15.4 Logging & Monitoring
 
 ```typescript
 // All billing operations logged
@@ -1649,16 +2091,16 @@ await logBillingEvent({
 
 ---
 
-## 14. Bot-Friendly Architecture
+## 16. Bot-Friendly Architecture
 
-### 14.1 Design Principles
+### 18.1 Design Principles
 
 1. **Structured Responses**: All responses in consistent JSON format
 2. **Natural Language Ready**: Include human-readable summaries
 3. **Action Suggestions**: Provide actionable next steps
 4. **Quick Status**: Single endpoint for overall status
 
-### 14.2 Bot Query Endpoints
+### 18.2 Bot Query Endpoints
 
 ```typescript
 // GET /api/billing/bot/status/:tenantId
@@ -1694,7 +2136,7 @@ await logBillingEvent({
 }
 ```
 
-### 14.3 Natural Language Queries
+### 18.3 Natural Language Queries
 
 ```typescript
 // POST /api/billing/bot/query
@@ -1723,7 +2165,7 @@ await logBillingEvent({
 }
 ```
 
-### 14.4 VaNi Integration Points
+### 16.4 VaNi Integration Points
 
 ```typescript
 // VaNi can:
@@ -1752,7 +2194,7 @@ const vaniActions = {
 
 ---
 
-## 15. Implementation Phases
+## 17. Implementation Phases
 
 ### Phase 1: Schema & Product Configs (Foundation)
 
@@ -2049,9 +2491,9 @@ contractnest-api/src/routes/
 
 ---
 
-## 16. Testing Strategy
+## 18. Testing Strategy
 
-### 16.1 Unit Tests
+### 18.1 Unit Tests
 
 ```typescript
 // pricingEngine.test.ts
@@ -2078,7 +2520,7 @@ describe('PricingEngine', () => {
 });
 ```
 
-### 16.2 Integration Tests
+### 18.2 Integration Tests
 
 ```typescript
 // billingService.integration.test.ts
@@ -2097,7 +2539,7 @@ describe('BillingService Integration', () => {
 });
 ```
 
-### 16.3 Load Tests
+### 18.3 Load Tests
 
 ```yaml
 # k6 load test config
@@ -2120,9 +2562,9 @@ scenarios:
 
 ---
 
-## 17. Rollback Plan
+## 19. Rollback Plan
 
-### 17.1 Database Rollback
+### 19.1 Database Rollback
 
 ```sql
 -- Each migration has a corresponding down migration
@@ -2133,7 +2575,7 @@ ALTER TABLE t_bm_tenant_subscription DROP COLUMN IF EXISTS product_code;
 -- etc.
 ```
 
-### 17.2 Feature Flags
+### 19.2 Feature Flags
 
 ```typescript
 // Feature flags for gradual rollout
@@ -2152,7 +2594,7 @@ if (featureEnabled('billing.composite_pricing')) {
 }
 ```
 
-### 17.3 Rollback Triggers
+### 19.3 Rollback Triggers
 
 | Condition | Action |
 |-----------|--------|
@@ -2163,7 +2605,7 @@ if (featureEnabled('billing.composite_pricing')) {
 
 ---
 
-## 18. Phase Completion Log
+## 20. Phase Completion Log
 
 ### Template for Each Phase
 
