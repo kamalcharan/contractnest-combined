@@ -61,26 +61,37 @@ export const defaultMenuItems: MenuItem[] = [
       }
     ]
   },
-  // UPDATED: Contracts menu - submenus hidden for pre-launch
+  // Contracts menu - some submenus hidden for pre-launch
   {
     id: 'contracts',
     label: 'Contracts',
     icon: 'FileText',
     path: '/contracts',
-    hasSubmenu: false
-    // HIDDEN: All submenus hidden for pre-launch
-    /*
+    hasSubmenu: true,
     submenuItems: [
+      // VISIBLE: Create Contract and Contract Preview
+      {
+        id: 'contracts-create',
+        label: 'Create Contract',
+        icon: 'FilePlus',
+        path: '/contracts/create'
+      },
+      {
+        id: 'contracts-preview',
+        label: 'Contract Preview',
+        icon: 'Eye',
+        path: '/contracts/preview'
+      }
+      // HIDDEN: All Contracts, PDF View, Invite Sellers, Drafts, Pending, Active
+      /*
       { id: 'contracts-all', label: 'All Contracts', icon: 'FileText', path: '/service-contracts/contracts' },
-      { id: 'contracts-create', label: 'Create Contract', icon: 'FilePlus', path: '/contracts/create' },
-      { id: 'contracts-preview', label: 'Contract Preview', icon: 'Eye', path: '/contracts/preview' },
       { id: 'contracts-pdf', label: 'PDF View', icon: 'FileSearch', path: '/contracts/pdf' },
       { id: 'contracts-invite', label: 'Invite Sellers', icon: 'UserPlus', path: '/contracts/invite' },
       { id: 'contracts-drafts', label: 'Drafts', icon: 'FileEdit', path: '/service-contracts/contracts?status=draft' },
       { id: 'contracts-pending', label: 'Pending Acceptance', icon: 'Clock', path: '/service-contracts/contracts?status=pending' },
       { id: 'contracts-active', label: 'Active Contracts', icon: 'CheckCircle', path: '/service-contracts/contracts?status=active' }
+      */
     ]
-    */
   },
   // HIDDEN: Templates, Appointments, Tasks, VaNi - commented out for now
   /*
@@ -115,14 +126,14 @@ export const defaultMenuItems: MenuItem[] = [
     submenuItems: [...]
   },
   */
-  // Operations menu - submenus hidden for pre-launch
+  // Operations menu - all submenus hidden for pre-launch (no empty states)
   {
     id: 'operations',
     label: 'Operations',
     icon: 'Activity',
     path: '/ops/cockpit',
     hasSubmenu: false
-    // HIDDEN: All submenus hidden for pre-launch
+    // HIDDEN: All submenus (Ops Cockpit, Activity Feed, Reports)
     /*
     submenuItems: [
       { id: 'ops-cockpit', label: 'Ops Cockpit', icon: 'Gauge', path: '/ops/cockpit' },
@@ -131,21 +142,20 @@ export const defaultMenuItems: MenuItem[] = [
     ]
     */
   },
-  // Catalog Studio menu - submenus hidden for pre-launch
+  // Catalog Studio - Configure hidden for pre-launch
   {
     id: 'catalog-studio',
     label: 'Catalog Studio',
     icon: 'Layers',
     path: '/catalog-studio',
-    hasSubmenu: false
-    // HIDDEN: All submenus hidden for pre-launch
-    /*
+    hasSubmenu: true,
     submenuItems: [
-      { id: 'catalog-studio-configure', label: 'Configure', icon: 'Settings', path: '/catalog-studio/configure' },
+      // HIDDEN: Configure (no empty state)
+      // { id: 'catalog-studio-configure', label: 'Configure', icon: 'Settings', path: '/catalog-studio/configure' },
+      // VISIBLE: Template Builder and Templates List
       { id: 'catalog-studio-template', label: 'Template Builder', icon: 'FileTemplate', path: '/catalog-studio/template' },
       { id: 'catalog-studio-templates-list', label: 'Templates List', icon: 'List', path: '/catalog-studio/templates-list' }
     ]
-    */
   },
 
   // HIDDEN: Service Catalog - commented out for now
