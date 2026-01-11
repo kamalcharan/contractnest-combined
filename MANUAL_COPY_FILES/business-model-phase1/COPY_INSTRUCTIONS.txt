@@ -1,9 +1,9 @@
 ═══════════════════════════════════════════════════════════════════════════════
-BUSINESS MODEL PHASE 1 - DELIVERABLES 1 & 2
+BUSINESS MODEL PHASE 1 - DELIVERABLES 1, 2 & 3
 ═══════════════════════════════════════════════════════════════════════════════
 
 Date: 2025-01-11
-Branch: business-model-phase1
+Branch: claude/init-submodules-businessmodel-YRGku
 Author: Claude Code Session
 
 ═══════════════════════════════════════════════════════════════════════════════
@@ -11,46 +11,69 @@ FILES INCLUDED
 ═══════════════════════════════════════════════════════════════════════════════
 
 1. contractnest-edge/supabase/migrations/business-model-v2/001_schema_evolution.sql
-   Purpose: Evolve existing Business Model tables for composite billing
+   Purpose: Evolve existing Business Model tables
    Status: APPLIED ✅
 
 2. contractnest-edge/supabase/migrations/business-model-v2/002_new_tables.sql
    Purpose: Create new tables for Business Model Agent
+   Status: APPLIED ✅
+
+3. contractnest-edge/supabase/migrations/business-model-v2/003_functions_and_rls.sql
+   Purpose: Database functions (RPC) with race condition handling + RLS policies
    Status: PENDING
 
 ═══════════════════════════════════════════════════════════════════════════════
-DELIVERABLE 2: NEW TABLES
+DELIVERABLE 3: FUNCTIONS & RLS
 ═══════════════════════════════════════════════════════════════════════════════
 
-Tables Created:
+PART A: DATABASE FUNCTIONS (RPC)
+────────────────────────────────
+1.  deduct_credits()            - Atomic deduction with FOR UPDATE NOWAIT
+2.  add_credits()               - Atomic addition, creates record if needed
+3.  reserve_credits()           - Reserve credits for pending operations
+4.  release_reserved_credits()  - Release previously reserved credits
+5.  aggregate_usage()           - Usage aggregation by billing period
+6.  record_usage()              - Record usage events atomically
+7.  get_credit_balance()        - Get credit balances for tenant
+8.  check_credit_availability() - Check availability without deducting
+9.  get_billing_status()        - Comprehensive billing status (bot-friendly)
+10. get_billing_alerts()        - Get billing alerts for tenant
+11. calculate_tiered_price()    - Calculate tiered pricing
+12. process_credit_expiry()     - Expire credits past expiry date
 
-1. t_bm_product_config
-   - Product billing configurations (JSONB)
-   - Stores complete billing model per product
+PART B: RLS POLICIES
+────────────────────
+Table                    | SELECT              | INSERT/UPDATE/DELETE
+-------------------------|---------------------|------------------------
+t_bm_product_config      | All (active only)   | Admin only
+t_bm_credit_balance      | Own tenant + Admin  | Admin + Service role
+t_bm_credit_transaction  | Own tenant + Admin  | Admin + Service role
+t_bm_topup_pack          | All (active only)   | Admin only
+t_contract_invoice       | Own tenant + Admin  | Own tenant + Admin
+t_bm_billing_event       | Own tenant + Admin  | Admin + Service role
 
-2. t_bm_credit_balance
-   - Tenant credit balances per type/channel
-   - Supports expiry and low balance alerts
-   - Row-level locking for atomic operations
+HELPER FUNCTIONS
+────────────────
+- is_admin_user()        - Check admin via t_tenant table
+- is_platform_admin()    - Check admin via JWT app_metadata
+- get_user_tenant_id()   - Get tenant_id from JWT or auth.uid()
 
-3. t_bm_credit_transaction
-   - Append-only audit trail for credit operations
-   - Full transaction history with references
+═══════════════════════════════════════════════════════════════════════════════
+RACE CONDITION HANDLING
+═══════════════════════════════════════════════════════════════════════════════
 
-4. t_bm_topup_pack
-   - Available credit topup packages
-   - Pricing, quantity, optional expiry
-   - Promotion support
+1. FOR UPDATE NOWAIT
+   - Used in: deduct_credits(), reserve_credits()
+   - Behavior: Fails immediately if row is locked
+   - Returns: error_code = 'LOCK_CONFLICT'
 
-5. t_contract_invoice
-   - Contract billing (tenant → their customer)
-   - Full payment lifecycle tracking
-   - Settlement and platform fee tracking
+2. FOR UPDATE SKIP LOCKED
+   - Used in: process_credit_expiry()
+   - Behavior: Skips locked rows (for batch processing)
 
-6. t_bm_billing_event
-   - Billing event log for async processing
-   - Webhook handling with idempotency
-   - Retry and dead letter support
+3. Atomic Transactions
+   - All balance changes happen within function transaction
+   - Audit trail inserted in same transaction
 
 ═══════════════════════════════════════════════════════════════════════════════
 COPY COMMANDS (Windows PowerShell)
@@ -59,8 +82,8 @@ COPY COMMANDS (Windows PowerShell)
 # Navigate to project root
 cd "D:\projects\core projects\ContractNest\contractnest-combined"
 
-# Copy Deliverable 2 migration file
-Copy-Item "MANUAL_COPY_FILES\business-model-phase1\contractnest-edge\supabase\migrations\business-model-v2\002_new_tables.sql" -Destination "contractnest-edge\supabase\migrations\business-model-v2\" -Force
+# Copy Deliverable 3 migration file
+Copy-Item "MANUAL_COPY_FILES\business-model-phase1\contractnest-edge\supabase\migrations\business-model-v2\003_functions_and_rls.sql" -Destination "contractnest-edge\supabase\migrations\business-model-v2\" -Force
 
 Write-Host "Migration file copied!" -ForegroundColor Green
 
