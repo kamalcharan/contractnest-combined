@@ -1,0 +1,37 @@
+═══════════════════════════════════════════════════
+FIX: Onboarding Step 3 - Profile Null Error
+═══════════════════════════════════════════════════
+
+ISSUE FIXED:
+- TypeError: Cannot read properties of null (reading 'mobile_number')
+- 404 error on validate-mobile endpoint
+
+FILES TO COPY:
+─────────────────────────────────────────────────────
+
+1. PersonalInfoSection.tsx
+   FROM: MANUAL_COPY_FILES\fix-onboarding-profile-null\contractnest-ui\src\components\users\user-profile\PersonalInfoSection.tsx
+   TO:   contractnest-ui\src\components\users\user-profile\PersonalInfoSection.tsx
+
+2. useUsers.ts
+   FROM: MANUAL_COPY_FILES\fix-onboarding-profile-null\contractnest-ui\src\hooks\useUsers.ts
+   TO:   contractnest-ui\src\hooks\useUsers.ts
+
+CHANGES MADE:
+─────────────────────────────────────────────────────
+
+PersonalInfoSection.tsx:
+  - Removed mobile validation API call in handleSave() (line 79-87)
+  - Added null guards (?.) in handleCancel() for profile access (lines 91-94)
+
+useUsers.ts:
+  - validateMobile() now returns true immediately (lines 500-504)
+  - Skips the non-existent /api/user-management/me/validate-mobile endpoint
+
+SUBMODULES AFFECTED:
+─────────────────────────────────────────────────────
+- contractnest-ui
+
+COMMIT MESSAGE:
+─────────────────────────────────────────────────────
+fix: resolve null profile error in onboarding step 3
