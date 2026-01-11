@@ -43,7 +43,7 @@ const Dashboard: React.FC = () => {
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
 
   const handleWhatsAppProfileClick = () => {
-    navigate('/settings/configure/groups');
+    navigate('/settings/configure/customer-channels/groups');
   };
 
   return (
