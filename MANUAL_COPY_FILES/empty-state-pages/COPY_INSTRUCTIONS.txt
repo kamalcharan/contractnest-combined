@@ -8,7 +8,7 @@ Added "Coming Soon" empty state pages for pre-launch features.
 Each page shows a beautiful empty state with:
 - Contextual floating icons and animations
 - Feature highlights with CRO-focused descriptions
-- "Limited Early Access" messaging
+- "Limited Early Access" messaging for pre-launch
 - Password unlock at bottom-left (password: bharathavarsha)
 - Theme-aware styling (light/dark mode)
 
@@ -48,33 +48,6 @@ Each page has its own unlock state stored in localStorage:
 - comingsoon_unlocked_contracts
 - comingsoon_unlocked_operations
 - comingsoon_unlocked_catalog-studio
-
-FEATURES PER PAGE:
-─────────────────────────────────────────────────────
-
-CONTACTS:
-- Unified Contact Management (highlighted)
-- Smart Search & Filters
-- Contact Classifications
-- Bulk Operations
-
-CONTRACTS:
-- Digital Contract Creation (highlighted)
-- Compliance & Audit Trail
-- Lifecycle Management
-- Contract Analytics
-
-OPERATIONS:
-- Real-time Operations Dashboard (highlighted)
-- Smart Alerts & Notifications
-- Performance Analytics
-- Quick Actions Hub
-
-CATALOG STUDIO:
-- Block Library Management (highlighted)
-- Template Builder
-- Dynamic Pricing Configuration
-- Brand Customization
 
 COMMIT MESSAGE:
 ─────────────────────────────────────────────────────

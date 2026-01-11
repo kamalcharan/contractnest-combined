@@ -80,7 +80,6 @@ const contactsFloatingIcons = [
   { Icon: Phone, top: '35%', left: '6%', delay: '2.5s', duration: '21s' },
   { Icon: Sparkles, top: '45%', right: '8%', delay: '4s', duration: '17s' },
 ];
-
 import { useToast } from '@/components/ui/use-toast';
 import { captureException } from '@/utils/sentry';
 import { analyticsService } from '@/services/analytics.service';

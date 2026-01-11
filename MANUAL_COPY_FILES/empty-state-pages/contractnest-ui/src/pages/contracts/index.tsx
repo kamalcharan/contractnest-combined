@@ -1,5 +1,4 @@
 // src/pages/contracts/index.tsx
-// Contracts List Page with Coming Soon wrapper
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -73,7 +72,6 @@ const ContractsContent: React.FC = () => {
           </button>
         </div>
 
-        {/* Placeholder content - will be replaced with actual contract list */}
         <div className="bg-card border border-border rounded-lg p-12 text-center">
           <FileText className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
           <h2 className="text-xl font-semibold mb-2 text-foreground">No Contracts Yet</h2>
