@@ -1,47 +1,8 @@
 // src/pages/catalog-studio/configure.tsx
 import React, { useState, useMemo } from 'react';
-import { Plus, Boxes, Palette, Layers, Wand2, Grid3X3, Sparkles, Tag, Settings } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
-import ComingSoonWrapper from '@/components/common/ComingSoonWrapper';
-
-// Coming soon features for Catalog Studio
-const catalogStudioFeatures = [
-  {
-    icon: Boxes,
-    title: 'Block Library Management',
-    description: 'Create and manage reusable content blocks. Services, terms, pricing - all modular and drag-drop ready.',
-    highlight: true
-  },
-  {
-    icon: Wand2,
-    title: 'Template Builder',
-    description: 'Design professional contract templates visually. Combine blocks, customize layouts, and maintain brand consistency.',
-    highlight: false
-  },
-  {
-    icon: Tag,
-    title: 'Dynamic Pricing Configuration',
-    description: 'Set up flexible pricing models. Quantity-based, tiered, or custom formulas - all configurable without code.',
-    highlight: false
-  },
-  {
-    icon: Palette,
-    title: 'Brand Customization',
-    description: 'Apply your branding to every output. Colors, fonts, logos - make every document unmistakably yours.',
-    highlight: false
-  }
-];
-
-// Floating icons for catalog studio
-const catalogStudioFloatingIcons = [
-  { Icon: Boxes, top: '10%', left: '4%', delay: '0s', duration: '20s' },
-  { Icon: Layers, top: '18%', right: '6%', delay: '2s', duration: '18s' },
-  { Icon: Grid3X3, top: '58%', left: '5%', delay: '3.5s', duration: '22s' },
-  { Icon: Wand2, top: '68%', right: '5%', delay: '1s', duration: '19s' },
-  { Icon: Sparkles, top: '38%', left: '6%', delay: '2.5s', duration: '21s' },
-  { Icon: Settings, top: '48%', right: '7%', delay: '4s', duration: '17s' },
-];
 import { useCatBlocksTest } from '@/hooks/queries/useCatBlocksTest';
 import { useCatBlockMutationOperations } from '@/hooks/mutations/useCatBlocksMutations';
 import { Block, WizardMode } from '@/types/catalogStudio';
@@ -278,20 +239,4 @@ const CatalogStudioConfigurePage: React.FC = () => {
   );
 };
 
-// Wrapped Catalog Studio with Coming Soon
-const CatalogStudioConfigurePageWithComingSoon: React.FC = () => {
-  return (
-    <ComingSoonWrapper
-      pageKey="catalog-studio"
-      title="Catalog Studio"
-      subtitle="Your creative workspace for contract building blocks. Design reusable components, build templates, and configure pricing - all with visual tools."
-      heroIcon={Boxes}
-      features={catalogStudioFeatures}
-      floatingIcons={catalogStudioFloatingIcons}
-    >
-      <CatalogStudioConfigurePage />
-    </ComingSoonWrapper>
-  );
-};
-
-export default CatalogStudioConfigurePageWithComingSoon;
+export default CatalogStudioConfigurePage;

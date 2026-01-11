@@ -3,57 +3,49 @@ FEATURE: Empty State / Coming Soon Pages
 ═══════════════════════════════════════════════════
 
 DESCRIPTION:
-─────────────────────────────────────────────────────
-Added "Coming Soon" empty state pages for pre-launch features.
-Each page shows a beautiful empty state with:
-- Contextual floating icons and animations
-- Feature highlights with CRO-focused descriptions
-- "Limited Early Access" messaging for pre-launch
+All main pages AND sub-pages now have Coming Soon empty states with:
 - Password unlock at bottom-left (password: bharathavarsha)
+- Contextual floating icons and animations
 - Theme-aware styling (light/dark mode)
 
 FILES TO COPY:
 ─────────────────────────────────────────────────────
 
-1. ComingSoonWrapper.tsx (NEW - Reusable wrapper component)
-   FROM: MANUAL_COPY_FILES/empty-state-pages/contractnest-ui/src/components/common/ComingSoonWrapper.tsx
-   TO:   contractnest-ui/src/components/common/ComingSoonWrapper.tsx
+COMPONENT:
+1. src/components/common/ComingSoonWrapper.tsx (Reusable wrapper)
 
-2. Contacts Page (UPDATED - wrapped with ComingSoonWrapper)
-   FROM: MANUAL_COPY_FILES/empty-state-pages/contractnest-ui/src/pages/contacts/index.tsx
-   TO:   contractnest-ui/src/pages/contacts/index.tsx
+CONTACTS (Main + Sub-pages use same unlock key):
+2. src/pages/contacts/index.tsx
 
-3. Contracts Page (UPDATED - enhanced with ComingSoonWrapper)
-   FROM: MANUAL_COPY_FILES/empty-state-pages/contractnest-ui/src/pages/contracts/index.tsx
-   TO:   contractnest-ui/src/pages/contracts/index.tsx
+CONTRACTS (Main + All Sub-pages):
+3. src/pages/contracts/index.tsx
+4. src/pages/contracts/create/index.tsx
+5. src/pages/contracts/preview/index.tsx
+6. src/pages/contracts/invite/index.tsx
+7. src/pages/contracts/pdf-view/index.tsx
 
-4. Operations Cockpit (UPDATED - wrapped with ComingSoonWrapper)
-   FROM: MANUAL_COPY_FILES/empty-state-pages/contractnest-ui/src/pages/ops/cockpit/index.tsx
-   TO:   contractnest-ui/src/pages/ops/cockpit/index.tsx
+OPERATIONS:
+8. src/pages/ops/cockpit/index.tsx
 
-5. Catalog Studio Configure (UPDATED - wrapped with ComingSoonWrapper)
-   FROM: MANUAL_COPY_FILES/empty-state-pages/contractnest-ui/src/pages/catalog-studio/configure.tsx
-   TO:   contractnest-ui/src/pages/catalog-studio/configure.tsx
+CATALOG STUDIO (Main + All Sub-pages):
+9. src/pages/catalog-studio/configure.tsx
+10. src/pages/catalog-studio/blocks.tsx
+11. src/pages/catalog-studio/template.tsx
+12. src/pages/catalog-studio/templates-list.tsx
 
-SUBMODULES AFFECTED:
-─────────────────────────────────────────────────────
-- contractnest-ui
+UNLOCK PASSWORD: bharathavarsha
 
-PASSWORD FOR EARLY ACCESS:
-─────────────────────────────────────────────────────
-bharathavarsha
-
-Each page has its own unlock state stored in localStorage:
+PAGE KEYS (localStorage):
 - comingsoon_unlocked_contacts
 - comingsoon_unlocked_contracts
 - comingsoon_unlocked_operations
 - comingsoon_unlocked_catalog-studio
 
+COPY COMMAND (PowerShell):
+─────────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\empty-state-pages\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
 COMMIT MESSAGE:
 ─────────────────────────────────────────────────────
-feat: add Coming Soon empty states for Contacts, Contracts, Operations, and Catalog Studio
-
-- Create reusable ComingSoonWrapper component with password unlock
-- Add contextual feature highlights and floating animations
-- Include "Limited Early Access" messaging for pre-launch
-- Store unlock state per page in localStorage
+feat: add Coming Soon empty states for all main pages and sub-pages

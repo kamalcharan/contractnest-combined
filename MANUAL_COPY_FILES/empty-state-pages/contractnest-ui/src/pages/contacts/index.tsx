@@ -2,11 +2,11 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
-import {
-  Users,
-  Plus,
-  Search,
-  Filter,
+import { 
+  Users, 
+  Plus, 
+  Search, 
+  Filter, 
   MoreHorizontal,
   Building2,
   User,
@@ -36,50 +36,8 @@ import {
   Tag,
   UserCheck,
   UserX,
-  Copy,
-  UserPlus,
-  Sparkles,
-  Target
+  Copy
 } from 'lucide-react';
-import ComingSoonWrapper from '@/components/common/ComingSoonWrapper';
-
-// Coming soon features for Contacts
-const contactsFeatures = [
-  {
-    icon: Users,
-    title: 'Unified Contact Management',
-    description: 'Manage individuals and organizations in one place. Rich profiles with complete interaction history.',
-    highlight: true
-  },
-  {
-    icon: Search,
-    title: 'Smart Search & Filters',
-    description: 'Find any contact instantly. Advanced filtering by classification, status, tags, and custom fields.',
-    highlight: false
-  },
-  {
-    icon: Target,
-    title: 'Contact Classifications',
-    description: 'Categorize contacts as clients, vendors, partners, or leads. Track relationships with precision.',
-    highlight: false
-  },
-  {
-    icon: UserPlus,
-    title: 'Bulk Operations',
-    description: 'Import, export, and manage contacts in bulk. Duplicate detection and merge capabilities.',
-    highlight: false
-  }
-];
-
-// Floating icons for contacts
-const contactsFloatingIcons = [
-  { Icon: Users, top: '10%', left: '5%', delay: '0s', duration: '20s' },
-  { Icon: Building2, top: '15%', right: '7%', delay: '2s', duration: '18s' },
-  { Icon: UserPlus, top: '55%', left: '4%', delay: '3.5s', duration: '22s' },
-  { Icon: Mail, top: '65%', right: '5%', delay: '1s', duration: '19s' },
-  { Icon: Phone, top: '35%', left: '6%', delay: '2.5s', duration: '21s' },
-  { Icon: Sparkles, top: '45%', right: '8%', delay: '4s', duration: '17s' },
-];
 import { useToast } from '@/components/ui/use-toast';
 import { captureException } from '@/utils/sentry';
 import { analyticsService } from '@/services/analytics.service';
@@ -1784,20 +1742,4 @@ const ContactsPage: React.FC = () => {
   );
 };
 
-// Wrapped Contacts Page with Coming Soon
-const ContactsPageWithComingSoon: React.FC = () => {
-  return (
-    <ComingSoonWrapper
-      pageKey="contacts"
-      title="Contact Management"
-      subtitle="Your complete contact hub. Manage relationships with clients, vendors, and partners - all enriched with interaction history and smart organization."
-      heroIcon={Users}
-      features={contactsFeatures}
-      floatingIcons={contactsFloatingIcons}
-    >
-      <ContactsPage />
-    </ComingSoonWrapper>
-  );
-};
-
-export default ContactsPageWithComingSoon;
+export default ContactsPage;

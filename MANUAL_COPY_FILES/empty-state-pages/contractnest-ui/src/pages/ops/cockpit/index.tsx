@@ -16,52 +16,9 @@ import {
   Filter,
   Download,
   Bell,
-  Eye,
-  Gauge,
-  Zap,
-  Target,
-  LineChart
+  Eye
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
-import ComingSoonWrapper from '@/components/common/ComingSoonWrapper';
-
-// Coming soon features for Operations
-const operationsFeatures = [
-  {
-    icon: Gauge,
-    title: 'Real-time Operations Dashboard',
-    description: 'Monitor contract operations live. Track active deals, pending approvals, and bottlenecks at a glance.',
-    highlight: true
-  },
-  {
-    icon: Bell,
-    title: 'Smart Alerts & Notifications',
-    description: 'Never miss a deadline. Automated alerts for expirations, renewals, and pending actions.',
-    highlight: false
-  },
-  {
-    icon: LineChart,
-    title: 'Performance Analytics',
-    description: 'Measure contract velocity, completion rates, and team performance with actionable insights.',
-    highlight: false
-  },
-  {
-    icon: Zap,
-    title: 'Quick Actions Hub',
-    description: 'One-click access to common operations. Create contracts, invite parties, and manage workflows.',
-    highlight: false
-  }
-];
-
-// Floating icons for operations
-const operationsFloatingIcons = [
-  { Icon: Activity, top: '8%', left: '5%', delay: '0s', duration: '21s' },
-  { Icon: Gauge, top: '15%', right: '6%', delay: '1.5s', duration: '18s' },
-  { Icon: Bell, top: '55%', left: '4%', delay: '3s', duration: '22s' },
-  { Icon: TrendingUp, top: '65%', right: '5%', delay: '2s', duration: '19s' },
-  { Icon: Target, top: '35%', left: '7%', delay: '4s', duration: '20s' },
-  { Icon: Clock, top: '45%', right: '8%', delay: '2.5s', duration: '17s' },
-];
 
 // Reusing existing components
 import ActivityFeed from '@/components/dashboard/ActivityFeed';
@@ -474,20 +431,4 @@ const OpsCockpitPage: React.FC = () => {
   );
 };
 
-// Wrapped Operations Cockpit with Coming Soon
-const OpsCockpitPageWithComingSoon: React.FC = () => {
-  return (
-    <ComingSoonWrapper
-      pageKey="operations"
-      title="Operations Cockpit"
-      subtitle="Your command center for contract operations. Real-time monitoring, smart alerts, and performance insights - all in one powerful dashboard."
-      heroIcon={Activity}
-      features={operationsFeatures}
-      floatingIcons={operationsFloatingIcons}
-    >
-      <OpsCockpitPage />
-    </ComingSoonWrapper>
-  );
-};
-
-export default OpsCockpitPageWithComingSoon;
+export default OpsCockpitPage;
