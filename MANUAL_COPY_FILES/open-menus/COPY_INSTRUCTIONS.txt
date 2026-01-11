@@ -19,6 +19,10 @@ CHANGES MADE:
    - Now exports CatalogStudioTemplatesListPage directly
    - Full functionality accessible
 
+4. INDUSTRY MENUS (utils/constants/industryMenus.ts)
+   - Uncommented 'Configure' submenu item in Catalog Studio
+   - Configure menu now visible in sidebar
+
 ═══════════════════════════════════════════════════
 FILES TO COPY
 ═══════════════════════════════════════════════════
@@ -34,6 +38,10 @@ FILES TO COPY
 3. catalog-studio/templates-list.tsx
    FROM: MANUAL_COPY_FILES\open-menus\contractnest-ui\src\pages\catalog-studio\templates-list.tsx
    TO:   contractnest-ui\src\pages\catalog-studio\templates-list.tsx
+
+4. industryMenus.ts
+   FROM: MANUAL_COPY_FILES\open-menus\contractnest-ui\src\utils\constants\industryMenus.ts
+   TO:   contractnest-ui\src\utils\constants\industryMenus.ts
 
 ═══════════════════════════════════════════════════
 SUBMODULES AFFECTED
