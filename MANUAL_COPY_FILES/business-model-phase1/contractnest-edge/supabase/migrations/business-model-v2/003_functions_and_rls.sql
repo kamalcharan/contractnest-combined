@@ -4,6 +4,7 @@
 -- Author: Claude Code Session
 -- Date: 2025-01-11
 -- Phase: 1 - Schema & Product Configs (Deliverable 3)
+-- FIXED: Corrected table references (t_tenants, t_user_tenants)
 -- ============================================================
 
 -- ============================================================
@@ -32,12 +33,9 @@
 --   - t_contract_invoice
 --   - t_bm_billing_event
 --
--- Design Principles:
---   - FOR UPDATE NOWAIT/SKIP LOCKED for row-level locking
---   - Explicit transaction boundaries where needed
---   - Idempotency where possible
---   - Comprehensive error handling
---   - Audit trail for all operations
+-- Schema References:
+--   - t_tenants (id, is_admin) - Main tenants table
+--   - t_user_tenants (user_id, tenant_id, is_admin) - User-tenant mapping
 -- ============================================================
 
 
@@ -349,6 +347,9 @@ BEGIN
     WHERE id = v_balance_id;
 
     RETURN QUERY SELECT true, (v_available_balance - p_quantity), NULL::TEXT;
+EXCEPTION
+    WHEN lock_not_available THEN
+        RETURN QUERY SELECT false, 0, 'Resource is locked. Please retry.'::TEXT;
 END;
 $$;
 
@@ -873,9 +874,6 @@ DECLARE
     v_remaining INTEGER := p_quantity;
     v_tier RECORD;
     v_tier_quantity INTEGER;
-    v_tier_from INTEGER;
-    v_tier_to INTEGER;
-    v_tier_price NUMERIC;
 BEGIN
     -- Iterate through tiers in order
     FOR v_tier IN
@@ -1010,34 +1008,52 @@ ALTER TABLE public.t_bm_billing_event ENABLE ROW LEVEL SECURITY;
 
 
 -- ============================================================
--- Helper function to check if user is admin
+-- Helper function to check if user is platform admin
+-- Uses t_tenants.is_admin via t_user_tenants mapping
 -- ============================================================
 
-CREATE OR REPLACE FUNCTION public.is_admin_user()
-RETURNS BOOLEAN
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-AS $$
-    SELECT EXISTS (
-        SELECT 1 FROM public.t_tenant t
-        WHERE t.id = auth.uid()
-          AND t.admin = true
-    );
-$$;
-
--- Alternative: Check via user metadata
 CREATE OR REPLACE FUNCTION public.is_platform_admin()
 RETURNS BOOLEAN
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
 AS $$
-    SELECT COALESCE(
-        (auth.jwt() -> 'app_metadata' ->> 'is_admin')::BOOLEAN,
-        false
+    SELECT EXISTS (
+        SELECT 1
+        FROM public.t_user_tenants ut
+        INNER JOIN public.t_tenants t ON ut.tenant_id = t.id
+        WHERE ut.user_id = auth.uid()
+          AND ut.status = 'active'
+          AND t.is_admin = true
     );
 $$;
+
+COMMENT ON FUNCTION public.is_platform_admin IS
+'Check if current user belongs to platform admin tenant (t_tenants.is_admin = true)';
+
+
+-- ============================================================
+-- Helper function to check if user is tenant admin
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION public.is_tenant_admin(p_tenant_id UUID DEFAULT NULL)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+AS $$
+    SELECT EXISTS (
+        SELECT 1
+        FROM public.t_user_tenants ut
+        WHERE ut.user_id = auth.uid()
+          AND ut.status = 'active'
+          AND ut.is_admin = true
+          AND (p_tenant_id IS NULL OR ut.tenant_id = p_tenant_id)
+    );
+$$;
+
+COMMENT ON FUNCTION public.is_tenant_admin IS
+'Check if current user is admin of their tenant (t_user_tenants.is_admin = true)';
 
 
 -- ============================================================
@@ -1050,18 +1066,46 @@ LANGUAGE sql
 STABLE
 SECURITY DEFINER
 AS $$
-    SELECT COALESCE(
-        (auth.jwt() -> 'app_metadata' ->> 'tenant_id')::UUID,
-        auth.uid()
+    SELECT ut.tenant_id
+    FROM public.t_user_tenants ut
+    WHERE ut.user_id = auth.uid()
+      AND ut.status = 'active'
+      AND ut.is_default = true
+    LIMIT 1;
+$$;
+
+COMMENT ON FUNCTION public.get_user_tenant_id IS
+'Get the default tenant_id for the current user from t_user_tenants';
+
+
+-- ============================================================
+-- Helper function to check if user belongs to tenant
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION public.user_belongs_to_tenant(p_tenant_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+AS $$
+    SELECT EXISTS (
+        SELECT 1
+        FROM public.t_user_tenants ut
+        WHERE ut.user_id = auth.uid()
+          AND ut.tenant_id = p_tenant_id
+          AND ut.status = 'active'
     );
 $$;
+
+COMMENT ON FUNCTION public.user_belongs_to_tenant IS
+'Check if current user belongs to the specified tenant';
 
 
 -- ============================================================
 -- RLS: t_bm_product_config
 -- ============================================================
 -- All authenticated users can read active configs
--- Only admins can insert/update/delete
+-- Only platform admins can insert/update/delete
 
 DROP POLICY IF EXISTS "product_config_select" ON public.t_bm_product_config;
 CREATE POLICY "product_config_select" ON public.t_bm_product_config
@@ -1081,14 +1125,14 @@ CREATE POLICY "product_config_admin_all" ON public.t_bm_product_config
 -- RLS: t_bm_credit_balance
 -- ============================================================
 -- Tenants can only see their own credit balances
--- Admins can see all
+-- Platform admins can see all
 
 DROP POLICY IF EXISTS "credit_balance_tenant_select" ON public.t_bm_credit_balance;
 CREATE POLICY "credit_balance_tenant_select" ON public.t_bm_credit_balance
     FOR SELECT
     TO authenticated
     USING (
-        tenant_id = public.get_user_tenant_id()
+        public.user_belongs_to_tenant(tenant_id)
         OR public.is_platform_admin()
     );
 
@@ -1119,7 +1163,7 @@ CREATE POLICY "credit_transaction_tenant_select" ON public.t_bm_credit_transacti
     FOR SELECT
     TO authenticated
     USING (
-        tenant_id = public.get_user_tenant_id()
+        public.user_belongs_to_tenant(tenant_id)
         OR public.is_platform_admin()
     );
 
@@ -1142,7 +1186,7 @@ CREATE POLICY "credit_transaction_service" ON public.t_bm_credit_transaction
 -- RLS: t_bm_topup_pack
 -- ============================================================
 -- All authenticated users can see active packs
--- Only admins can manage
+-- Only platform admins can manage
 
 DROP POLICY IF EXISTS "topup_pack_select" ON public.t_bm_topup_pack;
 CREATE POLICY "topup_pack_select" ON public.t_bm_topup_pack
@@ -1162,14 +1206,14 @@ CREATE POLICY "topup_pack_admin_all" ON public.t_bm_topup_pack
 -- RLS: t_contract_invoice
 -- ============================================================
 -- Tenants can only see/manage their own invoices
--- Admins can see all
+-- Platform admins can see all
 
 DROP POLICY IF EXISTS "contract_invoice_tenant_select" ON public.t_contract_invoice;
 CREATE POLICY "contract_invoice_tenant_select" ON public.t_contract_invoice
     FOR SELECT
     TO authenticated
     USING (
-        tenant_id = public.get_user_tenant_id()
+        public.user_belongs_to_tenant(tenant_id)
         OR public.is_platform_admin()
     );
 
@@ -1178,7 +1222,7 @@ CREATE POLICY "contract_invoice_tenant_insert" ON public.t_contract_invoice
     FOR INSERT
     TO authenticated
     WITH CHECK (
-        tenant_id = public.get_user_tenant_id()
+        public.user_belongs_to_tenant(tenant_id)
         OR public.is_platform_admin()
     );
 
@@ -1187,11 +1231,11 @@ CREATE POLICY "contract_invoice_tenant_update" ON public.t_contract_invoice
     FOR UPDATE
     TO authenticated
     USING (
-        tenant_id = public.get_user_tenant_id()
+        public.user_belongs_to_tenant(tenant_id)
         OR public.is_platform_admin()
     )
     WITH CHECK (
-        tenant_id = public.get_user_tenant_id()
+        public.user_belongs_to_tenant(tenant_id)
         OR public.is_platform_admin()
     );
 
@@ -1210,14 +1254,14 @@ CREATE POLICY "contract_invoice_service" ON public.t_contract_invoice
 -- RLS: t_bm_billing_event
 -- ============================================================
 -- Tenants can see their own events (read-only)
--- Admins and service role can manage all
+-- Platform admins and service role can manage all
 
 DROP POLICY IF EXISTS "billing_event_tenant_select" ON public.t_bm_billing_event;
 CREATE POLICY "billing_event_tenant_select" ON public.t_bm_billing_event
     FOR SELECT
     TO authenticated
     USING (
-        tenant_id = public.get_user_tenant_id()
+        (tenant_id IS NOT NULL AND public.user_belongs_to_tenant(tenant_id))
         OR public.is_platform_admin()
     );
 
@@ -1254,9 +1298,10 @@ GRANT EXECUTE ON FUNCTION public.get_billing_alerts TO authenticated, service_ro
 GRANT EXECUTE ON FUNCTION public.calculate_tiered_price TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION public.process_credit_expiry TO service_role;
 
-GRANT EXECUTE ON FUNCTION public.is_admin_user TO authenticated;
 GRANT EXECUTE ON FUNCTION public.is_platform_admin TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_tenant_admin TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_user_tenant_id TO authenticated;
+GRANT EXECUTE ON FUNCTION public.user_belongs_to_tenant TO authenticated;
 
 
 -- ============================================================
@@ -1278,17 +1323,18 @@ GRANT EXECUTE ON FUNCTION public.get_user_tenant_id TO authenticated;
 --   12. process_credit_expiry()   - Expire old credits
 --
 -- PART B: RLS POLICIES
---   - t_bm_product_config:      Read all active, admin manages
---   - t_bm_credit_balance:      Tenant sees own, admin sees all
+--   - t_bm_product_config:      Read all active, platform admin manages
+--   - t_bm_credit_balance:      Tenant sees own, platform admin sees all
 --   - t_bm_credit_transaction:  Tenant sees own (read-only)
---   - t_bm_topup_pack:          Read all active, admin manages
+--   - t_bm_topup_pack:          Read all active, platform admin manages
 --   - t_contract_invoice:       Tenant manages own
---   - t_bm_billing_event:       Tenant sees own, admin manages all
+--   - t_bm_billing_event:       Tenant sees own, platform admin manages all
 --
--- HELPER FUNCTIONS
---   - is_admin_user()           - Check if user is admin via t_tenant
---   - is_platform_admin()       - Check if user is admin via JWT
---   - get_user_tenant_id()      - Get tenant_id from JWT or auth.uid()
+-- HELPER FUNCTIONS (using correct schema: t_tenants, t_user_tenants)
+--   - is_platform_admin()       - Check if user belongs to admin tenant
+--   - is_tenant_admin()         - Check if user is admin of their tenant
+--   - get_user_tenant_id()      - Get tenant_id from t_user_tenants
+--   - user_belongs_to_tenant()  - Check if user belongs to specific tenant
 --
 -- RACE CONDITION HANDLING
 --   - FOR UPDATE NOWAIT: Fails immediately if locked
