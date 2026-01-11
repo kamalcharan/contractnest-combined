@@ -1,10 +1,15 @@
 ═══════════════════════════════════════════════════
-FIX: Onboarding Step 3 - Profile Null Error
+FIX: Onboarding Step 3 - Profile Null Error + 400 Error
 ═══════════════════════════════════════════════════
 
-ISSUE FIXED:
-- TypeError: Cannot read properties of null (reading 'mobile_number')
-- 404 error on validate-mobile endpoint
+ISSUES FIXED:
+1. TypeError: Cannot read properties of null (reading 'mobile_number')
+2. 404 error on validate-mobile endpoint
+3. 400 Bad Request due to empty country_code
+
+ROOT CAUSE:
+- When profile is null during onboarding, country_code defaulted to ''
+- API validator rejects empty country_code (min length 2)
 
 FILES TO COPY:
 ─────────────────────────────────────────────────────
@@ -21,7 +26,8 @@ CHANGES MADE:
 ─────────────────────────────────────────────────────
 
 PersonalInfoSection.tsx:
-  - Removed mobile validation API call in handleSave() (line 79-87)
+  - Set default country_code: '+91' in initial formData state (line 43)
+  - Removed mobile validation API call in handleSave() (lines 79-87)
   - Added null guards (?.) in handleCancel() for profile access (lines 91-94)
 
 useUsers.ts:
@@ -34,4 +40,8 @@ SUBMODULES AFFECTED:
 
 COMMIT MESSAGE:
 ─────────────────────────────────────────────────────
-fix: resolve null profile error in onboarding step 3
+fix: resolve onboarding step 3 profile errors
+
+- Set default country_code to fix 400 validation error
+- Add null guards for profile access
+- Skip non-existent validate-mobile endpoint

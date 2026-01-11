@@ -40,7 +40,7 @@ const ProfileInfoSection: React.FC<ProfileInfoSectionProps> = ({
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
-    country_code: '',
+    country_code: '+91',
     mobile_number: ''
   });
   const [copied, setCopied] = useState(false);
