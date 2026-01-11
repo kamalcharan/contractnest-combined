@@ -1,0 +1,42 @@
+═══════════════════════════════════════════════════
+FIX: Theme Preferences 500 Error
+═══════════════════════════════════════════════════
+
+ISSUE:
+500 error when changing theme from header
+Error: Profile update fails if profile doesn't exist
+
+ROOT CAUSE:
+The preferences Edge function used .single() which throws
+if no profile exists for the user. New users might not have
+a profile yet.
+
+FIX:
+Check if profile exists first, then either update or create.
+
+FILES TO COPY:
+─────────────────────────────────────────────────────
+
+1. preferences.ts
+   FROM: MANUAL_COPY_FILES\fix-preferences-500\contractnest-edge\supabase\functions\auth\handlers\preferences.ts
+   TO:   contractnest-edge\supabase\functions\auth\handlers\preferences.ts
+
+SUBMODULES AFFECTED:
+─────────────────────────────────────────────────────
+- contractnest-edge
+
+DEPLOYMENT NOTE:
+─────────────────────────────────────────────────────
+This is an Edge Function change. After copying, you need to
+deploy the Edge function to Supabase:
+
+cd contractnest-edge
+supabase functions deploy auth
+
+COMMIT MESSAGE:
+─────────────────────────────────────────────────────
+fix: handle missing profile in preferences update
+
+- Check if profile exists before updating
+- Create profile with preferences if missing
+- Prevents 500 error for new users
