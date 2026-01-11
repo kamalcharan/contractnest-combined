@@ -1,0 +1,24 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS - fix-contracts-coming-soon
+═══════════════════════════════════════════════════
+
+CHANGES SUMMARY:
+- App.tsx: Wrapped /contracts/create route with MainLayout (fixes Coming Soon full screen issue)
+- industryMenus.ts: Renamed submenu from 'Create Contract' to 'My Contracts'
+
+SUBMODULES AFFECTED:
+- contractnest-ui
+
+═══════════════════════════════════════════════════
+FILES TO COPY:
+═══════════════════════════════════════════════════
+
+1. contractnest-ui/src/App.tsx
+   FROM: MANUAL_COPY_FILES/fix-contracts-coming-soon/contractnest-ui/src/App.tsx
+   TO:   contractnest-ui/src/App.tsx
+
+2. contractnest-ui/src/utils/constants/industryMenus.ts
+   FROM: MANUAL_COPY_FILES/fix-contracts-coming-soon/contractnest-ui/src/utils/constants/industryMenus.ts
+   TO:   contractnest-ui/src/utils/constants/industryMenus.ts
+
+═══════════════════════════════════════════════════
