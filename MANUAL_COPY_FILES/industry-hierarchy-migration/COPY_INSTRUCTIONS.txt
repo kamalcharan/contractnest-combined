@@ -1,0 +1,104 @@
+===============================================================================
+INDUSTRY HIERARCHY MIGRATION - PHASE 1 (DATABASE)
+===============================================================================
+
+PURPOSE:
+Add parent-child hierarchy support to industries (segments → sub-segments)
+
+MIGRATION FILES:
+-------------------------------------------------------------------------------
+1. 001_add_industry_hierarchy_columns.sql
+   - Adds: parent_id, level, segment_type columns
+   - Creates: indexes, foreign key constraints
+
+2. 002_update_existing_industries_as_segments.sql
+   - Updates existing 15 industries as parent segments (level=0)
+
+3. 003_insert_sub_segments.sql
+   - Inserts ~45 new sub-segments under parent industries
+   - New parent industries: Agriculture, Legal, Arts & Media, Spiritual, Home Services, Construction
+
+4. 004_create_tenant_industry_segments.sql
+   - Creates t_tenant_industry_segments table (multi-select support)
+   - RLS policies
+   - Validation triggers
+
+5. 000_run_all_migrations.sql (OPTIONAL)
+   - Master script to run all migrations in order (psql only)
+
+HOW TO RUN:
+-------------------------------------------------------------------------------
+
+OPTION A: Using Supabase Dashboard (Recommended)
+1. Go to Supabase Dashboard → SQL Editor
+2. Run each file in order (001 → 002 → 003 → 004)
+3. Copy-paste content from each .sql file
+4. Execute
+
+OPTION B: Using psql CLI
+cd migrations
+psql -h your-supabase-host -U postgres -d postgres -f 001_add_industry_hierarchy_columns.sql
+psql -h your-supabase-host -U postgres -d postgres -f 002_update_existing_industries_as_segments.sql
+psql -h your-supabase-host -U postgres -d postgres -f 003_insert_sub_segments.sql
+psql -h your-supabase-host -U postgres -d postgres -f 004_create_tenant_industry_segments.sql
+
+OPTION C: Using Supabase CLI
+supabase db push
+
+VERIFICATION AFTER MIGRATION:
+-------------------------------------------------------------------------------
+
+-- Check parent segments (should be ~21)
+SELECT COUNT(*) FROM m_catalog_industries WHERE level = 0;
+
+-- Check sub-segments (should be ~45)
+SELECT COUNT(*) FROM m_catalog_industries WHERE level = 1;
+
+-- Check hierarchy
+SELECT p.name as parent, c.name as sub_segment
+FROM m_catalog_industries c
+JOIN m_catalog_industries p ON c.parent_id = p.id
+ORDER BY p.sort_order, c.sort_order;
+
+-- Check new table exists
+\d t_tenant_industry_segments
+
+DATA SUMMARY:
+-------------------------------------------------------------------------------
+
+NEW PARENT SEGMENTS (6):
+- Agriculture
+- Legal & Professional Services
+- Arts & Media
+- Spiritual & Religious Services
+- Home Services
+- Construction
+
+SUB-SEGMENTS BY PARENT:
+- Healthcare: 4 sub-segments
+- Financial Services: 8 sub-segments
+- Technology: 6 sub-segments
+- Education: 3 sub-segments
+- Real Estate: 2 sub-segments
+- Construction: 1 sub-segment
+- Manufacturing: 6 sub-segments
+- Retail: 6 sub-segments
+- Hospitality: 3 sub-segments
+- Facility Management: 2 sub-segments
+- Wellness: 2 sub-segments
+- Home Services: 2 sub-segments
+- Legal & Professional: 1 sub-segment
+- Arts & Media: 2 sub-segments
+- Spiritual & Religious: 2 sub-segments
+- Agriculture: 1 sub-segment
+
+TOTAL: ~45 new sub-segment records
+
+NEXT STEPS (Phase 2+):
+-------------------------------------------------------------------------------
+1. Update Edge function (product-masterdata) for hierarchy support
+2. Update API routes and service
+3. Update UI IndustrySelector component
+4. Update Onboarding and Business Profile pages
+
+===============================================================================
