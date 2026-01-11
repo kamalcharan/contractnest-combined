@@ -106,16 +106,51 @@ cd "D:\projects\core projects\ContractNest\contractnest-combined"
 Copy-Item "MANUAL_COPY_FILES\business-model-phase1\contractnest-edge\supabase\migrations\business-model-v2\003a_rpc_functions.sql" -Destination "contractnest-edge\supabase\migrations\business-model-v2\" -Force
 Copy-Item "MANUAL_COPY_FILES\business-model-phase1\contractnest-edge\supabase\migrations\business-model-v2\003b_rls_and_helpers.sql" -Destination "contractnest-edge\supabase\migrations\business-model-v2\" -Force
 Copy-Item "MANUAL_COPY_FILES\business-model-phase1\contractnest-edge\supabase\migrations\business-model-v2\003c_is_tenant_admin_fix.sql" -Destination "contractnest-edge\supabase\migrations\business-model-v2\" -Force
+Copy-Item "MANUAL_COPY_FILES\business-model-phase1\contractnest-edge\supabase\migrations\business-model-v2\004_seed_product_configs.sql" -Destination "contractnest-edge\supabase\migrations\business-model-v2\" -Force
 
 Write-Host "All migration files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════════════════════════════════
+DELIVERABLE 4: SEED PRODUCT CONFIGS
+═══════════════════════════════════════════════════════════════════════════════
+
+File: 004_seed_product_configs.sql
+
+PRODUCTS CONFIGURED:
+────────────────────
+| Product      | Code         | Billing Model           |
+|--------------|--------------|-------------------------|
+| ContractNest | contractnest | Composite               |
+| FamilyKnows  | familyknows  | Tiered Family           |
+| Kaladristi   | kaladristi   | Subscription + Usage    |
+
+CONTRACTNEST DETAILS:
+  - Base fee: ₹500-1200/month (user tiers)
+  - Storage: 40MB included, ₹0.50/MB overage
+  - Contracts: ₹150-100/contract (tiered)
+  - VaNi AI addon: ₹5000/month
+  - Credits: Notifications (WhatsApp, SMS, Email)
+  - 7 topup packs seeded
+
+FAMILYKNOWS DETAILS:
+  - Free tier: 1 user, 25 assets
+  - Individual: ₹75/quarter
+  - Family of 4: ₹200/month
+  - Extended Family: ₹400/month
+  - AI Assistant addon: ₹100/month
+
+KALADRISTI DETAILS:
+  - Base subscription: ₹100/month
+  - AI Reports: ₹50/report
+  - 3 AI report topup packs seeded
 
 ═══════════════════════════════════════════════════════════════════════════════
 APPLY ORDER
 ═══════════════════════════════════════════════════════════════════════════════
 
-1. Run 003a_rpc_functions.sql       → Should PASS ✅
-2. Run 003b_rls_and_helpers.sql     → Should PASS ✅
-3. Run 003c_is_tenant_admin_fix.sql → CAUTION: Drops v_audit_logs_detailed view
-   → After step 3, recreate v_audit_logs_detailed view from original definition
+1. Run 003a_rpc_functions.sql       → APPLIED ✅
+2. Run 003b_rls_and_helpers.sql     → APPLIED ✅
+3. Run 003c_is_tenant_admin_fix.sql → APPLIED ✅
+4. Run 004_seed_product_configs.sql → PENDING
 
 ═══════════════════════════════════════════════════════════════════════════════
