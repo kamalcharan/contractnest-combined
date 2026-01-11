@@ -1,0 +1,41 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS - fix-contacts-coming-soon-complete
+═══════════════════════════════════════════════════
+
+CHANGES SUMMARY:
+1. ComingSoonWrapper.tsx - Fixed per-user unlock race condition
+   - Waits for auth to load before checking localStorage
+   - No 'anonymous' fallback - requires valid user ID
+   - Shows loading state while auth is checking
+   - Prevents cross-user unlock contamination
+
+2. contacts/index.tsx - Added ComingSoonWrapper
+   - Shows Coming Soon by default
+   - Password unlock: bharathavarsha
+   - Per-user unlock (each user must unlock separately)
+
+SUBMODULES AFFECTED:
+- contractnest-ui
+
+═══════════════════════════════════════════════════
+FILES TO COPY:
+═══════════════════════════════════════════════════
+
+1. ComingSoonWrapper.tsx (password fix)
+   FROM: MANUAL_COPY_FILES/fix-contacts-coming-soon-complete/contractnest-ui/src/components/common/ComingSoonWrapper.tsx
+   TO:   contractnest-ui/src/components/common/ComingSoonWrapper.tsx
+
+2. contacts/index.tsx (Coming Soon wrapper)
+   FROM: MANUAL_COPY_FILES/fix-contacts-coming-soon-complete/contractnest-ui/src/pages/contacts/index.tsx
+   TO:   contractnest-ui/src/pages/contacts/index.tsx
+
+═══════════════════════════════════════════════════
+IMPORTANT: Clear localStorage before testing
+═══════════════════════════════════════════════════
+1. Open DevTools → Application → Local Storage
+2. Delete all keys starting with 'comingsoon_unlocked_'
+3. Refresh and test with different users
+
+Password: bharathavarsha
+
+═══════════════════════════════════════════════════
