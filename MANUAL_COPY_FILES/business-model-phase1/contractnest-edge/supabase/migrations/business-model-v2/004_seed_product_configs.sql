@@ -22,19 +22,19 @@
 INSERT INTO public.t_bm_product_config (
     product_code,
     product_name,
-    billing_model,
+    description,
     billing_config,
-    credit_types,
-    usage_metrics,
     is_active,
     created_at,
     updated_at
 ) VALUES (
     'contractnest',
     'ContractNest',
-    'composite',
+    'Contract management SaaS platform with composite billing model',
     '{
+        "billing_model": "composite",
         "billing_cycles": ["quarterly", "annual"],
+
         "base_fee": {
             "description": "Platform access fee",
             "included_users": 2,
@@ -45,10 +45,12 @@ INSERT INTO public.t_bm_product_config (
                 { "users_from": 11, "users_to": null, "per_user_amount": 100 }
             ]
         },
+
         "storage": {
             "included_mb": 40,
             "overage_per_mb": 0.50
         },
+
         "contracts": {
             "description": "Per contract charge",
             "base_price": 150,
@@ -60,6 +62,45 @@ INSERT INTO public.t_bm_product_config (
                 { "from": 201, "to": null, "price": 100 }
             ]
         },
+
+        "credits": {
+            "notification": {
+                "name": "Notification Credits",
+                "description": "Credits for WhatsApp, SMS, Email notifications",
+                "channels": ["whatsapp", "sms", "email"],
+                "included_per_contract": 10,
+                "configurable_expiry": true,
+                "default_low_threshold": 20
+            }
+        },
+
+        "usage_metrics": {
+            "users": {
+                "name": "Active Users",
+                "description": "Number of active users in the tenant",
+                "aggregation": "max",
+                "billing_type": "tiered"
+            },
+            "storage_mb": {
+                "name": "Storage Usage",
+                "description": "Storage used in MB",
+                "aggregation": "max",
+                "billing_type": "overage"
+            },
+            "contracts_created": {
+                "name": "Contracts Created",
+                "description": "Number of contracts created",
+                "aggregation": "sum",
+                "billing_type": "tiered"
+            },
+            "notifications_sent": {
+                "name": "Notifications Sent",
+                "description": "Notifications sent (WhatsApp, SMS, Email)",
+                "aggregation": "sum",
+                "billing_type": "credit_deduction"
+            }
+        },
+
         "addons": {
             "vani_ai": {
                 "name": "VaNi AI Agent",
@@ -68,49 +109,15 @@ INSERT INTO public.t_bm_product_config (
                 "trial_days": 7
             }
         },
+
         "trial": {
             "days": 14,
             "features_included": "all"
         },
+
         "grace_period": {
             "days": 7,
             "access_level": "full"
-        }
-    }'::JSONB,
-    '{
-        "notification": {
-            "name": "Notification Credits",
-            "description": "Credits for WhatsApp, SMS, Email notifications",
-            "channels": ["whatsapp", "sms", "email"],
-            "included_per_contract": 10,
-            "configurable_expiry": true,
-            "default_low_threshold": 20
-        }
-    }'::JSONB,
-    '{
-        "users": {
-            "name": "Active Users",
-            "description": "Number of active users in the tenant",
-            "aggregation": "max",
-            "billing_type": "tiered"
-        },
-        "storage_mb": {
-            "name": "Storage Usage",
-            "description": "Storage used in MB",
-            "aggregation": "max",
-            "billing_type": "overage"
-        },
-        "contracts_created": {
-            "name": "Contracts Created",
-            "description": "Number of contracts created",
-            "aggregation": "sum",
-            "billing_type": "tiered"
-        },
-        "notifications_sent": {
-            "name": "Notifications Sent",
-            "description": "Notifications sent (WhatsApp, SMS, Email)",
-            "aggregation": "sum",
-            "billing_type": "credit_deduction"
         }
     }'::JSONB,
     true,
@@ -119,10 +126,8 @@ INSERT INTO public.t_bm_product_config (
 )
 ON CONFLICT (product_code) DO UPDATE SET
     product_name = EXCLUDED.product_name,
-    billing_model = EXCLUDED.billing_model,
+    description = EXCLUDED.description,
     billing_config = EXCLUDED.billing_config,
-    credit_types = EXCLUDED.credit_types,
-    usage_metrics = EXCLUDED.usage_metrics,
     is_active = EXCLUDED.is_active,
     updated_at = NOW();
 
@@ -134,25 +139,26 @@ ON CONFLICT (product_code) DO UPDATE SET
 INSERT INTO public.t_bm_product_config (
     product_code,
     product_name,
-    billing_model,
+    description,
     billing_config,
-    credit_types,
-    usage_metrics,
     is_active,
     created_at,
     updated_at
 ) VALUES (
     'familyknows',
     'FamilyKnows',
-    'tiered_family',
+    'Family asset and document management app with tiered pricing',
     '{
+        "billing_model": "tiered_family",
         "billing_cycles": ["quarterly"],
+
         "free_tier": {
             "name": "Free",
             "users": 1,
             "assets_limit": 25,
             "price": 0
         },
+
         "paid_tiers": [
             {
                 "tier_code": "individual",
@@ -176,6 +182,22 @@ INSERT INTO public.t_bm_product_config (
                 "monthly_price": 400
             }
         ],
+
+        "usage_metrics": {
+            "family_members": {
+                "name": "Family Members",
+                "description": "Number of family members in account",
+                "aggregation": "max",
+                "billing_type": "tier_selection"
+            },
+            "assets_stored": {
+                "name": "Assets Stored",
+                "description": "Number of assets/documents stored",
+                "aggregation": "max",
+                "billing_type": "limit_check"
+            }
+        },
+
         "addons": {
             "ai_assistant": {
                 "name": "AI Family Assistant",
@@ -183,28 +205,15 @@ INSERT INTO public.t_bm_product_config (
                 "monthly_price": 100
             }
         },
+
         "trial": {
             "days": 14,
             "features_included": "all"
         },
+
         "grace_period": {
             "days": 7,
             "access_level": "read_only"
-        }
-    }'::JSONB,
-    '{}'::JSONB,  -- FamilyKnows doesn't use credits
-    '{
-        "family_members": {
-            "name": "Family Members",
-            "description": "Number of family members in account",
-            "aggregation": "max",
-            "billing_type": "tier_selection"
-        },
-        "assets_stored": {
-            "name": "Assets Stored",
-            "description": "Number of assets/documents stored",
-            "aggregation": "max",
-            "billing_type": "limit_check"
         }
     }'::JSONB,
     true,
@@ -213,10 +222,8 @@ INSERT INTO public.t_bm_product_config (
 )
 ON CONFLICT (product_code) DO UPDATE SET
     product_name = EXCLUDED.product_name,
-    billing_model = EXCLUDED.billing_model,
+    description = EXCLUDED.description,
     billing_config = EXCLUDED.billing_config,
-    credit_types = EXCLUDED.credit_types,
-    usage_metrics = EXCLUDED.usage_metrics,
     is_active = EXCLUDED.is_active,
     updated_at = NOW();
 
@@ -228,24 +235,25 @@ ON CONFLICT (product_code) DO UPDATE SET
 INSERT INTO public.t_bm_product_config (
     product_code,
     product_name,
-    billing_model,
+    description,
     billing_config,
-    credit_types,
-    usage_metrics,
     is_active,
     created_at,
     updated_at
 ) VALUES (
     'kaladristi',
     'Kaladristi',
-    'subscription_plus_usage',
+    'Stock research and AI analysis platform with subscription + usage billing',
     '{
+        "billing_model": "subscription_plus_usage",
         "billing_cycles": ["monthly"],
+
         "base_subscription": {
             "name": "Basic Dashboard",
             "monthly_price": 100,
             "includes": ["dashboard", "basic_reports", "alerts"]
         },
+
         "usage_charges": {
             "ai_research_report": {
                 "name": "AI Research Report",
@@ -253,35 +261,39 @@ INSERT INTO public.t_bm_product_config (
                 "price": 50
             }
         },
+
+        "credits": {
+            "ai_report": {
+                "name": "AI Report Credits",
+                "description": "Credits for AI-generated research reports",
+                "default_low_threshold": 5,
+                "configurable_expiry": false
+            }
+        },
+
+        "usage_metrics": {
+            "ai_reports_generated": {
+                "name": "AI Reports Generated",
+                "description": "Number of AI research reports generated",
+                "aggregation": "sum",
+                "billing_type": "per_unit"
+            },
+            "dashboard_views": {
+                "name": "Dashboard Views",
+                "description": "Number of dashboard views (for analytics)",
+                "aggregation": "sum",
+                "billing_type": "free"
+            }
+        },
+
         "trial": {
             "days": 7,
             "includes_reports": 2
         },
+
         "grace_period": {
             "days": 3,
             "access_level": "read_only"
-        }
-    }'::JSONB,
-    '{
-        "ai_report": {
-            "name": "AI Report Credits",
-            "description": "Credits for AI-generated research reports",
-            "default_low_threshold": 5,
-            "configurable_expiry": false
-        }
-    }'::JSONB,
-    '{
-        "ai_reports_generated": {
-            "name": "AI Reports Generated",
-            "description": "Number of AI research reports generated",
-            "aggregation": "sum",
-            "billing_type": "per_unit"
-        },
-        "dashboard_views": {
-            "name": "Dashboard Views",
-            "description": "Number of dashboard views (for analytics)",
-            "aggregation": "sum",
-            "billing_type": "free"
         }
     }'::JSONB,
     true,
@@ -290,10 +302,8 @@ INSERT INTO public.t_bm_product_config (
 )
 ON CONFLICT (product_code) DO UPDATE SET
     product_name = EXCLUDED.product_name,
-    billing_model = EXCLUDED.billing_model,
+    description = EXCLUDED.description,
     billing_config = EXCLUDED.billing_config,
-    credit_types = EXCLUDED.credit_types,
-    usage_metrics = EXCLUDED.usage_metrics,
     is_active = EXCLUDED.is_active,
     updated_at = NOW();
 
@@ -357,7 +367,7 @@ ON CONFLICT DO NOTHING;
 -- ============================================================
 --
 -- -- Check product configs
--- SELECT product_code, product_name, billing_model, is_active
+-- SELECT product_code, product_name, billing_config->>'billing_model' as billing_model, is_active
 -- FROM t_bm_product_config;
 --
 -- -- Check ContractNest billing config
