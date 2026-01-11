@@ -18,16 +18,30 @@ FILES INCLUDED
    Purpose: Create new tables for Business Model Agent
    Status: APPLIED ✅
 
-3. contractnest-edge/supabase/migrations/business-model-v2/003_functions_and_rls.sql
-   Purpose: Database functions (RPC) with race condition handling + RLS policies
-   Status: PENDING (v3 - Fixed is_tenant_admin parameter conflict)
+3. DELIVERABLE 3 - SPLIT INTO 3 FILES (due to is_tenant_admin dependency):
+
+   3a. 003a_rpc_functions.sql
+       Purpose: 12 RPC functions with race condition handling
+       Status: PENDING
+       Dependencies: None (can run first)
+
+   3b. 003b_rls_and_helpers.sql
+       Purpose: RLS policies + helper functions (excluding is_tenant_admin)
+       Status: PENDING
+       Dependencies: None (can run after 3a)
+
+   3c. 003c_is_tenant_admin_fix.sql
+       Purpose: Fix is_tenant_admin function (has v_audit_logs_detailed dependency)
+       Status: PENDING - REQUIRES ATTENTION
+       Warning: Uses DROP CASCADE - will drop v_audit_logs_detailed view
+       Action: After running, recreate v_audit_logs_detailed view
 
 ═══════════════════════════════════════════════════════════════════════════════
 DELIVERABLE 3: FUNCTIONS & RLS
 ═══════════════════════════════════════════════════════════════════════════════
 
-PART A: DATABASE FUNCTIONS (RPC)
-────────────────────────────────
+PART A: DATABASE FUNCTIONS (RPC) - File: 003a_rpc_functions.sql
+──────────────────────────────────────────────────────────────
 1.  deduct_credits()            - Atomic deduction with FOR UPDATE NOWAIT
 2.  add_credits()               - Atomic addition, creates record if needed
 3.  reserve_credits()           - Reserve credits for pending operations
@@ -41,8 +55,8 @@ PART A: DATABASE FUNCTIONS (RPC)
 11. calculate_tiered_price()    - Calculate tiered pricing
 12. process_credit_expiry()     - Expire credits past expiry date
 
-PART B: RLS POLICIES
-────────────────────
+PART B: RLS POLICIES - File: 003b_rls_and_helpers.sql
+─────────────────────────────────────────────────────
 Table                    | SELECT              | INSERT/UPDATE/DELETE
 -------------------------|---------------------|------------------------
 t_bm_product_config      | All (active only)   | Admin only
@@ -52,12 +66,17 @@ t_bm_topup_pack          | All (active only)   | Admin only
 t_contract_invoice       | Own tenant + Admin  | Own tenant + Admin
 t_bm_billing_event       | Own tenant + Admin  | Admin + Service role
 
-HELPER FUNCTIONS
-────────────────
+HELPER FUNCTIONS (in 003b)
+──────────────────────────
 - is_platform_admin()       - Check admin via t_tenants.is_admin (user's tenant)
-- is_tenant_admin()         - Check admin via t_user_tenants.is_admin
 - get_user_tenant_id()      - Get default tenant_id from t_user_tenants
 - user_belongs_to_tenant()  - Check if user belongs to specific tenant
+
+PART C: is_tenant_admin FIX - File: 003c_is_tenant_admin_fix.sql
+────────────────────────────────────────────────────────────────
+- is_tenant_admin()         - Check admin via t_user_tenants.is_admin
+- WARNING: Has dependency on v_audit_logs_detailed view
+- Uses DROP CASCADE - view must be recreated after
 
 ═══════════════════════════════════════════════════════════════════════════════
 RACE CONDITION HANDLING
@@ -83,9 +102,20 @@ COPY COMMANDS (Windows PowerShell)
 # Navigate to project root
 cd "D:\projects\core projects\ContractNest\contractnest-combined"
 
-# Copy Deliverable 3 migration file
-Copy-Item "MANUAL_COPY_FILES\business-model-phase1\contractnest-edge\supabase\migrations\business-model-v2\003_functions_and_rls.sql" -Destination "contractnest-edge\supabase\migrations\business-model-v2\" -Force
+# Copy all Deliverable 3 migration files
+Copy-Item "MANUAL_COPY_FILES\business-model-phase1\contractnest-edge\supabase\migrations\business-model-v2\003a_rpc_functions.sql" -Destination "contractnest-edge\supabase\migrations\business-model-v2\" -Force
+Copy-Item "MANUAL_COPY_FILES\business-model-phase1\contractnest-edge\supabase\migrations\business-model-v2\003b_rls_and_helpers.sql" -Destination "contractnest-edge\supabase\migrations\business-model-v2\" -Force
+Copy-Item "MANUAL_COPY_FILES\business-model-phase1\contractnest-edge\supabase\migrations\business-model-v2\003c_is_tenant_admin_fix.sql" -Destination "contractnest-edge\supabase\migrations\business-model-v2\" -Force
 
-Write-Host "Migration file copied!" -ForegroundColor Green
+Write-Host "All migration files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════════════════════════════════
+APPLY ORDER
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Run 003a_rpc_functions.sql       → Should PASS ✅
+2. Run 003b_rls_and_helpers.sql     → Should PASS ✅
+3. Run 003c_is_tenant_admin_fix.sql → CAUTION: Drops v_audit_logs_detailed view
+   → After step 3, recreate v_audit_logs_detailed view from original definition
 
 ═══════════════════════════════════════════════════════════════════════════════
