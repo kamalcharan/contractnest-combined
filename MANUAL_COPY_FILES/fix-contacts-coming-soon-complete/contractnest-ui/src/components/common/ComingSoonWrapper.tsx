@@ -64,7 +64,7 @@ const ComingSoonWrapper: React.FC<ComingSoonWrapperProps> = ({
   onCtaClick
 }) => {
   const { isDarkMode, currentTheme } = useTheme();
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
   const accent = accentColor || colors.brand.primary;
 
@@ -75,7 +75,6 @@ const ComingSoonWrapper: React.FC<ComingSoonWrapperProps> = ({
   const [showUnlockPanel, setShowUnlockPanel] = useState(false);
   const [error, setError] = useState('');
   const [unlockAnimation, setUnlockAnimation] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   // Generate per-user storage key - returns null if no authenticated user
   const getStorageKey = (): string | null => {
@@ -86,17 +85,14 @@ const ComingSoonWrapper: React.FC<ComingSoonWrapperProps> = ({
     return `comingsoon_unlocked_${user.id}_${pageKey}`;
   };
 
-  // Check localStorage on mount (per-user key) - only after user is loaded
+  // Check localStorage on mount (per-user key) - only after auth is loaded
   useEffect(() => {
-    // Wait for user to be defined (auth loaded)
-    if (user === undefined) {
-      // Auth still loading, wait
+    // Wait for auth to finish loading
+    if (isAuthLoading) {
       return;
     }
 
     // Auth loaded - now check unlock status
-    setIsCheckingAuth(false);
-
     const storageKey = getStorageKey();
     if (storageKey) {
       const unlocked = localStorage.getItem(storageKey);
@@ -105,7 +101,7 @@ const ComingSoonWrapper: React.FC<ComingSoonWrapperProps> = ({
       }
     }
     // If no storageKey (no user), keep isUnlocked as false
-  }, [pageKey, user]);
+  }, [pageKey, user?.id, isAuthLoading]);
 
   // Handle unlock
   const handleUnlock = () => {
@@ -133,9 +129,9 @@ const ComingSoonWrapper: React.FC<ComingSoonWrapperProps> = ({
     }
   };
 
-  // While checking auth, show nothing (or could show loading)
+  // While auth is loading, show loading state
   // This prevents flash of unlocked content before auth loads
-  if (isCheckingAuth) {
+  if (isAuthLoading) {
     return (
       <div
         className="h-full min-h-[500px] flex items-center justify-center"
