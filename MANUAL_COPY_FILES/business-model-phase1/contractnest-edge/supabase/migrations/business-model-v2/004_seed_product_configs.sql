@@ -316,27 +316,28 @@ ON CONFLICT (product_code) DO UPDATE SET
 INSERT INTO public.t_bm_topup_pack (
     product_code,
     credit_type,
-    pack_name,
+    name,
+    description,
     quantity,
     price,
-    currency,
-    validity_days,
+    currency_code,
+    expiry_days,
     is_active,
     created_at,
     updated_at
 ) VALUES
     -- WhatsApp notification packs
-    ('contractnest', 'notification', 'WhatsApp 50 Pack', 50, 200.00, 'INR', NULL, true, NOW(), NOW()),
-    ('contractnest', 'notification', 'WhatsApp 200 Pack', 200, 700.00, 'INR', NULL, true, NOW(), NOW()),
-    ('contractnest', 'notification', 'WhatsApp 500 Pack', 500, 1500.00, 'INR', NULL, true, NOW(), NOW()),
+    ('contractnest', 'notification', 'WhatsApp 50 Pack', 'Pack of 50 WhatsApp notification credits', 50, 200.00, 'INR', NULL, true, NOW(), NOW()),
+    ('contractnest', 'notification', 'WhatsApp 200 Pack', 'Pack of 200 WhatsApp notification credits', 200, 700.00, 'INR', NULL, true, NOW(), NOW()),
+    ('contractnest', 'notification', 'WhatsApp 500 Pack', 'Pack of 500 WhatsApp notification credits', 500, 1500.00, 'INR', NULL, true, NOW(), NOW()),
 
     -- SMS notification packs
-    ('contractnest', 'notification', 'SMS 100 Pack', 100, 150.00, 'INR', NULL, true, NOW(), NOW()),
-    ('contractnest', 'notification', 'SMS 500 Pack', 500, 650.00, 'INR', NULL, true, NOW(), NOW()),
+    ('contractnest', 'notification', 'SMS 100 Pack', 'Pack of 100 SMS notification credits', 100, 150.00, 'INR', NULL, true, NOW(), NOW()),
+    ('contractnest', 'notification', 'SMS 500 Pack', 'Pack of 500 SMS notification credits', 500, 650.00, 'INR', NULL, true, NOW(), NOW()),
 
     -- Email notification packs
-    ('contractnest', 'notification', 'Email 500 Pack', 500, 100.00, 'INR', NULL, true, NOW(), NOW()),
-    ('contractnest', 'notification', 'Email 2000 Pack', 2000, 350.00, 'INR', NULL, true, NOW(), NOW())
+    ('contractnest', 'notification', 'Email 500 Pack', 'Pack of 500 Email notification credits', 500, 100.00, 'INR', NULL, true, NOW(), NOW()),
+    ('contractnest', 'notification', 'Email 2000 Pack', 'Pack of 2000 Email notification credits', 2000, 350.00, 'INR', NULL, true, NOW(), NOW())
 ON CONFLICT DO NOTHING;
 
 
@@ -347,18 +348,19 @@ ON CONFLICT DO NOTHING;
 INSERT INTO public.t_bm_topup_pack (
     product_code,
     credit_type,
-    pack_name,
+    name,
+    description,
     quantity,
     price,
-    currency,
-    validity_days,
+    currency_code,
+    expiry_days,
     is_active,
     created_at,
     updated_at
 ) VALUES
-    ('kaladristi', 'ai_report', 'AI Report 5 Pack', 5, 200.00, 'INR', 90, true, NOW(), NOW()),
-    ('kaladristi', 'ai_report', 'AI Report 10 Pack', 10, 375.00, 'INR', 90, true, NOW(), NOW()),
-    ('kaladristi', 'ai_report', 'AI Report 25 Pack', 25, 875.00, 'INR', 180, true, NOW(), NOW())
+    ('kaladristi', 'ai_report', 'AI Report 5 Pack', 'Pack of 5 AI research report credits', 5, 200.00, 'INR', 90, true, NOW(), NOW()),
+    ('kaladristi', 'ai_report', 'AI Report 10 Pack', 'Pack of 10 AI research report credits', 10, 375.00, 'INR', 90, true, NOW(), NOW()),
+    ('kaladristi', 'ai_report', 'AI Report 25 Pack', 'Pack of 25 AI research report credits', 25, 875.00, 'INR', 180, true, NOW(), NOW())
 ON CONFLICT DO NOTHING;
 
 
