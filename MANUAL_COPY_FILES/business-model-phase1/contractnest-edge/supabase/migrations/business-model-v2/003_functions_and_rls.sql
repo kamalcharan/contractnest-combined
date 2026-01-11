@@ -1035,6 +1035,8 @@ COMMENT ON FUNCTION public.is_platform_admin IS
 -- ============================================================
 -- Helper function to check if user is tenant admin
 -- ============================================================
+-- Note: DROP required because existing function has different parameter name (check_tenant_id)
+DROP FUNCTION IF EXISTS public.is_tenant_admin(uuid);
 
 CREATE OR REPLACE FUNCTION public.is_tenant_admin(p_tenant_id UUID DEFAULT NULL)
 RETURNS BOOLEAN

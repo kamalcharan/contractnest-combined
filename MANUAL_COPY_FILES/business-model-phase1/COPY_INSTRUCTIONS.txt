@@ -20,7 +20,7 @@ FILES INCLUDED
 
 3. contractnest-edge/supabase/migrations/business-model-v2/003_functions_and_rls.sql
    Purpose: Database functions (RPC) with race condition handling + RLS policies
-   Status: PENDING
+   Status: PENDING (v3 - Fixed is_tenant_admin parameter conflict)
 
 ═══════════════════════════════════════════════════════════════════════════════
 DELIVERABLE 3: FUNCTIONS & RLS
@@ -54,9 +54,10 @@ t_bm_billing_event       | Own tenant + Admin  | Admin + Service role
 
 HELPER FUNCTIONS
 ────────────────
-- is_admin_user()        - Check admin via t_tenant table
-- is_platform_admin()    - Check admin via JWT app_metadata
-- get_user_tenant_id()   - Get tenant_id from JWT or auth.uid()
+- is_platform_admin()       - Check admin via t_tenants.is_admin (user's tenant)
+- is_tenant_admin()         - Check admin via t_user_tenants.is_admin
+- get_user_tenant_id()      - Get default tenant_id from t_user_tenants
+- user_belongs_to_tenant()  - Check if user belongs to specific tenant
 
 ═══════════════════════════════════════════════════════════════════════════════
 RACE CONDITION HANDLING
