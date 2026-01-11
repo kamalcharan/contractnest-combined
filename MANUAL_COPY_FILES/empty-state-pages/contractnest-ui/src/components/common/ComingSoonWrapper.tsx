@@ -2,6 +2,7 @@
 // Reusable Coming Soon wrapper with password unlock for pre-launch features
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
 import {
   Sparkles,
   Rocket,
@@ -63,6 +64,7 @@ const ComingSoonWrapper: React.FC<ComingSoonWrapperProps> = ({
   onCtaClick
 }) => {
   const { isDarkMode, currentTheme } = useTheme();
+  const { user } = useAuth();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
   const accent = accentColor || colors.brand.primary;
 
@@ -74,20 +76,28 @@ const ComingSoonWrapper: React.FC<ComingSoonWrapperProps> = ({
   const [error, setError] = useState('');
   const [unlockAnimation, setUnlockAnimation] = useState(false);
 
-  // Check localStorage on mount
+  // Generate per-user storage key
+  const getStorageKey = () => {
+    const userId = user?.id || 'anonymous';
+    return `comingsoon_unlocked_${userId}_${pageKey}`;
+  };
+
+  // Check localStorage on mount (per-user key)
   useEffect(() => {
-    const unlocked = localStorage.getItem(`comingsoon_unlocked_${pageKey}`);
+    const storageKey = getStorageKey();
+    const unlocked = localStorage.getItem(storageKey);
     if (unlocked === 'true') {
       setIsUnlocked(true);
     }
-  }, [pageKey]);
+  }, [pageKey, user?.id]);
 
   // Handle unlock
   const handleUnlock = () => {
     if (password === UNLOCK_PASSWORD) {
       setUnlockAnimation(true);
       setTimeout(() => {
-        localStorage.setItem(`comingsoon_unlocked_${pageKey}`, 'true');
+        const storageKey = getStorageKey();
+        localStorage.setItem(storageKey, 'true');
         setIsUnlocked(true);
       }, 600);
     } else {
@@ -109,7 +119,7 @@ const ComingSoonWrapper: React.FC<ComingSoonWrapperProps> = ({
 
   return (
     <div
-      className={`relative min-h-[calc(100vh-120px)] overflow-hidden ${unlockAnimation ? 'animate-unlock' : ''}`}
+      className={`relative h-full min-h-[500px] overflow-auto ${unlockAnimation ? 'animate-unlock' : ''}`}
       style={{ backgroundColor: colors.utility.primaryBackground }}
     >
       {/* CSS Animations */}
@@ -388,111 +398,111 @@ const ComingSoonWrapper: React.FC<ComingSoonWrapperProps> = ({
             </span>
           </div>
         </div>
-      </div>
 
-      {/* Bottom Left - Early Access Unlock Panel */}
-      <div className="fixed bottom-6 left-6 z-50">
-        {!showUnlockPanel ? (
-          <button
-            onClick={() => setShowUnlockPanel(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all hover:scale-105 shadow-lg"
-            style={{
-              backgroundColor: colors.utility.secondaryBackground,
-              border: `1px solid ${colors.utility.primaryText}15`,
-              color: colors.utility.secondaryText
-            }}
-          >
-            <Lock className="w-4 h-4" />
-            <span className="text-sm">Early Access</span>
-          </button>
-        ) : (
-          <div
-            className="p-4 rounded-xl shadow-2xl border animate-slide-up"
-            style={{
-              backgroundColor: colors.utility.secondaryBackground,
-              borderColor: `${colors.utility.primaryText}15`,
-              minWidth: '280px'
-            }}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <Unlock className="w-4 h-4" style={{ color: accent }} />
-                <span
-                  className="text-sm font-medium"
-                  style={{ color: colors.utility.primaryText }}
-                >
-                  Early Access Code
-                </span>
-              </div>
-              <button
-                onClick={() => {
-                  setShowUnlockPanel(false);
-                  setPassword('');
-                  setError('');
-                }}
-                className="p-1 rounded hover:opacity-70"
-                style={{ color: colors.utility.secondaryText }}
-              >
-                &times;
-              </button>
-            </div>
-
-            <p
-              className="text-xs mb-3"
-              style={{ color: colors.utility.secondaryText }}
-            >
-              Enter your access code to preview this feature
-            </p>
-
-            <div className="relative mb-3">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  setError('');
-                }}
-                onKeyPress={handleKeyPress}
-                placeholder="Enter access code"
-                className="w-full px-3 py-2 pr-10 rounded-lg text-sm border focus:outline-none focus:ring-2"
-                style={{
-                  backgroundColor: colors.utility.primaryBackground,
-                  borderColor: error ? colors.semantic.error : `${colors.utility.primaryText}20`,
-                  color: colors.utility.primaryText,
-                  ['--tw-ring-color' as any]: `${accent}40`
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-1"
-                style={{ color: colors.utility.secondaryText }}
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-
-            {error && (
-              <p
-                className="text-xs mb-2"
-                style={{ color: colors.semantic.error }}
-              >
-                {error}
-              </p>
-            )}
-
+        {/* Early Access Unlock Panel - positioned at bottom of content area */}
+        <div className="mt-10 flex justify-start">
+          {!showUnlockPanel ? (
             <button
-              onClick={handleUnlock}
-              className="w-full py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90"
+              onClick={() => setShowUnlockPanel(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg transition-all hover:scale-105 shadow-lg"
               style={{
-                backgroundColor: accent,
-                color: '#fff'
+                backgroundColor: colors.utility.secondaryBackground,
+                border: `1px solid ${colors.utility.primaryText}15`,
+                color: colors.utility.secondaryText
               }}
             >
-              Unlock Preview
+              <Lock className="w-4 h-4" />
+              <span className="text-sm">Early Access</span>
             </button>
-          </div>
-        )}
+          ) : (
+            <div
+              className="p-4 rounded-xl shadow-2xl border animate-slide-up"
+              style={{
+                backgroundColor: colors.utility.secondaryBackground,
+                borderColor: `${colors.utility.primaryText}15`,
+                minWidth: '280px'
+              }}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Unlock className="w-4 h-4" style={{ color: accent }} />
+                  <span
+                    className="text-sm font-medium"
+                    style={{ color: colors.utility.primaryText }}
+                  >
+                    Early Access Code
+                  </span>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowUnlockPanel(false);
+                    setPassword('');
+                    setError('');
+                  }}
+                  className="p-1 rounded hover:opacity-70"
+                  style={{ color: colors.utility.secondaryText }}
+                >
+                  &times;
+                </button>
+              </div>
+
+              <p
+                className="text-xs mb-3"
+                style={{ color: colors.utility.secondaryText }}
+              >
+                Enter your access code to preview this feature
+              </p>
+
+              <div className="relative mb-3">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setError('');
+                  }}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Enter access code"
+                  className="w-full px-3 py-2 pr-10 rounded-lg text-sm border focus:outline-none focus:ring-2"
+                  style={{
+                    backgroundColor: colors.utility.primaryBackground,
+                    borderColor: error ? colors.semantic.error : `${colors.utility.primaryText}20`,
+                    color: colors.utility.primaryText,
+                    ['--tw-ring-color' as any]: `${accent}40`
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1"
+                  style={{ color: colors.utility.secondaryText }}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+
+              {error && (
+                <p
+                  className="text-xs mb-2"
+                  style={{ color: colors.semantic.error }}
+                >
+                  {error}
+                </p>
+              )}
+
+              <button
+                onClick={handleUnlock}
+                className="w-full py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90"
+                style={{
+                  backgroundColor: accent,
+                  color: '#fff'
+                }}
+              >
+                Unlock Preview
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
