@@ -1,0 +1,190 @@
+═══════════════════════════════════════════════════════════════════════════════
+BUSINESS MODEL PHASE 1 - DELIVERABLE 1: SCHEMA EVOLUTION
+═══════════════════════════════════════════════════════════════════════════════
+
+Date: 2025-01-11
+Branch: business-model-phase1
+Author: Claude Code Session
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES INCLUDED
+═══════════════════════════════════════════════════════════════════════════════
+
+1. contractnest-edge/supabase/migrations/business-model-v2/001_schema_evolution.sql
+   Purpose: Evolve existing Business Model tables for composite billing
+
+═══════════════════════════════════════════════════════════════════════════════
+CHANGES SUMMARY
+═══════════════════════════════════════════════════════════════════════════════
+
+Tables Modified:
+
+1. t_bm_plan_version
+   + billing_config JSONB DEFAULT '{}'
+   + Index on billing_config->>'product_code'
+
+2. t_bm_tenant_subscription
+   + product_code TEXT
+   + trial_start_date TIMESTAMPTZ
+   + grace_start_date TIMESTAMPTZ
+   + grace_end_date TIMESTAMPTZ
+   + suspension_date TIMESTAMPTZ
+   + next_billing_date DATE
+   + razorpay_subscription_id TEXT
+   + metadata JSONB DEFAULT '{}'
+   + version INTEGER DEFAULT 1 (optimistic locking)
+   + Updated status constraint (added: grace_period, suspended, pending)
+
+3. t_bm_subscription_usage
+   + tenant_id UUID
+   + metric_type TEXT
+   + quantity INTEGER DEFAULT 1
+   + recorded_at TIMESTAMPTZ DEFAULT NOW()
+   + reference_type TEXT
+   + reference_id UUID
+   + billing_period TEXT
+   + Updated type constraint (added: contract, storage, ai_report, api_call, addon)
+
+4. t_bm_invoice
+   + invoice_type TEXT DEFAULT 'platform'
+   + invoice_number TEXT
+   + tenant_id UUID
+   + billing_period_start DATE
+   + billing_period_end DATE
+   + line_items JSONB DEFAULT '[]'
+   + razorpay_invoice_id TEXT
+   + razorpay_short_url TEXT
+   + razorpay_payment_id TEXT
+   + payment_attempts INTEGER DEFAULT 0
+   + last_payment_attempt TIMESTAMPTZ
+   + paid_at TIMESTAMPTZ
+   + pdf_url TEXT
+   + subtotal NUMERIC(12,2)
+   + tax_amount NUMERIC(12,2) DEFAULT 0
+   + discount_amount NUMERIC(12,2) DEFAULT 0
+   + notes TEXT
+   + Updated status constraint (added: draft, sent, payment_failed, cancelled, refunded, partially_paid)
+
+General Additions:
+   + update_updated_at_column() function
+   + Triggers for automatic updated_at maintenance
+   + Backfill queries for tenant_id denormalization
+   + Multiple indexes for query optimization
+
+═══════════════════════════════════════════════════════════════════════════════
+COPY COMMANDS (Windows PowerShell)
+═══════════════════════════════════════════════════════════════════════════════
+
+# Navigate to project root
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Create the migrations directory if it doesn't exist
+New-Item -ItemType Directory -Force -Path "contractnest-edge\supabase\migrations\business-model-v2"
+
+# Copy the migration file
+Copy-Item "MANUAL_COPY_FILES\business-model-phase1\contractnest-edge\supabase\migrations\business-model-v2\001_schema_evolution.sql" -Destination "contractnest-edge\supabase\migrations\business-model-v2\" -Force
+
+Write-Host "Migration file copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════════════════════════════════
+RUNNING THE MIGRATION
+═══════════════════════════════════════════════════════════════════════════════
+
+Option 1: Via Supabase CLI
+--------------------------
+cd contractnest-edge
+supabase db push
+
+Option 2: Direct SQL Execution
+------------------------------
+Connect to your Supabase database and run the SQL file directly.
+
+Option 3: Via Supabase Dashboard
+--------------------------------
+1. Go to Supabase Dashboard → SQL Editor
+2. Copy contents of 001_schema_evolution.sql
+3. Execute
+
+═══════════════════════════════════════════════════════════════════════════════
+VERIFICATION QUERIES
+═══════════════════════════════════════════════════════════════════════════════
+
+-- Verify t_bm_plan_version changes
+SELECT column_name, data_type, is_nullable, column_default
+FROM information_schema.columns
+WHERE table_name = 't_bm_plan_version'
+ORDER BY ordinal_position;
+
+-- Verify t_bm_tenant_subscription changes
+SELECT column_name, data_type, is_nullable, column_default
+FROM information_schema.columns
+WHERE table_name = 't_bm_tenant_subscription'
+ORDER BY ordinal_position;
+
+-- Verify t_bm_subscription_usage changes
+SELECT column_name, data_type, is_nullable, column_default
+FROM information_schema.columns
+WHERE table_name = 't_bm_subscription_usage'
+ORDER BY ordinal_position;
+
+-- Verify t_bm_invoice changes
+SELECT column_name, data_type, is_nullable, column_default
+FROM information_schema.columns
+WHERE table_name = 't_bm_invoice'
+ORDER BY ordinal_position;
+
+-- Verify new indexes
+SELECT indexname, indexdef
+FROM pg_indexes
+WHERE tablename LIKE 't_bm_%'
+ORDER BY tablename, indexname;
+
+-- Verify updated constraints
+SELECT conname, pg_get_constraintdef(oid)
+FROM pg_constraint
+WHERE conrelid IN (
+    't_bm_tenant_subscription'::regclass,
+    't_bm_subscription_usage'::regclass,
+    't_bm_invoice'::regclass
+);
+
+═══════════════════════════════════════════════════════════════════════════════
+ROLLBACK (If Needed)
+═══════════════════════════════════════════════════════════════════════════════
+
+-- Note: This is a partial rollback. Full rollback would require more careful
+-- consideration as some data may have been populated in new columns.
+
+-- Remove new columns from t_bm_plan_version
+ALTER TABLE t_bm_plan_version DROP COLUMN IF EXISTS billing_config;
+
+-- Remove new columns from t_bm_tenant_subscription
+ALTER TABLE t_bm_tenant_subscription DROP COLUMN IF EXISTS product_code;
+ALTER TABLE t_bm_tenant_subscription DROP COLUMN IF EXISTS trial_start_date;
+ALTER TABLE t_bm_tenant_subscription DROP COLUMN IF EXISTS grace_start_date;
+ALTER TABLE t_bm_tenant_subscription DROP COLUMN IF EXISTS grace_end_date;
+ALTER TABLE t_bm_tenant_subscription DROP COLUMN IF EXISTS suspension_date;
+ALTER TABLE t_bm_tenant_subscription DROP COLUMN IF EXISTS next_billing_date;
+ALTER TABLE t_bm_tenant_subscription DROP COLUMN IF EXISTS razorpay_subscription_id;
+ALTER TABLE t_bm_tenant_subscription DROP COLUMN IF EXISTS metadata;
+ALTER TABLE t_bm_tenant_subscription DROP COLUMN IF EXISTS version;
+
+-- Restore original constraint
+ALTER TABLE t_bm_tenant_subscription DROP CONSTRAINT IF EXISTS t_bm_tenant_subscription_status_check;
+ALTER TABLE t_bm_tenant_subscription ADD CONSTRAINT t_bm_tenant_subscription_status_check
+    CHECK (status IN ('active', 'trial', 'canceled', 'expired'));
+
+-- (Similar for other tables - omitted for brevity)
+
+═══════════════════════════════════════════════════════════════════════════════
+NEXT DELIVERABLE: 002_new_tables.sql
+═══════════════════════════════════════════════════════════════════════════════
+After confirming this migration works, proceed to Deliverable 2 which creates:
+- t_bm_product_config
+- t_bm_credit_balance
+- t_bm_credit_transaction
+- t_bm_topup_pack
+- t_contract_invoice
+- t_bm_billing_event
+
+═══════════════════════════════════════════════════════════════════════════════
