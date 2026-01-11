@@ -145,12 +145,73 @@ KALADRISTI DETAILS:
   - 3 AI report topup packs seeded
 
 ═══════════════════════════════════════════════════════════════════════════════
+DELIVERABLE 5: EDGE UTILS
+═══════════════════════════════════════════════════════════════════════════════
+
+Files:
+  - contractnest-edge/supabase/functions/_shared/businessModel/index.ts
+  - contractnest-edge/supabase/functions/_shared/businessModel/types.ts
+
+FUNCTIONS PROVIDED:
+───────────────────
+Product Config:
+  - getProductConfig(supabase, productCode)
+  - getAllProductConfigs(supabase)
+
+Credits:
+  - deductCredits(supabase, tenantId, creditType, quantity, options)
+  - addCredits(supabase, tenantId, creditType, quantity, options)
+  - getCreditBalance(supabase, tenantId, creditType?)
+  - checkCreditAvailability(supabase, tenantId, creditType, quantity)
+
+Billing:
+  - getBillingStatus(supabase, tenantId)
+  - getBillingAlerts(supabase, tenantId)
+
+Usage:
+  - recordUsage(supabase, tenantId, subscriptionId, metricType, quantity)
+
+Topup Packs:
+  - getTopupPacks(supabase, productCode, creditType?)
+
+Pricing Helpers:
+  - calculateTieredPrice(supabase, tiers, quantity)
+  - calculateUserBasedFee(baseFee, userCount, billingCycle)
+  - calculateStorageOverage(storageConfig, usedMb)
+
+Validation Helpers:
+  - isInTrial(subscription)
+  - isInGracePeriod(subscription)
+  - isSubscriptionActive(subscription)
+  - canAccessFeatures(subscription, gracePeriodAccess)
+
+USAGE EXAMPLE:
+──────────────
+import { deductCredits, getBillingStatus } from '../_shared/businessModel/index.ts';
+
+// Deduct notification credits
+const result = await deductCredits(supabase, tenantId, 'notification', 1, {
+  channel: 'whatsapp',
+  referenceType: 'contract',
+  referenceId: contractId,
+  description: 'WhatsApp reminder sent',
+});
+
+if (!result.success) {
+  console.error(result.error_message);
+}
+
+═══════════════════════════════════════════════════════════════════════════════
 APPLY ORDER
 ═══════════════════════════════════════════════════════════════════════════════
 
 1. Run 003a_rpc_functions.sql       → APPLIED ✅
 2. Run 003b_rls_and_helpers.sql     → APPLIED ✅
 3. Run 003c_is_tenant_admin_fix.sql → APPLIED ✅
-4. Run 004_seed_product_configs.sql → PENDING
+4. Run 004_seed_product_configs.sql → APPLIED ✅
+5. Copy Edge utils to _shared/businessModel/ → PENDING
+
+# Copy Edge utils
+Copy-Item "MANUAL_COPY_FILES\business-model-phase1\contractnest-edge\supabase\functions\_shared\businessModel\*" -Destination "contractnest-edge\supabase\functions\_shared\businessModel\" -Recurse -Force
 
 ═══════════════════════════════════════════════════════════════════════════════
