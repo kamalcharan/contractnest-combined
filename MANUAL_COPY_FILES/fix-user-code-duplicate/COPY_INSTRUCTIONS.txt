@@ -1,0 +1,74 @@
+═══════════════════════════════════════════════════
+FIX: User Code Duplicate Constraint & Activity Logs
+═══════════════════════════════════════════════════
+
+ISSUES FIXED:
+─────────────────────────────────────────────────────
+1. Duplicate user_code constraint violation (e.g., CHARKAMA already exists)
+   - Root cause: generateUserCode() didn't check for existing codes
+   - Fix: Made generateUserCode async with database duplicate check
+   - If duplicate found, adds suffix A, B, C... Z, then random
+
+2. t_user_activity_logs table doesn't exist
+   - Root cause: Code referenced a table that was never created
+   - Fix: Commented out all activity log queries, return empty arrays
+
+3. Missing unique constraint on (user_id, auth_type)
+   - Note: This requires a database migration - see MIGRATION section
+
+FILES TO COPY:
+─────────────────────────────────────────────────────
+
+1. auth/utils/helpers.ts (async generateUserCode with duplicate check)
+   FROM: MANUAL_COPY_FILES/fix-user-code-duplicate/contractnest-edge/supabase/functions/auth/utils/helpers.ts
+   TO:   contractnest-edge/supabase/functions/auth/utils/helpers.ts
+
+2. auth/handlers/registration.ts (updated to await generateUserCode)
+   FROM: MANUAL_COPY_FILES/fix-user-code-duplicate/contractnest-edge/supabase/functions/auth/handlers/registration.ts
+   TO:   contractnest-edge/supabase/functions/auth/handlers/registration.ts
+
+3. FKauth/utils/helpers.ts (async generateUserCode with duplicate check)
+   FROM: MANUAL_COPY_FILES/fix-user-code-duplicate/contractnest-edge/supabase/functions/FKauth/utils/helpers.ts
+   TO:   contractnest-edge/supabase/functions/FKauth/utils/helpers.ts
+
+4. FKauth/handlers/registration.ts (updated to await generateUserCode)
+   FROM: MANUAL_COPY_FILES/fix-user-code-duplicate/contractnest-edge/supabase/functions/FKauth/handlers/registration.ts
+   TO:   contractnest-edge/supabase/functions/FKauth/handlers/registration.ts
+
+5. create-google/index.ts (async generateUserCode with duplicate check)
+   FROM: MANUAL_COPY_FILES/fix-user-code-duplicate/contractnest-edge/supabase/functions/create-google/index.ts
+   TO:   contractnest-edge/supabase/functions/create-google/index.ts
+
+6. user-management/index.ts (disabled activity log queries)
+   FROM: MANUAL_COPY_FILES/fix-user-code-duplicate/contractnest-edge/supabase/functions/user-management/index.ts
+   TO:   contractnest-edge/supabase/functions/user-management/index.ts
+
+SUBMODULES AFFECTED:
+─────────────────────────────────────────────────────
+- contractnest-edge
+
+DEPLOYMENT NOTE:
+─────────────────────────────────────────────────────
+These are Edge Function changes. After copying, deploy:
+
+cd contractnest-edge
+supabase functions deploy auth
+supabase functions deploy FKauth
+supabase functions deploy create-google
+supabase functions deploy user-management
+
+DATABASE MIGRATION (Optional):
+─────────────────────────────────────────────────────
+To fix the unique constraint issue on t_user_auth_methods:
+
+ALTER TABLE t_user_auth_methods
+ADD CONSTRAINT unique_user_auth_type UNIQUE (user_id, auth_type);
+
+COMMIT MESSAGE:
+─────────────────────────────────────────────────────
+fix: prevent duplicate user_code and remove activity log references
+
+- Make generateUserCode async with database duplicate check
+- Add suffix A, B, C... if user_code already exists
+- Disable t_user_activity_logs queries (table doesn't exist)
+- Update all 3 registration handlers to await generateUserCode
