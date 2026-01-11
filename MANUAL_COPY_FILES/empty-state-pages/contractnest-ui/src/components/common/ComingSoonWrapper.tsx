@@ -119,7 +119,7 @@ const ComingSoonWrapper: React.FC<ComingSoonWrapperProps> = ({
 
   return (
     <div
-      className={`relative h-full min-h-[500px] overflow-auto ${unlockAnimation ? 'animate-unlock' : ''}`}
+      className={`relative h-full w-full overflow-auto ${unlockAnimation ? 'animate-unlock' : ''}`}
       style={{ backgroundColor: colors.utility.primaryBackground }}
     >
       {/* CSS Animations */}
