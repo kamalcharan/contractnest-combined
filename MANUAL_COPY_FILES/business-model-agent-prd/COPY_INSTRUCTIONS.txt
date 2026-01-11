@@ -1,0 +1,35 @@
+═══════════════════════════════════════════════════
+📦 BUSINESS MODEL AGENT PRD - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════
+
+Branch: business-model-agent-prd
+Created: January 2025
+
+Files Changed:
+  - ClaudeDocumentation/BusinessModel/BUSINESS_MODEL_AGENT_PRD.md (NEW - 2370 lines)
+
+Submodules Affected: ClaudeDocumentation
+
+═══════════════════════════════════════════════════
+DESCRIPTION
+═══════════════════════════════════════════════════
+
+Comprehensive Technical PRD for Business Model Agent covering:
+- Multi-product billing (ContractNest, FamilyKnows, Kaladristi)
+- Dual-level billing (Platform + Contract billing)
+- Database schema with 8 tables
+- API design with 25+ endpoints
+- JTD integration for notifications
+- Razorpay integration
+- Concurrency handling for 500+ users
+- Bot-friendly architecture
+- 10 implementation phases
+- Testing and rollback strategies
+
+═══════════════════════════════════════════════════
+COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════
+
+Copy-Item "MANUAL_COPY_FILES\business-model-agent-prd\ClaudeDocumentation\*" -Destination "ClaudeDocumentation\" -Recurse -Force
+
+═══════════════════════════════════════════════════
