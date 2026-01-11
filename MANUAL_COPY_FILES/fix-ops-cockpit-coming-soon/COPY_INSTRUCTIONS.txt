@@ -1,0 +1,21 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS - fix-ops-cockpit-coming-soon
+═══════════════════════════════════════════════════
+
+CHANGES SUMMARY:
+- Added ComingSoonWrapper to OpsCockpitPage
+- Features: Real-time Monitoring, Performance Analytics, Workflow Automation, Goal Tracking
+- Password unlock: bharathavarsha
+
+SUBMODULES AFFECTED:
+- contractnest-ui
+
+═══════════════════════════════════════════════════
+FILES TO COPY:
+═══════════════════════════════════════════════════
+
+1. contractnest-ui/src/pages/ops/cockpit/index.tsx
+   FROM: MANUAL_COPY_FILES/fix-ops-cockpit-coming-soon/contractnest-ui/src/pages/ops/cockpit/index.tsx
+   TO:   contractnest-ui/src/pages/ops/cockpit/index.tsx
+
+═══════════════════════════════════════════════════
