@@ -61,7 +61,7 @@ export const defaultMenuItems: MenuItem[] = [
       }
     ]
   },
-  // Contracts menu - all submenus visible
+  // Contracts menu - only Create Contract visible (has Empty State)
   {
     id: 'contracts',
     label: 'Contracts',
@@ -69,17 +69,36 @@ export const defaultMenuItems: MenuItem[] = [
     path: '/contracts',
     hasSubmenu: true,
     submenuItems: [
-      { id: 'contracts-create', label: 'My Contracts', icon: 'FilePlus', path: '/contracts/create' },
-      { id: 'contracts-all', label: 'All Contracts', icon: 'FileText', path: '/service-contracts/contracts' },
-      { id: 'contracts-preview', label: 'Contract Preview', icon: 'Eye', path: '/contracts/preview' },
-      { id: 'contracts-pdf', label: 'PDF View', icon: 'FileSearch', path: '/contracts/pdf' },
-      { id: 'contracts-invite', label: 'Invite Sellers', icon: 'UserPlus', path: '/contracts/invite' },
-      { id: 'contracts-drafts', label: 'Drafts', icon: 'FileEdit', path: '/service-contracts/contracts?status=draft' },
-      { id: 'contracts-pending', label: 'Pending Acceptance', icon: 'Clock', path: '/service-contracts/contracts?status=pending' },
-      { id: 'contracts-active', label: 'Active Contracts', icon: 'CheckCircle', path: '/service-contracts/contracts?status=active' }
+      { id: 'contracts-create', label: 'My Contracts', icon: 'FilePlus', path: '/contracts/create' }
+      // HIDDEN: All Contracts, Contract Preview, PDF View, Invite Sellers, Drafts, Pending, Active
+      // { id: 'contracts-all', label: 'All Contracts', icon: 'FileText', path: '/service-contracts/contracts' },
+      // { id: 'contracts-preview', label: 'Contract Preview', icon: 'Eye', path: '/contracts/preview' },
+      // { id: 'contracts-pdf', label: 'PDF View', icon: 'FileSearch', path: '/contracts/pdf' },
+      // { id: 'contracts-invite', label: 'Invite Sellers', icon: 'UserPlus', path: '/contracts/invite' },
+      // { id: 'contracts-drafts', label: 'Drafts', icon: 'FileEdit', path: '/service-contracts/contracts?status=draft' },
+      // { id: 'contracts-pending', label: 'Pending Acceptance', icon: 'Clock', path: '/service-contracts/contracts?status=pending' },
+      // { id: 'contracts-active', label: 'Active Contracts', icon: 'CheckCircle', path: '/service-contracts/contracts?status=active' }
     ]
   },
-  // HIDDEN: Templates, Appointments, Tasks, VaNi - commented out for now
+  // VaNi menu - all submenus visible
+  {
+    id: 'vani',
+    label: 'VaNi',
+    icon: 'MessageSquare',
+    path: '/vani/dashboard',
+    hasSubmenu: true,
+    submenuItems: [
+      { id: 'vani-dashboard', label: 'Dashboard', icon: 'LayoutDashboard', path: '/vani/dashboard' },
+      { id: 'vani-events', label: 'Business Events', icon: 'Zap', path: '/vani/events' },
+      { id: 'vani-jobs', label: 'Jobs', icon: 'Briefcase', path: '/vani/jobs' },
+      { id: 'vani-templates', label: 'Templates', icon: 'FileTemplate', path: '/vani/templates' },
+      { id: 'vani-channels', label: 'Channels', icon: 'Radio', path: '/vani/channels' },
+      { id: 'vani-analytics', label: 'Analytics', icon: 'BarChart2', path: '/vani/analytics' },
+      { id: 'vani-rules', label: 'Process Rules', icon: 'GitBranch', path: '/vani/rules' },
+      { id: 'vani-chat', label: 'Chat', icon: 'MessageCircle', path: '/vani/chat' }
+    ]
+  },
+  // HIDDEN: Templates, Appointments, Tasks - commented out for now
   /*
   {
     id: 'templates',
@@ -103,16 +122,8 @@ export const defaultMenuItems: MenuItem[] = [
     path: '/tasks',
     hasSubmenu: false
   },
-  {
-    id: 'vani',
-    label: 'VaNi',
-    icon: 'MessageSquare',
-    path: '/vani/events',
-    hasSubmenu: true,
-    submenuItems: [...]
-  },
   */
-  // Operations menu - all submenus visible
+  // Operations menu - only Ops Cockpit visible (has Empty State)
   {
     id: 'operations',
     label: 'Operations',
@@ -120,9 +131,10 @@ export const defaultMenuItems: MenuItem[] = [
     path: '/ops/cockpit',
     hasSubmenu: true,
     submenuItems: [
-      { id: 'ops-cockpit', label: 'Ops Cockpit', icon: 'Gauge', path: '/ops/cockpit' },
-      { id: 'ops-activity', label: 'Activity Feed', icon: 'Activity', path: '/ops/activity' },
-      { id: 'ops-reports', label: 'Reports', icon: 'BarChart2', path: '/ops/reports' }
+      { id: 'ops-cockpit', label: 'Ops Cockpit', icon: 'Gauge', path: '/ops/cockpit' }
+      // HIDDEN: Activity Feed, Reports (no empty states yet)
+      // { id: 'ops-activity', label: 'Activity Feed', icon: 'Activity', path: '/ops/activity' },
+      // { id: 'ops-reports', label: 'Reports', icon: 'BarChart2', path: '/ops/reports' }
     ]
   },
   // Catalog Studio - Configure hidden (no empty state)

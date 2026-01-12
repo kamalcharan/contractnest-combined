@@ -1,5 +1,5 @@
 ═══════════════════════════════════════════════════
-OPEN MENUS: Contacts, Catalog Studio, Operations & Contracts
+OPEN MENUS: Contacts, Catalog Studio, Operations, Contracts & VaNi
 ═══════════════════════════════════════════════════
 
 CHANGES MADE:
@@ -43,15 +43,16 @@ CHANGES MADE:
 9. INDUSTRY MENUS (utils/constants/industryMenus.ts)
    - Uncommented 'Configure' submenu in Catalog Studio
    - Uncommented 'Activity Feed' and 'Reports' in Operations
-   - Uncommented ALL Contracts submenus:
-     * My Contracts
-     * All Contracts
-     * Contract Preview
-     * PDF View
-     * Invite Sellers
-     * Drafts
-     * Pending Acceptance
-     * Active Contracts
+   - Uncommented ALL Contracts submenus
+   - Added VaNi menu with ALL submenus:
+     * Dashboard
+     * Business Events
+     * Jobs
+     * Templates
+     * Channels
+     * Analytics
+     * Process Rules
+     * Chat
 
 ═══════════════════════════════════════════════════
 FILES TO COPY
