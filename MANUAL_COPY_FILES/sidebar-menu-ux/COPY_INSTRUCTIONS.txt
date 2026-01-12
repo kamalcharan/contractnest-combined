@@ -168,11 +168,14 @@ FILES LIST
 ================================================================================
 
 contractnest-ui/src/
+|-- App.tsx                                   <-- MODIFIED (VaNiToast provider wrapper)
 |-- components/
 |   |-- layout/
 |   |   +-- Sidebar.tsx
 |   |-- contacts/
 |   |   +-- QuickAddContactDrawer.tsx        <-- MODIFIED (5 classifications, entity rename)
+|   |-- ui/
+|   |   +-- use-toast.ts                     <-- MODIFIED (bridges to VaNiToast)
 |   +-- common/
 |       |-- loaders/
 |       |   |-- UnifiedLoader.tsx
@@ -186,6 +189,26 @@ contractnest-ui/src/
 +-- utils/
     +-- constants/
         +-- industryMenus.ts
+
+================================================================================
+TOAST INTEGRATION (BRIDGE APPROACH)
+================================================================================
+
+The use-toast.ts file has been modified to bridge to VaNiToast internally.
+This means all existing toast() calls will automatically use VaNiToast!
+
+HOW IT WORKS:
+1. App.tsx wraps the app with VaNiToastProviderWithGlobal
+2. use-toast.ts detects toast type from title/variant and calls vaniToast
+3. All existing code like toast({ title: "Success", description: "..." }) works
+
+MAPPING:
+- variant: "destructive" -> vaniToast.error()
+- title contains "success" -> vaniToast.success()
+- title contains "error/failed" -> vaniToast.error()
+- title contains "warning" -> vaniToast.warning()
+- title contains "loading" -> vaniToast.loading()
+- default -> vaniToast.info()
 
 ================================================================================
 TESTING CHECKLIST
