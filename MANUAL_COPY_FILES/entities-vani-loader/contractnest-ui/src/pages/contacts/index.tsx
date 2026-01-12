@@ -41,6 +41,7 @@ import {
 } from 'lucide-react';
 // import { useToast } from '@/components/ui/use-toast'; // Replaced with vaniToast
 import { captureException } from '@/utils/sentry';
+import { useAuth } from '../../context/AuthContext';
 import { analyticsService } from '@/services/analytics.service';
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
 import ComingSoonWrapper from '@/components/common/ComingSoonWrapper';
@@ -64,7 +65,7 @@ const contactsFloatingIcons = [
 ];
 
 // Import API hooks
-import { useContactList, useContactStats, useUpdateContactStatus } from '../../hooks/useContacts';
+import { useContactList, useContactStats, useUpdateContactStatus, invalidateContactsCache } from '../../hooks/useContacts';
 import { ContactFilters } from '../../types/contact';
 
 // Import constants
@@ -357,8 +358,9 @@ const FilterDropdown: React.FC<{
 const ContactsPage: React.FC = () => {
   const navigate = useNavigate();
   const { isDarkMode, currentTheme } = useTheme();
+  const { currentTenant, isLive } = useAuth();
   // const { toast } = useToast(); // Replaced with vaniToast
-  
+
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
   
   // UI State
@@ -447,7 +449,12 @@ const ContactsPage: React.FC = () => {
       vaniToast.loading(`Archiving ${contactName}...`);
       await updateContactStatus(contactId, 'archived');
       vaniToast.success(`${contactName} archived successfully`);
-      refetch();
+
+      // Invalidate cache and force refresh
+      if (currentTenant?.id) {
+        invalidateContactsCache(currentTenant.id, isLive);
+      }
+      refetch(true); // Force refresh to bypass cache
     } catch (error) {
       captureException(error, {
         tags: { component: 'ContactsPage', action: 'softDelete' }

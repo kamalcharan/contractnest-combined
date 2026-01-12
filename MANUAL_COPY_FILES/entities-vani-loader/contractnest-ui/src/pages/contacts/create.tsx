@@ -28,13 +28,14 @@ import { FormSkeleton } from '@/components/common/skeletons';
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
 
 // Import API hooks
-import { 
- useCreateContact, 
- useUpdateContact, 
+import {
+ useCreateContact,
+ useUpdateContact,
  useContact,
  useCheckDuplicates,
  useSendInvitation,
- useUpdateContactStatus 
+ useUpdateContactStatus,
+ invalidateContactsCache
 } from '../../hooks/useContacts';
 
 // Import form components
@@ -769,7 +770,13 @@ const ContactCreateForm: React.FC<ContactFormProps> = ({
        );
 
        setHasUnsavedChanges(false);
-       
+
+       // Invalidate contacts list cache so returning to list shows fresh data
+       if (currentTenant?.id) {
+         invalidateContactsCache(currentTenant.id, isLive);
+         console.log('📦 Cache invalidated after save');
+       }
+
        setTimeout(() => {
          navigate(`/contacts/${savedContactId}`);
        }, 500);
