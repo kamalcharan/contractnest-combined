@@ -491,14 +491,22 @@ BEGIN
     END LOOP;
 
     -- Remove addresses that are no longer in the incoming list
-    DELETE FROM t_contact_addresses
-    WHERE contact_id = p_contact_id
-    AND id NOT IN (
-      SELECT (value->>'id')::uuid
-      FROM jsonb_array_elements(p_addresses)
+    -- ONLY delete if there are valid existing IDs in the incoming data
+    -- This prevents deleting newly inserted addresses when all incoming are new
+    IF EXISTS (
+      SELECT 1 FROM jsonb_array_elements(p_addresses)
       WHERE value->>'id' IS NOT NULL
       AND value->>'id' NOT LIKE 'temp_%'
-    );
+    ) THEN
+      DELETE FROM t_contact_addresses
+      WHERE contact_id = p_contact_id
+      AND id NOT IN (
+        SELECT (value->>'id')::uuid
+        FROM jsonb_array_elements(p_addresses)
+        WHERE value->>'id' IS NOT NULL
+        AND value->>'id' NOT LIKE 'temp_%'
+      );
+    END IF;
   END IF;
   -- NOTE: If p_addresses is NULL or empty [], existing addresses are preserved
 
