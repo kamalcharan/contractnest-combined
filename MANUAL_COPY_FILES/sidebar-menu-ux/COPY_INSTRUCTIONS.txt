@@ -1,7 +1,7 @@
 ================================================================================
-SIDEBAR MENU UX IMPROVEMENTS + UNIFIED LOADER SYSTEM
+SIDEBAR MENU UX + UNIFIED LOADER + VANI TOAST SYSTEM
 ================================================================================
-Feature: Sidebar Menu UX & Logo Theme Fix + Standardized Loaders
+Feature: Sidebar Menu UX, Standardized Loaders & Theme-Aware Toast
 Date: January 2026
 Submodules Affected: contractnest-ui
 
@@ -11,127 +11,131 @@ CHANGES SUMMARY
 
 1. Sidebar.tsx (src/components/layout/Sidebar.tsx)
    - Fixed logo path: Changed "assets/assets/images/" to "/assets/images/"
-   - Improved fallback logo for theme stability: Now uses [CN badge] + text
-     instead of gradient text that could break on theme change
+   - Improved fallback logo for theme stability
 
 2. industryMenus.ts (src/utils/constants/industryMenus.ts)
-   - Moved Operations menu after Dashboard (was after VaNi)
-   - Added "Entities" submenu under Operations (after Ops Cockpit)
-   - Entities links to /contacts page
+   - Moved Operations menu after Dashboard
+   - Added "Entities" submenu under Operations
 
-3. NEW: UnifiedLoader.tsx (src/components/common/loaders/UnifiedLoader.tsx)
+3. UnifiedLoader.tsx (src/components/common/loaders/UnifiedLoader.tsx)
    - Theme-aware loading components
-   - Standardized loading experience across application
+   - ContentSkeleton, VaNiLoader, PageLoader, InlineLoader, SectionLoader
+
+4. NEW: VaNiToast.tsx (src/components/common/toast/VaNiToast.tsx)
+   - Theme-aware toast notifications
+   - Sleek dark/light design with progress bar
+   - Replaces inconsistent react-hot-toast + Radix UI usage
 
 ================================================================================
-NEW UNIFIED LOADER SYSTEM
+UNIFIED LOADER SYSTEM
 ================================================================================
 
 All loaders are THEME-AWARE and use colors from ThemeContext.
 
-COMPONENTS:
------------
-
-1. ContentSkeleton - For loading content areas
-   Usage:
-   ```tsx
-   import { ContentSkeleton } from '@/components/common/loaders';
-
-   // List skeleton (default)
-   <ContentSkeleton variant="list" count={5} />
-
-   // Card grid skeleton
-   <ContentSkeleton variant="card" count={6} />
-
-   // Table skeleton
-   <ContentSkeleton variant="table" count={10} />
-   ```
-
-2. VaNiLoader - Branded pulse loader with sparkles icon
-   Usage:
-   ```tsx
-   import { VaNiLoader } from '@/components/common/loaders';
-
-   // Basic
-   <VaNiLoader />
-
-   // With message
-   <VaNiLoader message="Processing..." />
-
-   // Full screen
-   <VaNiLoader fullScreen message="Loading your workspace..." />
-
-   // Sizes: 'sm' | 'md' | 'lg'
-   <VaNiLoader size="lg" />
-   ```
-
-3. PageLoader - Full page loading state
-   Usage:
-   ```tsx
-   import { PageLoader } from '@/components/common/loaders';
-
-   // VaNi style (default)
-   <PageLoader message="Loading..." />
-
-   // Spinner style
-   <PageLoader variant="spinner" message="Loading..." />
-
-   // Dots style
-   <PageLoader variant="dots" message="Loading..." />
-   ```
-
+1. ContentSkeleton - List/Card/Table skeletons
+2. VaNiLoader - Branded pulse loader with sparkles
+3. PageLoader - Full page loading (vani/spinner/dots)
 4. InlineLoader - For buttons and small areas
-   Usage:
-   ```tsx
-   import { InlineLoader } from '@/components/common/loaders';
-
-   <button disabled={isLoading}>
-     {isLoading ? <InlineLoader text="Saving..." /> : 'Save'}
-   </button>
-   ```
-
 5. SectionLoader - For partial page sections
-   Usage:
-   ```tsx
-   import { SectionLoader } from '@/components/common/loaders';
-
-   // Skeleton (default)
-   <SectionLoader variant="skeleton" skeletonVariant="card" skeletonCount={6} />
-
-   // VaNi loader
-   <SectionLoader variant="vani" message="Loading contacts..." />
-   ```
 
 ================================================================================
-MIGRATION GUIDE
+VANI TOAST SYSTEM
 ================================================================================
 
-BEFORE (Old pattern):
-```tsx
-if (isLoading) {
+FEATURES:
+- Theme-aware (light/dark mode)
+- Progress bar animation
+- Multiple toast types: success, error, warning, info, vani
+- Action buttons
+- Auto-dismiss with configurable duration
+- Stacking with max limit
+
+--------------------------------------------------------------------------------
+SETUP (in App.tsx or main layout)
+--------------------------------------------------------------------------------
+
+import { VaNiToastProviderWithGlobal } from '@/components/common/toast';
+
+function App() {
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="w-12 h-12 border-4 border-t-transparent rounded-full animate-spin" />
-      <p>Loading...</p>
-    </div>
+    <VaNiToastProviderWithGlobal position="bottom-right" maxToasts={5}>
+      {/* Your app content */}
+    </VaNiToastProviderWithGlobal>
   );
 }
-```
 
-AFTER (New pattern):
-```tsx
-import { PageLoader, ContentSkeleton } from '@/components/common/loaders';
+--------------------------------------------------------------------------------
+USAGE METHOD 1: Hook (within React components)
+--------------------------------------------------------------------------------
 
-// For full page loading
-if (isLoading) {
-  return <PageLoader message="Loading Groups..." />;
+import { useVaNiToast } from '@/components/common/toast';
+
+function MyComponent() {
+  const { addToast } = useVaNiToast();
+
+  const handleSave = async () => {
+    try {
+      await saveData();
+      addToast({
+        type: 'success',
+        title: 'Saved successfully',
+        message: 'Your changes have been saved',
+        duration: 4000,
+      });
+    } catch (error) {
+      addToast({
+        type: 'error',
+        title: 'Save failed',
+        message: error.message,
+        action: { label: 'Retry', onClick: handleSave },
+      });
+    }
+  };
 }
 
-// OR for content skeleton (better UX)
-if (isLoading) {
-  return <ContentSkeleton variant="list" count={5} />;
-}
-```
+--------------------------------------------------------------------------------
+USAGE METHOD 2: Standalone API (anywhere in app)
+--------------------------------------------------------------------------------
+
+import { vaniToast } from '@/components/common/toast';
+
+// Simple usage
+vaniToast.success('Contact saved');
+vaniToast.error('Failed to load data');
+vaniToast.warning('Session expiring soon');
+vaniToast.info('New update available');
+vaniToast.vani('Contract drafted for Mr. Sequence');
+
+// With options
+vaniToast.success('Contact saved', {
+  message: 'John Doe added to contacts',
+  duration: 5000,
+  action: { label: 'View', onClick: () => navigate('/contacts/123') },
+});
+
+--------------------------------------------------------------------------------
+TOAST TYPES & COLORS
+--------------------------------------------------------------------------------
+
+| Type    | Icon          | Color Source              |
+|---------|---------------|---------------------------|
+| success | CheckCircle   | colors.semantic.success   |
+| error   | AlertCircle   | colors.semantic.error     |
+| warning | AlertTriangle | colors.semantic.warning   |
+| info    | Info          | colors.semantic.info      |
+| vani    | Sparkles      | colors.brand.primary      |
+
+--------------------------------------------------------------------------------
+MIGRATION FROM react-hot-toast
+--------------------------------------------------------------------------------
+
+BEFORE:
+  import toast from 'react-hot-toast';
+  toast.success('Saved!');
+
+AFTER:
+  import { vaniToast } from '@/components/common/toast';
+  vaniToast.success('Saved!');
 
 ================================================================================
 NEW MENU STRUCTURE
@@ -139,16 +143,12 @@ NEW MENU STRUCTURE
 
 Getting Started
 Dashboard
-Operations                    <-- Moved here (was after VaNi)
+Operations                    <-- Moved here
 ├── Ops Cockpit
 ├── Entities                  <-- NEW (links to /contacts)
 ├── Activity Feed
 └── Reports
-Contacts                      <-- Kept for now (to be deleted later)
-├── All Contacts
-├── Buyers
-├── Partners
-└── Service Providers
+Contacts
 Contracts
 VaNi
 Catalog Studio
@@ -165,13 +165,22 @@ Copy-Item "MANUAL_COPY_FILES\sidebar-menu-ux\contractnest-ui\*" -Destination "co
 Write-Host "Files copied successfully!" -ForegroundColor Green
 
 ================================================================================
-VERIFY COPY
+FILES LIST
 ================================================================================
 
-After copying, verify these files exist:
-- contractnest-ui\src\components\layout\Sidebar.tsx
-- contractnest-ui\src\utils\constants\industryMenus.ts
-- contractnest-ui\src\components\common\loaders\UnifiedLoader.tsx
-- contractnest-ui\src\components\common\loaders\index.ts
+contractnest-ui/src/
+├── components/
+│   ├── layout/
+│   │   └── Sidebar.tsx
+│   └── common/
+│       ├── loaders/
+│       │   ├── UnifiedLoader.tsx
+│       │   └── index.ts
+│       └── toast/
+│           ├── VaNiToast.tsx
+│           └── index.ts
+└── utils/
+    └── constants/
+        └── industryMenus.ts
 
 ================================================================================
