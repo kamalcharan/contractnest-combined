@@ -529,10 +529,13 @@ BEGIN
     ) INTO v_incoming_person_ids;
 
     -- Archive removed persons
-    UPDATE t_contacts
-    SET status = 'archived'
-    WHERE id = ANY(v_existing_person_ids)
-      AND NOT (id = ANY(COALESCE(v_incoming_person_ids, ARRAY[]::uuid[])));
+    -- FIXED: Only archive if there are valid existing IDs in incoming data
+    IF array_length(v_incoming_person_ids, 1) > 0 THEN
+      UPDATE t_contacts
+      SET status = 'archived'
+      WHERE id = ANY(v_existing_person_ids)
+        AND NOT (id = ANY(v_incoming_person_ids));
+    END IF;
 
     -- Process each contact person
     FOR v_person IN
