@@ -1,0 +1,40 @@
+═══════════════════════════════════════════════════
+FIX: DualPersonaTimeline Visibility Issue
+═══════════════════════════════════════════════════
+
+ISSUE: "How Both Sides Win with ContractNest" section
+       Buyer/Seller journey tabs visible but content was hidden
+
+ROOT CAUSE:
+- Content started with opacity-0 (invisible)
+- Relied on IntersectionObserver to trigger visibility
+- If observer didn't fire, content stayed hidden forever
+
+FIX: Changed isVisible default from false to true (Line 260)
+
+═══════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════
+
+1. DualPersonaTimeline.tsx
+   FROM: MANUAL_COPY_FILES\fix-timeline-visibility\contractnest-ui\src\components\landing\DualPersonaTimeline.tsx
+   TO:   contractnest-ui\src\components\landing\DualPersonaTimeline.tsx
+
+═══════════════════════════════════════════════════
+SUBMODULES AFFECTED
+═══════════════════════════════════════════════════
+- contractnest-ui
+
+═══════════════════════════════════════════════════
+CHANGE DETAILS
+═══════════════════════════════════════════════════
+File: src/components/landing/DualPersonaTimeline.tsx
+Line: 260
+
+BEFORE:
+  const [isVisible, setIsVisible] = useState(false);
+
+AFTER:
+  const [isVisible, setIsVisible] = useState(true); // Default to true to ensure content is visible
+
+═══════════════════════════════════════════════════
