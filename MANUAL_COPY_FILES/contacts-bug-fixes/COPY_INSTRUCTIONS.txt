@@ -1,0 +1,142 @@
+═══════════════════════════════════════════════════════════════════════════════
+CONTACTS BUG FIXES - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+Branch: contacts-bug-fixes
+Date: 2026-01-12
+
+═══════════════════════════════════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════════════════════════════════
+
+Files Changed:
+  1. contractnest-edge/supabase/RPC/contacts/rpc
+     - FIXED: Empty array handling for channels/addresses/contact_persons
+     - FIXED: Added row locking (FOR UPDATE SKIP LOCKED) to prevent race conditions
+
+  2. contractnest-ui/src/pages/contacts/create.tsx
+     - ADDED: Import for RichTextEditor component
+     - CHANGED: Replaced plain textarea with RichTextEditor for Notes field
+
+Submodules Affected:
+  - contractnest-edge (RPC functions)
+  - contractnest-ui (Frontend form)
+
+═══════════════════════════════════════════════════════════════════════════════
+🔧 FIXES APPLIED
+═══════════════════════════════════════════════════════════════════════════════
+
+1. FIX: 500 Error on Contact Update (Empty Channel Array)
+   ─────────────────────────────────────────────────────────
+   Location: update_contact_transaction RPC function
+
+   Before (BUG):
+   IF p_contact_channels IS NOT NULL THEN  -- Empty [] passes this check!
+       DELETE FROM t_contact_channels ...   -- Deletes ALL channels!
+
+   After (FIXED):
+   IF p_contact_channels IS NOT NULL AND jsonb_array_length(p_contact_channels) > 0 THEN
+       -- Only process if array has actual items
+
+   Same fix applied to: p_addresses, p_contact_persons
+
+2. FIX: Race Conditions (Row Locking)
+   ─────────────────────────────────────────────────────────
+   Location: update_contact_transaction, delete_contact_transaction RPC functions
+
+   Added: FOR UPDATE SKIP LOCKED
+
+   Before:
+   SELECT * INTO v_existing_contact FROM t_contacts WHERE id = p_contact_id;
+
+   After:
+   SELECT * INTO v_existing_contact FROM t_contacts
+   WHERE id = p_contact_id FOR UPDATE SKIP LOCKED;
+
+   Benefits:
+   - Prevents concurrent updates from overwriting each other
+   - Returns clear error if row is locked: "Contact not found or currently being modified"
+
+3. ENHANCEMENT: Notes Field Rich Text Editor
+   ─────────────────────────────────────────────────────────
+   Location: create.tsx Notes section
+
+   Before: Plain <textarea>
+   After: <RichTextEditor> with:
+   - Bold, italic, underline
+   - Bullet and numbered lists
+   - HTML output format
+   - Min/Max height constraints
+
+═══════════════════════════════════════════════════════════════════════════════
+✅ PRODUCTION CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+  ✅ Transaction Management: RPC functions use PL/pgSQL atomic transactions
+  ✅ Race Condition Handling: FOR UPDATE SKIP LOCKED added
+  ✅ Error Handling: Proper error codes returned (CONTACT_NOT_FOUND_OR_LOCKED)
+  ✅ Toasts: Already exists in form (no changes needed)
+  ✅ Loaders: Already exists (isSaving state)
+
+═══════════════════════════════════════════════════════════════════════════════
+💻 COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files from MANUAL_COPY_FILES
+─────────────────────────────────
+# Copy RPC file to edge functions
+Copy-Item "MANUAL_COPY_FILES\contacts-bug-fixes\contractnest-edge\supabase\RPC\contacts\rpc" -Destination "contractnest-edge\supabase\RPC\contacts\rpc" -Force
+
+# Copy create.tsx to UI
+Copy-Item "MANUAL_COPY_FILES\contacts-bug-fixes\contractnest-ui\src\pages\contacts\create.tsx" -Destination "contractnest-ui\src\pages\contacts\create.tsx" -Force
+
+Write-Host "✅ All files copied!" -ForegroundColor Green
+
+STEP 3: Deploy RPC to Supabase
+─────────────────────────────────
+# Run the SQL file in Supabase SQL Editor or via CLI
+# The RPC file contains CREATE OR REPLACE FUNCTION statements
+# that will update the existing functions
+
+STEP 4: Start Dev Server & Test
+─────────────────────────────────
+cd contractnest-ui
+npm run dev
+
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+Test 1: 500 Error Fix
+- [ ] Open an existing contact for editing
+- [ ] Make a change to the contact name (without touching channels)
+- [ ] Save - should succeed without 500 error
+- [ ] Verify channels are still present after save
+
+Test 2: Race Condition Handling
+- [ ] Open same contact in two browser tabs
+- [ ] Edit in Tab 1 and save
+- [ ] Quickly edit in Tab 2 and save
+- [ ] Tab 2 should show error: "Contact currently being modified"
+
+Test 3: Notes Rich Text Editor
+- [ ] Create new contact or edit existing
+- [ ] In Notes field, verify toolbar is visible (B, I, U, bullet, numbered)
+- [ ] Add formatted text (bold, list, etc.)
+- [ ] Save and re-open - verify formatting is preserved
+
+═══════════════════════════════════════════════════════════════════════════════
+⏸️ AFTER TESTING
+═══════════════════════════════════════════════════════════════════════════════
+
+Once testing is complete, reply with:
+  → "Tested, working - proceed with commit"
+  → "Issue found: [describe problem]"
+
+═══════════════════════════════════════════════════════════════════════════════
