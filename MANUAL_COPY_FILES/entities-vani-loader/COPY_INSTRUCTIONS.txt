@@ -3,6 +3,7 @@ COPY INSTRUCTIONS - Entities VaNi Loader + UI Cleanup + Backend Optimization
 ================================================================================
 Branch: entities-vani-loader
 Date: January 2026
+Session: UI Fixes - Theme, Loader, Header, UX
 
 SUBMODULES AFFECTED:
 - contractnest-ui
@@ -15,80 +16,95 @@ FILES TO COPY
 FRONTEND (contractnest-ui):
 -----------------------------
 
-1. UnifiedLoader.tsx (Updated hybrid VaNi loader)
+1. UnifiedLoader.tsx (Hybrid VaNi loader)
    FROM: MANUAL_COPY_FILES/entities-vani-loader/contractnest-ui/src/components/common/loaders/UnifiedLoader.tsx
    TO:   contractnest-ui/src/components/common/loaders/UnifiedLoader.tsx
 
-2. contacts/index.tsx (Updated entities list page)
+2. contacts/index.tsx (Entities list page with VaNi loader + UI cleanup)
    FROM: MANUAL_COPY_FILES/entities-vani-loader/contractnest-ui/src/pages/contacts/index.tsx
    TO:   contractnest-ui/src/pages/contacts/index.tsx
+
+3. contacts/create.tsx (Create/Edit Entity page - UPDATED)
+   FROM: MANUAL_COPY_FILES/entities-vani-loader/contractnest-ui/src/pages/contacts/create.tsx
+   TO:   contractnest-ui/src/pages/contacts/create.tsx
+
+   NEW CHANGES:
+   - Header: "Edit Contact" → "Edit Entity"
+   - Button: "Update Contact" → "Update Entity"
+   - Loader: FullPageSaveLoader now uses VaNi orb style with Sparkles icon
+   - Loader message: "Updating contact..." → "Updating Entity..."
+   - Added "Unsaved changes" indicator (yellow pulsing badge)
+
+4. useContacts.ts (API hooks - UPDATED)
+   FROM: MANUAL_COPY_FILES/entities-vani-loader/contractnest-ui/src/hooks/useContacts.ts
+   TO:   contractnest-ui/src/hooks/useContacts.ts
+
+   NEW CHANGES:
+   - Fixed 404 error: PATCH endpoint now calls /api/contacts/:id/status instead of /api/contacts/:id
+
+5. ContactChannelsSection.tsx (Form component - UPDATED)
+   FROM: MANUAL_COPY_FILES/entities-vani-loader/contractnest-ui/src/components/contacts/forms/ContactChannelsSection.tsx
+   TO:   contractnest-ui/src/components/contacts/forms/ContactChannelsSection.tsx
+
+   NEW CHANGES:
+   - Buttons now use inline styles with colors.brand.primary (theme-aware)
+   - Removed misleading "Channel Added" / "Channel Removed" toasts
+   - Added currentTheme from useTheme for proper color access
+
+6. AddressesSection.tsx (Form component - UPDATED)
+   FROM: MANUAL_COPY_FILES/entities-vani-loader/contractnest-ui/src/components/contacts/forms/AddressesSection.tsx
+   TO:   contractnest-ui/src/components/contacts/forms/AddressesSection.tsx
+
+   NEW CHANGES:
+   - Buttons now use inline styles with colors.brand.primary (theme-aware)
+   - Removed misleading "Address added" / "Address removed" toasts
+   - Added currentTheme from useTheme for proper color access
 
 BACKEND (contractnest-edge):
 -----------------------------
 
-3. contactService.ts (Optimized with RPC and DB-level pagination)
+7. contactService.ts (Optimized with RPC)
    FROM: MANUAL_COPY_FILES/entities-vani-loader/contractnest-edge/supabase/functions/_shared/contacts/contactService.ts
    TO:   contractnest-edge/supabase/functions/_shared/contacts/contactService.ts
 
-4. get_contact_stats.sql (New RPC functions - MUST BE DEPLOYED TO SUPABASE)
+8. get_contact_stats.sql (RPC functions - DEPLOY TO SUPABASE)
    FROM: MANUAL_COPY_FILES/entities-vani-loader/contractnest-edge/supabase/RPC/contacts/get_contact_stats.sql
    TO:   contractnest-edge/supabase/RPC/contacts/get_contact_stats.sql
 
-   ** IMPORTANT: This SQL file must be executed in Supabase SQL Editor to create the RPC functions **
-
 ================================================================================
-CHANGES SUMMARY
+CHANGES SUMMARY - THIS SESSION
 ================================================================================
 
-UnifiedLoader.tsx:
-- Updated VaNiLoader with hybrid approach (orb + dimmed skeletons)
-- Added dark orb background (#1e293b) for brand consistency
-- Added showSkeleton, skeletonVariant, skeletonCount props
-- Added dimmed prop to ContentSkeleton for 40% opacity
-- Updated animations: vani-orb-pulse, skeleton-shimmer
-- SectionLoader now defaults to variant='vani' with skeletons
+1. HEADER/BUTTON TEXT CHANGES:
+   - "Edit Contact" → "Edit Entity"
+   - "Update Contact" → "Update Entity"
+   - "Creating contact..." → "Creating Entity..."
+   - "Updating contact..." → "Updating Entity..."
 
-contacts/index.tsx - LOADER CHANGES:
-- Changed import from ContentSkeleton to VaNiLoader
-- Renamed EntitySkeleton to EntityLoader
-- Added getLoadingMessage() for dynamic context messages
-- Loading now shows: "VaNi is Loading Entities..." or "VaNi is Loading Buyers..." etc.
+2. API FIX (404 ERROR):
+   - useUpdateContactStatus hook was calling PATCH /api/contacts/:id
+   - Fixed to call PATCH /api/contacts/:id/status (matching API route)
 
-contacts/index.tsx - UI CLEANUP CHANGES:
-- REMOVED: Classifications filter from advanced filters dropdown
-- REMOVED: "Select all" checkbox above the list
-- REMOVED: Checkbox from grid view cards
-- REMOVED: Checkbox from list view cards
-- REMOVED: MoreHorizontal (...) button from grid view cards
-- REMOVED: MoreHorizontal (...) button from list view cards
-- REMOVED: isSelected ring styling from both card types
-- ADDED: Trash2 delete button to grid view cards (soft delete/archive)
-- ADDED: Trash2 delete button to list view cards (soft delete/archive)
-- ADDED: handleSoftDelete function using useUpdateContactStatus hook
-- ADDED: useUpdateContactStatus hook import
-- REMOVED: MoreHorizontal, CheckSquare from lucide-react imports
+3. VANI LOADER FOR UPDATE:
+   - FullPageSaveLoader replaced with VaNi orb style
+   - Dark orb (#1e293b) with Sparkles icon
+   - Theme-colored pulse ring (colors.brand.primary)
+   - "VaNi is processing..." message
 
-contactService.ts - BACKEND OPTIMIZATION:
-- OPTIMIZED: listContacts() now uses RPC for DB-level pagination and filtering
-- OPTIMIZED: getContactStats() now uses RPC for single-query statistics
-- ADDED: Fallback to JS-based filtering when RPC is unavailable
-- REMOVED: Duplicate applyClassificationFilter method definitions
-- ADDED: enrichContactsWithRelatedData() helper method
-- ADDED: listContactsFallback() for backwards compatibility
-- ADDED: getContactStatsFallback() for backwards compatibility
-- IMPROVED: When no classification filter, uses .range() for DB-level pagination
+4. COMPONENT THEME FIX:
+   - "Add Channel" buttons now use colors.brand.primary (not bg-primary Tailwind)
+   - "Add Address" buttons now use colors.brand.primary
+   - Cancel buttons use theme colors for border/text
+   - Buttons will now change color when theme changes
 
-get_contact_stats.sql - NEW RPC FUNCTIONS:
-- CREATED: get_contact_stats() - Returns all counts in single SQL query
-  * Uses COUNT with FILTER for efficient statistics
-  * Supports optional type, search, and classifications filters
-  * Uses JSONB ? operator for classification matching
-- CREATED: list_contacts_filtered() - DB-level pagination and filtering
-  * Applies all filters at database level
-  * Uses LIMIT/OFFSET instead of JS slice
-  * Uses ?| operator for "any of" classification matching
-  * Supports dynamic sorting
-  * Returns paginated results with total count
+5. UX IMPROVEMENTS:
+   - Added "Unsaved changes" indicator near save button (yellow pulsing badge)
+   - Removed misleading success toasts for in-form additions:
+     - No more "Channel Added" toast
+     - No more "Channel Removed" toast
+     - No more "Address added" toast
+     - No more "Address removed" toast
+   - User now sees the indicator instead, making it clear data isn't saved yet
 
 ================================================================================
 POWERSHELL COPY COMMANDS
@@ -101,42 +117,65 @@ cd "D:\projects\core projects\ContractNest\contractnest-combined"
 # Copy loader component
 Copy-Item "MANUAL_COPY_FILES\entities-vani-loader\contractnest-ui\src\components\common\loaders\UnifiedLoader.tsx" -Destination "contractnest-ui\src\components\common\loaders\UnifiedLoader.tsx" -Force
 
-# Copy contacts page
+# Copy contacts pages
 Copy-Item "MANUAL_COPY_FILES\entities-vani-loader\contractnest-ui\src\pages\contacts\index.tsx" -Destination "contractnest-ui\src\pages\contacts\index.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\entities-vani-loader\contractnest-ui\src\pages\contacts\create.tsx" -Destination "contractnest-ui\src\pages\contacts\create.tsx" -Force
+
+# Copy hooks
+Copy-Item "MANUAL_COPY_FILES\entities-vani-loader\contractnest-ui\src\hooks\useContacts.ts" -Destination "contractnest-ui\src\hooks\useContacts.ts" -Force
+
+# Copy form components
+Copy-Item "MANUAL_COPY_FILES\entities-vani-loader\contractnest-ui\src\components\contacts\forms\ContactChannelsSection.tsx" -Destination "contractnest-ui\src\components\contacts\forms\ContactChannelsSection.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\entities-vani-loader\contractnest-ui\src\components\contacts\forms\AddressesSection.tsx" -Destination "contractnest-ui\src\components\contacts\forms\AddressesSection.tsx" -Force
 
 # ===== BACKEND FILES =====
 
 # Copy optimized contactService
 Copy-Item "MANUAL_COPY_FILES\entities-vani-loader\contractnest-edge\supabase\functions\_shared\contacts\contactService.ts" -Destination "contractnest-edge\supabase\functions\_shared\contacts\contactService.ts" -Force
 
-# Copy RPC SQL file (for reference - must deploy to Supabase)
+# Copy RPC SQL file
 Copy-Item "MANUAL_COPY_FILES\entities-vani-loader\contractnest-edge\supabase\RPC\contacts\get_contact_stats.sql" -Destination "contractnest-edge\supabase\RPC\contacts\get_contact_stats.sql" -Force
 
 Write-Host "Files copied successfully!" -ForegroundColor Green
-Write-Host ""
-Write-Host "IMPORTANT: You must also deploy the SQL file to Supabase!" -ForegroundColor Yellow
-Write-Host "Open Supabase SQL Editor and run the contents of:" -ForegroundColor Yellow
-Write-Host "contractnest-edge\supabase\RPC\contacts\get_contact_stats.sql" -ForegroundColor Yellow
 
 ================================================================================
-SUPABASE RPC DEPLOYMENT
+TESTING CHECKLIST - THIS SESSION
 ================================================================================
 
-IMPORTANT: After copying files, you must deploy the RPC functions to Supabase:
+HEADER/BUTTON TEXT:
+- [ ] Navigate to /contacts/:id/edit
+- [ ] Verify page title shows "Edit Entity" (not "Edit Contact")
+- [ ] Verify button shows "Update Entity" (not "Update Contact")
 
-1. Open Supabase Dashboard
-2. Go to SQL Editor
-3. Copy the contents of: contractnest-edge/supabase/RPC/contacts/get_contact_stats.sql
-4. Execute the SQL
-5. Verify functions are created:
-   - get_contact_stats
-   - list_contacts_filtered
+ARCHIVE/DELETE FIX:
+- [ ] Go to /contacts (Entities list)
+- [ ] Click Trash icon on any entity card
+- [ ] Verify entity is archived (no 404 error)
+- [ ] Check console - should show successful status update
 
-The backend code has fallbacks, so it will work without the RPC functions,
-but performance will be the same as before. Deploy the RPC for full optimization.
+VANI LOADER:
+- [ ] Navigate to /contacts (Entities list)
+- [ ] Verify VaNi orb loader appears during initial load
+- [ ] Edit an entity and click "Update Entity"
+- [ ] Verify VaNi orb loader appears (dark orb, sparkles, pulsing)
+- [ ] Verify message shows "Updating Entity..."
+
+COMPONENT THEME:
+- [ ] Go to Create/Edit Entity page
+- [ ] Check "Add Channel" button color matches theme's brand color
+- [ ] Check "Add Address" button color matches theme's brand color
+- [ ] Switch themes - verify buttons change color accordingly
+
+UX - UNSAVED CHANGES:
+- [ ] Open Edit Entity page
+- [ ] Make a change (add channel, edit name, etc.)
+- [ ] Verify "Unsaved changes" yellow badge appears near save button
+- [ ] Verify NO toast appears when adding channel/address
+- [ ] Click "Update Entity" to save
+- [ ] Verify badge disappears after save
 
 ================================================================================
-TESTING CHECKLIST
+PREVIOUS SESSION TESTING (still applicable)
 ================================================================================
 
 LOADER TESTS:
@@ -146,36 +185,16 @@ LOADER TESTS:
 - [ ] Verify pulse ring animates around orb
 - [ ] Verify message: "VaNi is Loading Entities..." (uppercase, pulsing)
 - [ ] Verify dimmed skeleton cards appear below orb (40% opacity)
-- [ ] Click "Buyers" filter → message changes to "VaNi is Loading Buyers..."
-- [ ] Toggle Grid/List view → skeleton variant changes accordingly
 
 UI CLEANUP TESTS:
 - [ ] Verify NO classifications filter in advanced filters dropdown
 - [ ] Verify NO "Select all" checkbox above the list
-- [ ] Verify NO checkbox in grid view cards
-- [ ] Verify NO checkbox in list view cards
+- [ ] Verify NO checkbox in grid/list view cards
 - [ ] Verify NO "..." (more options) button in cards
-- [ ] Verify Trash icon (delete) button appears in grid view cards
-- [ ] Verify Trash icon (delete) button appears in list view cards
-- [ ] Click Trash icon → shows "Archiving..." toast → entity archived
-- [ ] Verify archived entity disappears from list (default shows active only)
-
-THEME TESTS:
-- [ ] Test dark mode - all icons use proper theme colors
-- [ ] Test light mode - orb provides good contrast
-- [ ] Verify Eye, Edit, FileText, Trash2 icons have proper theme colors
+- [ ] Verify Trash icon (delete) button appears in cards
 
 PERFORMANCE TESTS (after RPC deployment):
 - [ ] Check browser DevTools Network tab for API response times
 - [ ] Verify list loads faster than before (~1-2 seconds vs 6 seconds)
-- [ ] Check console logs for "Using optimized RPC" messages
-- [ ] Test pagination - should NOT fetch all data on each page
-- [ ] Test with classification filter - verify it still works
-- [ ] Test stats endpoint - should be faster (single query vs multiple)
-
-FALLBACK TESTS (if RPC not deployed):
-- [ ] Verify list still works (fallback to JS filtering)
-- [ ] Check console for "RPC not available, falling back" warnings
-- [ ] Verify all filters still work correctly
 
 ================================================================================
