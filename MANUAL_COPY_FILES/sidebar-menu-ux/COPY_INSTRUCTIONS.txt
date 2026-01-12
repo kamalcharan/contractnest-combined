@@ -1,7 +1,7 @@
 ================================================================================
-SIDEBAR MENU UX + UNIFIED LOADER + VANI TOAST SYSTEM
+SIDEBAR MENU UX + UNIFIED LOADER + VANI TOAST + QUICK ADD CONTACT
 ================================================================================
-Feature: Sidebar Menu UX, Standardized Loaders & Theme-Aware Toast
+Feature: Sidebar Menu UX, Loaders, Toast & Quick Add Contact Drawer
 Date: January 2026
 Submodules Affected: contractnest-ui
 
@@ -21,16 +21,78 @@ CHANGES SUMMARY
    - Theme-aware loading components
    - ContentSkeleton, VaNiLoader, PageLoader, InlineLoader, SectionLoader
 
-4. NEW: VaNiToast.tsx (src/components/common/toast/VaNiToast.tsx)
+4. VaNiToast.tsx (src/components/common/toast/VaNiToast.tsx)
    - Theme-aware toast notifications
    - Sleek dark/light design with progress bar
-   - Replaces inconsistent react-hot-toast + Radix UI usage
+
+5. NEW: QuickAddContactDrawer.tsx (src/components/contacts/QuickAddContactDrawer.tsx)
+   - Slide-in drawer for quick contact creation
+   - Glass effect styling
+   - Radio/chip selectors (not dropdowns)
+   - Race condition prevention
+   - "Advanced Options" link to full create page
+
+6. MODIFIED: contacts/index.tsx (src/pages/contacts/index.tsx)
+   - Added "Types" as default tab with color-coded filters
+   - Renamed tabs: Status & Identity, Billing Queue, Services Management
+   - Glass effect on contact cards
+   - "Add Contact" button opens Quick Add Drawer
+   - "Filter by:" label with colored pill buttons
+
+================================================================================
+QUICK ADD CONTACT DRAWER
+================================================================================
+
+FEATURES:
+- Slide-in from right (500px width)
+- Glass effect background (theme-aware)
+- Race condition prevention for API calls
+- Sections:
+  1. Classification (multi-select chips: Buyer, Seller, Vendor, Partner)
+  2. Account Type (radio cards: Individual/Corporate)
+  3. Identity (Salutation dropdown + Name input)
+  4. Contact Channels (dynamic add/remove)
+- "Advanced Options" link to full create page
+- Form validation
+
+USAGE:
+  import QuickAddContactDrawer from '@/components/contacts/QuickAddContactDrawer';
+
+  <QuickAddContactDrawer
+    isOpen={isQuickAddOpen}
+    onClose={() => setIsQuickAddOpen(false)}
+    onSuccess={(contactId) => { refetch(); }}
+  />
+
+================================================================================
+CONTACTS PAGE CHANGES
+================================================================================
+
+TAB STRUCTURE (Default: Types):
+  - Types (NEW - default): Buyers, Sellers, Vendors, Partners
+  - Status & Identity: All, Active, Inactive, Archived
+  - Billing Queue: All, Overdue, Due next week, etc.
+  - Services Management: All, Active services, etc.
+
+FILTER STYLING:
+  - "FILTER BY:" label
+  - Color-coded pill buttons per classification
+  - Blue = Buyers, Green = Sellers, Purple = Vendors, Orange = Partners
+
+GLASS EFFECT ON CARDS:
+  - backdrop-filter: blur(10px)
+  - Semi-transparent background
+  - Soft shadows
+
+ADD CONTACT BUTTON:
+  - Rounded-full style with shadow
+  - Opens Quick Add Drawer (not navigate to /create)
 
 ================================================================================
 UNIFIED LOADER SYSTEM
 ================================================================================
 
-All loaders are THEME-AWARE and use colors from ThemeContext.
+All loaders are THEME-AWARE.
 
 1. ContentSkeleton - List/Card/Table skeletons
 2. VaNiLoader - Branded pulse loader with sparkles
@@ -42,100 +104,17 @@ All loaders are THEME-AWARE and use colors from ThemeContext.
 VANI TOAST SYSTEM
 ================================================================================
 
-FEATURES:
-- Theme-aware (light/dark mode)
-- Progress bar animation
-- Multiple toast types: success, error, warning, info, vani
-- Action buttons
-- Auto-dismiss with configurable duration
-- Stacking with max limit
+SETUP (in App.tsx):
+  import { VaNiToastProviderWithGlobal } from '@/components/common/toast';
 
---------------------------------------------------------------------------------
-SETUP (in App.tsx or main layout)
---------------------------------------------------------------------------------
+  <VaNiToastProviderWithGlobal position="bottom-right" maxToasts={5}>
+    {/* app */}
+  </VaNiToastProviderWithGlobal>
 
-import { VaNiToastProviderWithGlobal } from '@/components/common/toast';
-
-function App() {
-  return (
-    <VaNiToastProviderWithGlobal position="bottom-right" maxToasts={5}>
-      {/* Your app content */}
-    </VaNiToastProviderWithGlobal>
-  );
-}
-
---------------------------------------------------------------------------------
-USAGE METHOD 1: Hook (within React components)
---------------------------------------------------------------------------------
-
-import { useVaNiToast } from '@/components/common/toast';
-
-function MyComponent() {
-  const { addToast } = useVaNiToast();
-
-  const handleSave = async () => {
-    try {
-      await saveData();
-      addToast({
-        type: 'success',
-        title: 'Saved successfully',
-        message: 'Your changes have been saved',
-        duration: 4000,
-      });
-    } catch (error) {
-      addToast({
-        type: 'error',
-        title: 'Save failed',
-        message: error.message,
-        action: { label: 'Retry', onClick: handleSave },
-      });
-    }
-  };
-}
-
---------------------------------------------------------------------------------
-USAGE METHOD 2: Standalone API (anywhere in app)
---------------------------------------------------------------------------------
-
-import { vaniToast } from '@/components/common/toast';
-
-// Simple usage
-vaniToast.success('Contact saved');
-vaniToast.error('Failed to load data');
-vaniToast.warning('Session expiring soon');
-vaniToast.info('New update available');
-vaniToast.vani('Contract drafted for Mr. Sequence');
-
-// With options
-vaniToast.success('Contact saved', {
-  message: 'John Doe added to contacts',
-  duration: 5000,
-  action: { label: 'View', onClick: () => navigate('/contacts/123') },
-});
-
---------------------------------------------------------------------------------
-TOAST TYPES & COLORS
---------------------------------------------------------------------------------
-
-| Type    | Icon          | Color Source              |
-|---------|---------------|---------------------------|
-| success | CheckCircle   | colors.semantic.success   |
-| error   | AlertCircle   | colors.semantic.error     |
-| warning | AlertTriangle | colors.semantic.warning   |
-| info    | Info          | colors.semantic.info      |
-| vani    | Sparkles      | colors.brand.primary      |
-
---------------------------------------------------------------------------------
-MIGRATION FROM react-hot-toast
---------------------------------------------------------------------------------
-
-BEFORE:
-  import toast from 'react-hot-toast';
-  toast.success('Saved!');
-
-AFTER:
+USAGE:
   import { vaniToast } from '@/components/common/toast';
-  vaniToast.success('Saved!');
+  vaniToast.success('Contact saved');
+  vaniToast.error('Failed to load data');
 
 ================================================================================
 NEW MENU STRUCTURE
@@ -172,6 +151,8 @@ contractnest-ui/src/
 ├── components/
 │   ├── layout/
 │   │   └── Sidebar.tsx
+│   ├── contacts/
+│   │   └── QuickAddContactDrawer.tsx        <-- NEW
 │   └── common/
 │       ├── loaders/
 │       │   ├── UnifiedLoader.tsx
@@ -179,8 +160,26 @@ contractnest-ui/src/
 │       └── toast/
 │           ├── VaNiToast.tsx
 │           └── index.ts
+├── pages/
+│   └── contacts/
+│       └── index.tsx                         <-- MODIFIED
 └── utils/
     └── constants/
         └── industryMenus.ts
+
+================================================================================
+TESTING CHECKLIST
+================================================================================
+
+- [ ] Click "Add Contact" button - drawer slides in from right
+- [ ] Select classification chips (multi-select)
+- [ ] Toggle between Individual/Corporate
+- [ ] Fill name and add channels
+- [ ] Save contact - toast shows, list refreshes
+- [ ] Click "Advanced Options" - navigates to full create page
+- [ ] Verify "Types" tab is default with colored filters
+- [ ] Verify glass effect on contact cards
+- [ ] Verify tabs renamed: Types, Status & Identity, Billing Queue, Services Management
+- [ ] Test dark mode - all components theme-aware
 
 ================================================================================
