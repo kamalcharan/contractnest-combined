@@ -113,7 +113,7 @@ export const defaultMenuItems: MenuItem[] = [
     submenuItems: [...]
   },
   */
-  // Operations menu - only Ops Cockpit visible (has Empty State)
+  // Operations menu - all submenus visible
   {
     id: 'operations',
     label: 'Operations',
@@ -121,10 +121,9 @@ export const defaultMenuItems: MenuItem[] = [
     path: '/ops/cockpit',
     hasSubmenu: true,
     submenuItems: [
-      { id: 'ops-cockpit', label: 'Ops Cockpit', icon: 'Gauge', path: '/ops/cockpit' }
-      // HIDDEN: Activity Feed, Reports (no empty states yet)
-      // { id: 'ops-activity', label: 'Activity Feed', icon: 'Activity', path: '/ops/activity' },
-      // { id: 'ops-reports', label: 'Reports', icon: 'BarChart2', path: '/ops/reports' }
+      { id: 'ops-cockpit', label: 'Ops Cockpit', icon: 'Gauge', path: '/ops/cockpit' },
+      { id: 'ops-activity', label: 'Activity Feed', icon: 'Activity', path: '/ops/activity' },
+      { id: 'ops-reports', label: 'Reports', icon: 'BarChart2', path: '/ops/reports' }
     ]
   },
   // Catalog Studio

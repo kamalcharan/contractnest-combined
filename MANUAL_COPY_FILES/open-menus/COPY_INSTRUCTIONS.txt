@@ -1,5 +1,5 @@
 ═══════════════════════════════════════════════════
-OPEN MENUS: Contacts & Catalog Studio
+OPEN MENUS: Contacts, Catalog Studio & Operations
 ═══════════════════════════════════════════════════
 
 CHANGES MADE:
@@ -19,9 +19,15 @@ CHANGES MADE:
    - Now exports CatalogStudioTemplatesListPage directly
    - Full functionality accessible
 
-4. INDUSTRY MENUS (utils/constants/industryMenus.ts)
+4. OPERATIONS - Ops Cockpit (ops/cockpit/index.tsx)
+   - Removed ComingSoonWrapper
+   - Now exports OpsCockpitPage directly
+   - Full functionality accessible
+
+5. INDUSTRY MENUS (utils/constants/industryMenus.ts)
    - Uncommented 'Configure' submenu item in Catalog Studio
-   - Configure menu now visible in sidebar
+   - Uncommented 'Activity Feed' and 'Reports' submenus in Operations
+   - All Operations submenus now visible in sidebar
 
 ═══════════════════════════════════════════════════
 FILES TO COPY
@@ -39,9 +45,25 @@ FILES TO COPY
    FROM: MANUAL_COPY_FILES\open-menus\contractnest-ui\src\pages\catalog-studio\templates-list.tsx
    TO:   contractnest-ui\src\pages\catalog-studio\templates-list.tsx
 
-4. industryMenus.ts
+4. ops/cockpit/index.tsx
+   FROM: MANUAL_COPY_FILES\open-menus\contractnest-ui\src\pages\ops\cockpit\index.tsx
+   TO:   contractnest-ui\src\pages\ops\cockpit\index.tsx
+
+5. industryMenus.ts
    FROM: MANUAL_COPY_FILES\open-menus\contractnest-ui\src\utils\constants\industryMenus.ts
    TO:   contractnest-ui\src\utils\constants\industryMenus.ts
+
+═══════════════════════════════════════════════════
+NOTE: Activity Feed & Reports Routes
+═══════════════════════════════════════════════════
+The Activity Feed (/ops/activity) and Reports (/ops/reports)
+menu items are now visible in the sidebar. However, these
+routes don't have dedicated pages yet - they will show 404.
+
+To add pages for these routes:
+1. Create ops/activity/index.tsx
+2. Create ops/reports/index.tsx
+3. Add routes in App.tsx
 
 ═══════════════════════════════════════════════════
 SUBMODULES AFFECTED
