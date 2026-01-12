@@ -61,7 +61,7 @@ export const defaultMenuItems: MenuItem[] = [
       }
     ]
   },
-  // Contracts menu - only Create Contract visible (has Empty State)
+  // Contracts menu - all submenus visible
   {
     id: 'contracts',
     label: 'Contracts',
@@ -69,15 +69,14 @@ export const defaultMenuItems: MenuItem[] = [
     path: '/contracts',
     hasSubmenu: true,
     submenuItems: [
-      { id: 'contracts-create', label: 'My Contracts', icon: 'FilePlus', path: '/contracts/create' }
-      // HIDDEN: All Contracts, Contract Preview, PDF View, Invite Sellers, Drafts, Pending, Active
-      // { id: 'contracts-all', label: 'All Contracts', icon: 'FileText', path: '/service-contracts/contracts' },
-      // { id: 'contracts-preview', label: 'Contract Preview', icon: 'Eye', path: '/contracts/preview' },
-      // { id: 'contracts-pdf', label: 'PDF View', icon: 'FileSearch', path: '/contracts/pdf' },
-      // { id: 'contracts-invite', label: 'Invite Sellers', icon: 'UserPlus', path: '/contracts/invite' },
-      // { id: 'contracts-drafts', label: 'Drafts', icon: 'FileEdit', path: '/service-contracts/contracts?status=draft' },
-      // { id: 'contracts-pending', label: 'Pending Acceptance', icon: 'Clock', path: '/service-contracts/contracts?status=pending' },
-      // { id: 'contracts-active', label: 'Active Contracts', icon: 'CheckCircle', path: '/service-contracts/contracts?status=active' }
+      { id: 'contracts-create', label: 'My Contracts', icon: 'FilePlus', path: '/contracts/create' },
+      { id: 'contracts-all', label: 'All Contracts', icon: 'FileText', path: '/service-contracts/contracts' },
+      { id: 'contracts-preview', label: 'Contract Preview', icon: 'Eye', path: '/contracts/preview' },
+      { id: 'contracts-pdf', label: 'PDF View', icon: 'FileSearch', path: '/contracts/pdf' },
+      { id: 'contracts-invite', label: 'Invite Sellers', icon: 'UserPlus', path: '/contracts/invite' },
+      { id: 'contracts-drafts', label: 'Drafts', icon: 'FileEdit', path: '/service-contracts/contracts?status=draft' },
+      { id: 'contracts-pending', label: 'Pending Acceptance', icon: 'Clock', path: '/service-contracts/contracts?status=pending' },
+      { id: 'contracts-active', label: 'Active Contracts', icon: 'CheckCircle', path: '/service-contracts/contracts?status=active' }
     ]
   },
   // HIDDEN: Templates, Appointments, Tasks, VaNi - commented out for now
@@ -126,7 +125,7 @@ export const defaultMenuItems: MenuItem[] = [
       { id: 'ops-reports', label: 'Reports', icon: 'BarChart2', path: '/ops/reports' }
     ]
   },
-  // Catalog Studio
+  // Catalog Studio - Configure hidden (no empty state)
   {
     id: 'catalog-studio',
     label: 'Catalog Studio',
@@ -134,7 +133,8 @@ export const defaultMenuItems: MenuItem[] = [
     path: '/catalog-studio',
     hasSubmenu: true,
     submenuItems: [
-      { id: 'catalog-studio-configure', label: 'Configure', icon: 'Settings', path: '/catalog-studio/configure' },
+      // HIDDEN: Configure (no empty state)
+      // { id: 'catalog-studio-configure', label: 'Configure', icon: 'Settings', path: '/catalog-studio/configure' },
       { id: 'catalog-studio-template', label: 'Template Builder', icon: 'FileTemplate', path: '/catalog-studio/template' },
       { id: 'catalog-studio-templates-list', label: 'Templates List', icon: 'List', path: '/catalog-studio/templates-list' }
     ]

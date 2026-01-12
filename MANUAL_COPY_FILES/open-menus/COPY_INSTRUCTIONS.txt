@@ -1,5 +1,5 @@
 ═══════════════════════════════════════════════════
-OPEN MENUS: Contacts, Catalog Studio & Operations
+OPEN MENUS: Contacts, Catalog Studio, Operations & Contracts
 ═══════════════════════════════════════════════════
 
 CHANGES MADE:
@@ -24,10 +24,34 @@ CHANGES MADE:
    - Now exports OpsCockpitPage directly
    - Full functionality accessible
 
-5. INDUSTRY MENUS (utils/constants/industryMenus.ts)
-   - Uncommented 'Configure' submenu item in Catalog Studio
-   - Uncommented 'Activity Feed' and 'Reports' submenus in Operations
-   - All Operations submenus now visible in sidebar
+5. CONTRACTS - Create (contracts/create/index.tsx)
+   - Removed ComingSoonWrapper
+   - Now exports ContractCreatePage directly
+
+6. CONTRACTS - Invite Sellers (contracts/invite/index.tsx)
+   - Removed ComingSoonWrapper
+   - Now exports InviteSellersPage directly
+
+7. CONTRACTS - PDF View (contracts/pdf-view/index.tsx)
+   - Removed ComingSoonWrapper
+   - Now exports PDFViewPage directly
+
+8. CONTRACTS - Preview (contracts/preview/index.tsx)
+   - Removed ComingSoonWrapper
+   - Now exports ContractPreviewPage directly
+
+9. INDUSTRY MENUS (utils/constants/industryMenus.ts)
+   - Uncommented 'Configure' submenu in Catalog Studio
+   - Uncommented 'Activity Feed' and 'Reports' in Operations
+   - Uncommented ALL Contracts submenus:
+     * My Contracts
+     * All Contracts
+     * Contract Preview
+     * PDF View
+     * Invite Sellers
+     * Drafts
+     * Pending Acceptance
+     * Active Contracts
 
 ═══════════════════════════════════════════════════
 FILES TO COPY
@@ -49,21 +73,25 @@ FILES TO COPY
    FROM: MANUAL_COPY_FILES\open-menus\contractnest-ui\src\pages\ops\cockpit\index.tsx
    TO:   contractnest-ui\src\pages\ops\cockpit\index.tsx
 
-5. industryMenus.ts
+5. contracts/create/index.tsx
+   FROM: MANUAL_COPY_FILES\open-menus\contractnest-ui\src\pages\contracts\create\index.tsx
+   TO:   contractnest-ui\src\pages\contracts\create\index.tsx
+
+6. contracts/invite/index.tsx
+   FROM: MANUAL_COPY_FILES\open-menus\contractnest-ui\src\pages\contracts\invite\index.tsx
+   TO:   contractnest-ui\src\pages\contracts\invite\index.tsx
+
+7. contracts/pdf-view/index.tsx
+   FROM: MANUAL_COPY_FILES\open-menus\contractnest-ui\src\pages\contracts\pdf-view\index.tsx
+   TO:   contractnest-ui\src\pages\contracts\pdf-view\index.tsx
+
+8. contracts/preview/index.tsx
+   FROM: MANUAL_COPY_FILES\open-menus\contractnest-ui\src\pages\contracts\preview\index.tsx
+   TO:   contractnest-ui\src\pages\contracts\preview\index.tsx
+
+9. industryMenus.ts
    FROM: MANUAL_COPY_FILES\open-menus\contractnest-ui\src\utils\constants\industryMenus.ts
    TO:   contractnest-ui\src\utils\constants\industryMenus.ts
-
-═══════════════════════════════════════════════════
-NOTE: Activity Feed & Reports Routes
-═══════════════════════════════════════════════════
-The Activity Feed (/ops/activity) and Reports (/ops/reports)
-menu items are now visible in the sidebar. However, these
-routes don't have dedicated pages yet - they will show 404.
-
-To add pages for these routes:
-1. Create ops/activity/index.tsx
-2. Create ops/reports/index.tsx
-3. Add routes in App.tsx
 
 ═══════════════════════════════════════════════════
 SUBMODULES AFFECTED
