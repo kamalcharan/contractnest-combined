@@ -1,0 +1,75 @@
+================================================================================
+CONTACTS COMPREHENSIVE FIX - ALL DATA TYPES
+================================================================================
+
+Branch: contacts-comprehensive-fix
+Date: 2026-01-12
+
+BUGS FIXED:
+--------------------------------------------------------------------------------
+1. Address DELETE bug - Newly inserted addresses were being deleted immediately
+   - Cause: DELETE ran when all addresses had temp IDs (empty subquery)
+   - Fix: Added IF EXISTS check before DELETE
+
+2. Contact Persons Archive bug - All existing persons were being archived
+   - Cause: Archive UPDATE ran when all incoming persons were new
+   - Fix: Added array_length check before UPDATE
+
+3. Tags fetch mismatch - Tags weren't showing after save
+   - Cause: getContactById read from t_contact_tags table (empty)
+   - Fix: Read from contact.tags JSONB column directly
+
+4. Compliance Numbers fetch mismatch - Same issue as tags
+   - Cause: getContactById read from t_contact_compliance_numbers table (empty)
+   - Fix: Read from contact.compliance_numbers JSONB column directly
+
+FILES TO COPY:
+--------------------------------------------------------------------------------
+
+CONTRACTNEST-EDGE (2 files):
+
+1. supabase/functions/_shared/contacts/contactService.ts
+   - FIXED: getContactById now reads tags/compliance_numbers from JSONB columns
+   - FIXED: Child contacts query excludes archived persons
+
+2. supabase/RPC/contacts/rpc
+   - FIXED: Address DELETE only runs if there are valid existing IDs
+   - FIXED: Contact persons Archive only runs if there are valid existing IDs
+
+COPY COMMANDS (PowerShell):
+--------------------------------------------------------------------------------
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Copy Edge files
+Copy-Item "MANUAL_COPY_FILES\contacts-comprehensive-fix\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+IMPORTANT - DEPLOY RPC TO SUPABASE:
+--------------------------------------------------------------------------------
+1. Open Supabase Dashboard > SQL Editor
+2. Copy the ENTIRE contents of:
+   contractnest-edge/supabase/RPC/contacts/rpc
+3. Run it in SQL Editor to update ALL functions
+
+AFTER COPYING & DEPLOYING:
+--------------------------------------------------------------------------------
+1. Deploy Edge function: cd contractnest-edge && supabase functions deploy contacts
+2. Test editing a corporate contact:
+   - Add a tag -> Save -> Should persist
+   - Add an address -> Save -> Should persist
+   - Add a compliance number -> Save -> Should persist
+   - Add a contact person -> Save -> Should persist
+3. Verify all data shows after page refresh
+
+TESTING CHECKLIST:
+--------------------------------------------------------------------------------
+[ ] Tags save and display after refresh
+[ ] Addresses save and display after refresh
+[ ] Compliance numbers save and display after refresh
+[ ] Contact persons save and display after refresh
+[ ] Contact channels still work (they were working before)
+[ ] Editing existing data still works
+
+================================================================================
