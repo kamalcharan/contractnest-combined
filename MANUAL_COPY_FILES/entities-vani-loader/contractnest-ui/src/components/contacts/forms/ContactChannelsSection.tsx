@@ -335,9 +335,22 @@ const ContactChannelsSection: React.FC<ContactChannelsSectionProps> = ({
                     type="text"
                     value={newChannel.value}
                     onChange={(e) => {
-                      setNewChannel({ ...newChannel, value: e.target.value });
+                      let inputValue = e.target.value;
+                      const channelConfig = getChannelByCode(newChannel.channel_type);
+
+                      // FIXED: For phone/mobile channels, strip non-numeric characters except + at start
+                      if (channelConfig?.validation.type === 'phone') {
+                        // Allow only digits, with optional + at start
+                        inputValue = inputValue.replace(/[^\d+]/g, '');
+                        // Ensure + only appears at the start
+                        if (inputValue.includes('+')) {
+                          inputValue = '+' + inputValue.replace(/\+/g, '');
+                        }
+                      }
+
+                      setNewChannel({ ...newChannel, value: inputValue });
                       if (validationErrors.new) {
-                        const error = validateChannelValue({ ...newChannel, value: e.target.value });
+                        const error = validateChannelValue({ ...newChannel, value: inputValue });
                         setValidationErrors({ new: error || '' });
                       }
                     }}
@@ -498,7 +511,17 @@ const ContactChannelsSection: React.FC<ContactChannelsSectionProps> = ({
                         <input
                           type="text"
                           value={channel.value}
-                          onChange={(e) => updateChannel(index, { value: e.target.value })}
+                          onChange={(e) => {
+                            let inputValue = e.target.value;
+                            // FIXED: For phone channels, strip non-numeric characters except + at start
+                            if (channelConfig.validation.type === 'phone') {
+                              inputValue = inputValue.replace(/[^\d+]/g, '');
+                              if (inputValue.includes('+')) {
+                                inputValue = '+' + inputValue.replace(/\+/g, '');
+                              }
+                            }
+                            updateChannel(index, { value: inputValue });
+                          }}
                           onBlur={() => markFieldTouched(fieldId)}
                           className={`w-full p-2 border rounded-md bg-background text-foreground text-sm ${
                             validationErrors[index] ? 'border-destructive' : 'border-input'

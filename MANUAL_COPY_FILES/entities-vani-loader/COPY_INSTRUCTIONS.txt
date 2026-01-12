@@ -60,6 +60,22 @@ FRONTEND (contractnest-ui):
    - Removed misleading "Address added" / "Address removed" toasts
    - Added currentTheme from useTheme for proper color access
 
+7. ContactClassificationSelector.tsx (Form component - THEME FIXED)
+   FROM: MANUAL_COPY_FILES/entities-vani-loader/contractnest-ui/src/components/contacts/forms/ContactClassificationSelector.tsx
+   TO:   contractnest-ui/src/components/contacts/forms/ContactClassificationSelector.tsx
+
+   NEW CHANGES (LATEST SESSION):
+   - FIXED: Selection border now uses theme colors (colors.brand.primary) instead of Tailwind border-primary
+   - FIXED: Checkmark circle uses theme colors instead of Tailwind bg-primary
+   - All styling is now theme-aware and changes when theme changes
+   - Removed misleading "Classification Added" / "Classification Removed" toasts
+   - Info message box now uses theme brand colors
+
+ADDITIONAL CHANGES TO ContactChannelsSection.tsx (LATEST SESSION):
+   - FIXED: Mobile/phone input validation - now strips non-numeric characters on input
+   - Characters like letters are immediately removed from phone fields
+   - Only allows digits and optional + at start for phone numbers
+
 BACKEND (contractnest-edge):
 -----------------------------
 
@@ -104,7 +120,25 @@ CHANGES SUMMARY - THIS SESSION
      - No more "Channel Removed" toast
      - No more "Address added" toast
      - No more "Address removed" toast
+     - No more "Classification Added" toast
+     - No more "Classification Removed" toast
    - User now sees the indicator instead, making it clear data isn't saved yet
+
+6. CLASSIFICATION SELECTOR THEME FIX (LATEST SESSION):
+   - Selection border now uses inline styles with colors.brand.primary
+   - Checkmark circle uses colors.brand.primary (theme-aware)
+   - When theme changes (e.g., from blue to red), all UI elements update
+
+7. MOBILE/PHONE INPUT VALIDATION (LATEST SESSION):
+   - Phone input fields now strip non-numeric characters on typing
+   - Only digits and + (at start) are allowed
+   - Prevents user from entering letters/special characters in phone numbers
+
+8. 500 ERROR INVESTIGATION:
+   - The 500 error on update likely originates in the backend RPC function
+   - The frontend data transformation looks correct
+   - To debug: Check Supabase logs for 'update_contact_transaction' RPC errors
+   - Ensure all RPC functions are deployed to Supabase
 
 ================================================================================
 POWERSHELL COPY COMMANDS
@@ -127,6 +161,7 @@ Copy-Item "MANUAL_COPY_FILES\entities-vani-loader\contractnest-ui\src\hooks\useC
 # Copy form components
 Copy-Item "MANUAL_COPY_FILES\entities-vani-loader\contractnest-ui\src\components\contacts\forms\ContactChannelsSection.tsx" -Destination "contractnest-ui\src\components\contacts\forms\ContactChannelsSection.tsx" -Force
 Copy-Item "MANUAL_COPY_FILES\entities-vani-loader\contractnest-ui\src\components\contacts\forms\AddressesSection.tsx" -Destination "contractnest-ui\src\components\contacts\forms\AddressesSection.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\entities-vani-loader\contractnest-ui\src\components\contacts\forms\ContactClassificationSelector.tsx" -Destination "contractnest-ui\src\components\contacts\forms\ContactClassificationSelector.tsx" -Force
 
 # ===== BACKEND FILES =====
 
@@ -173,6 +208,22 @@ UX - UNSAVED CHANGES:
 - [ ] Verify NO toast appears when adding channel/address
 - [ ] Click "Update Entity" to save
 - [ ] Verify badge disappears after save
+
+CLASSIFICATION SELECTOR THEME (LATEST SESSION):
+- [ ] Go to Create/Edit Entity page
+- [ ] In red theme: Verify classification selection border shows RED (not blue)
+- [ ] Verify checkmark circle is RED when selected
+- [ ] Switch to blue theme - verify elements change to blue
+- [ ] Switch to green theme - verify elements change to green
+- [ ] Verify NO toasts appear when toggling classifications
+
+MOBILE/PHONE INPUT VALIDATION (LATEST SESSION):
+- [ ] Go to Create/Edit Entity page
+- [ ] Click "Add Channel" and select "Mobile" type
+- [ ] Try typing letters (e.g., "abc") - verify they are NOT entered
+- [ ] Type only digits (e.g., "9876543210") - verify they ARE entered
+- [ ] Type + at start - verify it's allowed (e.g., "+91")
+- [ ] Test same with WhatsApp channel type
 
 ================================================================================
 PREVIOUS SESSION TESTING (still applicable)
