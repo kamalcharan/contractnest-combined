@@ -1,5 +1,5 @@
 ================================================================================
-COPY INSTRUCTIONS - Entities VaNi Loader
+COPY INSTRUCTIONS - Entities VaNi Loader + UI Cleanup
 ================================================================================
 Branch: entities-vani-loader
 Date: January 2026
@@ -15,7 +15,7 @@ FILES TO COPY
    FROM: MANUAL_COPY_FILES/entities-vani-loader/contractnest-ui/src/components/common/loaders/UnifiedLoader.tsx
    TO:   contractnest-ui/src/components/common/loaders/UnifiedLoader.tsx
 
-2. contacts/index.tsx (Updated to use VaNiLoader)
+2. contacts/index.tsx (Updated entities list page)
    FROM: MANUAL_COPY_FILES/entities-vani-loader/contractnest-ui/src/pages/contacts/index.tsx
    TO:   contractnest-ui/src/pages/contacts/index.tsx
 
@@ -31,11 +31,25 @@ UnifiedLoader.tsx:
 - Updated animations: vani-orb-pulse, skeleton-shimmer
 - SectionLoader now defaults to variant='vani' with skeletons
 
-contacts/index.tsx:
+contacts/index.tsx - LOADER CHANGES:
 - Changed import from ContentSkeleton to VaNiLoader
 - Renamed EntitySkeleton to EntityLoader
 - Added getLoadingMessage() for dynamic context messages
 - Loading now shows: "VaNi is Loading Entities..." or "VaNi is Loading Buyers..." etc.
+
+contacts/index.tsx - UI CLEANUP CHANGES:
+- REMOVED: Classifications filter from advanced filters dropdown
+- REMOVED: "Select all" checkbox above the list
+- REMOVED: Checkbox from grid view cards
+- REMOVED: Checkbox from list view cards
+- REMOVED: MoreHorizontal (...) button from grid view cards
+- REMOVED: MoreHorizontal (...) button from list view cards
+- REMOVED: isSelected ring styling from both card types
+- ADDED: Trash2 delete button to grid view cards (soft delete/archive)
+- ADDED: Trash2 delete button to list view cards (soft delete/archive)
+- ADDED: handleSoftDelete function using useUpdateContactStatus hook
+- ADDED: useUpdateContactStatus hook import
+- REMOVED: MoreHorizontal, CheckSquare from lucide-react imports
 
 ================================================================================
 POWERSHELL COPY COMMANDS
@@ -55,16 +69,30 @@ Write-Host "Files copied successfully!" -ForegroundColor Green
 TESTING CHECKLIST
 ================================================================================
 
+LOADER TESTS:
 - [ ] Navigate to /contacts (Entities page)
 - [ ] Verify VaNi orb appears with dark background (#1e293b)
-- [ ] Verify pulse ring animates with theme primary color
-- [ ] Verify message shows "VaNi is Loading Entities..."
+- [ ] Verify Sparkles icon inside orb with theme primary color
+- [ ] Verify pulse ring animates around orb
+- [ ] Verify message: "VaNi is Loading Entities..." (uppercase, pulsing)
 - [ ] Verify dimmed skeleton cards appear below orb (40% opacity)
-- [ ] Click on "Buyers" filter pill
-- [ ] Verify message changes to "VaNi is Loading Buyers..."
-- [ ] Test grid view - skeleton cards should appear
-- [ ] Test list view - skeleton list items should appear
-- [ ] Test dark mode - all elements should remain visible
-- [ ] Test light mode - orb should still be dark for contrast
+- [ ] Click "Buyers" filter → message changes to "VaNi is Loading Buyers..."
+- [ ] Toggle Grid/List view → skeleton variant changes accordingly
+
+UI CLEANUP TESTS:
+- [ ] Verify NO classifications filter in advanced filters dropdown
+- [ ] Verify NO "Select all" checkbox above the list
+- [ ] Verify NO checkbox in grid view cards
+- [ ] Verify NO checkbox in list view cards
+- [ ] Verify NO "..." (more options) button in cards
+- [ ] Verify Trash icon (delete) button appears in grid view cards
+- [ ] Verify Trash icon (delete) button appears in list view cards
+- [ ] Click Trash icon → shows "Archiving..." toast → entity archived
+- [ ] Verify archived entity disappears from list (default shows active only)
+
+THEME TESTS:
+- [ ] Test dark mode - all icons use proper theme colors
+- [ ] Test light mode - orb provides good contrast
+- [ ] Verify Eye, Edit, FileText, Trash2 icons have proper theme colors
 
 ================================================================================
