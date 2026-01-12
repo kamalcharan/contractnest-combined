@@ -6,214 +6,169 @@
 
 ## EXECUTIVE SUMMARY
 
-Working on fixing data persistence issues in the Contacts/Entities module. Multiple bugs were identified and fixes were provided, but **contact persons linking to corporate entities is still NOT working** despite RPC being deployed.
+Session started with multiple tasks. Got stuck in debugging cycle on data persistence issues. Many tasks remain incomplete.
 
 ---
 
-## CURRENT STATE: BROKEN
+## ALL TASKS - FULL LIST
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Contact Channels | ✅ WORKING | Was working before, still works |
-| Tags | ⚠️ UNKNOWN | Fix provided, needs verification |
-| Addresses | ⚠️ UNKNOWN | Fix provided, needs verification |
-| Compliance Numbers | ⚠️ UNKNOWN | Fix provided, needs verification |
-| Contact Persons | ❌ BROKEN | Creates person but does NOT link to corporate (parent_contact_ids empty) |
+### From Initial Requirements
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 1 | Fix 500 error on contact update | ⚠️ PARTIAL | Empty array handling added to RPC |
+| 2 | Add row locking (FOR UPDATE SKIP LOCKED) | ✅ DONE | Added to RPC |
+| 3 | Replace Notes textarea with RichTextEditor | ✅ DONE | Was done in previous session |
+| 4 | Investigate race conditions | ⚠️ PARTIAL | Row locking added, but not fully tested |
+| 5 | Investigate scalability for 300-400 users | ❌ NOT STARTED | |
+| 6 | PGMQ/JTD queue setup for async processing | ❌ NOT STARTED | User chose Option A (Fully Async) |
+
+### Bugs Discovered During Session
+
+| # | Bug | Status | Notes |
+|---|-----|--------|-------|
+| 7 | Tags not saving | ⚠️ FIX PROVIDED | Fetch mismatch - read from JSONB column not table |
+| 8 | Addresses not saving | ⚠️ FIX PROVIDED | DELETE bug - deletes newly inserted rows |
+| 9 | Compliance Numbers not saving | ⚠️ FIX PROVIDED | Same as tags - fetch mismatch |
+| 10 | Contact Persons not saving | ❌ BROKEN | Creates but doesn't link to corporate |
+| 11 | Contact Persons archiving bug | ⚠️ FIX PROVIDED | Archives all when all incoming are new |
+
+### UI/UX Issues Reported
+
+| # | Issue | Status | Notes |
+|---|-------|--------|-------|
+| 12 | Edit page heading shows "Edit Entity" | ❌ NOT FIXED | Should show "Edit - [Entity Name]" |
+| 13 | Contact Persons component - UI theme issue | ❌ NOT FIXED | Not theme aware |
+| 14 | Compliance Numbers component - UI theme issue | ❌ NOT FIXED | Not theme aware |
+| 15 | React key warnings in view.tsx | ⚠️ FIX PROVIDED | Classifications map key issue |
+| 16 | React key warnings in ContactHeaderCard.tsx | ⚠️ FIX PROVIDED | Same issue |
 
 ---
 
-## BUGS IDENTIFIED & FIXES PROVIDED
+## CURRENT BLOCKER
 
-### Bug 1: Address DELETE Bug
-**Location**: RPC `update_contact_transaction`
-**Problem**: DELETE statement ran after INSERT. When all addresses had temp IDs, the subquery returned empty set, causing `id NOT IN (empty)` = TRUE for all rows, deleting everything including just-inserted addresses.
-**Fix Applied**: Added `IF EXISTS(valid IDs)` check before DELETE
-**File**: `MANUAL_COPY_FILES/contacts-comprehensive-fix/contractnest-edge/supabase/RPC/contacts/rpc`
+**Contact Persons not linking to Corporate** (Task #10)
 
-### Bug 2: Contact Persons Archive Bug
-**Location**: RPC `update_contact_transaction`
-**Problem**: Archive UPDATE ran when all incoming persons were new (had temp IDs), archiving ALL existing persons.
-**Fix Applied**: Added `array_length > 0` check before UPDATE
-**File**: `MANUAL_COPY_FILES/contacts-comprehensive-fix/contractnest-edge/supabase/RPC/contacts/rpc`
+- Contact person IS created in database
+- But `parent_contact_ids` is EMPTY (should contain corporate UUID)
+- RPC code appears correct: `jsonb_build_array(p_contact_id)`
+- User confirmed RPC is deployed
+- Root cause: UNKNOWN
 
-### Bug 3: Tags Fetch Mismatch
-**Location**: `contactService.ts` `getContactById()`
-**Problem**: Code read from `t_contact_tags` table which is EMPTY. Data is stored in `t_contacts.tags` JSONB column.
-**Fix Applied**: Read from `contact.tags` directly
-**File**: `MANUAL_COPY_FILES/contacts-comprehensive-fix/contractnest-edge/supabase/functions/_shared/contacts/contactService.ts`
+---
 
-### Bug 4: Compliance Numbers Fetch Mismatch
-**Location**: `contactService.ts` `getContactById()`
-**Problem**: Same as tags - code read from `t_contact_compliance_numbers` table instead of JSONB column.
-**Fix Applied**: Read from `contact.compliance_numbers` directly
-**File**: Same as above
+## WHAT WAS ACTUALLY COMPLETED
 
-### Bug 5: Contact Persons NOT Linking to Corporate - STILL BROKEN
-**Location**: RPC `update_contact_transaction` - INSERT for new persons
-**Symptom**: Contact person IS created, but `parent_contact_ids` is NOT set to link to corporate
-**Current Code** (line 571 in fixed RPC):
-```sql
-parent_contact_ids,
-...
-jsonb_build_array(p_contact_id),  -- Should set parent to corporate ID
+1. ✅ Row locking added to RPC (FOR UPDATE SKIP LOCKED)
+2. ✅ RPC fixes written for address DELETE bug
+3. ✅ RPC fixes written for contact persons archive bug
+4. ✅ contactService.ts fix for tags/compliance fetch mismatch
+5. ✅ Files placed in MANUAL_COPY_FILES
+6. ✅ User deployed RPC to Supabase
+
+---
+
+## WHAT IS NOT WORKING
+
+Despite fixes being deployed:
+- Contact persons still don't link to corporate
+- Other fixes (tags, addresses, compliance) - unverified
+
+---
+
+## FILES CREATED
+
 ```
-**Status**: Fix was provided but user reports it's STILL NOT WORKING even after deploying RPC
+MANUAL_COPY_FILES/contacts-comprehensive-fix/
+├── contractnest-edge/
+│   └── supabase/
+│       ├── RPC/contacts/rpc
+│       └── functions/_shared/contacts/contactService.ts
+└── COPY_INSTRUCTIONS.txt
+```
 
 ---
 
 ## ARCHITECTURE NOTES
 
-### Data Storage Pattern
-| Data Type | Storage Location | Notes |
-|-----------|------------------|-------|
-| Contact basic info | `t_contacts` table | Direct columns |
-| Tags | `t_contacts.tags` | JSONB column (NOT separate table) |
-| Compliance Numbers | `t_contacts.compliance_numbers` | JSONB column (NOT separate table) |
-| Classifications | `t_contacts.classifications` | JSONB array column |
-| Contact Channels | `t_contact_channels` table | Foreign key to contact_id |
-| Addresses | `t_contact_addresses` table | Foreign key to contact_id |
-| Contact Persons | `t_contacts` table | Linked via `parent_contact_ids` JSONB array |
+### Data Storage (CRITICAL - Was Misunderstood)
+
+| Data | Where Stored | How to Read |
+|------|--------------|-------------|
+| Tags | `t_contacts.tags` JSONB | `contact.tags` (NOT t_contact_tags table) |
+| Compliance Numbers | `t_contacts.compliance_numbers` JSONB | `contact.compliance_numbers` (NOT separate table) |
+| Contact Persons | `t_contacts` with `parent_contact_ids` | Query where `parent_contact_ids` contains corporate ID |
+| Addresses | `t_contact_addresses` table | Join on contact_id |
+| Channels | `t_contact_channels` table | Join on contact_id |
 
 ### Contact Persons Linking
-- Contact persons are stored as separate `t_contacts` records with `type = 'individual'`
-- They link to corporate via `parent_contact_ids` JSONB array containing the corporate's UUID
-- Query to find persons: `.filter('parent_contact_ids', 'ov', [contactId])` (overlap operator)
+- Stored as separate `t_contacts` records with `type = 'individual'`
+- Linked via `parent_contact_ids` JSONB array
+- Should contain: `["corporate-uuid-here"]`
 
 ---
 
-## FILES MODIFIED/CREATED
+## DEBUG QUERIES FOR NEXT SESSION
 
-### In MANUAL_COPY_FILES/contacts-comprehensive-fix/
-
-1. **contractnest-edge/supabase/RPC/contacts/rpc**
-   - Full RPC file with all transaction functions
-   - Contains fixes for bugs 1, 2, and attempted fix for bug 5
-
-2. **contractnest-edge/supabase/functions/_shared/contacts/contactService.ts**
-   - Full service file
-   - Contains fixes for bugs 3 and 4
-
-3. **COPY_INSTRUCTIONS.txt**
-   - Copy commands and deployment instructions
-
----
-
-## WHAT NEEDS INVESTIGATION
-
-### Priority 1: Contact Persons NOT Linking
-The RPC code appears correct:
 ```sql
-INSERT INTO t_contacts (
-  ...
-  parent_contact_ids,
-  ...
-)
-VALUES (
-  ...
-  jsonb_build_array(p_contact_id),  -- This SHOULD work
-  ...
-)
-```
-
-**Possible causes to investigate**:
-1. Is `p_contact_id` actually populated when the INSERT runs?
-2. Is there a trigger or constraint modifying `parent_contact_ids` after INSERT?
-3. Is the frontend sending contact_persons data correctly?
-4. Is a different code path being executed?
-
-**Debug approach**:
-```sql
--- Check if contact persons have parent_contact_ids set
-SELECT id, name, parent_contact_ids, type, created_at
+-- Check contact persons and their parent links
+SELECT id, name, type, parent_contact_ids, created_at
 FROM t_contacts
 WHERE type = 'individual'
 ORDER BY created_at DESC
 LIMIT 10;
 
--- Check function definition currently in database
-SELECT pg_get_functiondef(oid)
+-- Check if RPC is updated (look for jsonb_build_array)
+SELECT prosrc
 FROM pg_proc
 WHERE proname = 'update_contact_transaction';
+
+-- Direct RPC test
+SELECT update_contact_transaction(
+  'CORPORATE-UUID'::uuid,
+  '{"is_live": true}'::jsonb,
+  NULL,
+  NULL,
+  '[{"name": "Test Person"}]'::jsonb
+);
 ```
 
-### Priority 2: Verify Other Fixes
-After fixing contact persons, verify:
-- Tags save and display
-- Addresses save and display
-- Compliance numbers save and display
+---
+
+## RECOMMENDED NEXT SESSION APPROACH
+
+1. **Don't re-ask about RPC deployment** - User confirmed it's done
+2. **Debug why parent_contact_ids is empty**:
+   - Add RAISE NOTICE to RPC to log values
+   - Check if INSERT block is even reached
+   - Check frontend payload
+3. **After fixing contact persons, verify**:
+   - Tags save
+   - Addresses save
+   - Compliance numbers save
+4. **Then move to remaining tasks**:
+   - Edit heading fix (Task #12)
+   - Theme issues (Tasks #13, #14)
+   - Scalability investigation (Task #5)
+   - JTD queue setup (Task #6)
+
+---
+
+## USER FEEDBACK
+
+User expressed frustration about:
+1. Circular debugging without resolution
+2. Repeated questions about RPC deployment
+3. Incomplete task tracking
+4. False claims of "transaction working" without verifying data persistence
 
 ---
 
 ## GIT STATUS
 
 **Branch**: `claude/init-submodules-contacts-L7ex6`
-**Last Commit**: `58e42ba fix(contacts): comprehensive fix for all data save issues`
-**Remote**: Pushed and up to date
-
----
-
-## PREVIOUS SESSION CONTEXT (from handover)
-
-The previous session completed:
-- Frontend caching implementation
-- VaNi loader component
-- Classification selector theme fix
-- Mobile validation
-- React hooks order fix
-
-Known issues carried forward:
-- 500 error on contact update (was empty array handling - partially fixed)
-- Slow first load
-- Data not showing after edit (this session's focus)
-
----
-
-## USER FRUSTRATIONS EXPRESSED
-
-1. "this is frankly a mess of cycles.....it does not work"
-2. "how do even say.....this is a transaction?" - questioning why success is returned but data doesn't save
-3. "why are you focusing only on address......tags, contacts, compliance..even they are not saved"
-4. "i am tiered of telling you repeatedly about RPC being run"
-
-The user has been patient through multiple debugging cycles. The core issue of data not persisting has NOT been fully resolved.
-
----
-
-## RECOMMENDED NEXT STEPS
-
-1. **Debug contact persons linking**:
-   - Add RAISE NOTICE statements to RPC to log `p_contact_id` value
-   - Check if INSERT is even being reached
-   - Verify frontend is sending `contact_persons` array correctly
-
-2. **Check if old RPC is cached**:
-   - Supabase might be caching the old function
-   - Try: `DROP FUNCTION update_contact_transaction(uuid, jsonb, jsonb, jsonb, jsonb);` then recreate
-
-3. **Direct database test**:
-   ```sql
-   -- Test the RPC directly
-   SELECT update_contact_transaction(
-     'corporate-uuid-here'::uuid,
-     '{"name": "Test Corp", "is_live": true}'::jsonb,
-     '[]'::jsonb,  -- channels
-     '[]'::jsonb,  -- addresses
-     '[{"name": "Test Person", "designation": "Manager"}]'::jsonb  -- persons
-   );
-   ```
-
-4. **Check Edge function deployment**:
-   - Ensure Edge function is redeployed after contactService.ts change
-   - `cd contractnest-edge && supabase functions deploy contacts`
-
----
-
-## CONTACT FOR QUESTIONS
-
-This handover was prepared after session timeout. The next assistant should:
-1. NOT assume RPC deployment is the issue (user confirmed it's deployed)
-2. Focus on WHY parent_contact_ids is not being set despite correct code
-3. Consider adding debug logging to trace the actual execution path
+**Last Commit**: `3e8e2af docs: add comprehensive handover for contacts module debugging`
+**Status**: Clean, pushed to remote
 
 ---
 
