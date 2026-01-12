@@ -20,8 +20,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useCreateContact } from '../../hooks/useContacts';
 import {
   SALUTATIONS,
-  CONTACT_CLASSIFICATIONS,
-  getClassificationConfig
+  CONTACT_CLASSIFICATION_CONFIG
 } from '../../utils/constants/contacts';
 
 // ============================================================================
@@ -61,12 +60,7 @@ const CHANNEL_TYPES = [
   { value: 'website', label: 'Website', icon: Globe, placeholder: 'https://example.com' },
 ];
 
-const QUICK_CLASSIFICATIONS = [
-  { value: 'buyer', label: 'Buyer', color: 'blue' },
-  { value: 'seller', label: 'Seller', color: 'green' },
-  { value: 'vendor', label: 'Vendor', color: 'purple' },
-  { value: 'partner', label: 'Partner', color: 'orange' },
-];
+// Classifications loaded from CONTACT_CLASSIFICATION_CONFIG constant
 
 // ============================================================================
 // COMPONENT
@@ -327,7 +321,7 @@ const QuickAddContactDrawer: React.FC<QuickAddContactDrawerProps> = ({
       }
 
       // console.error('Failed to create contact:', error);
-      setErrors({ submit: error.message || 'Failed to create contact. Please try again.' });
+      setErrors({ submit: error.message || 'Failed to create entity. Please try again.' });
     } finally {
       isSavingRef.current = false;
       setIsSaving(false);
@@ -360,6 +354,7 @@ const QuickAddContactDrawer: React.FC<QuickAddContactDrawerProps> = ({
       case 'green': return { bg: colors.semantic.success + '20', border: colors.semantic.success + '40', text: colors.semantic.success };
       case 'purple': return { bg: colors.brand.tertiary + '20', border: colors.brand.tertiary + '40', text: colors.brand.tertiary };
       case 'orange': return { bg: colors.semantic.warning + '20', border: colors.semantic.warning + '40', text: colors.semantic.warning };
+      case 'indigo': return { bg: colors.semantic.info + '20', border: colors.semantic.info + '40', text: colors.semantic.info };
       default: return { bg: colors.utility.secondaryText + '20', border: colors.utility.secondaryText + '40', text: colors.utility.secondaryText };
     }
   };
@@ -400,13 +395,13 @@ const QuickAddContactDrawer: React.FC<QuickAddContactDrawerProps> = ({
               className="text-xl font-bold"
               style={{ color: colors.utility.primaryText }}
             >
-              Quick Add Contact
+              Quick Add Entity
             </h2>
             <p
               className="text-xs mt-1"
               style={{ color: colors.utility.secondaryText }}
             >
-              Add a new contact quickly
+              Add a new entity quickly
             </p>
           </div>
           <button
@@ -430,13 +425,13 @@ const QuickAddContactDrawer: React.FC<QuickAddContactDrawerProps> = ({
               1. Classification *
             </h3>
             <div className="flex flex-wrap gap-2">
-              {QUICK_CLASSIFICATIONS.map(cls => {
-                const isSelected = formData.classifications.includes(cls.value);
+              {CONTACT_CLASSIFICATION_CONFIG.map(cls => {
+                const isSelected = formData.classifications.includes(cls.id);
                 const colorSet = getClassificationColor(cls.color);
                 return (
                   <button
-                    key={cls.value}
-                    onClick={() => toggleClassification(cls.value)}
+                    key={cls.id}
+                    onClick={() => toggleClassification(cls.id)}
                     disabled={isSaving}
                     className="px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-all disabled:opacity-50"
                     style={{
@@ -445,7 +440,7 @@ const QuickAddContactDrawer: React.FC<QuickAddContactDrawerProps> = ({
                       color: isSelected ? colorSet.text : colors.utility.secondaryText,
                     }}
                   >
-                    {cls.label}
+                    {cls.icon} {cls.label}
                   </button>
                 );
               })}
@@ -804,7 +799,7 @@ const QuickAddContactDrawer: React.FC<QuickAddContactDrawerProps> = ({
                   Saving...
                 </>
               ) : (
-                'Save Contact'
+                'Save Entity'
               )}
             </button>
           </div>

@@ -1,7 +1,7 @@
 ================================================================================
-SIDEBAR MENU UX + UNIFIED LOADER + VANI TOAST + QUICK ADD CONTACT
+SIDEBAR MENU UX + UNIFIED LOADER + VANI TOAST + QUICK ADD ENTITY
 ================================================================================
-Feature: Sidebar Menu UX, Loaders, Toast & Quick Add Contact Drawer
+Feature: Sidebar Menu UX, Loaders, Toast & Quick Add Entity Drawer
 Date: January 2026
 Submodules Affected: contractnest-ui
 
@@ -25,30 +25,36 @@ CHANGES SUMMARY
    - Theme-aware toast notifications
    - Sleek dark/light design with progress bar
 
-5. NEW: QuickAddContactDrawer.tsx (src/components/contacts/QuickAddContactDrawer.tsx)
-   - Slide-in drawer for quick contact creation
+5. QuickAddContactDrawer.tsx (src/components/contacts/QuickAddContactDrawer.tsx)
+   - Renamed to "Quick Add Entity"
+   - Uses CONTACT_CLASSIFICATION_CONFIG (5 items including Team Member)
+   - Slide-in drawer for quick entity creation
    - Glass effect styling
    - Radio/chip selectors (not dropdowns)
    - Race condition prevention
    - "Advanced Options" link to full create page
 
-6. MODIFIED: contacts/index.tsx (src/pages/contacts/index.tsx)
-   - Added "Types" as default tab with color-coded filters
-   - Renamed tabs: Status & Identity, Billing Queue, Services Management
-   - Glass effect on contact cards
-   - "Add Contact" button opens Quick Add Drawer
-   - "Filter by:" label with colored pill buttons
+6. contacts/index.tsx (src/pages/contacts/index.tsx)
+   - Renamed module from "Contacts" to "Entities"
+   - Restructured tabs: Status & Identity (classifications), Billing Queue, Services Management
+   - Removed "Types" tab - classifications now in Status & Identity tab
+   - Added Contact Status filter (active/inactive/archived) to advanced filter dropdown
+   - Glass effect on entity cards
+   - Integrated UnifiedLoader (ContentSkeleton)
+   - Integrated VaNiToast for notifications
+   - Added Team Members classification with indigo color
 
 ================================================================================
-QUICK ADD CONTACT DRAWER
+QUICK ADD ENTITY DRAWER
 ================================================================================
 
 FEATURES:
 - Slide-in from right (500px width)
 - Glass effect background (theme-aware)
 - Race condition prevention for API calls
+- 5 Classifications: Buyer, Seller, Vendor, Partner, Team Member
 - Sections:
-  1. Classification (multi-select chips: Buyer, Seller, Vendor, Partner)
+  1. Classification (multi-select chips with icons)
   2. Account Type (radio cards: Individual/Corporate)
   3. Identity (Salutation dropdown + Name input)
   4. Contact Channels (dynamic add/remove)
@@ -65,26 +71,30 @@ USAGE:
   />
 
 ================================================================================
-CONTACTS PAGE CHANGES
+ENTITIES PAGE CHANGES
 ================================================================================
 
-TAB STRUCTURE (Default: Types):
-  - Types (NEW - default): Buyers, Sellers, Vendors, Partners
-  - Status & Identity: All, Active, Inactive, Archived
+TAB STRUCTURE (Default: Status & Identity):
+  - Status & Identity: All, Buyers, Sellers, Vendors, Partners, Team Members
   - Billing Queue: All, Overdue, Due next week, etc.
   - Services Management: All, Active services, etc.
 
 FILTER STYLING:
   - "FILTER BY:" label
   - Color-coded pill buttons per classification
-  - Blue = Buyers, Green = Sellers, Purple = Vendors, Orange = Partners
+  - Blue = Buyers, Green = Sellers, Purple = Vendors, Orange = Partners, Indigo = Team Members
+
+ADVANCED FILTER DROPDOWN:
+  - Contact Status: All, Active, Inactive, Archived
+  - User Account: All, Has User Account, No User Account
+  - Potential Duplicates toggle
 
 GLASS EFFECT ON CARDS:
   - backdrop-filter: blur(10px)
   - Semi-transparent background
   - Soft shadows
 
-ADD CONTACT BUTTON:
+ADD ENTITY BUTTON:
   - Rounded-full style with shadow
   - Opens Quick Add Drawer (not navigate to /create)
 
@@ -100,6 +110,15 @@ All loaders are THEME-AWARE.
 4. InlineLoader - For buttons and small areas
 5. SectionLoader - For partial page sections
 
+USAGE IN ENTITIES PAGE:
+  import { ContentSkeleton } from '@/components/common/loaders';
+
+  <ContentSkeleton
+    variant={viewType === 'grid' ? 'card' : 'list'}
+    count={viewType === 'grid' ? 6 : 8}
+    showHeader={false}
+  />
+
 ================================================================================
 VANI TOAST SYSTEM
 ================================================================================
@@ -111,10 +130,11 @@ SETUP (in App.tsx):
     {/* app */}
   </VaNiToastProviderWithGlobal>
 
-USAGE:
+USAGE IN ENTITIES PAGE:
   import { vaniToast } from '@/components/common/toast';
-  vaniToast.success('Contact saved');
-  vaniToast.error('Failed to load data');
+  vaniToast.success('Entity created successfully');
+  vaniToast.error('Failed to delete entities');
+  vaniToast.loading('Deleting entities...');
 
 ================================================================================
 NEW MENU STRUCTURE
@@ -123,10 +143,10 @@ NEW MENU STRUCTURE
 Getting Started
 Dashboard
 Operations                    <-- Moved here
-├── Ops Cockpit
-├── Entities                  <-- NEW (links to /contacts)
-├── Activity Feed
-└── Reports
+|-- Ops Cockpit
+|-- Entities                  <-- NEW (links to /contacts)
+|-- Activity Feed
+|-- Reports
 Contacts
 Contracts
 VaNi
@@ -148,38 +168,43 @@ FILES LIST
 ================================================================================
 
 contractnest-ui/src/
-├── components/
-│   ├── layout/
-│   │   └── Sidebar.tsx
-│   ├── contacts/
-│   │   └── QuickAddContactDrawer.tsx        <-- NEW
-│   └── common/
-│       ├── loaders/
-│       │   ├── UnifiedLoader.tsx
-│       │   └── index.ts
-│       └── toast/
-│           ├── VaNiToast.tsx
-│           └── index.ts
-├── pages/
-│   └── contacts/
-│       └── index.tsx                         <-- MODIFIED
-└── utils/
-    └── constants/
-        └── industryMenus.ts
+|-- components/
+|   |-- layout/
+|   |   +-- Sidebar.tsx
+|   |-- contacts/
+|   |   +-- QuickAddContactDrawer.tsx        <-- MODIFIED (5 classifications, entity rename)
+|   +-- common/
+|       |-- loaders/
+|       |   |-- UnifiedLoader.tsx
+|       |   +-- index.ts
+|       +-- toast/
+|           |-- VaNiToast.tsx
+|           +-- index.ts
+|-- pages/
+|   +-- contacts/
+|       +-- index.tsx                         <-- MODIFIED (entity rename, loader/toast integration)
++-- utils/
+    +-- constants/
+        +-- industryMenus.ts
 
 ================================================================================
 TESTING CHECKLIST
 ================================================================================
 
-- [ ] Click "Add Contact" button - drawer slides in from right
-- [ ] Select classification chips (multi-select)
+- [ ] Click "Add Entity" button - drawer slides in from right
+- [ ] Select 5 classification chips (Buyer, Seller, Vendor, Partner, Team Member)
 - [ ] Toggle between Individual/Corporate
 - [ ] Fill name and add channels
-- [ ] Save contact - toast shows, list refreshes
+- [ ] Save entity - VaNiToast shows, list refreshes
 - [ ] Click "Advanced Options" - navigates to full create page
-- [ ] Verify "Types" tab is default with colored filters
-- [ ] Verify glass effect on contact cards
-- [ ] Verify tabs renamed: Types, Status & Identity, Billing Queue, Services Management
+- [ ] Verify "Status & Identity" tab is default with colored filters
+- [ ] Verify 6 filter pills: All, Buyers, Sellers, Vendors, Partners, Team Members
+- [ ] Verify glass effect on entity cards
+- [ ] Verify tabs: Status & Identity, Billing Queue, Services Management
+- [ ] Test advanced filter dropdown - Contact Status section
+- [ ] Verify ContentSkeleton loading in both grid and list views
 - [ ] Test dark mode - all components theme-aware
+- [ ] Verify page title shows "Entities" instead of "Contacts"
+- [ ] Verify all user-visible text uses "entity/entities"
 
 ================================================================================

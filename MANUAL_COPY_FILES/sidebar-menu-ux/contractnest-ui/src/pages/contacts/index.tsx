@@ -41,19 +41,21 @@ import {
   Network,
   Briefcase
 } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+// import { useToast } from '@/components/ui/use-toast'; // Replaced with vaniToast
 import { captureException } from '@/utils/sentry';
 import { analyticsService } from '@/services/analytics.service';
 import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
 import ComingSoonWrapper from '@/components/common/ComingSoonWrapper';
 import QuickAddContactDrawer from '@/components/contacts/QuickAddContactDrawer';
+import { ContentSkeleton } from '@/components/common/loaders';
+import { vaniToast } from '@/components/common/toast';
 
-// Coming Soon features for Contacts
+// Coming Soon features for Entities
 const contactsFeatures = [
-  { icon: Users, title: 'Contact Management', description: 'Centralized hub for all your business contacts - customers, vendors, partners, and team members.', highlight: true },
-  { icon: Network, title: 'Relationship Mapping', description: 'Visualize connections between contacts and track interaction history.', highlight: false },
-  { icon: Briefcase, title: 'Business Classification', description: 'Categorize contacts by type, industry, and custom tags for easy filtering.', highlight: false },
-  { icon: UserPlus, title: 'Smart Import', description: 'Bulk import contacts from CSV, vCard, or sync with external systems.', highlight: false }
+  { icon: Users, title: 'Entity Management', description: 'Centralized hub for all your business entities - customers, vendors, partners, and team members.', highlight: true },
+  { icon: Network, title: 'Relationship Mapping', description: 'Visualize connections between entities and track interaction history.', highlight: false },
+  { icon: Briefcase, title: 'Business Classification', description: 'Categorize entities by type, industry, and custom tags for easy filtering.', highlight: false },
+  { icon: UserPlus, title: 'Smart Import', description: 'Bulk import entities from CSV, vCard, or sync with external systems.', highlight: false }
 ];
 
 const contactsFloatingIcons = [
@@ -82,7 +84,7 @@ import {
   CONTACT_CLASSIFICATIONS
 } from '@/utils/constants/contacts';
 
-type ActiveTab = 'types' | 'status' | 'billing' | 'services';
+type ActiveTab = 'status' | 'billing' | 'services';
 type ViewType = 'grid' | 'list';
 
 const MINIMUM_SEARCH_LENGTH = 3;
@@ -101,6 +103,7 @@ const FilterDropdown: React.FC<{
     classifications: currentFilters.classifications || [],
     tags: currentFilters.tags || [],
     userStatus: currentFilters.userStatus || 'all',
+    contactStatus: currentFilters.contactStatus || 'all',
     duplicates: currentFilters.duplicates || false
   });
 
@@ -116,6 +119,7 @@ const FilterDropdown: React.FC<{
       classifications: [],
       tags: [],
       userStatus: 'all',
+      contactStatus: 'all',
       duplicates: false
     };
     setLocalFilters(resetFilters);
@@ -198,13 +202,92 @@ const FilterDropdown: React.FC<{
           </div>
         </div>
 
-        {/* User Status Filter */}
+        {/* Contact Status Filter (Active/Inactive/Archived) */}
         <div>
-          <label 
+          <label
             className="text-sm font-medium mb-2 block transition-colors"
             style={{ color: colors.utility.primaryText }}
           >
-            User Status
+            Contact Status
+          </label>
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="contactStatus"
+                value="all"
+                checked={localFilters.contactStatus === 'all'}
+                onChange={(e) => setLocalFilters(prev => ({ ...prev, contactStatus: e.target.value }))}
+                style={{ accentColor: colors.brand.primary }}
+              />
+              <span
+                className="text-sm transition-colors"
+                style={{ color: colors.utility.primaryText }}
+              >
+                All Statuses
+              </span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="contactStatus"
+                value="active"
+                checked={localFilters.contactStatus === 'active'}
+                onChange={(e) => setLocalFilters(prev => ({ ...prev, contactStatus: e.target.value }))}
+                style={{ accentColor: colors.brand.primary }}
+              />
+              <span
+                className="text-sm flex items-center gap-1 transition-colors"
+                style={{ color: colors.utility.primaryText }}
+              >
+                <span style={{ color: colors.semantic.success }}>●</span>
+                Active
+              </span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="contactStatus"
+                value="inactive"
+                checked={localFilters.contactStatus === 'inactive'}
+                onChange={(e) => setLocalFilters(prev => ({ ...prev, contactStatus: e.target.value }))}
+                style={{ accentColor: colors.brand.primary }}
+              />
+              <span
+                className="text-sm flex items-center gap-1 transition-colors"
+                style={{ color: colors.utility.primaryText }}
+              >
+                <span style={{ color: colors.semantic.warning }}>●</span>
+                Inactive
+              </span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                name="contactStatus"
+                value="archived"
+                checked={localFilters.contactStatus === 'archived'}
+                onChange={(e) => setLocalFilters(prev => ({ ...prev, contactStatus: e.target.value }))}
+                style={{ accentColor: colors.brand.primary }}
+              />
+              <span
+                className="text-sm flex items-center gap-1 transition-colors"
+                style={{ color: colors.utility.primaryText }}
+              >
+                <span style={{ color: colors.utility.secondaryText }}>●</span>
+                Archived
+              </span>
+            </label>
+          </div>
+        </div>
+
+        {/* User Status Filter */}
+        <div>
+          <label
+            className="text-sm font-medium mb-2 block transition-colors"
+            style={{ color: colors.utility.primaryText }}
+          >
+            User Account
           </label>
           <div className="space-y-2">
             <label className="flex items-center gap-2 cursor-pointer">
@@ -216,7 +299,7 @@ const FilterDropdown: React.FC<{
                 onChange={(e) => setLocalFilters(prev => ({ ...prev, userStatus: e.target.value }))}
                 style={{ accentColor: colors.brand.primary }}
               />
-              <span 
+              <span
                 className="text-sm transition-colors"
                 style={{ color: colors.utility.primaryText }}
               >
@@ -232,11 +315,11 @@ const FilterDropdown: React.FC<{
                 onChange={(e) => setLocalFilters(prev => ({ ...prev, userStatus: e.target.value }))}
                 style={{ accentColor: colors.brand.primary }}
               />
-              <span 
+              <span
                 className="text-sm flex items-center gap-1 transition-colors"
                 style={{ color: colors.utility.primaryText }}
               >
-                <UserCheck 
+                <UserCheck
                   className="h-4 w-4"
                   style={{ color: colors.semantic.success }}
                 />
@@ -252,11 +335,11 @@ const FilterDropdown: React.FC<{
                 onChange={(e) => setLocalFilters(prev => ({ ...prev, userStatus: e.target.value }))}
                 style={{ accentColor: colors.brand.primary }}
               />
-              <span 
+              <span
                 className="text-sm flex items-center gap-1 transition-colors"
                 style={{ color: colors.utility.primaryText }}
               >
-                <UserX 
+                <UserX
                   className="h-4 w-4"
                   style={{ color: colors.utility.secondaryText }}
                 />
@@ -319,12 +402,12 @@ const FilterDropdown: React.FC<{
 const ContactsPage: React.FC = () => {
   const navigate = useNavigate();
   const { isDarkMode, currentTheme } = useTheme();
-  const { toast } = useToast();
+  // const { toast } = useToast(); // Replaced with vaniToast
   
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
   
   // UI State
-  const [activeTab, setActiveTab] = useState<ActiveTab>('types');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('status');
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [isQuickAddOpen, setIsQuickAddOpen] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -342,6 +425,7 @@ const ContactsPage: React.FC = () => {
     classifications: [],
     tags: [],
     userStatus: 'all',
+    contactStatus: 'all',
     duplicates: false
   });
   
@@ -370,13 +454,15 @@ const ContactsPage: React.FC = () => {
   }, [searchTerm]);
 
   // Build filters for API
+  // activeFilter now holds classification filter (buyer, seller, etc.)
   const apiFilters: ContactFilters = {
     page: currentPage,
     limit: itemsPerPage,
     search: debouncedSearchTerm.trim() || undefined,
-    status: activeFilter !== 'all' ? (activeFilter as any) : undefined,
+    status: advancedFilters.contactStatus !== 'all' ? (advancedFilters.contactStatus as any) : undefined,
     sort_by: sortBy,
     sort_order: sortOrder,
+    ...(activeFilter !== 'all' && { classification: activeFilter }),
     ...(advancedFilters.classifications.length > 0 && { classifications: advancedFilters.classifications }),
     ...(advancedFilters.userStatus !== 'all' && { user_status: advancedFilters.userStatus }),
     ...(advancedFilters.duplicates && { show_duplicates: true })
@@ -408,14 +494,15 @@ const ContactsPage: React.FC = () => {
       page: currentPage,
       limit: itemsPerPage,
       search: debouncedSearchTerm.trim() || undefined,
-      status: activeFilter !== 'all' ? (activeFilter as any) : undefined,
+      status: advancedFilters.contactStatus !== 'all' ? (advancedFilters.contactStatus as any) : undefined,
       sort_by: sortBy,
       sort_order: sortOrder,
+      ...(activeFilter !== 'all' && { classification: activeFilter }),
       ...(advancedFilters.classifications.length > 0 && { classifications: advancedFilters.classifications }),
       ...(advancedFilters.userStatus !== 'all' && { user_status: advancedFilters.userStatus }),
       ...(advancedFilters.duplicates && { show_duplicates: true })
     };
-    
+
     updateFilters(newFilters);
   }, [activeFilter, debouncedSearchTerm, currentPage, sortBy, sortOrder, advancedFilters, updateFilters]);
 
@@ -465,39 +552,26 @@ const ContactsPage: React.FC = () => {
   // Handle bulk delete
   const handleBulkDelete = async () => {
     try {
-      toast({
-        title: "Deleting contacts...",
-        description: "Please wait while we process your request"
-      });
-      
-      toast({
-        title: "Success",
-        description: `${selectedContacts.size} contacts deleted successfully`
-      });
+      vaniToast.loading('Deleting entities...');
+
+      vaniToast.success(`${selectedContacts.size} entities deleted successfully`);
       setSelectedContacts(new Set());
       refetch();
     } catch (error) {
       captureException(error, {
         tags: { component: 'ContactsPage', action: 'bulkDelete' }
       });
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to delete contacts"
-      });
+      vaniToast.error('Failed to delete entities');
     }
   };
 
   // Handle quick add success - refresh list and show toast
   const handleQuickAddSuccess = useCallback((contactId: string) => {
-    toast({
-      title: "Success",
-      description: "Contact created successfully"
-    });
+    vaniToast.success('Entity created successfully');
     refetch();
     // Navigate to view the new contact (optional)
     // navigate(`/contacts/${contactId}`);
-  }, [toast, refetch]);
+  }, [refetch]);
 
   // Get primary contact channel
   const getPrimaryContactChannel = (contact: any) => {
@@ -527,23 +601,15 @@ const ContactsPage: React.FC = () => {
 
   // Tab configurations - renamed for better UX
   const tabConfigs = {
-    types: {
-      label: 'Types',
+    status: {
+      label: 'Status & Identity',
       filters: [
         { id: 'all', label: 'All', count: stats?.total || 0, color: 'default' },
         { id: 'buyer', label: 'Buyers', count: stats?.buyers || 0, color: 'blue' },
         { id: 'seller', label: 'Sellers', count: stats?.sellers || 0, color: 'green' },
         { id: 'vendor', label: 'Vendors', count: stats?.vendors || 0, color: 'purple' },
-        { id: 'partner', label: 'Partners', count: stats?.partners || 0, color: 'orange' }
-      ]
-    },
-    status: {
-      label: 'Status & Identity',
-      filters: [
-        { id: 'all', label: 'All', count: stats?.total || 0, color: 'default' },
-        { id: 'active', label: 'Active', count: stats?.active || 0, color: 'green' },
-        { id: 'inactive', label: 'Inactive', count: stats?.inactive || 0, color: 'orange' },
-        { id: 'archived', label: 'Archived', count: stats?.archived || 0, color: 'default' }
+        { id: 'partner', label: 'Partners', count: stats?.partners || 0, color: 'orange' },
+        { id: 'team_member', label: 'Team Members', count: stats?.team_members || 0, color: 'indigo' }
       ]
     },
     billing: {
@@ -579,6 +645,7 @@ const ContactsPage: React.FC = () => {
       case 'purple': return { bg: colors.brand.tertiary + '15', text: colors.brand.tertiary, border: colors.brand.tertiary + '30' };
       case 'orange': return { bg: colors.semantic.warning + '15', text: colors.semantic.warning, border: colors.semantic.warning + '30' };
       case 'red': return { bg: colors.semantic.error + '15', text: colors.semantic.error, border: colors.semantic.error + '30' };
+      case 'indigo': return { bg: colors.semantic.info + '15', text: colors.semantic.info, border: colors.semantic.info + '30' };
       default: return { bg: colors.utility.secondaryText + '15', text: colors.utility.secondaryText, border: colors.utility.secondaryText + '30' };
     }
   };
@@ -586,84 +653,13 @@ const ContactsPage: React.FC = () => {
   const currentFilters = tabConfigs[activeTab].filters;
 
   // Loading skeleton
-  const ContactSkeleton = () => (
-    <div className="animate-pulse">
-      {viewType === 'grid' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {[...Array(6)].map((_, i) => (
-            <div 
-              key={i} 
-              className="p-4 rounded-lg border transition-colors"
-              style={{
-                backgroundColor: colors.utility.secondaryBackground,
-                borderColor: colors.utility.primaryText + '20'
-              }}
-            >
-              <div className="flex items-center gap-3 mb-3">
-                <div 
-                  className="w-8 h-8 rounded-lg"
-                  style={{ backgroundColor: colors.utility.secondaryText + '20' }}
-                ></div>
-                <div className="flex-1">
-                  <div 
-                    className="h-4 rounded mb-2"
-                    style={{ backgroundColor: colors.utility.secondaryText + '20' }}
-                  ></div>
-                  <div 
-                    className="h-3 rounded w-2/3"
-                    style={{ backgroundColor: colors.utility.secondaryText + '20' }}
-                  ></div>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div 
-                  className="h-3 rounded"
-                  style={{ backgroundColor: colors.utility.secondaryText + '20' }}
-                ></div>
-                <div 
-                  className="h-3 rounded w-3/4"
-                  style={{ backgroundColor: colors.utility.secondaryText + '20' }}
-                ></div>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {[...Array(8)].map((_, i) => (
-            <div 
-              key={i} 
-              className="p-3 rounded-lg border transition-colors"
-              style={{
-                backgroundColor: colors.utility.secondaryBackground,
-                borderColor: colors.utility.primaryText + '20'
-              }}
-            >
-              <div className="flex items-center gap-3">
-                <div 
-                  className="w-8 h-8 rounded-lg"
-                  style={{ backgroundColor: colors.utility.secondaryText + '20' }}
-                ></div>
-                <div className="flex-1">
-                  <div 
-                    className="h-4 rounded mb-2"
-                    style={{ backgroundColor: colors.utility.secondaryText + '20' }}
-                  ></div>
-                  <div 
-                    className="h-3 rounded w-1/2"
-                    style={{ backgroundColor: colors.utility.secondaryText + '20' }}
-                  ></div>
-                </div>
-                <div 
-                  className="w-20 h-3 rounded"
-                  style={{ backgroundColor: colors.utility.secondaryText + '20' }}
-                ></div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+  // Use unified loader for skeleton
+  const EntitySkeleton = () => (
+    <ContentSkeleton
+      variant={viewType === 'grid' ? 'card' : 'list'}
+      count={viewType === 'grid' ? 6 : 8}
+      showHeader={false}
+    />
   );
 
   const shouldShowSearchHint = () => {
@@ -678,11 +674,11 @@ const ContactsPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-6 gap-4">
         <div className="flex items-center gap-3">
-          <h1 
+          <h1
             className="text-2xl font-bold flex items-center gap-2 transition-colors"
             style={{ color: colors.utility.primaryText }}
           >
-            Contacts
+            Entities
             <button
               onClick={() => setShowVideoHelp(true)}
               className="p-1 rounded-full hover:opacity-80 transition-colors"
@@ -732,7 +728,7 @@ const ContactsPage: React.FC = () => {
             }}
           >
             <Plus className="mr-2 h-4 w-4" />
-            Add Contact
+            Add Entity
           </button>
         </div>
       </div>
@@ -816,7 +812,7 @@ const ContactsPage: React.FC = () => {
               />
               <input
                 type="text"
-                placeholder={`Search contacts... (min ${MINIMUM_SEARCH_LENGTH} characters)`}
+                placeholder={`Search entities... (min ${MINIMUM_SEARCH_LENGTH} characters)`}
                 value={searchTerm}
                 onChange={(e) => handleSearchChange(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 transition-colors"
@@ -941,7 +937,7 @@ const ContactsPage: React.FC = () => {
                 backgroundColor: colors.utility.secondaryText + '10'
               }}
             >
-              Type at least {MINIMUM_SEARCH_LENGTH} characters to search contacts
+              Type at least {MINIMUM_SEARCH_LENGTH} characters to search entities
             </div>
           )}
 
@@ -1018,8 +1014,43 @@ const ContactsPage: React.FC = () => {
                   </button>
                 </span>
               )}
+              {advancedFilters.contactStatus !== 'all' && (
+                <span
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs border"
+                  style={{
+                    backgroundColor: advancedFilters.contactStatus === 'active'
+                      ? colors.semantic.success + '20'
+                      : advancedFilters.contactStatus === 'inactive'
+                      ? colors.semantic.warning + '20'
+                      : colors.utility.secondaryText + '20',
+                    color: advancedFilters.contactStatus === 'active'
+                      ? colors.semantic.success
+                      : advancedFilters.contactStatus === 'inactive'
+                      ? colors.semantic.warning
+                      : colors.utility.secondaryText,
+                    borderColor: advancedFilters.contactStatus === 'active'
+                      ? colors.semantic.success + '40'
+                      : advancedFilters.contactStatus === 'inactive'
+                      ? colors.semantic.warning + '40'
+                      : colors.utility.secondaryText + '40'
+                  }}
+                >
+                  {advancedFilters.contactStatus === 'active' ? 'Active' : advancedFilters.contactStatus === 'inactive' ? 'Inactive' : 'Archived'}
+                  <button
+                    onClick={() => {
+                      handleAdvancedFiltersChange({
+                        ...advancedFilters,
+                        contactStatus: 'all'
+                      });
+                    }}
+                    className="ml-1"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              )}
               {advancedFilters.duplicates && (
-                <span 
+                <span
                   className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs border"
                   style={{
                     backgroundColor: colors.brand.primary + '20',
@@ -1057,7 +1088,7 @@ const ContactsPage: React.FC = () => {
                 className="text-sm font-medium"
                 style={{ color: colors.brand.primary }}
               >
-                {selectedContacts.size} contact{selectedContacts.size !== 1 ? 's' : ''} selected
+                {selectedContacts.size} {selectedContacts.size !== 1 ? 'entities' : 'entity'} selected
               </span>
               <div className="flex items-center gap-2">
                 <button
@@ -1107,7 +1138,7 @@ const ContactsPage: React.FC = () => {
                 className="font-medium"
                 style={{ color: colors.semantic.error }}
               >
-                Error loading contacts
+                Error loading entities
               </h3>
               <p 
                 className="text-sm mt-1"
@@ -1128,7 +1159,7 @@ const ContactsPage: React.FC = () => {
       )}
 
       {/* Loading State */}
-      {loading && <ContactSkeleton />}
+      {loading && <EntitySkeleton />}
 
       {/* Contact List */}
       {!loading && !error && (
@@ -1149,7 +1180,7 @@ const ContactsPage: React.FC = () => {
                 className="text-lg font-medium mb-2 transition-colors"
                 style={{ color: colors.utility.primaryText }}
               >
-                No contacts found
+                No entities found
               </h3>
               <p 
                 className="mb-6 transition-colors"
@@ -1159,9 +1190,9 @@ const ContactsPage: React.FC = () => {
                   Array.isArray(v) ? v.length > 0 : v !== 'all' && v !== false
                 )
                   ? shouldShowSearchHint()
-                    ? `Type at least ${MINIMUM_SEARCH_LENGTH} characters to search contacts.`
-                    : "No contacts match your search criteria. Try adjusting your search or filters."
-                  : "You haven't added any contacts yet. Create your first contact to get started."
+                    ? `Type at least ${MINIMUM_SEARCH_LENGTH} characters to search entities.`
+                    : "No entities match your search criteria. Try adjusting your search or filters."
+                  : "You haven't added any entities yet. Create your first entity to get started."
                 }
               </p>
               <button
@@ -1174,7 +1205,7 @@ const ContactsPage: React.FC = () => {
                 }}
               >
                 <Plus className="mr-2 h-4 w-4" />
-                Add Contact
+                Add Entity
               </button>
             </div>
           ) : (
@@ -1200,7 +1231,7 @@ const ContactsPage: React.FC = () => {
                       className="text-sm transition-colors"
                       style={{ color: colors.utility.secondaryText }}
                     >
-                      Select all {contacts.length} contacts
+                      Select all {contacts.length} entities
                     </span>
                   </div>
                 </div>
@@ -1300,13 +1331,13 @@ const ContactsPage: React.FC = () => {
                                 <Building2 
                                   className="h-4 w-4 flex-shrink-0"
                                   style={{ color: colors.utility.secondaryText }}
-                                  title="Corporate Contact"
+                                  title="Corporate Entity"
                                 />
                               ) : (
                                 <User 
                                   className="h-4 w-4 flex-shrink-0"
                                   style={{ color: colors.utility.secondaryText }}
-                                  title="Individual Contact"
+                                  title="Individual Entity"
                                 />
                               )}
                             </div>
@@ -1399,7 +1430,7 @@ const ContactsPage: React.FC = () => {
                                 backgroundColor: colors.utility.secondaryText + '20',
                                 color: colors.utility.primaryText
                               }}
-                              title="View contact details"
+                              title="View entity details"
                             >
                               <Eye className="h-4 w-4" />
                             </button>
@@ -1410,7 +1441,7 @@ const ContactsPage: React.FC = () => {
                                 backgroundColor: colors.brand.primary,
                                 color: '#ffffff'
                               }}
-                              title="Edit contact"
+                              title="Edit entity"
                             >
                               <Edit className="h-4 w-4" />
                             </button>
@@ -1480,13 +1511,13 @@ const ContactsPage: React.FC = () => {
                                 <Building2 
                                   className="h-4 w-4 flex-shrink-0"
                                   style={{ color: colors.utility.secondaryText }}
-                                  title="Corporate Contact"
+                                  title="Corporate Entity"
                                 />
                               ) : (
                                 <User 
                                   className="h-4 w-4 flex-shrink-0"
                                   style={{ color: colors.utility.secondaryText }}
-                                  title="Individual Contact"
+                                  title="Individual Entity"
                                 />
                               )}
                             </div>
@@ -1592,7 +1623,7 @@ const ContactsPage: React.FC = () => {
                                 backgroundColor: colors.utility.secondaryText + '20',
                                 color: colors.utility.primaryText
                               }}
-                              title="View contact details"
+                              title="View entity details"
                             >
                               <Eye className="h-4 w-4" />
                             </button>
@@ -1603,7 +1634,7 @@ const ContactsPage: React.FC = () => {
                                 backgroundColor: colors.brand.primary,
                                 color: '#ffffff'
                               }}
-                              title="Edit contact"
+                              title="Edit entity"
                             >
                               <Edit className="h-4 w-4" />
                             </button>
@@ -1648,7 +1679,7 @@ const ContactsPage: React.FC = () => {
                   className="text-sm transition-colors"
                   style={{ color: colors.utility.secondaryText }}
                 >
-                  Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} contacts
+                  Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} entities
                 </div>
                 
                 <div className="flex items-center gap-2">
@@ -1723,7 +1754,7 @@ const ContactsPage: React.FC = () => {
                   className="text-xl font-semibold transition-colors"
                   style={{ color: colors.utility.primaryText }}
                 >
-                  Contact Management Help
+                  Entity Management Help
                 </h2>
                 <button
                   onClick={() => setShowVideoHelp(false)}
@@ -1744,13 +1775,13 @@ const ContactsPage: React.FC = () => {
                     className="font-medium mb-2 transition-colors"
                     style={{ color: colors.utility.primaryText }}
                   >
-                    Getting Started with Contacts
+                    Getting Started with Entities
                   </h3>
                   <p 
                     className="text-sm transition-colors"
                     style={{ color: colors.utility.secondaryText }}
                   >
-                    Learn how to add, organize, and manage your business contacts effectively.
+                    Learn how to add, organize, and manage your business entities effectively.
                   </p>
                 </div>
                 <div 
@@ -1761,13 +1792,13 @@ const ContactsPage: React.FC = () => {
                     className="font-medium mb-2 transition-colors"
                     style={{ color: colors.utility.primaryText }}
                   >
-                    Contact Classifications & Filtering
+                    Entity Classifications & Filtering
                   </h3>
                   <p 
                     className="text-sm transition-colors"
                     style={{ color: colors.utility.secondaryText }}
                   >
-                    Understanding how to categorize contacts and use advanced filtering options.
+                    Understanding how to categorize entities and use advanced filtering options.
                   </p>
                 </div>
                 <div 
@@ -1784,7 +1815,7 @@ const ContactsPage: React.FC = () => {
                     className="text-sm transition-colors"
                     style={{ color: colors.utility.secondaryText }}
                   >
-                    Master the search functionality to quickly find the contacts you need.
+                    Master the search functionality to quickly find the entities you need.
                   </p>
                 </div>
               </div>
@@ -1798,8 +1829,8 @@ const ContactsPage: React.FC = () => {
         isOpen={showDeleteDialog}
         onClose={() => setShowDeleteDialog(false)}
         onConfirm={handleBulkDelete}
-        title="Delete Contacts"
-        description={`Are you sure you want to delete ${selectedContacts.size} contact${selectedContacts.size !== 1 ? 's' : ''}? This action cannot be undone.`}
+        title="Delete Entities"
+        description={`Are you sure you want to delete ${selectedContacts.size} ${selectedContacts.size !== 1 ? 'entities' : 'entity'}? This action cannot be undone.`}
         confirmText="Delete"
         type="danger"
         icon={<Trash2 className="h-6 w-6" />}
@@ -1813,7 +1844,7 @@ const ContactsPage: React.FC = () => {
         />
       )}
 
-      {/* Quick Add Contact Drawer */}
+      {/* Quick Add Entity Drawer */}
       <QuickAddContactDrawer
         isOpen={isQuickAddOpen}
         onClose={() => setIsQuickAddOpen(false)}
