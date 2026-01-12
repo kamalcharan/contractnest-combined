@@ -992,7 +992,9 @@ const ContactCreateForm: React.FC<ContactFormProps> = ({
              className="text-2xl font-bold flex items-center gap-2 transition-colors"
              style={{ color: colors.utility.primaryText }}
            >
-             {isEditMode ? 'Edit Entity' : 'Create Entity'}
+             {isEditMode
+               ? `Edit - ${formData.type === 'corporate' ? formData.company_name : formData.name || 'Entity'}`
+               : 'Create Entity'}
              <button
                onClick={() => setShowVideoHelp(true)}
                className="p-1 rounded-full hover:opacity-80 transition-colors"
