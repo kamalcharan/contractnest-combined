@@ -1,15 +1,19 @@
 ================================================================================
-COPY INSTRUCTIONS - Entities VaNi Loader + UI Cleanup
+COPY INSTRUCTIONS - Entities VaNi Loader + UI Cleanup + Backend Optimization
 ================================================================================
 Branch: entities-vani-loader
 Date: January 2026
 
 SUBMODULES AFFECTED:
 - contractnest-ui
+- contractnest-edge
 
 ================================================================================
 FILES TO COPY
 ================================================================================
+
+FRONTEND (contractnest-ui):
+-----------------------------
 
 1. UnifiedLoader.tsx (Updated hybrid VaNi loader)
    FROM: MANUAL_COPY_FILES/entities-vani-loader/contractnest-ui/src/components/common/loaders/UnifiedLoader.tsx
@@ -18,6 +22,19 @@ FILES TO COPY
 2. contacts/index.tsx (Updated entities list page)
    FROM: MANUAL_COPY_FILES/entities-vani-loader/contractnest-ui/src/pages/contacts/index.tsx
    TO:   contractnest-ui/src/pages/contacts/index.tsx
+
+BACKEND (contractnest-edge):
+-----------------------------
+
+3. contactService.ts (Optimized with RPC and DB-level pagination)
+   FROM: MANUAL_COPY_FILES/entities-vani-loader/contractnest-edge/supabase/functions/_shared/contacts/contactService.ts
+   TO:   contractnest-edge/supabase/functions/_shared/contacts/contactService.ts
+
+4. get_contact_stats.sql (New RPC functions - MUST BE DEPLOYED TO SUPABASE)
+   FROM: MANUAL_COPY_FILES/entities-vani-loader/contractnest-edge/supabase/RPC/contacts/get_contact_stats.sql
+   TO:   contractnest-edge/supabase/RPC/contacts/get_contact_stats.sql
+
+   ** IMPORTANT: This SQL file must be executed in Supabase SQL Editor to create the RPC functions **
 
 ================================================================================
 CHANGES SUMMARY
@@ -51,11 +68,35 @@ contacts/index.tsx - UI CLEANUP CHANGES:
 - ADDED: useUpdateContactStatus hook import
 - REMOVED: MoreHorizontal, CheckSquare from lucide-react imports
 
+contactService.ts - BACKEND OPTIMIZATION:
+- OPTIMIZED: listContacts() now uses RPC for DB-level pagination and filtering
+- OPTIMIZED: getContactStats() now uses RPC for single-query statistics
+- ADDED: Fallback to JS-based filtering when RPC is unavailable
+- REMOVED: Duplicate applyClassificationFilter method definitions
+- ADDED: enrichContactsWithRelatedData() helper method
+- ADDED: listContactsFallback() for backwards compatibility
+- ADDED: getContactStatsFallback() for backwards compatibility
+- IMPROVED: When no classification filter, uses .range() for DB-level pagination
+
+get_contact_stats.sql - NEW RPC FUNCTIONS:
+- CREATED: get_contact_stats() - Returns all counts in single SQL query
+  * Uses COUNT with FILTER for efficient statistics
+  * Supports optional type, search, and classifications filters
+  * Uses JSONB ? operator for classification matching
+- CREATED: list_contacts_filtered() - DB-level pagination and filtering
+  * Applies all filters at database level
+  * Uses LIMIT/OFFSET instead of JS slice
+  * Uses ?| operator for "any of" classification matching
+  * Supports dynamic sorting
+  * Returns paginated results with total count
+
 ================================================================================
 POWERSHELL COPY COMMANDS
 ================================================================================
 
 cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# ===== FRONTEND FILES =====
 
 # Copy loader component
 Copy-Item "MANUAL_COPY_FILES\entities-vani-loader\contractnest-ui\src\components\common\loaders\UnifiedLoader.tsx" -Destination "contractnest-ui\src\components\common\loaders\UnifiedLoader.tsx" -Force
@@ -63,7 +104,36 @@ Copy-Item "MANUAL_COPY_FILES\entities-vani-loader\contractnest-ui\src\components
 # Copy contacts page
 Copy-Item "MANUAL_COPY_FILES\entities-vani-loader\contractnest-ui\src\pages\contacts\index.tsx" -Destination "contractnest-ui\src\pages\contacts\index.tsx" -Force
 
+# ===== BACKEND FILES =====
+
+# Copy optimized contactService
+Copy-Item "MANUAL_COPY_FILES\entities-vani-loader\contractnest-edge\supabase\functions\_shared\contacts\contactService.ts" -Destination "contractnest-edge\supabase\functions\_shared\contacts\contactService.ts" -Force
+
+# Copy RPC SQL file (for reference - must deploy to Supabase)
+Copy-Item "MANUAL_COPY_FILES\entities-vani-loader\contractnest-edge\supabase\RPC\contacts\get_contact_stats.sql" -Destination "contractnest-edge\supabase\RPC\contacts\get_contact_stats.sql" -Force
+
 Write-Host "Files copied successfully!" -ForegroundColor Green
+Write-Host ""
+Write-Host "IMPORTANT: You must also deploy the SQL file to Supabase!" -ForegroundColor Yellow
+Write-Host "Open Supabase SQL Editor and run the contents of:" -ForegroundColor Yellow
+Write-Host "contractnest-edge\supabase\RPC\contacts\get_contact_stats.sql" -ForegroundColor Yellow
+
+================================================================================
+SUPABASE RPC DEPLOYMENT
+================================================================================
+
+IMPORTANT: After copying files, you must deploy the RPC functions to Supabase:
+
+1. Open Supabase Dashboard
+2. Go to SQL Editor
+3. Copy the contents of: contractnest-edge/supabase/RPC/contacts/get_contact_stats.sql
+4. Execute the SQL
+5. Verify functions are created:
+   - get_contact_stats
+   - list_contacts_filtered
+
+The backend code has fallbacks, so it will work without the RPC functions,
+but performance will be the same as before. Deploy the RPC for full optimization.
 
 ================================================================================
 TESTING CHECKLIST
@@ -94,5 +164,18 @@ THEME TESTS:
 - [ ] Test dark mode - all icons use proper theme colors
 - [ ] Test light mode - orb provides good contrast
 - [ ] Verify Eye, Edit, FileText, Trash2 icons have proper theme colors
+
+PERFORMANCE TESTS (after RPC deployment):
+- [ ] Check browser DevTools Network tab for API response times
+- [ ] Verify list loads faster than before (~1-2 seconds vs 6 seconds)
+- [ ] Check console logs for "Using optimized RPC" messages
+- [ ] Test pagination - should NOT fetch all data on each page
+- [ ] Test with classification filter - verify it still works
+- [ ] Test stats endpoint - should be faster (single query vs multiple)
+
+FALLBACK TESTS (if RPC not deployed):
+- [ ] Verify list still works (fallback to JS filtering)
+- [ ] Check console for "RPC not available, falling back" warnings
+- [ ] Verify all filters still work correctly
 
 ================================================================================
