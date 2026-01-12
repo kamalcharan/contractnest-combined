@@ -1,0 +1,62 @@
+================================================================================
+CONTACTS DEBUG FIXES - COPY INSTRUCTIONS
+================================================================================
+
+Branch: contacts-debug-fixes
+Date: 2026-01-12
+
+CHANGES SUMMARY:
+--------------------------------------------------------------------------------
+1. Added debug logging to trace save data flow (frontend + edge)
+2. Fixed React key warnings in view.tsx and ContactHeaderCard.tsx
+3. Fixed RPC empty array handling and added row locking
+
+FILES TO COPY:
+--------------------------------------------------------------------------------
+
+CONTRACTNEST-UI (3 files):
+  - src/pages/contacts/create.tsx
+    → Debug logging added to show all array fields being saved
+
+  - src/pages/contacts/view.tsx
+    → Fixed React key warning for classifications map
+
+  - src/components/contacts/view/cards/ContactHeaderCard.tsx
+    → Fixed React key warning for classifications map
+
+CONTRACTNEST-EDGE (2 files):
+  - supabase/functions/_shared/contacts/contactService.ts
+    → Debug logging added to show data received from frontend
+
+  - supabase/RPC/contacts/rpc
+    → Fixed empty array handling (prevents deleting all data when [] passed)
+    → Added FOR UPDATE SKIP LOCKED for row locking
+
+COPY COMMANDS (PowerShell):
+--------------------------------------------------------------------------------
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Copy UI files
+Copy-Item "MANUAL_COPY_FILES\contacts-debug-fixes\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+# Copy Edge files
+Copy-Item "MANUAL_COPY_FILES\contacts-debug-fixes\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+AFTER COPYING:
+--------------------------------------------------------------------------------
+1. Start dev server: cd contractnest-ui && npm run dev
+2. Test editing a contact with tags/addresses/compliance/persons
+3. Check browser console for "=== DEBUG SAVE DATA ===" logs
+4. Check Supabase Edge logs for "=== DEBUG updateContact ===" logs
+
+IMPORTANT - DEPLOY RPC TO SUPABASE:
+--------------------------------------------------------------------------------
+Copy the contents of:
+  contractnest-edge/supabase/RPC/contacts/rpc
+
+And run it in Supabase SQL Editor to update the functions.
+
+================================================================================
