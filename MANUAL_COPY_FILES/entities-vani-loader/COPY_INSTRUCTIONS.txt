@@ -1,0 +1,70 @@
+================================================================================
+COPY INSTRUCTIONS - Entities VaNi Loader
+================================================================================
+Branch: entities-vani-loader
+Date: January 2026
+
+SUBMODULES AFFECTED:
+- contractnest-ui
+
+================================================================================
+FILES TO COPY
+================================================================================
+
+1. UnifiedLoader.tsx (Updated hybrid VaNi loader)
+   FROM: MANUAL_COPY_FILES/entities-vani-loader/contractnest-ui/src/components/common/loaders/UnifiedLoader.tsx
+   TO:   contractnest-ui/src/components/common/loaders/UnifiedLoader.tsx
+
+2. contacts/index.tsx (Updated to use VaNiLoader)
+   FROM: MANUAL_COPY_FILES/entities-vani-loader/contractnest-ui/src/pages/contacts/index.tsx
+   TO:   contractnest-ui/src/pages/contacts/index.tsx
+
+================================================================================
+CHANGES SUMMARY
+================================================================================
+
+UnifiedLoader.tsx:
+- Updated VaNiLoader with hybrid approach (orb + dimmed skeletons)
+- Added dark orb background (#1e293b) for brand consistency
+- Added showSkeleton, skeletonVariant, skeletonCount props
+- Added dimmed prop to ContentSkeleton for 40% opacity
+- Updated animations: vani-orb-pulse, skeleton-shimmer
+- SectionLoader now defaults to variant='vani' with skeletons
+
+contacts/index.tsx:
+- Changed import from ContentSkeleton to VaNiLoader
+- Renamed EntitySkeleton to EntityLoader
+- Added getLoadingMessage() for dynamic context messages
+- Loading now shows: "VaNi is Loading Entities..." or "VaNi is Loading Buyers..." etc.
+
+================================================================================
+POWERSHELL COPY COMMANDS
+================================================================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Copy loader component
+Copy-Item "MANUAL_COPY_FILES\entities-vani-loader\contractnest-ui\src\components\common\loaders\UnifiedLoader.tsx" -Destination "contractnest-ui\src\components\common\loaders\UnifiedLoader.tsx" -Force
+
+# Copy contacts page
+Copy-Item "MANUAL_COPY_FILES\entities-vani-loader\contractnest-ui\src\pages\contacts\index.tsx" -Destination "contractnest-ui\src\pages\contacts\index.tsx" -Force
+
+Write-Host "Files copied successfully!" -ForegroundColor Green
+
+================================================================================
+TESTING CHECKLIST
+================================================================================
+
+- [ ] Navigate to /contacts (Entities page)
+- [ ] Verify VaNi orb appears with dark background (#1e293b)
+- [ ] Verify pulse ring animates with theme primary color
+- [ ] Verify message shows "VaNi is Loading Entities..."
+- [ ] Verify dimmed skeleton cards appear below orb (40% opacity)
+- [ ] Click on "Buyers" filter pill
+- [ ] Verify message changes to "VaNi is Loading Buyers..."
+- [ ] Test grid view - skeleton cards should appear
+- [ ] Test list view - skeleton list items should appear
+- [ ] Test dark mode - all elements should remain visible
+- [ ] Test light mode - orb should still be dark for contrast
+
+================================================================================
