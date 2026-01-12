@@ -1,0 +1,61 @@
+================================================================================
+SIDEBAR MENU UX IMPROVEMENTS
+================================================================================
+Feature: Sidebar Menu UX & Logo Theme Fix
+Date: January 2026
+Submodules Affected: contractnest-ui
+
+================================================================================
+CHANGES SUMMARY
+================================================================================
+
+1. Sidebar.tsx (src/components/layout/Sidebar.tsx)
+   - Fixed logo path: Changed "assets/assets/images/" to "/assets/images/"
+   - Improved fallback logo for theme stability: Now uses [CN badge] + text
+     instead of gradient text that could break on theme change
+
+2. industryMenus.ts (src/utils/constants/industryMenus.ts)
+   - Moved Operations menu after Dashboard (was after VaNi)
+   - Added "Entities" submenu under Operations (after Ops Cockpit)
+   - Entities links to /contacts page
+
+================================================================================
+NEW MENU STRUCTURE
+================================================================================
+
+Getting Started
+Dashboard
+Operations                    <-- Moved here (was after VaNi)
+├── Ops Cockpit
+├── Entities                  <-- NEW (links to /contacts)
+├── Activity Feed
+└── Reports
+Contacts                      <-- Kept for now (to be deleted later)
+├── All Contacts
+├── Buyers
+├── Partners
+└── Service Providers
+Contracts
+VaNi
+Catalog Studio
+Settings
+
+================================================================================
+COPY COMMANDS (PowerShell)
+================================================================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\sidebar-menu-ux\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Files copied successfully!" -ForegroundColor Green
+
+================================================================================
+VERIFY COPY
+================================================================================
+
+After copying, verify these files exist:
+- contractnest-ui\src\components\layout\Sidebar.tsx
+- contractnest-ui\src\utils\constants\industryMenus.ts
+
+================================================================================
