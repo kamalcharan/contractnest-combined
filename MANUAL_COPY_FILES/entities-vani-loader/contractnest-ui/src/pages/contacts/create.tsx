@@ -489,24 +489,10 @@ const ContactCreateForm: React.FC<ContactFormProps> = ({
  const [duplicateContacts, setDuplicateContacts] = useState<any[]>([]);
  const [showFullPageLoader, setShowFullPageLoader] = useState(false);
 
- // Add authentication check
- if (!isAuthenticated || !currentTenant) {
-   return (
-     <div 
-       className="p-4 md:p-6 min-h-screen transition-colors"
-       style={{ backgroundColor: colors.utility.primaryBackground }}
-     >
-       <div className="flex items-center justify-center py-12">
-         <FormSkeleton />
-       </div>
-     </div>
-   );
- }
- 
- // Get current industry
+ // Get current industry - MOVED BEFORE CONDITIONAL RETURN (React hooks rule)
  const [currentIndustry, setCurrentIndustry] = useState<string>('default');
- 
- // Form state
+
+ // Form state - MOVED BEFORE CONDITIONAL RETURN (React hooks rule)
  const [formData, setFormData] = useState<ContactFormData>({
    type: CONTACT_FORM_TYPES.INDIVIDUAL,
    classifications: [],
@@ -519,20 +505,20 @@ const ContactCreateForm: React.FC<ContactFormProps> = ({
    ...initialData
  });
 
- // UI state
+ // UI state - MOVED BEFORE CONDITIONAL RETURN (React hooks rule)
  const [showVideoHelp, setShowVideoHelp] = useState<boolean>(false);
  const [validationErrors, setValidationErrors] = useState<string[]>([]);
  const [hasUnsavedChanges, setHasUnsavedChanges] = useState<boolean>(false);
  const [userAccountStatus, setUserAccountStatus] = useState<string>(USER_ACCOUNT_STATUS.NO_ACCOUNT);
 
- // Initialize form data ref
+ // Initialize form data ref - MOVED BEFORE CONDITIONAL RETURN (React hooks rule)
  useEffect(() => {
    if (!initialFormDataRef.current) {
      initialFormDataRef.current = { ...formData };
    }
  }, []);
 
- // Load existing contact data in edit mode
+ // Load existing contact data in edit mode - MOVED BEFORE CONDITIONAL RETURN (React hooks rule)
  useEffect(() => {
    if (isEditMode && existingContact) {
      // Transform classifications to match UI component expectations
@@ -562,16 +548,30 @@ const ContactCreateForm: React.FC<ContactFormProps> = ({
        notes: existingContact.notes,
        tags: existingContact.tags || []
      };
-     
+
      setFormData(loadedData);
      initialFormDataRef.current = { ...loadedData };
      setHasUnsavedChanges(false);
-     
+
      if (existingContact.user_account_status) {
        setUserAccountStatus(existingContact.user_account_status);
      }
    }
  }, [isEditMode, existingContact]);
+
+ // Add authentication check - AFTER ALL HOOKS
+ if (!isAuthenticated || !currentTenant) {
+   return (
+     <div
+       className="p-4 md:p-6 min-h-screen transition-colors"
+       style={{ backgroundColor: colors.utility.primaryBackground }}
+     >
+       <div className="flex items-center justify-center py-12">
+         <FormSkeleton />
+       </div>
+     </div>
+   );
+ }
 
  // Check if form has actual changes
  const checkForChanges = (currentData: ContactFormData, initialData: ContactFormData | null): boolean => {
