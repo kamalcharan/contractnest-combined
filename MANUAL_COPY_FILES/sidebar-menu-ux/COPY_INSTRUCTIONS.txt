@@ -1,7 +1,7 @@
 ================================================================================
-SIDEBAR MENU UX IMPROVEMENTS
+SIDEBAR MENU UX IMPROVEMENTS + UNIFIED LOADER SYSTEM
 ================================================================================
-Feature: Sidebar Menu UX & Logo Theme Fix
+Feature: Sidebar Menu UX & Logo Theme Fix + Standardized Loaders
 Date: January 2026
 Submodules Affected: contractnest-ui
 
@@ -18,6 +18,120 @@ CHANGES SUMMARY
    - Moved Operations menu after Dashboard (was after VaNi)
    - Added "Entities" submenu under Operations (after Ops Cockpit)
    - Entities links to /contacts page
+
+3. NEW: UnifiedLoader.tsx (src/components/common/loaders/UnifiedLoader.tsx)
+   - Theme-aware loading components
+   - Standardized loading experience across application
+
+================================================================================
+NEW UNIFIED LOADER SYSTEM
+================================================================================
+
+All loaders are THEME-AWARE and use colors from ThemeContext.
+
+COMPONENTS:
+-----------
+
+1. ContentSkeleton - For loading content areas
+   Usage:
+   ```tsx
+   import { ContentSkeleton } from '@/components/common/loaders';
+
+   // List skeleton (default)
+   <ContentSkeleton variant="list" count={5} />
+
+   // Card grid skeleton
+   <ContentSkeleton variant="card" count={6} />
+
+   // Table skeleton
+   <ContentSkeleton variant="table" count={10} />
+   ```
+
+2. VaNiLoader - Branded pulse loader with sparkles icon
+   Usage:
+   ```tsx
+   import { VaNiLoader } from '@/components/common/loaders';
+
+   // Basic
+   <VaNiLoader />
+
+   // With message
+   <VaNiLoader message="Processing..." />
+
+   // Full screen
+   <VaNiLoader fullScreen message="Loading your workspace..." />
+
+   // Sizes: 'sm' | 'md' | 'lg'
+   <VaNiLoader size="lg" />
+   ```
+
+3. PageLoader - Full page loading state
+   Usage:
+   ```tsx
+   import { PageLoader } from '@/components/common/loaders';
+
+   // VaNi style (default)
+   <PageLoader message="Loading..." />
+
+   // Spinner style
+   <PageLoader variant="spinner" message="Loading..." />
+
+   // Dots style
+   <PageLoader variant="dots" message="Loading..." />
+   ```
+
+4. InlineLoader - For buttons and small areas
+   Usage:
+   ```tsx
+   import { InlineLoader } from '@/components/common/loaders';
+
+   <button disabled={isLoading}>
+     {isLoading ? <InlineLoader text="Saving..." /> : 'Save'}
+   </button>
+   ```
+
+5. SectionLoader - For partial page sections
+   Usage:
+   ```tsx
+   import { SectionLoader } from '@/components/common/loaders';
+
+   // Skeleton (default)
+   <SectionLoader variant="skeleton" skeletonVariant="card" skeletonCount={6} />
+
+   // VaNi loader
+   <SectionLoader variant="vani" message="Loading contacts..." />
+   ```
+
+================================================================================
+MIGRATION GUIDE
+================================================================================
+
+BEFORE (Old pattern):
+```tsx
+if (isLoading) {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="w-12 h-12 border-4 border-t-transparent rounded-full animate-spin" />
+      <p>Loading...</p>
+    </div>
+  );
+}
+```
+
+AFTER (New pattern):
+```tsx
+import { PageLoader, ContentSkeleton } from '@/components/common/loaders';
+
+// For full page loading
+if (isLoading) {
+  return <PageLoader message="Loading Groups..." />;
+}
+
+// OR for content skeleton (better UX)
+if (isLoading) {
+  return <ContentSkeleton variant="list" count={5} />;
+}
+```
 
 ================================================================================
 NEW MENU STRUCTURE
@@ -57,5 +171,7 @@ VERIFY COPY
 After copying, verify these files exist:
 - contractnest-ui\src\components\layout\Sidebar.tsx
 - contractnest-ui\src\utils\constants\industryMenus.ts
+- contractnest-ui\src\components\common\loaders\UnifiedLoader.tsx
+- contractnest-ui\src\components\common\loaders\index.ts
 
 ================================================================================
