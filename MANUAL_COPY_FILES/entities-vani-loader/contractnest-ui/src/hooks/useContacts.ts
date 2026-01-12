@@ -68,6 +68,59 @@ const setCacheData = (key: string, data: any[], pagination: any): void => {
   console.log('📦 Cache SET for contacts list');
 };
 
+// =================================================================
+// SINGLE CONTACT CACHE
+// =================================================================
+
+interface SingleContactCacheEntry {
+  data: any;
+  timestamp: number;
+}
+
+// Cache for individual contacts (keyed by contactId)
+const singleContactCache: Map<string, SingleContactCacheEntry> = new Map();
+
+// Single contact cache TTL (10 minutes - longer since individual contact data changes less frequently)
+const SINGLE_CONTACT_CACHE_TTL = 10 * 60 * 1000;
+
+// Get cached single contact
+const getCachedContact = (contactId: string, tenantId: string, isLive: boolean): any | null => {
+  const cacheKey = `${tenantId}_${isLive ? 'live' : 'test'}_${contactId}`;
+  const entry = singleContactCache.get(cacheKey);
+  if (entry && Date.now() - entry.timestamp < SINGLE_CONTACT_CACHE_TTL) {
+    console.log('📦 Cache HIT for single contact:', contactId);
+    return entry.data;
+  }
+  if (entry) {
+    console.log('📦 Cache EXPIRED for single contact:', contactId);
+    singleContactCache.delete(cacheKey);
+  }
+  return null;
+};
+
+// Set single contact cache
+const setCachedContact = (contactId: string, tenantId: string, isLive: boolean, data: any): void => {
+  const cacheKey = `${tenantId}_${isLive ? 'live' : 'test'}_${contactId}`;
+  singleContactCache.set(cacheKey, {
+    data,
+    timestamp: Date.now()
+  });
+  console.log('📦 Cache SET for single contact:', contactId);
+};
+
+// Invalidate single contact cache
+export const invalidateSingleContactCache = (contactId?: string, tenantId?: string, isLive?: boolean): void => {
+  if (!contactId) {
+    // Clear all single contact cache
+    singleContactCache.clear();
+    console.log('📦 Single contact cache CLEARED (all)');
+  } else if (tenantId) {
+    const cacheKey = `${tenantId}_${isLive !== undefined ? (isLive ? 'live' : 'test') : ''}_${contactId}`;
+    singleContactCache.delete(cacheKey);
+    console.log(`📦 Single contact cache CLEARED for ${contactId}`);
+  }
+};
+
 // Invalidate cache for a tenant/environment
 export const invalidateContactsCache = (tenantId?: string, isLive?: boolean): void => {
   if (!tenantId) {
@@ -457,6 +510,7 @@ export const useContactStats = (filters?: Partial<ContactFilters>) => {
 /**
  * Hook to get a single contact by ID
  * FIXED: Properly handles environment filtering
+ * OPTIMIZED: Uses in-memory cache for instant loading on return visits
  */
 export const useContact = (contactId: string) => {
   const { currentTenant, isLive } = useAuth();
@@ -464,16 +518,30 @@ export const useContact = (contactId: string) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchContact = useCallback(async () => {
+  const fetchContact = useCallback(async (forceRefresh: boolean = false) => {
     if (!currentTenant?.id || !contactId) {
       return;
+    }
+
+    // Check cache first (unless force refresh)
+    if (!forceRefresh) {
+      const cached = getCachedContact(contactId, currentTenant.id, isLive);
+      if (cached) {
+        console.log('✅ Using cached contact data - instant load!');
+        setData(cached);
+        setLoading(false);
+        setError(null);
+        return;
+      }
     }
 
     setLoading(true);
     setError(null);
 
     try {
-      console.log(`Fetching contact ${contactId} for ${isLive ? 'LIVE' : 'TEST'} environment`);
+      console.log(`=== FETCHING CONTACT (API) ===`);
+      console.log(`Contact ID: ${contactId}`);
+      console.log(`Environment: ${isLive ? 'LIVE' : 'TEST'}`);
 
       const response = await api.get(`/api/contacts/${contactId}`, {
         headers: {
@@ -483,7 +551,12 @@ export const useContact = (contactId: string) => {
       });
 
       if (response.data.success) {
-        setData(response.data.data);
+        const contactData = response.data.data;
+        setData(contactData);
+
+        // Cache the response
+        setCachedContact(contactId, currentTenant.id, isLive, contactData);
+        console.log('✅ Contact data fetched and cached');
       } else {
         setError(response.data.error || 'Contact not found');
       }
@@ -499,11 +572,20 @@ export const useContact = (contactId: string) => {
     fetchContact();
   }, [fetchContact]);
 
+  // Hard refresh that also invalidates cache
+  const hardRefresh = useCallback(() => {
+    if (currentTenant?.id && contactId) {
+      invalidateSingleContactCache(contactId, currentTenant.id, isLive);
+    }
+    fetchContact(true);
+  }, [fetchContact, contactId, currentTenant?.id, isLive]);
+
   return {
     data,
     loading,
     error,
-    refetch: fetchContact
+    refetch: fetchContact,
+    hardRefresh // Use after edit to force fresh data
   };
 };
 

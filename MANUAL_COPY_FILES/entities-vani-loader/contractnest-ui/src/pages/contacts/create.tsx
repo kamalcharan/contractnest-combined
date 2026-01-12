@@ -35,7 +35,8 @@ import {
  useCheckDuplicates,
  useSendInvitation,
  useUpdateContactStatus,
- invalidateContactsCache
+ invalidateContactsCache,
+ invalidateSingleContactCache
 } from '../../hooks/useContacts';
 
 // Import form components
@@ -771,10 +772,14 @@ const ContactCreateForm: React.FC<ContactFormProps> = ({
 
        setHasUnsavedChanges(false);
 
-       // Invalidate contacts list cache so returning to list shows fresh data
+       // Invalidate caches so returning to list/view shows fresh data
        if (currentTenant?.id) {
          invalidateContactsCache(currentTenant.id, isLive);
-         console.log('📦 Cache invalidated after save');
+         // Also invalidate the specific contact cache if editing
+         if (isEditMode && savedContactId) {
+           invalidateSingleContactCache(savedContactId, currentTenant.id, isLive);
+         }
+         console.log('📦 Caches invalidated after save');
        }
 
        setTimeout(() => {
@@ -896,16 +901,50 @@ const ContactCreateForm: React.FC<ContactFormProps> = ({
  // Show loading state while fetching existing contact
  if (isEditMode && isLoadingContact) {
    return (
-     <div 
-       className="p-4 md:p-6 min-h-screen transition-colors"
+     <div
+       className="p-4 md:p-6 min-h-screen transition-colors flex items-center justify-center"
        style={{ backgroundColor: colors.utility.primaryBackground }}
      >
-       <FormSkeleton 
-         title={true}
-         subtitle={true}
-         sections={3}
-         showActions={true}
-       />
+       {/* VaNi Loading Orb */}
+       <div className="flex flex-col items-center">
+         <div className="relative mb-6">
+           {/* Pulse ring */}
+           <div
+             className="absolute inset-0 rounded-full animate-ping opacity-30"
+             style={{ backgroundColor: colors.brand.primary }}
+           />
+           {/* Outer glow */}
+           <div
+             className="absolute -inset-2 rounded-full blur-md opacity-40 animate-pulse"
+             style={{ backgroundColor: colors.brand.primary }}
+           />
+           {/* Orb */}
+           <div
+             className="relative w-16 h-16 rounded-full flex items-center justify-center shadow-xl"
+             style={{
+               backgroundColor: VANI_ORB_BG,
+               boxShadow: `0 0 30px ${colors.brand.primary}40`
+             }}
+           >
+             <Sparkles
+               className="h-8 w-8 animate-pulse"
+               style={{ color: colors.brand.primary }}
+             />
+           </div>
+         </div>
+         <p
+           className="text-lg font-semibold tracking-wide uppercase animate-pulse"
+           style={{ color: colors.utility.primaryText }}
+         >
+           Loading Entity...
+         </p>
+         <p
+           className="text-sm mt-2"
+           style={{ color: colors.utility.secondaryText }}
+         >
+           Please wait while we fetch the data
+         </p>
+       </div>
      </div>
    );
  }
