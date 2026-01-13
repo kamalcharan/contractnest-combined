@@ -6,26 +6,55 @@ import {
   Printer,
   ZoomIn,
   ZoomOut,
-  ChevronLeft,
-  ChevronRight,
   Loader2,
-  FileText,
   Clock,
   Layers,
   Users,
   Star,
   Tag,
   CheckCircle,
-  Building2,
+  AlertCircle,
+  IndianRupee,
 } from 'lucide-react';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { GlobalTemplate } from './TemplatePreviewModal';
+
+// Currency configuration
+type CurrencyCode = 'INR' | 'USD' | 'EUR' | 'GBP' | 'AED' | 'SGD';
+
+const CURRENCY_RATES: Record<CurrencyCode, { rate: number; symbol: string; name: string }> = {
+  INR: { rate: 1, symbol: '₹', name: 'Indian Rupee' },
+  USD: { rate: 0.012, symbol: '$', name: 'US Dollar' },
+  EUR: { rate: 0.011, symbol: '€', name: 'Euro' },
+  GBP: { rate: 0.0095, symbol: '£', name: 'British Pound' },
+  AED: { rate: 0.044, symbol: 'AED', name: 'UAE Dirham' },
+  SGD: { rate: 0.016, symbol: 'S$', name: 'Singapore Dollar' },
+};
+
+const formatCurrency = (amountInINR: number, targetCurrency: CurrencyCode): string => {
+  const { rate, symbol } = CURRENCY_RATES[targetCurrency];
+  const convertedAmount = amountInINR * rate;
+  return `${symbol}${convertedAmount.toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+};
+
+const getBillingLabel = (frequency: string) => {
+  const labels: Record<string, string> = {
+    'monthly': 'Per Month',
+    'quarterly': 'Per Quarter',
+    'yearly': 'Per Year',
+    'one-time': 'One Time',
+    'per-session': 'Per Session',
+    'per-visit': 'Per Visit',
+  };
+  return labels[frequency] || frequency;
+};
 
 interface TemplatePDFExportProps {
   isOpen: boolean;
   onClose: () => void;
   template: GlobalTemplate | null;
   mode: 'preview' | 'export';
+  selectedCurrency?: CurrencyCode;
 }
 
 const TemplatePDFExport: React.FC<TemplatePDFExportProps> = ({
@@ -33,6 +62,7 @@ const TemplatePDFExport: React.FC<TemplatePDFExportProps> = ({
   onClose,
   template,
   mode,
+  selectedCurrency = 'INR',
 }) => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
@@ -45,32 +75,81 @@ const TemplatePDFExport: React.FC<TemplatePDFExportProps> = ({
   const handleZoomIn = () => setZoom((prev) => Math.min(prev + 25, 200));
   const handleZoomOut = () => setZoom((prev) => Math.max(prev - 25, 50));
 
+  const totalWithTax = template.pricing.baseAmount * (1 + template.pricing.taxRate / 100);
+
   const handleExportPDF = async () => {
     setIsExporting(true);
     try {
       // Simulate PDF generation
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
-      // Create a simple PDF-like content for download
+      // Create a comprehensive PDF-like content for download
       const content = `
-TEMPLATE: ${template.name}
-=====================================
+═══════════════════════════════════════════════════════════════
+CONTRACT TEMPLATE: ${template.name}
+═══════════════════════════════════════════════════════════════
 
+TEMPLATE INFORMATION
+─────────────────────────────────────────────────────────────────
+Template ID: ${template.id}
 Industry: ${template.industryLabel}
-Complexity: ${template.complexity}
+Category: ${template.categoryLabel}
+Complexity: ${template.complexity.toUpperCase()}
 Duration: ${template.estimatedDuration}
-Rating: ${template.rating}/5
+Rating: ${template.rating}/5 (${template.usageCount} uses)
 
-DESCRIPTION:
+─────────────────────────────────────────────────────────────────
+DESCRIPTION
+─────────────────────────────────────────────────────────────────
 ${template.description}
 
-TAGS: ${template.tags.join(', ')}
+─────────────────────────────────────────────────────────────────
+PRICING DETAILS
+─────────────────────────────────────────────────────────────────
+Base Amount: ${formatCurrency(template.pricing.baseAmount, selectedCurrency)}
+GST (${template.pricing.taxRate}%): ${formatCurrency(template.pricing.baseAmount * template.pricing.taxRate / 100, selectedCurrency)}
+Total Amount: ${formatCurrency(totalWithTax, selectedCurrency)}
+Billing: ${getBillingLabel(template.pricing.billingFrequency)}
+Payment Type: ${template.pricing.paymentType === 'prepaid' ? 'Prepaid' : 'Postpaid'}
+${template.pricing.depositRequired && template.pricing.depositAmount ? `Security Deposit: ${formatCurrency(template.pricing.depositAmount, selectedCurrency)}` : ''}
 
-BLOCKS (${template.blocksCount}):
-${template.blocks.map((b, i) => `${i + 1}. ${b.name} (${b.type})${b.required ? ' [Required]' : ''}\n   ${b.description}`).join('\n\n')}
+─────────────────────────────────────────────────────────────────
+SERVICE DETAILS
+─────────────────────────────────────────────────────────────────
+Service Type: ${template.serviceDetails.serviceType.toUpperCase()}${template.serviceDetails.serviceType === 'limited' && template.serviceDetails.usageLimit ? ` (${template.serviceDetails.usageLimit} ${template.serviceDetails.usagePeriod || 'visits'})` : ''}
+Validity: ${template.serviceDetails.validityPeriod}
 
-=====================================
+What's Included:
+${template.serviceDetails.includes.map((item) => `  ✓ ${item}`).join('\n')}
+
+${template.serviceDetails.excludes.length > 0 ? `Not Included:\n${template.serviceDetails.excludes.map((item) => `  ✗ ${item}`).join('\n')}` : ''}
+
+─────────────────────────────────────────────────────────────────
+TAGS
+─────────────────────────────────────────────────────────────────
+${template.tags.join(' | ')}
+
+─────────────────────────────────────────────────────────────────
+TEMPLATE BLOCKS (${template.blocksCount})
+─────────────────────────────────────────────────────────────────
+${template.blocks.map((b, i) => `
+${i + 1}. ${b.name} [${b.type}]${b.required ? ' *REQUIRED*' : ''}
+   ${b.description}`).join('\n')}
+
+─────────────────────────────────────────────────────────────────
+TERMS AND CONDITIONS
+─────────────────────────────────────────────────────────────────
+${template.termsAndConditions.map((term, i) => `${i + 1}. ${term}`).join('\n')}
+
+─────────────────────────────────────────────────────────────────
+CANCELLATION POLICY
+─────────────────────────────────────────────────────────────────
+${template.cancellationPolicy}
+
+═══════════════════════════════════════════════════════════════
 Generated on: ${new Date().toLocaleString()}
+ContractNest • Catalog Studio
+═══════════════════════════════════════════════════════════════
       `;
 
       // Create and download blob
@@ -221,11 +300,47 @@ Generated on: ${new Date().toLocaleString()}
               <div className="flex items-start justify-between">
                 <div>
                   <h1 className="text-3xl font-bold text-gray-900 mb-2">{template.name}</h1>
-                  <p className="text-lg text-gray-600">{template.industryLabel}</p>
+                  <p className="text-lg text-gray-600">{template.industryLabel} • {template.categoryLabel}</p>
                 </div>
                 <div className="text-right">
                   <div className="text-sm text-gray-500 mb-1">Template ID</div>
                   <div className="text-sm font-mono text-gray-700">{template.id}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Pricing Banner */}
+            <div className="mb-8 p-6 rounded-lg" style={{ backgroundColor: '#F0FDF4' }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm text-gray-600 mb-1">Total Amount ({getBillingLabel(template.pricing.billingFrequency)})</div>
+                  <div className="text-4xl font-bold text-green-600">
+                    {formatCurrency(totalWithTax, selectedCurrency)}
+                  </div>
+                  <div className="text-sm text-gray-500 mt-1">
+                    Base: {formatCurrency(template.pricing.baseAmount, selectedCurrency)} + GST {template.pricing.taxRate}%
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="flex gap-2">
+                    <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                      {template.pricing.paymentType === 'prepaid' ? 'Prepaid' : 'Postpaid'}
+                    </span>
+                    <span
+                      className="px-3 py-1 rounded-full text-sm font-medium capitalize"
+                      style={{
+                        backgroundColor: getComplexityColor(template.complexity) + '20',
+                        color: getComplexityColor(template.complexity),
+                      }}
+                    >
+                      {template.complexity}
+                    </span>
+                  </div>
+                  {template.pricing.depositRequired && template.pricing.depositAmount && (
+                    <div className="text-sm text-amber-600 mt-2">
+                      Security Deposit: {formatCurrency(template.pricing.depositAmount, selectedCurrency)}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -262,23 +377,57 @@ Generated on: ${new Date().toLocaleString()}
               </div>
             </div>
 
-            {/* Complexity Badge */}
-            <div className="mb-8">
-              <span
-                className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium capitalize"
-                style={{
-                  backgroundColor: getComplexityColor(template.complexity) + '20',
-                  color: getComplexityColor(template.complexity),
-                }}
-              >
-                {template.complexity} Complexity
-              </span>
-            </div>
-
             {/* Description */}
             <div className="mb-8">
               <h2 className="text-xl font-semibold text-gray-900 mb-3">Description</h2>
               <p className="text-gray-700 leading-relaxed">{template.description}</p>
+            </div>
+
+            {/* Service Details */}
+            <div className="mb-8 grid grid-cols-2 gap-6">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 mb-3">What's Included</h2>
+                <div className="space-y-2">
+                  {template.serviceDetails.includes.map((item, index) => (
+                    <div key={index} className="flex items-start gap-2">
+                      <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+                      <span className="text-gray-700">{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {template.serviceDetails.excludes.length > 0 && (
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900 mb-3">Not Included</h2>
+                  <div className="space-y-2">
+                    {template.serviceDetails.excludes.map((item, index) => (
+                      <div key={index} className="flex items-start gap-2">
+                        <X className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                        <span className="text-gray-700">{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Service Type Info */}
+            <div className="mb-8 p-4 bg-blue-50 rounded-lg">
+              <div className="flex items-center gap-4">
+                <div>
+                  <span className="text-sm text-gray-600">Service Type:</span>
+                  <span className="ml-2 font-semibold text-gray-900 capitalize">
+                    {template.serviceDetails.serviceType}
+                    {template.serviceDetails.serviceType === 'limited' && template.serviceDetails.usageLimit && (
+                      <span className="text-blue-600"> ({template.serviceDetails.usageLimit} {template.serviceDetails.usagePeriod || 'visits'})</span>
+                    )}
+                  </span>
+                </div>
+                <div className="border-l pl-4" style={{ borderColor: '#BFDBFE' }}>
+                  <span className="text-sm text-gray-600">Validity:</span>
+                  <span className="ml-2 font-semibold text-gray-900">{template.serviceDetails.validityPeriod}</span>
+                </div>
+              </div>
             </div>
 
             {/* Tags */}
@@ -327,6 +476,32 @@ Generated on: ${new Date().toLocaleString()}
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+
+            {/* Terms and Conditions */}
+            <div className="mb-8">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Terms and Conditions</h2>
+              <div className="space-y-2">
+                {template.termsAndConditions.map((term, index) => (
+                  <div key={index} className="flex items-start gap-2">
+                    <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-xs font-medium text-gray-600">{index + 1}</span>
+                    </div>
+                    <span className="text-gray-700">{term}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Cancellation Policy */}
+            <div className="mb-8 p-4 rounded-lg" style={{ backgroundColor: '#FEF3C7' }}>
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0" />
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-1">Cancellation Policy</h3>
+                  <p className="text-gray-700">{template.cancellationPolicy}</p>
+                </div>
               </div>
             </div>
 

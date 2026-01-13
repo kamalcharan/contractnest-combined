@@ -1,5 +1,5 @@
 ═══════════════════════════════════════════════════════════════
-COPY INSTRUCTIONS - Wellness/Healthcare Templates Feature
+COPY INSTRUCTIONS - Wellness/Healthcare Templates Feature (Enhanced)
 ═══════════════════════════════════════════════════════════════
 Branch: wellness-healthcare-templates
 Date: 2026-01-13
@@ -9,60 +9,105 @@ Submodules Affected: contractnest-ui
 FILES TO COPY
 ═══════════════════════════════════════════════════════════════
 
-FILE 1: templates-list.tsx (MODIFIED - 1189 lines)
+FILE 1: templates-list.tsx (ENHANCED - 2286 lines)
 ────────────────────────────────────────────────────────────────
-Source: MANUAL_COPY_FILES\wellness-healthcare-templates\contractnest-ui\src\pages\catalog-studio\templates-list.tsx
-Destination: contractnest-ui\src\pages\catalog-studio\templates-list.tsx
-Purpose: Main templates list page with 2 tabs, 12 wellness/healthcare templates, industry filter
+Source: MANUAL_COPY_FILES/wellness-healthcare-templates/contractnest-ui/src/pages/catalog-studio/templates-list.tsx
+Destination: contractnest-ui/src/pages/catalog-studio/templates-list.tsx
+Purpose: Main templates list page with 2 tabs, 20 templates, industry & category filters, currency conversion, pricing display
 
-FILE 2: TemplatePreviewModal.tsx (NEW - 295 lines)
+FILE 2: TemplatePreviewModal.tsx (ENHANCED - 677 lines)
 ────────────────────────────────────────────────────────────────
-Source: MANUAL_COPY_FILES\wellness-healthcare-templates\contractnest-ui\src\pages\catalog-studio\components\TemplatePreviewModal.tsx
-Destination: contractnest-ui\src\pages\catalog-studio\components\TemplatePreviewModal.tsx
-Purpose: Modal component for previewing template details and blocks
+Source: MANUAL_COPY_FILES/wellness-healthcare-templates/contractnest-ui/src/pages/catalog-studio/components/TemplatePreviewModal.tsx
+Destination: contractnest-ui/src/pages/catalog-studio/components/TemplatePreviewModal.tsx
+Purpose: Modal component for previewing template details, pricing summary, service details, terms & conditions
 
-FILE 3: TemplatePDFExport.tsx (NEW - 250 lines)
+FILE 3: TemplatePDFExport.tsx (ENHANCED - 523 lines)
 ────────────────────────────────────────────────────────────────
-Source: MANUAL_COPY_FILES\wellness-healthcare-templates\contractnest-ui\src\pages\catalog-studio\components\TemplatePDFExport.tsx
-Destination: contractnest-ui\src\pages\catalog-studio\components\TemplatePDFExport.tsx
-Purpose: PDF preview and export functionality
+Source: MANUAL_COPY_FILES/wellness-healthcare-templates/contractnest-ui/src/pages/catalog-studio/components/TemplatePDFExport.tsx
+Destination: contractnest-ui/src/pages/catalog-studio/components/TemplatePDFExport.tsx
+Purpose: PDF preview and export with pricing, terms, service details
 
 ═══════════════════════════════════════════════════════════════
 FEATURES INCLUDED
 ═══════════════════════════════════════════════════════════════
 
 1. Two Tabs: My Templates | Global Templates
-2. 12 Wellness/Healthcare Templates:
-   - Hospital Bed Rental
-   - Wheelchair Rental Package
-   - Oxygen Concentrator Rental
-   - Patient Lift Installation & Service
-   - Physiotherapy Session Package
-   - Home Nursing Care Plan
-   - Stairlift Installation & Maintenance
-   - Wellness Massage Package
-   - Comprehensive Health Checkup
-   - Rehabilitation Equipment Rental
-   - Elderly Care Monthly Plan
-   - Medical Equipment AMC
 
-3. 7 Industry Categories:
+2. 20 AMC/Service Templates with Realistic Pricing:
+   HEALTHCARE & WELLNESS:
+   - Hospital Bed Rental (₹8,000/month)
+   - Wheelchair Rental Package (₹2,500/month)
+   - Oxygen Concentrator Rental (₹6,500/month)
+   - Wellness Massage Package (₹1,200/session)
+   - Physiotherapy Session Package (₹1,500/session)
+   - Comprehensive Health Checkup (₹8,500 one-time)
+   - Home Nursing Care Plan (₹18,000/month)
+   - Elderly Care Monthly Plan (₹25,000/month)
+   - Stairlift Installation & Maintenance (₹185,000/year)
+   - Medical Equipment AMC (₹45,000/year)
+   - CT Scan Machine AMC (₹350,000/year)
+   - Defibrillator AMC (₹18,000/year)
+
+   INDUSTRIAL & FACILITY:
+   - Split AC AMC (₹3,500/year per unit)
+   - Central HVAC AMC (₹85,000/year)
+   - DG Set AMC (₹75,000/year)
+   - Passenger Lift AMC (₹48,000/year)
+   - Goods Elevator AMC (₹65,000/year)
+   - Clean Room AMC (₹250,000/year)
+   - Pharma Reactor AMC (₹450,000/year)
+   - Industrial Compressor AMC (₹55,000/year)
+
+3. Industry Filter (8 categories):
    - All Industries
    - Wellness & Spa
    - Healthcare Equipment
    - Mobility Aids
    - Home Healthcare
-   - Rehabilitation
-   - Senior Care
-   - Preventive Care
+   - HVAC & Cooling
+   - Industrial
+   - Pharma & Manufacturing
 
-4. Template Preview Modal with blocks detail
-5. PDF Export + Preview with zoom
-6. Copy to My Templates functionality
-7. Grid/List view toggle
-8. Search by name, description, tags
-9. Sort by Popular, Rating, Recent, Name
-10. Toast notifications
+4. Category Filter (Cross-Industry):
+   - All Categories
+   - Medical Equipment
+   - Rental Services
+   - Wellness Services
+   - Lift & Elevator
+   - HVAC Systems
+   - Industrial Equipment
+   - Pharma Equipment
+
+5. Currency Support:
+   - INR (default)
+   - USD, EUR, GBP, AED, SGD
+   - Real-time conversion display
+
+6. Enhanced Template Data:
+   - Pricing (base amount, GST, billing frequency, payment type)
+   - Service Details (limited/unlimited, usage limits, validity)
+   - Terms and Conditions
+   - Cancellation Policy
+   - What's Included / Not Included
+
+7. Block Types Used:
+   - Service
+   - Spare Part
+   - Billing
+   - Text
+   - Video
+   - Image
+   - Checklist
+   - Document
+
+8. UI Features:
+   - Grid/List view toggle
+   - Search by name, description, tags
+   - Sort by Popular, Rating, Recent, Name, Price (Low-High, High-Low)
+   - Template Preview Modal with tabs (Overview, Blocks, Terms)
+   - PDF Export + Preview with zoom
+   - Copy to My Templates functionality
+   - Toast notifications
 
 ═══════════════════════════════════════════════════════════════
 FOLDER STRUCTURE (Create if not exists)
@@ -74,7 +119,41 @@ contractnest-ui/
         └── catalog-studio/
             ├── templates-list.tsx (MODIFIED)
             └── components/        (CREATE FOLDER IF NOT EXISTS)
-                ├── TemplatePreviewModal.tsx (NEW)
-                └── TemplatePDFExport.tsx (NEW)
+                ├── TemplatePreviewModal.tsx (NEW/MODIFIED)
+                └── TemplatePDFExport.tsx (NEW/MODIFIED)
+
+═══════════════════════════════════════════════════════════════
+COPY COMMANDS (Windows PowerShell)
+═══════════════════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Create components folder if not exists
+New-Item -ItemType Directory -Force -Path "contractnest-ui\src\pages\catalog-studio\components"
+
+# Copy all files
+Copy-Item "MANUAL_COPY_FILES\wellness-healthcare-templates\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "✅ All files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════
+- [ ] Navigate to Templates List in Catalog Studio menu
+- [ ] Verify My Templates tab shows empty/user templates
+- [ ] Verify Global Templates tab shows 20 templates
+- [ ] Test industry filter (select each industry)
+- [ ] Test category filter (select each category)
+- [ ] Test currency selector (switch between currencies)
+- [ ] Test search functionality
+- [ ] Test sort options (Popular, Rating, Name, Price)
+- [ ] Click on a template card to open preview modal
+- [ ] Verify modal shows Overview, Blocks, Terms tabs
+- [ ] Verify pricing summary displays correctly
+- [ ] Test Copy to My Templates button
+- [ ] Test Export as PDF button
+- [ ] Test Preview PDF button with zoom controls
+- [ ] Verify toast notifications appear
+- [ ] Test in dark mode
 
 ═══════════════════════════════════════════════════════════════
