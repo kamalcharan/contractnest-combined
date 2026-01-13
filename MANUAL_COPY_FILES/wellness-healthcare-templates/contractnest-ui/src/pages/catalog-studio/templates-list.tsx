@@ -1,6 +1,5 @@
 // src/pages/catalog-studio/templates-list.tsx
-// Enhanced Template Management with Multi-Industry AMC Support
-// Includes pricing, service details, terms & conditions
+// REDESIGNED: Premium UX with WOW factor
 import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -12,139 +11,61 @@ import {
   Clock,
   X,
   Loader2,
-  AlertCircle,
   FileText,
-  LayoutTemplate,
   Eye,
-  Edit,
   Copy,
-  Trash2,
   MoreVertical,
-  History,
-  Calendar,
   Users,
   TrendingUp,
   Globe,
-  Building2,
   Layers,
   CheckCircle,
-  Filter,
   Heart,
-  Activity,
-  Accessibility,
-  Home,
-  UserCheck,
-  Wrench,
-  Shield,
   Download,
-  ChevronDown,
-  IndianRupee,
-  DollarSign,
-  Euro,
-  PoundSterling,
-  Banknote,
-  Tag,
-  Thermometer,
+  ChevronRight,
+  Sparkles,
   Zap,
-  Factory,
-  Pill,
-  Wind,
-  ArrowUpDown,
+  Shield,
+  ArrowRight,
+  BadgeCheck,
+  Timer,
+  IndianRupee,
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 
-// Import components
-import TemplatePreviewModal from './components/TemplatePreviewModal';
-import TemplatePDFExport from './components/TemplatePDFExport';
-
 // =====================================================
-// CURRENCY CONFIGURATION
+// TYPES & INTERFACES
 // =====================================================
 type CurrencyCode = 'INR' | 'USD' | 'EUR' | 'GBP' | 'AED' | 'SGD';
 
-const CURRENCY_RATES: Record<CurrencyCode, { rate: number; symbol: string; name: string }> = {
-  INR: { rate: 1, symbol: '\u20B9', name: 'Indian Rupee' },
-  USD: { rate: 0.012, symbol: '$', name: 'US Dollar' },
-  EUR: { rate: 0.011, symbol: '\u20AC', name: 'Euro' },
-  GBP: { rate: 0.0095, symbol: '\u00A3', name: 'British Pound' },
-  AED: { rate: 0.044, symbol: 'AED', name: 'UAE Dirham' },
-  SGD: { rate: 0.016, symbol: 'S$', name: 'Singapore Dollar' },
-};
-
-const CURRENCY_OPTIONS: { code: CurrencyCode; label: string; icon: React.ReactNode }[] = [
-  { code: 'INR', label: 'INR', icon: <IndianRupee className="w-4 h-4" /> },
-  { code: 'USD', label: 'USD', icon: <DollarSign className="w-4 h-4" /> },
-  { code: 'EUR', label: 'EUR', icon: <Euro className="w-4 h-4" /> },
-  { code: 'GBP', label: 'GBP', icon: <PoundSterling className="w-4 h-4" /> },
-  { code: 'AED', label: 'AED', icon: <Banknote className="w-4 h-4" /> },
-  { code: 'SGD', label: 'SGD', icon: <Banknote className="w-4 h-4" /> },
-];
-
-// =====================================================
-// HELPER: FORMAT CURRENCY
-// =====================================================
-const formatCurrency = (
-  amountInINR: number,
-  targetCurrency: CurrencyCode,
-  options?: { compact?: boolean; showSymbol?: boolean }
-): string => {
-  const { rate, symbol } = CURRENCY_RATES[targetCurrency];
-  const convertedAmount = amountInINR * rate;
-  const showSymbol = options?.showSymbol !== false;
-
-  if (options?.compact) {
-    if (convertedAmount >= 10000000) {
-      return `${showSymbol ? symbol : ''}${(convertedAmount / 10000000).toFixed(2)}Cr`;
-    } else if (convertedAmount >= 100000) {
-      return `${showSymbol ? symbol : ''}${(convertedAmount / 100000).toFixed(2)}L`;
-    } else if (convertedAmount >= 1000) {
-      return `${showSymbol ? symbol : ''}${(convertedAmount / 1000).toFixed(1)}K`;
-    }
-  }
-
-  // Format with locale-specific separators
-  const formatted = new Intl.NumberFormat(targetCurrency === 'INR' ? 'en-IN' : 'en-US', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(Math.round(convertedAmount));
-
-  return `${showSymbol ? symbol : ''}${formatted}`;
-};
-
-// =====================================================
-// BLOCK TYPES
-// =====================================================
-type BlockType = 'Service' | 'Spare Part' | 'Billing' | 'Text' | 'Video' | 'Image' | 'Checklist' | 'Document';
-
-// =====================================================
-// ENHANCED GLOBAL TEMPLATE INTERFACE
-// =====================================================
-export interface TemplatePricing {
-  baseAmount: number; // Always stored in INR
-  currency: CurrencyCode;
-  billingFrequency: 'one-time' | 'monthly' | 'quarterly' | 'half-yearly' | 'yearly';
-  paymentType: 'advance' | 'on-completion' | 'milestone' | 'emi';
-  deposit?: number;
-  taxRate: number; // Percentage (e.g., 18 for GST)
+interface TemplatePricing {
+  baseAmount: number;
+  currency: 'INR';
+  billingFrequency: 'monthly' | 'quarterly' | 'yearly' | 'one-time' | 'per-session' | 'per-visit';
+  paymentType: 'prepaid' | 'postpaid';
+  depositRequired: boolean;
+  depositAmount?: number;
+  taxRate: number;
 }
 
-export interface ServiceDetails {
-  serviceType: 'rental' | 'amc' | 'installation' | 'repair' | 'consultation' | 'subscription';
+interface ServiceDetails {
+  serviceType: 'limited' | 'unlimited';
   usageLimit?: number;
-  usageLimitUnit?: 'visits' | 'hours' | 'sessions' | 'calls' | 'units';
-  validityPeriod: number; // In months
+  usagePeriod?: string;
+  validityPeriod: string;
   includes: string[];
+  excludes: string[];
 }
 
-export interface TemplateBlock {
+interface TemplateBlock {
   id: string;
   name: string;
-  type: BlockType;
+  type: string;
   description: string;
   required: boolean;
 }
 
-export interface GlobalTemplate {
+interface GlobalTemplate {
   id: string;
   name: string;
   description: string;
@@ -161,2126 +82,1880 @@ export interface GlobalTemplate {
   usageCount: number;
   rating: number;
   isPopular: boolean;
+  isFeatured?: boolean;
   createdAt: string;
   updatedAt: string;
-  // Enhanced fields
   pricing: TemplatePricing;
   serviceDetails: ServiceDetails;
   termsAndConditions: string[];
   cancellationPolicy: string;
+  gradient?: string;
 }
 
 // =====================================================
-// INDUSTRIES CONFIGURATION
+// CURRENCY CONFIG
 // =====================================================
-const INDUSTRIES = [
-  { id: 'all', name: 'All Industries', icon: '\uD83D\uDCCB', count: 20 },
-  { id: 'healthcare', name: 'Healthcare', icon: '\uD83C\uDFE5', count: 5 },
-  { id: 'wellness', name: 'Wellness & Spa', icon: '\uD83E\uDDD8', count: 3 },
-  { id: 'facility-management', name: 'Facility Management', icon: '\uD83C\uDFE2', count: 4 },
-  { id: 'pharma', name: 'Pharma & Biotech', icon: '\uD83D\uDC8A', count: 2 },
-  { id: 'industrial', name: 'Industrial', icon: '\uD83C\uDFED', count: 3 },
-  { id: 'home-healthcare', name: 'Home Healthcare', icon: '\uD83C\uDFE0', count: 3 },
-];
+const CURRENCY_CONFIG: Record<CurrencyCode, { rate: number; symbol: string }> = {
+  INR: { rate: 1, symbol: '₹' },
+  USD: { rate: 0.012, symbol: '$' },
+  EUR: { rate: 0.011, symbol: '€' },
+  GBP: { rate: 0.0095, symbol: '£' },
+  AED: { rate: 0.044, symbol: 'د.إ' },
+  SGD: { rate: 0.016, symbol: 'S$' },
+};
+
+const formatCurrency = (amount: number, currency: CurrencyCode): string => {
+  const { rate, symbol } = CURRENCY_CONFIG[currency];
+  const converted = amount * rate;
+  if (converted >= 100000) return `${symbol}${(converted / 100000).toFixed(1)}L`;
+  if (converted >= 1000) return `${symbol}${(converted / 1000).toFixed(0)}K`;
+  return `${symbol}${converted.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+};
+
+const formatFullCurrency = (amount: number, currency: CurrencyCode): string => {
+  const { rate, symbol } = CURRENCY_CONFIG[currency];
+  const converted = amount * rate;
+  return `${symbol}${converted.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+};
 
 // =====================================================
-// CATEGORIES CONFIGURATION
+// CATEGORIES (Single Filter System)
 // =====================================================
 const CATEGORIES = [
-  { id: 'all', name: 'All Categories', icon: '\uD83D\uDCE6', count: 20 },
-  { id: 'medical-equipment', name: 'Medical Equipment', icon: '\u2695\uFE0F', count: 5 },
-  { id: 'mobility-aids', name: 'Mobility Aids', icon: '\u267F', count: 2 },
-  { id: 'hvac-climate', name: 'HVAC & Climate', icon: '\u2744\uFE0F', count: 3 },
-  { id: 'vertical-transport', name: 'Vertical Transport', icon: '\uD83D\uDEBB', count: 2 },
-  { id: 'clean-room', name: 'Clean Room', icon: '\uD83E\uDDEA', count: 2 },
-  { id: 'wellness-equipment', name: 'Wellness Equipment', icon: '\uD83D\uDCAA', count: 3 },
-  { id: 'home-care', name: 'Home Care', icon: '\uD83C\uDFE0', count: 3 },
+  { id: 'all', name: 'All Templates', emoji: '✨', color: 'from-violet-500 to-purple-600' },
+  { id: 'healthcare', name: 'Healthcare', emoji: '🏥', color: 'from-red-500 to-pink-600' },
+  { id: 'wellness', name: 'Wellness', emoji: '🧘', color: 'from-emerald-500 to-teal-600' },
+  { id: 'hvac', name: 'HVAC & Climate', emoji: '❄️', color: 'from-cyan-500 to-blue-600' },
+  { id: 'lifts', name: 'Lifts & Elevators', emoji: '🛗', color: 'from-amber-500 to-orange-600' },
+  { id: 'industrial', name: 'Industrial', emoji: '🏭', color: 'from-slate-500 to-zinc-600' },
+  { id: 'pharma', name: 'Pharma', emoji: '💊', color: 'from-fuchsia-500 to-pink-600' },
 ];
 
 // =====================================================
-// 20 GLOBAL TEMPLATES WITH PRICING & DETAILS
+// GLOBAL TEMPLATES DATA
 // =====================================================
 const GLOBAL_TEMPLATES: GlobalTemplate[] = [
-  // ===== HEALTHCARE / MEDICAL EQUIPMENT =====
+  // FEATURED - CT Scan AMC
   {
     id: 'gt-001',
-    name: 'Hospital Bed Rental',
-    description: 'Complete rental agreement for hospital beds including delivery, setup, maintenance, and pickup services. Ideal for home healthcare and recovery patients.',
+    name: 'CT Scan Machine AMC',
+    description: 'Comprehensive annual maintenance for CT scanners with 4-hour response SLA, tube coverage, and AERB compliance support.',
     industry: 'healthcare',
     industryLabel: 'Healthcare',
-    industryIcon: '\uD83C\uDFE5',
-    category: 'medical-equipment',
+    industryIcon: '🏥',
+    category: 'healthcare',
+    categoryLabel: 'Medical Equipment',
+    complexity: 'complex',
+    estimatedDuration: '30-40 min',
+    blocksCount: 6,
+    blocks: [
+      { id: 'b1', name: 'Equipment Registration', type: 'Service', description: 'CT scanner details and specifications', required: true },
+      { id: 'b2', name: 'PM Schedule', type: 'Checklist', description: 'Quarterly preventive maintenance', required: true },
+      { id: 'b3', name: 'Spare Parts Coverage', type: 'Spare Part', description: 'Parts included in AMC', required: true },
+      { id: 'b4', name: 'SLA Terms', type: 'Text', description: 'Response and resolution times', required: true },
+      { id: 'b5', name: 'Billing Schedule', type: 'Billing', description: 'Payment milestones', required: true },
+      { id: 'b6', name: 'Compliance Docs', type: 'Document', description: 'AERB certificates', required: true },
+    ],
+    tags: ['CT Scan', 'Radiology', 'AMC', 'Healthcare'],
+    usageCount: 89,
+    rating: 4.9,
+    isPopular: true,
+    isFeatured: true,
+    createdAt: '2024-03-10',
+    updatedAt: '2024-12-10',
+    pricing: {
+      baseAmount: 1200000,
+      currency: 'INR',
+      billingFrequency: 'yearly',
+      paymentType: 'prepaid',
+      depositRequired: false,
+      taxRate: 18,
+    },
+    serviceDetails: {
+      serviceType: 'limited',
+      usageLimit: 4,
+      usagePeriod: 'PM visits/year',
+      validityPeriod: '12 Months',
+      includes: ['4 PM Visits', 'Unlimited Breakdowns', 'X-Ray Tube (Pro-rata)', 'Software Updates', 'AERB Support', '4-Hour Response'],
+      excludes: ['Gantry damage from external factors', 'Power surge damage without UPS'],
+    },
+    termsAndConditions: [
+      'Contract valid for 12 months from effective date',
+      'Tube replacement on pro-rata basis based on scan count',
+      'Customer to provide access during working hours',
+    ],
+    cancellationPolicy: 'Pro-rata refund within first 30 days minus service charges.',
+    gradient: 'from-red-500 via-pink-500 to-rose-600',
+  },
+  // FEATURED - Central HVAC
+  {
+    id: 'gt-002',
+    name: 'Central HVAC System AMC',
+    description: 'Complete maintenance package for central air conditioning systems including chillers, AHUs, and ductwork.',
+    industry: 'hvac',
+    industryLabel: 'HVAC & Climate',
+    industryIcon: '❄️',
+    category: 'hvac',
+    categoryLabel: 'Climate Control',
+    complexity: 'complex',
+    estimatedDuration: '25-35 min',
+    blocksCount: 5,
+    blocks: [
+      { id: 'b1', name: 'System Inventory', type: 'Service', description: 'All HVAC units and specs', required: true },
+      { id: 'b2', name: 'PM Checklist', type: 'Checklist', description: 'Monthly maintenance tasks', required: true },
+      { id: 'b3', name: 'Consumables', type: 'Spare Part', description: 'Filters, belts, refrigerant', required: true },
+      { id: 'b4', name: 'Energy Audit', type: 'Document', description: 'Quarterly efficiency reports', required: false },
+      { id: 'b5', name: 'Contract Value', type: 'Billing', description: 'Annual fee breakdown', required: true },
+    ],
+    tags: ['HVAC', 'Central AC', 'Chiller', 'AMC'],
+    usageCount: 156,
+    rating: 4.8,
+    isPopular: true,
+    isFeatured: true,
+    createdAt: '2024-02-15',
+    updatedAt: '2024-12-08',
+    pricing: {
+      baseAmount: 850000,
+      currency: 'INR',
+      billingFrequency: 'yearly',
+      paymentType: 'prepaid',
+      depositRequired: false,
+      taxRate: 18,
+    },
+    serviceDetails: {
+      serviceType: 'unlimited',
+      validityPeriod: '12 Months',
+      includes: ['Monthly PM Visits', 'Unlimited Breakdown Calls', 'Filter Replacement', 'Refrigerant Top-up', '24/7 Emergency Support', 'Energy Efficiency Reports'],
+      excludes: ['Compressor replacement', 'Major refrigerant leaks', 'Structural duct repairs'],
+    },
+    termsAndConditions: [
+      'Covers central plant and all connected AHUs',
+      'Refrigerant top-up limited to 10kg per year',
+      'Emergency response within 4 hours',
+    ],
+    cancellationPolicy: '30-day notice required. Pro-rata refund for remaining period.',
+    gradient: 'from-cyan-500 via-blue-500 to-indigo-600',
+  },
+  // FEATURED - Passenger Lift
+  {
+    id: 'gt-003',
+    name: 'Passenger Lift AMC',
+    description: 'Annual maintenance contract for passenger elevators with safety compliance, modernization support, and 24/7 emergency rescue.',
+    industry: 'lifts',
+    industryLabel: 'Lifts & Elevators',
+    industryIcon: '🛗',
+    category: 'lifts',
+    categoryLabel: 'Vertical Transport',
+    complexity: 'medium',
+    estimatedDuration: '20-25 min',
+    blocksCount: 5,
+    blocks: [
+      { id: 'b1', name: 'Lift Details', type: 'Service', description: 'Make, model, capacity, floors', required: true },
+      { id: 'b2', name: 'Safety Inspection', type: 'Checklist', description: 'Monthly safety checks', required: true },
+      { id: 'b3', name: 'Parts Coverage', type: 'Spare Part', description: 'Included replacements', required: true },
+      { id: 'b4', name: 'Emergency Protocol', type: 'Text', description: '24/7 rescue SLA', required: true },
+      { id: 'b5', name: 'AMC Fees', type: 'Billing', description: 'Quarterly payment schedule', required: true },
+    ],
+    tags: ['Elevator', 'Lift', 'AMC', 'Safety'],
+    usageCount: 234,
+    rating: 4.7,
+    isPopular: true,
+    isFeatured: true,
+    createdAt: '2024-01-20',
+    updatedAt: '2024-12-05',
+    pricing: {
+      baseAmount: 48000,
+      currency: 'INR',
+      billingFrequency: 'yearly',
+      paymentType: 'prepaid',
+      depositRequired: false,
+      taxRate: 18,
+    },
+    serviceDetails: {
+      serviceType: 'unlimited',
+      validityPeriod: '12 Months',
+      includes: ['Monthly Preventive Maintenance', 'Safety Certificate Support', 'Unlimited Breakdown Visits', '30-min Emergency Response', 'Lubrication & Cleaning', 'Minor Parts Replacement'],
+      excludes: ['Major parts (motor, controller)', 'Cabin interiors', 'Vandalism damage'],
+    },
+    termsAndConditions: [
+      'Valid for lifts up to 10 floors',
+      'Higher floors attract additional charges',
+      'Annual safety certification support included',
+    ],
+    cancellationPolicy: '60-day notice. No refund after 6 months.',
+    gradient: 'from-amber-500 via-orange-500 to-red-500',
+  },
+  // Hospital Bed Rental
+  {
+    id: 'gt-004',
+    name: 'Hospital Bed Rental',
+    description: 'Premium motorized hospital bed rental with mattress, side rails, and home delivery setup.',
+    industry: 'healthcare',
+    industryLabel: 'Healthcare',
+    industryIcon: '🏥',
+    category: 'healthcare',
     categoryLabel: 'Medical Equipment',
     complexity: 'simple',
     estimatedDuration: '10-15 min',
     blocksCount: 4,
     blocks: [
-      { id: 'b1', name: 'Equipment Details', type: 'Service', description: 'Bed specifications, model, and features', required: true },
-      { id: 'b2', name: 'Rental Terms', type: 'Billing', description: 'Duration, pricing, deposit, and payment schedule', required: true },
-      { id: 'b3', name: 'Delivery & Setup', type: 'Service', description: 'Delivery address, setup requirements, and timing', required: false },
-      { id: 'b4', name: 'Care Instructions', type: 'Document', description: 'Usage guidelines and maintenance tips', required: false },
+      { id: 'b1', name: 'Bed Selection', type: 'Service', description: 'Model and features', required: true },
+      { id: 'b2', name: 'Rental Terms', type: 'Billing', description: 'Duration and deposit', required: true },
+      { id: 'b3', name: 'Delivery Setup', type: 'Service', description: 'Address and timing', required: true },
+      { id: 'b4', name: 'Care Guide', type: 'Document', description: 'Usage instructions', required: false },
     ],
-    tags: ['rental', 'hospital-bed', 'home-care', 'medical-equipment'],
-    usageCount: 234,
+    tags: ['Hospital Bed', 'Rental', 'Home Care'],
+    usageCount: 312,
     rating: 4.8,
     isPopular: true,
-    createdAt: '2024-06-15T10:00:00Z',
-    updatedAt: '2024-12-01T14:30:00Z',
+    createdAt: '2024-04-10',
+    updatedAt: '2024-12-01',
     pricing: {
       baseAmount: 8500,
       currency: 'INR',
       billingFrequency: 'monthly',
-      paymentType: 'advance',
-      deposit: 15000,
+      paymentType: 'prepaid',
+      depositRequired: true,
+      depositAmount: 15000,
       taxRate: 18,
     },
     serviceDetails: {
-      serviceType: 'rental',
-      validityPeriod: 1,
-      includes: ['Delivery & Setup', 'Monthly Maintenance', 'Mattress', '24/7 Helpline', 'Pickup on Return'],
+      serviceType: 'unlimited',
+      validityPeriod: '1 Month (Renewable)',
+      includes: ['Motorized Bed', 'Medical Mattress', 'Side Rails', 'Free Delivery', 'Setup & Demo', 'Monthly Maintenance'],
+      excludes: ['Bed linen', 'Patient care services'],
     },
     termsAndConditions: [
-      'Minimum rental period of 1 month',
-      'Security deposit refundable on equipment return in good condition',
-      'Damage charges applicable for misuse',
-      'Free replacement within 48 hours for equipment malfunction',
-      'Rental can be extended with 3 days prior notice',
+      'Minimum rental: 1 month',
+      'Deposit refundable on return',
+      'Free replacement for defects',
     ],
-    cancellationPolicy: 'Full refund if cancelled within 24 hours of booking. 50% deposit forfeited for cancellation after delivery.',
+    cancellationPolicy: 'Full refund within 24hrs. 50% deposit after delivery.',
   },
+  // Oxygen Concentrator
   {
-    id: 'gt-002',
-    name: 'CT Scan Machine AMC',
-    description: 'Comprehensive annual maintenance contract for CT scan machines including preventive maintenance, calibration, repairs, spare parts, and emergency breakdown support.',
-    industry: 'healthcare',
-    industryLabel: 'Healthcare',
-    industryIcon: '\uD83C\uDFE5',
-    category: 'medical-equipment',
-    categoryLabel: 'Medical Equipment',
-    complexity: 'complex',
-    estimatedDuration: '30-40 min',
-    blocksCount: 6,
-    blocks: [
-      { id: 'b1', name: 'Equipment Details', type: 'Service', description: 'CT scanner model, serial number, and specifications', required: true },
-      { id: 'b2', name: 'PM Schedule', type: 'Checklist', description: 'Preventive maintenance schedule and checklist', required: true },
-      { id: 'b3', name: 'Spare Parts Coverage', type: 'Spare Part', description: 'List of covered and excluded spare parts', required: true },
-      { id: 'b4', name: 'Response SLA', type: 'Text', description: 'Response time and resolution commitments', required: true },
-      { id: 'b5', name: 'AMC Pricing', type: 'Billing', description: 'Annual contract value and payment terms', required: true },
-      { id: 'b6', name: 'Compliance Documents', type: 'Document', description: 'AERB compliance and calibration certificates', required: true },
-    ],
-    tags: ['amc', 'ct-scan', 'radiology', 'medical-imaging', 'healthcare'],
-    usageCount: 89,
-    rating: 4.9,
-    isPopular: true,
-    createdAt: '2024-03-10T09:00:00Z',
-    updatedAt: '2024-12-10T11:30:00Z',
-    pricing: {
-      baseAmount: 1200000,
-      currency: 'INR',
-      billingFrequency: 'yearly',
-      paymentType: 'advance',
-      deposit: 0,
-      taxRate: 18,
-    },
-    serviceDetails: {
-      serviceType: 'amc',
-      usageLimit: 4,
-      usageLimitUnit: 'visits',
-      validityPeriod: 12,
-      includes: ['4 PM Visits/Year', 'Unlimited Breakdown Calls', 'X-ray Tube Coverage (Pro-rata)', 'Software Updates', 'AERB Compliance Support', '4-Hour Response Time'],
-    },
-    termsAndConditions: [
-      'Contract valid for 12 months from effective date',
-      'Tube replacement covered on pro-rata basis based on scan count',
-      'Excludes damage from power fluctuation without proper UPS',
-      'Customer to provide access during working hours for PM',
-      'Annual calibration by certified physicist included',
-    ],
-    cancellationPolicy: 'No refund for cancellation after 30 days. Pro-rata refund available within first 30 days minus service charges for visits conducted.',
-  },
-  {
-    id: 'gt-003',
-    name: 'Defibrillator AMC',
-    description: 'Annual maintenance contract for AED/defibrillators including battery replacement, pad checks, firmware updates, and emergency response training.',
-    industry: 'healthcare',
-    industryLabel: 'Healthcare',
-    industryIcon: '\uD83C\uDFE5',
-    category: 'medical-equipment',
-    categoryLabel: 'Medical Equipment',
-    complexity: 'simple',
-    estimatedDuration: '12-15 min',
-    blocksCount: 4,
-    blocks: [
-      { id: 'b1', name: 'Device Registration', type: 'Service', description: 'AED model, location, and serial numbers', required: true },
-      { id: 'b2', name: 'Maintenance Schedule', type: 'Checklist', description: 'Quarterly inspection checklist', required: true },
-      { id: 'b3', name: 'Consumables', type: 'Spare Part', description: 'Battery and pad replacement schedule', required: true },
-      { id: 'b4', name: 'AMC Pricing', type: 'Billing', description: 'Annual fee and consumable costs', required: true },
-    ],
-    tags: ['amc', 'defibrillator', 'aed', 'emergency', 'life-saving'],
-    usageCount: 156,
-    rating: 4.7,
-    isPopular: false,
-    createdAt: '2024-05-20T10:00:00Z',
-    updatedAt: '2024-11-15T09:30:00Z',
-    pricing: {
-      baseAmount: 25000,
-      currency: 'INR',
-      billingFrequency: 'yearly',
-      paymentType: 'advance',
-      deposit: 0,
-      taxRate: 18,
-    },
-    serviceDetails: {
-      serviceType: 'amc',
-      usageLimit: 4,
-      usageLimitUnit: 'visits',
-      validityPeriod: 12,
-      includes: ['Quarterly Inspections', 'Battery Testing', 'Pad Expiry Monitoring', 'Firmware Updates', 'Staff Training (2 sessions)', 'Replacement Unit During Repair'],
-    },
-    termsAndConditions: [
-      'Covers up to 2 AED units per contract',
-      'Battery replacement at additional cost if outside warranty',
-      'Training for up to 10 staff members per session',
-      'Device must be accessible for quarterly inspections',
-    ],
-    cancellationPolicy: 'Full refund if cancelled within 15 days. No refund after first quarterly inspection.',
-  },
-  {
-    id: 'gt-004',
+    id: 'gt-005',
     name: 'Oxygen Concentrator Rental',
-    description: 'Medical oxygen concentrator rental agreement with installation, training, maintenance, and emergency support services included.',
-    industry: 'home-healthcare',
-    industryLabel: 'Home Healthcare',
-    industryIcon: '\uD83C\uDFE0',
-    category: 'medical-equipment',
+    description: 'Medical-grade oxygen concentrator with backup cylinder, 24/7 support, and emergency replacement.',
+    industry: 'healthcare',
+    industryLabel: 'Healthcare',
+    industryIcon: '🏥',
+    category: 'healthcare',
     categoryLabel: 'Medical Equipment',
     complexity: 'medium',
     estimatedDuration: '15-20 min',
     blocksCount: 5,
     blocks: [
-      { id: 'b1', name: 'Equipment Specs', type: 'Service', description: 'Concentrator model, capacity, and features', required: true },
-      { id: 'b2', name: 'Installation & Training', type: 'Service', description: 'Setup process and user training session', required: true },
-      { id: 'b3', name: 'Billing & Terms', type: 'Billing', description: 'Rental rates, payment terms, and deposits', required: true },
-      { id: 'b4', name: 'Emergency Support', type: 'Service', description: '24/7 support and emergency replacement', required: false },
-      { id: 'b5', name: 'Usage Guide', type: 'Document', description: 'Operating instructions and safety guidelines', required: false },
+      { id: 'b1', name: 'Equipment Specs', type: 'Service', description: 'Model and capacity', required: true },
+      { id: 'b2', name: 'Installation', type: 'Service', description: 'Setup and training', required: true },
+      { id: 'b3', name: 'Rental Billing', type: 'Billing', description: 'Rates and deposit', required: true },
+      { id: 'b4', name: 'Emergency SLA', type: 'Text', description: '24/7 support terms', required: true },
+      { id: 'b5', name: 'User Manual', type: 'Document', description: 'Operating guide', required: false },
     ],
-    tags: ['oxygen', 'concentrator', 'respiratory', 'medical-equipment', 'rental'],
-    usageCount: 156,
+    tags: ['Oxygen', 'Respiratory', 'Rental', 'Emergency'],
+    usageCount: 278,
     rating: 4.9,
     isPopular: true,
-    createdAt: '2024-04-10T13:45:00Z',
-    updatedAt: '2024-12-05T16:10:00Z',
+    createdAt: '2024-03-15',
+    updatedAt: '2024-12-10',
     pricing: {
       baseAmount: 12000,
       currency: 'INR',
       billingFrequency: 'monthly',
-      paymentType: 'advance',
-      deposit: 20000,
+      paymentType: 'prepaid',
+      depositRequired: true,
+      depositAmount: 20000,
       taxRate: 5,
     },
     serviceDetails: {
-      serviceType: 'rental',
-      validityPeriod: 1,
-      includes: ['Home Delivery', 'Installation & Demo', 'Backup Cylinder (5L)', 'Weekly Filter Change', '24/7 Emergency Helpline', 'Free Replacement within 4 Hours'],
+      serviceType: 'unlimited',
+      validityPeriod: '1 Month (Renewable)',
+      includes: ['10L Concentrator', 'Backup Cylinder', 'Pulse Oximeter', 'Home Delivery', '24/7 Helpline', '4-Hour Replacement'],
+      excludes: ['Electricity cost', 'Nasal cannula replacement'],
     },
     termsAndConditions: [
-      'Minimum rental period of 15 days',
-      'Electricity cost borne by customer',
-      'Equipment must be used only for prescribed patient',
-      'Tampering with device voids warranty and deposit',
-      'Monthly servicing included in rental',
+      'Minimum rental: 15 days',
+      'Must be used for prescribed patient only',
+      'Weekly filter cleaning included',
     ],
-    cancellationPolicy: 'Pro-rata refund for unused days. Full deposit refund on equipment return in working condition.',
+    cancellationPolicy: 'Pro-rata refund for unused days. Full deposit on equipment return.',
   },
-  {
-    id: 'gt-005',
-    name: 'Wheelchair Rental Package',
-    description: 'Flexible wheelchair rental service contract covering manual and electric wheelchairs with optional accessories and maintenance support.',
-    industry: 'home-healthcare',
-    industryLabel: 'Home Healthcare',
-    industryIcon: '\uD83C\uDFE0',
-    category: 'mobility-aids',
-    categoryLabel: 'Mobility Aids',
-    complexity: 'simple',
-    estimatedDuration: '8-12 min',
-    blocksCount: 4,
-    blocks: [
-      { id: 'b1', name: 'Wheelchair Selection', type: 'Service', description: 'Type, model, and accessories selection', required: true },
-      { id: 'b2', name: 'Rental Agreement', type: 'Billing', description: 'Rental period, rates, and security deposit', required: true },
-      { id: 'b3', name: 'Care Instructions', type: 'Text', description: 'Usage guidelines and maintenance tips', required: false },
-      { id: 'b4', name: 'Accessory Checklist', type: 'Checklist', description: 'Additional items and attachments', required: false },
-    ],
-    tags: ['wheelchair', 'mobility', 'rental', 'accessibility'],
-    usageCount: 189,
-    rating: 4.7,
-    isPopular: true,
-    createdAt: '2024-05-20T09:15:00Z',
-    updatedAt: '2024-11-25T11:20:00Z',
-    pricing: {
-      baseAmount: 3500,
-      currency: 'INR',
-      billingFrequency: 'monthly',
-      paymentType: 'advance',
-      deposit: 5000,
-      taxRate: 5,
-    },
-    serviceDetails: {
-      serviceType: 'rental',
-      validityPeriod: 1,
-      includes: ['Home Delivery', 'Cushion & Footrest', 'Monthly Maintenance', 'Puncture Repair', 'Replacement for Mechanical Failure'],
-    },
-    termsAndConditions: [
-      'Minimum rental of 1 week',
-      'Electric wheelchair requires additional deposit of Rs. 15,000',
-      'Damage due to misuse chargeable',
-      'Wheelchair must be returned clean',
-    ],
-    cancellationPolicy: 'Full refund if cancelled before delivery. 20% deduction for cancellation after delivery.',
-  },
-  // ===== WELLNESS & SPA =====
+  // Defibrillator AMC
   {
     id: 'gt-006',
+    name: 'Defibrillator AMC',
+    description: 'Annual maintenance for AED devices with battery checks, pad replacement, and staff training.',
+    industry: 'healthcare',
+    industryLabel: 'Healthcare',
+    industryIcon: '🏥',
+    category: 'healthcare',
+    categoryLabel: 'Medical Equipment',
+    complexity: 'simple',
+    estimatedDuration: '12-15 min',
+    blocksCount: 4,
+    blocks: [
+      { id: 'b1', name: 'AED Registration', type: 'Service', description: 'Device details', required: true },
+      { id: 'b2', name: 'Inspection Schedule', type: 'Checklist', description: 'Quarterly checks', required: true },
+      { id: 'b3', name: 'Consumables', type: 'Spare Part', description: 'Battery and pads', required: true },
+      { id: 'b4', name: 'Training Sessions', type: 'Service', description: 'CPR/AED training', required: false },
+    ],
+    tags: ['AED', 'Defibrillator', 'Emergency', 'AMC'],
+    usageCount: 145,
+    rating: 4.7,
+    isPopular: false,
+    createdAt: '2024-05-20',
+    updatedAt: '2024-11-15',
+    pricing: {
+      baseAmount: 25000,
+      currency: 'INR',
+      billingFrequency: 'yearly',
+      paymentType: 'prepaid',
+      depositRequired: false,
+      taxRate: 18,
+    },
+    serviceDetails: {
+      serviceType: 'limited',
+      usageLimit: 4,
+      usagePeriod: 'inspections/year',
+      validityPeriod: '12 Months',
+      includes: ['Quarterly Inspections', 'Battery Testing', 'Pad Monitoring', 'Firmware Updates', '2 Training Sessions'],
+      excludes: ['Battery replacement (if out of warranty)', 'Additional training sessions'],
+    },
+    termsAndConditions: [
+      'Covers up to 2 AED units',
+      'Training for up to 10 staff per session',
+      'Device must be accessible for inspections',
+    ],
+    cancellationPolicy: 'Full refund within 15 days. No refund after first inspection.',
+  },
+  // Wellness Massage
+  {
+    id: 'gt-007',
     name: 'Wellness Massage Package',
-    description: 'Relaxation and therapeutic massage service package with multiple session options, add-on treatments, and membership benefits.',
+    description: 'Premium spa experience with aromatherapy, choice of massage styles, and relaxation amenities.',
     industry: 'wellness',
     industryLabel: 'Wellness & Spa',
-    industryIcon: '\uD83E\uDDD8',
-    category: 'wellness-equipment',
-    categoryLabel: 'Wellness Equipment',
+    industryIcon: '🧘',
+    category: 'wellness',
+    categoryLabel: 'Spa Services',
     complexity: 'simple',
     estimatedDuration: '8-10 min',
     blocksCount: 4,
     blocks: [
-      { id: 'b1', name: 'Massage Selection', type: 'Service', description: 'Massage types and duration options', required: true },
-      { id: 'b2', name: 'Add-on Services', type: 'Service', description: 'Aromatherapy, hot stones, etc.', required: false },
-      { id: 'b3', name: 'Package Pricing', type: 'Billing', description: 'Session rates and package deals', required: true },
-      { id: 'b4', name: 'Health Questionnaire', type: 'Checklist', description: 'Pre-session health assessment', required: true },
+      { id: 'b1', name: 'Massage Type', type: 'Service', description: 'Style and duration', required: true },
+      { id: 'b2', name: 'Add-ons', type: 'Service', description: 'Extra treatments', required: false },
+      { id: 'b3', name: 'Pricing', type: 'Billing', description: 'Session cost', required: true },
+      { id: 'b4', name: 'Health Form', type: 'Checklist', description: 'Pre-session assessment', required: true },
     ],
-    tags: ['massage', 'wellness', 'spa', 'relaxation', 'therapy'],
-    usageCount: 445,
+    tags: ['Massage', 'Spa', 'Wellness', 'Relaxation'],
+    usageCount: 567,
     rating: 4.9,
     isPopular: true,
-    createdAt: '2024-04-18T09:00:00Z',
-    updatedAt: '2024-12-10T10:15:00Z',
+    createdAt: '2024-04-18',
+    updatedAt: '2024-12-10',
     pricing: {
       baseAmount: 2500,
       currency: 'INR',
-      billingFrequency: 'one-time',
-      paymentType: 'advance',
-      deposit: 0,
+      billingFrequency: 'per-session',
+      paymentType: 'prepaid',
+      depositRequired: false,
       taxRate: 18,
     },
     serviceDetails: {
-      serviceType: 'consultation',
+      serviceType: 'limited',
       usageLimit: 1,
-      usageLimitUnit: 'sessions',
-      validityPeriod: 1,
-      includes: ['60-min Session', 'Aromatherapy Oils', 'Steam Room Access', 'Herbal Tea', 'Relaxation Lounge'],
+      usagePeriod: 'session',
+      validityPeriod: '3 Months',
+      includes: ['60-min Massage', 'Aromatherapy Oils', 'Steam Room', 'Herbal Tea', 'Relaxation Lounge'],
+      excludes: ['Extended sessions', 'Take-home products'],
     },
     termsAndConditions: [
-      'Appointment required 24 hours in advance',
-      'Package valid for 3 months from purchase',
-      'Sessions are non-transferable',
-      'Medical conditions must be disclosed before session',
+      'Book 24 hours in advance',
+      'Valid for 3 months',
+      'Non-transferable',
     ],
-    cancellationPolicy: 'Free rescheduling up to 6 hours before appointment. No-show forfeits session.',
+    cancellationPolicy: 'Free reschedule up to 6 hours before. No-show forfeits session.',
   },
+  // Physiotherapy
   {
-    id: 'gt-007',
-    name: 'Physiotherapy Session Package',
-    description: 'Structured physiotherapy service package with assessment, treatment sessions, progress tracking, and home exercise programs.',
+    id: 'gt-008',
+    name: 'Physiotherapy Sessions',
+    description: 'Professional physiotherapy with assessment, treatment plan, and home exercise program.',
     industry: 'wellness',
     industryLabel: 'Wellness & Spa',
-    industryIcon: '\uD83E\uDDD8',
-    category: 'wellness-equipment',
-    categoryLabel: 'Wellness Equipment',
-    complexity: 'simple',
+    industryIcon: '🧘',
+    category: 'wellness',
+    categoryLabel: 'Rehabilitation',
+    complexity: 'medium',
     estimatedDuration: '12-15 min',
     blocksCount: 5,
     blocks: [
-      { id: 'b1', name: 'Initial Assessment', type: 'Service', description: 'Comprehensive physical evaluation', required: true },
-      { id: 'b2', name: 'Treatment Sessions', type: 'Service', description: 'Number of sessions and frequency', required: true },
-      { id: 'b3', name: 'Progress Tracking', type: 'Checklist', description: 'Session notes and improvement metrics', required: true },
-      { id: 'b4', name: 'Home Exercise Plan', type: 'Document', description: 'Personalized exercise program', required: false },
-      { id: 'b5', name: 'Package Pricing', type: 'Billing', description: 'Session rates and package discounts', required: true },
+      { id: 'b1', name: 'Assessment', type: 'Service', description: 'Initial evaluation', required: true },
+      { id: 'b2', name: 'Treatment Plan', type: 'Text', description: 'Session outline', required: true },
+      { id: 'b3', name: 'Session Package', type: 'Billing', description: 'Package pricing', required: true },
+      { id: 'b4', name: 'Progress Tracking', type: 'Checklist', description: 'Outcome measures', required: true },
+      { id: 'b5', name: 'Home Program', type: 'Document', description: 'Exercise guide', required: false },
     ],
-    tags: ['physiotherapy', 'rehabilitation', 'therapy', 'wellness'],
-    usageCount: 312,
+    tags: ['Physio', 'Rehabilitation', 'Therapy', 'Exercise'],
+    usageCount: 389,
     rating: 4.8,
     isPopular: true,
-    createdAt: '2024-02-14T08:30:00Z',
-    updatedAt: '2024-12-08T09:45:00Z',
+    createdAt: '2024-02-10',
+    updatedAt: '2024-12-08',
     pricing: {
-      baseAmount: 15000,
+      baseAmount: 1500,
       currency: 'INR',
-      billingFrequency: 'one-time',
-      paymentType: 'advance',
-      deposit: 0,
+      billingFrequency: 'per-session',
+      paymentType: 'prepaid',
+      depositRequired: false,
       taxRate: 18,
     },
     serviceDetails: {
-      serviceType: 'consultation',
-      usageLimit: 10,
-      usageLimitUnit: 'sessions',
-      validityPeriod: 3,
-      includes: ['Initial Assessment', '10 Treatment Sessions', 'Progress Report', 'Home Exercise Plan', 'WhatsApp Support'],
-    },
-    termsAndConditions: [
-      'Package of 10 sessions valid for 3 months',
-      'Sessions cannot be transferred to another person',
-      'Missed sessions without 4-hour notice will be counted',
-      'Doctor referral required for certain conditions',
-    ],
-    cancellationPolicy: 'Unused sessions refundable at 70% value. No refund after 50% sessions used.',
-  },
-  {
-    id: 'gt-008',
-    name: 'Comprehensive Health Checkup',
-    description: 'Full-body health screening package with blood tests, imaging, specialist consultations, and detailed health report.',
-    industry: 'wellness',
-    industryLabel: 'Wellness & Spa',
-    industryIcon: '\uD83E\uDDD8',
-    category: 'wellness-equipment',
-    categoryLabel: 'Wellness Equipment',
-    complexity: 'medium',
-    estimatedDuration: '15-18 min',
-    blocksCount: 5,
-    blocks: [
-      { id: 'b1', name: 'Test Panel', type: 'Checklist', description: 'List of included tests and screenings', required: true },
-      { id: 'b2', name: 'Consultations', type: 'Service', description: 'Specialist consultations included', required: true },
-      { id: 'b3', name: 'Health Report', type: 'Document', description: 'Detailed report and recommendations', required: true },
-      { id: 'b4', name: 'Package Options', type: 'Billing', description: 'Basic, comprehensive, and executive packages', required: true },
-      { id: 'b5', name: 'Follow-up Plan', type: 'Text', description: 'Post-checkup recommendations', required: false },
-    ],
-    tags: ['health-checkup', 'preventive', 'screening', 'wellness'],
-    usageCount: 267,
-    rating: 4.7,
-    isPopular: true,
-    createdAt: '2024-05-10T12:30:00Z',
-    updatedAt: '2024-11-28T14:40:00Z',
-    pricing: {
-      baseAmount: 8999,
-      currency: 'INR',
-      billingFrequency: 'one-time',
-      paymentType: 'advance',
-      deposit: 0,
-      taxRate: 5,
-    },
-    serviceDetails: {
-      serviceType: 'consultation',
+      serviceType: 'limited',
       usageLimit: 1,
-      usageLimitUnit: 'sessions',
-      validityPeriod: 1,
-      includes: ['70+ Blood Tests', 'ECG & Chest X-ray', 'Ultrasound Abdomen', 'Physician Consultation', 'Dietitian Consultation', 'Digital Report'],
+      usagePeriod: 'session',
+      validityPeriod: '6 Months',
+      includes: ['45-min Session', 'Assessment Report', 'Treatment Modalities', 'Exercise Prescription', 'Progress Notes'],
+      excludes: ['Home visits', 'Equipment purchase'],
     },
     termsAndConditions: [
-      'Appointment required, fasting of 10-12 hours needed',
-      'Reports delivered within 48 hours',
-      'Valid for one person only',
-      'Some tests may require additional preparation',
+      'Package of 10 sessions recommended',
+      'Valid for 6 months',
+      'Doctor referral may be required',
     ],
-    cancellationPolicy: 'Full refund if cancelled 24 hours before appointment. 50% refund for same-day cancellation.',
+    cancellationPolicy: 'Reschedule up to 4 hours before. Late cancel loses session.',
   },
-  // ===== HOME HEALTHCARE =====
+  // Split AC AMC
   {
     id: 'gt-009',
-    name: 'Home Nursing Care Plan',
-    description: 'Comprehensive home nursing service agreement covering skilled nursing care, medication management, wound care, and patient monitoring.',
-    industry: 'home-healthcare',
-    industryLabel: 'Home Healthcare',
-    industryIcon: '\uD83C\uDFE0',
-    category: 'home-care',
-    categoryLabel: 'Home Care',
-    complexity: 'medium',
-    estimatedDuration: '18-22 min',
-    blocksCount: 6,
+    name: 'Split AC AMC',
+    description: 'Comprehensive maintenance for split air conditioners with gas top-up, filter cleaning, and breakdown support.',
+    industry: 'hvac',
+    industryLabel: 'HVAC & Climate',
+    industryIcon: '❄️',
+    category: 'hvac',
+    categoryLabel: 'Room AC',
+    complexity: 'simple',
+    estimatedDuration: '10-12 min',
+    blocksCount: 4,
     blocks: [
-      { id: 'b1', name: 'Care Assessment', type: 'Service', description: 'Patient needs and care level assessment', required: true },
-      { id: 'b2', name: 'Nursing Services', type: 'Service', description: 'Types of nursing care provided', required: true },
-      { id: 'b3', name: 'Visit Schedule', type: 'Checklist', description: 'Frequency and duration of visits', required: true },
-      { id: 'b4', name: 'Medication Management', type: 'Checklist', description: 'Medication administration and tracking', required: false },
-      { id: 'b5', name: 'Care Plan Pricing', type: 'Billing', description: 'Hourly rates and package options', required: true },
-      { id: 'b6', name: 'Emergency Protocol', type: 'Document', description: 'Emergency contact and escalation procedures', required: true },
+      { id: 'b1', name: 'AC Details', type: 'Service', description: 'Make, model, tonnage', required: true },
+      { id: 'b2', name: 'Service Schedule', type: 'Checklist', description: 'Bi-annual service', required: true },
+      { id: 'b3', name: 'Coverage', type: 'Spare Part', description: 'Parts included', required: true },
+      { id: 'b4', name: 'AMC Fee', type: 'Billing', description: 'Annual cost', required: true },
     ],
-    tags: ['nursing', 'home-care', 'healthcare', 'patient-care'],
-    usageCount: 178,
-    rating: 4.7,
-    isPopular: false,
-    createdAt: '2024-01-28T14:15:00Z',
-    updatedAt: '2024-11-20T13:25:00Z',
+    tags: ['AC', 'Split AC', 'AMC', 'Cooling'],
+    usageCount: 892,
+    rating: 4.6,
+    isPopular: true,
+    createdAt: '2024-03-01',
+    updatedAt: '2024-12-05',
     pricing: {
-      baseAmount: 45000,
+      baseAmount: 3500,
       currency: 'INR',
-      billingFrequency: 'monthly',
-      paymentType: 'advance',
-      deposit: 10000,
+      billingFrequency: 'yearly',
+      paymentType: 'prepaid',
+      depositRequired: false,
       taxRate: 18,
     },
     serviceDetails: {
-      serviceType: 'subscription',
-      usageLimit: 30,
-      usageLimitUnit: 'visits',
-      validityPeriod: 1,
-      includes: ['Daily 4-Hour Visit', 'Vital Monitoring', 'Medication Administration', 'Wound Care', 'Doctor Coordination', 'Weekly Report'],
+      serviceType: 'limited',
+      usageLimit: 2,
+      usagePeriod: 'services/year',
+      validityPeriod: '12 Months',
+      includes: ['2 PM Visits', 'Filter Cleaning', 'Gas Top-up (up to 200g)', 'Coil Cleaning', 'Electrical Check'],
+      excludes: ['Compressor replacement', 'PCB repair', 'Major gas leaks'],
     },
     termsAndConditions: [
-      '24-hour notice required for schedule changes',
-      'Nurse replacement provided within 24 hours if needed',
-      'Critical care patients require doctor referral',
-      'Night shift available at additional 20% charge',
+      'Per unit pricing',
+      'Multi-unit discount available',
+      'Summer months may have delayed response',
     ],
-    cancellationPolicy: 'Pro-rata refund for unused days with 7-day notice. Immediate cancellation forfeits 7 days charges.',
+    cancellationPolicy: 'No refund after first service visit.',
   },
+  // DG Set AMC
   {
     id: 'gt-010',
-    name: 'Elderly Care Monthly Plan',
-    description: 'Comprehensive monthly elderly care subscription covering daily assistance, health monitoring, medication management, and companionship services.',
-    industry: 'home-healthcare',
-    industryLabel: 'Home Healthcare',
-    industryIcon: '\uD83C\uDFE0',
-    category: 'home-care',
-    categoryLabel: 'Home Care',
-    complexity: 'complex',
-    estimatedDuration: '22-28 min',
-    blocksCount: 7,
-    blocks: [
-      { id: 'b1', name: 'Care Assessment', type: 'Service', description: 'Initial assessment and care plan', required: true },
-      { id: 'b2', name: 'Daily Assistance', type: 'Service', description: 'ADL support and personal care', required: true },
-      { id: 'b3', name: 'Health Monitoring', type: 'Checklist', description: 'Vital signs and health tracking', required: true },
-      { id: 'b4', name: 'Medication Management', type: 'Checklist', description: 'Medication scheduling and reminders', required: true },
-      { id: 'b5', name: 'Companionship', type: 'Service', description: 'Social engagement and activities', required: false },
-      { id: 'b6', name: 'Monthly Subscription', type: 'Billing', description: 'Care level tiers and pricing', required: true },
-      { id: 'b7', name: 'Family Updates', type: 'Document', description: 'Regular reports and communication', required: true },
-    ],
-    tags: ['elderly-care', 'senior', 'monthly-plan', 'assisted-living'],
-    usageCount: 156,
-    rating: 4.8,
-    isPopular: false,
-    createdAt: '2024-02-20T13:50:00Z',
-    updatedAt: '2024-12-06T12:20:00Z',
-    pricing: {
-      baseAmount: 65000,
-      currency: 'INR',
-      billingFrequency: 'monthly',
-      paymentType: 'advance',
-      deposit: 15000,
-      taxRate: 18,
-    },
-    serviceDetails: {
-      serviceType: 'subscription',
-      validityPeriod: 1,
-      includes: ['8-Hour Daily Caregiver', 'Meal Assistance', 'Mobility Support', 'Health Vitals Tracking', 'Weekly Doctor Visit', 'Monthly Family Report', 'Emergency Response'],
-    },
-    termsAndConditions: [
-      'Minimum commitment of 3 months',
-      'Background-verified caregivers only',
-      'Caregiver change available within 48 hours',
-      'Additional night care at 30% premium',
-      'Festival holidays may require advance scheduling',
-    ],
-    cancellationPolicy: '15-day notice required. Early termination incurs 1 month penalty within first 3 months.',
-  },
-  {
-    id: 'gt-011',
-    name: 'Stairlift Installation & Maintenance',
-    description: 'Complete stairlift solution including site survey, installation, safety training, warranty, and annual maintenance contract.',
-    industry: 'home-healthcare',
-    industryLabel: 'Home Healthcare',
-    industryIcon: '\uD83C\uDFE0',
-    category: 'mobility-aids',
-    categoryLabel: 'Mobility Aids',
-    complexity: 'complex',
-    estimatedDuration: '25-30 min',
-    blocksCount: 6,
-    blocks: [
-      { id: 'b1', name: 'Site Survey', type: 'Service', description: 'Staircase measurement and assessment', required: true },
-      { id: 'b2', name: 'Product Selection', type: 'Service', description: 'Stairlift model and customizations', required: true },
-      { id: 'b3', name: 'Installation', type: 'Service', description: 'Professional installation and testing', required: true },
-      { id: 'b4', name: 'Safety Training', type: 'Video', description: 'User training and safety demonstration', required: true },
-      { id: 'b5', name: 'Warranty & Support', type: 'Document', description: 'Warranty terms and support options', required: true },
-      { id: 'b6', name: 'Maintenance Contract', type: 'Billing', description: 'Annual maintenance and service pricing', required: true },
-    ],
-    tags: ['stairlift', 'installation', 'mobility', 'accessibility', 'maintenance'],
-    usageCount: 87,
-    rating: 4.5,
-    isPopular: false,
-    createdAt: '2024-06-05T10:40:00Z',
-    updatedAt: '2024-12-02T11:50:00Z',
-    pricing: {
-      baseAmount: 285000,
-      currency: 'INR',
-      billingFrequency: 'one-time',
-      paymentType: 'milestone',
-      deposit: 85000,
-      taxRate: 18,
-    },
-    serviceDetails: {
-      serviceType: 'installation',
-      validityPeriod: 24,
-      includes: ['Site Survey', 'Custom Rail Manufacturing', 'Professional Installation', 'User Training', '2-Year Warranty', 'First Year AMC Free'],
-    },
-    termsAndConditions: [
-      'Site survey determines final pricing based on staircase complexity',
-      'Installation typically takes 1-2 days',
-      '30% advance, 50% before installation, 20% on completion',
-      'Structural modifications (if needed) charged separately',
-      'Warranty void if serviced by unauthorized personnel',
-    ],
-    cancellationPolicy: 'Advance refundable minus 10% processing fee before manufacturing. No refund once rail manufacturing begins.',
-  },
-  {
-    id: 'gt-012',
-    name: 'Medical Equipment AMC',
-    description: 'Annual maintenance contract for general medical equipment including preventive maintenance, calibration, repairs, and emergency support.',
-    industry: 'healthcare',
-    industryLabel: 'Healthcare',
-    industryIcon: '\uD83C\uDFE5',
-    category: 'medical-equipment',
-    categoryLabel: 'Medical Equipment',
+    name: 'DG Set AMC',
+    description: 'Diesel generator maintenance with oil change, load bank testing, and emergency breakdown support.',
+    industry: 'industrial',
+    industryLabel: 'Industrial',
+    industryIcon: '🏭',
+    category: 'industrial',
+    categoryLabel: 'Power Backup',
     complexity: 'medium',
-    estimatedDuration: '14-18 min',
+    estimatedDuration: '20-25 min',
     blocksCount: 5,
     blocks: [
-      { id: 'b1', name: 'Equipment Coverage', type: 'Checklist', description: 'List of covered equipment', required: true },
-      { id: 'b2', name: 'Maintenance Schedule', type: 'Checklist', description: 'PM visits and calibration schedule', required: true },
-      { id: 'b3', name: 'Repair Services', type: 'Service', description: 'Breakdown support and spare parts', required: true },
-      { id: 'b4', name: 'Spare Parts Coverage', type: 'Spare Part', description: 'Included and excluded parts list', required: true },
-      { id: 'b5', name: 'AMC Pricing', type: 'Billing', description: 'Annual contract pricing and terms', required: true },
+      { id: 'b1', name: 'DG Specs', type: 'Service', description: 'Make, kVA, serial number', required: true },
+      { id: 'b2', name: 'PM Schedule', type: 'Checklist', description: 'Monthly checks', required: true },
+      { id: 'b3', name: 'Consumables', type: 'Spare Part', description: 'Oil, filters, belts', required: true },
+      { id: 'b4', name: 'Load Testing', type: 'Document', description: 'Quarterly reports', required: true },
+      { id: 'b5', name: 'AMC Value', type: 'Billing', description: 'Annual contract', required: true },
     ],
-    tags: ['amc', 'maintenance', 'medical-equipment', 'calibration', 'support'],
-    usageCount: 198,
+    tags: ['Generator', 'DG Set', 'Power', 'AMC'],
+    usageCount: 234,
     rating: 4.7,
     isPopular: false,
-    createdAt: '2024-01-10T10:10:00Z',
-    updatedAt: '2024-11-30T09:30:00Z',
+    createdAt: '2024-01-15',
+    updatedAt: '2024-11-30',
     pricing: {
       baseAmount: 75000,
       currency: 'INR',
       billingFrequency: 'yearly',
-      paymentType: 'advance',
-      deposit: 0,
+      paymentType: 'prepaid',
+      depositRequired: false,
       taxRate: 18,
     },
     serviceDetails: {
-      serviceType: 'amc',
+      serviceType: 'limited',
       usageLimit: 12,
-      usageLimitUnit: 'visits',
-      validityPeriod: 12,
-      includes: ['Quarterly PM Visits', 'Unlimited Breakdown Calls', 'Labour Charges', 'Basic Spare Parts', 'Calibration Certificates', '8-Hour Response Time'],
+      usagePeriod: 'visits/year',
+      validityPeriod: '12 Months',
+      includes: ['Monthly PM', 'Oil Change (2x)', 'Filter Replacement', 'Load Bank Testing', 'Emergency Support', 'Battery Check'],
+      excludes: ['Major overhauls', 'Alternator rewinding', 'Fuel'],
     },
     termsAndConditions: [
-      'Covers standard medical equipment (monitors, ECG, suction, etc.)',
-      'High-value spares chargeable at discounted rates',
-      'Equipment age must be less than 10 years',
-      'Access required during business hours for PM',
+      'For DG sets up to 250 kVA',
+      'Higher capacity at additional cost',
+      'Fuel to be provided by customer',
     ],
-    cancellationPolicy: 'Pro-rata refund available with 30-day notice. No refund in last quarter of contract.',
+    cancellationPolicy: 'Pro-rata refund minus services rendered.',
   },
-  // ===== FACILITY MANAGEMENT - HVAC =====
+  // Goods Elevator
   {
-    id: 'gt-013',
-    name: 'Split AC AMC',
-    description: 'Annual maintenance contract for split air conditioners covering preventive maintenance, gas charging, cleaning, and breakdown repairs.',
-    industry: 'facility-management',
-    industryLabel: 'Facility Management',
-    industryIcon: '\uD83C\uDFE2',
-    category: 'hvac-climate',
-    categoryLabel: 'HVAC & Climate',
-    complexity: 'simple',
-    estimatedDuration: '8-10 min',
-    blocksCount: 4,
-    blocks: [
-      { id: 'b1', name: 'AC Unit Details', type: 'Service', description: 'Brand, model, tonnage, and location', required: true },
-      { id: 'b2', name: 'Service Schedule', type: 'Checklist', description: 'Quarterly service checklist', required: true },
-      { id: 'b3', name: 'Parts & Gas', type: 'Spare Part', description: 'Consumables and refrigerant coverage', required: true },
-      { id: 'b4', name: 'AMC Pricing', type: 'Billing', description: 'Annual contract fee per unit', required: true },
-    ],
-    tags: ['amc', 'ac', 'split-ac', 'hvac', 'cooling', 'facility'],
-    usageCount: 567,
-    rating: 4.6,
-    isPopular: true,
-    createdAt: '2024-01-05T08:00:00Z',
-    updatedAt: '2024-12-12T14:00:00Z',
-    pricing: {
-      baseAmount: 3500,
-      currency: 'INR',
-      billingFrequency: 'yearly',
-      paymentType: 'advance',
-      deposit: 0,
-      taxRate: 18,
-    },
-    serviceDetails: {
-      serviceType: 'amc',
-      usageLimit: 4,
-      usageLimitUnit: 'visits',
-      validityPeriod: 12,
-      includes: ['4 Preventive Services', 'Filter Cleaning', 'Gas Top-up (up to 200g)', 'Electrical Checks', 'Unlimited Breakdown Calls', 'Labour Charges'],
-    },
-    termsAndConditions: [
-      'Pricing per unit; discounts for bulk units',
-      'Gas charging beyond 200g charged extra',
-      'Compressor and PCB repairs at additional cost',
-      'AC unit must be less than 8 years old',
-      '48-hour response for breakdown calls',
-    ],
-    cancellationPolicy: 'Non-refundable after first service. Pro-rata refund if cancelled before first service.',
-  },
-  {
-    id: 'gt-014',
-    name: 'Central HVAC AMC',
-    description: 'Comprehensive annual maintenance for central air conditioning systems including chillers, AHUs, cooling towers, and BMS integration.',
-    industry: 'facility-management',
-    industryLabel: 'Facility Management',
-    industryIcon: '\uD83C\uDFE2',
-    category: 'hvac-climate',
-    categoryLabel: 'HVAC & Climate',
-    complexity: 'complex',
-    estimatedDuration: '35-45 min',
-    blocksCount: 7,
-    blocks: [
-      { id: 'b1', name: 'System Inventory', type: 'Checklist', description: 'Complete HVAC asset list and specs', required: true },
-      { id: 'b2', name: 'Chiller Service', type: 'Service', description: 'Chiller maintenance and oil analysis', required: true },
-      { id: 'b3', name: 'AHU Maintenance', type: 'Service', description: 'Air handling unit servicing', required: true },
-      { id: 'b4', name: 'Cooling Tower', type: 'Service', description: 'Cooling tower cleaning and treatment', required: true },
-      { id: 'b5', name: 'BMS Monitoring', type: 'Service', description: 'Building management system support', required: false },
-      { id: 'b6', name: 'Spare Parts', type: 'Spare Part', description: 'Parts coverage and exclusions', required: true },
-      { id: 'b7', name: 'Contract Value', type: 'Billing', description: 'Annual fee and payment schedule', required: true },
-    ],
-    tags: ['amc', 'hvac', 'chiller', 'central-ac', 'cooling-tower', 'facility'],
-    usageCount: 78,
-    rating: 4.8,
-    isPopular: false,
-    createdAt: '2024-02-15T09:30:00Z',
-    updatedAt: '2024-12-01T10:45:00Z',
-    pricing: {
-      baseAmount: 450000,
-      currency: 'INR',
-      billingFrequency: 'yearly',
-      paymentType: 'quarterly',
-      deposit: 0,
-      taxRate: 18,
-    },
-    serviceDetails: {
-      serviceType: 'amc',
-      usageLimit: 12,
-      usageLimitUnit: 'visits',
-      validityPeriod: 12,
-      includes: ['Monthly PM for Chillers', 'Quarterly AHU Service', 'Cooling Tower Treatment', 'Oil Analysis', 'Refrigerant Leak Detection', 'BMS Parameter Monitoring', '4-Hour Emergency Response'],
-    },
-    termsAndConditions: [
-      'Contract covers system up to 500 TR capacity',
-      'Refrigerant charges extra beyond normal top-up',
-      'Major overhauls quoted separately',
-      'Dedicated technician during business hours',
-      'Annual efficiency report included',
-    ],
-    cancellationPolicy: 'Quarterly payment terms. 60-day notice required for termination. No refund for paid quarters.',
-  },
-  {
-    id: 'gt-015',
-    name: 'DG Set AMC',
-    description: 'Annual maintenance contract for diesel generator sets including regular servicing, load bank testing, and emergency breakdown support.',
-    industry: 'facility-management',
-    industryLabel: 'Facility Management',
-    industryIcon: '\uD83C\uDFE2',
-    category: 'hvac-climate',
-    categoryLabel: 'HVAC & Climate',
-    complexity: 'medium',
-    estimatedDuration: '15-20 min',
-    blocksCount: 5,
-    blocks: [
-      { id: 'b1', name: 'DG Specifications', type: 'Service', description: 'Generator capacity, make, and model', required: true },
-      { id: 'b2', name: 'Service Schedule', type: 'Checklist', description: 'Monthly and quarterly service items', required: true },
-      { id: 'b3', name: 'Load Testing', type: 'Service', description: 'Periodic load bank testing', required: true },
-      { id: 'b4', name: 'Consumables', type: 'Spare Part', description: 'Filters, oil, and parts coverage', required: true },
-      { id: 'b5', name: 'AMC Pricing', type: 'Billing', description: 'Annual contract terms', required: true },
-    ],
-    tags: ['amc', 'dg-set', 'generator', 'power-backup', 'facility'],
-    usageCount: 234,
-    rating: 4.5,
-    isPopular: false,
-    createdAt: '2024-03-20T11:00:00Z',
-    updatedAt: '2024-11-25T09:15:00Z',
-    pricing: {
-      baseAmount: 28000,
-      currency: 'INR',
-      billingFrequency: 'yearly',
-      paymentType: 'advance',
-      deposit: 0,
-      taxRate: 18,
-    },
-    serviceDetails: {
-      serviceType: 'amc',
-      usageLimit: 12,
-      usageLimitUnit: 'visits',
-      validityPeriod: 12,
-      includes: ['Monthly Service Visits', 'Oil & Filter Change (Quarterly)', 'Battery Check & Maintenance', 'Load Bank Test (Half-yearly)', 'Coolant Top-up', 'Logbook Maintenance'],
-    },
-    termsAndConditions: [
-      'Pricing for DG up to 125 KVA; higher capacity priced separately',
-      'Diesel cost borne by customer',
-      'Major overhaul (alternator, engine) not covered',
-      'Running hours based service intervals',
-      'Pollution compliance support included',
-    ],
-    cancellationPolicy: 'Pro-rata refund with 30-day notice. No refund after 6 months.',
-  },
-  // ===== FACILITY MANAGEMENT - VERTICAL TRANSPORT =====
-  {
-    id: 'gt-016',
-    name: 'Passenger Lift AMC',
-    description: 'Annual maintenance contract for passenger elevators including regular servicing, safety inspections, modernization consultation, and 24/7 emergency support.',
-    industry: 'facility-management',
-    industryLabel: 'Facility Management',
-    industryIcon: '\uD83C\uDFE2',
-    category: 'vertical-transport',
-    categoryLabel: 'Vertical Transport',
-    complexity: 'medium',
-    estimatedDuration: '18-22 min',
-    blocksCount: 5,
-    blocks: [
-      { id: 'b1', name: 'Lift Details', type: 'Service', description: 'Make, model, capacity, and floors', required: true },
-      { id: 'b2', name: 'Service Schedule', type: 'Checklist', description: 'Monthly maintenance checklist', required: true },
-      { id: 'b3', name: 'Safety Compliance', type: 'Document', description: 'Safety certifications and inspections', required: true },
-      { id: 'b4', name: 'Parts Coverage', type: 'Spare Part', description: 'Included and excluded components', required: true },
-      { id: 'b5', name: 'AMC Pricing', type: 'Billing', description: 'Annual contract and payment terms', required: true },
-    ],
-    tags: ['amc', 'lift', 'elevator', 'passenger-lift', 'vertical-transport'],
-    usageCount: 345,
-    rating: 4.7,
-    isPopular: true,
-    createdAt: '2024-01-15T10:00:00Z',
-    updatedAt: '2024-12-08T11:30:00Z',
-    pricing: {
-      baseAmount: 48000,
-      currency: 'INR',
-      billingFrequency: 'yearly',
-      paymentType: 'half-yearly',
-      deposit: 0,
-      taxRate: 18,
-    },
-    serviceDetails: {
-      serviceType: 'amc',
-      usageLimit: 12,
-      usageLimitUnit: 'visits',
-      validityPeriod: 12,
-      includes: ['Monthly Preventive Maintenance', 'Safety Device Testing', 'Lubrication & Cleaning', 'Minor Parts Replacement', 'Emergency Rescue Service', 'Statutory Inspection Support'],
-    },
-    termsAndConditions: [
-      'Pricing for lift up to 8 floors; additional floors charged extra',
-      'Major components (controller, motor, ropes) at additional cost',
-      'Customer to ensure machine room cleanliness',
-      '24/7 emergency helpline with 1-hour response',
-      'Annual safety certificate assistance included',
-    ],
-    cancellationPolicy: 'Half-yearly payment terms. 45-day notice for cancellation. No mid-term refunds.',
-  },
-  {
-    id: 'gt-017',
+    id: 'gt-011',
     name: 'Goods Elevator AMC',
-    description: 'Annual maintenance contract for goods/freight elevators including heavy-duty servicing, load testing, and industrial-grade support.',
-    industry: 'industrial',
-    industryLabel: 'Industrial',
-    industryIcon: '\uD83C\uDFED',
-    category: 'vertical-transport',
-    categoryLabel: 'Vertical Transport',
+    description: 'Heavy-duty goods lift maintenance with safety compliance and emergency rescue services.',
+    industry: 'lifts',
+    industryLabel: 'Lifts & Elevators',
+    industryIcon: '🛗',
+    category: 'lifts',
+    categoryLabel: 'Goods Lift',
     complexity: 'medium',
-    estimatedDuration: '16-20 min',
+    estimatedDuration: '20-25 min',
     blocksCount: 5,
     blocks: [
-      { id: 'b1', name: 'Elevator Specs', type: 'Service', description: 'Capacity, dimensions, and usage pattern', required: true },
-      { id: 'b2', name: 'Maintenance Plan', type: 'Checklist', description: 'Heavy-duty maintenance schedule', required: true },
-      { id: 'b3', name: 'Load Testing', type: 'Service', description: 'Periodic load and safety tests', required: true },
-      { id: 'b4', name: 'Parts & Labour', type: 'Spare Part', description: 'Industrial parts coverage', required: true },
-      { id: 'b5', name: 'Contract Pricing', type: 'Billing', description: 'Annual fee and terms', required: true },
+      { id: 'b1', name: 'Lift Details', type: 'Service', description: 'Capacity and floors', required: true },
+      { id: 'b2', name: 'Safety Checks', type: 'Checklist', description: 'Monthly inspections', required: true },
+      { id: 'b3', name: 'Parts Coverage', type: 'Spare Part', description: 'Included items', required: true },
+      { id: 'b4', name: 'Emergency SLA', type: 'Text', description: 'Rescue protocol', required: true },
+      { id: 'b5', name: 'AMC Cost', type: 'Billing', description: 'Quarterly payments', required: true },
     ],
-    tags: ['amc', 'goods-lift', 'freight-elevator', 'industrial', 'warehouse'],
-    usageCount: 123,
-    rating: 4.5,
+    tags: ['Goods Lift', 'Elevator', 'Industrial', 'AMC'],
+    usageCount: 167,
+    rating: 4.6,
     isPopular: false,
-    createdAt: '2024-04-10T09:00:00Z',
-    updatedAt: '2024-11-20T14:00:00Z',
+    createdAt: '2024-02-20',
+    updatedAt: '2024-11-25',
     pricing: {
       baseAmount: 65000,
       currency: 'INR',
       billingFrequency: 'yearly',
-      paymentType: 'half-yearly',
-      deposit: 0,
+      paymentType: 'prepaid',
+      depositRequired: false,
       taxRate: 18,
     },
     serviceDetails: {
-      serviceType: 'amc',
-      usageLimit: 12,
-      usageLimitUnit: 'visits',
-      validityPeriod: 12,
-      includes: ['Monthly Heavy-Duty Service', 'Rope & Sheave Inspection', 'Load Test (Quarterly)', 'Door Mechanism Service', 'Safety Gear Testing', 'Emergency Breakdown Support'],
+      serviceType: 'unlimited',
+      validityPeriod: '12 Months',
+      includes: ['Monthly PM', 'Safety Certification', 'Unlimited Breakdowns', '1-Hour Response', 'Lubrication', 'Minor Parts'],
+      excludes: ['Motor replacement', 'Controller upgrade', 'Cabin repairs'],
     },
     termsAndConditions: [
-      'Covers goods lifts up to 2000 kg capacity',
-      'Higher capacity lifts priced on assessment',
-      'Operational abuse voids certain coverages',
-      'Requires clear pit and machine room access',
+      'For lifts up to 2000kg capacity',
+      'Higher capacity lifts priced separately',
+      'Annual safety test support included',
     ],
-    cancellationPolicy: 'Half-yearly payment. 60-day notice required. Pro-rata refund for unused period.',
+    cancellationPolicy: '60-day notice required. No refund after 6 months.',
   },
-  // ===== PHARMA & BIOTECH =====
+  // Clean Room AMC
   {
-    id: 'gt-018',
+    id: 'gt-012',
     name: 'Clean Room AMC',
-    description: 'Annual maintenance contract for pharmaceutical clean rooms including HEPA filter replacement, particle count testing, and compliance documentation.',
+    description: 'Certified clean room maintenance with HEPA filter changes, particle counts, and compliance documentation.',
     industry: 'pharma',
     industryLabel: 'Pharma & Biotech',
-    industryIcon: '\uD83D\uDC8A',
-    category: 'clean-room',
+    industryIcon: '💊',
+    category: 'pharma',
     categoryLabel: 'Clean Room',
     complexity: 'complex',
     estimatedDuration: '30-40 min',
     blocksCount: 6,
     blocks: [
-      { id: 'b1', name: 'Clean Room Classification', type: 'Service', description: 'ISO class and area specifications', required: true },
-      { id: 'b2', name: 'HVAC Maintenance', type: 'Service', description: 'AHU and filter maintenance', required: true },
-      { id: 'b3', name: 'Particle Monitoring', type: 'Checklist', description: 'Regular particle count testing', required: true },
-      { id: 'b4', name: 'Validation Support', type: 'Document', description: 'IQ/OQ/PQ documentation', required: true },
-      { id: 'b5', name: 'Filter Replacement', type: 'Spare Part', description: 'HEPA/ULPA filter schedule', required: true },
-      { id: 'b6', name: 'AMC Pricing', type: 'Billing', description: 'Annual contract value', required: true },
+      { id: 'b1', name: 'Room Classification', type: 'Service', description: 'ISO class and specs', required: true },
+      { id: 'b2', name: 'HEPA Schedule', type: 'Checklist', description: 'Filter maintenance', required: true },
+      { id: 'b3', name: 'Particle Monitoring', type: 'Document', description: 'Count reports', required: true },
+      { id: 'b4', name: 'Consumables', type: 'Spare Part', description: 'Filters and gaskets', required: true },
+      { id: 'b5', name: 'Validation', type: 'Document', description: 'Compliance certs', required: true },
+      { id: 'b6', name: 'AMC Value', type: 'Billing', description: 'Contract pricing', required: true },
     ],
-    tags: ['amc', 'clean-room', 'pharma', 'hepa', 'validation', 'gmp'],
-    usageCount: 67,
+    tags: ['Clean Room', 'Pharma', 'HEPA', 'Compliance'],
+    usageCount: 78,
     rating: 4.9,
     isPopular: false,
-    createdAt: '2024-02-28T10:30:00Z',
-    updatedAt: '2024-12-05T09:00:00Z',
+    createdAt: '2024-04-05',
+    updatedAt: '2024-12-01',
     pricing: {
-      baseAmount: 180000,
+      baseAmount: 250000,
       currency: 'INR',
       billingFrequency: 'yearly',
-      paymentType: 'quarterly',
-      deposit: 0,
+      paymentType: 'prepaid',
+      depositRequired: false,
       taxRate: 18,
     },
     serviceDetails: {
-      serviceType: 'amc',
-      usageLimit: 12,
-      usageLimitUnit: 'visits',
-      validityPeriod: 12,
-      includes: ['Monthly HVAC Service', 'Quarterly Particle Count', 'HEPA Filter DOP Testing', 'Pressure Differential Monitoring', 'Temperature Mapping (Annual)', 'Validation Protocol Support'],
+      serviceType: 'limited',
+      usageLimit: 4,
+      usagePeriod: 'certifications/year',
+      validityPeriod: '12 Months',
+      includes: ['Quarterly HEPA Integrity', 'Monthly Particle Counts', 'Filter Changes', 'Pressure Monitoring', 'Compliance Documentation', 'Audit Support'],
+      excludes: ['Civil modifications', 'AHU repairs', 'Major contamination cleanup'],
     },
     termsAndConditions: [
-      'Covers clean room up to 1000 sq ft ISO Class 7',
-      'Higher class rooms and larger areas priced separately',
-      'HEPA filter cost additional (typically replaced annually)',
-      'Requires 24-hour advance notice for scheduled visits',
-      'Compliance documentation for regulatory audits included',
+      'For clean rooms up to 500 sq ft',
+      'Larger rooms priced per sq ft',
+      'Customer to maintain temperature and humidity',
     ],
-    cancellationPolicy: 'Quarterly payment terms. 90-day notice for termination to allow compliance handover.',
+    cancellationPolicy: 'No refund after first certification visit.',
   },
+  // Pharma Reactor AMC
   {
-    id: 'gt-019',
+    id: 'gt-013',
     name: 'Pharma Reactor AMC',
-    description: 'Annual maintenance contract for pharmaceutical reactors including glass-lined vessel care, agitator servicing, and process validation support.',
+    description: 'Specialized maintenance for pharmaceutical reactors with GMP compliance and validation support.',
     industry: 'pharma',
     industryLabel: 'Pharma & Biotech',
-    industryIcon: '\uD83D\uDC8A',
-    category: 'clean-room',
-    categoryLabel: 'Clean Room',
+    industryIcon: '💊',
+    category: 'pharma',
+    categoryLabel: 'Process Equipment',
     complexity: 'complex',
     estimatedDuration: '35-45 min',
     blocksCount: 6,
     blocks: [
-      { id: 'b1', name: 'Reactor Inventory', type: 'Checklist', description: 'Vessel specifications and capacity', required: true },
-      { id: 'b2', name: 'Glass Lining Inspection', type: 'Service', description: 'Spark testing and integrity check', required: true },
-      { id: 'b3', name: 'Agitator Service', type: 'Service', description: 'Seal replacement and alignment', required: true },
-      { id: 'b4', name: 'Instrumentation', type: 'Service', description: 'Sensor calibration and validation', required: true },
-      { id: 'b5', name: 'Spare Parts', type: 'Spare Part', description: 'Seals, gaskets, and consumables', required: true },
-      { id: 'b6', name: 'Contract Value', type: 'Billing', description: 'Annual maintenance fee', required: true },
+      { id: 'b1', name: 'Reactor Specs', type: 'Service', description: 'Capacity and type', required: true },
+      { id: 'b2', name: 'PM Schedule', type: 'Checklist', description: 'Maintenance plan', required: true },
+      { id: 'b3', name: 'Gaskets & Seals', type: 'Spare Part', description: 'Consumables list', required: true },
+      { id: 'b4', name: 'Calibration', type: 'Document', description: 'Sensor calibration', required: true },
+      { id: 'b5', name: 'GMP Docs', type: 'Document', description: 'Validation protocols', required: true },
+      { id: 'b6', name: 'Contract Value', type: 'Billing', description: 'Annual fee', required: true },
     ],
-    tags: ['amc', 'reactor', 'pharma', 'glass-lined', 'api', 'manufacturing'],
+    tags: ['Reactor', 'Pharma', 'GMP', 'Validation'],
     usageCount: 45,
     rating: 4.8,
     isPopular: false,
-    createdAt: '2024-03-15T11:00:00Z',
-    updatedAt: '2024-11-28T10:30:00Z',
+    createdAt: '2024-03-20',
+    updatedAt: '2024-11-20',
     pricing: {
-      baseAmount: 225000,
+      baseAmount: 450000,
       currency: 'INR',
       billingFrequency: 'yearly',
-      paymentType: 'quarterly',
-      deposit: 0,
+      paymentType: 'prepaid',
+      depositRequired: false,
       taxRate: 18,
     },
     serviceDetails: {
-      serviceType: 'amc',
-      usageLimit: 6,
-      usageLimitUnit: 'visits',
-      validityPeriod: 12,
-      includes: ['Bi-monthly Inspections', 'Glass Lining Spark Test', 'Agitator Seal Service', 'Pressure Test', 'Instrument Calibration', 'Batch Documentation Support'],
+      serviceType: 'limited',
+      usageLimit: 4,
+      usagePeriod: 'PM visits/year',
+      validityPeriod: '12 Months',
+      includes: ['Quarterly PM', 'Gasket Replacement', 'Agitator Service', 'Sensor Calibration', 'GMP Documentation', 'Audit Support'],
+      excludes: ['Vessel re-glasslining', 'Motor replacement', 'Major overhauls'],
     },
     termsAndConditions: [
-      'Covers reactors up to 5000L capacity',
-      'Glass relining is a separate major project',
-      'Shutdown coordination required for inspections',
-      'Calibration certificates for regulatory compliance',
-      'Emergency support during batch processing available',
+      'For reactors up to 5000L',
+      'Glass-lined and SS variants covered',
+      'Shutdown schedule to be mutually agreed',
     ],
-    cancellationPolicy: 'Quarterly payments. 90-day notice required. Ongoing batch support continues until completion.',
+    cancellationPolicy: 'Pro-rata refund minus services and parts used.',
   },
-  // ===== INDUSTRIAL =====
+  // Wheelchair Rental
   {
-    id: 'gt-020',
+    id: 'gt-014',
+    name: 'Wheelchair Rental',
+    description: 'Flexible wheelchair rental with delivery, maintenance, and optional electric models.',
+    industry: 'healthcare',
+    industryLabel: 'Healthcare',
+    industryIcon: '🏥',
+    category: 'healthcare',
+    categoryLabel: 'Mobility Aids',
+    complexity: 'simple',
+    estimatedDuration: '8-10 min',
+    blocksCount: 4,
+    blocks: [
+      { id: 'b1', name: 'Chair Selection', type: 'Service', description: 'Type and features', required: true },
+      { id: 'b2', name: 'Rental Terms', type: 'Billing', description: 'Duration and cost', required: true },
+      { id: 'b3', name: 'Accessories', type: 'Checklist', description: 'Add-on items', required: false },
+      { id: 'b4', name: 'Care Guide', type: 'Text', description: 'Usage tips', required: false },
+    ],
+    tags: ['Wheelchair', 'Mobility', 'Rental', 'Accessibility'],
+    usageCount: 445,
+    rating: 4.7,
+    isPopular: true,
+    createdAt: '2024-05-15',
+    updatedAt: '2024-12-05',
+    pricing: {
+      baseAmount: 3500,
+      currency: 'INR',
+      billingFrequency: 'monthly',
+      paymentType: 'prepaid',
+      depositRequired: true,
+      depositAmount: 5000,
+      taxRate: 5,
+    },
+    serviceDetails: {
+      serviceType: 'unlimited',
+      validityPeriod: '1 Month (Renewable)',
+      includes: ['Wheelchair', 'Cushion', 'Footrest', 'Home Delivery', 'Monthly Maintenance', 'Puncture Repair'],
+      excludes: ['Electric wheelchair battery', 'Accessories damage'],
+    },
+    termsAndConditions: [
+      'Minimum rental: 1 week',
+      'Electric chairs need extra deposit',
+      'Return in clean condition',
+    ],
+    cancellationPolicy: 'Full refund before delivery. 20% after.',
+  },
+  // Industrial Compressor
+  {
+    id: 'gt-015',
     name: 'Industrial Compressor AMC',
-    description: 'Annual maintenance contract for industrial air compressors including preventive maintenance, oil analysis, valve servicing, and efficiency optimization.',
+    description: 'Comprehensive maintenance for industrial air compressors with oil analysis and efficiency monitoring.',
     industry: 'industrial',
     industryLabel: 'Industrial',
-    industryIcon: '\uD83C\uDFED',
-    category: 'hvac-climate',
-    categoryLabel: 'HVAC & Climate',
+    industryIcon: '🏭',
+    category: 'industrial',
+    categoryLabel: 'Compressed Air',
+    complexity: 'medium',
+    estimatedDuration: '20-25 min',
+    blocksCount: 5,
+    blocks: [
+      { id: 'b1', name: 'Compressor Details', type: 'Service', description: 'Make and capacity', required: true },
+      { id: 'b2', name: 'PM Checklist', type: 'Checklist', description: 'Service schedule', required: true },
+      { id: 'b3', name: 'Consumables', type: 'Spare Part', description: 'Oil, filters, belts', required: true },
+      { id: 'b4', name: 'Efficiency Report', type: 'Document', description: 'Performance data', required: false },
+      { id: 'b5', name: 'AMC Cost', type: 'Billing', description: 'Annual fee', required: true },
+    ],
+    tags: ['Compressor', 'Industrial', 'AMC', 'Pneumatic'],
+    usageCount: 178,
+    rating: 4.6,
+    isPopular: false,
+    createdAt: '2024-02-25',
+    updatedAt: '2024-11-15',
+    pricing: {
+      baseAmount: 55000,
+      currency: 'INR',
+      billingFrequency: 'yearly',
+      paymentType: 'prepaid',
+      depositRequired: false,
+      taxRate: 18,
+    },
+    serviceDetails: {
+      serviceType: 'limited',
+      usageLimit: 4,
+      usagePeriod: 'services/year',
+      validityPeriod: '12 Months',
+      includes: ['Quarterly Service', 'Oil Change', 'Filter Replacement', 'Oil Analysis', 'Leak Detection', 'Efficiency Report'],
+      excludes: ['Air end overhaul', 'Motor rewinding', 'Dryer repairs'],
+    },
+    termsAndConditions: [
+      'For compressors up to 100 CFM',
+      'Larger units priced separately',
+      'Oil analysis twice yearly',
+    ],
+    cancellationPolicy: 'Pro-rata refund minus services rendered.',
+  },
+  // Stairlift
+  {
+    id: 'gt-016',
+    name: 'Stairlift Installation & AMC',
+    description: 'Complete stairlift solution with installation, training, and annual maintenance contract.',
+    industry: 'healthcare',
+    industryLabel: 'Healthcare',
+    industryIcon: '🏥',
+    category: 'healthcare',
+    categoryLabel: 'Mobility Aids',
+    complexity: 'complex',
+    estimatedDuration: '25-30 min',
+    blocksCount: 5,
+    blocks: [
+      { id: 'b1', name: 'Site Survey', type: 'Service', description: 'Staircase assessment', required: true },
+      { id: 'b2', name: 'Installation', type: 'Service', description: 'Fitting and testing', required: true },
+      { id: 'b3', name: 'Training', type: 'Document', description: 'User guide and demo', required: true },
+      { id: 'b4', name: 'AMC Terms', type: 'Checklist', description: 'Maintenance schedule', required: true },
+      { id: 'b5', name: 'Pricing', type: 'Billing', description: 'Cost breakdown', required: true },
+    ],
+    tags: ['Stairlift', 'Mobility', 'Installation', 'AMC'],
+    usageCount: 67,
+    rating: 4.8,
+    isPopular: false,
+    createdAt: '2024-04-01',
+    updatedAt: '2024-11-30',
+    pricing: {
+      baseAmount: 185000,
+      currency: 'INR',
+      billingFrequency: 'yearly',
+      paymentType: 'prepaid',
+      depositRequired: true,
+      depositAmount: 50000,
+      taxRate: 18,
+    },
+    serviceDetails: {
+      serviceType: 'limited',
+      usageLimit: 2,
+      usagePeriod: 'services/year',
+      validityPeriod: '12 Months',
+      includes: ['Site Survey', 'Installation', 'User Training', 'Bi-annual Service', 'Battery Check', 'Emergency Support'],
+      excludes: ['Staircase modifications', 'Battery replacement', 'Rail extensions'],
+    },
+    termsAndConditions: [
+      'For straight staircases up to 15 steps',
+      'Curved stairs need custom quote',
+      'Electrical point to be provided by customer',
+    ],
+    cancellationPolicy: 'No refund after installation begins.',
+  },
+  // Home Nursing
+  {
+    id: 'gt-017',
+    name: 'Home Nursing Care Plan',
+    description: 'Professional nursing services at home with medication management, wound care, and vital monitoring.',
+    industry: 'healthcare',
+    industryLabel: 'Healthcare',
+    industryIcon: '🏥',
+    category: 'healthcare',
+    categoryLabel: 'Home Care',
+    complexity: 'medium',
+    estimatedDuration: '15-20 min',
+    blocksCount: 5,
+    blocks: [
+      { id: 'b1', name: 'Patient Assessment', type: 'Service', description: 'Care requirements', required: true },
+      { id: 'b2', name: 'Care Plan', type: 'Text', description: 'Treatment protocol', required: true },
+      { id: 'b3', name: 'Nursing Schedule', type: 'Checklist', description: 'Visit frequency', required: true },
+      { id: 'b4', name: 'Pricing', type: 'Billing', description: 'Monthly costs', required: true },
+      { id: 'b5', name: 'Emergency Protocol', type: 'Document', description: 'Emergency contacts', required: true },
+    ],
+    tags: ['Nursing', 'Home Care', 'Medical', 'Elder Care'],
+    usageCount: 234,
+    rating: 4.9,
+    isPopular: true,
+    createdAt: '2024-03-10',
+    updatedAt: '2024-12-10',
+    pricing: {
+      baseAmount: 18000,
+      currency: 'INR',
+      billingFrequency: 'monthly',
+      paymentType: 'prepaid',
+      depositRequired: false,
+      taxRate: 18,
+    },
+    serviceDetails: {
+      serviceType: 'unlimited',
+      validityPeriod: '1 Month (Renewable)',
+      includes: ['Daily Nurse Visits', 'Medication Management', 'Vital Monitoring', 'Wound Care', 'Doctor Coordination', '24/7 Helpline'],
+      excludes: ['Medicines', 'Medical equipment', 'Hospital admission'],
+    },
+    termsAndConditions: [
+      'Minimum commitment: 1 month',
+      'Nurse replacement available on request',
+      'Doctor consultation extra',
+    ],
+    cancellationPolicy: 'Pro-rata refund with 7-day notice.',
+  },
+  // Elderly Care
+  {
+    id: 'gt-018',
+    name: 'Elderly Care Monthly Plan',
+    description: 'Comprehensive senior care with attendant, meals coordination, activity engagement, and health monitoring.',
+    industry: 'healthcare',
+    industryLabel: 'Healthcare',
+    industryIcon: '🏥',
+    category: 'healthcare',
+    categoryLabel: 'Senior Care',
     complexity: 'medium',
     estimatedDuration: '18-22 min',
     blocksCount: 5,
     blocks: [
-      { id: 'b1', name: 'Compressor Details', type: 'Service', description: 'Make, model, CFM, and pressure rating', required: true },
-      { id: 'b2', name: 'Service Schedule', type: 'Checklist', description: 'Monthly and quarterly service items', required: true },
-      { id: 'b3', name: 'Oil & Filter', type: 'Spare Part', description: 'Consumables and replacement schedule', required: true },
-      { id: 'b4', name: 'Energy Audit', type: 'Document', description: 'Efficiency monitoring and reporting', required: false },
-      { id: 'b5', name: 'AMC Pricing', type: 'Billing', description: 'Annual contract terms', required: true },
+      { id: 'b1', name: 'Senior Assessment', type: 'Service', description: 'Care needs evaluation', required: true },
+      { id: 'b2', name: 'Care Services', type: 'Checklist', description: 'Services included', required: true },
+      { id: 'b3', name: 'Schedule', type: 'Text', description: 'Daily routine', required: true },
+      { id: 'b4', name: 'Health Reports', type: 'Document', description: 'Weekly updates', required: true },
+      { id: 'b5', name: 'Monthly Fee', type: 'Billing', description: 'Cost breakdown', required: true },
     ],
-    tags: ['amc', 'compressor', 'industrial', 'pneumatic', 'air-compressor'],
+    tags: ['Elder Care', 'Senior', 'Home Care', 'Attendant'],
     usageCount: 189,
-    rating: 4.6,
-    isPopular: false,
-    createdAt: '2024-04-25T10:00:00Z',
-    updatedAt: '2024-12-01T11:00:00Z',
+    rating: 4.8,
+    isPopular: true,
+    createdAt: '2024-02-15',
+    updatedAt: '2024-12-05',
     pricing: {
-      baseAmount: 45000,
+      baseAmount: 25000,
       currency: 'INR',
-      billingFrequency: 'yearly',
-      paymentType: 'advance',
-      deposit: 0,
+      billingFrequency: 'monthly',
+      paymentType: 'prepaid',
+      depositRequired: true,
+      depositAmount: 10000,
       taxRate: 18,
     },
     serviceDetails: {
-      serviceType: 'amc',
-      usageLimit: 12,
-      usageLimitUnit: 'visits',
-      validityPeriod: 12,
-      includes: ['Monthly Service Visits', 'Oil Change (Quarterly)', 'Air Filter Replacement', 'Valve Inspection', 'Belt Replacement', 'Efficiency Report (Half-yearly)'],
+      serviceType: 'unlimited',
+      validityPeriod: '1 Month (Renewable)',
+      includes: ['Trained Attendant', 'Meal Coordination', 'Activity Engagement', 'Vital Monitoring', 'Weekly Health Reports', 'Family Updates'],
+      excludes: ['Medical treatment', 'Specialized nursing', 'Meals'],
     },
     termsAndConditions: [
-      'Covers screw/piston compressors up to 100 HP',
-      'Larger compressors priced on assessment',
-      'Running hours determine service intervals',
-      'Dryer and receiver tank service available as add-on',
-      'Energy audit recommendations provided',
+      '8-hour or 12-hour shifts available',
+      '24-hour care at extra cost',
+      'Background-verified attendants',
     ],
-    cancellationPolicy: 'Pro-rata refund with 30-day notice. No refund in final quarter.',
+    cancellationPolicy: '15-day notice. Deposit refundable minus dues.',
+  },
+  // Health Checkup
+  {
+    id: 'gt-019',
+    name: 'Comprehensive Health Checkup',
+    description: 'Full body health screening with blood tests, scans, specialist consultations, and detailed reports.',
+    industry: 'wellness',
+    industryLabel: 'Wellness & Spa',
+    industryIcon: '🧘',
+    category: 'wellness',
+    categoryLabel: 'Preventive Care',
+    complexity: 'simple',
+    estimatedDuration: '10-12 min',
+    blocksCount: 4,
+    blocks: [
+      { id: 'b1', name: 'Test Package', type: 'Checklist', description: 'Tests included', required: true },
+      { id: 'b2', name: 'Consultations', type: 'Service', description: 'Specialist reviews', required: true },
+      { id: 'b3', name: 'Package Price', type: 'Billing', description: 'All-inclusive cost', required: true },
+      { id: 'b4', name: 'Report Delivery', type: 'Document', description: 'Digital reports', required: true },
+    ],
+    tags: ['Health Checkup', 'Screening', 'Preventive', 'Tests'],
+    usageCount: 567,
+    rating: 4.7,
+    isPopular: true,
+    createdAt: '2024-01-10',
+    updatedAt: '2024-12-08',
+    pricing: {
+      baseAmount: 8500,
+      currency: 'INR',
+      billingFrequency: 'one-time',
+      paymentType: 'prepaid',
+      depositRequired: false,
+      taxRate: 0,
+    },
+    serviceDetails: {
+      serviceType: 'limited',
+      usageLimit: 1,
+      usagePeriod: 'checkup',
+      validityPeriod: '30 Days',
+      includes: ['70+ Blood Tests', 'ECG', 'Chest X-Ray', 'Ultrasound', 'Doctor Consultation', 'Diet Advice'],
+      excludes: ['CT/MRI scans', 'Specialist referrals', 'Treatment'],
+    },
+    termsAndConditions: [
+      'Fasting required for accurate results',
+      'Reports within 48 hours',
+      'Valid for 30 days from booking',
+    ],
+    cancellationPolicy: 'Full refund if cancelled 24 hours before.',
+  },
+  // VRF System
+  {
+    id: 'gt-020',
+    name: 'VRF System AMC',
+    description: 'Premium maintenance for Variable Refrigerant Flow systems with energy optimization and remote monitoring.',
+    industry: 'hvac',
+    industryLabel: 'HVAC & Climate',
+    industryIcon: '❄️',
+    category: 'hvac',
+    categoryLabel: 'Central AC',
+    complexity: 'complex',
+    estimatedDuration: '25-35 min',
+    blocksCount: 5,
+    blocks: [
+      { id: 'b1', name: 'System Mapping', type: 'Service', description: 'All ODUs and IDUs', required: true },
+      { id: 'b2', name: 'PM Schedule', type: 'Checklist', description: 'Quarterly maintenance', required: true },
+      { id: 'b3', name: 'Refrigerant Plan', type: 'Spare Part', description: 'Top-up coverage', required: true },
+      { id: 'b4', name: 'Energy Reports', type: 'Document', description: 'Efficiency analysis', required: false },
+      { id: 'b5', name: 'Contract Value', type: 'Billing', description: 'Annual fee', required: true },
+    ],
+    tags: ['VRF', 'VRV', 'HVAC', 'Energy', 'AMC'],
+    usageCount: 123,
+    rating: 4.8,
+    isPopular: false,
+    createdAt: '2024-04-20',
+    updatedAt: '2024-12-01',
+    pricing: {
+      baseAmount: 125000,
+      currency: 'INR',
+      billingFrequency: 'yearly',
+      paymentType: 'prepaid',
+      depositRequired: false,
+      taxRate: 18,
+    },
+    serviceDetails: {
+      serviceType: 'unlimited',
+      validityPeriod: '12 Months',
+      includes: ['Quarterly PM', 'Refrigerant Top-up', 'Filter Cleaning', 'Remote Diagnostics', 'Energy Reports', '24/7 Support'],
+      excludes: ['Compressor replacement', 'PCB failures', 'Physical damage'],
+    },
+    termsAndConditions: [
+      'For systems up to 50 indoor units',
+      'Larger systems quoted separately',
+      'Remote monitoring setup required',
+    ],
+    cancellationPolicy: '60-day notice. Pro-rata refund minus services.',
   },
 ];
 
 // =====================================================
-// TYPES
+// MY TEMPLATES (User Created)
 // =====================================================
-type ViewType = 'grid' | 'list';
-type SortOption = 'recent' | 'popular' | 'rating' | 'name' | 'price-low' | 'price-high';
-type TabType = 'my-templates' | 'global';
-
-interface MyTemplate extends GlobalTemplate {
-  copiedFrom?: string;
-  isCustom?: boolean;
-}
-
-interface Toast {
+interface MyTemplate {
   id: string;
-  type: 'success' | 'error' | 'info' | 'warning';
-  title: string;
-  description?: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  blocksCount: number;
+  status: 'draft' | 'active' | 'archived';
 }
 
-// =====================================================
-// TOAST COMPONENT
-// =====================================================
-const ToastNotification: React.FC<{
-  toast: Toast;
-  onDismiss: (id: string) => void;
-  colors: Record<string, any>;
-  isDarkMode: boolean;
-}> = ({ toast, onDismiss, colors, isDarkMode }) => {
-  React.useEffect(() => {
-    const timer = setTimeout(() => onDismiss(toast.id), 4000);
-    return () => clearTimeout(timer);
-  }, [toast.id, onDismiss]);
-
-  const getIcon = () => {
-    switch (toast.type) {
-      case 'success': return <CheckCircle className="w-4 h-4" />;
-      case 'error': return <AlertCircle className="w-4 h-4" />;
-      case 'info': return <AlertCircle className="w-4 h-4" />;
-      default: return <AlertCircle className="w-4 h-4" />;
-    }
-  };
-
-  const getBg = () => {
-    switch (toast.type) {
-      case 'success': return colors.semantic.success;
-      case 'error': return colors.semantic.error;
-      case 'info': return colors.brand.primary;
-      default: return colors.brand.primary;
-    }
-  };
-
-  return (
-    <div
-      className="flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg animate-in slide-in-from-right-4 min-w-[280px]"
-      style={{
-        backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#FFFFFF',
-        border: `1px solid ${getBg()}40`,
-      }}
-    >
-      <div
-        className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-        style={{ backgroundColor: `${getBg()}20`, color: getBg() }}
-      >
-        {getIcon()}
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium" style={{ color: colors.utility.primaryText }}>{toast.title}</p>
-        {toast.description && (
-          <p className="text-xs mt-0.5" style={{ color: colors.utility.secondaryText }}>{toast.description}</p>
-        )}
-      </div>
-      <button onClick={() => onDismiss(toast.id)} className="p-1" style={{ color: colors.utility.secondaryText }}>
-        <X className="w-4 h-4" />
-      </button>
-    </div>
-  );
-};
-
-// =====================================================
-// BILLING FREQUENCY DISPLAY HELPER
-// =====================================================
-const getBillingFrequencyLabel = (frequency: TemplatePricing['billingFrequency']): string => {
-  switch (frequency) {
-    case 'one-time': return '';
-    case 'monthly': return '/month';
-    case 'quarterly': return '/quarter';
-    case 'half-yearly': return '/6 months';
-    case 'yearly': return '/year';
-    default: return '';
-  }
-};
-
-// =====================================================
-// TEMPLATE CARD COMPONENT
-// =====================================================
-const TemplateCard: React.FC<{
-  template: GlobalTemplate | MyTemplate;
-  viewType: ViewType;
-  isGlobal: boolean;
-  selectedCurrency: CurrencyCode;
-  onPreview: () => void;
-  onCopyToMyTemplates?: () => void;
-  onEdit?: () => void;
-  onDelete?: () => void;
-  onExportPDF?: () => void;
-  colors: Record<string, any>;
-  isDarkMode: boolean;
-}> = ({ template, viewType, isGlobal, selectedCurrency, onPreview, onCopyToMyTemplates, onEdit, onDelete, onExportPDF, colors, isDarkMode }) => {
-  const [showActions, setShowActions] = useState(false);
-
-  const getComplexityColor = (complexity: string) => {
-    switch (complexity) {
-      case 'simple': return colors.semantic.success;
-      case 'medium': return colors.semantic.warning;
-      case 'complex': return colors.semantic.error;
-      default: return colors.utility.secondaryText;
-    }
-  };
-
-  const formattedPrice = formatCurrency(template.pricing.baseAmount, selectedCurrency);
-  const billingLabel = getBillingFrequencyLabel(template.pricing.billingFrequency);
-
-  if (viewType === 'list') {
-    return (
-      <div
-        className="p-4 rounded-lg border transition-all hover:shadow-md"
-        style={{
-          backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#FFFFFF',
-          borderColor: colors.utility.secondaryText + '20',
-        }}
-      >
-        <div className="flex items-center gap-4">
-          <div
-            className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 text-xl"
-            style={{ backgroundColor: colors.brand.primary + '15' }}
-          >
-            {template.industryIcon}
-          </div>
-
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-sm truncate" style={{ color: colors.utility.primaryText }}>
-                {template.name}
-              </h3>
-              {isGlobal && (
-                <Globe className="w-4 h-4 flex-shrink-0" style={{ color: colors.brand.primary }} />
-              )}
-              {template.isPopular && (
-                <TrendingUp className="w-4 h-4 flex-shrink-0" style={{ color: colors.semantic.warning }} />
-              )}
-              <span
-                className="text-[10px] px-2 py-0.5 rounded-full capitalize"
-                style={{ backgroundColor: `${getComplexityColor(template.complexity)}20`, color: getComplexityColor(template.complexity) }}
-              >
-                {template.complexity}
-              </span>
-            </div>
-            <p className="text-xs truncate mt-1" style={{ color: colors.utility.secondaryText }}>
-              {template.description}
-            </p>
-          </div>
-
-          {/* Pricing - List View */}
-          <div
-            className="px-3 py-2 rounded-lg text-center min-w-[120px]"
-            style={{ backgroundColor: colors.semantic.success + '10' }}
-          >
-            <div className="font-bold text-base" style={{ color: colors.semantic.success }}>
-              {formattedPrice}
-            </div>
-            {billingLabel && (
-              <div className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
-                {billingLabel}
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center gap-4 text-xs" style={{ color: colors.utility.secondaryText }}>
-            <span className="flex items-center gap-1">
-              <Layers className="w-3.5 h-3.5" />
-              {template.blocksCount}
-            </span>
-            <span className="flex items-center gap-1">
-              <Star className="w-3.5 h-3.5" style={{ fill: colors.semantic.warning, color: colors.semantic.warning }} />
-              {template.rating}
-            </span>
-            <span className="flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5" />
-              {template.estimatedDuration}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onPreview}
-              className="px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors"
-              style={{ borderColor: colors.brand.primary, color: colors.brand.primary }}
-            >
-              <Eye className="w-3.5 h-3.5 inline mr-1" />
-              Preview
-            </button>
-            {isGlobal && onCopyToMyTemplates && (
-              <button
-                onClick={onCopyToMyTemplates}
-                className="px-3 py-1.5 text-xs font-medium rounded-lg"
-                style={{ backgroundColor: colors.brand.primary, color: '#FFFFFF' }}
-              >
-                <Copy className="w-3.5 h-3.5 inline mr-1" />
-                Copy
-              </button>
-            )}
-            {!isGlobal && (
-              <div className="relative">
-                <button
-                  onClick={() => setShowActions(!showActions)}
-                  className="p-2 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
-                  style={{ color: colors.utility.secondaryText }}
-                >
-                  <MoreVertical className="w-4 h-4" />
-                </button>
-                {showActions && (
-                  <div
-                    className="absolute right-0 top-full mt-1 w-36 rounded-lg border shadow-lg z-10"
-                    style={{
-                      backgroundColor: colors.utility.secondaryBackground,
-                      borderColor: colors.utility.secondaryText + '20',
-                    }}
-                  >
-                    <button
-                      onClick={() => { onEdit?.(); setShowActions(false); }}
-                      className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-800"
-                      style={{ color: colors.utility.primaryText }}
-                    >
-                      <Edit className="w-4 h-4" /> Edit
-                    </button>
-                    <button
-                      onClick={() => { onExportPDF?.(); setShowActions(false); }}
-                      className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-800"
-                      style={{ color: colors.utility.primaryText }}
-                    >
-                      <Download className="w-4 h-4" /> Export PDF
-                    </button>
-                    <div className="border-t" style={{ borderColor: colors.utility.secondaryText + '20' }} />
-                    <button
-                      onClick={() => { onDelete?.(); setShowActions(false); }}
-                      className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-red-50 dark:hover:bg-red-900/20"
-                      style={{ color: colors.semantic.error }}
-                    >
-                      <Trash2 className="w-4 h-4" /> Delete
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Grid view
-  return (
-    <div
-      className="rounded-xl border transition-all hover:shadow-lg hover:-translate-y-1 group relative"
-      style={{
-        backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#FFFFFF',
-        borderColor: colors.utility.secondaryText + '20',
-      }}
-    >
-      {/* Popular Badge */}
-      {template.isPopular && (
-        <div className="absolute -top-2 -right-2 z-10">
-          <div
-            className="text-white text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-lg"
-            style={{ backgroundColor: colors.semantic.warning }}
-          >
-            <TrendingUp className="h-3 w-3" />
-            Popular
-          </div>
-        </div>
-      )}
-
-      <div className="p-4 border-b relative" style={{ borderColor: colors.utility.secondaryText + '10' }}>
-        <div className="flex items-start justify-between mb-3">
-          <div
-            className="w-12 h-12 rounded-lg flex items-center justify-center text-xl"
-            style={{ backgroundColor: colors.brand.primary + '15' }}
-          >
-            {template.industryIcon}
-          </div>
-          <div className="flex items-center gap-1">
-            {isGlobal && (
-              <span
-                className="text-[10px] px-2 py-0.5 rounded-full flex items-center gap-1"
-                style={{ backgroundColor: colors.brand.primary + '15', color: colors.brand.primary }}
-              >
-                <Globe className="w-3 h-3" /> Global
-              </span>
-            )}
-            <span
-              className="text-[10px] px-2 py-0.5 rounded-full capitalize"
-              style={{ backgroundColor: `${getComplexityColor(template.complexity)}20`, color: getComplexityColor(template.complexity) }}
-            >
-              {template.complexity}
-            </span>
-          </div>
-        </div>
-        <h3 className="font-semibold" style={{ color: colors.utility.primaryText }}>
-          {template.name}
-        </h3>
-        <div className="flex items-center gap-2 mt-1">
-          <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
-            {template.industryLabel}
-          </span>
-          <span className="text-xs" style={{ color: colors.utility.secondaryText }}>|</span>
-          <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
-            {template.categoryLabel}
-          </span>
-        </div>
-      </div>
-
-      <div className="p-4">
-        {/* Pricing Display - Grid View */}
-        <div
-          className="rounded-lg p-3 mb-3 text-center"
-          style={{ backgroundColor: colors.semantic.success + '10' }}
-        >
-          <div className="font-bold text-xl" style={{ color: colors.semantic.success }}>
-            {formattedPrice}
-          </div>
-          {billingLabel && (
-            <div className="text-xs" style={{ color: colors.utility.secondaryText }}>
-              {billingLabel}
-            </div>
-          )}
-          {template.pricing.deposit && template.pricing.deposit > 0 && (
-            <div className="text-[10px] mt-1" style={{ color: colors.utility.secondaryText }}>
-              + {formatCurrency(template.pricing.deposit, selectedCurrency)} deposit
-            </div>
-          )}
-        </div>
-
-        <p className="text-xs line-clamp-2 mb-3" style={{ color: colors.utility.secondaryText }}>
-          {template.description}
-        </p>
-
-        <div className="grid grid-cols-3 gap-2 text-center py-2 rounded-lg mb-3" style={{ backgroundColor: colors.brand.primary + '05' }}>
-          <div>
-            <div className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
-              {template.blocksCount}
-            </div>
-            <div className="text-[10px]" style={{ color: colors.utility.secondaryText }}>Blocks</div>
-          </div>
-          <div>
-            <div className="text-sm font-semibold flex items-center justify-center gap-0.5" style={{ color: colors.utility.primaryText }}>
-              <Star className="w-3 h-3" style={{ fill: colors.semantic.warning, color: colors.semantic.warning }} />
-              {template.rating}
-            </div>
-            <div className="text-[10px]" style={{ color: colors.utility.secondaryText }}>Rating</div>
-          </div>
-          <div>
-            <div className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
-              {template.usageCount}
-            </div>
-            <div className="text-[10px]" style={{ color: colors.utility.secondaryText }}>Uses</div>
-          </div>
-        </div>
-
-        {/* Service Details Preview */}
-        <div className="flex flex-wrap gap-1 mb-3">
-          {template.serviceDetails.includes.slice(0, 3).map((item, idx) => (
-            <span
-              key={idx}
-              className="text-[10px] px-2 py-0.5 rounded-full"
-              style={{ backgroundColor: colors.brand.primary + '10', color: colors.brand.primary }}
-            >
-              {item}
-            </span>
-          ))}
-          {template.serviceDetails.includes.length > 3 && (
-            <span
-              className="text-[10px] px-2 py-0.5 rounded-full"
-              style={{ backgroundColor: colors.utility.secondaryText + '15', color: colors.utility.secondaryText }}
-            >
-              +{template.serviceDetails.includes.length - 3} more
-            </span>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between text-xs" style={{ color: colors.utility.secondaryText }}>
-          <span className="flex items-center gap-1">
-            <Clock className="w-3.5 h-3.5" />
-            {template.estimatedDuration}
-          </span>
-          <span className="flex items-center gap-1">
-            <Calendar className="w-3.5 h-3.5" />
-            {template.serviceDetails.validityPeriod}M validity
-          </span>
-        </div>
-      </div>
-
-      <div className="px-4 py-3 border-t flex items-center gap-2" style={{ borderColor: colors.utility.secondaryText + '10' }}>
-        <button
-          onClick={onPreview}
-          className="flex-1 py-2 text-sm font-medium rounded-lg border transition-colors flex items-center justify-center gap-1"
-          style={{ borderColor: colors.brand.primary, color: colors.brand.primary }}
-        >
-          <Eye className="w-4 h-4" />
-          Preview
-        </button>
-        {isGlobal && onCopyToMyTemplates && (
-          <button
-            onClick={onCopyToMyTemplates}
-            className="flex-1 py-2 text-sm font-medium rounded-lg flex items-center justify-center gap-1"
-            style={{ backgroundColor: colors.brand.primary, color: '#FFFFFF' }}
-          >
-            <Copy className="w-4 h-4" />
-            Copy
-          </button>
-        )}
-        {!isGlobal && (
-          <button
-            onClick={() => setShowActions(!showActions)}
-            className="p-2 rounded-lg border transition-colors"
-            style={{ borderColor: colors.utility.secondaryText + '40', color: colors.utility.secondaryText }}
-          >
-            <MoreVertical className="w-4 h-4" />
-          </button>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// =====================================================
-// CURRENCY SELECTOR COMPONENT
-// =====================================================
-const CurrencySelector: React.FC<{
-  selectedCurrency: CurrencyCode;
-  onCurrencyChange: (currency: CurrencyCode) => void;
-  colors: Record<string, any>;
-  isDarkMode: boolean;
-}> = ({ selectedCurrency, onCurrencyChange, colors, isDarkMode }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const selectedOption = CURRENCY_OPTIONS.find(c => c.code === selectedCurrency);
-
-  return (
-    <div className="relative">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-colors"
-        style={{
-          backgroundColor: colors.utility.primaryBackground,
-          borderColor: colors.utility.secondaryText + '40',
-          color: colors.utility.primaryText,
-        }}
-      >
-        {selectedOption?.icon}
-        {selectedOption?.label}
-        <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-      </button>
-
-      {isOpen && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-          <div
-            className="absolute right-0 top-full mt-1 w-48 rounded-lg border shadow-lg z-50"
-            style={{
-              backgroundColor: colors.utility.primaryBackground,
-              borderColor: colors.utility.secondaryText + '20',
-            }}
-          >
-            {CURRENCY_OPTIONS.map((option) => (
-              <button
-                key={option.code}
-                onClick={() => {
-                  onCurrencyChange(option.code);
-                  setIsOpen(false);
-                }}
-                className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-800 first:rounded-t-lg last:rounded-b-lg"
-                style={{
-                  color: colors.utility.primaryText,
-                  backgroundColor: selectedCurrency === option.code ? colors.brand.primary + '10' : 'transparent',
-                }}
-              >
-                {option.icon}
-                <span className="flex-1">{CURRENCY_RATES[option.code].name}</span>
-                <span style={{ color: colors.utility.secondaryText }}>{option.label}</span>
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
-};
+const MY_TEMPLATES: MyTemplate[] = [];
 
 // =====================================================
 // MAIN COMPONENT
 // =====================================================
-const CatalogStudioTemplatesListPage: React.FC = () => {
+const TemplatesList: React.FC = () => {
   const navigate = useNavigate();
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
 
   // State
-  const [activeTab, setActiveTab] = useState<TabType>('global');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [viewType, setViewType] = useState<ViewType>('grid');
-  const [sortBy, setSortBy] = useState<SortOption>('popular');
-  const [selectedIndustry, setSelectedIndustry] = useState('all');
+  const [activeTab, setActiveTab] = useState<'my' | 'global'>('global');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedCurrency, setSelectedCurrency] = useState<CurrencyCode>('INR');
-  const [toasts, setToasts] = useState<Toast[]>([]);
-
-  // My Templates (copied from global + custom created)
-  const [myTemplates, setMyTemplates] = useState<MyTemplate[]>([]);
-
-  // Modals
-  const [previewModal, setPreviewModal] = useState<GlobalTemplate | null>(null);
-  const [pdfModal, setPdfModal] = useState<{ template: GlobalTemplate | null; mode: 'preview' | 'export' }>({ template: null, mode: 'preview' });
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [selectedTemplate, setSelectedTemplate] = useState<GlobalTemplate | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [showPDFModal, setShowPDFModal] = useState(false);
   const [isCopying, setIsCopying] = useState(false);
-
-  // Toast helper
-  const showToast = useCallback((type: Toast['type'], title: string, description?: string) => {
-    const id = `toast-${Date.now()}`;
-    setToasts((prev) => [...prev, { id, type, title, description }]);
-  }, []);
-
-  const dismissToast = useCallback((id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
-  }, []);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
 
   // Filter templates
-  const filteredGlobalTemplates = useMemo(() => {
-    let result = [...GLOBAL_TEMPLATES];
+  const filteredTemplates = useMemo(() => {
+    return GLOBAL_TEMPLATES.filter((template) => {
+      const matchesCategory = selectedCategory === 'all' || template.category === selectedCategory;
+      const matchesSearch = searchQuery === '' ||
+        template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        template.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        template.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+      return matchesCategory && matchesSearch;
+    });
+  }, [selectedCategory, searchQuery]);
 
-    // Industry filter
-    if (selectedIndustry !== 'all') {
-      result = result.filter((t) => t.industry === selectedIndustry);
-    }
-
-    // Category filter
-    if (selectedCategory !== 'all') {
-      result = result.filter((t) => t.category === selectedCategory);
-    }
-
-    // Search filter
-    if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase();
-      result = result.filter(
-        (t) =>
-          t.name.toLowerCase().includes(term) ||
-          t.description.toLowerCase().includes(term) ||
-          t.tags.some((tag) => tag.toLowerCase().includes(term)) ||
-          t.industryLabel.toLowerCase().includes(term) ||
-          t.categoryLabel.toLowerCase().includes(term)
-      );
-    }
-
-    // Sort
-    switch (sortBy) {
-      case 'recent':
-        result.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-        break;
-      case 'popular':
-        result.sort((a, b) => b.usageCount - a.usageCount);
-        break;
-      case 'rating':
-        result.sort((a, b) => b.rating - a.rating);
-        break;
-      case 'name':
-        result.sort((a, b) => a.name.localeCompare(b.name));
-        break;
-      case 'price-low':
-        result.sort((a, b) => a.pricing.baseAmount - b.pricing.baseAmount);
-        break;
-      case 'price-high':
-        result.sort((a, b) => b.pricing.baseAmount - a.pricing.baseAmount);
-        break;
-    }
-
-    return result;
-  }, [selectedIndustry, selectedCategory, searchTerm, sortBy]);
-
-  const filteredMyTemplates = useMemo(() => {
-    let result = [...myTemplates];
-
-    // Search filter
-    if (searchTerm.trim()) {
-      const term = searchTerm.toLowerCase();
-      result = result.filter(
-        (t) =>
-          t.name.toLowerCase().includes(term) ||
-          t.description.toLowerCase().includes(term)
-      );
-    }
-
-    // Sort
-    switch (sortBy) {
-      case 'recent':
-        result.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-        break;
-      case 'name':
-        result.sort((a, b) => a.name.localeCompare(b.name));
-        break;
-      case 'price-low':
-        result.sort((a, b) => a.pricing.baseAmount - b.pricing.baseAmount);
-        break;
-      case 'price-high':
-        result.sort((a, b) => b.pricing.baseAmount - a.pricing.baseAmount);
-        break;
-      default:
-        break;
-    }
-
-    return result;
-  }, [myTemplates, searchTerm, sortBy]);
+  // Featured templates
+  const featuredTemplates = GLOBAL_TEMPLATES.filter(t => t.isFeatured);
 
   // Handlers
-  const handleCopyToMyTemplates = async (template: GlobalTemplate) => {
+  const handleCopyTemplate = useCallback(async (template: GlobalTemplate) => {
     setIsCopying(true);
-    try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 800));
+    setCopiedId(template.id);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    setIsCopying(false);
+    setCopiedId(null);
+    // Show success feedback
+  }, []);
 
-      const copiedTemplate: MyTemplate = {
-        ...template,
-        id: `my-${template.id}-${Date.now()}`,
-        name: `${template.name} (Copy)`,
-        copiedFrom: template.id,
-        isCustom: false,
-        updatedAt: new Date().toISOString(),
-      };
+  const handlePreview = useCallback((template: GlobalTemplate) => {
+    setSelectedTemplate(template);
+    setShowPreviewModal(true);
+  }, []);
 
-      setMyTemplates((prev) => [copiedTemplate, ...prev]);
-      showToast('success', 'Template Copied', `"${template.name}" has been added to My Templates`);
-      setPreviewModal(null);
-      setActiveTab('my-templates');
-    } catch (error) {
-      showToast('error', 'Copy Failed', 'Unable to copy template. Please try again.');
-    } finally {
-      setIsCopying(false);
-    }
+  const getBillingLabel = (freq: string) => {
+    const labels: Record<string, string> = {
+      'monthly': '/mo',
+      'quarterly': '/qtr',
+      'yearly': '/yr',
+      'one-time': '',
+      'per-session': '/session',
+      'per-visit': '/visit',
+    };
+    return labels[freq] || '';
   };
 
-  const handleDeleteMyTemplate = (templateId: string) => {
-    const template = myTemplates.find((t) => t.id === templateId);
-    if (template) {
-      setMyTemplates((prev) => prev.filter((t) => t.id !== templateId));
-      showToast('success', 'Template Deleted', `"${template.name}" has been removed`);
-    }
-  };
-
-  const handleExportPDF = (template: GlobalTemplate) => {
-    setPdfModal({ template, mode: 'export' });
-  };
-
-  const handlePreviewPDF = (template: GlobalTemplate) => {
-    setPdfModal({ template, mode: 'preview' });
-  };
-
-  // Tab counts
-  const myTemplatesCount = myTemplates.length;
-  const globalTemplatesCount = GLOBAL_TEMPLATES.length;
-
-  // Calculate dynamic industry counts based on current category filter
-  const industryCountsForCurrentCategory = useMemo(() => {
-    const counts: Record<string, number> = { all: GLOBAL_TEMPLATES.length };
-    INDUSTRIES.forEach(ind => {
-      if (ind.id !== 'all') {
-        const filtered = GLOBAL_TEMPLATES.filter(t =>
-          t.industry === ind.id && (selectedCategory === 'all' || t.category === selectedCategory)
-        );
-        counts[ind.id] = filtered.length;
-      }
-    });
-    if (selectedCategory !== 'all') {
-      counts['all'] = GLOBAL_TEMPLATES.filter(t => t.category === selectedCategory).length;
-    }
-    return counts;
-  }, [selectedCategory]);
-
-  // Calculate dynamic category counts based on current industry filter
-  const categoryCountsForCurrentIndustry = useMemo(() => {
-    const counts: Record<string, number> = { all: GLOBAL_TEMPLATES.length };
-    CATEGORIES.forEach(cat => {
-      if (cat.id !== 'all') {
-        const filtered = GLOBAL_TEMPLATES.filter(t =>
-          t.category === cat.id && (selectedIndustry === 'all' || t.industry === selectedIndustry)
-        );
-        counts[cat.id] = filtered.length;
-      }
-    });
-    if (selectedIndustry !== 'all') {
-      counts['all'] = GLOBAL_TEMPLATES.filter(t => t.industry === selectedIndustry).length;
-    }
-    return counts;
-  }, [selectedIndustry]);
-
+  // =====================================================
+  // RENDER
+  // =====================================================
   return (
-    <div
-      className="h-full flex flex-col"
-      style={{ backgroundColor: colors.utility.secondaryBackground }}
-    >
-      {/* Header */}
+    <div className="min-h-screen" style={{ backgroundColor: colors.utility.primaryBackground }}>
+      {/* ===== HERO SECTION ===== */}
       <div
-        className="border-b px-6 py-4"
+        className="relative overflow-hidden"
         style={{
-          backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#FFFFFF',
-          borderColor: colors.utility.secondaryText + '20',
+          background: isDarkMode
+            ? 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)'
+            : 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
         }}
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div
-              className="w-12 h-12 rounded-xl flex items-center justify-center"
-              style={{ backgroundColor: colors.brand.primary + '15' }}
-            >
-              <LayoutTemplate className="w-6 h-6" style={{ color: colors.brand.primary }} />
-            </div>
+        {/* Animated Background Elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-white/10 blur-3xl animate-pulse" />
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-white/10 blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-white/5 blur-3xl" />
+        </div>
+
+        <div className="relative z-10 px-6 pt-8 pb-12">
+          {/* Header Row */}
+          <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="text-2xl font-bold" style={{ color: colors.utility.primaryText }}>
-                Templates
-              </h1>
-              <p className="text-sm" style={{ color: colors.utility.secondaryText }}>
-                AMC & Service Contract Templates for Multiple Industries
-              </p>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 rounded-xl bg-white/20 backdrop-blur-sm">
+                  <Sparkles className="w-6 h-6 text-white" />
+                </div>
+                <h1 className="text-3xl font-bold text-white">Template Gallery</h1>
+              </div>
+              <p className="text-white/70 text-lg">Professional contract templates for every industry</p>
+            </div>
+
+            {/* Currency Selector */}
+            <div className="relative">
+              <button
+                onClick={() => setShowCurrencyDropdown(!showCurrencyDropdown)}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-all"
+              >
+                <span className="font-semibold">{CURRENCY_CONFIG[selectedCurrency].symbol}</span>
+                <span>{selectedCurrency}</span>
+                <ChevronRight className={`w-4 h-4 transition-transform ${showCurrencyDropdown ? 'rotate-90' : ''}`} />
+              </button>
+
+              {showCurrencyDropdown && (
+                <div
+                  className="absolute right-0 top-full mt-2 py-2 rounded-xl shadow-2xl border z-50 min-w-[160px]"
+                  style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: colors.utility.secondaryText + '20' }}
+                >
+                  {Object.entries(CURRENCY_CONFIG).map(([code, { symbol }]) => (
+                    <button
+                      key={code}
+                      onClick={() => {
+                        setSelectedCurrency(code as CurrencyCode);
+                        setShowCurrencyDropdown(false);
+                      }}
+                      className="w-full px-4 py-2 text-left flex items-center justify-between hover:bg-black/5 transition-colors"
+                      style={{ color: colors.utility.primaryText }}
+                    >
+                      <span>{code}</span>
+                      <span className="font-semibold">{symbol}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            {/* Currency Selector */}
-            <CurrencySelector
-              selectedCurrency={selectedCurrency}
-              onCurrencyChange={setSelectedCurrency}
-              colors={colors}
-              isDarkMode={isDarkMode}
-            />
+
+          {/* Tabs */}
+          <div className="flex gap-2 mb-6">
             <button
-              onClick={() => navigate('/catalog-studio/template')}
-              className="px-4 py-2 text-sm font-medium text-white rounded-lg flex items-center gap-2"
-              style={{ backgroundColor: colors.brand.primary }}
+              onClick={() => setActiveTab('global')}
+              className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+                activeTab === 'global'
+                  ? 'bg-white text-gray-900 shadow-lg'
+                  : 'bg-white/20 text-white hover:bg-white/30'
+              }`}
             >
-              <Plus className="w-4 h-4" />
-              Create Template
+              <div className="flex items-center gap-2">
+                <Globe className="w-5 h-5" />
+                <span>Global Templates</span>
+                <span className="px-2 py-0.5 rounded-full bg-black/10 text-sm">
+                  {GLOBAL_TEMPLATES.length}
+                </span>
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('my')}
+              className={`px-6 py-3 rounded-xl font-semibold transition-all ${
+                activeTab === 'my'
+                  ? 'bg-white text-gray-900 shadow-lg'
+                  : 'bg-white/20 text-white hover:bg-white/30'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5" />
+                <span>My Templates</span>
+                <span className="px-2 py-0.5 rounded-full bg-black/10 text-sm">
+                  {MY_TEMPLATES.length}
+                </span>
+              </div>
             </button>
           </div>
-        </div>
-      </div>
 
-      {/* Tabs */}
-      <div
-        className="border-b px-6"
-        style={{
-          backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#FFFFFF',
-          borderColor: colors.utility.secondaryText + '20',
-        }}
-      >
-        <nav className="flex gap-1">
-          <button
-            onClick={() => setActiveTab('my-templates')}
-            className="px-4 py-3 text-sm font-medium flex items-center gap-2 border-b-2 transition-colors"
-            style={{
-              borderBottomColor: activeTab === 'my-templates' ? colors.brand.primary : 'transparent',
-              color: activeTab === 'my-templates' ? colors.brand.primary : colors.utility.secondaryText,
-            }}
-          >
-            <Building2 className="w-4 h-4" />
-            My Templates
-            <span
-              className="px-1.5 py-0.5 text-xs rounded-full"
-              style={{
-                backgroundColor: activeTab === 'my-templates' ? colors.brand.primary + '15' : colors.utility.secondaryText + '15',
-                color: activeTab === 'my-templates' ? colors.brand.primary : colors.utility.secondaryText,
-              }}
-            >
-              {myTemplatesCount}
-            </span>
-          </button>
-          <button
-            onClick={() => setActiveTab('global')}
-            className="px-4 py-3 text-sm font-medium flex items-center gap-2 border-b-2 transition-colors"
-            style={{
-              borderBottomColor: activeTab === 'global' ? colors.brand.primary : 'transparent',
-              color: activeTab === 'global' ? colors.brand.primary : colors.utility.secondaryText,
-            }}
-          >
-            <Globe className="w-4 h-4" />
-            Global Templates
-            <span
-              className="px-1.5 py-0.5 text-xs rounded-full"
-              style={{
-                backgroundColor: activeTab === 'global' ? colors.brand.primary + '15' : colors.utility.secondaryText + '15',
-                color: activeTab === 'global' ? colors.brand.primary : colors.utility.secondaryText,
-              }}
-            >
-              {globalTemplatesCount}
-            </span>
-          </button>
-        </nav>
-      </div>
-
-      {/* Industry Filter Row (Global Tab Only) */}
-      {activeTab === 'global' && (
-        <div
-          className="px-6 py-3 border-b overflow-x-auto"
-          style={{
-            backgroundColor: isDarkMode ? colors.utility.secondaryBackground : colors.brand.primary + '03',
-            borderColor: colors.utility.secondaryText + '20',
-          }}
-        >
-          <div className="flex items-center gap-2 min-w-max">
-            <span className="text-sm font-medium mr-2 flex items-center gap-1" style={{ color: colors.utility.secondaryText }}>
-              <Factory className="w-4 h-4" />
-              Industry:
-            </span>
-            {INDUSTRIES.map((industry) => (
-              <button
-                key={industry.id}
-                onClick={() => setSelectedIndustry(industry.id)}
-                className="px-3 py-1.5 text-sm rounded-full border transition-colors flex items-center gap-1.5"
-                style={{
-                  backgroundColor: selectedIndustry === industry.id ? colors.brand.primary : 'transparent',
-                  borderColor: selectedIndustry === industry.id ? colors.brand.primary : colors.utility.secondaryText + '30',
-                  color: selectedIndustry === industry.id ? '#FFFFFF' : colors.utility.primaryText,
-                }}
-              >
-                <span>{industry.icon}</span>
-                {industry.name}
-                <span
-                  className="text-xs px-1.5 rounded-full"
-                  style={{
-                    backgroundColor: selectedIndustry === industry.id ? 'rgba(255,255,255,0.2)' : colors.utility.secondaryText + '15',
-                  }}
-                >
-                  {industryCountsForCurrentCategory[industry.id] || 0}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Category Filter Row (Global Tab Only) */}
-      {activeTab === 'global' && (
-        <div
-          className="px-6 py-3 border-b overflow-x-auto"
-          style={{
-            backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#FFFFFF',
-            borderColor: colors.utility.secondaryText + '20',
-          }}
-        >
-          <div className="flex items-center gap-2 min-w-max">
-            <span className="text-sm font-medium mr-2 flex items-center gap-1" style={{ color: colors.utility.secondaryText }}>
-              <Tag className="w-4 h-4" />
-              Category:
-            </span>
-            {CATEGORIES.map((category) => (
-              <button
-                key={category.id}
-                onClick={() => setSelectedCategory(category.id)}
-                className="px-3 py-1.5 text-sm rounded-full border transition-colors flex items-center gap-1.5"
-                style={{
-                  backgroundColor: selectedCategory === category.id ? colors.brand.secondary || colors.semantic.info : 'transparent',
-                  borderColor: selectedCategory === category.id ? colors.brand.secondary || colors.semantic.info : colors.utility.secondaryText + '30',
-                  color: selectedCategory === category.id ? '#FFFFFF' : colors.utility.primaryText,
-                }}
-              >
-                <span>{category.icon}</span>
-                {category.name}
-                <span
-                  className="text-xs px-1.5 rounded-full"
-                  style={{
-                    backgroundColor: selectedCategory === category.id ? 'rgba(255,255,255,0.2)' : colors.utility.secondaryText + '15',
-                  }}
-                >
-                  {categoryCountsForCurrentIndustry[category.id] || 0}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Search & Filter Bar */}
-      <div
-        className="px-6 py-4 border-b"
-        style={{
-          backgroundColor: isDarkMode ? colors.utility.secondaryBackground : colors.brand.primary + '05',
-          borderColor: colors.utility.secondaryText + '20',
-        }}
-      >
-        <div className="flex items-center gap-4">
-          <div className="relative flex-1 max-w-md">
-            <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
-              style={{ color: colors.utility.secondaryText }}
-            />
+          {/* Search Bar */}
+          <div className="relative max-w-2xl">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/50" />
             <input
               type="text"
-              placeholder="Search templates by name, industry, category..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2"
-              style={{
-                backgroundColor: colors.utility.primaryBackground,
-                borderColor: colors.utility.secondaryText + '40',
-                color: colors.utility.primaryText,
-              }}
+              placeholder="Search templates by name, description, or tags..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-12 pr-4 py-4 rounded-2xl bg-white/20 backdrop-blur-sm text-white placeholder-white/50 border border-white/20 focus:border-white/40 focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
             />
           </div>
-
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as SortOption)}
-            className="px-3 py-2 border rounded-lg text-sm focus:outline-none"
-            style={{
-              backgroundColor: colors.utility.primaryBackground,
-              borderColor: colors.utility.secondaryText + '40',
-              color: colors.utility.primaryText,
-            }}
-          >
-            <option value="popular">Most Popular</option>
-            <option value="rating">Highest Rated</option>
-            <option value="recent">Recently Updated</option>
-            <option value="name">Name A-Z</option>
-            <option value="price-low">Price: Low to High</option>
-            <option value="price-high">Price: High to Low</option>
-          </select>
-
-          <div
-            className="flex rounded-lg p-0.5"
-            style={{ backgroundColor: colors.utility.secondaryText + '10' }}
-          >
-            <button
-              onClick={() => setViewType('grid')}
-              className="p-2 rounded-md transition-colors"
-              style={{
-                backgroundColor: viewType === 'grid' ? colors.utility.primaryBackground : 'transparent',
-                color: viewType === 'grid' ? colors.utility.primaryText : colors.utility.secondaryText,
-              }}
-            >
-              <Grid3X3 className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setViewType('list')}
-              className="p-2 rounded-md transition-colors"
-              style={{
-                backgroundColor: viewType === 'list' ? colors.utility.primaryBackground : 'transparent',
-                color: viewType === 'list' ? colors.utility.primaryText : colors.utility.secondaryText,
-              }}
-            >
-              <List className="w-4 h-4" />
-            </button>
-          </div>
-
-          <span className="text-sm" style={{ color: colors.utility.secondaryText }}>
-            {activeTab === 'global' ? filteredGlobalTemplates.length : filteredMyTemplates.length} templates
-          </span>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6">
-        {/* Global Templates Tab */}
-        {activeTab === 'global' && (
-          <>
-            {filteredGlobalTemplates.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-64">
-                <Globe className="w-16 h-16 mb-4" style={{ color: colors.utility.secondaryText }} />
+      {activeTab === 'global' && (
+        <>
+          {/* ===== CATEGORY PILLS ===== */}
+          <div className="px-6 py-4 border-b" style={{ borderColor: colors.utility.secondaryText + '15' }}>
+            <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-hide">
+              {CATEGORIES.map((cat) => {
+                const isActive = selectedCategory === cat.id;
+                const count = cat.id === 'all'
+                  ? GLOBAL_TEMPLATES.length
+                  : GLOBAL_TEMPLATES.filter(t => t.category === cat.id).length;
+
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.id)}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-full whitespace-nowrap transition-all transform hover:scale-105 ${
+                      isActive
+                        ? `bg-gradient-to-r ${cat.color} text-white shadow-lg`
+                        : 'hover:bg-gray-100 dark:hover:bg-gray-800'
+                    }`}
+                    style={!isActive ? { color: colors.utility.primaryText, backgroundColor: colors.utility.secondaryBackground } : undefined}
+                  >
+                    <span className="text-lg">{cat.emoji}</span>
+                    <span className="font-medium">{cat.name}</span>
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? 'bg-white/20' : 'bg-black/5'}`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* ===== FEATURED SECTION ===== */}
+          {selectedCategory === 'all' && searchQuery === '' && (
+            <div className="px-6 py-8">
+              <div className="flex items-center gap-2 mb-6">
+                <Zap className="w-5 h-5" style={{ color: colors.semantic.warning }} />
+                <h2 className="text-xl font-bold" style={{ color: colors.utility.primaryText }}>
+                  Featured Templates
+                </h2>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {featuredTemplates.map((template) => (
+                  <div
+                    key={template.id}
+                    onClick={() => handlePreview(template)}
+                    className="group relative rounded-2xl overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl"
+                  >
+                    {/* Gradient Background */}
+                    <div className={`absolute inset-0 bg-gradient-to-br ${template.gradient || 'from-violet-500 to-purple-600'}`} />
+
+                    {/* Content */}
+                    <div className="relative p-6 text-white">
+                      {/* Badge */}
+                      <div className="flex items-center gap-2 mb-4">
+                        <span className="text-2xl">{template.industryIcon}</span>
+                        <span className="px-2 py-1 rounded-full bg-white/20 text-xs font-medium backdrop-blur-sm">
+                          {template.categoryLabel}
+                        </span>
+                        {template.isPopular && (
+                          <span className="px-2 py-1 rounded-full bg-yellow-400/30 text-yellow-100 text-xs font-medium flex items-center gap-1">
+                            <TrendingUp className="w-3 h-3" />
+                            Popular
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Title */}
+                      <h3 className="text-xl font-bold mb-2">{template.name}</h3>
+                      <p className="text-white/80 text-sm mb-4 line-clamp-2">{template.description}</p>
+
+                      {/* Price */}
+                      <div className="flex items-end justify-between">
+                        <div>
+                          <div className="text-3xl font-bold">
+                            {formatCurrency(template.pricing.baseAmount, selectedCurrency)}
+                          </div>
+                          <div className="text-white/60 text-sm">
+                            {getBillingLabel(template.pricing.billingFrequency)} + GST
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 text-sm">
+                          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                          <span className="font-semibold">{template.rating}</span>
+                        </div>
+                      </div>
+
+                      {/* Hover Arrow */}
+                      <div className="absolute bottom-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="p-2 rounded-full bg-white/20 backdrop-blur-sm">
+                          <ArrowRight className="w-5 h-5" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ===== TEMPLATES GRID ===== */}
+          <div className="px-6 py-6">
+            {/* Results Header */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <h2 className="text-lg font-semibold" style={{ color: colors.utility.primaryText }}>
+                  {selectedCategory === 'all' ? 'All Templates' : CATEGORIES.find(c => c.id === selectedCategory)?.name}
+                </h2>
+                <span
+                  className="px-2.5 py-1 rounded-full text-sm font-medium"
+                  style={{ backgroundColor: colors.brand.primary + '15', color: colors.brand.primary }}
+                >
+                  {filteredTemplates.length} templates
+                </span>
+              </div>
+
+              {/* View Toggle */}
+              <div
+                className="flex items-center gap-1 p-1 rounded-xl"
+                style={{ backgroundColor: colors.utility.secondaryBackground }}
+              >
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm' : ''}`}
+                  style={{ color: viewMode === 'grid' ? colors.brand.primary : colors.utility.secondaryText }}
+                >
+                  <Grid3X3 className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white shadow-sm' : ''}`}
+                  style={{ color: viewMode === 'list' ? colors.brand.primary : colors.utility.secondaryText }}
+                >
+                  <List className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Templates Grid */}
+            <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5' : 'space-y-4'}>
+              {filteredTemplates.map((template) => (
+                <div
+                  key={template.id}
+                  onClick={() => handlePreview(template)}
+                  className={`group rounded-2xl border cursor-pointer transition-all duration-300 hover:shadow-xl hover:border-transparent ${
+                    viewMode === 'list' ? 'flex items-center p-4' : 'overflow-hidden'
+                  }`}
+                  style={{
+                    backgroundColor: colors.utility.secondaryBackground,
+                    borderColor: colors.utility.secondaryText + '20',
+                  }}
+                >
+                  {viewMode === 'grid' ? (
+                    <>
+                      {/* Card Header with Gradient */}
+                      <div
+                        className="p-4 pb-3"
+                        style={{
+                          background: isDarkMode
+                            ? `linear-gradient(135deg, ${colors.brand.primary}15 0%, transparent 100%)`
+                            : `linear-gradient(135deg, ${colors.brand.primary}08 0%, transparent 100%)`,
+                        }}
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-2xl">{template.industryIcon}</span>
+                            <span
+                              className="px-2 py-0.5 rounded-full text-xs font-medium"
+                              style={{ backgroundColor: colors.brand.primary + '15', color: colors.brand.primary }}
+                            >
+                              {template.categoryLabel}
+                            </span>
+                          </div>
+                          {template.isPopular && (
+                            <span
+                              className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
+                              style={{ backgroundColor: colors.semantic.warning + '15', color: colors.semantic.warning }}
+                            >
+                              <TrendingUp className="w-3 h-3" />
+                              Popular
+                            </span>
+                          )}
+                        </div>
+
+                        <h3
+                          className="font-bold text-lg mb-1.5 group-hover:text-blue-600 transition-colors line-clamp-1"
+                          style={{ color: colors.utility.primaryText }}
+                        >
+                          {template.name}
+                        </h3>
+                        <p
+                          className="text-sm line-clamp-2 leading-relaxed"
+                          style={{ color: colors.utility.secondaryText }}
+                        >
+                          {template.description}
+                        </p>
+                      </div>
+
+                      {/* Card Body */}
+                      <div className="px-4 pb-4">
+                        {/* Tags */}
+                        <div className="flex flex-wrap gap-1.5 mb-4">
+                          {template.tags.slice(0, 3).map((tag, i) => (
+                            <span
+                              key={i}
+                              className="px-2 py-0.5 rounded-full text-xs"
+                              style={{ backgroundColor: colors.utility.primaryBackground, color: colors.utility.secondaryText }}
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+
+                        {/* Price & Stats */}
+                        <div
+                          className="flex items-end justify-between pt-3 border-t"
+                          style={{ borderColor: colors.utility.secondaryText + '15' }}
+                        >
+                          <div>
+                            <div
+                              className="text-2xl font-bold"
+                              style={{ color: colors.semantic.success }}
+                            >
+                              {formatCurrency(template.pricing.baseAmount, selectedCurrency)}
+                            </div>
+                            <div className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                              {getBillingLabel(template.pricing.billingFrequency)} + {template.pricing.taxRate}% GST
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 text-sm">
+                            <div className="flex items-center gap-1">
+                              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                              <span style={{ color: colors.utility.primaryText }}>{template.rating}</span>
+                            </div>
+                            <div className="flex items-center gap-1" style={{ color: colors.utility.secondaryText }}>
+                              <Users className="w-4 h-4" />
+                              <span>{template.usageCount}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Hover Action Bar */}
+                      <div
+                        className="flex items-center justify-between px-4 py-3 border-t opacity-0 group-hover:opacity-100 transition-opacity"
+                        style={{ borderColor: colors.utility.secondaryText + '15', backgroundColor: colors.utility.primaryBackground }}
+                      >
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCopyTemplate(template);
+                          }}
+                          className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                          style={{ backgroundColor: colors.brand.primary, color: '#fff' }}
+                        >
+                          {copiedId === template.id ? (
+                            <>
+                              <CheckCircle className="w-4 h-4" />
+                              Copied!
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-4 h-4" />
+                              Copy
+                            </>
+                          )}
+                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePreview(template);
+                            }}
+                            className="p-2 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+                            style={{ color: colors.utility.secondaryText }}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    // List View
+                    <>
+                      <div className="flex items-center gap-4 flex-1">
+                        <span className="text-3xl">{template.industryIcon}</span>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-bold" style={{ color: colors.utility.primaryText }}>
+                            {template.name}
+                          </h3>
+                          <p className="text-sm truncate" style={{ color: colors.utility.secondaryText }}>
+                            {template.description}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-6">
+                        <div className="text-right">
+                          <div className="font-bold" style={{ color: colors.semantic.success }}>
+                            {formatCurrency(template.pricing.baseAmount, selectedCurrency)}
+                          </div>
+                          <div className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                            {getBillingLabel(template.pricing.billingFrequency)}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                          <span style={{ color: colors.utility.primaryText }}>{template.rating}</span>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCopyTemplate(template);
+                          }}
+                          className="px-4 py-2 rounded-lg text-sm font-medium"
+                          style={{ backgroundColor: colors.brand.primary, color: '#fff' }}
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Empty State */}
+            {filteredTemplates.length === 0 && (
+              <div className="text-center py-16">
+                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                  <Search className="w-8 h-8 text-gray-400" />
+                </div>
                 <h3 className="text-lg font-semibold mb-2" style={{ color: colors.utility.primaryText }}>
                   No templates found
                 </h3>
-                <p className="text-sm" style={{ color: colors.utility.secondaryText }}>
+                <p style={{ color: colors.utility.secondaryText }}>
                   Try adjusting your search or filter criteria
                 </p>
-                {(selectedIndustry !== 'all' || selectedCategory !== 'all') && (
-                  <button
-                    onClick={() => { setSelectedIndustry('all'); setSelectedCategory('all'); }}
-                    className="mt-4 px-4 py-2 text-sm font-medium rounded-lg border"
-                    style={{ borderColor: colors.brand.primary, color: colors.brand.primary }}
-                  >
-                    Clear Filters
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div
-                className={
-                  viewType === 'grid'
-                    ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'
-                    : 'space-y-3'
-                }
-              >
-                {filteredGlobalTemplates.map((template) => (
-                  <TemplateCard
-                    key={template.id}
-                    template={template}
-                    viewType={viewType}
-                    isGlobal={true}
-                    selectedCurrency={selectedCurrency}
-                    onPreview={() => setPreviewModal(template)}
-                    onCopyToMyTemplates={() => handleCopyToMyTemplates(template)}
-                    onExportPDF={() => handleExportPDF(template)}
-                    colors={colors}
-                    isDarkMode={isDarkMode}
-                  />
-                ))}
               </div>
             )}
-          </>
-        )}
+          </div>
+        </>
+      )}
 
-        {/* My Templates Tab */}
-        {activeTab === 'my-templates' && (
-          <>
-            {filteredMyTemplates.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-64">
-                <Building2 className="w-16 h-16 mb-4" style={{ color: colors.utility.secondaryText }} />
-                <h3 className="text-lg font-semibold mb-2" style={{ color: colors.utility.primaryText }}>
-                  No templates yet
-                </h3>
-                <p className="text-sm mb-4 text-center" style={{ color: colors.utility.secondaryText }}>
-                  Copy templates from Global Templates or create your own
-                </p>
-                <div className="flex gap-3">
+      {/* ===== MY TEMPLATES TAB ===== */}
+      {activeTab === 'my' && (
+        <div className="px-6 py-12">
+          <div className="text-center max-w-md mx-auto">
+            <div
+              className="w-24 h-24 mx-auto mb-6 rounded-2xl flex items-center justify-center"
+              style={{ backgroundColor: colors.brand.primary + '15' }}
+            >
+              <FileText className="w-12 h-12" style={{ color: colors.brand.primary }} />
+            </div>
+            <h2 className="text-2xl font-bold mb-3" style={{ color: colors.utility.primaryText }}>
+              No Templates Yet
+            </h2>
+            <p className="mb-6" style={{ color: colors.utility.secondaryText }}>
+              Create your first custom template or copy one from the Global Templates gallery to get started.
+            </p>
+            <div className="flex items-center justify-center gap-3">
+              <button
+                onClick={() => setActiveTab('global')}
+                className="px-6 py-3 rounded-xl font-medium transition-colors"
+                style={{ backgroundColor: colors.brand.primary, color: '#fff' }}
+              >
+                Browse Templates
+              </button>
+              <button
+                className="px-6 py-3 rounded-xl font-medium border transition-colors"
+                style={{ borderColor: colors.utility.secondaryText + '40', color: colors.utility.primaryText }}
+              >
+                <Plus className="w-5 h-5 inline mr-2" />
+                Create New
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== PREVIEW MODAL ===== */}
+      {showPreviewModal && selectedTemplate && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div
+            className="fixed inset-0 backdrop-blur-sm transition-opacity"
+            style={{ backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.8)' : 'rgba(0, 0, 0, 0.6)' }}
+            onClick={() => setShowPreviewModal(false)}
+          />
+          <div className="flex min-h-full items-center justify-center p-4">
+            <div
+              className="relative w-full max-w-4xl rounded-2xl border shadow-2xl animate-in zoom-in-95 overflow-hidden"
+              style={{
+                backgroundColor: colors.utility.secondaryBackground,
+                borderColor: colors.utility.secondaryText + '20',
+              }}
+            >
+              {/* Modal Header with Gradient */}
+              <div
+                className={`p-6 text-white bg-gradient-to-r ${selectedTemplate.gradient || 'from-violet-500 to-purple-600'}`}
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="text-3xl">{selectedTemplate.industryIcon}</span>
+                      <span className="px-3 py-1 rounded-full bg-white/20 text-sm font-medium backdrop-blur-sm">
+                        {selectedTemplate.categoryLabel}
+                      </span>
+                      {selectedTemplate.isPopular && (
+                        <span className="px-3 py-1 rounded-full bg-yellow-400/30 text-yellow-100 text-sm font-medium flex items-center gap-1">
+                          <TrendingUp className="w-4 h-4" />
+                          Popular
+                        </span>
+                      )}
+                    </div>
+                    <h2 className="text-2xl font-bold mb-2">{selectedTemplate.name}</h2>
+                    <p className="text-white/80">{selectedTemplate.description}</p>
+                  </div>
                   <button
-                    onClick={() => setActiveTab('global')}
-                    className="px-4 py-2 text-sm font-medium rounded-lg border flex items-center gap-2"
-                    style={{ borderColor: colors.brand.primary, color: colors.brand.primary }}
+                    onClick={() => setShowPreviewModal(false)}
+                    className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
                   >
-                    <Globe className="w-4 h-4" />
-                    Browse Global
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Price Banner */}
+                <div className="flex items-end justify-between mt-6 pt-6 border-t border-white/20">
+                  <div>
+                    <div className="text-sm text-white/60 mb-1">Starting from</div>
+                    <div className="text-4xl font-bold">
+                      {formatFullCurrency(selectedTemplate.pricing.baseAmount, selectedCurrency)}
+                    </div>
+                    <div className="text-white/60">
+                      {getBillingLabel(selectedTemplate.pricing.billingFrequency)} + {selectedTemplate.pricing.taxRate}% GST
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-center">
+                      <div className="flex items-center gap-1">
+                        <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                        <span className="text-xl font-bold">{selectedTemplate.rating}</span>
+                      </div>
+                      <div className="text-xs text-white/60">{selectedTemplate.usageCount} uses</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="flex items-center gap-1">
+                        <Layers className="w-5 h-5" />
+                        <span className="text-xl font-bold">{selectedTemplate.blocksCount}</span>
+                      </div>
+                      <div className="text-xs text-white/60">blocks</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="flex items-center gap-1">
+                        <Timer className="w-5 h-5" />
+                        <span className="text-xl font-bold">{selectedTemplate.estimatedDuration.split('-')[0]}</span>
+                      </div>
+                      <div className="text-xs text-white/60">minutes</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-6 max-h-[50vh] overflow-y-auto">
+                <div className="grid grid-cols-2 gap-6">
+                  {/* What's Included */}
+                  <div>
+                    <h3 className="font-semibold mb-3 flex items-center gap-2" style={{ color: colors.utility.primaryText }}>
+                      <CheckCircle className="w-5 h-5" style={{ color: colors.semantic.success }} />
+                      What's Included
+                    </h3>
+                    <div className="space-y-2">
+                      {selectedTemplate.serviceDetails.includes.map((item, i) => (
+                        <div key={i} className="flex items-start gap-2">
+                          <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: colors.semantic.success }} />
+                          <span className="text-sm" style={{ color: colors.utility.secondaryText }}>{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Not Included */}
+                  <div>
+                    <h3 className="font-semibold mb-3 flex items-center gap-2" style={{ color: colors.utility.primaryText }}>
+                      <X className="w-5 h-5" style={{ color: colors.semantic.error }} />
+                      Not Included
+                    </h3>
+                    <div className="space-y-2">
+                      {selectedTemplate.serviceDetails.excludes.map((item, i) => (
+                        <div key={i} className="flex items-start gap-2">
+                          <X className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: colors.semantic.error }} />
+                          <span className="text-sm" style={{ color: colors.utility.secondaryText }}>{item}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Service Details */}
+                <div className="mt-6 p-4 rounded-xl" style={{ backgroundColor: colors.utility.primaryBackground }}>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <div className="text-xs mb-1" style={{ color: colors.utility.secondaryText }}>Service Type</div>
+                      <div className="font-semibold capitalize" style={{ color: colors.utility.primaryText }}>
+                        {selectedTemplate.serviceDetails.serviceType}
+                        {selectedTemplate.serviceDetails.usageLimit && (
+                          <span className="text-sm font-normal" style={{ color: colors.utility.secondaryText }}>
+                            {' '}({selectedTemplate.serviceDetails.usageLimit} {selectedTemplate.serviceDetails.usagePeriod})
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs mb-1" style={{ color: colors.utility.secondaryText }}>Validity</div>
+                      <div className="font-semibold" style={{ color: colors.utility.primaryText }}>
+                        {selectedTemplate.serviceDetails.validityPeriod}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs mb-1" style={{ color: colors.utility.secondaryText }}>Payment</div>
+                      <div className="font-semibold capitalize" style={{ color: colors.utility.primaryText }}>
+                        {selectedTemplate.pricing.paymentType}
+                        {selectedTemplate.pricing.depositRequired && (
+                          <span className="text-sm font-normal" style={{ color: colors.utility.secondaryText }}>
+                            {' '}+ {formatCurrency(selectedTemplate.pricing.depositAmount || 0, selectedCurrency)} deposit
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Blocks Preview */}
+                <div className="mt-6">
+                  <h3 className="font-semibold mb-3" style={{ color: colors.utility.primaryText }}>
+                    Template Blocks ({selectedTemplate.blocksCount})
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedTemplate.blocks.map((block) => (
+                      <div
+                        key={block.id}
+                        className="px-3 py-2 rounded-lg border flex items-center gap-2"
+                        style={{ borderColor: colors.utility.secondaryText + '20' }}
+                      >
+                        <div
+                          className="w-2 h-2 rounded-full"
+                          style={{ backgroundColor: block.required ? colors.semantic.error : colors.utility.secondaryText }}
+                        />
+                        <span className="text-sm font-medium" style={{ color: colors.utility.primaryText }}>
+                          {block.name}
+                        </span>
+                        <span
+                          className="text-xs px-1.5 py-0.5 rounded"
+                          style={{ backgroundColor: colors.utility.primaryBackground, color: colors.utility.secondaryText }}
+                        >
+                          {block.type}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Terms */}
+                <div className="mt-6">
+                  <h3 className="font-semibold mb-3" style={{ color: colors.utility.primaryText }}>
+                    Terms & Conditions
+                  </h3>
+                  <div className="space-y-2">
+                    {selectedTemplate.termsAndConditions.map((term, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <div
+                          className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-xs"
+                          style={{ backgroundColor: colors.brand.primary + '15', color: colors.brand.primary }}
+                        >
+                          {i + 1}
+                        </div>
+                        <span className="text-sm" style={{ color: colors.utility.secondaryText }}>{term}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Cancellation */}
+                <div
+                  className="mt-6 p-4 rounded-xl"
+                  style={{ backgroundColor: colors.semantic.warning + '10' }}
+                >
+                  <div className="flex items-start gap-3">
+                    <Shield className="w-5 h-5 flex-shrink-0" style={{ color: colors.semantic.warning }} />
+                    <div>
+                      <h4 className="font-semibold text-sm mb-1" style={{ color: colors.utility.primaryText }}>
+                        Cancellation Policy
+                      </h4>
+                      <p className="text-sm" style={{ color: colors.utility.secondaryText }}>
+                        {selectedTemplate.cancellationPolicy}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div
+                className="px-6 py-4 border-t flex items-center justify-between"
+                style={{ borderColor: colors.utility.secondaryText + '20' }}
+              >
+                <div className="flex items-center gap-2">
+                  {selectedTemplate.tags.map((tag, i) => (
+                    <span
+                      key={i}
+                      className="px-2 py-1 rounded-full text-xs"
+                      style={{ backgroundColor: colors.brand.primary + '10', color: colors.brand.primary }}
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setShowPDFModal(true)}
+                    className="px-4 py-2.5 rounded-xl font-medium border flex items-center gap-2 transition-colors"
+                    style={{ borderColor: colors.utility.secondaryText + '40', color: colors.utility.primaryText }}
+                  >
+                    <Download className="w-4 h-4" />
+                    Export PDF
                   </button>
                   <button
-                    onClick={() => navigate('/catalog-studio/template')}
-                    className="px-4 py-2 text-sm font-medium text-white rounded-lg flex items-center gap-2"
-                    style={{ backgroundColor: colors.brand.primary }}
+                    onClick={() => handleCopyTemplate(selectedTemplate)}
+                    disabled={isCopying}
+                    className="px-6 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-colors"
+                    style={{ backgroundColor: colors.brand.primary, color: '#fff' }}
                   >
-                    <Plus className="w-4 h-4" />
-                    Create New
+                    {isCopying ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Copying...
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4" />
+                        Copy to My Templates
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
-            ) : (
-              <div
-                className={
-                  viewType === 'grid'
-                    ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'
-                    : 'space-y-3'
-                }
-              >
-                {filteredMyTemplates.map((template) => (
-                  <TemplateCard
-                    key={template.id}
-                    template={template}
-                    viewType={viewType}
-                    isGlobal={false}
-                    selectedCurrency={selectedCurrency}
-                    onPreview={() => setPreviewModal(template)}
-                    onEdit={() => navigate(`/catalog-studio/template?templateId=${template.id}`)}
-                    onDelete={() => handleDeleteMyTemplate(template.id)}
-                    onExportPDF={() => handleExportPDF(template)}
-                    colors={colors}
-                    isDarkMode={isDarkMode}
-                  />
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Preview Modal */}
-      <TemplatePreviewModal
-        isOpen={!!previewModal}
-        onClose={() => setPreviewModal(null)}
-        template={previewModal}
-        onCopyToMyTemplates={handleCopyToMyTemplates}
-        onExportPDF={handleExportPDF}
-        isCopying={isCopying}
-      />
-
-      {/* PDF Export/Preview Modal */}
-      <TemplatePDFExport
-        isOpen={!!pdfModal.template}
-        onClose={() => setPdfModal({ template: null, mode: 'preview' })}
-        template={pdfModal.template}
-        mode={pdfModal.mode}
-      />
-
-      {/* Toast Notifications */}
-      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
-        {toasts.map((toast) => (
-          <ToastNotification
-            key={toast.id}
-            toast={toast}
-            onDismiss={dismissToast}
-            colors={colors}
-            isDarkMode={isDarkMode}
-          />
-        ))}
-      </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-export default CatalogStudioTemplatesListPage;
+export default TemplatesList;
