@@ -1,0 +1,80 @@
+═══════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS - Wellness/Healthcare Templates Feature
+═══════════════════════════════════════════════════════════════
+Branch: wellness-healthcare-templates
+Date: 2026-01-13
+Submodules Affected: contractnest-ui
+
+═══════════════════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════════════════
+
+FILE 1: templates-list.tsx (MODIFIED - 1189 lines)
+────────────────────────────────────────────────────────────────
+Source: MANUAL_COPY_FILES\wellness-healthcare-templates\contractnest-ui\src\pages\catalog-studio\templates-list.tsx
+Destination: contractnest-ui\src\pages\catalog-studio\templates-list.tsx
+Purpose: Main templates list page with 2 tabs, 12 wellness/healthcare templates, industry filter
+
+FILE 2: TemplatePreviewModal.tsx (NEW - 295 lines)
+────────────────────────────────────────────────────────────────
+Source: MANUAL_COPY_FILES\wellness-healthcare-templates\contractnest-ui\src\pages\catalog-studio\components\TemplatePreviewModal.tsx
+Destination: contractnest-ui\src\pages\catalog-studio\components\TemplatePreviewModal.tsx
+Purpose: Modal component for previewing template details and blocks
+
+FILE 3: TemplatePDFExport.tsx (NEW - 250 lines)
+────────────────────────────────────────────────────────────────
+Source: MANUAL_COPY_FILES\wellness-healthcare-templates\contractnest-ui\src\pages\catalog-studio\components\TemplatePDFExport.tsx
+Destination: contractnest-ui\src\pages\catalog-studio\components\TemplatePDFExport.tsx
+Purpose: PDF preview and export functionality
+
+═══════════════════════════════════════════════════════════════
+FEATURES INCLUDED
+═══════════════════════════════════════════════════════════════
+
+1. Two Tabs: My Templates | Global Templates
+2. 12 Wellness/Healthcare Templates:
+   - Hospital Bed Rental
+   - Wheelchair Rental Package
+   - Oxygen Concentrator Rental
+   - Patient Lift Installation & Service
+   - Physiotherapy Session Package
+   - Home Nursing Care Plan
+   - Stairlift Installation & Maintenance
+   - Wellness Massage Package
+   - Comprehensive Health Checkup
+   - Rehabilitation Equipment Rental
+   - Elderly Care Monthly Plan
+   - Medical Equipment AMC
+
+3. 7 Industry Categories:
+   - All Industries
+   - Wellness & Spa
+   - Healthcare Equipment
+   - Mobility Aids
+   - Home Healthcare
+   - Rehabilitation
+   - Senior Care
+   - Preventive Care
+
+4. Template Preview Modal with blocks detail
+5. PDF Export + Preview with zoom
+6. Copy to My Templates functionality
+7. Grid/List view toggle
+8. Search by name, description, tags
+9. Sort by Popular, Rating, Recent, Name
+10. Toast notifications
+
+═══════════════════════════════════════════════════════════════
+FOLDER STRUCTURE (Create if not exists)
+═══════════════════════════════════════════════════════════════
+
+contractnest-ui/
+└── src/
+    └── pages/
+        └── catalog-studio/
+            ├── templates-list.tsx (MODIFIED)
+            └── components/        (CREATE FOLDER IF NOT EXISTS)
+                ├── TemplatePreviewModal.tsx (NEW)
+                └── TemplatePDFExport.tsx (NEW)
+
+═══════════════════════════════════════════════════════════════
