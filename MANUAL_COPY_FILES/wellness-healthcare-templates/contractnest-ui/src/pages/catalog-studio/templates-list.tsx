@@ -1,5 +1,5 @@
 // src/pages/catalog-studio/templates-list.tsx
-// REDESIGNED: Premium UX with WOW factor
+// REDESIGNED: Premium UX with WOW factor + Tenant Theme Support
 import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -32,6 +32,52 @@ import {
   IndianRupee,
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useTenantProfile } from '../../hooks/useTenantProfile';
+
+// =====================================================
+// COLOR UTILITY FUNCTIONS (for tenant theme variations)
+// =====================================================
+const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16)
+  } : null;
+};
+
+const rgbToHex = (r: number, g: number, b: number): string => {
+  return '#' + [r, g, b].map(x => {
+    const hex = Math.max(0, Math.min(255, Math.round(x))).toString(16);
+    return hex.length === 1 ? '0' + hex : hex;
+  }).join('');
+};
+
+const lightenColor = (hex: string, percent: number): string => {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return hex;
+  return rgbToHex(
+    rgb.r + (255 - rgb.r) * (percent / 100),
+    rgb.g + (255 - rgb.g) * (percent / 100),
+    rgb.b + (255 - rgb.b) * (percent / 100)
+  );
+};
+
+const darkenColor = (hex: string, percent: number): string => {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return hex;
+  return rgbToHex(
+    rgb.r * (1 - percent / 100),
+    rgb.g * (1 - percent / 100),
+    rgb.b * (1 - percent / 100)
+  );
+};
+
+const withOpacity = (hex: string, opacity: number): string => {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return hex;
+  return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${opacity})`;
+};
 
 // =====================================================
 // TYPES & INTERFACES
@@ -1129,6 +1175,40 @@ const TemplatesList: React.FC = () => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
 
+  // Tenant Profile for branding colors
+  const { profile: tenantProfile } = useTenantProfile();
+
+  // Tenant Theme Colors (with fallbacks)
+  const tenantPrimary = tenantProfile?.primary_color || '#667eea';
+  const tenantSecondary = tenantProfile?.secondary_color || '#764ba2';
+
+  // Derived theme colors for various UI elements
+  const themeColors = useMemo(() => ({
+    // Hero gradient
+    heroGradient: isDarkMode
+      ? `linear-gradient(135deg, ${darkenColor(tenantPrimary, 70)} 0%, ${darkenColor(tenantSecondary, 60)} 50%, ${darkenColor(tenantPrimary, 50)} 100%)`
+      : `linear-gradient(135deg, ${tenantPrimary} 0%, ${tenantSecondary} 50%, ${lightenColor(tenantSecondary, 30)} 100%)`,
+    // Featured card gradients (variations)
+    featuredGradients: [
+      `linear-gradient(135deg, ${tenantPrimary} 0%, ${darkenColor(tenantPrimary, 20)} 100%)`,
+      `linear-gradient(135deg, ${tenantSecondary} 0%, ${darkenColor(tenantSecondary, 20)} 100%)`,
+      `linear-gradient(135deg, ${tenantPrimary} 0%, ${tenantSecondary} 100%)`,
+    ],
+    // Modal header gradient
+    modalGradient: `linear-gradient(135deg, ${tenantPrimary} 0%, ${tenantSecondary} 100%)`,
+    // Button colors
+    buttonPrimary: tenantPrimary,
+    buttonHover: darkenColor(tenantPrimary, 10),
+    // Active pill background
+    activePillBg: tenantPrimary,
+    // Accent colors
+    accent: tenantPrimary,
+    accentLight: withOpacity(tenantPrimary, 0.15),
+    accentLighter: withOpacity(tenantPrimary, 0.08),
+    // Text on primary
+    textOnPrimary: '#FFFFFF',
+  }), [tenantPrimary, tenantSecondary, isDarkMode]);
+
   // State
   const [activeTab, setActiveTab] = useState<'my' | 'global'>('global');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -1192,11 +1272,7 @@ const TemplatesList: React.FC = () => {
       {/* ===== HERO SECTION ===== */}
       <div
         className="relative overflow-hidden"
-        style={{
-          background: isDarkMode
-            ? 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)'
-            : 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
-        }}
+        style={{ background: themeColors.heroGradient }}
       >
         {/* Animated Background Elements */}
         <div className="absolute inset-0 overflow-hidden">
@@ -1318,16 +1394,19 @@ const TemplatesList: React.FC = () => {
                   <button
                     key={cat.id}
                     onClick={() => setSelectedCategory(cat.id)}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-full whitespace-nowrap transition-all transform hover:scale-105 ${
-                      isActive
-                        ? `bg-gradient-to-r ${cat.color} text-white shadow-lg`
-                        : 'hover:bg-gray-100 dark:hover:bg-gray-800'
-                    }`}
-                    style={!isActive ? { color: colors.utility.primaryText, backgroundColor: colors.utility.secondaryBackground } : undefined}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-full whitespace-nowrap transition-all transform hover:scale-105"
+                    style={{
+                      background: isActive ? themeColors.heroGradient : colors.utility.secondaryBackground,
+                      color: isActive ? themeColors.textOnPrimary : colors.utility.primaryText,
+                      boxShadow: isActive ? '0 10px 25px -5px rgba(0, 0, 0, 0.2)' : 'none',
+                    }}
                   >
                     <span className="text-lg">{cat.emoji}</span>
                     <span className="font-medium">{cat.name}</span>
-                    <span className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? 'bg-white/20' : 'bg-black/5'}`}>
+                    <span
+                      className="text-xs px-1.5 py-0.5 rounded-full"
+                      style={{ backgroundColor: isActive ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.05)' }}
+                    >
                       {count}
                     </span>
                   </button>
@@ -1340,21 +1419,24 @@ const TemplatesList: React.FC = () => {
           {selectedCategory === 'all' && searchQuery === '' && (
             <div className="px-6 py-8">
               <div className="flex items-center gap-2 mb-6">
-                <Zap className="w-5 h-5" style={{ color: colors.semantic.warning }} />
+                <Zap className="w-5 h-5" style={{ color: tenantPrimary }} />
                 <h2 className="text-xl font-bold" style={{ color: colors.utility.primaryText }}>
                   Featured Templates
                 </h2>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {featuredTemplates.map((template) => (
+                {featuredTemplates.map((template, index) => (
                   <div
                     key={template.id}
                     onClick={() => handlePreview(template)}
                     className="group relative rounded-2xl overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl"
                   >
-                    {/* Gradient Background */}
-                    <div className={`absolute inset-0 bg-gradient-to-br ${template.gradient || 'from-violet-500 to-purple-600'}`} />
+                    {/* Gradient Background - Using tenant theme variations */}
+                    <div
+                      className="absolute inset-0"
+                      style={{ background: themeColors.featuredGradients[index % 3] }}
+                    />
 
                     {/* Content */}
                     <div className="relative p-6 text-white">
@@ -1415,7 +1497,7 @@ const TemplatesList: React.FC = () => {
                 </h2>
                 <span
                   className="px-2.5 py-1 rounded-full text-sm font-medium"
-                  style={{ backgroundColor: colors.brand.primary + '15', color: colors.brand.primary }}
+                  style={{ backgroundColor: themeColors.accentLight, color: tenantPrimary }}
                 >
                   {filteredTemplates.length} templates
                 </span>
@@ -1429,14 +1511,14 @@ const TemplatesList: React.FC = () => {
                 <button
                   onClick={() => setViewMode('grid')}
                   className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm' : ''}`}
-                  style={{ color: viewMode === 'grid' ? colors.brand.primary : colors.utility.secondaryText }}
+                  style={{ color: viewMode === 'grid' ? tenantPrimary : colors.utility.secondaryText }}
                 >
                   <Grid3X3 className="w-5 h-5" />
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
                   className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white shadow-sm' : ''}`}
-                  style={{ color: viewMode === 'list' ? colors.brand.primary : colors.utility.secondaryText }}
+                  style={{ color: viewMode === 'list' ? tenantPrimary : colors.utility.secondaryText }}
                 >
                   <List className="w-5 h-5" />
                 </button>
@@ -1459,13 +1541,13 @@ const TemplatesList: React.FC = () => {
                 >
                   {viewMode === 'grid' ? (
                     <>
-                      {/* Card Header with Gradient */}
+                      {/* Card Header with Tenant Gradient */}
                       <div
                         className="p-4 pb-3"
                         style={{
                           background: isDarkMode
-                            ? `linear-gradient(135deg, ${colors.brand.primary}15 0%, transparent 100%)`
-                            : `linear-gradient(135deg, ${colors.brand.primary}08 0%, transparent 100%)`,
+                            ? `linear-gradient(135deg, ${withOpacity(tenantPrimary, 0.15)} 0%, transparent 100%)`
+                            : `linear-gradient(135deg, ${withOpacity(tenantPrimary, 0.08)} 0%, transparent 100%)`,
                         }}
                       >
                         <div className="flex items-start justify-between mb-3">
@@ -1473,7 +1555,7 @@ const TemplatesList: React.FC = () => {
                             <span className="text-2xl">{template.industryIcon}</span>
                             <span
                               className="px-2 py-0.5 rounded-full text-xs font-medium"
-                              style={{ backgroundColor: colors.brand.primary + '15', color: colors.brand.primary }}
+                              style={{ backgroundColor: themeColors.accentLight, color: tenantPrimary }}
                             >
                               {template.categoryLabel}
                             </span>
@@ -1481,7 +1563,7 @@ const TemplatesList: React.FC = () => {
                           {template.isPopular && (
                             <span
                               className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
-                              style={{ backgroundColor: colors.semantic.warning + '15', color: colors.semantic.warning }}
+                              style={{ backgroundColor: withOpacity(tenantSecondary, 0.15), color: tenantSecondary }}
                             >
                               <TrendingUp className="w-3 h-3" />
                               Popular
@@ -1490,7 +1572,7 @@ const TemplatesList: React.FC = () => {
                         </div>
 
                         <h3
-                          className="font-bold text-lg mb-1.5 group-hover:text-blue-600 transition-colors line-clamp-1"
+                          className="font-bold text-lg mb-1.5 transition-colors line-clamp-1"
                           style={{ color: colors.utility.primaryText }}
                         >
                           {template.name}
@@ -1558,7 +1640,7 @@ const TemplatesList: React.FC = () => {
                             handleCopyTemplate(template);
                           }}
                           className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-                          style={{ backgroundColor: colors.brand.primary, color: '#fff' }}
+                          style={{ backgroundColor: tenantPrimary, color: themeColors.textOnPrimary }}
                         >
                           {copiedId === template.id ? (
                             <>
@@ -1619,7 +1701,7 @@ const TemplatesList: React.FC = () => {
                             handleCopyTemplate(template);
                           }}
                           className="px-4 py-2 rounded-lg text-sm font-medium"
-                          style={{ backgroundColor: colors.brand.primary, color: '#fff' }}
+                          style={{ backgroundColor: tenantPrimary, color: themeColors.textOnPrimary }}
                         >
                           Copy
                         </button>
@@ -1633,8 +1715,11 @@ const TemplatesList: React.FC = () => {
             {/* Empty State */}
             {filteredTemplates.length === 0 && (
               <div className="text-center py-16">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                  <Search className="w-8 h-8 text-gray-400" />
+                <div
+                  className="w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: themeColors.accentLighter }}
+                >
+                  <Search className="w-8 h-8" style={{ color: tenantPrimary }} />
                 </div>
                 <h3 className="text-lg font-semibold mb-2" style={{ color: colors.utility.primaryText }}>
                   No templates found
@@ -1654,9 +1739,9 @@ const TemplatesList: React.FC = () => {
           <div className="text-center max-w-md mx-auto">
             <div
               className="w-24 h-24 mx-auto mb-6 rounded-2xl flex items-center justify-center"
-              style={{ backgroundColor: colors.brand.primary + '15' }}
+              style={{ backgroundColor: themeColors.accentLight }}
             >
-              <FileText className="w-12 h-12" style={{ color: colors.brand.primary }} />
+              <FileText className="w-12 h-12" style={{ color: tenantPrimary }} />
             </div>
             <h2 className="text-2xl font-bold mb-3" style={{ color: colors.utility.primaryText }}>
               No Templates Yet
@@ -1668,7 +1753,7 @@ const TemplatesList: React.FC = () => {
               <button
                 onClick={() => setActiveTab('global')}
                 className="px-6 py-3 rounded-xl font-medium transition-colors"
-                style={{ backgroundColor: colors.brand.primary, color: '#fff' }}
+                style={{ backgroundColor: tenantPrimary, color: themeColors.textOnPrimary }}
               >
                 Browse Templates
               </button>
@@ -1702,7 +1787,8 @@ const TemplatesList: React.FC = () => {
             >
               {/* Modal Header with Gradient */}
               <div
-                className={`p-6 text-white bg-gradient-to-r ${selectedTemplate.gradient || 'from-violet-500 to-purple-600'}`}
+                className="p-6 text-white"
+                style={{ background: themeColors.modalGradient }}
               >
                 <div className="flex items-start justify-between">
                   <div>
@@ -1876,7 +1962,7 @@ const TemplatesList: React.FC = () => {
                       <div key={i} className="flex items-start gap-2">
                         <div
                           className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-xs"
-                          style={{ backgroundColor: colors.brand.primary + '15', color: colors.brand.primary }}
+                          style={{ backgroundColor: themeColors.accentLight, color: tenantPrimary }}
                         >
                           {i + 1}
                         </div>
@@ -1915,7 +2001,7 @@ const TemplatesList: React.FC = () => {
                     <span
                       key={i}
                       className="px-2 py-1 rounded-full text-xs"
-                      style={{ backgroundColor: colors.brand.primary + '10', color: colors.brand.primary }}
+                      style={{ backgroundColor: themeColors.accentLighter, color: tenantPrimary }}
                     >
                       {tag}
                     </span>
@@ -1934,7 +2020,7 @@ const TemplatesList: React.FC = () => {
                     onClick={() => handleCopyTemplate(selectedTemplate)}
                     disabled={isCopying}
                     className="px-6 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-colors"
-                    style={{ backgroundColor: colors.brand.primary, color: '#fff' }}
+                    style={{ backgroundColor: tenantPrimary, color: themeColors.textOnPrimary }}
                   >
                     {isCopying ? (
                       <>
