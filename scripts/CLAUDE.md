@@ -1,5 +1,30 @@
 # ContractNest - Claude Developer Rules
 
+> **CRITICAL**: Read this entire file at the start of every session.
+
+---
+
+## 🚨 SESSION INITIALIZATION (EVERY SESSION)
+
+**Run these commands at the START of every session:**
+```bash
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git submodule update --init --recursive
+git submodule status
+```
+
+**Expected output:**
+```
+ [hash] contractnest-api (heads/main)
+ [hash] contractnest-ui (heads/main)
+ [hash] contractnest-edge (heads/main)
+ [hash] ClaudeDocumentation (heads/master)  ← Note: master, not main
+ [hash] ContractNest-Mobile (heads/main)
+ [hash] FamilyKnows (heads/main)
+```
+
+---
+
 ## ⛔ OUTPUT METHOD (I CANNOT USE GIT)
 ```
 MANUAL_COPY_FILES/[feature-name]/[submodule]/[path]
@@ -20,7 +45,60 @@ MANUAL_COPY_FILES/[feature-name]/[submodule]/[path]
 
 ---
 
+## 📂 PROJECT STRUCTURE & SUBMODULES
+
+```
+D:\projects\core projects\ContractNest\contractnest-combined\
+├── contractnest-api/      # Backend API (Node.js/Express) - branch: main
+├── contractnest-ui/       # Frontend (React/TypeScript/Vite) - branch: main
+├── contractnest-edge/     # Edge Functions (Supabase) - branch: main
+├── ClaudeDocumentation/   # Documentation - branch: master ⚠️
+├── ContractNest-Mobile/   # Mobile (React Native) - branch: main
+├── FamilyKnows/           # Separate Product - branch: main
+│   ├── app/               # Expo mobile app
+│   └── website/           # React website
+└── MANUAL_COPY_FILES/     # Claude's output folder
+```
+
+| Submodule | Branch | Tech Stack |
+|-----------|--------|------------|
+| contractnest-api | `main` | Node.js, Express, TypeScript |
+| contractnest-ui | `main` | React, TypeScript, Vite |
+| contractnest-edge | `main` | Supabase Edge Functions |
+| ClaudeDocumentation | `master` ⚠️ | Markdown |
+| ContractNest-Mobile | `main` | React Native |
+| FamilyKnows | `main` | Expo + React |
+
+---
+
+## 📁 OUTPUT STRUCTURE (MANDATORY)
+
+```
+MANUAL_COPY_FILES/
+└── [feature-name]/
+    ├── contractnest-api/
+    │   └── [files mirroring exact repo structure]
+    ├── contractnest-ui/
+    │   └── [files mirroring exact repo structure]
+    ├── contractnest-edge/
+    │   └── [files mirroring exact repo structure]
+    ├── ClaudeDocumentation/
+    ├── ContractNest-Mobile/
+    ├── FamilyKnows/
+    │   ├── app/
+    │   └── website/
+    └── COPY_INSTRUCTIONS.txt  ← REQUIRED
+```
+
+❌ NEVER place files randomly in MANUAL_COPY_FILES/ root
+❌ NEVER mix files from different features
+✅ ALWAYS create feature folder first
+✅ ALWAYS mirror exact submodule structure
+
+---
+
 ## ⛔ ARCHITECTURE CONSTRAINTS
+
 | ❌ NEVER | ✅ ALWAYS |
 |----------|-----------|
 | Loops in Edge (`for...await`) | Single DB call via RPC |
@@ -35,50 +113,13 @@ MANUAL_COPY_FILES/[feature-name]/[submodule]/[path]
 ---
 
 ## ⛔ RLS RULES (CRITICAL FOR SCALE)
+
 - RLS = Safety net, NOT performance tool
 - Hot reads (lists, dashboards) → Bypass RLS with SECURITY DEFINER
 - Writes → RLS is acceptable
 - ❌ NEVER: joins inside RLS policies
 - ❌ NEVER: subqueries inside RLS policies
 - ❌ NEVER: `auth.uid()` chains in RLS
-
----
-
-## ✅ PRODUCTION CHECKLIST (Every Code Response)
-- [ ] Transaction management (for writes)
-- [ ] Error handling + try/catch
-- [ ] Toasts (use existing component - ASK if unsure)
-- [ ] Loaders (use existing component - ASK if unsure)
-- [ ] No loops in Edge
-- [ ] Single DB call per request
-- [ ] LIMIT + OFFSET on all list queries
-- [ ] RLS bypassed for hot reads
-
----
-
-## 📁 OUTPUT STRUCTURE (MANDATORY)
-```
-MANUAL_COPY_FILES/
-└── feature-name/
-    ├── contractnest-api/[exact repo path]
-    ├── contractnest-ui/[exact repo path]
-    ├── contractnest-edge/[exact repo path]
-    └── COPY_INSTRUCTIONS.txt  ← REQUIRED
-```
-
----
-
-## 📂 PROJECT STRUCTURE
-```
-D:\projects\core projects\ContractNest\contractnest-combined\
-├── contractnest-api/      # Backend (main branch)
-├── contractnest-ui/       # Frontend (main branch)
-├── contractnest-edge/     # Edge Functions (main branch)
-├── ClaudeDocumentation/   # Docs (master branch)
-├── ContractNest-Mobile/   # Mobile (main branch)
-├── FamilyKnows/           # Separate Product (main branch)
-└── MANUAL_COPY_FILES/     # Claude's output folder
-```
 
 ---
 
