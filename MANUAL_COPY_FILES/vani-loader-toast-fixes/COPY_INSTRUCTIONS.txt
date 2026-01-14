@@ -2,69 +2,70 @@
 VANILOADER & VANITOAST INTEGRATION - COPY INSTRUCTIONS
 ═══════════════════════════════════════════════════════════════════════════════
 
-Branch: vani-loader-toast-fixes
+Branch: claude/init-submodules-D4LZL
 Submodules Affected: contractnest-ui
 
 ═══════════════════════════════════════════════════════════════════════════════
-FILES INCLUDED (3 files)
+FILES INCLUDED (4 files)
 ═══════════════════════════════════════════════════════════════════════════════
 
-1. index.tsx (Business Profile View)
+1. useTenantProfile.ts (Hook - 13 toast conversions) *** CRITICAL FIX ***
+   FROM: MANUAL_COPY_FILES/vani-loader-toast-fixes/contractnest-ui/src/hooks/useTenantProfile.ts
+   TO:   contractnest-ui/src/hooks/useTenantProfile.ts
+
+   CHANGES:
+   - Replaced 'import toast from react-hot-toast' with vaniToast
+   - Converted 13 toast calls to vaniToast
+   - Removed toast.loading() and toast.dismiss() (not needed - button shows InlineLoader)
+   - All validation errors now use vaniToast.error()
+   - All success messages now use vaniToast.success()
+
+2. index.tsx (Business Profile View)
    FROM: MANUAL_COPY_FILES/vani-loader-toast-fixes/contractnest-ui/src/pages/settings/business-profile/index.tsx
    TO:   contractnest-ui/src/pages/settings/business-profile/index.tsx
 
    CHANGES:
-   - Added VaNiLoader import from '@/components/common/loaders/UnifiedLoader'
-   - Added vaniToast import from '@/components/common/toast/VaNiToast'
-   - Replaced CSS spinner with VaNiLoader component
+   - Added VaNiLoader import
+   - Replaced CSS spinner with VaNiLoader
 
-2. edit.tsx (Business Profile Edit Wizard)
+3. edit.tsx (Business Profile Edit Wizard)
    FROM: MANUAL_COPY_FILES/vani-loader-toast-fixes/contractnest-ui/src/pages/settings/business-profile/edit.tsx
    TO:   contractnest-ui/src/pages/settings/business-profile/edit.tsx
 
    CHANGES:
    - Added VaNiLoader, InlineLoader imports
-   - Added vaniToast import
    - Replaced CSS spinner with VaNiLoader
-   - Submit button now uses InlineLoader when saving
+   - Submit button uses InlineLoader when saving
 
-3. smart-profile.tsx (AI Smart Profile Page)
+4. smart-profile.tsx (AI Smart Profile Page)
    FROM: MANUAL_COPY_FILES/vani-loader-toast-fixes/contractnest-ui/src/pages/settings/business-profile/smart-profile.tsx
    TO:   contractnest-ui/src/pages/settings/business-profile/smart-profile.tsx
 
    CHANGES:
-   - Removed Loader2 import from lucide-react
+   - Removed Loader2 from lucide-react
    - Removed react-hot-toast import
-   - Added VaNiLoader, InlineLoader imports
-   - Added vaniToast import
-   - Replaced all toast.success/error with vaniToast.success/error (12 occurrences)
-   - Replaced main loading state with VaNiLoader fullScreen
-   - Replaced all button loading states (Loader2) with InlineLoader (6 occurrences)
+   - Added VaNiLoader, InlineLoader, vaniToast imports
+   - Replaced 12 toast calls with vaniToast
+   - Replaced all Loader2 with VaNiLoader/InlineLoader
 
 ═══════════════════════════════════════════════════════════════════════════════
-COMPONENTS USED
+WHY TOASTS WEREN'T SHOWING BEFORE
 ═══════════════════════════════════════════════════════════════════════════════
 
-VaNiLoader (from UnifiedLoader.tsx):
-  - Branded loader with Sparkles icon and pulse animation
-  - Props: size ('sm'|'md'|'lg'), message, fullScreen, showSkeleton
+The <Toaster /> component from react-hot-toast was COMMENTED OUT in App.tsx (line 285).
+This means any code using `toast.success/error()` from react-hot-toast had nowhere to render.
 
-InlineLoader (from UnifiedLoader.tsx):
-  - Inline loader for buttons
-  - Props: size ('sm'|'md'), text
+The useTenantProfile.ts hook was still using react-hot-toast for all its toast notifications,
+which is why toasts weren't appearing even though VaNiLoader was working.
 
-vaniToast (from VaNiToast.tsx):
-  - Standalone toast API (no provider needed if VaNiToastProvider is mounted)
-  - Methods: vaniToast.success(), vaniToast.error(), vaniToast.warning(), vaniToast.info()
+SOLUTION: Convert useTenantProfile.ts to use vaniToast (which renders via VaNiToastProviderWithGlobal)
 
 ═══════════════════════════════════════════════════════════════════════════════
-PRODUCTION CHECKLIST
+TOTAL CHANGES
 ═══════════════════════════════════════════════════════════════════════════════
 
-✅ Transaction Management: N/A (UI-only changes)
-✅ Race Condition Handling: N/A (UI-only changes)
-✅ Error Handling: Uses vaniToast.error() for all error cases
-✅ Toasts: Converted to VaNiToast
-✅ Loaders: Converted to VaNiLoader/InlineLoader
+- 3 CSS spinners → VaNiLoader
+- 6 Loader2 buttons → InlineLoader
+- 25 toast calls → vaniToast (13 in useTenantProfile + 12 in smart-profile)
 
 ═══════════════════════════════════════════════════════════════════════════════
