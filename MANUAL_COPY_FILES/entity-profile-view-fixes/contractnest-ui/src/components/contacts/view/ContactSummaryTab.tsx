@@ -322,39 +322,58 @@ const ContactSummaryTab: React.FC<ContactSummaryTabProps> = ({ contact, onRefres
     setActiveModal(type);
   };
 
-  // FIXED: Transform form data to API-expected format
-  const transformFormDataForAPI = (modalType: ModalType, data: any): any => {
-    const transformed: any = {};
+  // Helper: Transform classifications for API (strings only)
+  const transformClassificationsForAPI = (classifications: any[]): string[] => {
+    if (!classifications || !Array.isArray(classifications)) return [];
+    return classifications.map((c: any) => {
+      if (typeof c === 'string') return c;
+      return c.classification_value || c;
+    });
+  };
 
+  // Helper: Transform contact channels for API
+  const transformChannelsForAPI = (channels: any[]): any[] => {
+    if (!channels || !Array.isArray(channels)) return [];
+    return channels.map((ch: any) => ({
+      id: ch.id?.startsWith('temp_') ? undefined : ch.id,
+      channel_type: ch.channel_type,
+      value: ch.value,
+      country_code: ch.country_code || undefined,
+      is_primary: ch.is_primary || false,
+      is_verified: ch.is_verified || false,
+      notes: ch.notes || undefined
+    }));
+  };
+
+  // FIXED: Transform form data to API-expected format
+  // CRITICAL: API validation requires BOTH classifications AND contact_channels on EVERY update
+  const transformFormDataForAPI = (modalType: ModalType, data: any): any => {
+    // ALWAYS include the two required fields from existing contact data
+    const transformed: any = {
+      // Always send existing classifications (transformed to strings)
+      classifications: transformClassificationsForAPI(contact.classifications),
+      // Always send existing contact_channels (transformed)
+      contact_channels: transformChannelsForAPI(contact.contact_channels)
+    };
+
+    // Now overlay the specific changes being made
     switch (modalType) {
       case 'classification':
-        // API expects classifications as array of strings: ['buyer', 'seller']
+        // Override with new classifications
         if (data.classifications && Array.isArray(data.classifications)) {
-          transformed.classifications = data.classifications.map((c: any) => {
-            // Handle both object format and string format
-            if (typeof c === 'string') return c;
-            return c.classification_value || c;
-          });
+          transformed.classifications = transformClassificationsForAPI(data.classifications);
         }
         break;
 
       case 'channels':
-        // API expects contact_channels with proper structure
+        // Override with new contact_channels
         if (data.contact_channels && Array.isArray(data.contact_channels)) {
-          transformed.contact_channels = data.contact_channels.map((ch: any) => ({
-            id: ch.id?.startsWith('temp_') ? undefined : ch.id, // Remove temp IDs
-            channel_type: ch.channel_type,
-            value: ch.value,
-            country_code: ch.country_code || undefined,
-            is_primary: ch.is_primary || false,
-            is_verified: ch.is_verified || false,
-            notes: ch.notes || undefined
-          }));
+          transformed.contact_channels = transformChannelsForAPI(data.contact_channels);
         }
         break;
 
       case 'tags':
-        // API expects tags with tag_value and tag_label
+        // Add tags to the update
         if (data.tags && Array.isArray(data.tags)) {
           transformed.tags = data.tags.map((t: any) => ({
             id: t.id?.startsWith('temp_') ? undefined : t.id,
@@ -366,7 +385,7 @@ const ContactSummaryTab: React.FC<ContactSummaryTabProps> = ({ contact, onRefres
         break;
 
       case 'address':
-        // API expects addresses with proper structure
+        // Add addresses to the update
         if (data.addresses && Array.isArray(data.addresses)) {
           transformed.addresses = data.addresses.map((addr: any) => ({
             id: addr.id?.startsWith('temp_') ? undefined : addr.id,
@@ -386,7 +405,7 @@ const ContactSummaryTab: React.FC<ContactSummaryTabProps> = ({ contact, onRefres
         break;
 
       case 'compliance':
-        // API expects compliance_numbers with type_value and number
+        // Add compliance_numbers to the update
         if (data.compliance_numbers && Array.isArray(data.compliance_numbers)) {
           transformed.compliance_numbers = data.compliance_numbers.map((comp: any) => ({
             id: comp.id?.startsWith('temp_') ? undefined : comp.id,
@@ -404,7 +423,7 @@ const ContactSummaryTab: React.FC<ContactSummaryTabProps> = ({ contact, onRefres
         break;
 
       case 'persons':
-        // API expects contact_persons with proper structure
+        // Add contact_persons to the update
         if (data.contact_persons && Array.isArray(data.contact_persons)) {
           transformed.contact_persons = data.contact_persons.map((person: any) => ({
             id: person.id?.startsWith('temp_') ? undefined : person.id,
@@ -424,9 +443,6 @@ const ContactSummaryTab: React.FC<ContactSummaryTabProps> = ({ contact, onRefres
           }));
         }
         break;
-
-      default:
-        return data;
     }
 
     return transformed;
