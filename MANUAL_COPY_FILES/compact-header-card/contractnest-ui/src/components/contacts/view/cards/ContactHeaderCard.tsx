@@ -107,10 +107,10 @@ const ContactHeaderCard: React.FC<ContactHeaderCardProps> = ({
       className={`rounded-xl border p-4 transition-colors ${className}`}
       style={{
         background: isDarkMode
-          ? `linear-gradient(135deg, ${colors.brand.primary}15 0%, ${colors.brand.secondary}10 100%)`
-          : `linear-gradient(135deg, ${colors.brand.primary}08 0%, ${colors.brand.secondary}05 100%)`,
+          ? `linear-gradient(135deg, ${colors.brand.primary}35 0%, ${colors.brand.secondary}25 100%)`
+          : `linear-gradient(135deg, ${colors.brand.primary}18 0%, ${colors.brand.secondary}12 100%)`,
         backdropFilter: 'blur(12px)',
-        borderColor: isDarkMode ? `${colors.brand.primary}30` : `${colors.brand.primary}20`
+        borderColor: isDarkMode ? `${colors.brand.primary}50` : `${colors.brand.primary}35`
       }}
     >
       {/* Row 1: Avatar + Name + Primary Channel */}
@@ -179,10 +179,10 @@ const ContactHeaderCard: React.FC<ContactHeaderCardProps> = ({
           return (
             <span
               key={typeof classification === 'string' ? `class-${index}` : ((classification as Classification).id || `class-${index}`)}
-              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+              className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
               style={{
-                backgroundColor: `${colors.brand.primary}20`,
-                color: colors.brand.primary
+                backgroundColor: `${colors.brand.primary}30`,
+                color: isDarkMode ? '#ffffff' : colors.brand.primary
               }}
             >
               {classLabel}
@@ -199,10 +199,10 @@ const ContactHeaderCard: React.FC<ContactHeaderCardProps> = ({
         {contact.tags?.slice(0, 3).map((tag: ContactTag) => (
           <span
             key={tag.id}
-            className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+            className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
             style={{
-              backgroundColor: (tag.tag_color || colors.brand.secondary) + '20',
-              color: tag.tag_color || colors.brand.secondary
+              backgroundColor: (tag.tag_color || colors.brand.secondary) + '30',
+              color: isDarkMode ? '#ffffff' : (tag.tag_color || colors.brand.secondary)
             }}
           >
             {tag.tag_label}
