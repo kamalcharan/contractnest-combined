@@ -1,0 +1,74 @@
+═══════════════════════════════════════════════════════════════════════════════
+MANUAL COPY INSTRUCTIONS - Entity Profile Save Fix
+═══════════════════════════════════════════════════════════════════════════════
+
+Branch: entity-profile-save-fix
+Date: 2026-01-14
+Author: Claude Code
+
+═══════════════════════════════════════════════════════════════════════════════
+PROBLEM FIXED
+═══════════════════════════════════════════════════════════════════════════════
+
+ROOT CAUSE: API validation requires BOTH classifications AND contact_channels
+on EVERY update request. The edge function's validateUpdateRequest() runs
+the full create validation which checks:
+  1. At least one classification (must be strings: 'buyer', 'seller', etc.)
+  2. At least one contact_channel with is_primary=true
+
+SOLUTION: Every save now includes both required fields from existing contact
+data, plus the specific changes being made.
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════════════════════════════════
+
+1. ContactSummaryTab.tsx
+   FROM: MANUAL_COPY_FILES/entity-profile-save-fix/contractnest-ui/src/components/contacts/view/ContactSummaryTab.tsx
+   TO:   contractnest-ui/src/components/contacts/view/ContactSummaryTab.tsx
+
+═══════════════════════════════════════════════════════════════════════════════
+CHANGES MADE
+═══════════════════════════════════════════════════════════════════════════════
+
+1. TRANSFORM FUNCTIONS (Fixed data format issues)
+   - Added cleanObject() helper to remove undefined/null values
+   - Fixed transformClassificationsForAPI() to always return string array
+   - Fixed transformChannelsForAPI() to only include valid fields
+   - Filter out empty/invalid items before sending
+
+2. transformFormDataForAPI() - CRITICAL FIX
+   - NOW always includes both classifications AND contact_channels
+   - Added debug logging to console for troubleshooting
+   - Added final validation check before sending
+   - Each field type now properly cleans data before sending
+
+3. handleNotesUpdate() - CRITICAL FIX
+   - Now includes required classifications and contact_channels
+   - Was previously sending updates without required fields
+
+4. handleSave() - IMPROVED ERROR HANDLING
+   - Added detailed console logging for debugging
+   - Shows all validation errors from API response
+   - Better error message extraction from response
+
+═══════════════════════════════════════════════════════════════════════════════
+SUBMODULES AFFECTED
+═══════════════════════════════════════════════════════════════════════════════
+
+- contractnest-ui (1 file modified)
+
+═══════════════════════════════════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+- [ ] Open entity profile view (any contact)
+- [ ] Edit Contact Channels -> Save (should NOT return 400)
+- [ ] Edit Classifications -> Save (should NOT return 400)
+- [ ] Edit Tags -> Save (should NOT return 400)
+- [ ] Edit Addresses -> Save (should NOT return 400)
+- [ ] Edit Compliance Numbers (corporate only) -> Save
+- [ ] Edit Contact Persons (corporate only) -> Save
+- [ ] Check browser console for detailed logging
+
+═══════════════════════════════════════════════════════════════════════════════
