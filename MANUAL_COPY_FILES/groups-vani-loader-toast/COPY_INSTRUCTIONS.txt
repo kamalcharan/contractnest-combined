@@ -1,0 +1,35 @@
+============================================================
+COPY INSTRUCTIONS - Groups VaNiLoader and VaNiToast Update
+============================================================
+
+Branch: groups-vani-loader-toast
+Date: January 2025
+Submodules Affected: contractnest-ui
+
+============================================================
+CHANGES SUMMARY
+============================================================
+
+1. GroupsListPage.tsx
+   - Replaced react-hot-toast with vaniToast
+   - Replaced inline spinner with VaNiLoader
+   - Location: toast calls in AuthenticationModal
+   - Location: loading state spinner
+
+2. GroupProfileDashboard.tsx
+   - Replaced react-hot-toast with vaniToast (12 occurrences)
+   - Replaced inline spinner with VaNiLoader
+   - Location: all toast.success() and toast.error() calls
+   - Location: loading state spinner
+
+============================================================
+FILES TO COPY
+============================================================
+
+FROM: MANUAL_COPY_FILES/groups-vani-loader-toast/contractnest-ui/src/pages/settings/customer-channels/GroupsListPage.tsx
+TO:   contractnest-ui/src/pages/settings/customer-channels/GroupsListPage.tsx
+
+FROM: MANUAL_COPY_FILES/groups-vani-loader-toast/contractnest-ui/src/pages/settings/customer-channels/GroupProfileDashboard.tsx
+TO:   contractnest-ui/src/pages/settings/customer-channels/GroupProfileDashboard.tsx
+
+============================================================
