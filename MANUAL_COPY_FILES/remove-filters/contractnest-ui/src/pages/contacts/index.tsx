@@ -317,6 +317,12 @@ const ContactsPage: React.FC = () => {
 
   // Build filters for API
   // activeFilter now holds classification filter (buyer, seller, etc.)
+  // FIX: Combine activeFilter with advancedFilters.classifications and send as array
+  const combinedClassifications = [
+    ...(activeFilter !== 'all' ? [activeFilter] : []),
+    ...((advancedFilters.classifications || []).filter((c: string) => c !== activeFilter))
+  ];
+
   const apiFilters: ContactFilters = {
     page: currentPage,
     limit: itemsPerPage,
@@ -324,8 +330,7 @@ const ContactsPage: React.FC = () => {
     status: advancedFilters.contactStatus !== 'all' ? (advancedFilters.contactStatus as any) : undefined,
     sort_by: sortBy,
     sort_order: sortOrder,
-    ...(activeFilter !== 'all' && { classification: activeFilter }),
-    ...(advancedFilters.classifications.length > 0 && { classifications: advancedFilters.classifications })
+    ...(combinedClassifications.length > 0 && { classifications: combinedClassifications })
   };
 
   // API Hooks
@@ -373,6 +378,12 @@ const ContactsPage: React.FC = () => {
 
   // Update filters when UI state changes
   useEffect(() => {
+    // FIX: Combine activeFilter with advancedFilters.classifications and send as array
+    const updatedClassifications = [
+      ...(activeFilter !== 'all' ? [activeFilter] : []),
+      ...((advancedFilters.classifications || []).filter((c: string) => c !== activeFilter))
+    ];
+
     const newFilters: ContactFilters = {
       page: currentPage,
       limit: itemsPerPage,
@@ -380,8 +391,7 @@ const ContactsPage: React.FC = () => {
       status: advancedFilters.contactStatus !== 'all' ? (advancedFilters.contactStatus as any) : undefined,
       sort_by: sortBy,
       sort_order: sortOrder,
-      ...(activeFilter !== 'all' && { classification: activeFilter }),
-      ...(advancedFilters.classifications.length > 0 && { classifications: advancedFilters.classifications })
+      ...(updatedClassifications.length > 0 && { classifications: updatedClassifications })
     };
 
     updateFilters(newFilters);
