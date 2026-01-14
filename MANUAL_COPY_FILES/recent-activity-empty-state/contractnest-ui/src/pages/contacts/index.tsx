@@ -33,8 +33,7 @@ import {
   Tag,
   UserPlus,
   Network,
-  Briefcase,
-  Power
+  Briefcase
 } from 'lucide-react';
 // import { useToast } from '@/components/ui/use-toast'; // Replaced with vaniToast
 import { captureException } from '@/utils/sentry';
@@ -368,27 +367,6 @@ const ContactsPage: React.FC = () => {
         tags: { component: 'ContactsPage', action: 'softDelete' }
       });
       vaniToast.error(`Failed to archive ${contactName}`);
-    }
-  };
-
-  // Handle status toggle (activate/deactivate)
-  const handleStatusToggle = async (contactId: string, contactName: string, currentStatus: string) => {
-    const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
-    try {
-      vaniToast.loading(`${newStatus === 'active' ? 'Activating' : 'Deactivating'} ${contactName}...`);
-      await updateContactStatus(contactId, newStatus);
-      vaniToast.success(`${contactName} ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`);
-
-      // Invalidate cache and force refresh
-      if (currentTenant?.id) {
-        invalidateContactsCache(currentTenant.id, isLive);
-      }
-      refetch(true);
-    } catch (error) {
-      captureException(error, {
-        tags: { component: 'ContactsPage', action: 'statusToggle' }
-      });
-      vaniToast.error(`Failed to ${newStatus === 'active' ? 'activate' : 'deactivate'} ${contactName}`);
     }
   };
 
@@ -1276,26 +1254,6 @@ const ContactsPage: React.FC = () => {
                             >
                               <Eye className="h-4 w-4" />
                             </button>
-                            {contact.status !== 'archived' && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleStatusToggle(contact.id, contact.displayName, contact.status);
-                                }}
-                                className="p-1.5 rounded-md transition-colors"
-                                style={{
-                                  backgroundColor: contact.status === 'active'
-                                    ? colors.semantic.success + '20'
-                                    : colors.semantic.warning + '20',
-                                  color: contact.status === 'active'
-                                    ? colors.semantic.success
-                                    : colors.semantic.warning
-                                }}
-                                title={contact.status === 'active' ? 'Deactivate entity' : 'Activate entity'}
-                              >
-                                <Power className="h-4 w-4" />
-                              </button>
-                            )}
                             <button
                               className="p-1.5 rounded-md transition-colors"
                               style={{
@@ -1478,26 +1436,6 @@ const ContactsPage: React.FC = () => {
                             >
                               <Eye className="h-4 w-4" />
                             </button>
-                            {contact.status !== 'archived' && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleStatusToggle(contact.id, contact.displayName, contact.status);
-                                }}
-                                className="p-1.5 rounded-md transition-colors"
-                                style={{
-                                  backgroundColor: contact.status === 'active'
-                                    ? colors.semantic.success + '20'
-                                    : colors.semantic.warning + '20',
-                                  color: contact.status === 'active'
-                                    ? colors.semantic.success
-                                    : colors.semantic.warning
-                                }}
-                                title={contact.status === 'active' ? 'Deactivate entity' : 'Activate entity'}
-                              >
-                                <Power className="h-4 w-4" />
-                              </button>
-                            )}
                             <button
                               className="p-1.5 rounded-md transition-colors"
                               style={{

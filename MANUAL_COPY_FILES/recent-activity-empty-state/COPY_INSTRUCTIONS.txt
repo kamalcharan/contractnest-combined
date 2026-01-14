@@ -4,12 +4,12 @@ COPY INSTRUCTIONS - Contacts List & View Updates
 
 Features Implemented:
 1. Added "Coming Soon" empty state for Recent Activity card
-2. Added VaNiLoader on Contact View page refresh
-3. Hide child contacts (persons linked to corporate) from list
-4. Added activate/deactivate toggle on list cards
-5. Removed Edit icon from list cards
-6. Hidden Import and Export buttons
-7. Added Archive card to Contact View right panel
+2. Hide child contacts (persons linked to corporate) from list
+3. Removed Edit icon from list cards
+4. Hidden Import and Export buttons
+5. Added Active/Inactive toggle card to Contact View right panel
+6. Added Archive card to Contact View right panel
+7. Reverted VaNiLoader back to skeleton loader on view page
 
 Branch: claude/init-submodules-review-nao5g
 Date: January 2025
@@ -22,15 +22,15 @@ FILES TO COPY
    FROM: MANUAL_COPY_FILES\recent-activity-empty-state\contractnest-ui\src\components\contacts\view\cards\RecentActivityCard.tsx
    TO:   contractnest-ui\src\components\contacts\view\cards\RecentActivityCard.tsx
 
-2. view.tsx (VaNiLoader on refresh)
+2. view.tsx (Skeleton loader restored)
    FROM: MANUAL_COPY_FILES\recent-activity-empty-state\contractnest-ui\src\pages\contacts\view.tsx
    TO:   contractnest-ui\src\pages\contacts\view.tsx
 
-3. index.tsx (List page updates)
+3. index.tsx (List page updates - no power icon)
    FROM: MANUAL_COPY_FILES\recent-activity-empty-state\contractnest-ui\src\pages\contacts\index.tsx
    TO:   contractnest-ui\src\pages\contacts\index.tsx
 
-4. ContactSummaryTab.tsx (Archive card on right panel)
+4. ContactSummaryTab.tsx (Status toggle + Archive cards)
    FROM: MANUAL_COPY_FILES\recent-activity-empty-state\contractnest-ui\src\components\contacts\view\ContactSummaryTab.tsx
    TO:   contractnest-ui\src\components\contacts\view\ContactSummaryTab.tsx
 
@@ -43,25 +43,22 @@ FILE 1: RecentActivityCard.tsx
 - Shows "Coming Soon" empty state when no real data
 
 FILE 2: view.tsx
-- Imported VaNiLoader component
-- Replaced skeleton loading state with VaNiLoader
-- Loader appears at top left when page is loading/refreshing
+- Reverted VaNiLoader back to skeleton loader (pulse animation)
+- Removed VaNiLoader import
 
 FILE 3: index.tsx
 - Hidden Import and Export buttons (commented out)
 - Added filter to hide contacts with parent_contact_id (child contacts)
 - Removed Edit icon from both grid and list views
-- Added Power icon for activate/deactivate toggle
-- Added handleStatusToggle function
-- Status toggle only shows for non-archived contacts
+- Removed Power icon (activate/deactivate moved to View page)
 - Archive button only shows for non-archived contacts
 
 FILE 4: ContactSummaryTab.tsx
 - Added Archive icon import
 - Added useUpdateContactStatus hook import
-- Added ConfirmationDialog import
-- Added showArchiveConfirm and isArchiving state
-- Added handleArchive function
+- Added isUpdatingStatus state
+- Added handleStatusChange function for active/inactive toggle
+- Added Contact Status card with toggle switch (above Archive)
 - Added Archive card as last card in right sidebar
 - Added Archive confirmation dialog
 

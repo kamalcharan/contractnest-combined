@@ -283,6 +283,31 @@ const ContactSummaryTab: React.FC<ContactSummaryTabProps> = ({ contact, onRefres
   const [isSaving, setIsSaving] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
+  // Handle status toggle (active/inactive)
+  const handleStatusChange = async (newStatus: 'active' | 'inactive') => {
+    setIsUpdatingStatus(true);
+    try {
+      await updateStatusHook.mutate(contact.id, newStatus);
+      toast({
+        title: "Success",
+        description: `Contact ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`,
+        duration: 3000
+      });
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update contact status"
+      });
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
 
   // Handle archive contact
   const handleArchive = async () => {
@@ -1141,7 +1166,80 @@ const ContactSummaryTab: React.FC<ContactSummaryTabProps> = ({ contact, onRefres
             </ViewCard>
           )}
 
-          {/* 7. Archive Card - Only show if not already archived */}
+          {/* 7. Contact Status Card - Active/Inactive Toggle */}
+          {contact.status !== 'archived' && (
+            <div
+              className="rounded-xl border p-4 transition-all"
+              style={{
+                background: isDarkMode
+                  ? 'rgba(30, 41, 59, 0.8)'
+                  : 'rgba(255, 255, 255, 0.8)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                borderColor: isDarkMode
+                  ? 'rgba(255,255,255,0.1)'
+                  : 'rgba(0,0,0,0.08)'
+              }}
+            >
+              <h3
+                className="text-sm font-semibold mb-3 transition-colors"
+                style={{ color: colors.utility.primaryText }}
+              >
+                Contact Status
+              </h3>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p
+                    className="font-medium text-xs transition-colors"
+                    style={{ color: colors.utility.primaryText }}
+                  >
+                    {contact.status === 'active' ? 'Active' : 'Inactive'}
+                  </p>
+                  <p
+                    className="text-xs transition-colors"
+                    style={{ color: colors.utility.secondaryText }}
+                  >
+                    {contact.status === 'active'
+                      ? 'Contact is available for business'
+                      : 'Contact is temporarily disabled'}
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={contact.status === 'active'}
+                    onChange={(e) => handleStatusChange(e.target.checked ? 'active' : 'inactive')}
+                    disabled={isUpdatingStatus}
+                    className="sr-only peer"
+                  />
+                  <div
+                    className={`
+                      w-11 h-6 peer-focus:outline-none peer-focus:ring-4
+                      rounded-full peer
+                      peer-checked:after:translate-x-full peer-checked:after:border-white
+                      after:content-[''] after:absolute after:top-[2px] after:left-[2px]
+                      after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all
+                      ${isUpdatingStatus ? 'opacity-50' : ''}
+                    `}
+                    style={{
+                      backgroundColor: contact.status === 'active' ? colors.brand.primary : colors.utility.secondaryText + '40',
+                    }}
+                  ></div>
+                </label>
+              </div>
+              {isUpdatingStatus && (
+                <div
+                  className="mt-2 flex items-center text-xs"
+                  style={{ color: colors.utility.secondaryText }}
+                >
+                  <Loader2 className="h-3 w-3 animate-spin mr-2" />
+                  Updating status...
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 8. Archive Card - Only show if not already archived */}
           {contact.status !== 'archived' && (
             <div
               className="rounded-xl border p-4 transition-all"
