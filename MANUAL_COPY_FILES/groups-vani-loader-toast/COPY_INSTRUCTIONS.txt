@@ -15,27 +15,28 @@ CHANGES SUMMARY
 1. GroupsListPage.tsx
    - Replaced react-hot-toast with vaniToast
    - Replaced inline spinner with VaNiLoader
-   - Location: toast calls in AuthenticationModal
-   - Location: loading state spinner
 
 2. GroupProfileDashboard.tsx
    - Replaced react-hot-toast with vaniToast (12 occurrences)
    - Replaced inline spinner with VaNiLoader
-   - Location: all toast.success() and toast.error() calls
-   - Location: loading state spinner
 
 ## STORAGE MANAGEMENT
 
 3. storagemanagement/index.tsx
    - Replaced inline spinner with VaNiLoader
-   - Location: loading state spinner
 
 4. useStorageManagement.ts (Hook)
    - Replaced react-hot-toast with vaniToast (18 occurrences)
-   - toast.success() -> vaniToast.success()
-   - toast.error() -> vaniToast.error()
-   - toast() with warning icon -> vaniToast.warning()
-   - toast() info -> vaniToast.info()
+
+## INTEGRATIONS
+
+5. integrations/index.tsx
+   - Replaced LoadingSpinner with VaNiLoader (2 locations)
+
+6. useIntegrations.ts (Hook)
+   - Replaced react-hot-toast with vaniToast (12 occurrences)
+   - toast.loading -> vaniToast.info with long duration
+   - toast.dismiss -> vaniToast.dismiss
 
 ============================================================
 FILES TO COPY
@@ -54,5 +55,12 @@ TO:   contractnest-ui/src/pages/settings/storage/storagemanagement/index.tsx
 
 FROM: MANUAL_COPY_FILES/groups-vani-loader-toast/contractnest-ui/src/hooks/useStorageManagement.ts
 TO:   contractnest-ui/src/hooks/useStorageManagement.ts
+
+# Integrations
+FROM: MANUAL_COPY_FILES/groups-vani-loader-toast/contractnest-ui/src/pages/settings/integrations/index.tsx
+TO:   contractnest-ui/src/pages/settings/integrations/index.tsx
+
+FROM: MANUAL_COPY_FILES/groups-vani-loader-toast/contractnest-ui/src/hooks/useIntegrations.ts
+TO:   contractnest-ui/src/hooks/useIntegrations.ts
 
 ============================================================
