@@ -1,5 +1,5 @@
 ============================================================
-COPY INSTRUCTIONS - Groups VaNiLoader and VaNiToast Update
+COPY INSTRUCTIONS - VaNiLoader and VaNiToast Update
 ============================================================
 
 Branch: groups-vani-loader-toast
@@ -9,6 +9,8 @@ Submodules Affected: contractnest-ui
 ============================================================
 CHANGES SUMMARY
 ============================================================
+
+## GROUPS PAGES
 
 1. GroupsListPage.tsx
    - Replaced react-hot-toast with vaniToast
@@ -22,14 +24,35 @@ CHANGES SUMMARY
    - Location: all toast.success() and toast.error() calls
    - Location: loading state spinner
 
+## STORAGE MANAGEMENT
+
+3. storagemanagement/index.tsx
+   - Replaced inline spinner with VaNiLoader
+   - Location: loading state spinner
+
+4. useStorageManagement.ts (Hook)
+   - Replaced react-hot-toast with vaniToast (18 occurrences)
+   - toast.success() -> vaniToast.success()
+   - toast.error() -> vaniToast.error()
+   - toast() with warning icon -> vaniToast.warning()
+   - toast() info -> vaniToast.info()
+
 ============================================================
 FILES TO COPY
 ============================================================
 
+# Groups Pages
 FROM: MANUAL_COPY_FILES/groups-vani-loader-toast/contractnest-ui/src/pages/settings/customer-channels/GroupsListPage.tsx
 TO:   contractnest-ui/src/pages/settings/customer-channels/GroupsListPage.tsx
 
 FROM: MANUAL_COPY_FILES/groups-vani-loader-toast/contractnest-ui/src/pages/settings/customer-channels/GroupProfileDashboard.tsx
 TO:   contractnest-ui/src/pages/settings/customer-channels/GroupProfileDashboard.tsx
+
+# Storage Management
+FROM: MANUAL_COPY_FILES/groups-vani-loader-toast/contractnest-ui/src/pages/settings/storage/storagemanagement/index.tsx
+TO:   contractnest-ui/src/pages/settings/storage/storagemanagement/index.tsx
+
+FROM: MANUAL_COPY_FILES/groups-vani-loader-toast/contractnest-ui/src/hooks/useStorageManagement.ts
+TO:   contractnest-ui/src/hooks/useStorageManagement.ts
 
 ============================================================
