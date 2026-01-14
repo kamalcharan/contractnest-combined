@@ -1,0 +1,70 @@
+═══════════════════════════════════════════════════════════════════════════════
+VANILOADER & VANITOAST INTEGRATION - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+Branch: vani-loader-toast-fixes
+Submodules Affected: contractnest-ui
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES INCLUDED (3 files)
+═══════════════════════════════════════════════════════════════════════════════
+
+1. index.tsx (Business Profile View)
+   FROM: MANUAL_COPY_FILES/vani-loader-toast-fixes/contractnest-ui/src/pages/settings/business-profile/index.tsx
+   TO:   contractnest-ui/src/pages/settings/business-profile/index.tsx
+
+   CHANGES:
+   - Added VaNiLoader import from '@/components/common/loaders/UnifiedLoader'
+   - Added vaniToast import from '@/components/common/toast/VaNiToast'
+   - Replaced CSS spinner with VaNiLoader component
+
+2. edit.tsx (Business Profile Edit Wizard)
+   FROM: MANUAL_COPY_FILES/vani-loader-toast-fixes/contractnest-ui/src/pages/settings/business-profile/edit.tsx
+   TO:   contractnest-ui/src/pages/settings/business-profile/edit.tsx
+
+   CHANGES:
+   - Added VaNiLoader, InlineLoader imports
+   - Added vaniToast import
+   - Replaced CSS spinner with VaNiLoader
+   - Submit button now uses InlineLoader when saving
+
+3. smart-profile.tsx (AI Smart Profile Page)
+   FROM: MANUAL_COPY_FILES/vani-loader-toast-fixes/contractnest-ui/src/pages/settings/business-profile/smart-profile.tsx
+   TO:   contractnest-ui/src/pages/settings/business-profile/smart-profile.tsx
+
+   CHANGES:
+   - Removed Loader2 import from lucide-react
+   - Removed react-hot-toast import
+   - Added VaNiLoader, InlineLoader imports
+   - Added vaniToast import
+   - Replaced all toast.success/error with vaniToast.success/error (12 occurrences)
+   - Replaced main loading state with VaNiLoader fullScreen
+   - Replaced all button loading states (Loader2) with InlineLoader (6 occurrences)
+
+═══════════════════════════════════════════════════════════════════════════════
+COMPONENTS USED
+═══════════════════════════════════════════════════════════════════════════════
+
+VaNiLoader (from UnifiedLoader.tsx):
+  - Branded loader with Sparkles icon and pulse animation
+  - Props: size ('sm'|'md'|'lg'), message, fullScreen, showSkeleton
+
+InlineLoader (from UnifiedLoader.tsx):
+  - Inline loader for buttons
+  - Props: size ('sm'|'md'), text
+
+vaniToast (from VaNiToast.tsx):
+  - Standalone toast API (no provider needed if VaNiToastProvider is mounted)
+  - Methods: vaniToast.success(), vaniToast.error(), vaniToast.warning(), vaniToast.info()
+
+═══════════════════════════════════════════════════════════════════════════════
+PRODUCTION CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ Transaction Management: N/A (UI-only changes)
+✅ Race Condition Handling: N/A (UI-only changes)
+✅ Error Handling: Uses vaniToast.error() for all error cases
+✅ Toasts: Converted to VaNiToast
+✅ Loaders: Converted to VaNiLoader/InlineLoader
+
+═══════════════════════════════════════════════════════════════════════════════
