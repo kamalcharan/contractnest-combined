@@ -35,8 +35,20 @@ CHANGES SUMMARY
 
 6. useIntegrations.ts (Hook)
    - Replaced react-hot-toast with vaniToast (12 occurrences)
-   - toast.loading -> vaniToast.info with long duration
-   - toast.dismiss -> vaniToast.dismiss
+
+## TEAM MEMBERS
+
+7. users/index.tsx
+   - Replaced react-hot-toast with vaniToast (3 occurrences)
+
+8. UsersList.tsx (Component)
+   - Replaced inline skeleton with VaNiLoader
+
+9. useUsers.ts (Hook)
+   - Replaced react-hot-toast with vaniToast (16 occurrences)
+
+10. useInvitations.ts (Hook)
+    - Replaced react-hot-toast with vaniToast (9 occurrences)
 
 ============================================================
 FILES TO COPY
@@ -62,5 +74,18 @@ TO:   contractnest-ui/src/pages/settings/integrations/index.tsx
 
 FROM: MANUAL_COPY_FILES/groups-vani-loader-toast/contractnest-ui/src/hooks/useIntegrations.ts
 TO:   contractnest-ui/src/hooks/useIntegrations.ts
+
+# Team Members
+FROM: MANUAL_COPY_FILES/groups-vani-loader-toast/contractnest-ui/src/pages/settings/users/index.tsx
+TO:   contractnest-ui/src/pages/settings/users/index.tsx
+
+FROM: MANUAL_COPY_FILES/groups-vani-loader-toast/contractnest-ui/src/components/users/UsersList.tsx
+TO:   contractnest-ui/src/components/users/UsersList.tsx
+
+FROM: MANUAL_COPY_FILES/groups-vani-loader-toast/contractnest-ui/src/hooks/useUsers.ts
+TO:   contractnest-ui/src/hooks/useUsers.ts
+
+FROM: MANUAL_COPY_FILES/groups-vani-loader-toast/contractnest-ui/src/hooks/useInvitations.ts
+TO:   contractnest-ui/src/hooks/useInvitations.ts
 
 ============================================================
