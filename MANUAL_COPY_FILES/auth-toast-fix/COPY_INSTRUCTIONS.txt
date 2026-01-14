@@ -1,0 +1,38 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS - Auth Toast Fix
+═══════════════════════════════════════════════════
+
+Issue Fixed:
+- Login/Signup error toasts were not showing because react-hot-toast
+  was replaced with VaNiToast but auth pages still used old import
+
+Changes Made:
+1. Replaced react-hot-toast with vaniToast in LoginPage.tsx
+2. Replaced react-hot-toast with vaniToast in RegisterPage.tsx
+3. Changed toast position from bottom-right to top-right in App.tsx
+
+Branch: claude/init-submodules-review-nao5g
+Date: January 2025
+
+═══════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════
+
+1. LoginPage.tsx
+   FROM: MANUAL_COPY_FILES\auth-toast-fix\contractnest-ui\src\pages\auth\LoginPage.tsx
+   TO:   contractnest-ui\src\pages\auth\LoginPage.tsx
+
+2. RegisterPage.tsx
+   FROM: MANUAL_COPY_FILES\auth-toast-fix\contractnest-ui\src\pages\auth\RegisterPage.tsx
+   TO:   contractnest-ui\src\pages\auth\RegisterPage.tsx
+
+3. App.tsx
+   FROM: MANUAL_COPY_FILES\auth-toast-fix\contractnest-ui\src\App.tsx
+   TO:   contractnest-ui\src\App.tsx
+
+═══════════════════════════════════════════════════
+SUBMODULES AFFECTED
+═══════════════════════════════════════════════════
+- contractnest-ui
+
+═══════════════════════════════════════════════════
