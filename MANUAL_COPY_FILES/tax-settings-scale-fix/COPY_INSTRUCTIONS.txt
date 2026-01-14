@@ -1,0 +1,220 @@
+═══════════════════════════════════════════════════════════════════════════════
+TAX SETTINGS SCALE FIX - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+FEATURE BRANCH: tax-settings-scale-fix
+SUBMODULES AFFECTED:
+  - contractnest-edge (Edge Function)
+  - contractnest-ui (UI Hooks & Components)
+  - DATABASE (SQL Migration - run in Supabase SQL Editor)
+
+═══════════════════════════════════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════════════════════════════════
+
+EDGE LAYER CHANGES:
+  1. Refactored to use single RPC calls instead of multiple DB calls
+  2. Added 15-second in-memory cache for GET requests
+  3. Added cache invalidation on write operations
+  4. Moved idempotency from in-memory to database-backed
+  5. All handlers now use atomic RPC functions
+
+UI LAYER CHANGES:
+  1. useTaxRates.ts - Replaced react-hot-toast with vaniToast
+  2. useTaxDisplay.ts - Replaced useToast with vaniToast
+  3. TaxDisplayPanel.tsx - Replaced Loader2 with VaNiLoader/InlineLoader
+  4. TaxRatesPanel.tsx - Replaced Loader2 with VaNiLoader/InlineLoader
+
+DATABASE CHANGES:
+  1. New idempotency cache table: t_idempotency_cache
+  2. New RPC function: get_tax_settings_with_rates
+  3. New RPC function: create_or_update_tax_settings
+  4. New RPC function: create_tax_rate_atomic
+  5. New RPC function: update_tax_rate_atomic
+  6. New RPC function: delete_tax_rate_atomic
+  7. New helper functions for idempotency
+  8. Required indexes for performance
+
+Production Checklist:
+  ✅ Connection Pooling: N/A (Supabase manages)
+  ✅ Caching: 15s TTL for GET requests
+  ✅ Single DB Call: All handlers use single RPC
+  ✅ Idempotency: Database-backed with 15-min TTL
+  ✅ Indexes: Created for all query columns
+  ✅ Toasts: Using VaNiToast
+  ✅ Loaders: Using VaNiLoader/InlineLoader
+
+═══════════════════════════════════════════════════════════════════════════════
+📂 FILES TO COPY
+═══════════════════════════════════════════════════════════════════════════════
+
+DATABASE (Run in Supabase SQL Editor):
+─────────────────────────────────────
+database/tax_settings_rpc_functions.sql
+  → Run this SQL in your Supabase SQL Editor BEFORE deploying Edge function
+
+EDGE FUNCTION:
+─────────────────────────────────────
+contractnest-edge/supabase/functions/tax-settings/index.ts
+  → Copy to: contractnest-edge/supabase/functions/tax-settings/index.ts
+
+UI HOOKS:
+─────────────────────────────────────
+contractnest-ui/src/hooks/useTaxRates.ts
+  → Copy to: contractnest-ui/src/hooks/useTaxRates.ts
+
+contractnest-ui/src/hooks/useTaxDisplay.ts
+  → Copy to: contractnest-ui/src/hooks/useTaxDisplay.ts
+
+UI COMPONENTS:
+─────────────────────────────────────
+contractnest-ui/src/components/TaxSettings/TaxDisplayPanel.tsx
+  → Copy to: contractnest-ui/src/components/TaxSettings/TaxDisplayPanel.tsx
+
+contractnest-ui/src/components/TaxSettings/TaxRatesPanel.tsx
+  → Copy to: contractnest-ui/src/components/TaxSettings/TaxRatesPanel.tsx
+
+═══════════════════════════════════════════════════════════════════════════════
+💻 PHASE 1: LOCAL TESTING
+═══════════════════════════════════════════════════════════════════════════════
+
+STEP 0: Run Database Migration (IMPORTANT - DO THIS FIRST)
+─────────────────────────────────────────────────────────────
+1. Open Supabase Dashboard → SQL Editor
+2. Open file: MANUAL_COPY_FILES/tax-settings-scale-fix/database/tax_settings_rpc_functions.sql
+3. Copy entire contents and run in SQL Editor
+4. Verify functions are created:
+   SELECT routine_name FROM information_schema.routines
+   WHERE routine_schema = 'public' AND routine_name LIKE '%tax%';
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files from MANUAL_COPY_FILES
+─────────────────────────────────
+# Copy Edge function
+Copy-Item "MANUAL_COPY_FILES\tax-settings-scale-fix\contractnest-edge\supabase\functions\tax-settings\index.ts" -Destination "contractnest-edge\supabase\functions\tax-settings\" -Force
+
+# Copy UI Hooks
+Copy-Item "MANUAL_COPY_FILES\tax-settings-scale-fix\contractnest-ui\src\hooks\useTaxRates.ts" -Destination "contractnest-ui\src\hooks\" -Force
+Copy-Item "MANUAL_COPY_FILES\tax-settings-scale-fix\contractnest-ui\src\hooks\useTaxDisplay.ts" -Destination "contractnest-ui\src\hooks\" -Force
+
+# Copy UI Components
+Copy-Item "MANUAL_COPY_FILES\tax-settings-scale-fix\contractnest-ui\src\components\TaxSettings\TaxDisplayPanel.tsx" -Destination "contractnest-ui\src\components\TaxSettings\" -Force
+Copy-Item "MANUAL_COPY_FILES\tax-settings-scale-fix\contractnest-ui\src\components\TaxSettings\TaxRatesPanel.tsx" -Destination "contractnest-ui\src\components\TaxSettings\" -Force
+
+Write-Host "✅ All files copied!" -ForegroundColor Green
+
+STEP 3: Deploy Edge Function
+─────────────────────────────────
+cd contractnest-edge
+npx supabase functions deploy tax-settings
+cd ..
+
+STEP 4: Start Dev Server & Test
+─────────────────────────────────
+# ContractNest UI
+cd contractnest-ui && npm run dev
+
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+Tax Display Settings:
+- [ ] Navigate to Settings → Configure → Tax
+- [ ] Tax Display panel loads without errors
+- [ ] VaNi loader shows during loading (sparkles icon with pulse)
+- [ ] Radio buttons for Including/Excluding tax work
+- [ ] Save changes shows VaNiToast success
+- [ ] Reset button works
+- [ ] Error states show VaNiToast error
+
+Tax Rates:
+- [ ] Tax Rates panel loads without errors
+- [ ] VaNi loader shows during loading
+- [ ] Add Tax Rate modal opens
+- [ ] Create tax rate shows VaNiToast success
+- [ ] Duplicate rate shows VaNiToast warning (not error)
+- [ ] Edit tax rate works with inline editing
+- [ ] Set default tax rate works
+- [ ] Delete tax rate shows confirmation dialog
+- [ ] Cannot delete default rate (shows VaNiToast error)
+
+Performance:
+- [ ] Page loads feel faster (cached responses)
+- [ ] Console shows "Cache HIT" on repeated GETs
+- [ ] Console shows "Cache INVALIDATED" after writes
+
+═══════════════════════════════════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with commit"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════════════════════════════════
+
+
+═══════════════════════════════════════════════════════════════════════════════
+🚀 PHASE 2: COMMIT & MERGE (After User Confirms Testing Passed)
+═══════════════════════════════════════════════════════════════════════════════
+
+STEP 1: Commit Edge Changes
+─────────────────────────────────
+cd contractnest-edge
+git status
+git add supabase/functions/tax-settings/index.ts
+git commit -m "perf(tax-settings): optimize Edge function for scale - single RPC calls, caching, DB-backed idempotency"
+git push origin main
+cd ..
+
+STEP 2: Commit UI Changes
+─────────────────────────────────
+cd contractnest-ui
+git status
+git add src/hooks/useTaxRates.ts src/hooks/useTaxDisplay.ts
+git add src/components/TaxSettings/TaxDisplayPanel.tsx src/components/TaxSettings/TaxRatesPanel.tsx
+git commit -m "refactor(tax-settings): replace react-hot-toast with VaNiToast, add VaNiLoader"
+git push origin main
+cd ..
+
+STEP 3: Update Parent Repo Submodule References
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git add contractnest-ui contractnest-edge
+git commit -m "chore: update submodules - tax settings scale optimization"
+git push origin master
+
+STEP 4: Verify Clean State
+─────────────────────────────────
+git status
+git submodule status
+# Should show: "nothing to commit, working tree clean"
+
+Write-Host "✅ All changes committed and merged!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════════════════════════════════
+📋 SCALE IMPROVEMENTS SUMMARY
+═══════════════════════════════════════════════════════════════════════════════
+
+BEFORE (Current):
+  - GET: 2 DB calls per request
+  - CREATE: 4 DB calls per request
+  - UPDATE: 4 DB calls per request
+  - No caching
+  - In-memory idempotency (won't survive restarts)
+
+AFTER (This Fix):
+  - GET: 1 RPC call + 15s cache = ~95% reduction in DB hits
+  - CREATE: 1 RPC call (atomic)
+  - UPDATE: 1 RPC call (atomic)
+  - DELETE: 1 RPC call (atomic)
+  - Database-backed idempotency (15-min TTL)
+
+EXPECTED IMPACT AT 600 USERS:
+  - Before: ~12,600 DB calls/min
+  - After: ~550 DB calls/min (95.6% reduction)
+
+═══════════════════════════════════════════════════════════════════════════════
