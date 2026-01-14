@@ -37,10 +37,10 @@ export const defaultMenuItems: MenuItem[] = [
     hasSubmenu: true,
     submenuItems: [
       { id: 'ops-cockpit', label: 'Ops Cockpit', icon: 'Gauge', path: '/ops/cockpit' },
-      { id: 'entities', label: 'Contacts', icon: 'Building2', path: '/contacts' },
-      // HIDDEN: Activity Feed - commented out
+      { id: 'entities', label: 'Contacts', icon: 'Building2', path: '/contacts' }
+      // HIDDEN: Activity Feed, Reports - commented out
       // { id: 'ops-activity', label: 'Activity Feed', icon: 'Activity', path: '/ops/activity' },
-      { id: 'ops-reports', label: 'Reports', icon: 'BarChart2', path: '/ops/reports' }
+      // { id: 'ops-reports', label: 'Reports', icon: 'BarChart2', path: '/ops/reports' }
     ]
   },
   // REMOVED: Contacts menu - now available under Operations > Entities
