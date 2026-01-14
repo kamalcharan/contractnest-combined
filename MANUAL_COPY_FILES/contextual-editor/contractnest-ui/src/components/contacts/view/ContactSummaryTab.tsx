@@ -2,25 +2,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Clock,
-  TrendingUp,
-  FileText,
-  DollarSign,
-  Settings,
   Users,
-  Calendar,
   MessageCircle,
   Edit,
-  ExternalLink,
-  Activity,
-  User,
-  Building2,
   Mail,
   Phone,
   MapPin,
   Shield,
-  Tag,
-  AlertCircle,
   CheckCircle,
   Star,
   Plus
@@ -30,11 +18,6 @@ import { useToast } from '@/components/ui/use-toast';
 
 // Import all the card components
 import ContactHeaderCard from './cards/ContactHeaderCard';
-import ContactChannelsCard from './cards/ContactChannelsCard';
-import ContactAddressCard from './cards/ContactAddressCard';
-import ContactComplianceCard from './cards/ContactComplianceCard';
-import RecentActivityCard from './cards/RecentActivityCard';
-import QuickStatsGrid from './cards/QuickStatsGrid';
 import ImportantNotesCard from './cards/ImportantNotesCard';
 
 // Import the new Contextual Editor Panel
@@ -274,18 +257,7 @@ const ContactSummaryTab: React.FC<ContactSummaryTabProps> = ({ contact, onRefres
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Left Content Area - 2/3 width */}
         <div className="xl:col-span-2 space-y-6">
-          {/* Quick Stats Grid with Glass Morphism */}
-          <div
-            className="rounded-2xl border p-6 transition-all hover:shadow-lg"
-            style={glassStyle}
-          >
-            <QuickStatsGrid
-              contact={contact}
-              className="!bg-transparent !border-0 !shadow-none !p-0"
-            />
-          </div>
-
-          {/* Contact Header Card - Moved to left for better visibility */}
+          {/* Contact Header Card */}
           <div
             className="rounded-2xl border transition-all hover:shadow-lg"
             style={glassStyle}

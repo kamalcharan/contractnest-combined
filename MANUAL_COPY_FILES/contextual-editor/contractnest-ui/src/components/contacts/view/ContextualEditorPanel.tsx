@@ -16,12 +16,7 @@ import {
   Globe,
   Linkedin,
   AlertCircle,
-  CheckCircle,
-  ChevronRight,
-  Activity,
-  TrendingUp,
-  FileText,
-  Calendar
+  CheckCircle
 } from 'lucide-react';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { useUpdateContact } from '../../../hooks/useContacts';
@@ -191,152 +186,86 @@ const ContextualEditorPanel: React.FC<ContextualEditorPanelProps> = ({
     }
   };
 
-  // Render default panel content
+  // Render default panel content - minimal, just shows hint
   const renderDefaultContent = () => (
     <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Quick Stats */}
-      <div className="space-y-4">
+      {/* Hint Text */}
+      <div className="text-center py-8">
+        <div
+          className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center"
+          style={{ backgroundColor: colors.brand.primary + '15' }}
+        >
+          <Plus className="h-8 w-8" style={{ color: colors.brand.primary }} />
+        </div>
         <h3
-          className="text-sm font-semibold uppercase tracking-wider"
+          className="text-base font-medium mb-2"
+          style={{ color: colors.utility.primaryText }}
+        >
+          Edit Contact Details
+        </h3>
+        <p
+          className="text-sm leading-relaxed"
           style={{ color: colors.utility.secondaryText }}
         >
-          Quick Stats
-        </h3>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div
-            className="p-4 rounded-xl border transition-all hover:scale-[1.02]"
-            style={{
-              ...glassStyle,
-              borderColor: colors.semantic.success + '30',
-              background: colors.semantic.success + '10'
-            }}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <FileText className="h-4 w-4" style={{ color: colors.semantic.success }} />
-              <span className="text-xs" style={{ color: colors.utility.secondaryText }}>Contracts</span>
-            </div>
-            <p className="text-2xl font-bold" style={{ color: colors.utility.primaryText }}>0</p>
-          </div>
-
-          <div
-            className="p-4 rounded-xl border transition-all hover:scale-[1.02]"
-            style={{
-              ...glassStyle,
-              borderColor: colors.brand.primary + '30',
-              background: colors.brand.primary + '10'
-            }}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingUp className="h-4 w-4" style={{ color: colors.brand.primary }} />
-              <span className="text-xs" style={{ color: colors.utility.secondaryText }}>Revenue</span>
-            </div>
-            <p className="text-2xl font-bold" style={{ color: colors.utility.primaryText }}>₹0</p>
-          </div>
-        </div>
+          Click <strong>"Add"</strong> button or any item on the left to edit here
+        </p>
       </div>
 
-      {/* Quick Actions */}
-      <div className="space-y-3">
-        <h3
-          className="text-sm font-semibold uppercase tracking-wider"
+      {/* Summary counts */}
+      <div
+        className="p-4 rounded-xl border"
+        style={{
+          backgroundColor: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+          borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'
+        }}
+      >
+        <h4
+          className="text-xs font-semibold uppercase tracking-wider mb-3"
           style={{ color: colors.utility.secondaryText }}
         >
-          Quick Add
-        </h3>
-
+          Contact Summary
+        </h4>
         <div className="space-y-2">
-          <button
-            onClick={() => onModeChange('add-channel')}
-            className="w-full flex items-center gap-3 p-3 rounded-xl border transition-all hover:scale-[1.01] hover:shadow-md"
-            style={glassStyle}
-          >
-            <div
-              className="p-2 rounded-lg"
-              style={{ backgroundColor: colors.brand.primary + '20' }}
-            >
-              <Phone className="h-4 w-4" style={{ color: colors.brand.primary }} />
-            </div>
-            <span className="flex-1 text-left text-sm font-medium" style={{ color: colors.utility.primaryText }}>
-              Add Contact Channel
+          <div className="flex items-center justify-between">
+            <span className="text-sm flex items-center gap-2" style={{ color: colors.utility.secondaryText }}>
+              <Phone className="h-3.5 w-3.5" />
+              Channels
             </span>
-            <ChevronRight className="h-4 w-4" style={{ color: colors.utility.secondaryText }} />
-          </button>
-
-          <button
-            onClick={() => onModeChange('add-address')}
-            className="w-full flex items-center gap-3 p-3 rounded-xl border transition-all hover:scale-[1.01] hover:shadow-md"
-            style={glassStyle}
-          >
-            <div
-              className="p-2 rounded-lg"
-              style={{ backgroundColor: colors.semantic.warning + '20' }}
-            >
-              <MapPin className="h-4 w-4" style={{ color: colors.semantic.warning }} />
-            </div>
-            <span className="flex-1 text-left text-sm font-medium" style={{ color: colors.utility.primaryText }}>
-              Add Address
+            <span className="text-sm font-medium" style={{ color: colors.utility.primaryText }}>
+              {contact.contact_channels.length}
             </span>
-            <ChevronRight className="h-4 w-4" style={{ color: colors.utility.secondaryText }} />
-          </button>
-
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm flex items-center gap-2" style={{ color: colors.utility.secondaryText }}>
+              <MapPin className="h-3.5 w-3.5" />
+              Addresses
+            </span>
+            <span className="text-sm font-medium" style={{ color: colors.utility.primaryText }}>
+              {contact.addresses.length}
+            </span>
+          </div>
           {contact.type === 'corporate' && (
             <>
-              <button
-                onClick={() => onModeChange('add-compliance')}
-                className="w-full flex items-center gap-3 p-3 rounded-xl border transition-all hover:scale-[1.01] hover:shadow-md"
-                style={glassStyle}
-              >
-                <div
-                  className="p-2 rounded-lg"
-                  style={{ backgroundColor: colors.semantic.success + '20' }}
-                >
-                  <Shield className="h-4 w-4" style={{ color: colors.semantic.success }} />
-                </div>
-                <span className="flex-1 text-left text-sm font-medium" style={{ color: colors.utility.primaryText }}>
-                  Add Compliance Number
+              <div className="flex items-center justify-between">
+                <span className="text-sm flex items-center gap-2" style={{ color: colors.utility.secondaryText }}>
+                  <Shield className="h-3.5 w-3.5" />
+                  Compliance
                 </span>
-                <ChevronRight className="h-4 w-4" style={{ color: colors.utility.secondaryText }} />
-              </button>
-
-              <button
-                onClick={() => onModeChange('add-person')}
-                className="w-full flex items-center gap-3 p-3 rounded-xl border transition-all hover:scale-[1.01] hover:shadow-md"
-                style={glassStyle}
-              >
-                <div
-                  className="p-2 rounded-lg"
-                  style={{ backgroundColor: '#8b5cf6' + '20' }}
-                >
-                  <Users className="h-4 w-4" style={{ color: '#8b5cf6' }} />
-                </div>
-                <span className="flex-1 text-left text-sm font-medium" style={{ color: colors.utility.primaryText }}>
-                  Add Contact Person
+                <span className="text-sm font-medium" style={{ color: colors.utility.primaryText }}>
+                  {contact.compliance_numbers.length}
                 </span>
-                <ChevronRight className="h-4 w-4" style={{ color: colors.utility.secondaryText }} />
-              </button>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm flex items-center gap-2" style={{ color: colors.utility.secondaryText }}>
+                  <Users className="h-3.5 w-3.5" />
+                  Persons
+                </span>
+                <span className="text-sm font-medium" style={{ color: colors.utility.primaryText }}>
+                  {contact.contact_persons.length}
+                </span>
+              </div>
             </>
           )}
-        </div>
-      </div>
-
-      {/* Recent Activity Preview */}
-      <div className="space-y-3">
-        <h3
-          className="text-sm font-semibold uppercase tracking-wider"
-          style={{ color: colors.utility.secondaryText }}
-        >
-          Recent Activity
-        </h3>
-
-        <div
-          className="p-4 rounded-xl border text-center"
-          style={glassStyle}
-        >
-          <Activity className="h-8 w-8 mx-auto mb-2" style={{ color: colors.utility.secondaryText }} />
-          <p className="text-sm" style={{ color: colors.utility.secondaryText }}>
-            No recent activity
-          </p>
         </div>
       </div>
     </div>
