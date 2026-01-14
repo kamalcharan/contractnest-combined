@@ -1,37 +1,47 @@
-═══════════════════════════════════════════════════════════════════════════════
-TENANT-PROFILE EDGE FIXES - COPY INSTRUCTIONS
-═══════════════════════════════════════════════════════════════════════════════
+===============================================================================
+TENANT-PROFILE COMPREHENSIVE FIXES - COPY INSTRUCTIONS
+===============================================================================
 
-BRANCH: tenant-profile-fixes
+BRANCH: tenant-profile-fixes (updated)
 DATE: January 2025
 
-═══════════════════════════════════════════════════════════════════════════════
-📦 CHANGES SUMMARY
-═══════════════════════════════════════════════════════════════════════════════
+===============================================================================
+CHANGES SUMMARY
+===============================================================================
 
 Files Changed:
+
   1. contractnest-edge/supabase/functions/tenant-profile/index.ts
      - Added in-memory caching for GET requests (30s TTL)
      - Fixed race condition: replaced check-then-insert with atomic upsert
      - Updated /logo endpoint to receive URL after Firebase upload
      - Added cache invalidation on POST/PUT/logo updates
+     - NEW: Added optimistic locking for PUT (updated_at check)
 
   2. contractnest-api/src/services/tenantProfileService.ts
      - Fixed logo upload: now uploads directly to Firebase Storage
      - Uses same pattern as storageService.ts
      - Returns actual Firebase download URL (not mock)
      - Path pattern: tenant_logos/{tenantId}/logo_{uuid}.{ext}
+     - NEW: Added idempotency key support for create/update operations
+     - NEW: Handles 409 conflict responses
+
+  3. contractnest-api/src/controllers/tenantProfileController.ts
+     - NEW: Extracts X-Idempotency-Key header
+     - NEW: Passes idempotency key to service methods
+     - NEW: Handles optimistic lock conflicts (409)
+     - NEW: Handles duplicate request errors
 
 Submodules Affected:
   - contractnest-edge
   - contractnest-api
 
-═══════════════════════════════════════════════════════════════════════════════
-✅ FIXES APPLIED
-═══════════════════════════════════════════════════════════════════════════════
+===============================================================================
+FIXES APPLIED
+===============================================================================
 
 1. RACE CONDITION FIX (Edge - POST)
-   Before: Check if exists → Insert OR Update (race condition possible)
+   Before: Check if exists -> Insert OR Update (race condition possible)
    After:  Single atomic UPSERT with onConflict: 'tenant_id'
 
 2. CACHING FIX (Edge - GET)
@@ -42,27 +52,35 @@ Submodules Affected:
    Before: API called Edge, Edge returned FAKE mock URL
    After:  API uploads to Firebase Storage directly, returns real URL
 
-═══════════════════════════════════════════════════════════════════════════════
-💻 COPY FILES FOR LOCAL TESTING
-═══════════════════════════════════════════════════════════════════════════════
+4. OPTIMISTIC LOCKING (Edge - PUT) [NEW]
+   Before: Last-write-wins (no conflict detection)
+   After:  Checks updated_at before update, returns 409 on conflict
+
+5. IDEMPOTENCY KEYS (API Layer) [NEW]
+   Before: Duplicate requests could create duplicate operations
+   After:  X-Idempotency-Key header support, 5-minute cache TTL
+
+===============================================================================
+COPY FILES FOR LOCAL TESTING
+===============================================================================
 
 STEP 1: Navigate to Project
-─────────────────────────────────
+---------------------------------
 cd "D:\projects\core projects\ContractNest\contractnest-combined"
 
 STEP 2: Copy Edge Function
-─────────────────────────────────
+---------------------------------
 Copy-Item "MANUAL_COPY_FILES\tenant-profile-fixes\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
 
-STEP 3: Copy API Service
-─────────────────────────────────
+STEP 3: Copy API Files
+---------------------------------
 Copy-Item "MANUAL_COPY_FILES\tenant-profile-fixes\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
 
-Write-Host "✅ All files copied!" -ForegroundColor Green
+Write-Host "All files copied!" -ForegroundColor Green
 
-═══════════════════════════════════════════════════════════════════════════════
-🧪 TESTING CHECKLIST
-═══════════════════════════════════════════════════════════════════════════════
+===============================================================================
+TESTING CHECKLIST
+===============================================================================
 
 Edge Function Tests:
 - [ ] GET /tenant-profile returns cached result on second call (check logs for "Cache HIT")
@@ -70,20 +88,31 @@ Edge Function Tests:
 - [ ] POST /tenant-profile updates via upsert (existing tenant)
 - [ ] PUT /tenant-profile updates correctly
 - [ ] Cache invalidates after POST/PUT (subsequent GET hits DB)
+- [ ] PUT with stale updated_at returns 409 Conflict
 
 Logo Upload Tests:
-- [ ] Upload logo in Settings → Business Profile
+- [ ] Upload logo in Settings -> Business Profile
 - [ ] Verify logo URL is a real Firebase URL (not mock)
 - [ ] Logo displays correctly after save
 - [ ] Logo persists after page refresh
+
+Optimistic Locking Tests:
+- [ ] Open profile in two tabs
+- [ ] Edit in Tab A, save
+- [ ] Edit in Tab B, save -> should show "Profile was modified" warning
+- [ ] Refresh Tab B, changes from Tab A visible
+
+Idempotency Tests:
+- [ ] Rapid double-click on save -> only one request processed
+- [ ] Network retry with same idempotency key -> returns cached result
 
 Performance Tests:
 - [ ] Multiple rapid GET requests use cache (reduced DB load)
 - [ ] Concurrent POST requests don't cause duplicate entries
 
-═══════════════════════════════════════════════════════════════════════════════
-📝 DEPLOYMENT NOTES
-═══════════════════════════════════════════════════════════════════════════════
+===============================================================================
+DEPLOYMENT NOTES
+===============================================================================
 
 Edge Function:
 - Deploy using: supabase functions deploy tenant-profile
@@ -104,10 +133,13 @@ Firebase Storage:
 - Logos stored at: tenant_logos/{tenantId}/logo_{uuid}.{ext}
 - Anonymous auth is used (same as storageService)
 
-═══════════════════════════════════════════════════════════════════════════════
-⏸️ WAITING FOR CONFIRMATION
-═══════════════════════════════════════════════════════════════════════════════
+New Headers Supported:
+- X-Idempotency-Key: Optional header for create/update requests
+
+===============================================================================
+WAITING FOR CONFIRMATION
+===============================================================================
 Test locally and confirm:
-  → "Tested, working - proceed with commit"
-  → "Issue found: [describe problem]"
-═══════════════════════════════════════════════════════════════════════════════
+  -> "Tested, working - proceed with commit"
+  -> "Issue found: [describe problem]"
+===============================================================================

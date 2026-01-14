@@ -1,5 +1,6 @@
 // backend/src/services/tenantProfileService.ts
 // UPDATED: Logo upload now uses Firebase Storage directly (same pattern as storageService.ts)
+// UPDATED: Added idempotency key support for create/update operations
 import axios from 'axios';
 import { initializeApp, FirebaseApp } from 'firebase/app';
 import {
@@ -13,6 +14,76 @@ import { getAuth, signInAnonymously, Auth, User, onAuthStateChanged } from 'fire
 import { v4 as uuidv4 } from 'uuid';
 import { captureException } from '../utils/sentry';
 import { SUPABASE_URL } from '../utils/supabaseConfig';
+
+// ============================================================================
+// IDEMPOTENCY KEY CACHE
+// ============================================================================
+interface IdempotencyEntry {
+  result: any;
+  expiry: number;
+  status: 'pending' | 'completed' | 'error';
+}
+
+// In-memory cache for idempotency keys (5 minute TTL)
+const idempotencyCache = new Map<string, IdempotencyEntry>();
+const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+// Cleanup expired entries periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of idempotencyCache.entries()) {
+    if (now > entry.expiry) {
+      idempotencyCache.delete(key);
+    }
+  }
+}, 60000); // Clean every minute
+
+/**
+ * Check if an idempotency key has a cached result
+ */
+function getIdempotencyResult(key: string | undefined): IdempotencyEntry | null {
+  if (!key) return null;
+  const entry = idempotencyCache.get(key);
+  if (entry && Date.now() < entry.expiry) {
+    console.log(`Idempotency cache HIT for key: ${key.substring(0, 8)}...`);
+    return entry;
+  }
+  if (entry) {
+    idempotencyCache.delete(key);
+  }
+  return null;
+}
+
+/**
+ * Store result for an idempotency key
+ */
+function setIdempotencyResult(key: string | undefined, result: any, status: 'completed' | 'error'): void {
+  if (!key) return;
+  idempotencyCache.set(key, {
+    result,
+    expiry: Date.now() + IDEMPOTENCY_TTL_MS,
+    status
+  });
+  console.log(`Idempotency cache SET for key: ${key.substring(0, 8)}... (status: ${status})`);
+}
+
+/**
+ * Mark an idempotency key as pending (to handle concurrent requests)
+ */
+function setIdempotencyPending(key: string | undefined): boolean {
+  if (!key) return false;
+  const existing = idempotencyCache.get(key);
+  if (existing && Date.now() < existing.expiry) {
+    // Already processing or completed
+    return false;
+  }
+  idempotencyCache.set(key, {
+    result: null,
+    expiry: Date.now() + IDEMPOTENCY_TTL_MS,
+    status: 'pending'
+  });
+  return true;
+}
 
 export interface TenantProfile {
   id: string;
@@ -148,13 +219,35 @@ export const tenantProfileService = {
   },
 
   /**
-   * Create a new tenant profile
+   * Create a new tenant profile (with idempotency support)
+   * @param idempotencyKey - Optional key to prevent duplicate requests
    */
   async createTenantProfile(
     authToken: string,
     tenantId: string,
-    profileData: TenantProfileCreate
+    profileData: TenantProfileCreate,
+    idempotencyKey?: string
   ): Promise<TenantProfile> {
+    // Check idempotency cache first
+    const cached = getIdempotencyResult(idempotencyKey);
+    if (cached) {
+      if (cached.status === 'completed') {
+        console.log('Returning cached result for createTenantProfile');
+        return cached.result;
+      }
+      if (cached.status === 'pending') {
+        throw new Error('Request is already being processed');
+      }
+      if (cached.status === 'error') {
+        throw cached.result;
+      }
+    }
+
+    // Mark as pending to prevent concurrent duplicate requests
+    if (idempotencyKey && !setIdempotencyPending(idempotencyKey)) {
+      throw new Error('Duplicate request detected - already processing');
+    }
+
     try {
       if (!SUPABASE_URL) {
         throw new Error('Missing SUPABASE_URL configuration');
@@ -177,6 +270,8 @@ export const tenantProfileService = {
         }
       );
 
+      // Cache successful result
+      setIdempotencyResult(idempotencyKey, response.data, 'completed');
       return response.data;
     } catch (error) {
       console.error('Error in createTenantProfile service:', error);
@@ -184,18 +279,42 @@ export const tenantProfileService = {
         tags: { source: 'service_tenant_profile', action: 'createTenantProfile' },
         tenantId
       });
+      // Cache error result
+      setIdempotencyResult(idempotencyKey, error, 'error');
       throw error;
     }
   },
 
   /**
-   * Update an existing tenant profile
+   * Update an existing tenant profile (with idempotency support)
+   * @param idempotencyKey - Optional key to prevent duplicate requests
    */
   async updateTenantProfile(
     authToken: string,
     tenantId: string,
-    profileData: Partial<TenantProfileCreate> & { tenant_id: string }
+    profileData: Partial<TenantProfileCreate> & { tenant_id: string; updated_at?: string },
+    idempotencyKey?: string
   ): Promise<TenantProfile> {
+    // Check idempotency cache first
+    const cached = getIdempotencyResult(idempotencyKey);
+    if (cached) {
+      if (cached.status === 'completed') {
+        console.log('Returning cached result for updateTenantProfile');
+        return cached.result;
+      }
+      if (cached.status === 'pending') {
+        throw new Error('Request is already being processed');
+      }
+      if (cached.status === 'error') {
+        throw cached.result;
+      }
+    }
+
+    // Mark as pending to prevent concurrent duplicate requests
+    if (idempotencyKey && !setIdempotencyPending(idempotencyKey)) {
+      throw new Error('Duplicate request detected - already processing');
+    }
+
     try {
       if (!SUPABASE_URL) {
         throw new Error('Missing SUPABASE_URL configuration');
@@ -217,13 +336,26 @@ export const tenantProfileService = {
         }
       );
 
+      // Cache successful result
+      setIdempotencyResult(idempotencyKey, response.data, 'completed');
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in updateTenantProfile service:', error);
+
+      // Handle optimistic lock conflict (409) - don't cache as error
+      if (error.response?.status === 409) {
+        const conflictError = new Error('Profile was modified by another session');
+        (conflictError as any).status = 409;
+        (conflictError as any).response = error.response;
+        throw conflictError;
+      }
+
       captureException(error instanceof Error ? error : new Error(String(error)), {
         tags: { source: 'service_tenant_profile', action: 'updateTenantProfile' },
         tenantId
       });
+      // Cache error result (except for conflicts)
+      setIdempotencyResult(idempotencyKey, error, 'error');
       throw error;
     }
   },

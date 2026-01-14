@@ -298,7 +298,7 @@ serve(async (req) => {
       }
     }
 
-    // PUT - Update tenant profile
+    // PUT - Update tenant profile (with optimistic locking)
     if (req.method === 'PUT') {
       try {
         // Parse request body
@@ -310,6 +310,38 @@ serve(async (req) => {
             JSON.stringify({ error: 'business_name is required' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
+        }
+
+        // ✅ Optimistic locking: Check if updated_at matches before updating
+        const clientUpdatedAt = requestData.updated_at;
+        if (clientUpdatedAt) {
+          // Fetch current record to check version
+          const { data: currentData, error: fetchError } = await supabase
+            .from('t_tenant_profiles')
+            .select('updated_at')
+            .eq('tenant_id', tenantHeader)
+            .single();
+
+          if (fetchError && fetchError.code !== 'PGRST116') {
+            throw fetchError;
+          }
+
+          if (currentData && currentData.updated_at !== clientUpdatedAt) {
+            console.log('Optimistic lock conflict:', {
+              clientVersion: clientUpdatedAt,
+              serverVersion: currentData.updated_at
+            });
+
+            return new Response(
+              JSON.stringify({
+                error: 'Conflict: Profile was modified by another session',
+                code: 'OPTIMISTIC_LOCK_CONFLICT',
+                clientVersion: clientUpdatedAt,
+                serverVersion: currentData.updated_at
+              }),
+              { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
         }
 
         // Map request to database structure (without tenant_id for update)
