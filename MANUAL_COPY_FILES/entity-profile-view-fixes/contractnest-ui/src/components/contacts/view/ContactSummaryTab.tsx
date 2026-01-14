@@ -41,7 +41,7 @@ import ContactClassificationSelector from '../../contacts/forms/ContactClassific
 import { useUpdateContact } from '../../../hooks/useContacts';
 
 // Import constants
-import { canPerformOperation, CONTACT_CHANNEL_TYPES } from '@/utils/constants/contacts';
+import { canPerformOperation, CONTACT_CHANNEL_TYPES, CONTACT_CLASSIFICATION_CONFIG } from '@/utils/constants/contacts';
 
 // Types
 interface Contact {
@@ -303,8 +303,8 @@ const ContactSummaryTab: React.FC<ContactSummaryTabProps> = ({ contact, onRefres
         setFormData({ contact_channels: [...contact.contact_channels] });
         break;
       case 'classification':
-        // FIXED: Pass full classification objects for preselection
-        setFormData({ classifications: [...contact.classifications] });
+        // FIXED: Use normalized classifications (converts strings to objects)
+        setFormData({ classifications: normalizeClassifications(contact.classifications) });
         break;
       case 'persons':
         setFormData({ contact_persons: [...contact.contact_persons] });
@@ -635,6 +635,51 @@ const ContactSummaryTab: React.FC<ContactSummaryTabProps> = ({ contact, onRefres
     return colorMap[classificationValue] || '#8b5cf6';
   };
 
+  // Get classification label from value (must be defined before normalizeClassifications)
+  const getClassificationLabel = (value: string): string => {
+    const config = CONTACT_CLASSIFICATION_CONFIG?.find(c => c.id === value);
+    if (config) return config.label;
+
+    // Fallback: capitalize and replace underscores
+    return value.charAt(0).toUpperCase() + value.slice(1).replace(/_/g, ' ');
+  };
+
+  // FIXED: Normalize classifications - API returns strings, UI needs objects
+  // This handles both formats: ['buyer'] and [{classification_value: 'buyer', ...}]
+  const normalizeClassifications = (classifications: any[]): Array<{id: string; classification_value: string; classification_label: string}> => {
+    if (!classifications || !Array.isArray(classifications)) return [];
+
+    return classifications.map((cls, index) => {
+      // If already an object with classification_value, return as-is
+      if (typeof cls === 'object' && cls.classification_value) {
+        return {
+          id: cls.id || `cls-${index}`,
+          classification_value: cls.classification_value,
+          classification_label: cls.classification_label || getClassificationLabel(cls.classification_value)
+        };
+      }
+
+      // If it's a string (from API), convert to object
+      if (typeof cls === 'string') {
+        return {
+          id: `cls-${index}`,
+          classification_value: cls,
+          classification_label: getClassificationLabel(cls)
+        };
+      }
+
+      // Fallback
+      return {
+        id: `cls-${index}`,
+        classification_value: String(cls),
+        classification_label: String(cls)
+      };
+    });
+  };
+
+  // Get normalized classifications for display
+  const normalizedClassifications = normalizeClassifications(contact.classifications);
+
   return (
     <div className="space-y-6">
       {/* Main Content Grid */}
@@ -738,22 +783,22 @@ const ContactSummaryTab: React.FC<ContactSummaryTabProps> = ({ contact, onRefres
             icon={<Shield className="h-3.5 w-3.5" style={{ color: '#8b5cf6' }} />}
             iconBg="#8b5cf620"
             onEdit={() => openModal('classification')}
-            count={contact.classifications.length}
+            count={normalizedClassifications.length}
           >
-            {contact.classifications.length > 0 ? (
+            {normalizedClassifications.length > 0 ? (
               <div className="flex flex-wrap gap-1">
-                {contact.classifications.map((cls, index) => {
+                {normalizedClassifications.map((cls) => {
                   const color = getClassificationColor(cls.classification_value);
                   return (
                     <span
-                      key={cls.id || `cls-${index}`}
+                      key={cls.id}
                       className="px-2 py-0.5 rounded-full text-xs"
                       style={{
                         backgroundColor: color + '20',
                         color: color
                       }}
                     >
-                      {cls.classification_label || cls.classification_value}
+                      {cls.classification_label}
                     </span>
                   );
                 })}
