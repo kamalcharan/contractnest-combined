@@ -1,0 +1,100 @@
+═══════════════════════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS - Toast, Browser Restriction & Theme Fixes
+═══════════════════════════════════════════════════════════════════════════════
+Branch: toast-browser-theme-fix
+Date: January 2025
+Affected Submodule: contractnest-ui
+
+═══════════════════════════════════════════════════════════════════════════════
+SUMMARY OF CHANGES
+═══════════════════════════════════════════════════════════════════════════════
+
+1. TOAST FIX (Task 1 & 2):
+   - Replaced react-hot-toast with vaniToast in auth pages and AuthContext
+   - Changed toast position from bottom-right to top-right
+
+2. BROWSER RESTRICTION (Task 3):
+   - Created BrowserNotSupportedPage.tsx with ContractNest branding
+   - Added browser detection utility
+   - Shows friendly message for unsupported browsers (not Chrome/Edge)
+
+3. THEME LOADING FIX (Task 4):
+   - Fixed MiscPageLayout.tsx to load user theme preferences on mount
+   - All misc pages now inherit correct theme from user preferences
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════════════════════════════════
+
+FROM: MANUAL_COPY_FILES/toast-browser-theme-fix/contractnest-ui/
+TO:   contractnest-ui/
+
+Files:
+─────────────────────────────────────────────────────────────────────────────
+
+1. src/App.tsx
+   Purpose: Added BrowserNotSupportedPage import, route, changed toast position to top-right
+
+2. src/context/AuthContext.tsx
+   Purpose: Replaced react-hot-toast with vaniToast
+
+3. src/pages/auth/LoginPage.tsx
+   Purpose: Replaced react-hot-toast with vaniToast
+
+4. src/pages/auth/RegisterPage.tsx
+   Purpose: Replaced react-hot-toast with vaniToast
+
+5. src/pages/auth/ForgotPasswordPage.tsx
+   Purpose: Replaced react-hot-toast with vaniToast
+
+6. src/pages/misc/BrowserNotSupportedPage.tsx (NEW FILE)
+   Purpose: Browser restriction page with ContractNest branding
+
+7. src/pages/misc/index.ts
+   Purpose: Added BrowserNotSupportedPage export
+
+8. src/utils/browserDetection.ts (NEW FILE)
+   Purpose: Browser detection utility for Chrome/Edge support
+
+9. src/components/misc/MiscPageLayout.tsx
+   Purpose: Fixed theme loading on mount
+
+10. src/components/misc/MiscPageWrapper.tsx
+    Purpose: Added browser support check
+
+═══════════════════════════════════════════════════════════════════════════════
+POWERSHELL COPY COMMANDS
+═══════════════════════════════════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Copy all files preserving folder structure
+Copy-Item "MANUAL_COPY_FILES\toast-browser-theme-fix\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "✅ All files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+□ Toast Position:
+  - [ ] Login and trigger an error - toast should appear top-right
+  - [ ] Login successfully - success toast should appear top-right
+  - [ ] Check any other toast notification - should be top-right
+
+□ Login/Signup Toast Working:
+  - [ ] Go to /login, enter invalid credentials - error toast should show
+  - [ ] Go to /register, submit form - success/error toast should show
+  - [ ] Go to /forgot-password, submit - success/error toast should show
+
+□ Browser Restriction:
+  - [ ] Access app from Firefox/Safari/Opera - should show BrowserNotSupportedPage
+  - [ ] Access app from Chrome - should work normally
+  - [ ] Access app from Edge - should work normally
+
+□ Theme Loading on Misc Pages:
+  - [ ] Set your theme to dark mode
+  - [ ] Navigate to /misc/error or any misc page
+  - [ ] Page should show in dark mode (not flash light then dark)
+
+═══════════════════════════════════════════════════════════════════════════════
