@@ -1,0 +1,38 @@
+═══════════════════════════════════════════════════
+VIEW CARDS MODAL EDIT - Contact Summary Tab Redesign
+═══════════════════════════════════════════════════
+
+Branch: view-cards-modal-edit
+Date: January 2026
+
+FILES TO COPY:
+─────────────────────────────────
+contractnest-ui/src/components/contacts/view/ContactSummaryTab.tsx
+
+CHANGES SUMMARY:
+─────────────────────────────────
+- LEFT SIDE (70%): QuickStatsGrid, ImportantNotesCard, RecentActivityCard
+- RIGHT SIDE (30%): 6 compact ViewCard components
+  1. Contact - name, email, phone
+  2. Classification - active classifications
+  3. Persons (corporate only) - contact persons
+  4. Tags - with colors
+  5. Address - with primary marker
+  6. Compliance (corporate only) - compliance numbers
+- Each card has edit icon that opens modal popup
+- Modal uses existing form components (ContactChannelsSection, AddressesSection, etc.)
+- Glass morphism styling throughout
+
+COPY COMMANDS (PowerShell):
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\view-cards-modal-edit\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+TEST:
+─────────────────────────────────
+cd contractnest-ui
+npm run dev
+# Navigate to a contact view page
