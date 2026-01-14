@@ -385,25 +385,17 @@ const ContactSummaryTab: React.FC<ContactSummaryTabProps> = ({ contact, onRefres
   };
 
   // FIXED: Transform form data to API-expected format
-  // CRITICAL: API validation requires type, name/company_name, classifications, AND contact_channels on EVERY update
+  // CRITICAL: API validation requires BOTH classifications AND contact_channels on EVERY update
   const transformFormDataForAPI = (modalType: ModalType, data: any): any => {
-    // ALWAYS include the required fields from existing contact data
+    // ALWAYS include the two required fields from existing contact data
     const existingClassifications = transformClassificationsForAPI(contact.classifications);
     const existingChannels = transformChannelsForAPI(contact.contact_channels);
 
-    // Start with ALL required fields for validation
+    // Start with required fields
     const transformed: any = {
-      type: contact.type,  // REQUIRED: validation defaults to 'individual' if missing
       classifications: existingClassifications,
       contact_channels: existingChannels
     };
-
-    // Add name OR company_name based on contact type
-    if (contact.type === 'individual') {
-      transformed.name = contact.name;
-    } else if (contact.type === 'corporate') {
-      transformed.company_name = contact.company_name;
-    }
 
     // Debug logging
     console.log('=== transformFormDataForAPI ===');
@@ -618,19 +610,11 @@ const ContactSummaryTab: React.FC<ContactSummaryTabProps> = ({ contact, onRefres
   // Handle notes update - FIXED: Include required fields for validation
   const handleNotesUpdate = async (updates: { notes?: string; tags?: any[] }) => {
     try {
-      // CRITICAL: Always include ALL required fields for validation
+      // CRITICAL: Always include required fields for validation
       const transformedUpdates: any = {
-        type: contact.type,
         classifications: transformClassificationsForAPI(contact.classifications),
         contact_channels: transformChannelsForAPI(contact.contact_channels)
       };
-
-      // Add name OR company_name based on contact type
-      if (contact.type === 'individual') {
-        transformedUpdates.name = contact.name;
-      } else if (contact.type === 'corporate') {
-        transformedUpdates.company_name = contact.company_name;
-      }
 
       // Add notes if present
       if (updates.notes !== undefined) {
