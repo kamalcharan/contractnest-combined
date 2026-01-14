@@ -1,0 +1,69 @@
+═══════════════════════════════════════════════════════════════════════════════
+MANUAL COPY INSTRUCTIONS - Compact Header Card Component
+═══════════════════════════════════════════════════════════════════════════════
+
+Branch: compact-header-card
+Date: 2026-01-14
+Author: Claude Code
+
+═══════════════════════════════════════════════════════════════════════════════
+CHANGES MADE
+═══════════════════════════════════════════════════════════════════════════════
+
+1. ContactHeaderCard.tsx - REUSABLE COMPONENT
+   - Compact 3-row design instead of verbose layout
+   - Row 1: Avatar + Name + Primary contact channel with star indicator
+   - Row 2: Classifications + Tags (shows up to 3 tags with "+X" for more)
+   - Row 3: Contact ID (truncated) + Created date
+   - Theme-aware styling using ThemeContext
+   - Accepts contact and className props
+
+2. view.tsx - USE COMPONENT INSTEAD OF INLINE CODE
+   - Added import for ContactHeaderCard
+   - Replaced ~120 lines of inline code with single component usage
+   - <ContactHeaderCard contact={contact} className="mb-6" />
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════════════════════════════════
+
+1. ContactHeaderCard.tsx
+   FROM: MANUAL_COPY_FILES/compact-header-card/contractnest-ui/src/components/contacts/view/cards/ContactHeaderCard.tsx
+   TO:   contractnest-ui/src/components/contacts/view/cards/ContactHeaderCard.tsx
+
+2. view.tsx
+   FROM: MANUAL_COPY_FILES/compact-header-card/contractnest-ui/src/pages/contacts/view.tsx
+   TO:   contractnest-ui/src/pages/contacts/view.tsx
+
+═══════════════════════════════════════════════════════════════════════════════
+COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\compact-header-card\contractnest-ui\src\components\contacts\view\cards\ContactHeaderCard.tsx" -Destination "contractnest-ui\src\components\contacts\view\cards\ContactHeaderCard.tsx" -Force
+
+Copy-Item "MANUAL_COPY_FILES\compact-header-card\contractnest-ui\src\pages\contacts\view.tsx" -Destination "contractnest-ui\src\pages\contacts\view.tsx" -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════════════════════════════════
+SUBMODULES AFFECTED
+═══════════════════════════════════════════════════════════════════════════════
+
+- contractnest-ui (2 files modified)
+
+═══════════════════════════════════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+- [ ] Open any entity profile view
+- [ ] Verify compact header displays correctly (3 rows)
+- [ ] Check avatar shows correct initials with theme gradient
+- [ ] Check primary contact channel shows with star indicator
+- [ ] Check classifications display as pills
+- [ ] Check tags display (up to 3 with "+X" for more)
+- [ ] Check Contact ID and Created date in bottom row
+- [ ] Test in both light and dark mode
+
+═══════════════════════════════════════════════════════════════════════════════
