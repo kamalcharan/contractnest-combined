@@ -1,0 +1,92 @@
+================================================================
+RESOURCES SCALE-FIX - COPY INSTRUCTIONS
+================================================================
+Branch: resources-scale-fix
+Created: January 2025
+Purpose: Scale optimization for 500-600 parallel users
+
+================================================================
+CHANGES SUMMARY
+================================================================
+
+Files Changed:
+  - contractnest-edge/supabase/functions/resources/index.ts
+    - Added 15-second in-memory cache for GET requests
+    - Added database-backed idempotency for write operations
+    - Added x-idempotency-key header support
+
+  - contractnest-ui/src/pages/settings/Resources/index.tsx
+    - Replaced Loader2 with VaNiLoader
+    - Replaced useToast with vaniToast
+
+  - contractnest-ui/src/hooks/useResources.ts
+    - Replaced useToast with vaniToast
+    - Added idempotency-key headers for POST/PATCH/DELETE
+
+Submodules Affected: contractnest-edge, contractnest-ui
+
+Production Checklist:
+  - Transaction Management: N/A (single operations)
+  - Race Condition Handling: YES (idempotency)
+  - Error Handling: YES (existing + improved)
+  - Toasts: YES (vaniToast)
+  - Loaders: YES (VaNiLoader)
+
+================================================================
+PHASE 1: COPY FILES FOR LOCAL TESTING
+================================================================
+
+STEP 1: Navigate to Project
+----------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Edge Files
+----------------------------
+Copy-Item "MANUAL_COPY_FILES\resources-scale-fix\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+STEP 3: Copy UI Files
+----------------------------
+Copy-Item "MANUAL_COPY_FILES\resources-scale-fix\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+STEP 4: Start Dev Servers & Test
+----------------------------
+# Start UI
+cd contractnest-ui && npm run dev
+
+# Deploy Edge function (in another terminal)
+cd contractnest-edge && supabase functions deploy resources
+
+# Hard refresh browser: Ctrl+F5
+
+================================================================
+TESTING CHECKLIST
+================================================================
+
+UI Tests:
+  - [ ] Navigate to Settings -> Configure -> Resources
+  - [ ] VaNiLoader appears during initial load
+  - [ ] Resource types load correctly in left panel
+  - [ ] Selecting a resource type loads its resources
+  - [ ] vaniToast shows on errors (test by disconnecting network)
+
+CRUD Tests:
+  - [ ] Create new resource - success toast appears
+  - [ ] Update existing resource - success toast appears
+  - [ ] Delete resource - success toast appears
+  - [ ] Double-click create (idempotency test) - only one resource created
+
+Scale Tests:
+  - [ ] Multiple rapid GET requests - check console for "Cache HIT"
+  - [ ] Repeated POST with same data - idempotency prevents duplicates
+
+================================================================
+WAITING FOR CONFIRMATION
+================================================================
+
+Test locally and confirm:
+  -> "Tested, working - proceed with merge"
+  -> "Issue found: [describe problem]"
+
+================================================================
