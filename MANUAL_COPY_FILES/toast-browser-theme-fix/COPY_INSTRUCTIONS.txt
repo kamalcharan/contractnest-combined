@@ -1,5 +1,5 @@
 ═══════════════════════════════════════════════════════════════════════════════
-COPY INSTRUCTIONS - Toast, Browser Restriction & Theme Fixes
+COPY INSTRUCTIONS - Toast, Browser Warning & Theme Fixes
 ═══════════════════════════════════════════════════════════════════════════════
 Branch: toast-browser-theme-fix
 Date: January 2025
@@ -13,10 +13,12 @@ SUMMARY OF CHANGES
    - Replaced react-hot-toast with vaniToast in auth pages and AuthContext
    - Changed toast position from bottom-right to top-right
 
-2. BROWSER RESTRICTION (Task 3):
-   - Created BrowserNotSupportedPage.tsx with ContractNest branding
-   - Added browser detection utility
-   - Shows friendly message for unsupported browsers (not Chrome/Edge)
+2. BROWSER WARNING (Task 3) - SOFT CAUTION, NOT BLOCKING:
+   - Created BrowserWarningBanner component (dismissible warning)
+   - Shows ONLY on authenticated pages (dashboard, settings, etc.)
+   - Does NOT block public pages (landing, login, register)
+   - User can dismiss, preference stored in localStorage
+   - BrowserNotSupportedPage still available as direct route (/misc/browser-not-supported)
 
 3. THEME LOADING FIX (Task 4):
    - Fixed MiscPageLayout.tsx to load user theme preferences on mount
@@ -33,7 +35,7 @@ Files:
 ─────────────────────────────────────────────────────────────────────────────
 
 1. src/App.tsx
-   Purpose: Added BrowserNotSupportedPage import, route, changed toast position to top-right
+   Purpose: Added BrowserWarningBanner, BrowserNotSupportedPage route, toast position top-right
 
 2. src/context/AuthContext.tsx
    Purpose: Replaced react-hot-toast with vaniToast
@@ -47,20 +49,23 @@ Files:
 5. src/pages/auth/ForgotPasswordPage.tsx
    Purpose: Replaced react-hot-toast with vaniToast
 
-6. src/pages/misc/BrowserNotSupportedPage.tsx (NEW FILE)
-   Purpose: Browser restriction page with ContractNest branding
+6. src/components/common/BrowserWarningBanner.tsx (NEW FILE)
+   Purpose: Dismissible browser warning banner for authenticated users
 
-7. src/pages/misc/index.ts
+7. src/pages/misc/BrowserNotSupportedPage.tsx (NEW FILE)
+   Purpose: Full page for direct navigation (/misc/browser-not-supported)
+
+8. src/pages/misc/index.ts
    Purpose: Added BrowserNotSupportedPage export
 
-8. src/utils/browserDetection.ts (NEW FILE)
-   Purpose: Browser detection utility for Chrome/Edge support
+9. src/utils/browserDetection.ts (NEW FILE)
+   Purpose: Browser detection utility for Chrome/Edge support check
 
-9. src/components/misc/MiscPageLayout.tsx
-   Purpose: Fixed theme loading on mount
+10. src/components/misc/MiscPageLayout.tsx
+    Purpose: Fixed theme loading on mount
 
-10. src/components/misc/MiscPageWrapper.tsx
-    Purpose: Added browser support check
+11. src/components/misc/MiscPageWrapper.tsx
+    Purpose: Removed browser blocking (now uses soft warning instead)
 
 ═══════════════════════════════════════════════════════════════════════════════
 POWERSHELL COPY COMMANDS
@@ -77,24 +82,28 @@ Write-Host "✅ All files copied!" -ForegroundColor Green
 TESTING CHECKLIST
 ═══════════════════════════════════════════════════════════════════════════════
 
-□ Toast Position:
-  - [ ] Login and trigger an error - toast should appear top-right
-  - [ ] Login successfully - success toast should appear top-right
-  - [ ] Check any other toast notification - should be top-right
+□ Toast Position (top-right):
+  - [ ] Login with invalid credentials → error toast appears TOP-RIGHT
+  - [ ] Login successfully → success toast appears TOP-RIGHT
 
-□ Login/Signup Toast Working:
-  - [ ] Go to /login, enter invalid credentials - error toast should show
-  - [ ] Go to /register, submit form - success/error toast should show
-  - [ ] Go to /forgot-password, submit - success/error toast should show
+□ Login/Signup Toasts Working:
+  - [ ] /login - error toast shows on invalid credentials
+  - [ ] /register - success/error toast shows on form submit
+  - [ ] /forgot-password - success/error toast shows
 
-□ Browser Restriction:
-  - [ ] Access app from Firefox/Safari/Opera - should show BrowserNotSupportedPage
-  - [ ] Access app from Chrome - should work normally
-  - [ ] Access app from Edge - should work normally
+□ Browser Warning (SOFT - NOT BLOCKING):
+  - [ ] Access from Firefox → Landing page loads normally (no block)
+  - [ ] Access from Firefox → Login page loads normally (no block)
+  - [ ] Access from Firefox → Register page loads normally (no block)
+  - [ ] Login from Firefox → Dashboard shows warning banner at top
+  - [ ] Click X on banner → Banner dismisses
+  - [ ] Refresh page → Banner stays dismissed (localStorage)
+  - [ ] Access from Chrome → No warning banner shown
+  - [ ] Access from Edge → No warning banner shown
 
 □ Theme Loading on Misc Pages:
-  - [ ] Set your theme to dark mode
+  - [ ] Set dark mode in settings
   - [ ] Navigate to /misc/error or any misc page
-  - [ ] Page should show in dark mode (not flash light then dark)
+  - [ ] Page should load in dark mode immediately (no flash)
 
 ═══════════════════════════════════════════════════════════════════════════════

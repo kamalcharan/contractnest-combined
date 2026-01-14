@@ -18,6 +18,7 @@ import { MiscPageWrapper } from './components/misc';
 import SessionConflictNotification from './components/SessionConflictNotification';
 import EnvironmentSwitchModal from './components/EnvironmentSwitchModal';
 import LockScreen from './components/auth/LockScreen';
+import BrowserWarningBanner from './components/common/BrowserWarningBanner';
 import LandingPage from './pages/public/LandingPage';
 import PlaygroundPage from './pages/public/PlaygroundPage';
 import LoadingSpinner from './components/ui/LoadingSpinner';
@@ -278,6 +279,8 @@ const AppContent: React.FC = () => {
       <NetworkStatusHandler />
       <SessionConflictNotification />
       <EnvironmentSwitchModal />
+      {/* Browser warning banner - shows only for authenticated users on unsupported browsers */}
+      <BrowserWarningBanner />
       {/* Replaced react-hot-toast Toaster with VaNiToastProviderWithGlobal */}
       {/* <Toaster position="bottom-right" /> */}
       <MiscPageWrapper>
