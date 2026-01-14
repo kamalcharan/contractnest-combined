@@ -1,0 +1,58 @@
+═══════════════════════════════════════════════════════════════════════════════
+MANUAL COPY INSTRUCTIONS - Entity Profile View Fixes
+═══════════════════════════════════════════════════════════════════════════════
+
+Branch: entity-profile-view-fixes
+Date: 2026-01-14
+Author: Claude Code
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════════════════════════════════
+
+1. ContactSummaryTab.tsx
+   FROM: MANUAL_COPY_FILES\entity-profile-view-fixes\contractnest-ui\src\components\contacts\view\ContactSummaryTab.tsx
+   TO:   contractnest-ui\src\components\contacts\view\ContactSummaryTab.tsx
+
+═══════════════════════════════════════════════════════════════════════════════
+CHANGES MADE
+═══════════════════════════════════════════════════════════════════════════════
+
+1. CONTACT CHANNELS CARD (Right Sidebar)
+   - Now displays ALL contact channels (up to 4 visible, then "+X more" button)
+   - Each channel shows appropriate icon (Phone, Email, WhatsApp, etc.)
+   - Primary channel marked with filled star icon
+   - "+more channels" button is now CLICKABLE (opens edit modal)
+   - Title changed from "Contact" to "Contact Channels"
+   - Added channel count badge
+
+2. CLASSIFICATION CARD
+   - Fixed display to show actual classification labels (not just count)
+   - Each classification has color-coded badge based on type
+   - Preselection now works correctly in edit modal
+
+3. PERSONS CARD (Corporate only)
+   - Now shows person name + primary contact channel
+   - Primary person marked with star
+   - "+more" button is now CLICKABLE (opens edit modal)
+
+4. SAVE HANDLER (Critical 400 Fix)
+   - Added transformFormDataForAPI() function
+   - Classifications: Now sends ['buyer', 'seller'] instead of [{classification_value: 'buyer'}]
+   - Channels: Properly strips temp IDs and formats data
+   - Tags: Properly formatted with tag_value and tag_label
+   - Addresses: Properly formatted with all required fields
+   - Compliance: Properly formatted with type_value and number
+   - Persons: Properly formatted with nested contact_channels
+
+5. ALL "+MORE" BUTTONS
+   - All overflow buttons (channels, persons, tags, addresses, compliance) are now
+     clickable and open the appropriate edit modal
+
+═══════════════════════════════════════════════════════════════════════════════
+SUBMODULES AFFECTED
+═══════════════════════════════════════════════════════════════════════════════
+
+- contractnest-ui (1 file modified)
+
+═══════════════════════════════════════════════════════════════════════════════
