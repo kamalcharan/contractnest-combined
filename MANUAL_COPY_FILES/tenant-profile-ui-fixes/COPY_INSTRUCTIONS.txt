@@ -1,0 +1,69 @@
+═══════════════════════════════════════════════════════════════════════════════
+TENANT PROFILE UI FIXES - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+Branch: tenant-profile-ui-fixes
+Submodules Affected: contractnest-ui
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES INCLUDED (9 files)
+═══════════════════════════════════════════════════════════════════════════════
+
+1. useTenantProfile.ts (10 fixes)
+   FROM: MANUAL_COPY_FILES/tenant-profile-ui-fixes/contractnest-ui/src/hooks/useTenantProfile.ts
+   TO:   contractnest-ui/src/hooks/useTenantProfile.ts
+
+2. smart-profile.tsx (10 fixes)
+   FROM: MANUAL_COPY_FILES/tenant-profile-ui-fixes/contractnest-ui/src/pages/settings/business-profile/smart-profile.tsx
+   TO:   contractnest-ui/src/pages/settings/business-profile/smart-profile.tsx
+
+3. BrandColorPicker.tsx (4 fixes)
+   FROM: MANUAL_COPY_FILES/tenant-profile-ui-fixes/contractnest-ui/src/components/tenantprofile/shared/BrandColorPicker.tsx
+   TO:   contractnest-ui/src/components/tenantprofile/shared/BrandColorPicker.tsx
+
+4. LogoUploadField.tsx (4 fixes)
+   FROM: MANUAL_COPY_FILES/tenant-profile-ui-fixes/contractnest-ui/src/components/tenantprofile/shared/LogoUploadField.tsx
+   TO:   contractnest-ui/src/components/tenantprofile/shared/LogoUploadField.tsx
+
+5. ContactFields.tsx (2 fixes)
+   FROM: MANUAL_COPY_FILES/tenant-profile-ui-fixes/contractnest-ui/src/components/tenantprofile/shared/ContactFields.tsx
+   TO:   contractnest-ui/src/components/tenantprofile/shared/ContactFields.tsx
+
+6. BusinessBasicStep.tsx (3 fixes)
+   FROM: MANUAL_COPY_FILES/tenant-profile-ui-fixes/contractnest-ui/src/pages/onboarding/steps/BusinessBasicStep.tsx
+   TO:   contractnest-ui/src/pages/onboarding/steps/BusinessBasicStep.tsx
+
+7. BusinessBrandingStep.tsx (3 fixes)
+   FROM: MANUAL_COPY_FILES/tenant-profile-ui-fixes/contractnest-ui/src/pages/onboarding/steps/BusinessBrandingStep.tsx
+   TO:   contractnest-ui/src/pages/onboarding/steps/BusinessBrandingStep.tsx
+
+8. BusinessPreferencesStep.tsx (3 fixes)
+   FROM: MANUAL_COPY_FILES/tenant-profile-ui-fixes/contractnest-ui/src/pages/onboarding/steps/BusinessPreferencesStep.tsx
+   TO:   contractnest-ui/src/pages/onboarding/steps/BusinessPreferencesStep.tsx
+
+9. SequenceNumbersStep.tsx (2 fixes)
+   FROM: MANUAL_COPY_FILES/tenant-profile-ui-fixes/contractnest-ui/src/pages/onboarding/steps/SequenceNumbersStep.tsx
+   TO:   contractnest-ui/src/pages/onboarding/steps/SequenceNumbersStep.tsx
+
+═══════════════════════════════════════════════════════════════════════════════
+KEY FIXES SUMMARY
+═══════════════════════════════════════════════════════════════════════════════
+
+BusinessPreferencesStep.tsx:
+  - FIX: WhatsApp field names corrected from 'whatsapp_number' to 'business_whatsapp'
+  - FIX: WhatsApp country code field corrected to 'business_whatsapp_country_code'
+  - FIX: Added WhatsApp data to dataToSend (was missing!)
+
+useTenantProfile.ts:
+  - Environment change handling
+  - Toast notifications with consistent styling
+  - 404 error handling
+  - Default values for country codes
+
+smart-profile.tsx:
+  - AI enhancement fallback when AI is unavailable
+  - Website scraping fallback
+  - Keyword extraction from text
+  - Error handling improvements
+
+═══════════════════════════════════════════════════════════════════════════════
