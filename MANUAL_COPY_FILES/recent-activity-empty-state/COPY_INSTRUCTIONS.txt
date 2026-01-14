@@ -1,25 +1,38 @@
 ═══════════════════════════════════════════════════
-COPY INSTRUCTIONS - Recent Activity Empty State + VaNi Loader
+COPY INSTRUCTIONS - Contacts List & View Updates
 ═══════════════════════════════════════════════════
 
-Feature:
+Features Implemented:
 1. Added "Coming Soon" empty state for Recent Activity card
 2. Added VaNiLoader on Contact View page refresh
+3. Hide child contacts (persons linked to corporate) from list
+4. Added activate/deactivate toggle on list cards
+5. Removed Edit icon from list cards
+6. Hidden Import and Export buttons
+7. Added Archive card to Contact View right panel
 
-Branch: recent-activity-empty-state
+Branch: claude/init-submodules-review-nao5g
 Date: January 2025
 
 ═══════════════════════════════════════════════════
 FILES TO COPY
 ═══════════════════════════════════════════════════
 
-1. RecentActivityCard.tsx
+1. RecentActivityCard.tsx (Coming Soon empty state)
    FROM: MANUAL_COPY_FILES\recent-activity-empty-state\contractnest-ui\src\components\contacts\view\cards\RecentActivityCard.tsx
    TO:   contractnest-ui\src\components\contacts\view\cards\RecentActivityCard.tsx
 
-2. view.tsx
+2. view.tsx (VaNiLoader on refresh)
    FROM: MANUAL_COPY_FILES\recent-activity-empty-state\contractnest-ui\src\pages\contacts\view.tsx
    TO:   contractnest-ui\src\pages\contacts\view.tsx
+
+3. index.tsx (List page updates)
+   FROM: MANUAL_COPY_FILES\recent-activity-empty-state\contractnest-ui\src\pages\contacts\index.tsx
+   TO:   contractnest-ui\src\pages\contacts\index.tsx
+
+4. ContactSummaryTab.tsx (Archive card on right panel)
+   FROM: MANUAL_COPY_FILES\recent-activity-empty-state\contractnest-ui\src\components\contacts\view\ContactSummaryTab.tsx
+   TO:   contractnest-ui\src\components\contacts\view\ContactSummaryTab.tsx
 
 ═══════════════════════════════════════════════════
 CHANGES MADE
@@ -27,12 +40,30 @@ CHANGES MADE
 
 FILE 1: RecentActivityCard.tsx
 - Removed mock data generation when no audit_trail exists
-- Shows empty state with "Coming Soon" message when no real data
+- Shows "Coming Soon" empty state when no real data
 
 FILE 2: view.tsx
 - Imported VaNiLoader component
 - Replaced skeleton loading state with VaNiLoader
 - Loader appears at top left when page is loading/refreshing
+
+FILE 3: index.tsx
+- Hidden Import and Export buttons (commented out)
+- Added filter to hide contacts with parent_contact_id (child contacts)
+- Removed Edit icon from both grid and list views
+- Added Power icon for activate/deactivate toggle
+- Added handleStatusToggle function
+- Status toggle only shows for non-archived contacts
+- Archive button only shows for non-archived contacts
+
+FILE 4: ContactSummaryTab.tsx
+- Added Archive icon import
+- Added useUpdateContactStatus hook import
+- Added ConfirmationDialog import
+- Added showArchiveConfirm and isArchiving state
+- Added handleArchive function
+- Added Archive card as last card in right sidebar
+- Added Archive confirmation dialog
 
 ═══════════════════════════════════════════════════
 SUBMODULES AFFECTED
