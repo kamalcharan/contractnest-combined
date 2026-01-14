@@ -1,5 +1,5 @@
 ═══════════════════════════════════════════════════
-📦 EDGE LAYER V2 RPCs + PERFORMANCE FIX
+📦 EDGE LAYER V2 RPCs + PERFORMANCE FIX + UI FILTER FIX
 ═══════════════════════════════════════════════════
 Branch: claude/init-submodules-dvcqd
 Date: 2026-01-14
@@ -9,22 +9,22 @@ Files Changed:
     → V2 RPCs with embedded relations and idempotency
   - contractnest-edge/supabase/functions/contacts/index.ts
     → PERFORMANCE FIX: Non-blocking audit + removed from LIST ops
+  - contractnest-ui/src/pages/contacts/index.tsx
+    → BUG FIX: Classification filters now work correctly
 
-Submodules Affected: contractnest-edge
+Submodules Affected: contractnest-edge, contractnest-ui
 
 ═══════════════════════════════════════════════════
-🔧 PERFORMANCE FIXES APPLIED
+🔧 FIXES APPLIED
 ═══════════════════════════════════════════════════
 
-BEFORE (7-8 seconds for 20 records):
-  ❌ 19 synchronous await auditLogger.log() calls
-  ❌ Each audit = new Supabase client + DB INSERT + wait
-  ❌ Audit logging on READ operations (LIST, GET, SEARCH)
+1. PERFORMANCE FIX (7-8s → 4s):
+   ❌ BEFORE: 19 synchronous audit logging calls
+   ✅ AFTER: Non-blocking audit + removed from READ ops
 
-AFTER (Expected: < 500ms):
-  ✅ Audit logging removed from ALL read operations
-  ✅ Write operations use fire-and-forget: .catch(() => {})
-  ✅ Response returned IMMEDIATELY, audit logs async
+2. UI FILTER BUG FIX (Filters now work!):
+   ❌ BEFORE: { classification: 'buyer' }  // singular, ignored by API
+   ✅ AFTER:  { classifications: ['buyer'] }  // array, processed correctly
 
 ═══════════════════════════════════════════════════
 💻 STEP-BY-STEP COMMANDS (Windows PowerShell)
@@ -44,9 +44,13 @@ type MANUAL_COPY_FILES\edge-v2-rpcs\COPY_INSTRUCTIONS.txt
 
 STEP 3: Copy All Files (PowerShell)
 ─────────────────────────────────
+# Edge layer files
 Copy-Item "MANUAL_COPY_FILES\edge-v2-rpcs\contractnest-edge\supabase\functions\_shared\contacts\contactService.ts" -Destination "contractnest-edge\supabase\functions\_shared\contacts\contactService.ts" -Force
 
 Copy-Item "MANUAL_COPY_FILES\edge-v2-rpcs\contractnest-edge\supabase\functions\contacts\index.ts" -Destination "contractnest-edge\supabase\functions\contacts\index.ts" -Force
+
+# UI layer files (FILTER BUG FIX)
+Copy-Item "MANUAL_COPY_FILES\edge-v2-rpcs\contractnest-ui\src\pages\contacts\index.tsx" -Destination "contractnest-ui\src\pages\contacts\index.tsx" -Force
 
 Write-Host "✅ All files copied!" -ForegroundColor Green
 
@@ -66,13 +70,27 @@ Expected improvement: 7-8s → <500ms for list operations"
 git push origin main
 cd ..
 
-STEP 5: Update Parent Repo Submodule References
+STEP 5: Commit UI Changes
 ─────────────────────────────────
-git add contractnest-edge
-git commit -m "chore: update contractnest-edge with performance optimizations"
+cd contractnest-ui
+git status
+git add .
+git commit -m "fix: classification filters now work correctly
+
+BUG FIX:
+- Changed 'classification: string' to 'classifications: string[]'
+- API expects array format, not singular string
+- Combined activeFilter with advancedFilters.classifications"
+git push origin main
+cd ..
+
+STEP 6: Update Parent Repo Submodule References
+─────────────────────────────────
+git add contractnest-edge contractnest-ui
+git commit -m "chore: update submodules with performance + filter fixes"
 git push origin claude/init-submodules-dvcqd
 
-STEP 6: Merge to Master
+STEP 7: Merge to Master
 ─────────────────────────────────
 git checkout master
 git pull origin master
@@ -83,23 +101,27 @@ cd contractnest-edge
 git checkout main
 git pull origin main
 cd ..
-git add contractnest-edge
+cd contractnest-ui
+git checkout main
+git pull origin main
+cd ..
+git add contractnest-edge contractnest-ui
 
-git commit -m "Merge claude/init-submodules-dvcqd - Edge performance fix"
+git commit -m "Merge claude/init-submodules-dvcqd - Performance + Filter fixes"
 git push origin master
 
-STEP 7: Deploy Edge Function to Supabase
+STEP 8: Deploy Edge Function to Supabase
 ─────────────────────────────────
 cd contractnest-edge
 supabase functions deploy contacts
 cd ..
 
-STEP 8: Verify Everything is Clean
+STEP 9: Verify Everything is Clean
 ─────────────────────────────────
 git status
 # Should show: "nothing to commit, working tree clean"
 
-STEP 9: Test the Application
+STEP 10: Test the Application
 ─────────────────────────────────
 cd contractnest-ui
 npm run dev
@@ -108,36 +130,24 @@ npm run dev
 ═══════════════════════════════════════════════════
 🧪 TESTING CHECKLIST
 ═══════════════════════════════════════════════════
-- [ ] List contacts - Should load in < 1 second (was 7-8s)
-- [ ] Get contact by ID - Should load quickly
-- [ ] Search contacts - Should be responsive
+- [ ] List contacts - Should load faster (was 7-8s, now ~4s)
+- [ ] Click "Buyers" filter - Should show only buyers (WAS BROKEN, NOW FIXED)
+- [ ] Click "Sellers" filter - Should show only sellers
+- [ ] Click "Vendors" filter - Should show only vendors
+- [ ] Advanced filters (Status, User Account) - Should work
+- [ ] Search - Should filter results correctly
 - [ ] Create contact - Should work (audit logs async)
 - [ ] Update contact - Should work (audit logs async)
-- [ ] Check Supabase logs for audit entries (they should still appear, just async)
 
 ═══════════════════════════════════════════════════
-⚠️ IF STILL SLOW - ADDITIONAL INVESTIGATION
+⚠️ REMAINING PERFORMANCE BOTTLENECK
 ═══════════════════════════════════════════════════
 
-If still slow after this fix, check:
+The ~4s latency is from the double network hop:
 
-1. API → Edge network hop (biggest remaining bottleneck)
-   - Consider: UI calling Edge directly for reads
+  UI → API (Express) → Edge Function → RPC
+       ↑ ~1-2s HTTP      ↑ ~1-2s HTTP
 
-2. Edge function cold starts
-   - First request after idle = slow
-   - Subsequent requests should be fast
-
-3. Missing database indexes
-   Run in Supabase SQL Editor:
-
-   SELECT schemaname, tablename, indexname
-   FROM pg_indexes
-   WHERE tablename = 't_contacts';
-
-   Ensure indexes exist on: tenant_id, is_live, status, created_at
-
-4. RPC execution time
-   Check Supabase Dashboard → Database → Query Performance
+To reduce to <1s, consider: UI calling Edge directly for reads.
 
 ═══════════════════════════════════════════════════
