@@ -1,0 +1,42 @@
+============================================================
+RESTORE EMPTY STATES - Copy Instructions
+============================================================
+
+Date: January 2025
+Purpose: Restore Coming Soon empty states to menu pages
+Submodules Affected: contractnest-ui
+
+============================================================
+PAGES RESTORED TO EMPTY STATE
+============================================================
+
+1. Ops Cockpit (/ops/cockpit)
+   - Was: Full dummy page with mock operational data
+   - Now: Coming Soon empty state with feature list
+
+2. My Contracts (/contracts/create)
+   - Was: Full Contract Builder wizard
+   - Now: Coming Soon empty state with feature list
+
+============================================================
+FILES TO COPY
+============================================================
+
+# Ops Cockpit
+FROM: MANUAL_COPY_FILES/restore-empty-states/contractnest-ui/src/pages/ops/cockpit/index.tsx
+TO:   contractnest-ui/src/pages/ops/cockpit/index.tsx
+
+# My Contracts
+FROM: MANUAL_COPY_FILES/restore-empty-states/contractnest-ui/src/pages/contracts/create/index.tsx
+TO:   contractnest-ui/src/pages/contracts/create/index.tsx
+
+============================================================
+NOTE
+============================================================
+
+The following pages ALREADY have empty states in the current codebase:
+- Reports (/ops/reports) - Already has Coming Soon
+- Configure (catalog-studio) - Has full implementation
+- Template Builder (/contracts/create/templates/template-designer) - Already has Coming Soon
+
+============================================================
