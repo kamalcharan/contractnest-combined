@@ -1,87 +1,143 @@
 ═══════════════════════════════════════════════════
-📦 EDGE LAYER V2 RPCs - CHANGES SUMMARY
+📦 EDGE LAYER V2 RPCs + PERFORMANCE FIX
 ═══════════════════════════════════════════════════
-Branch: edge-v2-rpcs
+Branch: claude/init-submodules-dvcqd
 Date: 2026-01-14
 
 Files Changed:
   - contractnest-edge/supabase/functions/_shared/contacts/contactService.ts
-    → Uses v2 RPCs with embedded relations and idempotency
+    → V2 RPCs with embedded relations and idempotency
   - contractnest-edge/supabase/functions/contacts/index.ts
-    → Handles x-idempotency-key header for retry-safe operations
+    → PERFORMANCE FIX: Non-blocking audit + removed from LIST ops
 
 Submodules Affected: contractnest-edge
 
 ═══════════════════════════════════════════════════
-🔄 V2 RPC MAPPING
-═══════════════════════════════════════════════════
-OLD RPC                        → NEW V2 RPC
-─────────────────────────────────────────────────
-list_contacts_filtered         → list_contacts_with_channels_v2
-(multiple queries for data)    → get_contact_full_v2
-create_contact_transaction     → create_contact_idempotent_v2
-update_contact_transaction     → update_contact_idempotent_v2
-─────────────────────────────────────────────────
-
-═══════════════════════════════════════════════════
-✅ PRODUCTION CHECKLIST
-═══════════════════════════════════════════════════
-  ✅ Transaction Management: Yes - handled by RPCs
-  ✅ Race Condition Handling: Yes - idempotency keys prevent duplicates
-  ✅ Error Handling: Yes - try-catch with proper error codes
-  ✅ Single DB Call: Yes - v2 RPCs return embedded relations
-  ✅ No Loops in Edge: Yes - all aggregation in Postgres
-
-═══════════════════════════════════════════════════
-💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+🔧 PERFORMANCE FIXES APPLIED
 ═══════════════════════════════════════════════════
 
-STEP 1: Navigate to Project (PowerShell)
-─────────────────────────────────────────
+BEFORE (7-8 seconds for 20 records):
+  ❌ 19 synchronous await auditLogger.log() calls
+  ❌ Each audit = new Supabase client + DB INSERT + wait
+  ❌ Audit logging on READ operations (LIST, GET, SEARCH)
+
+AFTER (Expected: < 500ms):
+  ✅ Audit logging removed from ALL read operations
+  ✅ Write operations use fire-and-forget: .catch(() => {})
+  ✅ Response returned IMMEDIATELY, audit logs async
+
+═══════════════════════════════════════════════════
+💻 STEP-BY-STEP COMMANDS (Windows PowerShell)
+═══════════════════════════════════════════════════
+
+STEP 1: Pull the Feature Branch
+─────────────────────────────────
 cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git fetch origin
+git checkout claude/init-submodules-dvcqd
+git pull origin claude/init-submodules-dvcqd
 
-STEP 2: Copy Files from MANUAL_COPY_FILES
-─────────────────────────────────────────
-Copy-Item "MANUAL_COPY_FILES\edge-v2-rpcs\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+STEP 2: Verify Files Received
+─────────────────────────────────
+ls MANUAL_COPY_FILES\edge-v2-rpcs
+type MANUAL_COPY_FILES\edge-v2-rpcs\COPY_INSTRUCTIONS.txt
 
-Write-Host "✅ Edge layer files copied!" -ForegroundColor Green
+STEP 3: Copy All Files (PowerShell)
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\edge-v2-rpcs\contractnest-edge\supabase\functions\_shared\contacts\contactService.ts" -Destination "contractnest-edge\supabase\functions\_shared\contacts\contactService.ts" -Force
 
-STEP 3: Deploy Edge Function to Supabase
-─────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\edge-v2-rpcs\contractnest-edge\supabase\functions\contacts\index.ts" -Destination "contractnest-edge\supabase\functions\contacts\index.ts" -Force
+
+Write-Host "✅ All files copied!" -ForegroundColor Green
+
+STEP 4: Commit Edge Changes
+─────────────────────────────────
+cd contractnest-edge
+git status
+git add .
+git commit -m "perf: optimize Edge layer - non-blocking audit + v2 RPCs
+
+PERFORMANCE FIX:
+- Remove audit logging from READ operations (LIST, GET, SEARCH, STATS)
+- Make WRITE audit logging fire-and-forget (non-blocking)
+- Use v2 RPCs with embedded relations (no N+1 queries)
+
+Expected improvement: 7-8s → <500ms for list operations"
+git push origin main
+cd ..
+
+STEP 5: Update Parent Repo Submodule References
+─────────────────────────────────
+git add contractnest-edge
+git commit -m "chore: update contractnest-edge with performance optimizations"
+git push origin claude/init-submodules-dvcqd
+
+STEP 6: Merge to Master
+─────────────────────────────────
+git checkout master
+git pull origin master
+git merge claude/init-submodules-dvcqd
+
+# If merge conflicts in submodules:
+cd contractnest-edge
+git checkout main
+git pull origin main
+cd ..
+git add contractnest-edge
+
+git commit -m "Merge claude/init-submodules-dvcqd - Edge performance fix"
+git push origin master
+
+STEP 7: Deploy Edge Function to Supabase
+─────────────────────────────────
 cd contractnest-edge
 supabase functions deploy contacts
+cd ..
+
+STEP 8: Verify Everything is Clean
+─────────────────────────────────
+git status
+# Should show: "nothing to commit, working tree clean"
+
+STEP 9: Test the Application
+─────────────────────────────────
+cd contractnest-ui
+npm run dev
+# Hard refresh browser: Ctrl+F5
 
 ═══════════════════════════════════════════════════
 🧪 TESTING CHECKLIST
 ═══════════════════════════════════════════════════
-- [ ] List contacts - verify embedded primary_channel/primary_address
-- [ ] Get contact by ID - verify all relations (channels, addresses, parent_contacts, contact_persons)
-- [ ] Create contact - test idempotency (same x-idempotency-key returns same contact)
-- [ ] Update contact - test idempotency (same x-idempotency-key doesn't re-update)
-- [ ] Test with x-environment: test header - verify is_live=false
-- [ ] Test with x-environment: live header - verify is_live=true
+- [ ] List contacts - Should load in < 1 second (was 7-8s)
+- [ ] Get contact by ID - Should load quickly
+- [ ] Search contacts - Should be responsive
+- [ ] Create contact - Should work (audit logs async)
+- [ ] Update contact - Should work (audit logs async)
+- [ ] Check Supabase logs for audit entries (they should still appear, just async)
 
 ═══════════════════════════════════════════════════
-📋 NEW HEADER SUPPORT
+⚠️ IF STILL SLOW - ADDITIONAL INVESTIGATION
 ═══════════════════════════════════════════════════
-Header: x-idempotency-key (Optional)
-Type: UUID
-Purpose: Retry-safe create/update operations
 
-Usage:
-  - If provided: Uses this key for idempotency check
-  - If not provided: Auto-generates a new UUID
+If still slow after this fix, check:
 
-Example:
-  curl -X POST .../contacts \
-    -H "x-tenant-id: your-tenant-uuid" \
-    -H "x-idempotency-key: $(uuidgen)" \
-    -d '{"name": "John", ...}'
+1. API → Edge network hop (biggest remaining bottleneck)
+   - Consider: UI calling Edge directly for reads
 
-═══════════════════════════════════════════════════
-⏸️ WAITING FOR CONFIRMATION
-═══════════════════════════════════════════════════
-Test locally and confirm:
-  → "Tested, working - proceed with commit"
-  → "Issue found: [describe problem]"
+2. Edge function cold starts
+   - First request after idle = slow
+   - Subsequent requests should be fast
+
+3. Missing database indexes
+   Run in Supabase SQL Editor:
+
+   SELECT schemaname, tablename, indexname
+   FROM pg_indexes
+   WHERE tablename = 't_contacts';
+
+   Ensure indexes exist on: tenant_id, is_live, status, created_at
+
+4. RPC execution time
+   Check Supabase Dashboard → Database → Query Performance
+
 ═══════════════════════════════════════════════════
