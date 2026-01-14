@@ -45,7 +45,20 @@ const ContactHeaderCard: React.FC<ContactHeaderCardProps> = ({
   contact,
   className = ''
 }) => {
-  const { colors, isDarkMode } = useTheme();
+  const themeContext = useTheme();
+
+  // Fallback colors if theme context is not available
+  const colors = themeContext?.colors || {
+    brand: {
+      primary: '#6366f1',
+      secondary: '#8b5cf6'
+    },
+    utility: {
+      primaryText: '#1f2937',
+      secondaryText: '#6b7280'
+    }
+  };
+  const isDarkMode = themeContext?.isDarkMode || false;
 
   // Generate avatar initials
   const getAvatarInitials = (): string => {
