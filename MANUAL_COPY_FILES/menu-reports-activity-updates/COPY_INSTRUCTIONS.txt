@@ -1,0 +1,59 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS - Menu, Reports & Activity Updates
+═══════════════════════════════════════════════════
+
+Features Implemented:
+1. Renamed "Entities" to "Contacts" in Operations menu
+2. Created Reports page with "Coming Soon" empty state
+3. Hidden Activity Feed from menu and Ops Cockpit page
+
+Branch: claude/init-submodules-review-nao5g
+Date: January 2025
+
+═══════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════
+
+1. industryMenus.ts (Menu updates)
+   FROM: MANUAL_COPY_FILES\menu-reports-activity-updates\contractnest-ui\src\utils\constants\industryMenus.ts
+   TO:   contractnest-ui\src\utils\constants\industryMenus.ts
+
+2. App.tsx (Added Reports route)
+   FROM: MANUAL_COPY_FILES\menu-reports-activity-updates\contractnest-ui\src\App.tsx
+   TO:   contractnest-ui\src\App.tsx
+
+3. reports/index.tsx (NEW - Coming Soon page)
+   FROM: MANUAL_COPY_FILES\menu-reports-activity-updates\contractnest-ui\src\pages\ops\reports\index.tsx
+   TO:   contractnest-ui\src\pages\ops\reports\index.tsx
+
+4. cockpit/index.tsx (Hidden Activity Feed)
+   FROM: MANUAL_COPY_FILES\menu-reports-activity-updates\contractnest-ui\src\pages\ops\cockpit\index.tsx
+   TO:   contractnest-ui\src\pages\ops\cockpit\index.tsx
+
+═══════════════════════════════════════════════════
+CHANGES MADE
+═══════════════════════════════════════════════════
+
+FILE 1: industryMenus.ts
+- Renamed "Entities" to "Contacts" in Operations submenu (line 40)
+- Commented out Activity Feed menu item (ops-activity)
+
+FILE 2: App.tsx
+- Added import for ReportsPage
+- Added route for /ops/reports
+
+FILE 3: reports/index.tsx (NEW FILE)
+- Created Reports page with Coming Soon empty state
+- Uses theme context for dark/light mode
+- Displays BarChart2 icon with message
+
+FILE 4: cockpit/index.tsx
+- Commented out ActivityFeed import
+- Commented out <ActivityFeed /> component in right column
+
+═══════════════════════════════════════════════════
+SUBMODULES AFFECTED
+═══════════════════════════════════════════════════
+- contractnest-ui
+
+═══════════════════════════════════════════════════
