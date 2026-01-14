@@ -1,0 +1,35 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS - Recent Activity Empty State
+═══════════════════════════════════════════════════
+
+Feature: Added "Coming Soon" empty state for Recent Activity card
+Branch: recent-activity-empty-state
+Date: January 2025
+
+═══════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════
+
+1. RecentActivityCard.tsx
+   FROM: MANUAL_COPY_FILES\recent-activity-empty-state\contractnest-ui\src\components\contacts\view\cards\RecentActivityCard.tsx
+   TO:   contractnest-ui\src\components\contacts\view\cards\RecentActivityCard.tsx
+
+═══════════════════════════════════════════════════
+CHANGES MADE
+═══════════════════════════════════════════════════
+
+1. Removed mock data generation when no audit_trail exists
+   - Previously: Generated fake activities when DB had no data
+   - Now: Shows empty state when no real data exists
+
+2. Enhanced empty state design
+   - Added themed circular icon background
+   - Shows "Coming Soon" message
+   - Subtitle: "Activity tracking will be available shortly"
+
+═══════════════════════════════════════════════════
+SUBMODULES AFFECTED
+═══════════════════════════════════════════════════
+- contractnest-ui
+
+═══════════════════════════════════════════════════
