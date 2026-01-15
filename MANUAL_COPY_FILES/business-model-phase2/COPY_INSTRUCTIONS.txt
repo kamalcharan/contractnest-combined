@@ -1,0 +1,93 @@
+================================================================================
+BUSINESS MODEL PHASE 2 - COPY INSTRUCTIONS
+================================================================================
+Date: January 2025
+Phase: Phase 2 - Billing Edge Function & API Layer
+
+================================================================================
+FILES TO COPY
+================================================================================
+
+1. DATABASE MIGRATION (Apply to Supabase)
+   Source: MANUAL_COPY_FILES/business-model-phase2/contractnest-edge/supabase/migrations/business-model-v2/005_phase2_rpc_functions.sql
+   Destination: contractnest-edge/supabase/migrations/business-model-v2/005_phase2_rpc_functions.sql
+   Action: Copy file, then run migration in Supabase SQL Editor
+
+2. EDGE FUNCTION (Deploy to Supabase)
+   Source: MANUAL_COPY_FILES/business-model-phase2/contractnest-edge/supabase/functions/billing/index.ts
+   Destination: contractnest-edge/supabase/functions/billing/index.ts
+   Action: Copy file, then deploy: supabase functions deploy billing
+
+3. API TYPES
+   Source: MANUAL_COPY_FILES/business-model-phase2/contractnest-api/src/types/billing.dto.ts
+   Destination: contractnest-api/src/types/billing.dto.ts
+
+4. API VALIDATORS
+   Source: MANUAL_COPY_FILES/business-model-phase2/contractnest-api/src/validators/billingValidators.ts
+   Destination: contractnest-api/src/validators/billingValidators.ts
+
+5. API SERVICE
+   Source: MANUAL_COPY_FILES/business-model-phase2/contractnest-api/src/services/billingService.ts
+   Destination: contractnest-api/src/services/billingService.ts
+
+6. API CONTROLLER
+   Source: MANUAL_COPY_FILES/business-model-phase2/contractnest-api/src/controllers/billingController.ts
+   Destination: contractnest-api/src/controllers/billingController.ts
+
+7. API ROUTES
+   Source: MANUAL_COPY_FILES/business-model-phase2/contractnest-api/src/routes/billingRoutes.ts
+   Destination: contractnest-api/src/routes/billingRoutes.ts
+
+8. DOCUMENTATION - PRD ADDENDUM
+   Source: MANUAL_COPY_FILES/business-model-phase2/ClaudeDocumentation/BusinessModel/PRD_ADDENDUM_ARCHITECTURE.md
+   Destination: ClaudeDocumentation/BusinessModel/PRD_ADDENDUM_ARCHITECTURE.md
+
+9. DOCUMENTATION - DELIVERY TRACKER (Updated)
+   Source: MANUAL_COPY_FILES/business-model-phase2/ClaudeDocumentation/BusinessModel/BM_delivery.md
+   Destination: ClaudeDocumentation/BusinessModel/BM_delivery.md
+
+10. DOCUMENTATION - HANDOVER (Updated)
+    Source: MANUAL_COPY_FILES/business-model-phase2/ClaudeDocumentation/BusinessModel/HANDOVER_CONTEXT.md
+    Destination: ClaudeDocumentation/BusinessModel/HANDOVER_CONTEXT.md
+
+================================================================================
+SUBMODULES AFFECTED
+================================================================================
+- contractnest-edge (migration + Edge function)
+- contractnest-api (types, validators, service, controller, routes)
+- ClaudeDocumentation (PRD addendum, delivery tracker, handover)
+
+================================================================================
+POST-COPY ACTIONS
+================================================================================
+
+1. REGISTER BILLING ROUTES IN API
+   File: contractnest-api/src/index.ts (or routes/index.ts)
+   Add:
+   ```typescript
+   import billingRoutes from './routes/billingRoutes';
+   app.use('/api', billingRoutes);
+   ```
+
+2. APPLY SQL MIGRATION
+   - Open Supabase SQL Editor
+   - Copy contents of 005_phase2_rpc_functions.sql
+   - Run the SQL
+
+3. DEPLOY EDGE FUNCTION
+   ```bash
+   cd contractnest-edge
+   supabase functions deploy billing
+   ```
+
+================================================================================
+TESTING CHECKLIST
+================================================================================
+- [ ] SQL migration runs without errors
+- [ ] Edge function deploys successfully
+- [ ] API starts without TypeScript errors
+- [ ] GET /api/billing/status/:tenantId returns data
+- [ ] GET /api/billing/topup-packs returns packs
+- [ ] POST /api/billing/credits/check works
+
+================================================================================
