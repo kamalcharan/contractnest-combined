@@ -58,27 +58,118 @@ SUBMODULES AFFECTED
 - ClaudeDocumentation (PRD addendum, delivery tracker, handover)
 
 ================================================================================
-POST-COPY ACTIONS
+POST-COPY: REGISTER BILLING ROUTES IN API
 ================================================================================
 
-1. REGISTER BILLING ROUTES IN API
-   File: contractnest-api/src/index.ts (or routes/index.ts)
-   Add:
-   ```typescript
-   import billingRoutes from './routes/billingRoutes';
-   app.use('/api', billingRoutes);
-   ```
+File: contractnest-api/src/index.ts
 
-2. APPLY SQL MIGRATION
-   - Open Supabase SQL Editor
-   - Copy contents of 005_phase2_rpc_functions.sql
-   - Run the SQL
+STEP 1: Add route loading block (around line 286, after catalogStudioRoutes loading)
+------------------------------------------------------------------------
+// Load Billing routes with error handling
+let billingRoutes;
+try {
+  billingRoutes = require('./routes/billingRoutes').default;
+  console.log('✅ Billing routes loaded');
+} catch (error) {
+  console.error('❌ Failed to load billing routes:', error);
+  if (process.env.NODE_ENV === 'production') {
+    process.exit(1);
+  } else {
+    console.warn('⚠️  Continuing without billing routes...');
+    billingRoutes = null;
+  }
+}
 
-3. DEPLOY EDGE FUNCTION
-   ```bash
-   cd contractnest-edge
-   supabase functions deploy billing
-   ```
+STEP 2: Add route registration (around line 615, after onboarding routes)
+------------------------------------------------------------------------
+// Register Billing routes with error handling
+try {
+  if (billingRoutes) {
+    app.use('/api', billingRoutes);
+    console.log('✅ Billing routes registered at /api');
+  } else {
+    console.log('⚠️  Billing routes skipped (not loaded)');
+  }
+} catch (error) {
+  console.error('❌ Failed to register billing routes:', error);
+  captureException(error instanceof Error ? error : new Error(String(error)), {
+    tags: { source: 'route_registration', route_type: 'billing' }
+  });
+}
+
+STEP 3: Add to health check services (around line 641)
+------------------------------------------------------------------------
+Add to the services object:
+  billing: billingRoutes ? 'loaded' : 'not_loaded',
+
+Add to the features object (around line 655):
+  billing_api: billingRoutes !== null,
+
+STEP 4: Add billing service health check (around line 750, after catalogStudio check)
+------------------------------------------------------------------------
+// Check billing service health if available
+if (billingRoutes) {
+  try {
+    healthData.services.billing = 'healthy';
+  } catch (error) {
+    healthData.services.billing = 'error';
+  }
+}
+
+STEP 5: Add to root endpoint services (around line 784)
+------------------------------------------------------------------------
+Add to the services object:
+  billing: billingRoutes ? 'available' : 'not_available',
+
+Add to the endpoints object (around line 795):
+  billing: '/api/billing',
+
+STEP 6: Add startup logging (around line 1156, after catalog studio logging)
+------------------------------------------------------------------------
+// Log billing routes if available
+if (billingRoutes) {
+  console.log('📍 Billing routes:');
+  console.log('- GET    /api/billing/status/:tenantId              # Billing status (bot-friendly)');
+  console.log('- GET    /api/billing/subscription/:tenantId        # Subscription details');
+  console.log('- GET    /api/billing/credits/:tenantId             # Credit balances');
+  console.log('- GET    /api/billing/usage/:tenantId               # Usage summary');
+  console.log('- GET    /api/billing/invoice-estimate/:tenantId    # Invoice estimate');
+  console.log('- GET    /api/billing/alerts/:tenantId              # Billing alerts');
+  console.log('- GET    /api/billing/topup-packs                   # Available topup packs');
+  console.log('- POST   /api/billing/usage                         # Record usage event');
+  console.log('- POST   /api/billing/credits/deduct                # Deduct credits');
+  console.log('- POST   /api/billing/credits/add                   # Add credits');
+  console.log('- POST   /api/billing/credits/topup                 # Purchase topup');
+  console.log('- POST   /api/billing/credits/check                 # Check availability');
+  console.log('📋 Billing API features:');
+  console.log('  ✅ Comprehensive billing status for bot/AI integration');
+  console.log('  ✅ Credit balance management with atomic operations');
+  console.log('  ✅ Usage tracking and aggregation');
+  console.log('  ✅ Invoice estimation with line items');
+  console.log('  ✅ Topup pack purchase flow');
+  console.log('  ✅ Credit availability checking');
+  console.log('  ✅ Multi-tenant with RLS policies');
+  console.log('  ✅ Edge function integration (single RPC calls)');
+} else {
+  console.log('⚠️  Billing routes not available');
+}
+
+================================================================================
+APPLY SQL MIGRATION TO SUPABASE
+================================================================================
+
+1. Open Supabase Dashboard → SQL Editor
+2. Copy contents of:
+   contractnest-edge/supabase/migrations/business-model-v2/005_phase2_rpc_functions.sql
+3. Run the SQL
+
+================================================================================
+DEPLOY EDGE FUNCTION
+================================================================================
+
+cd contractnest-edge
+supabase functions deploy billing
+cd ..
 
 ================================================================================
 TESTING CHECKLIST
@@ -86,8 +177,10 @@ TESTING CHECKLIST
 - [ ] SQL migration runs without errors
 - [ ] Edge function deploys successfully
 - [ ] API starts without TypeScript errors
-- [ ] GET /api/billing/status/:tenantId returns data
+- [ ] Routes registered (check startup logs for "Billing routes registered")
+- [ ] Health check includes billing service
 - [ ] GET /api/billing/topup-packs returns packs
+- [ ] GET /api/billing/status/:tenantId returns data (with valid tenant)
 - [ ] POST /api/billing/credits/check works
 
 ================================================================================
