@@ -18,21 +18,21 @@ ON CONFLICT (id) DO UPDATE SET
 INSERT INTO t_bm_topup_pack (id, product_code, credit_type, name, description, quantity, price, currency_code, expiry_days, is_popular, is_active, sort_order, created_at)
 VALUES
   -- Email packs
-  ('tp000001-0000-0000-0000-000000000001', 'contractnest', 'notification', 'Email Pack - 500', '500 email notifications', 500, 499, 'INR', 365, false, true, 1, NOW()),
-  ('tp000001-0000-0000-0000-000000000002', 'contractnest', 'notification', 'Email Pack - 1000', '1000 email notifications', 1000, 899, 'INR', 365, true, true, 2, NOW()),
-  ('tp000001-0000-0000-0000-000000000003', 'contractnest', 'notification', 'Email Pack - 2500', '2500 email notifications', 2500, 1999, 'INR', 365, false, true, 3, NOW()),
+  ('d0000001-0000-0000-0000-000000000001', 'contractnest', 'notification', 'Email Pack - 500', '500 email notifications', 500, 499, 'INR', 365, false, true, 1, NOW()),
+  ('d0000001-0000-0000-0000-000000000002', 'contractnest', 'notification', 'Email Pack - 1000', '1000 email notifications', 1000, 899, 'INR', 365, true, true, 2, NOW()),
+  ('d0000001-0000-0000-0000-000000000003', 'contractnest', 'notification', 'Email Pack - 2500', '2500 email notifications', 2500, 1999, 'INR', 365, false, true, 3, NOW()),
 
   -- SMS packs
-  ('tp000001-0000-0000-0000-000000000004', 'contractnest', 'notification', 'SMS Pack - 100', '100 SMS notifications', 100, 499, 'INR', 365, false, true, 4, NOW()),
-  ('tp000001-0000-0000-0000-000000000005', 'contractnest', 'notification', 'SMS Pack - 500', '500 SMS notifications', 500, 1999, 'INR', 365, true, true, 5, NOW()),
+  ('d0000001-0000-0000-0000-000000000004', 'contractnest', 'notification', 'SMS Pack - 100', '100 SMS notifications', 100, 499, 'INR', 365, false, true, 4, NOW()),
+  ('d0000001-0000-0000-0000-000000000005', 'contractnest', 'notification', 'SMS Pack - 500', '500 SMS notifications', 500, 1999, 'INR', 365, true, true, 5, NOW()),
 
   -- WhatsApp packs
-  ('tp000001-0000-0000-0000-000000000006', 'contractnest', 'notification', 'WhatsApp Pack - 100', '100 WhatsApp messages', 100, 999, 'INR', 365, false, true, 6, NOW()),
-  ('tp000001-0000-0000-0000-000000000007', 'contractnest', 'notification', 'WhatsApp Pack - 250', '250 WhatsApp messages', 250, 2249, 'INR', 365, true, true, 7, NOW()),
+  ('d0000001-0000-0000-0000-000000000006', 'contractnest', 'notification', 'WhatsApp Pack - 100', '100 WhatsApp messages', 100, 999, 'INR', 365, false, true, 6, NOW()),
+  ('d0000001-0000-0000-0000-000000000007', 'contractnest', 'notification', 'WhatsApp Pack - 250', '250 WhatsApp messages', 250, 2249, 'INR', 365, true, true, 7, NOW()),
 
   -- AI Report packs
-  ('tp000001-0000-0000-0000-000000000008', 'contractnest', 'ai_report', 'AI Reports - 25', '25 AI contract analysis reports', 25, 4999, 'INR', 365, false, true, 8, NOW()),
-  ('tp000001-0000-0000-0000-000000000009', 'contractnest', 'ai_report', 'AI Reports - 50', '50 AI contract analysis reports', 50, 8999, 'INR', 365, true, true, 9, NOW())
+  ('d0000001-0000-0000-0000-000000000008', 'contractnest', 'ai_report', 'AI Reports - 25', '25 AI contract analysis reports', 25, 4999, 'INR', 365, false, true, 8, NOW()),
+  ('d0000001-0000-0000-0000-000000000009', 'contractnest', 'ai_report', 'AI Reports - 50', '50 AI contract analysis reports', 50, 8999, 'INR', 365, true, true, 9, NOW())
 ON CONFLICT (id) DO NOTHING;
 
 -- 3. Verify
