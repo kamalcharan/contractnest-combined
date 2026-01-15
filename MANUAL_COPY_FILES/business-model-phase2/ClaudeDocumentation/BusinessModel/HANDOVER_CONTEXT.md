@@ -1,8 +1,8 @@
 # Business Model Implementation - Handover Context
 
 > **Purpose**: Quick onboarding for continuing Business Model implementation
-> **Last Session**: January 2025
-> **Completed**: Phase 1 (Schema), Phase 2 (Billing Edge + API)
+> **Last Session**: January 2026
+> **Completed**: Phase 1 (Schema), Phase 2 (Billing Edge + API - Tested)
 > **Next Phase**: Phase 3 - JTD Credit Integration
 
 ---
@@ -88,6 +88,30 @@
 | POST | `/api/billing/credits/add` | Add credits |
 | POST | `/api/billing/credits/topup` | Purchase topup |
 | POST | `/api/billing/credits/check` | Check availability |
+
+### Testing Results (January 2026)
+
+All 9 endpoints tested and working with tenant `a58ca91a-7832-4b4c-b67c-a210032f26b8`:
+
+- [x] GET /api/billing/subscription/:tenantId - Returns subscription with plan details
+- [x] GET /api/billing/status/:tenantId - Returns billing status summary
+- [x] GET /api/billing/alerts/:tenantId - Returns trial/renewal alerts
+- [x] GET /api/billing/credits/:tenantId - Returns credit balances with summary
+- [x] GET /api/billing/usage/:tenantId - Returns usage summary for billing period
+- [x] GET /api/billing/topup-packs - Returns available topup packs
+- [x] POST /api/billing/credits/check - Check credit availability
+- [x] POST /api/billing/credits/deduct - Deduct credits with locking
+- [x] POST /api/billing/credits/add - Add credits to balance
+
+### Issues Encountered & Fixed
+
+| Issue | Resolution |
+|-------|------------|
+| Column name `id` vs `subscription_id` | Used actual PK `subscription_id` |
+| Column `reserved` vs `reserved_balance` | Fixed to `reserved_balance` |
+| Invalid UUID format `tp000001` | Changed to hex-only `d0000001` |
+| Nested aggregate error | Rewrote with subqueries in `get_credit_balance` |
+| Function signature conflicts | Drop all versions before recreating |
 
 ---
 

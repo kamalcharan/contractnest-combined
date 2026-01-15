@@ -1,14 +1,19 @@
 ================================================================================
 BUSINESS MODEL PHASE 2 - COPY INSTRUCTIONS
 ================================================================================
-Date: January 2025
-Phase: Phase 2 - Billing Edge Function & API Layer
+Date: January 2026 (Updated)
+Phase: Phase 2 - Billing Edge Function & API Layer (TESTED)
 
 ================================================================================
 FILES TO COPY
 ================================================================================
 
-1. DATABASE MIGRATION (Apply to Supabase)
+0. CONSOLIDATED MIGRATION (PREFERRED - Apply to Supabase)
+   Source: MANUAL_COPY_FILES/business-model-phase2/final_phase2_migration.sql
+   Action: Run in Supabase SQL Editor - contains ALL 9 RPC functions with proper DROP statements
+   Note: This is the recommended migration file - includes all fixes from testing
+
+1. DATABASE MIGRATION (Individual file - already included in final_phase2_migration.sql)
    Source: MANUAL_COPY_FILES/business-model-phase2/contractnest-edge/supabase/migrations/business-model-v2/005_phase2_rpc_functions.sql
    Destination: contractnest-edge/supabase/migrations/business-model-v2/005_phase2_rpc_functions.sql
    Action: Copy file, then run migration in Supabase SQL Editor
