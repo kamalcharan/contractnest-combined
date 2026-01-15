@@ -2,73 +2,115 @@
 -- TEST DATA SEED for Billing Phase 2 Testing
 -- Tenant: a58ca91a-7832-4b4c-b67c-a210032f26b8
 -- ============================================================================
--- NOTE: Uses Phase 1 table names with t_bm_ prefix
+-- NOTE: Uses correct table schemas from actual database
 -- ============================================================================
 
--- 1. Check if product config exists, if not create one
-INSERT INTO t_bm_product_config (
-  id,
-  product_code,
-  product_name,
-  billing_config,
-  is_active,
+-- 1. Create Pricing Plan (if not exists)
+INSERT INTO t_bm_pricing_plan (
+  plan_id,
+  name,
+  description,
+  plan_type,
+  trial_duration,
+  is_visible,
+  is_archived,
+  default_currency_code,
+  supported_currencies,
   created_at
 ) VALUES (
-  'a0000001-0000-0000-0000-000000000001',
-  'contractnest',
-  'ContractNest',
-  '{
-    "billing_type": "composite",
-    "base_fee": {"amount": 2999, "currency": "INR", "cycle": "monthly"},
-    "tiers": {
-      "users": [
-        {"min": 1, "max": 2, "price": 0},
-        {"min": 3, "max": 5, "price": 299},
-        {"min": 6, "max": 10, "price": 249}
-      ]
-    },
-    "credits": {
-      "notification": {"included": {"email": 500, "sms": 100, "whatsapp": 50}},
-      "ai_report": {"included": 10}
-    }
-  }'::jsonb,
+  'b0000001-0000-0000-0000-000000000001',
+  'ContractNest Professional',
+  'Professional plan for businesses',
+  'Per User',
+  14,
   true,
+  false,
+  'INR',
+  '["INR", "USD"]'::jsonb,
   NOW()
-) ON CONFLICT (id) DO NOTHING;
+) ON CONFLICT (plan_id) DO NOTHING;
 
--- 2. Create/Update Tenant Subscription
+-- 2. Create Plan Version (if not exists)
+INSERT INTO t_bm_plan_version (
+  version_id,
+  plan_id,
+  version_number,
+  is_active,
+  effective_date,
+  changelog,
+  created_by,
+  tiers,
+  features,
+  notifications,
+  topup_options,
+  created_at
+) VALUES (
+  'c0000001-0000-0000-0000-000000000001',
+  'b0000001-0000-0000-0000-000000000001',
+  '1.0.0',
+  true,
+  CURRENT_DATE - INTERVAL '30 days',
+  'Initial version',
+  'system',
+  '[
+    {"min": 1, "max": 2, "price": 0, "currency": "INR"},
+    {"min": 3, "max": 5, "price": 299, "currency": "INR"},
+    {"min": 6, "max": 10, "price": 249, "currency": "INR"}
+  ]'::jsonb,
+  '[
+    {"code": "contracts", "name": "Contract Management", "included": true},
+    {"code": "templates", "name": "Contract Templates", "included": true},
+    {"code": "e_signature", "name": "E-Signature", "included": true}
+  ]'::jsonb,
+  '[
+    {"channel": "email", "included": 500},
+    {"channel": "sms", "included": 100},
+    {"channel": "whatsapp", "included": 50}
+  ]'::jsonb,
+  '[
+    {"type": "email", "quantity": 500, "price": 499},
+    {"type": "sms", "quantity": 100, "price": 499}
+  ]'::jsonb,
+  NOW()
+) ON CONFLICT (version_id) DO NOTHING;
+
+-- 3. Create Tenant Subscription (using correct column names)
 INSERT INTO t_bm_tenant_subscription (
-  id,
+  subscription_id,
   tenant_id,
-  plan_version_id,
-  product_code,
+  version_id,
   status,
+  currency_code,
+  units,
+  current_tier,
+  amount_per_billing,
   billing_cycle,
-  trial_start_date,
-  trial_end_date,
-  current_period_start,
-  current_period_end,
-  grace_period_end,
+  start_date,
+  renewal_date,
+  trial_ends,
   created_at
 ) VALUES (
   'a0000002-0000-0000-0000-000000000001',
   'a58ca91a-7832-4b4c-b67c-a210032f26b8',
-  NULL, -- plan_version_id can be null for direct product subscription
-  'contractnest',
+  'c0000001-0000-0000-0000-000000000001',
   'active',
+  'INR',
+  3,
+  '{"tier_name": "Professional", "users": 3, "price_per_user": 299}'::jsonb,
+  2999.00,
   'monthly',
-  NOW() - INTERVAL '30 days',
-  NOW() - INTERVAL '16 days',
   DATE_TRUNC('month', NOW()),
   DATE_TRUNC('month', NOW()) + INTERVAL '1 month',
   NULL,
   NOW() - INTERVAL '30 days'
-) ON CONFLICT (id) DO UPDATE SET
+) ON CONFLICT (subscription_id) DO UPDATE SET
   status = 'active',
-  current_period_start = DATE_TRUNC('month', NOW()),
-  current_period_end = DATE_TRUNC('month', NOW()) + INTERVAL '1 month';
+  units = EXCLUDED.units,
+  current_tier = EXCLUDED.current_tier,
+  amount_per_billing = EXCLUDED.amount_per_billing;
 
--- 3. Create Credit Balances
+-- 4. Create Credit Balances (Phase 1 tables - if migrations applied)
+-- Note: These tables may need Phase 1 migrations to exist
 INSERT INTO t_bm_credit_balance (id, tenant_id, credit_type, channel, balance, reserved, last_reset_at, created_at)
 VALUES
   -- Notification credits
@@ -81,7 +123,7 @@ ON CONFLICT (id) DO UPDATE SET
   balance = EXCLUDED.balance,
   reserved = EXCLUDED.reserved;
 
--- 4. Create Credit Transaction History
+-- 5. Create Credit Transaction History
 INSERT INTO t_bm_credit_transaction (id, tenant_id, credit_type, channel, transaction_type, quantity, balance_before, balance_after, source, description, created_at)
 VALUES
   -- Initial allocation from subscription
@@ -97,19 +139,8 @@ VALUES
   ('c1000000-0000-0000-0000-000000000008', 'a58ca91a-7832-4b4c-b67c-a210032f26b8', 'ai_report', NULL, 'debit', 2, 10, 8, 'usage', 'Contract analysis reports', NOW() - INTERVAL '2 days')
 ON CONFLICT (id) DO NOTHING;
 
--- 5. Create Usage Events (t_bm_subscription_usage)
-INSERT INTO t_bm_subscription_usage (id, tenant_id, metric_type, quantity, billing_period_start, billing_period_end, recorded_at, metadata, created_at)
-VALUES
-  ('d1000000-0000-0000-0000-000000000001', 'a58ca91a-7832-4b4c-b67c-a210032f26b8', 'contract', 5, DATE_TRUNC('month', NOW()), DATE_TRUNC('month', NOW()) + INTERVAL '1 month', NOW() - INTERVAL '20 days', '{"type": "service_contract"}'::jsonb, NOW() - INTERVAL '20 days'),
-  ('d1000000-0000-0000-0000-000000000002', 'a58ca91a-7832-4b4c-b67c-a210032f26b8', 'contract', 3, DATE_TRUNC('month', NOW()), DATE_TRUNC('month', NOW()) + INTERVAL '1 month', NOW() - INTERVAL '15 days', '{"type": "service_contract"}'::jsonb, NOW() - INTERVAL '15 days'),
-  ('d1000000-0000-0000-0000-000000000003', 'a58ca91a-7832-4b4c-b67c-a210032f26b8', 'user', 2, DATE_TRUNC('month', NOW()), DATE_TRUNC('month', NOW()) + INTERVAL '1 month', NOW() - INTERVAL '10 days', '{"role": "team_member"}'::jsonb, NOW() - INTERVAL '10 days'),
-  ('d1000000-0000-0000-0000-000000000004', 'a58ca91a-7832-4b4c-b67c-a210032f26b8', 'storage_mb', 256, DATE_TRUNC('month', NOW()), DATE_TRUNC('month', NOW()) + INTERVAL '1 month', NOW() - INTERVAL '5 days', '{"file_type": "pdf"}'::jsonb, NOW() - INTERVAL '5 days'),
-  ('d1000000-0000-0000-0000-000000000005', 'a58ca91a-7832-4b4c-b67c-a210032f26b8', 'notification_email', 50, DATE_TRUNC('month', NOW()), DATE_TRUNC('month', NOW()) + INTERVAL '1 month', NOW() - INTERVAL '10 days', '{"template": "contract_notification"}'::jsonb, NOW() - INTERVAL '10 days'),
-  ('d1000000-0000-0000-0000-000000000006', 'a58ca91a-7832-4b4c-b67c-a210032f26b8', 'notification_sms', 15, DATE_TRUNC('month', NOW()), DATE_TRUNC('month', NOW()) + INTERVAL '1 month', NOW() - INTERVAL '5 days', '{"template": "payment_reminder"}'::jsonb, NOW() - INTERVAL '5 days'),
-  ('d1000000-0000-0000-0000-000000000007', 'a58ca91a-7832-4b4c-b67c-a210032f26b8', 'ai_report', 2, DATE_TRUNC('month', NOW()), DATE_TRUNC('month', NOW()) + INTERVAL '1 month', NOW() - INTERVAL '2 days', '{"report_type": "contract_analysis"}'::jsonb, NOW() - INTERVAL '2 days')
-ON CONFLICT (id) DO NOTHING;
-
--- 6. Create Topup Packs
+-- 6. Create Topup Packs (if product_config table exists)
+-- These will fail if Phase 1 migrations not applied - that's OK
 INSERT INTO t_bm_topup_pack (id, product_code, name, credit_type, channel, quantity, price, currency_code, is_active, expiry_days, created_at)
 VALUES
   ('e1000000-0000-0000-0000-000000000001', 'contractnest', 'Email Pack - 500', 'notification', 'email', 500, 499.00, 'INR', true, 365, NOW()),
@@ -125,20 +156,23 @@ ON CONFLICT (id) DO NOTHING;
 -- VERIFICATION QUERIES
 -- ============================================================================
 
--- Check product config
-SELECT id, product_code, product_name FROM t_bm_product_config WHERE product_code = 'contractnest';
+-- Check pricing plan
+SELECT plan_id, name, plan_type FROM t_bm_pricing_plan WHERE plan_id = 'b0000001-0000-0000-0000-000000000001';
+
+-- Check plan version
+SELECT version_id, plan_id, version_number, is_active FROM t_bm_plan_version WHERE plan_id = 'b0000001-0000-0000-0000-000000000001';
 
 -- Check subscription
-SELECT id, tenant_id, product_code, status, billing_cycle, current_period_start, current_period_end
+SELECT subscription_id, tenant_id, status, billing_cycle, start_date, renewal_date
 FROM t_bm_tenant_subscription
 WHERE tenant_id = 'a58ca91a-7832-4b4c-b67c-a210032f26b8';
 
--- Check credit balances
-SELECT credit_type, channel, balance, reserved
-FROM t_bm_credit_balance
-WHERE tenant_id = 'a58ca91a-7832-4b4c-b67c-a210032f26b8';
+-- Check credit balances (if Phase 1 applied)
+-- SELECT credit_type, channel, balance, reserved
+-- FROM t_bm_credit_balance
+-- WHERE tenant_id = 'a58ca91a-7832-4b4c-b67c-a210032f26b8';
 
--- Check topup packs
-SELECT name, credit_type, channel, quantity, price FROM t_bm_topup_pack WHERE is_active = true;
+-- Check topup packs (if Phase 1 applied)
+-- SELECT name, credit_type, channel, quantity, price FROM t_bm_topup_pack WHERE is_active = true;
 
 SELECT '✅ Test data seeded successfully for tenant a58ca91a-7832-4b4c-b67c-a210032f26b8' as status;
