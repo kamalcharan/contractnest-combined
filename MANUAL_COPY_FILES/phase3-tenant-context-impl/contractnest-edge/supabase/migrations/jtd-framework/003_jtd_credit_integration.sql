@@ -382,7 +382,7 @@ $$;
 -- ============================================================================
 -- Note: Requires pg_cron extension to be enabled
 
-DO $$
+DO $outer$
 BEGIN
     -- Check if pg_cron extension exists
     IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
@@ -390,7 +390,7 @@ BEGIN
         PERFORM cron.schedule(
             'expire-no-credits-jtds',
             '0 2 * * *',  -- Daily at 2 AM
-            $$SELECT expire_no_credits_jtds(7)$$
+            'SELECT expire_no_credits_jtds(7)'
         );
         RAISE NOTICE 'Cron job expire-no-credits-jtds scheduled';
     ELSE
@@ -399,7 +399,7 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN
     RAISE NOTICE 'Could not schedule cron job: %. Please schedule manually.', SQLERRM;
 END;
-$$;
+$outer$;
 
 -- ============================================================================
 -- 8. RPC FUNCTION: Get count of waiting JTDs
