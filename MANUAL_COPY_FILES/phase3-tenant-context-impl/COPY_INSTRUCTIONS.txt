@@ -4,6 +4,7 @@ COPY INSTRUCTIONS - Phase 3: TenantContext & JTD Credit Integration Implementati
 
 Feature Branch: claude/init-submodules-business-model-yVJqE
 Created: January 2025
+Updated: Added API controller and routes
 Purpose: Implement TenantContext table, triggers, RPC functions, and JTD credit integration
 
 ═══════════════════════════════════════════════════════════════════════════════
@@ -21,9 +22,9 @@ SUBMODULE: contractnest-edge
    - Creates: init_tenant_context() RPC function
 
 2. supabase/migrations/jtd-framework/003_jtd_credit_integration.sql
-   - NEW FILE: JTD credit integration
+   - NEW FILE: JTD credit integration (FIXED: correct column names)
    - Adds: 'no_credits' and 'expired' statuses
-   - Adds: Status flow transitions
+   - Adds: Status flow transitions (uses status IDs, not codes)
    - Creates: release_waiting_jtds() RPC function
    - Creates: expire_no_credits_jtds() RPC function
    - Creates: get_waiting_jtd_count() RPC function
@@ -50,6 +51,26 @@ SUBMODULE: contractnest-api
      - initContext() - Initialize tenant context
      - invalidateCache() - Invalidate cached context
 
+5. src/controllers/tenantContextController.ts
+   - NEW FILE: API controller for tenant context endpoints
+   - Endpoints:
+     - GET /api/tenant-context - Get tenant context
+     - GET /api/tenant-context/can-send/:channel - Check if can send
+     - GET /api/tenant-context/waiting-jtds - Get waiting JTD count
+     - POST /api/tenant-context/init - Initialize context
+     - POST /api/tenant-context/invalidate-cache - Invalidate cache
+     - GET /api/tenant-context/health - Health check
+
+6. src/routes/tenantContextRoutes.ts
+   - NEW FILE: Express routes for tenant context
+   - Registers all controller endpoints with validation
+
+7. src/index.ts (MODIFICATION)
+   - Add route loading for tenantContextRoutes
+   - Add route registration at /api/tenant-context
+   - Add health check status
+   - Add console logging
+
 ═══════════════════════════════════════════════════════════════════════════════
 COPY DESTINATIONS
 ═══════════════════════════════════════════════════════════════════════════════
@@ -70,6 +91,14 @@ contractnest-api:
 FROM: MANUAL_COPY_FILES\phase3-tenant-context-impl\contractnest-api\src\services\tenantContextService.ts
 TO:   contractnest-api\src\services\tenantContextService.ts
 
+FROM: MANUAL_COPY_FILES\phase3-tenant-context-impl\contractnest-api\src\controllers\tenantContextController.ts
+TO:   contractnest-api\src\controllers\tenantContextController.ts
+
+FROM: MANUAL_COPY_FILES\phase3-tenant-context-impl\contractnest-api\src\routes\tenantContextRoutes.ts
+TO:   contractnest-api\src\routes\tenantContextRoutes.ts
+
+NOTE: src/index.ts requires manual modification - see INDEX_TS_CHANGES.md
+
 ═══════════════════════════════════════════════════════════════════════════════
 MIGRATION ORDER
 ═══════════════════════════════════════════════════════════════════════════════
@@ -84,7 +113,7 @@ Run these migrations in order:
 2. 003_jtd_credit_integration.sql (jtd-framework)
    - Adds JTD statuses and flows
    - Creates release/expire functions
-   - Sets up cron job
+   - Sets up cron job (if pg_cron available)
 
 ═══════════════════════════════════════════════════════════════════════════════
 TESTING CHECKLIST
@@ -101,8 +130,8 @@ After applying migrations:
 [ ] 3. Test init_tenant_context RPC
     SELECT init_tenant_context('contractnest', 'your-tenant-id', 'Test Business');
 
-[ ] 4. Verify JTD statuses added
-    SELECT * FROM n_jtd_statuses WHERE status_code IN ('no_credits', 'expired');
+[ ] 4. Verify JTD statuses added (note: column is 'code', not 'status_code')
+    SELECT * FROM n_jtd_statuses WHERE code IN ('no_credits', 'expired');
 
 [ ] 5. Test release_waiting_jtds RPC
     SELECT release_waiting_jtds('your-tenant-id', 'whatsapp', 10);
@@ -115,6 +144,23 @@ After applying migrations:
 
 [ ] 8. Test Edge function endpoints
     curl -X GET "https://your-project.supabase.co/functions/v1/tenant-context" \
+      -H "Authorization: Bearer YOUR_TOKEN" \
+      -H "x-product-code: contractnest" \
+      -H "x-tenant-id: your-tenant-id"
+
+After API deployment:
+
+[ ] 9. Test API health endpoint
+    curl -X GET "http://localhost:5000/api/tenant-context/health"
+
+[ ] 10. Test get context endpoint
+    curl -X GET "http://localhost:5000/api/tenant-context" \
+      -H "Authorization: Bearer YOUR_TOKEN" \
+      -H "x-product-code: contractnest" \
+      -H "x-tenant-id: your-tenant-id"
+
+[ ] 11. Test can-send endpoint
+    curl -X GET "http://localhost:5000/api/tenant-context/can-send/whatsapp" \
       -H "Authorization: Bearer YOUR_TOKEN" \
       -H "x-product-code: contractnest" \
       -H "x-tenant-id: your-tenant-id"

@@ -9,17 +9,14 @@
 -- 1. ADD 'no_credits' STATUS TO JTD STATUSES
 -- ============================================================================
 
--- Add new status type 'waiting' if not exists
--- (status_type is used for categorizing statuses)
-
 -- Insert 'no_credits' status for notification event type
 INSERT INTO n_jtd_statuses (
     event_type_code,
-    status_code,
-    status_name,
+    code,
+    name,
     status_type,
     description,
-    sort_order,
+    display_order,
     is_active,
     created_at,
     updated_at
@@ -30,21 +27,21 @@ VALUES (
     'No Credits',
     'waiting',
     'Notification blocked due to insufficient credits. Will be sent when credits are topped up.',
-    15,  -- After 'created' (10), before 'pending' (20)
+    15,
     TRUE,
     NOW(),
     NOW()
 )
-ON CONFLICT (event_type_code, status_code) DO NOTHING;
+ON CONFLICT (event_type_code, code) DO NOTHING;
 
 -- Insert 'no_credits' status for reminder event type
 INSERT INTO n_jtd_statuses (
     event_type_code,
-    status_code,
-    status_name,
+    code,
+    name,
     status_type,
     description,
-    sort_order,
+    display_order,
     is_active,
     created_at,
     updated_at
@@ -60,16 +57,17 @@ VALUES (
     NOW(),
     NOW()
 )
-ON CONFLICT (event_type_code, status_code) DO NOTHING;
+ON CONFLICT (event_type_code, code) DO NOTHING;
 
 -- Insert 'expired' status for notification (for 7-day expiry)
 INSERT INTO n_jtd_statuses (
     event_type_code,
-    status_code,
-    status_name,
+    code,
+    name,
     status_type,
     description,
-    sort_order,
+    display_order,
+    is_terminal,
     is_active,
     created_at,
     updated_at
@@ -82,19 +80,21 @@ VALUES (
     'Notification expired after waiting too long for credits.',
     99,
     TRUE,
+    TRUE,
     NOW(),
     NOW()
 )
-ON CONFLICT (event_type_code, status_code) DO NOTHING;
+ON CONFLICT (event_type_code, code) DO NOTHING;
 
 -- Insert 'expired' status for reminder
 INSERT INTO n_jtd_statuses (
     event_type_code,
-    status_code,
-    status_name,
+    code,
+    name,
     status_type,
     description,
-    sort_order,
+    display_order,
+    is_terminal,
     is_active,
     created_at,
     updated_at
@@ -107,41 +107,59 @@ VALUES (
     'Reminder expired after waiting too long for credits.',
     99,
     TRUE,
+    TRUE,
     NOW(),
     NOW()
 )
-ON CONFLICT (event_type_code, status_code) DO NOTHING;
+ON CONFLICT (event_type_code, code) DO NOTHING;
 
 -- ============================================================================
--- 2. ADD STATUS FLOWS
+-- 2. ADD STATUS FLOWS (using status IDs)
 -- ============================================================================
+
+-- Helper function to insert status flow by codes
+CREATE OR REPLACE FUNCTION insert_status_flow_by_codes(
+    p_event_type_code TEXT,
+    p_from_status_code TEXT,
+    p_to_status_code TEXT
+) RETURNS VOID AS $$
+DECLARE
+    v_from_id UUID;
+    v_to_id UUID;
+BEGIN
+    -- Get from status ID
+    SELECT id INTO v_from_id
+    FROM n_jtd_statuses
+    WHERE event_type_code = p_event_type_code AND code = p_from_status_code;
+
+    -- Get to status ID
+    SELECT id INTO v_to_id
+    FROM n_jtd_statuses
+    WHERE event_type_code = p_event_type_code AND code = p_to_status_code;
+
+    -- Insert if both statuses exist
+    IF v_from_id IS NOT NULL AND v_to_id IS NOT NULL THEN
+        INSERT INTO n_jtd_status_flows (event_type_code, from_status_id, to_status_id, is_active)
+        VALUES (p_event_type_code, v_from_id, v_to_id, TRUE)
+        ON CONFLICT (event_type_code, from_status_id, to_status_id) DO NOTHING;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
 
 -- created → no_credits (when no credits available at creation)
-INSERT INTO n_jtd_status_flows (event_type_code, from_status_code, to_status_code, is_active)
-VALUES ('notification', 'created', 'no_credits', TRUE)
-ON CONFLICT DO NOTHING;
-
-INSERT INTO n_jtd_status_flows (event_type_code, from_status_code, to_status_code, is_active)
-VALUES ('reminder', 'created', 'no_credits', TRUE)
-ON CONFLICT DO NOTHING;
+SELECT insert_status_flow_by_codes('notification', 'created', 'no_credits');
+SELECT insert_status_flow_by_codes('reminder', 'created', 'no_credits');
 
 -- no_credits → pending (when credits topped up, JTD released)
-INSERT INTO n_jtd_status_flows (event_type_code, from_status_code, to_status_code, is_active)
-VALUES ('notification', 'no_credits', 'pending', TRUE)
-ON CONFLICT DO NOTHING;
-
-INSERT INTO n_jtd_status_flows (event_type_code, from_status_code, to_status_code, is_active)
-VALUES ('reminder', 'no_credits', 'pending', TRUE)
-ON CONFLICT DO NOTHING;
+SELECT insert_status_flow_by_codes('notification', 'no_credits', 'pending');
+SELECT insert_status_flow_by_codes('reminder', 'no_credits', 'pending');
 
 -- no_credits → expired (after 7 days)
-INSERT INTO n_jtd_status_flows (event_type_code, from_status_code, to_status_code, is_active)
-VALUES ('notification', 'no_credits', 'expired', TRUE)
-ON CONFLICT DO NOTHING;
+SELECT insert_status_flow_by_codes('notification', 'no_credits', 'expired');
+SELECT insert_status_flow_by_codes('reminder', 'no_credits', 'expired');
 
-INSERT INTO n_jtd_status_flows (event_type_code, from_status_code, to_status_code, is_active)
-VALUES ('reminder', 'no_credits', 'expired', TRUE)
-ON CONFLICT DO NOTHING;
+-- Clean up helper function
+DROP FUNCTION IF EXISTS insert_status_flow_by_codes(TEXT, TEXT, TEXT);
 
 -- ============================================================================
 -- 3. CREATE INDEXES FOR no_credits QUERIES
@@ -255,15 +273,20 @@ BEGIN
                 NOW()
             );
 
-            -- Add to PGMQ queue for processing
-            PERFORM pgmq.send('jtd_queue', jsonb_build_object(
-                'jtd_id', v_jtd.id,
-                'tenant_id', p_tenant_id,
-                'channel_code', v_current_channel,
-                'event_type_code', v_jtd.event_type_code,
-                'source_type_code', v_jtd.source_type_code,
-                'released_from_no_credits', true
-            ));
+            -- Add to PGMQ queue for processing (if PGMQ is available)
+            BEGIN
+                PERFORM pgmq.send('jtd_queue', jsonb_build_object(
+                    'jtd_id', v_jtd.id,
+                    'tenant_id', p_tenant_id,
+                    'channel_code', v_current_channel,
+                    'event_type_code', v_jtd.event_type_code,
+                    'source_type_code', v_jtd.source_type_code,
+                    'released_from_no_credits', true
+                ));
+            EXCEPTION WHEN OTHERS THEN
+                -- PGMQ might not be available, log but continue
+                RAISE NOTICE 'Could not queue JTD %: %', v_jtd.id, SQLERRM;
+            END;
 
             v_released := v_released + 1;
 
@@ -309,12 +332,21 @@ BEGIN
 END;
 $$;
 
--- Create trigger on credit balance
-DROP TRIGGER IF EXISTS trg_credit_topup_release_jtds ON t_bm_credit_balance;
-CREATE TRIGGER trg_credit_topup_release_jtds
-AFTER INSERT OR UPDATE ON t_bm_credit_balance
-FOR EACH ROW
-EXECUTE FUNCTION trg_fn_release_jtds_on_credit_topup();
+-- Create trigger on credit balance (only if table exists)
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 't_bm_credit_balance') THEN
+        DROP TRIGGER IF EXISTS trg_credit_topup_release_jtds ON t_bm_credit_balance;
+        CREATE TRIGGER trg_credit_topup_release_jtds
+        AFTER INSERT OR UPDATE ON t_bm_credit_balance
+        FOR EACH ROW
+        EXECUTE FUNCTION trg_fn_release_jtds_on_credit_topup();
+        RAISE NOTICE 'Created trigger trg_credit_topup_release_jtds on t_bm_credit_balance';
+    ELSE
+        RAISE NOTICE 't_bm_credit_balance table not found - trigger not created';
+    END IF;
+END;
+$$;
 
 -- ============================================================================
 -- 6. RPC FUNCTION: expire_no_credits_jtds
