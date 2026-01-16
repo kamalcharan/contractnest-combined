@@ -1,0 +1,122 @@
+═══════════════════════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS - Phase 3: TenantContext & JTD Credit Integration Implementation
+═══════════════════════════════════════════════════════════════════════════════
+
+Feature Branch: claude/init-submodules-business-model-yVJqE
+Created: January 2025
+Purpose: Implement TenantContext table, triggers, RPC functions, and JTD credit integration
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES IN THIS PACKAGE
+═══════════════════════════════════════════════════════════════════════════════
+
+SUBMODULE: contractnest-edge
+────────────────────────────
+
+1. supabase/migrations/business-model-v2/006_tenant_context.sql
+   - NEW FILE: TenantContext table and triggers
+   - Creates: t_tenant_context table
+   - Creates: Triggers on subscription, credits, usage, profile
+   - Creates: get_tenant_context() RPC function
+   - Creates: init_tenant_context() RPC function
+
+2. supabase/migrations/jtd-framework/003_jtd_credit_integration.sql
+   - NEW FILE: JTD credit integration
+   - Adds: 'no_credits' and 'expired' statuses
+   - Adds: Status flow transitions
+   - Creates: release_waiting_jtds() RPC function
+   - Creates: expire_no_credits_jtds() RPC function
+   - Creates: get_waiting_jtd_count() RPC function
+   - Creates: Trigger to auto-release JTDs on credit topup
+   - Creates: Cron job for 7-day expiry
+
+3. supabase/functions/tenant-context/index.ts
+   - NEW FILE: Edge function for tenant context
+   - Endpoints:
+     - GET /tenant-context - Get tenant context
+     - POST /tenant-context/init - Initialize context
+     - GET /tenant-context/waiting-jtds - Get waiting JTD count
+     - POST /tenant-context/release-jtds - Manually release JTDs
+
+SUBMODULE: contractnest-api
+───────────────────────────
+
+4. src/services/tenantContextService.ts
+   - NEW FILE: API service layer for tenant context
+   - Methods:
+     - getContext() - Get tenant context (with caching)
+     - canSendChannel() - Check if can send via channel
+     - getWaitingJtdCount() - Get waiting JTD counts
+     - initContext() - Initialize tenant context
+     - invalidateCache() - Invalidate cached context
+
+═══════════════════════════════════════════════════════════════════════════════
+COPY DESTINATIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+contractnest-edge:
+─────────────────
+FROM: MANUAL_COPY_FILES\phase3-tenant-context-impl\contractnest-edge\supabase\migrations\business-model-v2\006_tenant_context.sql
+TO:   contractnest-edge\supabase\migrations\business-model-v2\006_tenant_context.sql
+
+FROM: MANUAL_COPY_FILES\phase3-tenant-context-impl\contractnest-edge\supabase\migrations\jtd-framework\003_jtd_credit_integration.sql
+TO:   contractnest-edge\supabase\migrations\jtd-framework\003_jtd_credit_integration.sql
+
+FROM: MANUAL_COPY_FILES\phase3-tenant-context-impl\contractnest-edge\supabase\functions\tenant-context\index.ts
+TO:   contractnest-edge\supabase\functions\tenant-context\index.ts
+
+contractnest-api:
+─────────────────
+FROM: MANUAL_COPY_FILES\phase3-tenant-context-impl\contractnest-api\src\services\tenantContextService.ts
+TO:   contractnest-api\src\services\tenantContextService.ts
+
+═══════════════════════════════════════════════════════════════════════════════
+MIGRATION ORDER
+═══════════════════════════════════════════════════════════════════════════════
+
+Run these migrations in order:
+
+1. 006_tenant_context.sql (business-model-v2)
+   - Creates t_tenant_context table
+   - Creates triggers
+   - Creates RPC functions
+
+2. 003_jtd_credit_integration.sql (jtd-framework)
+   - Adds JTD statuses and flows
+   - Creates release/expire functions
+   - Sets up cron job
+
+═══════════════════════════════════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+After applying migrations:
+
+[ ] 1. Verify t_tenant_context table exists
+    SELECT * FROM t_tenant_context LIMIT 1;
+
+[ ] 2. Test get_tenant_context RPC
+    SELECT get_tenant_context('contractnest', 'your-tenant-id');
+
+[ ] 3. Test init_tenant_context RPC
+    SELECT init_tenant_context('contractnest', 'your-tenant-id', 'Test Business');
+
+[ ] 4. Verify JTD statuses added
+    SELECT * FROM n_jtd_statuses WHERE status_code IN ('no_credits', 'expired');
+
+[ ] 5. Test release_waiting_jtds RPC
+    SELECT release_waiting_jtds('your-tenant-id', 'whatsapp', 10);
+
+[ ] 6. Test get_waiting_jtd_count RPC
+    SELECT get_waiting_jtd_count('your-tenant-id');
+
+[ ] 7. Deploy tenant-context Edge function
+    supabase functions deploy tenant-context
+
+[ ] 8. Test Edge function endpoints
+    curl -X GET "https://your-project.supabase.co/functions/v1/tenant-context" \
+      -H "Authorization: Bearer YOUR_TOKEN" \
+      -H "x-product-code: contractnest" \
+      -H "x-tenant-id: your-tenant-id"
+
+═══════════════════════════════════════════════════════════════════════════════
