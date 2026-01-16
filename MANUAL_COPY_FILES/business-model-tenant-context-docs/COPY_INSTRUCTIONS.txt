@@ -1,0 +1,47 @@
+═══════════════════════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS - Business Model TenantContext & JTD Credit Integration Docs
+═══════════════════════════════════════════════════════════════════════════════
+
+Feature Branch: claude/init-submodules-business-model-yVJqE
+Created: January 2025
+Purpose: Add TenantContext architecture documentation and JTD credit integration addendum
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES IN THIS PACKAGE
+═══════════════════════════════════════════════════════════════════════════════
+
+SUBMODULE: ClaudeDocumentation
+──────────────────────────────
+
+1. BusinessModel/PRD_ADDENDUM_ARCHITECTURE.md
+   - UPDATED: Added Section 10 - TenantContext Architecture
+   - Contains: t_tenant_context table schema, triggers, RPC function design
+   - Contains: Multi-product isolation (product_code + tenant_id)
+   - Contains: Phase 3 revised deliverables
+
+2. JTD/JTD-Framework.md
+   - UPDATED: Added Section 15 - Addendum Documents reference
+   - UPDATED: Added changelog entry for v1.2.0
+
+3. JTD/JTD-Addendum-CreditIntegration.md
+   - NEW FILE: Credit integration addendum for JTD framework
+   - Contains: New 'no_credits' status definition
+   - Contains: Credit check flow at JTD creation
+   - Contains: Release mechanism on topup (FIFO)
+   - Contains: 7-day expiry policy
+   - Contains: Database changes and implementation checklist
+
+═══════════════════════════════════════════════════════════════════════════════
+COPY DESTINATIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+FROM: MANUAL_COPY_FILES\business-model-tenant-context-docs\ClaudeDocumentation\BusinessModel\PRD_ADDENDUM_ARCHITECTURE.md
+TO:   ClaudeDocumentation\BusinessModel\PRD_ADDENDUM_ARCHITECTURE.md
+
+FROM: MANUAL_COPY_FILES\business-model-tenant-context-docs\ClaudeDocumentation\JTD\JTD-Framework.md
+TO:   ClaudeDocumentation\JTD\JTD-Framework.md
+
+FROM: MANUAL_COPY_FILES\business-model-tenant-context-docs\ClaudeDocumentation\JTD\JTD-Addendum-CreditIntegration.md
+TO:   ClaudeDocumentation\JTD\JTD-Addendum-CreditIntegration.md
+
+═══════════════════════════════════════════════════════════════════════════════
