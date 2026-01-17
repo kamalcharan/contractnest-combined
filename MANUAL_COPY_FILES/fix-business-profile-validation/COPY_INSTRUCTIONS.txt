@@ -1,0 +1,32 @@
+═══════════════════════════════════════════════════════════════════════════════
+BUG #11 FIX: Business Profile Creation Fails
+═══════════════════════════════════════════════════════════════════════════════
+
+ROOT CAUSE:
+- Validators were applied in routes but controller never checked validation results
+- Required fields (business_type_id, industry_id) were not being validated
+- Database rejected inserts due to NOT NULL constraint on profile_type
+
+FIX APPLIED:
+- Added `validationResult` import from express-validator
+- Added validation check in createTenantProfile controller
+- Added validation check in updateTenantProfile controller
+- Returns 400 with validation details when required fields are missing
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════════════════════════════════
+
+1. contractnest-api/src/controllers/tenantProfileController.ts
+   Source: MANUAL_COPY_FILES/fix-business-profile-validation/contractnest-api/src/controllers/tenantProfileController.ts
+   Target: contractnest-api/src/controllers/tenantProfileController.ts
+
+═══════════════════════════════════════════════════════════════════════════════
+SUBMODULES AFFECTED
+═══════════════════════════════════════════════════════════════════════════════
+- contractnest-api
+
+═══════════════════════════════════════════════════════════════════════════════
+DATABASE CHANGE REQUIRED (User already applied)
+═══════════════════════════════════════════════════════════════════════════════
+ALTER TABLE t_tenant_profiles ADD CONSTRAINT t_tenant_profiles_tenant_id_key UNIQUE (tenant_id);
