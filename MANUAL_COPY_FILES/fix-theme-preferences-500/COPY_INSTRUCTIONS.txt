@@ -1,0 +1,59 @@
+========================================================
+THEME PREFERENCES 500 ERROR FIX - COPY INSTRUCTIONS
+========================================================
+
+Branch: fix-theme-preferences-500
+Date: 2026-01-17
+Affected Submodule: contractnest-edge
+
+========================================================
+BUG DESCRIPTION
+========================================================
+
+Bug 2.3: When saving theme preferences, a 500 error occurs.
+
+Root Cause: When a user profile doesn't exist, the code tried to
+INSERT a new profile with only theme preferences (user_id, email,
+preferred_theme, is_dark_mode). However, the t_user_profiles table
+has NOT NULL constraints on first_name, last_name, and user_code,
+causing the INSERT to fail.
+
+========================================================
+FIX APPLIED
+========================================================
+
+1. contractnest-edge/supabase/functions/auth/handlers/preferences.ts
+   - Removed the INSERT logic for non-existent profiles
+   - Now returns a 400 error with message: "Profile not found.
+     Please complete your profile setup first."
+   - This is the correct behavior since profiles should be created
+     during registration, not when setting preferences
+
+========================================================
+COPY COMMANDS (PowerShell)
+========================================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Copy preferences.ts
+Copy-Item "MANUAL_COPY_FILES\fix-theme-preferences-500\contractnest-edge\supabase\functions\auth\handlers\preferences.ts" -Destination "contractnest-edge\supabase\functions\auth\handlers\" -Force
+
+Write-Host "File copied!" -ForegroundColor Green
+
+========================================================
+DEPLOYMENT NOTE
+========================================================
+
+After copying, redeploy the Edge Function:
+  cd contractnest-edge
+  supabase functions deploy auth
+
+========================================================
+TESTING CHECKLIST
+========================================================
+
+[ ] Test theme change with existing profile (should work)
+[ ] Test theme change with user that has no profile (should show error message)
+[ ] Verify 500 error no longer occurs
+
+========================================================
