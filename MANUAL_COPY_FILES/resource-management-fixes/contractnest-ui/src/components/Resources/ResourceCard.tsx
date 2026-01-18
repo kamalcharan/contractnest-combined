@@ -125,12 +125,17 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
       )}
       style={{
         backgroundColor: colors.utility.secondaryBackground,
-        borderColor: isEditMode 
+        borderColor: isEditMode
           ? colors.brand.primary
           : colors.utility.primaryText + '20'
       }}
     >
-      <div className="grid grid-cols-4 gap-4 px-4 py-3 items-center">
+      {/* For contact-based resources (Team Member, Partners): show only Name, Display Name, Actions (3 cols) */}
+      {/* For manual entry resources: show all 4 columns (Name, Display Name, Color, Sequence/Actions) */}
+      <div className={cn(
+        "grid gap-4 px-4 py-3 items-center",
+        behavior.isContactBased ? "grid-cols-3" : "grid-cols-4"
+      )}>
         {isEditMode && canEdit ? (
           <EditModeFields
             editData={editData}
@@ -209,12 +214,12 @@ const EditModeFields: React.FC<EditModeFieldsProps> = ({
         }}
       />
 
-      {/* Color */}
-      {behavior.allowsColor ? (
+      {/* Color - ONLY show for non-contact-based resources */}
+      {!behavior.isContactBased && (
         <div className="flex items-center gap-2">
-          <div 
-            className="w-6 h-6 rounded-full border" 
-            style={{ 
+          <div
+            className="w-6 h-6 rounded-full border"
+            style={{
               backgroundColor: editData.hexcolor || RESOURCE_COLORS[0],
               borderColor: colors.utility.secondaryText + '40'
             }}
@@ -227,30 +232,32 @@ const EditModeFields: React.FC<EditModeFieldsProps> = ({
             className="w-12 h-8 p-0 border-0"
           />
         </div>
-      ) : (
-        <div className="text-sm" style={{ color: colors.utility.secondaryText }}>
-          Contact-based
-        </div>
       )}
 
-      {/* Sequence & Actions */}
+      {/* Sequence & Actions - For contact-based, only show Actions */}
       <div className="flex items-center justify-between">
-        <Input
-          type="number"
-          value={editData.sequence_no?.toString() || ''}
-          onChange={(e) => onFieldChange('sequence_no', 
-            e.target.value ? parseInt(e.target.value) : undefined
-          )}
-          disabled={isSubmitting}
-          placeholder="Sequence"
-          style={{
-            borderColor: colors.utility.secondaryText + '40',
-            backgroundColor: colors.utility.primaryBackground,
-            color: colors.utility.primaryText
-          }}
-        />
-        
-        <div className="flex items-center ml-2 gap-1">
+        {/* Sequence - ONLY show for non-contact-based resources */}
+        {!behavior.isContactBased && (
+          <Input
+            type="number"
+            value={editData.sequence_no?.toString() || ''}
+            onChange={(e) => onFieldChange('sequence_no',
+              e.target.value ? parseInt(e.target.value) : undefined
+            )}
+            disabled={isSubmitting}
+            placeholder="Sequence"
+            style={{
+              borderColor: colors.utility.secondaryText + '40',
+              backgroundColor: colors.utility.primaryBackground,
+              color: colors.utility.primaryText
+            }}
+          />
+        )}
+
+        <div className={cn(
+          "flex items-center gap-1",
+          behavior.isContactBased ? "ml-auto" : "ml-2"
+        )}>
           <Button
             variant="outline"
             size="sm"
@@ -313,12 +320,12 @@ const ViewModeFields: React.FC<ViewModeFieldsProps> = ({
       {/* Name */}
       <div className="flex items-center gap-2">
         {behavior.isContactBased && (
-          <User 
+          <User
             className="h-4 w-4"
             style={{ color: colors.utility.secondaryText }}
           />
         )}
-        <span 
+        <span
           className="font-medium transition-colors"
           style={{ color: colors.utility.primaryText }}
         >
@@ -328,7 +335,7 @@ const ViewModeFields: React.FC<ViewModeFieldsProps> = ({
 
       {/* Display Name */}
       <div className="flex flex-col">
-        <span 
+        <span
           className="transition-colors"
           style={{ color: colors.utility.primaryText }}
         >
@@ -338,7 +345,7 @@ const ViewModeFields: React.FC<ViewModeFieldsProps> = ({
         {behavior.isContactBased && resource.contact && (
           <div className="flex items-center gap-1 mt-1">
             <Mail className="h-3 w-3" style={{ color: colors.utility.secondaryText }} />
-            <span 
+            <span
               className="text-xs transition-colors"
               style={{ color: colors.utility.secondaryText }}
             >
@@ -348,49 +355,47 @@ const ViewModeFields: React.FC<ViewModeFieldsProps> = ({
         )}
       </div>
 
-      {/* Color */}
-      <div>
-        {behavior.allowsColor && resource.hexcolor ? (
-          <div
-            className="w-6 h-6 rounded-full border"
-            style={{ 
-              backgroundColor: resource.hexcolor,
-              borderColor: colors.utility.secondaryText + '40'
-            }}
-            title={resource.hexcolor}
-          />
-        ) : behavior.isContactBased ? (
-          <span 
-            className="text-xs px-2 py-1 rounded-full"
-            style={{ 
-              backgroundColor: colors.semantic.info + '20',
-              color: colors.semantic.info
-            }}
-          >
-            Contact
-          </span>
-        ) : (
-          <div 
-            className="w-6 h-6 rounded-full border"
-            style={{ 
-              backgroundColor: colors.utility.primaryBackground,
-              borderColor: colors.utility.secondaryText + '40'
-            }}
-          />
-        )}
-      </div>
+      {/* Color - ONLY show for non-contact-based resources */}
+      {!behavior.isContactBased && (
+        <div>
+          {resource.hexcolor ? (
+            <div
+              className="w-6 h-6 rounded-full border"
+              style={{
+                backgroundColor: resource.hexcolor,
+                borderColor: colors.utility.secondaryText + '40'
+              }}
+              title={resource.hexcolor}
+            />
+          ) : (
+            <div
+              className="w-6 h-6 rounded-full border"
+              style={{
+                backgroundColor: colors.utility.primaryBackground,
+                borderColor: colors.utility.secondaryText + '40'
+              }}
+            />
+          )}
+        </div>
+      )}
 
-      {/* Sequence & Actions */}
+      {/* Sequence & Actions - For contact-based, only show Actions */}
       <div className="flex items-center justify-between">
-        <span
-          className="transition-colors"
-          style={{ color: behavior.isContactBased ? colors.utility.secondaryText : colors.utility.primaryText }}
-        >
-          {behavior.isContactBased ? 'N/A' : (resource.sequence_no ? `#${resource.sequence_no}` : '-')}
-        </span>
-        
+        {/* Sequence - ONLY show for non-contact-based resources */}
+        {!behavior.isContactBased && (
+          <span
+            className="transition-colors"
+            style={{ color: colors.utility.primaryText }}
+          >
+            {resource.sequence_no ? `#${resource.sequence_no}` : '-'}
+          </span>
+        )}
+
         {/* Actions */}
-        <div className="flex items-center gap-1">
+        <div className={cn(
+          "flex items-center gap-1",
+          behavior.isContactBased ? "ml-auto" : ""
+        )}>
           {canEdit && (
             <Button
               variant="outline"
@@ -406,7 +411,7 @@ const ViewModeFields: React.FC<ViewModeFieldsProps> = ({
               <Pencil className="h-4 w-4" />
             </Button>
           )}
-          
+
           {canDelete && (
             <Button
               variant="outline"

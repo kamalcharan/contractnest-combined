@@ -5,7 +5,10 @@ RESOURCE MANAGEMENT FIXES - COPY INSTRUCTIONS
 FIXES INCLUDED:
 1. Added TODO comments for public-resources.service.ts (needs creation for public deployment)
 2. Cleaned up debug console.logs in API resourcesService.ts (removed 50+ emoji logs)
-3. Fixed sequence column display for Team Member/Partners (shows "N/A" instead of sequence)
+3. COMPLETELY HIDE Color and Sequence columns for Team Member/Partners:
+   - Updated ResourceCard.tsx to use 3-column grid for contact-based resources
+   - Updated ResourcesPanel.tsx header to hide Color/Sequence column headers
+   - Both edit and view modes now properly hide these columns
 
 FILES TO COPY:
 ═══════════════════════════════════════════════════════════════════════════════
@@ -18,10 +21,16 @@ FRONTEND (contractnest-ui):
    - Added TODO comment about missing public-resources.service.ts
 
 3. src/components/Resources/ResourceCard.tsx
-   - Fixed sequence display: shows "N/A" for contact-based resources (Team Member/Partners)
+   - COMPLETELY HIDES Color and Sequence for contact-based resources (Team Member/Partners)
+   - Uses 3-column grid for contacts, 4-column grid for manual entry types
+   - Both view mode and edit mode updated
+
+4. src/components/Resources/ResourcesPanel.tsx
+   - Updated column headers to hide Color/Sequence for contact-based resources
+   - Removed debug console.log statements
 
 BACKEND (contractnest-api):
-4. src/services/resourcesService.ts
+5. src/services/resourcesService.ts
    - Removed 50+ debug console.log statements with emojis
    - Cleaned up comments (removed FIX annotations)
    - Code is now production-ready
@@ -36,6 +45,8 @@ Copy-Item "MANUAL_COPY_FILES\resource-management-fixes\contractnest-ui\src\pages
 
 Copy-Item "MANUAL_COPY_FILES\resource-management-fixes\contractnest-ui\src\components\Resources\ResourceCard.tsx" -Destination "contractnest-ui\src\components\Resources\ResourceCard.tsx" -Force
 
+Copy-Item "MANUAL_COPY_FILES\resource-management-fixes\contractnest-ui\src\components\Resources\ResourcesPanel.tsx" -Destination "contractnest-ui\src\components\Resources\ResourcesPanel.tsx" -Force
+
 # Backend files
 Copy-Item "MANUAL_COPY_FILES\resource-management-fixes\contractnest-api\src\services\resourcesService.ts" -Destination "contractnest-api\src\services\resourcesService.ts" -Force
 
@@ -46,5 +57,5 @@ SUBMODULES AFFECTED:
 
 COMMIT MESSAGES:
 ═══════════════════════════════════════════════════════════════════════════════
-UI: "fix: add TODO for public resources service, show N/A sequence for contacts"
+UI: "fix: hide Color/Sequence columns for Team Member and Partners resources"
 API: "chore: clean up debug console.logs in resourcesService"
