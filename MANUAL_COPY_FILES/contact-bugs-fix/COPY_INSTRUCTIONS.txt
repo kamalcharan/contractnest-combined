@@ -1,0 +1,52 @@
+═══════════════════════════════════════════════════════════════════════════════
+CONTACT BUGS FIX - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+Fixes:
+1. API 400 Error on Phone Channel - Defensive country_code fallback
+2. Duplicate Contact Detection - Enhanced with name-based matching
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════════════════════════════════
+
+CONTRACTNEST-API (1 file):
+────────────────────────────────────────────────────────────────────────────────
+1. src/middleware/contactValidators.ts [MODIFIED]
+   - Added defensive fallback: country_code defaults to 'IN' if not provided
+   - Prevents 400 error when phone channels are created without country_code
+
+CONTRACTNEST-EDGE (1 file):
+────────────────────────────────────────────────────────────────────────────────
+1. supabase/functions/_shared/contacts/contactService.ts [MODIFIED]
+   - Enhanced checkForDuplicates() method
+   - Now checks for both:
+     a) Channel-based duplicates (phone/email)
+     b) Name-based duplicates (exact match on name or company_name)
+   - Returns match_type ('channel' or 'name') for each duplicate found
+
+═══════════════════════════════════════════════════════════════════════════════
+BUG DETAILS
+═══════════════════════════════════════════════════════════════════════════════
+
+BUG 1: API 400 Error on Phone Channel
+---------------------------------------
+Issue: When creating a contact with a Phone channel, the API returned 400 if
+       country_code was not provided.
+
+Fix: Added defensive fallback in contactValidators.ts (line 176-182):
+     - If country_code is missing for phone-type channels, default to 'IN'
+     - Auto-populate the missing field on the request body
+
+BUG 2: Duplicate Contacts Allowed
+---------------------------------------
+Issue: System allowed creating contacts with the same name because duplicate
+       check only examined phone/email channels, not names.
+
+Fix: Enhanced checkForDuplicates() in contactService.ts (line 532-607):
+     - Added name-based duplicate check using SQL query
+     - Checks both name and company_name for exact matches (case-insensitive)
+     - Combines results from both channel and name checks
+     - Returns match_type to indicate how duplicate was detected
+
+═══════════════════════════════════════════════════════════════════════════════
