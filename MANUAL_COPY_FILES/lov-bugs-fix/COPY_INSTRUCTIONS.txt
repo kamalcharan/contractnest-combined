@@ -1,0 +1,79 @@
+===============================================================================
+LOV BUGS FIX - COPY INSTRUCTIONS
+===============================================================================
+
+Fixes:
+1. LOV Add Error - Edge function tenantId validation was blocking POST requests
+2. LOV Description Field - Changed from Input to Textarea for multi-line editing
+
+===============================================================================
+FILES TO COPY
+===============================================================================
+
+CONTRACTNEST-EDGE (1 file):
+--------------------------------------------------------------------------------
+1. supabase/functions/masterdata/index.ts [MODIFIED]
+   - Fixed tenantId validation order in category-details handler
+   - For GET: requires tenantId from URL query param (as before)
+   - For POST: now accepts tenantId from body (data.tenantid) or header (x-tenant-id)
+   - For PATCH: now accepts tenantId from body or header
+   - For DELETE: now accepts tenantId from URL query param or header
+   - Added proper validation messages for each HTTP method
+
+CONTRACTNEST-UI (1 file):
+--------------------------------------------------------------------------------
+1. src/pages/settings/LOV/index.tsx [MODIFIED]
+   - Added Textarea import from '@/components/ui/textarea'
+   - Changed Description field in EDIT mode from Input to Textarea
+   - Changed Description field in ADD form from Input to Textarea
+   - Added rows={2} and resize-none class for consistent sizing
+
+===============================================================================
+BUG DETAILS
+===============================================================================
+
+BUG 1: Error while adding new LOV value
+----------------------------------------
+Issue: POST requests to /masterdata/category-details always failed with
+       "tenantId is required" error.
+
+Root Cause: In the edge function, the tenantId validation happened BEFORE
+            checking if it was a POST request. For POST, tenantId is passed
+            in the request body (data.tenantid), not URL query params.
+
+Fix: Restructured the validation logic:
+     - Moved tenantId validation INSIDE each HTTP method handler
+     - For POST: const postTenantId = data.tenantid || tenantHeader || tenantId;
+     - For PATCH: const patchTenantId = data.tenantid || tenantHeader || tenantId;
+     - For DELETE: const deleteTenantId = tenantId || tenantHeader;
+     - Added proper error messages specific to each method
+
+Code changes (line ~202-293):
+  BEFORE:
+    if (!tenantId) { return 400 error }  // Blocked POST!
+    if (method === 'GET') { ... }
+    if (method === 'POST') { ... }
+
+  AFTER:
+    if (method === 'GET') {
+      if (!tenantId) { return 400 error }
+      ...
+    }
+    if (method === 'POST') {
+      postTenantId = data.tenantid || tenantHeader || tenantId;
+      if (!postTenantId) { return 400 with helpful message }
+      ...
+    }
+
+BUG 2: LOV Description field not editable
+-----------------------------------------
+Issue: Description field used Input component (single-line) instead of
+       Textarea (multi-line), making it difficult to enter descriptions.
+
+Fix: Changed Description fields to use Textarea component:
+     - Import added: import { Textarea } from '@/components/ui/textarea';
+     - Edit mode (line ~680): Input -> Textarea with rows={2}
+     - Add form (line ~859): Input -> Textarea with rows={2}
+     - Added resize-none class to prevent manual resizing
+
+===============================================================================
