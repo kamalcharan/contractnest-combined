@@ -259,7 +259,7 @@ export const defaultMenuItems: MenuItem[] = [
         id: 'subscription-management',
         label: 'Subscription Management',
         icon: 'CreditCard',
-        path: '/admin/subscription-management'  // UPDATED: New path for subscription management
+        path: '/admin/subscription-management'
       },
       {
         id: 'billing-dashboard',
