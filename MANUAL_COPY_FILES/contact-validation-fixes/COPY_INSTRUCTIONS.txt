@@ -1,0 +1,30 @@
+═══════════════════════════════════════════════════════════════════════════════
+CONTACT VALIDATION FIXES - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+Feature: Contact Module Bug Fixes
+- Country-aware phone number validation
+- Name/Company name character restrictions
+- Duplicate contact detection
+- API validation improvements
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════════════════════════════════
+
+CONTRACTNEST-UI (7 files):
+────────────────────────────────────────────────────────────────────────────────
+1. src/utils/constants/countries.ts        [MODIFIED - Added phoneLength data]
+2. src/utils/validation/contactValidation.ts [NEW - Centralized validation]
+3. src/utils/constants/channels.ts         [MODIFIED - Use new validation]
+4. src/components/contacts/QuickAddContactDrawer.tsx [MODIFIED - Validations]
+5. src/pages/contacts/create.tsx           [MODIFIED - Name validations]
+6. src/components/contacts/forms/ContactChannelsSection.tsx [MODIFIED]
+7. src/components/contacts/view/ContextualEditorPanel.tsx [MODIFIED]
+
+CONTRACTNEST-API (2 files):
+────────────────────────────────────────────────────────────────────────────────
+1. src/utils/constants/countries.ts        [NEW - Server-side validation]
+2. src/middleware/contactValidators.ts     [MODIFIED - Country-aware validation]
+
+═══════════════════════════════════════════════════════════════════════════════
