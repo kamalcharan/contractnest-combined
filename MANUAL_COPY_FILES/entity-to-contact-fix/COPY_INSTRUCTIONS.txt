@@ -1,0 +1,55 @@
+═══════════════════════════════════════════════════
+ENTITY TO CONTACT FIX - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════
+
+Branch: entity-to-contact-fix
+Date: 2026-01-18
+
+Files Changed:
+  - contractnest-ui/src/pages/contacts/create.tsx - Change all Entity refs to Contact
+
+Submodules Affected: contractnest-ui
+
+═══════════════════════════════════════════════════
+CHANGES SUMMARY
+═══════════════════════════════════════════════════
+
+Changed all "Entity" references to "Contact" in Advanced form:
+
+| Location | Before | After |
+|----------|--------|-------|
+| Line 388 | "Saving entity..." | "Saving contact..." |
+| Line 956 | "Loading Entity..." | "Loading Contact..." |
+| Line 975 | "Updating/Creating Entity..." | "Updating/Creating Contact..." |
+| Line 996 | 'Entity' (fallback) | 'Contact' |
+| Line 997 | 'Create Entity' | 'Create Contact' |
+| Line 1014 | 'Update entity information' | 'Update contact information' |
+| Line 1015 | 'Add a new entity' | 'Add a new contact' |
+| Line 1069 | 'Update/Save Entity' | 'Update/Save Contact' |
+| Line 1296 | "about this entity" | "about this contact" |
+
+═══════════════════════════════════════════════════
+COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\entity-to-contact-fix\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+
+- [ ] Create new contact - Page title shows "Create Contact"
+- [ ] Create new contact - Subtitle shows "Add a new contact to your directory"
+- [ ] Create new contact - Save button shows "Save Contact"
+- [ ] Create new contact - Loader shows "Creating Contact..."
+- [ ] Edit existing contact - Page title shows "Edit - [Name]" (not Entity)
+- [ ] Edit existing contact - Subtitle shows "Update contact information"
+- [ ] Edit existing contact - Save button shows "Update Contact"
+- [ ] Edit existing contact - Loader shows "Updating Contact..."
+- [ ] Notes placeholder shows "Add notes about this contact..."
+
+═══════════════════════════════════════════════════
