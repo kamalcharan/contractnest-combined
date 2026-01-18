@@ -1,0 +1,77 @@
+═══════════════════════════════════════════════════
+CLASSIFICATION LUCIDE ICONS - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════
+
+Branch: classification-lucide-icons
+Date: 2026-01-18
+
+Files Changed:
+  - contractnest-ui/src/pages/contacts/index.tsx - Use Lucide icons for classification badges
+
+Submodules Affected: contractnest-ui
+
+═══════════════════════════════════════════════════
+CHANGES SUMMARY
+═══════════════════════════════════════════════════
+
+This update completes the classification standardization by:
+
+1. IMPORTS ADDED:
+   - ShoppingCart, Package, Handshake icons from lucide-react
+   - LucideIcon type for type safety
+
+2. HELPER FUNCTIONS ADDED:
+   - CLASSIFICATION_ICON_MAP: Maps icon names to Lucide components
+   - getClassificationIcon(): Gets Lucide icon for a classification ID
+
+3. ACTIVE FILTER CHIPS (line ~887):
+   - Now uses Lucide icons instead of emojis
+   - Uses classification-specific colors from getClassificationColors()
+   - Consistent styling with badges
+
+4. GRID VIEW BADGES (line ~1207):
+   - Changed from {config?.emoji} to <IconComponent />
+   - Uses Lucide icons (ShoppingCart for Buyer, etc.)
+   - Same styling as Advanced form
+
+5. LIST VIEW BADGES (line ~1357):
+   - Changed from {config?.emoji} to <IconComponent />
+   - Uses Lucide icons consistently
+   - Same styling as grid view and Advanced form
+
+═══════════════════════════════════════════════════
+COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\classification-lucide-icons\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+
+- [ ] Active filter chips show Lucide icons (not emojis)
+- [ ] Grid view classification badges show Lucide icons (not emojis)
+- [ ] List view classification badges show Lucide icons (not emojis)
+- [ ] All icons match: ShoppingCart(Buyer), DollarSign(Seller), Package(Vendor), Handshake(Partner), Users(Team Member)
+- [ ] Badge colors are consistent across all views
+- [ ] Build succeeds without errors
+
+═══════════════════════════════════════════════════
+VISUAL COMPARISON
+═══════════════════════════════════════════════════
+
+BEFORE:
+  - Active filters: 🛒 Buyer | 💰 Seller | 📦 Vendor
+  - Card badges: 🛒 Buyer | 💰 Seller | 📦 Vendor
+  - List badges: 🛒 Buyer | 💰 Seller | 📦 Vendor
+
+AFTER:
+  - Active filters: [ShoppingCart icon] Buyer | [DollarSign icon] Seller | [Package icon] Vendor
+  - Card badges: [ShoppingCart icon] Buyer | [DollarSign icon] Seller | [Package icon] Vendor
+  - List badges: [ShoppingCart icon] Buyer | [DollarSign icon] Seller | [Package icon] Vendor
+
+═══════════════════════════════════════════════════
