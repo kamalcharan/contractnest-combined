@@ -95,33 +95,38 @@ export const CONTACT_CLASSIFICATION_CONFIG = [
   }
 ] as const;
 
-// Classification color key to theme color mapping
-// This function returns theme-aware colors for classifications
-export const getClassificationThemeColor = (colorKey: string, themeColors: any) => {
-  const colorMapping: Record<string, { themeColor: string }> = {
-    blue: { themeColor: themeColors.brand?.primary || '#3B82F6' },
-    green: { themeColor: themeColors.semantic?.success || '#10B981' },
-    purple: { themeColor: themeColors.brand?.tertiary || '#8B5CF6' },
-    orange: { themeColor: themeColors.semantic?.warning || '#F59E0B' },
-    indigo: { themeColor: themeColors.semantic?.info || '#6366F1' },
-    red: { themeColor: themeColors.semantic?.error || '#EF4444' },
-    default: { themeColor: themeColors.utility?.secondaryText || '#6B7280' }
-  };
-  return colorMapping[colorKey] || colorMapping.default;
+// Classification color mapping - FIXED hex colors for consistency across all views
+// These colors are consistent regardless of theme to ensure filters and badges match
+export const CLASSIFICATION_HEX_COLORS: Record<string, string> = {
+  blue: '#3B82F6',    // Buyer
+  green: '#10B981',   // Seller
+  purple: '#8B5CF6',  // Vendor
+  orange: '#F59E0B',  // Partner
+  indigo: '#6366F1',  // Team Member
+  red: '#EF4444',     // Error/Overdue
+  default: '#6B7280'  // Default gray
+};
+
+// Get classification hex color - always returns consistent color
+export const getClassificationThemeColor = (colorKey: string, _themeColors?: any) => {
+  // Always use fixed hex colors for consistency
+  const themeColor = CLASSIFICATION_HEX_COLORS[colorKey] || CLASSIFICATION_HEX_COLORS.default;
+  return { themeColor };
 };
 
 // Get classification colors for various UI contexts
+// Uses FIXED hex colors for consistency - themeColors only used for selected state brand color
 export const getClassificationColors = (
   colorKey: string,
   themeColors: any,
   variant: 'badge' | 'filter' | 'selector' = 'badge',
   isSelected: boolean = false
 ) => {
-  const { themeColor } = getClassificationThemeColor(colorKey, themeColors);
+  const { themeColor } = getClassificationThemeColor(colorKey);
 
   switch (variant) {
     case 'badge':
-      // For classification badges on cards
+      // For classification badges on cards - always use fixed colors
       return {
         bg: themeColor + '20',
         text: themeColor,
@@ -130,12 +135,14 @@ export const getClassificationColors = (
     case 'filter':
       // For filter tabs/buttons
       if (isSelected) {
+        // When selected, use theme's brand primary for consistency with UI
         return {
-          bg: themeColors.brand?.primary || themeColor,
+          bg: themeColors?.brand?.primary || themeColor,
           text: '#ffffff',
-          border: themeColors.brand?.primary || themeColor
+          border: themeColors?.brand?.primary || themeColor
         };
       }
+      // When not selected, use fixed classification color
       return {
         bg: themeColor + '15',
         text: themeColor,
@@ -152,8 +159,8 @@ export const getClassificationColors = (
       }
       return {
         bg: 'transparent',
-        text: themeColors.utility?.secondaryText || '#6B7280',
-        border: (themeColors.utility?.primaryText || '#111827') + '20'
+        text: themeColors?.utility?.secondaryText || '#6B7280',
+        border: (themeColors?.utility?.primaryText || '#111827') + '20'
       };
     default:
       return {

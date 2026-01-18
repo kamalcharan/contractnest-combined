@@ -45,12 +45,12 @@ import QuickAddContactDrawer from '@/components/contacts/QuickAddContactDrawer';
 import { VaNiLoader } from '@/components/common/loaders';
 import { vaniToast } from '@/components/common/toast';
 
-// Coming Soon features for Entities
+// Coming Soon features for Contacts
 const contactsFeatures = [
-  { icon: Users, title: 'Entity Management', description: 'Centralized hub for all your business entities - customers, vendors, partners, and team members.', highlight: true },
-  { icon: Network, title: 'Relationship Mapping', description: 'Visualize connections between entities and track interaction history.', highlight: false },
-  { icon: Briefcase, title: 'Business Classification', description: 'Categorize entities by type, industry, and custom tags for easy filtering.', highlight: false },
-  { icon: UserPlus, title: 'Smart Import', description: 'Bulk import entities from CSV, vCard, or sync with external systems.', highlight: false }
+  { icon: Users, title: 'Contact Management', description: 'Centralized hub for all your business contacts - customers, vendors, partners, and team members.', highlight: true },
+  { icon: Network, title: 'Relationship Mapping', description: 'Visualize connections between contacts and track interaction history.', highlight: false },
+  { icon: Briefcase, title: 'Business Classification', description: 'Categorize contacts by type, industry, and custom tags for easy filtering.', highlight: false },
+  { icon: UserPlus, title: 'Smart Import', description: 'Bulk import contacts from CSV, vCard, or sync with external systems.', highlight: false }
 ];
 
 const contactsFloatingIcons = [
@@ -352,7 +352,7 @@ const ContactsPage: React.FC = () => {
   // Soft delete (archive) hook
   const { mutate: updateContactStatus, loading: archiving } = useUpdateContactStatus();
 
-  // Handle soft delete (archive) - single entity
+  // Handle soft delete (archive) - single contact
   const handleSoftDelete = async (contactId: string, contactName: string) => {
     try {
       vaniToast.loading(`Archiving ${contactName}...`);
@@ -444,22 +444,22 @@ const ContactsPage: React.FC = () => {
   // Handle bulk delete
   const handleBulkDelete = async () => {
     try {
-      vaniToast.loading('Deleting entities...');
+      vaniToast.loading('Deleting contacts...');
 
-      vaniToast.success(`${selectedContacts.size} entities deleted successfully`);
+      vaniToast.success(`${selectedContacts.size} contacts deleted successfully`);
       setSelectedContacts(new Set());
       refetch();
     } catch (error) {
       captureException(error, {
         tags: { component: 'ContactsPage', action: 'bulkDelete' }
       });
-      vaniToast.error('Failed to delete entities');
+      vaniToast.error('Failed to delete contacts');
     }
   };
 
   // Handle quick add success - refresh list and show toast
   const handleQuickAddSuccess = useCallback((contactId: string) => {
-    vaniToast.success('Entity created successfully');
+    vaniToast.success('Contact created successfully');
     refetch();
     // Navigate to view the new contact (optional)
     // navigate(`/contacts/${contactId}`);
@@ -542,12 +542,12 @@ const ContactsPage: React.FC = () => {
   const getLoadingMessage = () => {
     const filterConfig = currentFilters.find((f: any) => f.id === activeFilter);
     if (activeFilter === 'all') {
-      return 'VaNi is Loading Entities...';
+      return 'VaNi is Loading Contacts...';
     }
-    return `VaNi is Loading ${filterConfig?.label || 'Entities'}...`;
+    return `VaNi is Loading ${filterConfig?.label || 'Contacts'}...`;
   };
 
-  const EntityLoader = () => (
+  const ContactLoader = () => (
     <VaNiLoader
       size="md"
       message={getLoadingMessage()}
@@ -573,7 +573,7 @@ const ContactsPage: React.FC = () => {
             className="text-2xl font-bold flex items-center gap-2 transition-colors"
             style={{ color: colors.utility.primaryText }}
           >
-            Entities
+            Contacts
             <button
               onClick={() => setShowVideoHelp(true)}
               className="p-1 rounded-full hover:opacity-80 transition-colors"
@@ -625,7 +625,7 @@ const ContactsPage: React.FC = () => {
             }}
           >
             <Plus className="mr-2 h-4 w-4" />
-            Add Entity
+            Add Contact
           </button>
         </div>
       </div>
@@ -709,7 +709,7 @@ const ContactsPage: React.FC = () => {
               />
               <input
                 type="text"
-                placeholder={`Search entities... (min ${MINIMUM_SEARCH_LENGTH} characters)`}
+                placeholder={`Search contacts... (min ${MINIMUM_SEARCH_LENGTH} characters)`}
                 value={searchTerm}
                 onChange={(e) => handleSearchChange(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 transition-colors"
@@ -834,7 +834,7 @@ const ContactsPage: React.FC = () => {
                 backgroundColor: colors.utility.secondaryText + '10'
               }}
             >
-              Type at least {MINIMUM_SEARCH_LENGTH} characters to search entities
+              Type at least {MINIMUM_SEARCH_LENGTH} characters to search contacts
             </div>
           )}
 
@@ -939,7 +939,7 @@ const ContactsPage: React.FC = () => {
                 className="text-sm font-medium"
                 style={{ color: colors.brand.primary }}
               >
-                {selectedContacts.size} {selectedContacts.size !== 1 ? 'entities' : 'entity'} selected
+                {selectedContacts.size} {selectedContacts.size !== 1 ? 'contacts' : 'contact'} selected
               </span>
               <div className="flex items-center gap-2">
                 <button
@@ -989,7 +989,7 @@ const ContactsPage: React.FC = () => {
                 className="font-medium"
                 style={{ color: colors.semantic.error }}
               >
-                Error loading entities
+                Error loading contacts
               </h3>
               <p 
                 className="text-sm mt-1"
@@ -1010,7 +1010,7 @@ const ContactsPage: React.FC = () => {
       )}
 
       {/* Loading State */}
-      {loading && <EntityLoader />}
+      {loading && <ContactLoader />}
 
       {/* Contact List */}
       {!loading && !error && (
@@ -1031,7 +1031,7 @@ const ContactsPage: React.FC = () => {
                 className="text-lg font-medium mb-2 transition-colors"
                 style={{ color: colors.utility.primaryText }}
               >
-                No entities found
+                No contacts found
               </h3>
               <p 
                 className="mb-6 transition-colors"
@@ -1041,9 +1041,9 @@ const ContactsPage: React.FC = () => {
                   Array.isArray(v) ? v.length > 0 : v !== 'all'
                 )
                   ? shouldShowSearchHint()
-                    ? `Type at least ${MINIMUM_SEARCH_LENGTH} characters to search entities.`
-                    : "No entities match your search criteria. Try adjusting your search or filters."
-                  : "You haven't added any entities yet. Create your first entity to get started."
+                    ? `Type at least ${MINIMUM_SEARCH_LENGTH} characters to search contacts.`
+                    : "No contacts match your search criteria. Try adjusting your search or filters."
+                  : "You haven't added any contacts yet. Create your first contact to get started."
                 }
               </p>
               <button
@@ -1056,7 +1056,7 @@ const ContactsPage: React.FC = () => {
                 }}
               >
                 <Plus className="mr-2 h-4 w-4" />
-                Add Entity
+                Add Contact
               </button>
             </div>
           ) : (
@@ -1146,13 +1146,13 @@ const ContactsPage: React.FC = () => {
                                 <Building2 
                                   className="h-4 w-4 flex-shrink-0"
                                   style={{ color: colors.utility.secondaryText }}
-                                  title="Corporate Entity"
+                                  title="Corporate"
                                 />
                               ) : (
                                 <User 
                                   className="h-4 w-4 flex-shrink-0"
                                   style={{ color: colors.utility.secondaryText }}
-                                  title="Individual Entity"
+                                  title="Individual"
                                 />
                               )}
                             </div>
@@ -1222,7 +1222,7 @@ const ContactsPage: React.FC = () => {
                                 backgroundColor: colors.utility.secondaryText + '20',
                                 color: colors.utility.primaryText
                               }}
-                              title="View entity details"
+                              title="View contact details"
                             >
                               <Eye className="h-4 w-4" />
                             </button>
@@ -1236,22 +1236,6 @@ const ContactsPage: React.FC = () => {
                             >
                               <FileText className="h-4 w-4" />
                             </button>
-                            {contact.status !== 'archived' && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleSoftDelete(contact.id, contact.displayName);
-                                }}
-                                className="p-1.5 rounded-md hover:opacity-80 transition-colors"
-                                style={{
-                                  backgroundColor: colors.semantic.error + '20',
-                                  color: colors.semantic.error
-                                }}
-                                title="Archive entity"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            )}
                           </div>
                         </div>
                       </div>
@@ -1292,13 +1276,13 @@ const ContactsPage: React.FC = () => {
                                 <Building2 
                                   className="h-4 w-4 flex-shrink-0"
                                   style={{ color: colors.utility.secondaryText }}
-                                  title="Corporate Entity"
+                                  title="Corporate"
                                 />
                               ) : (
                                 <User 
                                   className="h-4 w-4 flex-shrink-0"
                                   style={{ color: colors.utility.secondaryText }}
-                                  title="Individual Entity"
+                                  title="Individual"
                                 />
                               )}
                             </div>
@@ -1381,7 +1365,7 @@ const ContactsPage: React.FC = () => {
                                 backgroundColor: colors.utility.secondaryText + '20',
                                 color: colors.utility.primaryText
                               }}
-                              title="View entity details"
+                              title="View contact details"
                             >
                               <Eye className="h-4 w-4" />
                             </button>
@@ -1395,22 +1379,6 @@ const ContactsPage: React.FC = () => {
                             >
                               <FileText className="h-4 w-4" />
                             </button>
-                            {contact.status !== 'archived' && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleSoftDelete(contact.id, contact.displayName);
-                                }}
-                                className="p-1.5 rounded-md hover:opacity-80 transition-colors"
-                                style={{
-                                  backgroundColor: colors.semantic.error + '20',
-                                  color: colors.semantic.error
-                                }}
-                                title="Archive entity"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            )}
                           </div>
                         </div>
                       </div>
@@ -1435,7 +1403,7 @@ const ContactsPage: React.FC = () => {
                   className="text-sm transition-colors"
                   style={{ color: colors.utility.secondaryText }}
                 >
-                  Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} entities
+                  Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} contacts
                 </div>
                 
                 <div className="flex items-center gap-2">
@@ -1510,7 +1478,7 @@ const ContactsPage: React.FC = () => {
                   className="text-xl font-semibold transition-colors"
                   style={{ color: colors.utility.primaryText }}
                 >
-                  Entity Management Help
+                  Contacts Help
                 </h2>
                 <button
                   onClick={() => setShowVideoHelp(false)}
@@ -1531,13 +1499,13 @@ const ContactsPage: React.FC = () => {
                     className="font-medium mb-2 transition-colors"
                     style={{ color: colors.utility.primaryText }}
                   >
-                    Getting Started with Entities
+                    Getting Started with Contacts
                   </h3>
-                  <p 
+                  <p
                     className="text-sm transition-colors"
                     style={{ color: colors.utility.secondaryText }}
                   >
-                    Learn how to add, organize, and manage your business entities effectively.
+                    Learn how to add, organize, and manage your business contacts effectively.
                   </p>
                 </div>
                 <div 
@@ -1548,13 +1516,13 @@ const ContactsPage: React.FC = () => {
                     className="font-medium mb-2 transition-colors"
                     style={{ color: colors.utility.primaryText }}
                   >
-                    Entity Classifications & Filtering
+                    Contact Classifications & Filtering
                   </h3>
-                  <p 
+                  <p
                     className="text-sm transition-colors"
                     style={{ color: colors.utility.secondaryText }}
                   >
-                    Understanding how to categorize entities and use advanced filtering options.
+                    Understanding how to categorize contacts and use advanced filtering options.
                   </p>
                 </div>
                 <div 
@@ -1571,7 +1539,7 @@ const ContactsPage: React.FC = () => {
                     className="text-sm transition-colors"
                     style={{ color: colors.utility.secondaryText }}
                   >
-                    Master the search functionality to quickly find the entities you need.
+                    Master the search functionality to quickly find the contacts you need.
                   </p>
                 </div>
               </div>
@@ -1585,8 +1553,8 @@ const ContactsPage: React.FC = () => {
         isOpen={showDeleteDialog}
         onClose={() => setShowDeleteDialog(false)}
         onConfirm={handleBulkDelete}
-        title="Delete Entities"
-        description={`Are you sure you want to delete ${selectedContacts.size} ${selectedContacts.size !== 1 ? 'entities' : 'entity'}? This action cannot be undone.`}
+        title="Delete Contacts"
+        description={`Are you sure you want to delete ${selectedContacts.size} ${selectedContacts.size !== 1 ? 'contacts' : 'contact'}? This action cannot be undone.`}
         confirmText="Delete"
         type="danger"
         icon={<Trash2 className="h-6 w-6" />}
@@ -1600,7 +1568,7 @@ const ContactsPage: React.FC = () => {
         />
       )}
 
-      {/* Quick Add Entity Drawer */}
+      {/* Quick Add Contact Drawer */}
       <QuickAddContactDrawer
         isOpen={isQuickAddOpen}
         onClose={() => setIsQuickAddOpen(false)}
