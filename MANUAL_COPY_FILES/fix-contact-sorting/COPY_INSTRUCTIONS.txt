@@ -8,6 +8,7 @@ Date: 2026-01-18
 Files Changed:
   - contractnest-ui/src/utils/constants/contacts.ts - Updated CONTACT_SORT_OPTIONS
   - contractnest-ui/src/pages/contacts/index.tsx - Fixed sort dropdown handler
+  - contractnest-ui/src/hooks/useContacts.ts - Fixed filter change triggering refetch
 
 Submodules Affected: contractnest-ui
 
@@ -15,30 +16,37 @@ Submodules Affected: contractnest-ui
 CHANGES SUMMARY
 ═══════════════════════════════════════════════════
 
-PROBLEM:
-- Sort options weren't working because UI values didn't match DB columns
+PROBLEM 1: Sort values didn't match DB columns
 - 'created' should be 'created_at', 'updated' should be 'updated_at'
 - Contact Type and Status sorting didn't make sense
 - All options showed "Newest/Oldest" even for Name (should be A-Z/Z-A)
 
+PROBLEM 2: Changing sort didn't trigger data refetch
+- updateFilters set the filter state but didn't trigger API call
+- Missing useEffect to watch filter changes
+
 SOLUTION:
 
 1. Updated CONTACT_SORT_OPTIONS (contacts.ts):
-   BEFORE (10 options total - broken):
+   BEFORE (10 options - broken):
    - Name (Newest/Oldest)
    - Date Created (Newest/Oldest) - value: 'created' WRONG
    - Last Updated (Newest/Oldest) - value: 'updated' WRONG
-   - Contact Type (Newest/Oldest) - doesn't make sense
-   - Status (Newest/Oldest) - doesn't make sense
+   - Contact Type (Newest/Oldest) - N/A
+   - Status (Newest/Oldest) - N/A
 
-   AFTER (6 options total - working):
+   AFTER (6 options - working):
    - Name (Z-A / A-Z)
    - Date Created (Newest / Oldest) - value: 'created_at' CORRECT
    - Last Updated (Newest / Oldest) - value: 'updated_at' CORRECT
 
 2. Fixed onChange handler (index.tsx):
-   - Now correctly parses values like 'created_at_desc'
-   - Uses lastIndexOf('_') to split field and order
+   - Uses lastIndexOf('_') to correctly parse 'created_at_desc'
+
+3. Fixed useContacts.ts hook:
+   - Added useEffect that watches filters via JSON.stringify
+   - Triggers fetchContacts when filters change
+   - Added debug logging for troubleshooting
 
 ═══════════════════════════════════════════════════
 COPY COMMANDS (PowerShell)
@@ -55,6 +63,7 @@ TESTING CHECKLIST
 ═══════════════════════════════════════════════════
 
 - [ ] Sort dropdown shows 6 options (not 10)
+- [ ] Changing sort actually updates the list (check console for logs)
 - [ ] "Name (Z-A)" sorts contacts Z to A
 - [ ] "Name (A-Z)" sorts contacts A to Z
 - [ ] "Date Created (Newest)" shows most recently created first
@@ -62,6 +71,6 @@ TESTING CHECKLIST
 - [ ] "Last Updated (Newest)" shows most recently updated first
 - [ ] "Last Updated (Oldest)" shows oldest updated first
 - [ ] Sorting persists when switching between grid/list views
-- [ ] Sorting works with filters applied
+- [ ] Sorting works with classification filters applied
 
 ═══════════════════════════════════════════════════
