@@ -1,0 +1,50 @@
+═══════════════════════════════════════════════════════════════════════════════
+RESOURCE MANAGEMENT FIXES - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+FIXES INCLUDED:
+1. Added TODO comments for public-resources.service.ts (needs creation for public deployment)
+2. Cleaned up debug console.logs in API resourcesService.ts (removed 50+ emoji logs)
+3. Fixed sequence column display for Team Member/Partners (shows "N/A" instead of sequence)
+
+FILES TO COPY:
+═══════════════════════════════════════════════════════════════════════════════
+
+FRONTEND (contractnest-ui):
+1. src/pages/public/resources.tsx
+   - Added TODO comment about missing public-resources.service.ts
+
+2. src/pages/public/admin/resources-management.tsx
+   - Added TODO comment about missing public-resources.service.ts
+
+3. src/components/Resources/ResourceCard.tsx
+   - Fixed sequence display: shows "N/A" for contact-based resources (Team Member/Partners)
+
+BACKEND (contractnest-api):
+4. src/services/resourcesService.ts
+   - Removed 50+ debug console.log statements with emojis
+   - Cleaned up comments (removed FIX annotations)
+   - Code is now production-ready
+
+COPY COMMANDS (PowerShell):
+═══════════════════════════════════════════════════════════════════════════════
+
+# Frontend files
+Copy-Item "MANUAL_COPY_FILES\resource-management-fixes\contractnest-ui\src\pages\public\resources.tsx" -Destination "contractnest-ui\src\pages\public\resources.tsx" -Force
+
+Copy-Item "MANUAL_COPY_FILES\resource-management-fixes\contractnest-ui\src\pages\public\admin\resources-management.tsx" -Destination "contractnest-ui\src\pages\public\admin\resources-management.tsx" -Force
+
+Copy-Item "MANUAL_COPY_FILES\resource-management-fixes\contractnest-ui\src\components\Resources\ResourceCard.tsx" -Destination "contractnest-ui\src\components\Resources\ResourceCard.tsx" -Force
+
+# Backend files
+Copy-Item "MANUAL_COPY_FILES\resource-management-fixes\contractnest-api\src\services\resourcesService.ts" -Destination "contractnest-api\src\services\resourcesService.ts" -Force
+
+SUBMODULES AFFECTED:
+═══════════════════════════════════════════════════════════════════════════════
+- contractnest-ui
+- contractnest-api
+
+COMMIT MESSAGES:
+═══════════════════════════════════════════════════════════════════════════════
+UI: "fix: add TODO for public resources service, show N/A sequence for contacts"
+API: "chore: clean up debug console.logs in resourcesService"
