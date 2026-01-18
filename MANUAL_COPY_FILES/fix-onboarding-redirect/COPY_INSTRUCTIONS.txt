@@ -1,0 +1,113 @@
+===============================================================================
+ FIX: ONBOARDING REDIRECT FOR INVITED USERS
+===============================================================================
+
+BUG FIXED:
+----------
+Invited users were being redirected to /onboarding (full onboarding flow)
+instead of /onboarding-pending (waiting page). Only the tenant OWNER should
+complete onboarding.
+
+ROOT CAUSE:
+-----------
+AuthContext.tsx login flow did not check `is_owner` before redirecting to
+onboarding. It went directly to /onboarding for ALL users when onboarding
+was not complete.
+
+FIXES APPLIED:
+--------------
+1. AuthContext.tsx (lines 958-970)
+   - Added is_owner check before redirecting
+   - Owner → /onboarding
+   - Non-owner → /onboarding-pending
+
+2. OnboardingPendingPage.tsx (complete rewrite)
+   - Added Lottie animation for "Setting Up Workspace"
+   - ContractNest branding
+   - "Contact Administrator" card with admin name and email
+   - "Contact Admin" button (mailto link)
+   - Auto-check status every 30 seconds
+   - Auto-redirect to /dashboard when onboarding completes
+
+NEW DEPENDENCY:
+---------------
+lottie-react - Install with:
+  npm install lottie-react --save --legacy-peer-deps
+
+===============================================================================
+FILES MODIFIED:
+===============================================================================
+
+SUBMODULE: contractnest-ui
+--------------------------
+  src/context/AuthContext.tsx
+    - Added is_owner check at lines 958-970
+    - Owners → /onboarding
+    - Non-owners → /onboarding-pending
+
+  src/pages/onboarding/OnboardingPendingPage.tsx
+    - Complete rewrite with Lottie animation
+    - ContractNest branding
+    - Admin contact info card
+    - Auto-refresh every 30 seconds
+
+===============================================================================
+PHASE 1: COPY FILES FOR LOCAL TESTING (PowerShell)
+===============================================================================
+
+STEP 1: Navigate to Project
+───────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Install lottie-react
+───────────────────────────────────
+cd contractnest-ui
+npm install lottie-react --save --legacy-peer-deps
+cd ..
+
+STEP 3: Copy UI Files
+───────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\fix-onboarding-redirect\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Write-Host "UI files copied!" -ForegroundColor Green
+
+STEP 4: Start Dev Server & Test
+───────────────────────────────────
+cd contractnest-ui
+npm run dev
+
+# Hard refresh browser: Ctrl+F5
+
+===============================================================================
+TESTING CHECKLIST:
+===============================================================================
+
+TEST 1: Owner Login (tenant onboarding not complete)
+─────────────────────────────────
+- [ ] Login as the user who CREATED the tenant (owner)
+- [ ] Should redirect to /onboarding (full onboarding flow)
+
+TEST 2: Invited User Login (tenant onboarding not complete)
+─────────────────────────────────
+- [ ] Login as an INVITED user (not owner)
+- [ ] Should redirect to /onboarding-pending (waiting page)
+- [ ] Should see Lottie animation (spinning gear)
+- [ ] Should see "Setting Up Workspace" title
+- [ ] Should see workspace name
+- [ ] Should see Admin info card with name and email
+- [ ] Should see "Contact Admin" button
+- [ ] Should see "Check If Ready" button
+- [ ] Auto-check should happen every 30 seconds
+
+TEST 3: Owner Completes Onboarding
+─────────────────────────────────
+- [ ] Owner completes onboarding
+- [ ] Invited user on pending page should auto-redirect to /dashboard
+- [ ] OR clicking "Check If Ready" should redirect to /dashboard
+
+===============================================================================
+⏸️ WAITING FOR CONFIRMATION
+===============================================================================
+Test locally and confirm:
+  → "Tested, working - proceed with commit"
+  → "Issue found: [describe problem]"
+===============================================================================
