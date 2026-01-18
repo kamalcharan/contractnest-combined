@@ -1,76 +1,160 @@
 ═══════════════════════════════════════════════════════════════════════════════
-                    SUBSCRIPTION MANAGEMENT - PRD DOCUMENT
-                           COPY INSTRUCTIONS
+            SUBSCRIPTION MANAGEMENT - ADMIN UI LAYER
+                     COPY INSTRUCTIONS
 ═══════════════════════════════════════════════════════════════════════════════
 
-FEATURE: Subscription Management & Tenant Data Lifecycle
+FEATURE: Admin Subscription Management Dashboard
 BRANCH: claude/init-submodules-docs-RevCC
 DATE: January 2025
+DESIGN: Glassmorphism (following contacts UI patterns)
+
+═══════════════════════════════════════════════════════════════════════════════
+WHAT'S INCLUDED
+═══════════════════════════════════════════════════════════════════════════════
+
+This package includes the complete UI layer for Admin Subscription Management:
+
+1. SHARED TYPES
+   - tenantManagement.ts (all TypeScript interfaces)
+
+2. SHARED COMPONENTS (reusable for Admin & Tenant Owner)
+   - Badges: SubscriptionStatusBadge, TenantStatusBadge, TenantTypeBadge
+   - Cards: StatCard, TenantCard
+   - Data Viz: AnimatedCounter, DataProgressBar, DataCategoryCard
+   - Filters: TenantFilters
+   - Modals: TenantDetailDrawer, DeleteConfirmationFlow
+
+3. ADMIN PAGE
+   - subscription-management/index.tsx (main dashboard)
+
+4. PRD DOCUMENT
+   - PRD-SUBSCRIPTION-MANAGEMENT.md (in ClaudeDocumentation)
 
 ═══════════════════════════════════════════════════════════════════════════════
 FILES TO COPY
 ═══════════════════════════════════════════════════════════════════════════════
 
-1. PRD Document
-   SOURCE: MANUAL_COPY_FILES/subscription-management/ClaudeDocumentation/subscriptions/PRD-SUBSCRIPTION-MANAGEMENT.md
-   DESTINATION: ClaudeDocumentation/subscriptions/PRD-SUBSCRIPTION-MANAGEMENT.md
+DESTINATION: contractnest-ui/src/
+
+1. Types
+   SOURCE: contractnest-ui/src/types/tenantManagement.ts
+   DEST:   contractnest-ui/src/types/tenantManagement.ts
+
+2. Badge Components
+   SOURCE: contractnest-ui/src/components/subscription/badges/
+   DEST:   contractnest-ui/src/components/subscription/badges/
+   FILES:  SubscriptionStatusBadge.tsx, TenantStatusBadge.tsx,
+           TenantTypeBadge.tsx, index.ts
+
+3. Card Components
+   SOURCE: contractnest-ui/src/components/subscription/cards/
+   DEST:   contractnest-ui/src/components/subscription/cards/
+   FILES:  StatCard.tsx, TenantCard.tsx, index.ts
+
+4. Data Visualization Components
+   SOURCE: contractnest-ui/src/components/subscription/data-viz/
+   DEST:   contractnest-ui/src/components/subscription/data-viz/
+   FILES:  AnimatedCounter.tsx, DataProgressBar.tsx,
+           DataCategoryCard.tsx, index.ts
+
+5. Filter Components
+   SOURCE: contractnest-ui/src/components/subscription/filters/
+   DEST:   contractnest-ui/src/components/subscription/filters/
+   FILES:  TenantFilters.tsx, index.ts
+
+6. Modal Components
+   SOURCE: contractnest-ui/src/components/subscription/modals/
+   DEST:   contractnest-ui/src/components/subscription/modals/
+   FILES:  TenantDetailDrawer.tsx, DeleteConfirmationFlow.tsx, index.ts
+
+7. Main Barrel Export
+   SOURCE: contractnest-ui/src/components/subscription/index.ts
+   DEST:   contractnest-ui/src/components/subscription/index.ts
+
+8. Admin Page
+   SOURCE: contractnest-ui/src/pages/admin/subscription-management/index.tsx
+   DEST:   contractnest-ui/src/pages/admin/subscription-management/index.tsx
+
+9. Service URLs (MANUAL MERGE REQUIRED)
+   SOURCE: contractnest-ui/src/services/serviceURLs.additions.ts
+   ACTION: Manually add the endpoints to existing serviceURLs.ts
+
+10. PRD Document
+    SOURCE: ClaudeDocumentation/subscriptions/PRD-SUBSCRIPTION-MANAGEMENT.md
+    DEST:   ClaudeDocumentation/subscriptions/PRD-SUBSCRIPTION-MANAGEMENT.md
 
 ═══════════════════════════════════════════════════════════════════════════════
 SUBMODULES AFFECTED
 ═══════════════════════════════════════════════════════════════════════════════
 
-1. ClaudeDocumentation (branch: master)
+1. contractnest-ui (branch: main)
+   - New folder: src/components/subscription/
+   - New folder: src/pages/admin/subscription-management/
+   - New file: src/types/tenantManagement.ts
+   - Modified: src/services/serviceURLs.ts (add endpoints)
+
+2. ClaudeDocumentation (branch: master)
    - New folder: subscriptions/
    - New file: PRD-SUBSCRIPTION-MANAGEMENT.md
 
 ═══════════════════════════════════════════════════════════════════════════════
-PRD SUMMARY
+ADDITIONAL SETUP REQUIRED
 ═══════════════════════════════════════════════════════════════════════════════
 
-This PRD covers:
+1. Add route to router (e.g., in App.tsx or routes config):
 
-1. ADMIN FEATURES:
-   - View all tenants with subscription status
-   - See buyer/seller classification
-   - See industry information
-   - Change tenant status
-   - Delete tenant data (hard delete with audit)
+   <Route
+     path="/admin/subscription-management"
+     element={<SubscriptionManagementPage />}
+   />
 
-2. TENANT OWNER FEATURES:
-   - Self-service account closure
-   - Feedback collection
-   - Data preview before deletion
+2. Add menu item to admin navigation (if applicable):
 
-3. TECHNICAL APPROACH:
-   - Extensible data registry (add tables in one config file)
-   - Registry-based deletion with proper ordering
-   - Pre-delete hooks for storage cleanup
-   - Audit trail for all deletions
+   {
+     label: 'Subscription Management',
+     path: '/admin/subscription-management',
+     icon: CreditCard, // from lucide-react
+     adminOnly: true
+   }
 
-4. INNOVATIVE UI CONCEPTS:
-   - "Command Center" admin dashboard
-   - Visual data storytelling with charts
-   - Animated counters and progress rings
-   - Multi-step deletion flow with visual journey
-   - Empathetic offboarding for tenant owners
+3. Update serviceURLs.ts with the endpoints from serviceURLs.additions.ts
 
-5. IMPLEMENTATION PHASES:
-   - Phase 1: Foundation (shared types, registry)
-   - Phase 2: Admin Dashboard
-   - Phase 3: Tenant Detail & Actions
-   - Phase 4: Delete Flow
-   - Phase 5: Tenant Owner Flow
-   - Phase 6: Polish & Testing
+═══════════════════════════════════════════════════════════════════════════════
+COMPONENT FEATURES
+═══════════════════════════════════════════════════════════════════════════════
+
+GLASSMORPHISM STYLING:
+- Semi-transparent backgrounds: rgba(..., 0.8)
+- Backdrop blur: blur(10px) to blur(12px)
+- Subtle borders with transparency
+- Gradient overlays for headers
+- Dark mode support throughout
+
+FEATURES IMPLEMENTED:
+- Platform Pulse stats cards (animated counters)
+- Quick filter chips (All, Active, Trial, Expiring, Suspended)
+- Advanced filters (status, subscription, type, industry)
+- Tenant cards with contact mix progress bar
+- Grid and List view modes
+- Tenant detail drawer with data summary
+- Multi-step delete confirmation flow
+- Theme-aware colors using useTheme() hook
+
+MOCK DATA:
+- The page includes mock data for development
+- Replace with actual API calls when backend is ready
+- Look for TODO comments in the code
 
 ═══════════════════════════════════════════════════════════════════════════════
 NEXT STEPS
 ═══════════════════════════════════════════════════════════════════════════════
 
-After copying this PRD:
-
-1. Review and approve the approach
-2. Proceed with UI layer for Admin (Phase 2)
-3. Then UI layer for Tenant Owner (Phase 5)
-4. Finally API/Edge functions
+1. Copy files to contractnest-ui
+2. Update serviceURLs.ts with new endpoints
+3. Add route and navigation
+4. Test with mock data
+5. Implement API endpoints in contractnest-api
+6. Connect UI to real API
+7. Build Tenant Owner flow (Phase 5)
 
 ═══════════════════════════════════════════════════════════════════════════════
