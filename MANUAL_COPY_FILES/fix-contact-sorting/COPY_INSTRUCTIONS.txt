@@ -1,0 +1,67 @@
+═══════════════════════════════════════════════════
+FIX CONTACT SORTING - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════
+
+Branch: fix-contact-sorting
+Date: 2026-01-18
+
+Files Changed:
+  - contractnest-ui/src/utils/constants/contacts.ts - Updated CONTACT_SORT_OPTIONS
+  - contractnest-ui/src/pages/contacts/index.tsx - Fixed sort dropdown handler
+
+Submodules Affected: contractnest-ui
+
+═══════════════════════════════════════════════════
+CHANGES SUMMARY
+═══════════════════════════════════════════════════
+
+PROBLEM:
+- Sort options weren't working because UI values didn't match DB columns
+- 'created' should be 'created_at', 'updated' should be 'updated_at'
+- Contact Type and Status sorting didn't make sense
+- All options showed "Newest/Oldest" even for Name (should be A-Z/Z-A)
+
+SOLUTION:
+
+1. Updated CONTACT_SORT_OPTIONS (contacts.ts):
+   BEFORE (10 options total - broken):
+   - Name (Newest/Oldest)
+   - Date Created (Newest/Oldest) - value: 'created' WRONG
+   - Last Updated (Newest/Oldest) - value: 'updated' WRONG
+   - Contact Type (Newest/Oldest) - doesn't make sense
+   - Status (Newest/Oldest) - doesn't make sense
+
+   AFTER (6 options total - working):
+   - Name (Z-A / A-Z)
+   - Date Created (Newest / Oldest) - value: 'created_at' CORRECT
+   - Last Updated (Newest / Oldest) - value: 'updated_at' CORRECT
+
+2. Fixed onChange handler (index.tsx):
+   - Now correctly parses values like 'created_at_desc'
+   - Uses lastIndexOf('_') to split field and order
+
+═══════════════════════════════════════════════════
+COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\fix-contact-sorting\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+
+- [ ] Sort dropdown shows 6 options (not 10)
+- [ ] "Name (Z-A)" sorts contacts Z to A
+- [ ] "Name (A-Z)" sorts contacts A to Z
+- [ ] "Date Created (Newest)" shows most recently created first
+- [ ] "Date Created (Oldest)" shows oldest created first
+- [ ] "Last Updated (Newest)" shows most recently updated first
+- [ ] "Last Updated (Oldest)" shows oldest updated first
+- [ ] Sorting persists when switching between grid/list views
+- [ ] Sorting works with filters applied
+
+═══════════════════════════════════════════════════
