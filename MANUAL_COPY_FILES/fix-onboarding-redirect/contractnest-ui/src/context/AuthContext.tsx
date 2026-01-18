@@ -1113,7 +1113,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Check onboarding status for Google users with tenants
         const isOnboardingComplete = await checkOnboardingStatus();
         if (!isOnboardingComplete && isNewUser) {
-          navigate('/onboarding');
+          // Check if user is owner before redirecting
+          if (userTenant?.is_owner) {
+            navigate('/onboarding');
+          } else {
+            navigate('/onboarding-pending');
+          }
         }
       }
 
