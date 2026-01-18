@@ -1,0 +1,160 @@
+═══════════════════════════════════════════════════════════════════════════════
+ FIX: TEAM INVITATION BUGS - Multiple Critical Issues
+═══════════════════════════════════════════════════════════════════════════════
+
+BUGS FIXED:
+-----------
+1. Email normalization stripping dots (Gmail compatibility issue)
+   - Root cause: express-validator's .normalizeEmail() strips dots from Gmail
+   - Fix: Custom sanitizer that only lowercases email without stripping dots
+
+2. Case-sensitive email matching causing duplicate user creation
+   - Fix: Using PostgreSQL's ilike() for case-insensitive matching
+
+3. Existing user detection returning false positives
+   - Fix: Enhanced user existence check with case-insensitive email lookup
+
+4. Phone number validation missing length constraints
+   - Fix: Added 10-15 digit validation
+
+5. Pending invitation count not auto-refreshing after operations
+   - Fix: Added separate stats fetching that refreshes after mutations
+
+6. Wrong user matched in Active tab (case mismatch)
+   - Fix: Case-insensitive email matching throughout the flow
+
+7. Existing user acceptance flow not working properly
+   - Fix: Enhanced handleExistingUserAccept with proper user_id handling
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES MODIFIED:
+═══════════════════════════════════════════════════════════════════════════════
+
+SUBMODULE: contractnest-api
+---------------------------
+  src/validators/invitation.ts
+    - Replaced .normalizeEmail() with custom sanitizer
+    - Added phone number length validation (10-15 digits)
+
+SUBMODULE: contractnest-edge
+----------------------------
+  supabase/functions/user-invitations/index.ts
+    - Added normalizeEmailForComparison() helper function
+    - createInvitation: Use ilike for case-insensitive email matching
+    - validateInvitation: Enhanced user existence check
+    - acceptInvitation: Use case-insensitive email lookup
+
+  supabase/functions/auth/handlers/registration.ts
+    - Added normalizeEmailForComparison() helper function
+    - handleRegisterWithInvitation: Case-insensitive email verification
+
+SUBMODULE: contractnest-ui
+--------------------------
+  src/hooks/useInvitations.ts
+    - Added stats state for accurate pending/accepted counts
+    - Added fetchStats() function for parallel stats fetching
+    - Stats auto-refresh after invitation operations
+
+  src/pages/auth/InvitationRegisterPage.tsx
+    - Added existing_user_email to InvitationData interface
+    - Enhanced handleExistingUserAccept with proper error handling
+    - Added redirect to login with invitation params if user_id unavailable
+
+═══════════════════════════════════════════════════════════════════════════════
+PRODUCTION CHECKLIST:
+═══════════════════════════════════════════════════════════════════════════════
+  ✅ Transaction Management: Yes - acceptInvitation has rollback logic
+  ✅ Race Condition Handling: Yes - duplicate checks before operations
+  ✅ Error Handling: Yes - try-catch with proper error messages
+  ✅ Toasts: Yes - using existing vaniToast and react-hot-toast
+  ✅ Loaders: Yes - using existing loading/submitting states
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 1: COPY FILES FOR LOCAL TESTING (PowerShell)
+═══════════════════════════════════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+───────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy API Files
+───────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\fix-team-invitation-bugs\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Write-Host "✅ API files copied!" -ForegroundColor Green
+
+STEP 3: Copy Edge Function Files
+───────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\fix-team-invitation-bugs\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Write-Host "✅ Edge function files copied!" -ForegroundColor Green
+
+STEP 4: Copy UI Files
+───────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\fix-team-invitation-bugs\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Write-Host "✅ UI files copied!" -ForegroundColor Green
+
+STEP 5: Start Dev Servers & Test
+───────────────────────────────────
+# Start API server
+cd contractnest-api
+npm run dev
+
+# In another terminal - Start UI
+cd contractnest-ui
+npm run dev
+
+# For Edge Functions - Deploy to Supabase
+cd contractnest-edge
+supabase functions deploy user-invitations
+supabase functions deploy auth
+
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════════════════════════════════
+TESTING CHECKLIST:
+═══════════════════════════════════════════════════════════════════════════════
+
+TEST 1: Email Dot Preservation
+─────────────────────────────────
+- [ ] Send invitation to john.doe@gmail.com
+- [ ] Verify email is stored as john.doe@gmail.com (NOT johndoe@gmail.com)
+- [ ] Verify invitation email received correctly
+
+TEST 2: Case-Insensitive User Detection
+─────────────────────────────────
+- [ ] Create user with John.Doe@gmail.com
+- [ ] Send invitation to john.doe@gmail.com
+- [ ] Should detect existing user (not create duplicate)
+
+TEST 3: Existing User Acceptance Flow
+─────────────────────────────────
+- [ ] Open invitation link for existing user
+- [ ] Click "Accept" button
+- [ ] Should add user to workspace (not error)
+- [ ] Verify t_user_tenants has exactly ONE record for this tenant
+
+TEST 4: Stats Auto-Refresh
+─────────────────────────────────
+- [ ] Note current "Pending" count in UI
+- [ ] Send new invitation
+- [ ] Verify "Pending" count increments immediately
+- [ ] Accept invitation
+- [ ] Verify "Pending" count decrements
+
+TEST 5: Phone Number Validation
+─────────────────────────────────
+- [ ] Try phone number with 5 digits - should fail
+- [ ] Try phone number with 10 digits - should pass
+- [ ] Try phone number with 20 digits - should fail
+
+TEST 6: Multi-Tenant Prevention
+─────────────────────────────────
+- [ ] Check t_user_tenants for any user with duplicate tenant_id
+- [ ] After accepting invitation, verify only ONE record per tenant per user
+
+═══════════════════════════════════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with commit"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════════════════════════════════
