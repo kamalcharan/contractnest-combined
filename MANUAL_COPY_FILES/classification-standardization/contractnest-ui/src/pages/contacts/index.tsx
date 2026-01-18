@@ -873,7 +873,7 @@ const ContactsPage: React.FC = () => {
                       borderColor: colors.brand.primary + '40'
                     }}
                   >
-                    {config?.icon} {config?.label}
+                    {config?.emoji} {config?.label}
                     <button
                       onClick={() => {
                         handleAdvancedFiltersChange({
