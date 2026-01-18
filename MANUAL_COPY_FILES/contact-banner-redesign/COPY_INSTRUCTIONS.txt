@@ -1,0 +1,21 @@
+═══════════════════════════════════════════════════════════════════════════════
+CONTACT BANNER REDESIGN - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+Feature: Contact View Banner Redesign - 4-Section Layout
+- Section 1: Name & Classifications
+- Section 2: Contact Channels (primary + others)
+- Section 3: Address (hidden if empty)
+- Section 4: Tags & Compliance (hidden if empty)
+
+Full theme support with all user-selectable themes.
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════════════════════════════════
+
+CONTRACTNEST-UI (1 file):
+────────────────────────────────────────────────────────────────────────────────
+1. src/components/contacts/view/cards/ContactHeaderCard.tsx [MODIFIED - Complete rewrite]
+
+═══════════════════════════════════════════════════════════════════════════════
