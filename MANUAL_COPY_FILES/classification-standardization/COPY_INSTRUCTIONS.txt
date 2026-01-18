@@ -1,0 +1,68 @@
+═══════════════════════════════════════════════════
+CLASSIFICATION STANDARDIZATION - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════
+
+Branch: classification-standardization
+Date: 2026-01-18
+
+Files Changed:
+  - contractnest-ui/src/utils/constants/contacts.ts - Added Lucide icons, colorKey, and central color functions
+  - contractnest-ui/src/components/contacts/QuickAddContactDrawer.tsx - Use Lucide icons and centralized colors
+  - contractnest-ui/src/components/contacts/forms/ContactClassificationSelector.tsx - Use constants for icons/colors
+  - contractnest-ui/src/pages/contacts/index.tsx - Refactored tabConfigs to use constants, standardized badge colors
+
+Submodules Affected: contractnest-ui
+
+═══════════════════════════════════════════════════
+CHANGES SUMMARY
+═══════════════════════════════════════════════════
+
+1. CONSTANTS FILE (contacts.ts):
+   - Added `labelPlural` property to classifications
+   - Changed `color` to `colorKey` (e.g., 'blue', 'green')
+   - Added `lucideIcon` property (string name: 'ShoppingCart', etc.)
+   - Kept `emoji` for backward compatibility
+   - Added `getClassificationThemeColor()` - maps colorKey to theme colors
+   - Added `getClassificationColors()` - returns colors for badge/filter/selector variants
+   - Added `getClassificationTailwindClasses()` - returns Tailwind classes for selectors
+
+2. INDEX.TSX (Contacts Page):
+   - tabConfigs now dynamically built from CONTACT_CLASSIFICATION_CONFIG
+   - getFilterColor() now uses centralized getClassificationColors()
+   - Classification badges on cards use getClassificationColors() with 'badge' variant
+   - Both grid and list views standardized
+
+3. CONTACTCLASSIFICATIONSELECTOR.TSX (Advanced Form):
+   - Added LUCIDE_ICON_MAP for icon lookup
+   - getClassificationIcon() uses constants lucideIcon property
+   - getColorClasses() uses getClassificationTailwindClasses() from constants
+
+4. QUICKADDCONTACTDRAWER.TSX (Quick Add Form):
+   - Added LUCIDE_ICON_MAP for icon lookup
+   - Classification buttons now show Lucide icons instead of emojis
+   - Uses getClassificationColors() for button styling
+   - Updated "Entity" text to "Contact"
+
+═══════════════════════════════════════════════════
+COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\classification-standardization\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+
+- [ ] Filter tabs show correct colors for each classification
+- [ ] Classification badges on cards match filter colors
+- [ ] Quick Add drawer shows Lucide icons (not emojis) for classifications
+- [ ] Advanced form shows Lucide icons for classifications
+- [ ] Colors are consistent in light mode
+- [ ] Colors are consistent in dark mode
+- [ ] All 5 classifications render correctly (Buyer, Seller, Vendor, Partner, Team Member)
+
+═══════════════════════════════════════════════════
