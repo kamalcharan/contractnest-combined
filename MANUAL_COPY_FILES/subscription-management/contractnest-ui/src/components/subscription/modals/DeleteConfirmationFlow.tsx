@@ -119,7 +119,7 @@ export const DeleteConfirmationFlow: React.FC<DeleteConfirmationFlowProps> = ({
             ? 'rgba(15, 23, 42, 0.95)'
             : 'rgba(255, 255, 255, 0.95)',
           backdropFilter: 'blur(20px)',
-          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)}`,
+          border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
         }}
       >
