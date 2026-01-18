@@ -1,0 +1,76 @@
+═══════════════════════════════════════════════════════════════════════════════
+                    SUBSCRIPTION MANAGEMENT - PRD DOCUMENT
+                           COPY INSTRUCTIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+FEATURE: Subscription Management & Tenant Data Lifecycle
+BRANCH: claude/init-submodules-docs-RevCC
+DATE: January 2025
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════════════════════════════════
+
+1. PRD Document
+   SOURCE: MANUAL_COPY_FILES/subscription-management/ClaudeDocumentation/subscriptions/PRD-SUBSCRIPTION-MANAGEMENT.md
+   DESTINATION: ClaudeDocumentation/subscriptions/PRD-SUBSCRIPTION-MANAGEMENT.md
+
+═══════════════════════════════════════════════════════════════════════════════
+SUBMODULES AFFECTED
+═══════════════════════════════════════════════════════════════════════════════
+
+1. ClaudeDocumentation (branch: master)
+   - New folder: subscriptions/
+   - New file: PRD-SUBSCRIPTION-MANAGEMENT.md
+
+═══════════════════════════════════════════════════════════════════════════════
+PRD SUMMARY
+═══════════════════════════════════════════════════════════════════════════════
+
+This PRD covers:
+
+1. ADMIN FEATURES:
+   - View all tenants with subscription status
+   - See buyer/seller classification
+   - See industry information
+   - Change tenant status
+   - Delete tenant data (hard delete with audit)
+
+2. TENANT OWNER FEATURES:
+   - Self-service account closure
+   - Feedback collection
+   - Data preview before deletion
+
+3. TECHNICAL APPROACH:
+   - Extensible data registry (add tables in one config file)
+   - Registry-based deletion with proper ordering
+   - Pre-delete hooks for storage cleanup
+   - Audit trail for all deletions
+
+4. INNOVATIVE UI CONCEPTS:
+   - "Command Center" admin dashboard
+   - Visual data storytelling with charts
+   - Animated counters and progress rings
+   - Multi-step deletion flow with visual journey
+   - Empathetic offboarding for tenant owners
+
+5. IMPLEMENTATION PHASES:
+   - Phase 1: Foundation (shared types, registry)
+   - Phase 2: Admin Dashboard
+   - Phase 3: Tenant Detail & Actions
+   - Phase 4: Delete Flow
+   - Phase 5: Tenant Owner Flow
+   - Phase 6: Polish & Testing
+
+═══════════════════════════════════════════════════════════════════════════════
+NEXT STEPS
+═══════════════════════════════════════════════════════════════════════════════
+
+After copying this PRD:
+
+1. Review and approve the approach
+2. Proceed with UI layer for Admin (Phase 2)
+3. Then UI layer for Tenant Owner (Phase 5)
+4. Finally API/Edge functions
+
+═══════════════════════════════════════════════════════════════════════════════
