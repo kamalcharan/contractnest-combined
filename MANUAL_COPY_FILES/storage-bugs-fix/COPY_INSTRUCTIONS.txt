@@ -1,0 +1,50 @@
+═══════════════════════════════════════════════════
+STORAGE MANAGEMENT BUG FIXES
+═══════════════════════════════════════════════════
+Branch: storage-bugs-fix
+Date: January 2025
+
+Files Changed:
+  - contractnest-ui/src/components/storage/FileActions.tsx
+    - Fixed download for cross-origin Firebase URLs (fetch + blob download)
+    - Fixed actions dropdown z-index from z-10 to z-50
+
+  - contractnest-ui/src/components/storage/FileList.tsx
+    - Added hideSearch prop to conditionally hide internal search bar
+    - Added style prop for custom styling
+    - Replaced circular spinner with VaNiLoader
+
+  - contractnest-ui/src/pages/settings/storage/categoryfiles/index.tsx
+    - Added VaNiLoader import
+    - Replaced circular spinner with VaNiLoader
+    - Passed hideSearch={true} to FileList to remove duplicate search bar
+
+Submodules Affected: contractnest-ui
+
+Production Checklist:
+  - Transaction Management: N/A (frontend only)
+  - Race Condition Handling: N/A
+  - Error Handling: Yes (download fallback to window.open)
+  - Toasts: N/A
+  - Loaders: Yes (VaNiLoader used)
+
+═══════════════════════════════════════════════════
+COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\storage-bugs-fix\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Download button works for files (should download, not open in new tab)
+- [ ] Actions dropdown menu does not overlap with other buttons
+- [ ] VaNiLoader appears during loading states (not circular spinner)
+- [ ] Only ONE search bar visible on category files page
+- [ ] Search functionality works from the top search bar
+
+═══════════════════════════════════════════════════
