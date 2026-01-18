@@ -1,0 +1,32 @@
+===============================================
+QUICK ADD COUNTRY CODE - COPY INSTRUCTIONS
+===============================================
+
+Branch: quick-add-country-code
+Date: 2026-01-18
+
+Files Changed:
+  - contractnest-ui/src/components/contacts/QuickAddContactDrawer.tsx
+    (Added country code selector for mobile/whatsapp channels)
+
+  - contractnest-ui/src/utils/constants/contacts.ts
+    (Removed name sort option - only Date Created and Last Updated remain)
+
+Submodules Affected: contractnest-ui
+
+===============================================
+CHANGES SUMMARY
+===============================================
+
+1. QuickAddContactDrawer.tsx:
+   - Added country code dropdown for mobile/whatsapp channels
+   - Drawer width increased from 500px to 580px
+   - Default channel is now Mobile with +91 (India)
+   - Phone values saved in E.164 format (+919876543210)
+   - Only digits allowed for phone input
+
+2. contacts.ts:
+   - Removed 'name' from CONTACT_SORT_OPTIONS
+   - Only Date Created and Last Updated remain
+
+===============================================
