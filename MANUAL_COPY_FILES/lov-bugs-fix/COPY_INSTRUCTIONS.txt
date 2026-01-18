@@ -23,10 +23,11 @@ CONTRACTNEST-EDGE (1 file):
 CONTRACTNEST-UI (1 file):
 --------------------------------------------------------------------------------
 1. src/pages/settings/LOV/index.tsx [MODIFIED]
-   - Added Textarea import from '@/components/ui/textarea'
-   - Changed Description field in EDIT mode from Input to Textarea
-   - Changed Description field in ADD form from Input to Textarea
-   - Added rows={2} and resize-none class for consistent sizing
+   - Removed Textarea import (was causing Form.Control context error)
+   - Hidden Description field in EDIT mode
+   - Hidden Description field in ADD form
+   - Changed column header from "Description" to "Actions"
+   - Removed description display in view mode
 
 ===============================================================================
 BUG DETAILS
@@ -67,13 +68,15 @@ Code changes (line ~202-293):
 
 BUG 2: LOV Description field not editable
 -----------------------------------------
-Issue: Description field used Input component (single-line) instead of
-       Textarea (multi-line), making it difficult to enter descriptions.
+Issue: Description field was using a Textarea component that required
+       Radix Form.Control context, causing "FormControl must be used
+       within Form" error when clicking Edit or Add buttons.
 
-Fix: Changed Description fields to use Textarea component:
-     - Import added: import { Textarea } from '@/components/ui/textarea';
-     - Edit mode (line ~680): Input -> Textarea with rows={2}
-     - Add form (line ~859): Input -> Textarea with rows={2}
-     - Added resize-none class to prevent manual resizing
+Fix: Hidden the Description field entirely per user request:
+     - Removed Textarea import
+     - Hidden description input in edit mode
+     - Hidden description input in add form
+     - Changed column header from "Description" to "Actions"
+     - Removed description display in view mode
 
 ===============================================================================
