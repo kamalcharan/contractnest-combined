@@ -1,0 +1,41 @@
+═══════════════════════════════════════════════════════════════════════════════
+BUSINESS PROFILE VALIDATION FIX - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+BUG FIXED: "business_name is required" error during onboarding/profile save
+
+ROOT CAUSE:
+- BusinessPreferencesStep was using useEffect to sync business_name to formData
+- This caused race conditions where form submitted before state sync completed
+
+FILES TO COPY:
+═══════════════════════════════════════════════════════════════════════════════
+
+1. contractnest-ui/src/hooks/useTenantProfile.ts
+   - Added whitespace validation for business_name
+   - Added minimum length validation (2+ chars after trimming)
+   - Trim business_name before sending to API
+
+2. contractnest-ui/src/pages/onboarding/steps/BusinessPreferencesStep.tsx
+   - Changed handleBusinessNameChange to sync directly to formData
+   - Removed redundant useEffect that caused race condition
+
+COPY COMMANDS (PowerShell):
+═══════════════════════════════════════════════════════════════════════════════
+
+Copy-Item "MANUAL_COPY_FILES\business-profile-fix\contractnest-ui\src\hooks\useTenantProfile.ts" -Destination "contractnest-ui\src\hooks\useTenantProfile.ts" -Force
+
+Copy-Item "MANUAL_COPY_FILES\business-profile-fix\contractnest-ui\src\pages\onboarding\steps\BusinessPreferencesStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\BusinessPreferencesStep.tsx" -Force
+
+SUBMODULES AFFECTED:
+═══════════════════════════════════════════════════════════════════════════════
+- contractnest-ui
+
+COMMIT MESSAGE:
+═══════════════════════════════════════════════════════════════════════════════
+fix: resolve business profile validation race condition
+
+- Fix BusinessPreferencesStep to sync business_name directly on change
+- Improve validation to check for whitespace-only strings
+- Add minimum length validation (2+ chars after trimming)
+- Trim business_name before sending to API
