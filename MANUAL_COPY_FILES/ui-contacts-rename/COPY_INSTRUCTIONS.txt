@@ -1,0 +1,38 @@
+===============================================================================
+UI CHANGES 1-7: Contacts Module Rename & Enhancements
+===============================================================================
+
+CHANGES APPLIED:
+1. Removed delete (Trash2) icon from contact cards (grid and list view)
+2. Renamed heading "Entities" to "Contacts"
+3. Updated help modal topics to reference "Contacts" instead of "Entities"
+4. Renamed "+Add Entity" button to "+Add Contact"
+5. Filter master data source analyzed (hardcoded in tabConfigs, counts from useContactStats API)
+6. Themed all card icons with colors.utility.primaryText
+7. Added primary contact indicator (star icon) next to primary channel
+
+ADDITIONAL TEXT CHANGES:
+- All references to "entity/entities" changed to "contact/contacts"
+- Search placeholder, pagination, empty states, toasts, error messages updated
+- Quick Add drawer title updated
+
+===============================================================================
+FILES TO COPY
+===============================================================================
+
+1. contractnest-ui/src/pages/contacts/index.tsx
+   Source: MANUAL_COPY_FILES/ui-contacts-rename/contractnest-ui/src/pages/contacts/index.tsx
+   Target: contractnest-ui/src/pages/contacts/index.tsx
+
+2. contractnest-ui/src/components/contacts/QuickAddContactDrawer.tsx
+   Source: MANUAL_COPY_FILES/ui-contacts-rename/contractnest-ui/src/components/contacts/QuickAddContactDrawer.tsx
+   Target: contractnest-ui/src/components/contacts/QuickAddContactDrawer.tsx
+
+===============================================================================
+SUBMODULES AFFECTED
+===============================================================================
+- contractnest-ui
+
+===============================================================================
+NOTE: Classification colors (UI Change 8) will be addressed in next commit
+===============================================================================
