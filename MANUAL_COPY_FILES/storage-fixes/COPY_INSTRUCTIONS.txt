@@ -1,0 +1,40 @@
+═══════════════════════════════════════════════════════════════════════════════
+STORAGE FIXES - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+FIXES INCLUDED:
+1. Removed "Multiple Files" upload option - now just a simple "Upload File" button
+2. Removed '...' (3 dots / MoreHorizontal) menu from file actions
+   - Now only shows: Download, Preview (for images/PDFs), Delete
+
+FILES TO COPY:
+═══════════════════════════════════════════════════════════════════════════════
+
+FRONTEND (contractnest-ui):
+1. src/pages/settings/storage/categoryfiles/index.tsx
+   - Replaced dropdown menu with simple "Upload File" button
+   - Removed dropdown imports
+
+2. src/components/storage/FileActions.tsx
+   - Removed MoreHorizontal ('...') button and dropdown menu
+   - Simplified to just: Download, Preview, Delete actions
+
+COPY COMMANDS (PowerShell):
+═══════════════════════════════════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Frontend files
+Copy-Item "MANUAL_COPY_FILES\storage-fixes\contractnest-ui\src\pages\settings\storage\categoryfiles\index.tsx" -Destination "contractnest-ui\src\pages\settings\storage\categoryfiles\index.tsx" -Force
+
+Copy-Item "MANUAL_COPY_FILES\storage-fixes\contractnest-ui\src\components\storage\FileActions.tsx" -Destination "contractnest-ui\src\components\storage\FileActions.tsx" -Force
+
+Write-Host "✅ All files copied!" -ForegroundColor Green
+
+SUBMODULES AFFECTED:
+═══════════════════════════════════════════════════════════════════════════════
+- contractnest-ui
+
+COMMIT MESSAGE:
+═══════════════════════════════════════════════════════════════════════════════
+UI: "fix: remove multiple upload option and simplify file actions menu"
