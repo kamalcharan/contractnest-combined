@@ -238,7 +238,7 @@ const mockDataSummary: TenantDataSummary = {
 const SubscriptionManagementPage: React.FC = () => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
-  const { userSession } = useAuth();
+  const { currentTenant } = useAuth();
 
   // State
   const [isLoading, setIsLoading] = useState(true);
@@ -264,7 +264,7 @@ const SubscriptionManagementPage: React.FC = () => {
   const [tenantToDelete, setTenantToDelete] = useState<TenantListItem | null>(null);
 
   // Check admin access
-  const isAdmin = userSession?.user?.user_metadata?.isAdmin || false;
+  const isAdmin = Boolean(currentTenant?.is_admin);
 
   // Load data
   const loadData = useCallback(async () => {
