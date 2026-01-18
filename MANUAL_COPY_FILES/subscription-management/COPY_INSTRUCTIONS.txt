@@ -27,7 +27,11 @@ This package includes the complete UI layer for Admin Subscription Management:
 3. ADMIN PAGE
    - subscription-management/index.tsx (main dashboard)
 
-4. PRD DOCUMENT
+4. ROUTING & NAVIGATION
+   - industryMenus.ts (updated menu path)
+   - App.tsx.patch (route instructions)
+
+5. PRD DOCUMENT
    - PRD-SUBSCRIPTION-MANAGEMENT.md (in ClaudeDocumentation)
 
 ═══════════════════════════════════════════════════════════════════════════════
@@ -75,11 +79,23 @@ DESTINATION: contractnest-ui/src/
    SOURCE: contractnest-ui/src/pages/admin/subscription-management/index.tsx
    DEST:   contractnest-ui/src/pages/admin/subscription-management/index.tsx
 
-9. Service URLs (MANUAL MERGE REQUIRED)
-   SOURCE: contractnest-ui/src/services/serviceURLs.additions.ts
-   ACTION: Manually add the endpoints to existing serviceURLs.ts
+9. Navigation Menu (REPLACE EXISTING)
+   SOURCE: contractnest-ui/src/utils/constants/industryMenus.ts
+   DEST:   contractnest-ui/src/utils/constants/industryMenus.ts
+   NOTE:   This updates the menu path from /implementation/subscription-management
+           to /admin/subscription-management
 
-10. PRD Document
+10. App.tsx Route (MANUAL EDIT REQUIRED)
+    SOURCE: contractnest-ui/src/App.tsx.patch
+    ACTION: Follow instructions in the patch file to add:
+            a) Import statement for SubscriptionManagementPage
+            b) Route for /admin/subscription-management
+
+11. Service URLs (MANUAL MERGE REQUIRED)
+    SOURCE: contractnest-ui/src/services/serviceURLs.additions.ts
+    ACTION: Manually add the endpoints to existing serviceURLs.ts
+
+12. PRD Document
     SOURCE: ClaudeDocumentation/subscriptions/PRD-SUBSCRIPTION-MANAGEMENT.md
     DEST:   ClaudeDocumentation/subscriptions/PRD-SUBSCRIPTION-MANAGEMENT.md
 
@@ -91,6 +107,8 @@ SUBMODULES AFFECTED
    - New folder: src/components/subscription/
    - New folder: src/pages/admin/subscription-management/
    - New file: src/types/tenantManagement.ts
+   - Modified: src/utils/constants/industryMenus.ts (menu path updated)
+   - Modified: src/App.tsx (add route)
    - Modified: src/services/serviceURLs.ts (add endpoints)
 
 2. ClaudeDocumentation (branch: master)
@@ -98,26 +116,27 @@ SUBMODULES AFFECTED
    - New file: PRD-SUBSCRIPTION-MANAGEMENT.md
 
 ═══════════════════════════════════════════════════════════════════════════════
-ADDITIONAL SETUP REQUIRED
+APP.TSX MANUAL EDIT INSTRUCTIONS
 ═══════════════════════════════════════════════════════════════════════════════
 
-1. Add route to router (e.g., in App.tsx or routes config):
+STEP 1: Add import (after line 191 - after Contacts pages imports):
 
+   // Admin - Subscription Management
+   import SubscriptionManagementPage from './pages/admin/subscription-management';
+
+STEP 2: Add route (after line 628 - after VaNi routes, before Tenant routes):
+
+   {/* Admin - Subscription Management */}
    <Route
      path="/admin/subscription-management"
-     element={<SubscriptionManagementPage />}
-   />
-
-2. Add menu item to admin navigation (if applicable):
-
-   {
-     label: 'Subscription Management',
-     path: '/admin/subscription-management',
-     icon: CreditCard, // from lucide-react
-     adminOnly: true
-   }
-
-3. Update serviceURLs.ts with the endpoints from serviceURLs.additions.ts
+     element={
+       <ProtectedRoute>
+         <MainLayout />
+       </ProtectedRoute>
+     }
+   >
+     <Route index element={<SubscriptionManagementPage />} />
+   </Route>
 
 ═══════════════════════════════════════════════════════════════════════════════
 COMPONENT FEATURES
@@ -150,11 +169,12 @@ NEXT STEPS
 ═══════════════════════════════════════════════════════════════════════════════
 
 1. Copy files to contractnest-ui
-2. Update serviceURLs.ts with new endpoints
-3. Add route and navigation
-4. Test with mock data
-5. Implement API endpoints in contractnest-api
-6. Connect UI to real API
-7. Build Tenant Owner flow (Phase 5)
+2. Replace industryMenus.ts
+3. Edit App.tsx with route and import
+4. Update serviceURLs.ts with new endpoints (optional for now)
+5. Test with mock data
+6. Implement API endpoints in contractnest-api
+7. Connect UI to real API
+8. Build Tenant Owner flow (Phase 5)
 
 ═══════════════════════════════════════════════════════════════════════════════

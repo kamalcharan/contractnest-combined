@@ -1,0 +1,51 @@
+// ═══════════════════════════════════════════════════════════════════════════════
+// APP.TSX PATCH INSTRUCTIONS
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// ADD THE FOLLOWING IMPORT after line 186 (after Contacts pages imports):
+//
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Admin - Subscription Management
+import SubscriptionManagementPage from './pages/admin/subscription-management';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ADD THE FOLLOWING ROUTE after the VaNi routes section (after line 628)
+// This should be added before the Tenant - Pricing Plans section
+// ═══════════════════════════════════════════════════════════════════════════════
+
+          {/* Admin - Subscription Management */}
+          <Route
+            path="/admin/subscription-management"
+            element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<SubscriptionManagementPage />} />
+          </Route>
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// COMPLETE CONTEXT: The route should be placed around line 630,
+// after the VaNi routes closing tag and before the Tenant Pricing Plans routes:
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+//           </Route>  {/* End of VaNi Routes */}
+//
+//           {/* Admin - Subscription Management */}      <-- ADD HERE
+//           <Route
+//             path="/admin/subscription-management"
+//             element={
+//               <ProtectedRoute>
+//                 <MainLayout />
+//               </ProtectedRoute>
+//             }
+//           >
+//             <Route index element={<SubscriptionManagementPage />} />
+//           </Route>
+//
+//           {/* Tenant - Pricing Plans & Subscription */}
+//           <Route
+//             path="/businessmodel/tenants/pricing-plans"
+// ...
