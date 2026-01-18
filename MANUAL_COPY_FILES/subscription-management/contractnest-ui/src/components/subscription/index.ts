@@ -15,3 +15,6 @@ export * from './filters';
 
 // Modals
 export * from './modals';
+
+// Owner (Tenant Owner components)
+export * from './owner';

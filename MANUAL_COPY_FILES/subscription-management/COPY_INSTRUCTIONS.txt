@@ -1,9 +1,9 @@
 ═══════════════════════════════════════════════════════════════════════════════
-            SUBSCRIPTION MANAGEMENT - ADMIN UI LAYER
+            SUBSCRIPTION MANAGEMENT - COMPLETE UI LAYER
                      COPY INSTRUCTIONS
 ═══════════════════════════════════════════════════════════════════════════════
 
-FEATURE: Admin Subscription Management Dashboard
+FEATURE: Subscription Management (Admin + Tenant Owner)
 BRANCH: claude/init-submodules-docs-RevCC
 DATE: January 2025
 DESIGN: Glassmorphism (following contacts UI patterns)
@@ -12,134 +12,144 @@ DESIGN: Glassmorphism (following contacts UI patterns)
 WHAT'S INCLUDED
 ═══════════════════════════════════════════════════════════════════════════════
 
-This package includes the complete UI layer for Admin Subscription Management:
+This package includes the complete UI layer for Subscription Management:
 
-1. SHARED TYPES
-   - tenantManagement.ts (all TypeScript interfaces)
+PHASE 1: ADMIN UI
+─────────────────────────────────
+1. Admin Dashboard (/admin/subscription-management)
+   - Platform Pulse stats with animated counters
+   - Tenant list with filters (status, subscription, type, industry)
+   - Grid and List view modes
+   - Tenant detail drawer
+   - Multi-step delete confirmation flow
 
-2. SHARED COMPONENTS (reusable for Admin & Tenant Owner)
-   - Badges: SubscriptionStatusBadge, TenantStatusBadge, TenantTypeBadge
-   - Cards: StatCard, TenantCard
-   - Data Viz: AnimatedCounter, DataProgressBar, DataCategoryCard
-   - Filters: TenantFilters
-   - Modals: TenantDetailDrawer, DeleteConfirmationFlow
+PHASE 2: TENANT OWNER UI
+─────────────────────────────────
+2. Close Account Page (/settings/business-profile/close-account)
+   - Empathetic "We're sorry to see you go" messaging
+   - Optional feedback collection
+   - Data summary preview
+   - Multi-step delete confirmation
 
-3. ADMIN PAGE
-   - subscription-management/index.tsx (main dashboard)
+3. Close Account Section (embeddable component)
+   - Can be added to Business Profile page
+   - Compact version of close account flow
 
-4. ROUTING & NAVIGATION
-   - industryMenus.ts (updated menu path)
-   - App.tsx.patch (route instructions)
-
-5. PRD DOCUMENT
-   - PRD-SUBSCRIPTION-MANAGEMENT.md (in ClaudeDocumentation)
-
-═══════════════════════════════════════════════════════════════════════════════
-FILES TO COPY
-═══════════════════════════════════════════════════════════════════════════════
-
-DESTINATION: contractnest-ui/src/
-
-1. Types
-   SOURCE: contractnest-ui/src/types/tenantManagement.ts
-   DEST:   contractnest-ui/src/types/tenantManagement.ts
-
-2. Badge Components
-   SOURCE: contractnest-ui/src/components/subscription/badges/
-   DEST:   contractnest-ui/src/components/subscription/badges/
-   FILES:  SubscriptionStatusBadge.tsx, TenantStatusBadge.tsx,
-           TenantTypeBadge.tsx, index.ts
-
-3. Card Components
-   SOURCE: contractnest-ui/src/components/subscription/cards/
-   DEST:   contractnest-ui/src/components/subscription/cards/
-   FILES:  StatCard.tsx, TenantCard.tsx, index.ts
-
-4. Data Visualization Components
-   SOURCE: contractnest-ui/src/components/subscription/data-viz/
-   DEST:   contractnest-ui/src/components/subscription/data-viz/
-   FILES:  AnimatedCounter.tsx, DataProgressBar.tsx,
-           DataCategoryCard.tsx, index.ts
-
-5. Filter Components
-   SOURCE: contractnest-ui/src/components/subscription/filters/
-   DEST:   contractnest-ui/src/components/subscription/filters/
-   FILES:  TenantFilters.tsx, index.ts
-
-6. Modal Components
-   SOURCE: contractnest-ui/src/components/subscription/modals/
-   DEST:   contractnest-ui/src/components/subscription/modals/
-   FILES:  TenantDetailDrawer.tsx, DeleteConfirmationFlow.tsx, index.ts
-
-7. Main Barrel Export
-   SOURCE: contractnest-ui/src/components/subscription/index.ts
-   DEST:   contractnest-ui/src/components/subscription/index.ts
-
-8. Admin Page
-   SOURCE: contractnest-ui/src/pages/admin/subscription-management/index.tsx
-   DEST:   contractnest-ui/src/pages/admin/subscription-management/index.tsx
-
-9. Navigation Menu (REPLACE EXISTING)
-   SOURCE: contractnest-ui/src/utils/constants/industryMenus.ts
-   DEST:   contractnest-ui/src/utils/constants/industryMenus.ts
-   NOTE:   This updates the menu path from /implementation/subscription-management
-           to /admin/subscription-management
-
-10. App.tsx Route (MANUAL EDIT REQUIRED)
-    SOURCE: contractnest-ui/src/App.tsx.patch
-    ACTION: Follow instructions in the patch file to add:
-            a) Import statement for SubscriptionManagementPage
-            b) Route for /admin/subscription-management
-
-11. Service URLs (MANUAL MERGE REQUIRED)
-    SOURCE: contractnest-ui/src/services/serviceURLs.additions.ts
-    ACTION: Manually add the endpoints to existing serviceURLs.ts
-
-12. PRD Document
-    SOURCE: ClaudeDocumentation/subscriptions/PRD-SUBSCRIPTION-MANAGEMENT.md
-    DEST:   ClaudeDocumentation/subscriptions/PRD-SUBSCRIPTION-MANAGEMENT.md
+SHARED COMPONENTS
+─────────────────────────────────
+- Badges: SubscriptionStatusBadge, TenantStatusBadge, TenantTypeBadge
+- Cards: StatCard, TenantCard
+- Data Viz: AnimatedCounter, DataProgressBar, DataCategoryCard
+- Filters: TenantFilters
+- Modals: TenantDetailDrawer, DeleteConfirmationFlow
+- Owner: CloseAccountSection
 
 ═══════════════════════════════════════════════════════════════════════════════
-SUBMODULES AFFECTED
+QUICK START - COPY COMMANDS (Windows PowerShell)
 ═══════════════════════════════════════════════════════════════════════════════
 
-1. contractnest-ui (branch: main)
-   - New folder: src/components/subscription/
-   - New folder: src/pages/admin/subscription-management/
-   - New file: src/types/tenantManagement.ts
-   - Modified: src/utils/constants/industryMenus.ts (menu path updated)
-   - Modified: src/App.tsx (add route)
-   - Modified: src/services/serviceURLs.ts (add endpoints)
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull origin claude/init-submodules-docs-RevCC
 
-2. ClaudeDocumentation (branch: master)
-   - New folder: subscriptions/
-   - New file: PRD-SUBSCRIPTION-MANAGEMENT.md
+# Create directories
+New-Item -ItemType Directory -Force -Path "contractnest-ui\src\types"
+New-Item -ItemType Directory -Force -Path "contractnest-ui\src\components\subscription\badges"
+New-Item -ItemType Directory -Force -Path "contractnest-ui\src\components\subscription\cards"
+New-Item -ItemType Directory -Force -Path "contractnest-ui\src\components\subscription\data-viz"
+New-Item -ItemType Directory -Force -Path "contractnest-ui\src\components\subscription\filters"
+New-Item -ItemType Directory -Force -Path "contractnest-ui\src\components\subscription\modals"
+New-Item -ItemType Directory -Force -Path "contractnest-ui\src\components\subscription\owner"
+New-Item -ItemType Directory -Force -Path "contractnest-ui\src\pages\admin\subscription-management"
+New-Item -ItemType Directory -Force -Path "contractnest-ui\src\pages\settings\business-profile\close-account"
 
-═══════════════════════════════════════════════════════════════════════════════
-APP.TSX MANUAL EDIT INSTRUCTIONS
-═══════════════════════════════════════════════════════════════════════════════
+# Copy all files
+Copy-Item "MANUAL_COPY_FILES\subscription-management\contractnest-ui\src\types\tenantManagement.ts" -Destination "contractnest-ui\src\types\" -Force
+Copy-Item "MANUAL_COPY_FILES\subscription-management\contractnest-ui\src\components\subscription\badges\*" -Destination "contractnest-ui\src\components\subscription\badges\" -Force
+Copy-Item "MANUAL_COPY_FILES\subscription-management\contractnest-ui\src\components\subscription\cards\*" -Destination "contractnest-ui\src\components\subscription\cards\" -Force
+Copy-Item "MANUAL_COPY_FILES\subscription-management\contractnest-ui\src\components\subscription\data-viz\*" -Destination "contractnest-ui\src\components\subscription\data-viz\" -Force
+Copy-Item "MANUAL_COPY_FILES\subscription-management\contractnest-ui\src\components\subscription\filters\*" -Destination "contractnest-ui\src\components\subscription\filters\" -Force
+Copy-Item "MANUAL_COPY_FILES\subscription-management\contractnest-ui\src\components\subscription\modals\*" -Destination "contractnest-ui\src\components\subscription\modals\" -Force
+Copy-Item "MANUAL_COPY_FILES\subscription-management\contractnest-ui\src\components\subscription\owner\*" -Destination "contractnest-ui\src\components\subscription\owner\" -Force
+Copy-Item "MANUAL_COPY_FILES\subscription-management\contractnest-ui\src\components\subscription\index.ts" -Destination "contractnest-ui\src\components\subscription\" -Force
+Copy-Item "MANUAL_COPY_FILES\subscription-management\contractnest-ui\src\pages\admin\subscription-management\index.tsx" -Destination "contractnest-ui\src\pages\admin\subscription-management\" -Force
+Copy-Item "MANUAL_COPY_FILES\subscription-management\contractnest-ui\src\pages\settings\business-profile\close-account\index.tsx" -Destination "contractnest-ui\src\pages\settings\business-profile\close-account\" -Force
 
-STEP 1: Add import (after line 191 - after Contacts pages imports):
+# Replace App.tsx and industryMenus.ts (includes all routes)
+Copy-Item "MANUAL_COPY_FILES\subscription-management\contractnest-ui\src\App.tsx" -Destination "contractnest-ui\src\" -Force
+Copy-Item "MANUAL_COPY_FILES\subscription-management\contractnest-ui\src\utils\constants\industryMenus.ts" -Destination "contractnest-ui\src\utils\constants\" -Force
 
-   // Admin - Subscription Management
-   import SubscriptionManagementPage from './pages/admin/subscription-management';
-
-STEP 2: Add route (after line 628 - after VaNi routes, before Tenant routes):
-
-   {/* Admin - Subscription Management */}
-   <Route
-     path="/admin/subscription-management"
-     element={
-       <ProtectedRoute>
-         <MainLayout />
-       </ProtectedRoute>
-     }
-   >
-     <Route index element={<SubscriptionManagementPage />} />
-   </Route>
+Write-Host "✅ All files copied!" -ForegroundColor Green
 
 ═══════════════════════════════════════════════════════════════════════════════
-COMPONENT FEATURES
+FILES INCLUDED
+═══════════════════════════════════════════════════════════════════════════════
+
+TYPES:
+  - src/types/tenantManagement.ts
+
+COMPONENTS:
+  - src/components/subscription/badges/SubscriptionStatusBadge.tsx
+  - src/components/subscription/badges/TenantStatusBadge.tsx
+  - src/components/subscription/badges/TenantTypeBadge.tsx
+  - src/components/subscription/badges/index.ts
+  - src/components/subscription/cards/StatCard.tsx
+  - src/components/subscription/cards/TenantCard.tsx
+  - src/components/subscription/cards/index.ts
+  - src/components/subscription/data-viz/AnimatedCounter.tsx
+  - src/components/subscription/data-viz/DataProgressBar.tsx
+  - src/components/subscription/data-viz/DataCategoryCard.tsx
+  - src/components/subscription/data-viz/index.ts
+  - src/components/subscription/filters/TenantFilters.tsx
+  - src/components/subscription/filters/index.ts
+  - src/components/subscription/modals/TenantDetailDrawer.tsx
+  - src/components/subscription/modals/DeleteConfirmationFlow.tsx
+  - src/components/subscription/modals/index.ts
+  - src/components/subscription/owner/CloseAccountSection.tsx
+  - src/components/subscription/owner/index.ts
+  - src/components/subscription/index.ts
+
+PAGES:
+  - src/pages/admin/subscription-management/index.tsx (Admin Dashboard)
+  - src/pages/settings/business-profile/close-account/index.tsx (Tenant Close Account)
+
+ROUTING:
+  - src/App.tsx (complete file with all routes)
+  - src/utils/constants/industryMenus.ts (navigation menu)
+
+═══════════════════════════════════════════════════════════════════════════════
+ROUTES ADDED
+═══════════════════════════════════════════════════════════════════════════════
+
+ADMIN:
+  /admin/subscription-management     → Admin Subscription Dashboard
+
+TENANT OWNER:
+  /settings/business-profile/close-account → Close Account Page
+
+═══════════════════════════════════════════════════════════════════════════════
+NAVIGATION
+═══════════════════════════════════════════════════════════════════════════════
+
+ADMIN ACCESS:
+  Implementation Toolkit → Subscription Management
+
+TENANT OWNER ACCESS:
+  Settings → Business Profile → Close Account
+  (Or add CloseAccountSection component to existing Business Profile page)
+
+═══════════════════════════════════════════════════════════════════════════════
+OPTIONAL: EMBED IN BUSINESS PROFILE
+═══════════════════════════════════════════════════════════════════════════════
+
+To add the Close Account section to an existing Business Profile page:
+
+import { CloseAccountSection } from '../../components/subscription/owner';
+
+// In your Business Profile component:
+<CloseAccountSection onAccountClosed={() => navigate('/login')} />
+
+═══════════════════════════════════════════════════════════════════════════════
+FEATURES
 ═══════════════════════════════════════════════════════════════════════════════
 
 GLASSMORPHISM STYLING:
@@ -149,7 +159,7 @@ GLASSMORPHISM STYLING:
 - Gradient overlays for headers
 - Dark mode support throughout
 
-FEATURES IMPLEMENTED:
+ADMIN FEATURES:
 - Platform Pulse stats cards (animated counters)
 - Quick filter chips (All, Active, Trial, Expiring, Suspended)
 - Advanced filters (status, subscription, type, industry)
@@ -157,24 +167,30 @@ FEATURES IMPLEMENTED:
 - Grid and List view modes
 - Tenant detail drawer with data summary
 - Multi-step delete confirmation flow
-- Theme-aware colors using useTheme() hook
 
-MOCK DATA:
-- The page includes mock data for development
-- Replace with actual API calls when backend is ready
-- Look for TODO comments in the code
+TENANT OWNER FEATURES:
+- Empathetic header messaging
+- Feedback collection (optional)
+- Data summary with category counts
+- Multi-step delete confirmation
+- Type-to-confirm safety mechanism
+
+═══════════════════════════════════════════════════════════════════════════════
+MOCK DATA
+═══════════════════════════════════════════════════════════════════════════════
+
+Both pages include mock data for development. Replace with actual API calls
+when backend is ready. Look for TODO comments in the code.
 
 ═══════════════════════════════════════════════════════════════════════════════
 NEXT STEPS
 ═══════════════════════════════════════════════════════════════════════════════
 
-1. Copy files to contractnest-ui
-2. Replace industryMenus.ts
-3. Edit App.tsx with route and import
-4. Update serviceURLs.ts with new endpoints (optional for now)
-5. Test with mock data
-6. Implement API endpoints in contractnest-api
-7. Connect UI to real API
-8. Build Tenant Owner flow (Phase 5)
+1. ✅ Copy files to contractnest-ui
+2. ✅ Test Admin dashboard at /admin/subscription-management
+3. ✅ Test Tenant close account at /settings/business-profile/close-account
+4. Implement API endpoints in contractnest-api
+5. Connect UI to real API (replace mock data)
+6. Add link to Close Account from Business Profile page
 
 ═══════════════════════════════════════════════════════════════════════════════

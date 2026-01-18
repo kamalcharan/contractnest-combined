@@ -153,6 +153,7 @@ import BusinessProfilePage from './pages/settings/business-profile';
 import EditBusinessProfilePage from './pages/settings/business-profile/edit';
 import OnboardingBusinessProfilePage from './pages/onboarding/business-profile';
 import SmartProfilePage from './pages/settings/business-profile/smart-profile';
+import CloseAccountPage from './pages/settings/business-profile/close-account';
 
 
 // Integration pages
@@ -523,6 +524,7 @@ const AppContent: React.FC = () => {
             <Route path="business-profile" element={<BusinessProfilePage />} />
             <Route path="business-profile/edit" element={<EditBusinessProfilePage />} />
             <Route path="business-profile/smart-profile" element={<SmartProfilePage />} />
+            <Route path="business-profile/close-account" element={<CloseAccountPage />} />
 
 
             {/* Storage Settings */}
