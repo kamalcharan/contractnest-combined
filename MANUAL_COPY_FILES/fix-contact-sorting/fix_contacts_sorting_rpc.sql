@@ -73,7 +73,7 @@ BEGIN
     )
     AND (
       p_classifications IS NULL
-      OR c.classifications && p_classifications
+      OR c.classifications ?| p_classifications
     );
 
   -- Build and execute dynamic query for contacts with sorting
@@ -141,7 +141,7 @@ BEGIN
       )
       AND (
         $8 IS NULL
-        OR c.classifications && $8
+        OR c.classifications ?| $8
       )
     ORDER BY %s %s NULLS LAST
     LIMIT $9 OFFSET $10',
