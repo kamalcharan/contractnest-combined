@@ -1,0 +1,34 @@
+═══════════════════════════════════════════════════════════════════════════════
+PREFERENCES FIX - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+Fix: Theme Preferences 500 Error - Variable Shadowing Bug
+Issue: Variable 'data' was being re-declared in destructuring, causing
+       "Cannot redeclare block-scoped variable" runtime error.
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════════════════════════════════
+
+CONTRACTNEST-EDGE (1 file):
+────────────────────────────────────────────────────────────────────────────────
+1. supabase/functions/auth/handlers/preferences.ts [FIX - Variable shadowing]
+   - Changed: `const { data, error: updateError }` to `const { data: profileData, error: updateError }`
+   - Changed: `updatedProfile = data` to `updatedProfile = profileData`
+
+═══════════════════════════════════════════════════════════════════════════════
+BUG DETAILS
+═══════════════════════════════════════════════════════════════════════════════
+
+The function parameter 'data' was being shadowed by destructuring assignment:
+
+BEFORE (Line 44):
+  const { data, error: updateError } = await supabaseAdmin...
+
+AFTER (Line 44):
+  const { data: profileData, error: updateError } = await supabaseAdmin...
+
+This caused a JavaScript runtime error which resulted in 500 Internal Server Error
+when trying to change theme or dark mode settings.
+
+═══════════════════════════════════════════════════════════════════════════════
