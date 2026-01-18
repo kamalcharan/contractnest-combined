@@ -1,0 +1,31 @@
+═══════════════════════════════════════════════════════════════════════════════
+BUG #18 FIX: Corporate Buyer + Phone Channel fails (400 Bad Request)
+═══════════════════════════════════════════════════════════════════════════════
+
+ROOT CAUSE:
+- CHANNEL_TYPES array was missing 'phone' (landline) in both API and Edge layers
+- UI allows 'phone' channel type, but backend validation rejected it as invalid
+- Error: "Channel X: Invalid channel type"
+
+FIX APPLIED:
+- Added 'phone' to CHANNEL_TYPES array in API middleware
+- Added 'phone' to CHANNEL_TYPES array in Edge function
+- Added phone number validation for 'phone' channel type (same as 'mobile')
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════════════════════════════════
+
+1. contractnest-api/src/middleware/contactValidators.ts
+   Source: MANUAL_COPY_FILES/fix-phone-channel-type/contractnest-api/src/middleware/contactValidators.ts
+   Target: contractnest-api/src/middleware/contactValidators.ts
+
+2. contractnest-edge/supabase/functions/_shared/contacts/contactValidation.ts
+   Source: MANUAL_COPY_FILES/fix-phone-channel-type/contractnest-edge/supabase/functions/_shared/contacts/contactValidation.ts
+   Target: contractnest-edge/supabase/functions/_shared/contacts/contactValidation.ts
+
+═══════════════════════════════════════════════════════════════════════════════
+SUBMODULES AFFECTED
+═══════════════════════════════════════════════════════════════════════════════
+- contractnest-api
+- contractnest-edge
