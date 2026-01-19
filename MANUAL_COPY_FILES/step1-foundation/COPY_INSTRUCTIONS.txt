@@ -1,0 +1,88 @@
+═══════════════════════════════════════════════════════════════════════════════
+STEP 1: FOUNDATION & NAVIGATION - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════════════════════════════════
+Date: January 2025
+Purpose: Business Model Phase 4 - Step 1
+- Add X-Product category to master data
+- Update product dropdown in plan creation
+- Enable Subscription menu for tenants
+═══════════════════════════════════════════════════════════════════════════════
+
+SUBMODULES AFFECTED:
+────────────────────
+1. contractnest-edge (SQL migration)
+2. contractnest-ui (3 files)
+
+═══════════════════════════════════════════════════════════════════════════════
+FILE MAPPINGS
+═══════════════════════════════════════════════════════════════════════════════
+
+FILE 1: SQL Migration (X-Product Category Seed)
+───────────────────────────────────────────────
+FROM: step1-foundation/contractnest-edge/supabase/migrations/business-model-v2/007_seed_x_product_category.sql
+TO:   contractnest-edge/supabase/migrations/business-model-v2/007_seed_x_product_category.sql
+
+PURPOSE: Creates X-Product category in m_category_master with:
+  - contractnest (ContractNest)
+  - familyknows (FamilyKnows)
+  - kaladristi (Kaladristi)
+
+NOTE: Run this SQL directly in Supabase SQL Editor after copying
+
+───────────────────────────────────────────────────────────────────────────────
+
+FILE 2: useProductMasterdata.ts (Updated Hook)
+───────────────────────────────────────────────
+FROM: step1-foundation/contractnest-ui/src/hooks/queries/useProductMasterdata.ts
+TO:   contractnest-ui/src/hooks/queries/useProductMasterdata.ts
+
+CHANGES:
+  - Added X_PRODUCT: 'X-Product' to CATEGORY_NAMES constant
+  - Added useXProductDropdown() hook for product selection
+
+───────────────────────────────────────────────────────────────────────────────
+
+FILE 3: BasicInfoStep.tsx (Updated Component)
+───────────────────────────────────────────────
+FROM: step1-foundation/contractnest-ui/src/components/businessmodel/planform/BasicInfoStep.tsx
+TO:   contractnest-ui/src/components/businessmodel/planform/BasicInfoStep.tsx
+
+CHANGES:
+  - Replaced useProducts() hook with useXProductDropdown()
+  - Updated product dropdown to use new data structure
+  - Product values now match x-product header exactly
+
+───────────────────────────────────────────────────────────────────────────────
+
+FILE 4: settingsMenus.ts (Updated Menu Config)
+───────────────────────────────────────────────
+FROM: step1-foundation/contractnest-ui/src/utils/constants/settingsMenus.ts
+TO:   contractnest-ui/src/utils/constants/settingsMenus.ts
+
+CHANGES:
+  - Enabled Subscription menu section (was commented out)
+  - Added GROUP_SUBSCRIPTION to groupNames array
+  - Updated routes to use existing subscription pages
+
+═══════════════════════════════════════════════════════════════════════════════
+POST-COPY ACTIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Run SQL migration in Supabase:
+   - Go to Supabase Dashboard → SQL Editor
+   - Copy contents of 007_seed_x_product_category.sql
+   - Execute the SQL
+   - Verify with: SELECT * FROM m_category_details cd
+                  JOIN m_category_master cm ON cd.category_id = cm.id
+                  WHERE cm.category_name = 'X-Product';
+
+2. Restart dev server:
+   cd contractnest-ui && npm run dev
+
+3. Test:
+   - Go to Settings → Business Model → Pricing Plans → Create
+   - Verify product dropdown shows: ContractNest, FamilyKnows, Kaladristi
+   - Go to Settings (as tenant)
+   - Verify Subscription section is visible
+
+═══════════════════════════════════════════════════════════════════════════════
