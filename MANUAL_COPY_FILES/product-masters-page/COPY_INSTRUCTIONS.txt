@@ -8,7 +8,7 @@ Design: Glassmorphic (matching LOV page)
 Mode: Read-only
 
 ===============================================================================
-FILES TO COPY (3 files)
+FILES TO COPY (4 files)
 ===============================================================================
 
 Source: MANUAL_COPY_FILES\product-masters-page\contractnest-ui\src\pages\VaNi\ProductMastersPage.tsx
@@ -19,6 +19,9 @@ Target: contractnest-ui\src\App.tsx
 
 Source: MANUAL_COPY_FILES\product-masters-page\contractnest-ui\src\utils\constants\industryMenus.ts
 Target: contractnest-ui\src\utils\constants\industryMenus.ts
+
+Source: MANUAL_COPY_FILES\product-masters-page\contractnest-edge\supabase\functions\product-masterdata\index.ts
+Target: contractnest-edge\supabase\functions\product-masterdata\index.ts
 
 ===============================================================================
 POWERSHELL COPY COMMANDS
@@ -52,6 +55,11 @@ WHAT'S INCLUDED
    - Added "Product Masters" menu item under Implementation Toolkit
    - Icon: Package
    - Path: /vani/toolkit/product-masters
+
+4. product-masterdata/index.ts (EDGE FUNCTION FIX)
+   - BUG FIX: /all-global-categories and /all-tenant-categories were requiring category_name
+   - Added these endpoints to the exception list for category_name validation
+   - This fix enables the Product Masters page to load categories
 
 ===============================================================================
 TESTING
