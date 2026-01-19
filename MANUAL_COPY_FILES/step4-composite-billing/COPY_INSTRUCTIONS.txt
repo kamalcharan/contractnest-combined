@@ -1,0 +1,60 @@
+===============================================================================
+STEP 4: COMPOSITE BILLING BUILDER - COPY INSTRUCTIONS
+===============================================================================
+Date: January 2025
+Purpose: Business Model Phase 4 - Step 4
+- Add Review step to plan creation wizard
+- Complete billing summary before plan creation
+- 5-step wizard: Basic Info → Pricing → Features → Credits → Review
+===============================================================================
+
+SUBMODULES AFFECTED:
+--------------------
+1. contractnest-ui (2 files)
+
+===============================================================================
+FILE MAPPINGS
+===============================================================================
+
+FILE 1: ReviewStep.tsx (NEW Component)
+-----------------------------------------------
+FROM: step4-composite-billing/contractnest-ui/src/components/businessmodel/planform/ReviewStep.tsx
+TO:   contractnest-ui/src/components/businessmodel/planform/ReviewStep.tsx
+
+NEW FILE CONTAINING:
+  - Complete plan summary view
+  - Basic info summary (product, name, type, trial)
+  - Pricing summary (currencies, tiers, starting price)
+  - Features summary (enabled count, special features)
+  - Notification credits summary (per method, total credits)
+  - Ready to create confirmation
+
+-------------------------------------------------------------------------------
+
+FILE 2: create.tsx (Updated Wizard)
+-----------------------------------------------
+FROM: step4-composite-billing/contractnest-ui/src/pages/settings/businessmodel/admin/pricing-plans/create.tsx
+TO:   contractnest-ui/src/pages/settings/businessmodel/admin/pricing-plans/create.tsx
+
+CHANGES:
+  - Added ReviewStep import
+  - Added 5th step "Review" to wizardSteps array
+  - Shortened step titles for better display:
+    - "Basic Information" → "Basic Info"
+    - "Pricing Tiers" → "Pricing"
+    - "Notifications" → "Credits"
+
+===============================================================================
+POST-COPY ACTIONS
+===============================================================================
+
+1. Restart dev server:
+   cd contractnest-ui && npm run dev
+
+2. Test:
+   - Go to Settings → Business Model → Pricing Plans → Create
+   - Navigate through all 5 steps
+   - Verify Review step shows complete summary
+   - Verify "Create Plan" button works from Review step
+
+===============================================================================
