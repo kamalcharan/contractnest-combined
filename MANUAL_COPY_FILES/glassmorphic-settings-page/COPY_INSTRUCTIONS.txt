@@ -1,0 +1,56 @@
+═══════════════════════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS - Glassmorphic Settings Page
+═══════════════════════════════════════════════════════════════════════════════
+
+Feature: Glassmorphic design upgrade for /settings/configure page
+Date: 2026-01-19
+Branch: claude/init-submodules-docs-cxXPg
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════════════════════════════════
+
+1. contractnest-ui/src/pages/settings/index.tsx
+   Source: MANUAL_COPY_FILES/glassmorphic-settings-page/contractnest-ui/src/pages/settings/index.tsx
+   Destination: contractnest-ui/src/pages/settings/index.tsx
+   Purpose: Upgraded settings page with glassmorphism design
+
+═══════════════════════════════════════════════════════════════════════════════
+SUBMODULES AFFECTED
+═══════════════════════════════════════════════════════════════════════════════
+
+- contractnest-ui (React/TypeScript frontend)
+
+═══════════════════════════════════════════════════════════════════════════════
+CHANGES SUMMARY
+═══════════════════════════════════════════════════════════════════════════════
+
+The settings/configure page has been upgraded with glassmorphism design:
+
+1. Page Background:
+   - Added gradient background matching subscription page
+   - Dark: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)
+   - Light: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #f8fafc 100%)
+
+2. New Components:
+   - GlassGroupCard: Frosted glass container for settings groups
+   - GlassSettingsItem: Individual setting items with hover effects
+
+3. Glassmorphic Effects:
+   - backdropFilter: blur(12px)
+   - Semi-transparent backgrounds (rgba values)
+   - Subtle borders with transparency
+   - Box shadows for depth
+
+4. Animations:
+   - Hover scale effects (1.01x)
+   - Icon scale on hover (1.1x)
+   - Arrow slide on hover
+   - Smooth transitions (300ms)
+
+5. Layout:
+   - Changed from side-by-side to 2-column grid layout
+   - Glassmorphic header card with icon
+   - Improved spacing and rounded corners (rounded-2xl)
+
+═══════════════════════════════════════════════════════════════════════════════
