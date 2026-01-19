@@ -15,8 +15,8 @@ const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState('');
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  // Updated to include hasCompletedOnboarding and checkOnboardingStatus
-  const { login, isAuthenticated, isLoading, error, clearError, hasCompletedOnboarding, checkOnboardingStatus } = useAuth();
+  // Onboarding redirects are handled by AuthContext during login flow
+  const { login, isAuthenticated, isLoading, error, clearError } = useAuth();
   const { isDarkMode, currentTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
@@ -38,25 +38,14 @@ const LoginPage: React.FC = () => {
     });
   }, []);
 
-  // Redirect if already authenticated - UPDATED to check onboarding
-  // NOTE: This useEffect handles redirect when user is ALREADY authenticated (e.g., refreshed page)
-  // The main login redirect logic is in AuthContext.tsx
-  // This should NOT redirect during active login - AuthContext handles that
+  // Redirect if already authenticated
+  // NOTE: Onboarding redirects are handled by AuthContext during login
+  // This just handles the case where user navigates to /login while already authenticated
   useEffect(() => {
-    const handleAuthRedirect = async () => {
-      // Skip if not authenticated
-      if (!isAuthenticated) return;
-
-      // Skip redirect during active login - let AuthContext handle it
-      // This useEffect should only handle cases where user navigates to /login while already logged in
-      if (isLoading) return;
-
-      // Just redirect to dashboard - AuthContext will handle onboarding redirect if needed
-      // Don't duplicate the onboarding logic here
+    if (isAuthenticated && !isLoading) {
+      // Just go to dashboard - AuthContext handles onboarding redirects during login flow
       navigate('/dashboard', { replace: true });
-    };
-
-    handleAuthRedirect();
+    }
   }, [isAuthenticated, isLoading, navigate]);
 
   // Check for message from navigate state (e.g., after registration)

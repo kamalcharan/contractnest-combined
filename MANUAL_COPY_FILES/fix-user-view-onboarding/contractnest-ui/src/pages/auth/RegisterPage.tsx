@@ -31,8 +31,8 @@ const RegisterPage: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
-  // Auth context - Added hasCompletedOnboarding
-  const { register, isAuthenticated, isLoading, error, clearError, hasCompletedOnboarding } = useAuth();
+  // Auth context - Onboarding redirects handled by AuthContext
+  const { register, isAuthenticated, isLoading, error, clearError } = useAuth();
   const { isDarkMode, currentTheme } = useTheme();
   const navigate = useNavigate();
 
@@ -51,10 +51,9 @@ const RegisterPage: React.FC = () => {
   }, []);
 
   // Redirect if already authenticated
-  // NOTE: Don't duplicate onboarding logic here - let AuthContext handle it
+  // NOTE: Onboarding redirects are handled by AuthContext during registration flow
   useEffect(() => {
     if (isAuthenticated) {
-      // Just redirect to dashboard - AuthContext will handle onboarding redirect if needed
       navigate('/dashboard');
     }
   }, [isAuthenticated, navigate]);
