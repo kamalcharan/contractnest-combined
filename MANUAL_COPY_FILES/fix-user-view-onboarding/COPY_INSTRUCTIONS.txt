@@ -1,0 +1,36 @@
+═══════════════════════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS - fix-user-view-onboarding
+═══════════════════════════════════════════════════════════════════════════════
+
+CHANGES SUMMARY:
+----------------
+1. userView.tsx - Glassmorphic design, removed Department/Employee ID/Location fields, fixed role contradiction
+2. AuthContext.tsx - Fixed onboarding redirect for invited users (strict equality check)
+
+SUBMODULE AFFECTED: contractnest-ui
+
+FILES TO COPY:
+--------------
+Source: MANUAL_COPY_FILES\fix-user-view-onboarding\contractnest-ui\src\context\AuthContext.tsx
+Target: contractnest-ui\src\context\AuthContext.tsx
+
+Source: MANUAL_COPY_FILES\fix-user-view-onboarding\contractnest-ui\src\pages\settings\users\userView.tsx
+Target: contractnest-ui\src\pages\settings\users\userView.tsx
+
+POWERSHELL COPY COMMANDS:
+-------------------------
+Copy-Item "MANUAL_COPY_FILES\fix-user-view-onboarding\contractnest-ui\src\context\AuthContext.tsx" -Destination "contractnest-ui\src\context\AuthContext.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\fix-user-view-onboarding\contractnest-ui\src\pages\settings\users\userView.tsx" -Destination "contractnest-ui\src\pages\settings\users\userView.tsx" -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+COMMIT MESSAGE:
+---------------
+fix: user view glassmorphic design, role display, and onboarding redirect
+
+- Applied glassmorphic design to userView.tsx matching LOV page standards
+- Removed unused Department, Employee ID, Location fields from user profile
+- Fixed role contradiction by using assigned_roles as single source of truth
+- Fixed onboarding redirect for invited users using strict equality check for is_owner
+
+═══════════════════════════════════════════════════════════════════════════════
