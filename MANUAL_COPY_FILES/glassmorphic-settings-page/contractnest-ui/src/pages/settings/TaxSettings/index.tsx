@@ -27,7 +27,6 @@ const TaxSettingsPage = () => {
   const navigate = useNavigate();
   const { currentTenant } = useAuth();
   const { isDarkMode, currentTheme } = useTheme();
-  const { toast } = useToast();
 
   // Get theme colors
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
