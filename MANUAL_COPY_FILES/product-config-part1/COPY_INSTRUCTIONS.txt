@@ -1,0 +1,65 @@
+═══════════════════════════════════════════════════
+PART 1: PRODUCT CONFIG - DATABASE & DOCUMENTATION
+═══════════════════════════════════════════════════
+Date: January 2025
+Branch: claude/init-submodules-business-model-WAfFd
+
+═══════════════════════════════════════════════════
+FILES INCLUDED
+═══════════════════════════════════════════════════
+
+1. contractnest-edge/supabase/migrations/business-model-v2/008_product_config_features.sql
+   Purpose: Add config_version column, create history table, RPC functions
+
+2. contractnest-edge/supabase/migrations/business-model-v2/009_seed_product_configs.sql
+   Purpose: Seed ContractNest, FamilyKnows, and Kaladristi (inactive) configs
+
+3. ClaudeDocumentation/BusinessModel/product-config-schema.md
+   Purpose: JSON schema documentation for product configurations
+
+═══════════════════════════════════════════════════
+COPY COMMANDS (Windows PowerShell)
+═══════════════════════════════════════════════════
+
+# From contractnest-combined directory:
+
+Copy-Item "MANUAL_COPY_FILES\product-config-part1\contractnest-edge\supabase\migrations\business-model-v2\008_product_config_features.sql" -Destination "contractnest-edge\supabase\migrations\business-model-v2\" -Force
+
+Copy-Item "MANUAL_COPY_FILES\product-config-part1\contractnest-edge\supabase\migrations\business-model-v2\009_seed_product_configs.sql" -Destination "contractnest-edge\supabase\migrations\business-model-v2\" -Force
+
+Copy-Item "MANUAL_COPY_FILES\product-config-part1\ClaudeDocumentation\BusinessModel\product-config-schema.md" -Destination "ClaudeDocumentation\BusinessModel\" -Force
+
+═══════════════════════════════════════════════════
+SUBMODULES AFFECTED
+═══════════════════════════════════════════════════
+- contractnest-edge (2 migration files)
+- ClaudeDocumentation (1 documentation file)
+
+═══════════════════════════════════════════════════
+POST-COPY: RUN MIGRATIONS
+═══════════════════════════════════════════════════
+After copying files, run the migrations in your Supabase database:
+
+1. Run 008_product_config_features.sql first
+2. Run 009_seed_product_configs.sql second
+
+═══════════════════════════════════════════════════
+VERIFICATION QUERY
+═══════════════════════════════════════════════════
+After running migrations, verify with:
+
+SELECT
+    product_code,
+    product_name,
+    config_version,
+    is_active,
+    jsonb_array_length(billing_config->'features') as feature_count,
+    billing_config->'plan_types' as plan_types
+FROM t_bm_product_config;
+
+Expected output:
+- contractnest: 8 features, [per_user, per_contract], active
+- familyknows: 5 features, [per_family], active
+- kaladristi: 4 features, [subscription_usage], NOT active
+
+═══════════════════════════════════════════════════
