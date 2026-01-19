@@ -1,0 +1,110 @@
+===============================================================================
+STEP 5: UNIFIED SUBSCRIPTION DASHBOARD - COPY INSTRUCTIONS
+===============================================================================
+Date: January 2025
+Purpose: Business Model Phase 4 - Step 5
+- Merge Credits page into unified Subscription dashboard
+- Glassmorphic design matching admin subscription management
+- Tab-based navigation: Overview | Credits
+- Remove orphan Credits page and route
+===============================================================================
+
+SUBMODULES AFFECTED:
+--------------------
+1. contractnest-ui (3 files)
+
+===============================================================================
+FILE MAPPINGS
+===============================================================================
+
+FILE 1: index.tsx (UNIFIED Subscription Dashboard)
+-----------------------------------------------
+FROM: unified-subscription-dashboard/contractnest-ui/src/pages/settings/businessmodel/tenants/Subscription/index.tsx
+TO:   contractnest-ui/src/pages/settings/businessmodel/tenants/Subscription/index.tsx
+
+CHANGES:
+  - Complete rewrite with glassmorphic design
+  - Added SummaryCard component (Plan, Usage, Credits)
+  - Added SectionCard component for glassmorphic sections
+  - Added UsageProgress component with color-coded bars
+  - Added CreditChannelCard for per-channel credit display
+  - Added TopupPackCard for buying credit packs
+  - Tab-based navigation: Overview | Credits
+  - Integrated useCreditBalance and useTopupPacks hooks
+
+-------------------------------------------------------------------------------
+
+FILE 2: App.tsx (Routes Update)
+-----------------------------------------------
+FROM: unified-subscription-dashboard/contractnest-ui/src/App.tsx
+TO:   contractnest-ui/src/App.tsx
+
+CHANGES:
+  - REMOVED: import CreditsPage from './pages/settings/businessmodel/tenants/Subscription/Credits';
+  - REMOVED: <Route path="credits" element={<CreditsPage />} />
+  - Added comments explaining the change
+
+-------------------------------------------------------------------------------
+
+FILE 3: settingsMenus.ts (Menu Update)
+-----------------------------------------------
+FROM: unified-subscription-dashboard/contractnest-ui/src/utils/constants/settingsMenus.ts
+TO:   contractnest-ui/src/utils/constants/settingsMenus.ts
+
+CHANGES:
+  - REMOVED: Credits menu item (id: 'credits')
+  - Updated 'my-subscription' description to mention credits
+  - Added comment explaining the removal
+
+===============================================================================
+FILE TO DELETE (ORPHAN CODE)
+===============================================================================
+
+DELETE: contractnest-ui/src/pages/settings/businessmodel/tenants/Subscription/Credits.tsx
+
+This file is now orphaned since credits functionality is merged into the
+unified subscription dashboard.
+
+===============================================================================
+POST-COPY ACTIONS
+===============================================================================
+
+1. Delete orphan file:
+   rm contractnest-ui/src/pages/settings/businessmodel/tenants/Subscription/Credits.tsx
+
+2. Restart dev server:
+   cd contractnest-ui && npm run dev
+
+3. Test:
+   - Go to Settings → Subscription → My Subscription
+   - Verify glassmorphic design is visible
+   - Verify Overview tab shows plan info and usage
+   - Verify Credits tab shows credit balances and topup packs
+   - Verify Credits menu item is removed from settings sidebar
+   - Verify /businessmodel/tenants/subscription/credits route redirects or 404s
+
+===============================================================================
+DESIGN FEATURES
+===============================================================================
+
+1. Glassmorphic Cards:
+   - backdrop-filter: blur(12px)
+   - Semi-transparent backgrounds
+   - Subtle borders with rgba colors
+   - Smooth shadows
+
+2. Summary Cards:
+   - Current Plan (with status badge)
+   - Usage This Period (with days remaining)
+   - Notification Credits (with low balance indicator)
+
+3. Tab Navigation:
+   - Overview: Plan details, usage stats, features, quick actions
+   - Credits: Channel balances, topup packs, usage history
+
+4. Responsive Design:
+   - 3-column grid on desktop
+   - Single column on mobile
+   - Proper spacing and hierarchy
+
+===============================================================================
