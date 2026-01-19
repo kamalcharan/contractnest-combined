@@ -1,8 +1,8 @@
 ═══════════════════════════════════════════════════════════════════════════════
-COPY INSTRUCTIONS - Glassmorphic Settings Page
+COPY INSTRUCTIONS - Glassmorphic Settings Pages
 ═══════════════════════════════════════════════════════════════════════════════
 
-Feature: Glassmorphic design upgrade for /settings/configure page
+Feature: Glassmorphic design upgrade for settings pages
 Date: 2026-01-19
 Branch: claude/init-submodules-docs-cxXPg
 
@@ -13,7 +13,12 @@ FILES TO COPY
 1. contractnest-ui/src/pages/settings/index.tsx
    Source: MANUAL_COPY_FILES/glassmorphic-settings-page/contractnest-ui/src/pages/settings/index.tsx
    Destination: contractnest-ui/src/pages/settings/index.tsx
-   Purpose: Upgraded settings page with glassmorphism design
+   Purpose: Upgraded settings/configure page with glassmorphism design
+
+2. contractnest-ui/src/pages/settings/customer-channels/GroupsListPage.tsx
+   Source: MANUAL_COPY_FILES/glassmorphic-settings-page/contractnest-ui/src/pages/settings/customer-channels/GroupsListPage.tsx
+   Destination: contractnest-ui/src/pages/settings/customer-channels/GroupsListPage.tsx
+   Purpose: Upgraded groups list page with glassmorphism design
 
 ═══════════════════════════════════════════════════════════════════════════════
 SUBMODULES AFFECTED
@@ -25,8 +30,10 @@ SUBMODULES AFFECTED
 CHANGES SUMMARY
 ═══════════════════════════════════════════════════════════════════════════════
 
-The settings/configure page has been upgraded with glassmorphism design:
+Both pages have been upgraded with glassmorphism design matching the subscription dashboard:
 
+SETTINGS/CONFIGURE PAGE (index.tsx):
+-------------------------------------
 1. Page Background:
    - Added gradient background matching subscription page
    - Dark: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)
@@ -52,5 +59,34 @@ The settings/configure page has been upgraded with glassmorphism design:
    - Changed from side-by-side to 2-column grid layout
    - Glassmorphic header card with icon
    - Improved spacing and rounded corners (rounded-2xl)
+
+
+GROUPS LIST PAGE (GroupsListPage.tsx):
+--------------------------------------
+1. Page Background:
+   - Same gradient background as settings page
+
+2. Glassmorphic Header:
+   - Frosted glass header with back button
+   - Icon container with gradient background
+   - Title and subtitle
+
+3. Glassmorphic Search:
+   - Frosted glass search container
+   - Semi-transparent input field
+
+4. Glassmorphic Cards:
+   - Replaced Card components with glassmorphic divs
+   - Backdrop blur effect
+   - Hover scale animation (1.02x)
+   - Status-based border colors
+
+5. Glassmorphic Info Banner:
+   - Frosted glass info section
+   - Consistent styling with other elements
+
+6. Loading State:
+   - Gradient background
+   - Glassmorphic skeleton cards
 
 ═══════════════════════════════════════════════════════════════════════════════
