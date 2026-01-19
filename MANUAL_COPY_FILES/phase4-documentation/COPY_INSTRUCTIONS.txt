@@ -1,0 +1,16 @@
+# Phase 4 Documentation Update - Copy Instructions
+# ================================================
+
+# This folder contains updated documentation for Business Model Phase 4 completion.
+# Submodule affected: ClaudeDocumentation
+
+# Files to copy:
+# -------------
+# 1. BM_delivery.md - Delivery tracker with Phase 4 marked as complete
+# 2. HANDOVER_CONTEXT.md - Handover context with Phase 4 details
+
+# Source files are in:
+# MANUAL_COPY_FILES/phase4-documentation/ClaudeDocumentation/BusinessModel/
+
+# Destination:
+# ClaudeDocumentation/BusinessModel/
