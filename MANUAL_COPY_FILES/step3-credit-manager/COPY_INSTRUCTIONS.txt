@@ -1,0 +1,77 @@
+===============================================================================
+STEP 3: CREDIT MANAGER - COPY INSTRUCTIONS
+===============================================================================
+Date: January 2025
+Purpose: Business Model Phase 4 - Step 3
+- Credit balance display by channel
+- Topup packs for purchasing credits
+- Buy Credits button with payment integration placeholder
+===============================================================================
+
+SUBMODULES AFFECTED:
+--------------------
+1. contractnest-ui (3 files)
+
+===============================================================================
+FILE MAPPINGS
+===============================================================================
+
+FILE 1: Credits.tsx (NEW Page)
+-----------------------------------------------
+FROM: step3-credit-manager/contractnest-ui/src/pages/settings/businessmodel/tenants/Subscription/Credits.tsx
+TO:   contractnest-ui/src/pages/settings/businessmodel/tenants/Subscription/Credits.tsx
+
+NEW FILE CONTAINING:
+  - Credit balance display by channel (WhatsApp, SMS, Email)
+  - useCreditBalance hook integration
+  - useTopupPacks hook integration
+  - Buy credits button for each pack
+  - Empty state when no credits available
+
+-------------------------------------------------------------------------------
+
+FILE 2: App.tsx (Updated Routes)
+-----------------------------------------------
+FROM: step3-credit-manager/contractnest-ui/src/App.tsx
+TO:   contractnest-ui/src/App.tsx
+
+CHANGES:
+  - Added CreditsPage import
+  - Added route: /businessmodel/tenants/subscription/credits
+
+-------------------------------------------------------------------------------
+
+FILE 3: settingsMenus.ts (Updated Menu)
+-----------------------------------------------
+FROM: step3-credit-manager/contractnest-ui/src/utils/constants/settingsMenus.ts
+TO:   contractnest-ui/src/utils/constants/settingsMenus.ts
+
+CHANGES:
+  - Added Credits menu item under Subscription group
+
+===============================================================================
+PREREQUISITE: RPC FUNCTIONS
+===============================================================================
+
+The following RPC functions should be deployed for full functionality:
+- get_credit_balance
+- get_topup_packs
+
+Check if they exist with:
+SELECT proname FROM pg_proc WHERE proname IN ('get_credit_balance', 'get_topup_packs');
+
+===============================================================================
+POST-COPY ACTIONS
+===============================================================================
+
+1. Restart dev server:
+   cd contractnest-ui && npm run dev
+
+2. Test:
+   - Go to Settings → Subscription
+   - Click "Buy More" link or navigate to Credits menu item
+   - Verify credit balances display (or empty state if no data)
+   - Verify topup packs display (or empty state if no packs)
+   - Check "Buy Now" button triggers alert with pack details
+
+===============================================================================
