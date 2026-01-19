@@ -1,0 +1,59 @@
+===============================================================================
+PRODUCT MASTERS PAGE - READ-ONLY VIEW
+===============================================================================
+
+Feature: Product Masters page under Implementation Toolkit
+Route: /vani/toolkit/product-masters
+Design: Glassmorphic (matching LOV page)
+Mode: Read-only
+
+===============================================================================
+FILES TO COPY (2 files)
+===============================================================================
+
+Source: MANUAL_COPY_FILES\product-masters-page\contractnest-ui\src\pages\VaNi\ProductMastersPage.tsx
+Target: contractnest-ui\src\pages\VaNi\ProductMastersPage.tsx
+
+Source: MANUAL_COPY_FILES\product-masters-page\contractnest-ui\src\App.tsx
+Target: contractnest-ui\src\App.tsx
+
+===============================================================================
+POWERSHELL COPY COMMANDS
+===============================================================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\product-masters-page\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+===============================================================================
+WHAT'S INCLUDED
+===============================================================================
+
+1. ProductMastersPage.tsx (NEW)
+   - Glassmorphic design matching LOV page
+   - Left sidebar: Categories from m_category_master
+   - Right panel: Category details from m_category_details
+   - Auto-selects first category on load
+   - Read-only badge in header
+   - Loading states with skeleton
+   - Error handling
+   - Uses existing hooks: useGlobalCategories, useGlobalMasterData
+
+2. App.tsx (UPDATED)
+   - Added import for ProductMastersPage
+   - Added route: /vani/toolkit/product-masters
+
+===============================================================================
+TESTING
+===============================================================================
+
+1. Navigate to /vani/toolkit/product-masters
+2. Verify categories load in left sidebar
+3. Click a category - verify details show on right
+4. Verify glassmorphic styling (blur, transparency)
+5. Verify read-only badge is visible
+6. Test dark mode toggle
+
+===============================================================================
