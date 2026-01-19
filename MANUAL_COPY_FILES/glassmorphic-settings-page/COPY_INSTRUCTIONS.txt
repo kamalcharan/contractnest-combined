@@ -11,19 +11,16 @@ FILES TO COPY
 ═══════════════════════════════════════════════════════════════════════════════
 
 1. contractnest-ui/src/pages/settings/index.tsx
-   Source: MANUAL_COPY_FILES/glassmorphic-settings-page/contractnest-ui/src/pages/settings/index.tsx
-   Destination: contractnest-ui/src/pages/settings/index.tsx
-   Purpose: Upgraded settings/configure page with glassmorphism design
+   Purpose: Settings/Configure page with glassmorphism design
 
 2. contractnest-ui/src/pages/settings/customer-channels/GroupsListPage.tsx
-   Source: MANUAL_COPY_FILES/glassmorphic-settings-page/contractnest-ui/src/pages/settings/customer-channels/GroupsListPage.tsx
-   Destination: contractnest-ui/src/pages/settings/customer-channels/GroupsListPage.tsx
-   Purpose: Upgraded groups list page with glassmorphism design
+   Purpose: Groups list page with glassmorphism design
 
 3. contractnest-ui/src/pages/settings/TaxSettings/index.tsx
-   Source: MANUAL_COPY_FILES/glassmorphic-settings-page/contractnest-ui/src/pages/settings/TaxSettings/index.tsx
-   Destination: contractnest-ui/src/pages/settings/TaxSettings/index.tsx
-   Purpose: Upgraded tax settings page with glassmorphism design
+   Purpose: Tax settings page with glassmorphism design
+
+4. contractnest-ui/src/pages/settings/integrations/index.tsx
+   Purpose: Integrations page with glassmorphism design
 
 ═══════════════════════════════════════════════════════════════════════════════
 SUBMODULES AFFECTED
@@ -32,13 +29,9 @@ SUBMODULES AFFECTED
 - contractnest-ui (React/TypeScript frontend)
 
 ═══════════════════════════════════════════════════════════════════════════════
-CHANGES SUMMARY
+COMMON GLASSMORPHIC ELEMENTS
 ═══════════════════════════════════════════════════════════════════════════════
 
-All pages upgraded with glassmorphism design matching the subscription dashboard.
-
-COMMON GLASSMORPHIC ELEMENTS:
------------------------------
 - Page Background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%) dark
 - Page Background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #f8fafc 100%) light
 - Backdrop Blur: blur(12px)
@@ -47,27 +40,30 @@ COMMON GLASSMORPHIC ELEMENTS:
 - Box Shadow: 0 4px 24px -4px rgba(0,0,0,0.1)
 - Rounded Corners: rounded-2xl
 
+═══════════════════════════════════════════════════════════════════════════════
+PAGE-SPECIFIC CHANGES
+═══════════════════════════════════════════════════════════════════════════════
 
-SETTINGS/CONFIGURE PAGE (index.tsx):
--------------------------------------
-- GlassGroupCard component for settings groups
-- GlassSettingsItem component for items
+SETTINGS/CONFIGURE (index.tsx):
+- GlassGroupCard and GlassSettingsItem components
 - 2-column grid layout
 - Hover scale animations
 
-GROUPS LIST PAGE (GroupsListPage.tsx):
---------------------------------------
+GROUPS LIST (GroupsListPage.tsx):
 - Glassmorphic header with back button
 - Glassmorphic search container
 - Frosted glass group cards
 - Glassmorphic info banner
 
-TAX SETTINGS PAGE (TaxSettings/index.tsx):
-------------------------------------------
+TAX SETTINGS (TaxSettings/index.tsx):
 - Glassmorphic header with Receipt icon
 - Glassmorphic left panel navigation
-- Selected state with brand color
-- Glassmorphic error indicator
 - Loading skeleton with glassmorphism
+
+INTEGRATIONS (integrations/index.tsx):
+- Glassmorphic header with Plug icon
+- Glassmorphic loading states
+- Glassmorphic empty state
+- Section loading with frosted glass
 
 ═══════════════════════════════════════════════════════════════════════════════
