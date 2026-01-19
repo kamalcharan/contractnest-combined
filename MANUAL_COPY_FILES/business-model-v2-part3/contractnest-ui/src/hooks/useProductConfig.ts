@@ -29,13 +29,17 @@ import {
 
 // Transform API Feature to UI FeatureItem
 const transformFeatureToFeatureItem = (feature: Feature): FeatureItem => {
+  // Get default/trial values - handle both number and boolean types
+  const defaultVal = typeof feature.default === 'number' ? feature.default : (feature.default ? 1 : 0);
+  const trialVal = typeof feature.trial === 'number' ? feature.trial : (feature.trial ? 1 : 0);
+
   return {
-    id: feature.code,
-    name: feature.display_name,
+    id: feature.id,
+    name: feature.name,
     description: feature.description || '',
     isSpecialFeature: feature.type === 'addon' || feature.type === 'boolean',
-    defaultLimit: feature.default_limit ?? (feature.type === 'limit' ? 50 : 1),
-    trialLimit: feature.trial_limit ?? (feature.type === 'limit' ? 5 : 1),
+    defaultLimit: defaultVal,
+    trialLimit: trialVal,
     basePrice: feature.base_price
   };
 };
