@@ -1,0 +1,86 @@
+═══════════════════════════════════════════════════════════════════════════════
+PART 3: UI UPDATES - COMPLETE
+Business Model v2 - Product-Based Configuration
+═══════════════════════════════════════════════════════════════════════════════
+
+FILES INCLUDED:
+───────────────────────────────────────────────────────────────────────────────
+
+1. contractnest-ui/src/hooks/useProductConfig.ts (NEW)
+   - Hook to fetch product-specific configuration from API
+   - Falls back to pricing.ts constants if API call fails
+   - Transforms API response to match UI FeatureItem interface
+   - Exports: useProductConfig, useProductFeatures, useProductTiers
+
+2. contractnest-ui/src/components/businessmodel/planform/FeaturesStep.tsx (UPDATED)
+   - Now uses useProductConfig hook instead of hardcoded featureItems
+   - Shows loading state while fetching product features
+   - Shows fallback notice when using default configuration
+   - Features dynamically loaded based on selected product
+
+═══════════════════════════════════════════════════════════════════════════════
+COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Copy UI files
+Copy-Item "MANUAL_COPY_FILES\business-model-v2-part3\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Part 3 files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════════════════════════════════
+VERIFICATION STEPS
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Start the UI dev server:
+   cd contractnest-ui && npm run dev
+
+2. Navigate to Plan Creation:
+   Settings > Business Model > Admin > Pricing Plans > Create New Plan
+
+3. Select a Product in Basic Info step
+
+4. Navigate to Features step:
+   - Should see "Loading product features..." briefly
+   - Features should load from API (or fallback with warning)
+   - For ContractNest: contacts, contracts, appointments, documents, users, vani, marketplace, finance
+   - For FamilyKnows: assets, family_members, nominees, documents, ai_insights
+
+5. Verify fallback behavior:
+   - If API fails, should show warning: "Using default feature configuration"
+   - Default features from pricing.ts should be available
+
+═══════════════════════════════════════════════════════════════════════════════
+HOW IT WORKS
+═══════════════════════════════════════════════════════════════════════════════
+
+1. When user selects a product in Basic Info step, productCode is stored in form
+
+2. FeaturesStep watches productCode and calls useProductConfig hook
+
+3. useProductConfig:
+   - Makes API call: GET /api/v1/product-config/{productCode}
+   - Transforms billing_config.features to FeatureItem[] format
+   - If API fails, returns default featureItems from pricing.ts
+   - Sets isUsingFallback flag for UI feedback
+
+4. UI shows:
+   - Loading spinner while fetching
+   - Warning notice if using fallback
+   - Product-specific features in dropdown
+
+═══════════════════════════════════════════════════════════════════════════════
+DEPENDENCIES
+═══════════════════════════════════════════════════════════════════════════════
+
+Requires Part 1 (Database) and Part 2 (API Layer) to be deployed first.
+
+If only testing UI without backend:
+- Hook will fail API call gracefully
+- Falls back to pricing.ts features
+- Shows warning notice
+
+═══════════════════════════════════════════════════════════════════════════════
+AFTER TESTING, ALL 3 PARTS ARE COMPLETE
+═══════════════════════════════════════════════════════════════════════════════
