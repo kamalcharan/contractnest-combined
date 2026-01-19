@@ -139,15 +139,7 @@ const mockSubscription: Subscription = {
   }
 };
 
-// Mock usage data is now replaced by useUsageSummary hook
-// Keeping for fallback if API not available
-const mockUsageData: UsageData[] = [
-  { feature: 'Active Users', used: 8, limit: 10, percentage: 80 },
-  { feature: 'Contracts Created', used: 145, limit: 'Unlimited', percentage: 0 },
-  { feature: 'Document Templates', used: 23, limit: 50, percentage: 46 },
-  { feature: 'API Calls (Monthly)', used: 2340, limit: 5000, percentage: 47 },
-  { feature: 'Storage Used', used: 2.3, limit: 10, percentage: 23 }
-];
+// No mock data - show empty state when no subscription is active
 
 const SubscriptionIndexPage: React.FC = () => {
   const navigate = useNavigate();
@@ -165,10 +157,13 @@ const SubscriptionIndexPage: React.FC = () => {
     error: usageError
   } = useUsageSummary();
 
+  // Check if there's an active subscription
+  const hasActiveSubscription = usageSummary?.success && usageSummary?.subscription_id;
+
   // Transform API response to UsageData format for display
   const usageData: UsageData[] = React.useMemo(() => {
     if (!usageSummary?.success || !usageSummary.metrics) {
-      return mockUsageData; // Fallback to mock data
+      return []; // Return empty - no data available
     }
 
     const metrics = usageSummary.metrics;
@@ -216,7 +211,7 @@ const SubscriptionIndexPage: React.FC = () => {
       });
     }
 
-    return data.length > 0 ? data : mockUsageData;
+    return data;
   }, [usageSummary]);
 
   // Track page view
@@ -705,13 +700,42 @@ const SubscriptionIndexPage: React.FC = () => {
                     Loading usage data...
                   </span>
                 </div>
-              ) : usageError ? (
-                <div
-                  className="flex items-center justify-center py-8 text-sm"
-                  style={{ color: colors.semantic.error }}
-                >
-                  <AlertCircle className="h-5 w-5 mr-2" />
-                  Failed to load usage data. Using cached data.
+              ) : usageError || !hasActiveSubscription || usageData.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <div
+                    className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
+                    style={{ backgroundColor: `${colors.utility.secondaryText}20` }}
+                  >
+                    <Package
+                      className="h-8 w-8"
+                      style={{ color: colors.utility.secondaryText }}
+                    />
+                  </div>
+                  <h3
+                    className="text-lg font-medium mb-2"
+                    style={{ color: colors.utility.primaryText }}
+                  >
+                    No Active Plan
+                  </h3>
+                  <p
+                    className="text-sm mb-6 max-w-sm"
+                    style={{ color: colors.utility.secondaryText }}
+                  >
+                    {usageError
+                      ? 'Unable to load subscription data. Please try again later.'
+                      : 'No subscription is currently configured. Choose a plan to get started with usage tracking.'}
+                  </p>
+                  <button
+                    onClick={handleUpgrade}
+                    className="px-6 py-2 rounded-md transition-colors hover:opacity-90 flex items-center"
+                    style={{
+                      backgroundColor: colors.brand.primary,
+                      color: 'white'
+                    }}
+                  >
+                    <TrendingUp className="h-4 w-4 mr-2" />
+                    View Plans
+                  </button>
                 </div>
               ) : (
                 <div className="space-y-4">
