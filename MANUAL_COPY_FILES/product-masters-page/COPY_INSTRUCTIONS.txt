@@ -8,7 +8,7 @@ Design: Glassmorphic (matching LOV page)
 Mode: Read-only
 
 ===============================================================================
-FILES TO COPY (2 files)
+FILES TO COPY (3 files)
 ===============================================================================
 
 Source: MANUAL_COPY_FILES\product-masters-page\contractnest-ui\src\pages\VaNi\ProductMastersPage.tsx
@@ -16,6 +16,9 @@ Target: contractnest-ui\src\pages\VaNi\ProductMastersPage.tsx
 
 Source: MANUAL_COPY_FILES\product-masters-page\contractnest-ui\src\App.tsx
 Target: contractnest-ui\src\App.tsx
+
+Source: MANUAL_COPY_FILES\product-masters-page\contractnest-ui\src\utils\constants\industryMenus.ts
+Target: contractnest-ui\src\utils\constants\industryMenus.ts
 
 ===============================================================================
 POWERSHELL COPY COMMANDS
@@ -44,6 +47,11 @@ WHAT'S INCLUDED
 2. App.tsx (UPDATED)
    - Added import for ProductMastersPage
    - Added route: /vani/toolkit/product-masters
+
+3. industryMenus.ts (UPDATED)
+   - Added "Product Masters" menu item under Implementation Toolkit
+   - Icon: Package
+   - Path: /vani/toolkit/product-masters
 
 ===============================================================================
 TESTING
