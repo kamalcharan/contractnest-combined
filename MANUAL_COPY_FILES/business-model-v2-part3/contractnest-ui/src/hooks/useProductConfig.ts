@@ -3,8 +3,7 @@
 // Falls back to pricing.ts constants if API call fails
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useAuth } from '@/context/AuthContext';
-import { API_ENDPOINTS } from '@/services/serviceURLs';
+import { productConfigService } from '@/services/productConfigService';
 import {
   featureItems as defaultFeatureItems,
   FeatureItem,
@@ -20,11 +19,7 @@ import {
   ProductConfig,
   BillingConfig,
   Feature,
-  TierTemplate,
-  getLimitFeatures,
-  getAddonFeatures,
-  getBooleanFeatures,
-  getUsageFeatures
+  TierTemplate
 } from '@/types/productConfig';
 
 // Transform API Feature to UI FeatureItem
@@ -81,7 +76,6 @@ interface UseProductConfigResult {
 
 export const useProductConfig = (options: UseProductConfigOptions): UseProductConfigResult => {
   const { productCode, enabled = true } = options;
-  const { accessToken, isAuthenticated } = useAuth();
 
   // State
   const [config, setConfig] = useState<ProductConfig | null>(null);
@@ -89,9 +83,9 @@ export const useProductConfig = (options: UseProductConfigOptions): UseProductCo
   const [error, setError] = useState<Error | null>(null);
   const [isUsingFallback, setIsUsingFallback] = useState(false);
 
-  // Fetch product config
+  // Fetch product config using the service
   const fetchConfig = useCallback(async () => {
-    if (!productCode || !enabled || !isAuthenticated) {
+    if (!productCode || !enabled) {
       return;
     }
 
@@ -99,34 +93,23 @@ export const useProductConfig = (options: UseProductConfigOptions): UseProductCo
     setError(null);
 
     try {
-      const response = await fetch(API_ENDPOINTS.PRODUCT_CONFIG.GET(productCode), {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`
-        }
-      });
+      const response = await productConfigService.getConfig(productCode);
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch product config: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-
-      if (data.success && data.data) {
-        setConfig(data.data);
+      if (response.success && response.data) {
+        setConfig(response.data);
         setIsUsingFallback(false);
+        console.log(`[useProductConfig] Loaded config for ${productCode}:`, response.data);
       } else {
-        throw new Error(data.error || 'Unknown error');
+        throw new Error(response.error || 'Failed to load product config');
       }
     } catch (err) {
-      console.warn(`[useProductConfig] API call failed, using fallback values:`, err);
+      console.warn(`[useProductConfig] API call failed for ${productCode}, using fallback values:`, err);
       setError(err instanceof Error ? err : new Error('Unknown error'));
       setIsUsingFallback(true);
     } finally {
       setIsLoading(false);
     }
-  }, [productCode, enabled, isAuthenticated, accessToken]);
+  }, [productCode, enabled]);
 
   // Fetch on mount and when dependencies change
   useEffect(() => {
@@ -154,29 +137,50 @@ export const useProductConfig = (options: UseProductConfigOptions): UseProductCo
       return defaultPlanTypes;
     }
 
-    // Validate plan types are valid
-    const validPlanTypes = billingConfig.plan_types.filter(
-      (pt): pt is PlanType => pt === 'Per User' || pt === 'Per Contract'
-    );
+    // Handle both string[] and PlanType[] formats
+    const configPlanTypes = billingConfig.plan_types;
 
-    return validPlanTypes.length > 0 ? validPlanTypes : defaultPlanTypes;
+    // If it's an array of strings like ["Per User", "Per Contract"]
+    if (typeof configPlanTypes[0] === 'string') {
+      const validPlanTypes = (configPlanTypes as unknown as string[]).filter(
+        (pt): pt is PlanType => pt === 'Per User' || pt === 'Per Contract'
+      );
+      return validPlanTypes.length > 0 ? validPlanTypes : defaultPlanTypes;
+    }
+
+    // If it's an array of PlanType objects, extract labels
+    return defaultPlanTypes;
   }, [billingConfig]);
 
   // Get tier templates or fallback
   const userTiers = useMemo((): TierRange[] => {
-    if (!billingConfig?.tier_templates?.user_tiers || billingConfig.tier_templates.user_tiers.length === 0) {
+    const tierTemplates = billingConfig?.tier_templates;
+    if (!tierTemplates) {
       return defaultUserTiers;
     }
 
-    return billingConfig.tier_templates.user_tiers.map(transformTierTemplateToTierRange);
+    // Check for user_tiers or per_user key
+    const userTierData = tierTemplates.user_tiers || tierTemplates.per_user || tierTemplates['Per User'];
+    if (!userTierData || userTierData.length === 0) {
+      return defaultUserTiers;
+    }
+
+    return userTierData.map(transformTierTemplateToTierRange);
   }, [billingConfig]);
 
   const contractTiers = useMemo((): TierRange[] => {
-    if (!billingConfig?.tier_templates?.contract_tiers || billingConfig.tier_templates.contract_tiers.length === 0) {
+    const tierTemplates = billingConfig?.tier_templates;
+    if (!tierTemplates) {
       return defaultContractTiers;
     }
 
-    return billingConfig.tier_templates.contract_tiers.map(transformTierTemplateToTierRange);
+    // Check for contract_tiers or per_contract key
+    const contractTierData = tierTemplates.contract_tiers || tierTemplates.per_contract || tierTemplates['Per Contract'];
+    if (!contractTierData || contractTierData.length === 0) {
+      return defaultContractTiers;
+    }
+
+    return contractTierData.map(transformTierTemplateToTierRange);
   }, [billingConfig]);
 
   // Get notification items (currently using fallback, can be extended)
