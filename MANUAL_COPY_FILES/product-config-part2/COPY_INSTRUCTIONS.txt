@@ -1,0 +1,148 @@
+═══════════════════════════════════════════════════
+PART 2: PRODUCT CONFIG - API LAYER
+═══════════════════════════════════════════════════
+Date: January 2025
+Branch: claude/init-submodules-business-model-WAfFd
+
+═══════════════════════════════════════════════════
+FILES INCLUDED
+═══════════════════════════════════════════════════
+
+1. contractnest-edge/supabase/functions/product-config/index.ts
+   Purpose: Edge function for product config CRUD operations
+
+2. contractnest-api/src/services/productConfigService.ts
+   Purpose: HTTP client to call product-config Edge function
+
+3. contractnest-api/src/controllers/productConfigController.ts
+   Purpose: Handle API requests, validation, call service
+
+4. contractnest-api/src/routes/productConfigRoutes.ts
+   Purpose: Define API route endpoints
+
+5. contractnest-ui/src/types/productConfig.ts
+   Purpose: TypeScript interfaces for product config
+
+═══════════════════════════════════════════════════
+COPY COMMANDS (Windows PowerShell)
+═══════════════════════════════════════════════════
+
+# From contractnest-combined directory:
+
+# Edge Function
+Copy-Item "MANUAL_COPY_FILES\product-config-part2\contractnest-edge\supabase\functions\product-config\index.ts" -Destination "contractnest-edge\supabase\functions\product-config\" -Force
+
+# API Service
+Copy-Item "MANUAL_COPY_FILES\product-config-part2\contractnest-api\src\services\productConfigService.ts" -Destination "contractnest-api\src\services\" -Force
+
+# API Controller
+Copy-Item "MANUAL_COPY_FILES\product-config-part2\contractnest-api\src\controllers\productConfigController.ts" -Destination "contractnest-api\src\controllers\" -Force
+
+# API Routes
+Copy-Item "MANUAL_COPY_FILES\product-config-part2\contractnest-api\src\routes\productConfigRoutes.ts" -Destination "contractnest-api\src\routes\" -Force
+
+# UI Types
+Copy-Item "MANUAL_COPY_FILES\product-config-part2\contractnest-ui\src\types\productConfig.ts" -Destination "contractnest-ui\src\types\" -Force
+
+Write-Host "✅ All Part 2 files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+MANUAL STEP: REGISTER ROUTES IN index.ts
+═══════════════════════════════════════════════════
+
+Open: contractnest-api/src/index.ts
+
+1. Add import at top (around line 40):
+   ─────────────────────────────────
+   import productConfigRoutes from './routes/productConfigRoutes';
+
+2. Add route registration (after line 668, after businessModelRoutes):
+   ─────────────────────────────────
+   // Product Config routes
+   app.use('/api/v1/product-config', productConfigRoutes);
+
+═══════════════════════════════════════════════════
+SUBMODULES AFFECTED
+═══════════════════════════════════════════════════
+- contractnest-edge (1 new Edge function)
+- contractnest-api (3 new files + index.ts modification)
+- contractnest-ui (1 new types file)
+
+═══════════════════════════════════════════════════
+API ENDPOINTS CREATED
+═══════════════════════════════════════════════════
+
+GET  /api/v1/product-config
+     → List all active product configurations
+
+GET  /api/v1/product-config/:productCode
+     → Get configuration for a specific product
+
+GET  /api/v1/product-config/:productCode/history
+     → Get version history for a product
+
+PUT  /api/v1/product-config/:productCode
+     → Update a product configuration (creates new version)
+
+═══════════════════════════════════════════════════
+VERIFICATION COMMANDS
+═══════════════════════════════════════════════════
+
+After starting the API server, test with:
+
+# List all product configs
+curl http://localhost:3000/api/v1/product-config \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Get ContractNest config
+curl http://localhost:3000/api/v1/product-config/contractnest \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Get FamilyKnows config
+curl http://localhost:3000/api/v1/product-config/familyknows \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+═══════════════════════════════════════════════════
+EXPECTED RESPONSES
+═══════════════════════════════════════════════════
+
+GET /api/v1/product-config:
+{
+  "success": true,
+  "products": [
+    {
+      "product_code": "contractnest",
+      "product_name": "ContractNest",
+      "config_version": "1.0",
+      "is_active": true,
+      "feature_count": 8
+    },
+    {
+      "product_code": "familyknows",
+      "product_name": "FamilyKnows",
+      "config_version": "1.0",
+      "is_active": true,
+      "feature_count": 5
+    }
+  ],
+  "count": 2
+}
+
+GET /api/v1/product-config/contractnest:
+{
+  "success": true,
+  "product_code": "contractnest",
+  "product_name": "ContractNest",
+  "config_version": "1.0",
+  "billing_config": {
+    "plan_types": [...],
+    "features": [...],
+    "tier_templates": {...},
+    "notifications": [...],
+    "trial_options": [5, 7, 10, 14, 30],
+    "billing_cycles": ["monthly", "quarterly", "annual"]
+  },
+  "is_active": true
+}
+
+═══════════════════════════════════════════════════
