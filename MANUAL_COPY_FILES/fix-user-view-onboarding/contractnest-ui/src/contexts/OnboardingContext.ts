@@ -132,18 +132,15 @@ export const OnboardingProvider: React.FC<OnboardingProviderProps> = ({ children
 
       if (shouldRedirect) {
         // Check if user is the owner (only owners can complete onboarding)
-        // CRITICAL: Use strict equality to avoid undefined/null being truthy
-        if (currentTenant?.is_owner === true) {
+        if (currentTenant?.is_owner) {
           // Owner: redirect to onboarding (if not already there)
           if (!isOnboardingPath) {
-            console.log('[OnboardingContext] Owner redirect to /onboarding');
             navigate('/onboarding');
           }
         } else {
           // Non-owner: redirect to onboarding-pending (if not already there)
           if (!isOnboardingPendingPath) {
             // Store owner info for the pending page
-            console.log('[OnboardingContext] Non-owner redirect to /onboarding-pending, is_owner:', currentTenant?.is_owner);
             navigate('/onboarding-pending', { state: { owner: ownerInfo } });
           }
         }
