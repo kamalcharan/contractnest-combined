@@ -22,6 +22,9 @@ FILES TO COPY
 4. contractnest-ui/src/pages/settings/integrations/index.tsx
    Purpose: Integrations page with glassmorphism design
 
+5. contractnest-ui/src/pages/settings/storage/storagemanagement/index.tsx
+   Purpose: Storage management page with glassmorphism design
+
 ═══════════════════════════════════════════════════════════════════════════════
 SUBMODULES AFFECTED
 ═══════════════════════════════════════════════════════════════════════════════
@@ -65,5 +68,13 @@ INTEGRATIONS (integrations/index.tsx):
 - Glassmorphic loading states
 - Glassmorphic empty state
 - Section loading with frosted glass
+
+STORAGE MANAGEMENT (storage/storagemanagement/index.tsx):
+- Glassmorphic header with HardDrive icon
+- Glassmorphic loading state with skeleton cards
+- Glassmorphic category cards section
+- Glassmorphic recent files section
+- Glassmorphic search input
+- Glassmorphic dropdown menu
 
 ═══════════════════════════════════════════════════════════════════════════════
