@@ -1,9 +1,11 @@
 // src/hooks/useProductConfig.ts
 // Hook to fetch product-specific configuration from the API
 // Falls back to pricing.ts constants if API call fails
+// Pattern: Same as useResources.ts
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { productConfigService } from '@/services/productConfigService';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import api from '@/services/api';
+import { API_ENDPOINTS } from '@/services/serviceURLs';
 import {
   featureItems as defaultFeatureItems,
   FeatureItem,
@@ -24,7 +26,6 @@ import {
 
 // Transform API Feature to UI FeatureItem
 const transformFeatureToFeatureItem = (feature: Feature): FeatureItem => {
-  // Get default/trial values - handle both number and boolean types
   const defaultVal = typeof feature.default === 'number' ? feature.default : (feature.default ? 1 : 0);
   const trialVal = typeof feature.trial === 'number' ? feature.trial : (feature.trial ? 1 : 0);
 
@@ -48,28 +49,38 @@ const transformTierTemplateToTierRange = (tier: TierTemplate): TierRange => {
   };
 };
 
+// Parse API response
+const parseResponse = (response: any): ProductConfig | null => {
+  // Handle { success: true, data: {...} } format
+  if (response?.data?.success === true && response?.data?.data) {
+    return response.data.data;
+  }
+  // Handle direct data format
+  if (response?.data?.success === true) {
+    return response.data;
+  }
+  // Handle direct object
+  if (response?.data) {
+    return response.data;
+  }
+  return null;
+};
+
 interface UseProductConfigOptions {
   productCode: string;
   enabled?: boolean;
 }
 
 interface UseProductConfigResult {
-  // Raw config from API
   config: ProductConfig | null;
   billingConfig: BillingConfig | null;
-
-  // Transformed for UI consumption
   featureItems: FeatureItem[];
   planTypes: PlanType[];
   userTiers: TierRange[];
   contractTiers: TierRange[];
   notificationItems: NotificationItem[];
-
-  // Loading states
   isLoading: boolean;
   error: Error | null;
-
-  // Helpers
   isUsingFallback: boolean;
   refetch: () => Promise<void>;
 }
@@ -77,13 +88,13 @@ interface UseProductConfigResult {
 export const useProductConfig = (options: UseProductConfigOptions): UseProductConfigResult => {
   const { productCode, enabled = true } = options;
 
-  // State
   const [config, setConfig] = useState<ProductConfig | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [isUsingFallback, setIsUsingFallback] = useState(false);
+  const isMountedRef = useRef(true);
 
-  // Fetch product config using the service
+  // Fetch product config using api.ts
   const fetchConfig = useCallback(async () => {
     if (!productCode || !enabled) {
       return;
@@ -93,23 +104,42 @@ export const useProductConfig = (options: UseProductConfigOptions): UseProductCo
     setError(null);
 
     try {
-      const response = await productConfigService.getConfig(productCode);
+      console.log(`[useProductConfig] Fetching config for: ${productCode}`);
 
-      if (response.success && response.data) {
-        setConfig(response.data);
+      const response = await api.get(API_ENDPOINTS.PRODUCT_CONFIG.GET(productCode));
+
+      console.log('[useProductConfig] API Response:', response);
+
+      const data = parseResponse(response);
+
+      if (data && isMountedRef.current) {
+        setConfig(data);
         setIsUsingFallback(false);
-        console.log(`[useProductConfig] Loaded config for ${productCode}:`, response.data);
+        console.log(`[useProductConfig] Loaded config for ${productCode}:`, data);
       } else {
-        throw new Error(response.error || 'Failed to load product config');
+        throw new Error('Invalid response format');
       }
-    } catch (err) {
-      console.warn(`[useProductConfig] API call failed for ${productCode}, using fallback values:`, err);
-      setError(err instanceof Error ? err : new Error('Unknown error'));
-      setIsUsingFallback(true);
+    } catch (err: any) {
+      console.warn(`[useProductConfig] API call failed for ${productCode}, using fallback:`, err);
+
+      if (isMountedRef.current) {
+        setError(err instanceof Error ? err : new Error(err?.message || 'Unknown error'));
+        setIsUsingFallback(true);
+      }
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   }, [productCode, enabled]);
+
+  // Track mounted state
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   // Fetch on mount and when dependencies change
   useEffect(() => {
@@ -124,10 +154,8 @@ export const useProductConfig = (options: UseProductConfigOptions): UseProductCo
   // Transform features for UI
   const featureItems = useMemo((): FeatureItem[] => {
     if (!billingConfig?.features || billingConfig.features.length === 0) {
-      // Fallback to default features from pricing.ts
       return defaultFeatureItems;
     }
-
     return billingConfig.features.map(transformFeatureToFeatureItem);
   }, [billingConfig]);
 
@@ -137,10 +165,7 @@ export const useProductConfig = (options: UseProductConfigOptions): UseProductCo
       return defaultPlanTypes;
     }
 
-    // Handle both string[] and PlanType[] formats
     const configPlanTypes = billingConfig.plan_types;
-
-    // If it's an array of strings like ["Per User", "Per Contract"]
     if (typeof configPlanTypes[0] === 'string') {
       const validPlanTypes = (configPlanTypes as unknown as string[]).filter(
         (pt): pt is PlanType => pt === 'Per User' || pt === 'Per Contract'
@@ -148,7 +173,6 @@ export const useProductConfig = (options: UseProductConfigOptions): UseProductCo
       return validPlanTypes.length > 0 ? validPlanTypes : defaultPlanTypes;
     }
 
-    // If it's an array of PlanType objects, extract labels
     return defaultPlanTypes;
   }, [billingConfig]);
 
@@ -159,7 +183,6 @@ export const useProductConfig = (options: UseProductConfigOptions): UseProductCo
       return defaultUserTiers;
     }
 
-    // Check for user_tiers or per_user key
     const userTierData = tierTemplates.user_tiers || tierTemplates.per_user || tierTemplates['Per User'];
     if (!userTierData || userTierData.length === 0) {
       return defaultUserTiers;
@@ -174,7 +197,6 @@ export const useProductConfig = (options: UseProductConfigOptions): UseProductCo
       return defaultContractTiers;
     }
 
-    // Check for contract_tiers or per_contract key
     const contractTierData = tierTemplates.contract_tiers || tierTemplates.per_contract || tierTemplates['Per Contract'];
     if (!contractTierData || contractTierData.length === 0) {
       return defaultContractTiers;
@@ -183,9 +205,7 @@ export const useProductConfig = (options: UseProductConfigOptions): UseProductCo
     return contractTierData.map(transformTierTemplateToTierRange);
   }, [billingConfig]);
 
-  // Get notification items (currently using fallback, can be extended)
   const notificationItems = useMemo((): NotificationItem[] => {
-    // TODO: Add notification config to billing_config if needed
     return defaultNotificationItems;
   }, []);
 
@@ -204,13 +224,12 @@ export const useProductConfig = (options: UseProductConfigOptions): UseProductCo
   };
 };
 
-// Convenience hook for just features
+// Convenience hooks
 export const useProductFeatures = (productCode: string, enabled = true) => {
   const { featureItems, isLoading, error, isUsingFallback } = useProductConfig({ productCode, enabled });
   return { featureItems, isLoading, error, isUsingFallback };
 };
 
-// Convenience hook for just tier templates
 export const useProductTiers = (productCode: string, enabled = true) => {
   const { userTiers, contractTiers, isLoading, error, isUsingFallback } = useProductConfig({ productCode, enabled });
   return { userTiers, contractTiers, isLoading, error, isUsingFallback };
