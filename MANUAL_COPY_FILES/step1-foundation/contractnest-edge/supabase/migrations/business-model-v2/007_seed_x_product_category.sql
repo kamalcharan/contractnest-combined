@@ -9,6 +9,7 @@
 -- Using ON CONFLICT to make this idempotent (safe to run multiple times)
 INSERT INTO m_category_master (
     category_name,
+    display_name,
     description,
     sequence_no,
     is_active,
@@ -17,6 +18,7 @@ INSERT INTO m_category_master (
 )
 VALUES (
     'X-Product',
+    'Platform Products',
     'Platform products - values match x-product header for API calls',
     100,
     true,
@@ -24,6 +26,7 @@ VALUES (
     NOW()
 )
 ON CONFLICT (category_name) DO UPDATE SET
+    display_name = EXCLUDED.display_name,
     description = EXCLUDED.description,
     updated_at = NOW();
 
@@ -120,6 +123,7 @@ ON CONFLICT (category_id, detail_value) DO UPDATE SET
 -- ============================================================================
 -- SELECT
 --     cm.category_name,
+--     cm.display_name,
 --     cd.detail_name,
 --     cd.detail_value,
 --     cd.description,
