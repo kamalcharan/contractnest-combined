@@ -5,14 +5,35 @@ COPY INSTRUCTIONS - fix-user-view-onboarding
 CHANGES SUMMARY:
 ----------------
 1. userView.tsx - Glassmorphic design, removed Department/Employee ID/Location fields, fixed role contradiction
-2. AuthContext.tsx - Fixed onboarding redirect for invited users (strict equality check)
+2. AuthContext.tsx - Fixed onboarding redirect for invited users (strict equality check === true)
+3. OnboardingContext.ts - Fixed onboarding redirect for invited users (strict equality check === true)
+   *** THIS WAS THE MISSING FIX - OnboardingContext was overriding AuthContext redirects ***
 
 SUBMODULE AFFECTED: contractnest-ui
+
+ROOT CAUSE OF ONBOARDING BUG:
+-----------------------------
+There were TWO places redirecting users to onboarding:
+1. AuthContext.tsx (during login) - checked `tenant.is_owner` (truthy check)
+2. OnboardingContext.ts (after login) - checked `currentTenant?.is_owner` (truthy check)
+
+Both were using truthy checks instead of strict equality (=== true).
+When is_owner was undefined/null, the check would pass incorrectly.
+
+The OnboardingContext runs AFTER login and was OVERRIDING the AuthContext redirect!
+
+FIX: Changed all is_owner checks to use strict equality:
+- `if (tenant.is_owner)` → `if (tenant.is_owner === true)`
+- `if (userTenant?.is_owner)` → `if (userTenant?.is_owner === true)`
+- `if (currentTenant?.is_owner)` → `if (currentTenant?.is_owner === true)`
 
 FILES TO COPY:
 --------------
 Source: MANUAL_COPY_FILES\fix-user-view-onboarding\contractnest-ui\src\context\AuthContext.tsx
 Target: contractnest-ui\src\context\AuthContext.tsx
+
+Source: MANUAL_COPY_FILES\fix-user-view-onboarding\contractnest-ui\src\contexts\OnboardingContext.ts
+Target: contractnest-ui\src\contexts\OnboardingContext.ts
 
 Source: MANUAL_COPY_FILES\fix-user-view-onboarding\contractnest-ui\src\pages\settings\users\userView.tsx
 Target: contractnest-ui\src\pages\settings\users\userView.tsx
@@ -20,17 +41,20 @@ Target: contractnest-ui\src\pages\settings\users\userView.tsx
 POWERSHELL COPY COMMANDS:
 -------------------------
 Copy-Item "MANUAL_COPY_FILES\fix-user-view-onboarding\contractnest-ui\src\context\AuthContext.tsx" -Destination "contractnest-ui\src\context\AuthContext.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\fix-user-view-onboarding\contractnest-ui\src\contexts\OnboardingContext.ts" -Destination "contractnest-ui\src\contexts\OnboardingContext.ts" -Force
 Copy-Item "MANUAL_COPY_FILES\fix-user-view-onboarding\contractnest-ui\src\pages\settings\users\userView.tsx" -Destination "contractnest-ui\src\pages\settings\users\userView.tsx" -Force
 
 Write-Host "All files copied!" -ForegroundColor Green
 
 COMMIT MESSAGE:
 ---------------
-fix: user view glassmorphic design, role display, and onboarding redirect
+fix: onboarding redirect for invited users + user view improvements
 
-- Applied glassmorphic design to userView.tsx matching LOV page standards
-- Removed unused Department, Employee ID, Location fields from user profile
-- Fixed role contradiction by using assigned_roles as single source of truth
-- Fixed onboarding redirect for invited users using strict equality check for is_owner
+- Fixed is_owner checks in AuthContext.tsx (login flow) with strict equality
+- Fixed is_owner checks in OnboardingContext.ts (post-login redirect) with strict equality
+- ROOT CAUSE: OnboardingContext was overriding AuthContext redirects
+- Applied glassmorphic design to userView.tsx
+- Removed unused Department, Employee ID, Location fields
+- Fixed role contradiction using assigned_roles as single source of truth
 
 ═══════════════════════════════════════════════════════════════════════════════

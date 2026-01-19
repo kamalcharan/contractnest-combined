@@ -958,12 +958,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!isOnboardingComplete) {
           // FIX: Check if user is owner before redirecting to onboarding
           // Only owners can complete onboarding, invited users should see pending page
-          // Use strict equality to avoid undefined/null being truthy
+          // CRITICAL: Use strict equality (=== true) to avoid undefined/null being truthy
           if (tenant.is_owner === true) {
-            console.log('Owner needs to complete onboarding');
+            console.log('[AuthContext] Owner needs to complete onboarding');
             navigate('/onboarding');
           } else {
-            console.log('Non-owner waiting for onboarding completion, is_owner:', tenant.is_owner);
+            console.log('[AuthContext] Non-owner waiting for onboarding completion, is_owner:', tenant.is_owner);
             navigate('/onboarding-pending');
           }
         } else {
@@ -1114,11 +1114,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Check onboarding status for Google users with tenants
         const isOnboardingComplete = await checkOnboardingStatus();
         if (!isOnboardingComplete && isNewUser) {
-          // Check if user is owner before redirecting - use strict equality
+          // Check if user is owner before redirecting
+          // CRITICAL: Use strict equality (=== true) to avoid undefined/null being truthy
           if (userTenant?.is_owner === true) {
+            console.log('[AuthContext] Google auth - Owner needs onboarding');
             navigate('/onboarding');
           } else {
-            console.log('Google auth: Non-owner waiting for onboarding, is_owner:', userTenant?.is_owner);
+            console.log('[AuthContext] Google auth - Non-owner waiting for onboarding, is_owner:', userTenant?.is_owner);
             navigate('/onboarding-pending');
           }
         }
