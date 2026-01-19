@@ -1,0 +1,86 @@
+═══════════════════════════════════════════════════════════════════════════════
+STEP 2: USAGE DASHBOARD - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════════════════════════════════
+Date: January 2025
+Purpose: Business Model Phase 4 - Step 2
+- Add real usage data to Subscription page
+- Connect to get_usage_summary API
+- Show contracts, users, storage, notification credits
+═══════════════════════════════════════════════════════════════════════════════
+
+SUBMODULES AFFECTED:
+────────────────────
+1. contractnest-ui (3 files)
+
+═══════════════════════════════════════════════════════════════════════════════
+FILE MAPPINGS
+═══════════════════════════════════════════════════════════════════════════════
+
+FILE 1: serviceURLs.ts (Updated Endpoints)
+───────────────────────────────────────────
+FROM: step2-usage-dashboard/contractnest-ui/src/services/serviceURLs.ts
+TO:   contractnest-ui/src/services/serviceURLs.ts
+
+CHANGES:
+  - Added USAGE_SUMMARY endpoint
+  - Added INVOICE_ESTIMATE endpoint
+  - Added TOPUP_PACKS endpoint
+  - Added CREDIT_BALANCE endpoint
+
+───────────────────────────────────────────────────────────────────────────────
+
+FILE 2: useBusinessModelQueries.ts (NEW Hook File)
+───────────────────────────────────────────────────
+FROM: step2-usage-dashboard/contractnest-ui/src/hooks/queries/useBusinessModelQueries.ts
+TO:   contractnest-ui/src/hooks/queries/useBusinessModelQueries.ts
+
+NEW FILE CONTAINING:
+  - useUsageSummary hook - fetches usage metrics from API
+  - useInvoiceEstimate hook - fetches invoice estimate
+  - useCreditBalance hook - fetches credit balance
+  - useTopupPacks hook - fetches available topup packs
+  - getUsageStatus utility - color coding for usage percentages
+  - formatStorageSize utility - formats MB/GB display
+
+───────────────────────────────────────────────────────────────────────────────
+
+FILE 3: Subscription/index.tsx (Updated Page)
+───────────────────────────────────────────────
+FROM: step2-usage-dashboard/contractnest-ui/src/pages/settings/businessmodel/tenants/Subscription/index.tsx
+TO:   contractnest-ui/src/pages/settings/businessmodel/tenants/Subscription/index.tsx
+
+CHANGES:
+  - Imports useUsageSummary hook
+  - Replaces mock data with real API data
+  - Shows loading state while fetching
+  - Displays contracts, users, storage, notification credits
+  - Shows "days remaining" in billing period
+  - Low credit warning with "Buy More" link
+  - Progress bars with color coding
+
+═══════════════════════════════════════════════════════════════════════════════
+PREREQUISITE: RPC FUNCTION
+═══════════════════════════════════════════════════════════════════════════════
+
+The get_usage_summary RPC function must be deployed in Supabase.
+Check if it exists with:
+
+SELECT proname FROM pg_proc WHERE proname = 'get_usage_summary';
+
+If not found, run the SQL from:
+  ClaudeDocumentation/BusinessModel/005_phase2_rpc_functions.sql
+
+═══════════════════════════════════════════════════════════════════════════════
+POST-COPY ACTIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Restart dev server:
+   cd contractnest-ui && npm run dev
+
+2. Test:
+   - Go to Settings → Subscription
+   - Verify usage data loads (contracts, users, storage, credits)
+   - Check loading state appears briefly
+   - Verify progress bars show correct colors
+
+═══════════════════════════════════════════════════════════════════════════════
