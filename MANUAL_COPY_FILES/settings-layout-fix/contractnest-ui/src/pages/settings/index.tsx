@@ -91,20 +91,23 @@ const GlassSettingsItem: React.FC<GlassSettingsItemProps> = ({
             onClick={onClick}
             className="rounded-xl p-4 cursor-pointer transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] group"
             style={{
-                background: isDarkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
+                background: isDarkMode ? 'rgba(30, 41, 59, 0.6)' : 'rgba(255, 255, 255, 0.95)',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
+                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                boxShadow: isDarkMode ? 'none' : '0 2px 8px -2px rgba(0,0,0,0.08)',
             }}
             onMouseEnter={(e) => {
                 e.currentTarget.style.background = isDarkMode
-                    ? `rgba(255,255,255,0.06)`
-                    : `rgba(0,0,0,0.04)`;
-                e.currentTarget.style.boxShadow = `0 4px 16px -4px ${colors.brand.primary}20`;
+                    ? 'rgba(30, 41, 59, 0.8)'
+                    : 'rgba(255, 255, 255, 1)';
+                e.currentTarget.style.boxShadow = `0 4px 16px -4px ${colors.brand.primary}30`;
             }}
             onMouseLeave={(e) => {
                 e.currentTarget.style.background = isDarkMode
-                    ? 'rgba(255,255,255,0.03)'
-                    : 'rgba(0,0,0,0.02)';
-                e.currentTarget.style.boxShadow = 'none';
+                    ? 'rgba(30, 41, 59, 0.6)'
+                    : 'rgba(255, 255, 255, 0.95)';
+                e.currentTarget.style.boxShadow = isDarkMode ? 'none' : '0 2px 8px -2px rgba(0,0,0,0.08)';
             }}
         >
             <div className="flex items-center justify-between">
@@ -339,10 +342,10 @@ const SettingsPage = () => {
                                         <div
                                             className="rounded-xl p-4 h-fit lg:sticky lg:top-6"
                                             style={{
-                                                background: isDarkMode ? 'rgba(30, 41, 59, 0.4)' : 'rgba(255, 255, 255, 0.5)',
+                                                background: isDarkMode ? 'rgba(30, 41, 59, 0.4)' : 'rgba(148, 163, 184, 0.15)',
                                                 backdropFilter: 'blur(8px)',
                                                 WebkitBackdropFilter: 'blur(8px)',
-                                                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'}`,
+                                                border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(100, 116, 139, 0.2)'}`,
                                             }}
                                         >
                                             <h2
