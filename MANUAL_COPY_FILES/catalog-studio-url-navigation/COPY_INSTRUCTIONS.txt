@@ -1,0 +1,46 @@
+═══════════════════════════════════════════════════════════════════════════════
+CATALOG STUDIO - URL NAVIGATION FIX
+═══════════════════════════════════════════════════════════════════════════════
+
+ISSUE FIXED:
+- Block Library page had stacked headers wasting ~40% of vertical space
+- Inline wizard was rendering alongside the main page header
+
+SOLUTION:
+- Changed "New Block" button to navigate to /catalog-studio/blocks/new
+- Changed "Edit Block" actions to navigate to /catalog-studio/blocks/[id]/edit
+- Removed inline BlockWizard component
+- Full-page wizard now has proper space utilization
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════════════════════════════════
+
+1. contractnest-ui/src/pages/catalog-studio/blocks.tsx
+   FROM: MANUAL_COPY_FILES/catalog-studio-url-navigation/contractnest-ui/src/pages/catalog-studio/blocks.tsx
+   TO:   contractnest-ui/src/pages/catalog-studio/blocks.tsx
+
+═══════════════════════════════════════════════════════════════════════════════
+CHANGES MADE TO blocks.tsx
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Added: useNavigate import from react-router-dom
+2. Added: navigate hook initialization
+3. Removed: WizardMode type import
+4. Removed: BlockWizard component import
+5. Removed: isWizardOpen, wizardMode, wizardBlockType, editingBlock state variables
+6. Removed: openWizard, closeWizard, handleSaveBlock functions
+7. Added: navigateToCreateBlock, navigateToEditBlock navigation functions
+8. Updated: "New Block" button to use navigation
+9. Updated: "Create Block" empty state button to use navigation
+10. Updated: Edit button in list view to use navigation
+11. Updated: Edit button in preview modal to use navigation
+12. Removed: <BlockWizard> component at bottom of file
+
+═══════════════════════════════════════════════════════════════════════════════
+SUBMODULES AFFECTED
+═══════════════════════════════════════════════════════════════════════════════
+
+- contractnest-ui (only)
+
+═══════════════════════════════════════════════════════════════════════════════
