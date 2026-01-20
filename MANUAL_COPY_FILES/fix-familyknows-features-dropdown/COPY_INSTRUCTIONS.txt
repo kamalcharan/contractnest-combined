@@ -1,0 +1,36 @@
+═══════════════════════════════════════════════════════════════════════════════
+FIX: FamilyKnows Features Dropdown Not Selectable in Configure Plan Wizard
+═══════════════════════════════════════════════════════════════════════════════
+
+BUG DESCRIPTION:
+----------------
+In the Configure Plan wizard (Step 3 - Features), dropdown values were not
+selectable when "familyknows" product was selected, but worked fine for
+"contractnest".
+
+ROOT CAUSE:
+-----------
+Missing dependencies in useCallback hooks caused stale closures. When the
+product changed from 'contractnest' to 'familyknows', the `featureItems`
+array was updated but the memoized callback functions still referenced
+the old (contractnest) feature list.
+
+FIX APPLIED:
+------------
+Added `featureItems` to the dependency arrays of:
+1. getUnusedFeatures callback (line 152-156)
+2. selectFeature callback (line 192-228)
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES TO COPY:
+═══════════════════════════════════════════════════════════════════════════════
+
+FROM: MANUAL_COPY_FILES/fix-familyknows-features-dropdown/contractnest-ui/src/components/businessmodel/planform/FeaturesStep.tsx
+TO:   contractnest-ui/src/components/businessmodel/planform/FeaturesStep.tsx
+
+═══════════════════════════════════════════════════════════════════════════════
+SUBMODULES AFFECTED:
+═══════════════════════════════════════════════════════════════════════════════
+- contractnest-ui
+
+═══════════════════════════════════════════════════════════════════════════════
