@@ -1,11 +1,11 @@
 // src/pages/catalog-studio/configure.tsx
-// v2.0: Added version tracking for optimistic locking and version conflict handling
+// v2.0: Added version conflict handling UI
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Plus, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
-import { useCatBlocksTest, useBlockVersionTracker, CatBlockWithVersion } from '@/hooks/queries/useCatBlocksTest';
+import { useCatBlocksTest, getBlockVersion } from '@/hooks/queries/useCatBlocksTest';
 import { useCatBlockMutationOperations } from '@/hooks/mutations/useCatBlocksMutations';
 import { Block, WizardMode } from '@/types/catalogStudio';
 import { BLOCK_CATEGORIES, getCategoryById } from '@/utils/catalog-studio';
@@ -101,13 +101,6 @@ const CatalogStudioConfigurePage: React.FC = () => {
   // API Hooks
   const { data: blocksResponse, isLoading, error, refetch } = useCatBlocksTest();
 
-  // Version tracking for optimistic locking
-  const {
-    getVersion,
-    updateVersion,
-    initializeFromBlocks
-  } = useBlockVersionTracker();
-
   // Version conflict state
   const [conflictState, setConflictState] = useState<{
     isOpen: boolean;
@@ -121,7 +114,8 @@ const CatalogStudioConfigurePage: React.FC = () => {
 
   // Handle version conflict callback
   const handleVersionConflict = useCallback((blockId: string, message: string) => {
-    const block = blocksResponse?.data?.blocks?.find(b => b.id === blockId);
+    const rawBlocks = blocksResponse?.data?.blocks;
+    const block = rawBlocks?.find((b: any) => b.id === blockId);
     setConflictState({
       isOpen: true,
       blockId,
@@ -143,14 +137,6 @@ const CatalogStudioConfigurePage: React.FC = () => {
     if (!rawBlocks || !Array.isArray(rawBlocks)) return [];
     return catBlocksToBlocks(rawBlocks);
   }, [blocksResponse]);
-
-  // Initialize version tracking when blocks load
-  useEffect(() => {
-    const rawBlocks = blocksResponse?.data?.blocks as CatBlockWithVersion[] | undefined;
-    if (rawBlocks?.length) {
-      initializeFromBlocks(rawBlocks);
-    }
-  }, [blocksResponse, initializeFromBlocks]);
 
   // State
   const [selectedCategory, setSelectedCategory] = useState<string>('service');
@@ -188,8 +174,14 @@ const CatalogStudioConfigurePage: React.FC = () => {
 
   // Calculate next sequence number for new blocks
   const getNextSequenceNo = () => {
-    const categoryBlocks = allBlocks.filter(b => b.categoryId === wizardBlockType);
-    return categoryBlocks.length;
+    const blocks = allBlocks.filter(b => b.categoryId === wizardBlockType);
+    return blocks.length;
+  };
+
+  // Helper to get block version from raw response
+  const getExpectedVersion = (blockId: string): number | undefined => {
+    const rawBlocks = blocksResponse?.data?.blocks;
+    return getBlockVersion(rawBlocks || [], blockId);
   };
 
   // Handle save with version tracking for optimistic locking
@@ -197,20 +189,15 @@ const CatalogStudioConfigurePage: React.FC = () => {
     try {
       if (wizardMode === 'edit' && editingBlock) {
         // Get expected version for optimistic locking
-        const expectedVersion = getVersion(editingBlock.id);
+        const expectedVersion = getExpectedVersion(editingBlock.id);
 
         console.log('📝 Updating block with expected version:', expectedVersion);
 
-        const result = await updateBlock(
+        await updateBlock(
           editingBlock.id,
           blockToUpdateData(blockData, { userId }),
           expectedVersion
         );
-
-        // Update tracked version on success
-        if (result?.data?.version) {
-          updateVersion(editingBlock.id, result.data.version);
-        }
       } else {
         const fullBlockData = {
           ...blockData,
@@ -247,7 +234,7 @@ const CatalogStudioConfigurePage: React.FC = () => {
     }
   };
 
-  // Handle duplicate with version tracking
+  // Handle duplicate
   const handleDuplicateBlock = async (block: Block) => {
     try {
       const duplicateData = {
@@ -265,20 +252,15 @@ const CatalogStudioConfigurePage: React.FC = () => {
   const handleEditorSave = async (updatedBlock: Block) => {
     try {
       // Get expected version for optimistic locking
-      const expectedVersion = getVersion(updatedBlock.id);
+      const expectedVersion = getExpectedVersion(updatedBlock.id);
 
       console.log('📝 Editor save with expected version:', expectedVersion);
 
-      const result = await updateBlock(
+      await updateBlock(
         updatedBlock.id,
         blockToUpdateData(updatedBlock, { userId }),
         expectedVersion
       );
-
-      // Update tracked version on success
-      if (result?.data?.version) {
-        updateVersion(updatedBlock.id, result.data.version);
-      }
 
       refetch();
     } catch (error) {
