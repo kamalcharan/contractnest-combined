@@ -1,0 +1,161 @@
+═══════════════════════════════════════════════════════════════════════════════
+📦 EDGE IDEMPOTENCY FRAMEWORK
+═══════════════════════════════════════════════════════════════════════════════
+
+Branch: edge-idempotency-framework
+Date: January 2025
+
+Files Changed:
+  - _shared/common/idempotency.ts - NEW: Standard idempotency framework
+  - _shared/common/cache.ts       - NEW: Standard in-memory cache framework
+  - plans/index.ts                - UPDATED: Integrated idempotency + cache + RLS fix
+
+Features Implemented:
+  ✅ Standard idempotency framework (checkIdempotency, saveIdempotency, clearIdempotency)
+  ✅ Standard in-memory cache framework (getFromCache, setCache, invalidateCache)
+  ✅ 15-minute TTL for idempotency (configurable)
+  ✅ 15-second TTL for cache (configurable)
+  ✅ RLS bypass fix (Authorization header removed from service role client)
+  ✅ Cache invalidation on mutations
+  ✅ Duration tracking (_duration_ms in responses)
+  ✅ Idempotent response flag (_idempotent: true when cached response returned)
+
+Table Used:
+  - t_idempotency_cache (must already exist in database)
+    Columns: idempotency_key, tenant_id, response_data, created_at, expires_at
+
+═══════════════════════════════════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files from MANUAL_COPY_FILES
+─────────────────────────────────────
+
+# Copy the new shared framework files
+Copy-Item "MANUAL_COPY_FILES\edge-idempotency-framework\contractnest-edge\supabase\functions\_shared\common\idempotency.ts" -Destination "contractnest-edge\supabase\functions\_shared\common\" -Force
+Copy-Item "MANUAL_COPY_FILES\edge-idempotency-framework\contractnest-edge\supabase\functions\_shared\common\cache.ts" -Destination "contractnest-edge\supabase\functions\_shared\common\" -Force
+
+# Copy the updated plans Edge function
+Copy-Item "MANUAL_COPY_FILES\edge-idempotency-framework\contractnest-edge\supabase\functions\plans\index.ts" -Destination "contractnest-edge\supabase\functions\plans\" -Force
+
+Write-Host "✅ All files copied!" -ForegroundColor Green
+
+STEP 3: Deploy Edge Functions (if using Supabase CLI)
+─────────────────────────────────────
+cd contractnest-edge
+supabase functions deploy plans --no-verify-jwt
+
+# Or if deploying all functions:
+supabase functions deploy --no-verify-jwt
+
+STEP 4: Start Dev Server & Test
+─────────────────────────────────────
+# ContractNest UI
+cd ../contractnest-ui && npm run dev
+
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Test Plan Creation (Idempotency):
+   - [ ] Create a new plan
+   - [ ] Check if response includes _duration_ms
+   - [ ] Try creating the same plan again with same idempotency key
+   - [ ] Verify second request returns _idempotent: true
+
+2. Test Plan Listing (Caching):
+   - [ ] Navigate to pricing plans list
+   - [ ] Refresh page quickly (within 15 seconds)
+   - [ ] Check if response includes _cached: true
+
+3. Test RLS Fix:
+   - [ ] Create a plan for product 'contractnest'
+   - [ ] Create a plan for product 'familyknows'
+   - [ ] Verify no 500 RLS policy violation error
+
+4. Test Cache Invalidation:
+   - [ ] Create a new plan
+   - [ ] Verify list no longer shows _cached: true
+   - [ ] Verify new plan appears in list
+
+═══════════════════════════════════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════════════════════
+📋 USAGE GUIDE: How to Use Idempotency in Other Edge Functions
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Import the framework:
+   ─────────────────────────────────────
+   import {
+     checkIdempotency,
+     saveIdempotency,
+     getIdempotencyKeyFromRequest
+   } from "../_shared/common/idempotency.ts";
+
+2. Get idempotency key from request:
+   ─────────────────────────────────────
+   const idempotencyKey = getIdempotencyKeyFromRequest(req);
+
+3. Check idempotency before processing:
+   ─────────────────────────────────────
+   if (idempotencyKey) {
+     const result = await checkIdempotency(supabase, idempotencyKey, tenantId);
+     if (result.exists) {
+       return new Response(JSON.stringify(result.response), { status: 200 });
+     }
+   }
+
+4. Save idempotency after successful operation:
+   ─────────────────────────────────────
+   if (idempotencyKey) {
+     await saveIdempotency(supabase, idempotencyKey, tenantId, responseData);
+   }
+
+5. Update CORS headers to include idempotency-key:
+   ─────────────────────────────────────
+   const corsHeaders = {
+     'Access-Control-Allow-Headers': '...x-idempotency-key...',
+   };
+
+═══════════════════════════════════════════════════════════════════════════════
+📋 USAGE GUIDE: How to Use Cache in Other Edge Functions
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Import the framework:
+   ─────────────────────────────────────
+   import {
+     getCacheKey,
+     getFromCache,
+     setCache,
+     invalidateCacheByPrefix
+   } from "../_shared/common/cache.ts";
+
+2. Check cache before database call:
+   ─────────────────────────────────────
+   const cacheKey = getCacheKey('resources', tenantId, 'list');
+   const cached = getFromCache(cacheKey);
+   if (cached) {
+     return new Response(JSON.stringify({ data: cached, _cached: true }));
+   }
+
+3. Set cache after database call:
+   ─────────────────────────────────────
+   setCache(cacheKey, data, { ttlSeconds: 15 });
+
+4. Invalidate cache after mutations:
+   ─────────────────────────────────────
+   invalidateCacheByPrefix(`resources:${tenantId}`);
+
+═══════════════════════════════════════════════════════════════════════════════
