@@ -455,11 +455,14 @@ const PricingPlansAdminPage: React.FC = () => {
                   {productsLoading ? (
                     <option value="">Loading products...</option>
                   ) : (
-                    PRODUCT_OPTIONS.map(option => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))
+                    PRODUCT_OPTIONS.map((option, index) => {
+                      console.log(`🔍 Rendering option ${index}:`, option.value, option.label);
+                      return (
+                        <option key={option.value || `all-products-${index}`} value={option.value}>
+                          {option.label}
+                        </option>
+                      );
+                    })
                   )}
                 </select>
               </div>
