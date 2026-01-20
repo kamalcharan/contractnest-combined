@@ -1,9 +1,9 @@
 // src/pages/settings/businessmodel/admin/pricing-plans/index.tsx
-// UPDATED: VaNiLoader, VaNiToast, Product Filter (Dynamic), Glassmorphic Design
+// UPDATED: Product Filter with API reload, Removed Debug, Glassmorphic Design
 
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PlusCircle, ArrowLeft, Filter, X } from 'lucide-react';
+import { PlusCircle, ArrowLeft, Filter, X, Package } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { analyticsService } from '@/services/analytics.service';
 import { useBusinessModel } from '@/hooks/useBusinessModel';
@@ -27,26 +27,14 @@ const PricingPlansAdminPage: React.FC = () => {
     error
   } = useBusinessModel();
 
-  // Fetch products dynamically from X-Product category (same as BasicInfoStep)
-  const { options: productOptions, isLoading: productsLoading, isSuccess, error: productError } = useXProductDropdown('global');
-
-  // DEBUG: Log product dropdown data to diagnose filtering issue
-  useEffect(() => {
-    console.log('🔍 [ProductDropdown Debug] Hook state:', {
-      productsLoading,
-      isSuccess,
-      productError,
-      productOptionsCount: productOptions?.length ?? 0,
-      productOptions: productOptions,
-      rawValues: productOptions?.map(p => p.value)
-    });
-  }, [productOptions, productsLoading, isSuccess, productError]);
+  // Fetch products dynamically from X-Product category
+  const { options: productOptions, isLoading: productsLoading } = useXProductDropdown('global');
 
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
 
   // Filter states
   const [activeFilter, setActiveFilter] = useState<'all' | 'plans' | 'users' | 'renewals' | 'trials'>('all');
-  const [productFilter, setProductFilter] = useState<string>('');
+  const [productFilter, setProductFilter] = useState<string>(''); // Empty = All Products
   const [showFilters, setShowFilters] = useState(false);
 
   // Build product filter options with "All Products" at the beginning
@@ -72,6 +60,7 @@ const PricingPlansAdminPage: React.FC = () => {
   // Track component lifecycle properly
   const isMounted = useRef(true);
   const hasTrackedPageView = useRef(false);
+  const lastProductFilter = useRef<string>('');
 
   // Set up mounting status - only once
   useEffect(() => {
@@ -89,19 +78,22 @@ const PricingPlansAdminPage: React.FC = () => {
     }
   }, []);
 
+  // Handle product filter change - reload plans from API
+  const handleProductFilterChange = useCallback((newProductCode: string) => {
+    if (lastProductFilter.current === newProductCode) return;
+
+    setProductFilter(newProductCode);
+    lastProductFilter.current = newProductCode;
+
+    // Reload plans with the new product filter
+    loadPlans(undefined, newProductCode || undefined);
+  }, [loadPlans]);
+
   // Process plans data with new field compatibility
   useEffect(() => {
     if (!isMounted.current) return;
 
-    // Prevent processing if plans array is the same reference
-    if (processedPlans.length === plans.length && plans.length > 0) {
-      console.log('Plans data already processed, skipping duplicate processing');
-      return;
-    }
-
     try {
-      console.log('Processing plans data, current count:', plans.length);
-
       // Handle both API formats for field names
       const activePlansCount = plans.filter(plan => {
         const isVisible = plan.isVisible ?? plan.is_visible ?? true;
@@ -160,15 +152,10 @@ const PricingPlansAdminPage: React.FC = () => {
         trialsEnding
       });
 
-      console.log('Plans processing completed:', {
-        total: plans.length,
-        active: activePlansCount,
-        users: totalUsersCount
-      });
-    } catch (error) {
-      console.error("Error processing plans data:", error);
+    } catch (err) {
+      console.error("Error processing plans data:", err);
     }
-  }, [plans, processedPlans.length]);
+  }, [plans]);
 
   // Handle Back
   const handleBack = () => {
@@ -182,17 +169,10 @@ const PricingPlansAdminPage: React.FC = () => {
 
   // Handle View Plan with robust ID handling
   const handleViewPlan = (planId: string) => {
-    if (!planId) {
-      console.error('handleViewPlan: No plan ID provided');
-      return;
-    }
-
-    console.log('Navigating to plan details:', planId);
-
+    if (!planId) return;
     try {
       navigate(`/settings/businessmodel/admin/pricing-plans/${planId}`);
     } catch (error) {
-      console.error('Navigation error:', error);
       window.location.href = `/settings/businessmodel/admin/pricing-plans/${planId}`;
     }
   };
@@ -203,15 +183,12 @@ const PricingPlansAdminPage: React.FC = () => {
 
     if (confirmed) {
       try {
-        console.log('Archiving plan:', planId);
         const success = await archivePlan(planId);
         if (success) {
-          console.log('Plan archived successfully, refreshing list');
           vaniToast.success('Plan archived successfully');
-          await loadPlans();
+          await loadPlans(undefined, productFilter || undefined);
         }
-      } catch (error) {
-        console.error('Error archiving plan:', error);
+      } catch (err) {
         vaniToast.error('Failed to archive plan', { message: 'Please try again' });
       }
     }
@@ -222,16 +199,11 @@ const PricingPlansAdminPage: React.FC = () => {
     setActiveFilter(prev => prev === cardType ? 'all' : cardType);
   };
 
-  // Filter plans based on active filter AND product filter
+  // Filter plans based on active filter (product filter is now handled by API)
   const getFilteredPlans = useMemo(() => {
     let filtered = processedPlans;
 
-    // Apply product filter first
-    if (productFilter) {
-      filtered = filtered.filter(plan => plan.productCode === productFilter);
-    }
-
-    // Then apply status filter
+    // Status filter (product filter is done via API)
     if (activeFilter === 'all') return filtered;
 
     switch (activeFilter) {
@@ -246,12 +218,14 @@ const PricingPlansAdminPage: React.FC = () => {
       default:
         return filtered;
     }
-  }, [processedPlans, activeFilter, productFilter]);
+  }, [processedPlans, activeFilter]);
 
   // Clear all filters
   const clearFilters = () => {
     setActiveFilter('all');
-    setProductFilter('');
+    if (productFilter) {
+      handleProductFilterChange('');
+    }
   };
 
   // Check if any filters are active
@@ -311,7 +285,7 @@ const PricingPlansAdminPage: React.FC = () => {
               {error}
             </p>
             <button
-              onClick={() => loadPlans()}
+              onClick={() => loadPlans(undefined, productFilter || undefined)}
               className="px-6 py-2 rounded-xl text-white hover:opacity-90 transition-colors"
               style={{
                 background: `linear-gradient(135deg, ${colors.brand.primary}, ${colors.brand.secondary})`
@@ -434,6 +408,10 @@ const PricingPlansAdminPage: React.FC = () => {
             >
               {/* Product Filter Dropdown */}
               <div className="flex items-center gap-2">
+                <Package
+                  className="h-4 w-4"
+                  style={{ color: colors.utility.secondaryText }}
+                />
                 <label
                   className="text-sm font-medium"
                   style={{ color: colors.utility.secondaryText }}
@@ -442,9 +420,9 @@ const PricingPlansAdminPage: React.FC = () => {
                 </label>
                 <select
                   value={productFilter}
-                  onChange={(e) => setProductFilter(e.target.value)}
-                  disabled={productsLoading}
-                  className="px-3 py-2 rounded-xl text-sm transition-colors focus:outline-none focus:ring-2 disabled:opacity-50"
+                  onChange={(e) => handleProductFilterChange(e.target.value)}
+                  disabled={productsLoading || isLoading}
+                  className="px-3 py-2 rounded-xl text-sm transition-colors focus:outline-none focus:ring-2 disabled:opacity-50 min-w-[150px]"
                   style={{
                     backgroundColor: colors.utility.secondaryBackground,
                     color: colors.utility.primaryText,
@@ -455,14 +433,11 @@ const PricingPlansAdminPage: React.FC = () => {
                   {productsLoading ? (
                     <option value="">Loading products...</option>
                   ) : (
-                    PRODUCT_OPTIONS.map((option, index) => {
-                      console.log(`🔍 Rendering option ${index}:`, option.value, option.label);
-                      return (
-                        <option key={option.value || `all-products-${index}`} value={option.value}>
-                          {option.label}
-                        </option>
-                      );
-                    })
+                    PRODUCT_OPTIONS.map((option, index) => (
+                      <option key={option.value || `all-${index}`} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))
                   )}
                 </select>
               </div>
@@ -525,11 +500,12 @@ const PricingPlansAdminPage: React.FC = () => {
                   color: colors.brand.secondary
                 }}
               >
+                <Package className="h-3 w-3 mr-1" />
                 <span className="font-medium mr-2">
-                  Product: {PRODUCT_OPTIONS.find(o => o.value === productFilter)?.label}
+                  {PRODUCT_OPTIONS.find(o => o.value === productFilter)?.label}
                 </span>
                 <button
-                  onClick={() => setProductFilter('')}
+                  onClick={() => handleProductFilterChange('')}
                   className="hover:opacity-80"
                 >
                   <X className="h-3 w-3" />
@@ -574,47 +550,6 @@ const PricingPlansAdminPage: React.FC = () => {
             />
           )}
         </div>
-
-        {/* Debug info during development */}
-        {process.env.NODE_ENV === 'development' && (
-          <div
-            className="mt-8 p-4 rounded-xl border"
-            style={{
-              backgroundColor: isDarkMode
-                ? 'rgba(30, 41, 59, 0.4)'
-                : 'rgba(248, 250, 252, 0.6)',
-              borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
-            }}
-          >
-            <h3
-              className="text-sm font-medium mb-2"
-              style={{ color: colors.utility.primaryText }}
-            >
-              Debug Info
-            </h3>
-            <div
-              className="text-xs space-y-1"
-              style={{ color: colors.utility.secondaryText }}
-            >
-              <div>Plans loaded: {plans.length}</div>
-              <div>Processed plans: {processedPlans.length}</div>
-              <div>Filtered plans: {getFilteredPlans.length}</div>
-              <div>Loading: {isLoading ? 'Yes' : 'No'}</div>
-              <div>Active filter: {activeFilter}</div>
-              <div>Product filter: {productFilter || 'None'}</div>
-              <div>Error: {error || 'None'}</div>
-              <div className="mt-2 pt-2 border-t" style={{ borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }}>
-                <strong>Product Dropdown Debug:</strong>
-              </div>
-              <div>Products Loading: {productsLoading ? 'Yes' : 'No'}</div>
-              <div>Products Success: {isSuccess ? 'Yes' : 'No'}</div>
-              <div>Product Error: {productError?.toString() || 'None'}</div>
-              <div>Raw productOptions count: {productOptions?.length ?? 0}</div>
-              <div>PRODUCT_OPTIONS count: {PRODUCT_OPTIONS.length}</div>
-              <div>Product values: {productOptions?.map(p => p.value).join(', ') || 'None'}</div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
