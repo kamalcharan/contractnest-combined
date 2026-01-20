@@ -150,7 +150,16 @@ api.interceptors.request.use(
 
     // ===== NEW: Set x-product header dynamically =====
     // Allow per-request override via config.headers, otherwise use context
-    if (!config.headers['x-product']) {
+    // IMPORTANT: Don't add x-product to global masterdata endpoints (they return all products)
+    const globalMasterdataEndpoints = [
+      '/api/masterdata/global',
+      '/api/product-masterdata/global'
+    ];
+    const isGlobalMasterdata = globalMasterdataEndpoints.some(endpoint =>
+      config.url?.includes(endpoint)
+    );
+
+    if (!config.headers['x-product'] && !isGlobalMasterdata) {
       config.headers['x-product'] = getCurrentProduct();
     }
 
