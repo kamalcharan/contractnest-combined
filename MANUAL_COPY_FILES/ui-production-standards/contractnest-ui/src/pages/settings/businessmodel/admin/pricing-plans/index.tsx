@@ -46,13 +46,6 @@ const PricingPlansAdminPage: React.FC = () => {
     return [allOption, ...productOptions.map(p => ({ value: p.value, label: p.label }))];
   }, [productOptions]);
 
-  // DEBUG: Log product options to console
-  useEffect(() => {
-    console.log('[ProductFilter] productOptions from hook:', productOptions);
-    console.log('[ProductFilter] PRODUCT_OPTIONS for dropdown:', PRODUCT_OPTIONS);
-    console.log('[ProductFilter] productsLoading:', productsLoading);
-  }, [productOptions, PRODUCT_OPTIONS, productsLoading]);
-
   // Summary data calculated from plans
   const [summaryData, setSummaryData] = useState({
     activePlans: 0,
