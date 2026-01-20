@@ -337,7 +337,7 @@ const SettingsPage = () => {
                         return (
                             <div key={groupKey} className="mt-12 first:mt-0">
                                 <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
-                                    {/* Left: Group Header with Description */}
+                                    {/* Left: Group Header with Description (Grey) */}
                                     <div className="lg:w-1/4 flex-shrink-0">
                                         <div
                                             className="rounded-xl p-4 h-fit lg:sticky lg:top-6"
@@ -363,7 +363,7 @@ const SettingsPage = () => {
                                         </div>
                                     </div>
 
-                                    {/* Right: Cards Stack */}
+                                    {/* Right: Cards Stack (White) */}
                                     <div className="lg:w-3/4 flex flex-col space-y-3">
                                         {childItems.map((item) => (
                                             <GlassSettingsItem
