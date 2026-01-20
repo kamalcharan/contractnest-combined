@@ -1,0 +1,45 @@
+═══════════════════════════════════════════════════════════════════════════════
+FIX: RLS Policy Violation When Creating Plans
+═══════════════════════════════════════════════════════════════════════════════
+
+BUG DESCRIPTION:
+----------------
+Plan creation fails with error:
+  "new row violates row-level security policy for table t_bm_pricing_plan"
+
+ROOT CAUSE:
+-----------
+The Edge function was creating a Supabase client with BOTH:
+1. SUPABASE_SERVICE_ROLE_KEY (should bypass RLS)
+2. User's Authorization header (causes RLS to be evaluated with user context)
+
+When both are present, Supabase uses the user's JWT for RLS evaluation instead
+of using the service role's RLS bypass capability.
+
+FIX APPLIED:
+------------
+Removed the Authorization header from the Supabase client's global headers.
+The service role key alone is sufficient and will properly bypass RLS for
+admin operations like plan management.
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES TO COPY:
+═══════════════════════════════════════════════════════════════════════════════
+
+FROM: MANUAL_COPY_FILES/fix-plans-rls/contractnest-edge/supabase/functions/plans/index.ts
+TO:   contractnest-edge/supabase/functions/plans/index.ts
+
+═══════════════════════════════════════════════════════════════════════════════
+SUBMODULES AFFECTED:
+═══════════════════════════════════════════════════════════════════════════════
+- contractnest-edge
+
+═══════════════════════════════════════════════════════════════════════════════
+DEPLOYMENT NOTE:
+═══════════════════════════════════════════════════════════════════════════════
+After copying the file, you need to deploy the Edge function:
+
+cd contractnest-edge
+supabase functions deploy plans
+
+═══════════════════════════════════════════════════════════════════════════════
