@@ -28,7 +28,19 @@ const PricingPlansAdminPage: React.FC = () => {
   } = useBusinessModel();
 
   // Fetch products dynamically from X-Product category (same as BasicInfoStep)
-  const { options: productOptions, isLoading: productsLoading } = useXProductDropdown('global');
+  const { options: productOptions, isLoading: productsLoading, isSuccess, error: productError } = useXProductDropdown('global');
+
+  // DEBUG: Log product dropdown data to diagnose filtering issue
+  useEffect(() => {
+    console.log('🔍 [ProductDropdown Debug] Hook state:', {
+      productsLoading,
+      isSuccess,
+      productError,
+      productOptionsCount: productOptions?.length ?? 0,
+      productOptions: productOptions,
+      rawValues: productOptions?.map(p => p.value)
+    });
+  }, [productOptions, productsLoading, isSuccess, productError]);
 
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
 
@@ -588,6 +600,15 @@ const PricingPlansAdminPage: React.FC = () => {
               <div>Active filter: {activeFilter}</div>
               <div>Product filter: {productFilter || 'None'}</div>
               <div>Error: {error || 'None'}</div>
+              <div className="mt-2 pt-2 border-t" style={{ borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }}>
+                <strong>Product Dropdown Debug:</strong>
+              </div>
+              <div>Products Loading: {productsLoading ? 'Yes' : 'No'}</div>
+              <div>Products Success: {isSuccess ? 'Yes' : 'No'}</div>
+              <div>Product Error: {productError?.toString() || 'None'}</div>
+              <div>Raw productOptions count: {productOptions?.length ?? 0}</div>
+              <div>PRODUCT_OPTIONS count: {PRODUCT_OPTIONS.length}</div>
+              <div>Product values: {productOptions?.map(p => p.value).join(', ') || 'None'}</div>
             </div>
           </div>
         )}
