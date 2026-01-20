@@ -1,0 +1,206 @@
+═══════════════════════════════════════════════════════════════════════════════
+📦 API IDEMPOTENCY & CONTEXT FRAMEWORK
+═══════════════════════════════════════════════════════════════════════════════
+
+Branch: api-idempotency-framework
+Date: January 2025
+
+Files Changed:
+  - src/utils/apiErrors.ts           - NEW: Standard error response utilities
+  - src/middleware/requestContext.ts - NEW: Request context extraction middleware
+  - src/services/businessModelService.ts - UPDATED: Forwards x-product, x-idempotency-key
+  - src/controllers/planController.ts    - UPDATED: Uses context, standard errors
+  - src/routes/businessModelRoutes.ts    - UPDATED: Applies context middleware
+
+Features Implemented:
+  ✅ Standard error response utilities (validationError, notFoundError, etc.)
+  ✅ Request context middleware (extracts headers into req.context)
+  ✅ x-product header forwarding to Edge
+  ✅ x-idempotency-key header forwarding to Edge
+  ✅ Request ID generation for tracing
+  ✅ Backward compatible (works with/without middleware)
+
+Headers Now Supported:
+  - Authorization (required)
+  - x-tenant-id (required)
+  - x-product (optional, default: 'contractnest')
+  - x-idempotency-key (optional, for POST/PUT operations)
+  - x-user-id (optional)
+
+═══════════════════════════════════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Create middleware directory if not exists
+─────────────────────────────────────
+New-Item -ItemType Directory -Force -Path "contractnest-api\src\middleware"
+
+STEP 3: Copy Files from MANUAL_COPY_FILES
+─────────────────────────────────────
+
+# Copy new utility files
+Copy-Item "MANUAL_COPY_FILES\api-idempotency-framework\contractnest-api\src\utils\apiErrors.ts" -Destination "contractnest-api\src\utils\" -Force
+
+# Copy new middleware
+Copy-Item "MANUAL_COPY_FILES\api-idempotency-framework\contractnest-api\src\middleware\requestContext.ts" -Destination "contractnest-api\src\middleware\" -Force
+
+# Copy updated service
+Copy-Item "MANUAL_COPY_FILES\api-idempotency-framework\contractnest-api\src\services\businessModelService.ts" -Destination "contractnest-api\src\services\" -Force
+
+# Copy updated controller
+Copy-Item "MANUAL_COPY_FILES\api-idempotency-framework\contractnest-api\src\controllers\planController.ts" -Destination "contractnest-api\src\controllers\" -Force
+
+# Copy updated routes
+Copy-Item "MANUAL_COPY_FILES\api-idempotency-framework\contractnest-api\src\routes\businessModelRoutes.ts" -Destination "contractnest-api\src\routes\" -Force
+
+Write-Host "✅ All API files copied!" -ForegroundColor Green
+
+STEP 4: Install uuid package (if not already installed)
+─────────────────────────────────────
+cd contractnest-api
+npm install uuid
+npm install --save-dev @types/uuid
+
+STEP 5: Restart API Server
+─────────────────────────────────────
+npm run dev
+
+═══════════════════════════════════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Test X-Product Filtering:
+   - [ ] Call GET /api/business-model/plans with x-product: contractnest
+   - [ ] Call GET /api/business-model/plans with x-product: familyknows
+   - [ ] Verify each returns only plans for that product
+
+2. Test Idempotency Forwarding:
+   - [ ] Create a plan with x-idempotency-key header
+   - [ ] Check Edge logs show idempotency key received
+   - [ ] Retry same request with same key
+   - [ ] Verify _idempotent: true in response
+
+3. Test Standard Error Responses:
+   - [ ] Call without Authorization header → 401 with code: UNAUTHORIZED
+   - [ ] Call without x-tenant-id header → 400 with code: BAD_REQUEST
+   - [ ] Call with invalid plan ID → 404 with code: NOT_FOUND
+   - [ ] Verify all errors include requestId and timestamp
+
+4. Test Request Context Logging:
+   - [ ] Check API logs show: tenant, product, idempotency info
+
+═══════════════════════════════════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════════════════════════════════
+📋 USAGE GUIDE: Request Context Middleware
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Apply middleware to routes:
+   ─────────────────────────────────────
+   import { requestContextMiddleware } from '../middleware/requestContext';
+
+   router.use(requestContextMiddleware);
+
+2. Access context in controller:
+   ─────────────────────────────────────
+   const { authToken, tenantId, productCode, idempotencyKey } = req.context!;
+
+   // Or with helper:
+   import { getRequestContext } from '../middleware/requestContext';
+   const context = getRequestContext(req);
+
+3. Pass context to service:
+   ─────────────────────────────────────
+   // Option A: Pass individual values (backward compatible)
+   const result = await service.createPlan(
+     context.authToken,
+     context.tenantId,
+     data,
+     context.productCode,
+     context.idempotencyKey
+   );
+
+   // Option B: Use context-aware method (preferred)
+   const result = await service.createPlanWithContext(context, data);
+
+═══════════════════════════════════════════════════════════════════════════════
+📋 USAGE GUIDE: Standard Error Responses
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Import error utilities:
+   ─────────────────────────────────────
+   import {
+     validationError,
+     notFoundError,
+     unauthorizedError,
+     badRequestError,
+     internalError,
+     handleEdgeError
+   } from '../utils/apiErrors';
+
+2. Use in controllers:
+   ─────────────────────────────────────
+   // Validation error with field details
+   return validationError(res, { email: 'Invalid format' }, requestId);
+
+   // Not found
+   return notFoundError(res, 'Plan', requestId);
+
+   // Handle errors from Edge
+   catch (error) {
+     return handleEdgeError(res, error, requestId);
+   }
+
+═══════════════════════════════════════════════════════════════════════════════
+📊 ARCHITECTURE DIAGRAM
+═══════════════════════════════════════════════════════════════════════════════
+
+  UI (React)
+      │
+      │ Headers: Authorization, x-tenant-id, x-product, x-idempotency-key
+      ▼
+  ┌─────────────────────────────────────────────────────────────────┐
+  │                        API LAYER                                │
+  │  ┌────────────────────────────────────────────────────────┐    │
+  │  │ requestContextMiddleware                                │    │
+  │  │ - Extracts headers into req.context                     │    │
+  │  │ - Validates required headers                            │    │
+  │  │ - Generates requestId for tracing                       │    │
+  │  └────────────────────────────────────────────────────────┘    │
+  │                           │                                     │
+  │                           ▼                                     │
+  │  ┌────────────────────────────────────────────────────────┐    │
+  │  │ planController                                          │    │
+  │  │ - Uses req.context                                      │    │
+  │  │ - Standard error responses                              │    │
+  │  │ - Passes headers to service                             │    │
+  │  └────────────────────────────────────────────────────────┘    │
+  │                           │                                     │
+  │                           ▼                                     │
+  │  ┌────────────────────────────────────────────────────────┐    │
+  │  │ businessModelService                                    │    │
+  │  │ - buildEdgeHeaders(context)                             │    │
+  │  │ - Includes: x-product, x-idempotency-key                │    │
+  │  └────────────────────────────────────────────────────────┘    │
+  └─────────────────────────────────────────────────────────────────┘
+      │
+      │ Headers: Authorization, x-tenant-id, x-product, x-idempotency-key
+      ▼
+  ┌─────────────────────────────────────────────────────────────────┐
+  │                        EDGE LAYER                               │
+  │  - Idempotency check/save                                       │
+  │  - In-memory caching                                            │
+  │  - Product-based filtering                                      │
+  └─────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════
