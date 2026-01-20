@@ -1,0 +1,136 @@
+═══════════════════════════════════════════════════════════════════════════════
+API LAYER IMPROVEMENTS - CatalogStudio
+═══════════════════════════════════════════════════════════════════════════════
+
+Branch: api-improvements
+Date: January 2026
+Author: Claude Code
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES INCLUDED
+═══════════════════════════════════════════════════════════════════════════════
+
+1. contractnest-api/src/validators/catalogStudio.validators.ts (NEW)
+   - Express-validator schemas for blocks and templates
+   - Matches Edge Function validation patterns
+   - Field constraints, UUID validation, array validation
+   - Standardized error handler middleware
+
+2. contractnest-api/src/routes/catalogStudioRoutes.ts (UPDATED)
+   - Added express-validator validation to all routes
+   - Added requireIdempotencyKey to POST/PATCH routes
+   - Supports optimistic locking via expected_version param
+   - Updated health check with v2.0 features
+
+3. contractnest-api/src/utils/apiResponseHelpers.ts (NEW)
+   - Standardized success/error response helpers
+   - Error code constants (VERSION_CONFLICT, etc.)
+   - Edge response handler for mapping status codes
+   - Pagination helpers
+
+═══════════════════════════════════════════════════════════════════════════════
+IMPROVEMENTS IMPLEMENTED
+═══════════════════════════════════════════════════════════════════════════════
+
+1. INPUT VALIDATION
+   - Express-validator schemas for all endpoints
+   - Consistent field constraints
+   - Detailed validation error messages
+
+2. IDEMPOTENCY ENFORCEMENT
+   - POST /blocks requires x-idempotency-key header
+   - PATCH /blocks/:id requires x-idempotency-key header
+   - POST /templates requires x-idempotency-key header
+   - POST /templates/:id/copy requires x-idempotency-key header
+   - PATCH /templates/:id requires x-idempotency-key header
+
+3. OPTIMISTIC LOCKING SUPPORT
+   - expected_version param in update requests
+   - API passes version to Edge Function
+   - 409 VERSION_CONFLICT response helpers
+
+4. STANDARDIZED RESPONSES
+   - Consistent success/error response format
+   - Error code constants
+   - Pagination metadata helpers
+
+═══════════════════════════════════════════════════════════════════════════════
+COPY DESTINATIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+FROM:
+MANUAL_COPY_FILES/api-improvements/contractnest-api/
+
+TO:
+contractnest-api/
+
+Files map:
+├── src/validators/catalogStudio.validators.ts (NEW FILE)
+├── src/routes/catalogStudioRoutes.ts (REPLACE)
+└── src/utils/apiResponseHelpers.ts (NEW FILE)
+
+═══════════════════════════════════════════════════════════════════════════════
+BREAKING CHANGES
+═══════════════════════════════════════════════════════════════════════════════
+
+1. POST/PATCH requests now REQUIRE x-idempotency-key header
+   - Clients must generate and send idempotency keys
+   - Returns 400 BAD_REQUEST if header is missing
+
+2. Stricter validation
+   - Field length limits enforced
+   - UUID format validation
+   - Array size limits
+
+═══════════════════════════════════════════════════════════════════════════════
+CLIENT MIGRATION GUIDE
+═══════════════════════════════════════════════════════════════════════════════
+
+Before (old API call):
+```typescript
+fetch('/api/catalog-studio/blocks', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'x-tenant-id': tenantId,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(blockData)
+});
+```
+
+After (new API call):
+```typescript
+import { v4 as uuidv4 } from 'uuid';
+
+fetch('/api/catalog-studio/blocks', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'x-tenant-id': tenantId,
+    'x-idempotency-key': uuidv4(),  // NEW: Required for POST/PATCH
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(blockData)
+});
+```
+
+For optimistic locking (optional):
+```typescript
+// When updating, include expected_version to prevent lost updates
+fetch(`/api/catalog-studio/blocks/${blockId}`, {
+  method: 'PATCH',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'x-tenant-id': tenantId,
+    'x-idempotency-key': uuidv4(),
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    ...updateData,
+    expected_version: currentBlock.version  // Optimistic lock
+  })
+});
+```
+
+═══════════════════════════════════════════════════════════════════════════════
