@@ -42,10 +42,9 @@ export const businessModelService = {
       if (planType) {
         params.append('planType', planType);
       }
-      // NEW: Add product_code filter if provided
-      if (productCode) {
-        params.append('product_code', productCode);
-      }
+      // IMPORTANT: Always pass product_code param to Edge Function
+      // Empty string = all products (no filter), specific value = filter by that product
+      params.append('product_code', productCode || '');
 
       const queryString = params.toString();
       const url = `${SUPABASE_URL}/functions/v1/plans${queryString ? '?' + queryString : ''}`;

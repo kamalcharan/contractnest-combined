@@ -35,17 +35,24 @@ export const getPlans = async (req: Request, res: Response) => {
     }
 
     // Determine effective product filter:
-    // 1. Query param product_code takes priority
-    // 2. If product_code is 'all' or empty, don't filter by product
-    // 3. Otherwise use x-product header
+    // 1. If product_code query param is PRESENT (even if empty), use it
+    // 2. Empty string or 'all' = no filter (show all products)
+    // 3. Only fall back to x-product header if query param is NOT present
     let effectiveProductCode: string | undefined;
 
-    if (productCode && productCode !== '' && productCode.toLowerCase() !== 'all') {
-      effectiveProductCode = productCode;
-    } else if (!productCode && xProduct && xProduct.toLowerCase() !== 'all') {
-      effectiveProductCode = xProduct;
+    if (productCode !== undefined) {
+      // Query param is present - respect it
+      if (productCode === '' || productCode.toLowerCase() === 'all') {
+        effectiveProductCode = ''; // Explicitly requesting all products - no filter
+      } else {
+        effectiveProductCode = productCode; // Filter by specific product
+      }
+    } else {
+      // Query param NOT present - fall back to x-product header for backward compat
+      if (xProduct && xProduct.toLowerCase() !== 'all') {
+        effectiveProductCode = xProduct;
+      }
     }
-    // If neither is set or both are 'all', effectiveProductCode stays undefined (no filter)
 
     const plans = await businessModelService.getPlans(
       authHeader,

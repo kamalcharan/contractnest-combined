@@ -354,10 +354,8 @@ export const useBusinessModel = () => {
       setIsLoading(true);
 
       // Build URL with product_code filter
-      let url = `/api/business-model/plans?isLive=${isLive}`;
-      if (effectiveProductCode) {
-        url += `&product_code=${encodeURIComponent(effectiveProductCode)}`;
-      }
+      // IMPORTANT: Always pass product_code param - empty string means "all products" (no filter)
+      let url = `/api/business-model/plans?isLive=${isLive}&product_code=${encodeURIComponent(effectiveProductCode)}`;
 
       console.log(`[useBusinessModel] Fetching plans from: ${url}`);
 
