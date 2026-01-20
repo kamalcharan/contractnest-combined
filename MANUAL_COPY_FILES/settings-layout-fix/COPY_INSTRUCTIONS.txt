@@ -1,0 +1,26 @@
+═══════════════════════════════════════════════════════════════════════════════
+SETTINGS PAGE LAYOUT FIX - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+PURPOSE:
+Restore single-column vertical layout for /settings/configure page while
+keeping glassmorphism styling.
+
+FILES TO COPY:
+─────────────────────────────────────────────────────────────────────────────────
+
+1. Settings Page (Layout Fix)
+   FROM: MANUAL_COPY_FILES\settings-layout-fix\contractnest-ui\src\pages\settings\index.tsx
+   TO:   contractnest-ui\src\pages\settings\index.tsx
+
+═══════════════════════════════════════════════════════════════════════════════
+CHANGES MADE:
+═══════════════════════════════════════════════════════════════════════════════
+
+- Changed layout from 2-column grid to single-column vertical stack
+- Each group now has: Left sidebar (1/4 width) + Right cards (3/4 width)
+- Groups stacked vertically with mt-12 spacing
+- Left sidebar has subtle glass effect and sticky positioning
+- All glassmorphism styling preserved on cards
+
+═══════════════════════════════════════════════════════════════════════════════
