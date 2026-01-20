@@ -70,8 +70,8 @@ const NewBlockPage: React.FC = () => {
 
       await createBlockMutation.mutateAsync(blockToCreateData(fullBlockData));
 
-      // Navigate back to blocks list on success
-      navigate('/catalog-studio/blocks', {
+      // Navigate back to configure page on success
+      navigate('/catalog-studio/configure', {
         state: {
           toast: {
             type: 'success',
@@ -89,8 +89,8 @@ const NewBlockPage: React.FC = () => {
   }, [blockType, createBlockMutation, navigate]);
 
   const handleCancel = useCallback(() => {
-    // Navigate back to blocks list
-    navigate('/catalog-studio/blocks');
+    // Navigate back to configure page
+    navigate('/catalog-studio/configure');
   }, [navigate]);
 
   return (
@@ -111,7 +111,7 @@ const NewBlockPage: React.FC = () => {
             onClick={handleCancel}
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             style={{ color: colors.utility.secondaryText }}
-            title="Back to Blocks"
+            title="Back to Configure"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>

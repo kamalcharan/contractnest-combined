@@ -85,7 +85,7 @@ const EditBlockPage: React.FC = () => {
       });
 
       // Navigate back to blocks list on success
-      navigate('/catalog-studio/blocks', {
+      navigate('/catalog-studio/configure', {
         state: {
           toast: {
             type: 'success',
@@ -109,7 +109,7 @@ const EditBlockPage: React.FC = () => {
       await deleteBlockMutation.mutateAsync(id);
 
       // Navigate back to blocks list on success
-      navigate('/catalog-studio/blocks', {
+      navigate('/catalog-studio/configure', {
         state: {
           toast: {
             type: 'success',
@@ -124,7 +124,7 @@ const EditBlockPage: React.FC = () => {
   }, [id, deleteBlockMutation, navigate]);
 
   const handleCancel = useCallback(() => {
-    navigate('/catalog-studio/blocks');
+    navigate('/catalog-studio/configure');
   }, [navigate]);
 
   // Loading state
@@ -158,7 +158,7 @@ const EditBlockPage: React.FC = () => {
             {blocksError instanceof Error ? blocksError.message : 'The block you are looking for does not exist.'}
           </p>
           <button
-            onClick={() => navigate('/catalog-studio/blocks')}
+            onClick={() => navigate('/catalog-studio/configure')}
             className="px-4 py-2 text-sm font-medium text-white rounded-lg"
             style={{ backgroundColor: colors.brand.primary }}
           >
@@ -187,7 +187,7 @@ const EditBlockPage: React.FC = () => {
             onClick={handleCancel}
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             style={{ color: colors.utility.secondaryText }}
-            title="Back to Blocks"
+            title="Back to Configure"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
