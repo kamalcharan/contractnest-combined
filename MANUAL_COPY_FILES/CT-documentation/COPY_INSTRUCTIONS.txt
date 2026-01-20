@@ -1,0 +1,49 @@
+═══════════════════════════════════════════════════════════════════════════════
+CATALOG STUDIO DOCUMENTATION - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════════════════════════════════
+
+Created: January 2026
+Purpose: CatalogStudio delivery tracker and handover documentation
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES INCLUDED
+═══════════════════════════════════════════════════════════════════════════════
+
+1. CT_delivery.md
+   - Source: MANUAL_COPY_FILES/CT-documentation/CT_delivery.md
+   - Target: ClaudeDocumentation/contractUI/CT_delivery.md
+   - Purpose: Sprint delivery tracker (similar to BM_delivery.md)
+
+2. CT_Handover.md
+   - Source: MANUAL_COPY_FILES/CT-documentation/CT_Handover.md
+   - Target: ClaudeDocumentation/contractUI/CT_Handover.md
+   - Purpose: Quick onboarding context (similar to HANDOVER_CONTEXT.md)
+
+═══════════════════════════════════════════════════════════════════════════════
+POWERSHELL COPY COMMANDS
+═══════════════════════════════════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\CT-documentation\CT_delivery.md" -Destination "ClaudeDocumentation\contractUI\CT_delivery.md" -Force
+Copy-Item "MANUAL_COPY_FILES\CT-documentation\CT_Handover.md" -Destination "ClaudeDocumentation\contractUI\CT_Handover.md" -Force
+
+Write-Host "✅ All documentation files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════════════════════════════════
+SUBMODULES AFFECTED
+═══════════════════════════════════════════════════════════════════════════════
+
+- ClaudeDocumentation (master branch)
+
+═══════════════════════════════════════════════════════════════════════════════
+COMMIT MESSAGE
+═══════════════════════════════════════════════════════════════════════════════
+
+docs: add CatalogStudio delivery tracker and handover documentation
+
+- CT_delivery.md: Sprint-wise delivery tracker (Sprint 1/2/3)
+- CT_Handover.md: Quick onboarding context for new sessions
+- Follows BusinessModel documentation format
+
+═══════════════════════════════════════════════════════════════════════════════
