@@ -1,0 +1,115 @@
+═══════════════════════════════════════════════════
+📦 UI PRODUCTION STANDARDS - BUSINESS MODEL MODULE
+═══════════════════════════════════════════════════
+Branch: ui-production-standards
+Date: 2026-01-20
+
+Files Changed:
+  - contractnest-ui/src/pages/settings/businessmodel/admin/pricing-plans/create.tsx
+    Purpose: Glassmorphic design, VaNiLoader, VaNiToast, idempotency, race condition handling
+
+  - contractnest-ui/src/pages/settings/businessmodel/admin/pricing-plans/index.tsx
+    Purpose: VaNiLoader, VaNiToast, product filter dropdown, glassmorphic design
+
+  - contractnest-ui/src/hooks/useBusinessModel.ts
+    Purpose: Idempotency key support in createPlan and updatePlanAsNewVersion
+
+  - contractnest-ui/src/services/api.ts
+    Purpose: Dynamic x-product header, postWithIdempotency, putWithIdempotency helpers
+
+Submodules Affected: contractnest-ui
+
+Production Checklist:
+  ✅ Transaction Management: Yes - API layer handles transactions
+  ✅ Race Condition Handling: Yes - Idempotency keys, debouncing, submission locks
+  ✅ Error Handling: Yes - VaNiToast for user feedback
+  ✅ Toasts: Yes - VaNiToast component (not react-hot-toast)
+  ✅ Loaders: Yes - VaNiLoader, SectionLoader components
+
+═══════════════════════════════════════════════════
+💻 COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files from MANUAL_COPY_FILES
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\ui-production-standards\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "✅ All files copied!" -ForegroundColor Green
+
+STEP 3: Start Dev Server & Test
+─────────────────────────────────
+cd contractnest-ui && npm run dev
+
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Create Plan Wizard
+    - [ ] Shows VaNiLoader on page load (briefly)
+    - [ ] Glassmorphic design with backdrop-blur
+    - [ ] VaNiToast shows on validation errors (not react-hot-toast)
+    - [ ] VaNiToast shows on successful creation
+    - [ ] Rapid submit clicks are debounced (2 second cooldown)
+    - [ ] Can't submit twice with same data (idempotency key)
+
+- [ ] List Page
+    - [ ] Shows VaNiLoader when loading plans
+    - [ ] Product filter dropdown works
+    - [ ] Filter chips show when filters active
+    - [ ] Clear All button clears both filters
+    - [ ] VaNiToast on archive success/error
+
+- [ ] API Integration
+    - [ ] x-product header is sent dynamically
+    - [ ] x-idempotency-key header is sent on mutations
+
+═══════════════════════════════════════════════════
+📝 KEY CHANGES SUMMARY
+═══════════════════════════════════════════════════
+
+1. GLASSMORPHIC DESIGN
+   - backdrop-blur-sm on page containers
+   - Semi-transparent backgrounds (rgba)
+   - Rounded corners (rounded-xl, rounded-2xl)
+   - Subtle borders
+
+2. VANILOADER INTEGRATION
+   - Initial page load shows VaNiLoader with skeleton
+   - Section refreshes use SectionLoader
+   - Loading states properly managed
+
+3. VANITOAST (not react-hot-toast)
+   - vaniToast.success() for success messages
+   - vaniToast.error() for errors
+   - vaniToast.warning() for warnings
+   - Includes message subtitle support
+
+4. RACE CONDITION HANDLING
+   - submissionInProgressRef.current - Lock flag
+   - lastSubmissionTimeRef.current - Debounce (2s)
+   - idempotencyKeyRef.current - Unique per submission
+   - lastIdempotencyKey.current - Prevents duplicate keys
+
+5. IDEMPOTENCY KEY FLOW
+   UI (create.tsx):
+     generateIdempotencyKey() -> plan_create_${timestamp}_${uuid}
+
+   Hook (useBusinessModel.ts):
+     Extracts _idempotencyKey from planData
+     Passes to postWithIdempotency/putWithIdempotency
+
+   API (api.ts):
+     postWithIdempotency() adds x-idempotency-key header
+     putWithIdempotency() adds x-idempotency-key header
+
+6. PRODUCT FILTER
+   - Dropdown in expandable filters section
+   - Filter chips for active filters
+   - Clear All button to reset
+
+═══════════════════════════════════════════════════
