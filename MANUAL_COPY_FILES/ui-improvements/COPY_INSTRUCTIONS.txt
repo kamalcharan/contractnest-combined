@@ -1,0 +1,94 @@
+═══════════════════════════════════════════════════
+📦 UI LAYER IMPROVEMENTS - CatalogStudio Configure
+═══════════════════════════════════════════════════
+
+Feature: CatalogStudio UI improvements for Edge/API v2.0 compatibility
+Branch: ui-improvements
+
+Files Changed:
+  - contractnest-ui/src/services/api.ts
+    → Added patchWithIdempotency, generateIdempotencyKey
+    → Added isVersionConflictError, getVersionConflictDetails
+
+  - contractnest-ui/src/hooks/mutations/useCatBlocksMutations.ts
+    → Uses postWithIdempotency for CREATE operations
+    → Uses patchWithIdempotency for UPDATE operations
+    → Supports expected_version for optimistic locking
+    → Added VersionConflictCallback for conflict handling
+
+  - contractnest-ui/src/hooks/queries/useCatBlocksTest.ts
+    → Added pagination support (backward-compatible)
+    → Added CatBlockWithVersion type with version field
+    → Added useBlockVersionTracker hook
+    → Added useCatBlocksPaginated hook
+
+  - contractnest-ui/src/pages/catalog-studio/configure.tsx
+    → Version tracking for optimistic locking
+    → Version conflict modal UI
+    → Refresh button added
+    → expectedVersion passed to mutations
+
+Production Checklist:
+  ✅ Transaction Management: N/A (frontend)
+  ✅ Race Condition Handling: Optimistic locking with version tracking
+  ✅ Error Handling: Version conflict detection + user-friendly modal
+  ✅ Toasts: Success/error messages for all operations
+  ✅ Loaders: Loading states (isLoading, isMutating)
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files from MANUAL_COPY_FILES
+─────────────────────────────────
+# PowerShell commands:
+
+Copy-Item "MANUAL_COPY_FILES\ui-improvements\contractnest-ui\src\services\api.ts" -Destination "contractnest-ui\src\services\" -Force
+Copy-Item "MANUAL_COPY_FILES\ui-improvements\contractnest-ui\src\hooks\mutations\useCatBlocksMutations.ts" -Destination "contractnest-ui\src\hooks\mutations\" -Force
+Copy-Item "MANUAL_COPY_FILES\ui-improvements\contractnest-ui\src\hooks\queries\useCatBlocksTest.ts" -Destination "contractnest-ui\src\hooks\queries\" -Force
+Copy-Item "MANUAL_COPY_FILES\ui-improvements\contractnest-ui\src\pages\catalog-studio\configure.tsx" -Destination "contractnest-ui\src\pages\catalog-studio\" -Force
+
+Write-Host "✅ All files copied!" -ForegroundColor Green
+
+STEP 3: Start Dev Server & Test
+─────────────────────────────────
+cd contractnest-ui
+npm run dev
+
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+
+CatalogStudio Configure Page Tests:
+- [ ] Page loads and displays blocks
+- [ ] Refresh button works
+- [ ] Create new block works (check network for x-idempotency-key header)
+- [ ] Edit block works (check network for x-idempotency-key header)
+- [ ] Delete block works
+- [ ] Duplicate block works
+
+Optimistic Locking Tests (requires simulating conflict):
+- [ ] Open same block in two browser tabs
+- [ ] Edit in Tab 1 and save
+- [ ] Edit in Tab 2 and save
+- [ ] Tab 2 should show version conflict modal
+- [ ] Click "Refresh Data" refreshes and closes modal
+
+Network Tab Verification:
+- [ ] POST /blocks includes x-idempotency-key header
+- [ ] PATCH /blocks/:id includes x-idempotency-key header
+- [ ] PATCH requests include expected_version in body
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
