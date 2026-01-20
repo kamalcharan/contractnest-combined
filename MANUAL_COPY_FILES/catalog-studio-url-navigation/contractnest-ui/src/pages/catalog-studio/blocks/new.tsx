@@ -7,7 +7,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Save, X } from 'lucide-react';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { Block, WizardMode } from '../../../types/catalogStudio';
-import { useBlockCategories } from '../../../hooks/queries/useBlockTypes';
+import { useBlockCategories, usePricingModes } from '../../../hooks/queries/useBlockTypes';
 import { BLOCK_CATEGORIES } from '../../../utils/catalog-studio';
 import BlockWizardContent from '../../../components/catalog-studio/BlockWizard/BlockWizardContent';
 import { useCreateCatBlock } from '../../../hooks/mutations/useCatBlocksMutations';
@@ -33,7 +33,8 @@ const NewBlockPage: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
 
   // Hooks
-  const { categories, isLoading: categoriesLoading } = useBlockCategories();
+  const { categories, isLoading: categoriesLoading, getDbIdByType } = useBlockCategories();
+  const { getDbIdByMode } = usePricingModes();
   const createBlockMutation = useCreateCatBlock();
 
   // Use DB categories if available, fallback to hardcoded
@@ -62,13 +63,24 @@ const NewBlockPage: React.FC = () => {
   const handleSave = useCallback(async (blockData: Partial<Block>) => {
     setIsSaving(true);
     try {
+      // Get UUIDs from lookup hooks
+      const blockTypeUuid = getDbIdByType(blockType);
+      const pricingModeUuid = getDbIdByMode('independent');
+
       // Add category ID to block data
       const fullBlockData = {
         ...blockData,
         categoryId: blockType,
       } as Block;
 
-      await createBlockMutation.mutateAsync(blockToCreateData(fullBlockData));
+      // Build create payload with UUIDs
+      const createPayload = {
+        ...blockToCreateData(fullBlockData),
+        block_type_id: blockTypeUuid, // Add the UUID
+        pricing_mode_id: pricingModeUuid, // Add the UUID
+      };
+
+      await createBlockMutation.mutateAsync(createPayload);
 
       // Navigate back to configure page on success
       navigate('/catalog-studio/configure', {
@@ -86,7 +98,7 @@ const NewBlockPage: React.FC = () => {
     } finally {
       setIsSaving(false);
     }
-  }, [blockType, createBlockMutation, navigate]);
+  }, [blockType, createBlockMutation, navigate, getDbIdByType, getDbIdByMode]);
 
   const handleCancel = useCallback(() => {
     // Navigate back to configure page
