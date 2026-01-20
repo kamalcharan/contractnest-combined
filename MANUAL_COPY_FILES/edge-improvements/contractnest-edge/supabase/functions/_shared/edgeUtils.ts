@@ -43,7 +43,6 @@ export interface IdempotencyResult {
 export const MAX_PAGE_SIZE = 100;
 export const DEFAULT_PAGE_SIZE = 50;
 export const SIGNATURE_TOLERANCE_MS = 5 * 60 * 1000; // 5 minutes
-export const IDEMPOTENCY_TTL_HOURS = 24;
 
 // ============================================================================
 // CORS HEADERS
@@ -240,16 +239,19 @@ export function createPaginatedResponse<T>(
 
 // ============================================================================
 // IDEMPOTENCY
+// Uses existing RPC functions: get_idempotency_response / set_idempotency_response
 // ============================================================================
+
+export const IDEMPOTENCY_TTL_MINUTES = 15;
 
 /**
  * Check for existing idempotent response
+ * Uses existing get_idempotency_response RPC
  */
 export async function checkIdempotency(
   supabase: any,
   idempotencyKey: string | null,
   tenantId: string,
-  endpoint: string,
   operationId: string,
   startTime: number
 ): Promise<IdempotencyResult> {
@@ -258,10 +260,9 @@ export async function checkIdempotency(
   }
 
   try {
-    const { data, error } = await supabase.rpc('check_idempotency', {
-      p_idempotency_key: idempotencyKey,
+    const { data: cachedResponse, error } = await supabase.rpc('get_idempotency_response', {
       p_tenant_id: tenantId,
-      p_endpoint: endpoint
+      p_idempotency_key: idempotencyKey
     });
 
     if (error) {
@@ -269,25 +270,26 @@ export async function checkIdempotency(
       return { found: false };
     }
 
-    if (data && data.length > 0 && data[0].found) {
-      console.log(`[edgeUtils] Idempotency hit for key: ${idempotencyKey}`);
-      // Return cached response
-      const cachedResponse = new Response(
-        JSON.stringify({
-          ...data[0].response_body,
-          metadata: {
-            ...data[0].response_body.metadata,
-            request_id: operationId,
-            duration_ms: Date.now() - startTime,
-            idempotency_hit: true
-          }
-        }),
+    if (cachedResponse) {
+      console.log(`[edgeUtils] Idempotency HIT for key: ${idempotencyKey}`);
+      // Return cached response with updated metadata
+      const responseData = {
+        ...cachedResponse,
+        metadata: {
+          ...(cachedResponse.metadata || {}),
+          request_id: operationId,
+          duration_ms: Date.now() - startTime,
+          idempotency_hit: true
+        }
+      };
+      const response = new Response(
+        JSON.stringify(responseData),
         {
-          status: data[0].response_status,
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       );
-      return { found: true, response: cachedResponse };
+      return { found: true, response };
     }
 
     return { found: false };
@@ -299,15 +301,12 @@ export async function checkIdempotency(
 
 /**
  * Store idempotent response
+ * Uses existing set_idempotency_response RPC
  */
 export async function storeIdempotency(
   supabase: any,
   idempotencyKey: string | null,
   tenantId: string,
-  endpoint: string,
-  method: string,
-  requestBody: string,
-  responseStatus: number,
   responseBody: any
 ): Promise<void> {
   if (!idempotencyKey) {
@@ -315,22 +314,11 @@ export async function storeIdempotency(
   }
 
   try {
-    // Generate request hash
-    const encoder = new TextEncoder();
-    const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(requestBody));
-    const requestHash = Array.from(new Uint8Array(hashBuffer))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
-
-    await supabase.rpc('store_idempotency', {
-      p_idempotency_key: idempotencyKey,
+    await supabase.rpc('set_idempotency_response', {
       p_tenant_id: tenantId,
-      p_endpoint: endpoint,
-      p_method: method,
-      p_request_hash: requestHash,
-      p_response_status: responseStatus,
-      p_response_body: responseBody,
-      p_ttl_hours: IDEMPOTENCY_TTL_HOURS
+      p_idempotency_key: idempotencyKey,
+      p_response_data: responseBody,
+      p_ttl_minutes: IDEMPOTENCY_TTL_MINUTES
     });
 
     console.log(`[edgeUtils] Stored idempotency for key: ${idempotencyKey}`);

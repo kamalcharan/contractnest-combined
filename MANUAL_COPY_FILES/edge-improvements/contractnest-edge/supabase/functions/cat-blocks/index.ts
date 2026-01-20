@@ -129,14 +129,14 @@ serve(async (req: Request) => {
       case 'POST':
         // Check idempotency first
         const createIdempotency = await checkIdempotency(
-          supabase, context.idempotencyKey, context.tenantId, 'cat-blocks-create', operationId, startTime
+          supabase, context.idempotencyKey, context.tenantId, operationId, startTime
         );
         if (createIdempotency.found && createIdempotency.response) {
           return createIdempotency.response;
         }
 
         const createBody = requestBody ? JSON.parse(requestBody) : {};
-        return await handleCreateBlock(supabase, createBody, context, requestBody);
+        return await handleCreateBlock(supabase, createBody, context);
 
       case 'PATCH':
         const updateId = url.searchParams.get('id');
@@ -146,14 +146,14 @@ serve(async (req: Request) => {
 
         // Check idempotency
         const updateIdempotency = await checkIdempotency(
-          supabase, context.idempotencyKey, context.tenantId, `cat-blocks-update-${updateId}`, operationId, startTime
+          supabase, context.idempotencyKey, context.tenantId, operationId, startTime
         );
         if (updateIdempotency.found && updateIdempotency.response) {
           return updateIdempotency.response;
         }
 
         const updateBody = requestBody ? JSON.parse(requestBody) : {};
-        return await handleUpdateBlock(supabase, updateId, updateBody, context, requestBody);
+        return await handleUpdateBlock(supabase, updateId, updateBody, context);
 
       case 'DELETE':
         const deleteId = url.searchParams.get('id');
@@ -372,8 +372,7 @@ async function handleGetBlockById(
 async function handleCreateBlock(
   supabase: any,
   body: any,
-  ctx: EdgeContext,
-  requestBody: string
+  ctx: EdgeContext
 ) {
   // Validate required fields
   if (!body.name) {
@@ -454,16 +453,7 @@ async function handleCreateBlock(
   };
 
   // Store idempotency
-  await storeIdempotency(
-    supabase,
-    ctx.idempotencyKey,
-    ctx.tenantId,
-    'cat-blocks-create',
-    'POST',
-    requestBody,
-    201,
-    responseBody
-  );
+  await storeIdempotency(supabase, ctx.idempotencyKey, ctx.tenantId, responseBody);
 
   return new Response(JSON.stringify(responseBody), {
     status: 201,
@@ -478,8 +468,7 @@ async function handleUpdateBlock(
   supabase: any,
   blockId: string,
   body: any,
-  ctx: EdgeContext,
-  requestBody: string
+  ctx: EdgeContext
 ) {
   if (!isValidUUID(blockId)) {
     return createErrorResponse('Invalid block ID format', 'INVALID_ID', 400, ctx.operationId);
@@ -576,16 +565,7 @@ async function handleUpdateBlock(
   };
 
   // Store idempotency
-  await storeIdempotency(
-    supabase,
-    ctx.idempotencyKey,
-    ctx.tenantId,
-    `cat-blocks-update-${blockId}`,
-    'PATCH',
-    requestBody,
-    200,
-    responseBody
-  );
+  await storeIdempotency(supabase, ctx.idempotencyKey, ctx.tenantId, responseBody);
 
   return createSuccessResponse({ block: data }, ctx.operationId, ctx.startTime);
 }

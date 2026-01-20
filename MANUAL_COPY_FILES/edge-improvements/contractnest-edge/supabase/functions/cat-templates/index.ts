@@ -139,26 +139,26 @@ serve(async (req: Request) => {
 
           // Check idempotency for copy
           const copyIdempotency = await checkIdempotency(
-            supabase, context.idempotencyKey, context.tenantId, `cat-templates-copy-${copyId}`, operationId, startTime
+            supabase, context.idempotencyKey, context.tenantId, operationId, startTime
           );
           if (copyIdempotency.found && copyIdempotency.response) {
             return copyIdempotency.response;
           }
 
           const copyBody = requestBody ? JSON.parse(requestBody) : {};
-          return await handleCopyTemplate(supabase, copyId, copyBody, context, requestBody);
+          return await handleCopyTemplate(supabase, copyId, copyBody, context);
         }
 
         // Check idempotency for create
         const createIdempotency = await checkIdempotency(
-          supabase, context.idempotencyKey, context.tenantId, 'cat-templates-create', operationId, startTime
+          supabase, context.idempotencyKey, context.tenantId, operationId, startTime
         );
         if (createIdempotency.found && createIdempotency.response) {
           return createIdempotency.response;
         }
 
         const createBody = requestBody ? JSON.parse(requestBody) : {};
-        return await handleCreateTemplate(supabase, createBody, context, requestBody);
+        return await handleCreateTemplate(supabase, createBody, context);
 
       case 'PATCH':
         const updateId = url.searchParams.get('id');
@@ -168,14 +168,14 @@ serve(async (req: Request) => {
 
         // Check idempotency
         const updateIdempotency = await checkIdempotency(
-          supabase, context.idempotencyKey, context.tenantId, `cat-templates-update-${updateId}`, operationId, startTime
+          supabase, context.idempotencyKey, context.tenantId, operationId, startTime
         );
         if (updateIdempotency.found && updateIdempotency.response) {
           return updateIdempotency.response;
         }
 
         const updateBody = requestBody ? JSON.parse(requestBody) : {};
-        return await handleUpdateTemplate(supabase, updateId, updateBody, context, requestBody);
+        return await handleUpdateTemplate(supabase, updateId, updateBody, context);
 
       case 'DELETE':
         const deleteId = url.searchParams.get('id');
@@ -411,8 +411,7 @@ async function handleGetTemplateById(
 async function handleCreateTemplate(
   supabase: any,
   body: any,
-  ctx: EdgeContext,
-  requestBody: string
+  ctx: EdgeContext
 ) {
   if (!body.name) {
     return createErrorResponse('Template name is required', 'VALIDATION_ERROR', 400, ctx.operationId);
@@ -476,16 +475,7 @@ async function handleCreateTemplate(
   };
 
   // Store idempotency
-  await storeIdempotency(
-    supabase,
-    ctx.idempotencyKey,
-    ctx.tenantId,
-    'cat-templates-create',
-    'POST',
-    requestBody,
-    201,
-    responseBody
-  );
+  await storeIdempotency(supabase, ctx.idempotencyKey, ctx.tenantId, responseBody);
 
   return new Response(JSON.stringify(responseBody), {
     status: 201,
@@ -500,8 +490,7 @@ async function handleCopyTemplate(
   supabase: any,
   templateId: string,
   body: any,
-  ctx: EdgeContext,
-  requestBody: string
+  ctx: EdgeContext
 ) {
   if (!isValidUUID(templateId)) {
     return createErrorResponse('Invalid template ID format', 'INVALID_ID', 400, ctx.operationId);
@@ -575,16 +564,7 @@ async function handleCopyTemplate(
   };
 
   // Store idempotency
-  await storeIdempotency(
-    supabase,
-    ctx.idempotencyKey,
-    ctx.tenantId,
-    `cat-templates-copy-${templateId}`,
-    'POST',
-    requestBody,
-    201,
-    responseBody
-  );
+  await storeIdempotency(supabase, ctx.idempotencyKey, ctx.tenantId, responseBody);
 
   return new Response(JSON.stringify(responseBody), {
     status: 201,
@@ -599,8 +579,7 @@ async function handleUpdateTemplate(
   supabase: any,
   templateId: string,
   body: any,
-  ctx: EdgeContext,
-  requestBody: string
+  ctx: EdgeContext
 ) {
   if (!isValidUUID(templateId)) {
     return createErrorResponse('Invalid template ID format', 'INVALID_ID', 400, ctx.operationId);
@@ -688,16 +667,7 @@ async function handleUpdateTemplate(
   };
 
   // Store idempotency
-  await storeIdempotency(
-    supabase,
-    ctx.idempotencyKey,
-    ctx.tenantId,
-    `cat-templates-update-${templateId}`,
-    'PATCH',
-    requestBody,
-    200,
-    responseBody
-  );
+  await storeIdempotency(supabase, ctx.idempotencyKey, ctx.tenantId, responseBody);
 
   return createSuccessResponse({ template: data }, ctx.operationId, ctx.startTime);
 }

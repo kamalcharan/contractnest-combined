@@ -10,25 +10,20 @@ Author: Claude Code
 FILES INCLUDED
 ═══════════════════════════════════════════════════════════════════════════════
 
-1. contractnest-edge/supabase/migrations/catalog-studio/003_idempotency_keys.sql
-   - Creates t_idempotency_keys table
-   - RPC functions: check_idempotency, store_idempotency
-   - Index and auto-cleanup trigger
-
-2. contractnest-edge/supabase/functions/_shared/edgeUtils.ts
+1. contractnest-edge/supabase/functions/_shared/edgeUtils.ts
    - Shared utilities for all edge functions
    - HMAC signature validation
    - Pagination helpers
-   - Idempotency check/store
+   - Idempotency check/store (uses EXISTING RPC functions)
    - Standard response helpers
 
-3. contractnest-edge/supabase/functions/cat-blocks/index.ts
+2. contractnest-edge/supabase/functions/cat-blocks/index.ts
    - v2.0 with optimistic locking
    - Backward-compatible pagination
    - Idempotency for POST/PATCH
    - Replay protection
 
-4. contractnest-edge/supabase/functions/cat-templates/index.ts
+3. contractnest-edge/supabase/functions/cat-templates/index.ts
    - v2.0 with optimistic locking
    - Backward-compatible pagination
    - Idempotency for POST/PATCH/copy
@@ -48,9 +43,10 @@ IMPROVEMENTS IMPLEMENTED
    - If page/limit provided: returns { data, pagination }
    - Max 100 rows per request enforced
 
-3. IDEMPOTENCY
+3. IDEMPOTENCY (uses existing framework)
+   - Uses existing get_idempotency_response / set_idempotency_response RPCs
    - x-idempotency-key header support
-   - 24-hour key expiration
+   - 15-minute key expiration (matches existing pattern)
    - Returns cached response for duplicate requests
 
 4. REPLAY PROTECTION
@@ -74,7 +70,6 @@ TO:
 contractnest-edge/
 
 Files map:
-├── supabase/migrations/catalog-studio/003_idempotency_keys.sql
 ├── supabase/functions/_shared/edgeUtils.ts
 ├── supabase/functions/cat-blocks/index.ts
 └── supabase/functions/cat-templates/index.ts
@@ -83,10 +78,12 @@ Files map:
 DEPLOYMENT ORDER
 ═══════════════════════════════════════════════════════════════════════════════
 
-1. Run migration: 003_idempotency_keys.sql
-2. Deploy _shared/edgeUtils.ts (shared module)
-3. Deploy cat-blocks/index.ts
-4. Deploy cat-templates/index.ts
+1. Deploy _shared/edgeUtils.ts (shared module)
+2. Deploy cat-blocks/index.ts
+3. Deploy cat-templates/index.ts
+
+NOTE: No new migrations required - uses existing idempotency framework
+      (get_idempotency_response / set_idempotency_response RPCs)
 
 ═══════════════════════════════════════════════════════════════════════════════
 BREAKING CHANGES: NONE
