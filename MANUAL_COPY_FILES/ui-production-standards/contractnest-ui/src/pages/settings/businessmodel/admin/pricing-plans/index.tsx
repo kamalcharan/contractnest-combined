@@ -1,5 +1,5 @@
 // src/pages/settings/businessmodel/admin/pricing-plans/index.tsx
-// UPDATED: VaNiLoader, VaNiToast, Product Filter, Glassmorphic Design
+// UPDATED: VaNiLoader, VaNiToast, Product Filter (Dynamic), Glassmorphic Design
 
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -9,17 +9,11 @@ import { analyticsService } from '@/services/analytics.service';
 import { useBusinessModel } from '@/hooks/useBusinessModel';
 import { vaniToast } from '@/components/common/toast/VaNiToast';
 import { VaNiLoader, SectionLoader } from '@/components/common/loaders/UnifiedLoader';
+import { useXProductDropdown } from '@/hooks/queries/useProductMasterdata';
 
 // Import components
 import SummaryCards from '@/components/businessmodel/dashboard/SummaryCards';
 import PlanList, { PricingPlanSummary } from '@/components/businessmodel/dashboard/PlanList';
-
-// Product options for filter (should match your products)
-const PRODUCT_OPTIONS = [
-  { value: '', label: 'All Products' },
-  { value: 'contractnest', label: 'ContractNest' },
-  { value: 'familyknows', label: 'FamilyKnows' },
-];
 
 const PricingPlansAdminPage: React.FC = () => {
   const navigate = useNavigate();
@@ -33,12 +27,24 @@ const PricingPlansAdminPage: React.FC = () => {
     error
   } = useBusinessModel();
 
+  // Fetch products dynamically from X-Product category (same as BasicInfoStep)
+  const { options: productOptions, isLoading: productsLoading } = useXProductDropdown('global');
+
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
 
   // Filter states
   const [activeFilter, setActiveFilter] = useState<'all' | 'plans' | 'users' | 'renewals' | 'trials'>('all');
   const [productFilter, setProductFilter] = useState<string>('');
   const [showFilters, setShowFilters] = useState(false);
+
+  // Build product filter options with "All Products" at the beginning
+  const PRODUCT_OPTIONS = useMemo(() => {
+    const allOption = { value: '', label: 'All Products' };
+    if (!productOptions || productOptions.length === 0) {
+      return [allOption];
+    }
+    return [allOption, ...productOptions.map(p => ({ value: p.value, label: p.label }))];
+  }, [productOptions]);
 
   // Summary data calculated from plans
   const [summaryData, setSummaryData] = useState({
@@ -425,7 +431,8 @@ const PricingPlansAdminPage: React.FC = () => {
                 <select
                   value={productFilter}
                   onChange={(e) => setProductFilter(e.target.value)}
-                  className="px-3 py-2 rounded-xl text-sm transition-colors focus:outline-none focus:ring-2"
+                  disabled={productsLoading}
+                  className="px-3 py-2 rounded-xl text-sm transition-colors focus:outline-none focus:ring-2 disabled:opacity-50"
                   style={{
                     backgroundColor: colors.utility.secondaryBackground,
                     color: colors.utility.primaryText,
@@ -433,11 +440,15 @@ const PricingPlansAdminPage: React.FC = () => {
                     ringColor: colors.brand.primary
                   }}
                 >
-                  {PRODUCT_OPTIONS.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
+                  {productsLoading ? (
+                    <option value="">Loading products...</option>
+                  ) : (
+                    PRODUCT_OPTIONS.map(option => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
 
