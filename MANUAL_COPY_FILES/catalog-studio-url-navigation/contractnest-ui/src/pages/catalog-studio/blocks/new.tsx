@@ -4,7 +4,8 @@
 
 import React, { useState, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Save, X } from 'lucide-react';
+import { ArrowLeft, Save, X, Loader2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { Block, WizardMode } from '../../../types/catalogStudio';
 import { useBlockCategories, usePricingModes } from '../../../hooks/queries/useBlockTypes';
@@ -12,6 +13,7 @@ import { BLOCK_CATEGORIES } from '../../../utils/catalog-studio';
 import BlockWizardContent from '../../../components/catalog-studio/BlockWizard/BlockWizardContent';
 import { useCreateCatBlock } from '../../../hooks/mutations/useCatBlocksMutations';
 import { blockToCreateData } from '../../../utils/catalog-studio/catBlockAdapter';
+import { VaNiLoader } from '../../../components/common/loaders/UnifiedLoader';
 
 // =================================================================
 // COMPONENT
@@ -82,19 +84,12 @@ const NewBlockPage: React.FC = () => {
 
       await createBlockMutation.mutateAsync(createPayload);
 
-      // Navigate back to configure page on success
-      navigate('/catalog-studio/configure', {
-        state: {
-          toast: {
-            type: 'success',
-            title: 'Block created',
-            description: blockData.name
-          }
-        }
-      });
+      // Show success toast and navigate back
+      toast.success(`Block "${blockData.name}" created successfully`);
+      navigate('/catalog-studio/configure');
     } catch (error: any) {
       console.error('Failed to create block:', error);
-      // Stay on page and show error (could add toast here)
+      toast.error(error?.response?.data?.message || 'Failed to create block. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -107,9 +102,28 @@ const NewBlockPage: React.FC = () => {
 
   return (
     <div
-      className="h-full flex flex-col"
+      className="h-full flex flex-col relative"
       style={{ backgroundColor: colors.utility.secondaryBackground }}
     >
+      {/* Full-page loader overlay when saving */}
+      {isSaving && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/30">
+          <div
+            className="p-6 rounded-xl shadow-2xl flex flex-col items-center gap-4"
+            style={{ backgroundColor: colors.utility.primaryBackground }}
+          >
+            <Loader2 className="w-10 h-10 animate-spin" style={{ color: colors.brand.primary }} />
+            <div className="text-center">
+              <p className="font-semibold" style={{ color: colors.utility.primaryText }}>
+                Creating Block...
+              </p>
+              <p className="text-sm" style={{ color: colors.utility.secondaryText }}>
+                Please wait while we save your block
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Page Header */}
       <div
         className="border-b px-6 py-4 flex items-center justify-between"

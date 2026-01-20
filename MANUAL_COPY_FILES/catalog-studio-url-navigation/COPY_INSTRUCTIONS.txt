@@ -1,48 +1,103 @@
 ═══════════════════════════════════════════════════════════════════════════════
-CATALOG STUDIO - URL NAVIGATION FIX (COMPLETE)
+CATALOG STUDIO - URL NAVIGATION + BILLING FIXES (COMPLETE)
 ═══════════════════════════════════════════════════════════════════════════════
 
 ISSUES FIXED:
 1. Stacked headers wasting ~40% of vertical space
 2. Routes for /blocks/new and /blocks/:id/edit were missing
 3. UI was compressed to 60% width (max-w-4xl constraint)
+4. Billing block: duplicate Payment Type fields in Page 1 and Page 2
+5. Billing block: couldn't proceed from Step 2 to Step 3 (validation error)
+6. API 400 Error: block_type_id must be UUID (was sending 'billing' string)
+7. API 400 Error: pricing_mode_id must be UUID (was sending 'independent' string)
+8. API 400 Error: hsn_sac_code must be string (was sending null)
+9. No loader/toast feedback when saving block
 
 SOLUTION:
 - Use URL navigation instead of inline wizard
 - Added missing routes to App.tsx
 - Removed max-w-4xl constraint for full-width layout
+- Removed duplicate billing fields from BasicInfoStep
+- Fixed validation in BlockWizardContent to check correct field names
+- Added useEffect in StructureStep to set default paymentType
+- Fixed catBlockAdapter to send empty string for hsn_sac_code
+- Pass UUIDs from hooks (getDbIdByType, getDbIdByMode) in new.tsx
+- Added loader overlay and toast notifications in new.tsx
 
 ═══════════════════════════════════════════════════════════════════════════════
-FILES TO COPY (5 files)
+FILES TO COPY (9 files)
 ═══════════════════════════════════════════════════════════════════════════════
 
-1. blocks.tsx (Block Library page)
-2. configure.tsx (Configure page)
-3. App.tsx (Routes)
-4. new.tsx (Create block wizard - FULL WIDTH)
-5. edit.tsx (Edit block wizard - FULL WIDTH)
+1. blocks.tsx (Block Library page - URL navigation)
+2. configure.tsx (Configure page - URL navigation)
+3. App.tsx (Routes for /blocks/new and /blocks/:id/edit)
+4. new.tsx (Create block wizard - full width, UUIDs, loader, toast)
+5. edit.tsx (Edit block wizard - full width)
+6. BasicInfoStep.tsx (Removed duplicate billing fields)
+7. BlockWizardContent.tsx (Fixed validation for billing blocks)
+8. StructureStep.tsx (Added useEffect for default paymentType)
+9. catBlockAdapter.ts (Fixed hsn_sac_code, removed block_type_id/pricing_mode_id)
 
 ═══════════════════════════════════════════════════════════════════════════════
 POWERSHELL COPY COMMANDS
 ═══════════════════════════════════════════════════════════════════════════════
 
+# Navigate to project root first
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# 1. blocks.tsx
 Copy-Item "MANUAL_COPY_FILES\catalog-studio-url-navigation\contractnest-ui\src\pages\catalog-studio\blocks.tsx" -Destination "contractnest-ui\src\pages\catalog-studio\blocks.tsx" -Force
 
+# 2. configure.tsx
 Copy-Item "MANUAL_COPY_FILES\catalog-studio-url-navigation\contractnest-ui\src\pages\catalog-studio\configure.tsx" -Destination "contractnest-ui\src\pages\catalog-studio\configure.tsx" -Force
 
+# 3. App.tsx (Routes)
 Copy-Item "MANUAL_COPY_FILES\catalog-studio-url-navigation\contractnest-ui\src\App.tsx" -Destination "contractnest-ui\src\App.tsx" -Force
 
+# 4. new.tsx (Create folder if needed)
+New-Item -ItemType Directory -Force -Path "contractnest-ui\src\pages\catalog-studio\blocks"
 Copy-Item "MANUAL_COPY_FILES\catalog-studio-url-navigation\contractnest-ui\src\pages\catalog-studio\blocks\new.tsx" -Destination "contractnest-ui\src\pages\catalog-studio\blocks\new.tsx" -Force
 
+# 5. edit.tsx (Create [id] folder if needed)
 New-Item -ItemType Directory -Force -Path "contractnest-ui\src\pages\catalog-studio\blocks\[id]"
 Copy-Item "MANUAL_COPY_FILES\catalog-studio-url-navigation\contractnest-ui\src\pages\catalog-studio\blocks\[id]\edit.tsx" -Destination "contractnest-ui\src\pages\catalog-studio\blocks\[id]\edit.tsx" -Force
 
-Write-Host "All 5 files copied!" -ForegroundColor Green
+# 6. BasicInfoStep.tsx
+Copy-Item "MANUAL_COPY_FILES\catalog-studio-url-navigation\contractnest-ui\src\components\catalog-studio\BlockWizard\steps\BasicInfoStep.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\BasicInfoStep.tsx" -Force
+
+# 7. BlockWizardContent.tsx
+Copy-Item "MANUAL_COPY_FILES\catalog-studio-url-navigation\contractnest-ui\src\components\catalog-studio\BlockWizard\BlockWizardContent.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\BlockWizardContent.tsx" -Force
+
+# 8. StructureStep.tsx (billing)
+New-Item -ItemType Directory -Force -Path "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\billing"
+Copy-Item "MANUAL_COPY_FILES\catalog-studio-url-navigation\contractnest-ui\src\components\catalog-studio\BlockWizard\steps\billing\StructureStep.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\billing\StructureStep.tsx" -Force
+
+# 9. catBlockAdapter.ts
+New-Item -ItemType Directory -Force -Path "contractnest-ui\src\utils\catalog-studio"
+Copy-Item "MANUAL_COPY_FILES\catalog-studio-url-navigation\contractnest-ui\src\utils\catalog-studio\catBlockAdapter.ts" -Destination "contractnest-ui\src\utils\catalog-studio\catBlockAdapter.ts" -Force
+
+Write-Host "All 9 files copied!" -ForegroundColor Green
 
 ═══════════════════════════════════════════════════════════════════════════════
 SUBMODULES AFFECTED
 ═══════════════════════════════════════════════════════════════════════════════
 
 - contractnest-ui (only)
+
+═══════════════════════════════════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+- [ ] Navigate to /catalog-studio/configure
+- [ ] Click "Create Block" button
+- [ ] Verify full-page wizard opens at /catalog-studio/blocks/new
+- [ ] Select "Billing" block type
+- [ ] Go to Page 2 (Basic Info) - should NOT have Payment Type/Invoice Trigger
+- [ ] Go to Page 3 (Structure) - should have Payment Type selection
+- [ ] Complete all steps and click Save
+- [ ] Verify loader overlay appears during save
+- [ ] Verify toast notification on success
+- [ ] Verify redirect to /catalog-studio/configure after save
+- [ ] Click Cancel button - should go to /catalog-studio/configure (not /blocks)
 
 ═══════════════════════════════════════════════════════════════════════════════
