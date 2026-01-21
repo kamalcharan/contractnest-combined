@@ -1,0 +1,95 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS - Block Improvements (Phase 1)
+═══════════════════════════════════════════════════
+
+This is Phase 1 of block improvements including:
+- Reusable FileUploader component using useStorageManagement hook
+- IconPicker with custom icon upload support (Option B)
+- New storage categories for blocks
+
+═══════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════
+
+1. FileUploader.tsx (NEW - reusable upload component)
+   Source: MANUAL_COPY_FILES/block-improvements/contractnest-ui/src/components/common/FileUploader.tsx
+   Destination: contractnest-ui/src/components/common/FileUploader.tsx
+
+2. IconPicker.tsx (UPDATED - custom icon upload support)
+   Source: MANUAL_COPY_FILES/block-improvements/contractnest-ui/src/components/catalog-studio/IconPicker.tsx
+   Destination: contractnest-ui/src/components/catalog-studio/IconPicker.tsx
+
+3. storageConstants.ts (UPDATED - new storage categories)
+   Source: MANUAL_COPY_FILES/block-improvements/contractnest-ui/src/utils/constants/storageConstants.ts
+   Destination: contractnest-ui/src/utils/constants/storageConstants.ts
+
+═══════════════════════════════════════════════════
+SUBMODULES AFFECTED
+═══════════════════════════════════════════════════
+- contractnest-ui
+
+═══════════════════════════════════════════════════
+CHANGES SUMMARY
+═══════════════════════════════════════════════════
+
+1. FileUploader.tsx (NEW):
+   - Reusable file upload component
+   - Uses useStorageManagement hook
+   - Drag-and-drop support
+   - File type and size validation
+   - Upload progress indicator
+   - Preview for uploaded files
+   - Error handling with user feedback
+
+2. IconPicker.tsx (UPDATED):
+   - Added "Custom Upload" tab alongside "Lucide Icons"
+   - Custom icons uploaded to 'block_icons' storage category
+   - Option B: icon field + customIconUrl field
+   - New props: customIconUrl, onCustomIconChange, allowCustomUpload
+   - Visual preview of custom icons
+
+3. storageConstants.ts (UPDATED):
+   - Added 'block_icons' category (PNG, SVG, JPEG - 512KB max)
+   - Added 'block_videos' category (MP4, WebM, MOV - 100MB max)
+   - Added 'block_images' category (JPEG, PNG, WebP, GIF - 5MB max)
+
+═══════════════════════════════════════════════════
+USAGE EXAMPLES
+═══════════════════════════════════════════════════
+
+FileUploader:
+```tsx
+import FileUploader from '@/components/common/FileUploader';
+
+<FileUploader
+  category="block_images"
+  label="Upload Image"
+  onUploadComplete={(file) => setImageUrl(file.download_url)}
+  onUploadError={(error) => console.error(error)}
+/>
+```
+
+IconPicker with custom upload:
+```tsx
+import IconPicker from '@/components/catalog-studio/IconPicker';
+
+<IconPicker
+  value={formData.icon}
+  onChange={(icon) => handleChange('icon', icon)}
+  customIconUrl={formData.customIconUrl}
+  onCustomIconChange={(url) => handleChange('customIconUrl', url)}
+  allowCustomUpload={true}
+/>
+```
+
+═══════════════════════════════════════════════════
+REMAINING WORK (Phase 2)
+═══════════════════════════════════════════════════
+- Fix HTML tag display in template.tsx and blocks.tsx
+- Consolidate Text Block wizard (4→3 steps)
+- Consolidate Video Block wizard (4→3 steps)
+- Update ImageUploadStep to use FileUploader
+- Update MediaStep to use FileUploader
+- Add DB field validations across blocks
+
+═══════════════════════════════════════════════════
