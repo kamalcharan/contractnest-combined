@@ -30,11 +30,10 @@ export const WIZARD_STEPS: Record<string, WizardStep[]> = {
     { id: 1, label: 'Type' },
     { id: 2, label: 'Content' },  // Name, Icon, RichText all in one
   ],
-  // VIDEO BLOCK: Consolidated from 4 steps to 3 steps
+  // VIDEO BLOCK: Single page (Type + Media with Name/Icon/Video/Settings)
   video: [
     { id: 1, label: 'Type' },
-    { id: 2, label: 'Basic Info' },
-    { id: 3, label: 'Media' },    // Now includes Display Settings (was step 4)
+    { id: 2, label: 'Media' },    // Name, Icon, Video, Display Settings all in one
   ],
   image: [
     { id: 1, label: 'Type' },

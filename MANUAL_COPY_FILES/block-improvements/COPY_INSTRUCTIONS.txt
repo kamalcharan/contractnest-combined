@@ -10,6 +10,8 @@ Includes:
 - Updated ImageUploadStep and MediaStep to use FileUploader
 - Centralized block field validation constants
 - Updated BasicInfoStep, ContentStep, ItemsStep with validations
+- TEXT BLOCK: Consolidated to single page (Name, Icon, RichText)
+- VIDEO BLOCK: Consolidated to single page (Name, Icon, Video, Settings)
 
 ═══════════════════════════════════════════════════
 FILES TO COPY
@@ -68,6 +70,16 @@ FILES TO COPY
 11. ItemsStep.tsx (UPDATED - checklist validations)
     Source: MANUAL_COPY_FILES/block-improvements/contractnest-ui/src/components/catalog-studio/BlockWizard/steps/checklist/ItemsStep.tsx
     Destination: contractnest-ui/src/components/catalog-studio/BlockWizard/steps/checklist/ItemsStep.tsx
+
+--- WIZARD CONFIGURATION ---
+
+12. wizard-data.ts (UPDATED - Text Block 2 steps, Video Block 2 steps)
+    Source: MANUAL_COPY_FILES/block-improvements/contractnest-ui/src/utils/catalog-studio/wizard-data.ts
+    Destination: contractnest-ui/src/utils/catalog-studio/wizard-data.ts
+
+13. BlockWizardContent.tsx (UPDATED - Text/Video handled at step 2)
+    Source: MANUAL_COPY_FILES/block-improvements/contractnest-ui/src/components/catalog-studio/BlockWizard/BlockWizardContent.tsx
+    Destination: contractnest-ui/src/components/catalog-studio/BlockWizard/BlockWizardContent.tsx
 
 ═══════════════════════════════════════════════════
 SUBMODULES AFFECTED
@@ -129,21 +141,32 @@ CHANGES SUMMARY
    - Uses 'block_images' storage category
    - Supports JPEG, PNG, WebP, GIF (max 5MB)
 
-9. MediaStep.tsx (UPDATED):
+9. MediaStep.tsx (UPDATED - VIDEO BLOCK SINGLE PAGE):
+   - VIDEO BLOCK now shows single page with: Name, Icon, Video source, Display Settings
    - Uses FileUploader for video uploads
    - Uses 'block_videos' storage category
    - YouTube/Vimeo embed preview functionality
+   - Collapsible Display Settings section
 
-10. ContentStep.tsx (UPDATED):
+10. ContentStep.tsx (UPDATED - TEXT BLOCK SINGLE PAGE):
+    - TEXT BLOCK now shows single page with: Name, Icon, RichText
+    - No separate BasicInfo step for text blocks
     - Uses BLOCK_FIELD_LIMITS for content (10000 chars)
     - Character count with warning/error colors
-    - maxLength attribute on textarea
 
 11. ItemsStep.tsx (UPDATED):
     - Max 50 checklist items
     - Each item max 500 chars
     - Character count for items nearing limit
     - Disabled add button when max reached
+
+12. wizard-data.ts (UPDATED):
+    - TEXT BLOCK: Reduced from 4 steps to 2 steps (Type, Content)
+    - VIDEO BLOCK: Reduced from 4 steps to 2 steps (Type, Media)
+
+13. BlockWizardContent.tsx (UPDATED):
+    - Text block rendered at step 2 via ContentStep (skips BasicInfo)
+    - Video block rendered at step 2 via MediaStep (skips BasicInfo)
 
 ═══════════════════════════════════════════════════
 POWERSHELL COPY COMMANDS
@@ -168,6 +191,8 @@ Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\components\c
 Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\components\catalog-studio\BlockWizard\steps\media\MediaStep.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\media\MediaStep.tsx" -Force
 Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\components\catalog-studio\BlockWizard\steps\content\ContentStep.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\content\ContentStep.tsx" -Force
 Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\components\catalog-studio\BlockWizard\steps\checklist\ItemsStep.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\checklist\ItemsStep.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\utils\catalog-studio\wizard-data.ts" -Destination "contractnest-ui\src\utils\catalog-studio\wizard-data.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\components\catalog-studio\BlockWizard\BlockWizardContent.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\BlockWizardContent.tsx" -Force
 
 Write-Host "All files copied!" -ForegroundColor Green
 

@@ -297,11 +297,16 @@ const BlockWizardContent: React.FC<BlockWizardContentProps> = ({
       );
     }
 
-    // Step 2 - Basic Info (common for all EXCEPT text block which has its own combined step)
+    // Step 2 - Basic Info (common for most blocks)
+    // EXCEPT: Text Block (ContentStep) and Video Block (MediaStep) have single-page wizards
     if (currentStep === 2 || (currentStep === 1 && !showTypeSelection)) {
       // Text block skips BasicInfo - ContentStep has Name/Icon/RichText all in one
       if (blockType === 'text') {
         return <ContentStep formData={formData} onChange={handleFormChange} />;
+      }
+      // Video block skips BasicInfo - MediaStep has Name/Icon/Video/Settings all in one
+      if (blockType === 'video') {
+        return <MediaStep formData={formData} onChange={handleFormChange} />;
       }
       return (
         <BasicInfoStep
@@ -343,13 +348,8 @@ const BlockWizardContent: React.FC<BlockWizardContentProps> = ({
       // TEXT BLOCK: Handled at step 2 (single page with Name/Icon/RichText)
       // No additional steps needed - ContentStep is rendered in step 2 check above
 
-      // VIDEO BLOCK: Consolidated to single step (was 2 steps)
-      case 'video':
-        switch (currentStep) {
-          case 3: return <MediaStep formData={formData} onChange={handleFormChange} />;
-          // Step 4 removed - DisplaySettingsStep merged into MediaStep
-        }
-        break;
+      // VIDEO BLOCK: Handled at step 2 (single page with Name/Icon/Video/Settings)
+      // No additional steps needed - MediaStep is rendered in step 2 check above
 
       case 'image':
         switch (currentStep) {
