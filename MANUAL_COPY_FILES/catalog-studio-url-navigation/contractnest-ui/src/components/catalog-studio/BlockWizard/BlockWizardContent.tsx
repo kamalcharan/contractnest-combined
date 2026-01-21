@@ -104,13 +104,14 @@ const BlockWizardContent: React.FC<BlockWizardContentProps> = ({
       return errors;
     }
 
-    // Step 2 - Basic Info: Name and Description required
+    // Step 2 - Basic Info: Name required, Description required (except for text blocks)
     const basicInfoStep = showTypeSelection ? 2 : 1;
     if (step === basicInfoStep) {
       if (!data.name?.trim()) {
         errors.push('Block name is required');
       }
-      if (!data.description?.trim()) {
+      // Text blocks only require name (no description)
+      if (type !== 'text' && !data.description?.trim()) {
         errors.push('Description is required');
       }
       // Block-specific validations for Basic Info
@@ -183,6 +184,15 @@ const BlockWizardContent: React.FC<BlockWizardContentProps> = ({
       }
       // Step 4 - Schedule: No mandatory fields (all have defaults)
       // Step 5 - Automation: No mandatory fields
+    }
+
+    if (type === 'text') {
+      // Step 3 - Content: Content text is required
+      if (step === 3) {
+        if (!data.content?.trim()) {
+          errors.push('Content text is required');
+        }
+      }
     }
 
     return errors;
@@ -330,7 +340,6 @@ const BlockWizardContent: React.FC<BlockWizardContentProps> = ({
       case 'text':
         switch (currentStep) {
           case 3: return <ContentStep formData={formData} onChange={handleFormChange} />;
-          case 4: return <ContentSettingsStep formData={formData} onChange={handleFormChange} />;
         }
         break;
 

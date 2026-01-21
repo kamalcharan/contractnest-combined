@@ -1,5 +1,5 @@
 ═══════════════════════════════════════════════════════════════════════════════
-CATALOG STUDIO - URL NAVIGATION + BILLING FIXES (COMPLETE)
+CATALOG STUDIO - URL NAVIGATION + TEXT BLOCK SIMPLIFICATION (COMPLETE)
 ═══════════════════════════════════════════════════════════════════════════════
 
 ISSUES FIXED:
@@ -12,6 +12,12 @@ ISSUES FIXED:
 7. API 400 Error: pricing_mode_id must be UUID (was sending 'independent' string)
 8. API 400 Error: hsn_sac_code must be string (was sending null)
 9. No loader/toast feedback when saving block
+10. Text Block had too many unnecessary fields
+
+NEW FEATURES:
+- VaNiLoader: Branded loading overlay when saving blocks
+- VaNiToast: Branded toast notifications (success/error)
+- Simplified Text Block: Only Name, Icon, and Context Text (3 steps instead of 4)
 
 SOLUTION:
 - Use URL navigation instead of inline wizard
@@ -22,21 +28,26 @@ SOLUTION:
 - Added useEffect in StructureStep to set default paymentType
 - Fixed catBlockAdapter to send empty string for hsn_sac_code
 - Pass UUIDs from hooks (getDbIdByType, getDbIdByMode) in new.tsx
-- Added loader overlay and toast notifications in new.tsx
+- Replaced react-hot-toast with vaniToast, Loader2 with VaNiLoader
+- Simplified wizard-data.ts for text blocks (3 steps)
+- Simplified BasicInfoStep for text blocks (only Name + Icon)
+- Simplified ContentStep for text blocks (only context text editor)
 
 ═══════════════════════════════════════════════════════════════════════════════
-FILES TO COPY (9 files)
+FILES TO COPY (12 files)
 ═══════════════════════════════════════════════════════════════════════════════
 
 1. blocks.tsx (Block Library page - URL navigation)
 2. configure.tsx (Configure page - URL navigation)
 3. App.tsx (Routes for /blocks/new and /blocks/:id/edit)
-4. new.tsx (Create block wizard - full width, UUIDs, loader, toast)
+4. new.tsx (Create block wizard - VaNiLoader, vaniToast, UUIDs)
 5. edit.tsx (Edit block wizard - full width)
-6. BasicInfoStep.tsx (Removed duplicate billing fields)
-7. BlockWizardContent.tsx (Fixed validation for billing blocks)
+6. BasicInfoStep.tsx (Simplified for text blocks - only Name + Icon)
+7. BlockWizardContent.tsx (Fixed validation, text block content validation)
 8. StructureStep.tsx (Added useEffect for default paymentType)
 9. catBlockAdapter.ts (Fixed hsn_sac_code, removed block_type_id/pricing_mode_id)
+10. wizard-data.ts (Simplified text block to 3 steps)
+11. ContentStep.tsx (Simplified for text blocks - only context text)
 
 ═══════════════════════════════════════════════════════════════════════════════
 POWERSHELL COPY COMMANDS
@@ -76,7 +87,14 @@ Copy-Item "MANUAL_COPY_FILES\catalog-studio-url-navigation\contractnest-ui\src\c
 New-Item -ItemType Directory -Force -Path "contractnest-ui\src\utils\catalog-studio"
 Copy-Item "MANUAL_COPY_FILES\catalog-studio-url-navigation\contractnest-ui\src\utils\catalog-studio\catBlockAdapter.ts" -Destination "contractnest-ui\src\utils\catalog-studio\catBlockAdapter.ts" -Force
 
-Write-Host "All 9 files copied!" -ForegroundColor Green
+# 10. wizard-data.ts
+Copy-Item "MANUAL_COPY_FILES\catalog-studio-url-navigation\contractnest-ui\src\utils\catalog-studio\wizard-data.ts" -Destination "contractnest-ui\src\utils\catalog-studio\wizard-data.ts" -Force
+
+# 11. ContentStep.tsx (content folder)
+New-Item -ItemType Directory -Force -Path "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\content"
+Copy-Item "MANUAL_COPY_FILES\catalog-studio-url-navigation\contractnest-ui\src\components\catalog-studio\BlockWizard\steps\content\ContentStep.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\content\ContentStep.tsx" -Force
+
+Write-Host "All 11 files copied!" -ForegroundColor Green
 
 ═══════════════════════════════════════════════════════════════════════════════
 SUBMODULES AFFECTED
@@ -88,16 +106,26 @@ SUBMODULES AFFECTED
 TESTING CHECKLIST
 ═══════════════════════════════════════════════════════════════════════════════
 
+BILLING BLOCK:
 - [ ] Navigate to /catalog-studio/configure
 - [ ] Click "Create Block" button
-- [ ] Verify full-page wizard opens at /catalog-studio/blocks/new
 - [ ] Select "Billing" block type
 - [ ] Go to Page 2 (Basic Info) - should NOT have Payment Type/Invoice Trigger
 - [ ] Go to Page 3 (Structure) - should have Payment Type selection
 - [ ] Complete all steps and click Save
-- [ ] Verify loader overlay appears during save
-- [ ] Verify toast notification on success
+- [ ] Verify VaNiLoader overlay appears during save (branded orb animation)
+- [ ] Verify VaNiToast notification on success (top-right)
 - [ ] Verify redirect to /catalog-studio/configure after save
+
+TEXT BLOCK (NEW SIMPLIFIED FLOW):
+- [ ] Click "Create Block" button
+- [ ] Select "Text" block type
+- [ ] Step 2 (Basic Info): Only Name and Icon should appear (no image, description, tags)
+- [ ] Step 3 (Content): Only context text editor should appear (no content type, templates, variables)
+- [ ] Complete and save
+- [ ] Verify VaNiLoader and VaNiToast work
+
+GENERAL:
 - [ ] Click Cancel button - should go to /catalog-studio/configure (not /blocks)
 
 ═══════════════════════════════════════════════════════════════════════════════
