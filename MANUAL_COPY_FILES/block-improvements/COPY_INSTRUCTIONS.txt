@@ -1,11 +1,12 @@
 ═══════════════════════════════════════════════════
-COPY INSTRUCTIONS - Block Improvements (Phase 1)
+COPY INSTRUCTIONS - Block Improvements (Phase 1 + 2)
 ═══════════════════════════════════════════════════
 
-This is Phase 1 of block improvements including:
+Includes:
 - Reusable FileUploader component using useStorageManagement hook
 - IconPicker with custom icon upload support (Option B)
 - New storage categories for blocks
+- Fix HTML tag display issue (<p> tags showing in descriptions)
 
 ═══════════════════════════════════════════════════
 FILES TO COPY
@@ -23,6 +24,14 @@ FILES TO COPY
    Source: MANUAL_COPY_FILES/block-improvements/contractnest-ui/src/utils/constants/storageConstants.ts
    Destination: contractnest-ui/src/utils/constants/storageConstants.ts
 
+4. template.tsx (UPDATED - fix HTML display)
+   Source: MANUAL_COPY_FILES/block-improvements/contractnest-ui/src/pages/catalog-studio/template.tsx
+   Destination: contractnest-ui/src/pages/catalog-studio/template.tsx
+
+5. blocks.tsx (UPDATED - fix HTML display)
+   Source: MANUAL_COPY_FILES/block-improvements/contractnest-ui/src/pages/catalog-studio/blocks.tsx
+   Destination: contractnest-ui/src/pages/catalog-studio/blocks.tsx
+
 ═══════════════════════════════════════════════════
 SUBMODULES AFFECTED
 ═══════════════════════════════════════════════════
@@ -39,57 +48,42 @@ CHANGES SUMMARY
    - File type and size validation
    - Upload progress indicator
    - Preview for uploaded files
-   - Error handling with user feedback
 
 2. IconPicker.tsx (UPDATED):
    - Added "Custom Upload" tab alongside "Lucide Icons"
    - Custom icons uploaded to 'block_icons' storage category
    - Option B: icon field + customIconUrl field
    - New props: customIconUrl, onCustomIconChange, allowCustomUpload
-   - Visual preview of custom icons
 
 3. storageConstants.ts (UPDATED):
    - Added 'block_icons' category (PNG, SVG, JPEG - 512KB max)
    - Added 'block_videos' category (MP4, WebM, MOV - 100MB max)
    - Added 'block_images' category (JPEG, PNG, WebP, GIF - 5MB max)
 
-═══════════════════════════════════════════════════
-USAGE EXAMPLES
-═══════════════════════════════════════════════════
+4. template.tsx (UPDATED):
+   - Import stripHtml from utils/catalog-studio
+   - Fixed 3 locations where block.description showed HTML tags
+   - Lines: 1301, 1410, 2137
 
-FileUploader:
-```tsx
-import FileUploader from '@/components/common/FileUploader';
-
-<FileUploader
-  category="block_images"
-  label="Upload Image"
-  onUploadComplete={(file) => setImageUrl(file.download_url)}
-  onUploadError={(error) => console.error(error)}
-/>
-```
-
-IconPicker with custom upload:
-```tsx
-import IconPicker from '@/components/catalog-studio/IconPicker';
-
-<IconPicker
-  value={formData.icon}
-  onChange={(icon) => handleChange('icon', icon)}
-  customIconUrl={formData.customIconUrl}
-  onCustomIconChange={(url) => handleChange('customIconUrl', url)}
-  allowCustomUpload={true}
-/>
-```
+5. blocks.tsx (UPDATED):
+   - Import stripHtml from utils/catalog-studio
+   - Fixed 3 locations where block.description showed HTML tags
+   - Lines: 754, 852, 979
 
 ═══════════════════════════════════════════════════
-REMAINING WORK (Phase 2)
+POWERSHELL COPY COMMANDS
 ═══════════════════════════════════════════════════
-- Fix HTML tag display in template.tsx and blocks.tsx
-- Consolidate Text Block wizard (4→3 steps)
-- Consolidate Video Block wizard (4→3 steps)
-- Update ImageUploadStep to use FileUploader
-- Update MediaStep to use FileUploader
-- Add DB field validations across blocks
+
+# Create directories if needed
+New-Item -ItemType Directory -Force -Path "contractnest-ui\src\components\common"
+
+# Copy all files
+Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\components\common\FileUploader.tsx" -Destination "contractnest-ui\src\components\common\FileUploader.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\components\catalog-studio\IconPicker.tsx" -Destination "contractnest-ui\src\components\catalog-studio\IconPicker.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\utils\constants\storageConstants.ts" -Destination "contractnest-ui\src\utils\constants\storageConstants.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\pages\catalog-studio\template.tsx" -Destination "contractnest-ui\src\pages\catalog-studio\template.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\pages\catalog-studio\blocks.tsx" -Destination "contractnest-ui\src\pages\catalog-studio\blocks.tsx" -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
 
 ═══════════════════════════════════════════════════
