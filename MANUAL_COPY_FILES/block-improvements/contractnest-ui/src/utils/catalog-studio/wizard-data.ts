@@ -25,11 +25,10 @@ export const WIZARD_STEPS: Record<string, WizardStep[]> = {
     { id: 4, label: 'Schedule' },
     { id: 5, label: 'Automation' },
   ],
-  // TEXT BLOCK: Consolidated from 4 steps to 3 steps
+  // TEXT BLOCK: Single page (Type + Content with Name/Icon/RichText)
   text: [
     { id: 1, label: 'Type' },
-    { id: 2, label: 'Basic Info' },
-    { id: 3, label: 'Content' },  // Now includes Settings (was step 4)
+    { id: 2, label: 'Content' },  // Name, Icon, RichText all in one
   ],
   // VIDEO BLOCK: Consolidated from 4 steps to 3 steps
   video: [
