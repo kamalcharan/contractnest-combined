@@ -1,0 +1,43 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS - Layout Optimization
+═══════════════════════════════════════════════════
+
+Feature: Optimize header and sidebar for more workspace
+- Remove unused search bar from header
+- Reduce header height (py-3 → py-2)
+- Auto-collapse sidebar on Catalog Studio routes
+
+═══════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════
+
+1. Header.tsx (removed search, reduced padding)
+   Source: MANUAL_COPY_FILES/layout-optimization/contractnest-ui/src/components/layout/Header.tsx
+   Destination: contractnest-ui/src/components/layout/Header.tsx
+
+2. MainLayout.tsx (auto-collapse sidebar logic)
+   Source: MANUAL_COPY_FILES/layout-optimization/contractnest-ui/src/components/layout/MainLayout.tsx
+   Destination: contractnest-ui/src/components/layout/MainLayout.tsx
+
+═══════════════════════════════════════════════════
+SUBMODULES AFFECTED
+═══════════════════════════════════════════════════
+- contractnest-ui
+
+═══════════════════════════════════════════════════
+CHANGES SUMMARY
+═══════════════════════════════════════════════════
+
+Header.tsx:
+  - Removed Search import from lucide-react
+  - Changed padding from py-3 to py-2 (line 227)
+  - Removed search input element (lines 249-265)
+
+MainLayout.tsx:
+  - Added useEffect, useLocation imports
+  - Added AUTO_COLLAPSE_ROUTES array for catalog-studio routes
+  - Added userOverride state to respect manual toggle
+  - Added useEffect to auto-collapse on route change
+  - Updated toggleSidebar to track user preference
+
+═══════════════════════════════════════════════════
