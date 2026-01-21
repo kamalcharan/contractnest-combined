@@ -7,6 +7,7 @@ Includes:
 - IconPicker with custom icon upload support (Option B)
 - New storage categories for blocks
 - Fix HTML tag display issue (<p> tags showing in descriptions)
+- Updated ImageUploadStep and MediaStep to use FileUploader
 
 ═══════════════════════════════════════════════════
 FILES TO COPY
@@ -31,6 +32,14 @@ FILES TO COPY
 5. blocks.tsx (UPDATED - fix HTML display)
    Source: MANUAL_COPY_FILES/block-improvements/contractnest-ui/src/pages/catalog-studio/blocks.tsx
    Destination: contractnest-ui/src/pages/catalog-studio/blocks.tsx
+
+6. ImageUploadStep.tsx (UPDATED - uses FileUploader)
+   Source: MANUAL_COPY_FILES/block-improvements/contractnest-ui/src/components/catalog-studio/BlockWizard/steps/media/ImageUploadStep.tsx
+   Destination: contractnest-ui/src/components/catalog-studio/BlockWizard/steps/media/ImageUploadStep.tsx
+
+7. MediaStep.tsx (UPDATED - uses FileUploader)
+   Source: MANUAL_COPY_FILES/block-improvements/contractnest-ui/src/components/catalog-studio/BlockWizard/steps/media/MediaStep.tsx
+   Destination: contractnest-ui/src/components/catalog-studio/BlockWizard/steps/media/MediaStep.tsx
 
 ═══════════════════════════════════════════════════
 SUBMODULES AFFECTED
@@ -70,12 +79,27 @@ CHANGES SUMMARY
    - Fixed 3 locations where block.description showed HTML tags
    - Lines: 754, 852, 979
 
+6. ImageUploadStep.tsx (UPDATED):
+   - Now uses FileUploader component instead of placeholder
+   - Uses 'block_images' storage category
+   - Supports JPEG, PNG, WebP, GIF (max 5MB)
+   - Shows preview with previewSize="large"
+   - Alt text and caption fields remain unchanged
+
+7. MediaStep.tsx (UPDATED):
+   - Now uses FileUploader for video uploads
+   - Uses 'block_videos' storage category
+   - Supports MP4, WebM, MOV (max 100MB)
+   - YouTube/Vimeo embed preview functionality
+   - Duration and thumbnail fields remain unchanged
+
 ═══════════════════════════════════════════════════
 POWERSHELL COPY COMMANDS
 ═══════════════════════════════════════════════════
 
 # Create directories if needed
 New-Item -ItemType Directory -Force -Path "contractnest-ui\src\components\common"
+New-Item -ItemType Directory -Force -Path "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\media"
 
 # Copy all files
 Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\components\common\FileUploader.tsx" -Destination "contractnest-ui\src\components\common\FileUploader.tsx" -Force
@@ -83,6 +107,8 @@ Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\components\c
 Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\utils\constants\storageConstants.ts" -Destination "contractnest-ui\src\utils\constants\storageConstants.ts" -Force
 Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\pages\catalog-studio\template.tsx" -Destination "contractnest-ui\src\pages\catalog-studio\template.tsx" -Force
 Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\pages\catalog-studio\blocks.tsx" -Destination "contractnest-ui\src\pages\catalog-studio\blocks.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\components\catalog-studio\BlockWizard\steps\media\ImageUploadStep.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\media\ImageUploadStep.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\components\catalog-studio\BlockWizard\steps\media\MediaStep.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\media\MediaStep.tsx" -Force
 
 Write-Host "All files copied!" -ForegroundColor Green
 
