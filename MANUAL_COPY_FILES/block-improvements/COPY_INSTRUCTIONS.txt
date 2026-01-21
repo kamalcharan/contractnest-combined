@@ -81,10 +81,21 @@ FILES TO COPY
     Source: MANUAL_COPY_FILES/block-improvements/contractnest-ui/src/components/catalog-studio/BlockWizard/BlockWizardContent.tsx
     Destination: contractnest-ui/src/components/catalog-studio/BlockWizard/BlockWizardContent.tsx
 
+--- DOCUMENTATION ---
+
+14. CT_delivery.md (UPDATED - v3.0 improvements logged)
+    Source: MANUAL_COPY_FILES/block-improvements/ClaudeDocumentation/contractUI/CT_delivery.md
+    Destination: ClaudeDocumentation/contractUI/CT_delivery.md
+
+15. CT_Handover.md (UPDATED - v3.0 improvements logged)
+    Source: MANUAL_COPY_FILES/block-improvements/ClaudeDocumentation/contractUI/CT_Handover.md
+    Destination: ClaudeDocumentation/contractUI/CT_Handover.md
+
 ═══════════════════════════════════════════════════
 SUBMODULES AFFECTED
 ═══════════════════════════════════════════════════
 - contractnest-ui
+- ClaudeDocumentation
 
 ═══════════════════════════════════════════════════
 CHANGES SUMMARY
@@ -193,6 +204,10 @@ Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\components\c
 Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\components\catalog-studio\BlockWizard\steps\checklist\ItemsStep.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\checklist\ItemsStep.tsx" -Force
 Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\utils\catalog-studio\wizard-data.ts" -Destination "contractnest-ui\src\utils\catalog-studio\wizard-data.ts" -Force
 Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\components\catalog-studio\BlockWizard\BlockWizardContent.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\BlockWizardContent.tsx" -Force
+
+# Documentation
+Copy-Item "MANUAL_COPY_FILES\block-improvements\ClaudeDocumentation\contractUI\CT_delivery.md" -Destination "ClaudeDocumentation\contractUI\CT_delivery.md" -Force
+Copy-Item "MANUAL_COPY_FILES\block-improvements\ClaudeDocumentation\contractUI\CT_Handover.md" -Destination "ClaudeDocumentation\contractUI\CT_Handover.md" -Force
 
 Write-Host "All files copied!" -ForegroundColor Green
 
