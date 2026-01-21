@@ -1,0 +1,85 @@
+============================================================================
+INTEGRATIONS RPC FIX - COPY INSTRUCTIONS
+============================================================================
+Purpose: Fix RLS issue by converting integrations to use RPC functions
+Pattern: Following billing Edge Function pattern
+Date: 2026-01-21
+============================================================================
+
+SUBMODULES AFFECTED:
+- contractnest-edge (Edge Function update)
+- Database (SQL migration for RPC functions)
+
+============================================================================
+STEP 1: RUN SQL MIGRATION IN SUPABASE
+============================================================================
+
+1. Open Supabase Dashboard → SQL Editor
+2. Copy and paste the contents of:
+   migration_integrations_rpc_functions.sql
+3. Execute the SQL
+
+This creates the following RPC functions:
+- get_integration_types_with_status(p_tenant_id, p_is_live)
+- get_integrations_by_type(p_tenant_id, p_type, p_is_live)
+- get_tenant_integration(p_tenant_id, p_provider_id, p_is_live)
+- save_tenant_integration(...)
+- toggle_integration_status(p_tenant_id, p_integration_id, p_is_active)
+- get_integration_provider(p_provider_id)
+- get_integration_credentials(p_tenant_id, p_integration_id)
+- update_integration_verified(p_tenant_id, p_integration_id)
+
+============================================================================
+STEP 2: COPY EDGE FUNCTION
+============================================================================
+
+Copy the updated Edge Function:
+
+FROM: MANUAL_COPY_FILES/integrations-rpc-fix/contractnest-edge/supabase/functions/integrations/index.ts
+TO:   contractnest-edge/supabase/functions/integrations/index.ts
+
+PowerShell Command:
+Copy-Item "MANUAL_COPY_FILES\integrations-rpc-fix\contractnest-edge\supabase\functions\integrations\index.ts" -Destination "contractnest-edge\supabase\functions\integrations\index.ts" -Force
+
+============================================================================
+STEP 3: DEPLOY EDGE FUNCTION
+============================================================================
+
+Deploy the updated Edge Function to Supabase:
+
+cd contractnest-edge
+supabase functions deploy integrations
+
+============================================================================
+STEP 4: TEST
+============================================================================
+
+1. Navigate to /settings/integrations in the app
+2. Verify integration types load correctly
+3. Verify Razorpay shows as configured (in the correct mode - Live/Test)
+4. Test saving a new integration
+5. Test toggling integration status
+
+============================================================================
+FILES IN THIS FIX
+============================================================================
+
+1. migration_integrations_rpc_functions.sql
+   - Database migration with all RPC functions
+   - Run in Supabase SQL Editor
+
+2. contractnest-edge/supabase/functions/integrations/index.ts
+   - Updated Edge Function using RPC calls instead of direct table queries
+   - Follows billing pattern
+
+============================================================================
+WHAT CHANGED
+============================================================================
+
+BEFORE (Direct table queries - blocked by RLS):
+  await supabase.from('t_tenant_integrations').select(...)
+
+AFTER (RPC calls - SECURITY DEFINER bypasses RLS):
+  await supabase.rpc('get_integrations_by_type', { p_tenant_id: tenantId, ... })
+
+============================================================================
