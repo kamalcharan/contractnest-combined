@@ -1,5 +1,5 @@
 ═══════════════════════════════════════════════════
-COPY INSTRUCTIONS - Block Improvements (Phase 1 + 2)
+COPY INSTRUCTIONS - Block Improvements (Complete)
 ═══════════════════════════════════════════════════
 
 Includes:
@@ -8,38 +8,66 @@ Includes:
 - New storage categories for blocks
 - Fix HTML tag display issue (<p> tags showing in descriptions)
 - Updated ImageUploadStep and MediaStep to use FileUploader
+- Centralized block field validation constants
+- Updated BasicInfoStep, ContentStep, ItemsStep with validations
 
 ═══════════════════════════════════════════════════
 FILES TO COPY
 ═══════════════════════════════════════════════════
 
+--- COMMON COMPONENTS ---
+
 1. FileUploader.tsx (NEW - reusable upload component)
    Source: MANUAL_COPY_FILES/block-improvements/contractnest-ui/src/components/common/FileUploader.tsx
    Destination: contractnest-ui/src/components/common/FileUploader.tsx
 
-2. IconPicker.tsx (UPDATED - custom icon upload support)
-   Source: MANUAL_COPY_FILES/block-improvements/contractnest-ui/src/components/catalog-studio/IconPicker.tsx
-   Destination: contractnest-ui/src/components/catalog-studio/IconPicker.tsx
+--- CONSTANTS ---
 
-3. storageConstants.ts (UPDATED - new storage categories)
+2. storageConstants.ts (UPDATED - new storage categories)
    Source: MANUAL_COPY_FILES/block-improvements/contractnest-ui/src/utils/constants/storageConstants.ts
    Destination: contractnest-ui/src/utils/constants/storageConstants.ts
 
-4. template.tsx (UPDATED - fix HTML display)
+3. blockValidation.ts (NEW - field validation constants)
+   Source: MANUAL_COPY_FILES/block-improvements/contractnest-ui/src/utils/constants/blockValidation.ts
+   Destination: contractnest-ui/src/utils/constants/blockValidation.ts
+
+--- CATALOG STUDIO COMPONENTS ---
+
+4. IconPicker.tsx (UPDATED - custom icon upload support)
+   Source: MANUAL_COPY_FILES/block-improvements/contractnest-ui/src/components/catalog-studio/IconPicker.tsx
+   Destination: contractnest-ui/src/components/catalog-studio/IconPicker.tsx
+
+--- PAGES (HTML FIX) ---
+
+5. template.tsx (UPDATED - fix HTML display)
    Source: MANUAL_COPY_FILES/block-improvements/contractnest-ui/src/pages/catalog-studio/template.tsx
    Destination: contractnest-ui/src/pages/catalog-studio/template.tsx
 
-5. blocks.tsx (UPDATED - fix HTML display)
+6. blocks.tsx (UPDATED - fix HTML display)
    Source: MANUAL_COPY_FILES/block-improvements/contractnest-ui/src/pages/catalog-studio/blocks.tsx
    Destination: contractnest-ui/src/pages/catalog-studio/blocks.tsx
 
-6. ImageUploadStep.tsx (UPDATED - uses FileUploader)
+--- BLOCK WIZARD STEPS ---
+
+7. BasicInfoStep.tsx (UPDATED - field validations)
+   Source: MANUAL_COPY_FILES/block-improvements/contractnest-ui/src/components/catalog-studio/BlockWizard/steps/BasicInfoStep.tsx
+   Destination: contractnest-ui/src/components/catalog-studio/BlockWizard/steps/BasicInfoStep.tsx
+
+8. ImageUploadStep.tsx (UPDATED - uses FileUploader)
    Source: MANUAL_COPY_FILES/block-improvements/contractnest-ui/src/components/catalog-studio/BlockWizard/steps/media/ImageUploadStep.tsx
    Destination: contractnest-ui/src/components/catalog-studio/BlockWizard/steps/media/ImageUploadStep.tsx
 
-7. MediaStep.tsx (UPDATED - uses FileUploader)
+9. MediaStep.tsx (UPDATED - uses FileUploader)
    Source: MANUAL_COPY_FILES/block-improvements/contractnest-ui/src/components/catalog-studio/BlockWizard/steps/media/MediaStep.tsx
    Destination: contractnest-ui/src/components/catalog-studio/BlockWizard/steps/media/MediaStep.tsx
+
+10. ContentStep.tsx (UPDATED - field validations)
+    Source: MANUAL_COPY_FILES/block-improvements/contractnest-ui/src/components/catalog-studio/BlockWizard/steps/content/ContentStep.tsx
+    Destination: contractnest-ui/src/components/catalog-studio/BlockWizard/steps/content/ContentStep.tsx
+
+11. ItemsStep.tsx (UPDATED - checklist validations)
+    Source: MANUAL_COPY_FILES/block-improvements/contractnest-ui/src/components/catalog-studio/BlockWizard/steps/checklist/ItemsStep.tsx
+    Destination: contractnest-ui/src/components/catalog-studio/BlockWizard/steps/checklist/ItemsStep.tsx
 
 ═══════════════════════════════════════════════════
 SUBMODULES AFFECTED
@@ -58,40 +86,64 @@ CHANGES SUMMARY
    - Upload progress indicator
    - Preview for uploaded files
 
-2. IconPicker.tsx (UPDATED):
+2. storageConstants.ts (UPDATED):
+   - Added 'block_icons' category (PNG, SVG, JPEG - 512KB max)
+   - Added 'block_videos' category (MP4, WebM, MOV - 100MB max)
+   - Added 'block_images' category (JPEG, PNG, WebP, GIF - 5MB max)
+
+3. blockValidation.ts (NEW):
+   - Centralized field length limits:
+     * name: 255 chars
+     * description: 2000 chars
+     * content: 10000 chars
+     * tags: 20 max, 50 chars each
+     * sku: 50 chars
+     * terms: 1000 chars
+     * checklistItem: 500 chars, max 50 items
+     * mediaUrl/thumbnailUrl: 2000 chars
+     * altText: 255 chars
+     * caption: 500 chars
+   - Helper functions: getCharCountDisplay, validateFieldLength
+
+4. IconPicker.tsx (UPDATED):
    - Added "Custom Upload" tab alongside "Lucide Icons"
    - Custom icons uploaded to 'block_icons' storage category
    - Option B: icon field + customIconUrl field
    - New props: customIconUrl, onCustomIconChange, allowCustomUpload
 
-3. storageConstants.ts (UPDATED):
-   - Added 'block_icons' category (PNG, SVG, JPEG - 512KB max)
-   - Added 'block_videos' category (MP4, WebM, MOV - 100MB max)
-   - Added 'block_images' category (JPEG, PNG, WebP, GIF - 5MB max)
-
-4. template.tsx (UPDATED):
+5. template.tsx (UPDATED):
    - Import stripHtml from utils/catalog-studio
    - Fixed 3 locations where block.description showed HTML tags
-   - Lines: 1301, 1410, 2137
 
-5. blocks.tsx (UPDATED):
+6. blocks.tsx (UPDATED):
    - Import stripHtml from utils/catalog-studio
    - Fixed 3 locations where block.description showed HTML tags
-   - Lines: 754, 852, 979
 
-6. ImageUploadStep.tsx (UPDATED):
-   - Now uses FileUploader component instead of placeholder
+7. BasicInfoStep.tsx (UPDATED):
+   - Uses BLOCK_FIELD_LIMITS for name, sku, tags
+   - Character count display with warning colors
+   - Input handlers enforce max lengths
+
+8. ImageUploadStep.tsx (UPDATED):
+   - Uses FileUploader component for image uploads
    - Uses 'block_images' storage category
    - Supports JPEG, PNG, WebP, GIF (max 5MB)
-   - Shows preview with previewSize="large"
-   - Alt text and caption fields remain unchanged
 
-7. MediaStep.tsx (UPDATED):
-   - Now uses FileUploader for video uploads
+9. MediaStep.tsx (UPDATED):
+   - Uses FileUploader for video uploads
    - Uses 'block_videos' storage category
-   - Supports MP4, WebM, MOV (max 100MB)
    - YouTube/Vimeo embed preview functionality
-   - Duration and thumbnail fields remain unchanged
+
+10. ContentStep.tsx (UPDATED):
+    - Uses BLOCK_FIELD_LIMITS for content (10000 chars)
+    - Character count with warning/error colors
+    - maxLength attribute on textarea
+
+11. ItemsStep.tsx (UPDATED):
+    - Max 50 checklist items
+    - Each item max 500 chars
+    - Character count for items nearing limit
+    - Disabled add button when max reached
 
 ═══════════════════════════════════════════════════
 POWERSHELL COPY COMMANDS
@@ -100,16 +152,42 @@ POWERSHELL COPY COMMANDS
 # Create directories if needed
 New-Item -ItemType Directory -Force -Path "contractnest-ui\src\components\common"
 New-Item -ItemType Directory -Force -Path "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\media"
+New-Item -ItemType Directory -Force -Path "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\content"
+New-Item -ItemType Directory -Force -Path "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\checklist"
+New-Item -ItemType Directory -Force -Path "contractnest-ui\src\utils\constants"
 
 # Copy all files
 Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\components\common\FileUploader.tsx" -Destination "contractnest-ui\src\components\common\FileUploader.tsx" -Force
-Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\components\catalog-studio\IconPicker.tsx" -Destination "contractnest-ui\src\components\catalog-studio\IconPicker.tsx" -Force
 Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\utils\constants\storageConstants.ts" -Destination "contractnest-ui\src\utils\constants\storageConstants.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\utils\constants\blockValidation.ts" -Destination "contractnest-ui\src\utils\constants\blockValidation.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\components\catalog-studio\IconPicker.tsx" -Destination "contractnest-ui\src\components\catalog-studio\IconPicker.tsx" -Force
 Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\pages\catalog-studio\template.tsx" -Destination "contractnest-ui\src\pages\catalog-studio\template.tsx" -Force
 Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\pages\catalog-studio\blocks.tsx" -Destination "contractnest-ui\src\pages\catalog-studio\blocks.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\components\catalog-studio\BlockWizard\steps\BasicInfoStep.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\BasicInfoStep.tsx" -Force
 Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\components\catalog-studio\BlockWizard\steps\media\ImageUploadStep.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\media\ImageUploadStep.tsx" -Force
 Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\components\catalog-studio\BlockWizard\steps\media\MediaStep.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\media\MediaStep.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\components\catalog-studio\BlockWizard\steps\content\ContentStep.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\content\ContentStep.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\block-improvements\contractnest-ui\src\components\catalog-studio\BlockWizard\steps\checklist\ItemsStep.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\checklist\ItemsStep.tsx" -Force
 
 Write-Host "All files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+FIELD VALIDATION LIMITS REFERENCE
+═══════════════════════════════════════════════════
+
+| Field           | Max Length | Notes                    |
+|-----------------|------------|--------------------------|
+| name            | 255        | Required                 |
+| description     | 2000       | Rich text, required      |
+| content         | 10000      | Text blocks              |
+| tags            | 50 each    | Max 20 tags              |
+| sku             | 50         | Spare blocks             |
+| terms           | 1000       | Service/Spare blocks     |
+| checklistItem   | 500        | Max 50 items             |
+| mediaUrl        | 2000       | Video/Image URLs         |
+| thumbnailUrl    | 2000       | Video thumbnails         |
+| altText         | 255        | Image accessibility      |
+| caption         | 500        | Image captions           |
+| duration        | 10         | e.g., "5:30"             |
 
 ═══════════════════════════════════════════════════
