@@ -1,0 +1,94 @@
+====================================================
+CONTRACT WIZARD - CONTRACT DETAILS STEP (STEP 3)
+====================================================
+
+Branch: contract-wizard-details
+Date: January 2025
+Feature: Step 3 - Contract Details Form
+
+====================================================
+FILES INCLUDED
+====================================================
+
+1. contractnest-ui/src/utils/constants/contracts.ts (UPDATED)
+   - Updated CONTRACT_STATUS with: Draft, Submitted to Customer,
+     Accepted, Active, Completed, Cancelled, Expired, On Hold
+   - Added DURATION_UNITS (days, months, years)
+   - Added DURATION_UNIT_CONFIG with multipliers
+   - Added GRACE_PERIOD_PRESETS
+   - Added CONTRACT_TITLE_MAX_LENGTH (80 chars)
+   - Added CONTRACT_DESCRIPTION_MAX_LENGTH (2000 chars)
+   - Added helper functions: convertToDays, getDurationLabel
+
+2. contractnest-ui/src/components/contracts/ContractWizard/steps/ContractDetailsStep.tsx (NEW)
+   - Contract Title input (mandatory, 80 char max)
+   - Status dropdown (Draft, Submitted, Accepted, Active, etc.)
+   - Currency dropdown (pulls from currencies.ts, default INR)
+   - Description with RichTextEditor
+   - Contract Duration (value + unit dropdown)
+   - Grace Period / Prolongation (presets + custom input)
+   - Full theme support (light/dark mode)
+
+3. contractnest-ui/src/components/contracts/ContractWizard/index.tsx (UPDATED)
+   - Import ContractDetailsStep
+   - Extended ContractWizardState with new fields:
+     * status, durationValue, durationUnit
+     * gracePeriodValue, gracePeriodUnit
+   - Default currency changed to INR
+   - Added handleDetailsChange handler
+   - Integrated ContractDetailsStep in case 3
+
+====================================================
+COPY COMMANDS (PowerShell)
+====================================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Copy all files
+Copy-Item "MANUAL_COPY_FILES\contract-wizard-details\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Files copied successfully!" -ForegroundColor Green
+
+====================================================
+TESTING CHECKLIST
+====================================================
+
+- [ ] Navigate to Step 3 (Contract Details)
+- [ ] Contract Title:
+      - [ ] Enter title up to 80 characters
+      - [ ] Character counter updates
+      - [ ] Required validation shows on blur
+- [ ] Status Dropdown:
+      - [ ] All status options available
+      - [ ] Default is "Draft"
+- [ ] Currency Dropdown:
+      - [ ] All currencies from currencies.ts
+      - [ ] Default is INR (Indian Rupee)
+      - [ ] Shows symbol, code, and name
+- [ ] Description:
+      - [ ] RichTextEditor works
+      - [ ] Toolbar buttons (bold, italic, underline, lists)
+      - [ ] Character count shows (max 2000)
+- [ ] Contract Duration:
+      - [ ] Value input accepts numbers
+      - [ ] Unit dropdown (Days, Months, Years)
+      - [ ] Duration label displays correctly
+- [ ] Grace Period:
+      - [ ] Quick presets work (No Grace, 7d, 14d, etc.)
+      - [ ] Custom value + unit input
+      - [ ] Grace period label shows with "+"
+- [ ] Continue button enabled when title filled + duration > 0
+- [ ] Light/dark theme works correctly
+
+====================================================
+PRODUCTION CHECKLIST
+====================================================
+
+✅ Theme Support: Full light/dark mode
+✅ Constants: Using contracts.ts for status, duration units
+✅ Existing Components: Uses RichTextEditor, currencyOptions
+✅ Error Handling: Title validation on blur
+✅ Toasts: N/A (no async operations)
+✅ Loaders: N/A (no data fetching)
+
+====================================================
