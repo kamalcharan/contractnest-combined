@@ -1,0 +1,56 @@
+═══════════════════════════════════════════════════
+PRICING PLANS RLS FIX - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════
+
+ISSUE FIXED:
+- Pricing plans filter was only showing contractnest plans, not familyknows plans
+- Root cause: Edge Functions were overriding service role key with user JWT
+- This caused RLS policies to filter plans (only showing is_visible=true)
+
+FILES TO COPY:
+═══════════════════════════════════════════════════
+
+1. plans/index.ts
+   FROM: MANUAL_COPY_FILES\pricing-plans-rls-fix\contractnest-edge\supabase\functions\plans\index.ts
+   TO:   contractnest-edge\supabase\functions\plans\index.ts
+
+2. plan-versions/index.ts
+   FROM: MANUAL_COPY_FILES\pricing-plans-rls-fix\contractnest-edge\supabase\functions\plan-versions\index.ts
+   TO:   contractnest-edge\supabase\functions\plan-versions\index.ts
+
+WHAT WAS CHANGED:
+═══════════════════════════════════════════════════
+
+Both files had the Authorization header removed from the Supabase client config:
+
+BEFORE (problematic):
+```
+const supabase = createClient(supabaseUrl, supabaseKey, {
+  global: {
+    headers: {
+      Authorization: authHeader,  // User's JWT OVERRIDES service role!
+      'x-tenant-id': tenantHeader
+    }
+  }
+});
+```
+
+AFTER (fixed):
+```
+const supabase = createClient(supabaseUrl, supabaseKey, {
+  global: {
+    headers: {
+      'x-tenant-id': tenantHeader  // No Authorization override
+    }
+  }
+});
+```
+
+Additionally, plans/index.ts has debug logging added to show returned plans by product code.
+
+DEPLOYMENT REQUIRED:
+═══════════════════════════════════════════════════
+
+After copying files, deploy both Edge Functions:
+  supabase functions deploy plans
+  supabase functions deploy plan-versions
