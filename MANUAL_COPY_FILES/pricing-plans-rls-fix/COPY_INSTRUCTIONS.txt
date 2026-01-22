@@ -2,55 +2,43 @@
 PRICING PLANS RLS FIX - COPY INSTRUCTIONS
 ═══════════════════════════════════════════════════
 
-ISSUE FIXED:
-- Pricing plans filter was only showing contractnest plans, not familyknows plans
-- Root cause: Edge Functions were overriding service role key with user JWT
-- This caused RLS policies to filter plans (only showing is_visible=true)
+ISSUES FIXED:
+1. Edge Functions were overriding service role key with user JWT
+   - Caused RLS policies to filter plans (only showing is_visible=true)
+2. PlanList UI component had "Show active plans only" checkbox checked by default
+   - Filtered out familyknows plans which have is_visible=false
 
 FILES TO COPY:
 ═══════════════════════════════════════════════════
 
-1. plans/index.ts
+1. plans/index.ts (Edge Function)
    FROM: MANUAL_COPY_FILES\pricing-plans-rls-fix\contractnest-edge\supabase\functions\plans\index.ts
    TO:   contractnest-edge\supabase\functions\plans\index.ts
 
-2. plan-versions/index.ts
+2. plan-versions/index.ts (Edge Function)
    FROM: MANUAL_COPY_FILES\pricing-plans-rls-fix\contractnest-edge\supabase\functions\plan-versions\index.ts
    TO:   contractnest-edge\supabase\functions\plan-versions\index.ts
+
+3. PlanList.tsx (UI Component)
+   FROM: MANUAL_COPY_FILES\pricing-plans-rls-fix\contractnest-ui\src\components\businessmodel\dashboard\PlanList.tsx
+   TO:   contractnest-ui\src\components\businessmodel\dashboard\PlanList.tsx
 
 WHAT WAS CHANGED:
 ═══════════════════════════════════════════════════
 
-Both files had the Authorization header removed from the Supabase client config:
+EDGE FUNCTIONS (plans/index.ts, plan-versions/index.ts):
+- Removed Authorization header override from Supabase client config
+- Service role key now properly bypasses RLS
 
-BEFORE (problematic):
-```
-const supabase = createClient(supabaseUrl, supabaseKey, {
-  global: {
-    headers: {
-      Authorization: authHeader,  // User's JWT OVERRIDES service role!
-      'x-tenant-id': tenantHeader
-    }
-  }
-});
-```
-
-AFTER (fixed):
-```
-const supabase = createClient(supabaseUrl, supabaseKey, {
-  global: {
-    headers: {
-      'x-tenant-id': tenantHeader  // No Authorization override
-    }
-  }
-});
-```
-
-Additionally, plans/index.ts has debug logging added to show returned plans by product code.
+UI COMPONENT (PlanList.tsx):
+- Changed default of "Show active plans only" from TRUE to FALSE
+- Admin view now shows ALL plans by default, not just visible/active ones
 
 DEPLOYMENT REQUIRED:
 ═══════════════════════════════════════════════════
 
-After copying files, deploy both Edge Functions:
-  supabase functions deploy plans
-  supabase functions deploy plan-versions
+1. Deploy Edge Functions (if not already done):
+   supabase functions deploy plans
+   supabase functions deploy plan-versions
+
+2. UI change will take effect after npm run dev restart
