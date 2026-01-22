@@ -1,0 +1,62 @@
+═══════════════════════════════════════════════════
+CONTRACT WIZARD WITH TEMPLATE SELECTION - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════
+
+Branch: claude/init-submodules-contractui-gMmpV
+Date: January 2026
+Purpose: Contract Wizard integrated with Template Selection + Lottie Empty State
+
+═══════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════
+
+1. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+   Purpose: Main wizard with template selection flow integrated
+
+2. contractnest-ui/src/components/contracts/ContractWizard/FloatingActionIsland.tsx
+   Purpose: Floating navigation bar (unchanged)
+
+3. contractnest-ui/src/components/contracts/ContractWizard/steps/PathSelectionStep.tsx
+   Purpose: Step 0 - Choose "From Template" or "Create from Scratch" (unchanged)
+
+4. contractnest-ui/src/components/contracts/ContractWizard/steps/TemplateSelectionStep.tsx
+   Purpose: NEW - Template selection with Lottie empty state animation
+
+5. contractnest-ui/src/pages/contracts/create/index.tsx
+   Purpose: My Contracts page with wizard integration
+
+═══════════════════════════════════════════════════
+SUBMODULES AFFECTED
+═══════════════════════════════════════════════════
+
+- contractnest-ui (main branch)
+
+═══════════════════════════════════════════════════
+FEATURES IMPLEMENTED
+═══════════════════════════════════════════════════
+
+1. WIZARD INTEGRATION:
+   - "Create Contract" button opens the wizard
+   - Full-screen wizard overlay
+   - Floating Action Island navigation
+
+2. PATH SELECTION (Step 0):
+   - Two options: "From Template" (recommended) or "Create from Scratch"
+   - Clicking "From Template" shows template selection sub-step
+   - Clicking "Create from Scratch" goes directly to Buyer Selection
+
+3. TEMPLATE SELECTION (Sub-step after "From Template"):
+   - Lottie animated empty state when no templates exist
+   - Animated documents + magnifying glass searching
+   - "Create from Scratch" CTA button in empty state
+   - Tip about creating templates in Catalog Studio
+   - Template grid ready for when templates exist
+   - Search functionality placeholder
+
+4. NAVIGATION FLOW:
+   - Path Selection → (if template) Template Selection → Buyer Selection
+   - Path Selection → (if scratch) Buyer Selection
+   - Back button works correctly through all sub-steps
+   - "Switch to scratch" option always available
+
+═══════════════════════════════════════════════════
