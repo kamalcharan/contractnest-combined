@@ -1,0 +1,39 @@
+═══════════════════════════════════════════════════
+PRODUCT MASTERS FIX - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════
+
+ISSUE FIXED:
+- Product Masters page not loading data
+- Root cause: transformForFrontend() was applying transformMasterData() to category list responses
+- transformMasterData() expects category DETAILS fields (sub_cat_name, detail_name, etc.)
+- But category LIST responses have different fields (category_name, etc.)
+- This was corrupting the data structure, causing empty/undefined values
+
+FILES TO COPY:
+═══════════════════════════════════════════════════
+
+1. productMasterdataService.ts
+   FROM: MANUAL_COPY_FILES\product-masters-fix\contractnest-api\src\services\productMasterdataService.ts
+   TO:   contractnest-api\src\services\productMasterdataService.ts
+
+2. productMasterdataController.ts
+   FROM: MANUAL_COPY_FILES\product-masters-fix\contractnest-api\src\controllers\productMasterdataController.ts
+   TO:   contractnest-api\src\controllers\productMasterdataController.ts
+
+WHAT WAS CHANGED:
+═══════════════════════════════════════════════════
+
+productMasterdataService.ts:
+- Added optional `skipDataTransform` parameter to transformForFrontend() method
+- When true, data is passed through without transformation
+
+productMasterdataController.ts:
+- getAllGlobalCategories: Added skipDataTransform=true
+- getAllTenantCategories: Added skipDataTransform=true
+
+API RESTART REQUIRED:
+═══════════════════════════════════════════════════
+
+After copying files, restart the API server:
+  cd contractnest-api
+  npm run dev
