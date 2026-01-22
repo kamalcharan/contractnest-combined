@@ -1,0 +1,36 @@
+═══════════════════════════════════════════════════
+MY CONTRACTS PAGE - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════
+
+Branch: claude/init-submodules-contractui-gMmpV
+Date: January 2026
+Purpose: Remove Coming Soon wrapper, set up My Contracts page
+
+═══════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════
+
+1. contractnest-ui/src/pages/contracts/create/index.tsx
+   Source: MANUAL_COPY_FILES/my-contracts-page/contractnest-ui/src/pages/contracts/create/index.tsx
+   Destination: contractnest-ui/src/pages/contracts/create/index.tsx
+   Purpose: My Contracts page with Create Contract button and wizard modal placeholder
+
+═══════════════════════════════════════════════════
+SUBMODULES AFFECTED
+═══════════════════════════════════════════════════
+
+- contractnest-ui (main branch)
+
+═══════════════════════════════════════════════════
+WHAT THIS CHANGE DOES
+═══════════════════════════════════════════════════
+
+1. Removes "Coming Soon" empty state wrapper
+2. Adds functional My Contracts page with:
+   - Header with "Create Contract" button
+   - Search and filter bar
+   - Empty state: "No contracts yet" with CTA
+   - Contracts list table (ready for data)
+   - Wizard modal placeholder (opens on Create Contract click)
+
+═══════════════════════════════════════════════════
