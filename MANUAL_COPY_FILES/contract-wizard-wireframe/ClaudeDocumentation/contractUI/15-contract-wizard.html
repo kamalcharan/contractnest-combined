@@ -1,0 +1,2415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ContractNest - Contract Wizard Journey</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --brand: #0F172A;
+            --brand-light: #1E293B;
+            --accent: #6366F1;
+            --accent-light: #818CF8;
+            --accent-bg: #EEF2FF;
+            --success: #10B981;
+            --success-bg: #ECFDF5;
+            --warning: #F59E0B;
+            --warning-bg: #FFFBEB;
+            --danger: #EF4444;
+            --danger-bg: #FEF2F2;
+            --bg: #F8FAFC;
+            --surface: #FFFFFF;
+            --border: #E2E8F0;
+            --border-light: #F1F5F9;
+            --text: #334155;
+            --text-light: #64748B;
+            --text-muted: #94A3B8;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+            --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1);
+            --radius: 8px;
+            --radius-lg: 12px;
+            --radius-xl: 16px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ===== WIZARD OVERLAY ===== */
+        .wizard-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--bg);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ===== WIZARD HEADER ===== */
+        .wizard-header {
+            height: 64px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1.5rem;
+            flex-shrink: 0;
+        }
+
+        .wizard-header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .wizard-close {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.25rem;
+            transition: all 0.2s;
+        }
+
+        .wizard-close:hover {
+            background: var(--danger-bg);
+            color: var(--danger);
+            border-color: var(--danger);
+        }
+
+        .wizard-title {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: var(--brand);
+        }
+
+        .wizard-subtitle {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            margin-top: 2px;
+        }
+
+        /* Progress Pills */
+        .wizard-progress {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .progress-pill {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .progress-pill.completed {
+            background: var(--success-bg);
+            color: var(--success);
+        }
+
+        .progress-pill.active {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .progress-pill.pending {
+            background: var(--border-light);
+            color: var(--text-muted);
+        }
+
+        .progress-connector {
+            width: 24px;
+            height: 2px;
+            background: var(--border);
+            border-radius: 1px;
+        }
+
+        .progress-connector.completed {
+            background: var(--success);
+        }
+
+        .wizard-header-right {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .btn {
+            padding: 0.6rem 1.25rem;
+            border-radius: var(--radius);
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            border: none;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-light);
+        }
+
+        .btn-ghost:hover {
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .btn-outline {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        .btn-outline:hover {
+            background: var(--bg);
+            border-color: var(--text-light);
+        }
+
+        .btn-primary {
+            background: var(--brand);
+            color: white;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-primary:hover {
+            background: var(--brand-light);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-accent {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-accent:hover {
+            background: var(--accent-light);
+            transform: translateY(-1px);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        /* ===== WIZARD BODY ===== */
+        .wizard-body {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* ===== STEP 0: PATH SELECTION ===== */
+        .path-selection-step {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem;
+            background: linear-gradient(135deg, #F8FAFC 0%, #EEF2FF 100%);
+        }
+
+        .path-selection-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .path-selection-header h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--brand);
+            margin-bottom: 0.75rem;
+            letter-spacing: -0.5px;
+        }
+
+        .path-selection-header p {
+            font-size: 1.125rem;
+            color: var(--text-light);
+            max-width: 500px;
+        }
+
+        .path-cards {
+            display: flex;
+            gap: 2rem;
+            max-width: 900px;
+        }
+
+        .path-card {
+            flex: 1;
+            background: var(--surface);
+            border: 2px solid var(--border);
+            border-radius: var(--radius-xl);
+            padding: 2.5rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .path-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--accent), var(--accent-light));
+            transform: scaleX(0);
+            transition: transform 0.3s;
+        }
+
+        .path-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .path-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .path-card.selected {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px var(--accent-bg);
+        }
+
+        .path-card.selected::before {
+            transform: scaleX(1);
+        }
+
+        .path-card-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+            transition: transform 0.3s;
+        }
+
+        .path-card:hover .path-card-icon {
+            transform: scale(1.1);
+        }
+
+        .path-card-icon.template {
+            background: linear-gradient(135deg, var(--accent-bg) 0%, #C7D2FE 100%);
+        }
+
+        .path-card-icon.adhoc {
+            background: linear-gradient(135deg, var(--success-bg) 0%, #A7F3D0 100%);
+        }
+
+        .path-card h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--brand);
+            margin-bottom: 0.75rem;
+        }
+
+        .path-card p {
+            font-size: 0.9375rem;
+            color: var(--text-light);
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+        }
+
+        .path-card-features {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .path-card-feature {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8125rem;
+            color: var(--text);
+        }
+
+        .path-card-feature span:first-child {
+            color: var(--success);
+        }
+
+        .path-card-action {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-light);
+        }
+
+        .path-card-action .btn {
+            width: 100%;
+            justify-content: center;
+            padding: 0.875rem;
+        }
+
+        /* ===== MAIN WIZARD LAYOUT (Split Screen) ===== */
+        .wizard-main {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .wizard-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: var(--bg);
+        }
+
+        .wizard-step {
+            flex: 1;
+            overflow-y: auto;
+            padding: 2rem;
+        }
+
+        /* ===== STEP COMMON STYLES ===== */
+        .step-header {
+            margin-bottom: 2rem;
+        }
+
+        .step-header h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--brand);
+            margin-bottom: 0.5rem;
+        }
+
+        .step-header p {
+            font-size: 0.9375rem;
+            color: var(--text-light);
+        }
+
+        /* ===== BUYER SELECTION STEP ===== */
+        .buyer-search-section {
+            margin-bottom: 2rem;
+        }
+
+        .search-input-wrapper {
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 1rem 1rem 1rem 3rem;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-lg);
+            font-size: 1rem;
+            transition: all 0.2s;
+            background: var(--surface);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px var(--accent-bg);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 1.25rem;
+        }
+
+        .search-shortcut {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            gap: 0.25rem;
+        }
+
+        .shortcut-key {
+            padding: 0.25rem 0.5rem;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .quick-add-btn {
+            margin-top: 1rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--accent);
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: var(--radius);
+            transition: all 0.2s;
+        }
+
+        .quick-add-btn:hover {
+            background: var(--accent-bg);
+        }
+
+        .section-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        /* Buyer Cards */
+        .buyer-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+
+        .buyer-card {
+            background: var(--surface);
+            border: 2px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 1.25rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .buyer-card:hover {
+            border-color: var(--accent);
+            box-shadow: var(--shadow-md);
+        }
+
+        .buyer-card.selected {
+            border-color: var(--accent);
+            background: var(--accent-bg);
+        }
+
+        .buyer-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .buyer-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .buyer-name {
+            font-weight: 600;
+            color: var(--brand);
+            margin-bottom: 0.25rem;
+        }
+
+        .buyer-meta {
+            font-size: 0.8125rem;
+            color: var(--text-light);
+        }
+
+        .buyer-tags {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .buyer-tag {
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .buyer-tag.customer {
+            background: var(--accent-bg);
+            color: var(--accent);
+        }
+
+        .buyer-tag.vendor {
+            background: var(--success-bg);
+            color: var(--success);
+        }
+
+        .buyer-check {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .buyer-card.selected .buyer-check {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        /* ===== ACCEPTANCE OPTIONS STEP ===== */
+        .acceptance-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+        }
+
+        .acceptance-card {
+            background: var(--surface);
+            border: 2px solid var(--border);
+            border-radius: var(--radius-xl);
+            padding: 2rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            position: relative;
+        }
+
+        .acceptance-card::after {
+            content: '';
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            transition: all 0.2s;
+        }
+
+        .acceptance-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .acceptance-card.selected {
+            border-color: var(--accent);
+            background: linear-gradient(180deg, var(--accent-bg) 0%, var(--surface) 100%);
+        }
+
+        .acceptance-card.selected::after {
+            background: var(--accent);
+            border-color: var(--accent);
+            content: '✓';
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .acceptance-icon {
+            width: 72px;
+            height: 72px;
+            border-radius: var(--radius-lg);
+            margin: 0 auto 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            transition: transform 0.3s;
+        }
+
+        .acceptance-card:hover .acceptance-icon {
+            transform: scale(1.1);
+        }
+
+        .acceptance-icon.payment {
+            background: linear-gradient(135deg, var(--success-bg) 0%, #A7F3D0 100%);
+        }
+
+        .acceptance-icon.signoff {
+            background: linear-gradient(135deg, var(--accent-bg) 0%, #C7D2FE 100%);
+        }
+
+        .acceptance-icon.auto {
+            background: linear-gradient(135deg, var(--warning-bg) 0%, #FDE68A 100%);
+        }
+
+        .acceptance-card h3 {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: var(--brand);
+            margin-bottom: 0.5rem;
+        }
+
+        .acceptance-card p {
+            font-size: 0.8125rem;
+            color: var(--text-light);
+            line-height: 1.5;
+        }
+
+        .acceptance-badge {
+            display: inline-block;
+            margin-top: 1rem;
+            padding: 0.35rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .acceptance-badge.recommended {
+            background: var(--success-bg);
+            color: var(--success);
+        }
+
+        .acceptance-badge.popular {
+            background: var(--accent-bg);
+            color: var(--accent);
+        }
+
+        /* ===== BASE DETAILS STEP ===== */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-label {
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .form-label span {
+            color: var(--danger);
+        }
+
+        .form-input, .form-select, .form-textarea {
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 0.9375rem;
+            color: var(--text);
+            background: var(--surface);
+            transition: all 0.2s;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-bg);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .form-hint {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .duration-group {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .duration-group .form-input {
+            flex: 1;
+        }
+
+        .duration-group .form-select {
+            width: 120px;
+        }
+
+        /* ===== BLOCK ASSEMBLY STEP ===== */
+        .assembly-layout {
+            display: flex;
+            gap: 1.5rem;
+            height: calc(100vh - 200px);
+        }
+
+        .block-library {
+            width: 280px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .library-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .library-header h4 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--brand);
+        }
+
+        .library-search {
+            margin-top: 0.75rem;
+        }
+
+        .library-search input {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 0.8125rem;
+        }
+
+        .library-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.75rem;
+        }
+
+        .library-category {
+            margin-bottom: 1.25rem;
+        }
+
+        .category-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            padding-left: 0.5rem;
+        }
+
+        .library-block {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 0.25rem;
+        }
+
+        .library-block:hover {
+            background: var(--bg);
+        }
+
+        .library-block-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .library-block-icon.service { background: var(--accent-bg); }
+        .library-block-icon.billing { background: var(--success-bg); }
+        .library-block-icon.content { background: var(--warning-bg); }
+
+        .library-block-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .library-block-name {
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .library-block-price {
+            font-size: 0.7rem;
+            color: var(--text-light);
+        }
+
+        .library-block-add {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            opacity: 0;
+            transition: all 0.2s;
+        }
+
+        .library-block:hover .library-block-add {
+            opacity: 1;
+        }
+
+        .library-block-add:hover {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        /* Contract Blocks (Selected) */
+        .contract-blocks {
+            flex: 1;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .contract-blocks-header {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .contract-blocks-header h4 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--brand);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .block-count-badge {
+            background: var(--accent-bg);
+            color: var(--accent);
+            padding: 0.15rem 0.5rem;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        .contract-blocks-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+
+        .contract-block {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            margin-bottom: 0.75rem;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .contract-block:hover {
+            border-color: var(--accent);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .contract-block.selected {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-bg);
+        }
+
+        .contract-block-main {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+        }
+
+        .contract-block-drag {
+            color: var(--text-muted);
+            cursor: grab;
+        }
+
+        .contract-block-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+
+        .contract-block-info {
+            flex: 1;
+        }
+
+        .contract-block-name {
+            font-weight: 600;
+            color: var(--brand);
+            margin-bottom: 0.25rem;
+        }
+
+        .contract-block-desc {
+            font-size: 0.8125rem;
+            color: var(--text-light);
+        }
+
+        .contract-block-meta {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-shrink: 0;
+        }
+
+        .contract-block-qty {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 0.25rem;
+        }
+
+        .qty-btn {
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: transparent;
+            color: var(--text-light);
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .qty-btn:hover {
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .qty-value {
+            width: 40px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .contract-block-price {
+            font-weight: 700;
+            color: var(--brand);
+            font-size: 0.9375rem;
+            min-width: 80px;
+            text-align: right;
+        }
+
+        .contract-block-delete {
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius);
+            border: 1px solid transparent;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .contract-block-delete:hover {
+            background: var(--danger-bg);
+            color: var(--danger);
+            border-color: var(--danger);
+        }
+
+        /* Block Settings Drawer */
+        .block-settings {
+            padding: 1rem;
+            background: var(--accent-bg);
+            border-top: 1px solid #C7D2FE;
+            display: none;
+        }
+
+        .contract-block.selected .block-settings {
+            display: block;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+
+        .setting-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .setting-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .setting-input {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #C7D2FE;
+            border-radius: var(--radius);
+            font-size: 0.8125rem;
+            background: var(--surface);
+        }
+
+        .setting-toggle {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            background: var(--surface);
+            border: 1px solid #C7D2FE;
+            border-radius: var(--radius);
+        }
+
+        .toggle-switch {
+            width: 36px;
+            height: 20px;
+            background: var(--border);
+            border-radius: 10px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+
+        .toggle-switch.active {
+            background: var(--accent);
+        }
+
+        .toggle-switch.active::after {
+            left: 18px;
+        }
+
+        .toggle-label {
+            font-size: 0.8125rem;
+            color: var(--text);
+        }
+
+        /* ===== LIVE PREVIEW PANEL ===== */
+        .preview-panel {
+            width: 400px;
+            background: var(--surface);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+        }
+
+        .preview-header {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .preview-header h3 {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .preview-header h3 span {
+            color: var(--success);
+        }
+
+        .preview-toggle {
+            display: flex;
+            background: var(--bg);
+            border-radius: 6px;
+            padding: 3px;
+        }
+
+        .preview-toggle-btn {
+            padding: 0.35rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            color: var(--text-light);
+            transition: all 0.2s;
+        }
+
+        .preview-toggle-btn.active {
+            background: var(--surface);
+            color: var(--text);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .preview-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.25rem;
+            background: var(--bg);
+        }
+
+        /* Contract Preview Card */
+        .preview-contract {
+            background: var(--surface);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+        }
+
+        .preview-contract-header {
+            padding: 1.5rem;
+            background: linear-gradient(135deg, var(--brand) 0%, var(--brand-light) 100%);
+            color: white;
+        }
+
+        .preview-vendor {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            opacity: 0.9;
+        }
+
+        .preview-contract-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .preview-contract-meta {
+            font-size: 0.8125rem;
+            opacity: 0.8;
+        }
+
+        .preview-contract-body {
+            padding: 1.5rem;
+        }
+
+        .preview-price-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding-bottom: 1.25rem;
+            margin-bottom: 1.25rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .preview-total {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--brand);
+        }
+
+        .preview-total-label {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            margin-top: 0.25rem;
+        }
+
+        .preview-duration {
+            text-align: right;
+        }
+
+        .preview-duration-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--brand);
+        }
+
+        .preview-duration-label {
+            font-size: 0.75rem;
+            color: var(--text-light);
+        }
+
+        .preview-services-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-light);
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+        }
+
+        .preview-service {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.6rem 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .preview-service:last-child {
+            border-bottom: none;
+        }
+
+        .preview-service-check {
+            color: var(--success);
+            font-size: 1rem;
+        }
+
+        .preview-service-name {
+            flex: 1;
+            font-size: 0.875rem;
+            color: var(--text);
+        }
+
+        .preview-service-qty {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            background: var(--bg);
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .preview-contract-footer {
+            padding: 1rem 1.5rem;
+            background: var(--bg);
+            border-top: 1px solid var(--border-light);
+        }
+
+        .preview-cta {
+            width: 100%;
+            padding: 0.875rem;
+            background: var(--brand);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            font-weight: 600;
+            font-size: 0.9375rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .preview-cta:hover {
+            background: var(--brand-light);
+        }
+
+        .preview-stats {
+            margin-top: 1.25rem;
+            padding: 1rem;
+            background: var(--surface);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+        }
+
+        .preview-stats-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-light);
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+        }
+
+        .preview-stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.35rem 0;
+            font-size: 0.8125rem;
+        }
+
+        .preview-stat-row span:first-child {
+            color: var(--text-light);
+        }
+
+        .preview-stat-row span:last-child {
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        /* ===== REVIEW STEP ===== */
+        .review-layout {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .review-main {
+            flex: 1;
+        }
+
+        .review-section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+        }
+
+        .review-section-header {
+            padding: 1rem 1.25rem;
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .review-section-header h4 {
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: var(--brand);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .review-section-edit {
+            font-size: 0.8125rem;
+            color: var(--accent);
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .review-section-body {
+            padding: 1.25rem;
+        }
+
+        .review-row {
+            display: flex;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .review-row:last-child {
+            border-bottom: none;
+        }
+
+        .review-label {
+            width: 140px;
+            font-size: 0.8125rem;
+            color: var(--text-light);
+            flex-shrink: 0;
+        }
+
+        .review-value {
+            flex: 1;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        /* Send Options */
+        .send-options {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+        }
+
+        .send-options h4 {
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: var(--brand);
+            margin-bottom: 1rem;
+        }
+
+        .send-channels {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .send-channel {
+            flex: 1;
+            padding: 1.25rem;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-lg);
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .send-channel:hover {
+            border-color: var(--accent);
+            background: var(--accent-bg);
+        }
+
+        .send-channel.selected {
+            border-color: var(--accent);
+            background: var(--accent-bg);
+        }
+
+        .send-channel-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .send-channel-name {
+            font-weight: 600;
+            color: var(--brand);
+            font-size: 0.9375rem;
+        }
+
+        .send-channel-desc {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            margin-top: 0.25rem;
+        }
+
+        /* ===== WIZARD FOOTER ===== */
+        .wizard-footer {
+            height: 72px;
+            background: var(--surface);
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
+            flex-shrink: 0;
+        }
+
+        .footer-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .footer-total {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .footer-total-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .footer-total-value {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--brand);
+        }
+
+        .footer-right {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        /* ===== ANIMATIONS ===== */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .slide-in {
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(99, 102, 241, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        /* ===== SCROLLBAR ===== */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* Step visibility */
+        .step { display: none; }
+        .step.active { display: flex; flex-direction: column; flex: 1; }
+    </style>
+</head>
+<body>
+    <div class="wizard-overlay">
+        <!-- WIZARD HEADER -->
+        <div class="wizard-header">
+            <div class="wizard-header-left">
+                <button class="wizard-close" onclick="closeWizard()">×</button>
+                <div>
+                    <div class="wizard-title" id="wizardTitle">Create Contract</div>
+                    <div class="wizard-subtitle" id="wizardSubtitle">Choose how you want to start</div>
+                </div>
+            </div>
+
+            <div class="wizard-progress" id="wizardProgress" style="display: none;">
+                <div class="progress-pill completed" data-step="0">✓ Start</div>
+                <div class="progress-connector completed"></div>
+                <div class="progress-pill active" data-step="1">👤 Buyer</div>
+                <div class="progress-connector"></div>
+                <div class="progress-pill pending" data-step="2">✋ Accept</div>
+                <div class="progress-connector"></div>
+                <div class="progress-pill pending" data-step="3">📋 Details</div>
+                <div class="progress-connector"></div>
+                <div class="progress-pill pending" data-step="4">🧱 Blocks</div>
+                <div class="progress-connector"></div>
+                <div class="progress-pill pending" data-step="5">🚀 Send</div>
+            </div>
+
+            <div class="wizard-header-right">
+                <button class="btn btn-ghost">Save Draft</button>
+            </div>
+        </div>
+
+        <!-- WIZARD BODY -->
+        <div class="wizard-body">
+            <!-- STEP 0: PATH SELECTION -->
+            <div class="step active" id="step0">
+                <div class="path-selection-step">
+                    <div class="path-selection-header fade-in">
+                        <h1>How would you like to create this contract?</h1>
+                        <p>Choose a starting point that works best for your workflow</p>
+                    </div>
+
+                    <div class="path-cards fade-in">
+                        <div class="path-card" onclick="selectPath('template')">
+                            <div class="path-card-icon template">📋</div>
+                            <h3>Start from Template</h3>
+                            <p>Use a pre-built contract blueprint with proven block combinations and pricing structures.</p>
+                            <div class="path-card-features">
+                                <div class="path-card-feature"><span>✓</span> Ready-made block combinations</div>
+                                <div class="path-card-feature"><span>✓</span> Pre-configured pricing</div>
+                                <div class="path-card-feature"><span>✓</span> Industry-specific templates</div>
+                            </div>
+                            <div class="path-card-action">
+                                <button class="btn btn-accent">Browse Templates →</button>
+                            </div>
+                        </div>
+
+                        <div class="path-card" onclick="selectPath('adhoc')">
+                            <div class="path-card-icon adhoc">✨</div>
+                            <h3>Create from Scratch</h3>
+                            <p>Build a custom contract by selecting individual blocks with full control over every detail.</p>
+                            <div class="path-card-features">
+                                <div class="path-card-feature"><span>✓</span> Complete flexibility</div>
+                                <div class="path-card-feature"><span>✓</span> Custom block selection</div>
+                                <div class="path-card-feature"><span>✓</span> Unique pricing structure</div>
+                            </div>
+                            <div class="path-card-action">
+                                <button class="btn btn-primary">Start Fresh →</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MAIN WIZARD STEPS (Split Layout) -->
+            <div class="wizard-main" id="mainWizard" style="display: none;">
+                <div class="wizard-content">
+                    <!-- STEP 1: BUYER SELECTION -->
+                    <div class="step" id="step1">
+                        <div class="wizard-step">
+                            <div class="step-header fade-in">
+                                <h2>Who is this contract for?</h2>
+                                <p>Select an existing contact or add a new one</p>
+                            </div>
+
+                            <div class="buyer-search-section fade-in">
+                                <div class="search-input-wrapper">
+                                    <span class="search-icon">🔍</span>
+                                    <input type="text" class="search-input" placeholder="Search by name, email, or phone...">
+                                    <div class="search-shortcut">
+                                        <span class="shortcut-key">⌘</span>
+                                        <span class="shortcut-key">K</span>
+                                    </div>
+                                </div>
+                                <div class="quick-add-btn" onclick="openQuickAdd()">
+                                    <span>+</span> Quick add new contact
+                                </div>
+                            </div>
+
+                            <div class="section-label">RECENT CONTACTS</div>
+                            <div class="buyer-grid slide-in">
+                                <div class="buyer-card selected" onclick="selectBuyer(this)">
+                                    <div class="buyer-avatar">RS</div>
+                                    <div class="buyer-info">
+                                        <div class="buyer-name">Ravi Sharma</div>
+                                        <div class="buyer-meta">ravi.sharma@techcorp.com</div>
+                                        <div class="buyer-tags">
+                                            <span class="buyer-tag customer">Customer</span>
+                                        </div>
+                                    </div>
+                                    <div class="buyer-check">✓</div>
+                                </div>
+
+                                <div class="buyer-card" onclick="selectBuyer(this)">
+                                    <div class="buyer-avatar" style="background: linear-gradient(135deg, #10B981 0%, #34D399 100%);">AP</div>
+                                    <div class="buyer-info">
+                                        <div class="buyer-name">Anita Patel</div>
+                                        <div class="buyer-meta">+91 98765 43210</div>
+                                        <div class="buyer-tags">
+                                            <span class="buyer-tag customer">Customer</span>
+                                        </div>
+                                    </div>
+                                    <div class="buyer-check"></div>
+                                </div>
+
+                                <div class="buyer-card" onclick="selectBuyer(this)">
+                                    <div class="buyer-avatar" style="background: linear-gradient(135deg, #F59E0B 0%, #FBBF24 100%);">MC</div>
+                                    <div class="buyer-info">
+                                        <div class="buyer-name">Mumbai Cooling Solutions</div>
+                                        <div class="buyer-meta">contact@mumbaicooling.in</div>
+                                        <div class="buyer-tags">
+                                            <span class="buyer-tag vendor">Vendor</span>
+                                        </div>
+                                    </div>
+                                    <div class="buyer-check"></div>
+                                </div>
+
+                                <div class="buyer-card" onclick="selectBuyer(this)">
+                                    <div class="buyer-avatar" style="background: linear-gradient(135deg, #EF4444 0%, #F87171 100%);">SK</div>
+                                    <div class="buyer-info">
+                                        <div class="buyer-name">Suresh Kumar</div>
+                                        <div class="buyer-meta">suresh.k@gmail.com</div>
+                                        <div class="buyer-tags">
+                                            <span class="buyer-tag customer">Customer</span>
+                                        </div>
+                                    </div>
+                                    <div class="buyer-check"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 2: ACCEPTANCE OPTIONS -->
+                    <div class="step" id="step2">
+                        <div class="wizard-step">
+                            <div class="step-header fade-in">
+                                <h2>How should the buyer accept this contract?</h2>
+                                <p>Choose when the contract becomes active</p>
+                            </div>
+
+                            <div class="acceptance-grid fade-in">
+                                <div class="acceptance-card selected" onclick="selectAcceptance(this)">
+                                    <div class="acceptance-icon payment">💰</div>
+                                    <h3>Accept on Payment</h3>
+                                    <p>Contract is accepted automatically when the buyer pays the first invoice</p>
+                                    <span class="acceptance-badge recommended">Recommended</span>
+                                </div>
+
+                                <div class="acceptance-card" onclick="selectAcceptance(this)">
+                                    <div class="acceptance-icon signoff">✍️</div>
+                                    <h3>Email / OTP Signoff</h3>
+                                    <p>Buyer confirms via email link or OTP verification on their phone</p>
+                                    <span class="acceptance-badge popular">Most Secure</span>
+                                </div>
+
+                                <div class="acceptance-card" onclick="selectAcceptance(this)">
+                                    <div class="acceptance-icon auto">⚡</div>
+                                    <h3>Auto Accept</h3>
+                                    <p>Contract is immediately active when you send it to the buyer</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 3: BASE DETAILS -->
+                    <div class="step" id="step3">
+                        <div class="wizard-step">
+                            <div class="step-header fade-in">
+                                <h2>Contract Details</h2>
+                                <p>Set the basic information for this contract</p>
+                            </div>
+
+                            <div class="form-grid fade-in">
+                                <div class="form-group full-width">
+                                    <label class="form-label">Contract Name <span>*</span></label>
+                                    <input type="text" class="form-input" placeholder="e.g., Annual AC Maintenance - Ravi Sharma" value="Annual AC Maintenance - Ravi Sharma">
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Contract Number</label>
+                                    <input type="text" class="form-input" value="CNT-2026-0042" readonly style="background: var(--bg);">
+                                    <span class="form-hint">Auto-generated</span>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Currency <span>*</span></label>
+                                    <select class="form-select">
+                                        <option value="INR" selected>INR - Indian Rupee</option>
+                                        <option value="USD">USD - US Dollar</option>
+                                        <option value="EUR">EUR - Euro</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Contract Duration <span>*</span></label>
+                                    <div class="duration-group">
+                                        <input type="number" class="form-input" value="12">
+                                        <select class="form-select">
+                                            <option value="months" selected>Months</option>
+                                            <option value="years">Years</option>
+                                            <option value="days">Days</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">Grace Period</label>
+                                    <div class="duration-group">
+                                        <input type="number" class="form-input" value="7">
+                                        <select class="form-select">
+                                            <option value="days" selected>Days</option>
+                                            <option value="weeks">Weeks</option>
+                                        </select>
+                                    </div>
+                                    <span class="form-hint">Extra time after contract ends</span>
+                                </div>
+
+                                <div class="form-group full-width">
+                                    <label class="form-label">Description</label>
+                                    <textarea class="form-textarea" placeholder="Brief description of what this contract covers...">Comprehensive annual maintenance contract for 2 split ACs including 4 preventive maintenance visits, priority support, and gas top-up.</textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 4: BLOCK ASSEMBLY -->
+                    <div class="step" id="step4">
+                        <div class="wizard-step" style="padding: 1rem;">
+                            <div class="assembly-layout">
+                                <!-- Block Library -->
+                                <div class="block-library">
+                                    <div class="library-header">
+                                        <h4>Block Library</h4>
+                                        <div class="library-search">
+                                            <input type="text" placeholder="Search blocks...">
+                                        </div>
+                                    </div>
+                                    <div class="library-content">
+                                        <div class="library-category">
+                                            <div class="category-label">Service Blocks</div>
+
+                                            <div class="library-block" onclick="addBlock('ac')">
+                                                <div class="library-block-icon service">❄️</div>
+                                                <div class="library-block-info">
+                                                    <div class="library-block-name">AC Maintenance</div>
+                                                    <div class="library-block-price">₹800 per visit</div>
+                                                </div>
+                                                <div class="library-block-add">+</div>
+                                            </div>
+
+                                            <div class="library-block" onclick="addBlock('repair')">
+                                                <div class="library-block-icon service">🔧</div>
+                                                <div class="library-block-info">
+                                                    <div class="library-block-name">Repair Service</div>
+                                                    <div class="library-block-price">₹500 per hour</div>
+                                                </div>
+                                                <div class="library-block-add">+</div>
+                                            </div>
+
+                                            <div class="library-block" onclick="addBlock('inspection')">
+                                                <div class="library-block-icon service">🔍</div>
+                                                <div class="library-block-info">
+                                                    <div class="library-block-name">Annual Inspection</div>
+                                                    <div class="library-block-price">₹1,500 one-time</div>
+                                                </div>
+                                                <div class="library-block-add">+</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="library-category">
+                                            <div class="category-label">Billing Blocks</div>
+
+                                            <div class="library-block" onclick="addBlock('monthly')">
+                                                <div class="library-block-icon billing">💳</div>
+                                                <div class="library-block-info">
+                                                    <div class="library-block-name">Monthly Billing</div>
+                                                    <div class="library-block-price">Recurring</div>
+                                                </div>
+                                                <div class="library-block-add">+</div>
+                                            </div>
+
+                                            <div class="library-block" onclick="addBlock('upfront')">
+                                                <div class="library-block-icon billing">💰</div>
+                                                <div class="library-block-info">
+                                                    <div class="library-block-name">100% Upfront</div>
+                                                    <div class="library-block-price">One-time</div>
+                                                </div>
+                                                <div class="library-block-add">+</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="library-category">
+                                            <div class="category-label">Content Blocks</div>
+
+                                            <div class="library-block" onclick="addBlock('terms')">
+                                                <div class="library-block-icon content">📋</div>
+                                                <div class="library-block-info">
+                                                    <div class="library-block-name">Terms & Conditions</div>
+                                                    <div class="library-block-price">Text</div>
+                                                </div>
+                                                <div class="library-block-add">+</div>
+                                            </div>
+
+                                            <div class="library-block" onclick="addBlock('warranty')">
+                                                <div class="library-block-icon content">🛡️</div>
+                                                <div class="library-block-info">
+                                                    <div class="library-block-name">Warranty Terms</div>
+                                                    <div class="library-block-price">Text</div>
+                                                </div>
+                                                <div class="library-block-add">+</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Contract Blocks -->
+                                <div class="contract-blocks">
+                                    <div class="contract-blocks-header">
+                                        <h4>Contract Blocks <span class="block-count-badge">3</span></h4>
+                                        <button class="btn btn-ghost" style="font-size: 0.75rem;">Clear All</button>
+                                    </div>
+                                    <div class="contract-blocks-body">
+                                        <div class="contract-block selected">
+                                            <div class="contract-block-main">
+                                                <div class="contract-block-drag">⋮⋮</div>
+                                                <div class="contract-block-icon" style="background: var(--accent-bg);">❄️</div>
+                                                <div class="contract-block-info">
+                                                    <div class="contract-block-name">AC Maintenance Visit</div>
+                                                    <div class="contract-block-desc">Preventive maintenance service</div>
+                                                </div>
+                                                <div class="contract-block-meta">
+                                                    <div class="contract-block-qty">
+                                                        <button class="qty-btn">−</button>
+                                                        <span class="qty-value">4</span>
+                                                        <button class="qty-btn">+</button>
+                                                    </div>
+                                                    <div class="contract-block-price">₹3,200</div>
+                                                </div>
+                                                <button class="contract-block-delete">🗑️</button>
+                                            </div>
+                                            <div class="block-settings">
+                                                <div class="settings-grid">
+                                                    <div class="setting-group">
+                                                        <label class="setting-label">Cycle (Days Between)</label>
+                                                        <input type="number" class="setting-input" value="90" placeholder="Days">
+                                                    </div>
+                                                    <div class="setting-group">
+                                                        <label class="setting-label">Price Override</label>
+                                                        <input type="text" class="setting-input" value="₹800" placeholder="Per unit">
+                                                    </div>
+                                                    <div class="setting-group">
+                                                        <label class="setting-label">Quantity Type</label>
+                                                        <div class="setting-toggle">
+                                                            <div class="toggle-switch"></div>
+                                                            <span class="toggle-label">Limited</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="contract-block">
+                                            <div class="contract-block-main">
+                                                <div class="contract-block-drag">⋮⋮</div>
+                                                <div class="contract-block-icon" style="background: var(--success-bg);">💰</div>
+                                                <div class="contract-block-info">
+                                                    <div class="contract-block-name">100% Advance Payment</div>
+                                                    <div class="contract-block-desc">Full payment before services</div>
+                                                </div>
+                                                <div class="contract-block-meta">
+                                                    <div class="contract-block-price">₹3,200</div>
+                                                </div>
+                                                <button class="contract-block-delete">🗑️</button>
+                                            </div>
+                                        </div>
+
+                                        <div class="contract-block">
+                                            <div class="contract-block-main">
+                                                <div class="contract-block-drag">⋮⋮</div>
+                                                <div class="contract-block-icon" style="background: var(--warning-bg);">📋</div>
+                                                <div class="contract-block-info">
+                                                    <div class="contract-block-name">Terms & Conditions</div>
+                                                    <div class="contract-block-desc">Standard AMC terms</div>
+                                                </div>
+                                                <div class="contract-block-meta"></div>
+                                                <button class="contract-block-delete">🗑️</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 5: REVIEW & SEND -->
+                    <div class="step" id="step5">
+                        <div class="wizard-step">
+                            <div class="step-header fade-in">
+                                <h2>Review & Send Contract</h2>
+                                <p>Verify all details before sending to the buyer</p>
+                            </div>
+
+                            <div class="review-layout fade-in">
+                                <div class="review-main">
+                                    <div class="review-section">
+                                        <div class="review-section-header">
+                                            <h4>👤 Buyer Information</h4>
+                                            <span class="review-section-edit">Edit</span>
+                                        </div>
+                                        <div class="review-section-body">
+                                            <div class="review-row">
+                                                <span class="review-label">Name</span>
+                                                <span class="review-value">Ravi Sharma</span>
+                                            </div>
+                                            <div class="review-row">
+                                                <span class="review-label">Email</span>
+                                                <span class="review-value">ravi.sharma@techcorp.com</span>
+                                            </div>
+                                            <div class="review-row">
+                                                <span class="review-label">Acceptance</span>
+                                                <span class="review-value">Accept on Payment</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="review-section">
+                                        <div class="review-section-header">
+                                            <h4>📋 Contract Details</h4>
+                                            <span class="review-section-edit">Edit</span>
+                                        </div>
+                                        <div class="review-section-body">
+                                            <div class="review-row">
+                                                <span class="review-label">Contract Name</span>
+                                                <span class="review-value">Annual AC Maintenance - Ravi Sharma</span>
+                                            </div>
+                                            <div class="review-row">
+                                                <span class="review-label">Contract #</span>
+                                                <span class="review-value">CNT-2026-0042</span>
+                                            </div>
+                                            <div class="review-row">
+                                                <span class="review-label">Duration</span>
+                                                <span class="review-value">12 Months</span>
+                                            </div>
+                                            <div class="review-row">
+                                                <span class="review-label">Grace Period</span>
+                                                <span class="review-value">7 Days</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="review-section">
+                                        <div class="review-section-header">
+                                            <h4>🧱 Included Services</h4>
+                                            <span class="review-section-edit">Edit</span>
+                                        </div>
+                                        <div class="review-section-body">
+                                            <div class="review-row">
+                                                <span class="review-label">AC Maintenance</span>
+                                                <span class="review-value">4 visits × ₹800 = ₹3,200</span>
+                                            </div>
+                                            <div class="review-row">
+                                                <span class="review-label">Payment</span>
+                                                <span class="review-value">100% Advance</span>
+                                            </div>
+                                            <div class="review-row">
+                                                <span class="review-label">T&C</span>
+                                                <span class="review-value">Standard AMC Terms</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="send-options">
+                                        <h4>Send via</h4>
+                                        <div class="send-channels">
+                                            <div class="send-channel selected">
+                                                <div class="send-channel-icon">💬</div>
+                                                <div class="send-channel-name">WhatsApp</div>
+                                                <div class="send-channel-desc">Instant delivery</div>
+                                            </div>
+                                            <div class="send-channel">
+                                                <div class="send-channel-icon">📧</div>
+                                                <div class="send-channel-name">Email</div>
+                                                <div class="send-channel-desc">Professional format</div>
+                                            </div>
+                                            <div class="send-channel">
+                                                <div class="send-channel-icon">🔗</div>
+                                                <div class="send-channel-name">Copy Link</div>
+                                                <div class="send-channel-desc">Share anywhere</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- LIVE PREVIEW PANEL -->
+                <div class="preview-panel">
+                    <div class="preview-header">
+                        <h3><span>●</span> Live Preview</h3>
+                        <div class="preview-toggle">
+                            <button class="preview-toggle-btn active">Buyer View</button>
+                            <button class="preview-toggle-btn">PDF</button>
+                        </div>
+                    </div>
+                    <div class="preview-body">
+                        <div class="preview-contract">
+                            <div class="preview-contract-header">
+                                <div class="preview-vendor">
+                                    <span>⚡</span> Vikuna Services
+                                </div>
+                                <div class="preview-contract-title">Annual AC Maintenance</div>
+                                <div class="preview-contract-meta">Contract #CNT-2026-0042</div>
+                            </div>
+                            <div class="preview-contract-body">
+                                <div class="preview-price-section">
+                                    <div>
+                                        <div class="preview-total">₹3,200</div>
+                                        <div class="preview-total-label">Total Amount</div>
+                                    </div>
+                                    <div class="preview-duration">
+                                        <div class="preview-duration-value">12 Months</div>
+                                        <div class="preview-duration-label">Duration</div>
+                                    </div>
+                                </div>
+
+                                <div class="preview-services-title">What's Included</div>
+                                <div class="preview-service">
+                                    <span class="preview-service-check">✓</span>
+                                    <span class="preview-service-name">AC Maintenance Visit</span>
+                                    <span class="preview-service-qty">×4</span>
+                                </div>
+                                <div class="preview-service">
+                                    <span class="preview-service-check">✓</span>
+                                    <span class="preview-service-name">Priority Support</span>
+                                    <span class="preview-service-qty">Included</span>
+                                </div>
+                                <div class="preview-service">
+                                    <span class="preview-service-check">✓</span>
+                                    <span class="preview-service-name">Gas Top-up (if needed)</span>
+                                    <span class="preview-service-qty">Included</span>
+                                </div>
+                            </div>
+                            <div class="preview-contract-footer">
+                                <button class="preview-cta">Accept & Pay ₹3,200 →</button>
+                            </div>
+                        </div>
+
+                        <div class="preview-stats">
+                            <div class="preview-stats-title">Contract Summary</div>
+                            <div class="preview-stat-row">
+                                <span>Total Blocks</span>
+                                <span>3</span>
+                            </div>
+                            <div class="preview-stat-row">
+                                <span>Service Visits</span>
+                                <span>4</span>
+                            </div>
+                            <div class="preview-stat-row">
+                                <span>Visit Cycle</span>
+                                <span>Every 90 days</span>
+                            </div>
+                            <div class="preview-stat-row">
+                                <span>Acceptance</span>
+                                <span style="color: var(--success);">On Payment</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- WIZARD FOOTER -->
+        <div class="wizard-footer" id="wizardFooter" style="display: none;">
+            <div class="footer-left">
+                <div class="footer-total">
+                    <span class="footer-total-label">Contract Value</span>
+                    <span class="footer-total-value">₹3,200</span>
+                </div>
+            </div>
+            <div class="footer-right">
+                <button class="btn btn-outline" onclick="prevStep()">← Back</button>
+                <button class="btn btn-accent" onclick="nextStep()">Continue →</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentStep = 0;
+        let selectedPath = null;
+        const totalSteps = 5;
+
+        function selectPath(path) {
+            selectedPath = path;
+            document.querySelectorAll('.path-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            event.currentTarget.classList.add('selected');
+
+            // Move to step 1 after selection
+            setTimeout(() => {
+                goToStep(1);
+            }, 300);
+        }
+
+        function goToStep(step) {
+            currentStep = step;
+
+            // Hide all steps
+            document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+
+            if (step === 0) {
+                document.getElementById('step0').classList.add('active');
+                document.getElementById('mainWizard').style.display = 'none';
+                document.getElementById('wizardFooter').style.display = 'none';
+                document.getElementById('wizardProgress').style.display = 'none';
+                document.getElementById('wizardSubtitle').textContent = 'Choose how you want to start';
+            } else {
+                document.getElementById('mainWizard').style.display = 'flex';
+                document.getElementById('wizardFooter').style.display = 'flex';
+                document.getElementById('wizardProgress').style.display = 'flex';
+                document.getElementById(`step${step}`).classList.add('active');
+                updateProgress();
+                updateFooter();
+            }
+        }
+
+        function updateProgress() {
+            const pills = document.querySelectorAll('.progress-pill');
+            const connectors = document.querySelectorAll('.progress-connector');
+
+            pills.forEach((pill, index) => {
+                pill.classList.remove('completed', 'active', 'pending');
+                if (index < currentStep) {
+                    pill.classList.add('completed');
+                } else if (index === currentStep) {
+                    pill.classList.add('active');
+                } else {
+                    pill.classList.add('pending');
+                }
+            });
+
+            connectors.forEach((conn, index) => {
+                conn.classList.remove('completed');
+                if (index < currentStep) {
+                    conn.classList.add('completed');
+                }
+            });
+
+            // Update subtitle
+            const subtitles = [
+                'Choose how you want to start',
+                'Select the buyer for this contract',
+                'Choose acceptance method',
+                'Enter contract details',
+                'Add service blocks',
+                'Review and send'
+            ];
+            document.getElementById('wizardSubtitle').textContent = subtitles[currentStep];
+        }
+
+        function updateFooter() {
+            const footerRight = document.querySelector('.footer-right');
+            if (currentStep === totalSteps) {
+                footerRight.innerHTML = `
+                    <button class="btn btn-outline" onclick="prevStep()">← Back</button>
+                    <button class="btn btn-success" onclick="sendContract()">🚀 Send Contract</button>
+                `;
+            } else {
+                footerRight.innerHTML = `
+                    <button class="btn btn-outline" onclick="prevStep()">← Back</button>
+                    <button class="btn btn-accent" onclick="nextStep()">Continue →</button>
+                `;
+            }
+        }
+
+        function nextStep() {
+            if (currentStep < totalSteps) {
+                goToStep(currentStep + 1);
+            }
+        }
+
+        function prevStep() {
+            if (currentStep > 0) {
+                goToStep(currentStep - 1);
+            }
+        }
+
+        function selectBuyer(card) {
+            document.querySelectorAll('.buyer-card').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+        }
+
+        function selectAcceptance(card) {
+            document.querySelectorAll('.acceptance-card').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+        }
+
+        function addBlock(type) {
+            showToast('Block added to contract');
+        }
+
+        function openQuickAdd() {
+            showToast('Opening Add Contact drawer...');
+        }
+
+        function closeWizard() {
+            if (confirm('Are you sure you want to close? Unsaved changes will be lost.')) {
+                showToast('Wizard closed');
+            }
+        }
+
+        function sendContract() {
+            showToast('Contract sent successfully!', 'success');
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed;
+                bottom: 100px;
+                right: 20px;
+                background: ${type === 'success' ? '#10B981' : '#0F172A'};
+                color: white;
+                padding: 1rem 1.5rem;
+                border-radius: 8px;
+                font-size: 0.875rem;
+                font-weight: 500;
+                box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+                z-index: 1001;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            `;
+            toast.innerHTML = `<span>${type === 'success' ? '✓' : 'ℹ'}</span> ${message}`;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(10px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
+        }
+
+        // Click on contract blocks to toggle settings
+        document.querySelectorAll('.contract-block').forEach(block => {
+            block.addEventListener('click', function(e) {
+                if (!e.target.closest('.qty-btn') && !e.target.closest('.contract-block-delete')) {
+                    document.querySelectorAll('.contract-block').forEach(b => b.classList.remove('selected'));
+                    this.classList.add('selected');
+                }
+            });
+        });
+
+        // Progress pill click navigation
+        document.querySelectorAll('.progress-pill').forEach((pill, index) => {
+            pill.addEventListener('click', function() {
+                if (this.classList.contains('completed') || this.classList.contains('active')) {
+                    goToStep(index);
+                }
+            });
+        });
+
+        // Send channel selection
+        document.querySelectorAll('.send-channel').forEach(channel => {
+            channel.addEventListener('click', function() {
+                document.querySelectorAll('.send-channel').forEach(c => c.classList.remove('selected'));
+                this.classList.add('selected');
+            });
+        });
+
+        // Preview toggle
+        document.querySelectorAll('.preview-toggle-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.preview-toggle-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>

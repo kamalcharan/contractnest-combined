@@ -1,0 +1,65 @@
+═══════════════════════════════════════════════════
+CONTRACT WIZARD WIREFRAME - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════
+
+Branch: claude/init-submodules-contractui-gMmpV
+Date: January 2026
+Purpose: Interactive HTML wireframe for Contract Wizard journey
+
+═══════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════
+
+1. ClaudeDocumentation/contractUI/15-contract-wizard.html
+   Source: MANUAL_COPY_FILES/contract-wizard-wireframe/ClaudeDocumentation/contractUI/15-contract-wizard.html
+   Destination: ClaudeDocumentation/contractUI/15-contract-wizard.html
+
+═══════════════════════════════════════════════════
+SUBMODULES AFFECTED
+═══════════════════════════════════════════════════
+
+- ClaudeDocumentation (master branch)
+
+═══════════════════════════════════════════════════
+COPY COMMAND (PowerShell)
+═══════════════════════════════════════════════════
+
+Copy-Item "MANUAL_COPY_FILES\contract-wizard-wireframe\ClaudeDocumentation\contractUI\15-contract-wizard.html" -Destination "ClaudeDocumentation\contractUI\" -Force
+
+═══════════════════════════════════════════════════
+WHAT THIS WIREFRAME COVERS
+═══════════════════════════════════════════════════
+
+Contract Creation Journey (6 Steps):
+- Step 0: Path Selection (Template vs Ad-hoc)
+- Step 1: Buyer Selection (search + quick add)
+- Step 2: Acceptance Options (payment/signoff/auto)
+- Step 3: Base Details (name, duration, currency)
+- Step 4: Block Assembly (add/configure blocks)
+- Step 5: Review & Send (WhatsApp/Email/Link)
+
+Features Demonstrated:
+- Full-screen wizard overlay
+- Split-screen layout (content + live preview)
+- Visual progress pills (not boring numbered steps)
+- Block settings drawer (cycle, qty, unlimited toggle)
+- Live contract preview (buyer POV)
+- Send channel selection
+- Animations and micro-interactions
+
+═══════════════════════════════════════════════════
+TESTING
+═══════════════════════════════════════════════════
+
+Open 15-contract-wizard.html in browser to test:
+- [ ] Path selection cards (hover effects, click to proceed)
+- [ ] Buyer card selection
+- [ ] Acceptance option selection
+- [ ] Form inputs in base details
+- [ ] Block click to show settings
+- [ ] Progress pill navigation
+- [ ] Preview toggle (Buyer/PDF)
+- [ ] Send channel selection
+- [ ] Back/Continue navigation
+
+═══════════════════════════════════════════════════
