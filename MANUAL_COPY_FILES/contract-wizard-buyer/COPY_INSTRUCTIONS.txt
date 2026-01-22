@@ -1,0 +1,48 @@
+═══════════════════════════════════════════════════
+CONTRACT WIZARD - BUYER SELECTION STEP - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════
+
+Branch: claude/init-submodules-contractui-gMmpV
+Date: January 2026
+Purpose: Add Buyer Selection Step with classification filter, search, and QuickAddContactDrawer
+
+═══════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════
+
+1. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+   Purpose: Updated wizard with BuyerSelectionStep integration
+
+2. contractnest-ui/src/components/contracts/ContractWizard/steps/BuyerSelectionStep.tsx
+   Purpose: NEW - Buyer selection step with search, filter, and add contact
+
+═══════════════════════════════════════════════════
+SUBMODULES AFFECTED
+═══════════════════════════════════════════════════
+
+- contractnest-ui (main branch)
+
+═══════════════════════════════════════════════════
+FEATURES IMPLEMENTED
+═══════════════════════════════════════════════════
+
+BUYER SELECTION STEP:
+  - Grey background + white cards design (matches contacts page)
+  - Classification filter with radio-style buttons
+  - Dynamic classifications from CONTACT_CLASSIFICATION_CONFIG
+  - Search bar with 3 character minimum
+  - Contact list with avatar, name, type icon, primary channel
+  - Selection indicator (checkmark)
+  - "Selected Buyer" confirmation card
+  - "Add New" button opens QuickAddContactDrawer
+  - Empty state with CTA
+  - Loading state with spinner
+  - Full theme support (light/dark)
+
+REUSED COMPONENTS:
+  - QuickAddContactDrawer - for adding new contacts
+  - useContactList hook - for fetching contacts
+  - getClassificationColors - for consistent styling
+  - CONTACT_CLASSIFICATION_CONFIG - for classification data
+
+═══════════════════════════════════════════════════
