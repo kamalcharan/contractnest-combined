@@ -1,7 +1,7 @@
 // src/components/contracts/ContractWizard/steps/PathSelectionStep.tsx
 // Step 0: Choose contract creation path - From Template or From Scratch
 import React from 'react';
-import { FileTemplate, PenLine, Clock, Zap, Sparkles, Settings } from 'lucide-react';
+import { LayoutTemplate, PenLine, Clock, Zap, Sparkles, Settings } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 
 export type ContractPath = 'template' | 'scratch' | null;
@@ -25,7 +25,7 @@ const pathOptions: PathOption[] = [
     id: 'template',
     title: 'From Template',
     description: 'Start with a pre-built template and customize it for your buyer',
-    icon: FileTemplate,
+    icon: LayoutTemplate,
     recommended: true,
     features: [
       { icon: Clock, text: 'Quick setup in minutes' },

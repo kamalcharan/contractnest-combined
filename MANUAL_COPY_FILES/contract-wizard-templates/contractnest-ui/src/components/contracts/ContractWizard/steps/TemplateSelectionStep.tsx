@@ -2,7 +2,7 @@
 // Step 1a: Template Selection - Shows templates or empty state with Lottie
 import React from 'react';
 import Lottie from 'lottie-react';
-import { FileTemplate, PenLine, Search, ArrowRight } from 'lucide-react';
+import { LayoutTemplate, PenLine, Search, ArrowRight } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 
 // Custom Lottie animation for "No Templates" empty state
@@ -391,7 +391,7 @@ const TemplateSelectionStep: React.FC<TemplateSelectionStepProps> = ({
                       : `${colors.brand.primary}15`,
                   }}
                 >
-                  <FileTemplate
+                  <LayoutTemplate
                     className="w-5 h-5"
                     style={{
                       color: isSelected ? 'white' : colors.brand.primary,
