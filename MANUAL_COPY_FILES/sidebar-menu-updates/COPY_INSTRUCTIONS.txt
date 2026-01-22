@@ -1,0 +1,38 @@
+═══════════════════════════════════════════════════
+SIDEBAR MENU UPDATES - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════
+
+CHANGES MADE:
+1. Getting Started - shown only if onboarding not complete AND user is owner
+2. Need help section - replaced with VaNi AI card between Contracts and Catalog Studio
+3. Implementation Toolkit - set to open by default
+4. Removed submenus: plan detail, plan versions, subscription management
+5. Removed menu items: User Management and Analytics
+
+FILES TO COPY:
+═══════════════════════════════════════════════════
+
+1. Sidebar.tsx (Component)
+   FROM: MANUAL_COPY_FILES\sidebar-menu-updates\contractnest-ui\src\components\layout\Sidebar.tsx
+   TO:   contractnest-ui\src\components\layout\Sidebar.tsx
+
+2. industryMenus.ts (Menu Configuration)
+   FROM: MANUAL_COPY_FILES\sidebar-menu-updates\contractnest-ui\src\utils\constants\industryMenus.ts
+   TO:   contractnest-ui\src\utils\constants\industryMenus.ts
+
+WHAT WAS CHANGED:
+═══════════════════════════════════════════════════
+
+Sidebar.tsx:
+- Added hasCompletedOnboarding from useAuth hook
+- Added isOwner check from currentTenant?.is_owner
+- Filters out 'getting-started' menu if onboarding complete or not owner
+- Added VaNi AI card between Contracts and Catalog Studio menus
+- Removed "Need help" section at bottom
+- Uses defaultOpen property from menu config for submenus
+
+industryMenus.ts:
+- Added defaultOpen?: boolean to MenuItem interface
+- Set Implementation Toolkit to defaultOpen: true
+- Removed submenus: plan-detail, plan-versions, subscription-management
+- Removed menu items: user-management, analytics
