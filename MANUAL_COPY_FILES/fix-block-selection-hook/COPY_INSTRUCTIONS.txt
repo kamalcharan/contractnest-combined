@@ -1,0 +1,23 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS - fix-block-selection-hook
+═══════════════════════════════════════════════════
+
+FILES TO COPY:
+──────────────
+
+1. BlockSelectionStep.tsx
+   FROM: MANUAL_COPY_FILES\fix-block-selection-hook\contractnest-ui\src\components\contracts\ContractWizard\steps\BlockSelectionStep.tsx
+   TO:   contractnest-ui\src\components\contracts\ContractWizard\steps\BlockSelectionStep.tsx
+
+═══════════════════════════════════════════════════
+CHANGES SUMMARY:
+═══════════════════════════════════════════════════
+
+BlockSelectionStep.tsx:
+- FIXED: Replaced deprecated useBlocks hook with useCatBlocksTest
+- Added catBlocksToBlocks adapter for API to UI conversion
+- Using BLOCK_CATEGORIES and getCategoryById from catalog-studio
+- Proper Block type from catalogStudio types
+- VaNiLoader and VaNiToast integration maintained
+
+═══════════════════════════════════════════════════
