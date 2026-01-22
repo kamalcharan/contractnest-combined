@@ -1,0 +1,126 @@
+═══════════════════════════════════════════════════
+CONTRACT WIZARD FLOATING - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════
+
+Branch: claude/init-submodules-contractui-gMmpV
+Date: January 2026
+Purpose: Premium Contract Wizard with Floating Action Island UX
+
+═══════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════
+
+1. ClaudeDocumentation/contractUI/FloatingContract.html
+   Source: MANUAL_COPY_FILES/contract-wizard-floating/ClaudeDocumentation/contractUI/FloatingContract.html
+   Destination: ClaudeDocumentation/contractUI/FloatingContract.html
+
+═══════════════════════════════════════════════════
+SUBMODULES AFFECTED
+═══════════════════════════════════════════════════
+
+- ClaudeDocumentation (master branch)
+
+═══════════════════════════════════════════════════
+COPY COMMAND (PowerShell)
+═══════════════════════════════════════════════════
+
+Copy-Item "MANUAL_COPY_FILES\contract-wizard-floating\ClaudeDocumentation\contractUI\FloatingContract.html" -Destination "ClaudeDocumentation\contractUI\" -Force
+
+═══════════════════════════════════════════════════
+WHAT THIS WIREFRAME COVERS
+═══════════════════════════════════════════════════
+
+Premium Contract Wizard with Floating Action Island (6 Steps):
+
+- Step 0: Path Selection
+  * "From Template" - Uses pre-built template with blocks
+  * "Create from Scratch" - Build contract ad-hoc
+
+- Step 1: Buyer Selection
+  * Recent buyers quick-select
+  * Search buyers functionality
+  * Quick add new buyer
+
+- Step 2: Acceptance Options
+  * Accept on Payment
+  * Email/OTP Signoff
+  * Auto Accept
+
+- Step 3: Base Details
+  * Contract name
+  * Duration (months)
+  * Currency selection
+  * Description
+
+- Step 4: Block Assembly
+  * Select service blocks from library
+  * Configure: Cycle (days), Quantity, Price
+  * Unlimited toggle
+  * Real-time price calculation
+
+- Step 5: Review & Send
+  * Paper Canvas style review
+  * All contract details visible
+  * Send channel selection (WhatsApp/Email/Link)
+
+═══════════════════════════════════════════════════
+PREMIUM UX FEATURES
+═══════════════════════════════════════════════════
+
+1. FLOATING ACTION ISLAND (Apple Dynamic Island inspired)
+   - Dark glass background with backdrop blur
+   - Status pill with pulsing green dot
+   - Live metrics display (total value)
+   - Back/Continue actions
+   - Positioned at bottom center
+
+2. MINIMALIST HEADER
+   - Logo + contract type indicator
+   - Progress dots (not numbered steps)
+   - Close button
+
+3. SPLIT-SCREEN LAYOUT
+   - Left: Form content (60%)
+   - Right: Live contract preview (40%)
+   - Preview shows buyer's perspective
+
+4. PAPER CANVAS (Final Step)
+   - Document-style preview
+   - Full contract summary
+   - Professional layout for review
+
+5. ANIMATIONS & MICRO-INTERACTIONS
+   - Smooth step transitions
+   - Hover effects on cards
+   - Selection state animations
+   - Block settings slide-in drawer
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+
+Open FloatingContract.html in browser to test:
+- [ ] Path selection cards (hover, click to proceed)
+- [ ] Recent buyer selection
+- [ ] Acceptance option selection
+- [ ] Form inputs in base details
+- [ ] Block selection and settings drawer
+- [ ] Cycle/Quantity/Unlimited toggle
+- [ ] Progress dot navigation
+- [ ] Floating Island status updates
+- [ ] Paper Canvas review layout
+- [ ] Send channel selection
+- [ ] Back/Continue navigation
+- [ ] Responsive behavior
+
+═══════════════════════════════════════════════════
+NEXT STEPS AFTER TESTING
+═══════════════════════════════════════════════════
+
+1. Review and approve wireframe
+2. Convert to React components in contractnest-ui
+3. Create cat_contracts database schema
+4. Build contracts edge function
+5. Integrate with existing Catalog Studio
+
+═══════════════════════════════════════════════════

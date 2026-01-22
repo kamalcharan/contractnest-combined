@@ -1,0 +1,2445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ContractNest - Create Contract</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=EB+Garamond:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --brand: #0F172A;
+            --brand-light: #1E293B;
+            --accent: #6366F1;
+            --accent-light: #818CF8;
+            --accent-bg: #EEF2FF;
+            --success: #10B981;
+            --success-bg: #ECFDF5;
+            --warning: #F59E0B;
+            --warning-bg: #FFFBEB;
+            --danger: #EF4444;
+            --bg: #F8FAFC;
+            --bg-subtle: #F1F5F9;
+            --surface: #FFFFFF;
+            --border: #E2E8F0;
+            --border-light: #F1F5F9;
+            --text: #334155;
+            --text-light: #64748B;
+            --text-muted: #94A3B8;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1);
+            --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1);
+            --island-bg: rgba(15, 23, 42, 0.95);
+            --island-border: rgba(255, 255, 255, 0.1);
+            --radius: 8px;
+            --radius-lg: 12px;
+            --radius-xl: 16px;
+            --radius-2xl: 24px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ===== HEADER ===== */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 72px;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
+            z-index: 50;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+        }
+
+        .close-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-light);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            transition: all 0.2s;
+        }
+
+        .close-btn:hover {
+            background: #FEF2F2;
+            border-color: #FECACA;
+            color: var(--danger);
+        }
+
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9375rem;
+        }
+
+        .breadcrumb-item {
+            color: var(--text-light);
+        }
+
+        .breadcrumb-separator {
+            color: var(--border);
+        }
+
+        .breadcrumb-current {
+            color: var(--brand);
+            font-weight: 600;
+        }
+
+        /* Progress Dots */
+        .progress-dots {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .dot {
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .dot.small { width: 24px; }
+        .dot.active {
+            width: 40px;
+            background: var(--accent);
+        }
+        .dot.completed {
+            background: var(--success);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .btn-ghost {
+            background: transparent;
+            border: none;
+            color: var(--text-light);
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius);
+            transition: all 0.2s;
+        }
+
+        .btn-ghost:hover {
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        /* ===== MAIN CONTAINER ===== */
+        .main-container {
+            padding-top: 72px;
+            padding-bottom: 120px;
+            min-height: 100vh;
+        }
+
+        /* ===== STEP 0: PATH SELECTION ===== */
+        .path-selection {
+            min-height: calc(100vh - 192px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem;
+        }
+
+        .path-header {
+            text-align: center;
+            margin-bottom: 3rem;
+            animation: fadeInUp 0.6s ease-out;
+        }
+
+        .path-header h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            color: var(--brand);
+            letter-spacing: -1px;
+            margin-bottom: 1rem;
+        }
+
+        .path-header p {
+            font-size: 1.125rem;
+            color: var(--text-light);
+            max-width: 500px;
+        }
+
+        .path-cards {
+            display: flex;
+            gap: 1.5rem;
+            animation: fadeInUp 0.6s ease-out 0.1s both;
+        }
+
+        .path-card {
+            width: 320px;
+            background: var(--surface);
+            border: 2px solid var(--border);
+            border-radius: var(--radius-2xl);
+            padding: 2.5rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .path-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--accent), var(--accent-light));
+            transform: scaleX(0);
+            transition: transform 0.3s;
+        }
+
+        .path-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-xl);
+        }
+
+        .path-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .path-card-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.75rem;
+            margin-bottom: 1.5rem;
+            transition: transform 0.3s;
+        }
+
+        .path-card:hover .path-card-icon {
+            transform: scale(1.1);
+        }
+
+        .path-card-icon.template {
+            background: linear-gradient(135deg, var(--accent-bg) 0%, #C7D2FE 100%);
+        }
+
+        .path-card-icon.scratch {
+            background: linear-gradient(135deg, var(--success-bg) 0%, #A7F3D0 100%);
+        }
+
+        .path-card h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--brand);
+            margin-bottom: 0.5rem;
+        }
+
+        .path-card p {
+            font-size: 0.875rem;
+            color: var(--text-light);
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+        }
+
+        .path-card-features {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8125rem;
+            color: var(--text);
+        }
+
+        .feature-item .check {
+            color: var(--success);
+            font-weight: bold;
+        }
+
+        /* ===== WIZARD LAYOUT ===== */
+        .wizard-layout {
+            display: none;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            gap: 2rem;
+        }
+
+        .wizard-layout.active {
+            display: flex;
+        }
+
+        /* Left Pane: Form */
+        .form-pane {
+            flex: 1;
+            max-width: 600px;
+        }
+
+        .step-container {
+            display: none;
+            animation: fadeInUp 0.5s ease-out;
+        }
+
+        .step-container.active {
+            display: block;
+        }
+
+        .step-header {
+            margin-bottom: 2rem;
+        }
+
+        .step-header h2 {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--brand);
+            letter-spacing: -0.5px;
+            margin-bottom: 0.5rem;
+        }
+
+        .step-header p {
+            font-size: 1rem;
+            color: var(--text-light);
+        }
+
+        /* ===== FORM CONTROLS ===== */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 0.5rem;
+        }
+
+        .form-label .required {
+            color: var(--danger);
+        }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-lg);
+            font-size: 0.9375rem;
+            color: var(--text);
+            background: var(--surface);
+            transition: all 0.2s;
+        }
+
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px var(--accent-bg);
+        }
+
+        .form-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .form-hint {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.375rem;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .input-with-addon {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .input-with-addon .form-input {
+            flex: 1;
+        }
+
+        .input-with-addon .form-select {
+            width: 140px;
+        }
+
+        /* Search Input with Dropdown */
+        .search-wrapper {
+            position: relative;
+        }
+
+        .search-input {
+            padding-left: 3rem;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+
+        .search-dropdown {
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            right: 0;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 20;
+            display: none;
+        }
+
+        .search-dropdown.show {
+            display: block;
+            animation: fadeInUp 0.2s ease-out;
+        }
+
+        .dropdown-section {
+            padding: 0.5rem;
+        }
+
+        .dropdown-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            font-weight: 700;
+            padding: 0.5rem 0.75rem;
+        }
+
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .dropdown-item:hover {
+            background: var(--bg);
+        }
+
+        .dropdown-item.selected {
+            background: var(--accent-bg);
+        }
+
+        .dropdown-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-light) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 0.875rem;
+            flex-shrink: 0;
+        }
+
+        .dropdown-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .dropdown-name {
+            font-weight: 600;
+            color: var(--brand);
+            font-size: 0.875rem;
+        }
+
+        .dropdown-meta {
+            font-size: 0.75rem;
+            color: var(--text-light);
+        }
+
+        .dropdown-tag {
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .dropdown-tag.customer {
+            background: var(--accent-bg);
+            color: var(--accent);
+        }
+
+        .dropdown-tag.vendor {
+            background: var(--success-bg);
+            color: var(--success);
+        }
+
+        .quick-add-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            width: 100%;
+            padding: 0.75rem;
+            border: none;
+            background: transparent;
+            color: var(--accent);
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            border-radius: var(--radius);
+            transition: all 0.15s;
+        }
+
+        .quick-add-btn:hover {
+            background: var(--accent-bg);
+        }
+
+        /* ===== ACCEPTANCE CARDS ===== */
+        .acceptance-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+
+        .acceptance-card {
+            background: var(--surface);
+            border: 2px solid var(--border);
+            border-radius: var(--radius-xl);
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.25s;
+            text-align: center;
+            position: relative;
+        }
+
+        .acceptance-card::after {
+            content: '';
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            transition: all 0.2s;
+        }
+
+        .acceptance-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .acceptance-card.selected {
+            border-color: var(--accent);
+            background: linear-gradient(180deg, var(--accent-bg) 0%, var(--surface) 100%);
+        }
+
+        .acceptance-card.selected::after {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .acceptance-card.selected::before {
+            content: '✓';
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            width: 20px;
+            height: 20px;
+            color: white;
+            font-size: 0.7rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1;
+        }
+
+        .acceptance-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: var(--radius-lg);
+            margin: 0 auto 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            transition: transform 0.3s;
+        }
+
+        .acceptance-card:hover .acceptance-icon {
+            transform: scale(1.1);
+        }
+
+        .acceptance-icon.payment { background: linear-gradient(135deg, var(--success-bg) 0%, #A7F3D0 100%); }
+        .acceptance-icon.signoff { background: linear-gradient(135deg, var(--accent-bg) 0%, #C7D2FE 100%); }
+        .acceptance-icon.auto { background: linear-gradient(135deg, var(--warning-bg) 0%, #FDE68A 100%); }
+
+        .acceptance-card h4 {
+            font-size: 0.9375rem;
+            font-weight: 700;
+            color: var(--brand);
+            margin-bottom: 0.375rem;
+        }
+
+        .acceptance-card p {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            line-height: 1.5;
+        }
+
+        .acceptance-badge {
+            display: inline-block;
+            margin-top: 0.75rem;
+            padding: 0.25rem 0.625rem;
+            border-radius: 100px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .acceptance-badge.recommended {
+            background: var(--success-bg);
+            color: var(--success);
+        }
+
+        /* ===== BLOCK ASSEMBLY ===== */
+        .assembly-layout {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .block-library {
+            width: 260px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .library-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .library-header h4 {
+            font-size: 0.875rem;
+            font-weight: 700;
+            color: var(--brand);
+            margin-bottom: 0.75rem;
+        }
+
+        .library-search {
+            position: relative;
+        }
+
+        .library-search input {
+            width: 100%;
+            padding: 0.5rem 0.75rem 0.5rem 2rem;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            font-size: 0.8125rem;
+        }
+
+        .library-search input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .library-search-icon {
+            position: absolute;
+            left: 0.625rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 0.75rem;
+        }
+
+        .library-content {
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+
+        .library-category {
+            margin-bottom: 1rem;
+        }
+
+        .category-title {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            font-weight: 700;
+            padding: 0.5rem;
+        }
+
+        .library-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.625rem;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .library-item:hover {
+            background: var(--bg);
+        }
+
+        .library-item-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .library-item-icon.service { background: var(--accent-bg); }
+        .library-item-icon.billing { background: var(--success-bg); }
+        .library-item-icon.content { background: var(--warning-bg); }
+
+        .library-item-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .library-item-name {
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .library-item-price {
+            font-size: 0.7rem;
+            color: var(--text-light);
+        }
+
+        .library-item-add {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+            opacity: 0;
+            transition: all 0.15s;
+            cursor: pointer;
+        }
+
+        .library-item:hover .library-item-add {
+            opacity: 1;
+        }
+
+        .library-item-add:hover {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        /* Contract Blocks */
+        .contract-blocks {
+            flex: 1;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .blocks-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .blocks-header h4 {
+            font-size: 0.875rem;
+            font-weight: 700;
+            color: var(--brand);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .blocks-count {
+            background: var(--accent-bg);
+            color: var(--accent);
+            padding: 0.15rem 0.5rem;
+            border-radius: 100px;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        .blocks-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+
+        .block-card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            margin-bottom: 0.75rem;
+            transition: all 0.2s;
+            overflow: hidden;
+        }
+
+        .block-card:hover {
+            border-color: var(--accent);
+        }
+
+        .block-card.expanded {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-bg);
+        }
+
+        .block-main {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem;
+            cursor: pointer;
+        }
+
+        .block-drag {
+            color: var(--text-muted);
+            cursor: grab;
+            font-size: 1rem;
+        }
+
+        .block-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.125rem;
+            flex-shrink: 0;
+        }
+
+        .block-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .block-name {
+            font-weight: 600;
+            color: var(--brand);
+            font-size: 0.9375rem;
+            margin-bottom: 0.125rem;
+        }
+
+        .block-desc {
+            font-size: 0.75rem;
+            color: var(--text-light);
+        }
+
+        .block-qty {
+            display: flex;
+            align-items: center;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+        }
+
+        .qty-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: transparent;
+            color: var(--text-light);
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.15s;
+        }
+
+        .qty-btn:hover {
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .qty-value {
+            width: 40px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: var(--brand);
+        }
+
+        .block-price {
+            font-weight: 700;
+            color: var(--brand);
+            font-size: 0.9375rem;
+            min-width: 80px;
+            text-align: right;
+        }
+
+        .block-delete {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+
+        .block-delete:hover {
+            background: #FEF2F2;
+            color: var(--danger);
+        }
+
+        /* Block Settings */
+        .block-settings {
+            background: var(--accent-bg);
+            border-top: 1px solid #C7D2FE;
+            padding: 1rem;
+            display: none;
+        }
+
+        .block-card.expanded .block-settings {
+            display: block;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        .settings-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+
+        .setting-group label {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.375rem;
+        }
+
+        .setting-input {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #C7D2FE;
+            border-radius: var(--radius);
+            font-size: 0.8125rem;
+            background: var(--surface);
+        }
+
+        .setting-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .cycle-chips {
+            display: flex;
+            gap: 0.375rem;
+            margin-top: 0.375rem;
+        }
+
+        .cycle-chip {
+            padding: 0.25rem 0.5rem;
+            background: var(--surface);
+            border: 1px solid #C7D2FE;
+            border-radius: 100px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--accent);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .cycle-chip:hover, .cycle-chip.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        .toggle-group {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 0.75rem;
+            background: var(--surface);
+            border: 1px solid #C7D2FE;
+            border-radius: var(--radius);
+        }
+
+        .toggle-switch {
+            width: 40px;
+            height: 22px;
+            background: var(--border);
+            border-radius: 11px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 18px;
+            height: 18px;
+            background: white;
+            border-radius: 50%;
+            transition: all 0.2s;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .toggle-switch.active {
+            background: var(--accent);
+        }
+
+        .toggle-switch.active::after {
+            left: 20px;
+        }
+
+        .toggle-label {
+            font-size: 0.8125rem;
+            color: var(--text);
+        }
+
+        /* ===== RIGHT PANE: PREVIEW ===== */
+        .preview-pane {
+            width: 400px;
+            flex-shrink: 0;
+            position: sticky;
+            top: 100px;
+            height: fit-content;
+        }
+
+        .preview-card {
+            background: var(--surface);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+
+        .preview-card:hover {
+            box-shadow: var(--shadow-xl);
+        }
+
+        .preview-header {
+            padding: 1.5rem;
+            background: linear-gradient(135deg, var(--brand) 0%, var(--brand-light) 100%);
+            color: white;
+        }
+
+        .preview-vendor {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            opacity: 0.9;
+            margin-bottom: 1rem;
+        }
+
+        .preview-title {
+            font-family: 'EB Garamond', serif;
+            font-size: 1.5rem;
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+
+        .preview-meta {
+            font-size: 0.8125rem;
+            opacity: 0.7;
+        }
+
+        .preview-body {
+            padding: 1.5rem;
+        }
+
+        .preview-price-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding-bottom: 1.25rem;
+            margin-bottom: 1.25rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .preview-total {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--brand);
+        }
+
+        .preview-total-label {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            margin-top: 0.25rem;
+        }
+
+        .preview-duration-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--brand);
+            text-align: right;
+        }
+
+        .preview-duration-label {
+            font-size: 0.75rem;
+            color: var(--text-light);
+        }
+
+        .preview-section-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-light);
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+        }
+
+        .preview-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.6rem 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .preview-item:last-child {
+            border-bottom: none;
+        }
+
+        .preview-item-check {
+            color: var(--success);
+            font-weight: bold;
+        }
+
+        .preview-item-name {
+            flex: 1;
+            font-size: 0.875rem;
+            color: var(--text);
+        }
+
+        .preview-item-qty {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            background: var(--bg);
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .preview-footer {
+            padding: 1rem 1.5rem;
+            background: var(--bg);
+            border-top: 1px solid var(--border-light);
+        }
+
+        .preview-cta {
+            width: 100%;
+            padding: 0.875rem;
+            background: var(--brand);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            font-weight: 600;
+            font-size: 0.9375rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .preview-cta:hover {
+            background: var(--brand-light);
+        }
+
+        /* ===== STEP 5: PAPER CANVAS REVIEW ===== */
+        .paper-canvas {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            padding: 4rem 5rem;
+            box-shadow: var(--shadow-lg);
+            border-radius: 4px;
+            position: relative;
+        }
+
+        .paper-header {
+            margin-bottom: 3rem;
+        }
+
+        .paper-title {
+            font-family: 'EB Garamond', serif;
+            font-size: 2.75rem;
+            font-weight: 500;
+            color: var(--brand);
+            border: none;
+            outline: none;
+            width: 100%;
+            margin-bottom: 0.5rem;
+            background: transparent;
+        }
+
+        .paper-subtitle {
+            font-size: 0.9375rem;
+            color: var(--text-light);
+        }
+
+        .paper-meta {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            padding: 1.5rem 0;
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 2.5rem;
+        }
+
+        .paper-meta-item label {
+            display: block;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .paper-meta-value {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--brand);
+        }
+
+        .paper-section {
+            margin-bottom: 2.5rem;
+        }
+
+        .paper-section-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            font-weight: 700;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .paper-block {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.25rem;
+            background: var(--bg);
+            border-radius: var(--radius-lg);
+            margin-bottom: 0.75rem;
+        }
+
+        .paper-block-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: var(--radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            background: var(--surface);
+        }
+
+        .paper-block-info {
+            flex: 1;
+        }
+
+        .paper-block-name {
+            font-weight: 600;
+            color: var(--brand);
+            margin-bottom: 0.125rem;
+        }
+
+        .paper-block-desc {
+            font-size: 0.8125rem;
+            color: var(--text-light);
+        }
+
+        .paper-block-price {
+            font-weight: 700;
+            color: var(--brand);
+            font-size: 1rem;
+        }
+
+        .paper-terms {
+            padding: 1.5rem;
+            background: var(--bg);
+            border-radius: var(--radius-lg);
+            font-size: 0.875rem;
+            color: var(--text-light);
+            line-height: 1.7;
+        }
+
+        .paper-total-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+            background: var(--brand);
+            border-radius: var(--radius-lg);
+            color: white;
+        }
+
+        .paper-total-label {
+            font-size: 0.875rem;
+            opacity: 0.8;
+        }
+
+        .paper-total-value {
+            font-size: 2rem;
+            font-weight: 800;
+        }
+
+        /* Send Options */
+        .send-section {
+            margin-top: 3rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .send-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--brand);
+            margin-bottom: 1rem;
+        }
+
+        .send-channels {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .send-channel {
+            flex: 1;
+            padding: 1.25rem;
+            background: var(--bg);
+            border: 2px solid var(--border);
+            border-radius: var(--radius-lg);
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .send-channel:hover {
+            border-color: var(--accent);
+            background: var(--accent-bg);
+        }
+
+        .send-channel.selected {
+            border-color: var(--accent);
+            background: var(--accent-bg);
+        }
+
+        .send-channel-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .send-channel-name {
+            font-weight: 600;
+            color: var(--brand);
+            font-size: 0.875rem;
+        }
+
+        .send-channel-desc {
+            font-size: 0.7rem;
+            color: var(--text-light);
+            margin-top: 0.25rem;
+        }
+
+        /* ===== FLOATING ACTION ISLAND ===== */
+        .island-container {
+            position: fixed;
+            bottom: 32px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+        }
+
+        .action-island {
+            background: var(--island-bg);
+            backdrop-filter: blur(16px) saturate(180%);
+            -webkit-backdrop-filter: blur(16px) saturate(180%);
+            border: 1px solid var(--island-border);
+            padding: 12px 12px 12px 24px;
+            border-radius: 100px;
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .action-island:hover {
+            transform: scale(1.02);
+            box-shadow: 0 25px 60px rgba(0,0,0,0.4);
+        }
+
+        .island-status {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            color: white;
+        }
+
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
+            border-radius: 50%;
+            box-shadow: 0 0 12px var(--success);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            50% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+        }
+
+        .island-separator {
+            width: 1px;
+            height: 24px;
+            background: rgba(255,255,255,0.2);
+        }
+
+        .island-metrics {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .metric-label {
+            font-size: 0.75rem;
+            color: rgba(255,255,255,0.6);
+        }
+
+        .metric-value {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: white;
+        }
+
+        .island-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-island-secondary {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 12px 20px;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            border-radius: 100px;
+            color: rgba(255,255,255,0.8);
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-island-secondary:hover {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+
+        .btn-island-primary {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            background: white;
+            border: none;
+            border-radius: 100px;
+            color: var(--brand);
+            font-weight: 700;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-island-primary:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 20px rgba(255,255,255,0.3);
+        }
+
+        .btn-island-primary.success {
+            background: var(--success);
+            color: white;
+        }
+
+        /* ===== UTILITIES ===== */
+        .hidden { display: none !important; }
+
+        /* ===== ANIMATIONS ===== */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ===== SCROLLBAR ===== */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+    <!-- HEADER -->
+    <header class="header">
+        <div class="header-left">
+            <button class="close-btn" onclick="confirmClose()">✕</button>
+            <div class="breadcrumb">
+                <span class="breadcrumb-item">Contracts</span>
+                <span class="breadcrumb-separator">/</span>
+                <span class="breadcrumb-current" id="breadcrumbTitle">New Contract</span>
+            </div>
+        </div>
+
+        <div class="progress-dots" id="progressDots">
+            <div class="dot small active" data-step="0"></div>
+            <div class="dot small" data-step="1"></div>
+            <div class="dot small" data-step="2"></div>
+            <div class="dot small" data-step="3"></div>
+            <div class="dot small" data-step="4"></div>
+            <div class="dot small" data-step="5"></div>
+        </div>
+
+        <div class="header-right">
+            <button class="btn-ghost" id="saveDraftBtn">Save Draft</button>
+        </div>
+    </header>
+
+    <!-- MAIN CONTAINER -->
+    <div class="main-container">
+        <!-- STEP 0: PATH SELECTION -->
+        <div class="path-selection step-view active" id="step0">
+            <div class="path-header">
+                <h1>Create a new contract</h1>
+                <p>Choose how you'd like to build this agreement</p>
+            </div>
+
+            <div class="path-cards">
+                <div class="path-card" onclick="selectPath('template')">
+                    <div class="path-card-icon template">📋</div>
+                    <h3>Start from Template</h3>
+                    <p>Use a pre-built blueprint with proven block combinations and pricing.</p>
+                    <div class="path-card-features">
+                        <div class="feature-item"><span class="check">✓</span> Industry templates</div>
+                        <div class="feature-item"><span class="check">✓</span> Pre-configured pricing</div>
+                        <div class="feature-item"><span class="check">✓</span> Faster setup</div>
+                    </div>
+                </div>
+
+                <div class="path-card" onclick="selectPath('scratch')">
+                    <div class="path-card-icon scratch">✨</div>
+                    <h3>Create from Scratch</h3>
+                    <p>Build a custom contract by selecting blocks with full control.</p>
+                    <div class="path-card-features">
+                        <div class="feature-item"><span class="check">✓</span> Complete flexibility</div>
+                        <div class="feature-item"><span class="check">✓</span> Custom pricing</div>
+                        <div class="feature-item"><span class="check">✓</span> Unique structure</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- WIZARD STEPS 1-4 -->
+        <div class="wizard-layout" id="wizardLayout">
+            <div class="form-pane">
+                <!-- STEP 1: BUYER SELECTION -->
+                <div class="step-container" id="step1">
+                    <div class="step-header">
+                        <h2>Who is this contract for?</h2>
+                        <p>Search your contacts or add a new recipient</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Select Contact <span class="required">*</span></label>
+                        <div class="search-wrapper">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" class="form-input search-input" id="buyerSearch" placeholder="Search by name, email, or phone..." onclick="toggleDropdown()" oninput="filterContacts()">
+                            <div class="search-dropdown" id="contactDropdown">
+                                <div class="dropdown-section">
+                                    <div class="dropdown-label">Recent Contacts</div>
+                                    <div class="dropdown-item" onclick="selectContact('Ravi Sharma', 'ravi@techcorp.com', 'RS', 'customer')">
+                                        <div class="dropdown-avatar">RS</div>
+                                        <div class="dropdown-info">
+                                            <div class="dropdown-name">Ravi Sharma</div>
+                                            <div class="dropdown-meta">ravi@techcorp.com</div>
+                                        </div>
+                                        <span class="dropdown-tag customer">Customer</span>
+                                    </div>
+                                    <div class="dropdown-item" onclick="selectContact('Anita Patel', '+91 98765 43210', 'AP', 'customer')">
+                                        <div class="dropdown-avatar" style="background: linear-gradient(135deg, #10B981, #34D399);">AP</div>
+                                        <div class="dropdown-info">
+                                            <div class="dropdown-name">Anita Patel</div>
+                                            <div class="dropdown-meta">+91 98765 43210</div>
+                                        </div>
+                                        <span class="dropdown-tag customer">Customer</span>
+                                    </div>
+                                    <div class="dropdown-item" onclick="selectContact('Mumbai Cooling', 'contact@mumbaicooling.in', 'MC', 'vendor')">
+                                        <div class="dropdown-avatar" style="background: linear-gradient(135deg, #F59E0B, #FBBF24);">MC</div>
+                                        <div class="dropdown-info">
+                                            <div class="dropdown-name">Mumbai Cooling Solutions</div>
+                                            <div class="dropdown-meta">contact@mumbaicooling.in</div>
+                                        </div>
+                                        <span class="dropdown-tag vendor">Vendor</span>
+                                    </div>
+                                </div>
+                                <div class="dropdown-section" style="border-top: 1px solid var(--border);">
+                                    <button class="quick-add-btn" onclick="openQuickAdd()">
+                                        <span>+</span> Add new contact
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="selectedBuyerCard" class="hidden" style="margin-top: 1rem; padding: 1rem; background: var(--success-bg); border-radius: var(--radius-lg); display: flex; align-items: center; gap: 1rem;">
+                        <div class="dropdown-avatar" id="selectedAvatar">RS</div>
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; color: var(--brand);" id="selectedName">Ravi Sharma</div>
+                            <div style="font-size: 0.8125rem; color: var(--text-light);" id="selectedMeta">ravi@techcorp.com</div>
+                        </div>
+                        <button style="background: none; border: none; color: var(--text-light); cursor: pointer;" onclick="clearContact()">✕</button>
+                    </div>
+                </div>
+
+                <!-- STEP 2: ACCEPTANCE OPTIONS -->
+                <div class="step-container" id="step2">
+                    <div class="step-header">
+                        <h2>How should they accept?</h2>
+                        <p>Choose when the contract becomes active</p>
+                    </div>
+
+                    <div class="acceptance-grid">
+                        <div class="acceptance-card selected" onclick="selectAcceptance(this, 'payment')">
+                            <div class="acceptance-icon payment">💰</div>
+                            <h4>Accept on Payment</h4>
+                            <p>Contract activates when buyer pays the first invoice</p>
+                            <span class="acceptance-badge recommended">Recommended</span>
+                        </div>
+
+                        <div class="acceptance-card" onclick="selectAcceptance(this, 'signoff')">
+                            <div class="acceptance-icon signoff">✍️</div>
+                            <h4>Email / OTP Signoff</h4>
+                            <p>Buyer confirms via email link or OTP verification</p>
+                        </div>
+
+                        <div class="acceptance-card" onclick="selectAcceptance(this, 'auto')">
+                            <div class="acceptance-icon auto">⚡</div>
+                            <h4>Auto Accept</h4>
+                            <p>Contract is immediately active when sent</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 3: BASE DETAILS -->
+                <div class="step-container" id="step3">
+                    <div class="step-header">
+                        <h2>Contract details</h2>
+                        <p>Set the basic information for this contract</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Contract Name <span class="required">*</span></label>
+                        <input type="text" class="form-input" id="contractName" placeholder="e.g., Annual AC Maintenance - Ravi Sharma" value="Annual AC Maintenance" oninput="updatePreviewTitle()">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Contract Number</label>
+                            <input type="text" class="form-input" value="CNT-2026-0042" readonly style="background: var(--bg); color: var(--text-light);">
+                            <span class="form-hint">Auto-generated</span>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Currency <span class="required">*</span></label>
+                            <select class="form-select">
+                                <option value="INR" selected>INR - Indian Rupee</option>
+                                <option value="USD">USD - US Dollar</option>
+                                <option value="EUR">EUR - Euro</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Duration <span class="required">*</span></label>
+                            <div class="input-with-addon">
+                                <input type="number" class="form-input" value="12" min="1">
+                                <select class="form-select">
+                                    <option value="months" selected>Months</option>
+                                    <option value="years">Years</option>
+                                    <option value="days">Days</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Grace Period</label>
+                            <div class="input-with-addon">
+                                <input type="number" class="form-input" value="7" min="0">
+                                <select class="form-select">
+                                    <option value="days" selected>Days</option>
+                                    <option value="weeks">Weeks</option>
+                                </select>
+                            </div>
+                            <span class="form-hint">Extra time after contract ends</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Description</label>
+                        <textarea class="form-textarea" placeholder="Brief description of what this contract covers...">Comprehensive annual maintenance contract for split ACs including preventive maintenance visits, priority support, and gas top-up.</textarea>
+                    </div>
+                </div>
+
+                <!-- STEP 4: BLOCK ASSEMBLY -->
+                <div class="step-container" id="step4">
+                    <div class="step-header">
+                        <h2>Add services & terms</h2>
+                        <p>Build your contract by adding blocks from the library</p>
+                    </div>
+
+                    <div class="assembly-layout">
+                        <!-- Block Library -->
+                        <div class="block-library">
+                            <div class="library-header">
+                                <h4>Block Library</h4>
+                                <div class="library-search">
+                                    <span class="library-search-icon">🔍</span>
+                                    <input type="text" placeholder="Search blocks...">
+                                </div>
+                            </div>
+                            <div class="library-content">
+                                <div class="library-category">
+                                    <div class="category-title">Service Blocks</div>
+                                    <div class="library-item" onclick="addBlock('AC Maintenance', '❄️', 800, 'service')">
+                                        <div class="library-item-icon service">❄️</div>
+                                        <div class="library-item-info">
+                                            <div class="library-item-name">AC Maintenance</div>
+                                            <div class="library-item-price">₹800 per visit</div>
+                                        </div>
+                                        <div class="library-item-add">+</div>
+                                    </div>
+                                    <div class="library-item" onclick="addBlock('Repair Service', '🔧', 500, 'service')">
+                                        <div class="library-item-icon service">🔧</div>
+                                        <div class="library-item-info">
+                                            <div class="library-item-name">Repair Service</div>
+                                            <div class="library-item-price">₹500 per hour</div>
+                                        </div>
+                                        <div class="library-item-add">+</div>
+                                    </div>
+                                    <div class="library-item" onclick="addBlock('Annual Inspection', '🔍', 1500, 'service')">
+                                        <div class="library-item-icon service">🔍</div>
+                                        <div class="library-item-info">
+                                            <div class="library-item-name">Annual Inspection</div>
+                                            <div class="library-item-price">₹1,500 one-time</div>
+                                        </div>
+                                        <div class="library-item-add">+</div>
+                                    </div>
+                                </div>
+
+                                <div class="library-category">
+                                    <div class="category-title">Billing Blocks</div>
+                                    <div class="library-item" onclick="addBlock('Monthly Billing', '💳', 0, 'billing')">
+                                        <div class="library-item-icon billing">💳</div>
+                                        <div class="library-item-info">
+                                            <div class="library-item-name">Monthly Billing</div>
+                                            <div class="library-item-price">Recurring</div>
+                                        </div>
+                                        <div class="library-item-add">+</div>
+                                    </div>
+                                    <div class="library-item" onclick="addBlock('100% Upfront', '💰', 0, 'billing')">
+                                        <div class="library-item-icon billing">💰</div>
+                                        <div class="library-item-info">
+                                            <div class="library-item-name">100% Upfront</div>
+                                            <div class="library-item-price">One-time</div>
+                                        </div>
+                                        <div class="library-item-add">+</div>
+                                    </div>
+                                </div>
+
+                                <div class="library-category">
+                                    <div class="category-title">Content Blocks</div>
+                                    <div class="library-item" onclick="addBlock('Terms & Conditions', '📋', 0, 'content')">
+                                        <div class="library-item-icon content">📋</div>
+                                        <div class="library-item-info">
+                                            <div class="library-item-name">Terms & Conditions</div>
+                                            <div class="library-item-price">Text</div>
+                                        </div>
+                                        <div class="library-item-add">+</div>
+                                    </div>
+                                    <div class="library-item" onclick="addBlock('Warranty Terms', '🛡️', 0, 'content')">
+                                        <div class="library-item-icon content">🛡️</div>
+                                        <div class="library-item-info">
+                                            <div class="library-item-name">Warranty Terms</div>
+                                            <div class="library-item-price">Text</div>
+                                        </div>
+                                        <div class="library-item-add">+</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Contract Blocks -->
+                        <div class="contract-blocks">
+                            <div class="blocks-header">
+                                <h4>Contract Blocks <span class="blocks-count" id="blocksCount">2</span></h4>
+                                <button class="btn-ghost" style="font-size: 0.75rem;" onclick="clearAllBlocks()">Clear All</button>
+                            </div>
+                            <div class="blocks-body" id="blocksContainer">
+                                <!-- Pre-populated block -->
+                                <div class="block-card expanded" id="block-1">
+                                    <div class="block-main" onclick="toggleBlockSettings('block-1')">
+                                        <div class="block-drag">⋮⋮</div>
+                                        <div class="block-icon" style="background: var(--accent-bg);">❄️</div>
+                                        <div class="block-info">
+                                            <div class="block-name">AC Maintenance Visit</div>
+                                            <div class="block-desc">Preventive maintenance service</div>
+                                        </div>
+                                        <div class="block-qty">
+                                            <button class="qty-btn" onclick="event.stopPropagation(); changeQty('block-1', -1)">−</button>
+                                            <span class="qty-value" id="qty-block-1">4</span>
+                                            <button class="qty-btn" onclick="event.stopPropagation(); changeQty('block-1', 1)">+</button>
+                                        </div>
+                                        <div class="block-price" id="price-block-1">₹3,200</div>
+                                        <button class="block-delete" onclick="event.stopPropagation(); removeBlock('block-1')">🗑️</button>
+                                    </div>
+                                    <div class="block-settings">
+                                        <div class="settings-row">
+                                            <div class="setting-group">
+                                                <label>Cycle (Days Between)</label>
+                                                <input type="number" class="setting-input" value="90" placeholder="Days">
+                                                <div class="cycle-chips">
+                                                    <span class="cycle-chip" onclick="setCycle(this, 30)">30</span>
+                                                    <span class="cycle-chip" onclick="setCycle(this, 60)">60</span>
+                                                    <span class="cycle-chip active" onclick="setCycle(this, 90)">90</span>
+                                                </div>
+                                            </div>
+                                            <div class="setting-group">
+                                                <label>Price Override</label>
+                                                <input type="text" class="setting-input" value="₹800" placeholder="Per unit">
+                                            </div>
+                                            <div class="setting-group">
+                                                <label>Quantity Type</label>
+                                                <div class="toggle-group">
+                                                    <div class="toggle-switch" onclick="this.classList.toggle('active')"></div>
+                                                    <span class="toggle-label">Unlimited</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="block-card" id="block-2">
+                                    <div class="block-main" onclick="toggleBlockSettings('block-2')">
+                                        <div class="block-drag">⋮⋮</div>
+                                        <div class="block-icon" style="background: var(--warning-bg);">📋</div>
+                                        <div class="block-info">
+                                            <div class="block-name">Terms & Conditions</div>
+                                            <div class="block-desc">Standard AMC terms</div>
+                                        </div>
+                                        <div class="block-price">—</div>
+                                        <button class="block-delete" onclick="event.stopPropagation(); removeBlock('block-2')">🗑️</button>
+                                    </div>
+                                    <div class="block-settings">
+                                        <div class="settings-row">
+                                            <div class="setting-group" style="grid-column: span 3;">
+                                                <label>Content Template</label>
+                                                <select class="setting-input">
+                                                    <option>Standard AMC Terms</option>
+                                                    <option>Extended Warranty Terms</option>
+                                                    <option>Custom</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preview Pane -->
+            <div class="preview-pane" id="previewPane">
+                <div class="preview-card">
+                    <div class="preview-header">
+                        <div class="preview-vendor">
+                            <span>⚡</span> Vikuna Services
+                        </div>
+                        <div class="preview-title" id="previewTitle">Annual AC Maintenance</div>
+                        <div class="preview-meta">Contract #CNT-2026-0042</div>
+                    </div>
+                    <div class="preview-body">
+                        <div class="preview-price-row">
+                            <div>
+                                <div class="preview-total" id="previewTotal">₹3,200</div>
+                                <div class="preview-total-label">Total Amount</div>
+                            </div>
+                            <div>
+                                <div class="preview-duration-value">12 Months</div>
+                                <div class="preview-duration-label">Duration</div>
+                            </div>
+                        </div>
+
+                        <div class="preview-section-title">What's Included</div>
+                        <div id="previewItems">
+                            <div class="preview-item">
+                                <span class="preview-item-check">✓</span>
+                                <span class="preview-item-name">AC Maintenance Visit</span>
+                                <span class="preview-item-qty">×4</span>
+                            </div>
+                            <div class="preview-item">
+                                <span class="preview-item-check">✓</span>
+                                <span class="preview-item-name">Priority Support</span>
+                                <span class="preview-item-qty">Included</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="preview-footer">
+                        <button class="preview-cta">Accept & Pay ₹3,200 →</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 5: REVIEW (Paper Canvas) -->
+        <div class="step-view" id="step5" style="display: none; padding: 2rem;">
+            <div class="paper-canvas">
+                <div class="paper-header">
+                    <input type="text" class="paper-title" value="Annual AC Maintenance" id="paperTitle">
+                    <div class="paper-subtitle">Generated by <strong>Vikuna Services</strong> on January 22, 2026</div>
+                </div>
+
+                <div class="paper-meta">
+                    <div class="paper-meta-item">
+                        <label>Contract For</label>
+                        <div class="paper-meta-value" id="paperBuyer">Ravi Sharma</div>
+                    </div>
+                    <div class="paper-meta-item">
+                        <label>Contract Number</label>
+                        <div class="paper-meta-value">CNT-2026-0042</div>
+                    </div>
+                    <div class="paper-meta-item">
+                        <label>Duration</label>
+                        <div class="paper-meta-value">12 Months</div>
+                    </div>
+                </div>
+
+                <div class="paper-section">
+                    <div class="paper-section-title">Services & Deliverables</div>
+                    <div id="paperBlocks">
+                        <div class="paper-block">
+                            <div class="paper-block-icon">❄️</div>
+                            <div class="paper-block-info">
+                                <div class="paper-block-name">AC Maintenance Visit</div>
+                                <div class="paper-block-desc">4 preventive maintenance visits • Every 90 days</div>
+                            </div>
+                            <div class="paper-block-price">₹3,200</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="paper-section">
+                    <div class="paper-section-title">Terms & Conditions</div>
+                    <div class="paper-terms">
+                        Payment is due within 7 days of contract acceptance. Services are scheduled based on mutual availability.
+                        Parts and consumables are charged separately at prevailing rates. This contract is valid for the specified
+                        duration and auto-renews unless cancelled 30 days prior to expiry.
+                    </div>
+                </div>
+
+                <div class="paper-total-section">
+                    <div>
+                        <div class="paper-total-label">Total Contract Value</div>
+                    </div>
+                    <div class="paper-total-value" id="paperTotal">₹3,200</div>
+                </div>
+
+                <div class="send-section">
+                    <div class="send-title">Send contract via</div>
+                    <div class="send-channels">
+                        <div class="send-channel selected" onclick="selectChannel(this)">
+                            <div class="send-channel-icon">💬</div>
+                            <div class="send-channel-name">WhatsApp</div>
+                            <div class="send-channel-desc">Instant delivery</div>
+                        </div>
+                        <div class="send-channel" onclick="selectChannel(this)">
+                            <div class="send-channel-icon">📧</div>
+                            <div class="send-channel-name">Email</div>
+                            <div class="send-channel-desc">Professional format</div>
+                        </div>
+                        <div class="send-channel" onclick="selectChannel(this)">
+                            <div class="send-channel-icon">🔗</div>
+                            <div class="send-channel-name">Copy Link</div>
+                            <div class="send-channel-desc">Share anywhere</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FLOATING ACTION ISLAND -->
+    <div class="island-container" id="actionIsland" style="display: none;">
+        <div class="action-island">
+            <div class="island-status">
+                <div class="status-pill">
+                    <span class="status-dot"></span>
+                    <span id="statusText">Drafting</span>
+                </div>
+                <div class="island-separator"></div>
+                <div class="island-metrics">
+                    <span class="metric-label">Total:</span>
+                    <span class="metric-value" id="islandTotal">₹3,200</span>
+                </div>
+            </div>
+
+            <div class="island-actions">
+                <button class="btn-island-secondary" onclick="prevStep()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+                    Back
+                </button>
+
+                <button class="btn-island-primary" id="nextBtn" onclick="nextStep()">
+                    <span>Continue</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== STATE =====
+        let currentStep = 0;
+        const totalSteps = 6;
+        let selectedBuyer = null;
+        let contractTotal = 3200;
+        let blockIdCounter = 3;
+
+        // ===== NAVIGATION =====
+        function selectPath(path) {
+            goToStep(1);
+        }
+
+        function goToStep(step) {
+            currentStep = step;
+
+            // Hide all views
+            document.querySelectorAll('.step-view').forEach(v => v.style.display = 'none');
+            document.querySelectorAll('.step-container').forEach(c => c.classList.remove('active'));
+
+            // Update progress dots
+            document.querySelectorAll('.dot').forEach((dot, idx) => {
+                dot.classList.remove('active', 'completed');
+                if (idx < step) dot.classList.add('completed');
+                if (idx === step) dot.classList.add('active');
+            });
+
+            // Show appropriate view
+            if (step === 0) {
+                document.getElementById('step0').style.display = 'flex';
+                document.getElementById('actionIsland').style.display = 'none';
+                document.getElementById('wizardLayout').classList.remove('active');
+            } else if (step >= 1 && step <= 4) {
+                document.getElementById('wizardLayout').classList.add('active');
+                document.getElementById(`step${step}`).classList.add('active');
+                document.getElementById('actionIsland').style.display = 'block';
+
+                // Show/hide preview pane based on step
+                document.getElementById('previewPane').style.display = step >= 3 ? 'block' : 'none';
+            } else if (step === 5) {
+                document.getElementById('wizardLayout').classList.remove('active');
+                document.getElementById('step5').style.display = 'block';
+                document.getElementById('actionIsland').style.display = 'block';
+                updatePaperCanvas();
+            }
+
+            updateIslandStatus();
+            updateNextButton();
+        }
+
+        function nextStep() {
+            if (currentStep < totalSteps - 1) {
+                goToStep(currentStep + 1);
+            } else {
+                sendContract();
+            }
+        }
+
+        function prevStep() {
+            if (currentStep > 0) {
+                goToStep(currentStep - 1);
+            }
+        }
+
+        function updateIslandStatus() {
+            const statuses = ['', 'Selecting Buyer', 'Setting Acceptance', 'Adding Details', 'Building Contract', 'Final Review'];
+            document.getElementById('statusText').textContent = statuses[currentStep] || 'Drafting';
+        }
+
+        function updateNextButton() {
+            const btn = document.getElementById('nextBtn');
+            if (currentStep === 5) {
+                btn.innerHTML = '<span>Send Contract</span> 🚀';
+                btn.classList.add('success');
+            } else {
+                btn.innerHTML = '<span>Continue</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>';
+                btn.classList.remove('success');
+            }
+        }
+
+        // ===== BUYER SELECTION =====
+        function toggleDropdown() {
+            document.getElementById('contactDropdown').classList.toggle('show');
+        }
+
+        function selectContact(name, meta, initials, type) {
+            selectedBuyer = { name, meta, initials, type };
+            document.getElementById('buyerSearch').value = name;
+            document.getElementById('contactDropdown').classList.remove('show');
+
+            // Show selected card
+            document.getElementById('selectedBuyerCard').classList.remove('hidden');
+            document.getElementById('selectedBuyerCard').style.display = 'flex';
+            document.getElementById('selectedName').textContent = name;
+            document.getElementById('selectedMeta').textContent = meta;
+            document.getElementById('selectedAvatar').textContent = initials;
+
+            // Update preview
+            document.getElementById('paperBuyer').textContent = name;
+        }
+
+        function clearContact() {
+            selectedBuyer = null;
+            document.getElementById('buyerSearch').value = '';
+            document.getElementById('selectedBuyerCard').style.display = 'none';
+        }
+
+        function openQuickAdd() {
+            alert('Opening Add Contact drawer...');
+            document.getElementById('contactDropdown').classList.remove('show');
+        }
+
+        function filterContacts() {
+            // Simplified filter - in real app would filter dropdown items
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.search-wrapper')) {
+                document.getElementById('contactDropdown').classList.remove('show');
+            }
+        });
+
+        // ===== ACCEPTANCE =====
+        function selectAcceptance(card, type) {
+            document.querySelectorAll('.acceptance-card').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+        }
+
+        // ===== BLOCKS =====
+        function addBlock(name, icon, price, type) {
+            const blockId = `block-${blockIdCounter++}`;
+            const isService = type === 'service';
+            const qty = isService ? 1 : 0;
+
+            const blockHtml = `
+                <div class="block-card" id="${blockId}">
+                    <div class="block-main" onclick="toggleBlockSettings('${blockId}')">
+                        <div class="block-drag">⋮⋮</div>
+                        <div class="block-icon" style="background: ${type === 'service' ? 'var(--accent-bg)' : type === 'billing' ? 'var(--success-bg)' : 'var(--warning-bg)'};">${icon}</div>
+                        <div class="block-info">
+                            <div class="block-name">${name}</div>
+                            <div class="block-desc">Click to configure</div>
+                        </div>
+                        ${isService ? `
+                        <div class="block-qty">
+                            <button class="qty-btn" onclick="event.stopPropagation(); changeQty('${blockId}', -1)">−</button>
+                            <span class="qty-value" id="qty-${blockId}">${qty}</span>
+                            <button class="qty-btn" onclick="event.stopPropagation(); changeQty('${blockId}', 1)">+</button>
+                        </div>
+                        <div class="block-price" id="price-${blockId}">₹${price * qty}</div>
+                        ` : `<div class="block-price">—</div>`}
+                        <button class="block-delete" onclick="event.stopPropagation(); removeBlock('${blockId}')">🗑️</button>
+                    </div>
+                    <div class="block-settings">
+                        ${isService ? `
+                        <div class="settings-row">
+                            <div class="setting-group">
+                                <label>Cycle (Days)</label>
+                                <input type="number" class="setting-input" value="30" placeholder="Days">
+                            </div>
+                            <div class="setting-group">
+                                <label>Price Override</label>
+                                <input type="text" class="setting-input" value="₹${price}" placeholder="Per unit">
+                            </div>
+                            <div class="setting-group">
+                                <label>Unlimited</label>
+                                <div class="toggle-group">
+                                    <div class="toggle-switch" onclick="this.classList.toggle('active')"></div>
+                                    <span class="toggle-label">Off</span>
+                                </div>
+                            </div>
+                        </div>
+                        ` : `
+                        <div class="settings-row">
+                            <div class="setting-group" style="grid-column: span 3;">
+                                <label>Configuration</label>
+                                <select class="setting-input">
+                                    <option>Default Settings</option>
+                                    <option>Custom</option>
+                                </select>
+                            </div>
+                        </div>
+                        `}
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('blocksContainer').insertAdjacentHTML('beforeend', blockHtml);
+            updateBlocksCount();
+            showToast(`${name} added to contract`);
+        }
+
+        function removeBlock(blockId) {
+            document.getElementById(blockId).remove();
+            updateBlocksCount();
+            updateTotal();
+        }
+
+        function toggleBlockSettings(blockId) {
+            const block = document.getElementById(blockId);
+            document.querySelectorAll('.block-card').forEach(b => {
+                if (b.id !== blockId) b.classList.remove('expanded');
+            });
+            block.classList.toggle('expanded');
+        }
+
+        function changeQty(blockId, delta) {
+            const qtyEl = document.getElementById(`qty-${blockId}`);
+            let qty = parseInt(qtyEl.textContent) + delta;
+            if (qty < 0) qty = 0;
+            qtyEl.textContent = qty;
+
+            // Update price (assuming 800 per unit for demo)
+            const priceEl = document.getElementById(`price-${blockId}`);
+            if (priceEl) {
+                priceEl.textContent = `₹${(qty * 800).toLocaleString()}`;
+            }
+
+            updateTotal();
+        }
+
+        function setCycle(chip, days) {
+            const parent = chip.closest('.setting-group');
+            parent.querySelectorAll('.cycle-chip').forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            parent.querySelector('.setting-input').value = days;
+        }
+
+        function updateBlocksCount() {
+            const count = document.querySelectorAll('.block-card').length;
+            document.getElementById('blocksCount').textContent = count;
+        }
+
+        function clearAllBlocks() {
+            if (confirm('Remove all blocks from this contract?')) {
+                document.getElementById('blocksContainer').innerHTML = '';
+                updateBlocksCount();
+                updateTotal();
+            }
+        }
+
+        function updateTotal() {
+            // Simplified total calculation
+            let total = 0;
+            document.querySelectorAll('.block-price').forEach(el => {
+                const text = el.textContent;
+                if (text !== '—') {
+                    const num = parseInt(text.replace(/[^\d]/g, '')) || 0;
+                    total += num;
+                }
+            });
+
+            contractTotal = total;
+            document.getElementById('islandTotal').textContent = `₹${total.toLocaleString()}`;
+            document.getElementById('previewTotal').textContent = `₹${total.toLocaleString()}`;
+            document.querySelector('.preview-cta').textContent = `Accept & Pay ₹${total.toLocaleString()} →`;
+        }
+
+        // ===== PREVIEW =====
+        function updatePreviewTitle() {
+            const title = document.getElementById('contractName').value || 'Contract Title';
+            document.getElementById('previewTitle').textContent = title;
+            document.getElementById('paperTitle').value = title;
+        }
+
+        function updatePaperCanvas() {
+            // Sync data to paper canvas
+            document.getElementById('paperTotal').textContent = `₹${contractTotal.toLocaleString()}`;
+        }
+
+        // ===== SEND =====
+        function selectChannel(el) {
+            document.querySelectorAll('.send-channel').forEach(c => c.classList.remove('selected'));
+            el.classList.add('selected');
+        }
+
+        function sendContract() {
+            showToast('Contract sent successfully! 🎉', 'success');
+        }
+
+        // ===== UTILITIES =====
+        function confirmClose() {
+            if (confirm('Are you sure? Unsaved changes will be lost.')) {
+                showToast('Contract wizard closed');
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed;
+                top: 100px;
+                right: 20px;
+                background: ${type === 'success' ? 'var(--success)' : 'var(--brand)'};
+                color: white;
+                padding: 1rem 1.5rem;
+                border-radius: 12px;
+                font-size: 0.875rem;
+                font-weight: 500;
+                box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+                z-index: 1001;
+                animation: fadeInUp 0.3s ease-out;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+            `;
+            toast.innerHTML = `<span>${type === 'success' ? '✓' : 'ℹ'}</span> ${message}`;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(-10px)';
+                toast.style.transition = 'all 0.3s';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Initialize
+        updateTotal();
+    </script>
+</body>
+</html>
