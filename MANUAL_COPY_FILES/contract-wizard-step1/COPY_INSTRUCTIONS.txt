@@ -1,0 +1,60 @@
+═══════════════════════════════════════════════════
+CONTRACT WIZARD STEP 1 - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════
+
+Branch: claude/init-submodules-contractui-gMmpV
+Date: January 2026
+Purpose: Contract Wizard with Floating Action Island + Path Selection Step
+
+═══════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════
+
+1. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+   Purpose: Main wizard component with state management and step navigation
+
+2. contractnest-ui/src/components/contracts/ContractWizard/FloatingActionIsland.tsx
+   Purpose: Apple Dynamic Island inspired floating navigation bar
+
+3. contractnest-ui/src/components/contracts/ContractWizard/steps/PathSelectionStep.tsx
+   Purpose: Step 0 - Choose "From Template" or "Create from Scratch"
+
+4. contractnest-ui/src/pages/contracts/create/index.tsx
+   Purpose: My Contracts page with wizard integration
+
+═══════════════════════════════════════════════════
+SUBMODULES AFFECTED
+═══════════════════════════════════════════════════
+
+- contractnest-ui (main branch)
+
+═══════════════════════════════════════════════════
+FEATURES IMPLEMENTED
+═══════════════════════════════════════════════════
+
+FLOATING ACTION ISLAND:
+  - Dark glass with backdrop blur
+  - Pulsing green status dot
+  - Step label display
+  - Progress dots (clickable for completed steps)
+  - Live total value display
+  - Back / Continue navigation
+  - Close button
+  - Full theme support (light/dark mode)
+
+PATH SELECTION STEP (Step 0):
+  - Two option cards: Template vs Scratch
+  - "Recommended" badge on Template option
+  - Feature list for each option
+  - Selection indicator
+  - Hover and selected states
+  - Full theme support
+
+WIZARD INFRASTRUCTURE:
+  - 6-step wizard flow
+  - State management for all wizard data
+  - Navigation validation (can proceed based on step requirements)
+  - Step content rendering
+  - Placeholder content for steps 2-6
+
+═══════════════════════════════════════════════════
