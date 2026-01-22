@@ -1,0 +1,114 @@
+====================================================
+CONTRACT WIZARD - BLOCK SELECTION STEP (STEP 4)
+====================================================
+
+Branch: contract-wizard-blocks
+Date: January 2025
+Feature: Step 4 - Service Block Selection with VaNi Loader/Toast
+
+====================================================
+FILES INCLUDED
+====================================================
+
+1. contractnest-ui/src/components/contracts/ContractWizard/steps/BlockSelectionStep.tsx (NEW)
+   - Two-panel layout: Block Library + Selected Blocks
+   - Uses useBlocks hook to fetch block hierarchy
+   - VaNiLoader for loading state
+   - VaNiToast for add/remove notifications
+   - Search and category filter
+   - Selected blocks with quantity, cycle, unlimited configuration
+   - Running subtotal calculation
+
+2. contractnest-ui/src/components/contracts/ContractWizard/steps/BuyerSelectionStep.tsx (UPDATED)
+   - Added VaNiLoader for loading contacts
+   - Added VaNiToast for buyer selection feedback
+   - Added toast for contact creation success
+
+3. contractnest-ui/src/components/contracts/ContractWizard/index.tsx (UPDATED)
+   - Import BlockSelectionStep
+   - Export SelectedBlock type from BlockSelectionStep
+   - Add handleBlocksChange handler
+   - Integrate BlockSelectionStep in case 4
+
+====================================================
+STANDARD COMPONENTS USED
+====================================================
+
+✅ VaNiLoader - From @/components/common/loaders/UnifiedLoader
+   - Used in: BlockSelectionStep (loading blocks)
+   - Used in: BuyerSelectionStep (loading contacts)
+
+✅ VaNiToast - From @/components/common/toast/VaNiToast
+   - Used in: BlockSelectionStep (add/remove block notifications)
+   - Used in: BuyerSelectionStep (buyer selected, contact created)
+
+====================================================
+COPY COMMANDS (PowerShell)
+====================================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Copy all files
+Copy-Item "MANUAL_COPY_FILES\contract-wizard-blocks\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Files copied successfully!" -ForegroundColor Green
+
+====================================================
+TESTING CHECKLIST
+====================================================
+
+BUYER SELECTION (Step 1):
+- [ ] VaNiLoader shows when loading contacts
+- [ ] Toast appears when selecting a buyer
+- [ ] Toast appears when creating new contact
+
+BLOCK SELECTION (Step 4):
+- [ ] VaNiLoader shows while loading blocks
+- [ ] Block library displays all categories
+- [ ] Category filter works
+- [ ] Search filters blocks
+- [ ] Click "Add to Contract" adds block
+- [ ] Toast appears when block added
+- [ ] Selected blocks show in right panel
+- [ ] Quantity +/- controls work
+- [ ] Cycle dropdown works
+- [ ] Unlimited toggle works
+- [ ] Remove block (X) removes with toast
+- [ ] Subtotal calculates correctly
+- [ ] Continue enabled when 1+ block selected
+- [ ] Light/dark theme works
+
+====================================================
+PRODUCTION CHECKLIST
+====================================================
+
+✅ Theme Support: Full light/dark mode
+✅ VaNiLoader: Loading states
+✅ VaNiToast: User feedback notifications
+✅ Error Handling: Error state with retry button
+✅ Data Fetching: useBlocks hook with hierarchy
+
+====================================================
+BLOCK SELECTION FEATURES
+====================================================
+
+Left Panel (Block Library):
+- Search input
+- Category dropdown filter
+- Grid of available blocks
+- Each block shows: icon, name, description, category, price
+- "Add to Contract" button
+- "Added" badge for already selected
+
+Right Panel (Selected Blocks):
+- Header with count and subtotal
+- List of selected blocks
+- Each block has:
+  * Remove (X) button
+  * Quantity controls (+/-)
+  * Cycle dropdown (One-time/Monthly/Quarterly/Annually)
+  * Unlimited toggle (∞)
+  * Price × quantity calculation
+- Footer with subtotal summary
+
+====================================================
