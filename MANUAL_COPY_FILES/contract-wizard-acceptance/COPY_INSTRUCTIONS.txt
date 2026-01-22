@@ -1,0 +1,71 @@
+====================================================
+CONTRACT WIZARD - ACCEPTANCE METHOD STEP
+====================================================
+
+Branch: contract-wizard-acceptance
+Date: January 2025
+Feature: Step 2 - Acceptance Method Selection
+
+====================================================
+FILES INCLUDED
+====================================================
+
+1. contractnest-ui/src/utils/constants/contracts.ts (NEW)
+   - Contract-specific constants
+   - ACCEPTANCE_METHOD_CONFIG with 3 methods:
+     * Payment - Accept on payment completion
+     * Sign-off - Accept on buyer approval
+     * Auto-Accept - Automatic acceptance
+   - Color utilities and type definitions
+   - Future-ready with CONTRACT_STATUS, BLOCK_TYPES, etc.
+
+2. contractnest-ui/src/components/contracts/ContractWizard/steps/AcceptanceMethodStep.tsx (NEW)
+   - Step 2: Acceptance method selection UI
+   - 3 card-based selection options
+   - Full theme support (light/dark mode)
+   - Selected method info panel
+   - Follows existing card pattern from PathSelectionStep
+
+3. contractnest-ui/src/components/contracts/ContractWizard/index.tsx (UPDATED)
+   - Import AcceptanceMethodStep
+   - Add handleAcceptanceMethodSelect handler
+   - Integrate component in renderStepContent case 2
+
+====================================================
+COPY COMMANDS (PowerShell)
+====================================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Copy all files
+Copy-Item "MANUAL_COPY_FILES\contract-wizard-acceptance\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Files copied successfully!" -ForegroundColor Green
+
+====================================================
+TESTING CHECKLIST
+====================================================
+
+- [ ] Open My Contracts page
+- [ ] Click "Create Contract"
+- [ ] Select path (Template or Scratch)
+- [ ] Select a buyer in Step 1
+- [ ] Reach Acceptance Method step (Step 2)
+- [ ] Verify 3 cards displayed: Payment, Sign-off, Auto-Accept
+- [ ] Click each card - verify selection indicator
+- [ ] Verify info panel updates with selected method description
+- [ ] Test light/dark theme switching
+- [ ] Verify Continue button enabled only when method selected
+- [ ] Navigate back and forward between steps
+
+====================================================
+PRODUCTION CHECKLIST
+====================================================
+
+✅ Theme Support: Full light/dark mode
+✅ Constants: Using ACCEPTANCE_METHOD_CONFIG from contracts.ts
+✅ Error Handling: N/A (UI selection only)
+✅ Toasts: N/A (no async operations)
+✅ Loaders: N/A (no data fetching)
+
+====================================================
