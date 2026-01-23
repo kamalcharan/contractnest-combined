@@ -1,0 +1,172 @@
+===============================================================================
+FK RELATIONSHIPS PART 2 - FAMILYSETUPSCREEN WITH API INTEGRATION
+===============================================================================
+Branch: fk-relationships-part2
+Date: January 2025
+
+PREREQUISITE: Part 1 must be deployed first (fk-relationships-part1)
+  - Relationships seed data
+  - Registration.ts fix (family-space step not auto-completed)
+
+===============================================================================
+CHANGES SUMMARY
+===============================================================================
+
+FILES CHANGED:
+
+1. FamilyKnows/src/services/api.ts (MODIFIED)
+   - Added INVITATIONS endpoints:
+     - CREATE: POST /api/users/invitations
+     - LIST: GET /api/users/invitations
+     - GET: GET /api/users/invitations/:id
+     - CANCEL: DELETE /api/users/invitations/:id
+     - RESEND: POST /api/users/invitations/:id/resend
+   - Added CATEGORIES endpoints:
+     - GET_DETAILS: GET /api/categories/:category/details
+   - Added WORKSPACE endpoints:
+     - MEMBERS: GET /api/workspace/members
+     - GET_MEMBER: GET/DELETE /api/workspace/members/:id
+
+2. FamilyKnows/src/features/onboarding/screens/FamilySetupScreen.tsx (REWRITTEN)
+   Key changes:
+   - Replaced "Role" (admin/editor/viewer) with "Relationship" (12 family relationships)
+   - Added beautiful relationship card selector (3x4 grid with icons and colors)
+   - Replaced mock functions with real API calls
+   - Added loading states (ActivityIndicator)
+   - Added toast notifications for success/error feedback
+   - Added pull-to-refresh in manage mode
+   - Detects pre_created flag from registration to show create mode
+   - Supports both onboarding flow and settings access
+
+SUBMODULES AFFECTED:
+- FamilyKnows
+
+PRODUCTION CHECKLIST:
+  Transaction Management: Yes (API handles transactions)
+  Race Condition Handling: Yes (loading states prevent double-submit)
+  Error Handling: Yes (try-catch with toast notifications)
+  Toasts: Yes (using existing Toast component)
+  Loaders: Yes (ActivityIndicator + button loading states)
+
+===============================================================================
+STEP-BY-STEP COMMANDS (Windows PowerShell)
+===============================================================================
+
+STEP 1: Navigate to Project
+---------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Ensure Part 1 is Deployed
+---------------------------------
+# CRITICAL: Part 1 MUST be deployed before Part 2
+# Part 1 contains:
+#   - relationships.seed.ts (relationship data)
+#   - registration.ts fix (family-space not auto-completed)
+# Verify by checking if the user sees FamilySetup screen during onboarding
+
+STEP 3: Copy FamilyKnows Files
+---------------------------------
+# Copy api.ts
+Copy-Item "MANUAL_COPY_FILES\fk-relationships-part2\FamilyKnows\src\services\api.ts" -Destination "FamilyKnows\src\services\api.ts" -Force
+
+# Copy FamilySetupScreen.tsx
+Copy-Item "MANUAL_COPY_FILES\fk-relationships-part2\FamilyKnows\src\features\onboarding\screens\FamilySetupScreen.tsx" -Destination "FamilyKnows\src\features\onboarding\screens\FamilySetupScreen.tsx" -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+STEP 4: Verify Files
+---------------------------------
+Test-Path "FamilyKnows\src\services\api.ts"
+Test-Path "FamilyKnows\src\features\onboarding\screens\FamilySetupScreen.tsx"
+
+STEP 5: Start Development Server
+---------------------------------
+cd FamilyKnows
+npm start
+# Or: npx expo start
+
+===============================================================================
+TESTING CHECKLIST
+===============================================================================
+
+ONBOARDING FLOW (Fresh User):
+- [ ] Sign up with a new account and workspace name
+- [ ] Complete onboarding steps until FamilySetup screen appears
+- [ ] Family name should be pre-populated from registration
+- [ ] Click "Confirm & Create" button
+- [ ] After creation, invite modal should appear automatically
+- [ ] Select a relationship (e.g., Spouse)
+- [ ] Enter email or phone number
+- [ ] Click "Send Invitation" - should show success toast
+- [ ] Invitation should appear in "Pending Invitations" section
+
+SETTINGS ACCESS (Existing User):
+- [ ] Open menu drawer (hamburger icon)
+- [ ] Click "Family Settings"
+- [ ] Should see "Family Members" screen with manage mode
+- [ ] Workspace card should show family name and member count
+- [ ] Click + icon to open invite modal
+- [ ] All 12 relationships should display as beautiful cards
+- [ ] Relationship card selection should show checkmark
+- [ ] Send invitation - verify toast notification
+- [ ] Pull down to refresh - member list should refresh
+
+RELATIONSHIP CARDS:
+- [ ] All 12 relationships display correctly:
+      Father (blue), Mother (pink), Spouse (red), Son (green),
+      Daughter (purple), Brother (cyan), Sister (light pink),
+      Grand Mother (amber), Grand Daughter (violet),
+      Guardian (indigo), Executor (slate), Other (stone)
+- [ ] Card selection highlights with color border
+- [ ] Selected card shows checkmark badge
+
+ERROR HANDLING:
+- [ ] Try sending invitation without email/phone - warning toast
+- [ ] Try sending invitation without selecting relationship - warning toast
+- [ ] Network error should show appropriate error toast
+
+===============================================================================
+API ENDPOINTS REQUIRED (Backend)
+===============================================================================
+
+The following API endpoints must exist for full functionality:
+
+1. GET /api/categories/roles/details
+   - Returns relationship types from t_category_details
+   - Fallback: Uses DEFAULT_RELATIONSHIPS if API unavailable
+
+2. POST /api/users/invitations
+   - Creates a new invitation
+   - Body: { email, phone, relationship_code, relationship_display, delivery_channels }
+
+3. GET /api/users/invitations
+   - Lists pending invitations for the tenant
+
+4. DELETE /api/users/invitations/:id
+   - Cancels a pending invitation
+
+5. POST /api/users/invitations/:id/resend
+   - Resends an existing invitation
+
+6. GET /api/workspace/members
+   - Lists workspace members with relationship info
+
+7. DELETE /api/workspace/members/:id
+   - Removes a member from the workspace
+
+8. POST /api/FKonboarding/complete-step
+   - Completes the family-space onboarding step
+   - Body: { step: 'family-space', data: { name, created_at } }
+
+Note: If backend endpoints are not available yet, the screen will still work
+with DEFAULT_RELATIONSHIPS and show appropriate error toasts for API failures.
+
+===============================================================================
+WAITING FOR CONFIRMATION
+===============================================================================
+
+Test locally and confirm:
+  -> "Tested, working - proceed with commit"
+  -> "Issue found: [describe problem]"
+
+===============================================================================
