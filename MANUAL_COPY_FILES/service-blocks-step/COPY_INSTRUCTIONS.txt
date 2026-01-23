@@ -8,7 +8,7 @@ Feature: ServiceBlocksStep with 3-column layout for Contract Wizard
 - Column 3: Live Preview (360px sticky) - Dynamic contract preview
 
 ═══════════════════════════════════════════════════════════════════════════════
-FILES TO COPY
+FILES TO COPY (7 files)
 ═══════════════════════════════════════════════════════════════════════════════
 
 1. NEW: catalog-studio/BlockCardSelectable.tsx
@@ -35,6 +35,10 @@ FILES TO COPY
    FROM: MANUAL_COPY_FILES/service-blocks-step/contractnest-ui/src/components/contracts/ContractWizard/steps/ServiceBlocksStep.tsx
    TO:   contractnest-ui/src/components/contracts/ContractWizard/steps/ServiceBlocksStep.tsx
 
+7. MODIFIED: ContractWizard/index.tsx (uses ServiceBlocksStep instead of BlockSelectionStep)
+   FROM: MANUAL_COPY_FILES/service-blocks-step/contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+   TO:   contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+
 ═══════════════════════════════════════════════════════════════════════════════
 COMPONENT DESCRIPTIONS
 ═══════════════════════════════════════════════════════════════════════════════
@@ -48,7 +52,7 @@ BlockCardConfigurable.tsx
 - Block card with inline accordion settings
 - Drag handle, quantity controls, cycle selector
 - Pro-rate, auto-renew, custom price options
-- Uses same pattern as template.tsx drag-drop
+- Uses same drag-drop pattern as template.tsx
 
 BlockLibraryMini.tsx
 - Compact library panel with collapsible categories
@@ -66,5 +70,9 @@ ServiceBlocksStep.tsx
 - Main 3-column layout component
 - Drag-drop reordering (same as template.tsx)
 - Integrates all components
+
+ContractWizard/index.tsx
+- Updated to import and use ServiceBlocksStep
+- Passes contractName, status, duration, buyer info to ServiceBlocksStep
 
 ═══════════════════════════════════════════════════════════════════════════════
