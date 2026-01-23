@@ -1,63 +1,78 @@
 ═══════════════════════════════════════════════════════════════════════════════
-CONTRACT WIZARD UX IMPROVEMENTS - COPY INSTRUCTIONS (V2.1 FIXED)
+CONTRACT WIZARD UX IMPROVEMENTS - COPY INSTRUCTIONS (V3.0)
 ═══════════════════════════════════════════════════════════════════════════════
 
 Branch: claude/init-submodules-contract-ui-PBJf4
 Date: January 2026
-Feature: Enhanced Contract Wizard UX (BuyerSelectionStep + ContractDetailsStep)
+Feature: Enhanced Contract Wizard UX + Shared Card Components
 
 ═══════════════════════════════════════════════════════════════════════════════
 SUBMODULES AFFECTED
 ═══════════════════════════════════════════════════════════════════════════════
-- contractnest-ui (2 files modified)
+- contractnest-ui (5 files: 3 new shared components + 2 step components)
 
 ═══════════════════════════════════════════════════════════════════════════════
 FILES TO COPY
 ═══════════════════════════════════════════════════════════════════════════════
 
-1. BuyerSelectionStep.tsx (V2.1 - FIXED)
+=== NEW SHARED COMPONENTS ===
+
+1. ViewCard.tsx (NEW - Shared Card Component)
+   ────────────────────────────────────────────────────────────────────────────
+   Source: MANUAL_COPY_FILES/contract-wizard-ux-improvements/contractnest-ui/src/components/common/cards/ViewCard.tsx
+   Target: contractnest-ui/src/components/common/cards/ViewCard.tsx
+
+   Features:
+   - Glass morphism styling with theme support
+   - Icon, title, count badge, edit/add buttons
+   - Empty state with optional add action
+   - "More" link support
+   - Variants: default, compact, elevated
+
+2. PersonListItem.tsx (NEW - Shared Person Display Component)
+   ────────────────────────────────────────────────────────────────────────────
+   Source: MANUAL_COPY_FILES/contract-wizard-ux-improvements/contractnest-ui/src/components/common/cards/PersonListItem.tsx
+   Target: contractnest-ui/src/components/common/cards/PersonListItem.tsx
+
+   Features:
+   - Displays contact person with avatar, name, designation, channel
+   - Uses person's OWN contact_channels[] (not company's)
+   - Primary badge with star icon
+   - Variants: default, compact, card
+   - Selection states: checkmark, radio
+   - Exported helpers: getPersonPrimaryChannel, getPersonChannelDisplay, etc.
+
+3. index.ts (NEW - Exports for cards)
+   ────────────────────────────────────────────────────────────────────────────
+   Source: MANUAL_COPY_FILES/contract-wizard-ux-improvements/contractnest-ui/src/components/common/cards/index.ts
+   Target: contractnest-ui/src/components/common/cards/index.ts
+
+
+=== WIZARD STEP COMPONENTS ===
+
+4. BuyerSelectionStep.tsx (V3.0 - ENHANCED)
    ────────────────────────────────────────────────────────────────────────────
    Source: MANUAL_COPY_FILES/contract-wizard-ux-improvements/contractnest-ui/src/components/contracts/ContractWizard/steps/BuyerSelectionStep.tsx
    Target: contractnest-ui/src/components/contracts/ContractWizard/steps/BuyerSelectionStep.tsx
 
-   Changes V2.1 (FIXED - Corporate Contact Person Picker):
-   - FIXED: ContactPerson interface now correctly uses contact_channels[] array
-     (previously had wrong email?: string, phone?: string properties)
-   - FIXED: getPersonPrimaryChannel() function to get person's OWN channel
-   - FIXED: getPersonChannelDisplay() to format person's channel for display
-   - FIXED: Uses person.contact_channels[] instead of company's contact_channels
-   - Shows "No contact persons added" message with fallback text
-   - Shows persons count badge in contact list for corporate contacts
-   - Primary person shown with gold background, star badge
-   - "View X other contacts" expandable section
+   V3.0 Changes:
+   - Uses shared ViewCard for contact person picker
+   - Uses shared PersonListItem for person display
+   - Fetches FULL contact data using useContact(id) to get contact_persons
+   - Loading state while fetching contact persons
+   - "Skip / Use Company Contact Info" option for corporates
+   - Auto-selects primary person when full data loads
 
-   Data Structure Used (matching ContactSummaryTab.tsx):
-   ```typescript
-   interface ContactPerson {
-     id: string;
-     name: string;
-     salutation?: string;
-     designation?: string;
-     department?: string;
-     is_primary: boolean;
-     contact_channels: ContactChannel[];  // EACH PERSON HAS THEIR OWN CHANNELS!
-     notes?: string;
-   }
-   ```
-
-2. ContractDetailsStep.tsx (ENHANCED)
+5. ContractDetailsStep.tsx (ENHANCED)
    ────────────────────────────────────────────────────────────────────────────
    Source: MANUAL_COPY_FILES/contract-wizard-ux-improvements/contractnest-ui/src/components/contracts/ContractWizard/steps/ContractDetailsStep.tsx
    Target: contractnest-ui/src/components/contracts/ContractWizard/steps/ContractDetailsStep.tsx
 
    Changes:
    - 2-column layout (58% left, 42% right) - no scrolling needed
-   - Left column: Contract Title + Description (RichTextEditor)
-   - Right column: Beautiful cards for Status, Currency, Duration, Grace Period
-   - Status: Custom dropdown with icon + "→ Next: Submit to Customer" hint
-   - Duration: Clickable preset chips [1M][3M][6M][1Y][2Y]
-   - 3-node visual timeline (Start → End → Grace) with actual dates
-   - Grace Period: Preset chips + custom input
+   - Status dropdown with "→ Next: [Status]" hint
+   - Duration presets [1M][3M][6M][1Y][2Y]
+   - 3-node visual timeline (Start → End → Grace)
 
 ═══════════════════════════════════════════════════════════════════════════════
 POWERSHELL COPY COMMANDS
@@ -65,61 +80,76 @@ POWERSHELL COPY COMMANDS
 
 cd "D:\projects\core projects\ContractNest\contractnest-combined"
 
-# Copy BuyerSelectionStep.tsx
-Copy-Item "MANUAL_COPY_FILES\contract-wizard-ux-improvements\contractnest-ui\src\components\contracts\ContractWizard\steps\BuyerSelectionStep.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\BuyerSelectionStep.tsx" -Force
+# Create cards folder if it doesn't exist
+New-Item -ItemType Directory -Force -Path "contractnest-ui\src\components\common\cards"
 
-# Copy ContractDetailsStep.tsx
+# Copy shared card components
+Copy-Item "MANUAL_COPY_FILES\contract-wizard-ux-improvements\contractnest-ui\src\components\common\cards\ViewCard.tsx" -Destination "contractnest-ui\src\components\common\cards\ViewCard.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\contract-wizard-ux-improvements\contractnest-ui\src\components\common\cards\PersonListItem.tsx" -Destination "contractnest-ui\src\components\common\cards\PersonListItem.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\contract-wizard-ux-improvements\contractnest-ui\src\components\common\cards\index.ts" -Destination "contractnest-ui\src\components\common\cards\index.ts" -Force
+
+# Copy wizard step components
+Copy-Item "MANUAL_COPY_FILES\contract-wizard-ux-improvements\contractnest-ui\src\components\contracts\ContractWizard\steps\BuyerSelectionStep.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\BuyerSelectionStep.tsx" -Force
 Copy-Item "MANUAL_COPY_FILES\contract-wizard-ux-improvements\contractnest-ui\src\components\contracts\ContractWizard\steps\ContractDetailsStep.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\ContractDetailsStep.tsx" -Force
 
 Write-Host "✅ All files copied successfully!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════════════════════════════════
+KEY ARCHITECTURE CHANGES
+═══════════════════════════════════════════════════════════════════════════════
+
+1. SHARED COMPONENTS (for reuse in ContactSummaryTab and other views):
+   - Import from: @/components/common/cards
+   - ViewCard: Replaces inline ViewCard in ContactSummaryTab
+   - PersonListItem: Standardizes person display across app
+
+2. DATA FETCHING FIX:
+   - useContactList (list API) does NOT include contact_persons
+   - useContact (single API) DOES include contact_persons
+   - When corporate selected, we now fetch full contact data
+
+3. SKIP OPTION:
+   - User can skip person selection for corporate
+   - Uses company's main contact_channels instead
+   - Tracked via useCompanyContact boolean in onSelectBuyer callback
 
 ═══════════════════════════════════════════════════════════════════════════════
 PRODUCTION CHECKLIST
 ═══════════════════════════════════════════════════════════════════════════════
 ✅ Transaction Management: N/A (UI only)
 ✅ Race Condition Handling: Debounced search (300ms)
-✅ Error Handling: Title validation with visual error states
-✅ Toasts: useVaNiToast for buyer selection notifications
-✅ Loaders: VaNiLoader for contact list loading states
+✅ Error Handling: Loading states, empty states, validation
+✅ Toasts: useVaNiToast for notifications
+✅ Loaders: VaNiLoader, Loader2 spinner for contact persons loading
 
 ═══════════════════════════════════════════════════════════════════════════════
 TESTING CHECKLIST
 ═══════════════════════════════════════════════════════════════════════════════
 BuyerSelectionStep:
 - [ ] Select individual contact → shows full ContactHeaderCard
-- [ ] Select corporate contact WITH contact_persons → shows company card + primary person
-- [ ] Verify person's OWN contact channel is displayed (NOT company's channel)
-- [ ] Click "View X other contacts" → expands contact person list
-- [ ] Each person shows their OWN email/phone from their contact_channels[]
-- [ ] Select different contact person → updates selection with checkmark
-- [ ] Click "Change" → clears selection, shows search again
-- [ ] Corporate without contact_persons → shows "No contact persons added" message
+- [ ] Select corporate contact → shows "Loading contact persons..." spinner
+- [ ] After load, shows primary contact person with their OWN channels
+- [ ] Click "View X other contacts" → expands person list
+- [ ] Select different person → updates selection
+- [ ] Click "Skip - use company's main contact info" → shows company contact option
+- [ ] Corporate without persons → shows "No contact persons" with Add button
+- [ ] Click "Change" → clears selection, shows search
 
 ContractDetailsStep:
-- [ ] 2-column layout displays correctly (no scrolling needed)
-- [ ] Status dropdown shows icon + description for each status
-- [ ] "→ Next: [Status]" hint appears below status dropdown
-- [ ] Duration presets (1M, 3M, 6M, 1Y, 2Y) work correctly
-- [ ] 3-node timeline shows Start, End, and Grace dates
-- [ ] Grace period presets work correctly
-- [ ] Timeline updates when duration/grace values change
+- [ ] 2-column layout displays correctly
+- [ ] Status dropdown with "→ Next" hint
+- [ ] Duration presets work
+- [ ] 3-node timeline updates
 
 ═══════════════════════════════════════════════════════════════════════════════
-KEY FIX DETAILS
+NEXT STEPS (FUTURE)
 ═══════════════════════════════════════════════════════════════════════════════
+1. Update ContactSummaryTab.tsx to import ViewCard and PersonListItem from
+   @/components/common/cards instead of defining them inline
 
-PROBLEM (V2.0):
-- CorporateContactPerson interface had: email?: string, phone?: string
-- This is WRONG - actual data has: contact_channels: ContactChannel[]
-- Was displaying company's main channels as person's channels
-
-FIX (V2.1):
-- Updated interface to match actual data structure from ContactSummaryTab.tsx
-- Added getPersonPrimaryChannel() - gets channel from person.contact_channels[]
-- Added getPersonChannelDisplay() - formats channel for display
-- Each contact person's OWN channels are now displayed correctly
-
-REFERENCE: ContactSummaryTab.tsx lines 748-756, 1001-1057
-The Persons card in ContactView correctly shows each person's own channels.
+2. This will ensure consistent styling across:
+   - ContactView (Persons card)
+   - Contract Wizard (Buyer Selection step)
+   - Any future views that display contact persons
 
 ═══════════════════════════════════════════════════════════════════════════════
