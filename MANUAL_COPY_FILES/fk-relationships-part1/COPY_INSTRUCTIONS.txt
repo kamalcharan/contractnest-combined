@@ -1,0 +1,118 @@
+═══════════════════════════════════════════════════════════════════════════════
+FK RELATIONSHIPS PART 1 - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════════════════════════════════
+Branch: fk-relationships-part1
+Date: January 2025
+
+═══════════════════════════════════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════════════════════════════════
+
+FILES CHANGED:
+
+1. contractnest-api/src/seeds/relationships.seed.ts (NEW)
+   - 12 family relationship types: Father, Mother, Spouse, Son, Daughter,
+     Brother, Sister, Grand Mother, Grand Daughter, Guardian, Executor, Other
+   - Icons, colors, and descriptions for each relationship
+   - Export helpers for UI (RELATIONSHIP_DISPLAY_NAMES, RELATIONSHIP_ICONS, RELATIONSHIP_COLORS)
+
+2. contractnest-api/src/seeds/types.ts (MODIFIED)
+   - Added optional 'productCode' field to SeedDefinition interface
+   - Allows product-specific seeds (e.g., relationships only for FamilyKnows)
+
+3. contractnest-api/src/seeds/SeedRegistry.ts (MODIFIED)
+   - Registered 'relationships' seed definition
+   - Added helper functions for product-specific seed filtering
+
+4. contractnest-edge/supabase/functions/FKauth/handlers/registration.ts (MODIFIED)
+   - CRITICAL FIX: family-space step no longer auto-completed at registration
+   - User will now see FamilySetup screen during onboarding
+   - Enables family member invitation flow
+
+SUBMODULES AFFECTED:
+- contractnest-api
+- contractnest-edge
+
+PRODUCTION CHECKLIST:
+  ✅ Transaction Management: N/A (seed data)
+  ✅ Race Condition Handling: N/A
+  ✅ Error Handling: Yes (seed errors are non-fatal)
+  ✅ Toasts: N/A (backend only)
+  ✅ Loaders: N/A (backend only)
+
+═══════════════════════════════════════════════════════════════════════════════
+💻 STEP-BY-STEP COMMANDS (Windows PowerShell)
+═══════════════════════════════════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Pull Latest from All Submodules
+─────────────────────────────────
+git submodule update --init --recursive
+cd contractnest-api && git checkout main && git pull origin main && cd ..
+cd contractnest-edge && git checkout main && git pull origin main && cd ..
+
+STEP 3: Copy API Seed Files
+─────────────────────────────────
+# Create seeds directory if not exists
+if (!(Test-Path "contractnest-api\src\seeds")) { New-Item -ItemType Directory -Path "contractnest-api\src\seeds" }
+
+# Copy relationships seed (NEW FILE)
+Copy-Item "MANUAL_COPY_FILES\fk-relationships-part1\contractnest-api\src\seeds\relationships.seed.ts" -Destination "contractnest-api\src\seeds\relationships.seed.ts" -Force
+
+# Copy updated types.ts
+Copy-Item "MANUAL_COPY_FILES\fk-relationships-part1\contractnest-api\src\seeds\types.ts" -Destination "contractnest-api\src\seeds\types.ts" -Force
+
+# Copy updated SeedRegistry.ts
+Copy-Item "MANUAL_COPY_FILES\fk-relationships-part1\contractnest-api\src\seeds\SeedRegistry.ts" -Destination "contractnest-api\src\seeds\SeedRegistry.ts" -Force
+
+STEP 4: Copy Edge Registration Fix
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\fk-relationships-part1\contractnest-edge\supabase\functions\FKauth\handlers\registration.ts" -Destination "contractnest-edge\supabase\functions\FKauth\handlers\registration.ts" -Force
+
+Write-Host "✅ All files copied!" -ForegroundColor Green
+
+STEP 5: Verify Files
+─────────────────────────────────
+# Check API files exist
+Test-Path "contractnest-api\src\seeds\relationships.seed.ts"
+Test-Path "contractnest-api\src\seeds\types.ts"
+Test-Path "contractnest-api\src\seeds\SeedRegistry.ts"
+
+# Check Edge file exists
+Test-Path "contractnest-edge\supabase\functions\FKauth\handlers\registration.ts"
+
+═══════════════════════════════════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+Test these specific features:
+
+API TESTS:
+- [ ] Start API server: cd contractnest-api && npm run dev
+- [ ] Check no TypeScript errors
+- [ ] Verify seed registry loads: Check console for seed initialization logs
+
+MOBILE APP TESTS:
+- [ ] Fresh signup in FamilyKnows app with workspace name
+- [ ] After signup, verify user sees FamilySetup screen (NOT skipped)
+- [ ] Verify family name is pre-populated in FamilySetup screen
+- [ ] Verify onboarding continues after FamilySetup completion
+
+EDGE FUNCTION TESTS:
+- [ ] Deploy FKauth function: supabase functions deploy FKauth
+- [ ] Test registration endpoint with workspace_name
+- [ ] Verify family-space step is NOT in completed_steps after registration
+- [ ] Verify family-space step_data contains pre_created: true
+
+═══════════════════════════════════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════════════════════════════════
+
+Test locally and confirm:
+  → "Tested, working - proceed with commit"
+  → "Issue found: [describe problem]"
+
+═══════════════════════════════════════════════════════════════════════════════
