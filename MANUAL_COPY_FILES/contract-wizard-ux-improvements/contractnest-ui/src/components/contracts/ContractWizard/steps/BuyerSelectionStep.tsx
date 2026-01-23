@@ -1,6 +1,6 @@
 // src/components/contracts/ContractWizard/steps/BuyerSelectionStep.tsx
 // Step 1: Select buyer (contact) for the contract
-// V2.0: Enhanced with ContactHeaderCard display + Corporate contact person picker
+// V2.1: Fixed corporate contact person picker to use actual contact_persons data structure
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Search,
@@ -102,14 +102,16 @@ interface Classification {
   classification_label: string;
 }
 
-interface CorporateContactPerson {
+// FIXED: Correct interface matching actual contact_persons data structure
+interface ContactPerson {
   id: string;
   name: string;
+  salutation?: string;
   designation?: string;
   department?: string;
-  email?: string;
-  phone?: string;
-  is_primary?: boolean;
+  is_primary: boolean;
+  contact_channels: ContactChannel[];  // Each person has their OWN channels
+  notes?: string;
 }
 
 interface BuyerSelectionStepProps {
@@ -181,10 +183,15 @@ const BuyerSelectionStep: React.FC<BuyerSelectionStepProps> = ({
     setShowOtherContacts(false);
 
     // For corporate, auto-select primary contact person if exists
-    const primaryPerson = contact.contact_persons?.find((p: CorporateContactPerson) => p.is_primary);
+    const primaryPerson = contact.contact_persons?.find((p: ContactPerson) => p.is_primary);
     if (contact.type === 'corporate' && primaryPerson) {
       setSelectedPersonId(primaryPerson.id);
       onSelectBuyer(contact.id, displayName || 'Unknown', primaryPerson.id, primaryPerson.name);
+    } else if (contact.type === 'corporate' && contact.contact_persons?.length > 0) {
+      // No primary, but has contact persons - select first one
+      const firstPerson = contact.contact_persons[0];
+      setSelectedPersonId(firstPerson.id);
+      onSelectBuyer(contact.id, displayName || 'Unknown', firstPerson.id, firstPerson.name);
     } else {
       setSelectedPersonId(null);
       onSelectBuyer(contact.id, displayName || 'Unknown');
@@ -198,7 +205,7 @@ const BuyerSelectionStep: React.FC<BuyerSelectionStepProps> = ({
   }, [onSelectBuyer, addToast]);
 
   // Handle contact person selection (for corporate)
-  const handleSelectContactPerson = useCallback((person: CorporateContactPerson) => {
+  const handleSelectContactPerson = useCallback((person: ContactPerson) => {
     setSelectedPersonId(person.id);
     if (selectedContact) {
       const displayName = selectedContact.company_name || selectedContact.name;
@@ -255,6 +262,26 @@ const BuyerSelectionStep: React.FC<BuyerSelectionStepProps> = ({
     return contact.contact_channels.filter((ch: ContactChannel) => ch.id !== primary?.id);
   };
 
+  // FIXED: Get primary channel for a contact person (uses person's OWN channels)
+  const getPersonPrimaryChannel = (person: ContactPerson): ContactChannel | null => {
+    if (!person.contact_channels || person.contact_channels.length === 0) {
+      return null;
+    }
+    const primary = person.contact_channels.find((ch: ContactChannel) => ch.is_primary);
+    return primary || person.contact_channels[0];
+  };
+
+  // Get formatted channel display for a person
+  const getPersonChannelDisplay = (person: ContactPerson): string | null => {
+    const channel = getPersonPrimaryChannel(person);
+    if (!channel) return null;
+
+    if (channel.channel_type === 'mobile' || channel.channel_type === 'phone') {
+      return formatPhoneDisplay(channel);
+    }
+    return channel.value;
+  };
+
   // Get primary address
   const getPrimaryAddress = (contact: any): ContactAddress | null => {
     if (!contact?.addresses?.length) return null;
@@ -290,15 +317,19 @@ const BuyerSelectionStep: React.FC<BuyerSelectionStepProps> = ({
     }
   };
 
-  // Mock corporate contact persons (in real app, this comes from the contact data)
-  const corporateContactPersons: CorporateContactPerson[] = useMemo(() => {
-    if (!selectedContact || selectedContact.type !== 'corporate') return [];
-    // Check if contact has contact_persons array
-    if (selectedContact.contact_persons?.length > 0) {
-      return selectedContact.contact_persons;
+  // Generate person initials
+  const getPersonInitials = (name: string): string => {
+    const parts = name.split(' ');
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
     }
-    // Fallback: create a mock list from contact channels (for demo)
-    return [];
+    return name.substring(0, 2).toUpperCase() || 'CP';
+  };
+
+  // Get corporate contact persons from actual data
+  const corporateContactPersons: ContactPerson[] = useMemo(() => {
+    if (!selectedContact || selectedContact.type !== 'corporate') return [];
+    return selectedContact.contact_persons || [];
   }, [selectedContact]);
 
   // Get selected contact person details
@@ -326,6 +357,7 @@ const BuyerSelectionStep: React.FC<BuyerSelectionStepProps> = ({
     const hasTags = selectedContact.tags && selectedContact.tags.length > 0;
     const hasCompliance = selectedContact.compliance_numbers && selectedContact.compliance_numbers.length > 0;
     const isCorporate = selectedContact.type === 'corporate';
+    const hasContactPersons = corporateContactPersons.length > 0;
 
     return (
       <div
@@ -564,21 +596,54 @@ const BuyerSelectionStep: React.FC<BuyerSelectionStepProps> = ({
             )}
           </div>
 
-          {/* Corporate Contact Person Picker */}
+          {/* Corporate Contact Person Picker - FIXED to use actual contact_persons data */}
           {isCorporate && (
             <div
               className="mt-4 pt-4 border-t"
               style={{ borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }}
             >
-              <h4
-                className="text-xs font-bold uppercase tracking-wider mb-3"
-                style={{ color: colors.utility.secondaryText }}
-              >
-                Contract Contact Person
-              </h4>
+              <div className="flex items-center justify-between mb-3">
+                <h4
+                  className="text-xs font-bold uppercase tracking-wider flex items-center gap-2"
+                  style={{ color: colors.utility.secondaryText }}
+                >
+                  <Users className="w-3.5 h-3.5" style={{ color: '#f59e0b' }} />
+                  Contract Contact Person
+                </h4>
+                {hasContactPersons && (
+                  <span
+                    className="text-xs px-2 py-0.5 rounded-full"
+                    style={{
+                      backgroundColor: '#f59e0b20',
+                      color: '#f59e0b'
+                    }}
+                  >
+                    {corporateContactPersons.length} person{corporateContactPersons.length > 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
+
+              {/* Show message if no contact persons */}
+              {!hasContactPersons && (
+                <div
+                  className="rounded-xl border p-4 text-center"
+                  style={{
+                    backgroundColor: colors.utility.primaryBackground,
+                    borderColor: `${colors.utility.primaryText}15`
+                  }}
+                >
+                  <Users className="w-8 h-8 mx-auto mb-2" style={{ color: colors.utility.secondaryText }} />
+                  <p className="text-sm" style={{ color: colors.utility.secondaryText }}>
+                    No contact persons added for this company.
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: colors.utility.secondaryText }}>
+                    Company's main contact channels will be used.
+                  </p>
+                </div>
+              )}
 
               {/* Primary/Selected Contact Person Card */}
-              {(selectedPerson || primaryContactPerson || primaryChannel) && (
+              {hasContactPersons && (selectedPerson || primaryContactPerson) && (
                 <div
                   className="rounded-xl border p-4 transition-all"
                   style={{
@@ -586,82 +651,76 @@ const BuyerSelectionStep: React.FC<BuyerSelectionStepProps> = ({
                     borderColor: `${colors.brand.primary}40`
                   }}
                 >
-                  <div className="flex items-center gap-4">
-                    <div
-                      className="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0"
-                      style={{
-                        backgroundColor: `${colors.brand.primary}15`,
-                        color: colors.brand.primary
-                      }}
-                    >
-                      {(selectedPerson?.name || primaryContactPerson?.name || displayName)
-                        ?.split(' ')
-                        .map((n: string) => n[0])
-                        .slice(0, 2)
-                        .join('')
-                        .toUpperCase() || 'CP'}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="font-semibold"
-                          style={{ color: colors.utility.primaryText }}
+                  {(() => {
+                    const displayPerson = selectedPerson || primaryContactPerson!;
+                    const personChannel = getPersonPrimaryChannel(displayPerson);
+                    const personChannelDisplay = getPersonChannelDisplay(displayPerson);
+                    const ChannelIcon = personChannel ? getChannelIcon(personChannel.channel_type) : null;
+
+                    return (
+                      <div className="flex items-center gap-4">
+                        <div
+                          className="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0"
+                          style={{
+                            backgroundColor: displayPerson.is_primary ? '#f59e0b' : `${colors.brand.primary}15`,
+                            color: displayPerson.is_primary ? '#fff' : colors.brand.primary
+                          }}
                         >
-                          {selectedPerson?.name || primaryContactPerson?.name || 'Primary Contact'}
-                        </span>
-                        {(selectedPerson?.is_primary || primaryContactPerson?.is_primary || !selectedPerson) && (
-                          <span
-                            className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full"
-                            style={{
-                              backgroundColor: `${colors.brand.primary}15`,
-                              color: colors.brand.primary
-                            }}
-                          >
-                            <Star className="w-3 h-3" style={{ fill: colors.brand.primary }} />
-                            Primary
-                          </span>
-                        )}
-                      </div>
-                      {(selectedPerson?.designation || primaryContactPerson?.designation) && (
-                        <p
-                          className="text-sm"
-                          style={{ color: colors.utility.secondaryText }}
+                          {getPersonInitials(displayPerson.name)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="font-semibold"
+                              style={{ color: colors.utility.primaryText }}
+                            >
+                              {displayPerson.name}
+                            </span>
+                            {displayPerson.is_primary && (
+                              <span
+                                className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full"
+                                style={{
+                                  backgroundColor: '#f59e0b20',
+                                  color: '#f59e0b'
+                                }}
+                              >
+                                <Star className="w-3 h-3" style={{ fill: '#f59e0b' }} />
+                                Primary
+                              </span>
+                            )}
+                          </div>
+                          {(displayPerson.designation || displayPerson.department) && (
+                            <p
+                              className="text-sm"
+                              style={{ color: colors.utility.secondaryText }}
+                            >
+                              {displayPerson.designation}
+                              {displayPerson.designation && displayPerson.department && ', '}
+                              {displayPerson.department}
+                            </p>
+                          )}
+                          {/* Show person's own contact channel */}
+                          {personChannelDisplay && ChannelIcon && (
+                            <div className="flex items-center gap-2 mt-1">
+                              <span
+                                className="flex items-center gap-1.5 text-xs"
+                                style={{ color: colors.utility.secondaryText }}
+                              >
+                                <ChannelIcon className="w-3 h-3" />
+                                {personChannelDisplay}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div
+                          className="w-6 h-6 rounded-full flex items-center justify-center"
+                          style={{ backgroundColor: colors.semantic.success }}
                         >
-                          {selectedPerson?.designation || primaryContactPerson?.designation}
-                          {(selectedPerson?.department || primaryContactPerson?.department) &&
-                            `, ${selectedPerson?.department || primaryContactPerson?.department}`}
-                        </p>
-                      )}
-                      <div className="flex items-center gap-4 mt-1">
-                        {(selectedPerson?.email || primaryContactPerson?.email || primaryChannel?.channel_type === 'email') && (
-                          <span
-                            className="flex items-center gap-1 text-xs"
-                            style={{ color: colors.utility.secondaryText }}
-                          >
-                            <Mail className="w-3 h-3" />
-                            {selectedPerson?.email || primaryContactPerson?.email || primaryChannel?.value}
-                          </span>
-                        )}
-                        {(selectedPerson?.phone || primaryContactPerson?.phone) && (
-                          <span
-                            className="flex items-center gap-1 text-xs"
-                            style={{ color: colors.utility.secondaryText }}
-                          >
-                            <Phone className="w-3 h-3" />
-                            {selectedPerson?.phone || primaryContactPerson?.phone}
-                          </span>
-                        )}
+                          <Check className="w-4 h-4 text-white" />
+                        </div>
                       </div>
-                    </div>
-                    {selectedPerson && (
-                      <div
-                        className="w-6 h-6 rounded-full flex items-center justify-center"
-                        style={{ backgroundColor: colors.semantic.success }}
-                      >
-                        <Check className="w-4 h-4 text-white" />
-                      </div>
-                    )}
-                  </div>
+                    );
+                  })()}
                 </div>
               )}
 
@@ -690,66 +749,73 @@ const BuyerSelectionStep: React.FC<BuyerSelectionStepProps> = ({
                   {showOtherContacts && (
                     <div className="mt-3 space-y-2">
                       {corporateContactPersons
-                        .filter(p => p.id !== selectedPersonId && p.id !== primaryContactPerson?.id)
-                        .map((person) => (
-                          <div
-                            key={person.id}
-                            onClick={() => handleSelectContactPerson(person)}
-                            className="rounded-xl border p-3 cursor-pointer transition-all hover:shadow-md"
-                            style={{
-                              backgroundColor: colors.utility.primaryBackground,
-                              borderColor: `${colors.utility.primaryText}15`
-                            }}
-                          >
-                            <div className="flex items-center gap-3">
-                              <div
-                                className="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-xs flex-shrink-0"
-                                style={{
-                                  backgroundColor: `${colors.utility.primaryText}10`,
-                                  color: colors.utility.primaryText
-                                }}
-                              >
-                                {person.name
-                                  ?.split(' ')
-                                  .map(n => n[0])
-                                  .slice(0, 2)
-                                  .join('')
-                                  .toUpperCase() || 'CP'}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <span
-                                  className="font-medium text-sm"
-                                  style={{ color: colors.utility.primaryText }}
+                        .filter(p => p.id !== (selectedPerson?.id || primaryContactPerson?.id))
+                        .map((person) => {
+                          const personChannel = getPersonPrimaryChannel(person);
+                          const personChannelDisplay = getPersonChannelDisplay(person);
+                          const ChannelIcon = personChannel ? getChannelIcon(personChannel.channel_type) : null;
+
+                          return (
+                            <div
+                              key={person.id}
+                              onClick={() => handleSelectContactPerson(person)}
+                              className="rounded-xl border p-3 cursor-pointer transition-all hover:shadow-md"
+                              style={{
+                                backgroundColor: colors.utility.primaryBackground,
+                                borderColor: `${colors.utility.primaryText}15`
+                              }}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div
+                                  className="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-xs flex-shrink-0"
+                                  style={{
+                                    backgroundColor: person.is_primary ? '#f59e0b20' : `${colors.utility.primaryText}10`,
+                                    color: person.is_primary ? '#f59e0b' : colors.utility.primaryText
+                                  }}
                                 >
-                                  {person.name}
-                                </span>
-                                {person.designation && (
-                                  <p
-                                    className="text-xs"
-                                    style={{ color: colors.utility.secondaryText }}
-                                  >
-                                    {person.designation}
-                                  </p>
-                                )}
-                                <div className="flex items-center gap-3 mt-0.5">
-                                  {person.email && (
+                                  {getPersonInitials(person.name)}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
                                     <span
-                                      className="flex items-center gap-1 text-xs"
+                                      className="font-medium text-sm"
+                                      style={{ color: colors.utility.primaryText }}
+                                    >
+                                      {person.name}
+                                    </span>
+                                    {person.is_primary && (
+                                      <Star className="w-3 h-3 flex-shrink-0" style={{ color: '#f59e0b', fill: '#f59e0b' }} />
+                                    )}
+                                  </div>
+                                  {person.designation && (
+                                    <p
+                                      className="text-xs"
                                       style={{ color: colors.utility.secondaryText }}
                                     >
-                                      <Mail className="w-3 h-3" />
-                                      {person.email}
-                                    </span>
+                                      {person.designation}
+                                    </p>
+                                  )}
+                                  {/* Show person's own contact channel */}
+                                  {personChannelDisplay && ChannelIcon && (
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                      <span
+                                        className="flex items-center gap-1 text-xs"
+                                        style={{ color: colors.utility.secondaryText }}
+                                      >
+                                        <ChannelIcon className="w-3 h-3" />
+                                        {personChannelDisplay}
+                                      </span>
+                                    </div>
                                   )}
                                 </div>
+                                <div
+                                  className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0"
+                                  style={{ borderColor: `${colors.utility.primaryText}30` }}
+                                />
                               </div>
-                              <div
-                                className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0"
-                                style={{ borderColor: `${colors.utility.primaryText}30` }}
-                              />
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                     </div>
                   )}
                 </>
@@ -1032,6 +1098,7 @@ const BuyerSelectionStep: React.FC<BuyerSelectionStepProps> = ({
                     const displayName = contact.displayName || contact.name || contact.company_name || 'Unknown';
                     const primaryChannel = getPrimaryChannel(contact);
                     const ChannelIcon = primaryChannel ? getChannelIcon(primaryChannel.channel_type) : null;
+                    const hasPersons = contact.type === 'corporate' && contact.contact_persons?.length > 0;
 
                     return (
                       <button
@@ -1070,6 +1137,18 @@ const BuyerSelectionStep: React.FC<BuyerSelectionStepProps> = ({
                                 className="w-4 h-4 flex-shrink-0"
                                 style={{ color: colors.utility.secondaryText }}
                               />
+                            )}
+                            {/* Show persons count for corporate */}
+                            {hasPersons && (
+                              <span
+                                className="text-xs px-1.5 py-0.5 rounded-full"
+                                style={{
+                                  backgroundColor: '#f59e0b20',
+                                  color: '#f59e0b'
+                                }}
+                              >
+                                {contact.contact_persons.length} person{contact.contact_persons.length > 1 ? 's' : ''}
+                              </span>
                             )}
                           </div>
                           {primaryChannel && ChannelIcon && (

@@ -1,5 +1,5 @@
 ═══════════════════════════════════════════════════════════════════════════════
-CONTRACT WIZARD UX IMPROVEMENTS - COPY INSTRUCTIONS
+CONTRACT WIZARD UX IMPROVEMENTS - COPY INSTRUCTIONS (V2.1 FIXED)
 ═══════════════════════════════════════════════════════════════════════════════
 
 Branch: claude/init-submodules-contract-ui-PBJf4
@@ -15,17 +15,35 @@ SUBMODULES AFFECTED
 FILES TO COPY
 ═══════════════════════════════════════════════════════════════════════════════
 
-1. BuyerSelectionStep.tsx (ENHANCED)
+1. BuyerSelectionStep.tsx (V2.1 - FIXED)
    ────────────────────────────────────────────────────────────────────────────
    Source: MANUAL_COPY_FILES/contract-wizard-ux-improvements/contractnest-ui/src/components/contracts/ContractWizard/steps/BuyerSelectionStep.tsx
    Target: contractnest-ui/src/components/contracts/ContractWizard/steps/BuyerSelectionStep.tsx
 
-   Changes:
-   - Full ContactHeaderCard display for selected buyer (4-section grid)
-   - Shows avatar, name, classifications, contact channels, address, tags, compliance
-   - Corporate contact person picker with primary contact highlighted
-   - "View X other contacts" expandable section for corporates
-   - Proper selection indicators and status badges
+   Changes V2.1 (FIXED - Corporate Contact Person Picker):
+   - FIXED: ContactPerson interface now correctly uses contact_channels[] array
+     (previously had wrong email?: string, phone?: string properties)
+   - FIXED: getPersonPrimaryChannel() function to get person's OWN channel
+   - FIXED: getPersonChannelDisplay() to format person's channel for display
+   - FIXED: Uses person.contact_channels[] instead of company's contact_channels
+   - Shows "No contact persons added" message with fallback text
+   - Shows persons count badge in contact list for corporate contacts
+   - Primary person shown with gold background, star badge
+   - "View X other contacts" expandable section
+
+   Data Structure Used (matching ContactSummaryTab.tsx):
+   ```typescript
+   interface ContactPerson {
+     id: string;
+     name: string;
+     salutation?: string;
+     designation?: string;
+     department?: string;
+     is_primary: boolean;
+     contact_channels: ContactChannel[];  // EACH PERSON HAS THEIR OWN CHANNELS!
+     notes?: string;
+   }
+   ```
 
 2. ContractDetailsStep.tsx (ENHANCED)
    ────────────────────────────────────────────────────────────────────────────
@@ -69,10 +87,13 @@ TESTING CHECKLIST
 ═══════════════════════════════════════════════════════════════════════════════
 BuyerSelectionStep:
 - [ ] Select individual contact → shows full ContactHeaderCard
-- [ ] Select corporate contact → shows company card + primary contact person
+- [ ] Select corporate contact WITH contact_persons → shows company card + primary person
+- [ ] Verify person's OWN contact channel is displayed (NOT company's channel)
 - [ ] Click "View X other contacts" → expands contact person list
-- [ ] Select different contact person → updates selection
+- [ ] Each person shows their OWN email/phone from their contact_channels[]
+- [ ] Select different contact person → updates selection with checkmark
 - [ ] Click "Change" → clears selection, shows search again
+- [ ] Corporate without contact_persons → shows "No contact persons added" message
 
 ContractDetailsStep:
 - [ ] 2-column layout displays correctly (no scrolling needed)
@@ -82,5 +103,23 @@ ContractDetailsStep:
 - [ ] 3-node timeline shows Start, End, and Grace dates
 - [ ] Grace period presets work correctly
 - [ ] Timeline updates when duration/grace values change
+
+═══════════════════════════════════════════════════════════════════════════════
+KEY FIX DETAILS
+═══════════════════════════════════════════════════════════════════════════════
+
+PROBLEM (V2.0):
+- CorporateContactPerson interface had: email?: string, phone?: string
+- This is WRONG - actual data has: contact_channels: ContactChannel[]
+- Was displaying company's main channels as person's channels
+
+FIX (V2.1):
+- Updated interface to match actual data structure from ContactSummaryTab.tsx
+- Added getPersonPrimaryChannel() - gets channel from person.contact_channels[]
+- Added getPersonChannelDisplay() - formats channel for display
+- Each contact person's OWN channels are now displayed correctly
+
+REFERENCE: ContactSummaryTab.tsx lines 748-756, 1001-1057
+The Persons card in ContactView correctly shows each person's own channels.
 
 ═══════════════════════════════════════════════════════════════════════════════
