@@ -210,6 +210,7 @@ export const FamilySetupScreen: React.FC<Props> = ({ navigation, route }) => {
   }, []);
 
   // Fetch pending invitations
+  // NOTE: Skip if endpoint returns 401/404 - backend may not be ready
   const fetchInvitations = useCallback(async () => {
     try {
       const response = await api.get<{
@@ -238,8 +239,15 @@ export const FamilySetupScreen: React.FC<Props> = ({ navigation, route }) => {
           }));
         setPendingInvites(mapped);
       }
-    } catch (error) {
-      console.log('Could not fetch invitations:', error);
+    } catch (error: any) {
+      // Silently fail if endpoint doesn't exist or returns auth error
+      // This prevents logout when backend endpoints aren't deployed yet
+      const msg = error?.message || '';
+      if (msg.includes('Session expired') || msg.includes('Route not found')) {
+        console.log('Invitations endpoint not available - skipping');
+      } else {
+        console.log('Could not fetch invitations:', error);
+      }
     }
   }, []);
 
