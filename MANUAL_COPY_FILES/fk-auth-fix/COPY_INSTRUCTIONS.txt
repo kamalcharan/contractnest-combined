@@ -1,0 +1,26 @@
+===============================================
+FK AUTH FIX - Copy Instructions
+===============================================
+
+CHANGES SUMMARY:
+1. contractnest-api/src/middleware/auth.ts
+   - Added getEdgeFunctionPrefix() function
+   - Routes to 'FKauth' for FamilyKnows, 'auth' for ContractNest
+   - Fixes 401 error when calling /api/users/invitations from FK
+
+2. FamilyKnows/src/features/onboarding/screens/FamilySetupScreen.tsx
+   - Current working version
+
+===============================================
+COPY COMMANDS (PowerShell)
+===============================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Copy auth middleware fix
+Copy-Item "MANUAL_COPY_FILES\fk-auth-fix\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+
+# Copy FamilySetupScreen
+Copy-Item "MANUAL_COPY_FILES\fk-auth-fix\FamilyKnows\*" -Destination "FamilyKnows\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
