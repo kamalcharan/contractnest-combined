@@ -1,0 +1,66 @@
+═══════════════════════════════════════════════════
+FAMILY INVITE SCREEN FIXES - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════
+
+BRANCH: claude/init-submodules-docs-jOnTK
+DATE: 2026-01-25
+
+═══════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════
+
+1. contractnest-api/src/seeds/relationships.seed.ts
+   → Copy to: contractnest-api/src/seeds/relationships.seed.ts
+   → Purpose: Fix invalid icon name 'human-male-child' → 'human-male-boy'
+
+2. FamilyKnows/src/hooks/useRelationships.ts
+   → Copy to: FamilyKnows/src/hooks/useRelationships.ts
+   → Purpose: Use icon_name from API, fix fallback icons, add tenantId check
+
+3. FamilyKnows/src/hooks/useInvitations.ts
+   → Copy to: FamilyKnows/src/hooks/useInvitations.ts
+   → Purpose: Add tenantId check, graceful error handling
+
+4. FamilyKnows/src/features/onboarding/screens/FamilySetupScreen.tsx
+   → Copy to: FamilyKnows/src/features/onboarding/screens/FamilySetupScreen.tsx
+   → Purpose: Country code picker, relationship messages, error handling
+
+═══════════════════════════════════════════════════
+SUBMODULES AFFECTED
+═══════════════════════════════════════════════════
+- contractnest-api
+- FamilyKnows
+
+═══════════════════════════════════════════════════
+CHANGES SUMMARY
+═══════════════════════════════════════════════════
+
+1. ICON FIXES:
+   - 'human-male-child' → 'human-male-boy' (for Son, Nephew)
+   - 'human-female-child' → 'human-female-girl' (for Daughter, Niece)
+   - 'account-group' → 'account-multiple' (for siblings)
+   - 'account-plus' → 'account-question' (for Other)
+
+2. PHONE NUMBER FORMAT:
+   - Added country code picker (like MobileNumberScreen)
+   - Phone displays as +XX XXXXXXXXXX format
+   - Uses countryCodes from constants
+
+3. PERSONAL MESSAGES:
+   - Added getDefaultMessage() with relationship-specific messages
+   - Father: "Hey Dad! I've set up a family space..."
+   - Mother: "Hi Mom! I've created a family hub..."
+   - Spouse: "Hey love! I've set up FamilyKnows..."
+   - etc.
+
+4. ERROR HANDLING:
+   - Replaced console.error with console.log (prevents Expo notifications)
+   - Added tenantId validation before API calls
+   - Graceful fallback to defaults when tenant not available
+   - Custom toast for errors instead of Expo default
+
+5. API FIELD MAPPING:
+   - Now correctly maps SubCatName, DisplayName, Sequence_no, icon_name
+   - Uses icon_name from API first, then falls back to mapping
+
+═══════════════════════════════════════════════════
