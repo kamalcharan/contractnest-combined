@@ -1,0 +1,160 @@
+═══════════════════════════════════════════════════════════════════════════════
+FIX: USER PROFILE ISSUES - AVATAR & WORKSPACES
+═══════════════════════════════════════════════════════════════════════════════
+
+TWO ISSUES FIXED:
+
+1. AVATAR NOT SHOWING IN HEADER
+   - User interface in AuthContext didn't have avatar_url field
+   - Header.tsx only showed first character, never checked for avatar image
+
+2. WORKSPACES TAB EMPTY
+   - WorkspacesSection expected profile.workspaces from API
+   - API may not return workspaces data
+   - Now uses tenants from AuthContext with fallback to profile.workspaces
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES MODIFIED (3 FILES)
+═══════════════════════════════════════════════════════════════════════════════
+
+Submodule: contractnest-ui
+
+1. src/context/AuthContext.tsx
+   - Added avatar_url?: string to User interface
+   - Enables Header and other components to access profile photo URL
+
+2. src/components/layout/Header.tsx
+   - Updated avatar display to check for avatar_url first
+   - Shows profile image if available
+   - Falls back to first initial if no image
+   - Has error handler if image fails to load
+
+3. src/components/users/user-profile/WorkSpacesSection.tsx
+   - Added useAuth() to get tenants
+   - Created workspaces useMemo that:
+     * Uses profile.workspaces if available (from API)
+     * Falls back to tenants from AuthContext
+     * Maps tenant data to expected workspace format
+
+═══════════════════════════════════════════════════════════════════════════════
+CHANGES ALREADY APPLIED TO SUBMODULE
+═══════════════════════════════════════════════════════════════════════════════
+
+The files have been directly edited in contractnest-ui submodule.
+To see the changes:
+
+cd contractnest-ui
+git diff
+
+To test:
+1. Start the dev server: npm run dev
+2. Upload a profile photo in Settings > User Profile
+3. Check if the photo appears in the header avatar
+4. Check the Workspaces tab to see workspace list
+
+═══════════════════════════════════════════════════════════════════════════════
+COPY COMMANDS (If reverting and re-applying)
+═══════════════════════════════════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Copy AuthContext.tsx
+Copy-Item "MANUAL_COPY_FILES\fix-user-profile-issues\contractnest-ui\src\context\AuthContext.tsx" -Destination "contractnest-ui\src\context\" -Force
+
+# Copy Header.tsx
+Copy-Item "MANUAL_COPY_FILES\fix-user-profile-issues\contractnest-ui\src\components\layout\Header.tsx" -Destination "contractnest-ui\src\components\layout\" -Force
+
+# Copy WorkSpacesSection.tsx
+Copy-Item "MANUAL_COPY_FILES\fix-user-profile-issues\contractnest-ui\src\components\users\user-profile\WorkSpacesSection.tsx" -Destination "contractnest-ui\src\components\users\user-profile\" -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════════════════════════════════
+KEY CODE CHANGES
+═══════════════════════════════════════════════════════════════════════════════
+
+1. AuthContext.tsx - User interface:
+```typescript
+interface User {
+  // ... existing fields
+  avatar_url?: string; // NEW: Profile picture URL
+  // ... rest of fields
+}
+```
+
+2. Header.tsx - Avatar display:
+```typescript
+{/* Avatar - Show profile picture if available */}
+{user?.avatar_url ? (
+  <img
+    src={user.avatar_url}
+    alt={`${user.first_name || 'User'}'s avatar`}
+    className="h-8 w-8 rounded-full object-cover"
+    onError={(e) => {
+      // Fallback if image fails
+      const target = e.target as HTMLImageElement;
+      target.style.display = 'none';
+      target.nextElementSibling?.classList.remove('hidden');
+    }}
+  />
+) : null}
+<div className={`... ${user?.avatar_url ? 'hidden' : ''}`}>
+  {/* Fallback initial */}
+</div>
+```
+
+3. WorkSpacesSection.tsx - Use tenants from AuthContext:
+```typescript
+const { tenants, currentTenant } = useAuth();
+
+const workspaces = React.useMemo(() => {
+  // Use profile.workspaces if available
+  if (profile?.workspaces?.length > 0) {
+    return profile.workspaces;
+  }
+  // Fallback to tenants from AuthContext
+  if (tenants?.length > 0) {
+    return tenants.map(tenant => ({
+      id: tenant.id,
+      name: tenant.name,
+      workspace_code: tenant.workspace_code,
+      is_default: tenant.is_default || (currentTenant?.id === tenant.id),
+      is_owner: tenant.is_owner || false,
+      // ... map other fields
+    }));
+  }
+  return [];
+}, [profile?.workspaces, tenants, currentTenant]);
+```
+
+═══════════════════════════════════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+Issue 1: Avatar in Header
+- [ ] Go to Settings > User Profile
+- [ ] Upload a profile photo
+- [ ] Check the header - photo should appear in the avatar circle
+- [ ] If no photo, first initial should show
+- [ ] Test with invalid image URL - should fallback to initial
+
+Issue 2: Workspaces Tab
+- [ ] Go to Settings > User Profile
+- [ ] Click on "Workspace Access" tab
+- [ ] Should show list of workspaces you have access to
+- [ ] Current/default workspace should be marked
+- [ ] Owner badge should show for owned workspaces
+
+═══════════════════════════════════════════════════════════════════════════════
+IMPORTANT NOTE ABOUT ONBOARDING FIX
+═══════════════════════════════════════════════════════════════════════════════
+
+The AuthContext.tsx in this fix includes ONLY the avatar_url addition.
+If you have the V2 onboarding fix applied, you need to MERGE the changes:
+
+1. The V2 onboarding fix has: checkOnboardingStatus, markOnboardingComplete, etc.
+2. This fix adds: avatar_url to User interface
+
+Make sure to keep BOTH sets of changes when applying.
+
+═══════════════════════════════════════════════════════════════════════════════
