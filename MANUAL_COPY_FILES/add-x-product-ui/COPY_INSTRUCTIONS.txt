@@ -1,0 +1,96 @@
+═══════════════════════════════════════════════════════════════════════════════
+FEATURE: X-PRODUCT HEADER IN UI LAYER (SUPABASE CLIENT)
+═══════════════════════════════════════════════════════════════════════════════
+
+PROBLEM:
+- X-Product header was implemented in API layer but NOT in direct Supabase calls
+- Auth flows (Google OAuth, Lock screen, etc.) bypass API layer and call Supabase directly
+- These direct calls did not include the X-Product header
+
+SOLUTION:
+1. Updated supabase.ts to include X-Product header in global headers
+2. Added VITE_DEFAULT_PRODUCT to .env.example for configuration
+3. Product context detection: sessionStorage > localStorage > URL > env default
+
+CHANGES APPLIED:
+1. src/utils/supabase.ts
+   - Added product context functions (getProductContext, setProductContext)
+   - Configured createClient with global x-product header
+   - Added createSupabaseWithProduct() for dynamic product switching
+
+2. .env.example
+   - Added VITE_DEFAULT_PRODUCT=contractnest
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════════════════════════════════
+
+Submodule: contractnest-ui
+
+1. src/utils/supabase.ts
+   - Complete rewrite with X-Product support
+   - Global headers now include x-product
+
+2. .env.example
+   - Added VITE_DEFAULT_PRODUCT configuration
+
+═══════════════════════════════════════════════════════════════════════════════
+COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Copy supabase.ts
+Copy-Item "MANUAL_COPY_FILES\add-x-product-ui\contractnest-ui\src\utils\supabase.ts" -Destination "contractnest-ui\src\utils\" -Force
+
+# Copy .env.example
+Copy-Item "MANUAL_COPY_FILES\add-x-product-ui\contractnest-ui\.env.example" -Destination "contractnest-ui\" -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════════════════════════════════
+IMPORTANT: UPDATE YOUR .env FILE
+═══════════════════════════════════════════════════════════════════════════════
+
+After copying, add this to your actual .env file (not .env.example):
+
+VITE_DEFAULT_PRODUCT=contractnest
+
+For FamilyKnows deployment, use:
+VITE_DEFAULT_PRODUCT=familyknows
+
+═══════════════════════════════════════════════════════════════════════════════
+HOW IT WORKS
+═══════════════════════════════════════════════════════════════════════════════
+
+Product Context Priority:
+1. sessionStorage (per-session, highest priority)
+2. localStorage (persistent across sessions)
+3. URL path detection (if path contains 'familyknows')
+4. VITE_DEFAULT_PRODUCT from .env (fallback)
+5. 'contractnest' (hardcoded default)
+
+All Supabase requests now include:
+- Header: x-product: <current_product_context>
+
+═══════════════════════════════════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+Test 1: Console Verification
+- [ ] Open browser DevTools > Console
+- [ ] Look for: "✅ Supabase client initialized with x-product: contractnest"
+
+Test 2: Network Inspection
+- [ ] Open DevTools > Network tab
+- [ ] Perform any Supabase operation (login, fetch data)
+- [ ] Check request headers for: x-product: contractnest
+
+Test 3: Google OAuth (if enabled)
+- [ ] Initiate Google login
+- [ ] Verify x-product header in OAuth-related requests
+
+Test 4: Product Context Switching
+- [ ] In console: setProductContext('familyknows', true)
+- [ ] Refresh page
+- [ ] Verify new product context is used
