@@ -1,0 +1,93 @@
+═══════════════════════════════════════════════════════════════════════════════
+FEATURE: X-PRODUCT HEADER FOR UI SUPABASE CLIENT
+═══════════════════════════════════════════════════════════════════════════════
+
+PURPOSE:
+Auth operations in the UI go directly to Supabase (not through the API).
+The API uses x-product header to identify the product (ContractNest, FamilyKnows).
+This fix adds the same x-product header to the UI's Supabase client for consistency.
+
+WHAT THIS ENABLES:
+- Multi-product architecture support
+- Proper product identification for direct Supabase auth operations
+- Consistency between API and UI requests
+- Future support for product-specific Supabase instances via .env
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES TO COPY (2 FILES)
+═══════════════════════════════════════════════════════════════════════════════
+
+Submodule: contractnest-ui
+
+1. src/utils/supabase.ts
+   - Added x-product header to Supabase client global headers
+   - Reads product from VITE_DEFAULT_PRODUCT env variable
+   - Defaults to 'contractnest' if not set
+
+2. .env.example
+   - Added VITE_DEFAULT_PRODUCT variable with documentation
+   - Default value: contractnest
+
+═══════════════════════════════════════════════════════════════════════════════
+COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Copy supabase.ts
+Copy-Item "MANUAL_COPY_FILES\add-x-product-header\contractnest-ui\src\utils\supabase.ts" -Destination "contractnest-ui\src\utils\" -Force
+
+# Copy .env.example
+Copy-Item "MANUAL_COPY_FILES\add-x-product-header\contractnest-ui\.env.example" -Destination "contractnest-ui\" -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════════════════════════════════
+IMPORTANT: UPDATE YOUR .env FILE
+═══════════════════════════════════════════════════════════════════════════════
+
+After copying, add this line to your actual .env file:
+
+VITE_DEFAULT_PRODUCT=contractnest
+
+For FamilyKnows UI (if separate), use:
+
+VITE_DEFAULT_PRODUCT=familyknows
+
+═══════════════════════════════════════════════════════════════════════════════
+HOW IT WORKS
+═══════════════════════════════════════════════════════════════════════════════
+
+BEFORE:
+```javascript
+export const supabase = createClient(finalUrl, finalKey);
+// No x-product header - Supabase doesn't know which product
+```
+
+AFTER:
+```javascript
+export const supabase = createClient(finalUrl, finalKey, {
+  global: {
+    headers: {
+      'x-product': import.meta.env.VITE_DEFAULT_PRODUCT || 'contractnest'
+    }
+  }
+});
+// All Supabase requests now include x-product header
+```
+
+═══════════════════════════════════════════════════════════════════════════════
+VERIFICATION
+═══════════════════════════════════════════════════════════════════════════════
+
+After applying the fix:
+
+1. Open browser DevTools > Network tab
+2. Perform a login or register action
+3. Look at the Supabase request headers
+4. You should see: x-product: contractnest
+
+Console should show:
+Direct VITE_DEFAULT_PRODUCT: contractnest
+
+═══════════════════════════════════════════════════════════════════════════════
