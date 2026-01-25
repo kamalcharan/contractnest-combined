@@ -1,11 +1,15 @@
 ═══════════════════════════════════════════════════
-FIX: Add auth options to Supabase client creation
+FIX: Add auth options + detailed error logging for 401 debugging
 ═══════════════════════════════════════════════════
 
 PURPOSE:
-Fix 401 token validation errors in FamilyKnows invitation flow by adding
-proper auth options (persistSession: false, autoRefreshToken: false) to
-Supabase client creation in both Railway API and Edge Functions.
+1. Fix 401 token validation errors by adding proper auth options
+2. Add detailed error logging to understand what getUser() is returning
+
+CHANGES MADE:
+1. Added auth options (persistSession: false, autoRefreshToken: false)
+2. Added environment variable logging
+3. Added detailed getUser() error logging with full error details
 
 ═══════════════════════════════════════════════════
 FILES TO COPY
@@ -14,12 +18,10 @@ FILES TO COPY
 1. contractnest-api/src/utils/supabaseConfig.ts
    Source: MANUAL_COPY_FILES/fix-supabase-auth-options/contractnest-api/src/utils/supabaseConfig.ts
    Destination: contractnest-api/src/utils/supabaseConfig.ts
-   Change: Added auth options to getSupabaseClientForProduct() function
 
 2. contractnest-edge/supabase/functions/user-invitations/index.ts
    Source: MANUAL_COPY_FILES/fix-supabase-auth-options/contractnest-edge/supabase/functions/user-invitations/index.ts
    Destination: contractnest-edge/supabase/functions/user-invitations/index.ts
-   Change: Added auth options to createClient() call
 
 ═══════════════════════════════════════════════════
 SUBMODULES AFFECTED
@@ -28,6 +30,9 @@ SUBMODULES AFFECTED
 - contractnest-edge
 
 ═══════════════════════════════════════════════════
-AFTER COPYING - DEPLOY EDGE FUNCTION
+AFTER DEPLOYMENT - CHECK SUPABASE LOGS FOR:
 ═══════════════════════════════════════════════════
-supabase functions deploy user-invitations --project-ref yqxjsguekpffybqqzosw
+1. "🔧 Environment check" - Verify SUPABASE_URL and SERVICE_ROLE_KEY are set
+2. "🔐 Attempting to validate token" - Token is being processed
+3. "❌ getUser() returned error" - The ACTUAL error from Supabase
+4. "✅ Token validated successfully" - Success case
