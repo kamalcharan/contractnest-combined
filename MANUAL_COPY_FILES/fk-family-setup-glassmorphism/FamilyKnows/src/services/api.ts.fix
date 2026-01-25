@@ -1,0 +1,30 @@
+// FIX FOR api.ts - Line 138-139
+//
+// CURRENT (WRONG):
+//   const isLive = await AsyncStorage.getItem(STORAGE_KEYS.IS_LIVE);
+//   headers['x-environment'] = isLive === 'true' ? 'live' : 'test';
+//
+// CHANGE TO (CORRECT):
+//   // FamilyKnows is always live - no test/live toggle
+//   headers['x-environment'] = 'live';
+
+// LOCATION: FamilyKnows/src/services/api.ts
+// LINE: ~138-139 (inside getAuthHeaders method)
+
+// FULL CONTEXT (lines 130-145):
+/*
+      if (tenantId) {
+        headers['x-tenant-id'] = tenantId;
+      } else {
+        console.warn('WARNING: No tenant ID found!');
+      }
+
+      // FamilyKnows is always live - no test/live toggle
+      headers['x-environment'] = 'live';
+    } catch (error) {
+      console.error('Error getting auth headers:', error);
+    }
+
+    return headers;
+  }
+*/
