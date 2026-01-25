@@ -3,28 +3,82 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { api, API_ENDPOINTS } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 export interface Relationship {
   id: string;
   name: string;
   displayName: string;
-  icon?: string;
+  icon: string;
   description?: string;
   sequence?: number;
+  defaultMessage: string; // Pre-filled invite message
 }
+
+// Valid MaterialCommunityIcons names for relationships
+const RELATIONSHIP_ICONS: Record<string, string> = {
+  father: 'human-male',
+  dad: 'human-male',
+  mother: 'human-female',
+  mom: 'human-female',
+  spouse: 'heart',
+  partner: 'heart',
+  husband: 'human-male',
+  wife: 'human-female',
+  son: 'human-male-boy',
+  daughter: 'human-female-girl',
+  brother: 'account-group',
+  sister: 'account-group',
+  sibling: 'account-group',
+  grandfather: 'account',
+  grandpa: 'account',
+  grandmother: 'account',
+  grandma: 'account',
+  grandparent: 'account-group',
+  uncle: 'human-male',
+  aunt: 'human-female',
+  cousin: 'account-group',
+  nephew: 'human-male-boy',
+  niece: 'human-female-girl',
+  other: 'account-plus',
+};
+
+// Default invite messages per relationship
+const DEFAULT_MESSAGES: Record<string, string> = {
+  father: "Hi Dad! I'm using FamilyKnows to keep our family connected. Join me so we can share moments together! 💙",
+  dad: "Hi Dad! I'm using FamilyKnows to keep our family connected. Join me so we can share moments together! 💙",
+  mother: "Hi Mom! I'm using FamilyKnows to keep our family connected. Join me so we can share precious moments! 💕",
+  mom: "Hi Mom! I'm using FamilyKnows to keep our family connected. Join me so we can share precious moments! 💕",
+  spouse: "Hey love! Let's use FamilyKnows together to stay connected with our family. Join me! ❤️",
+  partner: "Hey! Let's use FamilyKnows together to stay connected with our family. Join me! ❤️",
+  husband: "Hey! Let's use FamilyKnows together to stay connected with our family. Join me! ❤️",
+  wife: "Hey! Let's use FamilyKnows together to stay connected with our family. Join me! ❤️",
+  son: "Hey! Join our family on FamilyKnows. Let's stay connected! 🌟",
+  daughter: "Hey! Join our family on FamilyKnows. Let's stay connected! 🌟",
+  brother: "Hey bro! I'm using FamilyKnows to keep our family connected. Join the family hub! 💪",
+  sister: "Hey sis! I'm using FamilyKnows to keep our family connected. Join the family hub! 💖",
+  sibling: "Hey! I'm using FamilyKnows to keep our family connected. Join the family hub!",
+  grandfather: "Hi Grandpa! Join our family on FamilyKnows. We'd love to have you! 🌳",
+  grandpa: "Hi Grandpa! Join our family on FamilyKnows. We'd love to have you! 🌳",
+  grandmother: "Hi Grandma! Join our family on FamilyKnows. We'd love to have you! 🌸",
+  grandma: "Hi Grandma! Join our family on FamilyKnows. We'd love to have you! 🌸",
+  grandparent: "Hi! Join our family on FamilyKnows. We'd love to have you! 🌳",
+  uncle: "Hi Uncle! Join our family on FamilyKnows. Let's stay connected! 🤝",
+  aunt: "Hi Aunty! Join our family on FamilyKnows. Let's stay connected! 💐",
+  cousin: "Hey! Join our family on FamilyKnows. Let's stay connected! 🎉",
+  nephew: "Hey! Join our family on FamilyKnows!",
+  niece: "Hey! Join our family on FamilyKnows!",
+  other: "Hey! I'm inviting you to join our family on FamilyKnows. Let's stay connected! 🏠",
+};
 
 // Default relationships as fallback (if API fails)
 const DEFAULT_RELATIONSHIPS: Relationship[] = [
-  { id: 'father', name: 'Father', displayName: 'Father', icon: 'human-male', sequence: 1 },
-  { id: 'mother', name: 'Mother', displayName: 'Mother', icon: 'human-female', sequence: 2 },
-  { id: 'spouse', name: 'Spouse', displayName: 'Spouse', icon: 'heart', sequence: 3 },
-  { id: 'son', name: 'Son', displayName: 'Son', icon: 'human-male-child', sequence: 4 },
-  { id: 'daughter', name: 'Daughter', displayName: 'Daughter', icon: 'human-female-child', sequence: 5 },
-  { id: 'brother', name: 'Brother', displayName: 'Brother', icon: 'account-group', sequence: 6 },
-  { id: 'sister', name: 'Sister', displayName: 'Sister', icon: 'account-group', sequence: 7 },
-  { id: 'grandfather', name: 'Grandfather', displayName: 'Grandpa', icon: 'human-male', sequence: 8 },
-  { id: 'grandmother', name: 'Grandmother', displayName: 'Grandma', icon: 'human-female', sequence: 9 },
-  { id: 'other', name: 'Other', displayName: 'Other', icon: 'account-plus', sequence: 99 },
+  { id: 'father', name: 'Father', displayName: 'Dad', icon: 'human-male', sequence: 1, defaultMessage: DEFAULT_MESSAGES.father },
+  { id: 'mother', name: 'Mother', displayName: 'Mom', icon: 'human-female', sequence: 2, defaultMessage: DEFAULT_MESSAGES.mother },
+  { id: 'spouse', name: 'Spouse', displayName: 'Spouse', icon: 'heart', sequence: 3, defaultMessage: DEFAULT_MESSAGES.spouse },
+  { id: 'sibling', name: 'Sibling', displayName: 'Sibling', icon: 'account-group', sequence: 4, defaultMessage: DEFAULT_MESSAGES.sibling },
+  { id: 'grandparent', name: 'Grandparent', displayName: 'Grandpa', icon: 'account', sequence: 5, defaultMessage: DEFAULT_MESSAGES.grandparent },
+  { id: 'other', name: 'Other', displayName: 'Other', icon: 'account-plus', sequence: 99, defaultMessage: DEFAULT_MESSAGES.other },
 ];
 
 interface UseRelationshipsReturn {
@@ -35,11 +89,20 @@ interface UseRelationshipsReturn {
 }
 
 export const useRelationships = (): UseRelationshipsReturn => {
+  const { currentTenant, isAuthenticated } = useAuth();
   const [relationships, setRelationships] = useState<Relationship[]>(DEFAULT_RELATIONSHIPS);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchRelationships = useCallback(async () => {
+    // Don't fetch if not authenticated or no tenant
+    if (!isAuthenticated || !currentTenant?.id) {
+      console.log('Skipping relationships fetch - no auth or tenant');
+      setRelationships(DEFAULT_RELATIONSHIPS);
+      setIsLoading(false);
+      return;
+    }
+
     try {
       setIsLoading(true);
       setError(null);
@@ -47,6 +110,12 @@ export const useRelationships = (): UseRelationshipsReturn => {
       // First, fetch all categories to find the Roles/Relationships category
       const categoriesResponse = await api.get<any[]>('/api/masterdata/categories');
       const categories = categoriesResponse.data;
+
+      if (!categories || !Array.isArray(categories)) {
+        console.log('No categories returned, using defaults');
+        setRelationships(DEFAULT_RELATIONSHIPS);
+        return;
+      }
 
       // Look for Roles or FamilyRelationship category
       const relationshipCategory = categories.find(
@@ -64,17 +133,22 @@ export const useRelationships = (): UseRelationshipsReturn => {
         );
         const details = detailsResponse.data;
 
-        if (details && details.length > 0) {
+        if (details && Array.isArray(details) && details.length > 0) {
           const transformedRelationships: Relationship[] = details
             .filter((d: any) => d.IsActive !== false)
-            .map((d: any) => ({
-              id: d.id,
-              name: d.Name || d.name,
-              displayName: d.DisplayName || d.Name || d.name,
-              icon: getRelationshipIcon(d.Name || d.name),
-              description: d.Description || d.description,
-              sequence: d.Sequence || d.sequence || 99,
-            }))
+            .map((d: any) => {
+              const name = d.Name || d.name || 'Unknown';
+              const lowerName = name.toLowerCase();
+              return {
+                id: d.id,
+                name: name,
+                displayName: d.DisplayName || name,
+                icon: RELATIONSHIP_ICONS[lowerName] || 'account',
+                description: d.Description || d.description,
+                sequence: d.Sequence || d.sequence || 99,
+                defaultMessage: DEFAULT_MESSAGES[lowerName] || DEFAULT_MESSAGES.other,
+              };
+            })
             .sort((a: Relationship, b: Relationship) => (a.sequence || 99) - (b.sequence || 99));
 
           // Add "Other" option if not present
@@ -85,10 +159,14 @@ export const useRelationships = (): UseRelationshipsReturn => {
               displayName: 'Other',
               icon: 'account-plus',
               sequence: 999,
+              defaultMessage: DEFAULT_MESSAGES.other,
             });
           }
 
           setRelationships(transformedRelationships);
+        } else {
+          console.log('No relationship details found, using defaults');
+          setRelationships(DEFAULT_RELATIONSHIPS);
         }
       } else {
         // Use default relationships if category not found
@@ -97,13 +175,13 @@ export const useRelationships = (): UseRelationshipsReturn => {
       }
     } catch (err: any) {
       console.error('Error fetching relationships:', err);
-      setError(err.message || 'Failed to fetch relationships');
-      // Keep default relationships on error
+      // Don't set error state - just use defaults silently
+      // This prevents showing error toasts for non-critical data
       setRelationships(DEFAULT_RELATIONSHIPS);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isAuthenticated, currentTenant?.id]);
 
   useEffect(() => {
     fetchRelationships();
@@ -116,38 +194,5 @@ export const useRelationships = (): UseRelationshipsReturn => {
     refetch: fetchRelationships,
   };
 };
-
-// Helper function to map relationship names to icons
-function getRelationshipIcon(name: string): string {
-  const iconMap: Record<string, string> = {
-    father: 'human-male',
-    dad: 'human-male',
-    mother: 'human-female',
-    mom: 'human-female',
-    spouse: 'heart',
-    partner: 'heart',
-    husband: 'human-male',
-    wife: 'human-female',
-    son: 'human-male-child',
-    daughter: 'human-female-child',
-    brother: 'account-group',
-    sister: 'account-group',
-    sibling: 'account-group',
-    grandfather: 'human-male',
-    grandpa: 'human-male',
-    grandmother: 'human-female',
-    grandma: 'human-female',
-    grandparent: 'account-group',
-    uncle: 'human-male',
-    aunt: 'human-female',
-    cousin: 'account-group',
-    nephew: 'human-male-child',
-    niece: 'human-female-child',
-    other: 'account-plus',
-  };
-
-  const lowerName = name.toLowerCase();
-  return iconMap[lowerName] || 'account';
-}
 
 export default useRelationships;

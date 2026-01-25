@@ -8,7 +8,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Share,
-  Alert,
   Modal,
   Animated,
   Easing,
@@ -19,19 +18,20 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { Text, Button, Input } from '@rneui/themed';
+import { Text, Button } from '@rneui/themed';
 import { useTheme } from '../../../theme/ThemeContext';
 import { useAuth } from '../../../context/AuthContext';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { OnboardingStackParamList } from '../../../navigation/types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { toast } from '../../../components/Toast';
 import { useInvitations, CreateInvitationData, Invitation } from '../../../hooks/useInvitations';
 import { useRelationships, Relationship } from '../../../hooks/useRelationships';
+import { countryCodes, CountryCode } from '../../../constants/countryCodes';
+import CountryCodePicker from '../components/CountryCodePicker';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -67,10 +67,11 @@ export const FamilySetupScreen: React.FC<Props> = ({ navigation, route }) => {
     invitations,
     isLoading: invitationsLoading,
     isCreating,
+    error: invitationsError,
     fetchInvitations,
     createInvitation,
     resendInvitation,
-    cancelInvitation,
+    clearError,
   } = useInvitations();
 
   // State
@@ -80,6 +81,10 @@ export const FamilySetupScreen: React.FC<Props> = ({ navigation, route }) => {
   const [inviteContact, setInviteContact] = useState('');
   const [customMessage, setCustomMessage] = useState('');
   const [showManageMode, setShowManageMode] = useState(isFromSettings || false);
+
+  // Country code picker state
+  const [selectedCountry, setSelectedCountry] = useState<CountryCode>(countryCodes[0]); // India default
+  const [showCountryPicker, setShowCountryPicker] = useState(false);
 
   // Animations
   const orbPulse = useRef(new Animated.Value(1)).current;
@@ -104,6 +109,13 @@ export const FamilySetupScreen: React.FC<Props> = ({ navigation, route }) => {
   useEffect(() => {
     fetchInvitations();
   }, []);
+
+  // Pre-fill message when relationship is selected
+  useEffect(() => {
+    if (selectedRelationship) {
+      setCustomMessage(selectedRelationship.defaultMessage);
+    }
+  }, [selectedRelationship]);
 
   // Entrance animations
   useEffect(() => {
@@ -183,13 +195,21 @@ export const FamilySetupScreen: React.FC<Props> = ({ navigation, route }) => {
   // Handle relationship bubble tap
   const handleRelationshipTap = (relationship: Relationship) => {
     setSelectedRelationship(relationship);
+    setInviteContact('');
     setShowInviteModal(true);
   };
 
   // Send invitation
   const handleSendInvitation = async () => {
-    if (!inviteContact.trim()) {
-      toast.error('Required', 'Please enter email or phone number');
+    const isEmail = inviteMethod === 'email';
+
+    if (isEmail && !inviteContact.trim()) {
+      toast.error('Required', 'Please enter an email address');
+      return;
+    }
+
+    if (!isEmail && !inviteContact.trim()) {
+      toast.error('Required', 'Please enter a phone number');
       return;
     }
 
@@ -199,24 +219,19 @@ export const FamilySetupScreen: React.FC<Props> = ({ navigation, route }) => {
     }
 
     try {
-      const isEmail = inviteContact.includes('@');
       const invitationData: CreateInvitationData = {
         invitation_method: inviteMethod,
         role_id: selectedRelationship.id,
-        custom_message: customMessage || `Join our family on FamilyKnows!`,
+        custom_message: customMessage || selectedRelationship.defaultMessage,
       };
 
       if (isEmail) {
         invitationData.email = inviteContact.trim();
       } else {
-        // Extract phone code if present (e.g., +91)
-        const phoneMatch = inviteContact.match(/^\+?(\d{1,3})?(.*)$/);
-        if (phoneMatch) {
-          invitationData.phone_code = phoneMatch[1] || '91';
-          invitationData.mobile_number = phoneMatch[2].replace(/\D/g, '');
-        } else {
-          invitationData.mobile_number = inviteContact.replace(/\D/g, '');
-        }
+        // Use selected country's dial code
+        invitationData.phone_code = selectedCountry.dialCode.replace('+', '');
+        invitationData.country_code = selectedCountry.code;
+        invitationData.mobile_number = inviteContact.replace(/\D/g, '');
       }
 
       const invitation = await createInvitation(invitationData);
@@ -224,21 +239,16 @@ export const FamilySetupScreen: React.FC<Props> = ({ navigation, route }) => {
       toast.success('Invitation Sent!', `Invitation sent to your ${selectedRelationship.displayName}`);
 
       // Open WhatsApp if that was the method
-      if (inviteMethod === 'whatsapp' && invitation.invitation_link) {
+      if (inviteMethod === 'whatsapp') {
+        const fullPhone = `${selectedCountry.dialCode.replace('+', '')}${inviteContact.replace(/\D/g, '')}`;
         const message = encodeURIComponent(
-          `${user?.first_name || 'Someone'} has invited you to join ${workspaceName} on FamilyKnows!\n\n` +
-            `${customMessage || "Let's stay connected as a family."}\n\n` +
-            `Click here to join: ${invitation.invitation_link}`
+          `${customMessage || selectedRelationship.defaultMessage}\n\n` +
+            (invitation.invitation_link ? `Click here to join: ${invitation.invitation_link}` : '')
         );
-        const phone = invitationData.mobile_number
-          ? `${invitationData.phone_code || ''}${invitationData.mobile_number}`
-          : '';
-        const whatsappUrl = phone
-          ? `whatsapp://send?phone=${phone}&text=${message}`
-          : `whatsapp://send?text=${message}`;
+        const whatsappUrl = `whatsapp://send?phone=${fullPhone}&text=${message}`;
 
         Linking.openURL(whatsappUrl).catch(() => {
-          toast.info('WhatsApp Not Found', 'Please share the invitation link manually');
+          toast.info('WhatsApp', 'Please share the invitation link manually');
         });
       }
 
@@ -258,7 +268,8 @@ export const FamilySetupScreen: React.FC<Props> = ({ navigation, route }) => {
     if (success) {
       toast.success('Nudged!', 'Reminder sent successfully');
     } else {
-      toast.error('Failed', 'Could not send reminder');
+      toast.error('Failed', invitationsError || 'Could not send reminder');
+      clearError();
     }
   };
 
@@ -682,28 +693,73 @@ export const FamilySetupScreen: React.FC<Props> = ({ navigation, route }) => {
               <Text style={[styles.inputLabel, { color: colors.utility.secondaryText }]}>
                 {inviteMethod === 'email' ? 'Email Address' : 'Phone Number'}
               </Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: glassBackground,
-                    borderColor: glassBorder,
-                    color: colors.utility.primaryText,
-                  },
-                ]}
-                placeholder={inviteMethod === 'email' ? 'name@example.com' : '+91 98765 43210'}
-                placeholderTextColor={colors.utility.secondaryText}
-                value={inviteContact}
-                onChangeText={setInviteContact}
-                keyboardType={inviteMethod === 'email' ? 'email-address' : 'phone-pad'}
-                autoCapitalize="none"
-              />
+
+              {inviteMethod === 'email' ? (
+                <TextInput
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: glassBackground,
+                      borderColor: glassBorder,
+                      color: colors.utility.primaryText,
+                    },
+                  ]}
+                  placeholder="name@example.com"
+                  placeholderTextColor={colors.utility.secondaryText}
+                  value={inviteContact}
+                  onChangeText={setInviteContact}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              ) : (
+                <View style={styles.phoneInputRow}>
+                  {/* Country Code Picker */}
+                  <TouchableOpacity
+                    style={[
+                      styles.countryCodeButton,
+                      {
+                        backgroundColor: glassBackground,
+                        borderColor: glassBorder,
+                      },
+                    ]}
+                    onPress={() => setShowCountryPicker(true)}
+                  >
+                    <Text style={styles.countryFlag}>{selectedCountry.flag}</Text>
+                    <Text style={[styles.countryDialCode, { color: colors.utility.primaryText }]}>
+                      {selectedCountry.dialCode}
+                    </Text>
+                    <MaterialCommunityIcons
+                      name="chevron-down"
+                      size={16}
+                      color={colors.utility.secondaryText}
+                    />
+                  </TouchableOpacity>
+
+                  {/* Phone Number Input */}
+                  <TextInput
+                    style={[
+                      styles.input,
+                      styles.phoneInput,
+                      {
+                        backgroundColor: glassBackground,
+                        borderColor: glassBorder,
+                        color: colors.utility.primaryText,
+                      },
+                    ]}
+                    placeholder="98765 43210"
+                    placeholderTextColor={colors.utility.secondaryText}
+                    value={inviteContact}
+                    onChangeText={setInviteContact}
+                    keyboardType="phone-pad"
+                  />
+                </View>
+              )}
             </View>
 
             {/* Custom Message */}
             <View style={styles.inputContainer}>
               <Text style={[styles.inputLabel, { color: colors.utility.secondaryText }]}>
-                Personal Message (Optional)
+                Personal Message
               </Text>
               <TextInput
                 style={[
@@ -757,6 +813,17 @@ export const FamilySetupScreen: React.FC<Props> = ({ navigation, route }) => {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Country Code Picker Modal */}
+      <CountryCodePicker
+        visible={showCountryPicker}
+        onClose={() => setShowCountryPicker(false)}
+        onSelect={(country) => {
+          setSelectedCountry(country);
+          setShowCountryPicker(false);
+        }}
+        selectedCode={selectedCountry.code}
+      />
     </View>
   );
 
@@ -1129,8 +1196,34 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   textArea: {
-    height: 80,
+    height: 100,
     textAlignVertical: 'top',
+    paddingTop: 14,
+  },
+
+  // Phone Input
+  phoneInputRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  countryCodeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  countryFlag: {
+    fontSize: 20,
+  },
+  countryDialCode: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  phoneInput: {
+    flex: 1,
   },
 
   // Send Button
