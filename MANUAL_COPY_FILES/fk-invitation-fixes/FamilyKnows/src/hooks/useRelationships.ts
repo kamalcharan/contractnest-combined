@@ -107,8 +107,13 @@ export const useRelationships = (): UseRelationshipsReturn => {
       setIsLoading(true);
       setError(null);
 
+      // CRITICAL: Pass tenant ID explicitly to avoid cache sync issues
+      // The api service cache might not be in sync with AuthContext state
+      const headers = { 'x-tenant-id': currentTenant.id };
+      console.log('useRelationships: Fetching with tenant ID:', currentTenant.id);
+
       // First, fetch all categories to find the Roles/Relationships category
-      const categoriesResponse = await api.get<any[]>('/api/masterdata/categories');
+      const categoriesResponse = await api.get<any[]>('/api/masterdata/categories', headers);
       const categories = categoriesResponse.data;
 
       if (!categories || !Array.isArray(categories)) {
@@ -129,7 +134,8 @@ export const useRelationships = (): UseRelationshipsReturn => {
       if (relationshipCategory) {
         // Fetch the details for this category
         const detailsResponse = await api.get<any[]>(
-          `/api/masterdata/categories/${relationshipCategory.id}/details`
+          `/api/masterdata/categories/${relationshipCategory.id}/details`,
+          headers
         );
         const details = detailsResponse.data;
 

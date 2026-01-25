@@ -95,8 +95,13 @@ export const useInvitations = (): UseInvitationsReturn => {
       setIsLoading(true);
       setError(null);
 
+      // CRITICAL: Pass tenant ID explicitly to avoid cache sync issues
+      const headers = { 'x-tenant-id': currentTenant.id };
+      console.log('useInvitations: Fetching with tenant ID:', currentTenant.id);
+
       const response = await api.get<InvitationsResponse>(
-        `${API_ENDPOINTS.INVITATIONS.LIST}?page=${page}&status=${status}&limit=20`
+        `${API_ENDPOINTS.INVITATIONS.LIST}?page=${page}&status=${status}&limit=20`,
+        headers
       );
 
       // Handle different response formats
@@ -132,7 +137,9 @@ export const useInvitations = (): UseInvitationsReturn => {
       setIsCreating(true);
       setError(null);
 
-      const response = await api.post<Invitation>(API_ENDPOINTS.INVITATIONS.CREATE, data);
+      // Pass tenant ID explicitly
+      const headers = { 'x-tenant-id': currentTenant.id };
+      const response = await api.post<Invitation>(API_ENDPOINTS.INVITATIONS.CREATE, data, headers);
 
       // Add new invitation to list
       setInvitations((prev) => [response.data, ...prev]);
@@ -158,7 +165,9 @@ export const useInvitations = (): UseInvitationsReturn => {
     try {
       setError(null);
 
-      await api.post(API_ENDPOINTS.INVITATIONS.RESEND(invitationId));
+      // Pass tenant ID explicitly
+      const headers = { 'x-tenant-id': currentTenant.id };
+      await api.post(API_ENDPOINTS.INVITATIONS.RESEND(invitationId), {}, headers);
 
       // Update invitation in list
       setInvitations((prev) =>
@@ -193,7 +202,9 @@ export const useInvitations = (): UseInvitationsReturn => {
     try {
       setError(null);
 
-      await api.post(API_ENDPOINTS.INVITATIONS.CANCEL(invitationId));
+      // Pass tenant ID explicitly
+      const headers = { 'x-tenant-id': currentTenant.id };
+      await api.post(API_ENDPOINTS.INVITATIONS.CANCEL(invitationId), {}, headers);
 
       // Update invitation in list
       setInvitations((prev) =>
