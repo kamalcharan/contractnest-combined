@@ -1,0 +1,59 @@
+// PATCH: Add these lines to api.ts after line 422 (after WORKSPACE section)
+
+  MASTERDATA: {
+    CATEGORIES: '/api/masterdata/categories',
+    CATEGORY_DETAILS: (categoryId: string) => `/api/masterdata/categories/${categoryId}/details`,
+  },
+
+// The full API_ENDPOINTS should look like:
+
+export const API_ENDPOINTS = {
+  AUTH: {
+    LOGIN: '/api/FKauth/login',
+    REGISTER: '/api/FKauth/register',
+    SIGNOUT: '/api/FKauth/signout',
+    REFRESH_TOKEN: '/api/FKauth/refresh-token',
+    USER: '/api/FKauth/user',
+    RESET_PASSWORD: '/api/FKauth/reset-password',
+    CHANGE_PASSWORD: '/api/FKauth/change-password',
+    VERIFY_PASSWORD: '/api/FKauth/verify-password',
+    COMPLETE_REGISTRATION: '/api/FKauth/complete-registration',
+    UPDATE_PREFERENCES: '/api/FKauth/preferences',
+  },
+  TENANTS: {
+    LIST: '/api/tenants',
+    CREATE: '/api/tenants',
+    GET: (id: string) => `/api/tenants/${id}`,
+  },
+  ONBOARDING: {
+    STATUS: '/api/FKonboarding/status',
+    INITIALIZE: '/api/FKonboarding/initialize',
+    COMPLETE: '/api/FKonboarding/complete',
+    STEP_COMPLETE: '/api/FKonboarding/complete-step',
+  },
+  USER: {
+    PROFILE: '/api/users/me',
+    UPDATE: '/api/users/me',
+  },
+  OTP: {
+    SEND: '/api/otp/send',
+    VERIFY: '/api/otp/verify',
+  },
+  INVITATIONS: {
+    LIST: '/api/users/invitations',
+    CREATE: '/api/users/invitations',
+    GET: (id: string) => `/api/users/invitations/${id}`,
+    RESEND: (id: string) => `/api/users/invitations/${id}/resend`,
+    CANCEL: (id: string) => `/api/users/invitations/${id}/cancel`,
+    VALIDATE: '/api/users/invitations/validate',
+    ACCEPT: '/api/users/invitations/accept',
+  },
+  WORKSPACE: {
+    MEMBERS: '/api/workspace/members',
+    RELATIONSHIPS: '/api/workspace/relationships',
+  },
+  MASTERDATA: {
+    CATEGORIES: '/api/masterdata/categories',
+    CATEGORY_DETAILS: (categoryId: string) => `/api/masterdata/categories/${categoryId}/details`,
+  },
+};

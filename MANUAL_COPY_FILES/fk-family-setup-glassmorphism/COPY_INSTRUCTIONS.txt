@@ -1,0 +1,136 @@
+═══════════════════════════════════════════════════
+📦 FAMILY SETUP SCREEN - GLASSMORPHISM DESIGN
+═══════════════════════════════════════════════════
+Branch: fk-family-setup-glassmorphism
+Date: January 2025
+
+Submodules Affected: FamilyKnows
+
+═══════════════════════════════════════════════════
+📋 FILES CREATED/MODIFIED
+═══════════════════════════════════════════════════
+
+NEW FILES:
+1. FamilyKnows/src/hooks/useRelationships.ts
+   - Hook to fetch family relationships from masterdata API
+   - Uses /api/masterdata/categories to find Roles category
+   - Falls back to default relationships if API fails
+
+2. FamilyKnows/src/hooks/useInvitations.ts
+   - Hook for managing invitations (create, resend, cancel)
+   - Uses existing /api/users/invitations endpoints
+   - Manages loading states and error handling
+
+3. FamilyKnows/src/features/onboarding/screens/FamilySetupScreen.tsx
+   - COMPLETE REWRITE with glassmorphism constellation design
+   - Screen 1: Management mode (for settings)
+   - Screen 2: Constellation mode (for onboarding)
+   - Real API integration replacing mock data
+
+MODIFIED FILES:
+4. FamilyKnows/src/services/api.ts
+   - ADD MASTERDATA endpoints (see api.ts.patch)
+
+═══════════════════════════════════════════════════
+🎨 DESIGN FEATURES
+═══════════════════════════════════════════════════
+
+CONSTELLATION MODE (Onboarding):
+- Animated center orb with workspace name
+- 6 floating relationship bubbles (Mom, Dad, Spouse, etc.)
+- Tap bubble → opens invite modal
+- WhatsApp/Email/SMS invite options
+- Glassmorphism styling with blur effects
+
+MANAGEMENT MODE (Settings):
+- Glass card with active members list
+- Pending invitations with "Nudge" button
+- Add Member / Share Hub action buttons
+- Avatar rings with gradient borders
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy New Hook Files
+─────────────────────────────────
+# Create hooks directory if it doesn't exist
+mkdir -p FamilyKnows/src/hooks
+
+# Copy hooks
+Copy-Item "MANUAL_COPY_FILES\fk-family-setup-glassmorphism\FamilyKnows\src\hooks\useRelationships.ts" -Destination "FamilyKnows\src\hooks\" -Force
+Copy-Item "MANUAL_COPY_FILES\fk-family-setup-glassmorphism\FamilyKnows\src\hooks\useInvitations.ts" -Destination "FamilyKnows\src\hooks\" -Force
+
+STEP 3: Copy Updated Screen
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\fk-family-setup-glassmorphism\FamilyKnows\src\features\onboarding\screens\FamilySetupScreen.tsx" -Destination "FamilyKnows\src\features\onboarding\screens\" -Force
+
+STEP 4: Update api.ts (MANUAL EDIT)
+─────────────────────────────────
+Open: FamilyKnows/src/services/api.ts
+
+Add this after line 422 (after WORKSPACE section, before closing brace):
+
+  MASTERDATA: {
+    CATEGORIES: '/api/masterdata/categories',
+    CATEGORY_DETAILS: (categoryId: string) => `/api/masterdata/categories/${categoryId}/details`,
+  },
+
+STEP 5: Install Dependencies (if needed)
+─────────────────────────────────
+cd FamilyKnows
+npm install expo-blur expo-linear-gradient
+cd ..
+
+STEP 6: Start Dev Server & Test
+─────────────────────────────────
+cd FamilyKnows
+npx expo start
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+
+CONSTELLATION MODE (Onboarding Flow):
+- [ ] Center orb shows workspace name from currentTenant
+- [ ] 6 relationship bubbles float with animation
+- [ ] Tapping bubble opens invite modal
+- [ ] WhatsApp/Email/SMS tabs work
+- [ ] Contact input accepts email or phone
+- [ ] Send invitation creates API call
+- [ ] Toast shows success/error
+- [ ] Skip button navigates to Pricing
+
+MANAGEMENT MODE (From Settings):
+- [ ] Shows workspace name in header
+- [ ] Active members list shows self as Host
+- [ ] Pending invitations show with Nudge button
+- [ ] Nudge button resends invitation
+- [ ] Add Member button switches to constellation mode
+- [ ] Share Hub button opens share sheet
+- [ ] Done button goes back
+
+API INTEGRATION:
+- [ ] Relationships fetch from /api/masterdata/categories
+- [ ] Invitations list from /api/users/invitations
+- [ ] Create invitation works
+- [ ] Resend invitation works
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
+
+Production Checklist:
+  ✅ Transaction Management: N/A (API handles)
+  ✅ Race Condition Handling: Loading states prevent double-submit
+  ✅ Error Handling: Try-catch with toast notifications
+  ✅ Toasts: Using existing Toast component
+  ✅ Loaders: ActivityIndicator during API calls
