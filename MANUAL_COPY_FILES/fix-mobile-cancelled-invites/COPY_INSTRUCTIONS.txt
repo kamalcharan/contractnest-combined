@@ -1,0 +1,140 @@
+===============================================================================
+FEATURE: COUNTRY-WISE MOBILE VALIDATION + CANCELLED INVITES TAB
+===============================================================================
+
+PURPOSE:
+1. Standardize mobile number format across settings/users with country-wise validation
+   (same implementation as contacts module)
+2. Add ability to view cancelled invitations in settings/users page
+
+WHAT THIS FIX ADDRESSES:
+- InviteUserForm: Uses centralized countries list instead of hardcoded 37 countries
+- InviteUserForm: Real-time phone validation based on country
+- PersonalInfoSection: Country-wise phone validation with dynamic max length
+- settings/users: New "Cancelled" tab to view cancelled invitations
+
+===============================================================================
+FILES TO COPY (4 FILES)
+===============================================================================
+
+Submodule: contractnest-ui
+
+1. src/components/users/InviteUserForm.tsx
+   - Replaced hardcoded COUNTRY_CODES with centralized countries from @/utils/constants/countries
+   - Added validatePhoneByCountry, getPhonePlaceholder, getPhoneLengthDescription imports
+   - Real-time phone validation based on selected country
+   - Shows country-specific phone length hint in label (e.g., "10 digits" or "10-11 digits")
+   - Dynamic placeholder based on country
+
+2. src/components/users/user-profile/PersonalInfoSection.tsx
+   - Added country-wise phone validation using validatePhoneByCountry
+   - Dynamic max phone length based on country (e.g., India=10, UK=10-11)
+   - Stores country_code internally as 'IN', converts to '+91' for API
+   - Popular countries shown first in dropdown (US, UK, IN, CA, AU, DE)
+   - Proper validation error messages for phone format
+
+3. src/pages/settings/users/index.tsx
+   - Added 'cancelled' to TabType union
+   - Added "Cancelled" tab with count badge
+   - Added cancelled invitations stat card (5 cards now instead of 4)
+   - Separate state for cancelled invitations (cancelledInvitations, cancelledCount)
+   - Lazy loading for cancelled tab data
+   - Custom empty state message for cancelled invitations
+   - Refresh also updates cancelled count when cancelling an invitation
+
+===============================================================================
+COPY COMMANDS (PowerShell)
+===============================================================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Copy InviteUserForm.tsx
+Copy-Item "MANUAL_COPY_FILES\fix-mobile-cancelled-invites\contractnest-ui\src\components\users\InviteUserForm.tsx" -Destination "contractnest-ui\src\components\users\" -Force
+
+# Copy PersonalInfoSection.tsx
+Copy-Item "MANUAL_COPY_FILES\fix-mobile-cancelled-invites\contractnest-ui\src\components\users\user-profile\PersonalInfoSection.tsx" -Destination "contractnest-ui\src\components\users\user-profile\" -Force
+
+# Copy settings/users/index.tsx
+Copy-Item "MANUAL_COPY_FILES\fix-mobile-cancelled-invites\contractnest-ui\src\pages\settings\users\index.tsx" -Destination "contractnest-ui\src\pages\settings\users\" -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+===============================================================================
+ALSO COPY (from previous fix - WorkspacesSection navigation)
+===============================================================================
+
+# Copy WorkspacesSection.tsx (navigation fix to /settings/users)
+Copy-Item "MANUAL_COPY_FILES\fix-user-profile-issues\contractnest-ui\src\components\users\user-profile\WorkSpacesSection.tsx" -Destination "contractnest-ui\src\components\users\user-profile\" -Force
+
+===============================================================================
+TESTING CHECKLIST
+===============================================================================
+
+1. Mobile Number Validation in Invite User Form:
+   - [ ] Open Settings > Users > Click "Invite Team Member"
+   - [ ] Select different countries and verify:
+     - India: 10 digits only
+     - US: 10 digits only
+     - UK: 10-11 digits
+     - China: 11 digits only
+   - [ ] Verify real-time validation shows error for invalid length
+   - [ ] Verify placeholder changes based on country
+   - [ ] Verify phone length description shows in label
+
+2. Mobile Number Validation in User Profile:
+   - [ ] Go to Settings > User Profile
+   - [ ] Go to Personal Info section
+   - [ ] Change country and verify phone max length changes
+   - [ ] Verify phone validation error for invalid format
+
+3. Cancelled Invitations Tab:
+   - [ ] Go to Settings > Users
+   - [ ] Verify new "Cancelled" tab is visible
+   - [ ] Verify cancelled count in stats cards
+   - [ ] Click on Cancelled tab
+   - [ ] Verify cancelled invitations are displayed
+   - [ ] Cancel a pending invitation and verify it appears in Cancelled tab
+
+4. WorkspacesSection Navigation:
+   - [ ] Go to Settings > User Profile > Workspaces tab
+   - [ ] Click on "View workspace" button
+   - [ ] Verify it navigates to /settings/users (not /workspaces/{id})
+
+===============================================================================
+HOW IT WORKS
+===============================================================================
+
+MOBILE VALIDATION:
+
+Uses centralized validation from:
+- @/utils/constants/countries (230+ countries with phoneCode and phoneLength)
+- @/utils/validation/contactValidation (validatePhoneByCountry function)
+
+Example validation:
+```javascript
+// India: phoneLength = 10 (fixed)
+validatePhoneByCountry('9876543210', 'IN') // true
+validatePhoneByCountry('98765432', 'IN')   // false (too short)
+
+// UK: phoneLength = [10, 11] (range)
+validatePhoneByCountry('7911123456', 'GB')  // true (10 digits)
+validatePhoneByCountry('79111234567', 'GB') // true (11 digits)
+validatePhoneByCountry('791112345', 'GB')   // false (9 digits)
+```
+
+CANCELLED INVITATIONS:
+
+- Fetches from /api/users/invitations?status=cancelled
+- Displays in InvitationsList component with cancelled status badge
+- No Resend/Cancel buttons for cancelled invitations (read-only view)
+
+===============================================================================
+DEPENDENCIES
+===============================================================================
+
+Required existing files (should already exist):
+- @/utils/constants/countries.ts
+- @/utils/validation/contactValidation.ts
+- @/components/users/InvitationsList.tsx (already supports cancelled status)
+
+===============================================================================
