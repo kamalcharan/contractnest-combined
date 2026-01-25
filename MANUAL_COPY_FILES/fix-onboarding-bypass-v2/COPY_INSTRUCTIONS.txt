@@ -1,33 +1,47 @@
 ═══════════════════════════════════════════════════════════════════════════════
-FIX: ONBOARDING BYPASS BUG (VERSION 2 - SIMPLIFIED)
+FIX: ONBOARDING BYPASS BUG (VERSION 2 - COMPLETE FIX)
 ═══════════════════════════════════════════════════════════════════════════════
 
-WHAT WAS WRONG WITH V1:
+ROOT CAUSE IDENTIFIED:
+The issue was a RACE CONDITION between AuthContext and LoginPage:
+
+1. AuthContext's login() sets isAuthenticated=true, then calls navigate('/onboarding')
+2. React re-renders LoginPage with new state
+3. LoginPage's useEffect sees isAuthenticated=true and calls navigate('/dashboard')
+4. This OVERWRITES the onboarding redirect!
+
+WHAT V1 GOT WRONG:
 1. Added onboarding check to ProtectedRoute → caused infinite loop
 2. Error handling returned false for ALL owners → blocked existing users
-3. OnboardingContext and AuthContext weren't communicating
+3. Didn't address the LoginPage redirect race condition
 
-THIS FIX (V2):
+THIS FIX (V2 COMPLETE):
 1. Only checks onboarding at LOGIN time (not on every route)
-2. Passes tenant directly to avoid React state race condition
+2. Passes tenant directly to checkOnboardingStatus() to avoid React state race condition
 3. When onboarding completes, updates AuthContext via markOnboardingComplete()
 4. Does NOT modify ProtectedRoute (keeps original)
+5. FIXES LoginPage to respect hasCompletedOnboarding before redirecting
 
 ═══════════════════════════════════════════════════════════════════════════════
-FILES TO COPY
+FILES TO COPY (3 FILES)
 ═══════════════════════════════════════════════════════════════════════════════
 
 Submodule: contractnest-ui
 
 1. src/context/AuthContext.tsx
    - Fixed checkOnboardingStatus() to accept tenant parameter
-   - Fixed login() to pass tenant directly
+   - Fixed login() to pass tenant directly (avoids state race condition)
    - Fixed register() to always redirect new signups to onboarding
    - Added markOnboardingComplete() function
 
 2. src/pages/onboarding/steps/CompleteStep.tsx
    - Calls markOnboardingComplete() when onboarding finishes
    - This updates AuthContext state + sessionStorage
+
+3. src/pages/auth/LoginPage.tsx  *** NEW FILE ***
+   - CRITICAL FIX: The useEffect that redirects authenticated users
+   - Now checks hasCompletedOnboarding before redirecting to dashboard
+   - If onboarding not complete, redirects to /onboarding or /onboarding-pending
 
 ═══════════════════════════════════════════════════════════════════════════════
 COPY COMMANDS (PowerShell)
@@ -41,28 +55,36 @@ Copy-Item "MANUAL_COPY_FILES\fix-onboarding-bypass-v2\contractnest-ui\src\contex
 # Copy CompleteStep.tsx
 Copy-Item "MANUAL_COPY_FILES\fix-onboarding-bypass-v2\contractnest-ui\src\pages\onboarding\steps\CompleteStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\" -Force
 
-Write-Host "All files copied!" -ForegroundColor Green
+# Copy LoginPage.tsx (NEW - CRITICAL)
+Copy-Item "MANUAL_COPY_FILES\fix-onboarding-bypass-v2\contractnest-ui\src\pages\auth\LoginPage.tsx" -Destination "contractnest-ui\src\pages\auth\" -Force
+
+Write-Host "All 3 files copied!" -ForegroundColor Green
 
 ═══════════════════════════════════════════════════════════════════════════════
-IMPORTANT: DO NOT COPY ProtectedRoute.tsx
+IMPORTANT: DO NOT COPY ProtectedRoute.tsx or App.tsx
 ═══════════════════════════════════════════════════════════════════════════════
 
-The original V1 fix modified ProtectedRoute.tsx to add onboarding checking.
-This caused the infinite loop. DO NOT apply any ProtectedRoute changes.
-
-Keep ProtectedRoute.tsx as the ORIGINAL (no onboarding check).
+Keep these files as ORIGINAL from main branch:
+- ProtectedRoute.tsx - no onboarding check (V1 added one which caused loops)
+- App.tsx - no requireOnboarding props (V1 added these)
 
 ═══════════════════════════════════════════════════════════════════════════════
 HOW THE FIX WORKS
 ═══════════════════════════════════════════════════════════════════════════════
 
 LOGIN FLOW:
-1. User logs in
-2. login() sets tenant in storage FIRST
-3. login() calls checkOnboardingStatus(tenant) - passes tenant directly
-4. API returns onboarding status
-5. If not complete: redirect to /onboarding (owner) or /onboarding-pending (non-owner)
-6. If complete: redirect to /dashboard
+1. User submits login form
+2. AuthContext.login() runs:
+   a. API returns user + tenants
+   b. Sets storage.setCurrentTenant(tenant) FIRST
+   c. Sets React state (setCurrentTenantState, setIsAuthenticated)
+   d. Calls checkOnboardingStatus(tenant) - passes tenant DIRECTLY
+   e. If not complete & owner: navigate('/onboarding')
+   f. If not complete & non-owner: navigate('/onboarding-pending')
+   g. If complete: navigate('/dashboard')
+3. LoginPage re-renders (because isAuthenticated changed)
+4. LoginPage's useEffect now checks hasCompletedOnboarding BEFORE redirecting
+5. If onboarding not complete, it does NOT override to /dashboard
 
 REGISTER FLOW:
 1. User registers (creates new workspace)
@@ -76,6 +98,34 @@ ONBOARDING COMPLETION FLOW:
 3. CompleteStep calls markOnboardingComplete() → updates AuthContext state + sessionStorage
 4. User navigates to /dashboard
 5. No more onboarding redirects (state is true, sessionStorage is cached)
+
+═══════════════════════════════════════════════════════════════════════════════
+THE KEY FIX IN LOGINPAGE
+═══════════════════════════════════════════════════════════════════════════════
+
+BEFORE (broken):
+```javascript
+useEffect(() => {
+  if (isAuthenticated && !isLoading) {
+    navigate('/dashboard', { replace: true });  // ALWAYS goes to dashboard!
+  }
+}, [isAuthenticated, isLoading, navigate]);
+```
+
+AFTER (fixed):
+```javascript
+useEffect(() => {
+  if (isAuthenticated && !isLoading && currentTenant) {
+    if (hasCompletedOnboarding) {
+      navigate('/dashboard', { replace: true });
+    } else if (currentTenant.is_owner) {
+      navigate('/onboarding', { replace: true });
+    } else {
+      navigate('/onboarding-pending', { replace: true });
+    }
+  }
+}, [isAuthenticated, isLoading, navigate, hasCompletedOnboarding, currentTenant]);
+```
 
 ═══════════════════════════════════════════════════════════════════════════════
 TESTING CHECKLIST
@@ -98,7 +148,8 @@ Test 2: EXISTING USER (ONBOARDING COMPLETED)
 Test 3: EXISTING USER (ONBOARDING NOT COMPLETED - OWNER)
 - [ ] Login with owner who hasn't completed onboarding
 - [ ] Check console for: "[Onboarding] Onboarding NOT complete"
-- [ ] Should redirect to /onboarding
+- [ ] Check console for: "[Login] Owner needs onboarding - redirecting to /onboarding"
+- [ ] Should redirect to /onboarding (NOT dashboard!)
 - [ ] Complete onboarding
 - [ ] Should go to dashboard and stay there
 
@@ -125,13 +176,16 @@ SUCCESSFUL LOGIN (completed onboarding):
 [Login] Onboarding complete: true
 [Login] Onboarding complete - redirecting to /dashboard
 
-SUCCESSFUL LOGIN (needs onboarding):
+SUCCESSFUL LOGIN (needs onboarding - should see /onboarding now):
 [Onboarding] Checking status for tenant: xxx
 [Onboarding] API response: {...}
 [Onboarding] needs_onboarding: true is_complete: false
 [Onboarding] Onboarding NOT complete
 [Login] Onboarding complete: false
 [Login] Owner needs onboarding - redirecting to /onboarding
+(URL should now show /onboarding, NOT /dashboard)
 
 ONBOARDING COMPLETION:
 [Onboarding] Marking onboarding as complete in AuthContext
+
+═══════════════════════════════════════════════════════════════════════════════
