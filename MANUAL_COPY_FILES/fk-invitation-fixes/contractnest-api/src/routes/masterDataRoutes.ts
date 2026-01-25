@@ -30,14 +30,16 @@ const getCategories = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'tenantId is required (pass as x-tenant-id header or tenantId query param)' });
     }
 
-    // Get product-specific Supabase URL
-    const { url: SUPABASE_URL } = getSupabaseConfigForRequest(req);
+    // Get product-specific Supabase URL and Key
+    const { url: SUPABASE_URL, key: SUPABASE_KEY } = getSupabaseConfigForRequest(req);
+    console.log('Using Supabase URL:', SUPABASE_URL?.substring(0, 30) + '...');
 
     const response = await axios.get(
       `${SUPABASE_URL}/functions/v1/masterdata/categories?tenantId=${tenantId}`,
       {
         headers: {
           Authorization: authHeader,
+          'apikey': SUPABASE_KEY,  // Required for Supabase Edge Functions
           'x-tenant-id': tenantId,
           'Content-Type': 'application/json'
         }
@@ -68,14 +70,15 @@ const getCategoryDetails = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'tenantId and categoryId are required' });
     }
 
-    // Get product-specific Supabase URL
-    const { url: SUPABASE_URL } = getSupabaseConfigForRequest(req);
+    // Get product-specific Supabase URL and Key
+    const { url: SUPABASE_URL, key: SUPABASE_KEY } = getSupabaseConfigForRequest(req);
 
     const response = await axios.get(
       `${SUPABASE_URL}/functions/v1/masterdata/category-details?categoryId=${categoryId}&tenantId=${tenantId}`,
       {
         headers: {
           Authorization: authHeader,
+          'apikey': SUPABASE_KEY,
           'x-tenant-id': tenantId,
           'Content-Type': 'application/json'
         }
@@ -106,14 +109,15 @@ const getNextSequenceNumber = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'tenantId and categoryId are required' });
     }
 
-    // Get product-specific Supabase URL
-    const { url: SUPABASE_URL } = getSupabaseConfigForRequest(req);
+    // Get product-specific Supabase URL and Key
+    const { url: SUPABASE_URL, key: SUPABASE_KEY } = getSupabaseConfigForRequest(req);
 
     const response = await axios.get(
       `${SUPABASE_URL}/functions/v1/masterdata/category-details?categoryId=${categoryId}&tenantId=${tenantId}&nextSequence=true`,
       {
         headers: {
           Authorization: authHeader,
+          'apikey': SUPABASE_KEY,
           'x-tenant-id': tenantId,
           'Content-Type': 'application/json'
         }
@@ -144,8 +148,8 @@ const addCategoryDetail = async (req: Request, res: Response) => {
 
     req.body.tenantid = tenantId;
 
-    // Get product-specific Supabase URL
-    const { url: SUPABASE_URL } = getSupabaseConfigForRequest(req);
+    // Get product-specific Supabase URL and Key
+    const { url: SUPABASE_URL, key: SUPABASE_KEY } = getSupabaseConfigForRequest(req);
 
     const response = await axios.post(
       `${SUPABASE_URL}/functions/v1/masterdata/category-details`,
@@ -153,6 +157,7 @@ const addCategoryDetail = async (req: Request, res: Response) => {
       {
         headers: {
           Authorization: authHeader,
+          'apikey': SUPABASE_KEY,
           'x-tenant-id': tenantId,
           'Content-Type': 'application/json'
         }
@@ -188,8 +193,8 @@ const updateCategoryDetail = async (req: Request, res: Response) => {
 
     req.body.tenantid = tenantId;
 
-    // Get product-specific Supabase URL
-    const { url: SUPABASE_URL } = getSupabaseConfigForRequest(req);
+    // Get product-specific Supabase URL and Key
+    const { url: SUPABASE_URL, key: SUPABASE_KEY } = getSupabaseConfigForRequest(req);
 
     const response = await axios.patch(
       `${SUPABASE_URL}/functions/v1/masterdata/category-details?id=${detailId}`,
@@ -197,6 +202,7 @@ const updateCategoryDetail = async (req: Request, res: Response) => {
       {
         headers: {
           Authorization: authHeader,
+          'apikey': SUPABASE_KEY,
           'x-tenant-id': tenantId,
           'Content-Type': 'application/json'
         }
@@ -231,14 +237,15 @@ const deleteCategoryDetail = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Detail ID is required' });
     }
 
-    // Get product-specific Supabase URL
-    const { url: SUPABASE_URL } = getSupabaseConfigForRequest(req);
+    // Get product-specific Supabase URL and Key
+    const { url: SUPABASE_URL, key: SUPABASE_KEY } = getSupabaseConfigForRequest(req);
 
     const response = await axios.delete(
       `${SUPABASE_URL}/functions/v1/masterdata/category-details?id=${detailId}&tenantId=${tenantId}`,
       {
         headers: {
           Authorization: authHeader,
+          'apikey': SUPABASE_KEY,
           'x-tenant-id': tenantId,
           'Content-Type': 'application/json'
         }
