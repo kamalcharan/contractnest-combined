@@ -22,13 +22,7 @@ serve(async (req) => {
  try {
    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-
-   // Debug: Log environment check
-   console.log('🔧 Environment check:', {
-     supabaseUrl: supabaseUrl ? `${supabaseUrl.substring(0, 30)}...` : 'MISSING',
-     supabaseKey: supabaseKey ? `${supabaseKey.substring(0, 10)}...` : 'MISSING'
-   });
-
+   
    // Create supabase client with proper auth options for edge environment
    const supabase = createClient(supabaseUrl, supabaseKey, {
      auth: {
@@ -67,20 +61,14 @@ serve(async (req) => {
      }
      
      // Get user from token
-     console.log('🔐 [accept-existing-user] Validating token...');
      const { data: userData, error: userError } = await supabase.auth.getUser(token);
-
-     if (userError) {
-       console.error('❌ [accept-existing-user] getUser() error:', userError.message);
-     }
-
+     
      if (userError || !userData?.user) {
        return new Response(
-         JSON.stringify({ error: 'Invalid or expired token', details: userError?.message }),
+         JSON.stringify({ error: 'Invalid or expired token' }),
          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
        );
      }
-     console.log('✅ [accept-existing-user] Token valid, user:', userData.user.id);
      
      const body = await req.json();
      return await acceptInvitationExistingUser(supabase, userData.user.id, body);
@@ -124,32 +112,28 @@ serve(async (req) => {
      );
    }
    
-   // Get user from token
-   console.log('🔐 Attempting to validate token...');
-   console.log('🔐 Token length:', token?.length);
-   console.log('🔐 Token prefix:', token?.substring(0, 20) + '...');
-
+   // Get user from token - with DEBUG info in response
    const { data: userData, error: userError } = await supabase.auth.getUser(token);
 
-   if (userError) {
-     console.error('❌ getUser() returned error:', {
-       message: userError.message,
-       name: userError.name,
-       status: userError.status,
-       code: userError.code,
-       fullError: JSON.stringify(userError)
-     });
-   }
-
    if (userError || !userData?.user) {
-     console.error('❌ Token validation failed. userData:', userData);
+     // DEBUG: Include actual error in response for troubleshooting
      return new Response(
-       JSON.stringify({ error: 'Invalid or expired token', details: userError?.message }),
+       JSON.stringify({
+         error: 'Invalid or expired token',
+         debug: {
+           errorMessage: userError?.message || 'No error message',
+           errorName: userError?.name || 'Unknown',
+           errorStatus: userError?.status || 'N/A',
+           hasUserData: !!userData,
+           hasUser: !!userData?.user,
+           tokenLength: token?.length || 0,
+           supabaseUrlSet: !!Deno.env.get('SUPABASE_URL'),
+           serviceKeySet: !!Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+         }
+       }),
        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
      );
    }
-
-   console.log('✅ Token validated successfully. User ID:', userData.user.id);
    
    const userId = userData.user.id;
    
