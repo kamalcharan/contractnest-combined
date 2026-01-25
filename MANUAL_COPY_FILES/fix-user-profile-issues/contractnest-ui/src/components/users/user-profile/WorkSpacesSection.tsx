@@ -216,7 +216,7 @@ const WorkspacesSection: React.FC<WorkspacesSectionProps> = ({ profile }) => {
 
                 {/* View Workspace Button */}
                 <button
-                  onClick={() => navigate(`/workspaces/${workspace.id}`)}
+                  onClick={() => navigate('/settings/users')}
                   className="ml-4 p-2 rounded-md transition-colors hover:opacity-80"
                   style={{
                     backgroundColor: colors.utility.primaryBackground,
