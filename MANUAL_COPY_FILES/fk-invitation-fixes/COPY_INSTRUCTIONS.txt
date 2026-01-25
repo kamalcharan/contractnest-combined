@@ -1,0 +1,80 @@
+═══════════════════════════════════════════════════
+📦 FK INVITATION FIXES - PHASE 1
+═══════════════════════════════════════════════════
+
+Branch: fk-invitation-fixes
+Date: January 2025
+
+Files Changed:
+  1. contractnest-api/src/controllers/invitationController.ts
+     - Use product-specific Supabase URL (fixes 401 for FamilyKnows)
+     - Added x-environment header forwarding
+     - Added acceptInvitationExistingUser endpoint
+
+  2. FamilyKnows/src/features/onboarding/screens/FamilySetupScreen.tsx
+     - Show 6 relationship bubbles in constellation
+     - Added "Add More" button for additional relationships
+     - Modal to show all relationships from DB
+
+  3. contractnest-edge/supabase/functions/user-invitations/index.ts
+     - Include userCode and secretCode in sendMultiChannelInvitation calls
+     - Updated email HTML template with join code box
+     - Updated email text template with join code
+
+  4. contractnest-edge/supabase/functions/user-invitations/jtd-integration.ts
+     - Added userCode and secretCode to interface
+     - Pass codes through template_data for WhatsApp/SMS templates
+
+Production Checklist:
+  ✅ Transaction Management: N/A (API controller)
+  ✅ Race Condition Handling: N/A
+  ✅ Error Handling: Yes - all endpoints
+  ✅ Toasts: Yes - using existing toast component
+  ✅ Loaders: Yes - using existing ActivityIndicator
+
+═══════════════════════════════════════════════════
+💻 COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# 1. Copy API Controller
+Copy-Item "MANUAL_COPY_FILES\fk-invitation-fixes\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+
+# 2. Copy FamilyKnows Screen
+Copy-Item "MANUAL_COPY_FILES\fk-invitation-fixes\FamilyKnows\*" -Destination "FamilyKnows\" -Recurse -Force
+
+# 3. Copy Edge Function
+Copy-Item "MANUAL_COPY_FILES\fk-invitation-fixes\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "✅ All files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+
+1. FamilyKnows App - Family Setup Screen:
+   - [ ] Shows 6 relationship bubbles in constellation
+   - [ ] "+X More" button appears when >6 relationships exist
+   - [ ] Tapping "+X More" opens modal with all relationships
+   - [ ] Selecting from modal opens invite form
+   - [ ] Pre-filled message appears based on relationship
+
+2. Invitation API (FamilyKnows):
+   - [ ] No 401 error when fetching invitations
+   - [ ] Create invitation works
+   - [ ] Resend invitation works
+
+3. Invitation Message:
+   - [ ] Email contains join code box
+   - [ ] WhatsApp/SMS template includes code (requires template update on MSG91)
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+
+═══════════════════════════════════════════════════
