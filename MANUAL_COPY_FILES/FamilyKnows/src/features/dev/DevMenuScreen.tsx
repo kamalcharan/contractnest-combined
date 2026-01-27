@@ -71,6 +71,20 @@ export const DevMenuScreen: React.FC = () => {
   const { isAuthenticated, devBypassAuth } = useAuth();
   const [devAuthEnabled, setDevAuthEnabled] = useState(false);
 
+  // Safe color access with fallbacks
+  const colors = {
+    primary: theme?.colors?.brand?.primary || '#6B4EFF',
+    secondary: theme?.colors?.brand?.secondary || '#8B7AFF',
+    primaryBg: theme?.colors?.utility?.primaryBackground || '#FFFFFF',
+    secondaryBg: theme?.colors?.utility?.secondaryBackground || '#F5F5F5',
+    primaryText: theme?.colors?.utility?.primaryText || '#1A1A2E',
+    secondaryText: theme?.colors?.utility?.secondaryText || '#6B7280',
+    success: theme?.colors?.semantic?.success || '#10B981',
+    warning: theme?.colors?.semantic?.warning || '#F59E0B',
+    error: theme?.colors?.semantic?.error || '#EF4444',
+    accent: theme?.colors?.accent?.accent1 || '#FFD700',
+  };
+
   const handleEnableDevAuth = async () => {
     try {
       await devBypassAuth();
@@ -110,14 +124,12 @@ export const DevMenuScreen: React.FC = () => {
     return acc;
   }, {} as Record<string, NavButton[]>);
 
-  const styles = createStyles(theme);
-
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.utility.primaryBackground }]}>
-      <StatusBar backgroundColor={theme.colors.brand.primary} barStyle="light-content" />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.primaryBg }]}>
+      <StatusBar backgroundColor={colors.primary} barStyle="light-content" />
 
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: theme.colors.brand.primary }]}>
+      <View style={[styles.header, { backgroundColor: colors.primary }]}>
         <TouchableOpacity onPress={handleGoBack} style={styles.backButton}>
           <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
@@ -127,7 +139,7 @@ export const DevMenuScreen: React.FC = () => {
 
       {/* Dev Mode Banner */}
       {(devAuthEnabled || isAuthenticated) && (
-        <View style={[styles.banner, { backgroundColor: theme.colors.semantic.success }]}>
+        <View style={[styles.banner, { backgroundColor: colors.success }]}>
           <Text style={styles.bannerText}>
             {devAuthEnabled ? '[DEV MODE] Mock Auth Active' : '[REAL AUTH] Logged In'}
           </Text>
@@ -138,7 +150,7 @@ export const DevMenuScreen: React.FC = () => {
         {/* Enable Dev Auth Button */}
         {!isAuthenticated && !devAuthEnabled && (
           <TouchableOpacity
-            style={[styles.devAuthButton, { backgroundColor: theme.colors.semantic.warning }]}
+            style={[styles.devAuthButton, { backgroundColor: colors.warning }]}
             onPress={handleEnableDevAuth}
           >
             <Text style={styles.devAuthButtonText}>Enable Dev Auth (Mock User)</Text>
@@ -148,7 +160,7 @@ export const DevMenuScreen: React.FC = () => {
         {/* Navigation Buttons by Category */}
         {Object.entries(groupedButtons).map(([category, buttons]) => (
           <View key={category} style={styles.categorySection}>
-            <Text style={[styles.categoryTitle, { color: theme.colors.text.secondary }]}>
+            <Text style={[styles.categoryTitle, { color: colors.secondaryText }]}>
               {CATEGORY_LABELS[category]}
             </Text>
             <View style={styles.buttonGrid}>
@@ -160,9 +172,7 @@ export const DevMenuScreen: React.FC = () => {
                     style={[
                       styles.navButton,
                       {
-                        backgroundColor: needsAuth
-                          ? theme.colors.utility.disabledBackground
-                          : theme.colors.brand.primary,
+                        backgroundColor: needsAuth ? colors.secondaryBg : colors.primary,
                       },
                     ]}
                     onPress={() => handleNavigate(button)}
@@ -170,13 +180,13 @@ export const DevMenuScreen: React.FC = () => {
                     <Text
                       style={[
                         styles.navButtonText,
-                        { color: needsAuth ? theme.colors.text.disabled : '#FFFFFF' },
+                        { color: needsAuth ? colors.secondaryText : '#FFFFFF' },
                       ]}
                     >
                       {button.label}
                     </Text>
                     {needsAuth && (
-                      <Text style={[styles.lockIcon, { color: theme.colors.text.disabled }]}>🔒</Text>
+                      <Text style={[styles.lockIcon, { color: colors.secondaryText }]}>🔒</Text>
                     )}
                   </TouchableOpacity>
                 );
@@ -186,11 +196,11 @@ export const DevMenuScreen: React.FC = () => {
         ))}
 
         {/* Info Section */}
-        <View style={[styles.infoSection, { backgroundColor: theme.colors.utility.secondaryBackground }]}>
-          <Text style={[styles.infoTitle, { color: theme.colors.text.primary }]}>
+        <View style={[styles.infoSection, { backgroundColor: colors.secondaryBg }]}>
+          <Text style={[styles.infoTitle, { color: colors.primaryText }]}>
             How to Use
           </Text>
-          <Text style={[styles.infoText, { color: theme.colors.text.secondary }]}>
+          <Text style={[styles.infoText, { color: colors.secondaryText }]}>
             1. Tap "Enable Dev Auth" to set mock user/tenant data{'\n'}
             2. Navigate to any screen to test UI{'\n'}
             3. Screens marked with 🔒 require auth{'\n'}
@@ -204,112 +214,111 @@ export const DevMenuScreen: React.FC = () => {
   );
 };
 
-const createStyles = (theme: any) =>
-  StyleSheet.create({
-    container: {
-      flex: 1,
-    },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-    },
-    backButton: {
-      padding: 8,
-    },
-    backButtonText: {
-      color: '#FFFFFF',
-      fontSize: 16,
-      fontWeight: '600',
-    },
-    headerTitle: {
-      color: '#FFFFFF',
-      fontSize: 20,
-      fontWeight: '700',
-    },
-    headerSpacer: {
-      width: 60,
-    },
-    banner: {
-      paddingVertical: 8,
-      paddingHorizontal: 16,
-      alignItems: 'center',
-    },
-    bannerText: {
-      color: '#FFFFFF',
-      fontSize: 14,
-      fontWeight: '600',
-    },
-    scrollView: {
-      flex: 1,
-    },
-    scrollContent: {
-      padding: 16,
-    },
-    devAuthButton: {
-      paddingVertical: 16,
-      paddingHorizontal: 24,
-      borderRadius: 12,
-      alignItems: 'center',
-      marginBottom: 24,
-    },
-    devAuthButtonText: {
-      color: '#000000',
-      fontSize: 16,
-      fontWeight: '700',
-    },
-    categorySection: {
-      marginBottom: 24,
-    },
-    categoryTitle: {
-      fontSize: 14,
-      fontWeight: '600',
-      textTransform: 'uppercase',
-      letterSpacing: 1,
-      marginBottom: 12,
-    },
-    buttonGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 10,
-    },
-    navButton: {
-      paddingVertical: 12,
-      paddingHorizontal: 16,
-      borderRadius: 8,
-      minWidth: '30%',
-      flexGrow: 1,
-      alignItems: 'center',
-      flexDirection: 'row',
-      justifyContent: 'center',
-      gap: 6,
-    },
-    navButtonText: {
-      fontSize: 13,
-      fontWeight: '600',
-    },
-    lockIcon: {
-      fontSize: 12,
-    },
-    infoSection: {
-      padding: 16,
-      borderRadius: 12,
-      marginTop: 8,
-    },
-    infoTitle: {
-      fontSize: 16,
-      fontWeight: '700',
-      marginBottom: 8,
-    },
-    infoText: {
-      fontSize: 14,
-      lineHeight: 22,
-    },
-    bottomSpacer: {
-      height: 40,
-    },
-  });
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  backButton: {
+    padding: 8,
+  },
+  backButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  headerTitle: {
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  headerSpacer: {
+    width: 60,
+  },
+  banner: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  bannerText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+  },
+  devAuthButton: {
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  devAuthButtonText: {
+    color: '#000000',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  categorySection: {
+    marginBottom: 24,
+  },
+  categoryTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 12,
+  },
+  buttonGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  navButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    minWidth: '30%',
+    flexGrow: 1,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  navButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  lockIcon: {
+    fontSize: 12,
+  },
+  infoSection: {
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  infoTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  infoText: {
+    fontSize: 14,
+    lineHeight: 22,
+  },
+  bottomSpacer: {
+    height: 40,
+  },
+});
 
 export default DevMenuScreen;
