@@ -60,6 +60,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   isSessionExpired: boolean;
+  isDevMode: boolean;
 
   // Methods
   login: (email: string, password: string) => Promise<void>;
@@ -70,6 +71,7 @@ interface AuthContextType {
   updateUser: (userData: Partial<User>) => Promise<void>;
   checkSession: () => Promise<boolean>;
   resetSessionTimer: () => void;
+  devBypassAuth: () => Promise<void>;
 }
 
 // Session timeout in minutes (from env or default 10)
@@ -87,6 +89,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSessionExpired, setIsSessionExpired] = useState(false);
+  const [isDevMode, setIsDevMode] = useState(false);
 
   const sessionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const appStateRef = useRef<AppStateStatus>(AppState.currentState);
@@ -406,6 +409,59 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [user]);
 
+  // Dev bypass auth - sets mock user and tenant for UI testing
+  const devBypassAuth = useCallback(async () => {
+    console.log('[DEV MODE] Enabling auth bypass with mock data');
+
+    const mockUser: User = {
+      id: 'dev-user-001',
+      email: 'dev@familyknows.test',
+      first_name: 'Dev',
+      last_name: 'User',
+      avatar_url: undefined,
+      country_code: '+1',
+      mobile_number: '5551234567',
+      is_phone_verified: true,
+      preferred_theme: 'system',
+      is_dark_mode: false,
+      preferred_language: 'en',
+      registration_status: 'complete',
+    };
+
+    const mockTenant: Tenant = {
+      id: 'dev-tenant-001',
+      name: 'Dev Family Space',
+      workspace_code: 'DEV001',
+      domain: undefined,
+      status: 'active',
+      is_default: true,
+      is_admin: true,
+      is_owner: true,
+    };
+
+    // Set mock data in state
+    setUser(mockUser);
+    setTenants([mockTenant]);
+    setCurrentTenantState(mockTenant);
+    setIsAuthenticated(true);
+    setIsDevMode(true);
+    setIsSessionExpired(false);
+
+    // Store in AsyncStorage for screens that read directly
+    await AsyncStorage.multiSet([
+      [STORAGE_KEYS.USER_DATA, JSON.stringify(mockUser)],
+      [STORAGE_KEYS.USER_ID, mockUser.id],
+      [STORAGE_KEYS.TENANT_ID, mockTenant.id],
+      [STORAGE_KEYS.CURRENT_TENANT, JSON.stringify(mockTenant)],
+      [STORAGE_KEYS.LAST_ACTIVITY, Date.now().toString()],
+    ]);
+
+    // Set mock tenant on API instance (requests will still fail without real backend)
+    api.setTenantId(mockTenant.id);
+
+    console.log('[DEV MODE] Mock auth enabled successfully');
+  }, []);
+
   const value: AuthContextType = {
     user,
     tenants,
@@ -413,6 +469,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     isAuthenticated,
     isLoading,
     isSessionExpired,
+    isDevMode,
     login,
     register,
     logout,
@@ -421,6 +478,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     updateUser,
     checkSession,
     resetSessionTimer,
+    devBypassAuth,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

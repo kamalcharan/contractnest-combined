@@ -1,16 +1,30 @@
-===============================================================
-MANUAL COPY INSTRUCTIONS - PRD Documents
-===============================================================
+===============================================
+ITERATION: 1
+DATE: 2026-01-27
+FEATURE: Dev Menu for Auth Bypass & UI Navigation
+===============================================
 
-FILES IN THIS FOLDER:
----------------------------------------------------------------
+FILES THIS ITERATION:
+---------------------
+1. FamilyKnows/src/features/dev/DevMenuScreen.tsx (NEW)
+2. FamilyKnows/src/features/auth/screens/SplashScreen.tsx (MODIFIED)
+3. FamilyKnows/src/context/AuthContext.tsx (MODIFIED)
+4. FamilyKnows/src/navigation/types.ts (MODIFIED)
+5. FamilyKnows/src/navigation/stacks/AuthStack.tsx (MODIFIED)
 
-1. PRD-FamilyKnows-I18N.md
-   -> Copy to: ClaudeDocumentation\PRD-FamilyKnows-I18N.md
-   -> Purpose: i18n implementation strategy for FamilyKnows
+COPY COMMANDS (Run from contractnest-combined/):
+------------------------------------------------
+Copy-Item "MANUAL_COPY_FILES\FamilyKnows\src\features\dev\DevMenuScreen.tsx" -Destination "FamilyKnows\src\features\dev\DevMenuScreen.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\FamilyKnows\src\features\auth\screens\SplashScreen.tsx" -Destination "FamilyKnows\src\features\auth\screens\SplashScreen.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\FamilyKnows\src\context\AuthContext.tsx" -Destination "FamilyKnows\src\context\AuthContext.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\FamilyKnows\src\navigation\types.ts" -Destination "FamilyKnows\src\navigation\types.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\FamilyKnows\src\navigation\stacks\AuthStack.tsx" -Destination "FamilyKnows\src\navigation\stacks\AuthStack.tsx" -Force
 
-2. PRD-FamilyKnows-UserInvites-JTD.md
-   -> Copy to: ClaudeDocumentation\PRD-FamilyKnows-UserInvites-JTD.md
-   -> Purpose: UserInvites and JTD framework for FamilyKnows
-
-===============================================================
+TEST:
+-----
+- [ ] Open app in Expo Go
+- [ ] Triple-tap logo on Splash screen
+- [ ] Dev Menu should open
+- [ ] Tap "Enable Dev Auth" button
+- [ ] Navigate to Main (Dashboard) screen
+- [ ] Navigate to other screens (Assets, Health, etc.)

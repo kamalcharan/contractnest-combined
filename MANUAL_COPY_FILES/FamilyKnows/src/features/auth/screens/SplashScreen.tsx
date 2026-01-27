@@ -1,5 +1,5 @@
 // src/features/auth/screens/SplashScreen.tsx
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   StatusBar,
   Image,
   Easing,
+  TouchableOpacity,
 } from 'react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
@@ -41,6 +42,34 @@ export const SplashScreen: React.FC = () => {
   const taglineTranslateY = useRef(new Animated.Value(30)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const shimmerAnim = useRef(new Animated.Value(0)).current;
+
+  // Dev menu triple-tap trigger
+  const [tapCount, setTapCount] = useState(0);
+  const tapTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Handle logo tap for dev menu access
+  const handleLogoTap = useCallback(() => {
+    // Clear existing timeout
+    if (tapTimeoutRef.current) {
+      clearTimeout(tapTimeoutRef.current);
+    }
+
+    const newTapCount = tapCount + 1;
+    setTapCount(newTapCount);
+
+    // If triple tap detected, navigate to dev menu
+    if (newTapCount >= 3) {
+      console.log('[DEV] Triple-tap detected, opening Dev Menu');
+      setTapCount(0);
+      navigation.navigate('DevMenu');
+      return;
+    }
+
+    // Reset tap count after 500ms of no taps
+    tapTimeoutRef.current = setTimeout(() => {
+      setTapCount(0);
+    }, 500);
+  }, [tapCount, navigation]);
 
   // Determine where to navigate based on auth state
   const determineNavigation = async () => {
@@ -237,8 +266,12 @@ export const SplashScreen: React.FC = () => {
       <View style={[styles.bgCircle, styles.bgCircle1, { backgroundColor: theme.colors.brand.secondary + '10' }]} />
       <View style={[styles.bgCircle, styles.bgCircle2, { backgroundColor: theme.colors.brand.secondary + '08' }]} />
 
-      {/* Logo Section */}
-      <View style={styles.logoSection}>
+      {/* Logo Section - Triple-tap for Dev Menu */}
+      <TouchableOpacity
+        style={styles.logoSection}
+        onPress={handleLogoTap}
+        activeOpacity={0.9}
+      >
         <Animated.View
           style={[
             styles.logoWrapper,
@@ -272,7 +305,7 @@ export const SplashScreen: React.FC = () => {
         >
           FamilyKnows
         </Animated.Text>
-      </View>
+      </TouchableOpacity>
 
       {/* Tagline Section */}
       <Animated.View
