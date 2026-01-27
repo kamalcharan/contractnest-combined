@@ -16,3 +16,6 @@
 [submodule "FamilyKnows"]
 	path = FamilyKnows
 	url = https://github.com/kamalcharan/FamilyKnows.git
+[submodule "FK-New"]
+	path = FK-New
+	url = https://github.com/kamalcharan/FK-New.git
