@@ -17,7 +17,8 @@ $submodules = @(
     @{ Name = "contractnest-edge"; Branch = "main" },
     @{ Name = "ClaudeDocumentation"; Branch = "master" },
     @{ Name = "ContractNest-Mobile"; Branch = "main" },
-    @{ Name = "FamilyKnows"; Branch = "main" }
+    @{ Name = "FamilyKnows"; Branch = "main" },
+    @{ Name = "FK-New"; Branch = "main" }
 )
 
 $pushed = @()
