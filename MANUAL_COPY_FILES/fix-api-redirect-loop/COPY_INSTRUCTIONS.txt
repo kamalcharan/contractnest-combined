@@ -1,0 +1,50 @@
+═══════════════════════════════════════════════════════════════════════════════
+FIX: API Interceptor Redirect Loop
+═══════════════════════════════════════════════════════════════════════════════
+
+ISSUE: Infinite page reload loop when CORS/network errors occur
+CAUSE: window.location.href redirects in API response interceptor
+       When VITE_ENABLE_API_HEALTH_CHECK=false, network errors redirect to
+       /misc/error, which causes another API call, which fails, which redirects...
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES TO COPY:
+═══════════════════════════════════════════════════════════════════════════════
+
+1. contractnest-ui/src/services/api.ts
+   FROM: MANUAL_COPY_FILES/fix-api-redirect-loop/contractnest-ui/src/services/api.ts
+   TO:   contractnest-ui/src/services/api.ts
+
+═══════════════════════════════════════════════════════════════════════════════
+CHANGES MADE:
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Disabled redirect in handleApiServerDown() - line 112
+   - Was: window.location.href = '/misc/api-server-down';
+   - Now: Commented out with console.log
+
+2. Disabled redirect for maintenance mode - line 232
+   - Was: window.location.href = '/misc/maintenance';
+   - Now: Commented out with console.warn
+
+3. Disabled redirect for session conflict - line 241
+   - Was: window.location.href = '/misc/session-conflict';
+   - Now: Commented out with console.warn
+
+4. Disabled redirect for server unavailable - line 281
+   - Was: window.location.href = '/misc/error';
+   - Now: Commented out with console.warn
+
+5. Disabled redirect for 503 Service Unavailable - line 300
+   - Was: window.location.href = '/misc/maintenance';
+   - Now: Commented out with console.warn
+
+6. Disabled redirect for 401 session conflict - line 309
+   - Was: window.location.href = '/misc/session-conflict';
+   - Now: Commented out with console.warn
+
+7. Disabled redirect for 403 Forbidden - line 317
+   - Was: window.location.href = '/misc/unauthorized';
+   - Now: Commented out with console.warn
+
+═══════════════════════════════════════════════════════════════════════════════
