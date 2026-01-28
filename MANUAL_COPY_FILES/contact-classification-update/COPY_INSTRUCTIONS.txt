@@ -14,28 +14,34 @@ DEPLOYMENT ORDER (CRITICAL)
 
 1. Database Migration (DONE)
 2. Edge Functions (DONE)
-3. API Constants (THIS FILE)
-4. UI Constants (NEXT)
+3. API Constants (DONE)
+4. UI Constants (THIS FILE)
 
 ═══════════════════════════════════════════════════════════════════════════════
 FILES TO COPY - EDGE LAYER (DONE)
 ═══════════════════════════════════════════════════════════════════════════════
 
-1. MODIFIED FILE - contactValidation.ts
-   FROM: MANUAL_COPY_FILES\contact-classification-update\contractnest-edge\supabase\functions\_shared\contacts\contactValidation.ts
-   TO:   contractnest-edge\supabase\functions\_shared\contacts\contactValidation.ts
+1. contractnest-edge\supabase\functions\_shared\contacts\contactValidation.ts
 
 ═══════════════════════════════════════════════════════════════════════════════
-FILES TO COPY - API LAYER
+FILES TO COPY - API LAYER (DONE)
 ═══════════════════════════════════════════════════════════════════════════════
 
-2. MODIFIED FILE - contacts.ts (API constants)
-   FROM: MANUAL_COPY_FILES\contact-classification-update\contractnest-api\src\utils\constants\contacts.ts
-   TO:   contractnest-api\src\utils\constants\contacts.ts
+2. contractnest-api\src\utils\constants\contacts.ts
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES TO COPY - UI LAYER
+═══════════════════════════════════════════════════════════════════════════════
+
+3. MODIFIED FILE - contacts.ts (UI constants)
+   FROM: MANUAL_COPY_FILES\contact-classification-update\contractnest-ui\src\utils\constants\contacts.ts
+   TO:   contractnest-ui\src\utils\constants\contacts.ts
 
    CHANGES:
    - Lines 40-46: CONTACT_CLASSIFICATIONS object (BUYER→CUSTOMER, removed SELLER)
-   - Lines 48-78: CONTACT_CLASSIFICATION_CONFIG array (5→4 items)
-   - Lines 315-320: FILTER_OPTIONS.classification array (5→4 items)
+   - Lines 48-86: CONTACT_CLASSIFICATION_CONFIG array (5→4 items)
+   - Lines 90-97: CLASSIFICATION_HEX_COLORS (removed green)
+   - Lines 163-186: getClassificationTailwindClasses (removed green)
+   - Lines 420-425: FILTER_OPTIONS.classification (5→4 items)
 
 ═══════════════════════════════════════════════════════════════════════════════
