@@ -1,0 +1,32 @@
+═══════════════════════════════════════════════════════════════════════════════
+CONTACT CLASSIFICATION UPDATE
+Buyer → Customer, Seller → Removed
+═══════════════════════════════════════════════════════════════════════════════
+
+Feature: Contact classification consolidation
+- buyer renamed to customer
+- seller removed (absorbed into vendor)
+- Final classifications: customer, vendor, partner, team_member
+
+═══════════════════════════════════════════════════════════════════════════════
+DEPLOYMENT ORDER (CRITICAL)
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Database Migration (DONE)
+2. Edge Functions (THIS FILE)
+3. API Constants (NEXT)
+4. UI Constants (LAST)
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES TO COPY - EDGE LAYER
+═══════════════════════════════════════════════════════════════════════════════
+
+1. MODIFIED FILE - contactValidation.ts
+   FROM: MANUAL_COPY_FILES\contact-classification-update\contractnest-edge\supabase\functions\_shared\contacts\contactValidation.ts
+   TO:   contractnest-edge\supabase\functions\_shared\contacts\contactValidation.ts
+
+   CHANGE: Line 6
+   OLD: const CONTACT_CLASSIFICATIONS = ['buyer', 'seller', 'vendor', 'partner', 'team_member'];
+   NEW: const CONTACT_CLASSIFICATIONS = ['customer', 'vendor', 'partner', 'team_member'];
+
+═══════════════════════════════════════════════════════════════════════════════
