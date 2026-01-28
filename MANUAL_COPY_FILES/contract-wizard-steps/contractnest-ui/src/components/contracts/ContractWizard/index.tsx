@@ -37,11 +37,11 @@ export interface ContractWizardState {
   durationUnit: string;
   gracePeriodValue: number;
   gracePeriodUnit: string;
-  // Step 5: Blocks & Total
+  // Step 5: Billing Cycle
+  billingCycleType: BillingCycleType;
+  // Step 6: Blocks & Total
   selectedBlocks: SelectedBlock[];
   totalValue: number;
-  // Step 6: Billing Cycle
-  billingCycleType: BillingCycleType;
 }
 
 interface ContractWizardProps {
@@ -57,8 +57,8 @@ const STEP_LABELS = [
   'Counterparty',
   'Acceptance',
   'Details',
-  'Add Blocks',
   'Billing Cycle',
+  'Add Blocks',
   'Review & Send',
 ];
 
@@ -98,11 +98,11 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
     durationUnit: 'months',
     gracePeriodValue: 0,
     gracePeriodUnit: 'days',
-    // Step 5: Blocks & Total
+    // Step 5: Billing Cycle
+    billingCycleType: null,
+    // Step 6: Blocks & Total
     selectedBlocks: [],
     totalValue: 0,
-    // Step 6: Billing Cycle
-    billingCycleType: null,
   });
 
   // Update wizard state helper
@@ -143,10 +143,10 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
         return wizardState.acceptanceMethod !== null;
       case 4: // Contract Details
         return wizardState.contractName.trim() !== '' && wizardState.durationValue > 0;
-      case 5: // Block Assembly
-        return wizardState.selectedBlocks.length > 0;
-      case 6: // Billing Cycle
+      case 5: // Billing Cycle
         return wizardState.billingCycleType !== null;
+      case 6: // Block Assembly
+        return wizardState.selectedBlocks.length > 0;
       case 7: // Review & Send
         return true;
       default:
@@ -327,6 +327,13 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
           />
         );
       case 5:
+        return (
+          <BillingCycleStep
+            selectedCycleType={wizardState.billingCycleType}
+            onSelectCycleType={handleBillingCycleTypeSelect}
+          />
+        );
+      case 6:
         // Calculate contract duration in months
         const durationInMonths = wizardState.durationUnit === 'months'
           ? wizardState.durationValue
@@ -349,13 +356,6 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
               contact_type: 'individual',
               name: wizardState.buyerName,
             } : undefined}
-          />
-        );
-      case 6:
-        return (
-          <BillingCycleStep
-            selectedCycleType={wizardState.billingCycleType}
-            onSelectCycleType={handleBillingCycleTypeSelect}
           />
         );
       case 7:
