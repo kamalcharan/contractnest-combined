@@ -1,0 +1,99 @@
+===============================================================================
+CONTACT CLASSIFICATION UPDATE - CUSTOMER to CLIENT
+Nomenclature Change: Customer -> Client
+===============================================================================
+
+Feature: Standardize nomenclature across application
+- customer renamed to client (for consistency with Contract Wizard)
+- Final classifications: client, vendor, partner, team_member
+
+===============================================================================
+DEPLOYMENT ORDER (CRITICAL)
+===============================================================================
+
+1. Database Migration (RUN FIRST)
+2. Edge Functions (Step 2)
+3. API Constants (Step 3)
+4. UI Constants (Step 4)
+
+===============================================================================
+STEP 1: DATABASE MIGRATION
+===============================================================================
+
+Run this SQL in your Supabase SQL Editor:
+
+-- Update classification values: customer -> client
+UPDATE public.t_contacts
+SET classifications = (
+    SELECT jsonb_agg(
+        CASE
+            WHEN elem::text = '"customer"' THEN '"client"'::jsonb
+            ELSE elem
+        END
+    )
+    FROM jsonb_array_elements(classifications) AS elem
+)
+WHERE classifications @> '["customer"]';
+
+-- Verify the change
+SELECT id, classifications
+FROM public.t_contacts
+WHERE classifications @> '["client"]'
+LIMIT 10;
+
+===============================================================================
+STEP 2: EDGE LAYER
+===============================================================================
+
+1. MODIFIED FILE - contactValidation.ts
+   FROM: MANUAL_COPY_FILES\contact-classification-client-update\contractnest-edge\supabase\functions\_shared\contacts\contactValidation.ts
+   TO:   contractnest-edge\supabase\functions\_shared\contacts\contactValidation.ts
+
+   CHANGES:
+   - Line 6: CONTACT_CLASSIFICATIONS array (customer -> client)
+
+===============================================================================
+STEP 3: API LAYER
+===============================================================================
+
+2. MODIFIED FILE - contacts.ts (API constants)
+   FROM: MANUAL_COPY_FILES\contact-classification-client-update\contractnest-api\src\utils\constants\contacts.ts
+   TO:   contractnest-api\src\utils\constants\contacts.ts
+
+   CHANGES:
+   - Lines 40-46: CONTACT_CLASSIFICATIONS object (CUSTOMER->CLIENT)
+   - Lines 48-56: CONTACT_CLASSIFICATION_CONFIG array (customer->client)
+   - Lines 315-320: FILTER_OPTIONS.classification (customer->client)
+
+===============================================================================
+STEP 4: UI LAYER
+===============================================================================
+
+3. MODIFIED FILE - contacts.ts (UI constants)
+   FROM: MANUAL_COPY_FILES\contact-classification-client-update\contractnest-ui\src\utils\constants\contacts.ts
+   TO:   contractnest-ui\src\utils\constants\contacts.ts
+
+   CHANGES:
+   - Lines 40-46: CONTACT_CLASSIFICATIONS object (CUSTOMER->CLIENT)
+   - Lines 48-58: CONTACT_CLASSIFICATION_CONFIG array (client, Clients)
+   - Lines 90-97: CLASSIFICATION_HEX_COLORS comment (Client)
+   - Lines 420-425: FILTER_OPTIONS.classification (client->client)
+
+===============================================================================
+COPY COMMANDS (PowerShell)
+===============================================================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Edge Layer
+Copy-Item "MANUAL_COPY_FILES\contact-classification-client-update\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+# API Layer
+Copy-Item "MANUAL_COPY_FILES\contact-classification-client-update\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+
+# UI Layer
+Copy-Item "MANUAL_COPY_FILES\contact-classification-client-update\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+===============================================================================
