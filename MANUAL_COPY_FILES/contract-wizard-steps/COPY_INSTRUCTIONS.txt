@@ -1,0 +1,45 @@
+═══════════════════════════════════════════════════════════════════════════════
+CONTRACT WIZARD - YOUR ROLE & BILLING CYCLE STEPS
+═══════════════════════════════════════════════════════════════════════════════
+
+Feature: Added 2 new wizard steps to contract creation flow
+- Step 1: Your Role (Client vs Vendor selection)
+- Step 6: Billing Cycle (Unified vs Mixed cycles)
+
+Submodule Affected: contractnest-ui
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════════════════════════════════
+
+1. NEW FILE - YourRoleStep.tsx
+   FROM: MANUAL_COPY_FILES\contract-wizard-steps\contractnest-ui\src\components\contracts\ContractWizard\steps\YourRoleStep.tsx
+   TO:   contractnest-ui\src\components\contracts\ContractWizard\steps\YourRoleStep.tsx
+
+2. NEW FILE - BillingCycleStep.tsx
+   FROM: MANUAL_COPY_FILES\contract-wizard-steps\contractnest-ui\src\components\contracts\ContractWizard\steps\BillingCycleStep.tsx
+   TO:   contractnest-ui\src\components\contracts\ContractWizard\steps\BillingCycleStep.tsx
+
+3. MODIFIED FILE - index.tsx (ContractWizard main component)
+   FROM: MANUAL_COPY_FILES\contract-wizard-steps\contractnest-ui\src\components\contracts\ContractWizard\index.tsx
+   TO:   contractnest-ui\src\components\contracts\ContractWizard\index.tsx
+
+═══════════════════════════════════════════════════════════════════════════════
+CHANGES SUMMARY
+═══════════════════════════════════════════════════════════════════════════════
+
+NEW WIZARD FLOW (8 Steps - was 6):
+Step 0: Choose Path (Template vs Scratch)
+Step 1: Your Role (NEW) - I'm the Client / I'm the Vendor
+Step 2: Counterparty - Select buyer/vendor contact
+Step 3: Acceptance - Payment, Signoff, or Auto
+Step 4: Details - Name, duration, currency
+Step 5: Add Blocks - Service block configuration
+Step 6: Billing Cycle (NEW) - Unified Cycle / Mixed Cycles
+Step 7: Review & Send - Final review (placeholder)
+
+NEW STATE FIELDS:
+- role: 'client' | 'vendor' | null
+- billingCycleType: 'unified' | 'mixed' | null
+
+═══════════════════════════════════════════════════════════════════════════════
