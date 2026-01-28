@@ -1,6 +1,6 @@
-═══════════════════════════════════════════════════════════════════════════════
+===============================================================================
 CONTRACT WIZARD - YOUR ROLE & BILLING CYCLE STEPS
-═══════════════════════════════════════════════════════════════════════════════
+===============================================================================
 
 Feature: Added 2 new wizard steps to contract creation flow
 - Step 1: Your Role (Client vs Vendor selection)
@@ -8,9 +8,9 @@ Feature: Added 2 new wizard steps to contract creation flow
 
 Submodule Affected: contractnest-ui
 
-═══════════════════════════════════════════════════════════════════════════════
+===============================================================================
 FILES TO COPY
-═══════════════════════════════════════════════════════════════════════════════
+===============================================================================
 
 1. NEW FILE - YourRoleStep.tsx
    FROM: MANUAL_COPY_FILES\contract-wizard-steps\contractnest-ui\src\components\contracts\ContractWizard\steps\YourRoleStep.tsx
@@ -24,9 +24,9 @@ FILES TO COPY
    FROM: MANUAL_COPY_FILES\contract-wizard-steps\contractnest-ui\src\components\contracts\ContractWizard\index.tsx
    TO:   contractnest-ui\src\components\contracts\ContractWizard\index.tsx
 
-═══════════════════════════════════════════════════════════════════════════════
+===============================================================================
 CHANGES SUMMARY
-═══════════════════════════════════════════════════════════════════════════════
+===============================================================================
 
 NEW WIZARD FLOW (8 Steps - was 6):
 Step 0: Choose Path (Template vs Scratch)
@@ -42,4 +42,14 @@ NEW STATE FIELDS:
 - role: 'client' | 'vendor' | null
 - billingCycleType: 'unified' | 'mixed' | null
 
-═══════════════════════════════════════════════════════════════════════════════
+===============================================================================
+COPY COMMANDS (PowerShell)
+===============================================================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\contract-wizard-steps\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Contract Wizard files copied!" -ForegroundColor Green
+
+===============================================================================
