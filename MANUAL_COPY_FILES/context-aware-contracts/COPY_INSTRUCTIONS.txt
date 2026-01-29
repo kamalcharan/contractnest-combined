@@ -1,0 +1,39 @@
+# Context-Aware Contract Types Implementation
+# =============================================
+# This update adds Client, Vendor, and Partner contract types with context-aware filtering
+
+## Files Changed (5 files):
+
+1. contractnest-ui/src/utils/constants/industryMenus.ts
+   - Renamed "My Contracts" to "Client Contracts"
+   - Added "Vendor Contracts" and "Partner Contracts" menu items
+   - Updated paths to include contract type parameter
+
+2. contractnest-ui/src/App.tsx
+   - Updated route from /contracts/create to /contracts/create/:contractType
+
+3. contractnest-ui/src/pages/contracts/create/index.tsx
+   - Added ContractType definition
+   - Read contractType from URL params
+   - Dynamic page title/subtitle based on contract type
+   - Pass contractType to ContractWizard
+
+4. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+   - Added ContractType type export
+   - Accept contractType prop
+   - Pass contractType to BuyerSelectionStep
+
+5. contractnest-ui/src/components/contracts/ContractWizard/steps/BuyerSelectionStep.tsx
+   - Removed classification filter buttons
+   - Auto-filter contacts by contract type (client/vendor/partner)
+   - Dynamic labels for heading, search placeholder, button text
+
+## Menu Structure After Changes:
+
+Contracts
+  |-- Client Contracts   -> /contracts/create/client
+  |-- Vendor Contracts   -> /contracts/create/vendor
+  |-- Partner Contracts  -> /contracts/create/partner
+  |-- All Contracts
+  |-- Contract Preview
+  |-- Invite Sellers
