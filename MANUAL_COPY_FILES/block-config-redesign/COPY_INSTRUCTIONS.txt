@@ -1,0 +1,35 @@
+# Block Configuration UI Redesign
+# ================================
+# Changes to Service Blocks step in Contract Wizard
+
+## Files Changed (2 files):
+
+1. contractnest-ui/src/components/catalog-studio/BlockCardConfigurable.tsx
+   - Replace quantity buttons with Limited/Unlimited toggle switch
+   - Update billing cycle options: PrePaid, PostPaid, Monthly, Fortnightly, Quarterly, Custom
+   - Add Custom cycle with configurable days input
+   - Remove Pro-rata billing and Auto-renew from Advanced Settings
+   - Add 'Show description in contract' toggle
+   - Add Defined Price (readonly) and Selling Price (editable) fields
+
+2. contractnest-ui/src/components/contracts/ContractWizard/steps/ServiceBlocksStep.tsx
+   - Updated default config structure (showDescription instead of proRate/autoRenew)
+   - Use block's service_cycles as default when available
+   - Default billing cycle changed to 'prepaid'
+
+## UI Changes Summary:
+
+### Quantity Section
+BEFORE: [ − ] 5 [ + ] [∞]
+AFTER:  [Limited ⟷ Unlimited] + qty controls only when Limited
+
+### Billing Cycle
+BEFORE: [1x] [M] [Q] [Y]
+AFTER:  [PrePaid] [PostPaid] [Monthly] [Fortnightly] [Quarterly] [Custom]
+        + Custom: [___] Days input when selected
+
+### Advanced Settings
+REMOVED: Pro-rata billing, Auto-renew
+ADDED:   Show description in contract [toggle]
+         Defined Price: ₹500 (readonly)
+         Selling Price: [₹500] (editable)
