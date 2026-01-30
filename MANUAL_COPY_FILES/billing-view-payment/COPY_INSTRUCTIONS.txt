@@ -1,0 +1,51 @@
+============================================================
+BILLING VIEW - Payment Mode + Tax Redesign
+============================================================
+Feature: Payment Mode (Prepaid/EMI/Mixed) + Tax toggle chips + Summary in Column 3
+Branch: billing-view-payment
+Date: 2026-01-30
+
+CHANGES:
+------------------------------------------------------------
+
+1. BillingViewStep.tsx - Complete Column 3 redesign
+   - Column 1: Billing config card + currency (unchanged)
+   - Column 2: Clean line items table
+     - Dynamic grid: 5 cols (unified) / 6 cols with Payment column (mixed)
+     - Per-block payment type dropdown for Mixed mode
+     - Simple subtotal footer
+   - Column 3 (380px): Three stacked cards replacing contract preview
+     - Payment Mode card: Prepaid/EMI toggle cards (unified) or Mixed instruction
+     - Tax card: Toggle chips (click to toggle on/off, brand primary active)
+     - Summary card: Subtotal, tax breakdown per rate, grand total, EMI note
+   - Removed: ContractPreviewPanel, useTenantProfile, TaxRateTagSelector
+   - Removed: Contact/ContactPerson interfaces, contract preview props
+
+2. ContractWizard/index.tsx - Payment state management
+   - Added to ContractWizardState:
+     - paymentMode: 'prepaid' | 'emi'
+     - emiMonths: number
+     - perBlockPaymentType: Record<string, 'prepaid' | 'postpaid'>
+   - Added handlers: handlePaymentModeChange, handleEmiMonthsChange,
+     handlePerBlockPaymentTypeChange
+   - Updated BillingViewStep rendering (case 7) with new payment props
+   - Removed contract preview props from BillingViewStep
+
+FILES TO COPY:
+------------------------------------------------------------
+FROM: MANUAL_COPY_FILES/billing-view-payment/contractnest-ui/
+TO:   contractnest-ui/
+
+Specific files:
+  src/components/contracts/ContractWizard/steps/BillingViewStep.tsx
+  src/components/contracts/ContractWizard/index.tsx
+
+SUBMODULES AFFECTED:
+------------------------------------------------------------
+- contractnest-ui
+
+POWERSHELL COPY COMMANDS:
+------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\billing-view-payment\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Write-Host "All files copied!" -ForegroundColor Green
