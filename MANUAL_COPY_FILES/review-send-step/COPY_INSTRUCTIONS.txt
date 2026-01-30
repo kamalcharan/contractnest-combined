@@ -1,0 +1,45 @@
+============================================================
+REVIEW & SEND STEP (Step 9)
+============================================================
+Feature: Card-based contract review with Self/Client view toggle
+Branch: review-send-step
+Date: 2026-01-30
+
+CHANGES:
+------------------------------------------------------------
+
+1. ReviewSendStep.tsx (NEW FILE)
+   - Self/Client pill toggle (Self shows full pricing, Client hides line item prices)
+   - Branded header card with tenant logo, gradient using primary_color + secondary_color
+   - Quick stats bar: Duration, Blocks count, Billing type, Total value
+   - Blocks grouped by category with colored cards:
+     - Pricing blocks (Service/Spare): 2-column grid cards with qty, cycle, price (Self only), FlyBy badge
+     - Content blocks (Text/Document/Checklist/Video/Image): stacked cards with rendered content
+   - Sidebar: Parties card, Contract Details card (timeline), Financial Summary card
+   - Dynamic action buttons based on acceptance method:
+     - Payment: Save as Draft + Generate Invoice
+     - Signoff: Save as Draft + Send to Customer
+     - Auto: Save as Draft + Create Contract
+
+2. ContractWizard/index.tsx (MODIFIED)
+   - Added import for ReviewSendStep
+   - Replaced case 8 placeholder with <ReviewSendStep /> with all wizard state props
+
+FILES TO COPY:
+------------------------------------------------------------
+FROM: MANUAL_COPY_FILES/review-send-step/contractnest-ui/
+TO:   contractnest-ui/
+
+Specific files:
+  src/components/contracts/ContractWizard/steps/ReviewSendStep.tsx (NEW)
+  src/components/contracts/ContractWizard/index.tsx (MODIFIED)
+
+SUBMODULES AFFECTED:
+------------------------------------------------------------
+- contractnest-ui
+
+POWERSHELL COPY COMMANDS:
+------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\review-send-step\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Write-Host "All files copied!" -ForegroundColor Green
