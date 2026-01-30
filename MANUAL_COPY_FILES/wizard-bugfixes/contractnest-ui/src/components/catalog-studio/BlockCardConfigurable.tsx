@@ -213,13 +213,9 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
               >
                 {block.categoryName}
               </span>
-              {hasPricing ? (
+              {hasPricing && (
                 <span className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
                   {block.unlimited ? '∞' : `×${block.quantity}`} • {currentCycle.shortLabel}
-                </span>
-              ) : (
-                <span className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
-                  Non-pricing
                 </span>
               )}
             </div>
@@ -264,18 +260,11 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
           style={{ borderColor: `${colors.utility.primaryText}10` }}
         >
           <div className="pt-3 space-y-4">
-            {/* Non-pricing block info */}
-            {!hasPricing && (
-              <div
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs"
-                style={{
-                  backgroundColor: `${colors.utility.primaryText}05`,
-                  color: colors.utility.secondaryText,
-                }}
-              >
-                <FileText className="w-3.5 h-3.5 flex-shrink-0" />
-                <span>This block type does not have pricing, quantity, or billing cycle.</span>
-              </div>
+            {/* Description for non-pricing blocks */}
+            {!hasPricing && block.description && (
+              <p className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                {block.description}
+              </p>
             )}
 
             {/* Quantity Section - Limited/Unlimited Switch (pricing blocks only) */}
