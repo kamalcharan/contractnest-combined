@@ -1,0 +1,74 @@
+============================================================
+PDF EXPORT - Production-Ready Implementation
+============================================================
+Feature: Direct PDF file download from paper canvas view
+Branch: pdf-export
+Date: 2026-01-30
+
+NEW DEPENDENCIES (run npm install after copying):
+------------------------------------------------------------
+  html2canvas: ^1.4.1
+  jspdf: ^2.5.2
+
+CHANGES:
+------------------------------------------------------------
+
+1. generatePDF.ts (NEW - Reusable utility)
+   - html2canvas captures DOM element at 2x resolution
+   - jsPDF generates A4 PDF with configurable margins
+   - Multi-page support (auto-slices tall content across pages)
+   - JPEG quality, scale, orientation options
+   - forceLightBg option for dark-mode-safe export
+   - Can be used from ANY component (contracts, templates, invoices, etc.)
+
+2. ReviewSendStep.tsx (MODIFIED)
+   - Added paperRef on the paper div
+   - PDF button wired to handleDownloadPDF handler
+   - Loading state: button shows spinner + "Generating..." while exporting
+   - Success/error toasts via VaNiToast
+   - Filename: {contract-name}-{self|client}.pdf
+
+3. package.json (MODIFIED)
+   - Added html2canvas ^1.4.1
+   - Added jspdf ^2.5.2
+
+FILES TO COPY:
+------------------------------------------------------------
+FROM: MANUAL_COPY_FILES/pdf-export/contractnest-ui/
+TO:   contractnest-ui/
+
+Specific files:
+  package.json (MODIFIED - 2 new deps)
+  src/utils/pdf/generatePDF.ts (NEW)
+  src/components/contracts/ContractWizard/steps/ReviewSendStep.tsx (MODIFIED)
+
+SUBMODULES AFFECTED:
+------------------------------------------------------------
+- contractnest-ui
+
+POWERSHELL COPY COMMANDS:
+------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\pdf-export\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+cd contractnest-ui
+npm install
+cd ..
+Write-Host "All files copied and deps installed!" -ForegroundColor Green
+
+REUSABLE UTILITY USAGE (for future PDF features):
+------------------------------------------------------------
+  import { generatePDF } from '@/utils/pdf/generatePDF';
+
+  // Basic usage
+  const el = document.getElementById('my-element');
+  await generatePDF(el, { filename: 'my-doc.pdf' });
+
+  // Full options
+  await generatePDF(el, {
+    filename: 'contract-draft.pdf',
+    margin: 10,           // mm
+    orientation: 'portrait',
+    quality: 0.92,        // JPEG quality
+    scale: 2,             // canvas resolution multiplier
+    forceLightBg: true,   // white bg regardless of dark mode
+  });
