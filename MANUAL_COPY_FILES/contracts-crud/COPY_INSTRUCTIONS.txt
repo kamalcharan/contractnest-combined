@@ -1,0 +1,24 @@
+Feature: Contract CRUD - RPC Functions (Batch 1 of 2)
+Branch: contracts-crud
+Date: 2026-01-30
+
+Submodules Affected: contractnest-edge
+
+Files Changed (1 file):
+  1. contractnest-edge/supabase/migrations/contracts/002_contract_rpc_functions.sql
+     - create_contract_transaction: Atomic create with idempotency, sequencing, blocks, vendors, history, auto-accept
+     - get_contracts_list: Paginated list with SECURITY DEFINER, dynamic filters, JSON shaping
+     - get_contract_by_id: Single record with embedded blocks, vendors, attachments, history
+
+Prerequisites:
+  - Migration 001_create_contract_tables.sql must be run (creates t_contracts, t_contract_blocks, etc.)
+  - Idempotency infrastructure (check_idempotency, store_idempotency) must exist
+  - Sequence infrastructure (get_next_formatted_sequence) must exist
+
+Copy Commands (PowerShell):
+  cd "D:\projects\core projects\ContractNest\contractnest-combined"
+  Copy-Item "MANUAL_COPY_FILES\contracts-crud\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+  Write-Host "All files copied!" -ForegroundColor Green
+
+Run in Supabase SQL Editor:
+  Execute the contents of contractnest-edge/supabase/migrations/contracts/002_contract_rpc_functions.sql
