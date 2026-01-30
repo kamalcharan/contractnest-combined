@@ -213,9 +213,15 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
               >
                 {block.categoryName}
               </span>
-              <span className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
-                {block.unlimited ? '∞' : `×${block.quantity}`} • {currentCycle.shortLabel}
-              </span>
+              {hasPricing ? (
+                <span className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
+                  {block.unlimited ? '∞' : `×${block.quantity}`} • {currentCycle.shortLabel}
+                </span>
+              ) : (
+                <span className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
+                  Non-pricing
+                </span>
+              )}
             </div>
           </div>
 
