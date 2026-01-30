@@ -343,12 +343,12 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
 
       {/* 3-Column Layout - fills remaining height */}
       <div className="flex-1 flex gap-4 px-4 pb-6 min-h-0 overflow-hidden">
-        {/* Column 1: Block Library - full height */}
-        <div className="w-[280px] flex-shrink-0 h-full">
+        {/* Column 1: Block Library - viewport-based height */}
+        <div className="w-[280px] flex-shrink-0" style={{ height: 'calc(100vh - 200px)' }}>
           <BlockLibraryMini
             selectedBlockIds={selectedBlockIds}
             onAddBlock={handleAddBlock}
-            maxHeight="100%"
+            maxHeight="calc(100vh - 200px)"
             flyByTypes={['service', 'spare', 'text', 'document']}
             onAddFlyByBlock={handleAddFlyByBlock}
           />
