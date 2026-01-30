@@ -596,7 +596,8 @@ const BillingViewStep: React.FC<BillingViewStepProps> = ({
         </div>
 
         {/* Column 3: Payment + Tax + Summary */}
-        <div className="w-[380px] flex-shrink-0 flex flex-col gap-3 overflow-y-auto">
+        <div className="w-[380px] flex-shrink-0 min-h-0">
+          <div className="h-full overflow-y-auto flex flex-col gap-3 pr-1">
           {/* Payment Mode Section */}
           <div
             className="rounded-xl border overflow-hidden flex-shrink-0"
@@ -971,6 +972,7 @@ const BillingViewStep: React.FC<BillingViewStepProps> = ({
               )}
             </div>
           </div>
+          </div>{/* close inner scroll wrapper */}
         </div>
       </div>
     </div>
