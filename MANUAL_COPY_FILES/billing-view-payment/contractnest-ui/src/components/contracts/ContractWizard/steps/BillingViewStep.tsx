@@ -596,10 +596,10 @@ const BillingViewStep: React.FC<BillingViewStepProps> = ({
         </div>
 
         {/* Column 3: Payment + Tax + Summary */}
-        <div className="w-[380px] flex-shrink-0 flex flex-col gap-3">
+        <div className="w-[380px] flex-shrink-0 flex flex-col gap-3 overflow-y-auto">
           {/* Payment Mode Section */}
           <div
-            className="rounded-xl border overflow-hidden"
+            className="rounded-xl border overflow-hidden flex-shrink-0"
             style={{
               backgroundColor: colors.utility.secondaryBackground,
               borderColor: `${colors.utility.primaryText}10`,
@@ -828,7 +828,7 @@ const BillingViewStep: React.FC<BillingViewStepProps> = ({
 
           {/* Tax Section */}
           <div
-            className="rounded-xl border overflow-hidden"
+            className="rounded-xl border overflow-hidden flex-shrink-0"
             style={{
               backgroundColor: colors.utility.secondaryBackground,
               borderColor: `${colors.utility.primaryText}10`,
@@ -893,7 +893,7 @@ const BillingViewStep: React.FC<BillingViewStepProps> = ({
 
           {/* Summary Section */}
           <div
-            className="rounded-xl border overflow-hidden"
+            className="rounded-xl border overflow-hidden flex-shrink-0"
             style={{
               backgroundColor: colors.utility.secondaryBackground,
               borderColor: `${colors.utility.primaryText}10`,
