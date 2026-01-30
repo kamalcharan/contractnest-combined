@@ -718,29 +718,54 @@ const BillingViewStep: React.FC<BillingViewStepProps> = ({
                           Duration (months)
                         </label>
                         <div
-                          className="flex items-center gap-2 rounded-lg border px-3 py-1.5"
+                          className="flex items-center rounded-lg border overflow-hidden"
                           style={{ borderColor: `${colors.utility.primaryText}20`, backgroundColor: colors.utility.primaryBackground }}
                         >
                           <button
-                            onClick={() => onEmiMonthsChange(Math.max(2, emiMonths - 1))}
+                            type="button"
+                            onClick={() => {
+                              const next = Math.max(2, emiMonths - 1);
+                              onEmiMonthsChange(next);
+                            }}
                             disabled={emiMonths <= 2}
-                            className="p-0.5 rounded hover:opacity-80 disabled:opacity-30"
-                            style={{ color: colors.utility.primaryText }}
+                            className="px-3 py-2 hover:opacity-80 disabled:opacity-30 border-r transition-colors"
+                            style={{
+                              color: colors.utility.primaryText,
+                              borderColor: `${colors.utility.primaryText}15`,
+                              backgroundColor: `${colors.utility.primaryText}05`,
+                            }}
                           >
-                            <Minus className="w-3.5 h-3.5" />
+                            <Minus className="w-4 h-4" />
                           </button>
-                          <span
-                            className="flex-1 text-center text-sm font-bold"
+                          <input
+                            type="number"
+                            value={emiMonths}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value, 10);
+                              if (!isNaN(val)) {
+                                const clamped = Math.max(2, Math.min(contractDuration || 60, val));
+                                onEmiMonthsChange(clamped);
+                              }
+                            }}
+                            min={2}
+                            max={contractDuration || 60}
+                            className="flex-1 text-center text-sm font-bold bg-transparent border-0 outline-none w-12 py-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                             style={{ color: colors.brand.primary }}
-                          >
-                            {emiMonths}
-                          </span>
+                          />
                           <button
-                            onClick={() => onEmiMonthsChange(Math.min(contractDuration || 60, emiMonths + 1))}
-                            className="p-0.5 rounded hover:opacity-80"
-                            style={{ color: colors.utility.primaryText }}
+                            type="button"
+                            onClick={() => {
+                              const next = Math.min(contractDuration || 60, emiMonths + 1);
+                              onEmiMonthsChange(next);
+                            }}
+                            className="px-3 py-2 hover:opacity-80 border-l transition-colors"
+                            style={{
+                              color: colors.utility.primaryText,
+                              borderColor: `${colors.utility.primaryText}15`,
+                              backgroundColor: `${colors.utility.primaryText}05`,
+                            }}
                           >
-                            <Plus className="w-3.5 h-3.5" />
+                            <Plus className="w-4 h-4" />
                           </button>
                         </div>
                       </div>

@@ -405,7 +405,7 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
             onSelectCycleType={handleBillingCycleTypeSelect}
           />
         );
-      case 6:
+      case 6: {
         // Calculate contract duration in months
         const durationInMonths = wizardState.durationUnit === 'months'
           ? wizardState.durationValue
@@ -430,8 +430,9 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
             } : undefined}
           />
         );
-      case 7:
-        // Billing View - reuse durationInMonths from case 6
+      }
+      case 7: {
+        // Billing View - calculate duration in months
         const billingDuration = wizardState.durationUnit === 'months'
           ? wizardState.durationValue
           : wizardState.durationUnit === 'years'
@@ -455,6 +456,7 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
             contractDuration={billingDuration}
           />
         );
+      }
       case 8:
         return (
           <div className="flex items-center justify-center min-h-[60vh]">
