@@ -325,6 +325,8 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
             selectedBlockIds={selectedBlockIds}
             onAddBlock={handleAddBlock}
             maxHeight="calc(100vh - 180px)"
+            flyByTypes={['service', 'spare', 'text', 'document']}
+            onAddFlyByBlock={handleAddFlyByBlock}
           />
         </div>
 
