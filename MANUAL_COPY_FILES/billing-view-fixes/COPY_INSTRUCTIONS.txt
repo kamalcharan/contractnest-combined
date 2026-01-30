@@ -1,0 +1,51 @@
+============================================================
+BILLING VIEW FIXES - Copy Instructions
+============================================================
+Feature: Fix pricing visibility for non-pricing blocks + compact billing footer
+Branch: billing-view-fixes
+Date: 2026-01-30
+
+CHANGES:
+------------------------------------------------------------
+
+1. categories.ts - Added categoryHasPricing() helper
+   Uses existing CATEGORY_METADATA wizardSteps to determine
+   if a category supports pricing (metadata-driven, not hardcoded)
+
+2. BlockCardConfigurable.tsx - Conditional pricing sections
+   - Added categoryId to ConfigurableBlock interface
+   - Qty, Billing Cycle, Pricing, Price Summary only shown
+     for categories where categoryHasPricing() returns true
+   - Non-pricing blocks (text, document, video, image, checklist, billing)
+     only show "Show description in contract" toggle
+   - Header hides price + qty/cycle summary for non-pricing blocks
+
+3. ServiceBlocksStep.tsx - Pass categoryId when creating blocks
+   - Catalog blocks: categoryId = block.categoryId
+   - FlyBy blocks: categoryId = type (maps to category ID)
+
+4. BillingViewStep.tsx - Filter + compact footer
+   - Filters to billableBlocks only (service/spare)
+   - Empty state when no billable blocks
+   - Compact footer: reduced padding, inline tax, subtle bg on grand total
+
+FILES TO COPY:
+------------------------------------------------------------
+FROM: MANUAL_COPY_FILES/billing-view-fixes/contractnest-ui/
+TO:   contractnest-ui/
+
+Specific files:
+  src/utils/catalog-studio/categories.ts
+  src/components/catalog-studio/BlockCardConfigurable.tsx
+  src/components/contracts/ContractWizard/steps/ServiceBlocksStep.tsx
+  src/components/contracts/ContractWizard/steps/BillingViewStep.tsx
+
+SUBMODULES AFFECTED:
+------------------------------------------------------------
+- contractnest-ui
+
+POWERSHELL COPY COMMANDS:
+------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\billing-view-fixes\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Write-Host "All files copied!" -ForegroundColor Green
