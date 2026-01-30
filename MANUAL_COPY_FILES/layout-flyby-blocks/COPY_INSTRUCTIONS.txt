@@ -1,0 +1,63 @@
+# Layout Optimization + FlyBy Blocks Implementation
+# ==================================================
+# Step headings moved to wizard header, layout optimized, FlyBy blocks added
+
+## Files Changed (5 files):
+
+1. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+   - Added STEP_HEADINGS array with title/subtitle for all 8 wizard steps
+   - Added COUNTERPARTY_HEADINGS for dynamic step 2 (client/vendor/partner)
+   - Redesigned header to show step title + subtitle alongside logo
+   - Removed inline heading from Review & Send step
+
+2. contractnest-ui/src/components/contracts/ContractWizard/steps/ServiceBlocksStep.tsx
+   - Removed heading section (moved to wizard header)
+   - Changed container from min-h-[70vh] to h-full for full height
+   - Block library maxHeight: calc(100vh - 180px) for full page usage
+   - Column 3 (preview): 360px -> 450px
+   - Added FlyBy dropdown button in Added Blocks header
+   - FlyBy menu with 4 types: Service, Spare, Text, Document
+   - handleAddFlyByBlock creates inline empty blocks
+   - Conditional rendering: FlyByBlockCard for flyby blocks, BlockCardConfigurable for catalog blocks
+   - Updated empty state message
+
+3. contractnest-ui/src/components/catalog-studio/BlockCardConfigurable.tsx
+   - Added isFlyBy and flyByType fields to ConfigurableBlock interface
+   - Added FlyBy-specific config: sku, content, fileType
+
+4. contractnest-ui/src/components/catalog-studio/FlyByBlockCard.tsx (NEW)
+   - FlyBy block card component with dashed border + Zap badge
+   - Supports 4 block types: Service, Spare, Text, Document
+   - Service: Name, Description, Billing Cycle, Quantity, Price
+   - Spare: Name, Description, SKU, Quantity, Price
+   - Text: Name, Content textarea
+   - Document: Name, Description, File type selector
+   - Drag handle, expand/collapse, remove - same pattern as BlockCardConfigurable
+
+5. contractnest-ui/src/components/catalog-studio/index.ts
+   - Added FlyByBlockCard, FLYBY_TYPE_CONFIG exports
+   - Added FlyByBlockType, FlyByBlockCardProps type exports
+
+## NOTE: Step headings also removed from 6 other step components
+   (PathSelectionStep, YourRoleStep, BuyerSelectionStep, AcceptanceMethodStep,
+    ContractDetailsStep, BillingCycleStep) - these were done in a previous edit
+
+## UI Changes Summary:
+
+### Wizard Header
+BEFORE: Logo + Progress Dots + Close
+AFTER:  Logo | Step Title + Subtitle | Progress Dots | Close
+
+### ServiceBlocksStep Layout
+BEFORE: Header (80px) + 3 columns (70vh) | Col3: 360px
+AFTER:  No header + 3 columns (full height) | Col3: 450px
+
+### Block Library
+BEFORE: maxHeight: calc(70vh - 120px)
+AFTER:  maxHeight: calc(100vh - 180px) - uses full page height
+
+### FlyBy Blocks
+NEW:    [FlyBy] dropdown in Added Blocks header
+        4 types: Service (wrench), Spare (package), Text (filetext), Document (file)
+        Dashed border + Zap badge to distinguish from catalog blocks
+        Inline editing of all fields
