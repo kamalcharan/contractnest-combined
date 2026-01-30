@@ -1,0 +1,49 @@
+============================================================
+BUGFIX: Success Screen + Billing View Fix
+============================================================
+Feature: Fix signoff success screen not showing + Billing View state loss
+Branch: bugfix-success-screen
+Date: 2026-01-30
+
+ROOT CAUSE:
+------------------------------------------------------------
+1. handleNext called onComplete() BEFORE setIsContractSent(true)
+   - onComplete caused parent to set isOpen=false
+   - Render guard "if (!isOpen) return null" fired before success screen check
+   - Result: wizard closed instantly, success animation never shown
+
+2. Billing View "no blocks" was a secondary symptom:
+   - Wizard close caused state reset (selectedBlocks back to [])
+   - On reopen, empty blocks passed to BillingViewStep
+
+FIXES APPLIED:
+------------------------------------------------------------
+1. handleNext (signoff flow):
+   - Only calls setIsContractSent(true) — NO onComplete call
+   - onComplete deferred to Done button click
+
+2. Render guard reorder:
+   - isContractSent check moved BEFORE !isOpen check
+   - Success screen persists even if parent sets isOpen=false
+
+3. Done button:
+   - Now calls onComplete(wizardState) then setIsContractSent(false) then onClose()
+   - Clean teardown: complete → reset flag → close
+
+FILES TO COPY:
+------------------------------------------------------------
+FROM: MANUAL_COPY_FILES/bugfix-success-screen/contractnest-ui/
+TO:   contractnest-ui/
+
+Specific files:
+  src/components/contracts/ContractWizard/index.tsx (MODIFIED)
+
+SUBMODULES AFFECTED:
+------------------------------------------------------------
+- contractnest-ui
+
+POWERSHELL COPY COMMANDS:
+------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\bugfix-success-screen\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Write-Host "All files copied!" -ForegroundColor Green
