@@ -1,0 +1,36 @@
+===============================================
+ITERATION: 1 — ContractsHub + Data Layer
+DATE: 2025-01-30
+===============================================
+
+FILES THIS ITERATION:
+---------------------
+NEW FILES (copy directly):
+1. contractnest-ui/src/types/contracts.ts
+2. contractnest-ui/src/hooks/queries/useContractQueries.ts
+3. contractnest-ui/src/pages/contracts/hub/index.tsx
+
+MANUAL PATCH FILES (apply changes by hand):
+4. contractnest-ui/src/services/serviceURLs.contracts.ts       → paste CONTRACTS block into serviceURLs.ts
+5. contractnest-ui/src/utils/constants/industryMenus.contracts-hub.patch.ts  → replace contracts menu
+6. contractnest-ui/src/App.contracts-hub.patch.ts              → add import + route block
+
+COPY COMMANDS (new files):
+---------------------
+Copy-Item "MANUAL_COPY_FILES\contracts-crud\contractnest-ui\src\types\contracts.ts" -Destination "contractnest-ui\src\types\contracts.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\contracts-crud\contractnest-ui\src\hooks\queries\useContractQueries.ts" -Destination "contractnest-ui\src\hooks\queries\useContractQueries.ts" -Force
+New-Item -ItemType Directory -Path "contractnest-ui\src\pages\contracts\hub" -Force
+Copy-Item "MANUAL_COPY_FILES\contracts-crud\contractnest-ui\src\pages\contracts\hub\index.tsx" -Destination "contractnest-ui\src\pages\contracts\hub\index.tsx" -Force
+
+MANUAL PATCHES (apply by hand):
+---------------------
+See the 3 .patch.ts files in MANUAL_COPY_FILES/contracts-crud/ for exact before/after diffs.
+
+TEST:
+---------------------
+- [ ] Menu shows "All Contracts" (single item, no submenu)
+- [ ] Clicking it navigates to /contracts
+- [ ] ContractsHub page loads with type rail, pipeline bar, empty state
+- [ ] Type rail shows All / Client / Vendor / Partner
+- [ ] Quick Create buttons in rail navigate to /contracts/create/client etc.
+- [ ] No console errors
