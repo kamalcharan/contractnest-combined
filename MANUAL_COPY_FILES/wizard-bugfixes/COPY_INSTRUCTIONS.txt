@@ -1,0 +1,30 @@
+============================================================
+WIZARD BUGFIXES - COPY INSTRUCTIONS
+============================================================
+Branch: wizard-bugfixes
+Submodules Affected: contractnest-ui
+
+Files Changed:
+  1. contractnest-ui/src/components/catalog-studio/BlockCardConfigurable.tsx
+     - Added categoryId and isFlyBy fields to ConfigurableBlock interface
+
+  2. contractnest-ui/src/components/contracts/ContractWizard/steps/ServiceBlocksStep.tsx
+     - Stores categoryId and isFlyBy when creating blocks from library
+
+  3. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+     - Removed YourRole step (8 steps instead of 9)
+     - Added success screen with animated checkmark after Send Contract
+     - Renumbered all step indices, headings, labels
+     - Success screen renders before !isOpen guard (fixes premature close)
+
+============================================================
+COPY COMMANDS (PowerShell)
+============================================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\wizard-bugfixes\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+============================================================
