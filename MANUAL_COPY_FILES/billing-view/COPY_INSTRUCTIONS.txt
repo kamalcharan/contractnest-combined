@@ -1,0 +1,37 @@
+============================================================
+BILLING VIEW STEP - Copy Instructions
+============================================================
+Feature: New Billing View step (Step 8 of 9) in Contract Wizard
+Branch: billing-view
+Date: 2026-01-30
+
+FILES TO COPY:
+------------------------------------------------------------
+
+1. NEW FILE - BillingViewStep.tsx
+   FROM: MANUAL_COPY_FILES/billing-view/contractnest-ui/src/components/contracts/ContractWizard/steps/BillingViewStep.tsx
+   TO:   contractnest-ui/src/components/contracts/ContractWizard/steps/BillingViewStep.tsx
+
+2. MODIFIED FILE - ContractWizard/index.tsx
+   FROM: MANUAL_COPY_FILES/billing-view/contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+   TO:   contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+
+SUBMODULES AFFECTED:
+------------------------------------------------------------
+- contractnest-ui
+
+CHANGES SUMMARY:
+------------------------------------------------------------
+- BillingViewStep.tsx: New 3-column billing review step
+  - Column 1: Billing config summary (selected cycle card + currency)
+  - Column 2: Line items table (qty, cycle, editable selling price, total) + Tax + Grand Total
+  - Column 3: Contract preview panel with pricing
+- index.tsx: TOTAL_STEPS bumped from 8 to 9, new step labels/headings,
+  selectedTaxRateIds state, BillingViewStep rendered at case 7,
+  Review & Send moved to case 8
+
+POWERSHELL COPY COMMANDS:
+------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\billing-view\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Write-Host "All files copied!" -ForegroundColor Green
