@@ -53,11 +53,15 @@ export interface ConfigurableBlock {
   categoryBgColor?: string;
   categoryId?: string;
   isFlyBy?: boolean;
+  flyByType?: string; // 'service' | 'spare' | 'text' | 'document'
   // Additional config options
   config?: {
     showDescription?: boolean; // Show description in contract
     customPrice?: number; // Selling price (editable, defaults to defined price)
     notes?: string;
+    content?: string; // Text block content
+    sku?: string; // Spare part SKU
+    fileType?: string; // Document file type
   };
 }
 

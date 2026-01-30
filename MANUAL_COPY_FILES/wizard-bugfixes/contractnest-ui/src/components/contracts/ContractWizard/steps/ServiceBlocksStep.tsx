@@ -13,7 +13,10 @@ import { getCategoryById } from '@/utils/catalog-studio';
 import { getCurrencySymbol } from '@/utils/constants/currencies';
 
 // Import shared catalog-studio components
-import { BlockLibraryMini, BlockCardConfigurable, ConfigurableBlock } from '@/components/catalog-studio';
+import { BlockLibraryMini, BlockCardConfigurable, FlyByBlockCard, ConfigurableBlock } from '@/components/catalog-studio';
+import type { FlyByCategoryId } from '@/components/catalog-studio/BlockLibraryMini';
+import { FLYBY_TYPE_CONFIG } from '@/components/catalog-studio/FlyByBlockCard';
+import { getCategoryById as getCatById } from '@/utils/catalog-studio/categories';
 
 // Import contract preview panel
 import ContractPreviewPanel from '../components/ContractPreviewPanel';
@@ -160,6 +163,48 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
     [selectedBlocks, selectedBlockIds, onBlocksChange, addToast, currency]
   );
 
+  // Add FlyBy block (inline empty block)
+  const handleAddFlyByBlock = useCallback(
+    (type: FlyByCategoryId) => {
+      const typeConfig = FLYBY_TYPE_CONFIG[type as keyof typeof FLYBY_TYPE_CONFIG];
+      const category = getCatById(type);
+      const flyById = `flyby-${type}-${Date.now()}`;
+
+      const newBlock: ConfigurableBlock = {
+        id: flyById,
+        name: '',
+        description: '',
+        icon: category?.icon || 'Package',
+        quantity: 1,
+        cycle: type === 'service' ? 'prepaid' : 'prepaid',
+        unlimited: false,
+        price: 0,
+        currency: currency,
+        totalPrice: 0,
+        categoryName: typeConfig?.label || type,
+        categoryColor: typeConfig?.color || '#6B7280',
+        categoryBgColor: typeConfig?.bgColor,
+        categoryId: type,
+        isFlyBy: true,
+        flyByType: type,
+        config: {
+          showDescription: false,
+        },
+      };
+
+      onBlocksChange([...selectedBlocks, newBlock]);
+      addToast({
+        type: 'success',
+        title: 'FlyBy block added',
+        message: `New ${typeConfig?.label || type} FlyBy block added`,
+      });
+
+      // Auto-expand
+      setExpandedBlockId(flyById);
+    },
+    [selectedBlocks, onBlocksChange, addToast, currency]
+  );
+
   // Remove block
   const handleRemoveBlock = useCallback(
     (blockId: string) => {
@@ -281,6 +326,8 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
             selectedBlockIds={selectedBlockIds}
             onAddBlock={handleAddBlock}
             maxHeight="calc(70vh - 120px)"
+            flyByTypes={['service', 'spare', 'text', 'document']}
+            onAddFlyByBlock={handleAddFlyByBlock}
           />
         </div>
 
@@ -365,17 +412,31 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
                         borderTop: isDragOver ? `2px solid ${colors.brand.primary}` : '2px solid transparent',
                       }}
                     >
-                      <BlockCardConfigurable
-                        block={block}
-                        isExpanded={expandedBlockId === block.id}
-                        isDragging={isDragging}
-                        dragHandleProps={{
-                          style: { cursor: 'grab' },
-                        }}
-                        onToggleExpand={handleToggleExpand}
-                        onRemove={handleRemoveBlock}
-                        onUpdate={handleUpdateBlock}
-                      />
+                      {block.isFlyBy ? (
+                        <FlyByBlockCard
+                          block={block}
+                          isExpanded={expandedBlockId === block.id}
+                          isDragging={isDragging}
+                          dragHandleProps={{
+                            style: { cursor: 'grab' },
+                          }}
+                          onToggleExpand={handleToggleExpand}
+                          onRemove={handleRemoveBlock}
+                          onUpdate={handleUpdateBlock}
+                        />
+                      ) : (
+                        <BlockCardConfigurable
+                          block={block}
+                          isExpanded={expandedBlockId === block.id}
+                          isDragging={isDragging}
+                          dragHandleProps={{
+                            style: { cursor: 'grab' },
+                          }}
+                          onToggleExpand={handleToggleExpand}
+                          onRemove={handleRemoveBlock}
+                          onUpdate={handleUpdateBlock}
+                        />
+                      )}
                     </div>
                   );
                 })}
