@@ -1,0 +1,1535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ContractNest — Create Client Contract</title>
+<style>
+  /* ═══════════════════════════════════════════ */
+  /*  DESIGN TOKENS                              */
+  /* ═══════════════════════════════════════════ */
+  :root {
+    --brand-primary: #6C5CE7;
+    --brand-primary-soft: #6C5CE720;
+    --brand-secondary: #A29BFE;
+    --brand-glow: #6C5CE740;
+    --surface-0: #0B0D17;
+    --surface-1: #111427;
+    --surface-2: #191D33;
+    --surface-3: #222740;
+    --surface-4: #2A2F4A;
+    --text-primary: #E8EAED;
+    --text-secondary: #8B8FA3;
+    --text-muted: #5A5E73;
+    --border: #2A2F4A;
+    --border-soft: #1E2238;
+    --success: #00D68F;
+    --success-soft: #00D68F18;
+    --warning: #FFB547;
+    --warning-soft: #FFB54718;
+    --error: #FF6B6B;
+    --error-soft: #FF6B6B18;
+    --info: #3DC2FF;
+    --info-soft: #3DC2FF18;
+
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --shadow-elevated: 0 8px 32px rgba(0,0,0,0.4);
+    --shadow-card: 0 2px 12px rgba(0,0,0,0.2);
+    --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--surface-0);
+    color: var(--text-primary);
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  /* ═══════════════════════════════════════════ */
+  /*  PAGE TABS (switch between views)           */
+  /* ═══════════════════════════════════════════ */
+  .page-switcher {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+    background: var(--surface-1);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 0;
+    padding: 0 24px;
+    height: 44px;
+  }
+  .page-tab {
+    padding: 10px 20px; cursor: pointer;
+    color: var(--text-secondary); font-size: 13px; font-weight: 500;
+    border-bottom: 2px solid transparent;
+    transition: var(--transition);
+  }
+  .page-tab:hover { color: var(--text-primary); }
+  .page-tab.active {
+    color: var(--brand-primary);
+    border-bottom-color: var(--brand-primary);
+  }
+  .page-tab-label {
+    font-size: 11px; color: var(--text-muted); margin-left: auto;
+    padding: 10px 20px;
+  }
+
+  .page-view { display: none; padding-top: 44px; height: 100vh; overflow-y: auto; }
+  .page-view.active { display: block; }
+
+  /* ═══════════════════════════════════════════ */
+  /*  PAGE 1: CONTRACTS HUB (Navigation Entry)   */
+  /* ═══════════════════════════════════════════ */
+  .hub { padding: 32px 40px; max-width: 1400px; margin: 0 auto; }
+
+  .hub-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 40px;
+  }
+  .hub-header h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; }
+  .hub-header p { color: var(--text-secondary); margin-top: 6px; font-size: 14px; }
+
+  /* ── Quick Create Strip ── */
+  .quick-create-strip {
+    display: flex; gap: 16px; margin-bottom: 40px;
+  }
+  .qc-card {
+    flex: 1; position: relative; overflow: hidden;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 28px 24px;
+    cursor: pointer;
+    transition: var(--transition);
+  }
+  .qc-card:hover {
+    border-color: var(--brand-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px var(--brand-glow);
+  }
+  .qc-card.featured {
+    background: linear-gradient(135deg, var(--surface-2) 0%, #1a1640 100%);
+    border-color: var(--brand-primary);
+  }
+  .qc-card.featured::before {
+    content: '';
+    position: absolute; top: 0; right: 0; width: 120px; height: 120px;
+    background: radial-gradient(circle at 100% 0%, var(--brand-glow) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .qc-icon {
+    width: 48px; height: 48px;
+    border-radius: var(--radius-md);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 16px; font-size: 22px;
+  }
+  .qc-icon.client { background: var(--brand-primary-soft); color: var(--brand-primary); }
+  .qc-icon.vendor { background: var(--success-soft); color: var(--success); }
+  .qc-icon.rfq    { background: var(--warning-soft); color: var(--warning); }
+  .qc-icon.import { background: var(--info-soft); color: var(--info); }
+
+  .qc-card h3 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .qc-card p { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+  .qc-badge {
+    position: absolute; top: 16px; right: 16px;
+    background: var(--brand-primary);
+    color: #fff; font-size: 10px; font-weight: 700;
+    padding: 3px 10px; border-radius: 100px;
+    letter-spacing: 0.5px; text-transform: uppercase;
+  }
+
+  /* ── Pipeline Strip ── */
+  .pipeline-section { margin-bottom: 40px; }
+  .pipeline-section h2 {
+    font-size: 14px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--text-muted); margin-bottom: 16px;
+  }
+  .pipeline {
+    display: flex; gap: 2px; border-radius: var(--radius-md); overflow: hidden;
+  }
+  .pipeline-stage {
+    flex: 1; padding: 16px 20px; text-align: center;
+    position: relative;
+    background: var(--surface-2);
+    cursor: pointer; transition: var(--transition);
+  }
+  .pipeline-stage:hover { background: var(--surface-3); }
+  .pipeline-stage .count {
+    font-size: 28px; font-weight: 700;
+    line-height: 1; margin-bottom: 4px;
+  }
+  .pipeline-stage .label {
+    font-size: 11px; font-weight: 500; text-transform: uppercase;
+    letter-spacing: 0.5px; color: var(--text-secondary);
+  }
+  .pipeline-stage.s-draft   .count { color: var(--text-secondary); }
+  .pipeline-stage.s-review  .count { color: var(--info); }
+  .pipeline-stage.s-pending .count { color: var(--warning); }
+  .pipeline-stage.s-active  .count { color: var(--success); }
+  .pipeline-stage.s-expired .count { color: var(--error); }
+  .pipeline-stage::after {
+    content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+  }
+  .pipeline-stage.s-draft::after   { background: var(--text-muted); }
+  .pipeline-stage.s-review::after  { background: var(--info); }
+  .pipeline-stage.s-pending::after { background: var(--warning); }
+  .pipeline-stage.s-active::after  { background: var(--success); }
+  .pipeline-stage.s-expired::after { background: var(--error); }
+
+  /* ── Recent Contracts Table ── */
+  .recent-section h2 {
+    font-size: 14px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--text-muted); margin-bottom: 16px;
+  }
+  .contracts-table {
+    width: 100%; background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md); overflow: hidden;
+    border-collapse: collapse;
+  }
+  .contracts-table th {
+    text-align: left; padding: 14px 20px;
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.5px; color: var(--text-muted);
+    background: var(--surface-3); border-bottom: 1px solid var(--border);
+  }
+  .contracts-table td {
+    padding: 16px 20px; font-size: 14px;
+    border-bottom: 1px solid var(--border-soft);
+    vertical-align: middle;
+  }
+  .contracts-table tr:last-child td { border-bottom: none; }
+  .contracts-table tr:hover td { background: var(--surface-3); }
+  .contract-title-cell { display: flex; align-items: center; gap: 12px; }
+  .contract-avatar {
+    width: 36px; height: 36px; border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 600;
+    background: var(--brand-primary-soft); color: var(--brand-primary);
+  }
+  .contract-title-text strong { display: block; font-size: 14px; font-weight: 500; }
+  .contract-title-text span { font-size: 12px; color: var(--text-secondary); }
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 12px; border-radius: 100px;
+    font-size: 12px; font-weight: 500;
+  }
+  .status-pill.draft    { background: var(--surface-4); color: var(--text-secondary); }
+  .status-pill.active   { background: var(--success-soft); color: var(--success); }
+  .status-pill.review   { background: var(--info-soft); color: var(--info); }
+  .status-pill.pending  { background: var(--warning-soft); color: var(--warning); }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .empty-hub-note {
+    text-align: center; padding: 60px 40px;
+    background: var(--surface-2); border: 1px dashed var(--border);
+    border-radius: var(--radius-lg); color: var(--text-secondary);
+    font-size: 14px;
+  }
+  .empty-hub-note strong { color: var(--text-primary); display: block; margin-bottom: 8px; font-size: 16px; }
+
+  /* ═══════════════════════════════════════════ */
+  /*  PAGE 2: CREATE CLIENT CONTRACT             */
+  /* ═══════════════════════════════════════════ */
+  .create-view {
+    display: flex; height: calc(100vh - 44px); overflow: hidden;
+  }
+
+  /* ── Left: Progress Rail ── */
+  .progress-rail {
+    width: 260px; min-width: 260px;
+    background: var(--surface-1);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    padding: 0;
+  }
+  .rail-header {
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid var(--border-soft);
+  }
+  .rail-back {
+    display: flex; align-items: center; gap: 8px;
+    color: var(--text-secondary); font-size: 13px;
+    cursor: pointer; margin-bottom: 16px;
+    transition: var(--transition);
+  }
+  .rail-back:hover { color: var(--text-primary); }
+  .rail-back svg { width: 16px; height: 16px; }
+  .rail-title { font-size: 15px; font-weight: 600; }
+  .rail-subtitle { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+  .rail-progress-bar {
+    height: 3px; background: var(--surface-4); margin: 16px 0 0;
+    border-radius: 2px; overflow: hidden;
+  }
+  .rail-progress-fill {
+    height: 100%; width: 25%; background: var(--brand-primary);
+    border-radius: 2px; transition: width 0.4s ease;
+  }
+
+  .rail-steps {
+    flex: 1; overflow-y: auto; padding: 12px 0;
+  }
+  .rail-step {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 12px 20px; cursor: pointer;
+    position: relative; transition: var(--transition);
+  }
+  .rail-step:hover { background: var(--surface-2); }
+  .rail-step.active { background: var(--brand-primary-soft); }
+
+  /* Vertical connector line */
+  .rail-step::before {
+    content: '';
+    position: absolute; left: 33px; top: 36px; bottom: -12px;
+    width: 2px; background: var(--border);
+  }
+  .rail-step:last-child::before { display: none; }
+  .rail-step.done::before { background: var(--success); }
+
+  .step-indicator {
+    width: 28px; height: 28px; min-width: 28px;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 600;
+    border: 2px solid var(--border);
+    color: var(--text-muted);
+    background: var(--surface-1);
+    position: relative; z-index: 1;
+    transition: var(--transition);
+  }
+  .rail-step.done .step-indicator {
+    background: var(--success);
+    border-color: var(--success);
+    color: #fff;
+  }
+  .rail-step.active .step-indicator {
+    border-color: var(--brand-primary);
+    background: var(--brand-primary);
+    color: #fff;
+    box-shadow: 0 0 0 4px var(--brand-glow);
+  }
+  .rail-step.locked .step-indicator { opacity: 0.4; }
+
+  .step-label { font-size: 13px; font-weight: 500; padding-top: 3px; }
+  .step-label small { display: block; font-size: 11px; color: var(--text-muted); font-weight: 400; margin-top: 1px; }
+  .rail-step.active .step-label { color: var(--brand-primary); }
+  .rail-step.done .step-label { color: var(--success); }
+  .rail-step.locked .step-label { color: var(--text-muted); }
+
+  .rail-footer {
+    padding: 16px 20px; border-top: 1px solid var(--border-soft);
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .rail-save-hint {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; color: var(--text-muted);
+  }
+  .rail-save-hint .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+
+  /* ── Center: Form Panel ── */
+  .form-panel {
+    flex: 1; overflow-y: auto; padding: 40px 48px;
+    background: var(--surface-0);
+  }
+  .form-section { max-width: 640px; }
+  .form-section-header {
+    margin-bottom: 32px;
+  }
+  .form-section-header h2 {
+    font-size: 22px; font-weight: 700; letter-spacing: -0.3px;
+    margin-bottom: 6px;
+  }
+  .form-section-header p { color: var(--text-secondary); font-size: 14px; }
+
+  /* Form Groups */
+  .form-row { display: flex; gap: 16px; margin-bottom: 20px; }
+  .form-group { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+  .form-group label {
+    font-size: 12px; font-weight: 600; color: var(--text-secondary);
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .form-input {
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 12px 14px;
+    color: var(--text-primary); font-size: 14px;
+    outline: none; transition: var(--transition);
+    font-family: inherit;
+  }
+  .form-input:focus {
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 3px var(--brand-glow);
+  }
+  .form-input::placeholder { color: var(--text-muted); }
+  textarea.form-input { min-height: 100px; resize: vertical; }
+  select.form-input { cursor: pointer; appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238B8FA3' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 36px;
+  }
+
+  /* Contact Picker */
+  .contact-picker {
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: var(--radius-md); padding: 16px;
+    transition: var(--transition);
+  }
+  .contact-picker:hover { border-color: var(--brand-primary); }
+  .contact-picker-search {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 12px; background: var(--surface-3);
+    border-radius: var(--radius-sm); margin-bottom: 12px;
+  }
+  .contact-picker-search input {
+    flex: 1; background: none; border: none; outline: none;
+    color: var(--text-primary); font-size: 13px; font-family: inherit;
+  }
+  .contact-picker-search input::placeholder { color: var(--text-muted); }
+  .contact-picker-search svg { color: var(--text-muted); }
+  .contact-result {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: var(--radius-sm);
+    cursor: pointer; transition: var(--transition);
+  }
+  .contact-result:hover { background: var(--surface-3); }
+  .contact-result.selected {
+    background: var(--brand-primary-soft);
+    border: 1px solid var(--brand-primary);
+    border-radius: var(--radius-sm);
+  }
+  .contact-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--brand-primary-soft); color: var(--brand-primary);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 600; font-size: 13px;
+  }
+  .contact-info strong { font-size: 13px; font-weight: 500; display: block; }
+  .contact-info span { font-size: 11px; color: var(--text-secondary); }
+  .contact-check {
+    margin-left: auto; width: 20px; height: 20px; border-radius: 50%;
+    border: 2px solid var(--border); display: flex; align-items: center;
+    justify-content: center; transition: var(--transition);
+  }
+  .contact-result.selected .contact-check {
+    background: var(--brand-primary); border-color: var(--brand-primary);
+  }
+
+  /* Divider */
+  .form-divider {
+    height: 1px; background: var(--border-soft); margin: 28px 0;
+  }
+
+  /* Type Selector Cards */
+  .type-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .type-card {
+    background: var(--surface-2); border: 2px solid var(--border);
+    border-radius: var(--radius-md); padding: 20px;
+    cursor: pointer; transition: var(--transition);
+    position: relative;
+  }
+  .type-card:hover { border-color: var(--brand-secondary); }
+  .type-card.selected {
+    border-color: var(--brand-primary);
+    background: var(--brand-primary-soft);
+  }
+  .type-card .tc-icon {
+    width: 40px; height: 40px; border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 12px; font-size: 18px;
+  }
+  .type-card h4 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .type-card p { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+  .type-card .tc-check {
+    position: absolute; top: 12px; right: 12px;
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .type-card.selected .tc-check {
+    background: var(--brand-primary); border-color: var(--brand-primary);
+  }
+
+  /* ── Right: Live Preview Pane ── */
+  .preview-pane {
+    width: 380px; min-width: 380px;
+    background: var(--surface-1);
+    border-left: 1px solid var(--border);
+    display: flex; flex-direction: column;
+  }
+  .preview-header {
+    padding: 16px 20px; display: flex; justify-content: space-between;
+    align-items: center; border-bottom: 1px solid var(--border-soft);
+  }
+  .preview-header h3 { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+  .preview-toggle {
+    display: flex; gap: 2px; background: var(--surface-3);
+    border-radius: var(--radius-sm); padding: 2px;
+  }
+  .preview-toggle button {
+    padding: 5px 12px; border: none; border-radius: 6px;
+    font-size: 11px; font-weight: 500; cursor: pointer;
+    background: transparent; color: var(--text-secondary);
+    transition: var(--transition);
+  }
+  .preview-toggle button.active {
+    background: var(--brand-primary); color: #fff;
+  }
+
+  .preview-doc-area {
+    flex: 1; overflow-y: auto; padding: 20px;
+  }
+  .preview-doc {
+    background: #FFFFFF; border-radius: var(--radius-md);
+    color: #1a1a2e; padding: 32px 28px;
+    font-size: 12px; line-height: 1.7;
+    box-shadow: var(--shadow-card);
+    min-height: 500px;
+  }
+  .preview-doc .doc-header {
+    text-align: center; border-bottom: 2px solid #6C5CE7;
+    padding-bottom: 16px; margin-bottom: 20px;
+  }
+  .preview-doc .doc-header h2 {
+    font-size: 16px; color: #1a1a2e; font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .preview-doc .doc-header .doc-number {
+    font-size: 11px; color: #6C5CE7; font-weight: 600;
+    letter-spacing: 1px;
+  }
+  .preview-doc .doc-meta {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    margin-bottom: 20px;
+  }
+  .preview-doc .doc-meta-box {
+    padding: 12px; background: #F8F7FF; border-radius: 8px;
+  }
+  .preview-doc .doc-meta-label {
+    font-size: 9px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; color: #6C5CE7; margin-bottom: 4px;
+  }
+  .preview-doc .doc-meta-value {
+    font-size: 12px; font-weight: 500; color: #1a1a2e;
+  }
+  .preview-doc .doc-meta-value.placeholder {
+    color: #C0B8E8; font-style: italic;
+  }
+  .preview-doc .doc-section-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.8px; color: #6C5CE7;
+    margin: 20px 0 8px; padding-bottom: 6px;
+    border-bottom: 1px solid #E8E5F5;
+  }
+  .preview-doc .doc-field-row {
+    display: flex; justify-content: space-between;
+    padding: 6px 0; border-bottom: 1px dotted #EDEDF5;
+  }
+  .preview-doc .doc-field-label { color: #666; font-size: 11px; }
+  .preview-doc .doc-field-value { font-weight: 500; font-size: 11px; }
+  .preview-doc .doc-field-value.placeholder { color: #C0B8E8; font-style: italic; }
+
+  /* Health Score */
+  .preview-health {
+    padding: 16px 20px; border-top: 1px solid var(--border-soft);
+  }
+  .health-bar-track {
+    height: 6px; background: var(--surface-4); border-radius: 3px;
+    overflow: hidden; margin-bottom: 8px;
+  }
+  .health-bar-fill {
+    height: 100%; border-radius: 3px;
+    background: linear-gradient(90deg, var(--brand-primary), var(--success));
+    transition: width 0.5s ease;
+  }
+  .health-label {
+    display: flex; justify-content: space-between;
+    font-size: 11px; color: var(--text-secondary);
+  }
+  .health-label strong { color: var(--success); }
+
+  /* ── Form Navigation Footer ── */
+  .form-nav {
+    padding: 16px 48px; background: var(--surface-1);
+    border-top: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .btn {
+    padding: 10px 24px; border-radius: var(--radius-sm);
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    border: none; transition: var(--transition);
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: inherit;
+  }
+  .btn-ghost {
+    background: transparent; color: var(--text-secondary);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover { background: var(--surface-3); color: var(--text-primary); }
+  .btn-primary {
+    background: var(--brand-primary); color: #fff;
+  }
+  .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-save {
+    background: var(--surface-3); color: var(--text-secondary);
+  }
+  .btn-save:hover { background: var(--surface-4); color: var(--text-primary); }
+  .form-nav .step-hint {
+    font-size: 12px; color: var(--text-muted);
+  }
+
+  /* ═══════════════════════════════════════════ */
+  /*  PAGE 3: CONTRACT VIEW (after save)         */
+  /* ═══════════════════════════════════════════ */
+  .view-page { padding: 32px 40px; max-width: 1100px; margin: 0 auto; }
+
+  .view-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 32px;
+  }
+  .view-topbar-left {
+    display: flex; align-items: center; gap: 16px;
+  }
+  .view-back {
+    width: 36px; height: 36px; border-radius: var(--radius-sm);
+    background: var(--surface-3); display: flex; align-items: center;
+    justify-content: center; cursor: pointer; color: var(--text-secondary);
+    transition: var(--transition); border: none;
+  }
+  .view-back:hover { background: var(--surface-4); color: var(--text-primary); }
+  .view-title h1 { font-size: 22px; font-weight: 700; }
+  .view-title span { font-size: 13px; color: var(--text-secondary); }
+  .view-actions { display: flex; gap: 8px; }
+
+  /* Bento Grid */
+  .bento-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: auto auto auto;
+    gap: 16px;
+  }
+  .bento-card {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 24px;
+    transition: var(--transition);
+  }
+  .bento-card:hover { border-color: var(--brand-primary); }
+  .bento-card h3 {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 16px;
+  }
+  .bento-card.span-2 { grid-column: span 2; }
+  .bento-card.span-3 { grid-column: span 3; }
+  .bento-card.span-full { grid-column: 1 / -1; }
+
+  /* Status Banner */
+  .status-banner {
+    grid-column: 1 / -1;
+    background: linear-gradient(135deg, var(--surface-2), #121630);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 24px 28px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .status-left { display: flex; align-items: center; gap: 16px; }
+  .status-badge-lg {
+    padding: 8px 20px; border-radius: var(--radius-sm);
+    font-size: 13px; font-weight: 600;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .status-badge-lg.draft { background: var(--surface-4); color: var(--text-secondary); }
+  .status-badge-lg.active { background: var(--success-soft); color: var(--success); }
+  .status-meta { font-size: 13px; color: var(--text-secondary); }
+  .status-meta strong { color: var(--text-primary); }
+  .status-actions { display: flex; gap: 8px; }
+
+  /* Key Details */
+  .detail-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+  }
+  .detail-item {
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .detail-item .di-label { font-size: 11px; color: var(--text-muted); }
+  .detail-item .di-value { font-size: 14px; font-weight: 500; }
+
+  /* Party Card */
+  .party-card {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px; background: var(--surface-3); border-radius: var(--radius-sm);
+  }
+  .party-avatar {
+    width: 42px; height: 42px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 15px;
+  }
+  .party-info strong { font-size: 14px; display: block; }
+  .party-info span { font-size: 12px; color: var(--text-secondary); }
+
+  /* Timeline */
+  .timeline-item {
+    display: flex; gap: 12px; padding: 10px 0;
+    position: relative;
+  }
+  .timeline-item + .timeline-item { border-top: 1px solid var(--border-soft); }
+  .timeline-dot {
+    width: 8px; height: 8px; min-width: 8px; border-radius: 50%;
+    margin-top: 5px;
+  }
+  .timeline-dot.green { background: var(--success); }
+  .timeline-dot.blue { background: var(--info); }
+  .timeline-dot.gray { background: var(--text-muted); }
+  .timeline-text { font-size: 13px; }
+  .timeline-text strong { font-weight: 500; }
+  .timeline-text .ts { font-size: 11px; color: var(--text-muted); display: block; margin-top: 2px; }
+
+  /* Value Highlight */
+  .value-highlight {
+    text-align: center; padding: 12px 0;
+  }
+  .value-highlight .amount {
+    font-size: 32px; font-weight: 700; color: var(--success);
+    line-height: 1;
+  }
+  .value-highlight .currency {
+    font-size: 13px; color: var(--text-secondary); margin-top: 4px;
+  }
+
+  /* Quick Actions Row */
+  .quick-actions {
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+  .qa-btn {
+    padding: 8px 16px; border-radius: var(--radius-sm);
+    font-size: 12px; font-weight: 500;
+    background: var(--surface-3); color: var(--text-secondary);
+    border: 1px solid var(--border); cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
+    transition: var(--transition);
+  }
+  .qa-btn:hover { background: var(--surface-4); color: var(--text-primary); border-color: var(--brand-primary); }
+
+  /* ═══════════════════════════════════════════ */
+  /*  UTILITIES                                  */
+  /* ═══════════════════════════════════════════ */
+  .svg-icon { display: inline-block; vertical-align: middle; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!--  TAB SWITCHER (for mockup navigation)          -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="page-switcher">
+  <div class="page-tab active" onclick="switchPage('hub')">Contracts Hub</div>
+  <div class="page-tab" onclick="switchPage('create')">Create Client Contract</div>
+  <div class="page-tab" onclick="switchPage('view')">View Contract</div>
+  <span class="page-tab-label">Design Mockup — switch tabs to see each screen</span>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!--  PAGE 1: CONTRACTS HUB                         -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="page-hub" class="page-view active">
+  <div class="hub">
+    <div class="hub-header">
+      <div>
+        <h1>Contracts</h1>
+        <p>Manage client contracts, vendor agreements, and RFQs</p>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          Search
+        </button>
+        <button class="btn btn-ghost">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 4h18M3 12h18M3 20h18"/></svg>
+          Filter
+        </button>
+      </div>
+    </div>
+
+    <!-- Quick Create Cards -->
+    <div class="quick-create-strip">
+      <div class="qc-card featured" onclick="switchPage('create')">
+        <span class="qc-badge">New</span>
+        <div class="qc-icon client">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        </div>
+        <h3>Client Contract</h3>
+        <p>Create a new agreement with your client. Define scope, timelines, and payment terms.</p>
+      </div>
+
+      <div class="qc-card">
+        <div class="qc-icon vendor">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        </div>
+        <h3>Vendor Agreement</h3>
+        <p>Set up terms with suppliers and service providers for your operations.</p>
+      </div>
+
+      <div class="qc-card">
+        <div class="qc-icon rfq">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        </div>
+        <h3>Request for Quote</h3>
+        <p>Send RFQs to vendors, collect and compare quotes, then award.</p>
+      </div>
+
+      <div class="qc-card">
+        <div class="qc-icon import">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </div>
+        <h3>Import Existing</h3>
+        <p>Upload a signed contract PDF and digitize it into your workspace.</p>
+      </div>
+    </div>
+
+    <!-- Pipeline -->
+    <div class="pipeline-section">
+      <h2>Contract Pipeline</h2>
+      <div class="pipeline">
+        <div class="pipeline-stage s-draft">
+          <div class="count">3</div>
+          <div class="label">Draft</div>
+        </div>
+        <div class="pipeline-stage s-review">
+          <div class="count">2</div>
+          <div class="label">In Review</div>
+        </div>
+        <div class="pipeline-stage s-pending">
+          <div class="count">1</div>
+          <div class="label">Pending Accept</div>
+        </div>
+        <div class="pipeline-stage s-active">
+          <div class="count">5</div>
+          <div class="label">Active</div>
+        </div>
+        <div class="pipeline-stage s-expired">
+          <div class="count">1</div>
+          <div class="label">Expired</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Contracts Table -->
+    <div class="recent-section">
+      <h2>Recent Contracts</h2>
+      <table class="contracts-table">
+        <thead>
+          <tr>
+            <th>Contract</th>
+            <th>Client / Vendor</th>
+            <th>Type</th>
+            <th>Value</th>
+            <th>Status</th>
+            <th>Updated</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div class="contract-title-cell">
+                <div class="contract-avatar">AM</div>
+                <div class="contract-title-text">
+                  <strong>Annual Maintenance Contract</strong>
+                  <span>CNT-2025-0012</span>
+                </div>
+              </div>
+            </td>
+            <td>Acme Corporation</td>
+            <td style="color:var(--text-secondary);font-size:13px">Service</td>
+            <td style="font-weight:600">$24,000</td>
+            <td><span class="status-pill active"><span class="status-dot"></span>Active</span></td>
+            <td style="color:var(--text-secondary);font-size:13px">2 hrs ago</td>
+          </tr>
+          <tr>
+            <td>
+              <div class="contract-title-cell">
+                <div class="contract-avatar" style="background:var(--warning-soft);color:var(--warning)">IT</div>
+                <div class="contract-title-text">
+                  <strong>IT Infrastructure Upgrade</strong>
+                  <span>CNT-2025-0011</span>
+                </div>
+              </div>
+            </td>
+            <td>TechServe Ltd</td>
+            <td style="color:var(--text-secondary);font-size:13px">Project</td>
+            <td style="font-weight:600">$56,500</td>
+            <td><span class="status-pill review"><span class="status-dot"></span>In Review</span></td>
+            <td style="color:var(--text-secondary);font-size:13px">Yesterday</td>
+          </tr>
+          <tr>
+            <td>
+              <div class="contract-title-cell">
+                <div class="contract-avatar" style="background:var(--success-soft);color:var(--success)">CL</div>
+                <div class="contract-title-text">
+                  <strong>Cloud Hosting Agreement</strong>
+                  <span>CNT-2025-0010</span>
+                </div>
+              </div>
+            </td>
+            <td>CloudBase Inc</td>
+            <td style="color:var(--text-secondary);font-size:13px">Subscription</td>
+            <td style="font-weight:600">$12,000</td>
+            <td><span class="status-pill draft"><span class="status-dot"></span>Draft</span></td>
+            <td style="color:var(--text-secondary);font-size:13px">3 days ago</td>
+          </tr>
+          <tr>
+            <td>
+              <div class="contract-title-cell">
+                <div class="contract-avatar" style="background:var(--info-soft);color:var(--info)">OF</div>
+                <div class="contract-title-text">
+                  <strong>Office Space Lease</strong>
+                  <span>CNT-2025-0009</span>
+                </div>
+              </div>
+            </td>
+            <td>Prime Realty</td>
+            <td style="color:var(--text-secondary);font-size:13px">Lease</td>
+            <td style="font-weight:600">$96,000</td>
+            <td><span class="status-pill active"><span class="status-dot"></span>Active</span></td>
+            <td style="color:var(--text-secondary);font-size:13px">1 week ago</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!--  PAGE 2: CREATE CLIENT CONTRACT                 -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="page-create" class="page-view">
+  <div class="create-view">
+
+    <!-- Left: Progress Rail -->
+    <div class="progress-rail">
+      <div class="rail-header">
+        <div class="rail-back" onclick="switchPage('hub')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Back to Contracts
+        </div>
+        <div class="rail-title">Client Contract</div>
+        <div class="rail-subtitle">CNT-2025-0013 (Draft)</div>
+        <div class="rail-progress-bar">
+          <div class="rail-progress-fill" style="width:25%"></div>
+        </div>
+      </div>
+
+      <div class="rail-steps">
+        <div class="rail-step done" onclick="showStep('basics')">
+          <div class="step-indicator">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="step-label">
+            Basics
+            <small>Title, type & description</small>
+          </div>
+        </div>
+
+        <div class="rail-step active" onclick="showStep('parties')">
+          <div class="step-indicator">2</div>
+          <div class="step-label">
+            Parties
+            <small>Client & contact details</small>
+          </div>
+        </div>
+
+        <div class="rail-step locked" onclick="showStep('scope')">
+          <div class="step-indicator">3</div>
+          <div class="step-label">
+            Scope & Blocks
+            <small>Service blocks & deliverables</small>
+          </div>
+        </div>
+
+        <div class="rail-step locked">
+          <div class="step-indicator">4</div>
+          <div class="step-label">
+            Value & Payment
+            <small>Pricing, billing, currency</small>
+          </div>
+        </div>
+
+        <div class="rail-step locked">
+          <div class="step-indicator">5</div>
+          <div class="step-label">
+            Timeline
+            <small>Start, end & milestones</small>
+          </div>
+        </div>
+
+        <div class="rail-step locked">
+          <div class="step-indicator">6</div>
+          <div class="step-label">
+            Terms & Clauses
+            <small>Renewal, termination, SLA</small>
+          </div>
+        </div>
+
+        <div class="rail-step locked">
+          <div class="step-indicator">7</div>
+          <div class="step-label">
+            Review & Send
+            <small>Final check & acceptance</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="rail-footer">
+        <div class="rail-save-hint">
+          <span class="dot"></span>
+          Auto-saved 12s ago
+        </div>
+      </div>
+    </div>
+
+    <!-- Center: Form Panel -->
+    <div class="form-panel">
+      <!-- STEP: Parties (currently active in mockup) -->
+      <div class="form-section" id="step-parties">
+        <div class="form-section-header">
+          <h2>Who is this contract with?</h2>
+          <p>Select or add the client and their primary contact for this agreement.</p>
+        </div>
+
+        <!-- Client Selection -->
+        <div class="form-group" style="margin-bottom:24px">
+          <label>Select Client</label>
+          <div class="contact-picker">
+            <div class="contact-picker-search">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+              <input placeholder="Search contacts by name, email, or company..." />
+            </div>
+            <div class="contact-result selected">
+              <div class="contact-avatar">AC</div>
+              <div class="contact-info">
+                <strong>Acme Corporation</strong>
+                <span>john.smith@acme.com &middot; Manufacturing</span>
+              </div>
+              <div class="contact-check">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+            </div>
+            <div class="contact-result">
+              <div class="contact-avatar" style="background:var(--success-soft);color:var(--success)">TC</div>
+              <div class="contact-info">
+                <strong>TechCore Solutions</strong>
+                <span>info@techcore.io &middot; Technology</span>
+              </div>
+              <div class="contact-check"></div>
+            </div>
+            <div class="contact-result">
+              <div class="contact-avatar" style="background:var(--warning-soft);color:var(--warning)">GS</div>
+              <div class="contact-info">
+                <strong>Global Services Pvt Ltd</strong>
+                <span>admin@globalservices.in &middot; Consulting</span>
+              </div>
+              <div class="contact-check"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-divider"></div>
+
+        <!-- Primary Contact at Client -->
+        <div class="form-group" style="margin-bottom:20px">
+          <label>Primary Contact at Client</label>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>First Name</label>
+            <input class="form-input" placeholder="John" value="John" />
+          </div>
+          <div class="form-group">
+            <label>Last Name</label>
+            <input class="form-input" placeholder="Smith" value="Smith" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Email</label>
+            <input class="form-input" type="email" placeholder="john@acme.com" value="john.smith@acme.com" />
+          </div>
+          <div class="form-group">
+            <label>Phone</label>
+            <input class="form-input" type="tel" placeholder="+91 98765 43210" value="+91 98765 43210" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Role / Designation</label>
+            <input class="form-input" placeholder="e.g. Procurement Manager" value="VP Operations" />
+          </div>
+        </div>
+
+        <div class="form-divider"></div>
+
+        <!-- Acceptance Method -->
+        <div class="form-group" style="margin-bottom:16px">
+          <label>How should the client accept this contract?</label>
+        </div>
+        <div class="type-cards">
+          <div class="type-card selected">
+            <div class="tc-check">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="tc-icon" style="background:var(--brand-primary-soft);color:var(--brand-primary)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <h4>E-Signature</h4>
+            <p>Client receives a link and signs digitally. Most common flow.</p>
+          </div>
+          <div class="type-card">
+            <div class="tc-check"></div>
+            <div class="tc-icon" style="background:var(--success-soft);color:var(--success)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </div>
+            <h4>Auto-Accept</h4>
+            <p>Skips acceptance, immediately activates. Use for internal agreements.</p>
+          </div>
+          <div class="type-card">
+            <div class="tc-check"></div>
+            <div class="tc-icon" style="background:var(--warning-soft);color:var(--warning)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </div>
+            <h4>Manual Upload</h4>
+            <p>You upload a signed copy later. Good for offline-signed contracts.</p>
+          </div>
+          <div class="type-card">
+            <div class="tc-check"></div>
+            <div class="tc-icon" style="background:var(--info-soft);color:var(--info)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            </div>
+            <h4>In-Person</h4>
+            <p>Generate a printable contract for wet signature at a meeting.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP: Basics (hidden, toggled via JS) -->
+      <div class="form-section" id="step-basics" style="display:none">
+        <div class="form-section-header">
+          <h2>What are we building?</h2>
+          <p>Give this contract a name and tell us what kind of agreement it is.</p>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Contract Title</label>
+            <input class="form-input" placeholder="e.g. Annual Maintenance Agreement" value="Annual Maintenance Contract" />
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:20px">
+          <label>Description</label>
+          <textarea class="form-input" placeholder="Brief summary of what this contract covers...">Comprehensive annual maintenance and support agreement covering all IT infrastructure, including quarterly reviews and 24/7 emergency support.</textarea>
+        </div>
+
+        <div class="form-group" style="margin-bottom:16px">
+          <label>Contract Type</label>
+        </div>
+        <div class="type-cards" style="margin-bottom:20px">
+          <div class="type-card selected">
+            <div class="tc-check">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div class="tc-icon" style="background:var(--brand-primary-soft);color:var(--brand-primary)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            </div>
+            <h4>Service Contract</h4>
+            <p>Ongoing service delivery with defined scope and SLA.</p>
+          </div>
+          <div class="type-card">
+            <div class="tc-check"></div>
+            <div class="tc-icon" style="background:var(--success-soft);color:var(--success)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4-4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            </div>
+            <h4>Partnership</h4>
+            <p>Joint-venture or partnership agreement between entities.</p>
+          </div>
+          <div class="type-card">
+            <div class="tc-check"></div>
+            <div class="tc-icon" style="background:var(--warning-soft);color:var(--warning)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <h4>NDA</h4>
+            <p>Non-disclosure or confidentiality agreement.</p>
+          </div>
+          <div class="type-card">
+            <div class="tc-check"></div>
+            <div class="tc-icon" style="background:var(--info-soft);color:var(--info)">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            </div>
+            <h4>Purchase Order</h4>
+            <p>One-time purchase or procurement order.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP: Scope (hidden) -->
+      <div class="form-section" id="step-scope" style="display:none">
+        <div class="form-section-header">
+          <h2>Define the scope</h2>
+          <p>Add service blocks and deliverables that make up this contract.</p>
+        </div>
+        <div class="empty-hub-note">
+          <strong>Block Library</strong>
+          Drag and drop service blocks from your catalog to define what's included.
+          <br><br>
+          <em style="color:var(--text-muted);font-size:12px">This step will let you pick from existing service catalog blocks or create custom ones.</em>
+        </div>
+      </div>
+
+      <!-- Form Footer Navigation -->
+      <div style="height:80px"></div>
+    </div>
+
+    <!-- Right: Live Preview Pane -->
+    <div class="preview-pane">
+      <div class="preview-header">
+        <h3>Live Preview</h3>
+        <div class="preview-toggle">
+          <button class="active">Document</button>
+          <button>JSON</button>
+        </div>
+      </div>
+
+      <div class="preview-doc-area">
+        <div class="preview-doc">
+          <div class="doc-header">
+            <h2>Annual Maintenance Contract</h2>
+            <div class="doc-number">CNT-2025-0013</div>
+          </div>
+
+          <div class="doc-meta">
+            <div class="doc-meta-box">
+              <div class="doc-meta-label">From (You)</div>
+              <div class="doc-meta-value">Your Company Name</div>
+            </div>
+            <div class="doc-meta-box">
+              <div class="doc-meta-label">To (Client)</div>
+              <div class="doc-meta-value">Acme Corporation</div>
+            </div>
+          </div>
+
+          <div class="doc-section-title">Contract Details</div>
+          <div class="doc-field-row">
+            <span class="doc-field-label">Type</span>
+            <span class="doc-field-value">Service Contract</span>
+          </div>
+          <div class="doc-field-row">
+            <span class="doc-field-label">Record Type</span>
+            <span class="doc-field-value">Contract</span>
+          </div>
+          <div class="doc-field-row">
+            <span class="doc-field-label">Acceptance</span>
+            <span class="doc-field-value">E-Signature</span>
+          </div>
+
+          <div class="doc-section-title">Primary Contact</div>
+          <div class="doc-field-row">
+            <span class="doc-field-label">Name</span>
+            <span class="doc-field-value">John Smith</span>
+          </div>
+          <div class="doc-field-row">
+            <span class="doc-field-label">Email</span>
+            <span class="doc-field-value">john.smith@acme.com</span>
+          </div>
+          <div class="doc-field-row">
+            <span class="doc-field-label">Role</span>
+            <span class="doc-field-value">VP Operations</span>
+          </div>
+
+          <div class="doc-section-title">Scope & Deliverables</div>
+          <div class="doc-field-row">
+            <span class="doc-field-label">Blocks</span>
+            <span class="doc-field-value placeholder">Not yet defined</span>
+          </div>
+
+          <div class="doc-section-title">Financial</div>
+          <div class="doc-field-row">
+            <span class="doc-field-label">Total Value</span>
+            <span class="doc-field-value placeholder">Not yet defined</span>
+          </div>
+          <div class="doc-field-row">
+            <span class="doc-field-label">Payment Terms</span>
+            <span class="doc-field-value placeholder">Not yet defined</span>
+          </div>
+
+          <div class="doc-section-title">Timeline</div>
+          <div class="doc-field-row">
+            <span class="doc-field-label">Start Date</span>
+            <span class="doc-field-value placeholder">Not set</span>
+          </div>
+          <div class="doc-field-row">
+            <span class="doc-field-label">End Date</span>
+            <span class="doc-field-value placeholder">Not set</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Health Score -->
+      <div class="preview-health">
+        <div class="health-bar-track">
+          <div class="health-bar-fill" style="width:28%"></div>
+        </div>
+        <div class="health-label">
+          <span>Contract Completeness</span>
+          <strong>28%</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <div class="form-nav" style="position:fixed;bottom:0;left:260px;right:380px;z-index:10;">
+    <button class="btn btn-ghost">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Previous
+    </button>
+    <span class="step-hint">Step 2 of 7 &middot; Parties</span>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-save">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+        Save Draft
+      </button>
+      <button class="btn btn-primary" onclick="switchPage('view')">
+        Next: Scope
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!--  PAGE 3: VIEW SAVED CONTRACT                    -->
+<!-- ═══════════════════════════════════════════════ -->
+<div id="page-view" class="page-view">
+  <div class="view-page">
+
+    <!-- Top Bar -->
+    <div class="view-topbar">
+      <div class="view-topbar-left">
+        <button class="view-back" onclick="switchPage('hub')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        </button>
+        <div class="view-title">
+          <h1>Annual Maintenance Contract</h1>
+          <span>CNT-2025-0013 &middot; Service Contract &middot; Client: Acme Corporation</span>
+        </div>
+      </div>
+      <div class="view-actions">
+        <button class="btn btn-ghost">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Edit
+        </button>
+        <button class="btn btn-ghost">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          Share
+        </button>
+        <button class="btn btn-primary">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          Send for Review
+        </button>
+      </div>
+    </div>
+
+    <!-- Bento Grid -->
+    <div class="bento-grid">
+
+      <!-- Status Banner -->
+      <div class="status-banner">
+        <div class="status-left">
+          <div class="status-badge-lg draft">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Draft
+          </div>
+          <div class="status-meta">
+            Created <strong>Jan 30, 2025</strong> &middot; Version <strong>1</strong> &middot; Last edited <strong>2 min ago</strong>
+          </div>
+        </div>
+        <div class="status-actions">
+          <button class="btn btn-ghost" style="font-size:12px;padding:8px 16px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download PDF
+          </button>
+          <button class="btn btn-ghost" style="font-size:12px;padding:8px 16px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            Print
+          </button>
+        </div>
+      </div>
+
+      <!-- Key Details (span 2) -->
+      <div class="bento-card span-2">
+        <h3>Key Details</h3>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="di-label">Contract Type</span>
+            <span class="di-value">Service Contract</span>
+          </div>
+          <div class="detail-item">
+            <span class="di-label">Record Type</span>
+            <span class="di-value">Contract</span>
+          </div>
+          <div class="detail-item">
+            <span class="di-label">Acceptance Method</span>
+            <span class="di-value">E-Signature</span>
+          </div>
+          <div class="detail-item">
+            <span class="di-label">Currency</span>
+            <span class="di-value">USD</span>
+          </div>
+          <div class="detail-item">
+            <span class="di-label">Start Date</span>
+            <span class="di-value" style="color:var(--text-muted);font-style:italic">Not set</span>
+          </div>
+          <div class="detail-item">
+            <span class="di-label">End Date</span>
+            <span class="di-value" style="color:var(--text-muted);font-style:italic">Not set</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Value -->
+      <div class="bento-card">
+        <h3>Contract Value</h3>
+        <div class="value-highlight">
+          <div class="amount" style="color:var(--text-muted);font-size:22px;font-style:italic">Not set</div>
+          <div class="currency">Pending scope & pricing</div>
+        </div>
+      </div>
+
+      <!-- Client Party -->
+      <div class="bento-card">
+        <h3>Client</h3>
+        <div class="party-card">
+          <div class="party-avatar" style="background:var(--brand-primary-soft);color:var(--brand-primary)">AC</div>
+          <div class="party-info">
+            <strong>Acme Corporation</strong>
+            <span>Manufacturing</span>
+          </div>
+        </div>
+        <div style="margin-top:12px;font-size:12px;color:var(--text-secondary)">
+          <div style="margin-bottom:4px"><strong style="color:var(--text-primary)">John Smith</strong> &middot; VP Operations</div>
+          <div>john.smith@acme.com</div>
+          <div>+91 98765 43210</div>
+        </div>
+      </div>
+
+      <!-- Your Company -->
+      <div class="bento-card">
+        <h3>Your Company</h3>
+        <div class="party-card">
+          <div class="party-avatar" style="background:var(--success-soft);color:var(--success)">YC</div>
+          <div class="party-info">
+            <strong>Your Company</strong>
+            <span>Technology Services</span>
+          </div>
+        </div>
+        <div style="margin-top:12px;font-size:12px;color:var(--text-secondary)">
+          <div style="margin-bottom:4px"><strong style="color:var(--text-primary)">You</strong> &middot; Contract Owner</div>
+          <div>you@yourcompany.com</div>
+        </div>
+      </div>
+
+      <!-- Scope / Blocks -->
+      <div class="bento-card">
+        <h3>Scope & Blocks</h3>
+        <div style="text-align:center;padding:24px 0;color:var(--text-muted);font-size:13px">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display:block;margin:0 auto 8px;opacity:0.4"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          No blocks added yet
+          <br><span style="font-size:11px">Edit to add service blocks</span>
+        </div>
+      </div>
+
+      <!-- Activity Timeline (span 2) -->
+      <div class="bento-card span-2">
+        <h3>Activity</h3>
+        <div class="timeline-item">
+          <div class="timeline-dot green"></div>
+          <div class="timeline-text">
+            <strong>Contract created</strong> as draft by You
+            <span class="ts">Jan 30, 2025 &middot; 2:30 PM</span>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot blue"></div>
+          <div class="timeline-text">
+            <strong>Client assigned</strong> &mdash; Acme Corporation (John Smith)
+            <span class="ts">Jan 30, 2025 &middot; 2:31 PM</span>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot gray"></div>
+          <div class="timeline-text">
+            <strong>Auto-saved</strong> draft version 1
+            <span class="ts">Jan 30, 2025 &middot; 2:32 PM</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="bento-card">
+        <h3>Quick Actions</h3>
+        <div class="quick-actions">
+          <button class="qa-btn" onclick="switchPage('create')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Continue Editing
+          </button>
+          <button class="qa-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+            Duplicate
+          </button>
+          <button class="qa-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            View PDF
+          </button>
+          <button class="qa-btn" style="color:var(--error)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+            Delete Draft
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!--  JavaScript for Tab Switching & Step Toggle     -->
+<!-- ═══════════════════════════════════════════════ -->
+<script>
+function switchPage(page) {
+  document.querySelectorAll('.page-view').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.page-tab').forEach(el => el.classList.remove('active'));
+
+  const pageMap = { hub: 0, create: 1, view: 2 };
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelectorAll('.page-tab')[pageMap[page]].classList.add('active');
+}
+
+function showStep(step) {
+  // Hide all steps
+  document.querySelectorAll('.form-section').forEach(el => el.style.display = 'none');
+  // Show selected
+  const target = document.getElementById('step-' + step);
+  if (target) target.style.display = 'block';
+
+  // Update rail active state
+  const steps = document.querySelectorAll('.rail-step');
+  const stepMap = { basics: 0, parties: 1, scope: 2 };
+  steps.forEach((s, i) => {
+    s.classList.remove('active');
+    if (i === stepMap[step]) s.classList.add('active');
+  });
+}
+</script>
+
+</body>
+</html>
