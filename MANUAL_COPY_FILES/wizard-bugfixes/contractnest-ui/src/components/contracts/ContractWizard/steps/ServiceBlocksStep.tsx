@@ -392,9 +392,10 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
               <div className="relative" ref={flyByMenuRef}>
                 <button
                   onClick={() => setShowFlyByMenu(!showFlyByMenu)}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all border"
                   style={{
-                    backgroundColor: colors.utility.secondaryBackground,
+                    backgroundColor: colors.utility.primaryBackground,
+                    borderColor: `${colors.utility.primaryText}25`,
                     color: colors.utility.primaryText,
                   }}
                 >
