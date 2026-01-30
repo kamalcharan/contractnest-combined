@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { getCurrencySymbol } from '@/utils/constants/currencies';
+import { categoryHasPricing } from '@/utils/catalog-studio/categories';
 
 // Billing cycle options
 export const CYCLE_OPTIONS = [
@@ -102,6 +103,7 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
   const IconComponent = getIconComponent(block.icon);
+  const hasPricing = categoryHasPricing(block.categoryId || '');
 
   // Local state for inline editing
   const [localExpanded, setLocalExpanded] = useState(isExpanded);
@@ -217,12 +219,14 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
             </div>
           </div>
 
-          {/* Price */}
-          <div className="text-right">
-            <span className="text-sm font-bold" style={{ color: colors.brand.primary }}>
-              {formatCurrency(block.totalPrice, block.currency)}
-            </span>
-          </div>
+          {/* Price - only for pricing categories */}
+          {hasPricing && (
+            <div className="text-right">
+              <span className="text-sm font-bold" style={{ color: colors.brand.primary }}>
+                {formatCurrency(block.totalPrice, block.currency)}
+              </span>
+            </div>
+          )}
 
           {/* Expand/Collapse */}
           <button
@@ -254,8 +258,22 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
           style={{ borderColor: `${colors.utility.primaryText}10` }}
         >
           <div className="pt-3 space-y-4">
-            {/* Quantity Section - Limited/Unlimited Switch */}
-            <div>
+            {/* Non-pricing block info */}
+            {!hasPricing && (
+              <div
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs"
+                style={{
+                  backgroundColor: `${colors.utility.primaryText}05`,
+                  color: colors.utility.secondaryText,
+                }}
+              >
+                <FileText className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>This block type does not have pricing, quantity, or billing cycle.</span>
+              </div>
+            )}
+
+            {/* Quantity Section - Limited/Unlimited Switch (pricing blocks only) */}
+            {hasPricing && <div>
               <label
                 className="text-[10px] font-medium uppercase tracking-wide mb-1.5 block"
                 style={{ color: colors.utility.secondaryText }}
@@ -315,10 +333,10 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
                   </div>
                 )}
               </div>
-            </div>
+            </div>}
 
-            {/* Billing Cycle Section */}
-            <div>
+            {/* Billing Cycle Section (pricing blocks only) */}
+            {hasPricing && <div>
               <label
                 className="text-[10px] font-medium uppercase tracking-wide mb-1.5 block"
                 style={{ color: colors.utility.secondaryText }}
@@ -368,9 +386,10 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
                   </span>
                 </div>
               )}
-            </div>
+            </div>}
 
-            {/* Advanced Settings */}
+            {/* Advanced Settings (pricing blocks only) */}
+            {hasPricing && <>
             <div
               className="p-3 rounded-lg"
               style={{ backgroundColor: `${colors.utility.primaryText}05` }}
@@ -472,6 +491,27 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
                 {formatCurrency(block.totalPrice, block.currency)}
               </span>
             </div>
+            </>}
+
+            {/* Show Description toggle - always available for all block types */}
+            {!hasPricing && (
+              <div>
+                <button
+                  onClick={() => handleConfigChange('showDescription', !block.config?.showDescription)}
+                  className="flex items-center gap-2 w-full"
+                >
+                  {block.config?.showDescription ? (
+                    <ToggleRight className="w-5 h-5" style={{ color: colors.brand.primary }} />
+                  ) : (
+                    <ToggleLeft className="w-5 h-5" style={{ color: colors.utility.secondaryText }} />
+                  )}
+                  <FileText className="w-3.5 h-3.5" style={{ color: colors.utility.secondaryText }} />
+                  <span className="text-xs" style={{ color: colors.utility.primaryText }}>
+                    Show description in contract
+                  </span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
