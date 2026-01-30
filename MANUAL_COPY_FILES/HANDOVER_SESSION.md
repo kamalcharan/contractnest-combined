@@ -201,8 +201,242 @@ export interface ContractWizardState {
 
 ---
 
+## LOST FEATURES: FlyBy Blocks + Non-Pricing Block Logic
+
+### What Happened
+Subsequent MANUAL_COPY_FILES copies overwrote files that contained FlyBy and non-pricing logic. The correct code exists in this container but was lost on the user's local machine. The next session MUST rebuild/re-verify these features.
+
+### MANUAL_COPY_FILES Copy Order (chronological)
+| # | Folder | Date | Overlapping Files | FlyBy? | Non-Pricing? |
+|---|--------|------|-------------------|--------|-------------|
+| 1 | `context-aware-contracts` | Jan 29 | index.tsx | No | No |
+| 2 | `layout-flyby-blocks` | Jan 30 06:29 | ServiceBlocksStep, index.tsx, BlockCardConfigurable, FlyByBlockCard (NEW), BlockLibraryMini, catalog index.ts | YES (introduced) | No |
+| 3 | `billing-view-fixes` | Jan 30 08:25 | ServiceBlocksStep, BlockCardConfigurable, BillingViewStep | YES (refined, added categoryId) | No |
+| 4 | `review-send-step` | Jan 30 10:39 | ReviewSendStep, index.tsx | YES (FlyBy badges) | YES (introduced) |
+| 5 | `pdf-export` | Jan 30 12:07 | ReviewSendStep | YES (preserved) | YES (preserved) |
+| 6 | `prefetch-and-sent-screen` | Jan 30 12:40 | index.tsx only | N/A | N/A |
+
+**Key problem**: If user copied folders out of order or re-copied an older folder AFTER a newer one, the FlyBy-aware ServiceBlocksStep.tsx and/or the non-pricing-aware ReviewSendStep.tsx could have been overwritten with older versions.
+
+---
+
+### FEATURE 1: FlyBy Blocks — What They Are
+
+FlyBy blocks are **inline, manually-created contract blocks** where users enter all data directly without referencing a pre-existing catalog entry. They allow rapid creation of service/spare/text/document items.
+
+#### FlyBy Block Types
+| Type | Icon | Color | Has Pricing | Has Quantity | Has Billing Cycle | Special Fields |
+|------|------|-------|-------------|-------------|-------------------|----------------|
+| `service` | Wrench | #3B82F6 (blue) | YES | YES | YES | description |
+| `spare` | Package | #F59E0B (amber) | YES | YES | NO | config.sku |
+| `text` | FileText | #8B5CF6 (purple) | NO | NO | NO | config.content |
+| `document` | File | #10B981 (green) | NO | NO | NO | config.fileType |
+
+#### FlyBy vs Library Blocks
+| Aspect | FlyBy | Library/Catalog |
+|--------|-------|-----------------|
+| Source | Created inline by user | Pre-existing in catalog |
+| ID format | `flyby-{type}-{timestamp}` | UUID from database |
+| `isFlyBy` flag | `true` | `false` / undefined |
+| `flyByType` field | 'service' / 'spare' / 'text' / 'document' | undefined |
+| Visual indicator | Dashed border + Zap badge | Solid border, category icon |
+| Data entry | All fields manual | Pre-populated from catalog |
+| `categoryId` | Set to the flyByType string (e.g. `'service'`) | Database categoryId |
+
+#### ConfigurableBlock Interface (FlyBy fields)
+```typescript
+export interface ConfigurableBlock {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  quantity: number;
+  cycle: string;
+  customCycleDays?: number;
+  unlimited: boolean;
+  price: number;
+  currency: string;
+  totalPrice: number;
+  categoryId?: string;
+  categoryName: string;
+  categoryColor: string;
+  categoryBgColor?: string;
+  // FlyBy fields
+  isFlyBy?: boolean;
+  flyByType?: 'service' | 'spare' | 'text' | 'document';
+  config?: {
+    showDescription?: boolean;
+    customPrice?: number;
+    notes?: string;
+    sku?: string;        // Spare parts SKU
+    content?: string;    // Text block content
+    fileType?: string;   // Document file type
+  };
+}
+```
+
+#### Files That Implement FlyBy
+
+| File | What it does | MANUAL_COPY_FILES source |
+|------|-------------|--------------------------|
+| `catalog-studio/FlyByBlockCard.tsx` | **NEW component** - Renders FlyBy block card with dashed border, Zap badge, type-specific form fields (service/spare show pricing, text shows content textarea, document shows file type selector) | `layout-flyby-blocks/` |
+| `catalog-studio/BlockCardConfigurable.tsx` | Block interface with `isFlyBy`, `flyByType`, config fields. Uses `categoryHasPricing()` to hide pricing for non-pricing blocks | `billing-view-fixes/` |
+| `catalog-studio/BlockLibraryMini.tsx` | Catalog library with FlyBy "Add" buttons for each type | `layout-flyby-blocks/` |
+| `catalog-studio/index.ts` | Exports `FlyByBlockCard`, `FLYBY_TYPE_CONFIG`, `FlyByBlockType` | `layout-flyby-blocks/` |
+| `ContractWizard/steps/ServiceBlocksStep.tsx` | FlyBy dropdown menu, `handleAddFlyByBlock` handler, renders `FlyByBlockCard` for isFlyBy blocks, sets `categoryId: type` | `billing-view-fixes/` (most complete) |
+| `ContractWizard/steps/BillingViewStep.tsx` | Shows "FlyBy" badge on FlyBy blocks in line items table | `billing-view-fixes/` |
+| `ContractWizard/steps/ReviewSendStep.tsx` | Shows amber "FlyBy" badge on paper canvas for FlyBy blocks | `pdf-export/` (most complete) |
+
+#### handleAddFlyByBlock (from ServiceBlocksStep.tsx)
+```typescript
+const handleAddFlyByBlock = useCallback(
+  (type: FlyByBlockType) => {
+    const typeConfig = FLYBY_TYPE_CONFIG[type];
+    const flyById = `flyby-${type}-${Date.now()}`;
+    const newBlock: ConfigurableBlock = {
+      id: flyById,
+      name: '',                          // Empty - user fills in
+      description: '',
+      icon: typeConfig.icon.displayName || 'Package',
+      quantity: 1,
+      cycle: type === 'service' ? 'prepaid' : '',
+      unlimited: false,
+      price: 0,
+      currency: currency,
+      totalPrice: 0,
+      categoryId: type,                  // CRITICAL: maps FlyByType to categoryId
+      categoryName: typeConfig.label,
+      categoryColor: typeConfig.color,
+      categoryBgColor: typeConfig.bgColor,
+      isFlyBy: true,
+      flyByType: type,
+      config: { showDescription: false },
+    };
+    onBlocksChange([...selectedBlocks, newBlock]);
+    setShowFlyByMenu(false);
+    setExpandedBlockId(flyById);         // Auto-expand for inline editing
+  },
+  [selectedBlocks, onBlocksChange, currency]
+);
+```
+
+#### FlyBy Rendering in ServiceBlocksStep
+```typescript
+{block.isFlyBy ? (
+  <FlyByBlockCard
+    block={block}
+    isExpanded={expandedBlockId === block.id}
+    isDragging={isDragging}
+    dragHandleProps={{ style: { cursor: 'grab' } }}
+    onToggleExpand={handleToggleExpand}
+    onRemove={handleRemoveBlock}
+    onUpdate={handleUpdateBlock}
+  />
+) : (
+  <BlockCardConfigurable ... />  // Library block
+)}
+```
+
+---
+
+### FEATURE 2: Non-Pricing Blocks — Correct Behavior
+
+Non-pricing blocks (text, document, video, image, checklist, billing) should NOT show prices, quantities, or billing cycles. Only `service` and `spare` categories have pricing.
+
+#### categoryHasPricing Logic
+```typescript
+// File: contractnest-ui/src/utils/catalog-studio/categories.ts
+export const categoryHasPricing = (categoryId: string): boolean => {
+  return getWizardSteps(categoryId).includes('pricing');
+};
+```
+
+| Category | `categoryHasPricing()` | Has Pricing | Has Quantity |
+|----------|----------------------|-------------|-------------|
+| `service` | `true` | YES | YES |
+| `spare` | `true` | YES | YES |
+| `billing` | `false` | NO | NO |
+| `text` | `false` | NO | NO |
+| `video` | `false` | NO | NO |
+| `image` | `false` | NO | NO |
+| `checklist` | `false` | NO | NO |
+| `document` | `false` | NO | NO |
+
+#### Where Non-Pricing Logic Must Exist
+
+**BlockCardConfigurable.tsx** (for library blocks):
+```typescript
+const hasPricing = categoryHasPricing(block.categoryId || '');
+// Conditionally show:
+// - Pricing tags (qty, cycle): ONLY when hasPricing
+// - Price display: ONLY when hasPricing
+// - Quantity section: ONLY when hasPricing
+// - Billing cycle section: ONLY when hasPricing
+// - Pricing section (defined/selling price): ONLY when hasPricing
+// - Price summary: ONLY when hasPricing
+```
+
+**FlyByBlockCard.tsx** (for FlyBy blocks):
+```typescript
+const hasPricing = flyByType === 'service' || flyByType === 'spare';
+const hasQuantity = flyByType === 'service' || flyByType === 'spare';
+const hasBillingCycle = flyByType === 'service';
+// Text blocks show: name + config.content textarea
+// Document blocks show: name + description + config.fileType selector
+// Service blocks show: name + description + cycle + quantity + price
+// Spare blocks show: name + description + config.sku + quantity + price
+```
+
+**ReviewSendStep.tsx** (paper canvas):
+```typescript
+const billableBlocks = selectedBlocks.filter(b => categoryHasPricing(b.categoryId || ''));
+// For each block:
+const hasPricing = categoryHasPricing(block.categoryId || '');
+// Show pricing tags (Qty, Cycle, Payment): ONLY when hasPricing
+// Show price column: ONLY when hasPricing && isSelfView
+// Show content/description: when !hasPricing (text blocks show content, etc.)
+```
+
+**BillingViewStep.tsx** (billing table):
+```typescript
+const billableBlocks = useMemo(
+  () => selectedBlocks.filter(b => categoryHasPricing(b.categoryId || '')),
+  [selectedBlocks]
+);
+// Non-pricing blocks are COMPLETELY EXCLUDED from billing view
+// Only service and spare blocks appear in the line items table
+```
+
+---
+
+### HOW TO REBUILD IN NEXT SESSION
+
+**Step 1**: Verify which files on user's local machine are missing FlyBy/non-pricing logic.
+
+Check these files for the presence of key patterns:
+```
+ServiceBlocksStep.tsx  -> Search for: "isFlyBy", "handleAddFlyByBlock", "FlyByBlockCard", "showFlyByMenu"
+ReviewSendStep.tsx     -> Search for: "categoryHasPricing", "hasPricing", "isFlyBy", "FlyBy"
+BlockCardConfigurable  -> Search for: "isFlyBy", "flyByType", "categoryHasPricing"
+FlyByBlockCard.tsx     -> Check if file EXISTS at all
+BlockLibraryMini.tsx   -> Search for: "FlyBy", "flyby"
+catalog-studio/index.ts -> Search for: "FlyByBlockCard"
+BillingViewStep.tsx    -> Search for: "isFlyBy", "FlyBy"
+```
+
+**Step 2**: Copy the CORRECT versions from MANUAL_COPY_FILES in this order:
+1. `layout-flyby-blocks/` FIRST (introduces FlyByBlockCard.tsx, BlockLibraryMini, catalog index.ts)
+2. `billing-view-fixes/` SECOND (fixes categoryId on blocks, updates ServiceBlocksStep + BlockCardConfigurable + BillingViewStep)
+3. `pdf-export/` THIRD (has the most complete ReviewSendStep with FlyBy badges + non-pricing + PDF export)
+
+**Step 3**: If files in MANUAL_COPY_FILES are outdated (missing later features like PDF, prefetch), rebuild from the CONTAINER versions in this repo, which have all features intact.
+
+---
+
 ## Priority Order for Next Session
 
-1. **Fix Bug 1 & Bug 2** - success screen + billing view (debug why current fix didn't resolve)
-2. **Build Vendor contract workflow** - buyer -> vendor flow
-3. **Build Partner contract workflow** - buyer -> partner flow
+1. **Rebuild FlyBy blocks** - Verify/restore FlyByBlockCard.tsx, ServiceBlocksStep.tsx FlyBy dropdown + handler, BlockLibraryMini FlyBy buttons, catalog index.ts exports
+2. **Rebuild non-pricing block logic** - Verify/restore categoryHasPricing checks in BlockCardConfigurable, ReviewSendStep, BillingViewStep
+3. **Fix Bug 1 & Bug 2** - success screen + billing view (debug why current fix didn't resolve)
+4. **Build Vendor contract workflow** - buyer -> vendor flow
+5. **Build Partner contract workflow** - buyer -> partner flow
