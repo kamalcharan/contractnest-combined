@@ -1,0 +1,36 @@
+============================================================
+CONTACT PREFETCH + SIGNOFF SENT SCREEN
+============================================================
+Feature: Contact prefetch at wizard mount + Lottie success screen
+Branch: prefetch-and-sent-screen
+Date: 2026-01-30
+
+CHANGES:
+------------------------------------------------------------
+
+1. ContractWizard/index.tsx (MODIFIED)
+   - Added useContactList prefetch on wizard open (warms 5-min cache)
+     Works for client, vendor, and partner flows
+   - Added isContractSent state for signoff confirmation screen
+   - Modified handleNext: signoff acceptance shows success screen before close
+   - Lottie animation: circle bounce-in + checkmark reveal + pulse ring
+   - Success screen: "Contract Sent!" + buyer name + "Done" button
+   - Imported: lottie-react, useContactList, ArrowRight icon
+
+FILES TO COPY:
+------------------------------------------------------------
+FROM: MANUAL_COPY_FILES/prefetch-and-sent-screen/contractnest-ui/
+TO:   contractnest-ui/
+
+Specific files:
+  src/components/contracts/ContractWizard/index.tsx (MODIFIED)
+
+SUBMODULES AFFECTED:
+------------------------------------------------------------
+- contractnest-ui
+
+POWERSHELL COPY COMMANDS:
+------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\prefetch-and-sent-screen\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Write-Host "All files copied!" -ForegroundColor Green
