@@ -346,18 +346,17 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
 
       {/* 3-Column Layout - fills remaining height */}
       <div className="flex-1 flex gap-4 px-4 pb-6 min-h-0 overflow-hidden">
-        {/* Column 1: Block Library - hidden in RFQ mode */}
-        {!rfqMode && (
-          <div className="w-[280px] flex-shrink-0" style={{ height: 'calc(100vh - 200px)' }}>
-            <BlockLibraryMini
-              selectedBlockIds={selectedBlockIds}
-              onAddBlock={handleAddBlock}
-              maxHeight="calc(100vh - 200px)"
-              flyByTypes={['service', 'spare', 'text', 'document']}
-              onAddFlyByBlock={handleAddFlyByBlock}
-            />
-          </div>
-        )}
+        {/* Column 1: Block Library (full in contract mode, FlyBy-only in RFQ mode) */}
+        <div className="w-[280px] flex-shrink-0" style={{ height: 'calc(100vh - 200px)' }}>
+          <BlockLibraryMini
+            selectedBlockIds={selectedBlockIds}
+            onAddBlock={handleAddBlock}
+            maxHeight="calc(100vh - 200px)"
+            flyByTypes={['service', 'spare', 'text', 'document']}
+            onAddFlyByBlock={handleAddFlyByBlock}
+            flyByOnly={rfqMode}
+          />
+        </div>
 
         {/* Column 2: Added Blocks */}
         <div
