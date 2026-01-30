@@ -19,10 +19,7 @@ import {
   Image as ImageIcon,
   Eye,
   EyeOff,
-  Shield,
-  Send,
-  Save,
-  Receipt,
+  Download,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useTenantProfile } from '@/hooks/useTenantProfile';
@@ -173,20 +170,6 @@ const ReviewSendStep: React.FC<ReviewSendStepProps> = ({
     return { subtotal, selectedRates, totalTaxRate, taxAmount, grandTotal, emiInstallment, billableCount: billableBlocks.length };
   }, [selectedBlocks, availableTaxRates, selectedTaxRateIds, emiMonths]);
 
-  // ─── Acceptance button config ────────────────────────────────────
-  const actionButton = useMemo(() => {
-    switch (acceptanceMethod) {
-      case 'payment':
-        return { label: 'Generate Invoice', icon: Receipt };
-      case 'signoff':
-        return { label: 'Send to Customer', icon: Send };
-      case 'auto':
-        return { label: 'Create Contract', icon: Shield };
-      default:
-        return { label: 'Send Contract', icon: Send };
-    }
-  }, [acceptanceMethod]);
-
   // Timeline dates
   const startDate = new Date();
   const endDate = new Date();
@@ -197,7 +180,7 @@ const ReviewSendStep: React.FC<ReviewSendStepProps> = ({
   // ─── Render ──────────────────────────────────────────────────────
 
   return (
-    <div className="h-full flex flex-col relative" style={{ backgroundColor: canvasBg }}>
+    <div className="h-full flex flex-col" style={{ backgroundColor: canvasBg }}>
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto">
         {/* Controls above paper */}
@@ -233,22 +216,35 @@ const ReviewSendStep: React.FC<ReviewSendStepProps> = ({
             </button>
           </div>
 
-          {/* Acceptance method badge */}
-          <span
-            className="text-[10px] px-3 py-1 rounded-full font-medium uppercase tracking-wide shadow-sm"
-            style={{
-              backgroundColor: paperBg,
-              color: brandPrimary,
-            }}
-          >
-            {acceptanceMethod === 'payment'
-              ? 'Payment Acceptance'
-              : acceptanceMethod === 'signoff'
-                ? 'Signoff Acceptance'
-                : acceptanceMethod === 'auto'
-                  ? 'Auto Accept'
-                  : 'Not Set'}
-          </span>
+          {/* Right controls: PDF download + Acceptance badge */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-semibold transition-all hover:opacity-80 shadow-sm"
+              style={{
+                backgroundColor: paperBg,
+                color: colors.utility.primaryText,
+              }}
+            >
+              <Download className="w-3.5 h-3.5" />
+              PDF
+            </button>
+            <span
+              className="text-[10px] px-3 py-1.5 rounded-full font-medium uppercase tracking-wide shadow-sm"
+              style={{
+                backgroundColor: paperBg,
+                color: brandPrimary,
+              }}
+            >
+              {acceptanceMethod === 'payment'
+                ? 'Payment Acceptance'
+                : acceptanceMethod === 'signoff'
+                  ? 'Signoff Acceptance'
+                  : acceptanceMethod === 'auto'
+                    ? 'Auto Accept'
+                    : 'Not Set'}
+            </span>
+          </div>
         </div>
 
         {/* ═══ THE PAPER ═══ */}
@@ -257,7 +253,7 @@ const ReviewSendStep: React.FC<ReviewSendStepProps> = ({
           style={{
             backgroundColor: paperBg,
             boxShadow: paperShadow,
-            marginBottom: '120px',
+            marginBottom: '24px',
           }}
         >
           {/* Branded header strip */}
@@ -667,48 +663,6 @@ const ReviewSendStep: React.FC<ReviewSendStepProps> = ({
         </div>
       </div>
 
-      {/* ═══ FLOATING ACTION ISLAND ═══ */}
-      <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20">
-        <div
-          className="rounded-full flex items-center gap-6 shadow-2xl backdrop-blur-sm"
-          style={{
-            backgroundColor: isDarkMode ? 'rgba(30, 41, 59, 0.95)' : 'rgba(15, 23, 42, 0.92)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            padding: '10px 12px 10px 28px',
-          }}
-        >
-          {/* Info section */}
-          <div className="flex items-center gap-4 text-white">
-            <span className="text-xs opacity-60">Value</span>
-            <span className="bg-white/10 px-3.5 py-1 rounded-full font-bold text-sm">
-              {formatCurrency(totals.grandTotal, currency)}
-            </span>
-            <div className="h-5 w-px bg-white/20" />
-            <span className="text-xs opacity-60">
-              Status: <b className="opacity-100">{contractStatus}</b>
-            </span>
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              className="flex items-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-semibold text-white/70 hover:text-white transition-all hover:bg-white/10"
-            >
-              <Save className="w-3.5 h-3.5" />
-              Save Draft
-            </button>
-            <button
-              type="button"
-              className="flex items-center gap-1.5 px-5 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:opacity-90 shadow-lg"
-              style={{ backgroundColor: brandPrimary }}
-            >
-              <actionButton.icon className="w-4 h-4" />
-              {actionButton.label}
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
