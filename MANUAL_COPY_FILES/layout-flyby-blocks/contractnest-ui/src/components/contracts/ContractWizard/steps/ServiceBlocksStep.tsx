@@ -369,10 +369,10 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
               <div className="relative" ref={flyByMenuRef}>
                 <button
                   onClick={() => setShowFlyByMenu(!showFlyByMenu)}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:opacity-90"
                   style={{
-                    backgroundColor: `${colors.brand.primary}10`,
-                    color: colors.brand.primary,
+                    backgroundColor: '#F59E0B',
+                    color: '#FFFFFF',
                   }}
                   title="Add FlyBy Block"
                 >
