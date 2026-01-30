@@ -1,10 +1,12 @@
-Feature: Contract CRUD - RPC Functions + Edge Function
+Feature: Contract CRUD - RPC Functions + Edge Function + API Layer
 Branch: contracts-crud
 Date: 2026-01-30
 
-Submodules Affected: contractnest-edge
+Submodules Affected: contractnest-edge, contractnest-api
 
-Files Changed (3 files):
+Files Changed (8 files):
+
+  === EDGE LAYER (3 files — previously delivered) ===
 
   1. contractnest-edge/supabase/migrations/contracts/002_contract_rpc_functions.sql (RPC Batch 1)
      - create_contract_transaction: Atomic create with idempotency, sequencing, blocks, vendors, history, auto-accept
@@ -24,16 +26,62 @@ Files Changed (3 files):
      - Single RPC call per handler (<30ms target)
      - Proper HTTP status codes: 201 create, 409 version conflict, 422 invalid transition
 
+  === API LAYER (5 files — NEW) ===
+
+  4. contractnest-api/src/types/contractTypes.ts (DTOs)
+     - Request DTOs: CreateContractRequest, UpdateContractRequest, UpdateContractStatusRequest, DeleteContractRequest
+     - Response DTOs: ContractListItem, ContractDetail, ContractStatsData, ContractPagination
+     - Enum constants: CONTRACT_RECORD_TYPES, CONTRACT_STATUSES, CONTRACT_TYPES, ACCEPTANCE_METHODS
+     - Error codes: ContractErrorCode type
+
+  5. contractnest-api/src/validators/contractValidators.ts (Input Validation)
+     - express-validator chains for all 6 endpoints
+     - listContractsValidation: query param validation (record_type, status, sort_by, etc.)
+     - createContractValidation: body validation (title required, record_type enum, blocks/vendors arrays)
+     - updateContractValidation: version required (optimistic concurrency), param UUID check
+     - updateContractStatusValidation: status enum, param UUID check
+     - deleteContractValidation: param UUID, optional version/note
+     - getContractByIdValidation: param UUID check
+
+  6. contractnest-api/src/controllers/contractController.ts (Controller)
+     - 7 handlers: listContracts, getContractStats, getContract, createContract, updateContract, updateContractStatus, deleteContract
+     - validationResult(req) check at top of each handler
+     - Error responses via apiResponseHelpers (sendError, internalError, ERROR_CODES)
+     - Edge error mapping: mapEdgeErrorToResponse() — maps codes to HTTP status (NOT_FOUND→404, VERSION_CONFLICT→409, etc.)
+     - No business logic — pure request/response handling
+
+  7. contractnest-api/src/routes/contractRoutes.ts (Routes)
+     - authenticate + ensureTenant middleware
+     - Rate limiting: 100 req/15min general, 30 req/15min for creates
+     - JSDoc for all endpoints
+     - Validator chains wired as route middleware
+     - 7 routes: GET /, GET /stats, GET /health, GET /:id, POST /, PUT /:id, PATCH /:id/status, DELETE /:id
+
+  8. contractnest-api/src/index.ts (MODIFIED — route registration)
+     - Added contractCrudRoutes loading (try/catch with error handling)
+     - Added registration: app.use('/api/contracts', contractCrudRoutes)
+     - Added to health check, root endpoint services/endpoints, 404 handler
+
+  Note: contractnest-api/src/services/contractService.ts is UNCHANGED (already created in previous step)
+
 Prerequisites:
   - Migration 001_create_contract_tables.sql must be run (creates t_contracts, t_contract_blocks, etc.)
   - Idempotency infrastructure (check_idempotency, store_idempotency) must exist
   - Sequence infrastructure (get_next_formatted_sequence) must exist
   - PGMQ extension must be available (for JTD event queueing in update_contract_status)
+  - Edge function deployed: supabase functions deploy contracts
 
 Copy Commands (PowerShell):
   cd "D:\projects\core projects\ContractNest\contractnest-combined"
   Copy-Item "MANUAL_COPY_FILES\contracts-crud\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\contracts-crud\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
   Write-Host "All files copied!" -ForegroundColor Green
+
+  IMPORTANT: index.ts must be manually updated (see file 8 above).
+  The copy only includes the NEW API files. The index.ts edits are:
+    - Load: contractCrudRoutes = require('./routes/contractRoutes').default
+    - Register: app.use('/api/contracts', contractCrudRoutes)
+    - Health check + root endpoint additions
 
 Run in Supabase SQL Editor (in order):
   1. Execute contractnest-edge/supabase/migrations/contracts/002_contract_rpc_functions.sql
