@@ -1,24 +1,33 @@
-Feature: Contract CRUD - RPC Functions (Batch 1 of 2)
+Feature: Contract CRUD - All 7 RPC Functions
 Branch: contracts-crud
 Date: 2026-01-30
 
 Submodules Affected: contractnest-edge
 
-Files Changed (1 file):
-  1. contractnest-edge/supabase/migrations/contracts/002_contract_rpc_functions.sql
+Files Changed (2 files):
+
+  1. contractnest-edge/supabase/migrations/contracts/002_contract_rpc_functions.sql (Batch 1)
      - create_contract_transaction: Atomic create with idempotency, sequencing, blocks, vendors, history, auto-accept
      - get_contracts_list: Paginated list with SECURITY DEFINER, dynamic filters, JSON shaping
      - get_contract_by_id: Single record with embedded blocks, vendors, attachments, history
+
+  2. contractnest-edge/supabase/migrations/contracts/003_contract_rpc_functions_batch2.sql (Batch 2)
+     - update_contract_transaction: Atomic update with optimistic concurrency (version check + SELECT FOR UPDATE), block/vendor replacement
+     - update_contract_status: Status flow validation, auto-accept rule, timestamps, JTD event via PGMQ
+     - soft_delete_contract: Soft delete from draft/cancelled only, version check, audit trail
+     - get_contract_stats: Dashboard aggregates by status/record_type/contract_type, financial totals
 
 Prerequisites:
   - Migration 001_create_contract_tables.sql must be run (creates t_contracts, t_contract_blocks, etc.)
   - Idempotency infrastructure (check_idempotency, store_idempotency) must exist
   - Sequence infrastructure (get_next_formatted_sequence) must exist
+  - PGMQ extension must be available (for JTD event queueing in update_contract_status)
 
 Copy Commands (PowerShell):
   cd "D:\projects\core projects\ContractNest\contractnest-combined"
   Copy-Item "MANUAL_COPY_FILES\contracts-crud\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
   Write-Host "All files copied!" -ForegroundColor Green
 
-Run in Supabase SQL Editor:
-  Execute the contents of contractnest-edge/supabase/migrations/contracts/002_contract_rpc_functions.sql
+Run in Supabase SQL Editor (in order):
+  1. Execute contractnest-edge/supabase/migrations/contracts/002_contract_rpc_functions.sql
+  2. Execute contractnest-edge/supabase/migrations/contracts/003_contract_rpc_functions_batch2.sql
