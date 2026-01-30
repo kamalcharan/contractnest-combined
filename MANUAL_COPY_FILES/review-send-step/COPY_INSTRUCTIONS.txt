@@ -1,29 +1,25 @@
 ============================================================
-REVIEW & SEND STEP (Step 9)
+REVIEW & SEND STEP (Step 9) - Paper Canvas Redesign
 ============================================================
-Feature: Card-based contract review with Self/Client view toggle
+Feature: Paper canvas document view with floating action island
 Branch: review-send-step
 Date: 2026-01-30
 
 CHANGES:
 ------------------------------------------------------------
 
-1. ReviewSendStep.tsx (NEW FILE)
-   - Self/Client pill toggle (Self shows full pricing, Client hides line item prices)
-   - Branded header card with tenant logo, gradient using primary_color + secondary_color
-   - Quick stats bar: Duration, Blocks count, Billing type, Total value
-   - Blocks grouped by category with colored cards:
-     - Pricing blocks (Service/Spare): 2-column grid cards with qty, cycle, price (Self only), FlyBy badge
-     - Content blocks (Text/Document/Checklist/Video/Image): stacked cards with rendered content
-   - Sidebar: Parties card, Contract Details card (timeline), Financial Summary card
-   - Dynamic action buttons based on acceptance method:
-     - Payment: Save as Draft + Generate Invoice
-     - Signoff: Save as Draft + Send to Customer
-     - Auto: Save as Draft + Create Contract
-
-2. ContractWizard/index.tsx (MODIFIED)
-   - Added import for ReviewSendStep
-   - Replaced case 8 placeholder with <ReviewSendStep /> with all wizard state props
+1. ReviewSendStep.tsx (REWRITTEN - Paper Canvas Layout)
+   - Centered 850px paper on subtle gray (#F1F5F9) canvas background
+   - Self/Client pill toggle above paper (same layout, client hides line item prices)
+   - Branded header strip with tenant logo + gradient (primary_color → secondary_color)
+   - Serif contract title, status badge, reference number, created date
+   - 2x2 meta grid: Provider (with email/phone), Customer, Duration (with date range), Payment
+   - Description paragraph
+   - Block sections grouped by category with icon-based block cards (icon | content | price)
+   - Financial summary inline in paper (subtotal, taxes, grand total, EMI note)
+   - Floating action island: dark glass morphism pill with Value, Status, Save Draft, dynamic CTA
+   - Dark mode support with theme-aware paper/canvas colors
+   - Dynamic action buttons: Payment→Generate Invoice, Signoff→Send to Customer, Auto→Create Contract
 
 FILES TO COPY:
 ------------------------------------------------------------
@@ -31,8 +27,7 @@ FROM: MANUAL_COPY_FILES/review-send-step/contractnest-ui/
 TO:   contractnest-ui/
 
 Specific files:
-  src/components/contracts/ContractWizard/steps/ReviewSendStep.tsx (NEW)
-  src/components/contracts/ContractWizard/index.tsx (MODIFIED)
+  src/components/contracts/ContractWizard/steps/ReviewSendStep.tsx (REWRITTEN)
 
 SUBMODULES AFFECTED:
 ------------------------------------------------------------

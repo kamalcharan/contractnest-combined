@@ -1,16 +1,14 @@
 // src/components/contracts/ContractWizard/steps/ReviewSendStep.tsx
-// Step 9: Review & Send - Card-based contract view with Self/Client toggle
+// Step 9: Review & Send - Paper Canvas layout with Self/Client toggle
+// Centered document view with floating action island
 // Self View: full pricing details per block
 // Client View: same layout, individual prices hidden (total only)
 
 import React, { useState, useMemo } from 'react';
 import {
   Building2,
-  User,
   Mail,
   Phone,
-  Calendar,
-  ArrowRight,
   FileText,
   Package,
   Briefcase,
@@ -21,17 +19,13 @@ import {
   Image as ImageIcon,
   Eye,
   EyeOff,
-  Clock,
-  Repeat,
-  Zap,
-  Globe,
   Shield,
   Send,
   Save,
   Receipt,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useTenantProfile, TenantProfile } from '@/hooks/useTenantProfile';
+import { useTenantProfile } from '@/hooks/useTenantProfile';
 import { useTaxRates } from '@/hooks/useTaxRates';
 import { getCurrencySymbol } from '@/utils/constants/currencies';
 import { ConfigurableBlock, CYCLE_OPTIONS } from '@/components/catalog-studio/BlockCardConfigurable';
@@ -39,34 +33,25 @@ import { BillingCycleType } from './BillingCycleStep';
 import {
   categoryHasPricing,
   getCategoryById,
-  BLOCK_CATEGORIES,
 } from '@/utils/catalog-studio/categories';
 
 // ─── Props ───────────────────────────────────────────────────────────
 
 export interface ReviewSendStepProps {
-  // Contract identity
   contractName: string;
   contractStatus: string;
   description: string;
-  // Duration
   durationValue: number;
   durationUnit: string;
-  // Parties
   buyerId: string | null;
   buyerName: string;
-  // Acceptance
   acceptanceMethod: 'payment' | 'signoff' | 'auto' | null;
-  // Billing
   billingCycleType: BillingCycleType;
   currency: string;
-  // Blocks
   selectedBlocks: ConfigurableBlock[];
-  // Payment
   paymentMode: 'prepaid' | 'emi';
   emiMonths: number;
   perBlockPaymentType: Record<string, 'prepaid' | 'postpaid'>;
-  // Tax
   selectedTaxRateIds: string[];
 }
 
@@ -94,7 +79,6 @@ const getDurationInMonths = (value: number, unit: string): number => {
   return Math.ceil(value / 30);
 };
 
-// Map category IDs to lucide icons
 const CATEGORY_ICONS: Record<string, React.FC<{ className?: string; style?: React.CSSProperties }>> = {
   service: Briefcase,
   spare: Package,
@@ -152,6 +136,14 @@ const ReviewSendStep: React.FC<ReviewSendStepProps> = ({
   const isMixed = billingCycleType === 'mixed';
   const durationMonths = getDurationInMonths(durationValue, durationUnit);
 
+  // Paper canvas colors
+  const canvasBg = isDarkMode ? colors.utility.primaryBackground : '#F1F5F9';
+  const paperBg = isDarkMode ? colors.utility.secondaryBackground : '#FFFFFF';
+  const paperShadow = isDarkMode
+    ? '0 4px 20px rgba(0,0,0,0.3)'
+    : '0 10px 30px rgba(0,0,0,0.05)';
+  const borderColor = isDarkMode ? `${colors.utility.primaryText}15` : '#E2E8F0';
+
   // ─── Group blocks by category ────────────────────────────────────
   const blockGroups = useMemo(() => {
     const groups: Record<string, ConfigurableBlock[]> = {};
@@ -160,7 +152,6 @@ const ReviewSendStep: React.FC<ReviewSendStepProps> = ({
       if (!groups[catId]) groups[catId] = [];
       groups[catId].push(block);
     });
-    // Sort: pricing categories first (service, spare), then content categories
     const order = ['service', 'spare', 'billing', 'text', 'checklist', 'document', 'video', 'image'];
     const sorted = Object.entries(groups).sort(
       ([a], [b]) => (order.indexOf(a) === -1 ? 99 : order.indexOf(a)) - (order.indexOf(b) === -1 ? 99 : order.indexOf(b))
@@ -196,149 +187,236 @@ const ReviewSendStep: React.FC<ReviewSendStepProps> = ({
     }
   }, [acceptanceMethod]);
 
-  // Calculate timeline
+  // Timeline dates
   const startDate = new Date();
   const endDate = new Date();
   endDate.setMonth(endDate.getMonth() + durationMonths);
   const formatDate = (d: Date) =>
-    new Intl.DateTimeFormat('en-IN', { month: 'short', year: 'numeric' }).format(d);
+    new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }).format(d);
 
   // ─── Render ──────────────────────────────────────────────────────
 
   return (
-    <div className="h-full flex flex-col" style={{ backgroundColor: colors.utility.primaryBackground }}>
-      {/* Top bar: View toggle */}
-      <div
-        className="flex-shrink-0 flex items-center justify-between px-6 py-3 border-b"
-        style={{ borderColor: `${colors.utility.primaryText}10`, backgroundColor: colors.utility.secondaryBackground }}
-      >
-        {/* Self / Client pill toggle */}
-        <div
-          className="flex items-center rounded-full p-1"
-          style={{ backgroundColor: `${colors.utility.primaryText}08` }}
-        >
-          <button
-            type="button"
-            onClick={() => setViewMode('self')}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all"
-            style={{
-              backgroundColor: isSelfView ? colors.brand.primary : 'transparent',
-              color: isSelfView ? '#FFFFFF' : colors.utility.secondaryText,
-            }}
+    <div className="h-full flex flex-col relative" style={{ backgroundColor: canvasBg }}>
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Controls above paper */}
+        <div className="max-w-[850px] mx-auto flex items-center justify-between px-2 pt-6 pb-3">
+          {/* Self / Client pill toggle */}
+          <div
+            className="flex items-center rounded-full p-1 shadow-sm"
+            style={{ backgroundColor: paperBg }}
           >
-            <Eye className="w-3.5 h-3.5" />
-            Self View
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('client')}
-            className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all"
-            style={{
-              backgroundColor: !isSelfView ? brandPrimary : 'transparent',
-              color: !isSelfView ? '#FFFFFF' : colors.utility.secondaryText,
-            }}
-          >
-            <EyeOff className="w-3.5 h-3.5" />
-            Client View
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={() => setViewMode('self')}
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all"
+              style={{
+                backgroundColor: isSelfView ? brandPrimary : 'transparent',
+                color: isSelfView ? '#FFFFFF' : colors.utility.secondaryText,
+              }}
+            >
+              <Eye className="w-3.5 h-3.5" />
+              Self View
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('client')}
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all"
+              style={{
+                backgroundColor: !isSelfView ? brandPrimary : 'transparent',
+                color: !isSelfView ? '#FFFFFF' : colors.utility.secondaryText,
+              }}
+            >
+              <EyeOff className="w-3.5 h-3.5" />
+              Client View
+            </button>
+          </div>
 
-        {/* Acceptance method badge */}
-        <div className="flex items-center gap-2">
+          {/* Acceptance method badge */}
           <span
-            className="text-[10px] px-3 py-1 rounded-full font-medium uppercase tracking-wide"
+            className="text-[10px] px-3 py-1 rounded-full font-medium uppercase tracking-wide shadow-sm"
             style={{
-              backgroundColor: `${brandPrimary}15`,
+              backgroundColor: paperBg,
               color: brandPrimary,
             }}
           >
-            {acceptanceMethod === 'payment' ? 'Payment Acceptance' : acceptanceMethod === 'signoff' ? 'Signoff Acceptance' : acceptanceMethod === 'auto' ? 'Auto Accept' : 'Not Set'}
+            {acceptanceMethod === 'payment'
+              ? 'Payment Acceptance'
+              : acceptanceMethod === 'signoff'
+                ? 'Signoff Acceptance'
+                : acceptanceMethod === 'auto'
+                  ? 'Auto Accept'
+                  : 'Not Set'}
           </span>
         </div>
-      </div>
 
-      {/* Main scrollable content */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="flex gap-5 p-5 min-h-0">
-          {/* ═══ LEFT: Contract Content ═══ */}
-          <div className="flex-1 flex flex-col gap-5 min-w-0">
-            {/* ── Header Card ── */}
-            <div
-              className="rounded-2xl overflow-hidden shadow-sm"
-              style={{ border: `1px solid ${colors.utility.primaryText}08` }}
-            >
-              {/* Branded header strip */}
-              <div
-                className="px-6 py-5"
-                style={{
-                  background: `linear-gradient(135deg, ${brandPrimary} 0%, ${brandSecondary} 100%)`,
-                }}
-              >
-                <div className="flex items-start gap-4">
-                  {/* Tenant logo */}
-                  {tenantProfile?.logo_url ? (
-                    <img
-                      src={tenantProfile.logo_url}
-                      alt={tenantProfile.business_name || 'Company'}
-                      className="w-14 h-14 rounded-xl object-cover bg-white/20 shadow-lg"
-                    />
-                  ) : (
-                    <div className="w-14 h-14 rounded-xl bg-white/20 flex items-center justify-center shadow-lg backdrop-blur-sm">
-                      <Building2 className="w-7 h-7 text-white" />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white/70 text-[11px] font-medium uppercase tracking-widest">
-                      {tenantProfile?.business_name || 'Your Company'}
-                    </p>
-                    <h2 className="text-white font-bold text-xl mt-0.5 truncate">
-                      {contractName || 'Untitled Contract'}
-                    </h2>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="text-[10px] px-2.5 py-0.5 rounded-full font-semibold uppercase bg-white/20 text-white">
-                        {contractStatus}
-                      </span>
-                      <span className="text-white/60 text-[11px]">
-                        Ref: #CN-XXXX
-                      </span>
-                    </div>
-                  </div>
+        {/* ═══ THE PAPER ═══ */}
+        <div
+          className="max-w-[850px] mx-auto rounded-lg"
+          style={{
+            backgroundColor: paperBg,
+            boxShadow: paperShadow,
+            marginBottom: '120px',
+          }}
+        >
+          {/* Branded header strip */}
+          <div
+            className="rounded-t-lg px-12 py-6"
+            style={{
+              background: `linear-gradient(135deg, ${brandPrimary} 0%, ${brandSecondary} 100%)`,
+            }}
+          >
+            <div className="flex items-center gap-4">
+              {tenantProfile?.logo_url ? (
+                <img
+                  src={tenantProfile.logo_url}
+                  alt={tenantProfile.business_name || 'Company'}
+                  className="w-12 h-12 rounded-xl object-cover bg-white/20 shadow-lg"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shadow-lg backdrop-blur-sm">
+                  <Building2 className="w-6 h-6 text-white" />
                 </div>
+              )}
+              <div>
+                <p className="text-white/70 text-xs font-medium uppercase tracking-widest">
+                  {tenantProfile?.business_name || 'Your Company'}
+                </p>
+                <p className="text-white text-sm font-medium mt-0.5">Service Agreement</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Paper body */}
+          <div className="px-12 py-10">
+            {/* Contract title */}
+            <h1
+              className="font-serif text-3xl font-medium mb-3"
+              style={{ color: colors.utility.primaryText }}
+            >
+              {contractName || 'Untitled Contract'}
+            </h1>
+
+            {/* Status + ref + date */}
+            <div className="flex items-center gap-3 mb-8">
+              <span
+                className="text-[10px] px-2.5 py-1 rounded-full font-semibold uppercase"
+                style={{ backgroundColor: `${brandPrimary}12`, color: brandPrimary }}
+              >
+                {contractStatus}
+              </span>
+              <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                Ref: #CN-XXXX
+              </span>
+              <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                · Created {formatDate(startDate)}
+              </span>
+            </div>
+
+            {/* ── Meta Grid ── */}
+            <div
+              className="grid grid-cols-2 gap-x-10 gap-y-6 py-6 border-t border-b mb-8"
+              style={{ borderColor }}
+            >
+              {/* Provider */}
+              <div>
+                <span
+                  className="text-[10px] font-bold uppercase tracking-wider block mb-2"
+                  style={{ color: colors.utility.secondaryText }}
+                >
+                  Provider
+                </span>
+                <p className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
+                  {tenantProfile?.business_name || 'Your Company'}
+                </p>
+                {tenantProfile?.business_email && (
+                  <p
+                    className="text-xs mt-1 flex items-center gap-1.5"
+                    style={{ color: colors.utility.secondaryText }}
+                  >
+                    <Mail className="w-3 h-3" />
+                    {tenantProfile.business_email}
+                  </p>
+                )}
+                {tenantProfile?.business_phone && (
+                  <p
+                    className="text-xs mt-0.5 flex items-center gap-1.5"
+                    style={{ color: colors.utility.secondaryText }}
+                  >
+                    <Phone className="w-3 h-3" />
+                    {tenantProfile.business_phone_country_code} {tenantProfile.business_phone}
+                  </p>
+                )}
               </div>
 
-              {/* Compact info strip */}
-              <div
-                className="flex items-center gap-3 px-6 py-2.5"
-                style={{ backgroundColor: colors.utility.secondaryBackground }}
-              >
-                <div className="flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5" style={{ color: brandPrimary }} />
-                  <span className="text-xs font-semibold" style={{ color: colors.utility.primaryText }}>
-                    {formatDuration(durationValue, durationUnit)}
-                  </span>
-                </div>
-                <div className="w-px h-4" style={{ backgroundColor: `${colors.utility.primaryText}15` }} />
-                <div className="flex items-center gap-1.5">
-                  <CreditCard className="w-3.5 h-3.5" style={{ color: brandPrimary }} />
-                  <span className="text-xs font-semibold" style={{ color: colors.utility.primaryText }}>
-                    {isMixed
-                      ? 'Mixed Billing'
-                      : paymentMode === 'emi'
-                        ? `EMI · ${emiMonths} months`
-                        : '100% Prepaid'}
-                  </span>
-                </div>
-                <div className="w-px h-4" style={{ backgroundColor: `${colors.utility.primaryText}15` }} />
-                <div className="flex items-center gap-1.5">
-                  <Zap className="w-3.5 h-3.5" style={{ color: brandPrimary }} />
-                  <span className="text-xs font-semibold" style={{ color: brandPrimary }}>
-                    {formatCurrency(totals.grandTotal, currency)}
-                  </span>
-                </div>
+              {/* Customer */}
+              <div>
+                <span
+                  className="text-[10px] font-bold uppercase tracking-wider block mb-2"
+                  style={{ color: colors.utility.secondaryText }}
+                >
+                  Customer
+                </span>
+                <p className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
+                  {buyerName || 'Not selected'}
+                </p>
+              </div>
+
+              {/* Duration */}
+              <div>
+                <span
+                  className="text-[10px] font-bold uppercase tracking-wider block mb-2"
+                  style={{ color: colors.utility.secondaryText }}
+                >
+                  Contract Duration
+                </span>
+                <p className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
+                  {formatDuration(durationValue, durationUnit)}
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: colors.utility.secondaryText }}>
+                  {formatDate(startDate)} → {formatDate(endDate)}
+                </p>
+              </div>
+
+              {/* Payment */}
+              <div>
+                <span
+                  className="text-[10px] font-bold uppercase tracking-wider block mb-2"
+                  style={{ color: colors.utility.secondaryText }}
+                >
+                  Payment
+                </span>
+                <p className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
+                  {isMixed
+                    ? 'Mixed Billing'
+                    : paymentMode === 'emi'
+                      ? `EMI · ${emiMonths} months`
+                      : '100% Prepaid'}
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: colors.utility.secondaryText }}>
+                  {acceptanceMethod === 'payment'
+                    ? 'Payment Acceptance'
+                    : acceptanceMethod === 'signoff'
+                      ? 'Signoff Required'
+                      : acceptanceMethod === 'auto'
+                        ? 'Auto Accept'
+                        : '—'}
+                </p>
               </div>
             </div>
 
-            {/* ── Block Groups ── */}
+            {/* ── Description ── */}
+            {description && (
+              <p
+                className="text-sm leading-relaxed mb-10"
+                style={{ color: colors.utility.secondaryText }}
+              >
+                {description}
+              </p>
+            )}
+
+            {/* ── Block Sections ── */}
             {blockGroups.map(([categoryId, blocks]) => {
               const category = getCategoryById(categoryId);
               const catColor = category?.color || '#6B7280';
@@ -347,27 +425,27 @@ const ReviewSendStep: React.FC<ReviewSendStepProps> = ({
               const hasPricing = categoryHasPricing(categoryId);
 
               return (
-                <div key={categoryId}>
+                <div key={categoryId} className="mb-8">
                   {/* Category header */}
-                  <div className="flex items-center gap-2 mb-3">
+                  <div className="flex items-center gap-2 mb-4">
                     <div
-                      className="w-7 h-7 rounded-lg flex items-center justify-center"
-                      style={{ backgroundColor: `${catColor}15` }}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center"
+                      style={{ backgroundColor: `${catColor}12` }}
                     >
-                      <CatIcon className="w-3.5 h-3.5" style={{ color: catColor }} />
+                      <CatIcon className="w-4 h-4" style={{ color: catColor }} />
                     </div>
                     <span className="text-sm font-bold" style={{ color: colors.utility.primaryText }}>
                       {catName}
                     </span>
                     <span
                       className="text-[10px] px-2 py-0.5 rounded-full font-medium"
-                      style={{ backgroundColor: `${catColor}12`, color: catColor }}
+                      style={{ backgroundColor: `${catColor}10`, color: catColor }}
                     >
                       {blocks.length}
                     </span>
                   </div>
 
-                  {/* Block cards - single column, full width for all types */}
+                  {/* Block items */}
                   <div className="space-y-3">
                     {blocks.map((block) => {
                       const effectivePrice = block.config?.customPrice ?? block.price;
@@ -377,116 +455,129 @@ const ReviewSendStep: React.FC<ReviewSendStepProps> = ({
                       return (
                         <div
                           key={block.id}
-                          className="rounded-xl border p-4 transition-all hover:shadow-sm"
+                          className="flex gap-4 p-4 rounded-xl border transition-all hover:shadow-sm"
                           style={{
-                            backgroundColor: colors.utility.secondaryBackground,
-                            borderColor: `${colors.utility.primaryText}10`,
-                            borderLeftWidth: '3px',
-                            borderLeftColor: catColor,
+                            borderColor,
+                            backgroundColor: `${catColor}03`,
                           }}
                         >
-                          {/* Block header row */}
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1.5">
-                                <h4 className="text-sm font-semibold truncate" style={{ color: colors.utility.primaryText }}>
-                                  {block.name || 'Untitled'}
-                                </h4>
-                                {block.isFlyBy && (
-                                  <span
-                                    className="text-[9px] px-1.5 py-0.5 rounded font-bold flex-shrink-0"
-                                    style={{ backgroundColor: '#F59E0B20', color: '#F59E0B' }}
-                                  >
-                                    FlyBy
-                                  </span>
-                                )}
-                                {categoryId === 'document' && block.config?.fileType && (
-                                  <span
-                                    className="text-[9px] px-1.5 py-0.5 rounded font-medium uppercase flex-shrink-0"
-                                    style={{ backgroundColor: `${catColor}12`, color: catColor }}
-                                  >
-                                    {block.config.fileType}
-                                  </span>
-                                )}
-                              </div>
+                          {/* Icon area */}
+                          <div
+                            className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                            style={{ backgroundColor: `${catColor}10` }}
+                          >
+                            <CatIcon className="w-5 h-5" style={{ color: catColor }} />
+                          </div>
 
-                              {/* Tags row - for pricing blocks */}
-                              {hasPricing && (
-                                <div className="flex items-center gap-2">
-                                  <span
-                                    className="text-[10px] px-2 py-0.5 rounded-md font-medium"
-                                    style={{ backgroundColor: `${colors.utility.primaryText}08`, color: colors.utility.secondaryText }}
-                                  >
-                                    Qty: {block.unlimited ? '∞' : block.quantity}
-                                  </span>
-                                  <span
-                                    className="text-[10px] px-2 py-0.5 rounded-md font-medium"
-                                    style={{ backgroundColor: `${brandPrimary}10`, color: brandPrimary }}
-                                  >
-                                    {getCycleLabel(block.cycle)}
-                                  </span>
-                                  {isMixed && (
-                                    <span
-                                      className="text-[10px] px-2 py-0.5 rounded-md font-medium"
-                                      style={{
-                                        backgroundColor: blockPayType === 'prepaid' ? '#10B98115' : '#F59E0B15',
-                                        color: blockPayType === 'prepaid' ? '#10B981' : '#F59E0B',
-                                      }}
-                                    >
-                                      {blockPayType === 'prepaid' ? 'Prepaid' : 'Postpaid'}
-                                    </span>
-                                  )}
-                                </div>
+                          {/* Content */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h4
+                                className="text-sm font-semibold truncate"
+                                style={{ color: colors.utility.primaryText }}
+                              >
+                                {block.name || 'Untitled'}
+                              </h4>
+                              {block.isFlyBy && (
+                                <span
+                                  className="text-[9px] px-1.5 py-0.5 rounded font-bold flex-shrink-0"
+                                  style={{ backgroundColor: '#F59E0B20', color: '#F59E0B' }}
+                                >
+                                  FlyBy
+                                </span>
+                              )}
+                              {categoryId === 'document' && block.config?.fileType && (
+                                <span
+                                  className="text-[9px] px-1.5 py-0.5 rounded font-medium uppercase flex-shrink-0"
+                                  style={{ backgroundColor: `${catColor}12`, color: catColor }}
+                                >
+                                  {block.config.fileType}
+                                </span>
                               )}
                             </div>
 
-                            {/* Price on the right - Self View only, pricing blocks only */}
-                            {isSelfView && hasPricing && (
-                              <div className="text-right flex-shrink-0">
-                                <p className="text-sm font-bold" style={{ color: catColor }}>
-                                  {formatCurrency(lineTotal, currency)}
-                                </p>
-                                <p className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
-                                  {formatCurrency(effectivePrice, currency)}/{block.unlimited ? 'unit' : 'ea'}
-                                </p>
+                            {/* Pricing tags */}
+                            {hasPricing && (
+                              <div className="flex items-center gap-2 mt-1.5">
+                                <span
+                                  className="text-[10px] px-2 py-0.5 rounded-md font-medium"
+                                  style={{
+                                    backgroundColor: `${colors.utility.primaryText}08`,
+                                    color: colors.utility.secondaryText,
+                                  }}
+                                >
+                                  Qty: {block.unlimited ? '∞' : block.quantity}
+                                </span>
+                                <span
+                                  className="text-[10px] px-2 py-0.5 rounded-md font-medium"
+                                  style={{ backgroundColor: `${brandPrimary}10`, color: brandPrimary }}
+                                >
+                                  {getCycleLabel(block.cycle)}
+                                </span>
+                                {isMixed && (
+                                  <span
+                                    className="text-[10px] px-2 py-0.5 rounded-md font-medium"
+                                    style={{
+                                      backgroundColor: blockPayType === 'prepaid' ? '#10B98115' : '#F59E0B15',
+                                      color: blockPayType === 'prepaid' ? '#10B981' : '#F59E0B',
+                                    }}
+                                  >
+                                    {blockPayType === 'prepaid' ? 'Prepaid' : 'Postpaid'}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Description for pricing blocks with showDescription */}
+                            {hasPricing && block.config?.showDescription && block.description && (
+                              <p
+                                className="text-[11px] mt-2 leading-relaxed"
+                                style={{ color: colors.utility.secondaryText }}
+                              >
+                                {block.description}
+                              </p>
+                            )}
+
+                            {/* Content body for text/video/image/document blocks */}
+                            {!hasPricing && (block.config?.content || block.description) && (
+                              <div
+                                className="text-xs mt-1.5 leading-relaxed whitespace-pre-wrap"
+                                style={{ color: colors.utility.secondaryText }}
+                              >
+                                {block.config?.content || block.description}
+                              </div>
+                            )}
+
+                            {/* Checklist items */}
+                            {categoryId === 'checklist' && block.config?.notes && (
+                              <div className="mt-2 space-y-1.5">
+                                {block.config.notes
+                                  .split('\n')
+                                  .filter(Boolean)
+                                  .map((item, idx) => (
+                                    <div key={idx} className="flex items-center gap-2">
+                                      <div
+                                        className="w-3.5 h-3.5 rounded border flex-shrink-0"
+                                        style={{ borderColor: `${colors.utility.primaryText}25` }}
+                                      />
+                                      <span className="text-xs" style={{ color: colors.utility.primaryText }}>
+                                        {item}
+                                      </span>
+                                    </div>
+                                  ))}
                               </div>
                             )}
                           </div>
 
-                          {/* Description - for pricing blocks with showDescription */}
-                          {hasPricing && block.config?.showDescription && block.description && (
-                            <p
-                              className="text-[11px] mt-2.5 pt-2.5 leading-relaxed border-t"
-                              style={{ color: colors.utility.secondaryText, borderColor: `${colors.utility.primaryText}08` }}
-                            >
-                              {block.description}
-                            </p>
-                          )}
-
-                          {/* Content body - for text/video/image/document blocks */}
-                          {!hasPricing && (block.config?.content || block.description) && (
-                            <div
-                              className="text-xs mt-2 leading-relaxed whitespace-pre-wrap"
-                              style={{ color: colors.utility.secondaryText }}
-                            >
-                              {block.config?.content || block.description}
-                            </div>
-                          )}
-
-                          {/* Checklist items */}
-                          {categoryId === 'checklist' && block.config?.notes && (
-                            <div className="mt-2.5 space-y-1.5">
-                              {block.config.notes.split('\n').filter(Boolean).map((item, idx) => (
-                                <div key={idx} className="flex items-center gap-2">
-                                  <div
-                                    className="w-4 h-4 rounded border flex-shrink-0"
-                                    style={{ borderColor: `${colors.utility.primaryText}25` }}
-                                  />
-                                  <span className="text-xs" style={{ color: colors.utility.primaryText }}>
-                                    {item}
-                                  </span>
-                                </div>
-                              ))}
+                          {/* Price - right side, Self View only, pricing blocks only */}
+                          {isSelfView && hasPricing && (
+                            <div className="text-right flex-shrink-0 self-center">
+                              <p className="text-sm font-bold" style={{ color: catColor }}>
+                                {formatCurrency(lineTotal, currency)}
+                              </p>
+                              <p className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
+                                {formatCurrency(effectivePrice, currency)}/{block.unlimited ? 'unit' : 'ea'}
+                              </p>
                             </div>
                           )}
                         </div>
@@ -499,186 +590,27 @@ const ReviewSendStep: React.FC<ReviewSendStepProps> = ({
 
             {/* Empty state */}
             {selectedBlocks.length === 0 && (
-              <div
-                className="rounded-xl border p-12 text-center"
-                style={{
-                  backgroundColor: colors.utility.secondaryBackground,
-                  borderColor: `${colors.utility.primaryText}10`,
-                }}
-              >
-                <Package className="w-12 h-12 mx-auto mb-3" style={{ color: `${colors.utility.secondaryText}30` }} />
+              <div className="py-16 text-center">
+                <Package
+                  className="w-12 h-12 mx-auto mb-3"
+                  style={{ color: `${colors.utility.secondaryText}40` }}
+                />
                 <p className="text-sm" style={{ color: colors.utility.secondaryText }}>
                   No blocks added to this contract
                 </p>
               </div>
             )}
-          </div>
 
-          {/* ═══ RIGHT: Sidebar ═══ */}
-          <div className="w-[380px] flex-shrink-0 flex flex-col gap-4">
-            {/* ── Parties Card ── */}
-            <div
-              className="rounded-xl border overflow-hidden"
-              style={{
-                backgroundColor: colors.utility.secondaryBackground,
-                borderColor: `${colors.utility.primaryText}10`,
-              }}
-            >
-              <div
-                className="px-4 py-3 border-b flex items-center gap-2"
-                style={{ borderColor: `${colors.utility.primaryText}10` }}
-              >
-                <Globe className="w-4 h-4" style={{ color: brandPrimary }} />
-                <span className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
-                  Parties
-                </span>
-              </div>
-
-              <div className="p-4 space-y-3">
-                {/* Provider */}
-                <div
-                  className="p-3 rounded-xl"
-                  style={{ backgroundColor: `${brandPrimary}06` }}
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center"
-                      style={{ backgroundColor: `${brandPrimary}15` }}
-                    >
-                      <Building2 className="w-4 h-4" style={{ color: brandPrimary }} />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-medium uppercase tracking-wide" style={{ color: brandPrimary }}>
-                        Provider
-                      </p>
-                      <p className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
-                        {tenantProfile?.business_name || 'Your Company'}
-                      </p>
-                    </div>
-                  </div>
-                  {tenantProfile?.business_email && (
-                    <div className="flex items-center gap-1.5 ml-10 text-[11px]" style={{ color: colors.utility.secondaryText }}>
-                      <Mail className="w-3 h-3" />
-                      <span>{tenantProfile.business_email}</span>
-                    </div>
-                  )}
-                  {tenantProfile?.business_phone && (
-                    <div className="flex items-center gap-1.5 ml-10 mt-0.5 text-[11px]" style={{ color: colors.utility.secondaryText }}>
-                      <Phone className="w-3 h-3" />
-                      <span>{tenantProfile.business_phone_country_code} {tenantProfile.business_phone}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Customer */}
-                <div
-                  className="p-3 rounded-xl"
-                  style={{ backgroundColor: `${brandSecondary}06` }}
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center"
-                      style={{ backgroundColor: `${brandSecondary}15` }}
-                    >
-                      <User className="w-4 h-4" style={{ color: brandSecondary }} />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-medium uppercase tracking-wide" style={{ color: brandSecondary }}>
-                        Customer
-                      </p>
-                      <p className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
-                        {buyerName || 'Not selected'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* ── Contract Details Card ── */}
-            <div
-              className="rounded-xl border overflow-hidden"
-              style={{
-                backgroundColor: colors.utility.secondaryBackground,
-                borderColor: `${colors.utility.primaryText}10`,
-              }}
-            >
-              <div
-                className="px-4 py-3 border-b flex items-center gap-2"
-                style={{ borderColor: `${colors.utility.primaryText}10` }}
-              >
-                <FileText className="w-4 h-4" style={{ color: brandPrimary }} />
-                <span className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
-                  Contract Details
-                </span>
-              </div>
-
-              <div className="p-4">
-                {/* Timeline */}
-                <div
-                  className="flex items-center gap-3 p-3 rounded-xl mb-4"
-                  style={{ backgroundColor: `${colors.utility.primaryText}04` }}
-                >
-                  <div className="text-center">
-                    <p className="text-[9px] uppercase tracking-wide" style={{ color: colors.utility.secondaryText }}>Start</p>
-                    <p className="text-xs font-bold" style={{ color: colors.utility.primaryText }}>{formatDate(startDate)}</p>
-                  </div>
-                  <div className="flex-1 flex items-center">
-                    <div className="flex-1 border-t border-dashed" style={{ borderColor: brandPrimary }} />
-                    <div
-                      className="mx-2 px-2 py-0.5 rounded-full text-[10px] font-bold"
-                      style={{ backgroundColor: `${brandPrimary}15`, color: brandPrimary }}
-                    >
-                      {formatDuration(durationValue, durationUnit)}
-                    </div>
-                    <div className="flex-1 border-t border-dashed" style={{ borderColor: brandPrimary }} />
-                  </div>
-                  <div className="text-center">
-                    <p className="text-[9px] uppercase tracking-wide" style={{ color: colors.utility.secondaryText }}>End</p>
-                    <p className="text-xs font-bold" style={{ color: colors.utility.primaryText }}>{formatDate(endDate)}</p>
-                  </div>
-                </div>
-
-                {/* Detail rows */}
-                <div className="space-y-2.5">
-                  {[
-                    { label: 'Billing Cycle', value: isMixed ? 'Mixed Cycles' : 'Unified Cycle' },
-                    { label: 'Currency', value: `${currency} (${getCurrencySymbol(currency)})` },
-                    { label: 'Payment Mode', value: paymentMode === 'emi' ? `EMI (${emiMonths} months)` : '100% Prepaid' },
-                    { label: 'Acceptance', value: acceptanceMethod === 'payment' ? 'Payment' : acceptanceMethod === 'signoff' ? 'Signoff' : acceptanceMethod === 'auto' ? 'Auto Accept' : '—' },
-                  ].map((row, i) => (
-                    <div key={i} className="flex items-center justify-between">
-                      <span className="text-xs" style={{ color: colors.utility.secondaryText }}>{row.label}</span>
-                      <span className="text-xs font-semibold" style={{ color: colors.utility.primaryText }}>{row.value}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* ── Financial Summary Card ── */}
-            <div
-              className="rounded-xl border overflow-hidden"
-              style={{
-                backgroundColor: colors.utility.secondaryBackground,
-                borderColor: `${colors.utility.primaryText}10`,
-              }}
-            >
-              <div
-                className="px-4 py-3 border-b flex items-center gap-2"
-                style={{ borderColor: `${colors.utility.primaryText}10` }}
-              >
-                <CreditCard className="w-4 h-4" style={{ color: brandPrimary }} />
-                <span className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
+            {/* ── Financial Summary (inline in paper) ── */}
+            {totals.billableCount > 0 && (
+              <div className="mt-10 pt-8 border-t" style={{ borderColor }}>
+                <h3 className="text-sm font-bold mb-4" style={{ color: colors.utility.primaryText }}>
                   Financial Summary
-                </span>
-              </div>
+                </h3>
 
-              <div className="p-4 space-y-2.5">
-                {/* Self View: show subtotal + tax breakdown */}
                 {isSelfView && (
-                  <>
-                    <div className="flex items-center justify-between">
+                  <div className="space-y-2 mb-3">
+                    <div className="flex justify-between">
                       <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
                         Subtotal ({totals.billableCount} item{totals.billableCount !== 1 ? 's' : ''})
                       </span>
@@ -688,7 +620,7 @@ const ReviewSendStep: React.FC<ReviewSendStepProps> = ({
                     </div>
 
                     {totals.selectedRates.map((rate) => (
-                      <div key={rate.id} className="flex items-center justify-between">
+                      <div key={rate.id} className="flex justify-between">
                         <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
                           {rate.name} ({rate.rate}%)
                         </span>
@@ -698,19 +630,19 @@ const ReviewSendStep: React.FC<ReviewSendStepProps> = ({
                       </div>
                     ))}
 
-                    <div className="border-t my-1" style={{ borderColor: `${colors.utility.primaryText}10` }} />
-                  </>
+                    <div className="border-t my-2" style={{ borderColor }} />
+                  </div>
                 )}
 
-                {/* Grand Total - always shown */}
+                {/* Grand Total */}
                 <div
-                  className="flex items-center justify-between p-3 rounded-xl"
+                  className="flex items-center justify-between p-4 rounded-xl"
                   style={{ backgroundColor: `${brandPrimary}08` }}
                 >
                   <span className="text-sm font-bold" style={{ color: colors.utility.primaryText }}>
                     {isSelfView ? 'Grand Total' : 'Contract Value'}
                   </span>
-                  <span className="text-xl font-bold" style={{ color: brandPrimary }}>
+                  <span className="text-2xl font-bold" style={{ color: brandPrimary }}>
                     {formatCurrency(totals.grandTotal, currency)}
                   </span>
                 </div>
@@ -718,7 +650,7 @@ const ReviewSendStep: React.FC<ReviewSendStepProps> = ({
                 {/* EMI note */}
                 {paymentMode === 'emi' && !isMixed && (
                   <div
-                    className="flex items-center justify-between p-2.5 rounded-lg"
+                    className="flex items-center justify-between mt-3 p-3 rounded-lg"
                     style={{ backgroundColor: `${colors.utility.primaryText}04` }}
                   >
                     <span className="text-[11px]" style={{ color: colors.utility.secondaryText }}>
@@ -729,45 +661,51 @@ const ReviewSendStep: React.FC<ReviewSendStepProps> = ({
                     </span>
                   </div>
                 )}
-
-                {/* Payment info */}
-                <div className="flex items-center gap-2 pt-1">
-                  <Zap className="w-3.5 h-3.5" style={{ color: brandPrimary }} />
-                  <span className="text-[11px]" style={{ color: colors.utility.secondaryText }}>
-                    {paymentMode === 'emi'
-                      ? '1st invoice on acceptance, rest monthly'
-                      : 'Invoice generated when contract is accepted'}
-                  </span>
-                </div>
               </div>
-            </div>
+            )}
+          </div>
+        </div>
+      </div>
 
-            {/* ── Action Buttons ── */}
-            <div className="flex gap-3 mt-auto pt-2">
-              <button
-                type="button"
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border text-sm font-semibold transition-all hover:opacity-90"
-                style={{
-                  borderColor: `${colors.utility.primaryText}20`,
-                  color: colors.utility.primaryText,
-                  backgroundColor: colors.utility.secondaryBackground,
-                }}
-              >
-                <Save className="w-4 h-4" />
-                Save as Draft
-              </button>
-              <button
-                type="button"
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold transition-all hover:opacity-90 shadow-sm"
-                style={{
-                  backgroundColor: brandPrimary,
-                  color: '#FFFFFF',
-                }}
-              >
-                <actionButton.icon className="w-4 h-4" />
-                {actionButton.label}
-              </button>
-            </div>
+      {/* ═══ FLOATING ACTION ISLAND ═══ */}
+      <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20">
+        <div
+          className="rounded-full flex items-center gap-6 shadow-2xl backdrop-blur-sm"
+          style={{
+            backgroundColor: isDarkMode ? 'rgba(30, 41, 59, 0.95)' : 'rgba(15, 23, 42, 0.92)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            padding: '10px 12px 10px 28px',
+          }}
+        >
+          {/* Info section */}
+          <div className="flex items-center gap-4 text-white">
+            <span className="text-xs opacity-60">Value</span>
+            <span className="bg-white/10 px-3.5 py-1 rounded-full font-bold text-sm">
+              {formatCurrency(totals.grandTotal, currency)}
+            </span>
+            <div className="h-5 w-px bg-white/20" />
+            <span className="text-xs opacity-60">
+              Status: <b className="opacity-100">{contractStatus}</b>
+            </span>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-full text-xs font-semibold text-white/70 hover:text-white transition-all hover:bg-white/10"
+            >
+              <Save className="w-3.5 h-3.5" />
+              Save Draft
+            </button>
+            <button
+              type="button"
+              className="flex items-center gap-1.5 px-5 py-2.5 rounded-full text-sm font-bold text-white transition-all hover:opacity-90 shadow-lg"
+              style={{ backgroundColor: brandPrimary }}
+            >
+              <actionButton.icon className="w-4 h-4" />
+              {actionButton.label}
+            </button>
           </div>
         </div>
       </div>
