@@ -388,18 +388,14 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
               )}
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-sm font-bold" style={{ color: colors.brand.primary }}>
-                {formatCurrency(totals.subtotal, currency)}
-              </span>
               {/* FlyBy Dropdown */}
               <div className="relative" ref={flyByMenuRef}>
                 <button
                   onClick={() => setShowFlyByMenu(!showFlyByMenu)}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all border"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all"
                   style={{
-                    borderColor: showFlyByMenu ? colors.brand.primary : `${colors.utility.primaryText}20`,
-                    backgroundColor: showFlyByMenu ? `${colors.brand.primary}10` : 'transparent',
-                    color: showFlyByMenu ? colors.brand.primary : colors.utility.secondaryText,
+                    backgroundColor: colors.utility.secondaryBackground,
+                    color: colors.utility.primaryText,
                   }}
                 >
                   <Zap className="w-3.5 h-3.5" />
