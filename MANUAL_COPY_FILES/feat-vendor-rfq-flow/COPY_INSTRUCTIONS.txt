@@ -1,0 +1,48 @@
+Feature: Vendor Contract RFQ Flow
+Branch: feat-vendor-rfq-flow
+Date: 2026-01-30
+
+Submodules Affected: contractnest-ui
+
+Files Changed (9 files):
+  1. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+     - Added wizardMode state, dynamic step arrays (CONTRACT_STEPS vs RFQ_STEPS)
+     - Step ID-based routing instead of index-based
+     - vendorIds/vendorNames state for multi-vendor RFQ
+     - Dynamic progress dots, headings, FloatingActionIsland props
+     - Success screen handles RFQ messaging
+
+  2. contractnest-ui/src/components/contracts/ContractWizard/FloatingActionIsland.tsx
+     - Added sendButtonText prop (default: 'Send Contract')
+     - Added showTotal prop (hides total value section when false)
+
+  3. contractnest-ui/src/components/contracts/ContractWizard/steps/PathSelectionStep.tsx
+     - Added WizardMode type export ('contract' | 'rfq')
+     - Two-tier selection: RFQ/Contract choice (vendor contracts only) + Template/Scratch
+
+  4. contractnest-ui/src/components/contracts/ContractWizard/steps/BuyerSelectionStep.tsx
+     - Added multiSelect, selectedVendorIds, selectedVendorNames, onVendorsChange props
+     - Multi-select mode: checkboxes, selected vendor chips, toggle handler
+     - Dynamic heading for RFQ vendor selection
+
+  5. contractnest-ui/src/components/contracts/ContractWizard/steps/ContractDetailsStep.tsx
+     - Added title, subtitle props for dynamic heading
+
+  6. contractnest-ui/src/components/contracts/ContractWizard/steps/ServiceBlocksStep.tsx
+     - Added rfqMode prop: hides block library, FlyBy only, passes hidePricing to children
+
+  7. contractnest-ui/src/components/contracts/ContractWizard/steps/ReviewSendStep.tsx
+     - Added rfqMode, vendorNames props
+     - Hides pricing, payment, acceptance sections in RFQ mode
+     - Shows vendor list instead of single buyer
+
+  8. contractnest-ui/src/components/contracts/ContractWizard/components/ContractPreviewPanel.tsx
+     - Added hidePricing prop: hides qty badge, price, totals footer
+
+  9. contractnest-ui/src/components/catalog-studio/FlyByBlockCard.tsx
+     - Added hidePricing prop: overrides hasPricing/hasQuantity/hasBillingCycle flags
+
+Copy Commands (PowerShell):
+  cd "D:\projects\core projects\ContractNest\contractnest-combined"
+  Copy-Item "MANUAL_COPY_FILES\feat-vendor-rfq-flow\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+  Write-Host "All files copied!" -ForegroundColor Green
