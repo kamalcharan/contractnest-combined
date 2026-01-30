@@ -306,32 +306,35 @@ const ReviewSendStep: React.FC<ReviewSendStepProps> = ({
                 </div>
               </div>
 
-              {/* Quick stats bar */}
+              {/* Compact info strip */}
               <div
-                className="flex items-center divide-x px-2 py-2.5"
-                style={{
-                  backgroundColor: colors.utility.secondaryBackground,
-                  divideColor: `${colors.utility.primaryText}10`,
-                }}
+                className="flex items-center gap-3 px-6 py-2.5"
+                style={{ backgroundColor: colors.utility.secondaryBackground }}
               >
-                {[
-                  { label: 'Duration', value: formatDuration(durationValue, durationUnit), icon: Clock },
-                  { label: 'Blocks', value: `${selectedBlocks.length}`, icon: Package },
-                  { label: 'Billing', value: isMixed ? 'Mixed' : 'Unified', icon: Repeat },
-                  { label: 'Value', value: formatCurrency(totals.grandTotal, currency), icon: CreditCard },
-                ].map((stat, i) => (
-                  <div key={i} className="flex-1 flex items-center justify-center gap-2 px-3">
-                    <stat.icon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: brandPrimary }} />
-                    <div>
-                      <p className="text-[9px] uppercase tracking-wide" style={{ color: colors.utility.secondaryText }}>
-                        {stat.label}
-                      </p>
-                      <p className="text-xs font-bold" style={{ color: colors.utility.primaryText }}>
-                        {stat.value}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                <div className="flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5" style={{ color: brandPrimary }} />
+                  <span className="text-xs font-semibold" style={{ color: colors.utility.primaryText }}>
+                    {formatDuration(durationValue, durationUnit)}
+                  </span>
+                </div>
+                <div className="w-px h-4" style={{ backgroundColor: `${colors.utility.primaryText}15` }} />
+                <div className="flex items-center gap-1.5">
+                  <CreditCard className="w-3.5 h-3.5" style={{ color: brandPrimary }} />
+                  <span className="text-xs font-semibold" style={{ color: colors.utility.primaryText }}>
+                    {isMixed
+                      ? 'Mixed Billing'
+                      : paymentMode === 'emi'
+                        ? `EMI · ${emiMonths} months`
+                        : '100% Prepaid'}
+                  </span>
+                </div>
+                <div className="w-px h-4" style={{ backgroundColor: `${colors.utility.primaryText}15` }} />
+                <div className="flex items-center gap-1.5">
+                  <Zap className="w-3.5 h-3.5" style={{ color: brandPrimary }} />
+                  <span className="text-xs font-semibold" style={{ color: brandPrimary }}>
+                    {formatCurrency(totals.grandTotal, currency)}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -364,102 +367,17 @@ const ReviewSendStep: React.FC<ReviewSendStepProps> = ({
                     </span>
                   </div>
 
-                  {/* Block cards - grid for pricing, stacked for content */}
-                  {hasPricing ? (
-                    <div className="grid grid-cols-2 gap-3">
-                      {blocks.map((block) => {
-                        const effectivePrice = block.config?.customPrice ?? block.price;
-                        const lineTotal = block.unlimited ? effectivePrice : effectivePrice * block.quantity;
-                        const blockPayType = perBlockPaymentType[block.id] || 'prepaid';
+                  {/* Block cards - single column, full width for all types */}
+                  <div className="space-y-3">
+                    {blocks.map((block) => {
+                      const effectivePrice = block.config?.customPrice ?? block.price;
+                      const lineTotal = block.unlimited ? effectivePrice : effectivePrice * block.quantity;
+                      const blockPayType = perBlockPaymentType[block.id] || 'prepaid';
 
-                        return (
-                          <div
-                            key={block.id}
-                            className="rounded-xl border p-4 transition-all hover:shadow-sm"
-                            style={{
-                              backgroundColor: colors.utility.secondaryBackground,
-                              borderColor: `${colors.utility.primaryText}10`,
-                              borderLeftWidth: '3px',
-                              borderLeftColor: catColor,
-                            }}
-                          >
-                            {/* Block name + FlyBy badge */}
-                            <div className="flex items-start justify-between gap-2 mb-2">
-                              <h4 className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
-                                {block.name || 'Untitled'}
-                              </h4>
-                              {block.isFlyBy && (
-                                <span
-                                  className="text-[9px] px-1.5 py-0.5 rounded font-bold flex-shrink-0"
-                                  style={{ backgroundColor: '#F59E0B20', color: '#F59E0B' }}
-                                >
-                                  FlyBy
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Qty + Cycle row */}
-                            <div className="flex items-center gap-2 mb-2">
-                              <span
-                                className="text-[10px] px-2 py-0.5 rounded-md font-medium"
-                                style={{ backgroundColor: `${colors.utility.primaryText}08`, color: colors.utility.secondaryText }}
-                              >
-                                Qty: {block.unlimited ? '∞' : block.quantity}
-                              </span>
-                              <span
-                                className="text-[10px] px-2 py-0.5 rounded-md font-medium"
-                                style={{ backgroundColor: `${brandPrimary}10`, color: brandPrimary }}
-                              >
-                                {getCycleLabel(block.cycle)}
-                              </span>
-                              {isMixed && (
-                                <span
-                                  className="text-[10px] px-2 py-0.5 rounded-md font-medium"
-                                  style={{
-                                    backgroundColor: blockPayType === 'prepaid' ? '#10B98115' : '#F59E0B15',
-                                    color: blockPayType === 'prepaid' ? '#10B981' : '#F59E0B',
-                                  }}
-                                >
-                                  {blockPayType === 'prepaid' ? 'Prepaid' : 'Postpaid'}
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Description if enabled */}
-                            {block.config?.showDescription && block.description && (
-                              <p
-                                className="text-[11px] mb-2 leading-relaxed"
-                                style={{ color: colors.utility.secondaryText }}
-                              >
-                                {block.description}
-                              </p>
-                            )}
-
-                            {/* Pricing - Self View only */}
-                            {isSelfView && (
-                              <div
-                                className="flex items-center justify-between pt-2 mt-auto border-t"
-                                style={{ borderColor: `${colors.utility.primaryText}08` }}
-                              >
-                                <span className="text-[11px]" style={{ color: colors.utility.secondaryText }}>
-                                  {formatCurrency(effectivePrice, currency)}/{block.unlimited ? 'unit' : 'ea'}
-                                </span>
-                                <span className="text-sm font-bold" style={{ color: catColor }}>
-                                  {formatCurrency(lineTotal, currency)}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    /* Content blocks: text, document, checklist, video, image */
-                    <div className="space-y-3">
-                      {blocks.map((block) => (
+                      return (
                         <div
                           key={block.id}
-                          className="rounded-xl border p-4"
+                          className="rounded-xl border p-4 transition-all hover:shadow-sm"
                           style={{
                             backgroundColor: colors.utility.secondaryBackground,
                             borderColor: `${colors.utility.primaryText}10`,
@@ -467,44 +385,97 @@ const ReviewSendStep: React.FC<ReviewSendStepProps> = ({
                             borderLeftColor: catColor,
                           }}
                         >
-                          {/* Block header */}
-                          <div className="flex items-start justify-between gap-2 mb-2">
-                            <h4 className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
-                              {block.name || 'Untitled'}
-                            </h4>
-                            <div className="flex items-center gap-1.5">
-                              {block.isFlyBy && (
-                                <span
-                                  className="text-[9px] px-1.5 py-0.5 rounded font-bold"
-                                  style={{ backgroundColor: '#F59E0B20', color: '#F59E0B' }}
-                                >
-                                  FlyBy
-                                </span>
-                              )}
-                              {categoryId === 'document' && block.config?.fileType && (
-                                <span
-                                  className="text-[9px] px-1.5 py-0.5 rounded font-medium uppercase"
-                                  style={{ backgroundColor: `${catColor}12`, color: catColor }}
-                                >
-                                  {block.config.fileType}
-                                </span>
+                          {/* Block header row */}
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1.5">
+                                <h4 className="text-sm font-semibold truncate" style={{ color: colors.utility.primaryText }}>
+                                  {block.name || 'Untitled'}
+                                </h4>
+                                {block.isFlyBy && (
+                                  <span
+                                    className="text-[9px] px-1.5 py-0.5 rounded font-bold flex-shrink-0"
+                                    style={{ backgroundColor: '#F59E0B20', color: '#F59E0B' }}
+                                  >
+                                    FlyBy
+                                  </span>
+                                )}
+                                {categoryId === 'document' && block.config?.fileType && (
+                                  <span
+                                    className="text-[9px] px-1.5 py-0.5 rounded font-medium uppercase flex-shrink-0"
+                                    style={{ backgroundColor: `${catColor}12`, color: catColor }}
+                                  >
+                                    {block.config.fileType}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Tags row - for pricing blocks */}
+                              {hasPricing && (
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className="text-[10px] px-2 py-0.5 rounded-md font-medium"
+                                    style={{ backgroundColor: `${colors.utility.primaryText}08`, color: colors.utility.secondaryText }}
+                                  >
+                                    Qty: {block.unlimited ? '∞' : block.quantity}
+                                  </span>
+                                  <span
+                                    className="text-[10px] px-2 py-0.5 rounded-md font-medium"
+                                    style={{ backgroundColor: `${brandPrimary}10`, color: brandPrimary }}
+                                  >
+                                    {getCycleLabel(block.cycle)}
+                                  </span>
+                                  {isMixed && (
+                                    <span
+                                      className="text-[10px] px-2 py-0.5 rounded-md font-medium"
+                                      style={{
+                                        backgroundColor: blockPayType === 'prepaid' ? '#10B98115' : '#F59E0B15',
+                                        color: blockPayType === 'prepaid' ? '#10B981' : '#F59E0B',
+                                      }}
+                                    >
+                                      {blockPayType === 'prepaid' ? 'Prepaid' : 'Postpaid'}
+                                    </span>
+                                  )}
+                                </div>
                               )}
                             </div>
+
+                            {/* Price on the right - Self View only, pricing blocks only */}
+                            {isSelfView && hasPricing && (
+                              <div className="text-right flex-shrink-0">
+                                <p className="text-sm font-bold" style={{ color: catColor }}>
+                                  {formatCurrency(lineTotal, currency)}
+                                </p>
+                                <p className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
+                                  {formatCurrency(effectivePrice, currency)}/{block.unlimited ? 'unit' : 'ea'}
+                                </p>
+                              </div>
+                            )}
                           </div>
 
-                          {/* Content body */}
-                          {(block.config?.content || block.description) && (
+                          {/* Description - for pricing blocks with showDescription */}
+                          {hasPricing && block.config?.showDescription && block.description && (
+                            <p
+                              className="text-[11px] mt-2.5 pt-2.5 leading-relaxed border-t"
+                              style={{ color: colors.utility.secondaryText, borderColor: `${colors.utility.primaryText}08` }}
+                            >
+                              {block.description}
+                            </p>
+                          )}
+
+                          {/* Content body - for text/video/image/document blocks */}
+                          {!hasPricing && (block.config?.content || block.description) && (
                             <div
-                              className="text-xs leading-relaxed whitespace-pre-wrap"
+                              className="text-xs mt-2 leading-relaxed whitespace-pre-wrap"
                               style={{ color: colors.utility.secondaryText }}
                             >
                               {block.config?.content || block.description}
                             </div>
                           )}
 
-                          {/* Checklist items placeholder */}
+                          {/* Checklist items */}
                           {categoryId === 'checklist' && block.config?.notes && (
-                            <div className="mt-2 space-y-1.5">
+                            <div className="mt-2.5 space-y-1.5">
                               {block.config.notes.split('\n').filter(Boolean).map((item, idx) => (
                                 <div key={idx} className="flex items-center gap-2">
                                   <div
@@ -519,9 +490,9 @@ const ReviewSendStep: React.FC<ReviewSendStepProps> = ({
                             </div>
                           )}
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      );
+                    })}
+                  </div>
                 </div>
               );
             })}
