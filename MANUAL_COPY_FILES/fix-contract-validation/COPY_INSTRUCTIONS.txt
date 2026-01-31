@@ -2,15 +2,19 @@
 COPY INSTRUCTIONS -- fix-contract-validation
 ===============================================
 
-Feature: Fix contract creation - validation errors + title/name mapping
+Feature: Fix contract creation, list display, stats, and sidebar badge counts
 Branch: fix-contract-validation
 
 Submodules Affected: contractnest-ui, contractnest-api
 
-Files (3 total):
+Files (5 total):
 -------------------------------------------------
 1. contractnest-api/src/controllers/contractController.ts
-   - Debug logging removed (back to clean state)
+   - List endpoint: transforms RPC response to match UI ContractListResponse
+     (items, total_count, page_info with has_next_page/has_prev_page)
+   - List endpoint: maps DB 'name' field to UI 'title' field
+   - Stats endpoint: transforms RPC response to match UI ContractStatsResponse
+     (total_count->total, financials.total_value->total_value)
 
 2. contractnest-api/src/services/contractService.ts
    - Maps 'title' -> 'name' before forwarding to edge function (DB RPC expects 'name')
@@ -25,8 +29,19 @@ Files (3 total):
    - Vendors use contact_id + contact_classification pattern
    - Buyer uses contact_id + contact_classification at top level
 
+4. contractnest-ui/src/pages/contracts/hub/index.tsx
+   - Fixed type count mapping: byType['client'/'vendor'/'partner'] instead of
+     byType['service'/'purchase_order'/'partnership']
+
+5. contractnest-ui/src/components/layout/Sidebar.tsx
+   - Import useContractStats hook
+   - Replace hardcoded badge counts (contracts: 3) with real stats (contractStats?.total)
+   - Other badge counts set to 0 (placeholder until features implemented)
+
 Copy Commands (PowerShell):
 -------------------------------------------------
 Copy-Item "MANUAL_COPY_FILES\fix-contract-validation\contractnest-api\src\controllers\contractController.ts" -Destination "contractnest-api\src\controllers\contractController.ts" -Force
 Copy-Item "MANUAL_COPY_FILES\fix-contract-validation\contractnest-api\src\services\contractService.ts" -Destination "contractnest-api\src\services\contractService.ts" -Force
 Copy-Item "MANUAL_COPY_FILES\fix-contract-validation\contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\fix-contract-validation\contractnest-ui\src\pages\contracts\hub\index.tsx" -Destination "contractnest-ui\src\pages\contracts\hub\index.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\fix-contract-validation\contractnest-ui\src\components\layout\Sidebar.tsx" -Destination "contractnest-ui\src\components\layout\Sidebar.tsx" -Force
