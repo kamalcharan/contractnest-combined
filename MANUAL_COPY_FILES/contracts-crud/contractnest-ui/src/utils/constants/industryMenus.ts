@@ -80,13 +80,28 @@ export const defaultMenuItems: MenuItem[] = [
     ]
   },
   */
-  // Contracts Hub — unified entry, type filtering via left rail inside the page
+  // Contracts menu
   {
     id: 'contracts',
-    label: 'All Contracts',
+    label: 'Contracts',
     icon: 'FileText',
-    path: '/contracts',
-    hasSubmenu: false
+    path: '/contracts/create/client',
+    hasSubmenu: true,
+    submenuItems: [
+      { id: 'contracts-client', label: 'Client Contracts', icon: 'ShoppingCart', path: '/contracts/create/client' },
+      { id: 'contracts-vendor', label: 'Vendor Contracts', icon: 'Package', path: '/contracts/create/vendor' },
+      { id: 'contracts-partner', label: 'Partner Contracts', icon: 'Handshake', path: '/contracts/create/partner' },
+      { id: 'contracts-all', label: 'All Contracts', icon: 'FileText', path: '/contracts' },
+      { id: 'contracts-preview', label: 'Contract Preview', icon: 'Eye', path: '/contracts/preview' },
+      { id: 'contracts-invite', label: 'Invite Sellers', icon: 'UserPlus', path: '/contracts/invite' }
+      // HIDDEN: PDF View, Drafts, Pending Acceptance, Active Contracts
+      /*
+      { id: 'contracts-pdf', label: 'PDF View', icon: 'FileSearch', path: '/contracts/pdf' },
+      { id: 'contracts-drafts', label: 'Drafts', icon: 'FileEdit', path: '/service-contracts/contracts?status=draft' },
+      { id: 'contracts-pending', label: 'Pending Acceptance', icon: 'Clock', path: '/service-contracts/contracts?status=pending' },
+      { id: 'contracts-active', label: 'Active Contracts', icon: 'CheckCircle', path: '/service-contracts/contracts?status=active' }
+      */
+    ]
   },
   // HIDDEN: VaNi menu - commented out for now
   /*
