@@ -1,30 +1,35 @@
 ===============================================
 ITERATION: 1 — ContractsHub + Data Layer
-DATE: 2025-01-30
 ===============================================
 
-FILES THIS ITERATION:
----------------------
-NEW FILES (copy directly):
-1. contractnest-ui/src/types/contracts.ts
-2. contractnest-ui/src/hooks/queries/useContractQueries.ts
-3. contractnest-ui/src/pages/contracts/hub/index.tsx
+ALL FILES ARE COMPLETE — NO PATCHES NEEDED
+Just copy each file to replace the existing one.
 
-MANUAL PATCH FILES (apply changes by hand):
-4. contractnest-ui/src/services/serviceURLs.contracts.ts       → paste CONTRACTS block into serviceURLs.ts
-5. contractnest-ui/src/utils/constants/industryMenus.contracts-hub.patch.ts  → replace contracts menu
-6. contractnest-ui/src/App.contracts-hub.patch.ts              → add import + route block
-
-COPY COMMANDS (new files):
+FILES (6 total):
 ---------------------
+1. contractnest-ui/src/types/contracts.ts          — NEW file (TypeScript types)
+2. contractnest-ui/src/hooks/queries/useContractQueries.ts — NEW file (TanStack Query hooks)
+3. contractnest-ui/src/pages/contracts/hub/index.tsx       — NEW file (ContractsHub page)
+4. contractnest-ui/src/services/serviceURLs.ts             — MODIFIED (added CONTRACTS block)
+5. contractnest-ui/src/utils/constants/industryMenus.ts    — MODIFIED (menu renamed to All Contracts)
+6. contractnest-ui/src/App.tsx                             — MODIFIED (added /contracts route + import)
+
+COPY COMMANDS (PowerShell):
+---------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# New files
 Copy-Item "MANUAL_COPY_FILES\contracts-crud\contractnest-ui\src\types\contracts.ts" -Destination "contractnest-ui\src\types\contracts.ts" -Force
 Copy-Item "MANUAL_COPY_FILES\contracts-crud\contractnest-ui\src\hooks\queries\useContractQueries.ts" -Destination "contractnest-ui\src\hooks\queries\useContractQueries.ts" -Force
 New-Item -ItemType Directory -Path "contractnest-ui\src\pages\contracts\hub" -Force
 Copy-Item "MANUAL_COPY_FILES\contracts-crud\contractnest-ui\src\pages\contracts\hub\index.tsx" -Destination "contractnest-ui\src\pages\contracts\hub\index.tsx" -Force
 
-MANUAL PATCHES (apply by hand):
----------------------
-See the 3 .patch.ts files in MANUAL_COPY_FILES/contracts-crud/ for exact before/after diffs.
+# Modified files (full replacements)
+Copy-Item "MANUAL_COPY_FILES\contracts-crud\contractnest-ui\src\services\serviceURLs.ts" -Destination "contractnest-ui\src\services\serviceURLs.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\contracts-crud\contractnest-ui\src\utils\constants\industryMenus.ts" -Destination "contractnest-ui\src\utils\constants\industryMenus.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\contracts-crud\contractnest-ui\src\App.tsx" -Destination "contractnest-ui\src\App.tsx" -Force
+
+Write-Host "All 6 files copied!" -ForegroundColor Green
 
 TEST:
 ---------------------
