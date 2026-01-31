@@ -3,6 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
+import VaNiLoader from '@/components/common/VaNiLoader';
 import {
   FileText,
   Users,
@@ -10,21 +11,16 @@ import {
   Handshake,
   Plus,
   Search,
-  Filter,
-  ChevronRight,
   Clock,
   CheckCircle,
-  AlertCircle,
   XCircle,
   Eye,
-  MoreHorizontal,
   RefreshCw,
 } from 'lucide-react';
 import { useContracts, useContractStats } from '@/hooks/queries/useContractQueries';
 import type {
   ContractListFilters,
   ContractTypeFilter,
-  ContractStatus,
   Contract,
 } from '@/types/contracts';
 import { CONTRACT_STATUS_COLORS } from '@/types/contracts';
@@ -67,7 +63,7 @@ const TypeRail: React.FC<TypeRailProps> = ({ activeType, onTypeChange, stats, co
       style={{
         width: 220,
         minWidth: 220,
-        borderRight: `1px solid ${colors.utility.primaryText}12`,
+        borderRight: `1px solid ${colors.utility.primaryText}20`,
         background: `${colors.utility.secondaryBackground}CC`,
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
@@ -160,7 +156,7 @@ const TypeRail: React.FC<TypeRailProps> = ({ activeType, onTypeChange, stats, co
       <div
         style={{
           padding: '12px',
-          borderTop: `1px solid ${colors.utility.primaryText}10`,
+          borderTop: `1px solid ${colors.utility.primaryText}20`,
         }}
       >
         <p
@@ -188,7 +184,7 @@ const TypeRail: React.FC<TypeRailProps> = ({ activeType, onTypeChange, stats, co
                 gap: 8,
                 padding: '8px 12px',
                 borderRadius: 8,
-                border: `1px solid ${colors.utility.primaryText}10`,
+                border: `1px solid ${colors.utility.primaryText}20`,
                 background: 'transparent',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
@@ -248,7 +244,7 @@ const PipelineBar: React.FC<PipelineBarProps> = ({ statusCounts, activeStatus, o
         borderRadius: 10,
         overflow: 'hidden',
         background: `${colors.utility.secondaryBackground}`,
-        border: `1px solid ${colors.utility.primaryText}10`,
+        border: `1px solid ${colors.utility.primaryText}20`,
       }}
     >
       {PIPELINE_STAGES.map((stage) => {
@@ -443,7 +439,7 @@ const ContractsTable: React.FC<ContractsTableProps> = ({ contracts, colors, onRo
       style={{
         borderRadius: 10,
         overflow: 'hidden',
-        border: `1px solid ${colors.utility.primaryText}10`,
+        border: `1px solid ${colors.utility.primaryText}20`,
         background: colors.utility.secondaryBackground,
       }}
     >
@@ -462,7 +458,7 @@ const ContractsTable: React.FC<ContractsTableProps> = ({ contracts, colors, onRo
                   letterSpacing: '0.5px',
                   color: colors.utility.secondaryText,
                   background: `${colors.utility.primaryText}06`,
-                  borderBottom: `1px solid ${colors.utility.primaryText}10`,
+                  borderBottom: `1px solid ${colors.utility.primaryText}20`,
                 }}
               >
                 {hdr}
@@ -655,9 +651,12 @@ const ContractsHubPage: React.FC = () => {
     navigate(`/contracts/${id}`);
   };
 
+  // ── Derive whether to show empty state (no data + error = treat as empty) ──
+  const showEmptyState = (!isLoading && contracts.length === 0) || (isError && !contractsData);
+
   // ── Render ──
   return (
-    <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', height: '100%', overflow: 'hidden', background: colors.utility.primaryBackground }}>
       {/* Left: Type Rail */}
       <TypeRail
         activeType={activeType}
@@ -705,7 +704,7 @@ const ContractsHubPage: React.FC = () => {
                 gap: 6,
                 padding: '8px 14px',
                 borderRadius: 8,
-                border: `1px solid ${colors.utility.primaryText}14`,
+                border: `1px solid ${colors.utility.primaryText}20`,
                 background: `${colors.utility.primaryText}06`,
               }}
             >
@@ -733,7 +732,7 @@ const ContractsHubPage: React.FC = () => {
               style={{
                 padding: '8px 12px',
                 borderRadius: 8,
-                border: `1px solid ${colors.utility.primaryText}14`,
+                border: `1px solid ${colors.utility.primaryText}20`,
                 background: 'transparent',
                 cursor: 'pointer',
                 color: colors.utility.secondaryText,
@@ -777,64 +776,24 @@ const ContractsHubPage: React.FC = () => {
           />
         </div>
 
-        {/* Content: Loading / Error / Empty / Table */}
-        {isLoading ? (
+        {/* Content: Loading / Empty / Table */}
+        {isLoading && !contractsData ? (
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               padding: 80,
-              color: colors.utility.secondaryText,
-              fontSize: 14,
             }}
           >
-            <RefreshCw size={20} style={{ marginRight: 8, animation: 'spin 1s linear infinite' }} />
-            Loading contracts...
+            <VaNiLoader />
           </div>
-        ) : isError ? (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: 80,
-              textAlign: 'center',
-            }}
-          >
-            <AlertCircle size={40} style={{ color: colors.semantic.error, marginBottom: 12 }} />
-            <p style={{ fontSize: 15, fontWeight: 500, color: colors.utility.primaryText, marginBottom: 4 }}>
-              Failed to load contracts
-            </p>
-            <p style={{ fontSize: 13, color: colors.utility.secondaryText, marginBottom: 16 }}>
-              Check your connection and try again.
-            </p>
-            <button
-              onClick={() => refetch()}
-              style={{
-                padding: '8px 20px',
-                borderRadius: 8,
-                border: `1px solid ${colors.utility.primaryText}14`,
-                background: 'transparent',
-                color: colors.utility.primaryText,
-                fontSize: 13,
-                fontWeight: 500,
-                cursor: 'pointer',
-              }}
-            >
-              Retry
-            </button>
-          </div>
-        ) : contracts.length === 0 ? (
+        ) : showEmptyState ? (
           <EmptyState typeFilter={activeType} colors={colors} onCreateClick={handleCreateClick} />
         ) : (
           <ContractsTable contracts={contracts} colors={colors} onRowClick={handleRowClick} />
         )}
       </div>
-
-      {/* Inline keyframe for spinner */}
-      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 };

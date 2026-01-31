@@ -4,7 +4,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
-import toast from 'react-hot-toast';
 import api from '@/services/api';
 import { API_ENDPOINTS } from '@/services/serviceURLs';
 import { captureException } from '@/utils/sentry';
@@ -81,8 +80,8 @@ export const useContracts = (
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
     refetchOnReconnect: true,
-    retry: 3,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    retry: 1,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
     networkMode: 'online',
     structuralSharing: true,
   });
@@ -145,8 +144,8 @@ export const useContractStats = (options?: { enabled?: boolean }) => {
     enabled: !!currentTenant?.id && (options?.enabled !== false),
     staleTime: 3 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
-    retry: 3,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    retry: 1,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
     refetchOnWindowFocus: false,
     refetchOnReconnect: true,
     networkMode: 'online',
@@ -164,7 +163,7 @@ export const useContractStats = (options?: { enabled?: boolean }) => {
 export const useContractOperations = () => {
   const { currentTenant } = useAuth();
   const queryClient = useQueryClient();
-  const { toast: shadcnToast } = useToast();
+  const { toast } = useToast();
 
   // ── Create ──
   const createContractMutation = useMutation({
@@ -186,12 +185,7 @@ export const useContractOperations = () => {
       queryClient.invalidateQueries({ queryKey: contractKeys.stats() });
       queryClient.setQueryData(contractKeys.detail(createdContract.id), createdContract);
 
-      toast.success('Contract created successfully', {
-        duration: 3000,
-        style: { background: '#10B981', color: '#FFF' },
-      });
-
-      shadcnToast({
+      toast({
         title: 'Success',
         description: `Contract "${createdContract.title}" has been created`,
       });
@@ -204,12 +198,7 @@ export const useContractOperations = () => {
         extra: { tenantId: currentTenant?.id, errorMessage },
       });
 
-      toast.error(`Create Error: ${errorMessage}`, {
-        duration: 4000,
-        style: { background: '#EF4444', color: '#FFF' },
-      });
-
-      shadcnToast({
+      toast({
         variant: 'destructive',
         title: 'Create Failed',
         description: errorMessage,
@@ -247,12 +236,7 @@ export const useContractOperations = () => {
       queryClient.invalidateQueries({ queryKey: contractKeys.lists() });
       queryClient.invalidateQueries({ queryKey: contractKeys.stats() });
 
-      toast.success('Contract updated successfully', {
-        duration: 3000,
-        style: { background: '#10B981', color: '#FFF' },
-      });
-
-      shadcnToast({
+      toast({
         title: 'Success',
         description: `Contract "${updatedContract.title}" has been updated`,
       });
@@ -269,12 +253,7 @@ export const useContractOperations = () => {
         extra: { tenantId: currentTenant?.id, errorMessage, httpStatus: status },
       });
 
-      toast.error(status === 409 ? 'Version conflict — refresh and retry' : `Update Error: ${errorMessage}`, {
-        duration: 5000,
-        style: { background: '#EF4444', color: '#FFF' },
-      });
-
-      shadcnToast({
+      toast({
         variant: 'destructive',
         title: status === 409 ? 'Version Conflict' : 'Update Failed',
         description: errorMessage,
@@ -307,9 +286,9 @@ export const useContractOperations = () => {
       queryClient.invalidateQueries({ queryKey: contractKeys.lists() });
       queryClient.invalidateQueries({ queryKey: contractKeys.stats() });
 
-      toast.success(`Status changed to ${updatedContract.status.replace(/_/g, ' ')}`, {
-        duration: 3000,
-        style: { background: '#10B981', color: '#FFF' },
+      toast({
+        title: 'Status Updated',
+        description: `Status changed to ${updatedContract.status.replace(/_/g, ' ')}`,
       });
     },
     onError: (error: any) => {
@@ -320,9 +299,10 @@ export const useContractOperations = () => {
         extra: { tenantId: currentTenant?.id, errorMessage },
       });
 
-      toast.error(`Status Error: ${errorMessage}`, {
-        duration: 4000,
-        style: { background: '#EF4444', color: '#FFF' },
+      toast({
+        variant: 'destructive',
+        title: 'Status Update Failed',
+        description: errorMessage,
       });
     },
   });
@@ -345,12 +325,7 @@ export const useContractOperations = () => {
       queryClient.invalidateQueries({ queryKey: contractKeys.lists() });
       queryClient.invalidateQueries({ queryKey: contractKeys.stats() });
 
-      toast.success('Contract deleted', {
-        duration: 3000,
-        style: { background: '#10B981', color: '#FFF' },
-      });
-
-      shadcnToast({
+      toast({
         title: 'Deleted',
         description: 'Contract has been removed',
       });
@@ -363,9 +338,10 @@ export const useContractOperations = () => {
         extra: { tenantId: currentTenant?.id, errorMessage },
       });
 
-      toast.error(`Delete Error: ${errorMessage}`, {
-        duration: 4000,
-        style: { background: '#EF4444', color: '#FFF' },
+      toast({
+        variant: 'destructive',
+        title: 'Delete Failed',
+        description: errorMessage,
       });
     },
   });
