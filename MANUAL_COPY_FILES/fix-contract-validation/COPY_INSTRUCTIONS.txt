@@ -2,7 +2,7 @@
 COPY INSTRUCTIONS -- fix-contract-validation
 ===============================================
 
-Feature: Fix 400 Bad Request on contract creation + add debug logging
+Feature: Fix 400 Bad Request on contract creation
 Branch: fix-contract-validation
 
 Submodules Affected: contractnest-ui, contractnest-api
@@ -10,16 +10,15 @@ Submodules Affected: contractnest-ui, contractnest-api
 Files (2 total):
 -------------------------------------------------
 1. contractnest-api/src/controllers/contractController.ts
-   - TEMPORARY: Added console.error logging for validation errors and request body
-   - This will print exact validation failure details to API console
-   - REMOVE the debug lines after identifying the issue
+   - Removed temporary debug logging (was added to diagnose 400 error)
+   - Controller now back to original clean state
 
 2. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
-   - Removed invalid CONTRACT_TYPE_MAP (service/purchase_order/partnership not in API enum)
-   - Omitted contract_type from request (optional field; category stored in metadata)
-   - Fixed acceptance_method mapping: payment->manual, signoff->digital_signature, auto->auto
-   - Fixed date format: yyyy-MM-dd -> ISO 8601 via Date.toISOString()
-   - Removed unused 'format' import from date-fns
+   - Fixed contract_type: removed invalid CONTRACT_TYPE_MAP, omit from request
+   - Fixed acceptance_method mapping: payment->manual, signoff->digital_signature
+   - Fixed date format: uses ISO 8601 via Date.toISOString()
+   - Fixed fly-by block IDs: generate UUID via crypto.randomUUID() for non-UUID blocks
+   - Fly-by blocks marked with isFlyBy:true and originalId in content_snapshot
 
 Copy Commands (PowerShell):
 -------------------------------------------------

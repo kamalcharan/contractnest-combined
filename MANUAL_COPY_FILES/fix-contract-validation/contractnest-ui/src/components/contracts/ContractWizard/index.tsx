@@ -161,8 +161,11 @@ function mapWizardToRequest(
   }
 
   // Build blocks array with content_snapshot
+  // Fly-by blocks have non-UUID IDs (e.g. "flyby-text-123") — generate a UUID for them
+  const isValidUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
   const blocks = state.selectedBlocks.map((block, idx) => ({
-    block_id: block.id,
+    block_id: isValidUUID(block.id) ? block.id : crypto.randomUUID(),
     sort_order: idx,
     content_snapshot: {
       name: block.name,
@@ -174,6 +177,8 @@ function mapWizardToRequest(
       currency: block.currency,
       categoryName: block.categoryName,
       unlimited: block.unlimited,
+      isFlyBy: !isValidUUID(block.id),
+      originalId: !isValidUUID(block.id) ? block.id : undefined,
       config: block.config || {},
     },
   }));

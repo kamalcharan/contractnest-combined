@@ -131,8 +131,6 @@ class ContractController {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        console.error('[ContractController] CREATE validation errors:', JSON.stringify(errors.array(), null, 2));
-        console.error('[ContractController] CREATE request body:', JSON.stringify(req.body, null, 2));
         sendError(res, ERROR_CODES.VALIDATION_ERROR,
           `Validation failed with ${errors.array().length} error(s)`, 400,
           { details: errors.array() });
