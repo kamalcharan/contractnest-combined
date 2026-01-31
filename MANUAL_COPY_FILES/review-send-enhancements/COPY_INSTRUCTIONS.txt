@@ -1,0 +1,40 @@
+REVIEW & SEND STEP - 6 Enhancements
+=====================================
+
+Changes:
+1. Full Seller details: name, email, phone + ADDRESS (MapPin icon)
+   - Uses tenantProfile address fields (address_line1, address_line2, city, state_code, postal_code)
+
+2. Full Client details: salutation + name, email, phone, address
+   - Uses useContact(buyerId) hook to fetch full contact data
+   - Displays salutation prefix (Mr./Ms./Mrs./Dr./Prof.)
+   - Shows primary email, phone, and address from contact_channels and addresses
+
+3. Payment Plan section after services (before Financial Summary)
+   - Upfront: "Full Upfront Payment" with grand total
+   - EMI: installment breakdown (shows first 3 + remaining count)
+   - As Defined: per-cycle-type breakup with block counts
+   - Mixed: per-cycle-type breakup with block counts
+
+4. PDF download working
+   - html2canvas captures the paper div
+   - jsPDF generates multi-page A4 PDF
+   - Loading spinner + "Generating..." text while processing
+   - Downloads as {contractName}.pdf
+
+5. FlyBy tag removed from block items
+   - No longer shows amber "FlyBy" badge on blocks
+
+6. Prepaid/Postpaid tags hidden in Client View
+   - Tags only show in Self View (added isSelfView guard)
+
+7. paymentMode prop type updated to include 'defined'
+   - Was: 'prepaid' | 'emi'
+   - Now: 'prepaid' | 'emi' | 'defined'
+
+Files Modified (contractnest-ui only):
+1. src/components/contracts/ContractWizard/steps/ReviewSendStep.tsx
+   - All 6 enhancements above
+
+Copy Commands (PowerShell):
+Copy-Item "MANUAL_COPY_FILES\review-send-enhancements\contractnest-ui\src\components\contracts\ContractWizard\steps\ReviewSendStep.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\ReviewSendStep.tsx" -Force

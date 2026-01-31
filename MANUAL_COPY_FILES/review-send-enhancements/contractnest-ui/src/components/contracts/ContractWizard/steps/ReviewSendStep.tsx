@@ -1,0 +1,1060 @@
+// src/components/contracts/ContractWizard/steps/ReviewSendStep.tsx
+// Step 9: Review & Send - Paper Canvas layout with Self/Client toggle
+// Centered document view with floating action island
+// Self View: full pricing details per block
+// Client View: same layout, individual prices hidden (total only)
+
+import React, { useState, useMemo, useRef, useCallback } from 'react';
+import {
+  Building2,
+  Mail,
+  Phone,
+  FileText,
+  Package,
+  Briefcase,
+  CreditCard,
+  CheckSquare,
+  Paperclip,
+  Video,
+  Image as ImageIcon,
+  Eye,
+  EyeOff,
+  Download,
+  MapPin,
+  Loader2,
+  Calendar,
+} from 'lucide-react';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useTenantProfile } from '@/hooks/useTenantProfile';
+import { useTaxRates } from '@/hooks/useTaxRates';
+import { useContact } from '@/hooks/useContacts';
+import { getCurrencySymbol } from '@/utils/constants/currencies';
+import { ConfigurableBlock, CYCLE_OPTIONS } from '@/components/catalog-studio/BlockCardConfigurable';
+import { BillingCycleType } from './BillingCycleStep';
+import {
+  categoryHasPricing,
+  getCategoryById,
+} from '@/utils/catalog-studio/categories';
+
+// ─── Props ───────────────────────────────────────────────────────────
+
+export interface ReviewSendStepProps {
+  contractName: string;
+  contractStatus: string;
+  description: string;
+  durationValue: number;
+  durationUnit: string;
+  buyerId: string | null;
+  buyerName: string;
+  acceptanceMethod: 'payment' | 'signoff' | 'auto' | null;
+  billingCycleType: BillingCycleType;
+  currency: string;
+  selectedBlocks: ConfigurableBlock[];
+  paymentMode: 'prepaid' | 'emi' | 'defined';
+  emiMonths: number;
+  perBlockPaymentType: Record<string, 'prepaid' | 'postpaid'>;
+  selectedTaxRateIds: string[];
+  // RFQ mode
+  rfqMode?: boolean;
+  vendorNames?: string[];
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────
+
+const formatCurrency = (amount: number, currency: string = 'INR') => {
+  const symbol = getCurrencySymbol(currency);
+  return `${symbol}${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
+const getCycleLabel = (cycleId: string): string => {
+  const cycle = CYCLE_OPTIONS.find((c) => c.id === cycleId);
+  return cycle?.label || cycleId || '—';
+};
+
+const formatDuration = (value: number, unit: string): string => {
+  if (unit === 'months') return `${value} month${value !== 1 ? 's' : ''}`;
+  if (unit === 'years') return `${value} year${value !== 1 ? 's' : ''}`;
+  return `${value} day${value !== 1 ? 's' : ''}`;
+};
+
+const getDurationInMonths = (value: number, unit: string): number => {
+  if (unit === 'months') return value;
+  if (unit === 'years') return value * 12;
+  return Math.ceil(value / 30);
+};
+
+const SALUTATION_LABELS: Record<string, string> = {
+  mr: 'Mr.',
+  ms: 'Ms.',
+  mrs: 'Mrs.',
+  dr: 'Dr.',
+  prof: 'Prof.',
+};
+
+const CATEGORY_ICONS: Record<string, React.FC<{ className?: string; style?: React.CSSProperties }>> = {
+  service: Briefcase,
+  spare: Package,
+  billing: CreditCard,
+  text: FileText,
+  video: Video,
+  image: ImageIcon,
+  checklist: CheckSquare,
+  document: Paperclip,
+};
+
+// ─── Component ───────────────────────────────────────────────────────
+
+const ReviewSendStep: React.FC<ReviewSendStepProps> = ({
+  contractName,
+  contractStatus,
+  description,
+  durationValue,
+  durationUnit,
+  buyerId,
+  buyerName,
+  acceptanceMethod,
+  billingCycleType,
+  currency,
+  selectedBlocks,
+  paymentMode,
+  emiMonths,
+  perBlockPaymentType,
+  selectedTaxRateIds,
+  rfqMode = false,
+  vendorNames = [],
+}) => {
+  const { isDarkMode, currentTheme } = useTheme();
+  const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
+
+  // Tenant branding
+  const { profile: tenantProfile } = useTenantProfile();
+  const brandPrimary = tenantProfile?.primary_color || '#F59E0B';
+  const brandSecondary = tenantProfile?.secondary_color || '#10B981';
+
+  // Buyer contact details (cached from BuyerSelectionStep)
+  const { data: buyerContact } = useContact(buyerId || '');
+
+  // Tax rates
+  const { state: taxState } = useTaxRates();
+  const availableTaxRates = useMemo(
+    () =>
+      (taxState.data || []).map((rate) => ({
+        id: rate.id,
+        name: rate.name,
+        rate: rate.rate,
+      })),
+    [taxState.data]
+  );
+
+  // View mode
+  const [viewMode, setViewMode] = useState<'self' | 'client'>('self');
+  const isSelfView = viewMode === 'self';
+
+  // PDF generation
+  const paperRef = useRef<HTMLDivElement>(null);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+
+  const isMixed = billingCycleType === 'mixed';
+  const durationMonths = getDurationInMonths(durationValue, durationUnit);
+
+  // Paper canvas colors
+  const canvasBg = isDarkMode ? colors.utility.primaryBackground : '#F1F5F9';
+  const paperBg = isDarkMode ? colors.utility.secondaryBackground : '#FFFFFF';
+  const paperShadow = isDarkMode
+    ? '0 4px 20px rgba(0,0,0,0.3)'
+    : '0 10px 30px rgba(0,0,0,0.05)';
+  const borderColor = isDarkMode ? `${colors.utility.primaryText}15` : '#E2E8F0';
+
+  // ─── Buyer display helpers ────────────────────────────────────────
+  const buyerDisplayName = useMemo(() => {
+    if (!buyerContact) return buyerName || 'Not selected';
+    if (buyerContact.type === 'corporate') return buyerContact.company_name || buyerContact.name || buyerName;
+    const salutation = buyerContact.salutation ? SALUTATION_LABELS[buyerContact.salutation] || '' : '';
+    const name = buyerContact.name || buyerName;
+    return salutation ? `${salutation} ${name}` : name;
+  }, [buyerContact, buyerName]);
+
+  const buyerPrimaryAddress = useMemo(() => {
+    if (!buyerContact?.addresses?.length) return null;
+    return buyerContact.addresses.find((a) => a.is_primary) || buyerContact.addresses[0];
+  }, [buyerContact]);
+
+  const buyerPrimaryEmail = useMemo(() => {
+    if (!buyerContact?.contact_channels?.length) return null;
+    return buyerContact.contact_channels.find((c) => c.channel_type === 'email' && c.is_primary)
+      || buyerContact.contact_channels.find((c) => c.channel_type === 'email');
+  }, [buyerContact]);
+
+  const buyerPrimaryPhone = useMemo(() => {
+    if (!buyerContact?.contact_channels?.length) return null;
+    return buyerContact.contact_channels.find((c) => (c.channel_type === 'mobile' || c.channel_type === 'phone') && c.is_primary)
+      || buyerContact.contact_channels.find((c) => c.channel_type === 'mobile' || c.channel_type === 'phone');
+  }, [buyerContact]);
+
+  // ─── Group blocks by category ────────────────────────────────────
+  const blockGroups = useMemo(() => {
+    const groups: Record<string, ConfigurableBlock[]> = {};
+    selectedBlocks.forEach((block) => {
+      const catId = block.categoryId || 'service';
+      if (!groups[catId]) groups[catId] = [];
+      groups[catId].push(block);
+    });
+    const order = ['service', 'spare', 'billing', 'text', 'checklist', 'document', 'video', 'image'];
+    const sorted = Object.entries(groups).sort(
+      ([a], [b]) => (order.indexOf(a) === -1 ? 99 : order.indexOf(a)) - (order.indexOf(b) === -1 ? 99 : order.indexOf(b))
+    );
+    return sorted;
+  }, [selectedBlocks]);
+
+  // ─── Financial calculations ──────────────────────────────────────
+  const totals = useMemo(() => {
+    const billableBlocks = selectedBlocks.filter((b) => categoryHasPricing(b.categoryId || ''));
+    const subtotal = billableBlocks.reduce((sum, b) => sum + b.totalPrice, 0);
+
+    const selectedRates = availableTaxRates.filter((r) => selectedTaxRateIds.includes(r.id));
+    const totalTaxRate = selectedRates.reduce((sum, r) => sum + r.rate, 0);
+    const taxAmount = subtotal * (totalTaxRate / 100);
+    const grandTotal = subtotal + taxAmount;
+    const emiInstallment = emiMonths > 0 ? grandTotal / emiMonths : grandTotal;
+
+    return { subtotal, selectedRates, totalTaxRate, taxAmount, grandTotal, emiInstallment, billableCount: billableBlocks.length };
+  }, [selectedBlocks, availableTaxRates, selectedTaxRateIds, emiMonths]);
+
+  // ─── Payment plan breakup (for "As Defined" / Mixed display) ─────
+  const definedBreakup = useMemo(() => {
+    const billableBlocks = selectedBlocks.filter((b) => categoryHasPricing(b.categoryId || ''));
+    const groups: Record<string, { total: number; count: number }> = {};
+    billableBlocks.forEach((block) => {
+      const cycle = block.cycle || 'prepaid';
+      if (!groups[cycle]) groups[cycle] = { total: 0, count: 0 };
+      groups[cycle].total += block.totalPrice;
+      groups[cycle].count += 1;
+    });
+    const order = ['prepaid', 'monthly', 'fortnightly', 'quarterly', 'custom', 'postpaid'];
+    return order
+      .filter((cycle) => groups[cycle])
+      .map((cycle) => ({
+        cycle,
+        label:
+          cycle === 'prepaid' ? 'On Acceptance (Prepaid)'
+          : cycle === 'postpaid' ? 'On Completion (Postpaid)'
+          : getCycleLabel(cycle),
+        total: groups[cycle].total,
+        blockCount: groups[cycle].count,
+        isRecurring: !['prepaid', 'postpaid'].includes(cycle),
+      }));
+  }, [selectedBlocks]);
+
+  // Timeline dates
+  const startDate = new Date();
+  const endDate = new Date();
+  endDate.setMonth(endDate.getMonth() + durationMonths);
+  const formatDate = (d: Date) =>
+    new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }).format(d);
+
+  // ─── PDF generation ───────────────────────────────────────────────
+  const handleDownloadPdf = useCallback(async () => {
+    if (!paperRef.current) return;
+    setGeneratingPdf(true);
+    try {
+      const canvas = await html2canvas(paperRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#FFFFFF',
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pageWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft > 0) {
+        position -= pageHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      pdf.save(`${contractName || 'Contract'}.pdf`);
+    } catch (err) {
+      console.error('PDF generation failed:', err);
+    } finally {
+      setGeneratingPdf(false);
+    }
+  }, [contractName]);
+
+  // ─── Seller address helper ────────────────────────────────────────
+  const sellerAddress = useMemo(() => {
+    if (!tenantProfile) return null;
+    const parts = [
+      tenantProfile.address_line1,
+      tenantProfile.address_line2,
+      tenantProfile.city,
+      tenantProfile.state_code,
+      tenantProfile.postal_code,
+    ].filter(Boolean);
+    return parts.length > 0 ? parts.join(', ') : null;
+  }, [tenantProfile]);
+
+  // ─── Payment plan label ───────────────────────────────────────────
+  const paymentPlanLabel = useMemo(() => {
+    if (isMixed) return 'Mixed Billing';
+    if (paymentMode === 'emi') return `EMI \u00B7 ${emiMonths} months`;
+    if (paymentMode === 'defined') return 'As Defined';
+    return '100% Upfront';
+  }, [isMixed, paymentMode, emiMonths]);
+
+  // ─── Render ──────────────────────────────────────────────────────
+
+  return (
+    <div className="h-full flex flex-col" style={{ backgroundColor: canvasBg }}>
+      {/* Scrollable content */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Controls above paper */}
+        <div className="max-w-[850px] mx-auto flex items-center justify-between px-2 pt-6 pb-3">
+          {/* Self / Client pill toggle - hidden in RFQ mode */}
+          {!rfqMode ? (
+            <div
+              className="flex items-center rounded-full p-1 shadow-sm"
+              style={{ backgroundColor: paperBg }}
+            >
+              <button
+                type="button"
+                onClick={() => setViewMode('self')}
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all"
+                style={{
+                  backgroundColor: isSelfView ? brandPrimary : 'transparent',
+                  color: isSelfView ? '#FFFFFF' : colors.utility.secondaryText,
+                }}
+              >
+                <Eye className="w-3.5 h-3.5" />
+                Self View
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('client')}
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all"
+                style={{
+                  backgroundColor: !isSelfView ? brandPrimary : 'transparent',
+                  color: !isSelfView ? '#FFFFFF' : colors.utility.secondaryText,
+                }}
+              >
+                <EyeOff className="w-3.5 h-3.5" />
+                Client View
+              </button>
+            </div>
+          ) : (
+            <span
+              className="text-[10px] px-3 py-1.5 rounded-full font-medium uppercase tracking-wide shadow-sm"
+              style={{ backgroundColor: paperBg, color: brandPrimary }}
+            >
+              RFQ Preview
+            </span>
+          )}
+
+          {/* Right controls: PDF download + Acceptance badge */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleDownloadPdf}
+              disabled={generatingPdf}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-semibold transition-all hover:opacity-80 shadow-sm"
+              style={{
+                backgroundColor: paperBg,
+                color: colors.utility.primaryText,
+                opacity: generatingPdf ? 0.6 : 1,
+              }}
+            >
+              {generatingPdf ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Download className="w-3.5 h-3.5" />
+              )}
+              {generatingPdf ? 'Generating...' : 'PDF'}
+            </button>
+            {!rfqMode && (
+              <span
+                className="text-[10px] px-3 py-1.5 rounded-full font-medium uppercase tracking-wide shadow-sm"
+                style={{
+                  backgroundColor: paperBg,
+                  color: brandPrimary,
+                }}
+              >
+                {acceptanceMethod === 'payment'
+                  ? 'Payment Acceptance'
+                  : acceptanceMethod === 'signoff'
+                    ? 'Signoff Acceptance'
+                    : acceptanceMethod === 'auto'
+                      ? 'Auto Accept'
+                      : 'Not Set'}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* ═══ THE PAPER ═══ */}
+        <div
+          ref={paperRef}
+          className="max-w-[850px] mx-auto rounded-lg"
+          style={{
+            backgroundColor: paperBg,
+            boxShadow: paperShadow,
+            marginBottom: '24px',
+          }}
+        >
+          {/* Branded header strip */}
+          <div
+            className="rounded-t-lg px-12 py-6"
+            style={{
+              background: `linear-gradient(135deg, ${brandPrimary} 0%, ${brandSecondary} 100%)`,
+            }}
+          >
+            <div className="flex items-center gap-4">
+              {tenantProfile?.logo_url ? (
+                <img
+                  src={tenantProfile.logo_url}
+                  alt={tenantProfile.business_name || 'Company'}
+                  className="w-12 h-12 rounded-xl object-cover bg-white/20 shadow-lg"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center shadow-lg backdrop-blur-sm">
+                  <Building2 className="w-6 h-6 text-white" />
+                </div>
+              )}
+              <div>
+                <p className="text-white/70 text-xs font-medium uppercase tracking-widest">
+                  {tenantProfile?.business_name || 'Your Company'}
+                </p>
+                <p className="text-white text-sm font-medium mt-0.5">
+                  {rfqMode ? 'Request for Quotation' : 'Service Agreement'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Paper body */}
+          <div className="px-12 py-10">
+            {/* Contract title */}
+            <h1
+              className="font-serif text-3xl font-medium mb-3"
+              style={{ color: colors.utility.primaryText }}
+            >
+              {contractName || (rfqMode ? 'Untitled RFQ' : 'Untitled Contract')}
+            </h1>
+
+            {/* Status + ref + date */}
+            <div className="flex items-center gap-3 mb-8">
+              <span
+                className="text-[10px] px-2.5 py-1 rounded-full font-semibold uppercase"
+                style={{ backgroundColor: `${brandPrimary}12`, color: brandPrimary }}
+              >
+                {contractStatus}
+              </span>
+              <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                Ref: #CN-XXXX
+              </span>
+              <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                · Created {formatDate(startDate)}
+              </span>
+            </div>
+
+            {/* ── Meta Grid ── */}
+            <div
+              className="grid grid-cols-2 gap-x-10 gap-y-6 py-6 border-t border-b mb-8"
+              style={{ borderColor }}
+            >
+              {/* Provider */}
+              <div>
+                <span
+                  className="text-[10px] font-bold uppercase tracking-wider block mb-2"
+                  style={{ color: colors.utility.secondaryText }}
+                >
+                  Provider
+                </span>
+                <p className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
+                  {tenantProfile?.business_name || 'Your Company'}
+                </p>
+                {tenantProfile?.business_email && (
+                  <p
+                    className="text-xs mt-1 flex items-center gap-1.5"
+                    style={{ color: colors.utility.secondaryText }}
+                  >
+                    <Mail className="w-3 h-3" />
+                    {tenantProfile.business_email}
+                  </p>
+                )}
+                {tenantProfile?.business_phone && (
+                  <p
+                    className="text-xs mt-0.5 flex items-center gap-1.5"
+                    style={{ color: colors.utility.secondaryText }}
+                  >
+                    <Phone className="w-3 h-3" />
+                    {tenantProfile.business_phone_country_code} {tenantProfile.business_phone}
+                  </p>
+                )}
+                {sellerAddress && (
+                  <p
+                    className="text-xs mt-0.5 flex items-start gap-1.5"
+                    style={{ color: colors.utility.secondaryText }}
+                  >
+                    <MapPin className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                    <span>{sellerAddress}</span>
+                  </p>
+                )}
+              </div>
+
+              {/* Customer / Vendors */}
+              <div>
+                <span
+                  className="text-[10px] font-bold uppercase tracking-wider block mb-2"
+                  style={{ color: colors.utility.secondaryText }}
+                >
+                  {rfqMode ? 'Vendors' : 'Customer'}
+                </span>
+                {rfqMode && vendorNames.length > 0 ? (
+                  <div className="space-y-1">
+                    {vendorNames.map((name, idx) => (
+                      <p key={idx} className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
+                        {name}
+                      </p>
+                    ))}
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
+                      {buyerDisplayName}
+                    </p>
+                    {buyerPrimaryEmail && (
+                      <p
+                        className="text-xs mt-1 flex items-center gap-1.5"
+                        style={{ color: colors.utility.secondaryText }}
+                      >
+                        <Mail className="w-3 h-3" />
+                        {buyerPrimaryEmail.value}
+                      </p>
+                    )}
+                    {buyerPrimaryPhone && (
+                      <p
+                        className="text-xs mt-0.5 flex items-center gap-1.5"
+                        style={{ color: colors.utility.secondaryText }}
+                      >
+                        <Phone className="w-3 h-3" />
+                        {buyerPrimaryPhone.country_code ? `${buyerPrimaryPhone.country_code} ` : ''}{buyerPrimaryPhone.value}
+                      </p>
+                    )}
+                    {buyerPrimaryAddress && (
+                      <p
+                        className="text-xs mt-0.5 flex items-start gap-1.5"
+                        style={{ color: colors.utility.secondaryText }}
+                      >
+                        <MapPin className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                        <span>
+                          {[
+                            buyerPrimaryAddress.address_line1,
+                            buyerPrimaryAddress.city,
+                            buyerPrimaryAddress.state,
+                            buyerPrimaryAddress.postal_code,
+                          ].filter(Boolean).join(', ')}
+                        </span>
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Duration */}
+              <div>
+                <span
+                  className="text-[10px] font-bold uppercase tracking-wider block mb-2"
+                  style={{ color: colors.utility.secondaryText }}
+                >
+                  Contract Duration
+                </span>
+                <p className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
+                  {formatDuration(durationValue, durationUnit)}
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: colors.utility.secondaryText }}>
+                  {formatDate(startDate)} → {formatDate(endDate)}
+                </p>
+              </div>
+
+              {/* Payment - hidden in RFQ mode */}
+              {!rfqMode && (
+                <div>
+                  <span
+                    className="text-[10px] font-bold uppercase tracking-wider block mb-2"
+                    style={{ color: colors.utility.secondaryText }}
+                  >
+                    Payment
+                  </span>
+                  <p className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
+                    {paymentPlanLabel}
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: colors.utility.secondaryText }}>
+                    {acceptanceMethod === 'payment'
+                      ? 'Payment Acceptance'
+                      : acceptanceMethod === 'signoff'
+                        ? 'Signoff Required'
+                        : acceptanceMethod === 'auto'
+                          ? 'Auto Accept'
+                          : '—'}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* ── Description ── */}
+            {description && (
+              <p
+                className="text-sm leading-relaxed mb-10"
+                style={{ color: colors.utility.secondaryText }}
+              >
+                {description}
+              </p>
+            )}
+
+            {/* ── Block Sections ── */}
+            {blockGroups.map(([categoryId, blocks]) => {
+              const category = getCategoryById(categoryId);
+              const catColor = category?.color || '#6B7280';
+              const catName = category?.name || categoryId;
+              const CatIcon = CATEGORY_ICONS[categoryId] || FileText;
+              const hasPricing = categoryHasPricing(categoryId);
+
+              return (
+                <div key={categoryId} className="mb-8">
+                  {/* Category header */}
+                  <div className="flex items-center gap-2 mb-4">
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center"
+                      style={{ backgroundColor: `${catColor}12` }}
+                    >
+                      <CatIcon className="w-4 h-4" style={{ color: catColor }} />
+                    </div>
+                    <span className="text-sm font-bold" style={{ color: colors.utility.primaryText }}>
+                      {catName}
+                    </span>
+                    <span
+                      className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                      style={{ backgroundColor: `${catColor}10`, color: catColor }}
+                    >
+                      {blocks.length}
+                    </span>
+                  </div>
+
+                  {/* Block items */}
+                  <div className="space-y-3">
+                    {blocks.map((block) => {
+                      const effectivePrice = block.config?.customPrice ?? block.price;
+                      const lineTotal = block.unlimited ? effectivePrice : effectivePrice * block.quantity;
+                      const blockPayType = perBlockPaymentType[block.id] || 'prepaid';
+
+                      return (
+                        <div
+                          key={block.id}
+                          className="flex gap-4 p-4 rounded-xl border transition-all hover:shadow-sm"
+                          style={{
+                            borderColor,
+                            backgroundColor: `${catColor}03`,
+                          }}
+                        >
+                          {/* Icon area */}
+                          <div
+                            className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                            style={{ backgroundColor: `${catColor}10` }}
+                          >
+                            <CatIcon className="w-5 h-5" style={{ color: catColor }} />
+                          </div>
+
+                          {/* Content */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h4
+                                className="text-sm font-semibold truncate"
+                                style={{ color: colors.utility.primaryText }}
+                              >
+                                {block.name || 'Untitled'}
+                              </h4>
+                              {categoryId === 'document' && block.config?.fileType && (
+                                <span
+                                  className="text-[9px] px-1.5 py-0.5 rounded font-medium uppercase flex-shrink-0"
+                                  style={{ backgroundColor: `${catColor}12`, color: catColor }}
+                                >
+                                  {block.config.fileType}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Pricing tags - hidden in RFQ mode */}
+                            {hasPricing && !rfqMode && (
+                              <div className="flex items-center gap-2 mt-1.5">
+                                <span
+                                  className="text-[10px] px-2 py-0.5 rounded-md font-medium"
+                                  style={{
+                                    backgroundColor: `${colors.utility.primaryText}08`,
+                                    color: colors.utility.secondaryText,
+                                  }}
+                                >
+                                  Qty: {block.unlimited ? '∞' : block.quantity}
+                                </span>
+                                <span
+                                  className="text-[10px] px-2 py-0.5 rounded-md font-medium"
+                                  style={{ backgroundColor: `${brandPrimary}10`, color: brandPrimary }}
+                                >
+                                  {getCycleLabel(block.cycle)}
+                                </span>
+                                {isMixed && isSelfView && (
+                                  <span
+                                    className="text-[10px] px-2 py-0.5 rounded-md font-medium"
+                                    style={{
+                                      backgroundColor: blockPayType === 'prepaid' ? '#10B98115' : '#F59E0B15',
+                                      color: blockPayType === 'prepaid' ? '#10B981' : '#F59E0B',
+                                    }}
+                                  >
+                                    {blockPayType === 'prepaid' ? 'Prepaid' : 'Postpaid'}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Description for pricing blocks with showDescription */}
+                            {hasPricing && block.config?.showDescription && block.description && (
+                              <p
+                                className="text-[11px] mt-2 leading-relaxed"
+                                style={{ color: colors.utility.secondaryText }}
+                              >
+                                {block.description}
+                              </p>
+                            )}
+
+                            {/* Content body for text/video/image/document blocks */}
+                            {!hasPricing && (block.config?.content || block.description) && (
+                              <div
+                                className="text-xs mt-1.5 leading-relaxed whitespace-pre-wrap"
+                                style={{ color: colors.utility.secondaryText }}
+                              >
+                                {block.config?.content || block.description}
+                              </div>
+                            )}
+
+                            {/* Checklist items */}
+                            {categoryId === 'checklist' && block.config?.notes && (
+                              <div className="mt-2 space-y-1.5">
+                                {block.config.notes
+                                  .split('\n')
+                                  .filter(Boolean)
+                                  .map((item, idx) => (
+                                    <div key={idx} className="flex items-center gap-2">
+                                      <div
+                                        className="w-3.5 h-3.5 rounded border flex-shrink-0"
+                                        style={{ borderColor: `${colors.utility.primaryText}25` }}
+                                      />
+                                      <span className="text-xs" style={{ color: colors.utility.primaryText }}>
+                                        {item}
+                                      </span>
+                                    </div>
+                                  ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Price - right side, Self View only, pricing blocks only, hidden in RFQ */}
+                          {isSelfView && hasPricing && !rfqMode && (
+                            <div className="text-right flex-shrink-0 self-center">
+                              <p className="text-sm font-bold" style={{ color: catColor }}>
+                                {formatCurrency(lineTotal, currency)}
+                              </p>
+                              <p className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
+                                {formatCurrency(effectivePrice, currency)}/{block.unlimited ? 'unit' : 'ea'}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Empty state */}
+            {selectedBlocks.length === 0 && (
+              <div className="py-16 text-center">
+                <Package
+                  className="w-12 h-12 mx-auto mb-3"
+                  style={{ color: `${colors.utility.secondaryText}40` }}
+                />
+                <p className="text-sm" style={{ color: colors.utility.secondaryText }}>
+                  No blocks added to this contract
+                </p>
+              </div>
+            )}
+
+            {/* ── Payment Plan Section (after services, before financial summary) ── */}
+            {totals.billableCount > 0 && !rfqMode && (
+              <div className="mt-8 pt-6 border-t" style={{ borderColor }}>
+                <div className="flex items-center gap-2 mb-4">
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center"
+                    style={{ backgroundColor: `${brandPrimary}12` }}
+                  >
+                    <Calendar className="w-4 h-4" style={{ color: brandPrimary }} />
+                  </div>
+                  <span className="text-sm font-bold" style={{ color: colors.utility.primaryText }}>
+                    Payment Plan
+                  </span>
+                  <span
+                    className="text-[10px] px-2.5 py-0.5 rounded-full font-medium"
+                    style={{ backgroundColor: `${brandPrimary}10`, color: brandPrimary }}
+                  >
+                    {paymentPlanLabel}
+                  </span>
+                </div>
+
+                <div
+                  className="p-5 rounded-xl border"
+                  style={{ borderColor, backgroundColor: `${brandPrimary}03` }}
+                >
+                  {/* Upfront */}
+                  {paymentMode === 'prepaid' && !isMixed && (
+                    <div>
+                      <p className="text-sm font-medium mb-1" style={{ color: colors.utility.primaryText }}>
+                        Full Upfront Payment
+                      </p>
+                      <p className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                        Entire contract value of{' '}
+                        <strong style={{ color: brandPrimary }}>{formatCurrency(totals.grandTotal, currency)}</strong>
+                        {' '}is due on acceptance.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* EMI */}
+                  {paymentMode === 'emi' && !isMixed && (
+                    <div>
+                      <p className="text-sm font-medium mb-2" style={{ color: colors.utility.primaryText }}>
+                        Equal Monthly Installments
+                      </p>
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                          {emiMonths} monthly installments of
+                        </span>
+                        <span className="text-sm font-bold" style={{ color: brandPrimary }}>
+                          {formatCurrency(totals.emiInstallment, currency)}/mo
+                        </span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {Array.from({ length: Math.min(emiMonths, 3) }).map((_, i) => (
+                          <div
+                            key={i}
+                            className="flex items-center justify-between text-[11px] py-1.5 px-3 rounded-lg"
+                            style={{ backgroundColor: `${colors.utility.primaryText}04` }}
+                          >
+                            <span style={{ color: colors.utility.secondaryText }}>
+                              Installment {i + 1}
+                            </span>
+                            <span className="font-medium" style={{ color: colors.utility.primaryText }}>
+                              {formatCurrency(totals.emiInstallment, currency)}
+                            </span>
+                          </div>
+                        ))}
+                        {emiMonths > 3 && (
+                          <p className="text-[10px] text-center pt-1" style={{ color: colors.utility.secondaryText }}>
+                            +{emiMonths - 3} more installment{emiMonths - 3 > 1 ? 's' : ''}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* As Defined */}
+                  {paymentMode === 'defined' && !isMixed && (
+                    <div>
+                      <p className="text-sm font-medium mb-1" style={{ color: colors.utility.primaryText }}>
+                        Billed Per Block Cycle
+                      </p>
+                      <p className="text-xs mb-3" style={{ color: colors.utility.secondaryText }}>
+                        Each service is billed as per its defined billing cycle.
+                      </p>
+                      <div className="space-y-1.5">
+                        {definedBreakup.map((group, i) => (
+                          <div
+                            key={group.cycle}
+                            className="flex items-center justify-between text-[11px] py-2 px-3 rounded-lg"
+                            style={{ backgroundColor: `${colors.utility.primaryText}04` }}
+                          >
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="w-5 h-5 rounded flex items-center justify-center text-[9px] font-bold"
+                                style={{ backgroundColor: `${brandPrimary}15`, color: brandPrimary }}
+                              >
+                                {i + 1}
+                              </div>
+                              <div>
+                                <span className="font-medium" style={{ color: colors.utility.primaryText }}>
+                                  {group.label}
+                                </span>
+                                <span className="text-[9px] ml-1" style={{ color: colors.utility.secondaryText }}>
+                                  ({group.blockCount} block{group.blockCount !== 1 ? 's' : ''})
+                                </span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <span className="font-medium" style={{ color: colors.utility.primaryText }}>
+                                {formatCurrency(group.total, currency)}
+                              </span>
+                              {group.isRecurring && (
+                                <span className="text-[9px] block" style={{ color: colors.utility.secondaryText }}>
+                                  /{group.cycle === 'monthly' ? 'mo' : group.cycle === 'fortnightly' ? '2wk' : group.cycle === 'quarterly' ? 'qtr' : group.cycle}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Mixed */}
+                  {isMixed && (
+                    <div>
+                      <p className="text-sm font-medium mb-1" style={{ color: colors.utility.primaryText }}>
+                        Mixed Billing Schedule
+                      </p>
+                      <p className="text-xs mb-3" style={{ color: colors.utility.secondaryText }}>
+                        Each service follows its own billing cycle and payment type.
+                      </p>
+                      <div className="space-y-1.5">
+                        {definedBreakup.map((group, i) => (
+                          <div
+                            key={group.cycle}
+                            className="flex items-center justify-between text-[11px] py-2 px-3 rounded-lg"
+                            style={{ backgroundColor: `${colors.utility.primaryText}04` }}
+                          >
+                            <div className="flex items-center gap-2">
+                              <div
+                                className="w-5 h-5 rounded flex items-center justify-center text-[9px] font-bold"
+                                style={{ backgroundColor: `${brandPrimary}15`, color: brandPrimary }}
+                              >
+                                {i + 1}
+                              </div>
+                              <div>
+                                <span className="font-medium" style={{ color: colors.utility.primaryText }}>
+                                  {group.label}
+                                </span>
+                                <span className="text-[9px] ml-1" style={{ color: colors.utility.secondaryText }}>
+                                  ({group.blockCount} block{group.blockCount !== 1 ? 's' : ''})
+                                </span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <span className="font-medium" style={{ color: colors.utility.primaryText }}>
+                                {formatCurrency(group.total, currency)}
+                              </span>
+                              {group.isRecurring && (
+                                <span className="text-[9px] block" style={{ color: colors.utility.secondaryText }}>
+                                  /{group.cycle === 'monthly' ? 'mo' : group.cycle === 'fortnightly' ? '2wk' : group.cycle === 'quarterly' ? 'qtr' : group.cycle}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* ── Financial Summary (inline in paper) - hidden in RFQ ── */}
+            {totals.billableCount > 0 && !rfqMode && (
+              <div className="mt-10 pt-8 border-t" style={{ borderColor }}>
+                <h3 className="text-sm font-bold mb-4" style={{ color: colors.utility.primaryText }}>
+                  Financial Summary
+                </h3>
+
+                {isSelfView && (
+                  <div className="space-y-2 mb-3">
+                    <div className="flex justify-between">
+                      <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                        Subtotal ({totals.billableCount} item{totals.billableCount !== 1 ? 's' : ''})
+                      </span>
+                      <span className="text-xs font-medium" style={{ color: colors.utility.primaryText }}>
+                        {formatCurrency(totals.subtotal, currency)}
+                      </span>
+                    </div>
+
+                    {totals.selectedRates.map((rate) => (
+                      <div key={rate.id} className="flex justify-between">
+                        <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                          {rate.name} ({rate.rate}%)
+                        </span>
+                        <span className="text-xs font-medium" style={{ color: colors.utility.primaryText }}>
+                          {formatCurrency(totals.subtotal * (rate.rate / 100), currency)}
+                        </span>
+                      </div>
+                    ))}
+
+                    <div className="border-t my-2" style={{ borderColor }} />
+                  </div>
+                )}
+
+                {/* Grand Total */}
+                <div
+                  className="flex items-center justify-between p-4 rounded-xl"
+                  style={{ backgroundColor: `${brandPrimary}08` }}
+                >
+                  <span className="text-sm font-bold" style={{ color: colors.utility.primaryText }}>
+                    {isSelfView ? 'Grand Total' : 'Contract Value'}
+                  </span>
+                  <span className="text-2xl font-bold" style={{ color: brandPrimary }}>
+                    {formatCurrency(totals.grandTotal, currency)}
+                  </span>
+                </div>
+
+                {/* EMI note */}
+                {paymentMode === 'emi' && !isMixed && (
+                  <div
+                    className="flex items-center justify-between mt-3 p-3 rounded-lg"
+                    style={{ backgroundColor: `${colors.utility.primaryText}04` }}
+                  >
+                    <span className="text-[11px]" style={{ color: colors.utility.secondaryText }}>
+                      {emiMonths} monthly installments
+                    </span>
+                    <span className="text-xs font-bold" style={{ color: brandPrimary }}>
+                      {formatCurrency(totals.emiInstallment, currency)} /mo
+                    </span>
+                  </div>
+                )}
+
+                {/* Defined note */}
+                {paymentMode === 'defined' && !isMixed && definedBreakup.length > 0 && (
+                  <div
+                    className="flex items-center justify-between mt-3 p-3 rounded-lg"
+                    style={{ backgroundColor: `${colors.utility.primaryText}04` }}
+                  >
+                    <span className="text-[11px]" style={{ color: colors.utility.secondaryText }}>
+                      {definedBreakup.length} billing group{definedBreakup.length !== 1 ? 's' : ''} as per block cycles
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+    </div>
+  );
+};
+
+export default ReviewSendStep;
