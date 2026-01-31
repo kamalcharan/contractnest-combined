@@ -1,0 +1,20 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — fix-hub-wizard-modal
+═══════════════════════════════════════════════════
+
+Feature: Open ContractWizard as modal from ContractsHub instead of navigating away
+Branch: claude/init-submodules-restore-code-chBfL
+
+Submodules Affected: contractnest-ui
+
+Files (1 total):
+─────────────────────────────────────────────────
+1. contractnest-ui/src/pages/contracts/hub/index.tsx
+   - Imported ContractWizard component
+   - All create buttons (header "+New Contract", Quick Create, Empty State) now open wizard modal
+   - TypeRail Quick Create buttons open wizard instead of navigating
+   - Wizard closes and refetches contracts on completion
+
+Copy Command (PowerShell):
+─────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\fix-hub-wizard-modal\contractnest-ui\src\pages\contracts\hub\index.tsx" -Destination "contractnest-ui\src\pages\contracts\hub\index.tsx" -Force
