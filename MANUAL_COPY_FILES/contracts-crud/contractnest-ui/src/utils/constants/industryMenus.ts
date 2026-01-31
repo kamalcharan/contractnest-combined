@@ -10,6 +10,7 @@ export interface MenuItem {
   adminOnly?: boolean;
   hasSubmenu?: boolean;
   submenuItems?: MenuItem[];
+  defaultOpen?: boolean; // For submenus that should be open by default
 }
 
 // Default menu structure
@@ -28,6 +29,23 @@ export const defaultMenuItems: MenuItem[] = [
     path: '/dashboard',
     hasSubmenu: false
   },
+  // Operations menu - moved after Dashboard for better UX
+  {
+    id: 'operations',
+    label: 'Operations',
+    icon: 'Activity',
+    path: '/ops/cockpit',
+    hasSubmenu: true,
+    submenuItems: [
+      { id: 'ops-cockpit', label: 'Ops Cockpit', icon: 'Gauge', path: '/ops/cockpit' },
+      { id: 'entities', label: 'Contacts', icon: 'Building2', path: '/contacts' },
+      { id: 'ops-activity', label: 'Activity Feed', icon: 'Activity', path: '/ops/activity' }
+      // HIDDEN: Reports - commented out
+      // { id: 'ops-reports', label: 'Reports', icon: 'BarChart2', path: '/ops/reports' }
+    ]
+  },
+  // REMOVED: Contacts menu - now available under Operations > Entities
+  /*
   {
     id: 'contacts',
     label: 'Contacts',
@@ -61,6 +79,7 @@ export const defaultMenuItems: MenuItem[] = [
       }
     ]
   },
+  */
   // Contracts Hub — unified entry, type filtering via left rail inside the page
   {
     id: 'contracts',
@@ -69,7 +88,8 @@ export const defaultMenuItems: MenuItem[] = [
     path: '/contracts',
     hasSubmenu: false
   },
-  // VaNi menu - all submenus visible
+  // HIDDEN: VaNi menu - commented out for now
+  /*
   {
     id: 'vani',
     label: 'VaNi',
@@ -87,6 +107,7 @@ export const defaultMenuItems: MenuItem[] = [
       { id: 'vani-chat', label: 'Chat', icon: 'MessageCircle', path: '/vani/chat' }
     ]
   },
+  */
   // HIDDEN: Templates, Appointments, Tasks - commented out for now
   /*
   {
@@ -112,19 +133,6 @@ export const defaultMenuItems: MenuItem[] = [
     hasSubmenu: false
   },
   */
-  // Operations menu - all submenus visible
-  {
-    id: 'operations',
-    label: 'Operations',
-    icon: 'Activity',
-    path: '/ops/cockpit',
-    hasSubmenu: true,
-    submenuItems: [
-      { id: 'ops-cockpit', label: 'Ops Cockpit', icon: 'Gauge', path: '/ops/cockpit' },
-      { id: 'ops-activity', label: 'Activity Feed', icon: 'Activity', path: '/ops/activity' },
-      { id: 'ops-reports', label: 'Reports', icon: 'BarChart2', path: '/ops/reports' }
-    ]
-  },
   // Catalog Studio - all submenus visible
   {
     id: 'catalog-studio',
@@ -182,6 +190,8 @@ export const defaultMenuItems: MenuItem[] = [
     ]
   },
   // UPDATED: Implementation Toolkit - updated paths for service-contracts structure
+  // REMOVED: plan-detail, plan-versions, subscription-management submenus
+  // REMOVED: user-management and analytics menu items (moved under toolkit or removed)
   {
     id: 'implementation-toolkit',
     label: 'Implementation Toolkit',
@@ -189,6 +199,7 @@ export const defaultMenuItems: MenuItem[] = [
     path: '/implementation',
     adminOnly: true,
     hasSubmenu: true,
+    defaultOpen: true, // Implementation Toolkit should be open by default
     submenuItems: [
       {
         id: 'global-templates',
@@ -215,28 +226,10 @@ export const defaultMenuItems: MenuItem[] = [
         path: '/settings/businessmodel/admin/pricing-plans'
       },
       {
-        id: 'plan-detail',
-        label: 'Plan Detail',
-        icon: 'FileText',
-        path: '/implementation/plan-detail'
-      },
-      {
-        id: 'plan-versions',
-        label: 'Plan Versions',
-        icon: 'GitBranch',
-        path: '/implementation/plan-versions'
-      },
-      {
         id: 'subscription-dashboard',
         label: 'Subscription Dashboard',
         icon: 'BarChart',
         path: '/implementation/subscription-dashboard'
-      },
-      {
-        id: 'subscription-management',
-        label: 'Subscription Management',
-        icon: 'CreditCard',
-        path: '/implementation/subscription-management'
       },
       {
         id: 'billing-dashboard',
@@ -255,24 +248,14 @@ export const defaultMenuItems: MenuItem[] = [
         label: 'BBB Admin',
         icon: 'Shield',
         path: '/vani/channels/bbb/admin'
+      },
+      {
+        id: 'product-masters',
+        label: 'Product Masters',
+        icon: 'Package',
+        path: '/vani/toolkit/product-masters'
       }
     ]
-  },
-  {
-    id: 'user-management',
-    label: 'User Management',
-    icon: 'UserCog',
-    path: '/user-management',
-    adminOnly: true,
-    hasSubmenu: false
-  },
-  {
-    id: 'analytics',
-    label: 'Analytics',
-    icon: 'BarChart2',
-    path: '/analytics',
-    adminOnly: true,
-    hasSubmenu: false
   }
 ];
 
