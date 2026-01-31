@@ -1,0 +1,20 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — restore-contract-create
+═══════════════════════════════════════════════════
+
+Feature: Restore ContractCreatePage to working landing page + wizard modal version
+Branch: claude/init-submodules-restore-code-chBfL
+
+Submodules Affected: contractnest-ui
+
+Files (1 total):
+─────────────────────────────────────────────────
+1. contractnest-ui/src/pages/contracts/create/index.tsx
+   - RESTORED from broken 423-line inline wizard back to working 204-line version
+   - Uses useParams() to read :contractType from URL (was broken with useSearchParams)
+   - Shows landing page with title, search bar, empty state
+   - Opens ContractWizard modal on button click
+
+Copy Command (PowerShell):
+─────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\restore-contract-create\contractnest-ui\src\pages\contracts\create\index.tsx" -Destination "contractnest-ui\src\pages\contracts\create\index.tsx" -Force
