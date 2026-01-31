@@ -3,7 +3,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
-import VaNiLoader from '@/components/common/VaNiLoader';
 import {
   FileText,
   Users,
@@ -16,6 +15,7 @@ import {
   XCircle,
   Eye,
   RefreshCw,
+  Loader2,
 } from 'lucide-react';
 import { useContracts, useContractStats } from '@/hooks/queries/useContractQueries';
 import type {
@@ -781,12 +781,20 @@ const ContractsHubPage: React.FC = () => {
           <div
             style={{
               display: 'flex',
+              flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
               padding: 80,
+              gap: 12,
             }}
           >
-            <VaNiLoader />
+            <Loader2
+              className="h-8 w-8 animate-spin"
+              style={{ color: colors.brand.primary }}
+            />
+            <p style={{ fontSize: 13, color: colors.utility.secondaryText }}>
+              Loading contracts...
+            </p>
           </div>
         ) : showEmptyState ? (
           <EmptyState typeFilter={activeType} colors={colors} onCreateClick={handleCreateClick} />
