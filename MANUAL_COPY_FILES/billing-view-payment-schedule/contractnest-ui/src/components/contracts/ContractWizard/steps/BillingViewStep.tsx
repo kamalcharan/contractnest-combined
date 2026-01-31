@@ -273,15 +273,15 @@ const BillingViewStep: React.FC<BillingViewStepProps> = ({
       style={{ backgroundColor: colors.utility.primaryBackground }}
     >
       {/* In-page Header */}
-      <div className="px-6 pt-5 pb-3 flex-shrink-0">
+      <div className="text-center pt-6 pb-4 px-4 flex-shrink-0">
         <h2
-          className="text-lg font-bold"
+          className="text-2xl font-bold mb-2"
           style={{ color: colors.utility.primaryText }}
         >
           Billing View
         </h2>
         <p
-          className="text-xs mt-0.5"
+          className="text-sm"
           style={{ color: colors.utility.secondaryText }}
         >
           Review line items, configure payment schedule, and apply tax
@@ -1006,25 +1006,78 @@ const BillingViewStep: React.FC<BillingViewStepProps> = ({
                   )}
                 </>
               ) : (
-                /* Mixed: Instruction to configure per block */
-                <div
-                  className="p-3 rounded-lg"
-                  style={{ backgroundColor: `${colors.utility.primaryText}05` }}
-                >
-                  <div className="flex items-center gap-2 mb-2">
+                /* Mixed: Show breakup by cycle type (same as "As Defined") */
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
                     <Shuffle className="w-4 h-4" style={{ color: colors.brand.primary }} />
                     <span className="text-xs font-medium" style={{ color: colors.utility.primaryText }}>
-                      Mixed Payment
+                      Mixed Payment Schedule
                     </span>
                   </div>
-                  <p className="text-[11px] mb-2" style={{ color: colors.utility.secondaryText }}>
-                    Each service has its own payment type. Use the Payment column in the table to set Prepaid or Postpaid per block.
+                  <p className="text-[11px] mb-3" style={{ color: colors.utility.secondaryText }}>
+                    Each service is billed per its own cycle. Use the Payment column in the table to set Prepaid or Postpaid per block.
                   </p>
-                  <div className="flex items-center gap-1.5">
-                    <ArrowRight className="w-3 h-3" style={{ color: colors.brand.primary }} />
-                    <span className="text-[10px] font-medium" style={{ color: colors.brand.primary }}>
-                      Configure in the table
-                    </span>
+
+                  {/* Breakup by cycle type */}
+                  <div
+                    className="p-3 rounded-lg"
+                    style={{ backgroundColor: `${colors.utility.primaryText}05` }}
+                  >
+                    <div className="space-y-1">
+                      {definedBreakup.map((group, i) => (
+                        <div
+                          key={group.cycle}
+                          className="flex items-center justify-between text-[11px] py-1.5"
+                          style={{ borderBottom: `1px solid ${colors.utility.primaryText}06` }}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <div
+                              className="w-4 h-4 rounded flex items-center justify-center text-[8px] font-bold"
+                              style={{ backgroundColor: `${colors.brand.primary}15`, color: colors.brand.primary }}
+                            >
+                              {i + 1}
+                            </div>
+                            <div>
+                              <span style={{ color: colors.utility.primaryText }} className="font-medium">
+                                {group.label}
+                              </span>
+                              <span
+                                className="text-[9px] ml-1"
+                                style={{ color: colors.utility.secondaryText }}
+                              >
+                                ({group.blockCount} block{group.blockCount !== 1 ? 's' : ''})
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className="font-medium" style={{ color: colors.utility.primaryText }}>
+                              {formatCurrency(group.total, currency)}
+                            </span>
+                            {group.isRecurring && (
+                              <span
+                                className="text-[9px] block"
+                                style={{ color: colors.utility.secondaryText }}
+                              >
+                                /{group.cycle === 'monthly' ? 'mo' : group.cycle === 'fortnightly' ? '2wk' : group.cycle === 'quarterly' ? 'qtr' : group.cycle}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Total */}
+                    <div
+                      className="flex items-center justify-between mt-2 pt-2"
+                      style={{ borderTop: `1px solid ${colors.utility.primaryText}10` }}
+                    >
+                      <span className="text-[11px] font-medium" style={{ color: colors.utility.secondaryText }}>
+                        Contract Total
+                      </span>
+                      <span className="text-xs font-bold" style={{ color: colors.brand.primary }}>
+                        {formatCurrency(totals.grandTotal, currency)}
+                      </span>
+                    </div>
                   </div>
                 </div>
               )}
