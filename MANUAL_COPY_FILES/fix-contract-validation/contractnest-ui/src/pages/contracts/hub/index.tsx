@@ -21,6 +21,8 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { useContracts, useContractStats } from '@/hooks/queries/useContractQueries';
+import { useAuth } from '@/context/AuthContext';
+import { prefetchContacts } from '@/hooks/useContacts';
 import type {
   ContractListFilters,
   ContractTypeFilter,
@@ -714,6 +716,15 @@ const ContractsHubPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
+  const { currentTenant, isLive } = useAuth();
+
+  // ── Prefetch contacts for wizard (client/vendor/partner) ──
+  useEffect(() => {
+    if (!currentTenant?.id) return;
+    ['client', 'vendor', 'partner'].forEach((cls) => {
+      prefetchContacts(currentTenant.id, isLive, cls);
+    });
+  }, [currentTenant?.id, isLive]);
 
   // ── State ──
   const [activeType, setActiveType] = useState<ContractTypeFilter>(
