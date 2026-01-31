@@ -17,11 +17,13 @@ Files (3 total):
    - Applied to both createContract and updateContract methods
 
 3. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
-   - Removed invalid CONTRACT_TYPE_MAP, omit contract_type from request
+   - Full payload remap to match deployed DB RPC schema (flattened blocks/vendors)
+   - Omit contract_type (API validates pricing types; wizard sends relationship type via contact_classification)
    - Fixed acceptance_method mapping: payment->manual, signoff->digital_signature
-   - Fixed date format: ISO 8601 via Date.toISOString()
-   - Fixed fly-by block IDs: generate UUID via crypto.randomUUID()
-   - Fly-by blocks marked with isFlyBy:true and originalId in content_snapshot
+   - Fly-by blocks: source_type='flyby', no source_block_id, originalId in custom_fields
+   - Catalog blocks: source_type='catalog', source_block_id=UUID
+   - Vendors use contact_id + contact_classification pattern
+   - Buyer uses contact_id + contact_classification at top level
 
 Copy Commands (PowerShell):
 -------------------------------------------------

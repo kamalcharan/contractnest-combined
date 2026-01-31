@@ -175,7 +175,9 @@ function mapWizardToRequest(
   return {
     // Core fields
     record_type: state.wizardMode === 'rfq' ? 'rfq' : 'contract',
-    contract_type: contractType,
+    // Note: contract_type omitted — API validates against pricing types
+    // (fixed_price, etc.) which the wizard doesn't set. The relationship
+    // type (client/vendor/partner) is carried by contact_classification.
     name: state.contractName,
     title: state.contractName,
     description: state.description || undefined,
