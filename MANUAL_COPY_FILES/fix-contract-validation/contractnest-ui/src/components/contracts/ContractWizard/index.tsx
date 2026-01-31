@@ -3,7 +3,6 @@
 import React, { useState, useCallback } from 'react';
 import { X, CheckCircle2, ArrowRight, Loader2 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
-import { addDays, addMonths, addYears } from 'date-fns';
 import { useContractOperations } from '@/hooks/queries/useContractQueries';
 import type { CreateContractRequest } from '@/types/contracts';
 import FloatingActionIsland from './FloatingActionIsland';
@@ -124,97 +123,91 @@ const ACCEPTANCE_METHOD_API_MAP: Record<string, string> = {
   auto: 'auto',
 };
 
-// Map wizard state to API CreateContractRequest
+// UUID check for fly-by block detection
+const isValidUUID = (id: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
+// Map wizard state to API request payload (matches deployed DB RPC schema)
 function mapWizardToRequest(
   state: ContractWizardState,
   contractType: ContractType
-): CreateContractRequest {
-  const startDate = state.startDate;
-  let endDate: Date;
-
-  // Calculate end_date from start + duration
-  if (state.durationUnit === 'days') {
-    endDate = addDays(startDate, state.durationValue);
-  } else if (state.durationUnit === 'years') {
-    endDate = addYears(startDate, state.durationValue);
-  } else {
-    endDate = addMonths(startDate, state.durationValue);
-  }
-
-  // Build vendors array
-  const vendors: CreateContractRequest['vendors'] = [];
-  if (state.wizardMode === 'rfq') {
-    state.vendorIds.forEach((id, idx) => {
-      vendors.push({
-        contact_id: id,
-        role: 'vendor',
-        is_primary: idx === 0,
-      });
-    });
-  } else if (state.buyerId) {
-    const counterpartyRole = contractType === 'vendor' ? 'vendor' : contractType === 'partner' ? 'partner' : 'buyer';
-    vendors.push({
-      contact_id: state.buyerId,
-      role: counterpartyRole,
-      is_primary: true,
-    });
-  }
-
-  // Build blocks array with content_snapshot
-  // Fly-by blocks have non-UUID IDs (e.g. "flyby-text-123") — generate a UUID for them
-  const isValidUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
-
-  const blocks = state.selectedBlocks.map((block, idx) => ({
-    block_id: isValidUUID(block.id) ? block.id : crypto.randomUUID(),
-    sort_order: idx,
-    content_snapshot: {
-      name: block.name,
-      description: block.description,
-      quantity: block.quantity,
-      price: block.price,
-      totalPrice: block.totalPrice,
-      cycle: block.cycle,
-      currency: block.currency,
-      categoryName: block.categoryName,
-      unlimited: block.unlimited,
-      isFlyBy: !isValidUUID(block.id),
-      originalId: !isValidUUID(block.id) ? block.id : undefined,
-      config: block.config || {},
-    },
-  }));
-
+): Record<string, any> {
   // Map acceptance method to API-compatible value
   const apiAcceptanceMethod = state.acceptanceMethod
     ? ACCEPTANCE_METHOD_API_MAP[state.acceptanceMethod] || state.acceptanceMethod
     : undefined;
 
+  // Build blocks array — flattened to match t_contract_blocks columns
+  const blocks = state.selectedBlocks.map((block, idx) => {
+    const isFlyBy = !isValidUUID(block.id);
+    return {
+      position: idx,
+      source_type: isFlyBy ? 'flyby' : 'catalog',
+      source_block_id: isFlyBy ? undefined : block.id,
+      block_name: block.name,
+      block_description: block.description || '',
+      category_id: block.categoryId || undefined,
+      category_name: block.categoryName,
+      unit_price: block.price,
+      quantity: block.quantity,
+      billing_cycle: block.cycle,
+      total_price: block.totalPrice,
+      flyby_type: isFlyBy ? (block.flyByType || 'text') : undefined,
+      custom_fields: {
+        currency: block.currency,
+        unlimited: block.unlimited,
+        config: block.config || {},
+        originalId: isFlyBy ? block.id : undefined,
+      },
+    };
+  });
+
+  // Build vendors array (RFQ only) — matches t_contract_vendors columns
+  const vendors = state.wizardMode === 'rfq'
+    ? state.vendorIds.map((id, idx) => ({
+        vendor_id: id,
+        contact_id: id,
+        contact_classification: 'vendor',
+        vendor_name: state.vendorNames[idx] || '',
+      }))
+    : [];
+
   return {
+    // Core fields
     record_type: state.wizardMode === 'rfq' ? 'rfq' : 'contract',
-    // contract_type is optional — omit it; store wizard category in metadata instead
+    contract_type: contractType,
+    name: state.contractName,
     title: state.contractName,
     description: state.description || undefined,
-    acceptance_method: apiAcceptanceMethod as CreateContractRequest['acceptance_method'],
-    start_date: startDate.toISOString(),
-    end_date: endDate.toISOString(),
-    total_value: state.totalValue,
+    acceptance_method: apiAcceptanceMethod,
+    path: state.path,
+    template_id: state.templateId || undefined,
+
+    // Buyer / counterparty (contact_id + classification)
+    buyer_id: state.buyerId || undefined,
+    contact_id: state.buyerId || undefined,
+    contact_classification: contractType,
+    buyer_name: state.buyerName || undefined,
+
+    // Duration & timeline
+    duration_value: state.durationValue,
+    duration_unit: state.durationUnit,
+    grace_period_value: state.gracePeriodValue,
+    grace_period_unit: state.gracePeriodUnit,
+
+    // Billing
     currency: state.currency,
-    payment_terms: state.billingCycleType || undefined,
-    metadata: {
-      duration: { value: state.durationValue, unit: state.durationUnit },
-      grace_period: { value: state.gracePeriodValue, unit: state.gracePeriodUnit },
-      billing: {
-        cycle_type: state.billingCycleType,
-        payment_mode: state.paymentMode,
-        emi_months: state.paymentMode === 'emi' ? state.emiMonths : undefined,
-        per_block_payment_type: state.perBlockPaymentType,
-        tax_rate_ids: state.selectedTaxRateIds,
-      },
-      template_id: state.templateId || undefined,
-      wizard_contract_type: contractType,
-    },
+    billing_cycle_type: state.billingCycleType || undefined,
+    payment_mode: state.paymentMode,
+    emi_months: state.paymentMode === 'emi' ? state.emiMonths : undefined,
+    per_block_payment_type: JSON.stringify(state.perBlockPaymentType),
+    total_value: state.totalValue,
+    selected_tax_rate_ids: state.selectedTaxRateIds,
+
+    // Related entities
     blocks,
     vendors,
-  } as CreateContractRequest;
+  };
 }
 
 const ContractWizard: React.FC<ContractWizardProps> = ({
@@ -343,7 +336,7 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
       // Final step — call API to create the contract
       try {
         const request = mapWizardToRequest(wizardState, contractType);
-        await createContract(request);
+        await createContract(request as CreateContractRequest);
         setIsContractSent(true);
       } catch {
         // Error toast is handled by the mutation's onError
