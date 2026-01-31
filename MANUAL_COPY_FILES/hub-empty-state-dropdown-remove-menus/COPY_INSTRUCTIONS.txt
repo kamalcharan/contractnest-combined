@@ -1,0 +1,24 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — hub-empty-state-dropdown-remove-menus
+═══════════════════════════════════════════════════
+
+Feature: Empty state dropdown for "All Contracts" + remove redundant contract menu items
+Branch: claude/init-submodules-restore-code-chBfL
+
+Submodules Affected: contractnest-ui
+
+Files (2 total):
+─────────────────────────────────────────────────
+1. contractnest-ui/src/pages/contracts/hub/index.tsx
+   - EmptyState now shows dropdown (Client/Vendor/Partner) when on "All Contracts"
+   - When on specific type, button directly opens wizard for that type
+
+2. contractnest-ui/src/utils/constants/industryMenus.ts
+   - Removed: Client Contracts, Vendor Contracts, Partner Contracts menu items
+   - Kept: All Contracts, Contract Preview, Invite Sellers
+   - Parent "Contracts" menu now points to /contracts (hub)
+
+Copy Commands (PowerShell):
+─────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\hub-empty-state-dropdown-remove-menus\contractnest-ui\src\pages\contracts\hub\index.tsx" -Destination "contractnest-ui\src\pages\contracts\hub\index.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\hub-empty-state-dropdown-remove-menus\contractnest-ui\src\utils\constants\industryMenus.ts" -Destination "contractnest-ui\src\utils\constants\industryMenus.ts" -Force
