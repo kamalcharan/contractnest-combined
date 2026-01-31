@@ -1,0 +1,39 @@
+===============================================
+COPY INSTRUCTIONS -- wizard-crud-integration
+===============================================
+
+Feature: Wire Contract Wizard to real API with CRUD, DatePicker, step reorder
+Branch: claude/init-submodules-restore-code-chBfL
+
+Submodules Affected: contractnest-ui
+
+Files (4 total):
+-------------------------------------------------
+1. contractnest-ui/src/components/ui/DatePicker.tsx (NEW)
+   - Themed calendar date picker built on Popover + date-fns
+   - Supports min/max dates, today indicator, month navigation
+   - Uses theme system for all colors (dark/light)
+
+2. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+   - Imported date-fns, useContractOperations, CreateContractRequest
+   - Added startDate to ContractWizardState
+   - Swapped acceptance step BEFORE counterparty step
+   - Added CONTRACT_TYPE_MAP (client->service, vendor->purchase_order, partner->partnership)
+   - Added mapWizardToRequest() mapper function
+   - handleNext now calls createContract(request) via API mutation
+   - FloatingActionIsland shows loading state during creation
+
+3. contractnest-ui/src/components/contracts/ContractWizard/steps/ContractDetailsStep.tsx
+   - Added startDate: Date to ContractDetailsData interface
+   - Imported and rendered DatePicker in Duration & Timeline card
+   - Updated timelineDates useMemo to use data.startDate
+
+4. contractnest-ui/src/pages/contracts/hub/index.tsx
+   - Removed console.log from onComplete callback
+
+Copy Commands (PowerShell):
+-------------------------------------------------
+Copy-Item "MANUAL_COPY_FILES\wizard-crud-integration\contractnest-ui\src\components\ui\DatePicker.tsx" -Destination "contractnest-ui\src\components\ui\DatePicker.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\wizard-crud-integration\contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\wizard-crud-integration\contractnest-ui\src\components\contracts\ContractWizard\steps\ContractDetailsStep.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\ContractDetailsStep.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\wizard-crud-integration\contractnest-ui\src\pages\contracts\hub\index.tsx" -Destination "contractnest-ui\src\pages\contracts\hub\index.tsx" -Force
