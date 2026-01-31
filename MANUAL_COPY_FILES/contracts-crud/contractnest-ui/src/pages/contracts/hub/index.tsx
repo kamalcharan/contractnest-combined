@@ -17,7 +17,6 @@ import {
   RefreshCw,
   Loader2,
   ChevronDown,
-  ArrowLeft,
 } from 'lucide-react';
 import { useContracts, useContractStats } from '@/hooks/queries/useContractQueries';
 import type {
@@ -27,12 +26,6 @@ import type {
 } from '@/types/contracts';
 import { CONTRACT_STATUS_COLORS } from '@/types/contracts';
 
-// Import the existing contract creation wizard
-import ContractCreatePage from '@/pages/contracts/create';
-
-// Type for wizard mode — null = hub view, string = wizard open for that type
-type WizardMode = 'client' | 'vendor' | 'partner' | null;
-
 // ═══════════════════════════════════════════════════
 // TYPE RAIL (Left vertical sidebar — glassmorphic)
 // ═══════════════════════════════════════════════════
@@ -40,13 +33,12 @@ type WizardMode = 'client' | 'vendor' | 'partner' | null;
 interface TypeRailProps {
   activeType: ContractTypeFilter;
   onTypeChange: (type: ContractTypeFilter) => void;
-  onQuickCreate: (type: WizardMode) => void;
+  onQuickCreate: (type: string) => void;
   stats: { all: number; client: number; vendor: number; partner: number };
   colors: any;
-  wizardMode: WizardMode;
 }
 
-const TypeRail: React.FC<TypeRailProps> = ({ activeType, onTypeChange, onQuickCreate, stats, colors, wizardMode }) => {
+const TypeRail: React.FC<TypeRailProps> = ({ activeType, onTypeChange, onQuickCreate, stats, colors }) => {
   const typeItems: Array<{
     id: ContractTypeFilter;
     label: string;
@@ -60,7 +52,7 @@ const TypeRail: React.FC<TypeRailProps> = ({ activeType, onTypeChange, onQuickCr
     { id: 'partner', label: 'Partner', icon: Handshake, count: stats.partner, color: colors.semantic.warning },
   ];
 
-  const createItems: Array<{ label: string; type: WizardMode; color: string }> = [
+  const createItems: Array<{ label: string; type: string; color: string }> = [
     { label: 'Client Contract', type: 'client', color: colors.brand.primary },
     { label: 'Vendor Contract', type: 'vendor', color: colors.semantic.success },
     { label: 'Partner Contract', type: 'partner', color: colors.semantic.warning },
@@ -182,36 +174,31 @@ const TypeRail: React.FC<TypeRailProps> = ({ activeType, onTypeChange, onQuickCr
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {createItems.map((item) => {
-            const isActiveWizard = wizardMode === item.type;
-            return (
-              <button
-                key={item.type}
-                onClick={() => onQuickCreate(item.type)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  padding: '8px 12px',
-                  borderRadius: 8,
-                  border: isActiveWizard
-                    ? `1px solid ${item.color}40`
-                    : `1px solid ${colors.utility.primaryText}20`,
-                  background: isActiveWizard ? `${item.color}14` : 'transparent',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                  width: '100%',
-                  textAlign: 'left',
-                  fontSize: 12,
-                  fontWeight: isActiveWizard ? 600 : 500,
-                  color: isActiveWizard ? colors.utility.primaryText : colors.utility.secondaryText,
-                }}
-              >
-                <Plus size={14} style={{ color: item.color }} />
-                {item.label}
-              </button>
-            );
-          })}
+          {createItems.map((item) => (
+            <button
+              key={item.type}
+              onClick={() => onQuickCreate(item.type)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '8px 12px',
+                borderRadius: 8,
+                border: `1px solid ${colors.utility.primaryText}20`,
+                background: 'transparent',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                width: '100%',
+                textAlign: 'left',
+                fontSize: 12,
+                fontWeight: 500,
+                color: colors.utility.secondaryText,
+              }}
+            >
+              <Plus size={14} style={{ color: item.color }} />
+              {item.label}
+            </button>
+          ))}
         </div>
       </div>
     </div>
@@ -605,7 +592,6 @@ const ContractsHubPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [createDropdownOpen, setCreateDropdownOpen] = useState(false);
   const createDropdownRef = useRef<HTMLDivElement>(null);
-  const [wizardMode, setWizardMode] = useState<WizardMode>(null);
 
   // ── Close dropdown on outside click ──
   useEffect(() => {
@@ -665,30 +651,29 @@ const ContractsHubPage: React.FC = () => {
     setSearchParams(params, { replace: true });
   };
 
+  // ── Navigate to contract creation wizard ──
+  const navigateToCreate = (type: string) => {
+    navigate(`/contracts/create/${type}`);
+  };
+
   // ── Create options for dropdown ──
   const createOptions = useMemo(() => [
-    { label: 'Client Contract', type: 'client' as WizardMode, icon: Users, color: colors.brand.primary },
-    { label: 'Vendor Contract', type: 'vendor' as WizardMode, icon: Building2, color: colors.semantic.success },
-    { label: 'Partner Contract', type: 'partner' as WizardMode, icon: Handshake, color: colors.semantic.warning },
+    { label: 'Client Contract', type: 'client', icon: Users, color: colors.brand.primary },
+    { label: 'Vendor Contract', type: 'vendor', icon: Building2, color: colors.semantic.success },
+    { label: 'Partner Contract', type: 'partner', icon: Handshake, color: colors.semantic.warning },
   ], [colors]);
 
   const handleCreateClick = () => {
     if (activeType === 'all') {
       setCreateDropdownOpen((prev) => !prev);
     } else {
-      setWizardMode(activeType as WizardMode);
+      navigateToCreate(activeType);
     }
   };
 
-  const handleCreateOption = (type: WizardMode) => {
+  const handleCreateOption = (type: string) => {
     setCreateDropdownOpen(false);
-    setWizardMode(type);
-  };
-
-  const handleWizardExit = () => {
-    setWizardMode(null);
-    // Refresh contract list after wizard closes (user may have created a contract)
-    refetch();
+    navigateToCreate(type);
   };
 
   const handleRowClick = (id: string) => {
@@ -705,275 +690,222 @@ const ContractsHubPage: React.FC = () => {
       <TypeRail
         activeType={activeType}
         onTypeChange={handleTypeChange}
-        onQuickCreate={setWizardMode}
+        onQuickCreate={navigateToCreate}
         stats={typeCounts}
         colors={colors}
-        wizardMode={wizardMode}
       />
 
-      {/* Main Content — switches between hub view and wizard view */}
+      {/* Main Content */}
       <div style={{ flex: 1, overflow: 'auto' }}>
-        {wizardMode ? (
-          /* ── WIZARD VIEW ── */
-          <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-            {/* Wizard header bar with back button */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: '16px 28px',
-                borderBottom: `1px solid ${colors.utility.primaryText}20`,
-                background: colors.utility.secondaryBackground,
-              }}
-            >
-              <button
-                onClick={handleWizardExit}
+        <div style={{ padding: '24px 28px' }}>
+          {/* Header row */}
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: 20,
+            }}
+          >
+            <div>
+              <h1
+                style={{
+                  fontSize: 22,
+                  fontWeight: 700,
+                  color: colors.utility.primaryText,
+                  letterSpacing: '-0.3px',
+                }}
+              >
+                {activeType === 'all'
+                  ? 'All Contracts'
+                  : `${activeType.charAt(0).toUpperCase() + activeType.slice(1)} Contracts`}
+              </h1>
+              <p style={{ fontSize: 13, color: colors.utility.secondaryText, marginTop: 2 }}>
+                {totalCount} {totalCount === 1 ? 'contract' : 'contracts'}
+                {activeStatus ? ` · filtered by ${activeStatus.replace(/_/g, ' ')}` : ''}
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              {/* Search */}
+              <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: 6,
-                  padding: '6px 14px',
+                  padding: '8px 14px',
+                  borderRadius: 8,
+                  border: `1px solid ${colors.utility.primaryText}20`,
+                  background: `${colors.utility.primaryText}06`,
+                }}
+              >
+                <Search size={14} style={{ color: colors.utility.secondaryText }} />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search contracts..."
+                  style={{
+                    border: 'none',
+                    outline: 'none',
+                    background: 'transparent',
+                    color: colors.utility.primaryText,
+                    fontSize: 13,
+                    width: 180,
+                    fontFamily: 'inherit',
+                  }}
+                />
+              </div>
+
+              {/* Refresh */}
+              <button
+                onClick={() => refetch()}
+                style={{
+                  padding: '8px 12px',
                   borderRadius: 8,
                   border: `1px solid ${colors.utility.primaryText}20`,
                   background: 'transparent',
                   cursor: 'pointer',
-                  fontSize: 13,
-                  fontWeight: 500,
                   color: colors.utility.secondaryText,
+                  display: 'flex',
+                  alignItems: 'center',
                 }}
               >
-                <ArrowLeft size={14} />
-                Back to Contracts
+                <RefreshCw size={14} />
               </button>
-              <div
-                style={{
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: colors.utility.primaryText,
-                }}
-              >
-                Creating {wizardMode.charAt(0).toUpperCase() + wizardMode.slice(1)} Contract
-              </div>
-            </div>
 
-            {/* Render the existing ContractCreatePage wizard */}
-            <div style={{ flex: 1, overflow: 'auto' }}>
-              <ContractCreatePage contractType={wizardMode} onExit={handleWizardExit} />
-            </div>
-          </div>
-        ) : (
-          /* ── HUB VIEW ── */
-          <div style={{ padding: '24px 28px' }}>
-            {/* Header row */}
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: 20,
-              }}
-            >
-              <div>
-                <h1
-                  style={{
-                    fontSize: 22,
-                    fontWeight: 700,
-                    color: colors.utility.primaryText,
-                    letterSpacing: '-0.3px',
-                  }}
-                >
-                  {activeType === 'all'
-                    ? 'All Contracts'
-                    : `${activeType.charAt(0).toUpperCase() + activeType.slice(1)} Contracts`}
-                </h1>
-                <p style={{ fontSize: 13, color: colors.utility.secondaryText, marginTop: 2 }}>
-                  {totalCount} {totalCount === 1 ? 'contract' : 'contracts'}
-                  {activeStatus ? ` · filtered by ${activeStatus.replace(/_/g, ' ')}` : ''}
-                </p>
-              </div>
-
-              <div style={{ display: 'flex', gap: 8 }}>
-                {/* Search */}
-                <div
+              {/* Primary create — dropdown when "All", direct when specific type */}
+              <div ref={createDropdownRef} style={{ position: 'relative' }}>
+                <button
+                  onClick={handleCreateClick}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: 6,
-                    padding: '8px 14px',
+                    padding: '8px 18px',
                     borderRadius: 8,
-                    border: `1px solid ${colors.utility.primaryText}20`,
-                    background: `${colors.utility.primaryText}06`,
-                  }}
-                >
-                  <Search size={14} style={{ color: colors.utility.secondaryText }} />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search contracts..."
-                    style={{
-                      border: 'none',
-                      outline: 'none',
-                      background: 'transparent',
-                      color: colors.utility.primaryText,
-                      fontSize: 13,
-                      width: 180,
-                      fontFamily: 'inherit',
-                    }}
-                  />
-                </div>
-
-                {/* Refresh */}
-                <button
-                  onClick={() => refetch()}
-                  style={{
-                    padding: '8px 12px',
-                    borderRadius: 8,
-                    border: `1px solid ${colors.utility.primaryText}20`,
-                    background: 'transparent',
+                    border: 'none',
+                    background: colors.brand.primary,
+                    color: '#fff',
+                    fontSize: 13,
+                    fontWeight: 600,
                     cursor: 'pointer',
-                    color: colors.utility.secondaryText,
-                    display: 'flex',
-                    alignItems: 'center',
                   }}
                 >
-                  <RefreshCw size={14} />
+                  <Plus size={14} />
+                  {activeType === 'all'
+                    ? 'New Contract'
+                    : `New ${activeType.charAt(0).toUpperCase() + activeType.slice(1)} Contract`}
+                  {activeType === 'all' && (
+                    <ChevronDown
+                      size={14}
+                      style={{
+                        transition: 'transform 0.15s ease',
+                        transform: createDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                      }}
+                    />
+                  )}
                 </button>
 
-                {/* Primary create — dropdown when "All", direct when specific type */}
-                <div ref={createDropdownRef} style={{ position: 'relative' }}>
-                  <button
-                    onClick={handleCreateClick}
+                {/* Dropdown menu */}
+                {createDropdownOpen && activeType === 'all' && (
+                  <div
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      padding: '8px 18px',
-                      borderRadius: 8,
-                      border: 'none',
-                      background: colors.brand.primary,
-                      color: '#fff',
-                      fontSize: 13,
-                      fontWeight: 600,
-                      cursor: 'pointer',
+                      position: 'absolute',
+                      top: 'calc(100% + 6px)',
+                      right: 0,
+                      minWidth: 200,
+                      borderRadius: 10,
+                      border: `1px solid ${colors.utility.primaryText}20`,
+                      background: colors.utility.secondaryBackground,
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                      zIndex: 50,
+                      overflow: 'hidden',
                     }}
                   >
-                    <Plus size={14} />
-                    {activeType === 'all'
-                      ? 'New Contract'
-                      : `New ${activeType.charAt(0).toUpperCase() + activeType.slice(1)} Contract`}
-                    {activeType === 'all' && (
-                      <ChevronDown
-                        size={14}
-                        style={{
-                          transition: 'transform 0.15s ease',
-                          transform: createDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                        }}
-                      />
-                    )}
-                  </button>
-
-                  {/* Dropdown menu */}
-                  {createDropdownOpen && activeType === 'all' && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: 'calc(100% + 6px)',
-                        right: 0,
-                        minWidth: 200,
-                        borderRadius: 10,
-                        border: `1px solid ${colors.utility.primaryText}20`,
-                        background: colors.utility.secondaryBackground,
-                        boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
-                        zIndex: 50,
-                        overflow: 'hidden',
-                      }}
-                    >
-                      {createOptions.map((opt) => {
-                        const Icon = opt.icon;
-                        return (
-                          <button
-                            key={opt.type}
-                            onClick={() => handleCreateOption(opt.type)}
+                    {createOptions.map((opt) => {
+                      const Icon = opt.icon;
+                      return (
+                        <button
+                          key={opt.type}
+                          onClick={() => handleCreateOption(opt.type)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            width: '100%',
+                            padding: '10px 14px',
+                            border: 'none',
+                            background: 'transparent',
+                            cursor: 'pointer',
+                            transition: 'background 0.1s',
+                            textAlign: 'left',
+                            fontSize: 13,
+                            fontWeight: 500,
+                            color: colors.utility.primaryText,
+                          }}
+                          onMouseEnter={(e) => (e.currentTarget.style.background = `${colors.utility.primaryText}08`)}
+                          onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          <div
                             style={{
+                              width: 28,
+                              height: 28,
+                              borderRadius: 6,
                               display: 'flex',
                               alignItems: 'center',
-                              gap: 10,
-                              width: '100%',
-                              padding: '10px 14px',
-                              border: 'none',
-                              background: 'transparent',
-                              cursor: 'pointer',
-                              transition: 'background 0.1s',
-                              textAlign: 'left',
-                              fontSize: 13,
-                              fontWeight: 500,
-                              color: colors.utility.primaryText,
+                              justifyContent: 'center',
+                              background: `${opt.color}14`,
                             }}
-                            onMouseEnter={(e) => (e.currentTarget.style.background = `${colors.utility.primaryText}08`)}
-                            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                           >
-                            <div
-                              style={{
-                                width: 28,
-                                height: 28,
-                                borderRadius: 6,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                background: `${opt.color}14`,
-                              }}
-                            >
-                              <Icon size={14} style={{ color: opt.color }} />
-                            </div>
-                            {opt.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
+                            <Icon size={14} style={{ color: opt.color }} />
+                          </div>
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
-
-            {/* Pipeline Bar */}
-            <div style={{ marginBottom: 20 }}>
-              <PipelineBar
-                statusCounts={statusCounts}
-                activeStatus={activeStatus}
-                onStatusClick={handleStatusClick}
-                colors={colors}
-              />
-            </div>
-
-            {/* Content: Loading / Empty / Table */}
-            {isLoading && !contractsData ? (
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: 80,
-                  gap: 12,
-                }}
-              >
-                <Loader2
-                  className="h-8 w-8 animate-spin"
-                  style={{ color: colors.brand.primary }}
-                />
-                <p style={{ fontSize: 13, color: colors.utility.secondaryText }}>
-                  Loading contracts...
-                </p>
-              </div>
-            ) : showEmptyState ? (
-              <EmptyState typeFilter={activeType} colors={colors} onCreateClick={handleCreateClick} />
-            ) : (
-              <ContractsTable contracts={contracts} colors={colors} onRowClick={handleRowClick} />
-            )}
           </div>
-        )}
+
+          {/* Pipeline Bar */}
+          <div style={{ marginBottom: 20 }}>
+            <PipelineBar
+              statusCounts={statusCounts}
+              activeStatus={activeStatus}
+              onStatusClick={handleStatusClick}
+              colors={colors}
+            />
+          </div>
+
+          {/* Content: Loading / Empty / Table */}
+          {isLoading && !contractsData ? (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 80,
+                gap: 12,
+              }}
+            >
+              <Loader2
+                className="h-8 w-8 animate-spin"
+                style={{ color: colors.brand.primary }}
+              />
+              <p style={{ fontSize: 13, color: colors.utility.secondaryText }}>
+                Loading contracts...
+              </p>
+            </div>
+          ) : showEmptyState ? (
+            <EmptyState typeFilter={activeType} colors={colors} onCreateClick={handleCreateClick} />
+          ) : (
+            <ContractsTable contracts={contracts} colors={colors} onRowClick={handleRowClick} />
+          )}
+        </div>
       </div>
     </div>
   );
