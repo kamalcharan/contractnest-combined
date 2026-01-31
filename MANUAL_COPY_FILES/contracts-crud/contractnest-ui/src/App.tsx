@@ -6,18 +6,21 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { MasterDataProvider } from './contexts/MasterDataContext';
-import { QueryProvider } from './providers/QueryProvider'; // ✅ NEW: TanStack Query Provider
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'; // Add this import
+import { QueryProvider } from './providers/QueryProvider'; // TanStack Query Provider
+
 import './styles/globals.css';
 import './styles/layout.css';
-import { Toaster } from 'react-hot-toast';
+// import { Toaster } from 'react-hot-toast'; // Replaced with VaNiToast
+import { VaNiToastProviderWithGlobal } from './components/common/toast'; // VaNiToast
 import { initSentry } from './utils/sentry';
 import ErrorBoundary from './components/ErrorBoundary';
 import { MiscPageWrapper } from './components/misc';
 import SessionConflictNotification from './components/SessionConflictNotification';
 import EnvironmentSwitchModal from './components/EnvironmentSwitchModal';
 import LockScreen from './components/auth/LockScreen';
+import BrowserWarningBanner from './components/common/BrowserWarningBanner';
 import LandingPage from './pages/public/LandingPage';
+import PlaygroundPage from './pages/public/PlaygroundPage';
 import LoadingSpinner from './components/ui/LoadingSpinner';
 
 // Initialize Sentry as early as possible
@@ -30,6 +33,12 @@ import MainLayout from './components/layout/MainLayout';
 import CatalogPage from './pages/catalog/index';
 import ServiceViewPage from './pages/catalog/view';
 import CatalogServiceFormPage from './pages/catalog/catalogService-form';
+import CatalogStudioConfigurePage from './pages/catalog-studio/configure';
+import CatalogStudioBlocksPage from './pages/catalog-studio/blocks';
+import CatalogStudioNewBlockPage from './pages/catalog-studio/blocks/new';
+import CatalogStudioEditBlockPage from './pages/catalog-studio/blocks/[id]/edit';
+import CatalogStudioTemplatePage from './pages/catalog-studio/template';
+import CatalogStudioTemplatesListPage from './pages/catalog-studio/templates-list';
 
 
 // Auth Pages
@@ -47,13 +56,16 @@ import CreateTenantPage from './pages/auth/CreateTenantPage';
 import WelcomeStep from './pages/onboarding/steps/WelcomeStep';
 import OnboardingIndexPage from './pages/onboarding/index';
 import OnboardingLayout from './components/onboarding/OnboardingLayout';
+import OnboardingPendingPage from './pages/onboarding/OnboardingPendingPage';
 import StorageSetupStep from './pages/onboarding/steps/StorageSetupStep';
-import UserProfileStep from '@/pages/onboarding/steps/UserProfileStep';
+import UserProfileStep from '@/pages/onboarding/steps/userProfileStep';
 import ThemeSelectionStep from '@/pages/onboarding/steps/ThemeSelectionStep';
 import BusinessBasicStep from '@/pages/onboarding/steps/BusinessBasicStep';
-import BusinessBrandingStep from '@/pages/onboarding/steps/BusinessBrandingStep';     
+import BusinessBrandingStep from '@/pages/onboarding/steps/BusinessBrandingStep';
 import BusinessPreferencesStep from '@/pages/onboarding/steps/BusinessPreferencesStep';
 import SequenceNumbersStep from '@/pages/onboarding/steps/SequenceNumbersStep';
+import MasterDataStep from '@/pages/onboarding/steps/MasterDataStep';
+import CompleteStep from '@/pages/onboarding/steps/CompleteStep';
 
 
 //VaNi Pages
@@ -79,15 +91,21 @@ import WebsiteIntegrationPage from './vani/pages/channels/WebsiteIntegrationPage
 import ChatBotIntegrationPage from './vani/pages/channels/ChatBotIntegrationPage';
 import WhatsAppIntegrationPage from './vani/pages/channels/WhatsAppIntegrationPage';
 
-// ✅ NEW: BBB Directory Pages
+// BBB Directory Pages
 import BBBProfileOnboardingPage from './pages/VaNi/channels/BBBProfileOnboardingPage';
 import BBBAdminDashboard from './pages/VaNi/channels/BBBAdminDashboard';
+import VaNiChatPage from './pages/VaNi/channels/VaNiChatPage';
 
-// ✅ Implementation Toolkit
+// Implementation Toolkit
 import TenantProfilesPage from './pages/VaNi/TenantProfilesPage';
+import ProductMastersPage from './pages/VaNi/ProductMastersPage';
+
+// Groups Pages (Customer Channels)
+import GroupsListPage from './pages/settings/customer-channels/GroupsListPage';
+import GroupProfileDashboard from './pages/settings/customer-channels/GroupProfileDashboard';
 
 // MISC Pages
-import { 
+import {
   NotFoundPage,
   MaintenancePage,
   UnauthorizedPage,
@@ -95,18 +113,19 @@ import {
   NoInternetPage,
   ComingSoonPage,
   ErrorPage,
-  ApiServerDownPage
+  ApiServerDownPage,
+  BrowserNotSupportedPage
 } from './pages/misc';
 import TaxSettingsPage from './pages/settings/TaxSettings';
 import SequencingSettingsPage from './pages/settings/sequencing';
 
 // Main pages
 import Dashboard from './pages/Dashboard';
-import SettingsPage from './pages/settings'; 
-import ListOfValuesPage from './pages/settings/LOV'; 
+import SettingsPage from './pages/settings';
+import ListOfValuesPage from './pages/settings/LOV';
 import StorageSettingsPage from './pages/settings/storagesettings';
 
-// ✅ FIXED: Import the actual Resources page instead of placeholder
+// FIXED: Import the actual Resources page instead of placeholder
 import ResourcesPage from './pages/settings/Resources';
 
 // Service Contracts - Templates
@@ -118,18 +137,30 @@ import TemplateDesignerPage from './pages/service-contracts/templates/designer';
 // Service Contracts - Contracts
 import ContractsPage from './pages/service-contracts/contracts';
 
+// Contract Builder
+import ContractCreatePage from './pages/contracts/create';
+
+// Contract Preview, PDF View, Ops Cockpit, Invite Sellers
+import ContractPreviewPage from './pages/contracts/preview';
+import PDFViewPage from './pages/contracts/pdf-view';
+import OpsCockpitPage from './pages/ops/cockpit';
+import InviteSellersPage from './pages/contracts/invite';
+
 // Contracts Hub
 import ContractsHubPage from './pages/contracts/hub';
 
 // Team Management pages (using existing components)
 import UsersPage from './pages/settings/users';
-import UserViewPage from './pages/settings/users/userview';
+import UserViewPage from './pages/settings/users/userView';
 import UserProfilePage from './pages/settings/users/user-profile';
 
 // Business Profile pages
 import BusinessProfilePage from './pages/settings/business-profile';
 import EditBusinessProfilePage from './pages/settings/business-profile/edit';
 import OnboardingBusinessProfilePage from './pages/onboarding/business-profile';
+import SmartProfilePage from './pages/settings/business-profile/smart-profile';
+import CloseAccountPage from './pages/settings/business-profile/close-account';
+
 
 // Integration pages
 import IntegrationsPage from './pages/settings/integrations';
@@ -160,32 +191,27 @@ import InvoiceDetailPage from './pages/settings/businessmodel/admin/billing/invo
 // Business Model - Tenant Pages
 import PricingPlansPage from './pages/settings/businessmodel/tenants/pricing-plans';
 import SubscriptionPage from './pages/settings/businessmodel/tenants/Subscription';
+// REMOVED: CreditsPage import - Credits functionality now merged into SubscriptionPage
 
 // Contacts pages
 import ContactsPage from './pages/contacts/index';
 import ContactViewPage from './pages/contacts/view';
 import ContactCreateForm from './pages/contacts/create';
 
-// Create QueryClient
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      retry: 3,
-    },
-  },
-});
+// Admin - Subscription Management
+import SubscriptionManagementPage from './pages/admin/subscription-management';
+
 
 // Temporary API test
 const testAPIConnection = () => {
   console.log('Testing API connection...');
   console.log('VITE_API_URL:', import.meta.env.VITE_API_URL);
-  
+
   // Test with your api service
   import('./services/api').then(({ default: api }) => {
     api.get('/')
-      .then(response => console.log('✅ API Connected:', response.data))
-      .catch(err => console.error('❌ API Error:', err));
+      .then(response => console.log('API Connected:', response.data))
+      .catch(err => console.error('API Error:', err));
   });
 };
 
@@ -196,33 +222,31 @@ testAPIConnection();
 const ProfilePage = () => <div className="p-8">Profile Page (Coming Soon)</div>;
 const TeamEditPage = () => <div className="p-8">Edit Team Member Page (Coming Soon)</div>;
 
-// ✅ REMOVED: Placeholder ResourcesPage - now using real import
-
 // Smart Home Page Component - Shows landing page OR redirects based on auth
 const SmartHomePage: React.FC = () => {
   const { isAuthenticated, isLoading, currentTenant } = useAuth();
   const location = useLocation();
-  
-  // ✅ Don't redirect if user is on auth pages
+
+  // Don't redirect if user is on auth pages
   const isAuthPage = ['/login', '/signup', '/register', '/forgot-password', '/reset-password'].includes(location.pathname);
-  
+
   if (isLoading) {
     return <LoadingSpinner />;
   }
-  
+
   if (isAuthPage) {
     // Let auth pages handle themselves
     return null;
   }
-  
+
   if (isAuthenticated && currentTenant) {
     return <Navigate to="/dashboard" replace />;
   }
-  
+
   if (isAuthenticated && !currentTenant) {
     return <Navigate to="/select-tenant" replace />;
   }
-  
+
   // Not authenticated - show landing page
   return <LandingPage />;
 };
@@ -236,37 +260,40 @@ const NetworkStatusHandler: React.FC = () => {
       // Optionally show a toast notification
       // toast.success('Connection restored', { duration: 2000 });
     };
-    
+
     const handleOffline = () => {
       console.log('Gone offline');
       // The MiscPageWrapper will handle showing the no-internet page
     };
-    
+
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-    
+
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
-  
+
   return null;
 };
 
 // App content component that has access to auth context
 const AppContent: React.FC = () => {
   const { isLocked, isAuthenticated } = useAuth();
-  
+
   return (
     <>
       {/* Show lock screen overlay when locked */}
       {isAuthenticated && isLocked && <LockScreen />}
-      
+
       <NetworkStatusHandler />
       <SessionConflictNotification />
       <EnvironmentSwitchModal />
-      <Toaster position="bottom-right" />
+      {/* Browser warning banner - shows only for authenticated users on unsupported browsers */}
+      <BrowserWarningBanner />
+      {/* Replaced react-hot-toast Toaster with VaNiToastProviderWithGlobal */}
+      {/* <Toaster position="bottom-right" /> */}
       <MiscPageWrapper>
         <Routes>
           {/* MISC Routes - Outside of MainLayout */}
@@ -277,10 +304,11 @@ const AppContent: React.FC = () => {
           <Route path="/misc/error" element={<ErrorPage />} />
           <Route path="/misc/coming-soon" element={<ComingSoonPage />} />
           <Route path="/misc/api-server-down" element={<ApiServerDownPage />} />
+          <Route path="/misc/browser-not-supported" element={<BrowserNotSupportedPage />} />
 
           {/* Root Route - Smart Landing/Dashboard */}
           <Route path="/" element={<SmartHomePage />} />
-          
+
           {/* Public Routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
@@ -288,6 +316,8 @@ const AppContent: React.FC = () => {
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/register-invitation" element={<InvitationRegisterPage />} />
           <Route path="/auth/google-callback" element={<GoogleCallbackPage />} />
+          <Route path="/playground" element={<PlaygroundPage />} />
+
 
           {/* Routes outside of MainLayout that require auth */}
           <Route
@@ -306,7 +336,17 @@ const AppContent: React.FC = () => {
               </ProtectedRoute>
             }
           />
-          
+
+          {/* Onboarding Pending - for non-owners when onboarding is not complete */}
+          <Route
+            path="/onboarding-pending"
+            element={
+              <ProtectedRoute requireTenant={true}>
+                <OnboardingPendingPage />
+              </ProtectedRoute>
+            }
+          />
+
           {/* Complete Onboarding Routes - with Layout */}
           <Route
   path="/onboarding"
@@ -322,14 +362,11 @@ const AppContent: React.FC = () => {
   <Route path="user-profile" element={<UserProfileStep />} />
  <Route path="/onboarding/theme-selection" element={<ThemeSelectionStep />} />
  <Route path="/onboarding/business-basic" element={<BusinessBasicStep />} />
-<Route path="business-branding" element={<BusinessBrandingStep />} />              
+<Route path="business-branding" element={<BusinessBrandingStep />} />
 <Route path="business-preferences" element={<BusinessPreferencesStep />} />
 <Route path="sequence-numbers" element={<SequenceNumbersStep />} />
-  <Route path="master-data" element={<div>Master Data Step (Coming Soon)</div>} />
-  <Route path="team-invite" element={<div>Team Invite Step (Coming Soon)</div>} />
-  <Route path="product-tour" element={<div>Product Tour Step (Coming Soon)</div>} />
-  <Route path="sample-contract" element={<div>Sample Contract Step (Coming Soon)</div>} />
-  <Route path="complete" element={<div>Complete Step (Coming Soon)</div>} />
+  <Route path="master-data" element={<MasterDataStep />} />
+  <Route path="complete" element={<CompleteStep />} />
 </Route>
           {/* Protected Routes with MainLayout - Your Original Structure */}
           <Route
@@ -380,7 +417,7 @@ const AppContent: React.FC = () => {
           >
             <Route index element={<Navigate to="templates" replace />} />
             <Route path="contracts" element={<ContractsPage />} />
-            
+
             {/* Service Contracts - Templates Routes */}
             <Route path="templates">
               <Route index element={<MyTemplatesPage />} />
@@ -394,8 +431,81 @@ const AppContent: React.FC = () => {
               </Route>
             </Route>
           </Route>
-          
-          {/* Contracts Hub (unified entry) */}
+
+          {/* Contract Builder Routes - Client, Vendor, Partner */}
+          <Route
+            path="/contracts/create/:contractType"
+            element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<ContractCreatePage />} />
+          </Route>
+
+          {/* NEW: Contract Preview Route */}
+          <Route
+            path="/contracts/preview"
+            element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<ContractPreviewPage />} />
+            <Route path=":id" element={<ContractPreviewPage />} />
+          </Route>
+
+          {/* NEW: PDF View Route */}
+          <Route
+            path="/contracts/pdf"
+            element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<PDFViewPage />} />
+            <Route path=":id" element={<PDFViewPage />} />
+          </Route>
+
+          {/* NEW: Ops Cockpit Route */}
+          <Route
+            path="/ops/cockpit"
+            element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<OpsCockpitPage />} />
+          </Route>
+
+          {/* NEW: Invite Sellers Route */}
+          <Route
+            path="/contracts/invite"
+            element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<InviteSellersPage />} />
+          </Route>
+
+         {/* Catalog Studio Routes */}
+<Route path="/catalog-studio" element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+  <Route index element={<Navigate to="configure" replace />} />
+  <Route path="configure" element={<CatalogStudioConfigurePage />} />
+  <Route path="blocks" element={<CatalogStudioBlocksPage />} />
+  <Route path="blocks/new" element={<CatalogStudioNewBlockPage />} />
+  <Route path="blocks/:id/edit" element={<CatalogStudioEditBlockPage />} />
+  <Route path="template" element={<CatalogStudioTemplatePage />} />
+  <Route path="templates-list" element={<CatalogStudioTemplatesListPage />} />
+</Route>
+
+          {/* Contracts Hub — All Contracts page */}
           <Route
             path="/contracts"
             element={
@@ -409,7 +519,7 @@ const AppContent: React.FC = () => {
 
           {/* Legacy support for old routes - redirect to new structure */}
           <Route path="/templates" element={<Navigate to="/service-contracts/templates" replace />} />
-          
+
           {/* Settings routes */}
           <Route
             path="/settings"
@@ -423,7 +533,7 @@ const AppContent: React.FC = () => {
             <Route path="configure" element={<SettingsPage />} />
             <Route path="configure/lovs" element={<ListOfValuesPage />} />
             <Route path="configure/resources" element={<ResourcesPage />} />
-            
+
             {/* Team Management Routes */}
             <Route path="users" element={<UsersPage />} />
             <Route path="users/view/:id" element={<UserViewPage />} />
@@ -433,7 +543,10 @@ const AppContent: React.FC = () => {
             {/* Business Profile Settings */}
             <Route path="business-profile" element={<BusinessProfilePage />} />
             <Route path="business-profile/edit" element={<EditBusinessProfilePage />} />
-            
+            <Route path="business-profile/smart-profile" element={<SmartProfilePage />} />
+            <Route path="business-profile/close-account" element={<CloseAccountPage />} />
+
+
             {/* Storage Settings */}
             <Route path="configure/storage" element={<StorageSettingsPage />} />
 
@@ -448,24 +561,28 @@ const AppContent: React.FC = () => {
             <Route path="storage/storagecomplete" element={<StorageCompletePage />} />
             <Route path="storage/storagemanagement" element={<StorageManagementPage />} />
             <Route path="storage/categoryfiles/:categoryId" element={<CategoryFilesPage />} />
-            
+
             {/* Integration Settings */}
             <Route path="integrations" element={<IntegrationsPage />} />
-            
+
+            {/* NEW: Customer Channels - Groups */}
+            <Route path="configure/customer-channels/groups" element={<GroupsListPage />} />
+            <Route path="configure/customer-channels/groups/:groupId" element={<GroupProfileDashboard />} />
+
             {/* Business Model Routes */}
-            
+
             {/* Admin - Pricing Plans Management */}
             <Route path="businessmodel/admin/pricing-plans" element={<PricingPlansAdminPage />} />
             <Route path="businessmodel/admin/pricing-plans/create" element={<PricingPlanForm />} />
             <Route path="businessmodel/admin/pricing-plans/:id" element={<PlanDetailView />} />
             <Route path="businessmodel/admin/pricing-plans/:id/edit" element={<EditPlanPage />} />
             <Route path="businessmodel/admin/pricing-plans/:id/assign" element={<AssignPlanPage />} />
-            
+
             {/* Admin - Plan Versions */}
             <Route path="businessmodel/admin/pricing-plans/:id/versions" element={<PlanVersionsPage />} />
             <Route path="businessmodel/admin/pricing-plans/:id/versions/create" element={<CreateVersionPage />} />
             <Route path="businessmodel/admin/pricing-plans/:id/versions/migrate" element={<MigrationDashboardPage />} />
-            
+
             {/* Admin - Billing Management */}
             <Route path="businessmodel/admin/billing" element={<BillingDashboardPage />} />
             <Route path="businessmodel/admin/billing/create-invoice" element={<CreateInvoicePage />} />
@@ -511,13 +628,15 @@ const AppContent: React.FC = () => {
             <Route path="channels/website" element={<WebsiteIntegrationPage />} />
             <Route path="channels/chatbot" element={<ChatBotIntegrationPage />} />
             <Route path="channels/whatsapp" element={<WhatsAppIntegrationPage />} />
-            
-            {/* ✅ NEW: BBB Directory Routes */}
+
+            {/* NEW: BBB Directory Routes */}
             <Route path="channels/bbb/onboarding" element={<BBBProfileOnboardingPage />} />
             <Route path="channels/bbb/admin" element={<BBBAdminDashboard />} />
+            <Route path="channels/bbb/chat" element={<VaNiChatPage />} />
 
-            {/* ✅ Implementation Toolkit Routes */}
+            {/* Implementation Toolkit Routes */}
             <Route path="tenant-profiles" element={<TenantProfilesPage />} />
+            <Route path="toolkit/product-masters" element={<ProductMastersPage />} />
 
             <Route path="analytics" element={<AnalyticsPage />} />
             <Route path="analytics/cross-module" element={<AnalyticsPage />} />
@@ -533,7 +652,19 @@ const AppContent: React.FC = () => {
             <Route path="chat" element={<ChatPage />} />
             <Route path="chat/:conversationId" element={<ChatPage />} />
           </Route>
-          
+
+          {/* Admin - Subscription Management */}
+          <Route
+            path="/admin/subscription-management"
+            element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<SubscriptionManagementPage />} />
+          </Route>
+
           {/* Tenant - Pricing Plans & Subscription */}
           <Route
             path="/businessmodel/tenants/pricing-plans"
@@ -545,7 +676,8 @@ const AppContent: React.FC = () => {
           >
             <Route index element={<PricingPlansPage />} />
           </Route>
-          
+
+          {/* Unified Subscription Page - Credits merged into single dashboard */}
           <Route
             path="/businessmodel/tenants/subscription"
             element={
@@ -555,11 +687,12 @@ const AppContent: React.FC = () => {
             }
           >
             <Route index element={<SubscriptionPage />} />
+            {/* REMOVED: Credits route - now integrated into unified SubscriptionPage */}
           </Route>
-          
+
           {/* Legacy routes - redirect to new structure */}
           <Route path="/implementation/configure-plan" element={<Navigate to="/settings/businessmodel/admin/pricing-plans" replace />} />
-          
+
           {/* 404 Page - Must be last */}
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
@@ -568,7 +701,7 @@ const AppContent: React.FC = () => {
   );
 };
 
-// ✅ UPDATED: App component with QueryProvider
+// UPDATED: App component with VaNiToastProviderWithGlobal - CHANGED position to top-right
 const App: React.FC = () => {
   return (
     <ErrorBoundary>
@@ -576,13 +709,16 @@ const App: React.FC = () => {
         <ThemeProvider>
           <Router>
             <AuthProvider>
-              <QueryClientProvider client={queryClient}>
-                <QueryProvider> {/* ✅ NEW: Wrap with QueryProvider */}
+
+                <QueryProvider>
                   <MasterDataProvider>
-                    <AppContent />
+                    {/* VaNiToast Provider wrapping the entire app - POSITION CHANGED TO TOP-RIGHT */}
+                    <VaNiToastProviderWithGlobal position="top-right" maxToasts={5}>
+                      <AppContent />
+                    </VaNiToastProviderWithGlobal>
                   </MasterDataProvider>
                 </QueryProvider>
-              </QueryClientProvider>
+
             </AuthProvider>
           </Router>
         </ThemeProvider>
