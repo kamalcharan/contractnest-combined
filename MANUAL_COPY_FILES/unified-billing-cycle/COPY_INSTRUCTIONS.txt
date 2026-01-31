@@ -1,0 +1,31 @@
+UNIFIED BILLING CYCLE ENFORCEMENT
+==================================
+Date: 2026-01-31
+Branch: claude/init-submodules-docs-iq9Fv
+Submodules Affected: contractnest-ui
+
+FILES (4 total):
+1. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+   - Added unifiedCycle state field
+   - Passes billingCycleType, unifiedCycle, onUnifiedCycleChange to ServiceBlocksStep
+
+2. contractnest-ui/src/components/contracts/ContractWizard/steps/ServiceBlocksStep.tsx
+   - Added billingCycleType, unifiedCycle, onUnifiedCycleChange props
+   - Unified cycle selector bar above blocks list (Lock icon + cycle buttons)
+   - Syncs all pricing blocks when unified cycle changes
+   - New blocks auto-inherit unified cycle
+
+3. contractnest-ui/src/components/catalog-studio/BlockCardConfigurable.tsx
+   - Added hideBillingCycle prop
+   - Hides per-block billing cycle selector when hideBillingCycle=true (unified mode)
+
+4. contractnest-ui/src/components/catalog-studio/FlyByBlockCard.tsx
+   - Added hideBillingCycle prop
+   - Hides per-block billing cycle selector when hideBillingCycle=true (unified mode)
+   - Also includes RichTextEditor for TEXT block Content field (from earlier iteration)
+
+COPY COMMANDS:
+Copy-Item "MANUAL_COPY_FILES\unified-billing-cycle\contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\unified-billing-cycle\contractnest-ui\src\components\contracts\ContractWizard\steps\ServiceBlocksStep.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\ServiceBlocksStep.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\unified-billing-cycle\contractnest-ui\src\components\catalog-studio\BlockCardConfigurable.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockCardConfigurable.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\unified-billing-cycle\contractnest-ui\src\components\catalog-studio\FlyByBlockCard.tsx" -Destination "contractnest-ui\src\components\catalog-studio\FlyByBlockCard.tsx" -Force
