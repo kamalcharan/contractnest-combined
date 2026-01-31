@@ -2,46 +2,55 @@
 COPY INSTRUCTIONS -- fix-contract-validation
 ===============================================
 
-Feature: Fix contract creation, list display, stats, and sidebar badge counts
+Feature: Fix contract creation, list display, stats, sidebar counts, hub redesign
 Branch: fix-contract-validation
 
 Submodules Affected: contractnest-ui, contractnest-api
 
-Files (5 total):
+Files (7 total):
 -------------------------------------------------
 1. contractnest-api/src/controllers/contractController.ts
    - List endpoint: transforms RPC response to match UI ContractListResponse
      (items, total_count, page_info with has_next_page/has_prev_page)
    - List endpoint: maps DB 'name' field to UI 'title' field
+   - List endpoint: reads 'limit' query param as fallback for 'per_page'
    - Stats endpoint: transforms RPC response to match UI ContractStatsResponse
      (total_count->total, financials.total_value->total_value)
 
 2. contractnest-api/src/services/contractService.ts
    - Maps 'title' -> 'name' before forwarding to edge function (DB RPC expects 'name')
+   - Maps 'contact_classification' -> 'contract_type' so type filter works
    - Applied to both createContract and updateContract methods
 
 3. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
    - Full payload remap to match deployed DB RPC schema (flattened blocks/vendors)
    - Omit contract_type (API validates pricing types; wizard sends relationship type via contact_classification)
    - Fixed acceptance_method mapping: payment->manual, signoff->digital_signature
-   - Fly-by blocks: source_type='flyby', no source_block_id, originalId in custom_fields
-   - Catalog blocks: source_type='catalog', source_block_id=UUID
-   - Vendors use contact_id + contact_classification pattern
-   - Buyer uses contact_id + contact_classification at top level
 
-4. contractnest-ui/src/pages/contracts/hub/index.tsx
-   - Fixed type count mapping: byType['client'/'vendor'/'partner'] instead of
-     byType['service'/'purchase_order'/'partnership']
+4. contractnest-ui/src/types/contracts.ts
+   - Added optional fields to Contract interface: buyer_id, buyer_name, contact_id, contact_classification
+   - Needed for table to display primary contact and classification badges
 
-5. contractnest-ui/src/components/layout/Sidebar.tsx
+5. contractnest-ui/src/pages/contracts/hub/index.tsx
+   - Fixed type count mapping: byType['client'/'vendor'/'partner']
+   - Replaced Loader2 spinner with VaNiLoader (matches contacts page)
+   - Table Type column: classification icon badges (ShoppingCart/Package/Handshake)
+     using CONTACT_CLASSIFICATION_CONFIG colors from contacts constants
+   - Added 'Primary Contact' column showing buyer_name
+
+6. contractnest-ui/src/components/layout/Sidebar.tsx
    - Import useContractStats hook
-   - Replace hardcoded badge counts (contracts: 3) with real stats (contractStats?.total)
-   - Other badge counts set to 0 (placeholder until features implemented)
+   - Replace hardcoded badge counts (contracts: 3) with real stats
+
+7. [SQL BACKFILL for existing contracts] — run in Supabase SQL editor:
+   UPDATE t_contracts SET contract_type = contact_classification
+   WHERE contract_type IS NULL AND contact_classification IS NOT NULL;
 
 Copy Commands (PowerShell):
 -------------------------------------------------
 Copy-Item "MANUAL_COPY_FILES\fix-contract-validation\contractnest-api\src\controllers\contractController.ts" -Destination "contractnest-api\src\controllers\contractController.ts" -Force
 Copy-Item "MANUAL_COPY_FILES\fix-contract-validation\contractnest-api\src\services\contractService.ts" -Destination "contractnest-api\src\services\contractService.ts" -Force
 Copy-Item "MANUAL_COPY_FILES\fix-contract-validation\contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\fix-contract-validation\contractnest-ui\src\types\contracts.ts" -Destination "contractnest-ui\src\types\contracts.ts" -Force
 Copy-Item "MANUAL_COPY_FILES\fix-contract-validation\contractnest-ui\src\pages\contracts\hub\index.tsx" -Destination "contractnest-ui\src\pages\contracts\hub\index.tsx" -Force
 Copy-Item "MANUAL_COPY_FILES\fix-contract-validation\contractnest-ui\src\components\layout\Sidebar.tsx" -Destination "contractnest-ui\src\components\layout\Sidebar.tsx" -Force

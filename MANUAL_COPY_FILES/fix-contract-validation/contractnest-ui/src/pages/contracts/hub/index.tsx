@@ -8,6 +8,9 @@ import {
   Users,
   Building2,
   Handshake,
+  ShoppingCart,
+  Package,
+  Tag,
   Plus,
   Search,
   Clock,
@@ -15,7 +18,6 @@ import {
   XCircle,
   Eye,
   RefreshCw,
-  Loader2,
   ChevronDown,
 } from 'lucide-react';
 import { useContracts, useContractStats } from '@/hooks/queries/useContractQueries';
@@ -25,8 +27,37 @@ import type {
   Contract,
 } from '@/types/contracts';
 import { CONTRACT_STATUS_COLORS } from '@/types/contracts';
+import { VaNiLoader } from '@/components/common/loaders/UnifiedLoader';
+import {
+  CONTACT_CLASSIFICATION_CONFIG,
+  getClassificationColors,
+} from '@/utils/constants/contacts';
 import ContractWizard from '@/components/contracts/ContractWizard';
 import type { ContractType } from '@/components/contracts/ContractWizard';
+
+// ═══════════════════════════════════════════════════
+// CLASSIFICATION ICON MAP (matches contacts page)
+// ═══════════════════════════════════════════════════
+
+const CLASSIFICATION_ICON_MAP: Record<string, React.ElementType> = {
+  ShoppingCart,
+  Package,
+  Handshake,
+  Users,
+};
+
+const getClassificationIcon = (classificationId: string): React.ElementType => {
+  const config = CONTACT_CLASSIFICATION_CONFIG.find((c: any) => c.id === classificationId);
+  if (config?.lucideIcon && CLASSIFICATION_ICON_MAP[config.lucideIcon]) {
+    return CLASSIFICATION_ICON_MAP[config.lucideIcon];
+  }
+  return Tag;
+};
+
+const getClassificationLabel = (classificationId: string): string => {
+  const config = CONTACT_CLASSIFICATION_CONFIG.find((c: any) => c.id === classificationId);
+  return config?.label || classificationId || '—';
+};
 
 // ═══════════════════════════════════════════════════
 // TYPE RAIL (Left vertical sidebar — glassmorphic)
@@ -533,6 +564,8 @@ const ContractsTable: React.FC<ContractsTableProps> = ({ contracts, colors, onRo
     return new Date(dateStr).toLocaleDateString();
   };
 
+  const TABLE_HEADERS = ['Contract', 'Type', 'Primary Contact', 'Value', 'Status', 'Updated'];
+
   return (
     <div
       style={{
@@ -545,7 +578,7 @@ const ContractsTable: React.FC<ContractsTableProps> = ({ contracts, colors, onRo
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr>
-            {['Contract', 'Type', 'Value', 'Status', 'Updated'].map((hdr) => (
+            {TABLE_HEADERS.map((hdr) => (
               <th
                 key={hdr}
                 style={{
@@ -569,6 +602,16 @@ const ContractsTable: React.FC<ContractsTableProps> = ({ contracts, colors, onRo
           {contracts.map((c) => {
             const statusConfig = CONTRACT_STATUS_COLORS[c.status] || CONTRACT_STATUS_COLORS.draft;
 
+            // Classification icon & colors (matches contacts page pattern)
+            const classType = c.contact_classification || c.contract_type || '';
+            const ClassIcon = getClassificationIcon(classType);
+            const classLabel = getClassificationLabel(classType);
+            const badgeColors = getClassificationColors(
+              CONTACT_CLASSIFICATION_CONFIG.find((cfg: any) => cfg.id === classType)?.colorKey || 'default',
+              colors,
+              'badge'
+            );
+
             return (
               <tr
                 key={c.id}
@@ -577,6 +620,7 @@ const ContractsTable: React.FC<ContractsTableProps> = ({ contracts, colors, onRo
                 onMouseEnter={(e) => (e.currentTarget.style.background = `${colors.utility.primaryText}06`)}
                 onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
               >
+                {/* Contract: Name + Number */}
                 <td style={{ padding: '14px 16px', borderBottom: `1px solid ${colors.utility.primaryText}06` }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div
@@ -605,17 +649,41 @@ const ContractsTable: React.FC<ContractsTableProps> = ({ contracts, colors, onRo
                     </div>
                   </div>
                 </td>
+
+                {/* Type: Classification icon badge (contacts-style) */}
+                <td style={{ padding: '14px 16px', borderBottom: `1px solid ${colors.utility.primaryText}06` }}>
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      padding: '4px 10px',
+                      borderRadius: 100,
+                      fontSize: 12,
+                      fontWeight: 500,
+                      background: badgeColors.bg,
+                      color: badgeColors.text,
+                      border: `1px solid ${badgeColors.border}`,
+                    }}
+                  >
+                    <ClassIcon style={{ width: 12, height: 12 }} />
+                    {classLabel}
+                  </span>
+                </td>
+
+                {/* Primary Contact: buyer_name */}
                 <td
                   style={{
                     padding: '14px 16px',
                     fontSize: 13,
-                    color: colors.utility.secondaryText,
+                    color: colors.utility.primaryText,
                     borderBottom: `1px solid ${colors.utility.primaryText}06`,
-                    textTransform: 'capitalize',
                   }}
                 >
-                  {c.contract_type?.replace(/_/g, ' ') || '—'}
+                  {c.buyer_name || '—'}
                 </td>
+
+                {/* Value */}
                 <td
                   style={{
                     padding: '14px 16px',
@@ -627,6 +695,8 @@ const ContractsTable: React.FC<ContractsTableProps> = ({ contracts, colors, onRo
                 >
                   {formatValue(c.total_value, c.currency)}
                 </td>
+
+                {/* Status badge */}
                 <td style={{ padding: '14px 16px', borderBottom: `1px solid ${colors.utility.primaryText}06` }}>
                   <span
                     style={{
@@ -652,6 +722,8 @@ const ContractsTable: React.FC<ContractsTableProps> = ({ contracts, colors, onRo
                     {statusConfig.label}
                   </span>
                 </td>
+
+                {/* Updated */}
                 <td
                   style={{
                     padding: '14px 16px',
@@ -982,24 +1054,17 @@ const ContractsHubPage: React.FC = () => {
 
         {/* Content: Loading / Empty / Table */}
         {isLoading && !contractsData ? (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: 80,
-              gap: 12,
-            }}
-          >
-            <Loader2
-              className="h-8 w-8 animate-spin"
-              style={{ color: colors.brand.primary }}
-            />
-            <p style={{ fontSize: 13, color: colors.utility.secondaryText }}>
-              Loading contracts...
-            </p>
-          </div>
+          <VaNiLoader
+            size="md"
+            message={
+              activeType === 'all'
+                ? 'VaNi is Loading Contracts...'
+                : `VaNi is Loading ${activeType.charAt(0).toUpperCase() + activeType.slice(1)} Contracts...`
+            }
+            showSkeleton={true}
+            skeletonVariant="list"
+            skeletonCount={8}
+          />
         ) : showEmptyState ? (
           <EmptyState typeFilter={activeType} colors={colors} onCreateClick={handleCreateClick} onCreateType={openWizard} />
         ) : (
