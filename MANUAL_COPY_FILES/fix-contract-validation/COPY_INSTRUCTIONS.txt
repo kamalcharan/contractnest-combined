@@ -7,7 +7,7 @@ Branch: fix-contract-validation
 
 Submodules Affected: contractnest-ui, contractnest-api
 
-Files (9 total):
+Files (10 total):
 -------------------------------------------------
 API (3 files):
 
@@ -21,7 +21,7 @@ API (3 files):
 3. contractnest-api/src/validators/contractValidators.ts
    - Added 'client','vendor','partner' to CONTRACT_TYPES whitelist
 
-UI (6 files):
+UI (7 files):
 
 4. contractnest-ui/src/App.tsx
    - Added import for ContractDetailPage
@@ -40,6 +40,14 @@ UI (6 files):
 
 6. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
    - Full payload remap to match deployed DB RPC schema
+   - Passes acceptanceMethod prop to BuyerSelectionStep
+
+6b. contractnest-ui/src/components/contracts/ContractWizard/steps/BuyerSelectionStep.tsx
+   - Added acceptanceMethod prop to BuyerSelectionStepProps
+   - Notification note below contact card: shows email/WhatsApp channels for payment or sign-off
+   - For corporate contacts: uses selected contact person's channels when available
+   - Auto-accept mode: shows simple confirmation note
+   - Warnings when email or WhatsApp not configured
 
 7. contractnest-ui/src/types/contracts.ts
    - Added optional fields: buyer_id, buyer_name, contact_id, contact_classification
@@ -65,8 +73,9 @@ New-Item -ItemType Directory -Path "contractnest-ui\src\pages\contracts\detail" 
 Copy-Item "MANUAL_COPY_FILES\fix-contract-validation\contractnest-ui\src\App.tsx" -Destination "contractnest-ui\src\App.tsx" -Force
 Copy-Item "MANUAL_COPY_FILES\fix-contract-validation\contractnest-ui\src\pages\contracts\detail\index.tsx" -Destination "contractnest-ui\src\pages\contracts\detail\index.tsx" -Force
 Copy-Item "MANUAL_COPY_FILES\fix-contract-validation\contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\fix-contract-validation\contractnest-ui\src\components\contracts\ContractWizard\steps\BuyerSelectionStep.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\BuyerSelectionStep.tsx" -Force
 Copy-Item "MANUAL_COPY_FILES\fix-contract-validation\contractnest-ui\src\types\contracts.ts" -Destination "contractnest-ui\src\types\contracts.ts" -Force
 Copy-Item "MANUAL_COPY_FILES\fix-contract-validation\contractnest-ui\src\pages\contracts\hub\index.tsx" -Destination "contractnest-ui\src\pages\contracts\hub\index.tsx" -Force
 Copy-Item "MANUAL_COPY_FILES\fix-contract-validation\contractnest-ui\src\components\layout\Sidebar.tsx" -Destination "contractnest-ui\src\components\layout\Sidebar.tsx" -Force
 
-Write-Host "All 9 files copied!" -ForegroundColor Green
+Write-Host "All 10 files copied!" -ForegroundColor Green

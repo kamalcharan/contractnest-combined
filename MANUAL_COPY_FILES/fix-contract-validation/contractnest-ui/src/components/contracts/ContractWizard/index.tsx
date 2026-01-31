@@ -539,6 +539,7 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
             selectedBuyerName={wizardState.buyerName}
             onSelectBuyer={handleBuyerSelect}
             contractType={contractType}
+            acceptanceMethod={wizardState.acceptanceMethod}
           />
         );
       case 'acceptance':
