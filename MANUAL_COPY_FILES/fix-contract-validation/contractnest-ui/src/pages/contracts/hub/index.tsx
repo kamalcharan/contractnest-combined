@@ -526,24 +526,16 @@ const EmptyState: React.FC<EmptyStateProps> = ({ typeFilter, colors, onCreateCli
 };
 
 // ═══════════════════════════════════════════════════
-// CONTRACTS TABLE
+// CONTRACTS LIST (card-based, matches contacts list view)
 // ═══════════════════════════════════════════════════
 
-interface ContractsTableProps {
+interface ContractsListProps {
   contracts: Contract[];
   colors: any;
   onRowClick: (id: string) => void;
 }
 
-const ContractsTable: React.FC<ContractsTableProps> = ({ contracts, colors, onRowClick }) => {
-  const getInitials = (title: string) =>
-    title
-      .split(' ')
-      .slice(0, 2)
-      .map((w) => w[0])
-      .join('')
-      .toUpperCase();
-
+const ContractsList: React.FC<ContractsListProps> = ({ contracts, colors, onRowClick }) => {
   const formatValue = (value?: number, currency?: string) => {
     if (!value) return '—';
     return new Intl.NumberFormat('en-US', {
@@ -553,192 +545,162 @@ const ContractsTable: React.FC<ContractsTableProps> = ({ contracts, colors, onRo
     }).format(value);
   };
 
-  const getTimeAgo = (dateStr: string) => {
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 60) return `${mins}m ago`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs}h ago`;
-    const days = Math.floor(hrs / 24);
-    if (days < 7) return `${days}d ago`;
-    return new Date(dateStr).toLocaleDateString();
+  const formatDateRange = (start?: string, end?: string) => {
+    const fmt = (d: string) => {
+      const date = new Date(d);
+      return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    };
+    if (start && end) return `${fmt(start)} – ${fmt(end)}`;
+    if (start) return `From ${fmt(start)}`;
+    return '—';
   };
 
-  const TABLE_HEADERS = ['Contract', 'Type', 'Primary Contact', 'Value', 'Status', 'Updated'];
-
   return (
-    <div
-      style={{
-        borderRadius: 10,
-        overflow: 'hidden',
-        border: `1px solid ${colors.utility.primaryText}20`,
-        background: colors.utility.secondaryBackground,
-      }}
-    >
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr>
-            {TABLE_HEADERS.map((hdr) => (
-              <th
-                key={hdr}
-                style={{
-                  textAlign: 'left',
-                  padding: '12px 16px',
-                  fontSize: 10,
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  color: colors.utility.secondaryText,
-                  background: `${colors.utility.primaryText}06`,
-                  borderBottom: `1px solid ${colors.utility.primaryText}20`,
-                }}
-              >
-                {hdr}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {contracts.map((c) => {
-            const statusConfig = CONTRACT_STATUS_COLORS[c.status] || CONTRACT_STATUS_COLORS.draft;
+    <div className="space-y-2">
+      {contracts.map((c) => {
+        const statusConfig = CONTRACT_STATUS_COLORS[c.status] || CONTRACT_STATUS_COLORS.draft;
 
-            // Classification icon & colors (matches contacts page pattern)
-            const classType = c.contact_classification || c.contract_type || '';
-            const ClassIcon = getClassificationIcon(classType);
-            const classLabel = getClassificationLabel(classType);
-            const badgeColors = getClassificationColors(
-              CONTACT_CLASSIFICATION_CONFIG.find((cfg: any) => cfg.id === classType)?.colorKey || 'default',
-              colors,
-              'badge'
-            );
+        // Classification icon & colors (matches contacts page pattern)
+        const classType = c.contact_classification || c.contract_type || '';
+        const ClassIcon = getClassificationIcon(classType);
+        const classLabel = getClassificationLabel(classType);
+        const badgeColors = getClassificationColors(
+          CONTACT_CLASSIFICATION_CONFIG.find((cfg: any) => cfg.id === classType)?.colorKey || 'default',
+          colors,
+          'badge'
+        );
 
-            return (
-              <tr
-                key={c.id}
-                onClick={() => onRowClick(c.id)}
-                style={{ cursor: 'pointer', transition: 'background 0.1s' }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = `${colors.utility.primaryText}06`)}
-                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-              >
-                {/* Contract: Name + Number */}
-                <td style={{ padding: '14px 16px', borderBottom: `1px solid ${colors.utility.primaryText}06` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div
+        return (
+          <div
+            key={c.id}
+            className="rounded-lg shadow-sm border hover:shadow-md transition-all duration-200 p-3"
+            style={{
+              backgroundColor: colors.utility.secondaryBackground,
+              borderColor: colors.utility.primaryText + '20',
+            }}
+          >
+            <div className="flex items-center justify-between">
+              {/* Left Section — Avatar + Name + ClassIcon + Contract# + Status */}
+              <div className="flex items-center gap-3 min-w-0" style={{ flex: '1.2' }}>
+                <div
+                  className="w-10 h-10 rounded-lg flex items-center justify-center font-semibold text-sm border flex-shrink-0"
+                  style={{
+                    backgroundColor: colors.brand.primary + '20',
+                    color: colors.brand.primary,
+                    borderColor: colors.brand.primary + '40',
+                  }}
+                >
+                  {c.title?.split(' ').slice(0, 2).map((w: string) => w[0]).join('').toUpperCase() || 'C'}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3
+                      className="font-semibold text-base truncate"
+                      style={{ color: colors.utility.primaryText }}
+                      title={c.title}
+                    >
+                      {c.title}
+                    </h3>
+                    {/* Classification icon inline after name */}
+                    <ClassIcon
+                      className="h-4 w-4 flex-shrink-0"
+                      style={{ color: badgeColors.text }}
+                      title={classLabel}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="text-xs"
+                      style={{ color: colors.utility.secondaryText }}
+                    >
+                      {c.contract_number}
+                    </span>
+                    {/* Status badge */}
+                    <span
+                      className="px-2 py-0.5 rounded-full text-xs font-medium border"
                       style={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: 8,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: 13,
-                        fontWeight: 600,
-                        background: `${colors.brand.primary}14`,
-                        color: colors.brand.primary,
+                        backgroundColor: `${getSemanticColor(statusConfig.bg, colors)}20`,
+                        borderColor: `${getSemanticColor(statusConfig.bg, colors)}40`,
+                        color: getSemanticColor(statusConfig.text, colors),
                       }}
                     >
-                      {getInitials(c.title)}
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 14, fontWeight: 500, color: colors.utility.primaryText }}>
-                        {c.title}
-                      </div>
-                      <div style={{ fontSize: 12, color: colors.utility.secondaryText }}>
-                        {c.contract_number}
-                      </div>
-                    </div>
+                      {statusConfig.label}
+                    </span>
                   </div>
-                </td>
+                </div>
+              </div>
 
-                {/* Type: Classification icon badge (contacts-style) */}
-                <td style={{ padding: '14px 16px', borderBottom: `1px solid ${colors.utility.primaryText}06` }}>
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 5,
-                      padding: '4px 10px',
-                      borderRadius: 100,
-                      fontSize: 12,
-                      fontWeight: 500,
-                      background: badgeColors.bg,
-                      color: badgeColors.text,
-                      border: `1px solid ${badgeColors.border}`,
-                    }}
-                  >
-                    <ClassIcon style={{ width: 12, height: 12 }} />
-                    {classLabel}
-                  </span>
-                </td>
-
-                {/* Primary Contact: buyer_name */}
-                <td
-                  style={{
-                    padding: '14px 16px',
-                    fontSize: 13,
-                    color: colors.utility.primaryText,
-                    borderBottom: `1px solid ${colors.utility.primaryText}06`,
-                  }}
-                >
+              {/* Middle Section — Contact Name (with salutation) */}
+              <div
+                className="flex items-center gap-2 min-w-0 px-4"
+                style={{ flex: '1', color: colors.utility.primaryText }}
+              >
+                <Users className="h-4 w-4 flex-shrink-0" style={{ color: colors.utility.secondaryText }} />
+                <span className="truncate text-sm" title={c.buyer_name || '—'}>
                   {c.buyer_name || '—'}
-                </td>
+                </span>
+              </div>
 
+              {/* Classification label (e.g. "Client - Primary") */}
+              <div
+                className="flex items-center gap-2 min-w-0 px-4"
+                style={{ flex: '0.8' }}
+              >
+                <span
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border"
+                  style={{
+                    backgroundColor: badgeColors.bg,
+                    borderColor: badgeColors.border,
+                    color: badgeColors.text,
+                  }}
+                >
+                  <ClassIcon className="h-3 w-3" />
+                  {classLabel}
+                </span>
+              </div>
+
+              {/* Right Section — Value + Dates + View button */}
+              <div className="flex items-center gap-4 flex-shrink-0">
                 {/* Value */}
-                <td
-                  style={{
-                    padding: '14px 16px',
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: colors.utility.primaryText,
-                    borderBottom: `1px solid ${colors.utility.primaryText}06`,
-                  }}
-                >
-                  {formatValue(c.total_value, c.currency)}
-                </td>
-
-                {/* Status badge */}
-                <td style={{ padding: '14px 16px', borderBottom: `1px solid ${colors.utility.primaryText}06` }}>
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 5,
-                      padding: '4px 12px',
-                      borderRadius: 100,
-                      fontSize: 12,
-                      fontWeight: 500,
-                      background: `${getSemanticColor(statusConfig.bg, colors)}16`,
-                      color: getSemanticColor(statusConfig.text, colors),
-                    }}
+                <div className="text-right" style={{ minWidth: 80 }}>
+                  <div
+                    className="text-sm font-semibold"
+                    style={{ color: colors.utility.primaryText }}
                   >
-                    <span
-                      style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: '50%',
-                        background: 'currentColor',
-                      }}
-                    />
-                    {statusConfig.label}
-                  </span>
-                </td>
+                    {formatValue(c.total_value, c.currency)}
+                  </div>
+                </div>
 
-                {/* Updated */}
-                <td
-                  style={{
-                    padding: '14px 16px',
-                    fontSize: 13,
-                    color: colors.utility.secondaryText,
-                    borderBottom: `1px solid ${colors.utility.primaryText}06`,
+                {/* Start-End dates */}
+                <div className="text-right" style={{ minWidth: 120 }}>
+                  <span
+                    className="text-xs"
+                    style={{ color: colors.utility.secondaryText }}
+                  >
+                    {formatDateRange(c.start_date, c.end_date)}
+                  </span>
+                </div>
+
+                {/* View button (Eye icon — same as contacts) */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRowClick(c.id);
                   }}
+                  className="p-1.5 rounded-md transition-colors"
+                  style={{
+                    backgroundColor: colors.utility.secondaryText + '20',
+                    color: colors.utility.primaryText,
+                  }}
+                  title="View contract details"
                 >
-                  {getTimeAgo(c.updated_at)}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                  <Eye className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 };
@@ -1068,7 +1030,7 @@ const ContractsHubPage: React.FC = () => {
         ) : showEmptyState ? (
           <EmptyState typeFilter={activeType} colors={colors} onCreateClick={handleCreateClick} onCreateType={openWizard} />
         ) : (
-          <ContractsTable contracts={contracts} colors={colors} onRowClick={handleRowClick} />
+          <ContractsList contracts={contracts} colors={colors} onRowClick={handleRowClick} />
         )}
       </div>
 
