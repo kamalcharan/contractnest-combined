@@ -1,6 +1,6 @@
 // src/pages/contracts/hub/index.tsx
 // ContractsHub — Option B layout: vertical type rail + horizontal pipeline + table
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
@@ -16,6 +16,7 @@ import {
   Eye,
   RefreshCw,
   Loader2,
+  ChevronDown,
 } from 'lucide-react';
 import { useContracts, useContractStats } from '@/hooks/queries/useContractQueries';
 import type {
@@ -590,6 +591,20 @@ const ContractsHubPage: React.FC = () => {
     searchParams.get('status') || null
   );
   const [searchQuery, setSearchQuery] = useState('');
+  const [createDropdownOpen, setCreateDropdownOpen] = useState(false);
+  const createDropdownRef = useRef<HTMLDivElement>(null);
+
+  // ── Close dropdown on outside click ──
+  useEffect(() => {
+    if (!createDropdownOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (createDropdownRef.current && !createDropdownRef.current.contains(e.target as Node)) {
+        setCreateDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [createDropdownOpen]);
 
   // ── Build API filters ──
   const filters: ContractListFilters = useMemo(() => {
@@ -637,14 +652,24 @@ const ContractsHubPage: React.FC = () => {
     setSearchParams(params, { replace: true });
   };
 
+  // ── Create options for dropdown ──
+  const createOptions = useMemo(() => [
+    { label: 'Client Contract', type: 'client', icon: Users, color: colors.brand.primary },
+    { label: 'Vendor Contract', type: 'vendor', icon: Building2, color: colors.semantic.success },
+    { label: 'Partner Contract', type: 'partner', icon: Handshake, color: colors.semantic.warning },
+  ], [colors]);
+
   const handleCreateClick = () => {
-    const typeMap: Record<ContractTypeFilter, string> = {
-      all: 'client',
-      client: 'client',
-      vendor: 'vendor',
-      partner: 'partner',
-    };
-    navigate(`/contracts/create/${typeMap[activeType]}`);
+    if (activeType === 'all') {
+      setCreateDropdownOpen((prev) => !prev);
+    } else {
+      navigate(`/contracts/create/${activeType}`);
+    }
+  };
+
+  const handleCreateOption = (type: string) => {
+    setCreateDropdownOpen(false);
+    navigate(`/contracts/create/${type}`);
   };
 
   const handleRowClick = (id: string) => {
@@ -743,26 +768,99 @@ const ContractsHubPage: React.FC = () => {
               <RefreshCw size={14} />
             </button>
 
-            {/* Primary create */}
-            <button
-              onClick={handleCreateClick}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '8px 18px',
-                borderRadius: 8,
-                border: 'none',
-                background: colors.brand.primary,
-                color: '#fff',
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              <Plus size={14} />
-              New Contract
-            </button>
+            {/* Primary create — dropdown when "All", direct when specific type */}
+            <div ref={createDropdownRef} style={{ position: 'relative' }}>
+              <button
+                onClick={handleCreateClick}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '8px 18px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: colors.brand.primary,
+                  color: '#fff',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                <Plus size={14} />
+                {activeType === 'all'
+                  ? 'New Contract'
+                  : `New ${activeType.charAt(0).toUpperCase() + activeType.slice(1)} Contract`}
+                {activeType === 'all' && (
+                  <ChevronDown
+                    size={14}
+                    style={{
+                      transition: 'transform 0.15s ease',
+                      transform: createDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                    }}
+                  />
+                )}
+              </button>
+
+              {/* Dropdown menu */}
+              {createDropdownOpen && activeType === 'all' && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 'calc(100% + 6px)',
+                    right: 0,
+                    minWidth: 200,
+                    borderRadius: 10,
+                    border: `1px solid ${colors.utility.primaryText}20`,
+                    background: colors.utility.secondaryBackground,
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                    zIndex: 50,
+                    overflow: 'hidden',
+                  }}
+                >
+                  {createOptions.map((opt) => {
+                    const Icon = opt.icon;
+                    return (
+                      <button
+                        key={opt.type}
+                        onClick={() => handleCreateOption(opt.type)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 10,
+                          width: '100%',
+                          padding: '10px 14px',
+                          border: 'none',
+                          background: 'transparent',
+                          cursor: 'pointer',
+                          transition: 'background 0.1s',
+                          textAlign: 'left',
+                          fontSize: 13,
+                          fontWeight: 500,
+                          color: colors.utility.primaryText,
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = `${colors.utility.primaryText}08`)}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                      >
+                        <div
+                          style={{
+                            width: 28,
+                            height: 28,
+                            borderRadius: 6,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: `${opt.color}14`,
+                          }}
+                        >
+                          <Icon size={14} style={{ color: opt.color }} />
+                        </div>
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
