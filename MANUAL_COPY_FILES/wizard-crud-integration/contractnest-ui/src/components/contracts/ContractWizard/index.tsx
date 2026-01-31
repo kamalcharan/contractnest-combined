@@ -3,7 +3,7 @@
 import React, { useState, useCallback } from 'react';
 import { X, CheckCircle2, ArrowRight, Loader2 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
-import { addDays, addMonths, addYears, format } from 'date-fns';
+import { addDays, addMonths, addYears } from 'date-fns';
 import { useContractOperations } from '@/hooks/queries/useContractQueries';
 import type { CreateContractRequest } from '@/types/contracts';
 import FloatingActionIsland from './FloatingActionIsland';
@@ -116,11 +116,12 @@ const COUNTERPARTY_LABEL: Record<string, string> = {
   partner: 'partner',
 };
 
-// Map wizard contractType to API contract_type
-const CONTRACT_TYPE_MAP: Record<ContractType, string> = {
-  client: 'service',
-  vendor: 'purchase_order',
-  partner: 'partnership',
+// Map wizard acceptance_method to API-accepted values
+// API accepts: 'manual' | 'auto' | 'digital_signature'
+const ACCEPTANCE_METHOD_API_MAP: Record<string, string> = {
+  payment: 'manual',
+  signoff: 'digital_signature',
+  auto: 'auto',
 };
 
 // Map wizard state to API CreateContractRequest
@@ -177,14 +178,19 @@ function mapWizardToRequest(
     },
   }));
 
+  // Map acceptance method to API-compatible value
+  const apiAcceptanceMethod = state.acceptanceMethod
+    ? ACCEPTANCE_METHOD_API_MAP[state.acceptanceMethod] || state.acceptanceMethod
+    : undefined;
+
   return {
     record_type: state.wizardMode === 'rfq' ? 'rfq' : 'contract',
-    contract_type: CONTRACT_TYPE_MAP[contractType] as CreateContractRequest['contract_type'],
+    // contract_type is optional — omit it; store wizard category in metadata instead
     title: state.contractName,
     description: state.description || undefined,
-    acceptance_method: state.acceptanceMethod || undefined,
-    start_date: format(startDate, 'yyyy-MM-dd'),
-    end_date: format(endDate, 'yyyy-MM-dd'),
+    acceptance_method: apiAcceptanceMethod as CreateContractRequest['acceptance_method'],
+    start_date: startDate.toISOString(),
+    end_date: endDate.toISOString(),
     total_value: state.totalValue,
     currency: state.currency,
     payment_terms: state.billingCycleType || undefined,
@@ -203,7 +209,7 @@ function mapWizardToRequest(
     },
     blocks,
     vendors,
-  };
+  } as CreateContractRequest;
 }
 
 const ContractWizard: React.FC<ContractWizardProps> = ({
