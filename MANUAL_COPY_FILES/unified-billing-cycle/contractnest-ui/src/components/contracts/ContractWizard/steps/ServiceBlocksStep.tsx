@@ -4,7 +4,7 @@
 // Uses same drag-drop pattern as catalog-studio/template.tsx
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { ShoppingCart, Layers, Zap, ChevronDown, Wrench, Package, FileText, File, CreditCard, Receipt, Calendar, CalendarDays, CalendarClock, Sliders, Lock } from 'lucide-react';
+import { ShoppingCart, Layers, Zap, ChevronDown, Wrench, Package, FileText, File } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useVaNiToast } from '@/components/common/toast/VaNiToast';
 import { useTenantProfile } from '@/hooks/useTenantProfile';
@@ -16,8 +16,7 @@ import { getCurrencySymbol } from '@/utils/constants/currencies';
 import { BlockLibraryMini, BlockCardConfigurable, FlyByBlockCard, ConfigurableBlock } from '@/components/catalog-studio';
 import type { FlyByCategoryId } from '@/components/catalog-studio/BlockLibraryMini';
 import { FLYBY_TYPE_CONFIG } from '@/components/catalog-studio/FlyByBlockCard';
-import { CYCLE_OPTIONS } from '@/components/catalog-studio/BlockCardConfigurable';
-import { getCategoryById as getCatById, categoryHasPricing } from '@/utils/catalog-studio/categories';
+import { getCategoryById as getCatById } from '@/utils/catalog-studio/categories';
 
 // Import contract preview panel
 import ContractPreviewPanel from '../components/ContractPreviewPanel';
@@ -61,10 +60,6 @@ export interface ServiceBlocksStepProps {
   useCompanyContact?: boolean;
   // RFQ mode - FlyBy only, no library, no pricing
   rfqMode?: boolean;
-  // Billing cycle enforcement
-  billingCycleType?: 'unified' | 'mixed' | null;
-  unifiedCycle?: string | null;
-  onUnifiedCycleChange?: (cycle: string) => void;
 }
 
 // Format currency
@@ -85,9 +80,6 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
   selectedPerson,
   useCompanyContact,
   rfqMode = false,
-  billingCycleType,
-  unifiedCycle,
-  onUnifiedCycleChange,
 }) => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
@@ -98,27 +90,6 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
 
   // Local state
   const [expandedBlockId, setExpandedBlockId] = useState<string | null>(null);
-
-  const isUnified = billingCycleType === 'unified';
-
-  // When unified cycle changes, sync all pricing blocks to the same cycle
-  const handleUnifiedCycleChange = useCallback(
-    (cycle: string) => {
-      onUnifiedCycleChange?.(cycle);
-      // Update all existing pricing blocks to this cycle
-      const updated = selectedBlocks.map((block) => {
-        const blockHasPricing = block.isFlyBy
-          ? (block.flyByType === 'service' || block.flyByType === 'spare')
-          : categoryHasPricing(block.categoryId || '');
-        if (blockHasPricing) {
-          return { ...block, cycle };
-        }
-        return block;
-      });
-      onBlocksChange(updated);
-    },
-    [selectedBlocks, onBlocksChange, onUnifiedCycleChange]
-  );
 
   // FlyBy dropdown state
   const [showFlyByMenu, setShowFlyByMenu] = useState(false);
@@ -180,8 +151,8 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
       // If so, use 'custom' cycle with those days; otherwise default to 'prepaid'
       const blockServiceCycles = (block.meta as any)?.serviceCycles;
       const hasCustomCycle = blockServiceCycles?.enabled && blockServiceCycles?.days;
-      const defaultCycle = isUnified && unifiedCycle ? unifiedCycle : (hasCustomCycle ? 'custom' : 'prepaid');
-      const customCycleDays = hasCustomCycle && !isUnified ? blockServiceCycles.days : undefined;
+      const defaultCycle = hasCustomCycle ? 'custom' : 'prepaid';
+      const customCycleDays = hasCustomCycle ? blockServiceCycles.days : undefined;
 
       const newBlock: ConfigurableBlock = {
         id: block.id,
@@ -231,7 +202,7 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
         description: '',
         icon: category?.icon || 'Package',
         quantity: 1,
-        cycle: isUnified && unifiedCycle ? unifiedCycle : 'prepaid',
+        cycle: 'prepaid',
         unlimited: false,
         price: 0,
         currency: currency,
@@ -473,53 +444,6 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
             </div>
           </div>
 
-          {/* Unified Cycle Selector - shown when billing type is unified */}
-          {isUnified && (
-            <div
-              className="px-3 py-2.5 border-b flex-shrink-0"
-              style={{
-                borderColor: `${colors.utility.primaryText}10`,
-                backgroundColor: `${colors.brand.primary}06`,
-              }}
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <Lock className="w-3.5 h-3.5" style={{ color: colors.brand.primary }} />
-                <span
-                  className="text-[10px] font-bold uppercase tracking-wider"
-                  style={{ color: colors.brand.primary }}
-                >
-                  Unified Billing Cycle
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {CYCLE_OPTIONS.map((option) => {
-                  const isActive = unifiedCycle === option.id;
-                  const OptionIcon = option.icon;
-                  return (
-                    <button
-                      key={option.id}
-                      onClick={() => handleUnifiedCycleChange(option.id)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5"
-                      style={{
-                        backgroundColor: isActive ? colors.brand.primary : `${colors.utility.primaryText}08`,
-                        color: isActive ? '#FFFFFF' : colors.utility.secondaryText,
-                      }}
-                      title={option.label}
-                    >
-                      <OptionIcon className="w-3.5 h-3.5" />
-                      {option.label}
-                    </button>
-                  );
-                })}
-              </div>
-              {!unifiedCycle && (
-                <p className="text-[10px] mt-1.5" style={{ color: colors.semantic.warning }}>
-                  Select a billing cycle — all pricing blocks will use this cycle
-                </p>
-              )}
-            </div>
-          )}
-
           {/* Blocks List */}
           <div
             className="flex-1 overflow-y-auto p-3"
@@ -575,7 +499,6 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
                           onRemove={handleRemoveBlock}
                           onUpdate={handleUpdateBlock}
                           hidePricing={rfqMode}
-                          hideBillingCycle={isUnified}
                         />
                       ) : (
                         <BlockCardConfigurable
@@ -588,7 +511,6 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
                           onToggleExpand={handleToggleExpand}
                           onRemove={handleRemoveBlock}
                           onUpdate={handleUpdateBlock}
-                          hideBillingCycle={isUnified}
                         />
                       )}
                     </div>

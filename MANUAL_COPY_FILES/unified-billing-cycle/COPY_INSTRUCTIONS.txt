@@ -1,30 +1,34 @@
-UNIFIED BILLING CYCLE ENFORCEMENT
-==================================
-Date: 2026-01-31
-Branch: claude/init-submodules-docs-iq9Fv
-Submodules Affected: contractnest-ui
+UNIFIED BILLING CYCLE - Validation on Continue
+================================================
 
-FILES (4 total):
-1. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
-   - Added unifiedCycle state field
-   - Passes billingCycleType, unifiedCycle, onUnifiedCycleChange to ServiceBlocksStep
+Changes: Removed the unified cycle selector bar. All billing cycle selectors
+remain visible on every block. When user clicks Continue from the Add Service
+Blocks step and billingCycleType is 'unified', validation checks that ALL
+pricing blocks have the same billing cycle. If mismatched, a toast error is
+shown and navigation is blocked.
 
-2. contractnest-ui/src/components/contracts/ContractWizard/steps/ServiceBlocksStep.tsx
-   - Added billingCycleType, unifiedCycle, onUnifiedCycleChange props
-   - Unified cycle selector bar above blocks list (Lock icon + cycle buttons)
-   - Syncs all pricing blocks when unified cycle changes
-   - New blocks auto-inherit unified cycle
+Files Modified (contractnest-ui only):
+1. src/components/contracts/ContractWizard/index.tsx
+   - Added useVaNiToast and categoryHasPricing imports
+   - Removed unifiedCycle from wizard state
+   - Added validation in handleNext for blocks step
 
-3. contractnest-ui/src/components/catalog-studio/BlockCardConfigurable.tsx
-   - Added hideBillingCycle prop
-   - Hides per-block billing cycle selector when hideBillingCycle=true (unified mode)
+2. src/components/contracts/ContractWizard/steps/ServiceBlocksStep.tsx
+   - Removed unified selector bar UI
+   - Removed billingCycleType/unifiedCycle/onUnifiedCycleChange props
+   - Removed hideBillingCycle from block card props
+   - Cleaned up unused imports
 
-4. contractnest-ui/src/components/catalog-studio/FlyByBlockCard.tsx
-   - Added hideBillingCycle prop
-   - Hides per-block billing cycle selector when hideBillingCycle=true (unified mode)
-   - Also includes RichTextEditor for TEXT block Content field (from earlier iteration)
+3. src/components/catalog-studio/BlockCardConfigurable.tsx
+   - Removed hideBillingCycle prop
+   - Billing cycle section always visible for pricing blocks
 
-COPY COMMANDS:
+4. src/components/catalog-studio/FlyByBlockCard.tsx
+   - Removed hideBillingCycle prop
+   - Billing cycle always visible for service blocks
+   - RichTextEditor for TEXT block Content field (kept from earlier)
+
+Copy Commands (PowerShell):
 Copy-Item "MANUAL_COPY_FILES\unified-billing-cycle\contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Force
 Copy-Item "MANUAL_COPY_FILES\unified-billing-cycle\contractnest-ui\src\components\contracts\ContractWizard\steps\ServiceBlocksStep.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\ServiceBlocksStep.tsx" -Force
 Copy-Item "MANUAL_COPY_FILES\unified-billing-cycle\contractnest-ui\src\components\catalog-studio\BlockCardConfigurable.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockCardConfigurable.tsx" -Force

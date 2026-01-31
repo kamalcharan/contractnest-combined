@@ -74,7 +74,6 @@ export interface BlockCardConfigurableProps {
   onToggleExpand?: (blockId: string) => void;
   onRemove: (blockId: string) => void;
   onUpdate: (blockId: string, updates: Partial<ConfigurableBlock>) => void;
-  hideBillingCycle?: boolean;
 }
 
 // Helper to get Lucide icon component by name
@@ -100,7 +99,6 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
   onToggleExpand,
   onRemove,
   onUpdate,
-  hideBillingCycle = false,
 }) => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
@@ -332,8 +330,8 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
               </div>
             </div>}
 
-            {/* Billing Cycle Section (pricing blocks only, hidden in unified mode) */}
-            {hasPricing && !hideBillingCycle && <div>
+            {/* Billing Cycle Section (pricing blocks only) */}
+            {hasPricing && <div>
               <label
                 className="text-[10px] font-medium uppercase tracking-wide mb-1.5 block"
                 style={{ color: colors.utility.secondaryText }}

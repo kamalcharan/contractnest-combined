@@ -62,7 +62,6 @@ export interface FlyByBlockCardProps {
   onRemove: (blockId: string) => void;
   onUpdate: (blockId: string, updates: Partial<ConfigurableBlock>) => void;
   hidePricing?: boolean;
-  hideBillingCycle?: boolean;
 }
 
 // Format currency
@@ -80,7 +79,6 @@ const FlyByBlockCard: React.FC<FlyByBlockCardProps> = ({
   onRemove,
   onUpdate,
   hidePricing = false,
-  hideBillingCycle = false,
 }) => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
@@ -167,8 +165,8 @@ const FlyByBlockCard: React.FC<FlyByBlockCardProps> = ({
   const hasPricing = !hidePricing && (flyByType === 'service' || flyByType === 'spare');
   // Check if type has quantity
   const hasQuantity = !hidePricing && (flyByType === 'service' || flyByType === 'spare');
-  // Check if type has billing cycle (hidden in unified mode)
-  const hasBillingCycle = !hidePricing && !hideBillingCycle && flyByType === 'service';
+  // Check if type has billing cycle
+  const hasBillingCycle = !hidePricing && flyByType === 'service';
 
   return (
     <div

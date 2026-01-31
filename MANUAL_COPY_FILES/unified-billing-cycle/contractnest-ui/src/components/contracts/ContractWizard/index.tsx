@@ -16,6 +16,8 @@ import BillingCycleStep, { BillingCycleType } from './steps/BillingCycleStep';
 import BillingViewStep from './steps/BillingViewStep';
 import ReviewSendStep from './steps/ReviewSendStep';
 import { ConfigurableBlock } from '@/components/catalog-studio';
+import { useVaNiToast } from '@/components/common/toast/VaNiToast';
+import { categoryHasPricing } from '@/utils/catalog-studio/categories';
 
 // Keep ContractRole type export for backwards compatibility
 export type ContractRole = 'client' | 'vendor' | null;
@@ -54,7 +56,6 @@ export interface ContractWizardState {
   gracePeriodUnit: string;
   // Step 4: Billing Cycle
   billingCycleType: BillingCycleType;
-  unifiedCycle: string | null; // cycle value when unified (e.g. 'monthly', 'prepaid')
   // Step 5: Blocks & Total
   selectedBlocks: SelectedBlock[];
   totalValue: number;
@@ -224,6 +225,7 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
 
   // API mutation
   const { createContract, isCreating } = useContractOperations();
+  const { addToast } = useVaNiToast();
 
   // Current step state
   const [currentStep, setCurrentStep] = useState(0);
@@ -259,7 +261,6 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
     gracePeriodUnit: 'days',
     // Billing Cycle
     billingCycleType: null,
-    unifiedCycle: null,
     // Blocks & Total
     selectedBlocks: [],
     totalValue: 0,
@@ -353,11 +354,34 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
       // Special handling for path step -> check if "From Template" was selected
       if (currentStepId === 'path' && wizardState.path === 'template') {
         setShowTemplateSelection(true);
-      } else {
-        setCurrentStep((prev) => Math.min(prev + 1, totalSteps - 1));
+        return;
       }
+
+      // Validate unified billing cycle on blocks step
+      if (currentStepId === 'blocks' && wizardState.billingCycleType === 'unified') {
+        const pricingBlocks = wizardState.selectedBlocks.filter((block) => {
+          if (block.isFlyBy) {
+            return block.flyByType === 'service' || block.flyByType === 'spare';
+          }
+          return categoryHasPricing(block.categoryId || '');
+        });
+
+        if (pricingBlocks.length > 0) {
+          const cycles = new Set(pricingBlocks.map((b) => b.cycle));
+          if (cycles.size > 1) {
+            addToast({
+              type: 'error',
+              title: 'Billing cycle mismatch',
+              message: 'Unified Cycle requires all pricing blocks to use the same billing cycle. Please update the blocks so they all match.',
+            });
+            return;
+          }
+        }
+      }
+
+      setCurrentStep((prev) => Math.min(prev + 1, totalSteps - 1));
     }
-  }, [isLastStep, canGoNext, wizardState, showTemplateSelection, currentStepId, totalSteps, contractType, createContract]);
+  }, [isLastStep, canGoNext, wizardState, showTemplateSelection, currentStepId, totalSteps, contractType, createContract, addToast]);
 
   // Done button handler on success screen
   const handleDone = useCallback(() => {
@@ -599,9 +623,6 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
               name: wizardState.buyerName,
             } : undefined}
             rfqMode={isRfqMode}
-            billingCycleType={wizardState.billingCycleType}
-            unifiedCycle={wizardState.unifiedCycle}
-            onUnifiedCycleChange={(cycle) => updateWizardState('unifiedCycle', cycle)}
           />
         );
       }
