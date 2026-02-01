@@ -1,0 +1,71 @@
+================================================================
+CYCLE 2: CNAK (ContractNest Access Key) + Success Screen
+================================================================
+
+Feature: CNAK generation on contract creation + per-acceptance
+         enhanced success screen with contract details & CNAK display
+
+Submodules Affected: contractnest-edge, contractnest-ui
+
+================================================================
+FILES TO COPY
+================================================================
+
+1. NEW: contractnest-edge/supabase/migrations/contracts/004_contract_access_table.sql
+   - Creates t_contract_access table with RLS policies
+   - Adds global_access_id column to t_contracts
+   - Indexes for CNAK lookup (tenant_id + global_access_id)
+
+2. MODIFIED: contractnest-edge/supabase/migrations/contracts/002_contract_rpc_functions.sql
+   - CNAK generation in create_contract_transaction (Step 3.5)
+   - global_access_id added to INSERT columns/values
+   - Contract access row insertion (Step 7.5)
+   - global_access_id added to create/list/detail responses
+
+3. MODIFIED: contractnest-ui/src/types/contracts.ts
+   - Added global_access_id and buyer_email to Contract interface
+
+4. MODIFIED: contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+   - Captures createContract() return value into state
+   - Per-acceptance success screen (Payment/Signoff/Auto)
+   - Contract info card with number, CNAK, client, amount
+   - Copy-to-clipboard for CNAK
+   - Acceptance-specific info panels
+
+================================================================
+COPY COMMANDS (PowerShell)
+================================================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Edge functions (SQL migrations)
+Copy-Item "MANUAL_COPY_FILES\cnak-success-screen\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+# UI (types + wizard)
+Copy-Item "MANUAL_COPY_FILES\cnak-success-screen\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "All Cycle 2 files copied!" -ForegroundColor Green
+
+================================================================
+IMPORTANT: DB MIGRATION ORDER
+================================================================
+
+Run 004_contract_access_table.sql BEFORE deploying the updated
+002_contract_rpc_functions.sql, as the RPC now references:
+  - t_contracts.global_access_id column (added by 004)
+  - t_contract_access table (created by 004)
+
+================================================================
+TESTING CHECKLIST
+================================================================
+
+- [ ] Run migration 004 on Supabase (adds column + creates table)
+- [ ] Run updated 002 migration (updated RPC functions)
+- [ ] Create a contract with Payment acceptance -> verify CNAK on success screen
+- [ ] Create a contract with Signoff acceptance -> verify sign-off info panel
+- [ ] Create a contract with Auto acceptance -> verify Active status + CNAK
+- [ ] Click Copy button on CNAK -> verify clipboard copy works
+- [ ] Check t_contract_access table has a row for the buyer
+- [ ] Check t_contracts.global_access_id is populated
+- [ ] Verify RFQ creation still works (no CNAK info card, just RFQ number)
+- [ ] Verify Cancel/Close still resets wizard properly
