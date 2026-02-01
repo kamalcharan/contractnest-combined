@@ -1,5 +1,6 @@
 // src/components/contracts/RecordPaymentDialog.tsx
 // Reusable dialog for recording a payment receipt against an invoice.
+// Self-contained: fetches invoice data internally when opened.
 // Used in: ContractWizard success screen (auto-accept) + contract detail page.
 
 import React, { useState, useEffect } from 'react';
@@ -11,10 +12,10 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useRecordPayment } from '@/hooks/queries/useInvoiceQueries';
+import { useContractInvoices, useRecordPayment } from '@/hooks/queries/useInvoiceQueries';
 import { useVaNiToast } from '@/components/common/toast/VaNiToast';
 import type { PaymentMethod, RecordPaymentResponse } from '@/types/contracts';
-import { Loader2, Receipt, CheckCircle2 } from 'lucide-react';
+import { Loader2, Receipt, CheckCircle2, AlertCircle } from 'lucide-react';
 
 // =================================================================
 // TYPES
@@ -25,14 +26,11 @@ interface RecordPaymentDialogProps {
   onClose: () => void;
   onSuccess?: (receiptData: RecordPaymentResponse) => void;
   contractId: string;
-  invoiceId: string;
-  invoiceNumber: string;
-  totalAmount: number;
-  balance: number;
-  currency: string;
+  /** Fallback values used while invoice is loading */
+  grandTotal?: number;
+  currency?: string;
   paymentMode?: string;
-  emiTotal?: number | null;
-  receiptsCount?: number;
+  emiMonths?: number;
 }
 
 // =================================================================
@@ -57,18 +55,31 @@ const RecordPaymentDialog: React.FC<RecordPaymentDialogProps> = ({
   onClose,
   onSuccess,
   contractId,
-  invoiceId,
-  invoiceNumber,
-  totalAmount,
-  balance,
-  currency,
-  paymentMode,
-  emiTotal,
-  receiptsCount = 0,
+  grandTotal,
+  currency: currencyProp,
+  paymentMode: paymentModeProp,
+  emiMonths,
 }) => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
   const { addToast } = useVaNiToast();
+
+  // ─── Fetch invoice data when dialog opens ────────────────────
+  const { data: invoiceData, isLoading: isLoadingInvoice, isError: isInvoiceError } = useContractInvoices(
+    contractId,
+    { enabled: isOpen && !!contractId }
+  );
+  const invoice = invoiceData?.invoices?.[0];
+
+  // ─── Resolve values: prefer invoice data, fall back to props ─
+  const invoiceId = invoice?.id || '';
+  const invoiceNumber = invoice?.invoice_number || '';
+  const totalAmount = invoice?.total_amount ?? grandTotal ?? 0;
+  const balance = invoice?.balance ?? totalAmount;
+  const currency = invoice?.currency || currencyProp || 'INR';
+  const paymentMode = invoice?.payment_mode || paymentModeProp;
+  const emiTotal = invoice?.emi_total ?? (paymentMode === 'emi' ? emiMonths : null);
+  const receiptsCount = invoice?.receipts_count ?? 0;
 
   const { mutateAsync: recordPayment, isPending } = useRecordPayment(contractId);
 
@@ -80,7 +91,7 @@ const RecordPaymentDialog: React.FC<RecordPaymentDialogProps> = ({
   );
   const [referenceNumber, setReferenceNumber] = useState('');
   const [notes, setNotes] = useState('');
-  const [emiSequence, setEmiSequence] = useState(receiptsCount + 1);
+  const [emiSequence, setEmiSequence] = useState(1);
 
   // ─── Success state ───────────────────────────────────────────
   const [receiptData, setReceiptData] = useState<RecordPaymentResponse | null>(null);
@@ -91,18 +102,11 @@ const RecordPaymentDialog: React.FC<RecordPaymentDialogProps> = ({
     ? Math.round((totalAmount / emiTotal!) * 100) / 100
     : 0;
 
-  // Pre-fill amount for EMI (per-installment)
-  useEffect(() => {
-    if (isEmi && !amount) {
-      setAmount(emiInstallmentAmount.toString());
-    }
-  }, [isEmi, emiInstallmentAmount]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // Reset form when dialog opens
   useEffect(() => {
     if (isOpen) {
       setReceiptData(null);
-      setAmount(isEmi ? emiInstallmentAmount.toString() : '');
+      setAmount('');
       setPaymentMethod('bank_transfer');
       setPaymentDate(new Date().toISOString().split('T')[0]);
       setReferenceNumber('');
@@ -110,6 +114,14 @@ const RecordPaymentDialog: React.FC<RecordPaymentDialogProps> = ({
       setEmiSequence(receiptsCount + 1);
     }
   }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Pre-fill amount for EMI once invoice loads
+  useEffect(() => {
+    if (invoice && isEmi && !amount) {
+      setAmount(emiInstallmentAmount.toString());
+      setEmiSequence(receiptsCount + 1);
+    }
+  }, [invoice, isEmi]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Format currency ────────────────────────────────────────
   const fmt = (val: number) => {
@@ -122,6 +134,11 @@ const RecordPaymentDialog: React.FC<RecordPaymentDialogProps> = ({
 
   // ─── Submit ─────────────────────────────────────────────────
   const handleSubmit = async () => {
+    if (!invoiceId) {
+      addToast({ type: 'error', title: 'Invoice not loaded', message: 'Please wait for invoice data to load.' });
+      return;
+    }
+
     const numAmount = parseFloat(amount);
     if (!numAmount || numAmount <= 0) {
       addToast({ type: 'error', title: 'Invalid amount', message: 'Enter a positive payment amount.' });
@@ -197,7 +214,6 @@ const RecordPaymentDialog: React.FC<RecordPaymentDialogProps> = ({
           }}
         >
           <div className="text-center py-4">
-            {/* Success icon */}
             <div className="mb-4 flex justify-center">
               <div
                 className="w-14 h-14 rounded-full flex items-center justify-center"
@@ -211,7 +227,6 @@ const RecordPaymentDialog: React.FC<RecordPaymentDialogProps> = ({
               Payment Recorded
             </h3>
 
-            {/* Receipt details card */}
             <div
               className="rounded-lg p-3 mt-3 text-left space-y-2"
               style={{
@@ -221,10 +236,7 @@ const RecordPaymentDialog: React.FC<RecordPaymentDialogProps> = ({
             >
               <div className="flex items-center justify-between">
                 <span className="text-[10px]" style={{ color: colors.utility.secondaryText }}>Receipt</span>
-                <span
-                  className="text-xs font-mono font-bold"
-                  style={{ color: colors.semantic.success }}
-                >
+                <span className="text-xs font-mono font-bold" style={{ color: colors.semantic.success }}>
                   {receiptData.receipt_number}
                 </span>
               </div>
@@ -261,13 +273,70 @@ const RecordPaymentDialog: React.FC<RecordPaymentDialogProps> = ({
               </div>
             </div>
 
-            {/* Done button */}
             <button
               onClick={onClose}
               className="mt-4 px-6 py-2 rounded-lg text-xs font-semibold text-white transition-all hover:opacity-90"
               style={{ backgroundColor: colors.brand.primary }}
             >
               Done
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // RENDER: LOADING INVOICE STATE
+  // ═══════════════════════════════════════════════════════════════
+  if (isLoadingInvoice) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent
+          className="sm:max-w-md rounded-xl"
+          style={{
+            backgroundColor: colors.utility.primaryBackground,
+            borderColor: colors.utility.border,
+          }}
+        >
+          <div className="flex flex-col items-center justify-center py-8 gap-3">
+            <Loader2 className="w-6 h-6 animate-spin" style={{ color: colors.brand.primary }} />
+            <p className="text-xs" style={{ color: colors.utility.secondaryText }}>Loading invoice details...</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // RENDER: ERROR STATE
+  // ═══════════════════════════════════════════════════════════════
+  if (isInvoiceError || (!isLoadingInvoice && !invoice)) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent
+          className="sm:max-w-md rounded-xl"
+          style={{
+            backgroundColor: colors.utility.primaryBackground,
+            borderColor: colors.utility.border,
+          }}
+        >
+          <div className="flex flex-col items-center justify-center py-8 gap-3">
+            <AlertCircle className="w-6 h-6" style={{ color: colors.semantic.error }} />
+            <p className="text-xs text-center" style={{ color: colors.utility.secondaryText }}>
+              Could not load invoice data. The invoice may still be generating.
+              <br />Please try recording the payment from the contract details page.
+            </p>
+            <button
+              onClick={onClose}
+              className="mt-2 px-4 py-2 rounded-lg text-xs font-medium transition-all hover:opacity-80"
+              style={{
+                backgroundColor: colors.utility.secondaryBackground,
+                color: colors.utility.secondaryText,
+                border: `1px solid ${colors.utility.border}`,
+              }}
+            >
+              Close
             </button>
           </div>
         </DialogContent>

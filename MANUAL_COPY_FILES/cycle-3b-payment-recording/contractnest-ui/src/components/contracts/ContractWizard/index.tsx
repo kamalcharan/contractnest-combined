@@ -4,7 +4,6 @@ import React, { useState, useCallback } from 'react';
 import { X, CheckCircle2, ArrowRight, Loader2, Copy, Check, Key, Mail, CreditCard, PenTool, Zap } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useContractOperations } from '@/hooks/queries/useContractQueries';
-import { useContractInvoices } from '@/hooks/queries/useInvoiceQueries';
 import type { CreateContractRequest, RecordPaymentResponse } from '@/types/contracts';
 import RecordPaymentDialog from '@/components/contracts/RecordPaymentDialog';
 import FloatingActionIsland from './FloatingActionIsland';
@@ -282,14 +281,8 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
   // Wizard data state
   const [wizardState, setWizardState] = useState<ContractWizardState>(createInitialWizardState);
 
-  // Fetch invoice for auto-accept contracts (for payment recording on success screen)
+  // Derived: contract ID from creation response (for payment dialog)
   const createdContractId = createdContractData?.id;
-  const isAutoAccept = wizardState.acceptanceMethod === 'auto';
-  const { data: invoiceData } = useContractInvoices(
-    createdContractId,
-    { enabled: isAutoAccept && !!createdContractId && isContractSent }
-  );
-  const invoice = invoiceData?.invoices?.[0]; // Always 1 invoice per contract
 
   // Reset entire wizard to fresh state
   const resetWizard = useCallback(() => {
@@ -1043,16 +1036,15 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
                             </p>
                             <button
                               onClick={() => setShowPaymentDialog(true)}
-                              disabled={!invoice}
+                              disabled={!createdContractId}
                               className="text-[10px] font-medium px-3 py-1.5 rounded-lg transition-all hover:opacity-90"
                               style={{
                                 backgroundColor: `${colors.semantic.success}15`,
                                 color: colors.semantic.success,
                                 border: `1px solid ${colors.semantic.success}30`,
-                                opacity: !invoice ? 0.5 : 1,
                               }}
                             >
-                              {invoice ? 'Record Payment' : 'Loading invoice...'}
+                              Record Payment
                             </button>
                           </div>
                         )}
@@ -1093,7 +1085,7 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
         </div>
 
         {/* Record Payment Dialog (auto-accept flow) */}
-        {showPaymentDialog && invoice && createdContractId && (
+        {showPaymentDialog && createdContractId && (
           <RecordPaymentDialog
             isOpen={showPaymentDialog}
             onClose={() => setShowPaymentDialog(false)}
@@ -1102,14 +1094,10 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
               setShowPaymentDialog(false);
             }}
             contractId={createdContractId}
-            invoiceId={invoice.id}
-            invoiceNumber={invoice.invoice_number}
-            totalAmount={invoice.total_amount}
-            balance={invoice.balance}
-            currency={invoice.currency}
-            paymentMode={invoice.payment_mode}
-            emiTotal={invoice.emi_total}
-            receiptsCount={invoice.receipts_count}
+            grandTotal={createdGrandTotal}
+            currency={createdCurrency}
+            paymentMode={wizardState.paymentMode}
+            emiMonths={wizardState.emiMonths}
           />
         )}
 
