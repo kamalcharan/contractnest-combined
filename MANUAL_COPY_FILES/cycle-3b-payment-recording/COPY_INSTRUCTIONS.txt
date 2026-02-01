@@ -1,0 +1,110 @@
+================================================================
+CYCLE 3B: POST-CREATION PAYMENT RECORDING
+================================================================
+Branch: cycle-3b-payment-recording
+Date: 2026-02-01
+
+SUBMODULES AFFECTED:
+  - contractnest-edge (SQL RPC + edge function)
+  - contractnest-api  (Express routes/controller/service)
+  - contractnest-ui   (types, hooks, dialog, wizard)
+
+================================================================
+PREREQUISITE: Deploy SQL RPCs before testing
+================================================================
+
+1. Run in Supabase SQL Editor:
+   - contracts/006_invoice_rpc_functions.sql  (updated: always 1 invoice)
+   - contracts/007_invoice_payment_rpc.sql    (NEW: record_invoice_payment)
+
+   If 006 already exists, run just the two CREATE OR REPLACE FUNCTION blocks:
+   - generate_contract_invoices(UUID, UUID, UUID)
+   - get_contract_invoices(UUID, UUID)
+
+2. Deploy edge function contracts/index.ts (updated with invoice/payment routes)
+
+================================================================
+WHAT CHANGED
+================================================================
+
+EDGE (contractnest-edge):
+  supabase/migrations/contracts/006_invoice_rpc_functions.sql
+    - Simplified: always generates 1 invoice for grand_total
+    - Removed EMI/defined multi-invoice loops
+    - Sets emi_total on invoice for EMI mode
+
+  supabase/migrations/contracts/007_invoice_payment_rpc.sql
+    - NEW: record_invoice_payment(p_payload JSONB) RPC
+    - Creates receipt, updates invoice balance/status
+    - Validates amount <= balance, generates RECEIPT sequence
+
+  supabase/functions/contracts/index.ts
+    - Added GET /:id/invoices route -> handleGetInvoices()
+    - Added POST /:id/invoices/record-payment -> handleRecordPayment()
+
+API (contractnest-api):
+  src/services/contractService.ts
+    - Added getContractInvoices() method
+    - Added recordPayment() method
+
+  src/controllers/contractController.ts
+    - Added getContractInvoices handler
+    - Added recordPayment handler
+
+  src/routes/contractRoutes.ts
+    - Added GET /:id/invoices
+    - Added POST /:id/invoices/record-payment
+
+UI (contractnest-ui):
+  src/types/contracts.ts
+    - Added RecordPaymentPayload interface
+    - Added RecordPaymentResponse interface
+
+  src/services/serviceURLs.ts
+    - Added RECORD_PAYMENT endpoint under CONTRACTS
+
+  src/hooks/queries/useInvoiceQueries.ts
+    - Added useRecordPayment mutation hook
+
+  src/components/contracts/RecordPaymentDialog.tsx
+    - NEW: Reusable payment recording dialog
+    - EMI installment dropdown
+    - Payment method, date, reference, notes
+    - Success state shows receipt number
+
+  src/components/contracts/ContractWizard/index.tsx
+    - Auto-accept success screen now shows "Has payment been received?"
+    - "Record Payment" button opens RecordPaymentDialog
+    - After recording: shows receipt number + amount + balance
+    - Fetches invoice via useContractInvoices hook
+
+================================================================
+COPY COMMANDS (PowerShell)
+================================================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# UI
+Copy-Item "MANUAL_COPY_FILES\cycle-3b-payment-recording\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+# API
+Copy-Item "MANUAL_COPY_FILES\cycle-3b-payment-recording\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+
+# Edge
+Copy-Item "MANUAL_COPY_FILES\cycle-3b-payment-recording\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "All Cycle 3b files copied!" -ForegroundColor Green
+
+================================================================
+TESTING CHECKLIST
+================================================================
+
+1. [ ] Deploy 006 (updated) + 007 (new) RPCs in Supabase
+2. [ ] Deploy edge function
+3. [ ] Create contract with Auto-Accept acceptance method
+4. [ ] Verify success screen shows "Has payment been received?"
+5. [ ] Click "Record Payment" -> dialog opens
+6. [ ] For non-EMI: enter amount, method, submit -> receipt shown
+7. [ ] For EMI: verify installment dropdown (1 of N, 2 of N...)
+8. [ ] After payment: success screen shows receipt number + balance
+9. [ ] Click Done -> returns to contracts list
