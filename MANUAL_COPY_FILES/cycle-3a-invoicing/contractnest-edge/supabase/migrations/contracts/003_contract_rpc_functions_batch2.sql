@@ -483,9 +483,15 @@ BEGIN
     --   When any contract transitions to 'active', generate invoices
     --   based on payment_mode (prepaid/emi/defined).
     --   generate_contract_invoices is idempotent — skips if invoices exist.
+    --   Wrapped in sub-block: invoice failure must NOT block status update.
     -- ═══════════════════════════════════════════
     IF p_new_status = 'active' AND v_current.record_type = 'contract' THEN
-        PERFORM generate_contract_invoices(p_contract_id, p_tenant_id, p_performed_by_id);
+        BEGIN
+            PERFORM generate_contract_invoices(p_contract_id, p_tenant_id, p_performed_by_id);
+        EXCEPTION WHEN OTHERS THEN
+            -- Log but don't block — invoices can be generated later
+            RAISE NOTICE 'Invoice generation skipped on activation: %', SQLERRM;
+        END;
     END IF;
 
     -- ═══════════════════════════════════════════

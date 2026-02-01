@@ -26,9 +26,14 @@ NEW FILES:
 MODIFIED FILES:
   contractnest-edge/supabase/migrations/contracts/002_contract_rpc_functions.sql
     - Added Step 7.6: auto-generate invoices for auto-accept contracts
+    - BUG FIX: get_contracts_list used v_tenant_id (undeclared) -> changed to p_tenant_id
+    - BUG FIX: Step 7.6 PERFORM wrapped in BEGIN/EXCEPTION to prevent
+      invoice generation failures from killing contract creation transaction
 
   contractnest-edge/supabase/migrations/contracts/003_contract_rpc_functions_batch2.sql
     - Added Step 3.5: generate invoices when status transitions to active
+    - BUG FIX: Step 3.5 PERFORM wrapped in BEGIN/EXCEPTION to prevent
+      invoice generation failures from killing status update transaction
 
   contractnest-ui/src/types/contracts.ts
     - Added Invoice, InvoiceReceipt, InvoiceSummary interfaces
@@ -72,3 +77,21 @@ TESTING CHECKLIST
    - Collection progress bar with percentage
    - Invoice cards with status badges, due dates, amounts
 9. Verify empty state for draft contracts: "Invoices generate when contract activates"
+
+================================================================
+IMPORTANT: SEQUENCE CONFIG PREREQUISITE
+================================================================
+
+Invoice generation requires INVOICE + RECEIPT sequence configs in
+t_sequence_configs for each tenant. Without them, invoice generation
+will silently skip (no longer crashes contract creation).
+
+Run this in Supabase SQL Editor to add configs for your tenant:
+
+INSERT INTO public.t_sequence_configs (tenant_id, entity_type, prefix, padding_length, is_live, is_active)
+VALUES
+  ('<YOUR_TENANT_ID>', 'INVOICE', 'INV', 6, true, true),
+  ('<YOUR_TENANT_ID>', 'INVOICE', 'INV', 6, false, true),
+  ('<YOUR_TENANT_ID>', 'RECEIPT', 'RCT', 6, true, true),
+  ('<YOUR_TENANT_ID>', 'RECEIPT', 'RCT', 6, false, true)
+ON CONFLICT DO NOTHING;

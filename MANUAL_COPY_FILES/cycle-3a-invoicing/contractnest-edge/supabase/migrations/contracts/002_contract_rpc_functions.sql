@@ -360,9 +360,15 @@ BEGIN
     -- STEP 7.6: Auto-generate invoices (auto-accept only)
     --   When acceptance_method = 'auto', contract starts as 'active'
     --   so invoices are generated immediately at creation time.
+    --   Wrapped in sub-block: invoice failure must NOT block contract creation.
     -- ═══════════════════════════════════════════
     IF v_initial_status = 'active' AND v_record_type = 'contract' THEN
-        PERFORM generate_contract_invoices(v_contract_id, v_tenant_id, v_created_by);
+        BEGIN
+            PERFORM generate_contract_invoices(v_contract_id, v_tenant_id, v_created_by);
+        EXCEPTION WHEN OTHERS THEN
+            -- Log but don't block — invoices can be generated later
+            RAISE NOTICE 'Invoice generation skipped: %', SQLERRM;
+        END;
     END IF;
 
     -- ═══════════════════════════════════════════
