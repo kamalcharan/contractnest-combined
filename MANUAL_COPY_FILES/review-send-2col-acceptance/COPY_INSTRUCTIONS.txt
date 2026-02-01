@@ -1,0 +1,74 @@
+═══════════════════════════════════════════════════
+CHANGES SUMMARY
+═══════════════════════════════════════════════════
+Branch: claude/init-submodules-docs-ie8vH
+Feature: Review & Send — 2-Column Layout + Acceptance Flow Panel
+
+Files Changed:
+  - contractnest-ui/src/components/contracts/ContractWizard/steps/ReviewSendStep.tsx
+      -> 65/35 two-column grid (left: paper canvas, right: acceptance panel)
+      -> Payment flow: gateway pre-check, notification preview, workflow steps
+      -> Signoff flow: notification preview, 2-path workflow (accept/reject)
+      -> Auto Accept flow: payment status note, workflow steps
+      -> Right panel sticky on scroll
+
+Submodules Affected: contractnest-ui
+
+═══════════════════════════════════════════════════
+PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy File
+Copy-Item "MANUAL_COPY_FILES\review-send-2col-acceptance\contractnest-ui\src\components\contracts\ContractWizard\steps\ReviewSendStep.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\ReviewSendStep.tsx" -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+STEP 3: Start Dev Server & Test
+cd contractnest-ui
+npm run dev
+# Hard refresh: Ctrl+F5
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+
+Layout:
+- [ ] 2-column layout visible (paper left, panel right)
+- [ ] Right panel is sticky on scroll
+- [ ] RFQ mode shows single column (no right panel)
+- [ ] Responsive: on smaller screens, columns stack
+
+Payment Acceptance:
+- [ ] Shows "Payment Acceptance" header with CreditCard icon
+- [ ] Payment gateway check: shows green if configured, amber warning if not
+- [ ] "Configure in Settings" link opens /settings/integrations
+- [ ] Email notification preview with client's email
+- [ ] WhatsApp notification if client has it configured
+- [ ] Warning if email/WhatsApp missing
+- [ ] "What Happens Next" workflow with 5 steps
+
+Signoff Acceptance:
+- [ ] Shows "Signoff Acceptance" header with PenTool icon
+- [ ] Email: "Contract view + PDF sent to @email"
+- [ ] WhatsApp notification preview
+- [ ] 2-path workflow: Client Accepts (green) / Client Rejects (red)
+- [ ] Accept path shows: Active, Invoice triggered, CNAK generated
+- [ ] Reject path shows: Edit, Resend, Cycle continues
+- [ ] Secure link note at bottom
+
+Auto Accept:
+- [ ] Shows green "Auto Accept" header with Check icon
+- [ ] Payment status section with note about recording after creation
+- [ ] "What Happens Next" with 4 steps
+- [ ] "No acceptance notifications" note at bottom
+
+═══════════════════════════════════════════════════
+WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  -> "Tested, working - proceed with merge"
+  -> "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
