@@ -187,6 +187,9 @@ const BuyerSelectionStep: React.FC<BuyerSelectionStepProps> = ({
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(selectedContactPersonId || null);
   const [useCompanyContact, setUseCompanyContact] = useState(initialUseCompanyContact || false);
 
+  // Track explicit "change buyer" to prevent useEffect from re-setting selectedContact
+  const [isChangingBuyer, setIsChangingBuyer] = useState(false);
+
   // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -315,9 +318,6 @@ const BuyerSelectionStep: React.FC<BuyerSelectionStepProps> = ({
       });
     }
   }, [selectedContact, onSelectBuyer, addToast]);
-
-  // Track explicit "change buyer" to prevent useEffect from re-setting selectedContact
-  const [isChangingBuyer, setIsChangingBuyer] = useState(false);
 
   // Handle change buyer
   const handleChangeBuyer = useCallback(() => {
