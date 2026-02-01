@@ -1,0 +1,74 @@
+================================================================
+CYCLE 3a: INVOICE GENERATION & FINANCIAL HEALTH UI
+================================================================
+Branch: cycle-3a-invoicing
+Date: 2026-02-01
+
+SUBMODULES AFFECTED:
+  - contractnest-edge (4 SQL files)
+  - contractnest-ui   (4 TS/TSX files)
+
+================================================================
+FILES CHANGED
+================================================================
+
+NEW FILES:
+  contractnest-edge/supabase/migrations/contracts/005_invoices_receipts.sql
+    - t_invoices + t_invoice_receipts tables, indexes, RLS policies
+
+  contractnest-edge/supabase/migrations/contracts/006_invoice_rpc_functions.sql
+    - generate_contract_invoices (auto-generates on contract activation)
+    - get_contract_invoices (returns invoices + collection summary)
+
+  contractnest-ui/src/hooks/queries/useInvoiceQueries.ts
+    - useContractInvoices React Query hook
+
+MODIFIED FILES:
+  contractnest-edge/supabase/migrations/contracts/002_contract_rpc_functions.sql
+    - Added Step 7.6: auto-generate invoices for auto-accept contracts
+
+  contractnest-edge/supabase/migrations/contracts/003_contract_rpc_functions_batch2.sql
+    - Added Step 3.5: generate invoices when status transitions to active
+
+  contractnest-ui/src/types/contracts.ts
+    - Added Invoice, InvoiceReceipt, InvoiceSummary interfaces
+    - Added InvoiceType, InvoiceStatus, PaymentMethod types
+
+  contractnest-ui/src/services/serviceURLs.ts
+    - Added INVOICES + GENERATE_INVOICES endpoints
+
+  contractnest-ui/src/pages/contracts/detail/index.tsx
+    - FinancialHealth component: real invoice list, AR/AP badge,
+      collection progress bar, status badges, EMI/billing cycle tags
+
+================================================================
+COPY COMMANDS (PowerShell)
+================================================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Edge functions (SQL migrations)
+Copy-Item "MANUAL_COPY_FILES\cycle-3a-invoicing\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+# UI (TypeScript/React)
+Copy-Item "MANUAL_COPY_FILES\cycle-3a-invoicing\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "All Cycle 3a files copied!" -ForegroundColor Green
+
+================================================================
+TESTING CHECKLIST
+================================================================
+
+1. Run SQL migrations 005 + 006 in Supabase SQL Editor (order matters)
+2. Re-run migration 002 (updated create_contract_transaction)
+3. Re-run migration 003 (updated update_contract_status)
+4. Create a new contract with auto-accept -> verify invoices generated
+5. Create a contract with e_signature -> transition to active -> verify invoices
+6. Check EMI mode: invoices split correctly across months
+7. Check Defined mode: invoices grouped by billing_cycle
+8. Open contract detail -> Financial Health card shows:
+   - AR/AP badge (Receivable for client, Payable for vendor)
+   - Collected / Balance amounts from real data
+   - Collection progress bar with percentage
+   - Invoice cards with status badges, due dates, amounts
+9. Verify empty state for draft contracts: "Invoices generate when contract activates"
