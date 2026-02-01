@@ -1,0 +1,80 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════
+Branch: claude/init-submodules-docs-ie8vH
+Feature: Wizard Fixes — Notification Note, Change Client, Reset on Close/Cancel
+
+Files Changed:
+  - contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+      → Extract createInitialWizardState() factory
+      → Add resetWizard() + handleClose() functions
+      → Wire handleClose to X button, backdrop, FloatingActionIsland
+      → handleDone calls resetWizard before onClose
+      → Pass acceptanceMethod prop to BuyerSelectionStep
+
+  - contractnest-ui/src/components/contracts/ContractWizard/steps/BuyerSelectionStep.tsx
+      → Add isChangingBuyer state flag
+      → Guard useEffect (fullContactData) with !isChangingBuyer
+      → Clear flag on new contact selection
+
+Submodules Affected: contractnest-ui
+
+Production Checklist:
+  ✅ Transaction Management: N/A (no DB operations)
+  ✅ Race Condition Handling: Yes — isChangingBuyer guard prevents useEffect re-populating cleared contact
+  ✅ Error Handling: Yes — existing error handling preserved
+  ✅ Toasts: Yes — existing toasts preserved (buyer selected, contact person selected, etc.)
+  ✅ Loaders: Yes — existing loader states preserved
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files from MANUAL_COPY_FILES
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\wizard-fixes-reset-notification\contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Force
+
+Copy-Item "MANUAL_COPY_FILES\wizard-fixes-reset-notification\contractnest-ui\src\components\contracts\ContractWizard\steps\BuyerSelectionStep.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\BuyerSelectionStep.tsx" -Force
+
+Write-Host "✅ All files copied!" -ForegroundColor Green
+
+STEP 3: Start Dev Server & Test
+─────────────────────────────────
+cd contractnest-ui
+npm run dev
+
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+Fix #2 — Notification Note (below client card on Step 3):
+- [ ] Payment acceptance → select client → shows "An email for payment will be sent to @email"
+- [ ] Signoff acceptance → select client → shows "Contract view + PDF will be emailed to @email"
+- [ ] Auto Accept → select client → shows green "Auto-Accept Enabled" note
+- [ ] WhatsApp line appears if client has whatsapp channel configured
+- [ ] Warning shown if client has no email/whatsapp configured
+
+Fix #3 — Change Client:
+- [ ] Select a client → click "Change" → contact card disappears, search list shows
+- [ ] After changing, select a different client → works normally, full data loads
+
+Fix #4 — Cancel Reset:
+- [ ] Fill wizard to step 4+ → click Cancel in footer → reopen wizard → starts fresh at step 1
+- [ ] All fields cleared (name, client, blocks, etc.)
+
+Fix #5 — Close (X) Reset:
+- [ ] Fill wizard to step 4+ → click X top-right → reopen wizard → starts fresh at step 1
+- [ ] Click backdrop (dark overlay) → reopen wizard → starts fresh at step 1
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
