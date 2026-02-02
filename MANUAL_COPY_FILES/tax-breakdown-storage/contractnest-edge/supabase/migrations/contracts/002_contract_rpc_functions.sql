@@ -489,7 +489,7 @@ BEGIN
     -- ═══════════════════════════════════════════
     v_where := format(
         'WHERE c.tenant_id = %L AND c.is_live = %L AND c.is_active = true',
-        v_tenant_id, p_is_live
+        p_tenant_id, p_is_live
     );
 
     IF p_record_type IS NOT NULL THEN
