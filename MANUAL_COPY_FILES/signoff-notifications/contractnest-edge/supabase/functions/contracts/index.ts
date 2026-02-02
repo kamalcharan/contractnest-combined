@@ -522,14 +522,14 @@ async function handleSendNotification(
     });
 
     if (contractError || !contractData?.success || !contractData?.data) {
-      return jsonResponse({ success: false, error: 'Contract not found' }, 404);
+      return jsonResponse({ success: false, error: 'Contract not found', code: 'NOT_FOUND' }, 404);
     }
 
     const contract = contractData.data;
     const cnak = contract.global_access_id;
 
     if (!cnak) {
-      return jsonResponse({ success: false, error: 'Contract has no CNAK — cannot send notification' }, 400);
+      return jsonResponse({ success: false, error: 'Contract has no CNAK — cannot send notification', code: 'VALIDATION_ERROR' }, 400);
     }
 
     // Step 2: Get secret_code from t_contract_access
@@ -607,7 +607,8 @@ async function handleSendNotification(
     if (!recipientEmail && !recipientMobile) {
       return jsonResponse({
         success: false,
-        error: 'No buyer email or phone available — cannot send notification'
+        error: 'No buyer email or phone available — cannot send notification',
+        code: 'VALIDATION_ERROR'
       }, 400);
     }
 
@@ -635,20 +636,25 @@ async function handleSendNotification(
       isLive
     });
 
-    return jsonResponse({
+    const notifyResponse: any = {
       success: result.anySuccess,
       notification: {
         channels: result.channels,
         review_link: reviewLink,
         cnak
       }
-    }, result.anySuccess ? 200 : 500);
+    };
+    if (!result.anySuccess) {
+      notifyResponse.code = 'NOTIFICATION_FAILED';
+    }
+    return jsonResponse(notifyResponse, result.anySuccess ? 200 : 500);
 
   } catch (error) {
     console.error('handleSendNotification error:', error);
     return jsonResponse({
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to send notification'
+      error: error instanceof Error ? error.message : 'Failed to send notification',
+      code: 'INTERNAL_ERROR'
     }, 500);
   }
 }

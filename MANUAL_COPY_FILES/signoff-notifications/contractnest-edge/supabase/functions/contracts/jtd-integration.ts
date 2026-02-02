@@ -3,7 +3,10 @@
 // Creates JTD entries for email/WhatsApp delivery via JTD worker
 // Pattern follows: user-invitations/jtd-integration.ts
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+// NOTE: We use `any` for supabase client type to avoid importing
+// a second version of @supabase/supabase-js. The client instance
+// is created and passed in from index.ts (which uses @2.7.1).
+type SupabaseClient = any;
 
 // ─── Interfaces ───────────────────────────────────────────────
 
@@ -51,7 +54,7 @@ interface MultiChannelResult {
 // ─── Channel check ────────────────────────────────────────────
 
 async function isChannelEnabled(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   tenantId: string,
   channel: 'email' | 'whatsapp'
 ): Promise<boolean> {
@@ -79,7 +82,7 @@ async function isChannelEnabled(
 // ─── Create single JTD entry ──────────────────────────────────
 
 async function createContractSignoffJTD(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   params: ContractSignoffJTDParams,
   channel: 'email' | 'whatsapp'
 ): Promise<JTDResult> {
@@ -171,7 +174,7 @@ async function createContractSignoffJTD(
  * - If both → create JTDs for all enabled channels
  */
 export async function sendContractSignoffNotification(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient,
   params: ContractSignoffJTDParams
 ): Promise<MultiChannelResult> {
   const results: MultiChannelResult['channels'] = [];
