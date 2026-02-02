@@ -3,6 +3,13 @@
 -- Follows same pattern as 005_seed_invitation_templates.sql
 
 -- ============================================================
+-- ADD 'contract_signoff' to n_jtd_source_types FIRST (FK dependency)
+-- ============================================================
+INSERT INTO public.n_jtd_source_types (code, name, description, is_active)
+VALUES ('contract_signoff', 'Contract Sign-off', 'Contract sent for buyer review and acceptance', true)
+ON CONFLICT (code) DO NOTHING;
+
+-- ============================================================
 -- CONTRACT SIGN-OFF TEMPLATES
 -- ============================================================
 
@@ -149,14 +156,6 @@ DO UPDATE SET
     provider_template_id = EXCLUDED.provider_template_id,
     variables = EXCLUDED.variables,
     updated_at = now();
-
-
--- ============================================================
--- ADD 'contract_signoff' to n_jtd_source_types if not exists
--- ============================================================
-INSERT INTO public.n_jtd_source_types (code, name, description, is_active)
-VALUES ('contract_signoff', 'Contract Sign-off', 'Contract sent for buyer review and acceptance', true)
-ON CONFLICT (code) DO NOTHING;
 
 
 -- ============================================================
