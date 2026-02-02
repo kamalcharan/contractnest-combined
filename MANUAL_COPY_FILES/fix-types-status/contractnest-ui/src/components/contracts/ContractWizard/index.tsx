@@ -429,17 +429,18 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
         const result = await createContract(request as CreateContractRequest);
         const created = result as Record<string, any>;
 
-        // Transition from draft → pending_acceptance so the contract is ready for sign-off
+        // Transition status: contracts → pending_acceptance, RFQs → sent
         if (created?.id && created?.status === 'draft') {
+          const targetStatus = created.record_type === 'rfq' ? 'sent' : 'pending_acceptance';
           try {
             await updateStatus({
               contractId: created.id,
-              statusData: { status: 'pending_acceptance' },
+              statusData: { status: targetStatus },
             });
-            created.status = 'pending_acceptance';
+            created.status = targetStatus;
           } catch {
             // Non-fatal: contract was created, status transition can be retried
-            console.warn('Contract created but status transition to pending_acceptance failed');
+            console.warn(`Contract created but status transition to ${targetStatus} failed`);
           }
         }
 
