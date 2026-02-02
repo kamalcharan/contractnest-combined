@@ -1,0 +1,88 @@
+═══════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS — signoff-public-review (Cycle 4)
+═══════════════════════════════════════════════════════════════
+Feature: Public Contract Review Page for sign-off acceptance
+Branch: claude/init-submodules-docs-TR05u
+Date: 2026-02-02
+
+Submodules Affected: contractnest-edge, contractnest-api, contractnest-ui
+
+═══════════════════════════════════════════════════════════════
+FILES (10 total)
+═══════════════════════════════════════════════════════════════
+
+EDGE (4 files):
+  [NEW]      contractnest-edge/supabase/migrations/contracts/009_contract_access_extend.sql
+  [NEW]      contractnest-edge/supabase/migrations/contracts/010_public_contract_rpcs.sql
+  [MODIFIED] contractnest-edge/supabase/migrations/contracts/002_contract_rpc_functions.sql
+  [MODIFIED] contractnest-edge/supabase/functions/contracts/index.ts
+
+API (3 files):
+  [MODIFIED] contractnest-api/src/routes/contractRoutes.ts
+  [MODIFIED] contractnest-api/src/controllers/contractController.ts
+  [MODIFIED] contractnest-api/src/services/contractService.ts
+
+UI (3 files):
+  [NEW]      contractnest-ui/src/pages/contracts/review/index.tsx
+  [MODIFIED] contractnest-ui/src/services/serviceURLs.ts
+  [MODIFIED] contractnest-ui/src/App.tsx
+
+═══════════════════════════════════════════════════════════════
+POWERSHELL COPY COMMANDS
+═══════════════════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Edge — migrations
+Copy-Item "MANUAL_COPY_FILES\signoff-public-review\contractnest-edge\supabase\migrations\contracts\009_contract_access_extend.sql" -Destination "contractnest-edge\supabase\migrations\contracts\" -Force
+Copy-Item "MANUAL_COPY_FILES\signoff-public-review\contractnest-edge\supabase\migrations\contracts\010_public_contract_rpcs.sql" -Destination "contractnest-edge\supabase\migrations\contracts\" -Force
+Copy-Item "MANUAL_COPY_FILES\signoff-public-review\contractnest-edge\supabase\migrations\contracts\002_contract_rpc_functions.sql" -Destination "contractnest-edge\supabase\migrations\contracts\" -Force
+
+# Edge — functions
+Copy-Item "MANUAL_COPY_FILES\signoff-public-review\contractnest-edge\supabase\functions\contracts\index.ts" -Destination "contractnest-edge\supabase\functions\contracts\" -Force
+
+# API — routes, controller, service
+Copy-Item "MANUAL_COPY_FILES\signoff-public-review\contractnest-api\src\routes\contractRoutes.ts" -Destination "contractnest-api\src\routes\" -Force
+Copy-Item "MANUAL_COPY_FILES\signoff-public-review\contractnest-api\src\controllers\contractController.ts" -Destination "contractnest-api\src\controllers\" -Force
+Copy-Item "MANUAL_COPY_FILES\signoff-public-review\contractnest-api\src\services\contractService.ts" -Destination "contractnest-api\src\services\" -Force
+
+# UI — ContractReviewPage (new directory needed)
+New-Item -ItemType Directory -Force -Path "contractnest-ui\src\pages\contracts\review"
+Copy-Item "MANUAL_COPY_FILES\signoff-public-review\contractnest-ui\src\pages\contracts\review\index.tsx" -Destination "contractnest-ui\src\pages\contracts\review\" -Force
+Copy-Item "MANUAL_COPY_FILES\signoff-public-review\contractnest-ui\src\services\serviceURLs.ts" -Destination "contractnest-ui\src\services\" -Force
+Copy-Item "MANUAL_COPY_FILES\signoff-public-review\contractnest-ui\src\App.tsx" -Destination "contractnest-ui\src\" -Force
+
+Write-Host "All 10 files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════════════════
+DEPLOY ORDER
+═══════════════════════════════════════════════════════════════
+1. Run migration 009_contract_access_extend.sql in Supabase SQL Editor FIRST
+2. Run migration 010_public_contract_rpcs.sql in Supabase SQL Editor
+3. Redeploy edge functions (002 RPCs updated + public routes in index.ts)
+4. Redeploy API (contractRoutes + controller + service updated)
+5. Deploy UI
+
+═══════════════════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════
+- [ ] Run migration 009 — verify new columns on t_contract_access
+- [ ] Run migration 010 — verify RPCs exist: validate_contract_access, respond_to_contract
+- [ ] Create a new contract with acceptance_method = 'signoff' and a buyer
+- [ ] Check create response includes access_secret
+- [ ] Navigate to /contract-review?cnak=CNAK-XXXXXX&secret=<access_secret>
+- [ ] Verify contract details load (name, number, blocks, totals, taxes)
+- [ ] Click "Accept" — verify contract status changes to active
+- [ ] Try the same link again — should show "already accepted"
+- [ ] Create another contract, try "Reject" with a reason
+- [ ] Verify rejection reason is stored
+
+═══════════════════════════════════════════════════════════════
+PUBLIC REVIEW URL FORMAT
+═══════════════════════════════════════════════════════════════
+https://your-domain.com/contract-review?cnak=CNAK-XXXXXX&secret=<32-char-hex>
+
+The CNAK and secret are returned in the create contract response:
+  response.data.data.global_access_id  →  CNAK
+  response.data.data.access_secret     →  secret
+
