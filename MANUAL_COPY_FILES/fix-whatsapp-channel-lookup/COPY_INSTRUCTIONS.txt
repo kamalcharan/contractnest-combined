@@ -1,0 +1,23 @@
+FIX: WhatsApp channel lookup - query 'whatsapp' and 'phone' types, not just 'mobile'
+============================================================================
+
+Submodules Affected: contractnest-edge
+
+Files Changed:
+  contractnest-edge/supabase/functions/contracts/index.ts
+    - Changed mobile channel lookup from .eq('channel_type', 'mobile')
+      to .in('channel_type', ['mobile', 'whatsapp', 'phone'])
+    - Also selects channel_type in the query for visibility
+
+Root Cause:
+  Buyer contact's phone number was stored with channel_type = 'whatsapp'
+  in t_contact_channels, but the edge function only queried for 'mobile'.
+  This caused WhatsApp JTD records to never be created.
+
+Copy Command (PowerShell):
+  cd "D:\projects\core projects\ContractNest\contractnest-combined"
+  Copy-Item "MANUAL_COPY_FILES\fix-whatsapp-channel-lookup\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Deploy:
+  cd contractnest-edge
+  supabase functions deploy contracts
