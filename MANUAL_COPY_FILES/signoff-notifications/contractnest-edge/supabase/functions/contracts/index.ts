@@ -588,33 +588,33 @@ async function handleSendNotification(
       console.log('[notify] fallback lookupId:', lookupId);
 
       if (lookupId) {
-        // Fetch email channel
-        const { data: emailChannel, error: emailErr } = await supabase
+        // Fetch email channel (use array + [0] instead of single() to handle 0 or multiple rows)
+        const { data: emailChannels, error: emailErr } = await supabase
           .from('t_contact_channels')
           .select('value')
           .eq('contact_id', lookupId)
           .eq('channel_type', 'email')
           .order('is_primary', { ascending: false })
-          .limit(1)
-          .single();
+          .limit(1);
 
-        console.log('[notify] email channel query:', JSON.stringify({ data: emailChannel, error: emailErr?.message }));
+        const emailChannel = emailChannels?.[0];
+        console.log('[notify] email channel query:', JSON.stringify({ data: emailChannel || null, error: emailErr?.message }));
 
         if (emailChannel?.value) {
           recipientEmail = emailChannel.value;
         }
 
         // Fetch mobile channel
-        const { data: mobileChannel, error: mobileErr } = await supabase
+        const { data: mobileChannels, error: mobileErr } = await supabase
           .from('t_contact_channels')
           .select('value, country_code')
           .eq('contact_id', lookupId)
           .eq('channel_type', 'mobile')
           .order('is_primary', { ascending: false })
-          .limit(1)
-          .single();
+          .limit(1);
 
-        console.log('[notify] mobile channel query:', JSON.stringify({ data: mobileChannel, error: mobileErr?.message }));
+        const mobileChannel = mobileChannels?.[0];
+        console.log('[notify] mobile channel query:', JSON.stringify({ data: mobileChannel || null, error: mobileErr?.message }));
 
         if (mobileChannel?.value) {
           recipientMobile = mobileChannel.value;
