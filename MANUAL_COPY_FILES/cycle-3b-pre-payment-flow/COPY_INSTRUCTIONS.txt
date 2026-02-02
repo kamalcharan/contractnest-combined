@@ -1,0 +1,36 @@
+============================================================
+COPY INSTRUCTIONS — Cycle 3b: Pre-Payment Flow Redesign
+============================================================
+Branch: cycle-3b-pre-payment-flow
+Date: 2026-02-02
+
+WHAT CHANGED:
+  ContractWizard/index.tsx — Redesigned auto-accept flow:
+  - Click "Create Contract" now shows payment dialog FIRST
+  - User fills payment details OR clicks "Skip"
+  - "Record Payment & Create" → creates contract → fetches invoice → records payment → success
+  - "Skip" → creates contract → success (no payment)
+  - Success screen simplified: shows receipt inline if payment was recorded
+  - Removed dependency on RecordPaymentDialog for wizard flow
+  - Processing overlay shows step-by-step progress
+
+FILES TO COPY:
+  contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+
+SUBMODULES AFFECTED:
+  contractnest-ui
+
+COPY COMMANDS (PowerShell):
+  cd "D:\projects\core projects\ContractNest\contractnest-combined"
+  Copy-Item "MANUAL_COPY_FILES\cycle-3b-pre-payment-flow\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+TESTING:
+  1. Open ContractNest UI → Create Contract
+  2. Choose Auto-Accept as acceptance method
+  3. Fill in all steps through Review & Send
+  4. Click "Create Contract" → payment dialog should appear
+  5. Fill payment details → click "Record Payment & Create Contract"
+  6. Verify: processing overlay shows steps, then success screen with receipt
+  7. Also test: "Skip — Create Without Payment" path
+  8. Also test: "Go back to review" link
+  9. Also test: non-auto acceptance methods (payment, signoff) still create directly
