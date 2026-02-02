@@ -279,6 +279,59 @@ const FinancialHealth: React.FC<FinancialHealthProps> = ({ contract, colors }) =
       </div>
 
       <div className="p-5">
+        {/* Contract Value Breakdown */}
+        <div
+          className="rounded-lg border p-4 mb-4"
+          style={{ borderColor: colors.utility.primaryText + '12', backgroundColor: colors.utility.primaryText + '04' }}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: colors.utility.secondaryText }}>
+              Contract Value
+            </span>
+            <span className="text-lg font-extrabold" style={{ color: colors.brand.primary }}>
+              {formatCurrency(contract.grand_total || contract.total_value || 0, currency)}
+            </span>
+          </div>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[0.7rem]" style={{ color: colors.utility.secondaryText }}>Subtotal</span>
+              <span className="text-xs font-semibold" style={{ color: colors.utility.primaryText }}>
+                {formatCurrency(contract.total_value || 0, currency)}
+              </span>
+            </div>
+            {(contract.tax_total ?? 0) > 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-[0.7rem]" style={{ color: colors.utility.secondaryText }}>Tax</span>
+                <span className="text-xs font-semibold" style={{ color: colors.utility.primaryText }}>
+                  {formatCurrency(contract.tax_total || 0, currency)}
+                </span>
+              </div>
+            )}
+            {contract.tax_breakdown && contract.tax_breakdown.length > 0 && (
+              <div className="pl-3 space-y-0.5">
+                {contract.tax_breakdown.map((tax, i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <span className="text-[0.65rem]" style={{ color: colors.utility.secondaryText }}>
+                      {tax.name} ({tax.rate}%)
+                    </span>
+                    <span className="text-[0.65rem]" style={{ color: colors.utility.secondaryText }}>
+                      {formatCurrency(tax.amount, currency)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          {contract.payment_mode && (
+            <div className="mt-2 pt-2 border-t flex items-center justify-between" style={{ borderColor: colors.utility.primaryText + '10' }}>
+              <span className="text-[0.7rem]" style={{ color: colors.utility.secondaryText }}>Payment Mode</span>
+              <span className="text-[0.7rem] font-semibold" style={{ color: colors.utility.primaryText }}>
+                {contract.payment_mode === 'emi' ? `EMI (${contract.emi_months || 0} months)` : contract.payment_mode.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+              </span>
+            </div>
+          )}
+        </div>
+
         {/* Collected / Balance cards */}
         <div className="grid grid-cols-2 gap-3 mb-4">
           <div
