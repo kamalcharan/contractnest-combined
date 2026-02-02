@@ -564,10 +564,45 @@ async function handleSendNotification(
     const reviewLink = `${frontendUrl}/contracts/review?cnak=${encodeURIComponent(cnak)}&code=${encodeURIComponent(secretCode)}`;
 
     // Step 5: Determine recipient info
-    // Priority: body overrides > contract buyer fields > access record
-    const recipientName = body.recipient_name || contract.buyer_name || accessData?.accessor_name || 'there';
-    const recipientEmail = body.recipient_email || contract.buyer_email || accessData?.accessor_email;
-    const recipientMobile = body.recipient_mobile || contract.buyer_phone;
+    // Priority: body overrides > contract buyer fields > access record > contact lookup
+    let recipientName = body.recipient_name || contract.buyer_name || accessData?.accessor_name || 'there';
+    let recipientEmail = body.recipient_email || contract.buyer_email || accessData?.accessor_email;
+    let recipientMobile = body.recipient_mobile || contract.buyer_phone;
+
+    // Fallback: look up email/phone from the contact record if not on contract
+    if (!recipientEmail && !recipientMobile) {
+      const contactId = contract.contact_id || contract.buyer_id;
+
+      // Try contact person first (more specific)
+      if (contract.buyer_contact_person_id) {
+        const { data: personData } = await supabase
+          .from('t_contact_persons')
+          .select('email, phone, name')
+          .eq('id', contract.buyer_contact_person_id)
+          .single();
+        if (personData) {
+          recipientEmail = personData.email || null;
+          recipientMobile = personData.phone || null;
+          if (personData.name && recipientName === 'there') recipientName = personData.name;
+        }
+      }
+
+      // Fallback to main contact record
+      if (!recipientEmail && !recipientMobile && contactId) {
+        const { data: contactData } = await supabase
+          .from('t_contacts')
+          .select('email, phone, name, company_name')
+          .eq('id', contactId)
+          .single();
+        if (contactData) {
+          recipientEmail = contactData.email || null;
+          recipientMobile = contactData.phone || null;
+          if (recipientName === 'there') {
+            recipientName = contactData.name || contactData.company_name || 'there';
+          }
+        }
+      }
+    }
 
     if (!recipientEmail && !recipientMobile) {
       return jsonResponse({
