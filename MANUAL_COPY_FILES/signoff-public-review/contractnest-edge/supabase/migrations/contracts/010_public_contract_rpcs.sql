@@ -80,7 +80,7 @@ BEGIN
     INTO v_contract
     FROM t_contracts
     WHERE id = v_access.contract_id
-      AND is_deleted = false;
+      AND is_active = true;
 
     IF v_contract IS NULL THEN
         RETURN jsonb_build_object(
@@ -98,14 +98,15 @@ BEGIN
     -- ── Step 7: Get service blocks ──
     SELECT COALESCE(jsonb_agg(
         jsonb_build_object(
-            'id',          cb.id,
-            'block_name',  cb.block_name,
-            'description', cb.description,
-            'quantity',    cb.quantity,
-            'unit_price',  cb.unit_price,
-            'total_price', cb.total_price,
-            'unit_type',   cb.unit_type
-        ) ORDER BY cb.sort_order, cb.created_at
+            'id',                cb.id,
+            'block_name',        cb.block_name,
+            'block_description', cb.block_description,
+            'quantity',          cb.quantity,
+            'unit_price',        cb.unit_price,
+            'total_price',       cb.total_price,
+            'billing_cycle',     cb.billing_cycle,
+            'category_name',     cb.category_name
+        ) ORDER BY cb.position ASC
     ), '[]'::jsonb)
     INTO v_blocks
     FROM t_contract_blocks cb
@@ -138,15 +139,18 @@ BEGIN
             'contract_type',       v_contract.contract_type,
             'status',              v_contract.status,
             'description',         v_contract.description,
-            'start_date',          v_contract.start_date,
-            'end_date',            v_contract.end_date,
             'total_value',         v_contract.total_value,
             'grand_total',         v_contract.grand_total,
             'tax_total',           v_contract.tax_total,
-            'tax_breakdown',       v_contract.tax_breakdown,
+            'tax_breakdown',       COALESCE(v_contract.tax_breakdown, '[]'::JSONB),
             'currency',            v_contract.currency,
-            'payment_terms',       v_contract.payment_terms,
             'acceptance_method',   v_contract.acceptance_method,
+            'duration_value',      v_contract.duration_value,
+            'duration_unit',       v_contract.duration_unit,
+            'billing_cycle_type',  v_contract.billing_cycle_type,
+            'payment_mode',        v_contract.payment_mode,
+            'buyer_name',          v_contract.buyer_name,
+            'buyer_email',         v_contract.buyer_email,
             'service_blocks',      v_blocks
         ),
         'tenant', jsonb_build_object(
@@ -250,7 +254,7 @@ BEGIN
     INTO v_contract
     FROM t_contracts
     WHERE id = v_access.contract_id
-      AND is_deleted = false
+      AND is_active = true
     FOR UPDATE;
 
     IF v_contract IS NULL THEN
@@ -286,17 +290,22 @@ BEGIN
             WHERE id = v_contract.id;
 
             -- Log status change in history
-            INSERT INTO t_contract_status_history (
-                contract_id, old_status, new_status,
-                performed_by_id, performed_by_name, performed_by_type,
+            INSERT INTO t_contract_history (
+                contract_id, tenant_id,
+                action, from_status, to_status,
+                changes,
+                performed_by_type, performed_by_id, performed_by_name,
                 note
             ) VALUES (
                 v_contract.id,
+                v_access.tenant_id,
+                'status_change',
                 'pending_acceptance',
                 'active',
+                NULL,
+                'external',
                 p_responded_by,
                 COALESCE(p_responder_name, v_access.accessor_name, 'External party'),
-                'external',
                 'Contract accepted via sign-off link'
             );
         END IF;

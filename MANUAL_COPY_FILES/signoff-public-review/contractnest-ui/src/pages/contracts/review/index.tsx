@@ -36,11 +36,12 @@ interface ContractAccessData {
 interface ServiceBlock {
   id: string;
   block_name: string;
-  description: string;
+  block_description: string;
   quantity: number;
   unit_price: number;
   total_price: number;
-  unit_type: string;
+  billing_cycle: string;
+  category_name: string;
 }
 
 interface TaxBreakdownItem {
@@ -58,15 +59,18 @@ interface ContractData {
   contract_type: string;
   status: string;
   description: string;
-  start_date: string;
-  end_date: string;
   total_value: number;
   grand_total: number;
   tax_total: number;
   tax_breakdown: TaxBreakdownItem[];
   currency: string;
-  payment_terms: string;
   acceptance_method: string;
+  duration_value: number;
+  duration_unit: string;
+  billing_cycle_type: string;
+  payment_mode: string;
+  buyer_name: string;
+  buyer_email: string;
   service_blocks: ServiceBlock[];
 }
 
@@ -97,13 +101,10 @@ const formatCurrency = (amount: number, currency?: string) => {
   }).format(amount || 0);
 };
 
-const formatDate = (dateStr: string) => {
-  if (!dateStr) return '—';
-  return new Date(dateStr).toLocaleDateString('en-IN', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
+const formatDuration = (value: number, unit: string) => {
+  if (!value) return '—';
+  const unitLabel = value === 1 ? unit : `${unit}s`;
+  return `${value} ${unitLabel}`;
 };
 
 // ═══════════════════════════════════════════════════
@@ -474,8 +475,8 @@ const ContractReviewPage: React.FC = () => {
               <Calendar size={16} style={{ color: '#8b5cf6' }} />
               <span style={{ fontSize: 12, color: colors.textSecondary, fontWeight: 500 }}>Duration</span>
             </div>
-            <div style={{ fontSize: 13, fontWeight: 500 }}>
-              {formatDate(contract.start_date)} — {formatDate(contract.end_date)}
+            <div style={{ fontSize: 16, fontWeight: 600 }}>
+              {formatDuration(contract.duration_value, contract.duration_unit)}
             </div>
           </div>
         </div>
@@ -513,7 +514,7 @@ const ContractReviewPage: React.FC = () => {
                   <tr style={{ backgroundColor: `${colors.primary}08` }}>
                     <th style={{ textAlign: 'left', padding: '10px 16px', fontWeight: 600, color: colors.textSecondary, fontSize: 12 }}>Service</th>
                     <th style={{ textAlign: 'right', padding: '10px 16px', fontWeight: 600, color: colors.textSecondary, fontSize: 12 }}>Qty</th>
-                    <th style={{ textAlign: 'left', padding: '10px 16px', fontWeight: 600, color: colors.textSecondary, fontSize: 12 }}>Unit</th>
+                    <th style={{ textAlign: 'left', padding: '10px 16px', fontWeight: 600, color: colors.textSecondary, fontSize: 12 }}>Billing</th>
                     <th style={{ textAlign: 'right', padding: '10px 16px', fontWeight: 600, color: colors.textSecondary, fontSize: 12 }}>Rate</th>
                     <th style={{ textAlign: 'right', padding: '10px 16px', fontWeight: 600, color: colors.textSecondary, fontSize: 12 }}>Total</th>
                   </tr>
@@ -525,14 +526,14 @@ const ContractReviewPage: React.FC = () => {
                     }}>
                       <td style={{ padding: '12px 16px' }}>
                         <div style={{ fontWeight: 500 }}>{block.block_name}</div>
-                        {block.description && (
+                        {block.block_description && (
                           <div style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
-                            {block.description}
+                            {block.block_description}
                           </div>
                         )}
                       </td>
                       <td style={{ padding: '12px 16px', textAlign: 'right' }}>{block.quantity}</td>
-                      <td style={{ padding: '12px 16px', textTransform: 'capitalize' }}>{block.unit_type || '—'}</td>
+                      <td style={{ padding: '12px 16px', textTransform: 'capitalize' }}>{block.billing_cycle || '—'}</td>
                       <td style={{ padding: '12px 16px', textAlign: 'right' }}>
                         {formatCurrency(block.unit_price, contract.currency)}
                       </td>
@@ -586,8 +587,8 @@ const ContractReviewPage: React.FC = () => {
           </div>
         )}
 
-        {/* Payment Terms */}
-        {contract.payment_terms && (
+        {/* Payment Details */}
+        {(contract.payment_mode || contract.billing_cycle_type) && (
           <div style={{
             backgroundColor: colors.surface,
             borderRadius: 12,
@@ -595,10 +596,21 @@ const ContractReviewPage: React.FC = () => {
             padding: 20,
             marginBottom: 16,
           }}>
-            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 8 }}>Payment Terms</div>
-            <p style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 1.6 }}>
-              {contract.payment_terms}
-            </p>
+            <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Payment Details</div>
+            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', fontSize: 13 }}>
+              {contract.payment_mode && (
+                <div>
+                  <div style={{ color: colors.textSecondary, marginBottom: 4 }}>Payment Mode</div>
+                  <div style={{ fontWeight: 500, textTransform: 'capitalize' }}>{contract.payment_mode.replace(/_/g, ' ')}</div>
+                </div>
+              )}
+              {contract.billing_cycle_type && (
+                <div>
+                  <div style={{ color: colors.textSecondary, marginBottom: 4 }}>Billing Cycle</div>
+                  <div style={{ fontWeight: 500, textTransform: 'capitalize' }}>{contract.billing_cycle_type.replace(/_/g, ' ')}</div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
