@@ -569,36 +569,52 @@ async function handleSendNotification(
     let recipientEmail = body.recipient_email || contract.buyer_email || accessData?.accessor_email;
     let recipientMobile = body.recipient_mobile || contract.buyer_phone;
 
-    // Fallback: look up email/phone from the contact record if not on contract
+    // Fallback: look up email/phone from t_contact_channels
+    // (t_contacts does NOT have email/phone columns — they're in t_contact_channels)
     if (!recipientEmail && !recipientMobile) {
-      const contactId = contract.contact_id || contract.buyer_id;
+      // Determine which contact ID to look up channels for
+      // Contact persons are also t_contacts records (type='contact_person')
+      const lookupId = contract.buyer_contact_person_id || contract.contact_id || contract.buyer_id;
 
-      // Try contact person first (more specific)
-      if (contract.buyer_contact_person_id) {
-        const { data: personData } = await supabase
-          .from('t_contact_persons')
-          .select('email, phone, name')
-          .eq('id', contract.buyer_contact_person_id)
+      if (lookupId) {
+        // Fetch email channel
+        const { data: emailChannel } = await supabase
+          .from('t_contact_channels')
+          .select('value')
+          .eq('contact_id', lookupId)
+          .eq('channel_type', 'email')
+          .order('is_primary', { ascending: false })
+          .limit(1)
           .single();
-        if (personData) {
-          recipientEmail = personData.email || null;
-          recipientMobile = personData.phone || null;
-          if (personData.name && recipientName === 'there') recipientName = personData.name;
+
+        if (emailChannel?.value) {
+          recipientEmail = emailChannel.value;
         }
-      }
 
-      // Fallback to main contact record
-      if (!recipientEmail && !recipientMobile && contactId) {
-        const { data: contactData } = await supabase
-          .from('t_contacts')
-          .select('email, phone, name, company_name')
-          .eq('id', contactId)
+        // Fetch mobile channel
+        const { data: mobileChannel } = await supabase
+          .from('t_contact_channels')
+          .select('value, country_code')
+          .eq('contact_id', lookupId)
+          .eq('channel_type', 'mobile')
+          .order('is_primary', { ascending: false })
+          .limit(1)
           .single();
-        if (contactData) {
-          recipientEmail = contactData.email || null;
-          recipientMobile = contactData.phone || null;
-          if (recipientName === 'there') {
-            recipientName = contactData.name || contactData.company_name || 'there';
+
+        if (mobileChannel?.value) {
+          recipientMobile = mobileChannel.value;
+        }
+
+        // Get name from the contact record if we don't have one
+        if (recipientName === 'there') {
+          const { data: contactRecord } = await supabase
+            .from('t_contacts')
+            .select('name, company_name')
+            .eq('id', lookupId)
+            .single();
+
+          if (contactRecord) {
+            recipientName = contactRecord.name || contactRecord.company_name || 'there';
           }
         }
       }
