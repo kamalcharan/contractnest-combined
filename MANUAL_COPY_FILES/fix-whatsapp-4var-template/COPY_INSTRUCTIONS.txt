@@ -1,0 +1,30 @@
+FIX: WhatsApp template reduced to 4 variables + email provider_template_id
+============================================================================
+
+Submodules Affected: contractnest-edge
+
+Files Changed:
+  1. contractnest-edge/supabase/functions/contracts/jtd-integration.ts
+     - Email: keeps 7 named variables (recipient_name, sender_name, etc.)
+     - WhatsApp: now sends 4 variables (recipient_name, sender_name, contract_info, review_link)
+     - contract_info = "Title (Number) - Value" combined
+
+  2. contractnest-edge/supabase/functions/contracts/index.ts
+     - (previous fix) mobile channel lookup uses .in(['mobile','whatsapp','phone'])
+
+  3. contractnest-edge/supabase/functions/jtd-worker/handlers/whatsapp.ts
+     - Added explicit contract_signoff ordering (body_1..body_4)
+
+Copy Commands (PowerShell):
+  cd "D:\projects\core projects\ContractNest\contractnest-combined"
+  Copy-Item "MANUAL_COPY_FILES\fix-whatsapp-4var-template\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Deploy BOTH edge functions:
+  cd contractnest-edge
+  supabase functions deploy contracts
+  supabase functions deploy jtd-worker
+
+SQL to run (update email template ID):
+  UPDATE n_jtd_templates
+  SET provider_template_id = 'contract_signoff_notification'
+  WHERE template_key = 'contract_signoff_email';
