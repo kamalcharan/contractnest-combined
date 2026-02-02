@@ -512,6 +512,7 @@ async function handlePublicValidate(
     return jsonResponse({ valid: false, error: 'CNAK and secret code are required' }, 400);
   }
 
+  // Step 1: Validate access
   const { data, error } = await supabase.rpc('validate_contract_access', {
     p_cnak: cnak,
     p_secret_code: secret_code
@@ -520,6 +521,26 @@ async function handlePublicValidate(
   if (error) {
     console.error('RPC validate_contract_access error:', error);
     return jsonResponse({ valid: false, error: error.message }, 500);
+  }
+
+  if (!data?.valid) {
+    return jsonResponse(data, 200);
+  }
+
+  // Step 2: Fetch full contract data via existing get_contract_by_id RPC
+  const contractId = data.contract?.id;
+  const tenantId = data.tenant?.id;
+
+  if (contractId && tenantId) {
+    const { data: fullContract, error: fullError } = await supabase.rpc('get_contract_by_id', {
+      p_contract_id: contractId,
+      p_tenant_id: tenantId
+    });
+
+    if (!fullError && fullContract?.success && fullContract?.data) {
+      // Replace the minimal contract with the full contract data
+      data.contract = fullContract.data;
+    }
   }
 
   return jsonResponse(data, 200);

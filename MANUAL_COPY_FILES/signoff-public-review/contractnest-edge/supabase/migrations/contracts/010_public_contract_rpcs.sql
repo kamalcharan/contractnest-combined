@@ -22,10 +22,11 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-    v_access   RECORD;
-    v_contract RECORD;
-    v_tenant   RECORD;
-    v_blocks   JSONB;
+    v_access          RECORD;
+    v_contract        RECORD;
+    v_tenant          RECORD;
+    v_tenant_profile  RECORD;
+    v_blocks          JSONB;
 BEGIN
     -- ── Step 1: Validate inputs ──
     IF p_cnak IS NULL OR p_secret_code IS NULL THEN
@@ -89,11 +90,17 @@ BEGIN
         );
     END IF;
 
-    -- ── Step 6: Get tenant info ──
+    -- ── Step 6: Get tenant info + profile ──
     SELECT id, name
     INTO v_tenant
     FROM t_tenants
     WHERE id = v_access.tenant_id;
+
+    SELECT *
+    INTO v_tenant_profile
+    FROM t_tenant_profiles
+    WHERE tenant_id = v_access.tenant_id
+    LIMIT 1;
 
     -- ── Step 7: Get service blocks ──
     SELECT COALESCE(jsonb_agg(
@@ -155,7 +162,22 @@ BEGIN
         ),
         'tenant', jsonb_build_object(
             'id',   v_tenant.id,
-            'name', v_tenant.name
+            'name', v_tenant.name,
+            'profile', CASE WHEN v_tenant_profile IS NOT NULL THEN jsonb_build_object(
+                'business_name',              v_tenant_profile.business_name,
+                'business_email',             v_tenant_profile.business_email,
+                'business_phone_country_code', v_tenant_profile.business_phone_country_code,
+                'business_phone',             v_tenant_profile.business_phone,
+                'logo_url',                   v_tenant_profile.logo_url,
+                'primary_color',              v_tenant_profile.primary_color,
+                'secondary_color',            v_tenant_profile.secondary_color,
+                'address_line1',              v_tenant_profile.address_line1,
+                'address_line2',              v_tenant_profile.address_line2,
+                'city',                       v_tenant_profile.city,
+                'state_code',                 v_tenant_profile.state_code,
+                'postal_code',                v_tenant_profile.postal_code,
+                'website_url',                v_tenant_profile.website_url
+            ) ELSE NULL END
         )
     );
 
