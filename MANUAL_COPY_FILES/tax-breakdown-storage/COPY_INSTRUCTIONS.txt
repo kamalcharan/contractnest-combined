@@ -1,0 +1,45 @@
+═══════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS — tax-breakdown-storage
+═══════════════════════════════════════════════════════════════
+Feature: Store grand_total, tax_total, and tax_breakdown on contracts
+Branch: claude/init-submodules-docs-TR05u
+Date: 2026-02-02
+
+Submodules Affected: contractnest-edge, contractnest-ui
+
+═══════════════════════════════════════════════════════════════
+FILES (5 total)
+═══════════════════════════════════════════════════════════════
+
+EDGE (3 files):
+  [NEW]      contractnest-edge/supabase/migrations/contracts/008_tax_breakdown_column.sql
+  [MODIFIED] contractnest-edge/supabase/migrations/contracts/002_contract_rpc_functions.sql
+  [MODIFIED] contractnest-edge/supabase/migrations/contracts/003_contract_rpc_functions_batch2.sql
+
+UI (2 files):
+  [MODIFIED] contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+  [MODIFIED] contractnest-ui/src/components/contracts/ContractWizard/steps/BillingViewStep.tsx
+
+═══════════════════════════════════════════════════════════════
+POWERSHELL COPY COMMANDS
+═══════════════════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Edge — migrations
+Copy-Item "MANUAL_COPY_FILES\tax-breakdown-storage\contractnest-edge\supabase\migrations\contracts\008_tax_breakdown_column.sql" -Destination "contractnest-edge\supabase\migrations\contracts\" -Force
+Copy-Item "MANUAL_COPY_FILES\tax-breakdown-storage\contractnest-edge\supabase\migrations\contracts\002_contract_rpc_functions.sql" -Destination "contractnest-edge\supabase\migrations\contracts\" -Force
+Copy-Item "MANUAL_COPY_FILES\tax-breakdown-storage\contractnest-edge\supabase\migrations\contracts\003_contract_rpc_functions_batch2.sql" -Destination "contractnest-edge\supabase\migrations\contracts\" -Force
+
+# UI — ContractWizard
+Copy-Item "MANUAL_COPY_FILES\tax-breakdown-storage\contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\" -Force
+Copy-Item "MANUAL_COPY_FILES\tax-breakdown-storage\contractnest-ui\src\components\contracts\ContractWizard\steps\BillingViewStep.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\" -Force
+
+Write-Host "All 5 files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════════════════
+DEPLOY ORDER
+═══════════════════════════════════════════════════════════════
+1. Run migration 008_tax_breakdown_column.sql in Supabase SQL Editor FIRST
+2. Redeploy edge functions (002 + 003 RPCs updated)
+3. Deploy UI
