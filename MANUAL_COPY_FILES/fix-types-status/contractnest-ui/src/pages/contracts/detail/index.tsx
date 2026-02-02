@@ -333,43 +333,51 @@ const FinancialHealth: React.FC<FinancialHealthProps> = ({ contract, colors }) =
         </div>
 
         {/* Collected / Balance cards */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <div
-            className="p-4 rounded-lg text-center border"
-            style={{
-              background: `linear-gradient(135deg, ${colors.semantic.success}10, ${colors.semantic.success}20)`,
-              borderColor: colors.semantic.success + '30',
-            }}
-          >
-            <div className="text-2xl font-extrabold mb-0.5" style={{ color: colors.semantic.success }}>
-              {formatCurrency(summary.total_paid, currency)}
+        {(() => {
+          const contractTotal = contract.grand_total || contract.total_value || 0;
+          const collected = summary.total_paid || 0;
+          // Balance = contract total minus what's been collected
+          const balance = summary.invoice_count > 0 ? summary.total_balance : contractTotal - collected;
+          return (
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <div
+                className="p-4 rounded-lg text-center border"
+                style={{
+                  background: `linear-gradient(135deg, ${colors.semantic.success}10, ${colors.semantic.success}20)`,
+                  borderColor: colors.semantic.success + '30',
+                }}
+              >
+                <div className="text-2xl font-extrabold mb-0.5" style={{ color: colors.semantic.success }}>
+                  {formatCurrency(collected, currency)}
+                </div>
+                <div className="text-[0.7rem] uppercase tracking-wider font-semibold" style={{ color: colors.utility.secondaryText }}>
+                  Collected
+                </div>
+              </div>
+              <div
+                className="p-4 rounded-lg text-center"
+                style={{ backgroundColor: colors.utility.primaryText + '06' }}
+              >
+                <div
+                  className="text-2xl font-extrabold mb-0.5"
+                  style={{ color: balance > 0 ? colors.semantic.warning : colors.utility.primaryText }}
+                >
+                  {formatCurrency(balance, currency)}
+                </div>
+                <div className="text-[0.7rem] uppercase tracking-wider font-semibold" style={{ color: colors.utility.secondaryText }}>
+                  Balance
+                </div>
+              </div>
             </div>
-            <div className="text-[0.7rem] uppercase tracking-wider font-semibold" style={{ color: colors.utility.secondaryText }}>
-              Collected
-            </div>
-          </div>
-          <div
-            className="p-4 rounded-lg text-center"
-            style={{ backgroundColor: colors.utility.primaryText + '06' }}
-          >
-            <div
-              className="text-2xl font-extrabold mb-0.5"
-              style={{ color: summary.total_balance > 0 ? colors.semantic.warning : colors.utility.primaryText }}
-            >
-              {formatCurrency(summary.total_balance, currency)}
-            </div>
-            <div className="text-[0.7rem] uppercase tracking-wider font-semibold" style={{ color: colors.utility.secondaryText }}>
-              Balance
-            </div>
-          </div>
-        </div>
+          );
+        })()}
 
         {/* Collection Progress */}
         <div className="mb-4">
           <div className="flex justify-between mb-1.5">
             <span className="text-xs" style={{ color: colors.utility.secondaryText }}>Collection Progress</span>
             <span className="text-xs font-bold" style={{ color: colors.utility.primaryText }}>
-              {summary.invoice_count > 0 ? `${summary.collection_percentage}%` : '\u2014'}
+              {summary.invoice_count > 0 ? `${summary.collection_percentage}%` : '0%'}
             </span>
           </div>
           <div
