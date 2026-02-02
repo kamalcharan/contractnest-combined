@@ -282,13 +282,17 @@ export const useContractOperations = () => {
       return response.data?.data || response.data;
     },
     onSuccess: (updatedContract) => {
-      queryClient.setQueryData(contractKeys.detail(updatedContract.id), updatedContract);
       queryClient.invalidateQueries({ queryKey: contractKeys.lists() });
       queryClient.invalidateQueries({ queryKey: contractKeys.stats() });
+      if (updatedContract.id) {
+        queryClient.invalidateQueries({ queryKey: contractKeys.detail(updatedContract.id) });
+      }
 
+      const displayStatus = (updatedContract.to_status || updatedContract.status || 'updated')
+        .replace(/_/g, ' ');
       toast({
         title: 'Status Updated',
-        description: `Status changed to ${updatedContract.status.replace(/_/g, ' ')}`,
+        description: `Status changed to ${displayStatus}`,
       });
     },
     onError: (error: any) => {
