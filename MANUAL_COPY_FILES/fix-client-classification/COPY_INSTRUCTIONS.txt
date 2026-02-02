@@ -1,0 +1,10 @@
+═══════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS — fix-client-classification
+═══════════════════════════════════════════════════════════════
+Fix: Add 'client' to valid classifications in contactService.ts
+Line 671: added 'client' to the valid array
+
+Submodules Affected: contractnest-edge
+
+FILES (1 total):
+  [MODIFIED] contractnest-edge/supabase/functions/_shared/contacts/contactService.ts
