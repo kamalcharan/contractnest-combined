@@ -1,0 +1,41 @@
+T11 + T12: Wire RecordPaymentDialog + PaymentRequestHistory into Contract Detail Page
+=====================================================================================
+
+Submodules Affected: contractnest-ui
+
+Files:
+  contractnest-ui/src/pages/contracts/detail/index.tsx  (MODIFIED)
+
+Changes:
+  1. Added imports: RecordPaymentDialog, PaymentRequestHistory, useGatewayStatus,
+     useRazorpayCheckout, CreateOrderResponse, useVaNiToast
+
+  2. FinancialHealth sidebar (Overview tab, right column):
+     - Added "Pay" button in header (next to AR/AP badge) — opens RecordPaymentDialog
+     - Added PaymentRequestHistory below invoice list (compact mode)
+
+  3. Financials tab (was placeholder — now active):
+     - "Collect Payment" CTA card with Record Payment / Collect Payment button
+     - Full-width PaymentRequestHistory component
+     - FinancialHealth card in right column
+
+  4. ContractDetailPage component:
+     - Added isPaymentDialogOpen state
+     - Added useGatewayStatus hook for gateway detection
+     - Added useRazorpayCheckout hook for terminal checkout flow
+     - Rendered RecordPaymentDialog at page level (shared across tabs)
+     - onOrderCreated callback opens Razorpay Checkout popup
+     - onSuccess callback closes dialog
+
+Copy Command (PowerShell):
+  cd "D:\projects\core projects\ContractNest\contractnest-combined"
+  Copy-Item "MANUAL_COPY_FILES\t11-t12-payment-detail-wiring\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Test:
+  cd contractnest-ui && npm run dev
+  - Navigate to any active contract with invoices
+  - Overview tab: FinancialHealth sidebar should show "Pay" button + payment history
+  - Financials tab: Should show "Collect Payment" CTA + full payment history
+  - Click "Pay" or "Collect Payment" → RecordPaymentDialog opens
+  - If gateway active: online/offline toggle visible
+  - If no gateway: only offline mode
