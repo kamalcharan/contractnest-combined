@@ -1,0 +1,36 @@
+Fix: Single Webhook URL — Tenant from Payload Notes + DB Fallback
+==================================================================
+
+Submodules Affected: contractnest-edge
+
+Problem:
+  Old webhook URL: /payment-webhook/razorpay/{tenant_id}
+  Required a SEPARATE webhook URL per tenant in Razorpay Dashboard.
+  Not viable for multi-tenant SaaS.
+
+Solution:
+  New webhook URL: /payment-webhook/razorpay
+  Single URL for ALL tenants. Tenant identified via:
+    1. Razorpay `notes.tenant_id` field (injected when creating orders/links)
+    2. Legacy URL path tenant_id (backward compat)
+    3. DB lookup from t_contract_payment_requests using gateway_order_id / gateway_link_id
+
+Files:
+  contractnest-edge/supabase/functions/payment-webhook/index.ts         (MODIFIED)
+  contractnest-edge/supabase/functions/payment-webhook/providers/razorpay.ts (MODIFIED - added extractTenantId)
+  contractnest-edge/supabase/functions/payment-gateway/index.ts         (MODIFIED - notes injection, done earlier)
+
+Copy Command (PowerShell):
+  cd "D:\projects\core projects\ContractNest\contractnest-combined"
+  Copy-Item "MANUAL_COPY_FILES\fix-webhook-single-url\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Deploy Edge Functions:
+  supabase functions deploy payment-webhook
+  supabase functions deploy payment-gateway
+
+Razorpay Webhook Configuration (UPDATED):
+  In Razorpay Dashboard -> Settings -> Webhooks:
+  URL: https://{project-ref}.supabase.co/functions/v1/payment-webhook/razorpay
+  Events: payment.captured, payment.failed, payment_link.paid, order.paid
+  Secret: Store in tenant integration credentials as "webhook_secret"
+  NOTE: Same single URL for ALL tenants — no tenant_id in URL needed!
