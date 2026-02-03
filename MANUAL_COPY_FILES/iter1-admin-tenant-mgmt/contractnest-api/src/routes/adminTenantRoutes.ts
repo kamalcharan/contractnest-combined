@@ -58,4 +58,92 @@ router.get('/list', async (req: Request, res: Response) => {
   }
 });
 
+/**
+ * GET /api/admin/tenants/:id/data-summary
+ * Returns data summary (row counts per table) for a specific tenant
+ */
+router.get('/:id/data-summary', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization || '';
+    const tenantId = (req.headers['x-tenant-id'] as string) || '';
+    const targetTenantId = req.params.id;
+
+    const result = await adminTenantService.getDataSummary(authHeader, tenantId, targetTenantId);
+
+    res.json(result);
+  } catch (error: any) {
+    console.error('[AdminTenantRoutes] GET /:id/data-summary error:', error.message);
+    res.status(error.status || 500).json({
+      success: false,
+      error: { code: 'DATA_SUMMARY_ERROR', message: error.message || 'Failed to load data summary' }
+    });
+  }
+});
+
+/**
+ * POST /api/admin/tenants/:id/reset-test-data
+ * Deletes test data (is_live=false) for a specific tenant
+ */
+router.post('/:id/reset-test-data', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization || '';
+    const tenantId = (req.headers['x-tenant-id'] as string) || '';
+    const targetTenantId = req.params.id;
+
+    const result = await adminTenantService.resetTestData(authHeader, tenantId, targetTenantId);
+
+    res.json(result);
+  } catch (error: any) {
+    console.error('[AdminTenantRoutes] POST /:id/reset-test-data error:', error.message);
+    res.status(error.status || 500).json({
+      success: false,
+      error: { code: 'RESET_TEST_ERROR', message: error.message || 'Failed to reset test data' }
+    });
+  }
+});
+
+/**
+ * POST /api/admin/tenants/:id/reset-all-data
+ * Deletes ALL data for a specific tenant, keeps account open
+ */
+router.post('/:id/reset-all-data', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization || '';
+    const tenantId = (req.headers['x-tenant-id'] as string) || '';
+    const targetTenantId = req.params.id;
+
+    const result = await adminTenantService.resetAllData(authHeader, tenantId, targetTenantId);
+
+    res.json(result);
+  } catch (error: any) {
+    console.error('[AdminTenantRoutes] POST /:id/reset-all-data error:', error.message);
+    res.status(error.status || 500).json({
+      success: false,
+      error: { code: 'RESET_ALL_ERROR', message: error.message || 'Failed to reset all data' }
+    });
+  }
+});
+
+/**
+ * POST /api/admin/tenants/:id/close-account
+ * Deletes ALL data + closes the tenant account
+ */
+router.post('/:id/close-account', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization || '';
+    const tenantId = (req.headers['x-tenant-id'] as string) || '';
+    const targetTenantId = req.params.id;
+
+    const result = await adminTenantService.closeAccount(authHeader, tenantId, targetTenantId);
+
+    res.json(result);
+  } catch (error: any) {
+    console.error('[AdminTenantRoutes] POST /:id/close-account error:', error.message);
+    res.status(error.status || 500).json({
+      success: false,
+      error: { code: 'CLOSE_ACCOUNT_ERROR', message: error.message || 'Failed to close account' }
+    });
+  }
+});
+
 export default router;

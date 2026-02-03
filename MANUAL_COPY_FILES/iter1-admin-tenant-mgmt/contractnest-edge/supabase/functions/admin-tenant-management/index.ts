@@ -115,6 +115,121 @@ serve(async (req: Request) => {
       );
     }
 
+    // GET /data-summary?tenant_id=xxx
+    if (req.method === 'GET' && action === 'data-summary') {
+      const targetTenantId = url.searchParams.get('tenant_id');
+      if (!targetTenantId) {
+        return new Response(
+          JSON.stringify({ error: 'tenant_id query parameter is required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data, error } = await supabase.rpc('get_tenant_data_summary', {
+        p_tenant_id: targetTenantId
+      });
+
+      if (error) {
+        console.error('Data summary RPC error:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to load data summary', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, data }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // POST /reset-test-data
+    if (req.method === 'POST' && action === 'reset-test-data') {
+      const body = await req.json();
+      const targetTenantId = body.tenant_id;
+      if (!targetTenantId) {
+        return new Response(
+          JSON.stringify({ error: 'tenant_id is required in request body' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data, error } = await supabase.rpc('admin_reset_test_data', {
+        p_tenant_id: targetTenantId
+      });
+
+      if (error) {
+        console.error('Reset test data RPC error:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to reset test data', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, data }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // POST /reset-all-data
+    if (req.method === 'POST' && action === 'reset-all-data') {
+      const body = await req.json();
+      const targetTenantId = body.tenant_id;
+      if (!targetTenantId || !body.confirmed) {
+        return new Response(
+          JSON.stringify({ error: 'tenant_id and confirmed=true are required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data, error } = await supabase.rpc('admin_reset_all_data', {
+        p_tenant_id: targetTenantId
+      });
+
+      if (error) {
+        console.error('Reset all data RPC error:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to reset all data', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, data }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // POST /close-account
+    if (req.method === 'POST' && action === 'close-account') {
+      const body = await req.json();
+      const targetTenantId = body.tenant_id;
+      if (!targetTenantId || !body.confirmed) {
+        return new Response(
+          JSON.stringify({ error: 'tenant_id and confirmed=true are required' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const { data, error } = await supabase.rpc('admin_close_tenant_account', {
+        p_tenant_id: targetTenantId
+      });
+
+      if (error) {
+        console.error('Close account RPC error:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to close account', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, data }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // 404
     return new Response(
       JSON.stringify({ error: `Unknown route: ${req.method} ${action}` }),

@@ -1,6 +1,8 @@
 ===============================================================
-ITERATION 1: Admin Tenant Management - Real Tenant List + Stats
-+ is_test badge (Test Account / Live Account)
+ITERATION 1 + 2: Admin Tenant Management
+- Real tenant list + stats (iter 1)
+- is_test badge (iter 1)
+- Real data summary + 3 action buttons (iter 2)
 ===============================================================
 
 Submodules Affected: contractnest-edge, contractnest-api, contractnest-ui
@@ -10,48 +12,61 @@ FILES TO COPY:
 
 --- EDGE FUNCTION (contractnest-edge) ---
 
-1. MODIFIED: supabase/migrations/admin-tenant-management/001_admin_tenant_rpcs.sql
-   -> SQL RPC functions: get_admin_platform_stats() + get_admin_tenant_list()
-   -> NOW INCLUDES is_test field in tenant list response
-   -> RE-RUN THIS IN SUPABASE SQL EDITOR (for is_test addition)
+1. supabase/migrations/admin-tenant-management/001_admin_tenant_rpcs.sql
+   -> SQL: get_admin_platform_stats() + get_admin_tenant_list()
+   -> Includes is_test field
 
-2. supabase/functions/admin-tenant-management/index.ts
-   -> Edge function: GET /stats, GET /tenants
-   -> Pattern: matches plans/index.ts (simple auth, no signing)
+2. NEW: supabase/migrations/admin-tenant-management/002_tenant_data_operations.sql
+   -> SQL: get_tenant_data_summary() - real row counts per table
+   -> SQL: admin_reset_test_data() - delete is_live=false records
+   -> SQL: admin_reset_all_data() - delete all tenant data
+   -> SQL: admin_close_tenant_account() - delete all + close
+   -> RUN THIS IN SUPABASE SQL EDITOR
+
+3. supabase/functions/admin-tenant-management/index.ts
+   -> Edge: GET /stats, GET /tenants, GET /data-summary
+   -> Edge: POST /reset-test-data, POST /reset-all-data, POST /close-account
+   -> DEPLOY: supabase functions deploy admin-tenant-management
 
 --- API LAYER (contractnest-api) ---
 
-3. src/services/adminTenantService.ts
-   -> Service that proxies to edge function (simple headers, no signing)
+4. src/services/adminTenantService.ts
+   -> Added: getDataSummary(), resetTestData(), resetAllData(), closeAccount()
 
-4. src/routes/adminTenantRoutes.ts
-   -> Express routes: GET /api/admin/tenants/stats, GET /api/admin/tenants/list
+5. src/routes/adminTenantRoutes.ts
+   -> Added: GET /:id/data-summary
+   -> Added: POST /:id/reset-test-data
+   -> Added: POST /:id/reset-all-data
+   -> Added: POST /:id/close-account
 
-5. src/index.ts
-   -> Added route registration for /api/admin/tenants
+6. src/index.ts (unchanged from iter 1)
 
 --- UI (contractnest-ui) ---
 
-6. src/services/serviceURLs.ts
-   -> Added ADMIN.TENANT_MANAGEMENT endpoints + AdminTenantListFilters type
+7. src/services/serviceURLs.ts
+   -> Added: DATA_SUMMARY, RESET_TEST_DATA, RESET_ALL_DATA, CLOSE_ACCOUNT endpoints
 
-7. src/pages/admin/subscription-management/index.tsx
-   -> Wired loadData() to real API, falls back to mock on failure
+8. src/pages/admin/subscription-management/index.tsx
+   -> Real data summary API call (replaces mock)
+   -> 3 action handlers: handleResetTestData, handleResetAllData, handleCloseAccount
+   -> Removed DeleteConfirmationFlow (replaced by inline confirm dialogs)
 
-8. NEW: src/types/tenantManagement.ts
-   -> Added is_test: boolean to TenantListItem interface
+9. src/components/subscription/modals/TenantDetailDrawer.tsx
+   -> 3 action buttons: Reset Test Data, Reset All Data, Close Account
+   -> Each with description, distinct color coding
 
-9. MODIFIED: src/components/subscription/cards/TenantCard.tsx
-   -> Added Test Account / Live Account badge in Status Badges section
-   -> Amber for test, green for live
+10. src/types/tenantManagement.ts (unchanged from iter 1)
+
+11. src/components/subscription/cards/TenantCard.tsx (unchanged from iter 1)
 
 POWERSHELL COPY COMMANDS:
 ---------------------------------------------------------------
 
 cd "D:\projects\core projects\ContractNest\contractnest-combined"
 
-# Edge
+# Edge - SQL + function
 Copy-Item "MANUAL_COPY_FILES\iter1-admin-tenant-mgmt\contractnest-edge\supabase\migrations\admin-tenant-management\001_admin_tenant_rpcs.sql" -Destination "contractnest-edge\supabase\migrations\admin-tenant-management\001_admin_tenant_rpcs.sql" -Force
+Copy-Item "MANUAL_COPY_FILES\iter1-admin-tenant-mgmt\contractnest-edge\supabase\migrations\admin-tenant-management\002_tenant_data_operations.sql" -Destination "contractnest-edge\supabase\migrations\admin-tenant-management\002_tenant_data_operations.sql" -Force
 Copy-Item "MANUAL_COPY_FILES\iter1-admin-tenant-mgmt\contractnest-edge\supabase\functions\admin-tenant-management\index.ts" -Destination "contractnest-edge\supabase\functions\admin-tenant-management\index.ts" -Force
 
 # API
@@ -64,10 +79,15 @@ Copy-Item "MANUAL_COPY_FILES\iter1-admin-tenant-mgmt\contractnest-ui\src\service
 Copy-Item "MANUAL_COPY_FILES\iter1-admin-tenant-mgmt\contractnest-ui\src\pages\admin\subscription-management\index.tsx" -Destination "contractnest-ui\src\pages\admin\subscription-management\index.tsx" -Force
 Copy-Item "MANUAL_COPY_FILES\iter1-admin-tenant-mgmt\contractnest-ui\src\types\tenantManagement.ts" -Destination "contractnest-ui\src\types\tenantManagement.ts" -Force
 Copy-Item "MANUAL_COPY_FILES\iter1-admin-tenant-mgmt\contractnest-ui\src\components\subscription\cards\TenantCard.tsx" -Destination "contractnest-ui\src\components\subscription\cards\TenantCard.tsx" -Force
+New-Item -ItemType Directory -Path "contractnest-ui\src\components\subscription\modals" -Force | Out-Null
+Copy-Item "MANUAL_COPY_FILES\iter1-admin-tenant-mgmt\contractnest-ui\src\components\subscription\modals\TenantDetailDrawer.tsx" -Destination "contractnest-ui\src\components\subscription\modals\TenantDetailDrawer.tsx" -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
 
 DEPLOYMENT ORDER:
 ---------------------------------------------------------------
-1. Re-run SQL migration in Supabase SQL Editor (for is_test field)
-2. Copy UI files (API + edge unchanged from last deploy)
-3. Hard refresh browser: Ctrl+F5
-4. Test at /admin/subscription-management
+1. Run 002_tenant_data_operations.sql in Supabase SQL Editor
+2. Deploy edge function: supabase functions deploy admin-tenant-management
+3. Copy API files -> restart API server (npm run dev)
+4. Copy UI files -> hard refresh browser (Ctrl+F5)
+5. Test at /admin/subscription-management

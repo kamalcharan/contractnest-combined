@@ -352,7 +352,11 @@ export const API_ENDPOINTS = {
         if (filters.sort_direction) params.append('sort_direction', filters.sort_direction);
         const queryString = params.toString();
         return queryString ? `/api/admin/tenants/list?${queryString}` : '/api/admin/tenants/list';
-      }
+      },
+      DATA_SUMMARY: (tenantId: string) => `/api/admin/tenants/${tenantId}/data-summary`,
+      RESET_TEST_DATA: (tenantId: string) => `/api/admin/tenants/${tenantId}/reset-test-data`,
+      RESET_ALL_DATA: (tenantId: string) => `/api/admin/tenants/${tenantId}/reset-all-data`,
+      CLOSE_ACCOUNT: (tenantId: string) => `/api/admin/tenants/${tenantId}/close-account`
     }
   },
   

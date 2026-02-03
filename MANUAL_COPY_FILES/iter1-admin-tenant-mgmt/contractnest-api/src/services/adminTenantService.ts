@@ -78,6 +78,111 @@ export class AdminTenantService {
       throw error;
     }
   }
+
+  /**
+   * GET /data-summary - Get data summary for a specific tenant
+   */
+  async getDataSummary(authHeader: string, tenantId: string, targetTenantId: string): Promise<any> {
+    try {
+      const url = `${BASE_URL}/data-summary?tenant_id=${targetTenantId}`;
+      console.log(`[adminTenantService] Fetching data summary from: ${url}`);
+
+      const response = await axios.get(url, {
+        headers: {
+          Authorization: authHeader,
+          'x-tenant-id': tenantId,
+          'x-is-admin': 'true',
+          'Content-Type': 'application/json'
+        }
+      });
+
+      return response.data;
+    } catch (error: any) {
+      console.error('[adminTenantService] getDataSummary error:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * POST /reset-test-data - Delete test data (is_live=false) for a tenant
+   */
+  async resetTestData(authHeader: string, tenantId: string, targetTenantId: string): Promise<any> {
+    try {
+      const url = `${BASE_URL}/reset-test-data`;
+      console.log(`[adminTenantService] Reset test data: ${url}`);
+
+      const response = await axios.post(url,
+        { tenant_id: targetTenantId },
+        {
+          headers: {
+            Authorization: authHeader,
+            'x-tenant-id': tenantId,
+            'x-is-admin': 'true',
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      return response.data;
+    } catch (error: any) {
+      console.error('[adminTenantService] resetTestData error:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * POST /reset-all-data - Delete ALL data for a tenant, keep account open
+   */
+  async resetAllData(authHeader: string, tenantId: string, targetTenantId: string): Promise<any> {
+    try {
+      const url = `${BASE_URL}/reset-all-data`;
+      console.log(`[adminTenantService] Reset all data: ${url}`);
+
+      const response = await axios.post(url,
+        { tenant_id: targetTenantId, confirmed: true },
+        {
+          headers: {
+            Authorization: authHeader,
+            'x-tenant-id': tenantId,
+            'x-is-admin': 'true',
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      return response.data;
+    } catch (error: any) {
+      console.error('[adminTenantService] resetAllData error:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * POST /close-account - Delete ALL data + close tenant account
+   */
+  async closeAccount(authHeader: string, tenantId: string, targetTenantId: string): Promise<any> {
+    try {
+      const url = `${BASE_URL}/close-account`;
+      console.log(`[adminTenantService] Close account: ${url}`);
+
+      const response = await axios.post(url,
+        { tenant_id: targetTenantId, confirmed: true },
+        {
+          headers: {
+            Authorization: authHeader,
+            'x-tenant-id': tenantId,
+            'x-is-admin': 'true',
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      return response.data;
+    } catch (error: any) {
+      console.error('[adminTenantService] closeAccount error:', error.message);
+      throw error;
+    }
+  }
 }
 
 export const adminTenantService = new AdminTenantService();

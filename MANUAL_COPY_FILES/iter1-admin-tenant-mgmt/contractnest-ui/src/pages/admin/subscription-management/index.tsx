@@ -37,7 +37,6 @@ import { StatCard } from '../../../components/subscription/cards/StatCard';
 import { TenantCard } from '../../../components/subscription/cards/TenantCard';
 import { TenantFilters } from '../../../components/subscription/filters/TenantFilters';
 import { TenantDetailDrawer } from '../../../components/subscription/modals/TenantDetailDrawer';
-import { DeleteConfirmationFlow } from '../../../components/subscription/modals/DeleteConfirmationFlow';
 
 // Mock data for development - replace with actual API calls
 const mockStats: AdminSubscriptionStats = {
@@ -261,10 +260,6 @@ const SubscriptionManagementPage: React.FC = () => {
   const [dataSummary, setDataSummary] = useState<TenantDataSummary | null>(null);
   const [isLoadingDataSummary, setIsLoadingDataSummary] = useState(false);
 
-  // Delete modal state
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [tenantToDelete, setTenantToDelete] = useState<TenantListItem | null>(null);
-
   // Check admin access
   const isAdmin = Boolean(currentTenant?.is_admin);
 
@@ -336,48 +331,82 @@ const SubscriptionManagementPage: React.FC = () => {
     }));
   };
 
-  // Handle tenant card click
+  // Handle tenant card click - load real data summary
   const handleViewDetails = async (tenant: TenantListItem) => {
     setSelectedTenant(tenant);
     setIsDrawerOpen(true);
     setIsLoadingDataSummary(true);
 
     try {
-      // TODO: Replace with actual API call
-      // const response = await api.get(API_ENDPOINTS.ADMIN.SUBSCRIPTION_MANAGEMENT.DATA_SUMMARY(tenant.id));
-
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setDataSummary(mockDataSummary);
+      const response = await api.get(API_ENDPOINTS.ADMIN.TENANT_MANAGEMENT.DATA_SUMMARY(tenant.id));
+      const summaryData = response.data?.success ? response.data.data : response.data;
+      setDataSummary(summaryData);
     } catch (error) {
-      console.error('Failed to load data summary:', error);
+      console.error('Failed to load data summary, falling back to mock:', error);
+      setDataSummary(mockDataSummary);
     } finally {
       setIsLoadingDataSummary(false);
     }
   };
 
-  // Handle status change
-  const handleChangeStatus = (tenant: TenantListItem) => {
-    // TODO: Implement status change modal
-    console.log('Change status for:', tenant.id);
+  // Handle Reset Test Data
+  const handleResetTestData = async (tenant: TenantListItem) => {
+    if (!confirm(`Reset TEST data for "${tenant.name}"?\n\nThis will delete all records where is_live = false. This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const response = await api.post(API_ENDPOINTS.ADMIN.TENANT_MANAGEMENT.RESET_TEST_DATA(tenant.id));
+      const result = response.data?.success ? response.data.data : response.data;
+      alert(`Test data reset complete!\n\nDeleted ${result.total_deleted} records.`);
+      setIsDrawerOpen(false);
+      loadData();
+    } catch (error: any) {
+      console.error('Reset test data failed:', error);
+      alert(`Failed to reset test data: ${error.message || 'Unknown error'}`);
+    }
   };
 
-  // Handle delete data
-  const handleDeleteData = (tenant: TenantListItem) => {
-    setTenantToDelete(tenant);
-    setIsDeleteModalOpen(true);
-    setIsDrawerOpen(false);
+  // Handle Reset All Data
+  const handleResetAllData = async (tenant: TenantListItem) => {
+    if (!confirm(`RESET ALL DATA for "${tenant.name}"?\n\nThis will delete ALL tenant data across all tables. The account will remain open but empty.\n\nThis action CANNOT be undone!`)) {
+      return;
+    }
+    if (!confirm(`SECOND CONFIRMATION: Are you absolutely sure you want to delete ALL data for "${tenant.name}"?`)) {
+      return;
+    }
+
+    try {
+      const response = await api.post(API_ENDPOINTS.ADMIN.TENANT_MANAGEMENT.RESET_ALL_DATA(tenant.id));
+      const result = response.data?.success ? response.data.data : response.data;
+      alert(`All data reset complete!\n\nDeleted ${result.total_deleted} records.\nAccount remains open.`);
+      setIsDrawerOpen(false);
+      loadData();
+    } catch (error: any) {
+      console.error('Reset all data failed:', error);
+      alert(`Failed to reset all data: ${error.message || 'Unknown error'}`);
+    }
   };
 
-  // Confirm delete
-  const handleConfirmDelete = async (tenantId: string, reason: string) => {
-    // TODO: Replace with actual API call
-    // await api.delete(API_ENDPOINTS.ADMIN.SUBSCRIPTION_MANAGEMENT.DELETE_DATA(tenantId), { data: { confirmed: true, reason } });
+  // Handle Close Account
+  const handleCloseAccount = async (tenant: TenantListItem) => {
+    if (!confirm(`CLOSE ACCOUNT for "${tenant.name}"?\n\nThis will:\n- Delete ALL tenant data\n- Remove all user associations\n- Set account status to CLOSED\n\nThis action CANNOT be undone!`)) {
+      return;
+    }
+    if (!confirm(`FINAL CONFIRMATION: Close "${tenant.name}" permanently?`)) {
+      return;
+    }
 
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    console.log('Deleted tenant data:', tenantId, reason);
-
-    // Refresh data
-    loadData();
+    try {
+      const response = await api.post(API_ENDPOINTS.ADMIN.TENANT_MANAGEMENT.CLOSE_ACCOUNT(tenant.id));
+      const result = response.data?.success ? response.data.data : response.data;
+      alert(`Account closed!\n\nDeleted ${result.total_deleted} records.\nTenant status: ${result.tenant_status}`);
+      setIsDrawerOpen(false);
+      loadData();
+    } catch (error: any) {
+      console.error('Close account failed:', error);
+      alert(`Failed to close account: ${error.message || 'Unknown error'}`);
+    }
   };
 
   // Access denied
@@ -623,24 +652,11 @@ const SubscriptionManagementPage: React.FC = () => {
           setIsDrawerOpen(false);
           setSelectedTenant(null);
         }}
-        onChangeStatus={handleChangeStatus}
-        onDeleteData={handleDeleteData}
+        onResetTestData={handleResetTestData}
+        onResetAllData={handleResetAllData}
+        onCloseAccount={handleCloseAccount}
         dataSummary={dataSummary}
         isLoadingDataSummary={isLoadingDataSummary}
-      />
-
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmationFlow
-        tenant={tenantToDelete}
-        isOpen={isDeleteModalOpen}
-        onClose={() => {
-          setIsDeleteModalOpen(false);
-          setTenantToDelete(null);
-        }}
-        onConfirmDelete={handleConfirmDelete}
-        dataSummary={mockDataSummary}
-        isLoadingDataSummary={false}
-        mode="admin"
       />
     </div>
   );
