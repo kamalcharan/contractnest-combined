@@ -1,90 +1,89 @@
 // supabase/functions/admin-tenant-management/index.ts
 // Admin Tenant Management Edge Function
-// Provides: tenant list, platform stats for admin subscription dashboard
+// Pattern: matches plans/index.ts (simple auth, no signing)
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
-import {
-  corsHeaders,
-  generateOperationId,
-  extractRequestContext,
-  createSuccessResponse,
-  createErrorResponse,
-  validateRequestSignature
-} from '../_shared/edgeUtils.ts';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-tenant-id, x-is-admin, x-product',
+  'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS'
+};
 
 serve(async (req: Request) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  const operationId = generateOperationId('admin-tenant');
-  const startTime = Date.now();
-
   try {
-    // ── Environment ──────────────────────────────────────────────
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-    const signingSecret = Deno.env.get('INTERNAL_SIGNING_SECRET') ?? '';
 
-    // ── Auth ─────────────────────────────────────────────────────
+    if (!supabaseUrl || !supabaseKey) {
+      return new Response(
+        JSON.stringify({ error: 'Server configuration error' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const authHeader = req.headers.get('Authorization');
-    const token = authHeader?.replace('Bearer ', '');
+    const tenantId = req.headers.get('x-tenant-id');
+    const isAdmin = req.headers.get('x-is-admin');
 
-    if (!authHeader || !token) {
-      return createErrorResponse('Authorization required', 'UNAUTHORIZED', 401, operationId);
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authorization header is required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    // ── Signature validation ─────────────────────────────────────
-    const requestBody = req.method !== 'GET' ? await req.clone().text() : '';
-    if (signingSecret) {
-      const sigError = await validateRequestSignature(req, requestBody, signingSecret, operationId);
-      if (sigError) return sigError;
+    if (!tenantId) {
+      return new Response(
+        JSON.stringify({ error: 'x-tenant-id header is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    // ── Supabase client ──────────────────────────────────────────
+    if (isAdmin !== 'true') {
+      return new Response(
+        JSON.stringify({ error: 'Admin access required' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Create client with service role key (same as plans/index.ts)
     const supabase = createClient(supabaseUrl, supabaseKey, {
-      global: { headers: { Authorization: authHeader } },
+      global: {
+        headers: { 'x-tenant-id': tenantId }
+      },
       auth: { persistSession: false, autoRefreshToken: false }
     });
 
-    // ── Verify user ──────────────────────────────────────────────
-    const { data: userData, error: userError } = await supabase.auth.getUser(token);
-    if (userError || !userData?.user) {
-      return createErrorResponse('Invalid or expired token', 'UNAUTHORIZED', 401, operationId);
-    }
-
-    // ── Context ──────────────────────────────────────────────────
-    const context = extractRequestContext(req, operationId, startTime);
-    if (!context) {
-      return createErrorResponse('x-tenant-id header is required', 'BAD_REQUEST', 400, operationId);
-    }
-
-    // ── Admin check ──────────────────────────────────────────────
-    if (!context.isAdmin) {
-      return createErrorResponse('Admin access required', 'FORBIDDEN', 403, operationId);
-    }
-
-    // ── Routing ──────────────────────────────────────────────────
+    // Routing
     const url = new URL(req.url);
     const pathSegments = url.pathname.split('/').filter(Boolean);
-    // pathSegments: ["admin-tenant-management", "stats"] or ["admin-tenant-management", "tenants"]
     const action = pathSegments.length > 1 ? pathSegments[pathSegments.length - 1] : '';
 
-    // ── GET /stats ───────────────────────────────────────────────
+    // GET /stats
     if (req.method === 'GET' && action === 'stats') {
       const { data, error } = await supabase.rpc('get_admin_platform_stats');
 
       if (error) {
-        console.error(`[${operationId}] Stats RPC error:`, error);
-        return createErrorResponse('Failed to load platform stats', 'DB_ERROR', 500, operationId);
+        console.error('Stats RPC error:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to load platform stats', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
 
-      return createSuccessResponse(data, operationId, startTime);
+      return new Response(
+        JSON.stringify({ success: true, data }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    // ── GET /tenants ─────────────────────────────────────────────
+    // GET /tenants
     if (req.method === 'GET' && action === 'tenants') {
       const params = url.searchParams;
 
@@ -99,41 +98,34 @@ serve(async (req: Request) => {
       });
 
       if (error) {
-        console.error(`[${operationId}] Tenant list RPC error:`, error);
-        return createErrorResponse('Failed to load tenant list', 'DB_ERROR', 500, operationId);
+        console.error('Tenant list RPC error:', error);
+        return new Response(
+          JSON.stringify({ success: false, error: 'Failed to load tenant list', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
 
-      // RPC returns { tenants, pagination }
       return new Response(
         JSON.stringify({
           success: true,
           data: data.tenants,
-          pagination: data.pagination,
-          metadata: {
-            request_id: operationId,
-            duration_ms: Date.now() - startTime,
-            timestamp: new Date().toISOString()
-          }
+          pagination: data.pagination
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // ── 404 ──────────────────────────────────────────────────────
-    return createErrorResponse(
-      `Unknown route: ${req.method} ${action}`,
-      'NOT_FOUND',
-      404,
-      operationId
+    // 404
+    return new Response(
+      JSON.stringify({ error: `Unknown route: ${req.method} ${action}` }),
+      { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error: any) {
-    console.error(`[${operationId}] Unexpected error:`, error);
-    return createErrorResponse(
-      error.message || 'Internal server error',
-      'INTERNAL_ERROR',
-      500,
-      operationId
+    console.error('Unexpected error:', error);
+    return new Response(
+      JSON.stringify({ error: error.message || 'Internal server error' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

@@ -1,45 +1,11 @@
 // src/services/adminTenantService.ts
 // Service layer for Admin Tenant Management - proxies to edge function
+// Pattern: matches businessModelService.ts (simple headers, no signing)
 
 import axios from 'axios';
-import crypto from 'crypto';
+import { SUPABASE_URL } from '../utils/supabaseConfig';
 
-const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const BASE_URL = `${SUPABASE_URL}/functions/v1/admin-tenant-management`;
-const SIGNING_SECRET = process.env.INTERNAL_SIGNING_SECRET || '';
-const TIMEOUT = 30000;
-
-/**
- * Internal signing - matches existing pattern in resourcesService.ts
- */
-function createSignedHeaders(body: string = ''): Record<string, string> {
-  const timestamp = new Date().toISOString();
-  const data = body + timestamp + SIGNING_SECRET;
-  const hash = crypto.createHash('sha256').update(data).digest('base64');
-  const signature = hash.substring(0, 32);
-
-  return {
-    'x-internal-signature': signature,
-    'x-timestamp': timestamp
-  };
-}
-
-/**
- * Parse edge function response
- */
-function parseResponse(response: any): any {
-  const data = response.data;
-  if (data?.success === true) {
-    return data;
-  }
-  if (data?.error) {
-    const err: any = new Error(data.error.message || 'Edge function error');
-    err.status = response.status;
-    err.code = data.error.code;
-    throw err;
-  }
-  return data;
-}
 
 export class AdminTenantService {
 
@@ -48,24 +14,21 @@ export class AdminTenantService {
    */
   async getStats(authHeader: string, tenantId: string): Promise<any> {
     try {
-      const response = await axios.get(`${BASE_URL}/stats`, {
+      const url = `${BASE_URL}/stats`;
+      console.log(`[adminTenantService] Fetching stats from: ${url}`);
+
+      const response = await axios.get(url, {
         headers: {
-          'Authorization': authHeader,
+          Authorization: authHeader,
           'x-tenant-id': tenantId,
           'x-is-admin': 'true',
-          'Content-Type': 'application/json',
-          ...createSignedHeaders()
-        },
-        timeout: TIMEOUT
+          'Content-Type': 'application/json'
+        }
       });
 
-      return parseResponse(response);
+      return response.data;
     } catch (error: any) {
-      if (error.response) {
-        const err: any = new Error(error.response.data?.error?.message || 'Failed to load stats');
-        err.status = error.response.status;
-        throw err;
-      }
+      console.error('[adminTenantService] getStats error:', error.message);
       throw error;
     }
   }
@@ -98,25 +61,20 @@ export class AdminTenantService {
 
       const queryString = params.toString();
       const url = `${BASE_URL}/tenants${queryString ? '?' + queryString : ''}`;
+      console.log(`[adminTenantService] Fetching tenants from: ${url}`);
 
       const response = await axios.get(url, {
         headers: {
-          'Authorization': authHeader,
+          Authorization: authHeader,
           'x-tenant-id': tenantId,
           'x-is-admin': 'true',
-          'Content-Type': 'application/json',
-          ...createSignedHeaders()
-        },
-        timeout: TIMEOUT
+          'Content-Type': 'application/json'
+        }
       });
 
-      return parseResponse(response);
+      return response.data;
     } catch (error: any) {
-      if (error.response) {
-        const err: any = new Error(error.response.data?.error?.message || 'Failed to load tenants');
-        err.status = error.response.status;
-        throw err;
-      }
+      console.error('[adminTenantService] getTenants error:', error.message);
       throw error;
     }
   }
