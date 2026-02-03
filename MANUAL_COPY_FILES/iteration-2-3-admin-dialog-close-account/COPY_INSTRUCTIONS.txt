@@ -1,0 +1,101 @@
+===============================================================
+COPY INSTRUCTIONS - Iteration 2 AdminActionDialog + Iteration 3 Owner Close Account
+===============================================================
+
+Submodules Affected: contractnest-ui, contractnest-api, contractnest-edge
+
+===============================================================
+FILES LIST (10 files total)
+===============================================================
+
+--- contractnest-ui (6 files) ---
+
+1. [NEW] src/components/subscription/modals/AdminActionDialog.tsx
+   - Admin Action Dialog with Lottie animations, progress bar, 3-phase flow
+   - Replaces browser confirm()/alert() for admin operations
+
+2. [MODIFIED] src/components/subscription/modals/index.ts
+   - Added barrel exports for AdminActionDialog and AdminActionType
+
+3. [MODIFIED] src/pages/admin/subscription-management/index.tsx
+   - Imported AdminActionDialog, added dialog state, wired execute/complete handlers
+   - Replaced confirm()/alert() calls with AdminActionDialog
+
+4. [MODIFIED] src/components/subscription/owner/CloseAccountSection.tsx
+   - Wired to real API (api.get/api.post using API_ENDPOINTS.TENANT_ACCOUNT)
+   - Removed mock data, fixed category property names (.id, .totalCount)
+
+5. [MODIFIED] src/pages/settings/business-profile/close-account/index.tsx
+   - Wired to real API (api.get/api.post using API_ENDPOINTS.TENANT_ACCOUNT)
+   - Removed mock data, fixed category property names (.id, .totalCount)
+
+6. [MODIFIED] src/services/serviceURLs.ts
+   - Added TENANT_ACCOUNT section with DATA_SUMMARY and CLOSE_ACCOUNT endpoints
+
+--- contractnest-api (3 files) ---
+
+7. [NEW] src/services/tenantAccountService.ts
+   - Service layer proxying to tenant-account edge function
+
+8. [NEW] src/routes/tenantAccountRoutes.ts
+   - Express routes: GET /data-summary, POST /close-account
+
+9. [MODIFIED] src/index.ts
+   - Added tenant account routes registration at /api/tenant (lines 730-737)
+   - IMPORTANT: Only the tenant-account route block was added (lines 730-737)
+   - All other routes are UNCHANGED
+
+--- contractnest-edge (1 file) ---
+
+10. [NEW] supabase/functions/tenant-account/index.ts
+    - Owner-side edge function for data-summary and close-account
+    - No admin header required (uses own tenant's x-tenant-id)
+
+===============================================================
+COPY COMMANDS (PowerShell)
+===============================================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Copy contractnest-ui files
+Copy-Item "MANUAL_COPY_FILES\iteration-2-3-admin-dialog-close-account\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+# Copy contractnest-api files
+Copy-Item "MANUAL_COPY_FILES\iteration-2-3-admin-dialog-close-account\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+
+# Copy contractnest-edge files
+Copy-Item "MANUAL_COPY_FILES\iteration-2-3-admin-dialog-close-account\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+===============================================================
+IMPORTANT: contractnest-api/src/index.ts NOTE
+===============================================================
+
+The full index.ts is included. The ONLY change vs your current file is this
+block added at approximately line 730 (after the admin tenant routes block):
+
+  // Tenant Account Routes (Owner-side: data summary + close account)
+  try {
+    const tenantAccountRoutes = require('./routes/tenantAccountRoutes').default;
+    app.use('/api/tenant', tenantAccountRoutes);
+    console.log('Tenant account routes registered at /api/tenant');
+  } catch (error) {
+    console.error('Failed to register tenant account routes:', error);
+  }
+
+If you'd rather not overwrite the full index.ts, you can manually add
+this block right after the admin tenant management routes registration.
+
+===============================================================
+DEPLOYMENT
+===============================================================
+
+1. Deploy new edge function:
+   supabase functions deploy tenant-account
+
+2. Restart API server (for new routes)
+
+3. No database migrations needed (reuses existing RPCs)
+
+===============================================================
