@@ -168,6 +168,7 @@ BEGIN
       'workspace_code', t.workspace_code,
       'status', t.status,
       'is_admin', COALESCE(t.is_admin, false),
+      'is_test', COALESCE(t.is_test, false),
       'created_at', t.created_at,
       'profile', CASE
         WHEN tp.id IS NOT NULL THEN jsonb_build_object(
