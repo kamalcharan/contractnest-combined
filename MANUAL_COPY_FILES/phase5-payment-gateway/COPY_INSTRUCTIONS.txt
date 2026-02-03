@@ -1,7 +1,7 @@
-Phase 5: Payment Gateway - T1 + T2 + T3 + T4
-================================================
+Phase 5: Payment Gateway - T1 + T2 + T3 + T4 + T5 + T6
+========================================================
 
-Submodules Affected: contractnest-edge
+Submodules Affected: contractnest-edge, contractnest-api, contractnest-ui
 
 Files:
   contractnest-edge/supabase/migrations/contracts/011_payment_gateway_tables_rpc.sql
@@ -9,6 +9,15 @@ Files:
   contractnest-edge/supabase/functions/payment-gateway/providers/razorpay.ts
   contractnest-edge/supabase/functions/payment-webhook/index.ts
   contractnest-edge/supabase/functions/payment-webhook/providers/razorpay.ts
+
+  contractnest-api/src/services/paymentGatewayService.ts      (NEW - T5)
+  contractnest-api/src/controllers/paymentGatewayController.ts (NEW - T5)
+  contractnest-api/src/routes/paymentGatewayRoutes.ts          (NEW - T5)
+  contractnest-api/src/index.ts                                (MODIFIED - T5)
+
+  contractnest-ui/src/hooks/queries/usePaymentGatewayQueries.ts    (NEW - T6)
+  contractnest-ui/src/services/serviceURLs.ts                      (MODIFIED - T6)
+  contractnest-ui/src/components/contracts/RecordPaymentDialog.tsx  (MODIFIED - T6)
 
 Contains:
   T1 - Tables:
@@ -33,9 +42,26 @@ Contains:
     - URL: /payment-webhook/{provider}/{tenant_id}
     - providers/razorpay.ts — verifyWebhookSignature, extractEventData, isPaymentEvent
 
+  T5 - API: Express Payment Gateway Layer
+    - paymentGatewayService.ts — HMAC-signed proxy to payment-gateway edge function
+    - paymentGatewayController.ts — request validation, context extraction, error mapping
+    - paymentGatewayRoutes.ts — 4 POST routes: create-order, create-link, verify-payment, status
+    - index.ts — route loading (try/catch) + registration (app.use '/api/payments')
+
+  T6 - UI: RecordPaymentDialog + Query Hooks
+    - usePaymentGatewayQueries.ts — TanStack Query hooks: useCreateOrder, useCreateLink, useVerifyPayment
+    - serviceURLs.ts — PAYMENTS endpoint section added
+    - RecordPaymentDialog.tsx — online/offline toggle, collection mode selector
+      - hasActiveGateway prop controls online option visibility
+      - Collection modes: terminal (Pay Now), email_link, whatsapp_link
+      - onOrderCreated callback for parent to launch Razorpay Checkout (T7)
+      - Link success state with copy-to-clipboard
+
 Copy Command (PowerShell):
   cd "D:\projects\core projects\ContractNest\contractnest-combined"
   Copy-Item "MANUAL_COPY_FILES\phase5-payment-gateway\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\phase5-payment-gateway\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\phase5-payment-gateway\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
 
 Apply to Supabase:
   Re-run 011_payment_gateway_tables_rpc.sql in Supabase SQL Editor
