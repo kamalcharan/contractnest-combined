@@ -1,0 +1,61 @@
+===============================================================
+ITERATION 1: Admin Tenant Management - Real Tenant List + Stats
+===============================================================
+
+Submodules Affected: contractnest-edge, contractnest-api, contractnest-ui
+
+FILES TO COPY:
+---------------------------------------------------------------
+
+--- EDGE FUNCTION (contractnest-edge) ---
+
+1. NEW: supabase/migrations/admin-tenant-management/001_admin_tenant_rpcs.sql
+   -> SQL RPC functions: get_admin_platform_stats() + get_admin_tenant_list()
+   -> RUN THIS IN SUPABASE SQL EDITOR FIRST before testing
+
+2. NEW: supabase/functions/admin-tenant-management/index.ts
+   -> Edge function: GET /stats, GET /tenants
+   -> DEPLOY: supabase functions deploy admin-tenant-management
+
+--- API LAYER (contractnest-api) ---
+
+3. NEW: src/services/adminTenantService.ts
+   -> Service that proxies to edge function with HMAC signing
+
+4. NEW: src/routes/adminTenantRoutes.ts
+   -> Express routes: GET /api/admin/tenants/stats, GET /api/admin/tenants/list
+
+5. MODIFIED: src/index.ts
+   -> Added route registration for /api/admin/tenants
+
+--- UI (contractnest-ui) ---
+
+6. MODIFIED: src/services/serviceURLs.ts
+   -> Added ADMIN.TENANT_MANAGEMENT endpoints + AdminTenantListFilters type
+
+7. MODIFIED: src/pages/admin/subscription-management/index.tsx
+   -> Wired loadData() to real API, falls back to mock on failure
+
+POWERSHELL COPY COMMANDS:
+---------------------------------------------------------------
+
+# Edge
+Copy-Item "MANUAL_COPY_FILES\iter1-admin-tenant-mgmt\contractnest-edge\supabase\migrations\admin-tenant-management\001_admin_tenant_rpcs.sql" -Destination "contractnest-edge\supabase\migrations\admin-tenant-management\001_admin_tenant_rpcs.sql" -Force
+Copy-Item "MANUAL_COPY_FILES\iter1-admin-tenant-mgmt\contractnest-edge\supabase\functions\admin-tenant-management\index.ts" -Destination "contractnest-edge\supabase\functions\admin-tenant-management\index.ts" -Force
+
+# API
+Copy-Item "MANUAL_COPY_FILES\iter1-admin-tenant-mgmt\contractnest-api\src\services\adminTenantService.ts" -Destination "contractnest-api\src\services\adminTenantService.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\iter1-admin-tenant-mgmt\contractnest-api\src\routes\adminTenantRoutes.ts" -Destination "contractnest-api\src\routes\adminTenantRoutes.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\iter1-admin-tenant-mgmt\contractnest-api\src\index.ts" -Destination "contractnest-api\src\index.ts" -Force
+
+# UI
+Copy-Item "MANUAL_COPY_FILES\iter1-admin-tenant-mgmt\contractnest-ui\src\services\serviceURLs.ts" -Destination "contractnest-ui\src\services\serviceURLs.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\iter1-admin-tenant-mgmt\contractnest-ui\src\pages\admin\subscription-management\index.tsx" -Destination "contractnest-ui\src\pages\admin\subscription-management\index.tsx" -Force
+
+DEPLOYMENT ORDER:
+---------------------------------------------------------------
+1. Run SQL migration in Supabase SQL Editor
+2. Deploy edge function: supabase functions deploy admin-tenant-management
+3. Restart API server (npm run dev in contractnest-api)
+4. Restart UI dev server (npm run dev in contractnest-ui)
+5. Test at /admin/subscription-management
