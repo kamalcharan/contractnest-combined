@@ -1,10 +1,14 @@
-Phase 5: Payment Gateway - T1 + T2 Migration
+Phase 5: Payment Gateway - T1 + T2 + T3 + T4
 ================================================
 
 Submodules Affected: contractnest-edge
 
 Files:
   contractnest-edge/supabase/migrations/contracts/011_payment_gateway_tables_rpc.sql
+  contractnest-edge/supabase/functions/payment-gateway/index.ts
+  contractnest-edge/supabase/functions/payment-gateway/providers/razorpay.ts
+  contractnest-edge/supabase/functions/payment-webhook/index.ts
+  contractnest-edge/supabase/functions/payment-webhook/providers/razorpay.ts
 
 Contains:
   T1 - Tables:
@@ -16,12 +20,33 @@ Contains:
     - get_tenant_gateway_credentials(tenant_id, provider) — fetch encrypted credentials
     - create_payment_request(payload) — create payment request with auto attempt_number
     - verify_gateway_payment(payload) — verify + create receipt (terminal checkout)
-    - process_payment_webhook(payload) — idempotent webhook processing
+    - process_payment_webhook(payload) — idempotent webhook processing (improved link matching)
     - get_payment_requests(payload) — list requests with events + summary
+
+  T3 - Edge Function: payment-gateway
+    - index.ts — CORS → HMAC → route to handler → provider → RPC
+    - Routes: create-order, create-link, verify-payment, payment-status
+    - providers/razorpay.ts — createOrder, createPaymentLink, fetchPayment, verifyPaymentSignature
+
+  T4 - Edge Function: payment-webhook
+    - index.ts — Public endpoint, no internal auth, provider signature verification
+    - URL: /payment-webhook/{provider}/{tenant_id}
+    - providers/razorpay.ts — verifyWebhookSignature, extractEventData, isPaymentEvent
 
 Copy Command (PowerShell):
   cd "D:\projects\core projects\ContractNest\contractnest-combined"
   Copy-Item "MANUAL_COPY_FILES\phase5-payment-gateway\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
 
 Apply to Supabase:
-  Run 011_payment_gateway_tables_rpc.sql in Supabase SQL Editor
+  Re-run 011_payment_gateway_tables_rpc.sql in Supabase SQL Editor
+  (process_payment_webhook RPC updated with improved link matching)
+
+Deploy Edge Functions:
+  supabase functions deploy payment-gateway
+  supabase functions deploy payment-webhook
+
+Razorpay Webhook Configuration:
+  In Razorpay Dashboard → Settings → Webhooks:
+  URL: https://{project-ref}.supabase.co/functions/v1/payment-webhook/razorpay/{tenant_id}
+  Events: payment.captured, payment.failed, payment_link.paid, order.paid
+  Secret: Store in tenant integration credentials as "webhook_secret"
