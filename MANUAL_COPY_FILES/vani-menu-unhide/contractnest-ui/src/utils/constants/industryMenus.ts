@@ -231,7 +231,7 @@ export const defaultMenuItems: MenuItem[] = [
         id: 'subscription-dashboard',
         label: 'Subscription Dashboard',
         icon: 'BarChart',
-        path: '/implementation/subscription-dashboard'
+        path: '/admin/subscription-management'
       },
       {
         id: 'billing-dashboard',
