@@ -7,25 +7,10 @@ import { adminTenantService } from '../services/adminTenantService';
 const router = Router();
 
 /**
- * Middleware: require admin role (header-based, matching catalogStudioRoutes pattern)
- */
-const requireAdmin = (req: Request, res: Response, next: Function): void => {
-  const isAdmin = req.headers['x-is-admin'] === 'true';
-  if (!isAdmin) {
-    res.status(403).json({
-      success: false,
-      error: { code: 'FORBIDDEN', message: 'Admin access required' }
-    });
-    return;
-  }
-  next();
-};
-
-/**
  * GET /api/admin/tenants/stats
  * Returns platform-wide stats for the admin dashboard
  */
-router.get('/stats', requireAdmin, async (req: Request, res: Response) => {
+router.get('/stats', async (req: Request, res: Response) => {
   try {
     const authHeader = req.headers.authorization || '';
     const tenantId = (req.headers['x-tenant-id'] as string) || '';
@@ -46,7 +31,7 @@ router.get('/stats', requireAdmin, async (req: Request, res: Response) => {
  * GET /api/admin/tenants/list
  * Returns paginated tenant list with profile, subscription, and record counts
  */
-router.get('/list', requireAdmin, async (req: Request, res: Response) => {
+router.get('/list', async (req: Request, res: Response) => {
   try {
     const authHeader = req.headers.authorization || '';
     const tenantId = (req.headers['x-tenant-id'] as string) || '';
