@@ -1,5 +1,5 @@
-Phase 5: Payment Gateway - T1 + T2 + T3 + T4 + T5 + T6
-========================================================
+Phase 5: Payment Gateway - T1 + T2 + T3 + T4 + T5 + T6 + T7 + T8
+===================================================================
 
 Submodules Affected: contractnest-edge, contractnest-api, contractnest-ui
 
@@ -18,6 +18,10 @@ Files:
   contractnest-ui/src/hooks/queries/usePaymentGatewayQueries.ts    (NEW - T6)
   contractnest-ui/src/services/serviceURLs.ts                      (MODIFIED - T6)
   contractnest-ui/src/components/contracts/RecordPaymentDialog.tsx  (MODIFIED - T6)
+
+  contractnest-ui/src/hooks/useRazorpayCheckout.ts                     (NEW - T7)
+
+  contractnest-edge/supabase/migrations/jtd-framework/007_seed_payment_request_templates.sql (NEW - T8)
 
 Contains:
   T1 - Tables:
@@ -57,6 +61,19 @@ Contains:
       - onOrderCreated callback for parent to launch Razorpay Checkout (T7)
       - Link success state with copy-to-clipboard
 
+  T7 - UI: Razorpay Standard Checkout Hook
+    - useRazorpayCheckout.ts — dynamic SDK script loading + checkout popup
+    - openCheckout(orderData): opens Razorpay popup with gateway_key_id + gateway_order_id
+    - Auto-verifies payment via useVerifyPayment on success
+    - Handles dismiss/failure with toast notifications
+
+  T8 - JTD: Payment Request Templates
+    - Source type: payment_request (payment link sent to buyer)
+    - Email template: payment_request_email with HTML card, green gradient, CTA button
+    - WhatsApp template: payment_request_whatsapp (MSG91 provider_template_id: payment_request)
+    - Variables: customer_name, tenant_name, invoice_number, amount, currency, payment_link, expire_hours
+    - Tenant source configs for test tenants (auto_execute=true)
+
 Copy Command (PowerShell):
   cd "D:\projects\core projects\ContractNest\contractnest-combined"
   Copy-Item "MANUAL_COPY_FILES\phase5-payment-gateway\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
@@ -66,6 +83,7 @@ Copy Command (PowerShell):
 Apply to Supabase:
   Re-run 011_payment_gateway_tables_rpc.sql in Supabase SQL Editor
   (process_payment_webhook RPC updated with improved link matching)
+  Run 007_seed_payment_request_templates.sql in Supabase SQL Editor (T8)
 
 Deploy Edge Functions:
   supabase functions deploy payment-gateway
