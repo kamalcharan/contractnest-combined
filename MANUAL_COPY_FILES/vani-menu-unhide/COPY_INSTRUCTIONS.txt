@@ -1,0 +1,17 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS - VaNi Menu Unhide
+═══════════════════════════════════════════════════
+
+Feature: Unhide VaNi menu item in sidebar navigation
+Submodules Affected: contractnest-ui
+
+FILES TO COPY:
+─────────────────────────────────
+1. contractnest-ui/src/utils/constants/industryMenus.ts
+   → Uncommented VaNi menu entry in defaultMenuItems array (was lines 96-115)
+   → VaNi now appears in sidebar between Contracts and Catalog Studio
+   → 8 submenu items: Dashboard, Business Events, Jobs, Templates, Channels, Analytics, Process Rules, Chat
+
+POWERSHELL COPY COMMAND:
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\vani-menu-unhide\contractnest-ui\src\utils\constants\industryMenus.ts" -Destination "contractnest-ui\src\utils\constants\industryMenus.ts" -Force
