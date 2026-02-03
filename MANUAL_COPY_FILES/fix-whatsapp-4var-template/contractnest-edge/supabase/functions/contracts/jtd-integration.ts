@@ -107,13 +107,17 @@ async function createContractSignoffJTD(
         cnak: params.cnak
       };
     } else {
-      // WhatsApp: {{1}}=recipient_name, {{2}}=sender_name,
-      //           {{3}}=contract_info (title+number+value), {{4}}=review_link
+      // WhatsApp template: 3 body vars + CTA button URL suffix
+      // Body: {{1}}=recipient_name, {{2}}=sender_name, {{3}}=contract_info
+      // Button "Review Contract": base URL + {{1}} suffix
+      // e.g. template URL = https://app.contractnest.in/review/{{1}}
+      //      suffix = contractId?cnak=CNAK_VALUE
+      const reviewSuffix = params.reviewLink.replace(/^.*\/review\//, '');
       templateData = {
         recipient_name: params.recipientName,
         sender_name: params.senderName,
         contract_info: `${params.contractTitle} (${params.contractNumber}) - ${params.contractValue}`,
-        review_link: params.reviewLink
+        review_link_suffix: reviewSuffix
       };
     }
 
