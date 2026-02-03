@@ -313,8 +313,8 @@ export const TenantDetailDrawer: React.FC<TenantDetailDrawerProps> = ({
             <div className="mt-4">
               <DataProgressBar
                 segments={[
-                  { label: 'Buyers', value: stats.buyer_contacts, color: '#3B82F6' },
-                  { label: 'Sellers', value: stats.seller_contacts, color: '#A855F7' }
+                  { label: 'Buyers', value: stats.buyer_contacts || 0, color: '#3B82F6' },
+                  { label: 'Sellers', value: stats.seller_contacts || 0, color: '#A855F7' }
                 ]}
                 height={6}
               />
