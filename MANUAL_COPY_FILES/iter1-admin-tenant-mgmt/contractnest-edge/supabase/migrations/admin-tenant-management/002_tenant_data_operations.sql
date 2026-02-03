@@ -81,7 +81,7 @@ BEGIN
   SELECT COUNT(*) INTO c_tax_info FROM t_tax_info WHERE tenant_id = p_tenant_id;
   SELECT COUNT(*) INTO c_tenant_domains FROM t_tenant_domains WHERE tenant_id = p_tenant_id;
   SELECT COUNT(*) INTO c_tenant_regions FROM t_tenant_regions WHERE tenant_id = p_tenant_id;
-  SELECT COUNT(*) INTO c_tenant_integrations FROM t_tenant_integrations WHERE tenant_id = p_tenant_id;
+  SELECT COUNT(*) INTO c_tenant_integrations FROM t_tenant_integrations WHERE tenant_id = p_tenant_id::text;
   SELECT COUNT(*) INTO c_role_permissions FROM t_role_permissions WHERE tenant_id = p_tenant_id;
 
   -- Category 6: Subscription & Billing
@@ -398,7 +398,7 @@ BEGIN
   v_deleted := v_deleted || jsonb_build_object('t_tenant_regions', v_count);
   v_total := v_total + v_count;
 
-  DELETE FROM t_tenant_integrations WHERE tenant_id = p_tenant_id;
+  DELETE FROM t_tenant_integrations WHERE tenant_id = p_tenant_id::text;
   GET DIAGNOSTICS v_count = ROW_COUNT;
   v_deleted := v_deleted || jsonb_build_object('t_tenant_integrations', v_count);
   v_total := v_total + v_count;
