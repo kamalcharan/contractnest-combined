@@ -1,0 +1,27 @@
+Phase 5: Payment Gateway - T1 + T2 Migration
+================================================
+
+Submodules Affected: contractnest-edge
+
+Files:
+  contractnest-edge/supabase/migrations/contracts/011_payment_gateway_tables_rpc.sql
+
+Contains:
+  T1 - Tables:
+    - t_contract_payment_requests (gateway-agnostic payment attempt tracking)
+    - t_contract_payment_events (webhook events with idempotency)
+    - Indexes, RLS policies, grants
+
+  T2 - RPC Functions:
+    - get_tenant_gateway_credentials(tenant_id, provider) — fetch encrypted credentials
+    - create_payment_request(payload) — create payment request with auto attempt_number
+    - verify_gateway_payment(payload) — verify + create receipt (terminal checkout)
+    - process_payment_webhook(payload) — idempotent webhook processing
+    - get_payment_requests(payload) — list requests with events + summary
+
+Copy Command (PowerShell):
+  cd "D:\projects\core projects\ContractNest\contractnest-combined"
+  Copy-Item "MANUAL_COPY_FILES\phase5-payment-gateway\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Apply to Supabase:
+  Run 011_payment_gateway_tables_rpc.sql in Supabase SQL Editor
