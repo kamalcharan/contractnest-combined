@@ -86,7 +86,7 @@ BEGIN
 
   -- Category 6: Subscription & Billing
   SELECT COUNT(*) INTO c_bm_tenant_subscription FROM t_bm_tenant_subscription WHERE tenant_id = p_tenant_id;
-  SELECT COUNT(*) INTO c_bm_subscription_usage FROM t_bm_subscription_usage WHERE tenant_id = p_tenant_id;
+  SELECT COUNT(*) INTO c_bm_subscription_usage FROM t_bm_subscription_usage WHERE subscription_id IN (SELECT subscription_id FROM t_bm_tenant_subscription WHERE tenant_id = p_tenant_id);
 
   -- Calculate total
   v_total := c_contacts + c_contact_addresses + c_contact_channels
@@ -320,8 +320,8 @@ BEGIN
   v_deleted := v_deleted || jsonb_build_object('t_catalog_service_resources', v_count);
   v_total := v_total + v_count;
 
-  -- Subscription children
-  DELETE FROM t_bm_subscription_usage WHERE tenant_id = p_tenant_id;
+  -- Subscription children (no tenant_id column, joins via subscription_id)
+  DELETE FROM t_bm_subscription_usage WHERE subscription_id IN (SELECT subscription_id FROM t_bm_tenant_subscription WHERE tenant_id = p_tenant_id);
   GET DIAGNOSTICS v_count = ROW_COUNT;
   v_deleted := v_deleted || jsonb_build_object('t_bm_subscription_usage', v_count);
   v_total := v_total + v_count;
