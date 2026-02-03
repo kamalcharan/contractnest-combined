@@ -1,7 +1,7 @@
 // src/hooks/queries/usePaymentGatewayQueries.ts
 // TanStack Query hooks for payment gateway operations.
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/context/AuthContext';
 import api from '@/services/api';
 import { API_ENDPOINTS } from '@/services/serviceURLs';
@@ -79,6 +79,37 @@ export interface VerifyPaymentResponse {
 export interface PaymentStatusPayload {
   invoice_id?: string;
   contract_id?: string;
+}
+
+export interface PaymentRequest {
+  id: string;
+  invoice_id: string;
+  amount: number;
+  currency: string;
+  collection_mode: 'terminal' | 'email_link' | 'whatsapp_link';
+  gateway_provider: string;
+  gateway_order_id: string | null;
+  gateway_payment_id: string | null;
+  gateway_short_url: string | null;
+  status: 'created' | 'sent' | 'viewed' | 'paid' | 'expired' | 'failed';
+  attempt_number: number;
+  paid_at: string | null;
+  expires_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  events_count: number;
+}
+
+export interface PaymentRequestsSummary {
+  total_requests: number;
+  total_paid: number;
+  total_amount_paid: number;
+  total_pending: number;
+}
+
+export interface PaymentRequestsResponse {
+  requests: PaymentRequest[];
+  summary: PaymentRequestsSummary;
 }
 
 // =================================================================
@@ -205,6 +236,60 @@ export const useVerifyPayment = (contractId?: string) => {
       onError: (error: any) => {
         captureException(error, {
           tags: { component: 'useVerifyPayment' },
+          extra: { tenantId: currentTenant?.id },
+        });
+      },
+    },
+  });
+};
+
+// =================================================================
+// QUERIES
+// =================================================================
+
+/**
+ * Fetch payment request history for an invoice or contract.
+ * Returns requests list + summary (total paid, pending, etc.).
+ */
+export const usePaymentRequests = (
+  payload: PaymentStatusPayload,
+  options?: { enabled?: boolean }
+) => {
+  const { currentTenant } = useAuth();
+
+  return useQuery({
+    queryKey: paymentGatewayKeys.status(payload.invoice_id, payload.contract_id),
+    queryFn: async (): Promise<PaymentRequestsResponse> => {
+      if (!currentTenant?.id) {
+        throw new Error('Missing tenant');
+      }
+
+      const response = await api.post(API_ENDPOINTS.PAYMENTS.STATUS, payload);
+      const result = response.data?.data || response.data;
+
+      if (response.data?.success === false) {
+        throw new Error(response.data.error || 'Failed to fetch payment requests');
+      }
+
+      return {
+        requests: result.requests || [],
+        summary: result.summary || {
+          total_requests: 0,
+          total_paid: 0,
+          total_amount_paid: 0,
+          total_pending: 0,
+        },
+      };
+    },
+    enabled: !!currentTenant?.id
+      && !!(payload.invoice_id || payload.contract_id)
+      && (options?.enabled !== false),
+    staleTime: 30_000,
+    refetchOnWindowFocus: false,
+    meta: {
+      onError: (error: any) => {
+        captureException(error, {
+          tags: { component: 'usePaymentRequests' },
           extra: { tenantId: currentTenant?.id },
         });
       },

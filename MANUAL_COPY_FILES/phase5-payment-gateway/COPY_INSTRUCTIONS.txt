@@ -1,5 +1,5 @@
-Phase 5: Payment Gateway - T1 + T2 + T3 + T4 + T5 + T6 + T7 + T8
-===================================================================
+Phase 5: Payment Gateway - T1 through T10 (COMPLETE)
+=====================================================
 
 Submodules Affected: contractnest-edge, contractnest-api, contractnest-ui
 
@@ -22,6 +22,11 @@ Files:
   contractnest-ui/src/hooks/useRazorpayCheckout.ts                     (NEW - T7)
 
   contractnest-edge/supabase/migrations/jtd-framework/007_seed_payment_request_templates.sql (NEW - T8)
+
+  contractnest-ui/src/components/contracts/PaymentRequestHistory.tsx    (NEW - T9)
+  contractnest-ui/src/hooks/queries/usePaymentGatewayQueries.ts        (MODIFIED - T9, added usePaymentRequests)
+
+  contractnest-ui/src/hooks/useGatewayStatus.ts                        (NEW - T10)
 
 Contains:
   T1 - Tables:
@@ -73,6 +78,21 @@ Contains:
     - WhatsApp template: payment_request_whatsapp (MSG91 provider_template_id: payment_request)
     - Variables: customer_name, tenant_name, invoice_number, amount, currency, payment_link, expire_hours
     - Tenant source configs for test tenants (auto_execute=true)
+
+  T9 - UI: Payment Request History Component
+    - PaymentRequestHistory.tsx — collapsible section showing online payment attempts
+    - usePaymentRequests query hook — fetches payment requests + summary via /api/payments/status
+    - Status badges: created, sent, viewed, paid, expired, failed
+    - Collection mode icons: terminal, email_link, whatsapp_link
+    - Summary with total collected amount
+    - Compact mode prop for sidebar usage
+
+  T10 - UI: useGatewayStatus Hook
+    - useGatewayStatus.ts — checks if tenant has active payment gateway
+    - Returns: hasActiveGateway, gatewayProvider, providerDisplayName, isLoading
+    - Queries integrations API with type=payment_gateway
+    - 5-minute staleTime (gateway config rarely changes)
+    - Use to pass hasActiveGateway prop to RecordPaymentDialog
 
 Copy Command (PowerShell):
   cd "D:\projects\core projects\ContractNest\contractnest-combined"
