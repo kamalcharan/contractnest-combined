@@ -1,0 +1,49 @@
+T14 + T15 + T16: Notifications, Polling, Retry
+================================================
+
+Submodules Affected: contractnest-edge, contractnest-ui
+
+T14: Notification dispatch after payment link creation
+  - Created: payment-gateway/jtd-integration.ts
+    - sendPaymentRequestNotification() creates JTD entries for email/WhatsApp
+    - Maps collection_mode → JTD channel (email_link → email, whatsapp_link → whatsapp)
+    - Resolves tenant_name + invoice_number from DB
+    - Checks tenant channel config before sending
+    - Uses 7 template variables: customer_name, tenant_name, invoice_number, amount, currency, payment_link, expire_hours
+  - Modified: payment-gateway/index.ts
+    - After createPaymentLink success → fire-and-forget sendPaymentRequestNotification()
+    - JTD worker picks up entry and dispatches via MSG91
+
+T15: Payment status polling / real-time updates
+  - Modified: usePaymentGatewayQueries.ts
+    - usePaymentRequests now accepts refetchInterval option
+    - staleTime reduced to 15s, refetchOnWindowFocus enabled
+    - All mutations (createOrder, createLink, verifyPayment) now invalidate paymentGatewayKeys.all
+  - Modified: PaymentRequestHistory.tsx
+    - Auto-polls every 10s when active requests (created/sent/viewed) exist
+    - Shows spinning refresh icon in header during poll
+    - Shows spinning loader next to active request status badges
+    - Polling stops automatically when all requests reach terminal state (paid/failed/expired)
+
+T16: Failed payment retry flow
+  - Modified: PaymentRequestHistory.tsx
+    - Added onRetry prop — callback when user clicks "Retry" on failed/expired request
+    - "Retry" button appears on rows with status = failed or expired
+    - Button styled with RotateCcw icon
+  - Modified: contract detail page (index.tsx)
+    - onRetry → opens RecordPaymentDialog (same flow as new payment)
+
+Files (5 total):
+  contractnest-edge/supabase/functions/payment-gateway/jtd-integration.ts  (CREATED)
+  contractnest-edge/supabase/functions/payment-gateway/index.ts            (MODIFIED)
+  contractnest-ui/src/components/contracts/PaymentRequestHistory.tsx        (MODIFIED)
+  contractnest-ui/src/hooks/queries/usePaymentGatewayQueries.ts            (MODIFIED)
+  contractnest-ui/src/pages/contracts/detail/index.tsx                     (MODIFIED)
+
+Copy Commands (PowerShell):
+  cd "D:\projects\core projects\ContractNest\contractnest-combined"
+  Copy-Item "MANUAL_COPY_FILES\t14-t15-t16-notifications-polling-retry\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\t14-t15-t16-notifications-polling-retry\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Deploy Edge Functions:
+  supabase functions deploy payment-gateway
