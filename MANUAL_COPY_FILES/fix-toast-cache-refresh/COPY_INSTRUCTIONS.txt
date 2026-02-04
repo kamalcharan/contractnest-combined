@@ -1,28 +1,15 @@
 ===============================================
 COPY INSTRUCTIONS - Toast & Cache Refresh Fix
 ===============================================
-Branch: claude/init-submodules-docs-2FPUd
+Branch: fix-toast-cache-refresh
 Date: 2026-02-04
-
-Root Cause:
-  1. useCatBlocksMutations.ts used 'react-hot-toast' for toast notifications,
-     but the app migrated to VaNiToast. Since react-hot-toast's <Toaster>
-     component is no longer mounted, none of the mutation toasts rendered.
-
-  2. Configure page uses useCatBlocksTest() with query key ['cat-blocks-test'],
-     but mutation onSuccess callbacks only invalidated catBlockKeys
-     (['catalog-studio', 'blocks', 'list']). Different keys = no refetch.
-
-  3. new.tsx had duplicate toast calls (one in page, one in mutation hook),
-     both using different toast systems.
 
 Files Changed:
   1. contractnest-ui/src/hooks/mutations/useCatBlocksMutations.ts
-     - Replaced 'react-hot-toast' import with VaNiToast
-     - All toast.success/error calls now use vaniToast.success/error
+     - Replaced react-hot-toast with VaNiToast (app migrated away from react-hot-toast)
      - Added queryClient.invalidateQueries({ queryKey: ['cat-blocks-test'] })
        in create, update, and delete onSuccess callbacks
-     - Error handler (handleMutationError) also uses vaniToast now
+     - All toast.success/error calls now use vaniToast.success/error
 
   2. contractnest-ui/src/pages/catalog-studio/blocks/new.tsx
      - Removed duplicate vaniToast import (mutation hook handles toasts)
@@ -31,7 +18,7 @@ Files Changed:
 
 Submodules Affected: contractnest-ui
 
-Copy Commands (from contractnest-combined root):
+Copy Commands (PowerShell, from contractnest-combined root):
   Copy-Item "MANUAL_COPY_FILES\fix-toast-cache-refresh\contractnest-ui\src\hooks\mutations\useCatBlocksMutations.ts" -Destination "contractnest-ui\src\hooks\mutations\useCatBlocksMutations.ts" -Force
   Copy-Item "MANUAL_COPY_FILES\fix-toast-cache-refresh\contractnest-ui\src\pages\catalog-studio\blocks\new.tsx" -Destination "contractnest-ui\src\pages\catalog-studio\blocks\new.tsx" -Force
 ===============================================
