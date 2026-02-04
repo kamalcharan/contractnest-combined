@@ -1,0 +1,26 @@
+===============================================
+COPY INSTRUCTIONS - Pricing Display Enhancements
+===============================================
+Branch: feat-pricing-display
+Date: 2026-02-04
+
+Changes:
+  1. BlockCard.tsx (block list cards)
+     - Price shows total as: ₹118 (₹100 + ₹18 tax)
+     - "Tax Incl" / "Tax Excl" badge (green/amber)
+     - Multi-currency symbols in primary brand color + bold
+
+  2. BlockEditorPanel/index.tsx (right-side drawer)
+     - Description renders HTML (was showing raw <p> tags)
+     - Per-currency price breakdown: Price + each tax line = Total
+     - Each tax rate listed: CGST (9%), SGST (9%), etc.
+     - "Tax Inclusive" / "Tax Exclusive" tag per currency
+     - Currency code in primary brand color
+     - Resource pricing amounts in primary color
+
+Submodules Affected: contractnest-ui
+
+Copy Commands (PowerShell, from contractnest-combined root):
+  Copy-Item "MANUAL_COPY_FILES\feat-pricing-display\contractnest-ui\src\components\catalog-studio\BlockCard.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockCard.tsx" -Force
+  Copy-Item "MANUAL_COPY_FILES\feat-pricing-display\contractnest-ui\src\components\catalog-studio\BlockEditorPanel\index.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockEditorPanel\index.tsx" -Force
+===============================================
