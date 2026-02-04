@@ -1,0 +1,59 @@
+═══════════════════════════════════════════════════
+FIX: Contact Number (contactID) Sequence Generation
+═══════════════════════════════════════════════════
+Branch: fix-contact-number-sequence
+Date: 2025-02-04
+
+SUBMODULES AFFECTED:
+  - contractnest-edge  (1 new migration file)
+  - contractnest-ui    (3 modified files)
+
+═══════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════
+
+1. contractnest-edge/supabase/migrations/sequence-numbers/007_fix_contact_number_trigger_use_v2.sql
+   Purpose: NEW FILE - Fix trigger to call get_next_formatted_sequence_v2 (reads t_sequence_counters)
+            instead of v1 (reads t_category_details which is empty).
+   Action:  Copy to contractnest-edge/supabase/migrations/sequence-numbers/
+   DB Action: Run this SQL in Supabase SQL Editor to fix the trigger function.
+
+2. contractnest-ui/src/types/contacts.ts
+   Purpose: Add contact_number field to Contact interface
+   Action:  Overwrite existing file
+
+3. contractnest-ui/src/pages/contacts/index.tsx
+   Purpose: Display contact_number in grid view (below name) and list view (left of status)
+   Action:  Overwrite existing file
+
+4. contractnest-ui/src/components/contacts/view/cards/ContactHeaderCard.tsx
+   Purpose: Show contact_number instead of UUID in contact detail footer
+   Action:  Overwrite existing file
+
+═══════════════════════════════════════════════════
+RPC CHANGES (Apply in Supabase SQL Editor)
+═══════════════════════════════════════════════════
+
+IMPORTANT: In addition to the migration file, you must also update 2 RPCs
+that are live in your Supabase database. Add 'contact_number' to the SELECT:
+
+RPC 1: list_contacts_with_channels_v2
+  - In the jsonb_build_object, add this line after 'is_live':
+      'contact_number', c.contact_number,
+  - In the search WHERE clause, add:
+      OR c.contact_number ILIKE '%' || p_search || '%'
+
+RPC 2: get_contact_full_v2
+  - In the jsonb_build_object, add this line after 'is_live':
+      'contact_number', c.contact_number,
+
+═══════════════════════════════════════════════════
+SUMMARY OF ROOT CAUSE FIX
+═══════════════════════════════════════════════════
+
+Root cause: The BEFORE INSERT trigger on t_contacts called get_next_formatted_sequence (v1)
+which reads config from t_category_details. But onboarding seeds data into t_sequence_counters
+(new architecture from migration 005). The trigger was looking in the wrong table, silently
+failing, and leaving contact_number as NULL.
+
+Fix: Updated trigger to call get_next_formatted_sequence_v2 which reads from t_sequence_counters.
