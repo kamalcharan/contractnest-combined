@@ -1,0 +1,36 @@
+===============================================
+COPY INSTRUCTIONS - Block Update 400 Fix
+===============================================
+Branch: fix-update-400
+Date: 2026-02-04
+
+Root Cause:
+  blockToUpdateData sent pricing_mode_id='independent' (string name)
+  to edge function, which passed it to Supabase as-is.
+  DB column pricing_mode_id expects UUID -> type constraint error -> 400.
+
+  Secondary: ICON.MAX was 10, too short for Lucide icon names like
+  'CheckSquare' (11 chars) - could silently reject updates.
+
+Fixes Applied:
+  1. contractnest-ui/src/utils/catalog-studio/catBlockAdapter.ts
+     - REMOVED pricing_mode_id from blockToUpdateData
+       (was sending string name 'independent', DB expects UUID)
+     - pricingMode is already stored in config.pricingMode (JSONB)
+
+  2. contractnest-api/src/validators/catalogStudio.validators.ts
+     - Increased ICON.MAX from 10 to 50 (Lucide icon names can be >10 chars)
+
+  3. contractnest-api/src/services/catBlocksService.ts
+     - (Already has safety net: strips non-UUID block_type_id and pricing_mode_id)
+     - Included for completeness - MUST be copied if not already done
+
+Submodules Affected: contractnest-ui, contractnest-api
+
+IMPORTANT: After copying API files, RESTART the API server (npm run dev)
+
+Copy Commands (PowerShell, from contractnest-combined root):
+  Copy-Item "MANUAL_COPY_FILES\fix-update-400\contractnest-ui\src\utils\catalog-studio\catBlockAdapter.ts" -Destination "contractnest-ui\src\utils\catalog-studio\catBlockAdapter.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\fix-update-400\contractnest-api\src\validators\catalogStudio.validators.ts" -Destination "contractnest-api\src\validators\catalogStudio.validators.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\fix-update-400\contractnest-api\src\services\catBlocksService.ts" -Destination "contractnest-api\src\services\catBlocksService.ts" -Force
+===============================================
