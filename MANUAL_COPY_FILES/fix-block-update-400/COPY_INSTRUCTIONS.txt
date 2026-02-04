@@ -1,0 +1,49 @@
+===============================================================
+COPY INSTRUCTIONS - Fix Block Update 400 Bad Request
+Feature Branch: fix-block-update-400
+===============================================================
+
+SUBMODULES AFFECTED:
+  1. contractnest-api (1 modified file)
+
+===============================================================
+FILE LIST
+===============================================================
+
+contractnest-api:
+  MOD  src/validators/catalogStudio.validators.ts
+       - Added missing field validators to updateBlockValidation:
+         block_type_id, pricing_mode_id, hsn_sac_code,
+         resource_pricing, variant_pricing, is_admin,
+         is_deletable, tenant_id, is_seed
+       - Added currency sanitizer (auto-uppercase) to prevent
+         lowercase currency codes from failing validation
+       - Added proper error messages for tax_rate, currency
+
+===============================================================
+ROOT CAUSE
+===============================================================
+The updateBlockValidation was missing validators for fields that
+the UI sends during block edits (block_type_id, pricing_mode_id,
+resource_pricing, variant_pricing, is_admin, is_seed, tenant_id,
+hsn_sac_code, is_deletable). Additionally, the currency validator
+did not handle lowercase currency codes from pricingRecords.
+
+===============================================================
+COPY COMMANDS (PowerShell)
+===============================================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\fix-block-update-400\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+===============================================================
+TESTING
+===============================================================
+1. Restart the API server: cd contractnest-api && npm run dev
+2. Open Catalog Studio, edit an existing block
+3. Change any field and click Save
+4. Verify no 400 error on PATCH request
+
