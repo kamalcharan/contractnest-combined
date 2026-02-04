@@ -22,7 +22,9 @@ import { JtdStatusBadge } from './components/JtdStatusBadge';
 import type { TenantStatsFilters, TenantJtdStats } from './types/jtdAdmin.types';
 
 const TenantOperationsPage: React.FC = () => {
-  const { colors } = useTheme();
+  const { isDarkMode, currentTheme } = useTheme();
+  const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
+  const borderColor = isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)';
   const { currentTenant } = useAuth();
   const [filters, setFilters] = useState<TenantStatsFilters>({ page: 1, limit: 20, sort_by: 'total_jtds', sort_dir: 'desc' });
   const [searchInput, setSearchInput] = useState('');
@@ -93,7 +95,7 @@ const TenantOperationsPage: React.FC = () => {
             onChange={(e) => setSearchInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             className="w-full pl-9 pr-3 py-2 rounded-lg text-sm"
-            style={{ backgroundColor: colors.utility.primaryBackground, color: colors.utility.primaryText, border: `1px solid ${colors.utility.divider}` }}
+            style={{ backgroundColor: colors.utility.primaryBackground, color: colors.utility.primaryText, border: `1px solid ${borderColor}` }}
           />
         </div>
         <button
@@ -123,7 +125,7 @@ const TenantOperationsPage: React.FC = () => {
       {!loading && tenants.length > 0 && (
         <div
           className="rounded-xl overflow-hidden"
-          style={{ border: `1px solid ${colors.utility.divider}` }}
+          style={{ border: `1px solid ${borderColor}` }}
         >
           <table className="w-full">
             <thead>
@@ -157,15 +159,15 @@ const TenantOperationsPage: React.FC = () => {
                 <tr
                   key={t.tenant_id}
                   className="hover:opacity-90 transition-colors"
-                  style={{ borderBottom: `1px solid ${colors.utility.divider}` }}
+                  style={{ borderBottom: `1px solid ${borderColor}` }}
                 >
                   <td className="px-4 py-3">
                     <div className="text-sm font-medium" style={{ color: colors.utility.primaryText }}>{t.tenant_name}</div>
-                    <div className="text-xs" style={{ color: colors.utility.tertiaryText }}>{t.tenant_status}</div>
+                    <div className="text-xs" style={{ color: colors.utility.secondaryText }}>{t.tenant_status}</div>
                   </td>
                   <td className="px-4 py-3 text-sm" style={{ color: colors.utility.primaryText }}>{t.total_jtds.toLocaleString()}</td>
                   <td className="px-4 py-3 text-sm" style={{ color: '#10B981' }}>{t.sent.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-sm" style={{ color: t.failed > 0 ? '#EF4444' : colors.utility.tertiaryText }}>{t.failed.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-sm" style={{ color: t.failed > 0 ? '#EF4444' : colors.utility.secondaryText }}>{t.failed.toLocaleString()}</td>
                   <td className="px-4 py-3">
                     <span
                       className="text-sm font-medium"
@@ -216,7 +218,7 @@ const TenantOperationsPage: React.FC = () => {
               disabled={!pagination.has_prev}
               onClick={() => setFilters(f => ({ ...f, page: (f.page || 1) - 1 }))}
               className="px-3 py-1 rounded text-sm disabled:opacity-30"
-              style={{ border: `1px solid ${colors.utility.divider}`, color: colors.utility.primaryText }}
+              style={{ border: `1px solid ${borderColor}`, color: colors.utility.primaryText }}
             >
               Prev
             </button>
@@ -224,7 +226,7 @@ const TenantOperationsPage: React.FC = () => {
               disabled={!pagination.has_next}
               onClick={() => setFilters(f => ({ ...f, page: (f.page || 1) + 1 }))}
               className="px-3 py-1 rounded text-sm disabled:opacity-30"
-              style={{ border: `1px solid ${colors.utility.divider}`, color: colors.utility.primaryText }}
+              style={{ border: `1px solid ${borderColor}`, color: colors.utility.primaryText }}
             >
               Next
             </button>

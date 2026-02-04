@@ -20,7 +20,9 @@ import { JtdStatusBadge } from './components/JtdStatusBadge';
 import type { JtdEventFilters, JtdEventRecord } from './types/jtdAdmin.types';
 
 const EventExplorerPage: React.FC = () => {
-  const { colors } = useTheme();
+  const { isDarkMode, currentTheme } = useTheme();
+  const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
+  const borderColor = isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)';
   const { currentTenant } = useAuth();
   const [filters, setFilters] = useState<JtdEventFilters>({ page: 1, limit: 50 });
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -55,7 +57,7 @@ const EventExplorerPage: React.FC = () => {
             <h1 className="text-xl font-bold" style={{ color: colors.utility.primaryText }}>
               Event Detail
             </h1>
-            <p className="text-xs mt-1 font-mono" style={{ color: colors.utility.tertiaryText }}>
+            <p className="text-xs mt-1 font-mono" style={{ color: colors.utility.secondaryText }}>
               {detail.id}
             </p>
           </div>
@@ -65,7 +67,7 @@ const EventExplorerPage: React.FC = () => {
         {/* Key Fields */}
         <div
           className="rounded-xl p-5 grid grid-cols-2 lg:grid-cols-3 gap-4"
-          style={{ backgroundColor: colors.utility.primaryBackground, border: `1px solid ${colors.utility.divider}` }}
+          style={{ backgroundColor: colors.utility.primaryBackground, border: `1px solid ${borderColor}` }}
         >
           {[
             { label: 'Tenant', value: detail.tenant_name },
@@ -82,7 +84,7 @@ const EventExplorerPage: React.FC = () => {
             { label: 'Actor', value: `${detail.performed_by_type}${detail.performed_by_name ? ` (${detail.performed_by_name})` : ''}` },
           ].map((item) => (
             <div key={item.label}>
-              <div className="text-xs font-medium mb-1" style={{ color: colors.utility.tertiaryText }}>{item.label}</div>
+              <div className="text-xs font-medium mb-1" style={{ color: colors.utility.secondaryText }}>{item.label}</div>
               <div className="text-sm" style={{ color: colors.utility.primaryText }}>{item.value}</div>
             </div>
           ))}
@@ -102,7 +104,7 @@ const EventExplorerPage: React.FC = () => {
         {/* Timestamps */}
         <div
           className="rounded-xl p-5"
-          style={{ backgroundColor: colors.utility.primaryBackground, border: `1px solid ${colors.utility.divider}` }}
+          style={{ backgroundColor: colors.utility.primaryBackground, border: `1px solid ${borderColor}` }}
         >
           <h3 className="text-sm font-semibold mb-3" style={{ color: colors.utility.primaryText }}>Timestamps</h3>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
@@ -113,7 +115,7 @@ const EventExplorerPage: React.FC = () => {
               { label: 'Completed', value: detail.completed_at },
             ].map((ts) => (
               <div key={ts.label}>
-                <div className="text-xs" style={{ color: colors.utility.tertiaryText }}>{ts.label}</div>
+                <div className="text-xs" style={{ color: colors.utility.secondaryText }}>{ts.label}</div>
                 <div style={{ color: colors.utility.primaryText }}>
                   {ts.value ? new Date(ts.value).toLocaleString() : '—'}
                 </div>
@@ -125,7 +127,7 @@ const EventExplorerPage: React.FC = () => {
         {/* Status History Timeline */}
         <div
           className="rounded-xl p-5"
-          style={{ backgroundColor: colors.utility.primaryBackground, border: `1px solid ${colors.utility.divider}` }}
+          style={{ backgroundColor: colors.utility.primaryBackground, border: `1px solid ${borderColor}` }}
         >
           <h3 className="text-sm font-semibold mb-4" style={{ color: colors.utility.primaryText }}>Status History</h3>
           {history.length === 0 ? (
@@ -137,21 +139,21 @@ const EventExplorerPage: React.FC = () => {
                   <div className="flex flex-col items-center">
                     <div className="w-2 h-2 rounded-full mt-1.5" style={{ backgroundColor: colors.brand.primary }} />
                     {i < history.length - 1 && (
-                      <div className="w-px flex-1 min-h-[24px]" style={{ backgroundColor: colors.utility.divider }} />
+                      <div className="w-px flex-1 min-h-[24px]" style={{ backgroundColor: borderColor }} />
                     )}
                   </div>
                   <div className="flex-1 pb-2">
                     <div className="flex items-center gap-2 flex-wrap">
                       {h.from_status_code && <JtdStatusBadge code={h.from_status_code} />}
-                      {h.from_status_code && <span className="text-xs" style={{ color: colors.utility.tertiaryText }}>-&gt;</span>}
+                      {h.from_status_code && <span className="text-xs" style={{ color: colors.utility.secondaryText }}>-&gt;</span>}
                       <JtdStatusBadge code={h.to_status_code} />
                       {h.duration_seconds !== null && (
-                        <span className="text-xs flex items-center gap-1" style={{ color: colors.utility.tertiaryText }}>
+                        <span className="text-xs flex items-center gap-1" style={{ color: colors.utility.secondaryText }}>
                           <Clock size={10} /> {h.duration_seconds}s
                         </span>
                       )}
                     </div>
-                    <div className="text-xs mt-1" style={{ color: colors.utility.tertiaryText }}>
+                    <div className="text-xs mt-1" style={{ color: colors.utility.secondaryText }}>
                       {new Date(h.created_at).toLocaleString()} &middot; {h.performed_by_type}
                       {h.reason && ` — ${h.reason}`}
                     </div>
@@ -166,7 +168,7 @@ const EventExplorerPage: React.FC = () => {
         {detail.payload && Object.keys(detail.payload).length > 0 && (
           <details
             className="rounded-xl p-5"
-            style={{ backgroundColor: colors.utility.primaryBackground, border: `1px solid ${colors.utility.divider}` }}
+            style={{ backgroundColor: colors.utility.primaryBackground, border: `1px solid ${borderColor}` }}
           >
             <summary className="text-sm font-semibold cursor-pointer" style={{ color: colors.utility.primaryText }}>
               Payload (JSON)
@@ -231,7 +233,7 @@ const EventExplorerPage: React.FC = () => {
       {!loading && events.length > 0 && (
         <div
           className="rounded-xl overflow-hidden overflow-x-auto"
-          style={{ border: `1px solid ${colors.utility.divider}` }}
+          style={{ border: `1px solid ${borderColor}` }}
         >
           <table className="w-full min-w-[900px]">
             <thead>
@@ -270,7 +272,7 @@ const EventExplorerPage: React.FC = () => {
               disabled={!pagination.has_prev}
               onClick={() => setFilters(f => ({ ...f, page: (f.page || 1) - 1 }))}
               className="px-3 py-1 rounded text-sm disabled:opacity-30"
-              style={{ border: `1px solid ${colors.utility.divider}`, color: colors.utility.primaryText }}
+              style={{ border: `1px solid ${borderColor}`, color: colors.utility.primaryText }}
             >
               Prev
             </button>
@@ -278,7 +280,7 @@ const EventExplorerPage: React.FC = () => {
               disabled={!pagination.has_next}
               onClick={() => setFilters(f => ({ ...f, page: (f.page || 1) + 1 }))}
               className="px-3 py-1 rounded text-sm disabled:opacity-30"
-              style={{ border: `1px solid ${colors.utility.divider}`, color: colors.utility.primaryText }}
+              style={{ border: `1px solid ${borderColor}`, color: colors.utility.primaryText }}
             >
               Next
             </button>

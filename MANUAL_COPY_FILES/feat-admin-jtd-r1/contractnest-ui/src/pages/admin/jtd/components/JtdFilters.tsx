@@ -14,12 +14,14 @@ interface JtdFiltersProps {
 }
 
 export const JtdFilters: React.FC<JtdFiltersProps> = ({ filters, onChange, onClear }) => {
-  const { colors } = useTheme();
+  const { isDarkMode, currentTheme } = useTheme();
+  const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
+  const borderColor = isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)';
 
   const selectStyle: React.CSSProperties = {
     backgroundColor: colors.utility.primaryBackground,
     color: colors.utility.primaryText,
-    border: `1px solid ${colors.utility.divider}`,
+    border: `1px solid ${borderColor}`,
   };
 
   const hasActiveFilters = filters.status || filters.event_type || filters.channel || filters.source_type || filters.search || filters.date_from || filters.date_to;

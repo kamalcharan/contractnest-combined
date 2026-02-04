@@ -28,14 +28,16 @@ export const JtdMetricCard: React.FC<JtdMetricCardProps> = ({
   alert = false,
   onClick,
 }) => {
-  const { colors } = useTheme();
+  const { isDarkMode, currentTheme } = useTheme();
+  const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
+  const borderColor = isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)';
 
   return (
     <div
       className={`rounded-xl p-5 transition-all ${onClick ? 'cursor-pointer hover:scale-[1.02]' : ''} ${alert ? 'ring-2 ring-red-400/50' : ''}`}
       style={{
         backgroundColor: colors.utility.primaryBackground,
-        border: `1px solid ${alert ? '#EF4444' : colors.utility.divider}`,
+        border: `1px solid ${alert ? '#EF4444' : borderColor}`,
       }}
       onClick={onClick}
     >
@@ -73,7 +75,7 @@ export const JtdMetricCard: React.FC<JtdMetricCardProps> = ({
       {subtitle && (
         <div
           className="text-xs mt-1"
-          style={{ color: colors.utility.tertiaryText }}
+          style={{ color: colors.utility.secondaryText }}
         >
           {subtitle}
         </div>

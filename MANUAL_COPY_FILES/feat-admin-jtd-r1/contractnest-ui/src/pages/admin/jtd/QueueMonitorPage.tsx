@@ -30,7 +30,9 @@ function formatAge(seconds: number | null): string {
 }
 
 const QueueMonitorPage: React.FC = () => {
-  const { colors } = useTheme();
+  const { isDarkMode, currentTheme } = useTheme();
+  const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
+  const borderColor = isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)';
   const { currentTenant } = useAuth();
   const { data, loading, error, refresh } = useQueueMetrics(15000);
 
@@ -145,7 +147,7 @@ const QueueMonitorPage: React.FC = () => {
         {/* Status Distribution */}
         <div
           className="rounded-xl p-5"
-          style={{ backgroundColor: colors.utility.primaryBackground, border: `1px solid ${colors.utility.divider}` }}
+          style={{ backgroundColor: colors.utility.primaryBackground, border: `1px solid ${borderColor}` }}
         >
           <h3 className="text-sm font-semibold mb-4" style={{ color: colors.utility.primaryText }}>
             Status Distribution (All Time)
@@ -168,7 +170,7 @@ const QueueMonitorPage: React.FC = () => {
         {/* By Event Type (24h) */}
         <div
           className="rounded-xl p-5"
-          style={{ backgroundColor: colors.utility.primaryBackground, border: `1px solid ${colors.utility.divider}` }}
+          style={{ backgroundColor: colors.utility.primaryBackground, border: `1px solid ${borderColor}` }}
         >
           <h3 className="text-sm font-semibold mb-4" style={{ color: colors.utility.primaryText }}>
             By Event Type (Last 24h)
@@ -191,7 +193,7 @@ const QueueMonitorPage: React.FC = () => {
         {/* By Channel (24h) */}
         <div
           className="rounded-xl p-5"
-          style={{ backgroundColor: colors.utility.primaryBackground, border: `1px solid ${colors.utility.divider}` }}
+          style={{ backgroundColor: colors.utility.primaryBackground, border: `1px solid ${borderColor}` }}
         >
           <h3 className="text-sm font-semibold mb-4" style={{ color: colors.utility.primaryText }}>
             By Channel (Last 24h)
@@ -213,7 +215,7 @@ const QueueMonitorPage: React.FC = () => {
       </div>
 
       {/* Footer */}
-      <div className="text-xs text-center" style={{ color: colors.utility.tertiaryText }}>
+      <div className="text-xs text-center" style={{ color: colors.utility.secondaryText }}>
         Auto-refreshes every 15 seconds &middot; Last updated: {new Date(data.generated_at).toLocaleTimeString()}
       </div>
     </div>

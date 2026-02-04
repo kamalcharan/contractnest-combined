@@ -23,12 +23,14 @@ function timeAgo(dateStr: string): string {
 }
 
 export const JtdEventRow: React.FC<JtdEventRowProps> = ({ event, onClick }) => {
-  const { colors } = useTheme();
+  const { isDarkMode, currentTheme } = useTheme();
+  const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
+  const borderColor = isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)';
 
   return (
     <tr
       className="hover:opacity-90 cursor-pointer transition-colors"
-      style={{ borderBottom: `1px solid ${colors.utility.divider}` }}
+      style={{ borderBottom: `1px solid ${borderColor}` }}
       onClick={() => onClick(event)}
     >
       {/* Tenant */}
@@ -54,7 +56,7 @@ export const JtdEventRow: React.FC<JtdEventRowProps> = ({ event, onClick }) => {
         <div className="text-sm" style={{ color: colors.utility.primaryText }}>
           {event.recipient_name || '—'}
         </div>
-        <div className="text-xs" style={{ color: colors.utility.tertiaryText }}>
+        <div className="text-xs" style={{ color: colors.utility.secondaryText }}>
           {event.recipient_contact || ''}
         </div>
       </td>
@@ -64,7 +66,7 @@ export const JtdEventRow: React.FC<JtdEventRowProps> = ({ event, onClick }) => {
       </td>
       {/* Retries */}
       <td className="px-4 py-3 text-center">
-        <span className="text-sm" style={{ color: event.retry_count > 0 ? '#EF4444' : colors.utility.tertiaryText }}>
+        <span className="text-sm" style={{ color: event.retry_count > 0 ? '#EF4444' : colors.utility.secondaryText }}>
           {event.retry_count}/{event.max_retries}
         </span>
       </td>
@@ -76,7 +78,7 @@ export const JtdEventRow: React.FC<JtdEventRowProps> = ({ event, onClick }) => {
       </td>
       {/* Time */}
       <td className="px-4 py-3 text-right">
-        <span className="text-xs" style={{ color: colors.utility.tertiaryText }}>
+        <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
           {timeAgo(event.created_at)}
         </span>
       </td>
