@@ -1,0 +1,43 @@
+═══════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS - Contract Wizard Round 2 Fixes (7 Issues)
+═══════════════════════════════════════════════════════════════
+
+Branch: fix-contract-wizard-round2
+Submodules Affected: contractnest-ui (only)
+Date: 2026-02-04
+
+═══════════════════════════════════════════════════════════════
+FILES CHANGED (5 files in contractnest-ui)
+═══════════════════════════════════════════════════════════════
+
+1. contractnest-ui/src/components/contracts/ContractWizard/steps/ReviewSendStep.tsx
+   → Issue #1: Removed isSelfView gate — ClientView now shows subtotal + tax breakup + Grand Total
+
+2. contractnest-ui/src/components/contracts/ContractWizard/steps/BillingViewStep.tsx
+   → Issues #3/#4: onTotalsChange now sends baseSubtotal (price before tax) to parent
+
+3. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+   → Issues #3/#4: Added baseSubtotal to wizardState; fixed mapWizardToRequest total_value;
+     fixed pre-payment dialog subtotal display
+   → Issue #2: Pre-payment dialog z-index raised to z-[60]; added "Cancel — Back to Review" button
+
+4. contractnest-ui/src/hooks/queries/useContractQueries.ts
+   → Issue #5: Replaced setQueryData with invalidateQueries for detail key on create
+
+5. contractnest-ui/src/pages/contracts/detail/index.tsx
+   → Issue #6: Financials tab — "Invoice Fully Paid" banner when collection_percentage >= 100;
+     hides Collect Payment CTA and PaymentRequestHistory when fully paid
+   → Issue #7: Added "Invoices & Receipts" transaction card with per-invoice Total/Paid/Balance,
+     status badges, due dates, and View Invoice / View Receipt action buttons
+
+═══════════════════════════════════════════════════════════════
+COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\fix-contract-wizard-round2\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════════════════
