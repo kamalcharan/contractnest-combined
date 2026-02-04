@@ -1,0 +1,46 @@
+═══════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS — Per-Block Tax Support
+Feature Branch: per-block-tax
+═══════════════════════════════════════════════════════════════
+
+SUBMODULES AFFECTED:
+  1. contractnest-edge (1 new file)
+  2. contractnest-ui   (5 modified files)
+
+═══════════════════════════════════════════════════════════════
+FILE LIST
+═══════════════════════════════════════════════════════════════
+
+contractnest-edge:
+  NEW  supabase/migrations/contracts/012_per_block_tax_columns.sql
+       → Adds tax_inclusive, tax_rate, tax_amount, hsn_sac_code,
+         tax_breakdown columns to t_contract_blocks.
+       → Replaces create_contract_transaction RPC to accept per-block tax.
+
+contractnest-ui:
+  MOD  src/types/contracts.ts
+       → Added per-block tax fields to ContractBlock interface
+
+  MOD  src/components/catalog-studio/BlockCardConfigurable.tsx
+       → Added BlockTaxComponent type, tax fields to ConfigurableBlock
+       → Tax badge on header (green=inclusive, orange=exclusive)
+       → Full tax breakdown in expanded view
+       → computeBlockTax helper function
+
+  MOD  src/components/contracts/ContractWizard/steps/ServiceBlocksStep.tsx
+       → Extracts tax data from catalog block meta.pricingRecords
+       → Recalculates tax on price/quantity change
+
+  MOD  src/components/contracts/ContractWizard/steps/BillingViewStep.tsx
+       → Tax column in line items table
+       → Per-block vs global tax separation (prevents double taxation)
+       → Recalculates per-block tax on price edit
+
+  MOD  src/components/contracts/ContractWizard/index.tsx
+       → mapWizardToRequest sends per-block tax fields to API
+
+═══════════════════════════════════════════════════════════════
+PRE-REQUISITE
+═══════════════════════════════════════════════════════════════
+Run migration 012_per_block_tax_columns.sql in Supabase BEFORE
+testing the UI changes. This adds columns and updates the RPC.
