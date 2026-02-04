@@ -614,32 +614,60 @@ const BillingViewStep: React.FC<BillingViewStepProps> = ({
                       {getCycleLabel(block.cycle)}
                     </span>
 
-                    {/* Tax Status */}
+                    {/* Tax Status — individual components */}
                     <div className="flex justify-center">
                       {(block.taxRate || 0) > 0 ? (
-                        <span
-                          className="text-[9px] px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5"
-                          style={{
-                            backgroundColor: block.taxInclusive
-                              ? `${colors.semantic.success}12`
-                              : `${colors.semantic.warning}12`,
-                            color: block.taxInclusive
-                              ? colors.semantic.success
-                              : colors.semantic.warning,
-                          }}
-                          title={
-                            block.taxInclusive
-                              ? `Tax inclusive: ${block.taxRate}%`
-                              : `Tax exclusive: +${block.taxRate}%`
-                          }
-                        >
-                          {block.taxInclusive ? (
-                            <ShieldCheck className="w-2.5 h-2.5" />
+                        <div className="flex flex-col items-center gap-0.5">
+                          {block.taxes && block.taxes.length > 0 ? (
+                            block.taxes.map((tax, ti) => (
+                              <span
+                                key={ti}
+                                className="text-[8px] px-1 py-0.5 rounded-full font-medium flex items-center gap-0.5 whitespace-nowrap"
+                                style={{
+                                  backgroundColor: block.taxInclusive
+                                    ? `${colors.semantic.success}12`
+                                    : `${colors.semantic.warning}12`,
+                                  color: block.taxInclusive
+                                    ? colors.semantic.success
+                                    : colors.semantic.warning,
+                                }}
+                                title={
+                                  block.taxInclusive
+                                    ? `${tax.name} ${tax.rate}% (included)`
+                                    : `${tax.name} +${tax.rate}%`
+                                }
+                              >
+                                {ti === 0 && (
+                                  block.taxInclusive ? (
+                                    <ShieldCheck className="w-2 h-2" />
+                                  ) : (
+                                    <ShieldAlert className="w-2 h-2" />
+                                  )
+                                )}
+                                {tax.name} {tax.rate}%
+                              </span>
+                            ))
                           ) : (
-                            <ShieldAlert className="w-2.5 h-2.5" />
+                            <span
+                              className="text-[8px] px-1 py-0.5 rounded-full font-medium flex items-center gap-0.5"
+                              style={{
+                                backgroundColor: block.taxInclusive
+                                  ? `${colors.semantic.success}12`
+                                  : `${colors.semantic.warning}12`,
+                                color: block.taxInclusive
+                                  ? colors.semantic.success
+                                  : colors.semantic.warning,
+                              }}
+                            >
+                              {block.taxInclusive ? (
+                                <ShieldCheck className="w-2 h-2" />
+                              ) : (
+                                <ShieldAlert className="w-2 h-2" />
+                              )}
+                              {block.taxRate}%
+                            </span>
                           )}
-                          {block.taxRate}%
-                        </span>
+                        </div>
                       ) : (
                         <span
                           className="text-[9px] px-1.5 py-0.5 rounded-full"

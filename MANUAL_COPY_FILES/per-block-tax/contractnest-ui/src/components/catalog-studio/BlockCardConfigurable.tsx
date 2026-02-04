@@ -146,6 +146,18 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
   const [localExpanded, setLocalExpanded] = useState(isExpanded);
   const expanded = onToggleExpand ? isExpanded : localExpanded;
 
+  // Local state for selling price input — allows free typing without snap-back
+  const [localSellingPrice, setLocalSellingPrice] = useState<string>(
+    (block.config?.customPrice ?? block.price).toString()
+  );
+  // Sync local price when block changes externally (e.g. reset, different block expanded)
+  const currentEffective = block.config?.customPrice ?? block.price;
+  const [lastSyncedPrice, setLastSyncedPrice] = useState(currentEffective);
+  if (currentEffective !== lastSyncedPrice) {
+    setLocalSellingPrice(currentEffective.toString());
+    setLastSyncedPrice(currentEffective);
+  }
+
   const handleToggle = useCallback(() => {
     if (onToggleExpand) {
       onToggleExpand(block.id);
@@ -258,30 +270,63 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
             </div>
           </div>
 
-          {/* Price + Tax Badge - only for pricing categories */}
+          {/* Price + Tax Badges - only for pricing categories */}
           {hasPricing && (
-            <div className="text-right flex items-center gap-1.5">
-              {/* Tax badge */}
+            <div className="text-right flex items-center gap-1">
+              {/* Individual tax component badges */}
               {block.taxRate != null && block.taxRate > 0 && (
-                <span
-                  className="text-[9px] px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5"
-                  style={{
-                    backgroundColor: block.taxInclusive
-                      ? `${colors.semantic.success}15`
-                      : `${colors.semantic.warning}15`,
-                    color: block.taxInclusive
-                      ? colors.semantic.success
-                      : colors.semantic.warning,
-                  }}
-                  title={block.taxInclusive ? 'Price includes tax' : 'Tax will be added'}
-                >
-                  {block.taxInclusive ? (
-                    <ShieldCheck className="w-2.5 h-2.5" />
-                  ) : (
-                    <ShieldAlert className="w-2.5 h-2.5" />
-                  )}
-                  {block.taxInclusive ? 'Incl.' : '+'}{block.taxRate}%
-                </span>
+                block.taxes && block.taxes.length > 0 ? (
+                  // Show each tax component as its own badge
+                  block.taxes.map((tax, i) => (
+                    <span
+                      key={i}
+                      className="text-[8px] px-1 py-0.5 rounded-full font-medium flex items-center gap-0.5"
+                      style={{
+                        backgroundColor: block.taxInclusive
+                          ? `${colors.semantic.success}15`
+                          : `${colors.semantic.warning}15`,
+                        color: block.taxInclusive
+                          ? colors.semantic.success
+                          : colors.semantic.warning,
+                      }}
+                      title={
+                        block.taxInclusive
+                          ? `${tax.name} ${tax.rate}% (included in price)`
+                          : `${tax.name} ${tax.rate}% (added on top)`
+                      }
+                    >
+                      {i === 0 && (
+                        block.taxInclusive ? (
+                          <ShieldCheck className="w-2.5 h-2.5" />
+                        ) : (
+                          <ShieldAlert className="w-2.5 h-2.5" />
+                        )
+                      )}
+                      {tax.name} {tax.rate}%
+                    </span>
+                  ))
+                ) : (
+                  // Fallback: single consolidated badge
+                  <span
+                    className="text-[8px] px-1 py-0.5 rounded-full font-medium flex items-center gap-0.5"
+                    style={{
+                      backgroundColor: block.taxInclusive
+                        ? `${colors.semantic.success}15`
+                        : `${colors.semantic.warning}15`,
+                      color: block.taxInclusive
+                        ? colors.semantic.success
+                        : colors.semantic.warning,
+                    }}
+                    title={block.taxInclusive ? 'Price includes tax' : 'Tax will be added'}
+                  >
+                    {block.taxInclusive ? (
+                      <ShieldCheck className="w-2.5 h-2.5" />
+                    ) : (
+                      <ShieldAlert className="w-2.5 h-2.5" />
+                    )}
+                    {block.taxInclusive ? 'Incl.' : '+'}{block.taxRate}%
+                  </span>
+                )
               )}
               <span className="text-sm font-bold" style={{ color: colors.brand.primary }}>
                 {formatCurrency(block.totalPrice, block.currency)}
@@ -515,11 +560,31 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
                       {getCurrencySymbol(block.currency)}
                     </span>
                     <input
-                      type="number"
-                      value={block.config?.customPrice ?? block.price}
-                      onChange={(e) =>
-                        handleConfigChange('customPrice', e.target.value ? Number(e.target.value) : undefined)
-                      }
+                      type="text"
+                      inputMode="decimal"
+                      value={localSellingPrice}
+                      onChange={(e) => {
+                        // Allow empty, digits, and one decimal point
+                        const val = e.target.value;
+                        if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                          setLocalSellingPrice(val);
+                        }
+                      }}
+                      onBlur={() => {
+                        const parsed = parseFloat(localSellingPrice);
+                        if (!isNaN(parsed) && parsed > 0) {
+                          handleConfigChange('customPrice', parsed);
+                        } else {
+                          // Reset to defined price if empty/invalid
+                          setLocalSellingPrice(block.price.toString());
+                          handleConfigChange('customPrice', undefined);
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          (e.target as HTMLInputElement).blur();
+                        }
+                      }}
                       className="w-full pl-8 pr-3 py-2 text-sm rounded-lg border"
                       style={{
                         backgroundColor: colors.utility.primaryBackground,
