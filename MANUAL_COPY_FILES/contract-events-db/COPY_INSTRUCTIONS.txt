@@ -18,6 +18,10 @@ FILES TO COPY
    -> Copy to: contractnest-edge/supabase/migrations/contracts/013_contract_events_rpc_functions.sql
    -> Purpose: All RPC functions + PGMQ trigger
 
+3. contractnest-edge/supabase/functions/contract-events/index.ts
+   -> Copy to: contractnest-edge/supabase/functions/contract-events/index.ts
+   -> Purpose: Edge Function — CORS, HMAC, routing to RPCs (4 handlers)
+
 ===============================================
 APPLY ORDER (IMPORTANT: run 012 before 013)
 ===============================================
