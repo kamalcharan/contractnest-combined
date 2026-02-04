@@ -236,9 +236,10 @@ interface FinancialHealthProps {
   colors: any;
   onRecordPayment?: () => void;
   hasActiveGateway?: boolean;
+  onViewInvoice?: (invoiceId: string) => void;
 }
 
-const FinancialHealth: React.FC<FinancialHealthProps> = ({ contract, colors, onRecordPayment, hasActiveGateway }) => {
+const FinancialHealth: React.FC<FinancialHealthProps> = ({ contract, colors, onRecordPayment, hasActiveGateway, onViewInvoice }) => {
   const { data, isLoading } = useContractInvoices(contract.id);
   const invoices = data?.invoices || [];
   const summary = data?.summary || {
@@ -464,12 +465,14 @@ const FinancialHealth: React.FC<FinancialHealthProps> = ({ contract, colors, onR
             {invoices.map((inv) => {
               const statusStyle = getInvoiceStatusStyle(inv.status);
               return (
-                <div
+                <button
                   key={inv.id}
-                  className="p-3 rounded-lg border transition-all hover:shadow-sm"
+                  onClick={() => onViewInvoice?.(inv.id)}
+                  className="w-full text-left p-3 rounded-lg border transition-all hover:shadow-sm"
                   style={{
                     backgroundColor: colors.utility.primaryText + '04',
                     borderColor: colors.utility.primaryText + '10',
+                    cursor: onViewInvoice ? 'pointer' : 'default',
                   }}
                 >
                   <div className="flex items-center justify-between mb-1.5">
@@ -517,7 +520,13 @@ const FinancialHealth: React.FC<FinancialHealthProps> = ({ contract, colors, onR
                       )}
                     </div>
                   </div>
-                </div>
+                  {onViewInvoice && (
+                    <div className="mt-1.5 pt-1.5 border-t flex items-center gap-1" style={{ borderColor: colors.utility.primaryText + '08' }}>
+                      <Eye className="h-3 w-3" style={{ color: colors.brand.primary }} />
+                      <span className="text-[0.6rem] font-medium" style={{ color: colors.brand.primary }}>View Invoice & Receipt</span>
+                    </div>
+                  )}
+                </button>
               );
             })}
           </div>
@@ -1080,6 +1089,12 @@ const ContractDetailPage: React.FC = () => {
     openCheckout(orderData);
   };
 
+  // Navigate to Financials tab and expand a specific invoice
+  const handleViewInvoice = (invoiceId: string) => {
+    setActiveTab('financials');
+    setExpandedInvoiceId(invoiceId);
+  };
+
   // Classification icon
   const classType = contract?.contact_classification || contract?.contract_type || '';
   const ClassIcon = getClassificationIcon(classType);
@@ -1157,6 +1172,7 @@ const ContractDetailPage: React.FC = () => {
                 colors={colors}
                 hasActiveGateway={hasActiveGateway}
                 onRecordPayment={() => setIsPaymentDialogOpen(true)}
+                onViewInvoice={handleViewInvoice}
               />
               <ContractDetailsCard contract={contract} colors={colors} />
               <AuditTrail history={contract.history} colors={colors} />
@@ -1489,6 +1505,7 @@ const ContractDetailPage: React.FC = () => {
               colors={colors}
               hasActiveGateway={hasActiveGateway}
               onRecordPayment={isFullyPaid ? undefined : () => setIsPaymentDialogOpen(true)}
+              onViewInvoice={(invoiceId) => setExpandedInvoiceId(invoiceId)}
             />
           </div>
         );
