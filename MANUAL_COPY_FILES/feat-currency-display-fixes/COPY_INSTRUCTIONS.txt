@@ -1,0 +1,42 @@
+===============================================================
+FEATURE: Currency Display Fixes + Description Toggle
+BRANCH: feat-currency-display-fixes
+DATE: 2026-02-04
+===============================================================
+
+SUBMODULES AFFECTED: contractnest-ui
+
+CHANGES SUMMARY:
+1. BlockCard.tsx - Added currency prop for currency-aware pricing display on configure page
+2. BlockCardSelectable.tsx - Added currency prop + pricing record resolution for contract wizard library
+3. BlockLibraryMini.tsx - Pass currency prop to BlockCardSelectable
+4. BlockGrid.tsx - Added currency selector dropdown in toolbar (next to search)
+5. configure.tsx - Added selectedCurrency state + derived availableCurrencies from all blocks
+6. ServiceBlocksStep.tsx - Fixed currency symbol bug: use matchingRecord?.currency instead of block.currency
+7. BlockCardConfigurable.tsx - Added description rendering below pricing when showDescription toggle is on
+
+ISSUES FIXED:
+- Left-side cards in contract wizard showed INR values even when contract currency is USD
+- Added blocks showed correct USD amount but displayed INR currency symbol
+- "Show description in contract" toggle didn't render description for pricing blocks
+- Configure page now has currency selector to view blocks in a specific currency
+
+===============================================================
+COPY COMMANDS (PowerShell)
+===============================================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\feat-currency-display-fixes\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+===============================================================
+TESTING CHECKLIST
+===============================================================
+- [ ] Catalog Studio > Configure: Currency selector dropdown appears in block grid toolbar
+- [ ] Switching currency shows prices in that currency on block cards
+- [ ] Contract Wizard > Add Service Blocks: Left-side library cards show correct currency prices
+- [ ] Adding a block shows correct currency symbol matching contract currency
+- [ ] Pricing block: Toggle "Show description in contract" ON - description appears below pricing summary
+- [ ] Non-pricing block: Description still shows when expanded (no regression)
