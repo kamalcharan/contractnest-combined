@@ -1,0 +1,87 @@
+===============================================================================
+Admin JTD R2 — Actions (Retry, Cancel, Force Complete, DLQ Management)
+===============================================================================
+
+Branch: admin-jtd-r2-actions
+Submodules Affected: contractnest-edge, contractnest-api, contractnest-ui
+
+===============================================================================
+FILES TO COPY
+===============================================================================
+
+--- DB Layer (Edge) ---
+NEW  contractnest-edge/supabase/migrations/admin-jtd-management/002_admin_jtd_actions.sql
+     -> 6 new RPC functions: admin_retry_jtd_event, admin_cancel_jtd_event,
+       admin_force_complete_jtd_event, admin_list_dlq_messages,
+       admin_requeue_dlq_message, admin_purge_dlq
+
+MODIFIED contractnest-edge/supabase/functions/admin-jtd-management/index.ts
+     -> Added 6 new POST/GET endpoints for R2 actions
+
+--- API Layer ---
+MODIFIED contractnest-api/src/types/adminJtd.dto.ts
+     -> Added R2 request/response DTOs (RetryEventRequest, CancelEventRequest,
+       ForceCompleteRequest, RequeueDlqRequest, ListDlqRequest, ActionResponse,
+       DlqMessageItem, DlqListResponse)
+
+MODIFIED contractnest-api/src/validators/adminJtdValidators.ts
+     -> Added R2 validators (retryEventValidation, cancelEventValidation,
+       forceCompleteValidation, listDlqValidation, requeueDlqValidation)
+
+MODIFIED contractnest-api/src/routes/adminJtdRoutes.ts
+     -> Added 6 new R2 routes (POST retry/cancel/force-complete/requeue-dlq/purge-dlq, GET dlq/messages)
+
+MODIFIED contractnest-api/src/services/adminJtdService.ts
+     -> Added 6 new R2 service methods + getHeadersWithAdmin helper
+
+--- UI Layer ---
+MODIFIED contractnest-ui/src/services/serviceURLs.ts
+     -> Added R2 endpoints to ADMIN.JTD block (RETRY_EVENT, CANCEL_EVENT,
+       FORCE_COMPLETE, DLQ_MESSAGES, DLQ_MESSAGES_WITH_FILTERS, REQUEUE_DLQ,
+       PURGE_DLQ) — FULL FILE included, safe to overwrite
+
+MODIFIED contractnest-ui/src/pages/admin/jtd/types/jtdAdmin.types.ts
+     -> Added DlqMessage and ActionResult interfaces
+
+MODIFIED contractnest-ui/src/pages/admin/jtd/hooks/useJtdAdmin.ts
+     -> Added useDlqMessages and useJtdAction hooks
+
+MODIFIED contractnest-ui/src/pages/admin/jtd/EventExplorerPage.tsx
+     -> Added inline action buttons (Retry/Cancel/Force Complete) per row + detail view
+     -> Uses ConfirmationDialog + vaniToast
+
+MODIFIED contractnest-ui/src/pages/admin/jtd/QueueMonitorPage.tsx
+     -> Added DLQ messages table with Requeue and Purge All buttons
+     -> Uses ConfirmationDialog + vaniToast
+
+===============================================================================
+COPY COMMANDS (PowerShell)
+===============================================================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Edge (DB + Functions)
+Copy-Item "MANUAL_COPY_FILES\admin-jtd-r2-actions\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+# API
+Copy-Item "MANUAL_COPY_FILES\admin-jtd-r2-actions\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+
+# UI (including serviceURLs.ts — full file, safe to overwrite)
+Copy-Item "MANUAL_COPY_FILES\admin-jtd-r2-actions\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "All R2 files copied (including serviceURLs.ts)!" -ForegroundColor Green
+
+===============================================================================
+TESTING CHECKLIST
+===============================================================================
+- [ ] Queue Monitor loads with DLQ section at bottom
+- [ ] DLQ shows "empty" message when no DLQ messages
+- [ ] Event Explorer shows action buttons based on status
+- [ ] Retry button appears on "failed" events
+- [ ] Cancel button appears on "created/pending/queued/scheduled" events
+- [ ] Force Complete buttons appear on "processing" events
+- [ ] ConfirmationDialog opens before any action
+- [ ] Toast shows success/error after action
+- [ ] Detail view shows action buttons next to status badge
+- [ ] Purge All button appears in DLQ when messages exist
+- [ ] Requeue button works for individual DLQ messages
