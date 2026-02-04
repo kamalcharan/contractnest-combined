@@ -89,8 +89,11 @@ const getIconComponent = (iconName: string) => {
 };
 
 // Format currency
-const formatCurrency = (amount: number, currency: string = 'INR') => {
+const formatCurrency = (amount: number, currency: string = 'INR', decimals = 0) => {
   const symbol = getCurrencySymbol(currency);
+  if (decimals > 0) {
+    return `${symbol}${amount.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+  }
   return `${symbol}${amount.toLocaleString()}`;
 };
 
@@ -293,9 +296,11 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
           <div className="pt-3 space-y-4">
             {/* Description for non-pricing blocks */}
             {!hasPricing && block.description && (
-              <p className="text-xs" style={{ color: colors.utility.secondaryText }}>
-                {block.description}
-              </p>
+              <div
+                className="text-xs prose prose-xs max-w-none"
+                style={{ color: colors.utility.secondaryText }}
+                dangerouslySetInnerHTML={{ __html: block.description }}
+              />
             )}
 
             {/* Quantity Section - Limited/Unlimited Switch (pricing blocks only) */}
@@ -537,27 +542,25 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
                     </span>
                     <span style={{ color: colors.utility.primaryText }}>
                       {block.taxInclusion === 'inclusive'
-                        ? formatCurrency(Math.round(effectivePrice - taxAmount), block.currency)
-                        : formatCurrency(effectivePrice, block.currency)}
+                        ? formatCurrency(Math.round((effectivePrice - taxAmount) * 100) / 100, block.currency, 2)
+                        : formatCurrency(effectivePrice, block.currency, 2)}
                     </span>
                   </div>
-                  {block.taxes?.map((tax, i) => (
-                    <div key={i} className="flex justify-between text-xs">
-                      <span style={{ color: colors.utility.secondaryText }}>
-                        {tax.name} ({tax.rate}%)
-                      </span>
-                      <span style={{ color: colors.utility.primaryText }}>
-                        {formatCurrency(
-                          Math.round(
-                            block.taxInclusion === 'inclusive'
-                              ? (effectivePrice / (1 + (block.taxRate || 0) / 100)) * tax.rate / 100
-                              : effectivePrice * tax.rate / 100
-                          ),
-                          block.currency
-                        )}
-                      </span>
-                    </div>
-                  ))}
+                  {block.taxes?.map((tax, i) => {
+                    const perTaxAmount = block.taxInclusion === 'inclusive'
+                      ? (effectivePrice / (1 + (block.taxRate || 0) / 100)) * Number(tax.rate) / 100
+                      : effectivePrice * Number(tax.rate) / 100;
+                    return (
+                      <div key={i} className="flex justify-between text-xs">
+                        <span style={{ color: colors.utility.secondaryText }}>
+                          {tax.name} ({tax.rate}%)
+                        </span>
+                        <span style={{ color: colors.utility.primaryText }}>
+                          {formatCurrency(Math.round(perTaxAmount * 100) / 100, block.currency, 2)}
+                        </span>
+                      </div>
+                    );
+                  })}
                   {block.taxInclusion && (
                     <span
                       className="inline-block text-[10px] px-1.5 py-0.5 rounded-full font-medium mt-0.5"
@@ -577,18 +580,18 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
                       Total per unit
                     </span>
                     <span style={{ color: colors.semantic.success }}>
-                      {formatCurrency(Math.round(unitTotalWithTax), block.currency)}
+                      {formatCurrency(Math.round(unitTotalWithTax * 100) / 100, block.currency, 2)}
                     </span>
                   </div>
                 </>
               )}
               <div className="flex items-center justify-between pt-1">
                 <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
-                  {formatCurrency(Math.round(unitTotalWithTax), block.currency)} ×{' '}
+                  {formatCurrency(Math.round(unitTotalWithTax * 100) / 100, block.currency, 2)} ×{' '}
                   {block.unlimited ? '∞' : block.quantity} ({currentCycle.label})
                 </span>
                 <span className="text-sm font-bold" style={{ color: colors.brand.primary }}>
-                  {formatCurrency(Math.round(block.totalPrice), block.currency)}
+                  {formatCurrency(Math.round(block.totalPrice * 100) / 100, block.currency, 2)}
                 </span>
               </div>
             </div>
@@ -596,11 +599,10 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
             {/* Description shown when toggle is on (pricing blocks) */}
             {block.config?.showDescription && block.description && (
               <div
-                className="text-xs mt-2 pt-2 border-t"
+                className="text-xs mt-2 pt-2 border-t prose prose-xs max-w-none"
                 style={{ borderColor: `${colors.utility.primaryText}10`, color: colors.utility.secondaryText }}
-              >
-                {block.description}
-              </div>
+                dangerouslySetInnerHTML={{ __html: block.description }}
+              />
             )}
             </>}
 

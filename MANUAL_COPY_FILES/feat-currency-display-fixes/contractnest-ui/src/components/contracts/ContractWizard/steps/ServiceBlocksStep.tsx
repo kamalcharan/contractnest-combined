@@ -185,7 +185,7 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
         unlimited: false,
         price: blockPrice,
         currency: matchingRecord?.currency || currency,
-        totalPrice: Math.round(unitPriceWithTax),
+        totalPrice: Math.round(unitPriceWithTax * 100) / 100,
         categoryName: category?.name || block.categoryId,
         categoryColor: category?.color || '#6B7280',
         categoryBgColor: category?.bgColor,
@@ -283,7 +283,7 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
           if (block.id === blockId) {
             const updated = { ...block, ...updates };
             // Recalculate total price with tax
-            const effectivePrice = updated.config?.customPrice || updated.price;
+            const effectivePrice = updated.config?.customPrice ?? updated.price;
             const taxRate = updated.taxRate || 0;
             let unitPrice = effectivePrice;
             if (taxRate > 0 && updated.taxInclusion === 'exclusive') {
@@ -291,8 +291,8 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
             }
             // For inclusive, effectivePrice already includes tax
             updated.totalPrice = Math.round(
-              updated.unlimited ? unitPrice : unitPrice * updated.quantity
-            );
+              (updated.unlimited ? unitPrice : unitPrice * updated.quantity) * 100
+            ) / 100;
             return updated;
           }
           return block;
