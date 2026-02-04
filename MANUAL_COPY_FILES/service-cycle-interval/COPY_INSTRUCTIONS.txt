@@ -1,0 +1,8 @@
+SERVICE CYCLE INTERVAL — Contract Wizard Block Configuration
+
+Files Changed:
+  - contractnest-ui/src/components/catalog-studio/BlockCardConfigurable.tsx
+  - contractnest-ui/src/components/contracts/ContractWizard/steps/ServiceBlocksStep.tsx
+
+Copy Command:
+  Copy-Item "MANUAL_COPY_FILES\service-cycle-interval\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
