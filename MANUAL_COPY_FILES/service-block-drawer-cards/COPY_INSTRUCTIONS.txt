@@ -1,0 +1,14 @@
+═══════════════════════════════════════════════════
+SERVICE BLOCK DRAWER - CARD-PER-WIZARD-STEP LAYOUT
+═══════════════════════════════════════════════════
+
+Branch: service-block-drawer-cards
+
+Files Changed:
+  - contractnest-ui/src/components/catalog-studio/BlockEditorPanel/index.tsx
+    Enhanced to show 6 wizard-step cards for service blocks
+
+Copy Command:
+  Copy-Item "MANUAL_COPY_FILES\service-block-drawer-cards\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Submodules Affected: contractnest-ui
