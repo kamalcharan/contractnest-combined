@@ -687,6 +687,21 @@ const BlockEditorPanel: React.FC<BlockEditorPanelProps> = ({
   // ─── NON-SERVICE BLOCKS: Original section layout ───
   const renderNonServiceSections = () => (
     <>
+      {/* Full description (for non-service blocks) */}
+      {block.description && stripHtml(block.description) && (
+        <div className="mb-4">
+          <div className="flex items-center gap-2 py-3 border-b" style={{ borderColor: `${colors.brand.primary}20` }}>
+            <span style={{ color: colors.brand.primary }}><FileText className="w-4 h-4" /></span>
+            <span className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>Description</span>
+          </div>
+          <div
+            className="text-sm mt-2 leading-relaxed [&_p]:m-0 [&_p]:mb-1"
+            style={{ color: colors.utility.primaryText }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.description) }}
+          />
+        </div>
+      )}
+
       {/* Pricing Section (spare blocks) */}
       {block.categoryId === 'spare' && (
         <div className="mb-4">
@@ -963,18 +978,18 @@ const BlockEditorPanel: React.FC<BlockEditorPanelProps> = ({
           </div>
         </div>
 
-        {/* Description — clamped to 3 lines; full version in Basic Info card */}
+        {/* Description — hard-capped height; full version in scrollable body */}
         {block.description && stripHtml(block.description) && (
           <div
-            className="text-sm mt-2 leading-relaxed line-clamp-3 [&_p]:m-0 [&_p]:mb-1"
+            className="text-sm mt-2 leading-relaxed max-h-[4.5em] overflow-hidden [&_p]:m-0 [&_p]:mb-1"
             style={{ color: colors.utility.secondaryText }}
             dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.description) }}
           />
         )}
       </div>
 
-      {/* Content - Scrollable */}
-      <div className="flex-1 overflow-y-auto px-3 py-3">
+      {/* Content - Scrollable (min-h-0 required for flex column overflow) */}
+      <div className="flex-1 min-h-0 overflow-y-auto px-3 py-3">
         {isService ? renderServiceCards() : renderNonServiceSections()}
       </div>
 
