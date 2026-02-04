@@ -1,0 +1,27 @@
+===============================================================================
+COPY INSTRUCTIONS — feat-admin-jtd-r1-api-patterns
+===============================================================================
+Feature: Admin JTD R1 — API Layer Pattern Compliance
+Submodules Affected: contractnest-api
+===============================================================================
+
+FILES TO COPY:
+-------------------------------------------------------------------------------
+
+1. [NEW] contractnest-api/src/types/adminJtd.dto.ts
+   -> contractnest-api\src\types\adminJtd.dto.ts
+   Purpose: Request/Response DTOs for all 5 Admin JTD endpoints
+
+2. [NEW] contractnest-api/src/validators/adminJtdValidators.ts
+   -> contractnest-api\src\validators\adminJtdValidators.ts
+   Purpose: express-validator chains (page/limit/UUID/ISO 8601/enum validation)
+
+3. [MODIFIED] contractnest-api/src/routes/adminJtdRoutes.ts
+   -> contractnest-api\src\routes\adminJtdRoutes.ts
+   Purpose: Rewritten with validation middleware, handleEdgeError, JSDoc
+
+4. [MODIFIED] contractnest-api/src/services/adminJtdService.ts
+   -> contractnest-api\src\services\adminJtdService.ts
+   Purpose: Typed Promise returns, DTO imports, buildParams helper
+
+===============================================================================
