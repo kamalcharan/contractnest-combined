@@ -1,0 +1,25 @@
+===============================================
+COPY INSTRUCTIONS - Categories API + Per-Item Tax Fix
+===============================================
+Branch: fix-categories-taxes
+Date: 2026-02-04
+
+Files Changed:
+  1. contractnest-ui/src/pages/catalog-studio/configure.tsx
+     - Replaced hardcoded BLOCK_CATEGORIES with useBlockCategories() hook (API-driven, is_active=true)
+     - Left panel now shows only active categories from master data (same as New Block button)
+     - Also fixed react-hot-toast → vaniToast in handleConflictRefresh
+     - Added categoriesLoading to loading state
+
+  2. contractnest-ui/src/utils/catalog-studio/catBlockAdapter.ts
+     - blockToCreateData: tax_rate now computed from primary pricing record's taxes array
+       instead of hardcoding 18%
+     - blockToUpdateData: same fix - tax_rate computed from pricingRecords[0].taxes
+     - Per-item multi-tax data continues to save in config.pricingRecords[].taxes (JSONB)
+
+Submodules Affected: contractnest-ui
+
+Copy Commands (PowerShell, from contractnest-combined root):
+  Copy-Item "MANUAL_COPY_FILES\fix-categories-taxes\contractnest-ui\src\pages\catalog-studio\configure.tsx" -Destination "contractnest-ui\src\pages\catalog-studio\configure.tsx" -Force
+  Copy-Item "MANUAL_COPY_FILES\fix-categories-taxes\contractnest-ui\src\utils\catalog-studio\catBlockAdapter.ts" -Destination "contractnest-ui\src\utils\catalog-studio\catBlockAdapter.ts" -Force
+===============================================
