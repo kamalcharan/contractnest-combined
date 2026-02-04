@@ -228,6 +228,18 @@ const BlockEditorPanel: React.FC<BlockEditorPanelProps> = ({
         <ViewField label="Name" value={block.name} colors={colors} />
         <ViewField label="Icon" value={block.icon} colors={colors} />
 
+        {/* Full description (scrollable here since it's inside the cards area) */}
+        {block.description && stripHtml(block.description) && (
+          <div className="pt-2 mt-1 border-t" style={{ borderColor: `${colors.brand.primary}10` }}>
+            <span className="text-xs font-medium" style={{ color: colors.utility.secondaryText }}>Description</span>
+            <div
+              className="text-xs mt-1 leading-relaxed [&_p]:m-0 [&_p]:mb-1"
+              style={{ color: colors.utility.primaryText }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.description) }}
+            />
+          </div>
+        )}
+
         {/* Tags */}
         {block.tags && block.tags.length > 0 && (
           <div className="pt-2">
@@ -951,10 +963,10 @@ const BlockEditorPanel: React.FC<BlockEditorPanelProps> = ({
           </div>
         </div>
 
-        {/* Description */}
+        {/* Description — clamped to 3 lines; full version in Basic Info card */}
         {block.description && stripHtml(block.description) && (
           <div
-            className="text-sm mt-2 leading-relaxed [&_p]:m-0 [&_p]:mb-1"
+            className="text-sm mt-2 leading-relaxed line-clamp-3 [&_p]:m-0 [&_p]:mb-1"
             style={{ color: colors.utility.secondaryText }}
             dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.description) }}
           />
