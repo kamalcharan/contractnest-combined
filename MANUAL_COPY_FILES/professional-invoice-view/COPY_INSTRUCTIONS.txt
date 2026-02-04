@@ -1,0 +1,59 @@
+═══════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS - Professional Invoice View
+═══════════════════════════════════════════════════════════════
+
+Branch: professional-invoice-view
+Submodules Affected: contractnest-ui (only)
+Date: 2026-02-04
+
+═══════════════════════════════════════════════════════════════
+FILES CHANGED (3 files in contractnest-ui)
+═══════════════════════════════════════════════════════════════
+
+1. contractnest-ui/src/pages/contracts/invoice/index.tsx  [NEW]
+   → Professional Invoice View page component:
+     - Company logo + address (seller details from tenant profile)
+     - Invoice number + dates (issued, due)
+     - "Invoice To" section (buyer/client: name, company, email, phone)
+     - "Bill To" section (payment: total due, payment mode, installment info)
+     - Line items table (from contract blocks: item, description, rate, qty, total)
+     - Financial summary (subtotal, per-tax breakup, grand total, amount paid, balance)
+     - Notes section
+     - PDF download via html2canvas + jsPDF
+     - Browser print with print-specific CSS
+     - Action sidebar: Download PDF, Print, Send Invoice, Add Payment
+     - Payment summary card with status badge
+     - RecordPaymentDialog integration
+
+2. contractnest-ui/src/App.tsx
+   → Added InvoiceViewPage import
+   → Added route: /contracts/:id/invoice/:invoiceId
+
+3. contractnest-ui/src/pages/contracts/detail/index.tsx
+   → Updated handleViewInvoice to navigate to /contracts/:id/invoice/:invoiceId
+   → Added "View Full Invoice" button in expanded invoice detail panel (Financials tab)
+   → Updated FinancialHealth sidebar invoice clicks to navigate to invoice view
+   → Updated Financials tab sidebar invoice clicks to navigate to invoice view
+
+═══════════════════════════════════════════════════════════════
+NAVIGATION FLOW
+═══════════════════════════════════════════════════════════════
+
+Entry points to Professional Invoice View:
+
+1. Contract Detail > Overview tab > FinancialHealth sidebar > Click any invoice row
+2. Contract Detail > Financials tab > FinancialHealth sidebar > Click any invoice row
+3. Contract Detail > Financials tab > Expand invoice > "View Full Invoice" button
+4. Direct URL: /contracts/{contractId}/invoice/{invoiceId}
+
+═══════════════════════════════════════════════════════════════
+COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\professional-invoice-view\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════════════════
