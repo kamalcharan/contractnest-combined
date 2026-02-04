@@ -1,0 +1,76 @@
+===============================================
+CONTRACT EVENTS - DATABASE TABLES MIGRATION
+===============================================
+
+Branch: contract-events-db
+Submodules Affected: contractnest-edge
+Date: February 2025
+
+===============================================
+FILES TO COPY
+===============================================
+
+1. contractnest-edge/supabase/migrations/contracts/012_contract_events_tables.sql
+   → Copy to: contractnest-edge/supabase/migrations/contracts/012_contract_events_tables.sql
+   → Purpose: Creates t_contract_events + t_contract_event_audit tables,
+              indexes, triggers, RLS policies, grants,
+              and adds computed_events JSONB column to t_contracts
+
+===============================================
+WHAT THIS MIGRATION DOES
+===============================================
+
+Tables Created:
+  1. t_contract_events       — lifecycle events (service milestones + billing installments)
+  2. t_contract_event_audit  — immutable audit trail for every event change
+
+Columns Altered:
+  3. t_contracts.computed_events (JSONB) — stores wizard-computed events until contract confirmation
+
+Indexes (12 total):
+  - Contract-scoped: contract_id, contract_id+status, contract_id+scheduled_date, contract_id+event_type
+  - Tenant-scoped:   tenant_id+status, tenant_id+scheduled_date
+  - Assignment:      tenant_id+assigned_to+status, assigned_to+scheduled_date
+  - Audit:           event_id, event_id+changed_at, tenant_id+changed_at
+
+RLS Policies (7 total):
+  - Tenant isolation for SELECT/INSERT/UPDATE on both tables
+  - Service role full access on both tables (for Edge Functions / PGMQ worker)
+
+Triggers:
+  - Auto-update updated_at on t_contract_events
+
+===============================================
+HOW TO APPLY
+===============================================
+
+Option A: Run in Supabase SQL Editor
+  1. Open Supabase Dashboard → SQL Editor
+  2. Paste the contents of 012_contract_events_tables.sql
+  3. Click "Run"
+
+Option B: Via supabase CLI (if configured)
+  supabase db push --file supabase/migrations/contracts/012_contract_events_tables.sql
+
+===============================================
+VERIFICATION QUERIES (run after applying)
+===============================================
+
+-- Check tables exist
+SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename IN ('t_contract_events', 't_contract_event_audit');
+
+-- Check indexes
+SELECT indexname FROM pg_indexes WHERE tablename = 't_contract_events';
+SELECT indexname FROM pg_indexes WHERE tablename = 't_contract_event_audit';
+
+-- Check RLS is enabled
+SELECT tablename, rowsecurity FROM pg_tables WHERE tablename IN ('t_contract_events', 't_contract_event_audit');
+
+-- Check policies
+SELECT tablename, policyname FROM pg_policies WHERE tablename IN ('t_contract_events', 't_contract_event_audit');
+
+-- Check computed_events column on t_contracts
+SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 't_contracts' AND column_name = 'computed_events';
+
+-- Check trigger
+SELECT trigger_name FROM information_schema.triggers WHERE event_object_table = 't_contract_events';
