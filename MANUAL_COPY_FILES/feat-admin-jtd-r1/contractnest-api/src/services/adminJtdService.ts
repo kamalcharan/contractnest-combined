@@ -75,7 +75,7 @@ export class AdminJtdService {
     filters: ListTenantStatsRequest
   ): Promise<TenantStatsResponse> {
     try {
-      const url = `${BASE_URL}/tenant-stats${this.buildParams(filters)}`;
+      const url = `${BASE_URL}/tenant-stats${this.buildParams(filters as Record<string, string | number | undefined>)}`;
       console.log(`[adminJtdService] Fetching tenant stats from: ${url}`);
 
       const response = await axios.get<TenantStatsResponse>(url, {
@@ -99,7 +99,7 @@ export class AdminJtdService {
     filters: ListEventsRequest
   ): Promise<EventsListResponse> {
     try {
-      const url = `${BASE_URL}/events${this.buildParams(filters)}`;
+      const url = `${BASE_URL}/events${this.buildParams(filters as Record<string, string | number | undefined>)}`;
       console.log(`[adminJtdService] Fetching events from: ${url}`);
 
       const response = await axios.get<EventsListResponse>(url, {
