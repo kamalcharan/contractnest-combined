@@ -1,36 +1,35 @@
 ===============================================
-COPY INSTRUCTIONS - Block Update 400 Fix
+COPY INSTRUCTIONS - Block Update 400/500 Fix
 ===============================================
 Branch: fix-update-400
 Date: 2026-02-04
 
-Root Cause:
-  blockToUpdateData sent pricing_mode_id='independent' (string name)
-  to edge function, which passed it to Supabase as-is.
-  DB column pricing_mode_id expects UUID -> type constraint error -> 400.
-
-  Secondary: ICON.MAX was 10, too short for Lucide icon names like
-  'CheckSquare' (11 chars) - could silently reject updates.
+Root Causes (Edge Function returns 500 -> API wraps as 400):
+  1. pricing_mode_id='independent' (string) sent to UUID column -> type error
+  2. updated_by='' (empty string) sent to UUID column -> type error
+     Controller sets userId='' when x-user-id header missing,
+     service blindly assigned updated_by: context.userId -> '' in payload
+  3. ICON.MAX was 10, too short for Lucide icon names like 'CheckSquare' (11 chars)
 
 Fixes Applied:
   1. contractnest-ui/src/utils/catalog-studio/catBlockAdapter.ts
      - REMOVED pricing_mode_id from blockToUpdateData
-       (was sending string name 'independent', DB expects UUID)
-     - pricingMode is already stored in config.pricingMode (JSONB)
+       (pricingMode already stored in config.pricingMode JSONB)
 
-  2. contractnest-api/src/validators/catalogStudio.validators.ts
-     - Increased ICON.MAX from 10 to 50 (Lucide icon names can be >10 chars)
+  2. contractnest-api/src/services/catBlocksService.ts
+     - updated_by: only set if context.userId is a valid UUID
+       (deletes empty/invalid values instead of passing '' to edge function)
+     - Strips non-UUID block_type_id and pricing_mode_id (safety net)
 
-  3. contractnest-api/src/services/catBlocksService.ts
-     - (Already has safety net: strips non-UUID block_type_id and pricing_mode_id)
-     - Included for completeness - MUST be copied if not already done
+  3. contractnest-api/src/validators/catalogStudio.validators.ts
+     - Increased ICON.MAX from 10 to 50
 
 Submodules Affected: contractnest-ui, contractnest-api
 
-IMPORTANT: After copying API files, RESTART the API server (npm run dev)
+*** IMPORTANT: After copying API files, RESTART the API server (npm run dev) ***
 
 Copy Commands (PowerShell, from contractnest-combined root):
   Copy-Item "MANUAL_COPY_FILES\fix-update-400\contractnest-ui\src\utils\catalog-studio\catBlockAdapter.ts" -Destination "contractnest-ui\src\utils\catalog-studio\catBlockAdapter.ts" -Force
-  Copy-Item "MANUAL_COPY_FILES\fix-update-400\contractnest-api\src\validators\catalogStudio.validators.ts" -Destination "contractnest-api\src\validators\catalogStudio.validators.ts" -Force
   Copy-Item "MANUAL_COPY_FILES\fix-update-400\contractnest-api\src\services\catBlocksService.ts" -Destination "contractnest-api\src\services\catBlocksService.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\fix-update-400\contractnest-api\src\validators\catalogStudio.validators.ts" -Destination "contractnest-api\src\validators\catalogStudio.validators.ts" -Force
 ===============================================
