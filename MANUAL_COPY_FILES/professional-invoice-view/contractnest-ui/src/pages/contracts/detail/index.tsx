@@ -55,6 +55,11 @@ import { useGatewayStatus } from '@/hooks/useGatewayStatus';
 import { useRazorpayCheckout } from '@/hooks/useRazorpayCheckout';
 import type { CreateOrderResponse } from '@/hooks/queries/usePaymentGatewayQueries';
 import { useVaNiToast } from '@/components/common/toast/VaNiToast';
+import ReviewSendStep from '@/components/contracts/ContractWizard/steps/ReviewSendStep';
+import type { ReviewSendStepProps } from '@/components/contracts/ContractWizard/steps/ReviewSendStep';
+import { ConfigurableBlock } from '@/components/catalog-studio/BlockCardConfigurable';
+import { categoryHasPricing } from '@/utils/catalog-studio/categories';
+import type { BillingCycleType } from '@/components/contracts/ContractWizard/steps/BillingCycleStep';
 
 // ═══════════════════════════════════════════════════
 // HELPERS
@@ -126,13 +131,94 @@ const timeAgo = (dateStr: string): string => {
 };
 
 // ═══════════════════════════════════════════════════
+// CONTRACT → REVIEW STEP PROPS MAPPER
+// ═══════════════════════════════════════════════════
+
+const mapContractToReviewProps = (contract: ContractDetail): ReviewSendStepProps => {
+  // Compute combined tax rate from contract-level breakdown
+  const taxBreakdown = contract.tax_breakdown || [];
+  const combinedTaxRate = taxBreakdown.reduce((sum, t) => sum + (t.rate || 0), 0);
+  const taxItems = taxBreakdown.map(t => ({ id: t.tax_rate_id, name: t.name, rate: t.rate }));
+
+  // Map ContractBlock[] → ConfigurableBlock[]
+  const selectedBlocks: ConfigurableBlock[] = (contract.blocks || []).map((block) => {
+    const unitPrice = block.unit_price || 0;
+    const qty = block.quantity || 1;
+    const catId = block.category_id || 'service';
+    const hasPricing = categoryHasPricing(catId);
+    const baseLine = unitPrice * qty;
+
+    return {
+      id: block.id,
+      name: block.block_name || 'Untitled',
+      description: block.block_description || '',
+      icon: catId,
+      quantity: qty,
+      cycle: block.billing_cycle || 'prepaid',
+      unlimited: false,
+      price: unitPrice,
+      currency: contract.currency || 'INR',
+      totalPrice: hasPricing && combinedTaxRate > 0
+        ? baseLine * (1 + combinedTaxRate / 100)
+        : block.total_price || baseLine,
+      categoryName: block.category_name || catId,
+      categoryColor: '#6B7280',
+      categoryId: catId,
+      taxRate: hasPricing ? combinedTaxRate : 0,
+      taxInclusion: 'exclusive' as const,
+      taxes: hasPricing ? taxItems : [],
+      config: {
+        showDescription: true,
+        customPrice: unitPrice,
+        notes: block.custom_fields?.notes,
+        content: block.custom_fields?.content,
+      },
+    };
+  });
+
+  // Map acceptance_method to ReviewSendStep's expected values
+  const mapAcceptanceMethod = (method?: string): 'payment' | 'signoff' | 'auto' | null => {
+    if (!method) return null;
+    if (method === 'auto') return 'auto';
+    if (method === 'e_signature' || method === 'manual_upload' || method === 'in_person') return 'signoff';
+    return null;
+  };
+
+  // Map payment_mode
+  const mapPaymentMode = (mode?: string): 'prepaid' | 'emi' | 'defined' => {
+    if (mode === 'emi') return 'emi';
+    if (mode === 'defined' || mode === 'as_defined') return 'defined';
+    return 'prepaid';
+  };
+
+  return {
+    contractName: contract.title || '',
+    contractStatus: contract.status || 'draft',
+    description: contract.description || '',
+    durationValue: contract.duration_value || 0,
+    durationUnit: contract.duration_unit || 'months',
+    buyerId: contract.buyer_contact_person_id || contract.buyer_id || null,
+    buyerName: contract.buyer_name || '',
+    acceptanceMethod: mapAcceptanceMethod(contract.acceptance_method),
+    billingCycleType: (contract.billing_cycle_type || 'uniform') as BillingCycleType,
+    currency: contract.currency || 'INR',
+    selectedBlocks,
+    paymentMode: mapPaymentMode(contract.payment_mode),
+    emiMonths: contract.emi_months || 0,
+    perBlockPaymentType: {},
+    selectedTaxRateIds: contract.selected_tax_rate_ids || [],
+  };
+};
+
+// ═══════════════════════════════════════════════════
 // TAB DEFINITIONS
 // ═══════════════════════════════════════════════════
 
-type TabId = 'overview' | 'timeline' | 'financials' | 'evidence' | 'communication' | 'audit';
+type TabId = 'overview' | 'document' | 'timeline' | 'financials' | 'evidence' | 'communication' | 'audit';
 
 const TAB_DEFINITIONS: Array<{ id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }> = [
   { id: 'overview', label: 'Overview', icon: ClipboardList },
+  { id: 'document', label: 'Document', icon: FileText },
   { id: 'timeline', label: 'Timeline', icon: Calendar },
   { id: 'financials', label: 'Financials', icon: DollarSign },
   { id: 'evidence', label: 'Evidence', icon: Camera },
@@ -1443,6 +1529,12 @@ const ContractDetailPage: React.FC = () => {
         return <PlaceholderTab icon={Camera} title="Evidence" description="Photos, documents, and proof of delivery uploaded for tasks and milestones." colors={colors} />;
       case 'communication':
         return <PlaceholderTab icon={MessageSquare} title="Communication" description="Messages, notifications, and updates exchanged between parties." colors={colors} />;
+      case 'document':
+        return (
+          <div className="-mx-6 -mt-4">
+            <ReviewSendStep {...mapContractToReviewProps(contract)} />
+          </div>
+        );
       case 'audit':
         return (
           <div className="max-w-3xl">
