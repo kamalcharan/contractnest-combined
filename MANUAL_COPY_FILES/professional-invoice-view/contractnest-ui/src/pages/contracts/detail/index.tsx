@@ -36,6 +36,7 @@ import {
   ChevronDown,
   ChevronUp,
   Hash,
+  Download,
 } from 'lucide-react';
 import { useContract } from '@/hooks/queries/useContractQueries';
 import { useContractInvoices } from '@/hooks/queries/useInvoiceQueries';
@@ -1062,7 +1063,7 @@ const ContractDetailPage: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
-  const [expandedInvoiceId, setExpandedInvoiceId] = useState<string | null>(null);
+  // expandedInvoiceId removed — invoice cards are now flat with 3 action icons
 
   const { data: contract, isLoading, error } = useContract(id || null);
   const { data: invoiceData } = useContractInvoices(id || undefined, { enabled: !!id });
@@ -1272,215 +1273,138 @@ const ContractDetailPage: React.FC = () => {
                           : isOverdue ? colors.semantic.error
                           : colors.utility.secondaryText;
                         const statusLabel = isPaid ? 'Paid' : isPartial ? 'Partial' : isOverdue ? 'Overdue' : 'Unpaid';
-                        const isExpanded = expandedInvoiceId === inv.id;
                         const balance = inv.total_amount - (inv.amount_paid || 0);
+                        const isOffline = inv.payment_mode && inv.payment_mode !== 'online' && inv.payment_mode !== 'razorpay';
                         return (
                           <div
                             key={inv.id}
                             className="rounded-lg border overflow-hidden"
-                            style={{ borderColor: isExpanded ? colors.brand.primary + '30' : colors.utility.primaryText + '10', backgroundColor: colors.utility.primaryText + '03' }}
+                            style={{ borderColor: colors.utility.primaryText + '10', backgroundColor: colors.utility.primaryText + '03' }}
                           >
-                            {/* Invoice header row — clickable to expand */}
-                            <button
-                              onClick={() => setExpandedInvoiceId(isExpanded ? null : inv.id)}
-                              className="w-full p-4 flex items-center justify-between text-left transition-colors hover:opacity-90"
-                            >
-                              <div className="flex items-center gap-3 min-w-0">
-                                <div
-                                  className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                                  style={{ backgroundColor: statusColor + '15' }}
-                                >
-                                  {isPaid ? (
-                                    <CheckCircle2 className="h-4 w-4" style={{ color: statusColor }} />
-                                  ) : (
-                                    <FileText className="h-4 w-4" style={{ color: statusColor }} />
-                                  )}
-                                </div>
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs font-bold" style={{ color: colors.utility.primaryText }}>
-                                      {inv.invoice_number}
-                                    </span>
-                                    <span className="text-[0.6rem] font-semibold px-1.5 py-0.5 rounded-full"
-                                      style={{ backgroundColor: statusColor + '18', color: statusColor }}>
-                                      {statusLabel}
-                                    </span>
-                                    {inv.emi_sequence && (
-                                      <span className="text-[0.6rem] px-1.5 py-0.5 rounded"
-                                        style={{ backgroundColor: colors.brand.primary + '15', color: colors.brand.primary }}>
-                                        EMI {inv.emi_sequence}/{inv.emi_total}
-                                      </span>
+                            <div className="p-4">
+                              {/* Row 1: Icon + Invoice info + Status + Amount */}
+                              <div className="flex items-start justify-between mb-3">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div
+                                    className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                                    style={{ backgroundColor: statusColor + '15' }}
+                                  >
+                                    {isPaid ? (
+                                      <CheckCircle2 className="h-4 w-4" style={{ color: statusColor }} />
+                                    ) : (
+                                      <FileText className="h-4 w-4" style={{ color: statusColor }} />
                                     )}
                                   </div>
-                                  <span className="text-[0.6rem]" style={{ color: colors.utility.secondaryText }}>
-                                    Due: {formatDate(inv.due_date)} &middot; {formatCurrency(inv.total_amount, inv.currency)}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <span className="text-sm font-bold" style={{ color: isPaid ? colors.semantic.success : colors.utility.primaryText }}>
-                                  {formatCurrency(inv.amount_paid || 0, inv.currency)}
-                                </span>
-                                {isExpanded ? (
-                                  <ChevronUp className="h-4 w-4 flex-shrink-0" style={{ color: colors.utility.secondaryText }} />
-                                ) : (
-                                  <ChevronDown className="h-4 w-4 flex-shrink-0" style={{ color: colors.utility.secondaryText }} />
-                                )}
-                              </div>
-                            </button>
-
-                            {/* Expanded invoice detail panel */}
-                            {isExpanded && (
-                              <div
-                                className="border-t px-4 pb-4"
-                                style={{ borderColor: colors.utility.primaryText + '10' }}
-                              >
-                                {/* Invoice Detail Section */}
-                                <div className="pt-4 pb-3">
-                                  <div className="flex items-center gap-1.5 mb-3">
-                                    <FileText className="h-3.5 w-3.5" style={{ color: colors.brand.primary }} />
-                                    <span className="text-[0.65rem] font-bold uppercase tracking-wider" style={{ color: colors.brand.primary }}>
-                                      Invoice Details
-                                    </span>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                                    <div>
-                                      <span className="text-[0.6rem] block mb-0.5" style={{ color: colors.utility.secondaryText }}>Invoice Number</span>
-                                      <span className="text-xs font-semibold" style={{ color: colors.utility.primaryText }}>{inv.invoice_number}</span>
-                                    </div>
-                                    <div>
-                                      <span className="text-[0.6rem] block mb-0.5" style={{ color: colors.utility.secondaryText }}>Type</span>
-                                      <span className="text-xs font-medium capitalize" style={{ color: colors.utility.primaryText }}>{inv.invoice_type}</span>
-                                    </div>
-                                    <div>
-                                      <span className="text-[0.6rem] block mb-0.5" style={{ color: colors.utility.secondaryText }}>Subtotal</span>
-                                      <span className="text-xs font-semibold" style={{ color: colors.utility.primaryText }}>{formatCurrency(inv.amount, inv.currency)}</span>
-                                    </div>
-                                    <div>
-                                      <span className="text-[0.6rem] block mb-0.5" style={{ color: colors.utility.secondaryText }}>Tax</span>
-                                      <span className="text-xs font-semibold" style={{ color: colors.utility.primaryText }}>{formatCurrency(inv.tax_amount, inv.currency)}</span>
-                                    </div>
-                                    <div>
-                                      <span className="text-[0.6rem] block mb-0.5" style={{ color: colors.utility.secondaryText }}>Total Amount</span>
-                                      <span className="text-xs font-bold" style={{ color: colors.utility.primaryText }}>{formatCurrency(inv.total_amount, inv.currency)}</span>
-                                    </div>
-                                    <div>
-                                      <span className="text-[0.6rem] block mb-0.5" style={{ color: colors.utility.secondaryText }}>Amount Paid</span>
-                                      <span className="text-xs font-bold" style={{ color: colors.semantic.success }}>{formatCurrency(inv.amount_paid || 0, inv.currency)}</span>
-                                    </div>
-                                    <div>
-                                      <span className="text-[0.6rem] block mb-0.5" style={{ color: colors.utility.secondaryText }}>Balance</span>
-                                      <span className="text-xs font-bold" style={{ color: balance > 0 ? colors.semantic.warning : colors.semantic.success }}>
-                                        {formatCurrency(balance, inv.currency)}
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="text-xs font-bold" style={{ color: colors.utility.primaryText }}>
+                                        {inv.invoice_number}
                                       </span>
-                                    </div>
-                                    <div>
-                                      <span className="text-[0.6rem] block mb-0.5" style={{ color: colors.utility.secondaryText }}>Due Date</span>
-                                      <span className="text-xs font-medium" style={{ color: isOverdue ? colors.semantic.error : colors.utility.primaryText }}>{formatDate(inv.due_date)}</span>
-                                    </div>
-                                    <div>
-                                      <span className="text-[0.6rem] block mb-0.5" style={{ color: colors.utility.secondaryText }}>Issued</span>
-                                      <span className="text-xs font-medium" style={{ color: colors.utility.primaryText }}>{formatDate(inv.issued_at)}</span>
-                                    </div>
-                                    {inv.paid_at && (
-                                      <div>
-                                        <span className="text-[0.6rem] block mb-0.5" style={{ color: colors.utility.secondaryText }}>Paid On</span>
-                                        <span className="text-xs font-medium" style={{ color: colors.semantic.success }}>{formatDate(inv.paid_at)}</span>
-                                      </div>
-                                    )}
-                                    {inv.payment_mode && (
-                                      <div>
-                                        <span className="text-[0.6rem] block mb-0.5" style={{ color: colors.utility.secondaryText }}>Payment Mode</span>
-                                        <span className="text-xs font-medium capitalize" style={{ color: colors.utility.primaryText }}>{inv.payment_mode.replace(/_/g, ' ')}</span>
-                                      </div>
-                                    )}
-                                    {inv.billing_cycle && (
-                                      <div>
-                                        <span className="text-[0.6rem] block mb-0.5" style={{ color: colors.utility.secondaryText }}>Billing Cycle</span>
-                                        <span className="text-xs font-medium capitalize" style={{ color: colors.utility.primaryText }}>{inv.billing_cycle}</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                  {inv.notes && (
-                                    <div className="mt-3 p-2.5 rounded-lg" style={{ backgroundColor: colors.utility.secondaryBackground }}>
-                                      <span className="text-[0.6rem] block mb-0.5" style={{ color: colors.utility.secondaryText }}>Notes</span>
-                                      <span className="text-xs" style={{ color: colors.utility.primaryText }}>{inv.notes}</span>
-                                    </div>
-                                  )}
-                                </div>
-
-                                {/* Receipt Section */}
-                                {(isPaid || isPartial) && (
-                                  <div className="pt-3 border-t" style={{ borderColor: colors.utility.primaryText + '08' }}>
-                                    <div className="flex items-center gap-1.5 mb-3">
-                                      <FileDown className="h-3.5 w-3.5" style={{ color: colors.semantic.success }} />
-                                      <span className="text-[0.65rem] font-bold uppercase tracking-wider" style={{ color: colors.semantic.success }}>
-                                        Payment Receipt
+                                      <span className="text-[0.6rem] font-semibold px-1.5 py-0.5 rounded-full"
+                                        style={{ backgroundColor: statusColor + '18', color: statusColor }}>
+                                        {statusLabel}
                                       </span>
-                                      {inv.receipts_count && (
-                                        <span className="text-[0.6rem] px-1.5 py-0.5 rounded-full"
-                                          style={{ backgroundColor: colors.semantic.success + '15', color: colors.semantic.success }}>
-                                          {inv.receipts_count} receipt{inv.receipts_count !== 1 ? 's' : ''}
+                                      {inv.emi_sequence && (
+                                        <span className="text-[0.6rem] px-1.5 py-0.5 rounded"
+                                          style={{ backgroundColor: colors.brand.primary + '15', color: colors.brand.primary }}>
+                                          EMI {inv.emi_sequence}/{inv.emi_total}
                                         </span>
                                       )}
                                     </div>
-                                    <div
-                                      className="rounded-lg p-3"
-                                      style={{ backgroundColor: `${colors.semantic.success}06`, border: `1px solid ${colors.semantic.success}15` }}
-                                    >
-                                      <div className="grid grid-cols-2 gap-x-6 gap-y-2">
-                                        <div>
-                                          <span className="text-[0.6rem] block mb-0.5" style={{ color: colors.utility.secondaryText }}>Amount Received</span>
-                                          <span className="text-xs font-bold" style={{ color: colors.semantic.success }}>
-                                            {formatCurrency(inv.amount_paid || 0, inv.currency)}
-                                          </span>
-                                        </div>
-                                        <div>
-                                          <span className="text-[0.6rem] block mb-0.5" style={{ color: colors.utility.secondaryText }}>Status</span>
-                                          <span className="text-xs font-semibold" style={{ color: isPaid ? colors.semantic.success : colors.semantic.warning }}>
-                                            {isPaid ? 'Fully Settled' : `Partially Paid (${Math.round(((inv.amount_paid || 0) / inv.total_amount) * 100)}%)`}
-                                          </span>
-                                        </div>
-                                        {inv.paid_at && (
-                                          <div>
-                                            <span className="text-[0.6rem] block mb-0.5" style={{ color: colors.utility.secondaryText }}>Payment Date</span>
-                                            <span className="text-xs font-medium" style={{ color: colors.utility.primaryText }}>{formatDate(inv.paid_at)}</span>
-                                          </div>
-                                        )}
-                                        {balance > 0 && (
-                                          <div>
-                                            <span className="text-[0.6rem] block mb-0.5" style={{ color: colors.utility.secondaryText }}>Remaining Balance</span>
-                                            <span className="text-xs font-bold" style={{ color: colors.semantic.warning }}>
-                                              {formatCurrency(balance, inv.currency)}
-                                            </span>
-                                          </div>
-                                        )}
-                                      </div>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                      <span className="text-[0.6rem]" style={{ color: colors.utility.secondaryText }}>
+                                        Due: {formatDate(inv.due_date)}
+                                      </span>
+                                      <span className="text-[0.6rem]" style={{ color: colors.utility.secondaryText }}>&middot;</span>
+                                      <span className="text-[0.6rem] font-semibold" style={{ color: colors.utility.primaryText }}>
+                                        {formatCurrency(inv.total_amount, inv.currency)}
+                                      </span>
                                     </div>
                                   </div>
-                                )}
-
-                                {/* Actions bar */}
-                                <div className="flex items-center gap-2 pt-3 mt-3 border-t" style={{ borderColor: colors.utility.primaryText + '08' }}>
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); navigate(`/contracts/${contract.id}/invoice/${inv.id}`); }}
-                                    className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-all hover:opacity-90 border"
-                                    style={{ borderColor: colors.brand.primary + '40', color: colors.brand.primary, backgroundColor: colors.brand.primary + '08' }}
-                                  >
-                                    <Eye className="h-3 w-3" /> View Full Invoice
-                                  </button>
-                                  {!isPaid && !isFullyPaid && (
-                                    <button
-                                      onClick={(e) => { e.stopPropagation(); setIsPaymentDialogOpen(true); }}
-                                      className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-all hover:opacity-90 text-white"
-                                      style={{ backgroundColor: colors.brand.primary }}
-                                    >
-                                      <CreditCard className="h-3 w-3" /> Record Payment
-                                    </button>
-                                  )}
+                                </div>
+                                <div className="text-right flex-shrink-0 ml-3">
+                                  <div className="text-sm font-bold" style={{ color: isPaid ? colors.semantic.success : colors.utility.primaryText }}>
+                                    {formatCurrency(inv.amount_paid || 0, inv.currency)}
+                                  </div>
+                                  <span className="text-[0.55rem]" style={{ color: colors.utility.secondaryText }}>paid</span>
                                 </div>
                               </div>
-                            )}
+
+                              {/* Row 2: Capture method indicator */}
+                              {(isPaid || isPartial) && (
+                                <div
+                                  className="flex items-center gap-2 mb-3 px-2.5 py-1.5 rounded-md"
+                                  style={{ backgroundColor: isOffline ? '#F59E0B08' : '#10B98108', border: `1px solid ${isOffline ? '#F59E0B20' : '#10B98120'}` }}
+                                >
+                                  {isOffline ? (
+                                    <Wallet className="h-3 w-3 flex-shrink-0" style={{ color: '#F59E0B' }} />
+                                  ) : (
+                                    <CreditCard className="h-3 w-3 flex-shrink-0" style={{ color: '#10B981' }} />
+                                  )}
+                                  <span className="text-[0.6rem] font-medium" style={{ color: isOffline ? '#B45309' : '#059669' }}>
+                                    {isOffline
+                                      ? `Captured via Offline Form${inv.payment_mode ? ' \u2022 ' + inv.payment_mode.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()) : ''}`
+                                      : 'Captured via Online Payment'}
+                                  </span>
+                                  {inv.paid_at && (
+                                    <span className="text-[0.55rem] ml-auto" style={{ color: colors.utility.secondaryText }}>
+                                      {formatDate(inv.paid_at)}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Row 3: Action icons */}
+                              <div
+                                className="flex items-center gap-1 pt-3 border-t"
+                                style={{ borderColor: colors.utility.primaryText + '08' }}
+                              >
+                                {/* View Invoice */}
+                                <button
+                                  onClick={() => navigate(`/contracts/${contract.id}/invoice/${inv.id}`)}
+                                  className="flex items-center gap-1.5 text-[0.65rem] font-medium px-3 py-1.5 rounded-md transition-all hover:opacity-80"
+                                  style={{ color: colors.brand.primary, backgroundColor: colors.brand.primary + '08' }}
+                                  title="View Invoice"
+                                >
+                                  <Eye className="h-3.5 w-3.5" />
+                                  <span>Invoice</span>
+                                </button>
+
+                                {/* Download PDF */}
+                                <button
+                                  onClick={() => navigate(`/contracts/${contract.id}/invoice/${inv.id}`)}
+                                  className="flex items-center gap-1.5 text-[0.65rem] font-medium px-3 py-1.5 rounded-md transition-all hover:opacity-80"
+                                  style={{ color: colors.utility.secondaryText, backgroundColor: colors.utility.primaryText + '05' }}
+                                  title="Download PDF"
+                                >
+                                  <Download className="h-3.5 w-3.5" />
+                                  <span>PDF</span>
+                                </button>
+
+                                {/* Receipt — shown when payment exists */}
+                                {(isPaid || isPartial) && (
+                                  <button
+                                    onClick={() => navigate(`/contracts/${contract.id}/invoice/${inv.id}`)}
+                                    className="flex items-center gap-1.5 text-[0.65rem] font-medium px-3 py-1.5 rounded-md transition-all hover:opacity-80"
+                                    style={{ color: colors.semantic.success, backgroundColor: colors.semantic.success + '08' }}
+                                    title="View Receipt"
+                                  >
+                                    <Receipt className="h-3.5 w-3.5" />
+                                    <span>Receipt</span>
+                                  </button>
+                                )}
+
+                                {/* Balance indicator on right side */}
+                                {balance > 0 && (
+                                  <span
+                                    className="ml-auto text-[0.6rem] font-semibold px-2 py-1 rounded"
+                                    style={{ backgroundColor: colors.semantic.warning + '12', color: colors.semantic.warning }}
+                                  >
+                                    Bal: {formatCurrency(balance, inv.currency)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         );
                       })}
