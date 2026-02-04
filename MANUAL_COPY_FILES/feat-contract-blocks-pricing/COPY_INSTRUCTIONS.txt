@@ -1,0 +1,44 @@
+===============================================
+COPY INSTRUCTIONS - Contract Blocks Pricing + Edit Redirect
+===============================================
+Branch: feat-contract-blocks-pricing
+Date: 2026-02-04
+
+Changes:
+  1. edit.tsx (block edit page)
+     - Save/Cancel/Delete/Error all redirect to /catalog-studio/configure (was /catalog-studio/blocks)
+
+  2. BlockLibraryMini.tsx (block library sidebar in contract wizard)
+     - Added currency prop to filter blocks by contract currency
+     - blockMatchesCurrency() helper checks pricingRecords for matching active currency
+     - Non-pricing categories (text, document) always pass filter
+
+  3. ServiceBlocksStep.tsx (contract wizard - Add Service Blocks)
+     - Passes currency={currency} to BlockLibraryMini
+     - handleAddBlock extracts tax info from pricingRecords matching contract currency
+     - Uses matching record's price (instead of generic block.price)
+     - Calculates initial totalPrice with tax included
+     - handleUpdateBlock recalculates totalPrice with tax (exclusive: price+tax, inclusive: price as-is)
+
+  4. BlockCardConfigurable.tsx (configurable block card in contract wizard)
+     - Added taxRate, taxInclusion, taxes fields to ConfigurableBlock interface
+     - Header shows totalPrice with "incl. X% tax" label
+     - Selling price input: changed from type="number" to type="text" with inputMode="decimal"
+       - onFocus selects all text (user can just start typing new value)
+       - Local state prevents controlled input from blocking replacement
+       - onBlur resets to defined price if empty
+     - Price summary shows full tax breakdown:
+       - Selling Price / Base Price line
+       - Each tax line (CGST 9%, SGST 9%, etc.)
+       - Tax Inclusive/Exclusive badge (green/amber)
+       - Total per unit (in green)
+       - Grand total = unit price x quantity
+
+Submodules Affected: contractnest-ui
+
+Copy Commands (PowerShell, from contractnest-combined root):
+  Copy-Item "MANUAL_COPY_FILES\feat-contract-blocks-pricing\contractnest-ui\src\pages\catalog-studio\blocks\[id]\edit.tsx" -Destination "contractnest-ui\src\pages\catalog-studio\blocks\[id]\edit.tsx" -Force
+  Copy-Item "MANUAL_COPY_FILES\feat-contract-blocks-pricing\contractnest-ui\src\components\catalog-studio\BlockLibraryMini.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockLibraryMini.tsx" -Force
+  Copy-Item "MANUAL_COPY_FILES\feat-contract-blocks-pricing\contractnest-ui\src\components\catalog-studio\BlockCardConfigurable.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockCardConfigurable.tsx" -Force
+  Copy-Item "MANUAL_COPY_FILES\feat-contract-blocks-pricing\contractnest-ui\src\components\contracts\ContractWizard\steps\ServiceBlocksStep.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\ServiceBlocksStep.tsx" -Force
+===============================================
