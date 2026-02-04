@@ -1,0 +1,17 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS - BlockCard Display Fixes
+═══════════════════════════════════════════════════
+Branch: claude/init-submodules-docs-2FPUd
+Date: 2026-02-04
+
+Files Changed:
+  1. contractnest-ui/src/components/catalog-studio/BlockCard.tsx
+     - Removed hardcoded DollarSign icon (currency symbol already in formatted text)
+     - Removed "Not used yet" text; shows multi-currency symbols when configured
+     - Strips HTML tags from description using existing stripHtml utility
+
+Submodules Affected: contractnest-ui
+
+Copy Command (from contractnest-combined root):
+  Copy-Item "MANUAL_COPY_FILES\fix-blockcard-display\contractnest-ui\src\components\catalog-studio\BlockCard.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockCard.tsx" -Force
+═══════════════════════════════════════════════════
