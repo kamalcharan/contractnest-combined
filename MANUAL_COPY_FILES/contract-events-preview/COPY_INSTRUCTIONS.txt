@@ -1,0 +1,19 @@
+CONTRACT EVENTS PREVIEW — Service & Billing Events Timeline
+============================================================
+
+Branch: contract-events-preview
+
+Files Changed:
+  - contractnest-ui/src/utils/service-contracts/contractEvents.ts (NEW)
+    Pure computation utility — generates service + billing events from wizard state
+
+  - contractnest-ui/src/components/contracts/ContractWizard/steps/EventsPreviewStep.tsx (NEW)
+    Events Preview wizard step — timeline grouped by date, editable dates
+
+  - contractnest-ui/src/components/contracts/ContractWizard/index.tsx (MODIFIED)
+    Wired Events Preview step between Billing View and Review (step 8 of 9)
+
+Submodules Affected: contractnest-ui
+
+Copy Command (PowerShell):
+  Copy-Item "MANUAL_COPY_FILES\contract-events-preview\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
