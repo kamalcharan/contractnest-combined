@@ -1,9 +1,11 @@
 // src/components/contracts/ContractWizard/steps/BillingViewStep.tsx
-// Step 8: Billing View - 2-column layout
-// Column 1: Read-only pricing cards | Column 2: Payment Schedule + Summary
+// Step 8: Billing View - 3-column layout
+// Column 1: Billing config summary | Column 2: Read-only pricing cards | Column 3: Payment Schedule + Summary
 
 import React, { useMemo, useEffect, useCallback } from 'react';
 import {
+  Calendar,
+  CheckCircle2,
   DollarSign,
   Receipt,
   CreditCard,
@@ -68,6 +70,26 @@ const getIconComponent = (iconName: string) => {
   >;
   return iconsMap[iconName] || LucideIcons.Package;
 };
+
+// Billing cycle option data (reused from BillingCycleStep)
+const BILLING_CYCLE_OPTIONS = [
+  {
+    id: 'unified' as const,
+    title: 'Unified Cycle',
+    description: 'All services billed on the same schedule',
+    icon: Calendar,
+    benefits: ['Simpler invoicing', 'Predictable billing', 'Easier reconciliation'],
+    visualExample: { labels: ['M', 'M', 'M'], description: 'All Monthly' },
+  },
+  {
+    id: 'mixed' as const,
+    title: 'Mixed Cycles',
+    description: 'Each service has its own billing schedule',
+    icon: Shuffle,
+    benefits: ['Maximum flexibility', 'Mix recurring & one-time', 'Custom per service'],
+    visualExample: { labels: ['M', 'Q', '1x'], description: 'Monthly, Quarterly, One-time' },
+  },
+];
 
 const BillingViewStep: React.FC<BillingViewStepProps> = ({
   selectedBlocks,
@@ -196,6 +218,9 @@ const BillingViewStep: React.FC<BillingViewStepProps> = ({
     [perBlockPaymentType, onPerBlockPaymentTypeChange]
   );
 
+  // Get the selected billing cycle option
+  const selectedCycleOption = BILLING_CYCLE_OPTIONS.find((o) => o.id === billingCycleType);
+
   return (
     <div
       className="h-full flex flex-col"
@@ -217,9 +242,134 @@ const BillingViewStep: React.FC<BillingViewStepProps> = ({
         </p>
       </div>
 
-      {/* 2-Column Layout */}
+      {/* 3-Column Layout */}
       <div className="flex-1 flex gap-4 px-4 pb-4 min-h-0">
-        {/* Column 1: Read-Only Pricing Cards */}
+        {/* Column 1: Billing Configuration Summary */}
+        <div className="w-[250px] flex-shrink-0">
+          <div
+            className="rounded-xl border overflow-hidden"
+            style={{
+              backgroundColor: colors.utility.secondaryBackground,
+              borderColor: `${colors.utility.primaryText}10`,
+            }}
+          >
+            {/* Column Header */}
+            <div
+              className="p-3 border-b flex items-center gap-2"
+              style={{ borderColor: `${colors.utility.primaryText}10` }}
+            >
+              <Calendar className="w-4 h-4" style={{ color: colors.brand.primary }} />
+              <span
+                className="text-sm font-semibold"
+                style={{ color: colors.utility.primaryText }}
+              >
+                Billing Config
+              </span>
+            </div>
+
+            {/* Selected Cycle Card */}
+            {selectedCycleOption && (
+              <div className="p-4">
+                <div
+                  className="p-4 rounded-xl border-2"
+                  style={{
+                    backgroundColor: `${colors.brand.primary}08`,
+                    borderColor: colors.brand.primary,
+                  }}
+                >
+                  {/* Icon */}
+                  <div
+                    className="w-10 h-10 rounded-lg flex items-center justify-center mb-3"
+                    style={{ backgroundColor: colors.brand.primary }}
+                  >
+                    <selectedCycleOption.icon className="w-5 h-5 text-white" />
+                  </div>
+
+                  {/* Title */}
+                  <h4
+                    className="text-sm font-bold mb-1"
+                    style={{ color: colors.utility.primaryText }}
+                  >
+                    {selectedCycleOption.title}
+                  </h4>
+                  <p
+                    className="text-xs mb-3"
+                    style={{ color: colors.utility.secondaryText }}
+                  >
+                    {selectedCycleOption.description}
+                  </p>
+
+                  {/* Visual Example */}
+                  <div
+                    className="flex items-center gap-1.5 mb-3 p-2 rounded-lg"
+                    style={{ backgroundColor: `${colors.utility.primaryText}05` }}
+                  >
+                    {selectedCycleOption.visualExample.labels.map((label, i) => (
+                      <div
+                        key={i}
+                        className="w-7 h-7 rounded-md flex items-center justify-center text-[10px] font-bold"
+                        style={{
+                          backgroundColor: colors.brand.primary,
+                          color: 'white',
+                        }}
+                      >
+                        {label}
+                      </div>
+                    ))}
+                    <span
+                      className="text-[10px] ml-1"
+                      style={{ color: colors.utility.secondaryText }}
+                    >
+                      {selectedCycleOption.visualExample.description}
+                    </span>
+                  </div>
+
+                  {/* Benefits */}
+                  <div className="space-y-1.5">
+                    {selectedCycleOption.benefits.map((benefit, i) => (
+                      <div key={i} className="flex items-center gap-1.5">
+                        <CheckCircle2
+                          className="w-3.5 h-3.5 flex-shrink-0"
+                          style={{ color: colors.semantic.success }}
+                        />
+                        <span
+                          className="text-[11px]"
+                          style={{ color: colors.utility.secondaryText }}
+                        >
+                          {benefit}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Currency Info */}
+                <div
+                  className="mt-3 p-3 rounded-lg flex items-center gap-2"
+                  style={{ backgroundColor: `${colors.utility.primaryText}05` }}
+                >
+                  <DollarSign className="w-4 h-4" style={{ color: colors.brand.primary }} />
+                  <div>
+                    <span
+                      className="text-xs font-medium block"
+                      style={{ color: colors.utility.primaryText }}
+                    >
+                      Currency
+                    </span>
+                    <span
+                      className="text-[11px]"
+                      style={{ color: colors.utility.secondaryText }}
+                    >
+                      {currency} ({getCurrencySymbol(currency)})
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Column 2: Read-Only Pricing Cards */}
         <div
           className="flex-1 flex flex-col rounded-xl border overflow-hidden min-h-0"
           style={{
@@ -481,7 +631,7 @@ const BillingViewStep: React.FC<BillingViewStepProps> = ({
           )}
         </div>
 
-        {/* Column 2: Payment Schedule + Summary */}
+        {/* Column 3: Payment Schedule + Summary */}
         <div className="w-[420px] flex-shrink-0 min-h-0">
           <div className="h-full overflow-y-auto flex flex-col gap-3 pr-1">
           {/* Payment Schedule Section */}
