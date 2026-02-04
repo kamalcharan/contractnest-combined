@@ -1,0 +1,48 @@
+═══════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS - Contract Wizard 6-Issue Testing Fixes
+═══════════════════════════════════════════════════════════════
+
+Branch: fix-contract-wizard-6-issues
+Submodules Affected: contractnest-ui (only)
+Date: 2026-02-04
+
+═══════════════════════════════════════════════════════════════
+FILES CHANGED (5 files in contractnest-ui)
+═══════════════════════════════════════════════════════════════
+
+1. contractnest-ui/src/components/contracts/ContractWizard/steps/BillingViewStep.tsx
+   → Issue #1: Tax breakup in Billing View summary (per-block tax aggregation)
+   → Sends taxBreakdown array to parent wizard state via onTotalsChange
+
+2. contractnest-ui/src/components/contracts/ContractWizard/steps/ReviewSendStep.tsx
+   → Issue #2: Tax breakup in Review & Send financial summary (per-block tax aggregation)
+   → Issue #5: Payment gateway config indicator in auto-accept panel (useGatewayStatus hook)
+
+3. contractnest-ui/src/components/contracts/ContractWizard/FloatingActionIsland.tsx
+   → Issue #3: Button color consistency on last step (always brand.primary, no green)
+
+4. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+   → Issue #4: "Create Contract" button text for auto-accept mode
+   → Issue #6: Pre-payment dialog redesign:
+     - Landscape 2-column layout (max-w-3xl)
+     - Left: client name, contract name, amount breakdown (subtotal + individual taxes + total), payment mode badge
+     - Right: offline/online toggle (when gateway configured), offline form (2-col method+date), online Razorpay checkout card
+     - Amount fix: uses grandTotal (from BillingViewStep) instead of totalValue (block sum only)
+     - Online payment: create contract → fetch invoice → create Razorpay order → open checkout
+
+5. contractnest-ui/src/services/serviceURLs.ts
+   → Added missing API endpoint definitions:
+     - CONTRACTS.INVOICES, CONTRACTS.RECORD_PAYMENT, CONTRACTS.NOTIFY
+     - PAYMENTS section: CREATE_ORDER, CREATE_LINK, VERIFY_PAYMENT, STATUS
+
+═══════════════════════════════════════════════════════════════
+COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\fix-contract-wizard-6-issues\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════════════════
