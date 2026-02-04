@@ -11,68 +11,48 @@ FILES TO COPY
 
 --- DB Layer (Edge) ---
 NEW  contractnest-edge/supabase/migrations/admin-jtd-management/002_admin_jtd_actions.sql
-     → 6 new RPC functions: admin_retry_jtd_event, admin_cancel_jtd_event,
+     -> 6 new RPC functions: admin_retry_jtd_event, admin_cancel_jtd_event,
        admin_force_complete_jtd_event, admin_list_dlq_messages,
        admin_requeue_dlq_message, admin_purge_dlq
 
 MODIFIED contractnest-edge/supabase/functions/admin-jtd-management/index.ts
-     → Added 6 new POST/GET endpoints for R2 actions
+     -> Added 6 new POST/GET endpoints for R2 actions
 
 --- API Layer ---
 MODIFIED contractnest-api/src/types/adminJtd.dto.ts
-     → Added R2 request/response DTOs (RetryEventRequest, CancelEventRequest,
+     -> Added R2 request/response DTOs (RetryEventRequest, CancelEventRequest,
        ForceCompleteRequest, RequeueDlqRequest, ListDlqRequest, ActionResponse,
        DlqMessageItem, DlqListResponse)
 
 MODIFIED contractnest-api/src/validators/adminJtdValidators.ts
-     → Added R2 validators (retryEventValidation, cancelEventValidation,
+     -> Added R2 validators (retryEventValidation, cancelEventValidation,
        forceCompleteValidation, listDlqValidation, requeueDlqValidation)
 
 MODIFIED contractnest-api/src/routes/adminJtdRoutes.ts
-     → Added 6 new R2 routes (POST retry/cancel/force-complete/requeue-dlq/purge-dlq, GET dlq/messages)
+     -> Added 6 new R2 routes (POST retry/cancel/force-complete/requeue-dlq/purge-dlq, GET dlq/messages)
 
 MODIFIED contractnest-api/src/services/adminJtdService.ts
-     → Added 6 new R2 service methods + getHeadersWithAdmin helper
+     -> Added 6 new R2 service methods + getHeadersWithAdmin helper
 
 --- UI Layer ---
+MODIFIED contractnest-ui/src/services/serviceURLs.ts
+     -> Added R2 endpoints to ADMIN.JTD block (RETRY_EVENT, CANCEL_EVENT,
+       FORCE_COMPLETE, DLQ_MESSAGES, DLQ_MESSAGES_WITH_FILTERS, REQUEUE_DLQ,
+       PURGE_DLQ) — FULL FILE included, safe to overwrite
+
 MODIFIED contractnest-ui/src/pages/admin/jtd/types/jtdAdmin.types.ts
-     → Added DlqMessage and ActionResult interfaces
+     -> Added DlqMessage and ActionResult interfaces
 
 MODIFIED contractnest-ui/src/pages/admin/jtd/hooks/useJtdAdmin.ts
-     → Added useDlqMessages and useJtdAction hooks
+     -> Added useDlqMessages and useJtdAction hooks
 
 MODIFIED contractnest-ui/src/pages/admin/jtd/EventExplorerPage.tsx
-     → Added inline action buttons (Retry/Cancel/Force Complete) per row + detail view
-     → Uses ConfirmationDialog + vaniToast
+     -> Added inline action buttons (Retry/Cancel/Force Complete) per row + detail view
+     -> Uses ConfirmationDialog + vaniToast
 
 MODIFIED contractnest-ui/src/pages/admin/jtd/QueueMonitorPage.tsx
-     → Added DLQ messages table with Requeue and Purge All buttons
-     → Uses ConfirmationDialog + vaniToast
-
-===============================================================================
-IMPORTANT: DIFF-ONLY for serviceURLs.ts (do NOT overwrite)
-===============================================================================
-
-Add the following entries INSIDE the existing ADMIN.JTD block in:
-  contractnest-ui/src/services/serviceURLs.ts
-
-After the WORKER_HEALTH line (change trailing comma), add:
-
-      WORKER_HEALTH: '/api/admin/jtd/worker/health',
-      // R2 — Actions
-      RETRY_EVENT: '/api/admin/jtd/actions/retry',
-      CANCEL_EVENT: '/api/admin/jtd/actions/cancel',
-      FORCE_COMPLETE: '/api/admin/jtd/actions/force-complete',
-      DLQ_MESSAGES: '/api/admin/jtd/dlq/messages',
-      DLQ_MESSAGES_WITH_FILTERS: (filters: { page?: number; limit?: number } = {}) => {
-        const params = new URLSearchParams();
-        if (filters.page) params.append('page', filters.page.toString());
-        if (filters.limit) params.append('limit', filters.limit.toString());
-        const qs = params.toString();
-        return qs ? `/api/admin/jtd/dlq/messages?${qs}` : '/api/admin/jtd/dlq/messages';
-      },
-      REQUEUE_DLQ: '/api/admin/jtd/actions/requeue-dlq',
-      PURGE_DLQ: '/api/admin/jtd/actions/purge-dlq'
+     -> Added DLQ messages table with Requeue and Purge All buttons
+     -> Uses ConfirmationDialog + vaniToast
 
 ===============================================================================
 COPY COMMANDS (PowerShell)
@@ -86,11 +66,10 @@ Copy-Item "MANUAL_COPY_FILES\admin-jtd-r2-actions\contractnest-edge\*" -Destinat
 # API
 Copy-Item "MANUAL_COPY_FILES\admin-jtd-r2-actions\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
 
-# UI (EXCEPT serviceURLs.ts — apply diff manually)
+# UI (including serviceURLs.ts — full file, safe to overwrite)
 Copy-Item "MANUAL_COPY_FILES\admin-jtd-r2-actions\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
 
-Write-Host "All R2 files copied!" -ForegroundColor Green
-Write-Host "IMPORTANT: Manually add R2 endpoints to serviceURLs.ts (see COPY_INSTRUCTIONS.txt)" -ForegroundColor Yellow
+Write-Host "All R2 files copied (including serviceURLs.ts)!" -ForegroundColor Green
 
 ===============================================================================
 TESTING CHECKLIST
