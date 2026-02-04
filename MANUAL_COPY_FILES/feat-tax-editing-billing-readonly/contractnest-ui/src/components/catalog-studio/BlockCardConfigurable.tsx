@@ -27,6 +27,7 @@ import {
 import { useTheme } from '@/contexts/ThemeContext';
 import { getCurrencySymbol } from '@/utils/constants/currencies';
 import { categoryHasPricing } from '@/utils/catalog-studio/categories';
+import { useTaxRatesDropdown } from '@/hooks/queries/useProductMasterdata';
 
 // Billing cycle options
 export const CYCLE_OPTIONS = [
@@ -58,7 +59,7 @@ export interface ConfigurableBlock {
   flyByType?: string; // 'service' | 'spare' | 'text' | 'document'
   taxRate?: number; // Total tax rate percentage (e.g. 18)
   taxInclusion?: 'inclusive' | 'exclusive';
-  taxes?: Array<{ name: string; rate: number }>; // Individual tax lines
+  taxes?: Array<{ id: string; name: string; rate: number }>; // Individual tax lines from master data
   // Additional config options
   config?: {
     showDescription?: boolean; // Show description in contract
@@ -111,6 +112,10 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
   const IconComponent = getIconComponent(block.icon);
   const hasPricing = categoryHasPricing(block.categoryId || '');
+
+  // Tax master data
+  const { options: taxRateOptions } = useTaxRatesDropdown();
+  const [taxDropdownOpen, setTaxDropdownOpen] = useState(false);
 
   // Local state for selling price input (fixes UX: controlled number input blocks replacement)
   const [sellingPriceInput, setSellingPriceInput] = useState(
@@ -534,7 +539,7 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-[10px] font-medium uppercase tracking-wide flex items-center gap-1" style={{ color: colors.utility.secondaryText }}>
                     <Percent className="w-3 h-3" />
-                    Taxes
+                    Tax Rates
                   </label>
                   <select
                     value={block.taxInclusion || 'exclusive'}
@@ -551,76 +556,85 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
                   </select>
                 </div>
 
-                {/* Tax rows */}
-                <div className="space-y-1.5">
-                  {(block.taxes || []).map((tax, i) => (
-                    <div key={i} className="flex items-center gap-1.5">
-                      <input
-                        type="text"
-                        value={tax.name}
-                        onChange={(e) => {
-                          const newTaxes = [...(block.taxes || [])];
-                          newTaxes[i] = { ...newTaxes[i], name: e.target.value };
-                          onUpdate(block.id, { taxes: newTaxes });
-                        }}
-                        placeholder="Tax name"
-                        className="flex-1 px-2 py-1.5 text-xs rounded border"
-                        style={{
-                          backgroundColor: colors.utility.primaryBackground,
-                          borderColor: `${colors.utility.primaryText}20`,
-                          color: colors.utility.primaryText,
-                        }}
-                      />
-                      <div className="flex items-center gap-0.5">
-                        <input
-                          type="number"
-                          value={tax.rate}
-                          onChange={(e) => {
-                            const newTaxes = [...(block.taxes || [])];
-                            const newRate = parseFloat(e.target.value) || 0;
-                            newTaxes[i] = { ...newTaxes[i], rate: newRate };
-                            const newTaxRate = newTaxes.reduce((sum, t) => sum + Number(t.rate), 0);
-                            onUpdate(block.id, { taxes: newTaxes, taxRate: newTaxRate });
-                          }}
-                          className="w-14 px-2 py-1.5 text-xs rounded border text-right"
-                          style={{
-                            backgroundColor: colors.utility.primaryBackground,
-                            borderColor: `${colors.utility.primaryText}20`,
-                            color: colors.utility.primaryText,
-                          }}
-                        />
-                        <span className="text-[10px]" style={{ color: colors.utility.secondaryText }}>%</span>
-                      </div>
+                {/* Tax chips from master data */}
+                <div className="flex flex-wrap gap-1.5 items-center min-h-[32px] p-2 border rounded-lg" style={{
+                  backgroundColor: colors.utility.primaryBackground,
+                  borderColor: `${colors.utility.primaryText}20`,
+                }}>
+                  {(block.taxes || []).map((tax) => (
+                    <span
+                      key={tax.id}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium"
+                      style={{ backgroundColor: `${colors.brand.primary}15`, color: colors.brand.primary }}
+                    >
+                      {tax.name} ({tax.rate}%)
                       <button
+                        type="button"
                         onClick={() => {
-                          const newTaxes = (block.taxes || []).filter((_, idx) => idx !== i);
+                          const newTaxes = (block.taxes || []).filter(t => t.id !== tax.id);
                           const newTaxRate = newTaxes.reduce((sum, t) => sum + Number(t.rate), 0);
                           onUpdate(block.id, { taxes: newTaxes, taxRate: newTaxRate });
                         }}
-                        className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
-                        style={{ color: colors.semantic.error }}
+                        className="hover:opacity-70"
                       >
                         <X className="w-3 h-3" />
                       </button>
-                    </div>
+                    </span>
                   ))}
-                </div>
 
-                {/* Add Tax Button */}
-                <button
-                  onClick={() => {
-                    const newTaxes = [...(block.taxes || []), { name: '', rate: 0 }];
-                    onUpdate(block.id, { taxes: newTaxes });
-                  }}
-                  className="flex items-center gap-1 mt-2 px-2 py-1.5 text-xs font-medium rounded-lg transition-colors hover:opacity-80"
-                  style={{
-                    color: colors.brand.primary,
-                    backgroundColor: `${colors.brand.primary}10`,
-                  }}
-                >
-                  <Plus className="w-3 h-3" />
-                  Add Tax
-                </button>
+                  {/* Add Tax dropdown */}
+                  {(() => {
+                    const unused = taxRateOptions.filter(t => !(block.taxes || []).some(existing => existing.id === t.value));
+                    if (unused.length === 0) return null;
+                    return (
+                      <div className="relative">
+                        <button
+                          type="button"
+                          onClick={() => setTaxDropdownOpen(!taxDropdownOpen)}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] border border-dashed hover:border-solid transition-all"
+                          style={{ borderColor: colors.brand.primary, color: colors.brand.primary }}
+                        >
+                          <Plus className="w-3 h-3" />
+                          Add Tax
+                        </button>
+
+                        {taxDropdownOpen && (
+                          <>
+                            <div className="fixed inset-0 z-40" onClick={() => setTaxDropdownOpen(false)} />
+                            <div
+                              className="absolute left-0 z-50 mt-1 w-48 max-h-48 overflow-y-auto rounded-xl border shadow-lg"
+                              style={{
+                                backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#FFFFFF',
+                                borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB',
+                              }}
+                            >
+                              {unused.map((tax) => (
+                                <button
+                                  key={tax.value}
+                                  type="button"
+                                  onClick={() => {
+                                    const newTaxes = [...(block.taxes || []), { id: tax.value, name: tax.label, rate: tax.rate || 0 }];
+                                    const newTaxRate = newTaxes.reduce((sum, t) => sum + Number(t.rate), 0);
+                                    onUpdate(block.id, { taxes: newTaxes, taxRate: newTaxRate });
+                                    setTaxDropdownOpen(false);
+                                  }}
+                                  className="w-full px-3 py-2 text-left text-xs hover:bg-gray-50 dark:hover:bg-gray-800"
+                                  style={{ color: colors.utility.primaryText }}
+                                >
+                                  {tax.label}
+                                </button>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {(block.taxes || []).length === 0 && taxRateOptions.length === 0 && (
+                    <span className="text-[10px]" style={{ color: colors.utility.secondaryText }}>No taxes available</span>
+                  )}
+                </div>
               </div>
             </div>
 
