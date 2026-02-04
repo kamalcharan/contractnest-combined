@@ -1,0 +1,56 @@
+===============================================================
+FEATURE: Tax Editing in Add Blocks + Billing View Read-Only
+BRANCH: feat-tax-editing-billing-readonly
+DATE: 2026-02-04
+===============================================================
+
+SUBMODULES AFFECTED: contractnest-ui
+
+CHANGES SUMMARY:
+1. BlockCardConfigurable.tsx - Added tax editing UI in Advanced Settings (tax inclusion dropdown, editable tax rows, add/remove taxes)
+2. FlyByBlockCard.tsx - Added tax editing UI for pricing types (service/spare) + full price summary with per-tax breakdown
+3. ServiceBlocksStep.tsx - No new changes (verified handleUpdateBlock already handles taxRate/taxInclusion recalculation)
+4. BillingViewStep.tsx - Complete rewrite: 2-column layout, read-only pricing cards (left), payment schedule + simplified summary (right), removed contract-level tax chips
+
+FEATURES ADDED:
+- Per-block tax editing in "Add Service Blocks" step (both regular and FlyBy blocks)
+- Tax inclusion mode toggle (Inclusive/Exclusive) per block
+- Add/remove/edit individual tax rows (name + rate %)
+- Billing View: read-only pricing cards with full breakdown (currency, base price, per-tax amounts, total)
+- Billing View: simplified summary (Subtotal + Tax + Grand Total) aggregated from per-block taxes
+- Billing View: removed contract-level tax selection chips entirely
+
+ISSUES FIXED:
+- No way to add/edit taxes on blocks in contract wizard - now fully editable
+- FlyBy pricing blocks had no tax support - now have full tax editing
+- Billing View had conflicting tax systems (contract-level vs per-block) - resolved to per-block only
+- Billing View was complex 3-column with inline price editing - simplified to 2-column read-only review
+
+===============================================================
+COPY COMMANDS (PowerShell)
+===============================================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\feat-tax-editing-billing-readonly\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+===============================================================
+TESTING CHECKLIST
+===============================================================
+- [ ] Contract Wizard > Add Service Blocks: Expand a regular block card - Tax section appears in Advanced Settings
+- [ ] Tax inclusion dropdown works (Inclusive/Exclusive)
+- [ ] Can add a new tax row (name + rate)
+- [ ] Can edit existing tax name and rate
+- [ ] Can remove a tax row
+- [ ] Total price recalculates when taxes change
+- [ ] FlyBy block (service/spare type): Tax editing section appears
+- [ ] FlyBy block: Price summary shows per-tax breakdown
+- [ ] Billing View: Left column shows read-only pricing cards (no edit buttons)
+- [ ] Billing View: Each card shows currency, base price, per-tax lines, total
+- [ ] Billing View: FlyBy blocks do NOT show tax lines on cards
+- [ ] Billing View: Right column has Payment Schedule (unchanged)
+- [ ] Billing View: Tax selection chips are REMOVED
+- [ ] Billing View: Summary shows Subtotal + Tax (per-block) + Grand Total
+- [ ] Billing View: Grand total matches sum of all block totals
