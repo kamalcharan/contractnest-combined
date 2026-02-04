@@ -30,14 +30,13 @@ export const JtdMetricCard: React.FC<JtdMetricCardProps> = ({
 }) => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
-  const borderColor = isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)';
 
   return (
     <div
-      className={`rounded-xl p-5 transition-all ${onClick ? 'cursor-pointer hover:scale-[1.02]' : ''} ${alert ? 'ring-2 ring-red-400/50' : ''}`}
+      className={`rounded-lg shadow-sm border p-5 transition-colors ${onClick ? 'cursor-pointer hover:scale-[1.02]' : ''} ${alert ? 'ring-2 ring-red-400/50' : ''}`}
       style={{
-        backgroundColor: colors.utility.primaryBackground,
-        border: `1px solid ${alert ? '#EF4444' : borderColor}`,
+        backgroundColor: colors.utility.secondaryBackground,
+        borderColor: alert ? colors.semantic.error : colors.utility.primaryText + '20',
       }}
       onClick={onClick}
     >
@@ -52,8 +51,8 @@ export const JtdMetricCard: React.FC<JtdMetricCardProps> = ({
           <span
             className="text-xs font-medium px-2 py-0.5 rounded-full"
             style={{
-              color: trend === 'up' ? '#10B981' : trend === 'down' ? '#EF4444' : '#6B7280',
-              backgroundColor: trend === 'up' ? '#D1FAE5' : trend === 'down' ? '#FEE2E2' : '#F3F4F6',
+              color: trend === 'up' ? colors.semantic.success : trend === 'down' ? colors.semantic.error : colors.utility.secondaryText,
+              backgroundColor: trend === 'up' ? colors.semantic.success + '20' : trend === 'down' ? colors.semantic.error + '20' : colors.utility.secondaryText + '20',
             }}
           >
             {trendValue}
@@ -61,20 +60,20 @@ export const JtdMetricCard: React.FC<JtdMetricCardProps> = ({
         )}
       </div>
       <div
-        className="text-2xl font-bold mb-1"
+        className="text-2xl font-bold mb-1 transition-colors"
         style={{ color: colors.utility.primaryText }}
       >
         {typeof value === 'number' ? value.toLocaleString() : value}
       </div>
       <div
-        className="text-sm font-medium"
+        className="text-sm font-medium transition-colors"
         style={{ color: colors.utility.secondaryText }}
       >
         {title}
       </div>
       {subtitle && (
         <div
-          className="text-xs mt-1"
+          className="text-xs mt-1 transition-colors"
           style={{ color: colors.utility.secondaryText }}
         >
           {subtitle}

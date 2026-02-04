@@ -7,19 +7,20 @@ import {
   AlertTriangle,
   Activity,
   RefreshCw,
-  Loader2,
   Inbox,
   Trash2,
   Clock,
   Zap,
   CreditCard,
   Calendar,
+  AlertCircle,
 } from 'lucide-react';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { useAuth } from '../../../context/AuthContext';
 import { useQueueMetrics } from './hooks/useJtdAdmin';
 import { JtdMetricCard } from './components/JtdMetricCard';
 import { JtdStatusBadge } from './components/JtdStatusBadge';
+import { VaNiLoader } from '@/components/common/loaders';
 
 function formatAge(seconds: number | null): string {
   if (seconds === null || seconds === undefined) return '—';
@@ -32,13 +33,12 @@ function formatAge(seconds: number | null): string {
 const QueueMonitorPage: React.FC = () => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
-  const borderColor = isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)';
   const { currentTenant } = useAuth();
   const { data, loading, error, refresh } = useQueueMetrics(15000);
 
   if (!currentTenant?.is_admin) {
     return (
-      <div className="p-8 text-center" style={{ color: colors.utility.secondaryText }}>
+      <div className="p-8 text-center transition-colors" style={{ color: colors.utility.secondaryText }}>
         Admin access required.
       </div>
     );
@@ -46,18 +46,16 @@ const QueueMonitorPage: React.FC = () => {
 
   if (loading && !data) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="animate-spin" size={32} style={{ color: colors.brand.primary }} />
-      </div>
+      <VaNiLoader size="md" message="Loading queue metrics..." />
     );
   }
 
   if (error) {
     return (
       <div className="p-8 text-center">
-        <AlertTriangle size={32} className="mx-auto mb-3" style={{ color: '#EF4444' }} />
-        <p style={{ color: colors.utility.primaryText }}>{error}</p>
-        <button onClick={refresh} className="mt-3 text-sm underline" style={{ color: colors.brand.primary }}>Retry</button>
+        <AlertCircle size={32} className="mx-auto mb-3" style={{ color: colors.semantic.error }} />
+        <p className="transition-colors" style={{ color: colors.semantic.error }}>{error}</p>
+        <button onClick={refresh} className="mt-3 text-sm underline hover:no-underline transition-colors" style={{ color: colors.brand.primary }}>Retry</button>
       </div>
     );
   }
@@ -69,18 +67,21 @@ const QueueMonitorPage: React.FC = () => {
   const channelEntries = Object.entries(data.last_24h.by_channel).sort((a, b) => b[1] - a[1]);
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div
+      className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto min-h-screen transition-colors"
+      style={{ backgroundColor: colors.utility.primaryBackground }}
+    >
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: colors.utility.primaryText }}>Queue Monitor</h1>
-          <p className="text-sm mt-1" style={{ color: colors.utility.secondaryText }}>
+          <h1 className="text-2xl font-bold transition-colors" style={{ color: colors.utility.primaryText }}>Queue Monitor</h1>
+          <p className="text-sm mt-1 transition-colors" style={{ color: colors.utility.secondaryText }}>
             Live view of the JTD processing pipeline
           </p>
         </div>
         <button
           onClick={refresh}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium hover:opacity-80 transition-opacity"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium hover:opacity-80 transition-colors"
           style={{ backgroundColor: colors.brand.primary, color: '#fff' }}
         >
           <RefreshCw size={16} /> Refresh
@@ -94,7 +95,7 @@ const QueueMonitorPage: React.FC = () => {
           value={data.main_queue.length}
           subtitle={data.main_queue.oldest_age_sec ? `Oldest: ${formatAge(data.main_queue.oldest_age_sec)}` : 'Empty'}
           icon={Inbox}
-          iconColor="#3B82F6"
+          iconColor={colors.semantic.info}
           alert={data.main_queue.length > 100}
         />
         <JtdMetricCard
@@ -102,7 +103,7 @@ const QueueMonitorPage: React.FC = () => {
           value={data.dlq.length}
           subtitle={data.dlq.oldest_age_sec ? `Oldest: ${formatAge(data.dlq.oldest_age_sec)}` : 'Empty'}
           icon={Trash2}
-          iconColor={data.dlq.length > 0 ? '#EF4444' : '#6B7280'}
+          iconColor={data.dlq.length > 0 ? colors.semantic.error : colors.utility.secondaryText}
           alert={data.dlq.length > 0}
         />
         <JtdMetricCard
@@ -117,7 +118,7 @@ const QueueMonitorPage: React.FC = () => {
           value={data.actionable.failed_retryable}
           subtitle="Can be retried"
           icon={AlertTriangle}
-          iconColor={data.actionable.failed_retryable > 0 ? '#EF4444' : '#10B981'}
+          iconColor={data.actionable.failed_retryable > 0 ? colors.semantic.error : colors.semantic.success}
           alert={data.actionable.failed_retryable > 10}
         />
       </div>
@@ -137,7 +138,7 @@ const QueueMonitorPage: React.FC = () => {
           value={data.actionable.no_credits_waiting}
           subtitle="Blocked on credit top-up"
           icon={CreditCard}
-          iconColor="#D97706"
+          iconColor={colors.semantic.warning}
           alert={data.actionable.no_credits_waiting > 0}
         />
       </div>
@@ -146,76 +147,76 @@ const QueueMonitorPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Status Distribution */}
         <div
-          className="rounded-xl p-5"
-          style={{ backgroundColor: colors.utility.primaryBackground, border: `1px solid ${borderColor}` }}
+          className="rounded-lg shadow-sm border p-5 transition-colors"
+          style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: colors.utility.primaryText + '20' }}
         >
-          <h3 className="text-sm font-semibold mb-4" style={{ color: colors.utility.primaryText }}>
+          <h3 className="text-sm font-semibold mb-4 transition-colors" style={{ color: colors.utility.primaryText }}>
             Status Distribution (All Time)
           </h3>
           <div className="space-y-2">
             {statusEntries.map(([code, count]) => (
               <div key={code} className="flex items-center justify-between">
                 <JtdStatusBadge code={code} />
-                <span className="text-sm font-medium" style={{ color: colors.utility.primaryText }}>
+                <span className="text-sm font-medium transition-colors" style={{ color: colors.utility.primaryText }}>
                   {count.toLocaleString()}
                 </span>
               </div>
             ))}
             {statusEntries.length === 0 && (
-              <p className="text-sm opacity-40" style={{ color: colors.utility.secondaryText }}>No data</p>
+              <p className="text-sm opacity-40 transition-colors" style={{ color: colors.utility.secondaryText }}>No data</p>
             )}
           </div>
         </div>
 
         {/* By Event Type (24h) */}
         <div
-          className="rounded-xl p-5"
-          style={{ backgroundColor: colors.utility.primaryBackground, border: `1px solid ${borderColor}` }}
+          className="rounded-lg shadow-sm border p-5 transition-colors"
+          style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: colors.utility.primaryText + '20' }}
         >
-          <h3 className="text-sm font-semibold mb-4" style={{ color: colors.utility.primaryText }}>
+          <h3 className="text-sm font-semibold mb-4 transition-colors" style={{ color: colors.utility.primaryText }}>
             By Event Type (Last 24h)
           </h3>
           <div className="space-y-2">
             {eventTypeEntries.map(([code, count]) => (
               <div key={code} className="flex items-center justify-between">
                 <JtdStatusBadge code={code} type="event_type" />
-                <span className="text-sm font-medium" style={{ color: colors.utility.primaryText }}>
+                <span className="text-sm font-medium transition-colors" style={{ color: colors.utility.primaryText }}>
                   {count.toLocaleString()}
                 </span>
               </div>
             ))}
             {eventTypeEntries.length === 0 && (
-              <p className="text-sm opacity-40" style={{ color: colors.utility.secondaryText }}>No data</p>
+              <p className="text-sm opacity-40 transition-colors" style={{ color: colors.utility.secondaryText }}>No data</p>
             )}
           </div>
         </div>
 
         {/* By Channel (24h) */}
         <div
-          className="rounded-xl p-5"
-          style={{ backgroundColor: colors.utility.primaryBackground, border: `1px solid ${borderColor}` }}
+          className="rounded-lg shadow-sm border p-5 transition-colors"
+          style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: colors.utility.primaryText + '20' }}
         >
-          <h3 className="text-sm font-semibold mb-4" style={{ color: colors.utility.primaryText }}>
+          <h3 className="text-sm font-semibold mb-4 transition-colors" style={{ color: colors.utility.primaryText }}>
             By Channel (Last 24h)
           </h3>
           <div className="space-y-2">
             {channelEntries.map(([code, count]) => (
               <div key={code} className="flex items-center justify-between">
                 <JtdStatusBadge code={code} type="channel" />
-                <span className="text-sm font-medium" style={{ color: colors.utility.primaryText }}>
+                <span className="text-sm font-medium transition-colors" style={{ color: colors.utility.primaryText }}>
                   {count.toLocaleString()}
                 </span>
               </div>
             ))}
             {channelEntries.length === 0 && (
-              <p className="text-sm opacity-40" style={{ color: colors.utility.secondaryText }}>No data</p>
+              <p className="text-sm opacity-40 transition-colors" style={{ color: colors.utility.secondaryText }}>No data</p>
             )}
           </div>
         </div>
       </div>
 
       {/* Footer */}
-      <div className="text-xs text-center" style={{ color: colors.utility.secondaryText }}>
+      <div className="text-xs text-center transition-colors" style={{ color: colors.utility.secondaryText }}>
         Auto-refreshes every 15 seconds &middot; Last updated: {new Date(data.generated_at).toLocaleTimeString()}
       </div>
     </div>

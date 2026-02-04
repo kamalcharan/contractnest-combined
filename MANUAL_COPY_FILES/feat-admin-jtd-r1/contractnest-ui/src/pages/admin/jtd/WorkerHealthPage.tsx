@@ -5,7 +5,6 @@ import React from 'react';
 import {
   HeartPulse,
   RefreshCw,
-  Loader2,
   AlertTriangle,
   Activity,
   Zap,
@@ -22,6 +21,7 @@ import { useTheme } from '../../../contexts/ThemeContext';
 import { useAuth } from '../../../context/AuthContext';
 import { useWorkerHealth } from './hooks/useJtdAdmin';
 import { JtdMetricCard } from './components/JtdMetricCard';
+import { VaNiLoader } from '@/components/common/loaders';
 import type { WorkerStatus } from './types/jtdAdmin.types';
 
 const STATUS_CONFIG: Record<WorkerStatus, { label: string; color: string; bgColor: string; icon: typeof HeartPulse }> = {
@@ -43,13 +43,12 @@ function formatAge(seconds: number | null): string {
 const WorkerHealthPage: React.FC = () => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
-  const borderColor = isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)';
   const { currentTenant } = useAuth();
   const { data, loading, error, refresh } = useWorkerHealth(15000);
 
   if (!currentTenant?.is_admin) {
     return (
-      <div className="p-8 text-center" style={{ color: colors.utility.secondaryText }}>
+      <div className="p-8 text-center transition-colors" style={{ color: colors.utility.secondaryText }}>
         Admin access required.
       </div>
     );
@@ -57,18 +56,16 @@ const WorkerHealthPage: React.FC = () => {
 
   if (loading && !data) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="animate-spin" size={32} style={{ color: colors.brand.primary }} />
-      </div>
+      <VaNiLoader size="md" message="Loading worker health..." />
     );
   }
 
   if (error) {
     return (
       <div className="p-8 text-center">
-        <AlertTriangle size={32} className="mx-auto mb-3" style={{ color: '#EF4444' }} />
-        <p style={{ color: colors.utility.primaryText }}>{error}</p>
-        <button onClick={refresh} className="mt-3 text-sm underline" style={{ color: colors.brand.primary }}>Retry</button>
+        <AlertCircle size={32} className="mx-auto mb-3" style={{ color: colors.semantic.error }} />
+        <p className="transition-colors" style={{ color: colors.semantic.error }}>{error}</p>
+        <button onClick={refresh} className="mt-3 text-sm underline hover:no-underline transition-colors" style={{ color: colors.brand.primary }}>Retry</button>
       </div>
     );
   }
@@ -79,18 +76,21 @@ const WorkerHealthPage: React.FC = () => {
   const StatusIcon = cfg.icon;
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div
+      className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto min-h-screen transition-colors"
+      style={{ backgroundColor: colors.utility.primaryBackground }}
+    >
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold" style={{ color: colors.utility.primaryText }}>Worker Health</h1>
-          <p className="text-sm mt-1" style={{ color: colors.utility.secondaryText }}>
+          <h1 className="text-2xl font-bold transition-colors" style={{ color: colors.utility.primaryText }}>Worker Health</h1>
+          <p className="text-sm mt-1 transition-colors" style={{ color: colors.utility.secondaryText }}>
             JTD processing worker status and performance
           </p>
         </div>
         <button
           onClick={refresh}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium hover:opacity-80"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium hover:opacity-80 transition-colors"
           style={{ backgroundColor: colors.brand.primary, color: '#fff' }}
         >
           <RefreshCw size={16} /> Refresh
@@ -99,10 +99,10 @@ const WorkerHealthPage: React.FC = () => {
 
       {/* Status Banner */}
       <div
-        className="rounded-xl p-6 flex items-center gap-4"
+        className="rounded-lg shadow-sm border p-6 flex items-center gap-4 transition-colors"
         style={{
           backgroundColor: cfg.bgColor,
-          border: `2px solid ${cfg.color}40`,
+          borderColor: cfg.color + '40',
         }}
       >
         <div
@@ -135,26 +135,26 @@ const WorkerHealthPage: React.FC = () => {
           title="Processed (1h)"
           value={data.throughput.last_1h}
           icon={Zap}
-          iconColor="#10B981"
+          iconColor={colors.semantic.success}
         />
         <JtdMetricCard
           title="Processed (24h)"
           value={data.throughput.last_24h}
           icon={Activity}
-          iconColor="#3B82F6"
+          iconColor={colors.semantic.info}
         />
         <JtdMetricCard
           title="Errors (1h)"
           value={data.errors.last_1h}
           icon={XCircle}
-          iconColor={data.errors.last_1h > 0 ? '#EF4444' : '#6B7280'}
+          iconColor={data.errors.last_1h > 0 ? colors.semantic.error : colors.utility.secondaryText}
           alert={data.errors.last_1h > 5}
         />
         <JtdMetricCard
           title="Error Rate (1h)"
           value={`${data.errors.error_rate_1h}%`}
           icon={AlertTriangle}
-          iconColor={data.errors.error_rate_1h > 10 ? '#EF4444' : data.errors.error_rate_1h > 0 ? '#F59E0B' : '#10B981'}
+          iconColor={data.errors.error_rate_1h > 10 ? colors.semantic.error : data.errors.error_rate_1h > 0 ? colors.semantic.warning : colors.semantic.success}
           alert={data.errors.error_rate_1h > 20}
         />
       </div>
@@ -163,10 +163,10 @@ const WorkerHealthPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Performance */}
         <div
-          className="rounded-xl p-5"
-          style={{ backgroundColor: colors.utility.primaryBackground, border: `1px solid ${borderColor}` }}
+          className="rounded-lg shadow-sm border p-5 transition-colors"
+          style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: colors.utility.primaryText + '20' }}
         >
-          <h3 className="text-sm font-semibold mb-4" style={{ color: colors.utility.primaryText }}>
+          <h3 className="text-sm font-semibold mb-4 transition-colors" style={{ color: colors.utility.primaryText }}>
             Performance
           </h3>
           <div className="space-y-3">
@@ -177,10 +177,10 @@ const WorkerHealthPage: React.FC = () => {
               { label: 'Errors (24h)', value: String(data.errors.last_24h), alert: data.errors.last_24h > 10 },
             ].map((item) => (
               <div key={item.label} className="flex items-center justify-between">
-                <span className="text-sm" style={{ color: colors.utility.secondaryText }}>{item.label}</span>
+                <span className="text-sm transition-colors" style={{ color: colors.utility.secondaryText }}>{item.label}</span>
                 <span
-                  className="text-sm font-medium"
-                  style={{ color: item.alert ? '#EF4444' : colors.utility.primaryText }}
+                  className="text-sm font-medium transition-colors"
+                  style={{ color: item.alert ? colors.semantic.error : colors.utility.primaryText }}
                 >
                   {item.value}
                 </span>
@@ -191,10 +191,10 @@ const WorkerHealthPage: React.FC = () => {
 
         {/* Queue State */}
         <div
-          className="rounded-xl p-5"
-          style={{ backgroundColor: colors.utility.primaryBackground, border: `1px solid ${borderColor}` }}
+          className="rounded-lg shadow-sm border p-5 transition-colors"
+          style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: colors.utility.primaryText + '20' }}
         >
-          <h3 className="text-sm font-semibold mb-4" style={{ color: colors.utility.primaryText }}>
+          <h3 className="text-sm font-semibold mb-4 transition-colors" style={{ color: colors.utility.primaryText }}>
             Queue State
           </h3>
           <div className="space-y-3">
@@ -206,12 +206,12 @@ const WorkerHealthPage: React.FC = () => {
               const Icon = item.icon;
               return (
                 <div key={item.label} className="flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-sm" style={{ color: colors.utility.secondaryText }}>
+                  <span className="flex items-center gap-2 text-sm transition-colors" style={{ color: colors.utility.secondaryText }}>
                     <Icon size={14} /> {item.label}
                   </span>
                   <span
-                    className="text-sm font-medium"
-                    style={{ color: item.alert ? '#EF4444' : colors.utility.primaryText }}
+                    className="text-sm font-medium transition-colors"
+                    style={{ color: item.alert ? colors.semantic.error : colors.utility.primaryText }}
                   >
                     {item.value}
                   </span>
@@ -223,7 +223,7 @@ const WorkerHealthPage: React.FC = () => {
       </div>
 
       {/* Footer */}
-      <div className="text-xs text-center" style={{ color: colors.utility.secondaryText }}>
+      <div className="text-xs text-center transition-colors" style={{ color: colors.utility.secondaryText }}>
         Auto-refreshes every 15 seconds &middot; Last updated: {new Date(data.generated_at).toLocaleTimeString()}
       </div>
     </div>

@@ -16,12 +16,11 @@ interface JtdFiltersProps {
 export const JtdFilters: React.FC<JtdFiltersProps> = ({ filters, onChange, onClear }) => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
-  const borderColor = isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)';
 
   const selectStyle: React.CSSProperties = {
     backgroundColor: colors.utility.primaryBackground,
     color: colors.utility.primaryText,
-    border: `1px solid ${borderColor}`,
+    borderColor: colors.utility.primaryText + '20',
   };
 
   const hasActiveFilters = filters.status || filters.event_type || filters.channel || filters.source_type || filters.search || filters.date_from || filters.date_to;
@@ -36,7 +35,7 @@ export const JtdFilters: React.FC<JtdFiltersProps> = ({ filters, onChange, onCle
           placeholder="Search recipient, source ref, ID..."
           value={filters.search || ''}
           onChange={(e) => onChange({ ...filters, search: e.target.value || undefined, page: 1 })}
-          className="w-full pl-9 pr-3 py-2 rounded-lg text-sm"
+          className="w-full pl-9 pr-3 py-2 rounded-lg text-sm border transition-colors"
           style={selectStyle}
         />
       </div>
@@ -45,7 +44,7 @@ export const JtdFilters: React.FC<JtdFiltersProps> = ({ filters, onChange, onCle
       <select
         value={filters.status || ''}
         onChange={(e) => onChange({ ...filters, status: e.target.value || undefined, page: 1 })}
-        className="px-3 py-2 rounded-lg text-sm"
+        className="px-3 py-2 rounded-lg text-sm border transition-colors"
         style={selectStyle}
       >
         <option value="">All Statuses</option>
@@ -58,7 +57,7 @@ export const JtdFilters: React.FC<JtdFiltersProps> = ({ filters, onChange, onCle
       <select
         value={filters.event_type || ''}
         onChange={(e) => onChange({ ...filters, event_type: e.target.value || undefined, page: 1 })}
-        className="px-3 py-2 rounded-lg text-sm"
+        className="px-3 py-2 rounded-lg text-sm border transition-colors"
         style={selectStyle}
       >
         <option value="">All Types</option>
@@ -71,7 +70,7 @@ export const JtdFilters: React.FC<JtdFiltersProps> = ({ filters, onChange, onCle
       <select
         value={filters.channel || ''}
         onChange={(e) => onChange({ ...filters, channel: e.target.value || undefined, page: 1 })}
-        className="px-3 py-2 rounded-lg text-sm"
+        className="px-3 py-2 rounded-lg text-sm border transition-colors"
         style={selectStyle}
       >
         <option value="">All Channels</option>
@@ -85,7 +84,7 @@ export const JtdFilters: React.FC<JtdFiltersProps> = ({ filters, onChange, onCle
         type="date"
         value={filters.date_from || ''}
         onChange={(e) => onChange({ ...filters, date_from: e.target.value || undefined, page: 1 })}
-        className="px-3 py-2 rounded-lg text-sm"
+        className="px-3 py-2 rounded-lg text-sm border transition-colors"
         style={selectStyle}
       />
 
@@ -94,7 +93,7 @@ export const JtdFilters: React.FC<JtdFiltersProps> = ({ filters, onChange, onCle
         type="date"
         value={filters.date_to || ''}
         onChange={(e) => onChange({ ...filters, date_to: e.target.value || undefined, page: 1 })}
-        className="px-3 py-2 rounded-lg text-sm"
+        className="px-3 py-2 rounded-lg text-sm border transition-colors"
         style={selectStyle}
       />
 
@@ -102,8 +101,8 @@ export const JtdFilters: React.FC<JtdFiltersProps> = ({ filters, onChange, onCle
       {hasActiveFilters && (
         <button
           onClick={onClear}
-          className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium hover:opacity-80"
-          style={{ color: '#EF4444' }}
+          className="flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium hover:opacity-80 transition-colors"
+          style={{ color: colors.semantic.error }}
         >
           <X size={14} /> Clear
         </button>

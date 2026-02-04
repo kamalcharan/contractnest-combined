@@ -25,17 +25,16 @@ function timeAgo(dateStr: string): string {
 export const JtdEventRow: React.FC<JtdEventRowProps> = ({ event, onClick }) => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
-  const borderColor = isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)';
 
   return (
     <tr
       className="hover:opacity-90 cursor-pointer transition-colors"
-      style={{ borderBottom: `1px solid ${borderColor}` }}
+      style={{ borderBottom: `1px solid ${colors.utility.primaryText + '20'}` }}
       onClick={() => onClick(event)}
     >
       {/* Tenant */}
       <td className="px-4 py-3">
-        <div className="text-sm font-medium" style={{ color: colors.utility.primaryText }}>
+        <div className="text-sm font-medium transition-colors" style={{ color: colors.utility.primaryText }}>
           {event.tenant_name}
         </div>
       </td>
@@ -53,10 +52,10 @@ export const JtdEventRow: React.FC<JtdEventRowProps> = ({ event, onClick }) => {
       </td>
       {/* Recipient */}
       <td className="px-4 py-3">
-        <div className="text-sm" style={{ color: colors.utility.primaryText }}>
+        <div className="text-sm transition-colors" style={{ color: colors.utility.primaryText }}>
           {event.recipient_name || '—'}
         </div>
-        <div className="text-xs" style={{ color: colors.utility.secondaryText }}>
+        <div className="text-xs transition-colors" style={{ color: colors.utility.secondaryText }}>
           {event.recipient_contact || ''}
         </div>
       </td>
@@ -66,19 +65,19 @@ export const JtdEventRow: React.FC<JtdEventRowProps> = ({ event, onClick }) => {
       </td>
       {/* Retries */}
       <td className="px-4 py-3 text-center">
-        <span className="text-sm" style={{ color: event.retry_count > 0 ? '#EF4444' : colors.utility.secondaryText }}>
+        <span className="text-sm" style={{ color: event.retry_count > 0 ? colors.semantic.error : colors.utility.secondaryText }}>
           {event.retry_count}/{event.max_retries}
         </span>
       </td>
       {/* Cost */}
       <td className="px-4 py-3 text-right">
-        <span className="text-sm" style={{ color: colors.utility.secondaryText }}>
+        <span className="text-sm transition-colors" style={{ color: colors.utility.secondaryText }}>
           {event.cost > 0 ? `$${event.cost.toFixed(2)}` : '—'}
         </span>
       </td>
       {/* Time */}
       <td className="px-4 py-3 text-right">
-        <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
+        <span className="text-xs transition-colors" style={{ color: colors.utility.secondaryText }}>
           {timeAgo(event.created_at)}
         </span>
       </td>
