@@ -1,5 +1,5 @@
 ===============================================
-CONTRACT EVENTS - DATABASE TABLES MIGRATION
+CONTRACT EVENTS - DATABASE MIGRATION (COMPLETE)
 ===============================================
 
 Branch: contract-events-db
@@ -11,66 +11,113 @@ FILES TO COPY
 ===============================================
 
 1. contractnest-edge/supabase/migrations/contracts/012_contract_events_tables.sql
-   → Copy to: contractnest-edge/supabase/migrations/contracts/012_contract_events_tables.sql
-   → Purpose: Creates t_contract_events + t_contract_event_audit tables,
-              indexes, triggers, RLS policies, grants,
-              and adds computed_events JSONB column to t_contracts
+   -> Copy to: contractnest-edge/supabase/migrations/contracts/012_contract_events_tables.sql
+   -> Purpose: Tables, indexes, triggers, RLS, grants, computed_events column
+
+2. contractnest-edge/supabase/migrations/contracts/013_contract_events_rpc_functions.sql
+   -> Copy to: contractnest-edge/supabase/migrations/contracts/013_contract_events_rpc_functions.sql
+   -> Purpose: All RPC functions + PGMQ trigger
 
 ===============================================
-WHAT THIS MIGRATION DOES
+APPLY ORDER (IMPORTANT: run 012 before 013)
 ===============================================
 
-Tables Created:
-  1. t_contract_events       — lifecycle events (service milestones + billing installments)
-  2. t_contract_event_audit  — immutable audit trail for every event change
-
-Columns Altered:
-  3. t_contracts.computed_events (JSONB) — stores wizard-computed events until contract confirmation
-
-Indexes (12 total):
-  - Contract-scoped: contract_id, contract_id+status, contract_id+scheduled_date, contract_id+event_type
-  - Tenant-scoped:   tenant_id+status, tenant_id+scheduled_date
-  - Assignment:      tenant_id+assigned_to+status, assigned_to+scheduled_date
-  - Audit:           event_id, event_id+changed_at, tenant_id+changed_at
-
-RLS Policies (7 total):
-  - Tenant isolation for SELECT/INSERT/UPDATE on both tables
-  - Service role full access on both tables (for Edge Functions / PGMQ worker)
-
-Triggers:
-  - Auto-update updated_at on t_contract_events
+Step 1: Run 012_contract_events_tables.sql in Supabase SQL Editor
+Step 2: Run 013_contract_events_rpc_functions.sql in Supabase SQL Editor
 
 ===============================================
-HOW TO APPLY
+WHAT 012 CREATES (Tables)
 ===============================================
 
-Option A: Run in Supabase SQL Editor
-  1. Open Supabase Dashboard → SQL Editor
-  2. Paste the contents of 012_contract_events_tables.sql
-  3. Click "Run"
+Tables:
+  1. t_contract_events       - lifecycle events (service + billing)
+  2. t_contract_event_audit  - immutable audit trail per field change
 
-Option B: Via supabase CLI (if configured)
-  supabase db push --file supabase/migrations/contracts/012_contract_events_tables.sql
+Column Added:
+  3. t_contracts.computed_events JSONB - wizard preview data
+
+Indexes: 15 (12 on events, 3 on audit)
+RLS Policies: 7 (tenant isolation + service role)
+Triggers: 1 (auto-update updated_at)
 
 ===============================================
-VERIFICATION QUERIES (run after applying)
+WHAT 013 CREATES (RPC Functions)
 ===============================================
 
--- Check tables exist
-SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename IN ('t_contract_events', 't_contract_event_audit');
+Write RPCs:
+  1. insert_contract_events_batch(tenant, contract, events[], created_by, is_live, idempotency_key)
+     - Bulk insert from JSONB array + initial audit rows
+     - 500-event cap, idempotent via t_idempotency_keys
+     - Called by PGMQ worker or directly
 
--- Check indexes
+  2. update_contract_event(event_id, tenant, payload, version, changed_by, name, reason)
+     - Optimistic concurrency via version field (FOR UPDATE lock)
+     - Status transition validation (scheduled->in_progress->completed etc.)
+     - Audit row per changed field (status, scheduled_date, assigned_to, notes)
+
+Read RPCs:
+  3. get_contract_events_list(tenant, is_live, contract_id?, contact_id?, assigned_to?,
+                              status?, event_type?, date_from?, date_to?, page, per_page,
+                              sort_by, sort_order)
+     - Paginated list with dynamic WHERE
+     - Multi-scope: contract, customer/contact (via buyer_id + t_contract_vendors), or tenant-wide
+     - Joins contract name, all JSON shaping in Postgres
+
+  4. get_contract_events_date_summary(tenant, is_live, contract_id?, contact_id?, assigned_to?, event_type?)
+     - Date buckets: overdue, today, tomorrow, this_week, next_week, later
+     - Each bucket: total + by_status + by_type breakdown
+     - Plus grand totals (all + by_status + by_type)
+     - Single aggregate query using FILTER clauses
+
+PGMQ Integration:
+  5. process_contract_events_from_computed(contract_id, tenant_id)
+     - PGMQ worker: reads computed_events JSONB from contract
+     - Delegates to insert_contract_events_batch
+     - NULLs out computed_events after success
+     - Idempotent: skips if events already exist or computed_events is NULL
+
+  6. Trigger: trg_queue_contract_events ON t_contracts AFTER UPDATE OF status
+     - Fires when status -> 'active' AND computed_events has data
+     - Sends to pgmq queue 'contract_events_create'
+     - Non-blocking: PGMQ failure does NOT block status update
+
+===============================================
+VERIFICATION QUERIES (run after both migrations)
+===============================================
+
+-- Tables
+SELECT tablename FROM pg_tables
+WHERE schemaname = 'public'
+AND tablename IN ('t_contract_events', 't_contract_event_audit');
+
+-- Indexes
 SELECT indexname FROM pg_indexes WHERE tablename = 't_contract_events';
 SELECT indexname FROM pg_indexes WHERE tablename = 't_contract_event_audit';
 
--- Check RLS is enabled
-SELECT tablename, rowsecurity FROM pg_tables WHERE tablename IN ('t_contract_events', 't_contract_event_audit');
+-- RLS
+SELECT tablename, policyname FROM pg_policies
+WHERE tablename IN ('t_contract_events', 't_contract_event_audit');
 
--- Check policies
-SELECT tablename, policyname FROM pg_policies WHERE tablename IN ('t_contract_events', 't_contract_event_audit');
+-- computed_events column
+SELECT column_name, data_type FROM information_schema.columns
+WHERE table_name = 't_contracts' AND column_name = 'computed_events';
 
--- Check computed_events column on t_contracts
-SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 't_contracts' AND column_name = 'computed_events';
+-- RPC functions
+SELECT routine_name FROM information_schema.routines
+WHERE routine_schema = 'public'
+AND routine_name IN (
+    'insert_contract_events_batch',
+    'update_contract_event',
+    'get_contract_events_list',
+    'get_contract_events_date_summary',
+    'process_contract_events_from_computed',
+    'trigger_queue_contract_events'
+);
 
--- Check trigger
-SELECT trigger_name FROM information_schema.triggers WHERE event_object_table = 't_contract_events';
+-- PGMQ trigger
+SELECT trigger_name FROM information_schema.triggers
+WHERE event_object_table = 't_contracts'
+AND trigger_name = 'trg_queue_contract_events';
+
+-- Test: call date summary (should return empty buckets)
+SELECT get_contract_events_date_summary('00000000-0000-0000-0000-000000000000');
