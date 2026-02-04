@@ -1,0 +1,34 @@
+===============================================
+COPY INSTRUCTIONS - Block Create/Edit/Delete Fix
+===============================================
+Branch: claude/init-submodules-docs-2FPUd
+Date: 2026-02-04
+
+Root Cause:
+  1. API controller required block_type_id + pricing_mode_id as mandatory fields
+  2. API validator required block_type_id to be a valid UUID
+  3. UI new.tsx sent undefined when master data lookups failed
+  4. The edge function can handle string-based types ('service', 'spare')
+     but the API layer was rejecting before the request ever reached it
+
+Files Changed:
+  1. contractnest-api/src/controllers/catalogStudioController.ts
+     - Changed createBlock validation: only require 'name' (line 152)
+     - block_type_id and pricing_mode_id no longer mandatory at API layer
+
+  2. contractnest-api/src/validators/catalogStudio.validators.ts
+     - block_type_id: changed from notEmpty+UUID to optional+string
+     - pricing_mode_id: changed from optional+UUID to optional+string
+     - Added 'type' field as accepted alternative to block_type_id
+
+  3. contractnest-ui/src/pages/catalog-studio/blocks/new.tsx
+     - Only attach block_type_id/pricing_mode_id when UUID lookup succeeds
+     - Prevents sending undefined values in payload
+
+Submodules Affected: contractnest-api, contractnest-ui
+
+Copy Commands (from contractnest-combined root):
+  Copy-Item "MANUAL_COPY_FILES\fix-block-create-edit\contractnest-api\src\controllers\catalogStudioController.ts" -Destination "contractnest-api\src\controllers\catalogStudioController.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\fix-block-create-edit\contractnest-api\src\validators\catalogStudio.validators.ts" -Destination "contractnest-api\src\validators\catalogStudio.validators.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\fix-block-create-edit\contractnest-ui\src\pages\catalog-studio\blocks\new.tsx" -Destination "contractnest-ui\src\pages\catalog-studio\blocks\new.tsx" -Force
+===============================================
