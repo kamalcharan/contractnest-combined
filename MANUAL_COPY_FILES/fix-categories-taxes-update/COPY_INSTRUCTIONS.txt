@@ -1,0 +1,34 @@
+===============================================
+COPY INSTRUCTIONS - Categories API + Tax Fix + Update Block Fix
+===============================================
+Branch: fix-categories-taxes-update
+Date: 2026-02-04
+
+Root Causes:
+  1. Left panel used hardcoded BLOCK_CATEGORIES (showed is_active=false)
+  2. tax_rate hardcoded to 18% instead of computed from per-item taxes
+  3. Block update 400: blockToUpdateData sent block_type_id='service' (string)
+     to edge function which tried to set it on a UUID column -> DB constraint error
+
+Files Changed:
+  1. contractnest-ui/src/pages/catalog-studio/configure.tsx
+     - Added useBlockCategories() hook (API-driven, is_active=true only)
+     - Left panel shows only active categories from master data
+     - Fixed react-hot-toast -> vaniToast in handleConflictRefresh
+
+  2. contractnest-ui/src/utils/catalog-studio/catBlockAdapter.ts
+     - blockToCreateData: tax_rate computed from pricingRecords[0].taxes
+     - blockToUpdateData: tax_rate computed from pricingRecords[0].taxes
+     - blockToUpdateData: REMOVED block_type_id (was sending string, not UUID)
+
+  3. contractnest-api/src/services/catBlocksService.ts
+     - updateBlock: strips non-UUID block_type_id and pricing_mode_id
+       before forwarding to edge function (safety net)
+
+Submodules Affected: contractnest-ui, contractnest-api
+
+Copy Commands (PowerShell, from contractnest-combined root):
+  Copy-Item "MANUAL_COPY_FILES\fix-categories-taxes-update\contractnest-ui\src\pages\catalog-studio\configure.tsx" -Destination "contractnest-ui\src\pages\catalog-studio\configure.tsx" -Force
+  Copy-Item "MANUAL_COPY_FILES\fix-categories-taxes-update\contractnest-ui\src\utils\catalog-studio\catBlockAdapter.ts" -Destination "contractnest-ui\src\utils\catalog-studio\catBlockAdapter.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\fix-categories-taxes-update\contractnest-api\src\services\catBlocksService.ts" -Destination "contractnest-api\src\services\catBlocksService.ts" -Force
+===============================================
