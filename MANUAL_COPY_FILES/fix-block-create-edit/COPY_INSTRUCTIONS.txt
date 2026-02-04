@@ -21,7 +21,11 @@ Files Changed:
      - pricing_mode_id: changed from optional+UUID to optional+string
      - Added 'type' field as accepted alternative to block_type_id
 
-  3. contractnest-ui/src/pages/catalog-studio/blocks/new.tsx
+  3. contractnest-api/src/services/catBlocksService.ts
+     - Maps 'type' or 'category' field to block_type_id before forwarding to edge
+     - Edge function requires block_type_id; adapter sends 'type' as string
+
+  4. contractnest-ui/src/pages/catalog-studio/blocks/new.tsx
      - Only attach block_type_id/pricing_mode_id when UUID lookup succeeds
      - Prevents sending undefined values in payload
 
@@ -30,5 +34,6 @@ Submodules Affected: contractnest-api, contractnest-ui
 Copy Commands (from contractnest-combined root):
   Copy-Item "MANUAL_COPY_FILES\fix-block-create-edit\contractnest-api\src\controllers\catalogStudioController.ts" -Destination "contractnest-api\src\controllers\catalogStudioController.ts" -Force
   Copy-Item "MANUAL_COPY_FILES\fix-block-create-edit\contractnest-api\src\validators\catalogStudio.validators.ts" -Destination "contractnest-api\src\validators\catalogStudio.validators.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\fix-block-create-edit\contractnest-api\src\services\catBlocksService.ts" -Destination "contractnest-api\src\services\catBlocksService.ts" -Force
   Copy-Item "MANUAL_COPY_FILES\fix-block-create-edit\contractnest-ui\src\pages\catalog-studio\blocks\new.tsx" -Destination "contractnest-ui\src\pages\catalog-studio\blocks\new.tsx" -Force
 ===============================================
