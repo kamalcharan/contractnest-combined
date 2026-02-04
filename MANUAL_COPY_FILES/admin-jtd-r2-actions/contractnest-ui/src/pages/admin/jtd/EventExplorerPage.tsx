@@ -23,7 +23,7 @@ import { JtdEventRow } from './components/JtdEventRow';
 import { JtdStatusBadge } from './components/JtdStatusBadge';
 import { VaNiLoader } from '@/components/common/loaders';
 import { vaniToast } from '@/components/common/toast';
-import { ConfirmationDialog } from '@/components/ui/ConfirmationDialog';
+import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
 import type { JtdEventFilters, JtdEventRecord } from './types/jtdAdmin.types';
 
 // Which statuses allow which actions

@@ -24,7 +24,7 @@ import { JtdMetricCard } from './components/JtdMetricCard';
 import { JtdStatusBadge } from './components/JtdStatusBadge';
 import { VaNiLoader } from '@/components/common/loaders';
 import { vaniToast } from '@/components/common/toast';
-import { ConfirmationDialog } from '@/components/ui/ConfirmationDialog';
+import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
 import type { DlqMessage } from './types/jtdAdmin.types';
 
 function formatAge(seconds: number | null): string {
