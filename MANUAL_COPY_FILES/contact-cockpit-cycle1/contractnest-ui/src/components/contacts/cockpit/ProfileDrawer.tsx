@@ -1,9 +1,8 @@
 // src/components/contacts/cockpit/ProfileDrawer.tsx
 // Profile Drawer - Slides from right, contains contact demographics
-// Cycle 1: Foundation - Contact 360° Cockpit
+// Cycle 1 v2: Matches existing ViewCard UI exactly, modal-only editing
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   X,
   Users,
@@ -22,12 +21,11 @@ import {
   Linkedin,
   Send,
   Archive,
-  ChevronRight,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useToast } from '@/components/ui/use-toast';
 
-// Import form components for modal editing
+// Import form components for modal editing (same as ContactSummaryTab)
 import ContactChannelsSection from '@/components/contacts/forms/ContactChannelsSection';
 import AddressesSection from '@/components/contacts/forms/AddressesSection';
 import ComplianceNumbersSection from '@/components/contacts/forms/ComplianceNumbersSection';
@@ -48,7 +46,7 @@ import {
   getClassificationColors,
 } from '@/utils/constants/contacts';
 
-// Types
+// Types (same as ContactSummaryTab)
 interface ContactChannel {
   id: string;
   channel_type: string;
@@ -57,61 +55,6 @@ interface ContactChannel {
   is_primary: boolean;
   is_verified: boolean;
   notes?: string;
-}
-
-interface ContactAddress {
-  id: string;
-  address_type: string;
-  label?: string;
-  line1?: string;
-  address_line1?: string;
-  line2?: string;
-  address_line2?: string;
-  city: string;
-  state?: string;
-  state_code?: string;
-  country: string;
-  country_code?: string;
-  postal_code?: string;
-  google_pin?: string;
-  is_primary: boolean;
-  notes?: string;
-}
-
-interface ComplianceNumber {
-  id: string;
-  type_value: string;
-  type_label?: string;
-  number: string;
-  is_verified: boolean;
-  valid_from?: string;
-  valid_to?: string;
-  issuing_authority?: string;
-  notes?: string;
-}
-
-interface ContactPerson {
-  id: string;
-  name: string;
-  salutation?: string;
-  designation?: string;
-  department?: string;
-  is_primary: boolean;
-  contact_channels: ContactChannel[];
-  notes?: string;
-}
-
-interface Tag {
-  id: string;
-  tag_value: string;
-  tag_label: string;
-  tag_color?: string;
-}
-
-interface Classification {
-  id: string;
-  classification_value: string;
-  classification_label: string;
 }
 
 interface Contact {
@@ -124,12 +67,12 @@ interface Contact {
   registration_number?: string;
   website?: string;
   industry?: string;
-  classifications: Classification[] | string[];
-  tags: Tag[];
-  compliance_numbers: ComplianceNumber[];
+  classifications: any[];
+  tags: any[];
+  compliance_numbers: any[];
   contact_channels: ContactChannel[];
-  addresses: ContactAddress[];
-  contact_persons: ContactPerson[];
+  addresses: any[];
+  contact_persons: any[];
   notes?: string;
   created_at: string;
   updated_at: string;
@@ -145,7 +88,7 @@ interface ProfileDrawerProps {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// EDIT MODAL COMPONENT
+// EDIT MODAL COMPONENT (Same as ContactSummaryTab)
 // ═══════════════════════════════════════════════════════════════════
 const EditModal: React.FC<{
   isOpen: boolean;
@@ -160,6 +103,14 @@ const EditModal: React.FC<{
 
   if (!isOpen) return null;
 
+  const glassStyle: React.CSSProperties = {
+    background: isDarkMode
+      ? 'rgba(15, 23, 42, 0.95)'
+      : 'rgba(255, 255, 255, 0.98)',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
+  };
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       {/* Backdrop */}
@@ -172,8 +123,7 @@ const EditModal: React.FC<{
       <div
         className="relative w-full max-w-2xl max-h-[85vh] overflow-hidden rounded-2xl shadow-2xl border animate-in zoom-in-95 duration-200"
         style={{
-          background: isDarkMode ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.98)',
-          backdropFilter: 'blur(20px)',
+          ...glassStyle,
           borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
         }}
       >
@@ -240,39 +190,52 @@ const EditModal: React.FC<{
 };
 
 // ═══════════════════════════════════════════════════════════════════
-// DRAWER SECTION COMPONENT
+// VIEW CARD COMPONENT (Same as ContactSummaryTab)
 // ═══════════════════════════════════════════════════════════════════
-const DrawerSection: React.FC<{
+const ViewCard: React.FC<{
   title: string;
   icon: React.ReactNode;
-  iconColor: string;
+  iconBg: string;
   onEdit: () => void;
-  count?: number;
   children: React.ReactNode;
-}> = ({ title, icon, iconColor, onEdit, count, children }) => {
+  count?: number;
+}> = ({ title, icon, iconBg, onEdit, children, count }) => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
 
+  const glassStyle: React.CSSProperties = {
+    background: isDarkMode
+      ? 'rgba(30, 41, 59, 0.8)'
+      : 'rgba(255, 255, 255, 0.8)',
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
+    borderColor: isDarkMode
+      ? 'rgba(255,255,255,0.1)'
+      : 'rgba(0,0,0,0.08)',
+  };
+
   return (
     <div
-      className="border-b last:border-b-0 py-4"
-      style={{ borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }}
+      className="rounded-xl border p-4 transition-all hover:shadow-md"
+      style={glassStyle}
     >
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span style={{ color: iconColor }}>{icon}</span>
-          <span
-            className="text-sm font-semibold"
-            style={{ color: colors.utility.primaryText }}
+          <div
+            className="p-1.5 rounded-lg"
+            style={{ backgroundColor: iconBg }}
           >
+            {icon}
+          </div>
+          <span className="text-sm font-medium" style={{ color: colors.utility.primaryText }}>
             {title}
           </span>
-          {count !== undefined && count > 0 && (
+          {count !== undefined && (
             <span
-              className="px-1.5 py-0.5 rounded-full text-xs font-medium"
+              className="px-1.5 py-0.5 rounded-full text-xs"
               style={{
-                backgroundColor: iconColor + '20',
-                color: iconColor,
+                backgroundColor: iconBg,
+                color: colors.utility.primaryText,
               }}
             >
               {count}
@@ -303,7 +266,6 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
   contact,
   onRefresh,
 }) => {
-  const navigate = useNavigate();
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
   const { toast } = useToast();
@@ -321,23 +283,19 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
   // Close on Escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
+      if (e.key === 'Escape' && isOpen && activeModal === null) {
         onClose();
       }
     };
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, activeModal]);
 
-  // Get display name
-  const getDisplayName = (): string => {
-    if (contact.type === 'corporate') {
-      return contact.company_name || 'Unnamed Company';
-    }
-    return contact.name || 'Unnamed Contact';
-  };
+  // ─────────────────────────────────────────────────────────────────
+  // HELPER FUNCTIONS (Same as ContactSummaryTab)
+  // ─────────────────────────────────────────────────────────────────
 
-  // Get classification label
+  // Get classification label from value
   const getClassificationLabel = (value: string): string => {
     const config = CONTACT_CLASSIFICATION_CONFIG?.find((c) => c.id === value);
     if (config) return config.label;
@@ -345,9 +303,7 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
   };
 
   // Normalize classifications (API returns strings, UI needs objects)
-  const normalizeClassifications = (
-    classifications: any[]
-  ): Array<{ id: string; classification_value: string; classification_label: string }> => {
+  const normalizeClassifications = (classifications: any[]): Array<{ id: string; classification_value: string; classification_label: string }> => {
     if (!classifications || !Array.isArray(classifications)) return [];
 
     return classifications.map((cls, index) => {
@@ -385,19 +341,19 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
   const getChannelIcon = (channelType: string) => {
     switch (channelType) {
       case CONTACT_CHANNEL_TYPES.MOBILE:
-        return <Phone className="h-3.5 w-3.5" />;
+        return Phone;
       case CONTACT_CHANNEL_TYPES.EMAIL:
-        return <Mail className="h-3.5 w-3.5" />;
+        return Mail;
       case CONTACT_CHANNEL_TYPES.WHATSAPP:
-        return <MessageSquare className="h-3.5 w-3.5" />;
+        return MessageSquare;
       case CONTACT_CHANNEL_TYPES.WEBSITE:
-        return <Globe className="h-3.5 w-3.5" />;
+        return Globe;
       case CONTACT_CHANNEL_TYPES.LINKEDIN:
-        return <Linkedin className="h-3.5 w-3.5" />;
+        return Linkedin;
       case CONTACT_CHANNEL_TYPES.TELEGRAM:
-        return <Send className="h-3.5 w-3.5" />;
+        return Send;
       default:
-        return <Phone className="h-3.5 w-3.5" />;
+        return Phone;
     }
   };
 
@@ -409,15 +365,15 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
   });
 
   // Get primary channel for a person
-  const getPersonPrimaryChannel = (person: ContactPerson): string | null => {
+  const getPersonPrimaryChannel = (person: any): string | null => {
     if (!person.contact_channels || person.contact_channels.length === 0) return null;
-    const primary = person.contact_channels.find((ch) => ch.is_primary);
+    const primary = person.contact_channels.find((ch: any) => ch.is_primary);
     const channel = primary || person.contact_channels[0];
     return channel?.value || null;
   };
 
   // ─────────────────────────────────────────────────────────────────
-  // MODAL & SAVE LOGIC
+  // MODAL & SAVE LOGIC (Same as ContactSummaryTab)
   // ─────────────────────────────────────────────────────────────────
   const openModal = (type: ModalType) => {
     switch (type) {
@@ -425,7 +381,7 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
         setFormData({ contact_channels: [...contact.contact_channels] });
         break;
       case 'classification':
-        setFormData({ classifications: normalizedClassifications });
+        setFormData({ classifications: normalizeClassifications(contact.classifications) });
         break;
       case 'persons':
         setFormData({ contact_persons: [...contact.contact_persons] });
@@ -682,6 +638,7 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
         duration: 3000,
       });
       setShowArchiveConfirm(false);
+      onClose();
       if (onRefresh) {
         onRefresh();
       }
@@ -787,48 +744,52 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
       {/* Drawer */}
       <div
         className={`
-          fixed top-0 right-0 h-full w-[400px] max-w-[90vw] z-50
+          fixed top-0 right-0 h-full w-[380px] max-w-[90vw] z-50
           transform transition-transform duration-300 ease-out
           ${isOpen ? 'translate-x-0' : 'translate-x-full'}
           overflow-hidden flex flex-col
         `}
         style={{
-          backgroundColor: isDarkMode ? '#0f172a' : '#ffffff',
-          borderLeft: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-          boxShadow: isOpen ? '-4px 0 24px rgba(0,0,0,0.15)' : 'none',
+          background: isDarkMode
+            ? 'linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(15, 23, 42, 0.95) 100%)'
+            : 'linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.95) 100%)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          borderLeft: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+          boxShadow: isOpen ? '-8px 0 32px rgba(0,0,0,0.15)' : 'none',
         }}
       >
         {/* Drawer Header */}
         <div
-          className="flex items-center justify-between px-5 py-4 border-b flex-shrink-0"
-          style={{ borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}
+          className="flex items-center justify-between px-4 py-3 border-b flex-shrink-0"
+          style={{ borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }}
         >
           <div className="flex items-center gap-3">
             <div
-              className="w-10 h-10 rounded-full flex items-center justify-center text-lg font-semibold"
+              className="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-semibold"
               style={{
                 backgroundColor: colors.brand.primary + '20',
                 color: colors.brand.primary,
               }}
             >
               {contact.type === 'corporate' ? (
-                <Building2 className="h-5 w-5" />
+                <Building2 className="h-4 w-4" />
               ) : (
-                getDisplayName().charAt(0).toUpperCase()
+                <User className="h-4 w-4" />
               )}
             </div>
             <div>
               <h2
-                className="font-semibold text-base"
+                className="font-semibold text-sm"
                 style={{ color: colors.utility.primaryText }}
               >
-                {getDisplayName()}
+                Contact Profile
               </h2>
               <p
                 className="text-xs capitalize"
                 style={{ color: colors.utility.secondaryText }}
               >
-                {contact.type} Contact
+                {contact.type}
               </p>
             </div>
           </div>
@@ -837,53 +798,78 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
             className="p-2 rounded-lg hover:opacity-70 transition-colors"
             style={{ backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)' }}
           >
-            <X className="h-5 w-5" style={{ color: colors.utility.secondaryText }} />
+            <X className="h-4 w-4" style={{ color: colors.utility.secondaryText }} />
           </button>
         </div>
 
         {/* Drawer Content - Scrollable */}
-        <div className="flex-1 overflow-y-auto px-5">
-          {/* Contact Channels */}
-          <DrawerSection
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* 1. Contact Channels Card */}
+          <ViewCard
             title="Contact Channels"
-            icon={<Phone className="h-4 w-4" />}
-            iconColor={colors.brand.primary}
+            icon={
+              contact.type === 'corporate' ? (
+                <Building2 className="h-3.5 w-3.5" style={{ color: colors.brand.primary }} />
+              ) : (
+                <User className="h-3.5 w-3.5" style={{ color: colors.brand.primary }} />
+              )
+            }
+            iconBg={colors.brand.primary + '20'}
             onEdit={() => openModal('channels')}
             count={contact.contact_channels.length}
           >
-            {sortedChannels.length === 0 ? (
-              <p className="text-xs italic">No contact channels</p>
-            ) : (
-              <div className="space-y-2">
-                {sortedChannels.map((channel) => (
-                  <div key={channel.id} className="flex items-center gap-2 text-xs">
-                    {getChannelIcon(channel.channel_type)}
-                    <span className="truncate flex-1">
-                      {channel.channel_type === 'mobile' && channel.country_code === 'IN' ? '+91 ' : ''}
-                      {channel.value}
-                    </span>
-                    {channel.is_primary && (
-                      <Star
-                        className="h-3 w-3 flex-shrink-0"
-                        style={{ color: colors.brand.primary, fill: colors.brand.primary }}
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </DrawerSection>
+            <div className="space-y-2">
+              {/* Contact Name */}
+              <p className="font-medium mb-3" style={{ color: colors.utility.primaryText }}>
+                {contact.type === 'corporate' ? contact.company_name : contact.name}
+              </p>
 
-          {/* Classification */}
-          <DrawerSection
+              {sortedChannels.length === 0 ? (
+                <p className="text-xs italic">No contact channels</p>
+              ) : (
+                <>
+                  {sortedChannels.slice(0, 4).map((channel) => {
+                    const IconComponent = getChannelIcon(channel.channel_type);
+                    return (
+                      <div key={channel.id} className="flex items-center gap-2 text-xs">
+                        <IconComponent className="h-3 w-3 flex-shrink-0" />
+                        <span className="truncate flex-1">
+                          {channel.channel_type === 'mobile' && channel.country_code === 'IN' ? '+91 ' : ''}
+                          {channel.value}
+                        </span>
+                        {channel.is_primary && (
+                          <Star
+                            className="h-3 w-3 flex-shrink-0"
+                            style={{ color: colors.brand.primary, fill: colors.brand.primary }}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                  {sortedChannels.length > 4 && (
+                    <button
+                      onClick={() => openModal('channels')}
+                      className="text-xs hover:underline cursor-pointer"
+                      style={{ color: colors.brand.primary }}
+                    >
+                      +{sortedChannels.length - 4} more channels
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </ViewCard>
+
+          {/* 2. Classification Card */}
+          <ViewCard
             title="Classification"
-            icon={<Shield className="h-4 w-4" />}
-            iconColor="#8b5cf6"
+            icon={<Shield className="h-3.5 w-3.5" style={{ color: '#8b5cf6' }} />}
+            iconBg="#8b5cf620"
             onEdit={() => openModal('classification')}
             count={normalizedClassifications.length}
           >
             {normalizedClassifications.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-1">
                 {normalizedClassifications.map((cls) => {
                   const badgeColors = getClassificationBadgeColors(cls.classification_value);
                   return (
@@ -904,25 +890,25 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
             ) : (
               <span className="text-xs italic">No classifications</span>
             )}
-          </DrawerSection>
+          </ViewCard>
 
-          {/* Contact Persons (Corporate only) */}
+          {/* 3. Contact Persons Card (Corporate only) */}
           {contact.type === 'corporate' && (
-            <DrawerSection
-              title="Contact Persons"
-              icon={<Users className="h-4 w-4" />}
-              iconColor="#f59e0b"
+            <ViewCard
+              title="Persons"
+              icon={<Users className="h-3.5 w-3.5" style={{ color: '#f59e0b' }} />}
+              iconBg="#f59e0b20"
               onEdit={() => openModal('persons')}
               count={contact.contact_persons.length}
             >
               {contact.contact_persons.length > 0 ? (
-                <div className="space-y-2.5">
-                  {contact.contact_persons.map((person) => {
+                <div className="space-y-2">
+                  {contact.contact_persons.slice(0, 3).map((person) => {
                     const primaryChannel = getPersonPrimaryChannel(person);
                     return (
                       <div key={person.id} className="flex items-start gap-2">
                         <div
-                          className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0"
+                          className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0"
                           style={{
                             backgroundColor: person.is_primary ? '#f59e0b' : '#f59e0b20',
                             color: person.is_primary ? '#fff' : '#f59e0b',
@@ -933,7 +919,7 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1">
                             <span
-                              className="text-xs font-medium truncate"
+                              className="text-xs truncate font-medium"
                               style={{ color: colors.utility.primaryText }}
                             >
                               {person.name}
@@ -945,11 +931,6 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
                               />
                             )}
                           </div>
-                          {person.designation && (
-                            <p className="text-xs truncate" style={{ color: colors.utility.secondaryText }}>
-                              {person.designation}
-                            </p>
-                          )}
                           {primaryChannel && (
                             <p className="text-xs truncate" style={{ color: colors.utility.secondaryText }}>
                               {primaryChannel}
@@ -959,90 +940,33 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
                       </div>
                     );
                   })}
+                  {contact.contact_persons.length > 3 && (
+                    <button
+                      onClick={() => openModal('persons')}
+                      className="text-xs hover:underline cursor-pointer"
+                      style={{ color: '#f59e0b' }}
+                    >
+                      +{contact.contact_persons.length - 3} more
+                    </button>
+                  )}
                 </div>
               ) : (
                 <span className="text-xs italic">No contact persons</span>
               )}
-            </DrawerSection>
+            </ViewCard>
           )}
 
-          {/* Addresses */}
-          <DrawerSection
-            title="Addresses"
-            icon={<MapPin className="h-4 w-4" />}
-            iconColor="#10b981"
-            onEdit={() => openModal('address')}
-            count={contact.addresses.length}
-          >
-            {contact.addresses.length > 0 ? (
-              <div className="space-y-2">
-                {contact.addresses.map((addr, idx) => (
-                  <div key={addr.id || idx} className="flex items-start gap-2">
-                    {addr.is_primary && (
-                      <Star
-                        className="h-3 w-3 mt-0.5 flex-shrink-0"
-                        style={{ color: '#10b981', fill: '#10b981' }}
-                      />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      {addr.label && (
-                        <span
-                          className="text-xs font-medium block"
-                          style={{ color: colors.utility.primaryText }}
-                        >
-                          {addr.label}
-                        </span>
-                      )}
-                      <p className="text-xs">
-                        {addr.address_line1 || addr.line1}, {addr.city}
-                        {addr.state_code && `, ${addr.state_code}`}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <span className="text-xs italic">No addresses</span>
-            )}
-          </DrawerSection>
-
-          {/* Compliance Numbers (Corporate only) */}
-          {contact.type === 'corporate' && (
-            <DrawerSection
-              title="Compliance Numbers"
-              icon={<Shield className="h-4 w-4" />}
-              iconColor="#3b82f6"
-              onEdit={() => openModal('compliance')}
-              count={contact.compliance_numbers.length}
-            >
-              {contact.compliance_numbers.length > 0 ? (
-                <div className="space-y-1.5">
-                  {contact.compliance_numbers.map((comp, idx) => (
-                    <div key={comp.id || idx} className="flex items-center justify-between">
-                      <span className="text-xs font-medium" style={{ color: colors.utility.primaryText }}>
-                        {comp.type_label || comp.type_value}
-                      </span>
-                      <span className="text-xs font-mono">{comp.number}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <span className="text-xs italic">No compliance numbers</span>
-              )}
-            </DrawerSection>
-          )}
-
-          {/* Tags */}
-          <DrawerSection
+          {/* 4. Tags Card */}
+          <ViewCard
             title="Tags"
-            icon={<Tag className="h-4 w-4" />}
-            iconColor="#ec4899"
+            icon={<Tag className="h-3.5 w-3.5" style={{ color: '#ec4899' }} />}
+            iconBg="#ec489920"
             onEdit={() => openModal('tags')}
             count={contact.tags.length}
           >
             {contact.tags.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5">
-                {contact.tags.map((tag) => (
+              <div className="flex flex-wrap gap-1">
+                {contact.tags.slice(0, 5).map((tag) => (
                   <span
                     key={tag.id}
                     className="px-2 py-0.5 rounded-full text-xs"
@@ -1054,37 +978,126 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
                     {tag.tag_label}
                   </span>
                 ))}
+                {contact.tags.length > 5 && (
+                  <button
+                    onClick={() => openModal('tags')}
+                    className="text-xs hover:underline cursor-pointer"
+                    style={{ color: '#ec4899' }}
+                  >
+                    +{contact.tags.length - 5} more
+                  </button>
+                )}
               </div>
             ) : (
               <span className="text-xs italic">No tags</span>
             )}
-          </DrawerSection>
+          </ViewCard>
 
-          {/* Notes Section */}
-          {contact.notes && (
-            <DrawerSection
-              title="Notes"
-              icon={<MessageSquare className="h-4 w-4" />}
-              iconColor="#6b7280"
-              onEdit={() => navigate(`/contacts/${contact.id}/edit`)}
+          {/* 5. Address Card */}
+          <ViewCard
+            title="Address"
+            icon={<MapPin className="h-3.5 w-3.5" style={{ color: '#10b981' }} />}
+            iconBg="#10b98120"
+            onEdit={() => openModal('address')}
+            count={contact.addresses.length}
+          >
+            {contact.addresses.length > 0 ? (
+              <div className="space-y-1">
+                {contact.addresses.slice(0, 2).map((addr: any, idx: number) => (
+                  <div key={addr.id || idx} className="flex items-start gap-2">
+                    {addr.is_primary && (
+                      <Star
+                        className="h-2.5 w-2.5 mt-0.5 flex-shrink-0"
+                        style={{ color: '#10b981', fill: '#10b981' }}
+                      />
+                    )}
+                    <p className="text-xs line-clamp-2">
+                      {addr.address_line1 || addr.line1}, {addr.city}
+                    </p>
+                  </div>
+                ))}
+                {contact.addresses.length > 2 && (
+                  <button
+                    onClick={() => openModal('address')}
+                    className="text-xs hover:underline cursor-pointer"
+                    style={{ color: '#10b981' }}
+                  >
+                    +{contact.addresses.length - 2} more
+                  </button>
+                )}
+              </div>
+            ) : (
+              <span className="text-xs italic">No addresses</span>
+            )}
+          </ViewCard>
+
+          {/* 6. Compliance Card (Corporate only) */}
+          {contact.type === 'corporate' && (
+            <ViewCard
+              title="Compliance"
+              icon={<Shield className="h-3.5 w-3.5" style={{ color: '#3b82f6' }} />}
+              iconBg="#3b82f620"
+              onEdit={() => openModal('compliance')}
+              count={contact.compliance_numbers.length}
             >
-              <p className="text-xs whitespace-pre-wrap">{contact.notes}</p>
-            </DrawerSection>
+              {contact.compliance_numbers.length > 0 ? (
+                <div className="space-y-1">
+                  {contact.compliance_numbers.slice(0, 3).map((comp: any, idx: number) => (
+                    <div key={comp.id || idx} className="flex items-center justify-between">
+                      <span className="text-xs font-medium">{comp.type_label || comp.type_value}</span>
+                      <span className="text-xs font-mono">{comp.number?.slice(0, 10)}...</span>
+                    </div>
+                  ))}
+                  {contact.compliance_numbers.length > 3 && (
+                    <button
+                      onClick={() => openModal('compliance')}
+                      className="text-xs hover:underline cursor-pointer"
+                      style={{ color: '#3b82f6' }}
+                    >
+                      +{contact.compliance_numbers.length - 3} more
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <span className="text-xs italic">No compliance numbers</span>
+              )}
+            </ViewCard>
           )}
 
-          {/* Status Section */}
+          {/* 7. Contact Status Card */}
           {contact.status !== 'archived' && (
             <div
-              className="border-b py-4"
-              style={{ borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }}
+              className="rounded-xl border p-4 transition-all"
+              style={{
+                background: isDarkMode
+                  ? 'rgba(30, 41, 59, 0.8)'
+                  : 'rgba(255, 255, 255, 0.8)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+              }}
             >
+              <h3
+                className="text-sm font-semibold mb-3 transition-colors"
+                style={{ color: colors.utility.primaryText }}
+              >
+                Contact Status
+              </h3>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
-                    Contact Status
+                  <p
+                    className="font-medium text-xs transition-colors"
+                    style={{ color: colors.utility.primaryText }}
+                  >
+                    {contact.status === 'active' ? 'Active' : 'Inactive'}
                   </p>
-                  <p className="text-xs" style={{ color: colors.utility.secondaryText }}>
-                    {contact.status === 'active' ? 'Active - available for business' : 'Inactive - temporarily disabled'}
+                  <p
+                    className="text-xs transition-colors"
+                    style={{ color: colors.utility.secondaryText }}
+                  >
+                    {contact.status === 'active'
+                      ? 'Contact is available for business'
+                      : 'Contact is temporarily disabled'}
                   </p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
@@ -1112,7 +1125,10 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
                 </label>
               </div>
               {isUpdatingStatus && (
-                <div className="mt-2 flex items-center text-xs" style={{ color: colors.utility.secondaryText }}>
+                <div
+                  className="mt-2 flex items-center text-xs"
+                  style={{ color: colors.utility.secondaryText }}
+                >
                   <Loader2 className="h-3 w-3 animate-spin mr-2" />
                   Updating status...
                 </div>
@@ -1120,45 +1136,52 @@ const ProfileDrawer: React.FC<ProfileDrawerProps> = ({
             </div>
           )}
 
-          {/* Archive Section */}
+          {/* 8. Archive Card */}
           {contact.status !== 'archived' && (
-            <div className="py-4">
-              <button
-                onClick={() => setShowArchiveConfirm(true)}
-                disabled={isArchiving}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-                style={{
-                  backgroundColor: colors.semantic.error + '15',
-                  color: colors.semantic.error,
-                  border: `1px solid ${colors.semantic.error}30`,
-                }}
-              >
-                <Archive className="h-4 w-4" />
-                Archive Contact
-              </button>
-              <p className="text-xs text-center mt-2" style={{ color: colors.utility.secondaryText }}>
-                Once archived, this action cannot be undone
-              </p>
+            <div
+              className="rounded-xl border p-4 transition-all"
+              style={{
+                background: isDarkMode ? 'rgba(30, 41, 59, 0.8)' : 'rgba(255, 255, 255, 0.8)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                borderColor: colors.semantic.error + '40',
+              }}
+            >
+              <div className="flex items-start gap-3">
+                <Archive
+                  className="h-5 w-5 flex-shrink-0 mt-0.5"
+                  style={{ color: colors.semantic.error }}
+                />
+                <div className="flex-1">
+                  <h3
+                    className="text-sm font-semibold mb-2 transition-colors"
+                    style={{ color: colors.utility.primaryText }}
+                  >
+                    Archive Contact
+                  </h3>
+                  <p
+                    className="text-xs mb-3 transition-colors"
+                    style={{ color: colors.utility.secondaryText }}
+                  >
+                    Once archived, this contact cannot be reverted back.
+                  </p>
+
+                  <button
+                    onClick={() => setShowArchiveConfirm(true)}
+                    disabled={isArchiving}
+                    className="flex items-center px-3 py-1.5 rounded-md transition-colors text-xs disabled:opacity-50"
+                    style={{
+                      backgroundColor: colors.semantic.error,
+                      color: '#ffffff',
+                    }}
+                  >
+                    <Archive className="mr-2 h-3 w-3" />
+                    Archive Contact
+                  </button>
+                </div>
+              </div>
             </div>
           )}
-        </div>
-
-        {/* Drawer Footer - Edit Contact Button */}
-        <div
-          className="px-5 py-4 border-t flex-shrink-0"
-          style={{ borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}
-        >
-          <button
-            onClick={() => navigate(`/contacts/${contact.id}/edit`)}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
-            style={{
-              backgroundColor: colors.brand.primary,
-              color: '#ffffff',
-            }}
-          >
-            <Edit className="h-4 w-4" />
-            Edit Contact
-          </button>
         </div>
       </div>
 

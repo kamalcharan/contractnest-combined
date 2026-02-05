@@ -1,5 +1,5 @@
 ═══════════════════════════════════════════════════════════════════════════════
-📦 CONTACT 360° COCKPIT - CYCLE 1: PROFILE DRAWER
+📦 CONTACT 360° COCKPIT - CYCLE 1: PROFILE DRAWER (v2)
 ═══════════════════════════════════════════════════════════════════════════════
 
 Branch: contact-cockpit-cycle1
@@ -13,14 +13,15 @@ Files Changed:
 
 Submodules Affected: contractnest-ui
 
-What's New in Cycle 1:
-  ✓ ProfileDrawer component - slides from right with all contact demographics
+What's New in Cycle 1 (v2):
+  ✓ ProfileDrawer uses EXACT same ViewCard styling as ContactSummaryTab
+  ✓ ALL editing via modals only - NO "Edit Contact" page navigation
+  ✓ Same glassmorphism UI as existing right sidebar
   ✓ Updated ActionIsland with new buttons: Profile, Message, VaNi, Invoice, Contract
   ✓ Profile button toggles drawer open/close
   ✓ Message button with Email/WhatsApp options
   ✓ VaNi button with shimmer animation (placeholder)
-  ✓ All edit modals work from within the drawer
-  ✓ Keyboard support (Escape to close drawer)
+  ✓ Keyboard support (Escape to close drawer - only when no modal open)
 
 Production Checklist:
   ✅ Transaction Management: Yes - uses existing update hooks
