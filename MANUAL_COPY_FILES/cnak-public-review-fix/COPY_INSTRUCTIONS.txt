@@ -1,0 +1,76 @@
+═══════════════════════════════════════════════════════════════════════════════
+CNAK PUBLIC CONTRACT REVIEW FIX
+═══════════════════════════════════════════════════════════════════════════════
+
+Branch: claude/init-submodules-acTX4
+Date: 2026-02-05
+
+PROBLEM SOLVED:
+───────────────
+When opening a contract review link from email (CNAK flow), the page redirects
+to login instead of showing the public contract view. Three issues identified:
+
+1. Missing endpoint definitions in serviceURLs.ts
+2. Missing public endpoints in api.ts interceptor (auth headers being added)
+3. URL mismatch between notify handler and actual review page route
+
+SOLUTION:
+───────────────
+1. Added PUBLIC_VALIDATE and PUBLIC_RESPOND endpoints to serviceURLs.ts
+2. Added contract public endpoints to api.ts publicEndpoints array
+3. Fixed review URL generation in edge function notify handler
+
+FILES MODIFIED:
+───────────────
+1. contractnest-ui/src/services/serviceURLs.ts
+   → Added PUBLIC_VALIDATE: '/api/contracts/public/validate'
+   → Added PUBLIC_RESPOND: '/api/contracts/public/respond'
+
+2. contractnest-ui/src/services/api.ts
+   → Added '/api/contracts/public/validate' to publicEndpoints array
+   → Added '/api/contracts/public/respond' to publicEndpoints array
+   → These endpoints will now skip auth header injection
+
+3. contractnest-edge/supabase/functions/contracts/index.ts
+   → Fixed review link URL from '/contracts/review' to '/contract-review'
+   → Fixed query param from 'code' to 'secret'
+   → Before: ${frontendUrl}/contracts/review?cnak=...&code=...
+   → After:  ${frontendUrl}/contract-review?cnak=...&secret=...
+
+COPY COMMAND (PowerShell):
+───────────────
+Copy-Item "MANUAL_COPY_FILES\cnak-public-review-fix\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\cnak-public-review-fix\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+COPY COMMAND (Bash):
+───────────────
+cp -r MANUAL_COPY_FILES/cnak-public-review-fix/contractnest-ui/* contractnest-ui/
+cp -r MANUAL_COPY_FILES/cnak-public-review-fix/contractnest-edge/* contractnest-edge/
+
+DEPLOYMENT NOTES:
+───────────────
+1. UI changes require rebuild/redeploy of contractnest-ui
+2. Edge function changes require redeployment of contracts edge function
+
+TESTING CHECKLIST:
+───────────────
+[ ] Create a contract with a buyer email
+[ ] Send notification (triggers email with review link)
+[ ] Open the review link in an incognito/logged-out browser
+[ ] Verify page loads WITHOUT redirecting to login
+[ ] Verify contract details are displayed correctly
+[ ] Verify Accept/Reject buttons work
+[ ] Test with valid CNAK + secret combination
+[ ] Test with invalid CNAK (should show error, not redirect)
+
+CNAK FLOW OVERVIEW:
+───────────────
+1. Seller creates contract → sends notification to buyer
+2. Buyer receives email with review link:
+   https://app.contractnest.com/contract-review?cnak=CNAK-XXXXXX&secret=abc123
+3. Buyer clicks link → page loads WITHOUT login (public route)
+4. Buyer reviews contract → Accept or Reject
+5. If Accept → contract status changes to 'active'
+6. Buyer can then login/signup to add contract to their space using CNAK
+
+═══════════════════════════════════════════════════════════════════════════════
