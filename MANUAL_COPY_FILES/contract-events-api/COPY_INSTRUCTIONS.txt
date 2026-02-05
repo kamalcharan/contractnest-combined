@@ -1,0 +1,161 @@
+================================================================================
+CONTRACT EVENTS API LAYER - COPY INSTRUCTIONS
+================================================================================
+
+FILES INCLUDED:
+1. src/types/contractEventTypes.ts        - DTOs & type definitions
+2. src/validators/contractEventValidators.ts - express-validator rules
+3. src/services/contractEventService.ts   - HTTP client (HMAC-signed)
+4. src/controllers/contractEventController.ts - Request handlers
+5. src/routes/contractEventRoutes.ts      - Route definitions
+
+================================================================================
+STEP 1: COPY FILES TO contractnest-api
+================================================================================
+
+Copy-Item "MANUAL_COPY_FILES\contract-events-api\contractnest-api\src\types\contractEventTypes.ts" -Destination "contractnest-api\src\types\" -Force
+
+Copy-Item "MANUAL_COPY_FILES\contract-events-api\contractnest-api\src\validators\contractEventValidators.ts" -Destination "contractnest-api\src\validators\" -Force
+
+Copy-Item "MANUAL_COPY_FILES\contract-events-api\contractnest-api\src\services\contractEventService.ts" -Destination "contractnest-api\src\services\" -Force
+
+Copy-Item "MANUAL_COPY_FILES\contract-events-api\contractnest-api\src\controllers\contractEventController.ts" -Destination "contractnest-api\src\controllers\" -Force
+
+Copy-Item "MANUAL_COPY_FILES\contract-events-api\contractnest-api\src\routes\contractEventRoutes.ts" -Destination "contractnest-api\src\routes\" -Force
+
+Write-Host "All 5 API files copied!" -ForegroundColor Green
+
+================================================================================
+STEP 2: UPDATE index.ts TO REGISTER ROUTES
+================================================================================
+
+Open: contractnest-api/src/index.ts
+
+FIND this section (around line 319-332):
+
+  // Load Contract routes with error handling
+  let contractCrudRoutes;
+  try {
+    contractCrudRoutes = require('./routes/contractRoutes').default;
+    console.log('✅ Contract routes loaded');
+  } catch (error) {
+    ...
+  }
+
+ADD THIS BLOCK IMMEDIATELY AFTER:
+
+  // Load Contract Event routes with error handling
+  let contractEventRoutes;
+  try {
+    contractEventRoutes = require('./routes/contractEventRoutes').default;
+    console.log('✅ Contract event routes loaded');
+  } catch (error) {
+    console.error('❌ Failed to load contract event routes:', error);
+    if (process.env.NODE_ENV === 'production') {
+      process.exit(1);
+    } else {
+      console.warn('⚠️  Continuing without contract event routes...');
+      contractEventRoutes = null;
+    }
+  }
+
+--------------------------------------------------------------------------------
+
+FIND this section (around line 678-691):
+
+  // Register Contract CRUD routes with error handling
+  try {
+    if (contractCrudRoutes) {
+      app.use('/api/contracts', contractCrudRoutes);
+      console.log('✅ Contract routes registered at /api/contracts');
+    }
+    ...
+  }
+
+ADD THIS BLOCK IMMEDIATELY AFTER:
+
+  // Register Contract Event routes with error handling
+  try {
+    if (contractEventRoutes) {
+      app.use('/api/contract-events', contractEventRoutes);
+      console.log('✅ Contract event routes registered at /api/contract-events');
+    } else {
+      console.log('⚠️  Contract event routes skipped (not loaded)');
+    }
+  } catch (error) {
+    console.error('❌ Failed to register contract event routes:', error);
+    captureException(error instanceof Error ? error : new Error(String(error)), {
+      tags: { source: 'route_registration', route_type: 'contract_events' }
+    });
+  }
+
+--------------------------------------------------------------------------------
+
+FIND the health check services section (around line 774):
+
+  services: {
+    ...
+    contracts: contractCrudRoutes ? 'loaded' : 'not_loaded',
+    ...
+  }
+
+ADD:
+
+    contractEvents: contractEventRoutes ? 'loaded' : 'not_loaded',
+
+--------------------------------------------------------------------------------
+
+FIND the features section (around line 791):
+
+  features: {
+    ...
+    contract_crud: contractCrudRoutes !== null,
+    ...
+  }
+
+ADD:
+
+    contract_events: contractEventRoutes !== null,
+
+================================================================================
+STEP 3: VERIFY
+================================================================================
+
+cd contractnest-api
+npm run build
+
+# Should compile without errors
+
+npm run dev
+
+# Check logs for:
+# ✅ Contract event routes loaded
+# ✅ Contract event routes registered at /api/contract-events
+
+# Test health endpoint:
+curl http://localhost:5000/health | jq '.services.contractEvents'
+# Should return: "loaded"
+
+================================================================================
+API ENDPOINTS CREATED
+================================================================================
+
+GET    /api/contract-events           - List events (filtered, paginated)
+GET    /api/contract-events/dates     - Date summary (6 buckets)
+GET    /api/contract-events/health    - Health check
+POST   /api/contract-events           - Bulk create events (max 500)
+PATCH  /api/contract-events/:id       - Update single event
+
+================================================================================
+HEADERS REQUIRED
+================================================================================
+
+All endpoints require:
+- Authorization: Bearer <jwt>
+- x-tenant-id: <uuid>
+- x-environment: live|test (optional, defaults to live)
+
+POST endpoints also support:
+- x-idempotency-key: <unique-key> (recommended for bulk insert)
+
+================================================================================
