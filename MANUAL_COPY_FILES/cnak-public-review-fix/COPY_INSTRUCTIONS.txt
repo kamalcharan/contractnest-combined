@@ -1,5 +1,5 @@
 ═══════════════════════════════════════════════════════════════════════════════
-CNAK PUBLIC CONTRACT REVIEW FIX
+CNAK PUBLIC CONTRACT REVIEW FIX (v2 - with backward compatibility)
 ═══════════════════════════════════════════════════════════════════════════════
 
 Branch: claude/init-submodules-acTX4
@@ -8,17 +8,22 @@ Date: 2026-02-05
 PROBLEM SOLVED:
 ───────────────
 When opening a contract review link from email (CNAK flow), the page redirects
-to login instead of showing the public contract view. Three issues identified:
+to login instead of showing the public contract view.
 
+ISSUES IDENTIFIED:
 1. Missing endpoint definitions in serviceURLs.ts
-2. Missing public endpoints in api.ts interceptor (auth headers being added)
-3. URL mismatch between notify handler and actual review page route
+2. Missing public endpoints in api.ts interceptor
+3. URL mismatch: edge sends /contracts/review, route is /contract-review
+4. Param mismatch: edge sends ?code=, page expects ?secret=
 
 SOLUTION:
 ───────────────
 1. Added PUBLIC_VALIDATE and PUBLIC_RESPOND endpoints to serviceURLs.ts
 2. Added contract public endpoints to api.ts publicEndpoints array
-3. Fixed review URL generation in edge function notify handler
+3. Fixed review URL generation in edge function (for NEW emails)
+4. Added backward compatibility:
+   - Review page now accepts both 'secret' AND 'code' params
+   - Added /contracts/review route alias (for OLD email links)
 
 FILES MODIFIED:
 ───────────────
@@ -29,18 +34,25 @@ FILES MODIFIED:
 2. contractnest-ui/src/services/api.ts
    → Added '/api/contracts/public/validate' to publicEndpoints array
    → Added '/api/contracts/public/respond' to publicEndpoints array
-   → These endpoints will now skip auth header injection
 
-3. contractnest-edge/supabase/functions/contracts/index.ts
-   → Fixed review link URL from '/contracts/review' to '/contract-review'
-   → Fixed query param from 'code' to 'secret'
-   → Before: ${frontendUrl}/contracts/review?cnak=...&code=...
-   → After:  ${frontendUrl}/contract-review?cnak=...&secret=...
+3. contractnest-ui/src/App.tsx
+   → Added route: /contracts/review → ContractReviewPage (legacy alias)
+
+4. contractnest-ui/src/pages/contracts/review/index.tsx
+   → Now accepts both 'secret' and 'code' query params
+
+5. contractnest-edge/supabase/functions/contracts/index.ts
+   → Fixed URL from /contracts/review to /contract-review
+   → Fixed param from code= to secret=
 
 COPY COMMAND (PowerShell):
 ───────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
 Copy-Item "MANUAL_COPY_FILES\cnak-public-review-fix\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
 Copy-Item "MANUAL_COPY_FILES\cnak-public-review-fix\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
 
 COPY COMMAND (Bash):
 ───────────────
@@ -50,27 +62,21 @@ cp -r MANUAL_COPY_FILES/cnak-public-review-fix/contractnest-edge/* contractnest-
 DEPLOYMENT NOTES:
 ───────────────
 1. UI changes require rebuild/redeploy of contractnest-ui
-2. Edge function changes require redeployment of contracts edge function
+2. Edge function changes require: supabase functions deploy contracts
 
 TESTING CHECKLIST:
 ───────────────
-[ ] Create a contract with a buyer email
-[ ] Send notification (triggers email with review link)
-[ ] Open the review link in an incognito/logged-out browser
-[ ] Verify page loads WITHOUT redirecting to login
-[ ] Verify contract details are displayed correctly
-[ ] Verify Accept/Reject buttons work
-[ ] Test with valid CNAK + secret combination
-[ ] Test with invalid CNAK (should show error, not redirect)
+[ ] Test OLD email link format: /contracts/review?cnak=...&code=...
+[ ] Test NEW link format: /contract-review?cnak=...&secret=...
+[ ] Page loads WITHOUT redirecting to login
+[ ] Contract details display correctly
+[ ] Accept button works
+[ ] Reject button works
 
-CNAK FLOW OVERVIEW:
+TEST WITH YOUR EXISTING LINK:
 ───────────────
-1. Seller creates contract → sends notification to buyer
-2. Buyer receives email with review link:
-   https://app.contractnest.com/contract-review?cnak=CNAK-XXXXXX&secret=abc123
-3. Buyer clicks link → page loads WITHOUT login (public route)
-4. Buyer reviews contract → Accept or Reject
-5. If Accept → contract status changes to 'active'
-6. Buyer can then login/signup to add contract to their space using CNAK
+https://www.contractnest.com/contracts/review?cnak=CNAK-526FC7&code=376191761d6f43af8b78c250029c23c6
+
+This should now work after copying files and rebuilding UI.
 
 ═══════════════════════════════════════════════════════════════════════════════
