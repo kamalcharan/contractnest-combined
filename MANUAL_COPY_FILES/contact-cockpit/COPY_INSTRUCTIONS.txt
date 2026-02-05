@@ -42,17 +42,47 @@ FILES TO COPY
    -> Copy to: contractnest-ui/src/components/contacts/cockpit/index.ts
    -> Purpose: Component exports
 
+8. contractnest-ui/src/pages/contacts/view.tsx  <-- FULLY INTEGRATED
+   -> Copy to: contractnest-ui/src/pages/contacts/view.tsx
+   -> Purpose: Contact view page with cockpit components integrated
+
+===============================================
+QUICK COPY COMMANDS (Linux/WSL)
+===============================================
+
+# Step 1: Navigate to project root
+cd /home/user/contractnest-combined
+
+# Step 2: Create directories
+mkdir -p contractnest-ui/src/types
+mkdir -p contractnest-ui/src/hooks/queries
+mkdir -p contractnest-ui/src/components/contacts/cockpit
+
+# Step 3: Copy all UI files
+cp MANUAL_COPY_FILES/contact-cockpit/contractnest-ui/src/types/contactCockpit.ts contractnest-ui/src/types/
+cp MANUAL_COPY_FILES/contact-cockpit/contractnest-ui/src/hooks/queries/useContactCockpit.ts contractnest-ui/src/hooks/queries/
+cp MANUAL_COPY_FILES/contact-cockpit/contractnest-ui/src/components/contacts/cockpit/*.tsx contractnest-ui/src/components/contacts/cockpit/
+cp MANUAL_COPY_FILES/contact-cockpit/contractnest-ui/src/components/contacts/cockpit/index.ts contractnest-ui/src/components/contacts/cockpit/
+cp MANUAL_COPY_FILES/contact-cockpit/contractnest-ui/src/pages/contacts/view.tsx contractnest-ui/src/pages/contacts/
+
+echo "All UI files copied!"
+
 ===============================================
 APPLY ORDER
 ===============================================
 
 Step 1: Run 015_contact_cockpit_summary_rpc.sql in Supabase SQL Editor
+        (You already did this)
 
-Step 2: Copy all UI files to contractnest-ui
+Step 2: Copy all UI files using commands above
 
 Step 3: Add the cockpit route to contactRoutes.ts (see MANUAL INTEGRATION below)
 
-Step 4: Integrate components into contact view (see MANUAL INTEGRATION below)
+Step 4: Add controller method to contactController.ts (see MANUAL INTEGRATION below)
+
+Step 5: Add Edge Function handler (see MANUAL INTEGRATION below)
+
+Step 6: Restart dev server and test
 
 ===============================================
 MANUAL INTEGRATION REQUIRED
@@ -145,54 +175,6 @@ case 'cockpit_summary': {
 }
 ```
 
-=== 4. Integrate into Contact View ===
-
-Update contractnest-ui/src/pages/contacts/view.tsx:
-
-```typescript
-// Add imports
-import { useContactCockpit } from '@/hooks/queries/useContactCockpit';
-import {
-  ContactCockpitStatsBar,
-  ContactCockpitPanel,
-  ActionIsland
-} from '@/components/contacts/cockpit';
-
-// Inside ContactViewPage component, add hook:
-const [cockpitDaysAhead, setCockpitDaysAhead] = useState(7);
-const {
-  data: cockpitData,
-  isLoading: cockpitLoading
-} = useContactCockpit(id, { daysAhead: cockpitDaysAhead });
-
-// Get classifications for contract creation options
-const classifications = contact?.classifications?.map(c => c.classification_value) || [];
-
-// Add components in render (after ContactHeaderCard, before tabs):
-<ContactCockpitStatsBar
-  data={cockpitData}
-  isLoading={cockpitLoading}
-  className="mb-6"
-/>
-
-<ContactCockpitPanel
-  data={cockpitData}
-  isLoading={cockpitLoading}
-  contactId={id || ''}
-  classifications={classifications}
-  onDateRangeChange={setCockpitDaysAhead}
-  className="mb-6"
-/>
-
-// Add ActionIsland at the end (before closing div):
-<ActionIsland
-  contactId={contact.id}
-  contactName={getContactDisplayName()}
-  classifications={classifications}
-  contactStatus={contact.status}
-/>
-```
-
 ===============================================
 WHAT THE RPC RETURNS
 ===============================================
@@ -251,6 +233,20 @@ Date Range Options:
 - Quarter (90 days)
 
 Contract Creation based on classification:
-- Client → Client Contract
-- Vendor → Client Contract + Vendor Contract
-- Partner → Client Contract + Vendor Contract + Partner Contract
+- Client -> Client Contract
+- Vendor -> Client Contract + Vendor Contract
+- Partner -> Client Contract + Vendor Contract + Partner Contract
+
+===============================================
+TESTING CHECKLIST
+===============================================
+
+- [ ] Navigate to /contacts/{id}
+- [ ] Stats bar shows LTV, Contracts, Events, Health Score
+- [ ] Contracts Pulse shows contract list with progress bars
+- [ ] Events Radar shows overdue/today/upcoming events
+- [ ] Date filter dropdown works (7d, 14d, 30d, 90d)
+- [ ] Action Island appears at bottom
+- [ ] Contract button shows dropdown based on classification
+- [ ] Invoice button navigates to billing create
+- [ ] + button expands to show Schedule, Log Activity, Assign
