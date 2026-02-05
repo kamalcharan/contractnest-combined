@@ -1,0 +1,45 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS - Contact Cockpit Fixes
+═══════════════════════════════════════════════════
+
+Branch: contact-cockpit-fixes
+Submodules Affected: contractnest-ui
+
+FILES TO COPY:
+─────────────────────────────────
+
+1. contractnest-ui/src/components/contacts/cockpit/ActionIsland.tsx
+   → contractnest-ui/src/components/contacts/cockpit/ActionIsland.tsx
+   Purpose: Added Profile button, new props (primaryEmail, primaryPhone, onProfileClick)
+
+2. contractnest-ui/src/components/contacts/cockpit/index.ts
+   → contractnest-ui/src/components/contacts/cockpit/index.ts
+   Purpose: Added ProfileDrawer export
+
+3. contractnest-ui/src/components/contacts/cockpit/ProfileDrawer.tsx
+   → contractnest-ui/src/components/contacts/cockpit/ProfileDrawer.tsx
+   Purpose: NEW FILE - Profile drawer with ViewCard styling
+
+4. contractnest-ui/src/components/contacts/view/cards/ContactHeaderCard.tsx
+   → contractnest-ui/src/components/contacts/view/cards/ContactHeaderCard.tsx
+   Purpose: Added compact variant with LTV/Health metrics
+
+5. contractnest-ui/src/hooks/queries/useContactCockpit.ts
+   → contractnest-ui/src/hooks/queries/useContactCockpit.ts
+   Purpose: Disabled aggressive refetching (no more 5-second refresh)
+
+6. contractnest-ui/src/pages/contacts/view.tsx
+   → contractnest-ui/src/pages/contacts/view.tsx
+   Purpose: Integrated compact header, ProfileDrawer, removed old stats bar
+
+═══════════════════════════════════════════════════
+CHANGES SUMMARY
+═══════════════════════════════════════════════════
+
+1. FIXED: Constant page refresh (disabled refetchOnWindowFocus, refetchInterval)
+2. ADDED: Compact header variant with LTV/Health score metrics (or placeholders)
+3. ADDED: ProfileDrawer component (matches existing ViewCard styling)
+4. ADDED: Profile button in ActionIsland
+
+NOTE: Cockpit data still requires the database RPC `get_contact_cockpit_summary`
+to be deployed. Without it, you'll see placeholder values (--) instead of actual data.
