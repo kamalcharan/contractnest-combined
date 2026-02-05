@@ -1,8 +1,22 @@
 // src/controllers/contactController.ts
 import { Request, Response } from 'express';
+import crypto from 'crypto';
 import { AuthRequest } from '../middleware/auth';
 import ContactService from '../services/contactService';
 import { CONTACT_STATUS, CONTACT_FORM_TYPES, CONTACT_CLASSIFICATIONS } from '../utils/constants/contacts';
+
+// HMAC signing for Edge Function calls
+const INTERNAL_SIGNING_SECRET = process.env.INTERNAL_SIGNING_SECRET || '';
+
+function generateHMACSignature(body: string): string {
+  if (!INTERNAL_SIGNING_SECRET) {
+    console.warn('⚠️ INTERNAL_SIGNING_SECRET not configured');
+    return '';
+  }
+  const hmac = crypto.createHmac('sha256', INTERNAL_SIGNING_SECRET);
+  hmac.update(body);
+  return hmac.digest('hex');
+}
 
 class ContactController {
   private contactService: ContactService;
@@ -521,21 +535,34 @@ class ContactController {
         throw new Error('SUPABASE_URL not configured');
       }
 
+      // Prepare request body
+      const requestBody = JSON.stringify({
+        action: 'cockpit_summary',
+        contact_id: id,
+        tenant_id: tenantId,
+        is_live: isLive,
+        days_ahead: daysAhead
+      });
+
+      // Generate HMAC signature for Edge Function
+      const signature = generateHMACSignature(requestBody);
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${userJWT}`,
+        'x-tenant-id': tenantId,
+        'x-environment': environment
+      };
+
+      // Add signature if available
+      if (signature) {
+        headers['x-internal-signature'] = signature;
+      }
+
       const response = await fetch(`${supabaseUrl}/functions/v1/contracts`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${userJWT}`,
-          'x-tenant-id': tenantId,
-          'x-environment': environment
-        },
-        body: JSON.stringify({
-          action: 'cockpit_summary',
-          contact_id: id,
-          tenant_id: tenantId,
-          is_live: isLive,
-          days_ahead: daysAhead
-        })
+        headers,
+        body: requestBody
       });
 
       const result = await response.json();
