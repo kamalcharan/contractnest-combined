@@ -1,0 +1,96 @@
+═══════════════════════════════════════════════════════════════════════════════
+📦 CONTACT 360° COCKPIT - CYCLE 1: PROFILE DRAWER
+═══════════════════════════════════════════════════════════════════════════════
+
+Branch: contact-cockpit-cycle1
+Date: 2026-02-05
+
+Files Changed:
+  - contractnest-ui/src/components/contacts/cockpit/ProfileDrawer.tsx (NEW)
+  - contractnest-ui/src/components/contacts/cockpit/ActionIsland.tsx (UPDATED)
+  - contractnest-ui/src/components/contacts/cockpit/index.ts (UPDATED)
+  - contractnest-ui/src/pages/contacts/view.tsx (UPDATED)
+
+Submodules Affected: contractnest-ui
+
+What's New in Cycle 1:
+  ✓ ProfileDrawer component - slides from right with all contact demographics
+  ✓ Updated ActionIsland with new buttons: Profile, Message, VaNi, Invoice, Contract
+  ✓ Profile button toggles drawer open/close
+  ✓ Message button with Email/WhatsApp options
+  ✓ VaNi button with shimmer animation (placeholder)
+  ✓ All edit modals work from within the drawer
+  ✓ Keyboard support (Escape to close drawer)
+
+Production Checklist:
+  ✅ Transaction Management: Yes - uses existing update hooks
+  ✅ Race Condition Handling: Yes - disabled states during saves
+  ✅ Error Handling: Yes - try-catch with toast notifications
+  ✅ Toasts: Yes - uses existing useToast hook
+  ✅ Loaders: Yes - spinner during save operations
+
+═══════════════════════════════════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+───────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files from MANUAL_COPY_FILES
+───────────────────────────────────
+# Copy all UI files
+Copy-Item "MANUAL_COPY_FILES\contact-cockpit-cycle1\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "✅ All files copied!" -ForegroundColor Green
+
+STEP 3: Start Dev Server & Test
+───────────────────────────────────
+cd contractnest-ui
+npm run dev
+
+# Hard refresh browser: Ctrl+F5
+# Navigate to: /contacts/{contact-id}
+
+═══════════════════════════════════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+Profile Drawer:
+  - [ ] Click Profile button in Action Island → drawer slides from right
+  - [ ] Click backdrop or X button → drawer closes
+  - [ ] Press Escape key → drawer closes
+  - [ ] All contact channels display correctly
+  - [ ] Classifications display with correct colors
+  - [ ] Contact persons show (corporate contacts only)
+  - [ ] Addresses display with primary star
+  - [ ] Compliance numbers show (corporate only)
+  - [ ] Tags display with colors
+  - [ ] Status toggle works (active/inactive)
+  - [ ] Archive button shows confirmation dialog
+  - [ ] "Edit Contact" button navigates to edit page
+
+Edit Modals (from drawer):
+  - [ ] Click edit icon on Contact Channels → modal opens
+  - [ ] Edit channels → Save → changes persist
+  - [ ] Click edit icon on Classification → modal opens
+  - [ ] Click edit icon on Tags → modal opens
+  - [ ] Click edit icon on Addresses → modal opens
+  - [ ] Click edit icon on Compliance → modal opens (corporate)
+  - [ ] Click edit icon on Contact Persons → modal opens (corporate)
+
+Action Island:
+  - [ ] Profile button (purple) → toggles drawer
+  - [ ] Message button (green) → shows Email/WhatsApp options
+  - [ ] VaNi button (gradient with shimmer) → console log (placeholder)
+  - [ ] Invoice button (blue) → navigates to billing create
+  - [ ] Contract button (green) → shows contract type options
+  - [ ] All buttons disabled when contact is archived
+
+═══════════════════════════════════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════════════════════════════════
