@@ -1,0 +1,256 @@
+===============================================
+CONTACT COCKPIT - COMPLETE FEATURE
+===============================================
+
+Branch: contact-cockpit
+Submodules Affected: contractnest-edge, contractnest-api, contractnest-ui
+Date: February 2025
+
+===============================================
+FILES TO COPY
+===============================================
+
+=== DATABASE (contractnest-edge) ===
+
+1. contractnest-edge/supabase/migrations/contracts/015_contact_cockpit_summary_rpc.sql
+   -> Copy to: contractnest-edge/supabase/migrations/contracts/015_contact_cockpit_summary_rpc.sql
+   -> Purpose: RPC function to get cockpit summary data (contracts, events, LTV, health score)
+
+=== UI (contractnest-ui) ===
+
+2. contractnest-ui/src/types/contactCockpit.ts
+   -> Copy to: contractnest-ui/src/types/contactCockpit.ts
+   -> Purpose: TypeScript type definitions for cockpit data
+
+3. contractnest-ui/src/hooks/queries/useContactCockpit.ts
+   -> Copy to: contractnest-ui/src/hooks/queries/useContactCockpit.ts
+   -> Purpose: TanStack Query hook for fetching cockpit data
+
+4. contractnest-ui/src/components/contacts/cockpit/ContactCockpitStatsBar.tsx
+   -> Copy to: contractnest-ui/src/components/contacts/cockpit/ContactCockpitStatsBar.tsx
+   -> Purpose: Top stats bar component (LTV, Contracts, Events, Health Score)
+
+5. contractnest-ui/src/components/contacts/cockpit/ContactCockpitPanel.tsx
+   -> Copy to: contractnest-ui/src/components/contacts/cockpit/ContactCockpitPanel.tsx
+   -> Purpose: Main panel with Contracts Pulse + Events Radar sections
+
+6. contractnest-ui/src/components/contacts/cockpit/ActionIsland.tsx
+   -> Copy to: contractnest-ui/src/components/contacts/cockpit/ActionIsland.tsx
+   -> Purpose: Floating action island at bottom center
+
+7. contractnest-ui/src/components/contacts/cockpit/index.ts
+   -> Copy to: contractnest-ui/src/components/contacts/cockpit/index.ts
+   -> Purpose: Component exports
+
+===============================================
+APPLY ORDER
+===============================================
+
+Step 1: Run 015_contact_cockpit_summary_rpc.sql in Supabase SQL Editor
+
+Step 2: Copy all UI files to contractnest-ui
+
+Step 3: Add the cockpit route to contactRoutes.ts (see MANUAL INTEGRATION below)
+
+Step 4: Integrate components into contact view (see MANUAL INTEGRATION below)
+
+===============================================
+MANUAL INTEGRATION REQUIRED
+===============================================
+
+=== 1. Add Cockpit Route to contactRoutes.ts ===
+
+Add this route BEFORE the `/:id` route in contractnest-api/src/routes/contactRoutes.ts:
+
+```typescript
+// Add after line 489 (after /duplicates route), BEFORE /:id route
+
+/**
+ * @swagger
+ * /api/contacts/{id}/cockpit:
+ *   get:
+ *     summary: Get contact cockpit summary
+ *     description: Get dashboard data including contracts, events, LTV, health score
+ *     tags: [Contacts]
+ */
+router.get('/:id/cockpit', contactController.getContactCockpit);
+```
+
+=== 2. Add Controller Method ===
+
+Add this method to contractnest-api/src/controllers/contactController.ts:
+
+```typescript
+// Add to ContactController class
+
+async getContactCockpit(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const tenantId = req.headers['x-tenant-id'] as string;
+    const isLive = req.headers['x-is-live'] !== 'false';
+    const daysAhead = parseInt(req.query.days_ahead as string) || 7;
+
+    // Call the Edge Function (contracts) which will call the RPC
+    const response = await axios.post(
+      `${process.env.SUPABASE_URL}/functions/v1/contacts`,
+      {
+        action: 'cockpit_summary',
+        contact_id: id,
+        tenant_id: tenantId,
+        is_live: isLive,
+        days_ahead: daysAhead,
+      },
+      {
+        headers: {
+          'Authorization': req.headers.authorization,
+          'x-tenant-id': tenantId,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    res.status(200).json(response.data);
+  } catch (error: any) {
+    const status = error.response?.status || 500;
+    const message = error.response?.data?.error || error.message || 'Failed to get cockpit summary';
+
+    res.status(status).json({
+      success: false,
+      error: message,
+      timestamp: new Date().toISOString(),
+    });
+  }
+}
+```
+
+=== 3. Update Edge Function (contacts/index.ts) ===
+
+Add a handler for 'cockpit_summary' action:
+
+```typescript
+// Add to handleContactAction switch statement
+
+case 'cockpit_summary': {
+  const { contact_id, tenant_id, is_live = true, days_ahead = 7 } = body;
+
+  const { data, error } = await supabase.rpc('get_contact_cockpit_summary', {
+    p_contact_id: contact_id,
+    p_tenant_id: tenant_id,
+    p_is_live: is_live,
+    p_days_ahead: days_ahead,
+  });
+
+  if (error) throw error;
+  return new Response(JSON.stringify(data), { headers: corsHeaders });
+}
+```
+
+=== 4. Integrate into Contact View ===
+
+Update contractnest-ui/src/pages/contacts/view.tsx:
+
+```typescript
+// Add imports
+import { useContactCockpit } from '@/hooks/queries/useContactCockpit';
+import {
+  ContactCockpitStatsBar,
+  ContactCockpitPanel,
+  ActionIsland
+} from '@/components/contacts/cockpit';
+
+// Inside ContactViewPage component, add hook:
+const [cockpitDaysAhead, setCockpitDaysAhead] = useState(7);
+const {
+  data: cockpitData,
+  isLoading: cockpitLoading
+} = useContactCockpit(id, { daysAhead: cockpitDaysAhead });
+
+// Get classifications for contract creation options
+const classifications = contact?.classifications?.map(c => c.classification_value) || [];
+
+// Add components in render (after ContactHeaderCard, before tabs):
+<ContactCockpitStatsBar
+  data={cockpitData}
+  isLoading={cockpitLoading}
+  className="mb-6"
+/>
+
+<ContactCockpitPanel
+  data={cockpitData}
+  isLoading={cockpitLoading}
+  contactId={id || ''}
+  classifications={classifications}
+  onDateRangeChange={setCockpitDaysAhead}
+  className="mb-6"
+/>
+
+// Add ActionIsland at the end (before closing div):
+<ActionIsland
+  contactId={contact.id}
+  contactName={getContactDisplayName()}
+  classifications={classifications}
+  contactStatus={contact.status}
+/>
+```
+
+===============================================
+WHAT THE RPC RETURNS
+===============================================
+
+{
+  "success": true,
+  "data": {
+    "contact_id": "uuid",
+    "contracts": {
+      "total": 5,
+      "by_status": { "active": 3, "draft": 2 },
+      "contracts": [...]
+    },
+    "events": {
+      "total": 25,
+      "completed": 10,
+      "overdue": 2,
+      "by_status": { "scheduled": 13, "completed": 10, "cancelled": 2 },
+      "by_type": { "service": 20, "billing": 5 }
+    },
+    "overdue_events": [...],
+    "upcoming_events": [...],
+    "ltv": 450000,
+    "outstanding": 0,
+    "health_score": 85.5,
+    "days_ahead": 7
+  },
+  "generated_at": "2025-02-05T12:00:00Z"
+}
+
+===============================================
+VERIFICATION QUERIES
+===============================================
+
+-- Test the cockpit RPC
+SELECT get_contact_cockpit_summary(
+  '681f93ab-e86e-4418-8051-252116a3551c'::UUID,  -- contact_id
+  'YOUR_TENANT_ID'::UUID,                         -- tenant_id
+  true,                                           -- is_live
+  7                                               -- days_ahead
+);
+
+===============================================
+UI FEATURES SUMMARY
+===============================================
+
+1. Stats Bar (top): LTV, Contracts count, Events pending/overdue, Health Score
+2. Contracts Pulse: List of contracts with progress, status pills, create dropdown
+3. Events Radar: Overdue (red), Today (amber), Upcoming (green) with date filter
+4. Action Island: Floating bottom bar with Contract, Invoice, + quick actions
+
+Date Range Options:
+- 7 Days (default)
+- Fortnight (14 days)
+- Month (30 days)
+- Quarter (90 days)
+
+Contract Creation based on classification:
+- Client → Client Contract
+- Vendor → Client Contract + Vendor Contract
+- Partner → Client Contract + Vendor Contract + Partner Contract
