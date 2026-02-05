@@ -1,38 +1,48 @@
 # CONTACT COCKPIT FIX - COPY INSTRUCTIONS
 # ========================================
 # Date: 2026-02-05
-# Purpose: Fix undefined 'colors' variable in cockpit components
+# Purpose: Fix Contact Cockpit - API route + UI component fixes
 #
-# ISSUE: Both ContactCockpitStatsBar.tsx and ContactCockpitPanel.tsx
-#        were using 'colors.utility.*' but 'colors' was never defined.
-#        Only 'isDarkMode' was destructured from useTheme().
-#        This caused a runtime crash preventing components from rendering.
-#
-# FIX: Replaced inline styles using undefined 'colors' with Tailwind
-#      classes using 'isDarkMode' conditionals.
+# ISSUES FIXED:
+# 1. API: /api/contacts/:id/cockpit route returning 404
+#    - Added getContactCockpit method to contactController.ts
+#    - Added /:id/cockpit route to contactRoutes.ts
+# 2. UI: Components crashing due to undefined 'colors' variable
+#    - Fixed ContactCockpitStatsBar.tsx empty state
+#    - Fixed ContactCockpitPanel.tsx empty state
 
 # ========================================
 # FILES TO COPY
 # ========================================
 
-# File 1: ContactCockpitStatsBar.tsx
+# === API FILES ===
+
+# File 1: contactRoutes.ts (has the /:id/cockpit route)
+# FROM: MANUAL_COPY_FILES/contact-cockpit-fix/contractnest-api/src/routes/contactRoutes.ts
+# TO:   contractnest-api/src/routes/contactRoutes.ts
+
+# File 2: contactController.ts (has the getContactCockpit method)
+# FROM: MANUAL_COPY_FILES/contact-cockpit-fix/contractnest-api/src/controllers/contactController.ts
+# TO:   contractnest-api/src/controllers/contactController.ts
+
+# === UI FILES ===
+
+# File 3: ContactCockpitStatsBar.tsx
 # FROM: MANUAL_COPY_FILES/contact-cockpit-fix/contractnest-ui/src/components/contacts/cockpit/ContactCockpitStatsBar.tsx
 # TO:   contractnest-ui/src/components/contacts/cockpit/ContactCockpitStatsBar.tsx
 
-# File 2: ContactCockpitPanel.tsx
+# File 4: ContactCockpitPanel.tsx
 # FROM: MANUAL_COPY_FILES/contact-cockpit-fix/contractnest-ui/src/components/contacts/cockpit/ContactCockpitPanel.tsx
 # TO:   contractnest-ui/src/components/contacts/cockpit/ContactCockpitPanel.tsx
 
 # ========================================
 # SUBMODULES AFFECTED
 # ========================================
-# - contractnest-ui (2 files modified)
+# - contractnest-api (2 files)
+# - contractnest-ui (2 files)
 
 # ========================================
-# COMMIT MESSAGE
+# COMMIT MESSAGES
 # ========================================
-# fix: resolve undefined colors variable in cockpit components
-#
-# - Fixed ContactCockpitStatsBar.tsx empty state using isDarkMode instead of undefined colors
-# - Fixed ContactCockpitPanel.tsx empty state using isDarkMode instead of undefined colors
-# - Added proper icons to empty state panels for consistency
+# API: feat: add contact cockpit API endpoint
+# UI:  fix: resolve undefined colors variable in cockpit components
