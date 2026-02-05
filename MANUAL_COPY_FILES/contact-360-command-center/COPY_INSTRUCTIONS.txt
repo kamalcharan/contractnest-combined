@@ -1,0 +1,49 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS - Contact 360° Command Center
+═══════════════════════════════════════════════════
+
+Branch: contact-360-command-center
+Submodules Affected: contractnest-ui
+
+FILES TO COPY:
+─────────────────────────────────────
+
+1. contractnest-ui/src/pages/contacts/view.tsx
+   → contractnest-ui/src/pages/contacts/view.tsx
+   Purpose: Complete rewrite - 3-column layout matching agreed design
+
+═══════════════════════════════════════════════════
+CHANGES SUMMARY
+═══════════════════════════════════════════════════
+
+DELETED:
+- TabsNavigation import and usage
+- ContactSummaryTab import
+- BillingTab import
+- ServicesTab import
+- ContractTab import
+- ContactCockpitPanel import and usage
+- PlaceholderTab component
+- activeTab state and tabs configuration
+- renderTabContent() function
+
+ADDED:
+- THREE COLUMN LAYOUT (matching contact-cockpit-360.html):
+  * Column 1: Contracts with filters (All, Active, Draft, Sent, Signed)
+  * Column 2: Events Timeline with buckets (Overdue, Today, Upcoming)
+  * Column 3: Financials with Collected/Outstanding summary
+- Hero Header with Avatar, Name, Email, Status + LTV, Outstanding, Health Score
+- Contract cards with status colors and click-to-navigate
+- Event cards with type icons and date range selector (7D, 14D, 30D)
+- Collection progress bar
+
+KEPT:
+- ActionIsland (floating bottom bar)
+- ProfileDrawer (slide-out profile panel)
+- useContactCockpit hook for data
+
+DATA SOURCES (already connected):
+- Contracts: cockpitData.contracts.contracts[]
+- Events: cockpitData.overdue_events[] + cockpitData.upcoming_events[]
+- Financials: cockpitData.ltv, cockpitData.outstanding, cockpitData.health_score
+
