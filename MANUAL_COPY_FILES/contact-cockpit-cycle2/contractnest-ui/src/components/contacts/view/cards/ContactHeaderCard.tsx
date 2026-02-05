@@ -126,7 +126,8 @@ const ContactHeaderCard: React.FC<ContactHeaderCardProps> = ({
   const [copiedValue, setCopiedValue] = React.useState<string | null>(null);
 
   // Determine if we should show compact cockpit layout
-  const showCompactCockpit = variant === 'compact' && (cockpitData || isLoading);
+  // Always show compact when variant="compact", regardless of data availability
+  const showCompactCockpit = variant === 'compact';
 
   // Generate avatar initials
   const getAvatarInitials = (): string => {
@@ -485,7 +486,51 @@ const ContactHeaderCard: React.FC<ContactHeaderCardProps> = ({
                   </div>
                 </div>
               </>
-            ) : null}
+            ) : (
+              // No data state - show placeholder metrics
+              <>
+                {/* LTV - No data */}
+                <div className="text-right">
+                  <div
+                    className="text-xs font-medium uppercase tracking-wider flex items-center gap-1 justify-end"
+                    style={{ color: colors.utility.secondaryText }}
+                  >
+                    <TrendingUp className="h-3 w-3" />
+                    LTV
+                  </div>
+                  <div
+                    className="text-lg font-bold"
+                    style={{ color: colors.utility.secondaryText }}
+                  >
+                    --
+                  </div>
+                </div>
+
+                {/* Health Score - No data */}
+                <div className="text-right min-w-[100px]">
+                  <div
+                    className="text-xs font-medium uppercase tracking-wider flex items-center gap-1 justify-end"
+                    style={{ color: colors.utility.secondaryText }}
+                  >
+                    <Heart className="h-3 w-3" />
+                    Health
+                  </div>
+                  <div className="flex items-center gap-2 justify-end">
+                    <span
+                      className="text-lg font-bold"
+                      style={{ color: colors.utility.secondaryText }}
+                    >
+                      --%
+                    </span>
+                    {/* Empty progress bar */}
+                    <div
+                      className="w-16 h-2 rounded-full overflow-hidden"
+                      style={{ backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
