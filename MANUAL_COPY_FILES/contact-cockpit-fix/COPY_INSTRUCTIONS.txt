@@ -1,0 +1,38 @@
+# CONTACT COCKPIT FIX - COPY INSTRUCTIONS
+# ========================================
+# Date: 2026-02-05
+# Purpose: Fix undefined 'colors' variable in cockpit components
+#
+# ISSUE: Both ContactCockpitStatsBar.tsx and ContactCockpitPanel.tsx
+#        were using 'colors.utility.*' but 'colors' was never defined.
+#        Only 'isDarkMode' was destructured from useTheme().
+#        This caused a runtime crash preventing components from rendering.
+#
+# FIX: Replaced inline styles using undefined 'colors' with Tailwind
+#      classes using 'isDarkMode' conditionals.
+
+# ========================================
+# FILES TO COPY
+# ========================================
+
+# File 1: ContactCockpitStatsBar.tsx
+# FROM: MANUAL_COPY_FILES/contact-cockpit-fix/contractnest-ui/src/components/contacts/cockpit/ContactCockpitStatsBar.tsx
+# TO:   contractnest-ui/src/components/contacts/cockpit/ContactCockpitStatsBar.tsx
+
+# File 2: ContactCockpitPanel.tsx
+# FROM: MANUAL_COPY_FILES/contact-cockpit-fix/contractnest-ui/src/components/contacts/cockpit/ContactCockpitPanel.tsx
+# TO:   contractnest-ui/src/components/contacts/cockpit/ContactCockpitPanel.tsx
+
+# ========================================
+# SUBMODULES AFFECTED
+# ========================================
+# - contractnest-ui (2 files modified)
+
+# ========================================
+# COMMIT MESSAGE
+# ========================================
+# fix: resolve undefined colors variable in cockpit components
+#
+# - Fixed ContactCockpitStatsBar.tsx empty state using isDarkMode instead of undefined colors
+# - Fixed ContactCockpitPanel.tsx empty state using isDarkMode instead of undefined colors
+# - Added proper icons to empty state panels for consistency
