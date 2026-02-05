@@ -3,11 +3,12 @@ CONTRACT EVENTS UI LAYER - COPY INSTRUCTIONS
 ================================================================================
 
 FILES INCLUDED:
-1. src/types/contractEvents.ts                    - Type definitions & constants
-2. src/hooks/queries/useContractEventQueries.ts   - TanStack Query hooks
-3. src/components/contracts/TimelineTab.tsx       - Timeline tab component
-4. src/pages/contracts/detail/index.tsx           - Updated contract detail page
-5. src/services/serviceURLs.contract-events.ts    - Reference for serviceURLs.ts updates
+1. src/types/contractEvents.ts                         - Type definitions & constants
+2. src/hooks/queries/useContractEventQueries.ts        - TanStack Query hooks
+3. src/components/contracts/TimelineTab.tsx            - Timeline tab component
+4. src/pages/contracts/detail/index.tsx                - Updated contract detail page
+5. src/components/contracts/ContractWizard/index.tsx   - **FIX: Saves computed_events**
+6. src/services/serviceURLs.contract-events.ts         - Reference for serviceURLs.ts updates
 
 ================================================================================
 STEP 1: COPY FILES TO contractnest-ui
@@ -22,114 +23,98 @@ Copy-Item "MANUAL_COPY_FILES\contract-events-ui\contractnest-ui\src\hooks\querie
 # Components
 Copy-Item "MANUAL_COPY_FILES\contract-events-ui\contractnest-ui\src\components\contracts\TimelineTab.tsx" -Destination "contractnest-ui\src\components\contracts\" -Force
 
+# Contract Wizard (CRITICAL FIX - saves computed_events to contract)
+Copy-Item "MANUAL_COPY_FILES\contract-events-ui\contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\" -Force
+
 # Pages (updated contract detail with Timeline tab integration)
 Copy-Item "MANUAL_COPY_FILES\contract-events-ui\contractnest-ui\src\pages\contracts\detail\index.tsx" -Destination "contractnest-ui\src\pages\contracts\detail\" -Force
 
-Write-Host "4 UI files copied!" -ForegroundColor Green
+Write-Host "5 UI files copied!" -ForegroundColor Green
 
 ================================================================================
-STEP 2: UPDATE serviceURLs.ts (MANUAL EDIT - OPTIONAL)
+WHAT WAS FIXED: computed_events
 ================================================================================
 
-NOTE: The hooks use inline API endpoints for now. If you want centralized URLs,
-update serviceURLs.ts using the reference file.
+The wizard now computes events in mapWizardToRequest() and includes them in the
+API payload as `computed_events`. This JSONB array is stored in t_contracts.
 
-Open: contractnest-ui/src/services/serviceURLs.ts
-
-Reference file: MANUAL_COPY_FILES/contract-events-ui/contractnest-ui/src/services/serviceURLs.contract-events.ts
-
-ADD this section after the CONTRACTS section (around line 892):
-
-  // =================================================================
-  // CONTRACT EVENTS (TIMELINE) ENDPOINTS
-  // =================================================================
-  CONTRACT_EVENTS: {
-    LIST: '/api/contract-events',
-    GET: (id: string) => `/api/contract-events/${id}`,
-    CREATE: '/api/contract-events',
-    UPDATE: (id: string) => `/api/contract-events/${id}`,
-    DATES: '/api/contract-events/dates',
-    HEALTH: '/api/contract-events/health',
-
-    LIST_WITH_FILTERS: (filters: ContractEventFilters = {}) => {
-      const params = new URLSearchParams();
-      if (filters.contract_id) params.append('contract_id', filters.contract_id);
-      if (filters.contact_id) params.append('contact_id', filters.contact_id);
-      if (filters.assigned_to) params.append('assigned_to', filters.assigned_to);
-      if (filters.status) params.append('status', filters.status);
-      if (filters.event_type) params.append('event_type', filters.event_type);
-      if (filters.date_from) params.append('date_from', filters.date_from);
-      if (filters.date_to) params.append('date_to', filters.date_to);
-      if (filters.page !== undefined) params.append('page', filters.page.toString());
-      if (filters.per_page !== undefined) params.append('per_page', filters.per_page.toString());
-      if (filters.sort_by) params.append('sort_by', filters.sort_by);
-      if (filters.sort_order) params.append('sort_order', filters.sort_order);
-      const queryString = params.toString();
-      return queryString ? `/api/contract-events?${queryString}` : '/api/contract-events';
-    },
-
-    DATES_WITH_FILTERS: (filters: ContractEventDateFilters = {}) => {
-      const params = new URLSearchParams();
-      if (filters.contract_id) params.append('contract_id', filters.contract_id);
-      if (filters.contact_id) params.append('contact_id', filters.contact_id);
-      if (filters.assigned_to) params.append('assigned_to', filters.assigned_to);
-      if (filters.event_type) params.append('event_type', filters.event_type);
-      const queryString = params.toString();
-      return queryString ? `/api/contract-events/dates?${queryString}` : '/api/contract-events/dates';
-    },
-  },
-
---------------------------------------------------------------------------------
-
-ADD these types (after ContractCrudFilters around line 1119):
-
-// Contract Events filter interface
-export type ContractEventFilters = {
-  contract_id?: string;
-  contact_id?: string;
-  assigned_to?: string;
-  status?: 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'overdue';
-  event_type?: 'service' | 'billing';
-  date_from?: string;
-  date_to?: string;
-  page?: number;
-  per_page?: number;
-  sort_by?: 'scheduled_date' | 'created_at' | 'updated_at' | 'status' | 'event_type' | 'amount';
-  sort_order?: 'asc' | 'desc';
-};
-
-export type ContractEventDateFilters = {
-  contract_id?: string;
-  contact_id?: string;
-  assigned_to?: string;
-  event_type?: 'service' | 'billing';
-};
-
---------------------------------------------------------------------------------
-
-ADD this export type (after ContractsEndpoints around line 1191):
-
-export type ContractEventsEndpoints = typeof API_ENDPOINTS.CONTRACT_EVENTS;
+When the contract status changes to 'active':
+  1. PGMQ trigger fires (trg_queue_contract_events)
+  2. Message sent to 'contract_events_create' queue
+  3. PGMQ worker calls process_contract_events_from_computed(contract_id, tenant_id)
+  4. RPC reads computed_events from contract, inserts into t_contract_events
+  5. RPC sets computed_events = NULL (idempotent - won't reprocess)
 
 ================================================================================
-STEP 3: VERIFY
+STEP 2: APPLY DB MIGRATIONS (REQUIRED)
+================================================================================
+
+Before the Timeline tab will show events, you MUST apply these migrations:
+
+Migration 1: 012_contract_events_tables.sql
+  - Creates t_contract_events table
+  - Creates t_contract_event_audit table
+  - Adds computed_events column to t_contracts
+  - Sets up RLS policies and indexes
+
+Migration 2: 013_contract_events_rpc_functions.sql
+  - Creates insert_contract_events_batch RPC
+  - Creates update_contract_event RPC
+  - Creates get_contract_events_list RPC
+  - Creates get_contract_events_date_summary RPC
+  - Creates process_contract_events_from_computed RPC
+  - Creates PGMQ trigger (trg_queue_contract_events)
+
+Apply via Supabase SQL Editor or migration tool.
+
+================================================================================
+STEP 3: DEPLOY EDGE FUNCTION (REQUIRED)
+================================================================================
+
+Deploy the contract-events Edge Function:
+
+supabase functions deploy contract-events
+
+This handles HTTP requests from the API layer for:
+  - GET /contract-events (list)
+  - GET /contract-events/dates (date summary)
+  - POST /contract-events (bulk create)
+  - PATCH /contract-events/:id (update)
+
+================================================================================
+STEP 4: UPDATE serviceURLs.ts (OPTIONAL)
+================================================================================
+
+The hooks use inline API endpoints. If you want centralized URLs, see:
+MANUAL_COPY_FILES/contract-events-ui/contractnest-ui/src/services/serviceURLs.contract-events.ts
+
+================================================================================
+STEP 5: VERIFY
 ================================================================================
 
 cd contractnest-ui
-npm run build
-
-# Should compile without errors
-
+npm run build   # Should compile without errors
 npm run dev
 
-# Navigate to any contract detail page -> Timeline tab
-# Example: /contracts/c1e393cb-5dd0-4bb0-8a92-bec3e25eddf8
+Testing flow:
+1. Create a NEW contract through the wizard (with service blocks)
+2. Go through Events Preview step (events should be computed)
+3. Complete the wizard (contract created with computed_events)
+4. Change contract status to 'active'
+5. Navigate to contract detail -> Timeline tab
+6. Events should appear!
+
+If events don't appear, check:
+- computed_events in t_contracts (should be NULL after processing, non-NULL if not processed)
+- t_contract_events table exists
+- PGMQ queue 'contract_events_create' exists
+- Check for errors in Edge Function logs
 
 ================================================================================
-WHAT'S NEW: TIMELINE TAB
+TIMELINE TAB FEATURES
 ================================================================================
 
-The Timeline tab now shows:
+The Timeline tab shows:
 1. Date Summary Buckets - Overdue, Today, Tomorrow, This Week, Next Week, Later
 2. Events List - Grouped by date, with service and billing events
 3. Status Updates - Click status badge to change event status
@@ -175,23 +160,5 @@ Utility Hooks:
     - invalidateLists()      - Invalidate list queries only
     - invalidateDateSummaries() - Invalidate date summaries
     - invalidateForContract(contractId) - Invalidate for specific contract
-
-================================================================================
-USAGE EXAMPLES
-================================================================================
-
-// List all events for a contract (Timeline Tab)
-const { data, isLoading, error } = useContractEventsForContract(contractId);
-
-// Dashboard date summary
-const { data: summary } = useTenantDateSummary({ refetchInterval: 30000 });
-
-// Update event status
-const { updateStatus, isChangingStatus } = useContractEventOperations();
-await updateStatus({ eventId, newStatus: 'completed', version: event.version });
-
-// Bulk create events (from computed_events)
-const { createEvents } = useContractEventOperations();
-await createEvents({ contract_id: contractId, events: computedEvents });
 
 ================================================================================
