@@ -377,6 +377,15 @@ BEGIN
     END IF;
 
     -- ═══════════════════════════════════════════
+    -- STEP 7.7: Auto-create events (auto-accept only)
+    --   When auto-accept, trigger won't fire (no UPDATE), so call directly.
+    --   Processes computed_events → t_contract_events, then NULLs column.
+    -- ═══════════════════════════════════════════
+    IF v_initial_status = 'active' AND v_record_type = 'contract' THEN
+        PERFORM process_contract_events_from_computed(v_contract_id, v_tenant_id);
+    END IF;
+
+    -- ═══════════════════════════════════════════
     -- STEP 8: Fetch the created contract for response
     -- ═══════════════════════════════════════════
     SELECT * INTO v_contract
