@@ -1,0 +1,48 @@
+═══════════════════════════════════════════════════════════════════════════════
+CONTACT HEADER FIX - Use ContactHeaderCard in Contact Cockpit
+═══════════════════════════════════════════════════════════════════════════════
+
+Branch: claude/init-submodules-acTX4
+Date: 2026-02-05
+
+FILES TO COPY:
+──────────────
+1. contractnest-ui/src/pages/contacts/view.tsx
+   → Updated Contact 360° Command Center to use ContactHeaderCard
+
+WHAT WAS FIXED:
+──────────────
+- Replaced custom inline header with ContactHeaderCard component
+- Uses variant="compact" to show LTV, Outstanding, Health Score metrics
+- ContactHeaderCard now displays ALL contact data:
+  ✅ Avatar + Name + Type (Corporate/Individual icon)
+  ✅ Classifications (with proper styling)
+  ✅ Contact Number (in footer)
+  ✅ Contact Channels (mobile, email, whatsapp, etc.)
+  ✅ Addresses
+  ✅ Tags
+  ✅ Compliance Numbers (for corporate)
+  ✅ Status Badge
+  ✅ LTV / Outstanding / Health Score (compact variant metrics)
+
+PREVIOUS ISSUE:
+──────────────
+- ContactHeaderCard was imported but NOT used in the page
+- Page had custom inline header that only showed:
+  - Avatar, name, email, status
+  - LTV/Outstanding/Health (separately in header)
+- Missing: contact_number, all channels, tags, addresses, classifications
+
+NOW:
+──────────────
+- Back button + Edit button in top bar
+- ContactHeaderCard with variant="compact" below
+- All contact data visible
+- Metrics (LTV/Outstanding/Health) shown in card's compact layout
+- Theme-enabled via useTheme() context
+
+COPY COMMAND (PowerShell):
+──────────────
+Copy-Item "MANUAL_COPY_FILES\contact-header-fix\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+═══════════════════════════════════════════════════════════════════════════════
