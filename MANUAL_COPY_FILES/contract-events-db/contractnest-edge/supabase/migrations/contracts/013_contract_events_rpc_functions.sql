@@ -138,7 +138,7 @@ BEGIN
             (v_event->>'sequence_number')::INT,
             (v_event->>'total_occurrences')::INT,
             (v_event->>'scheduled_date')::TIMESTAMPTZ,
-            (v_event->>'original_date')::TIMESTAMPTZ,
+            COALESCE((v_event->>'original_date')::TIMESTAMPTZ, (v_event->>'scheduled_date')::TIMESTAMPTZ),
             (v_event->>'amount')::NUMERIC,
             COALESCE(v_event->>'currency', 'INR'),
             'scheduled',
