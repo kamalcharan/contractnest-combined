@@ -8,9 +8,10 @@ FILES INCLUDED:
 3. src/services/contractEventService.ts   - HTTP client (HMAC-signed)
 4. src/controllers/contractEventController.ts - Request handlers
 5. src/routes/contractEventRoutes.ts      - Route definitions
+6. src/index.ts                           - Updated with route registration
 
 ================================================================================
-STEP 1: COPY FILES TO contractnest-api
+STEP 1: COPY ALL FILES TO contractnest-api
 ================================================================================
 
 Copy-Item "MANUAL_COPY_FILES\contract-events-api\contractnest-api\src\types\contractEventTypes.ts" -Destination "contractnest-api\src\types\" -Force
@@ -23,102 +24,12 @@ Copy-Item "MANUAL_COPY_FILES\contract-events-api\contractnest-api\src\controller
 
 Copy-Item "MANUAL_COPY_FILES\contract-events-api\contractnest-api\src\routes\contractEventRoutes.ts" -Destination "contractnest-api\src\routes\" -Force
 
-Write-Host "All 5 API files copied!" -ForegroundColor Green
+Copy-Item "MANUAL_COPY_FILES\contract-events-api\contractnest-api\src\index.ts" -Destination "contractnest-api\src\" -Force
+
+Write-Host "All 6 API files copied (including updated index.ts)!" -ForegroundColor Green
 
 ================================================================================
-STEP 2: UPDATE index.ts TO REGISTER ROUTES
-================================================================================
-
-Open: contractnest-api/src/index.ts
-
-FIND this section (around line 319-332):
-
-  // Load Contract routes with error handling
-  let contractCrudRoutes;
-  try {
-    contractCrudRoutes = require('./routes/contractRoutes').default;
-    console.log('✅ Contract routes loaded');
-  } catch (error) {
-    ...
-  }
-
-ADD THIS BLOCK IMMEDIATELY AFTER:
-
-  // Load Contract Event routes with error handling
-  let contractEventRoutes;
-  try {
-    contractEventRoutes = require('./routes/contractEventRoutes').default;
-    console.log('✅ Contract event routes loaded');
-  } catch (error) {
-    console.error('❌ Failed to load contract event routes:', error);
-    if (process.env.NODE_ENV === 'production') {
-      process.exit(1);
-    } else {
-      console.warn('⚠️  Continuing without contract event routes...');
-      contractEventRoutes = null;
-    }
-  }
-
---------------------------------------------------------------------------------
-
-FIND this section (around line 678-691):
-
-  // Register Contract CRUD routes with error handling
-  try {
-    if (contractCrudRoutes) {
-      app.use('/api/contracts', contractCrudRoutes);
-      console.log('✅ Contract routes registered at /api/contracts');
-    }
-    ...
-  }
-
-ADD THIS BLOCK IMMEDIATELY AFTER:
-
-  // Register Contract Event routes with error handling
-  try {
-    if (contractEventRoutes) {
-      app.use('/api/contract-events', contractEventRoutes);
-      console.log('✅ Contract event routes registered at /api/contract-events');
-    } else {
-      console.log('⚠️  Contract event routes skipped (not loaded)');
-    }
-  } catch (error) {
-    console.error('❌ Failed to register contract event routes:', error);
-    captureException(error instanceof Error ? error : new Error(String(error)), {
-      tags: { source: 'route_registration', route_type: 'contract_events' }
-    });
-  }
-
---------------------------------------------------------------------------------
-
-FIND the health check services section (around line 774):
-
-  services: {
-    ...
-    contracts: contractCrudRoutes ? 'loaded' : 'not_loaded',
-    ...
-  }
-
-ADD:
-
-    contractEvents: contractEventRoutes ? 'loaded' : 'not_loaded',
-
---------------------------------------------------------------------------------
-
-FIND the features section (around line 791):
-
-  features: {
-    ...
-    contract_crud: contractCrudRoutes !== null,
-    ...
-  }
-
-ADD:
-
-    contract_events: contractEventRoutes !== null,
-
-================================================================================
-STEP 3: VERIFY
+STEP 2: VERIFY
 ================================================================================
 
 cd contractnest-api
