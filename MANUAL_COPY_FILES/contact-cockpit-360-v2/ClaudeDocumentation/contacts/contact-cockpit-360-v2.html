@@ -1,0 +1,1902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact 360° Command Center - ContractNest</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Dark Theme - Primary */
+            --bg-primary: #09090b;
+            --bg-secondary: #18181b;
+            --bg-card: #1f1f23;
+            --bg-card-elevated: #27272a;
+            --bg-hover: #2e2e33;
+            --border: rgba(255,255,255,0.08);
+            --border-hover: rgba(255,255,255,0.15);
+
+            /* Text */
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+
+            /* Accent Colors */
+            --green: #22c55e;
+            --green-dim: rgba(34, 197, 94, 0.15);
+            --blue: #3b82f6;
+            --blue-dim: rgba(59, 130, 246, 0.15);
+            --purple: #a855f7;
+            --purple-dim: rgba(168, 85, 247, 0.15);
+            --amber: #f59e0b;
+            --amber-dim: rgba(245, 158, 11, 0.15);
+            --red: #ef4444;
+            --red-dim: rgba(239, 68, 68, 0.15);
+            --cyan: #06b6d4;
+            --cyan-dim: rgba(6, 182, 212, 0.15);
+            --indigo: #6366f1;
+            --indigo-dim: rgba(99, 102, 241, 0.15);
+
+            /* Gradients */
+            --gradient-green: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            --gradient-blue: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            --gradient-purple: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+            --gradient-vani: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.5;
+            overflow: hidden;
+        }
+
+        /* ========== LAYOUT ========== */
+        .command-center {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ========== HERO HEADER ========== */
+        .hero-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 32px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .hero-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .back-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            font-size: 18px;
+        }
+
+        .back-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .avatar-block {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            background: var(--gradient-green);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 800;
+            color: white;
+            position: relative;
+        }
+
+        .avatar-badge {
+            position: absolute;
+            bottom: -4px;
+            right: -4px;
+            width: 20px;
+            height: 20px;
+            border-radius: 6px;
+            background: var(--bg-primary);
+            border: 2px solid var(--green);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+        }
+
+        .contact-meta h1 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .contact-subtitle {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 100px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: var(--green-dim);
+            color: var(--green);
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* Hero Stats */
+        .hero-stats {
+            display: flex;
+            gap: 32px;
+        }
+
+        .hero-stat {
+            text-align: right;
+        }
+
+        .hero-stat-value {
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .hero-stat-value.green { color: var(--green); }
+        .hero-stat-value.red { color: var(--red); }
+        .hero-stat-value.amber { color: var(--amber); }
+        .hero-stat-value.blue { color: var(--blue); }
+
+        .hero-stat-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* ========== THREE COLUMN LAYOUT ========== */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 340px 1fr 380px;
+            flex: 1;
+            overflow: hidden;
+            transition: grid-template-columns 0.3s ease;
+        }
+
+        .main-grid.drawer-open {
+            grid-template-columns: 280px 1fr 300px;
+        }
+
+        .column {
+            overflow-y: auto;
+            border-right: 1px solid var(--border);
+        }
+
+        .column:last-child {
+            border-right: none;
+        }
+
+        .column-header {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            padding: 16px 20px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .column-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .column-title-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .column-title h2 {
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+        }
+
+        .column-title .count {
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 100px;
+            background: var(--bg-card);
+            color: var(--text-muted);
+        }
+
+        .column-action {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--blue);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: none;
+            border: none;
+        }
+
+        .column-action:hover {
+            color: var(--purple);
+        }
+
+        .column-content {
+            padding: 16px;
+        }
+
+        /* ========== CONTRACTS COLUMN ========== */
+        .contract-filters {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .filter-pill {
+            padding: 6px 12px;
+            border-radius: 100px;
+            font-size: 12px;
+            font-weight: 600;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-pill:hover {
+            border-color: var(--border-hover);
+            color: var(--text-primary);
+        }
+
+        .filter-pill.active {
+            background: var(--blue-dim);
+            border-color: var(--blue);
+            color: var(--blue);
+        }
+
+        .filter-pill .count {
+            margin-left: 4px;
+            opacity: 0.7;
+        }
+
+        .contract-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .contract-card:hover {
+            border-color: var(--border-hover);
+            background: var(--bg-card-elevated);
+            transform: translateX(4px);
+        }
+
+        .contract-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 12px;
+            bottom: 12px;
+            width: 3px;
+            border-radius: 0 3px 3px 0;
+        }
+
+        .contract-card.active::before { background: var(--green); }
+        .contract-card.pending::before { background: var(--amber); }
+        .contract-card.review::before { background: var(--purple); }
+        .contract-card.draft::before { background: var(--text-muted); }
+        .contract-card.expired::before { background: var(--red); }
+
+        .contract-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .contract-status-badge {
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 3px 8px;
+            border-radius: 6px;
+        }
+
+        .contract-status-badge.active { background: var(--green-dim); color: var(--green); }
+        .contract-status-badge.pending { background: var(--amber-dim); color: var(--amber); }
+        .contract-status-badge.review { background: var(--purple-dim); color: var(--purple); }
+        .contract-status-badge.draft { background: var(--bg-hover); color: var(--text-muted); }
+
+        .contract-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: var(--text-primary);
+        }
+
+        .contract-number {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-family: 'SF Mono', monospace;
+        }
+
+        .contract-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+
+        .contract-value {
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .contract-duration {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .contract-progress {
+            margin-top: 12px;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            margin-bottom: 6px;
+        }
+
+        .progress-bar {
+            height: 4px;
+            background: var(--bg-hover);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+
+        .progress-fill.green { background: var(--gradient-green); }
+        .progress-fill.amber { background: var(--amber); }
+
+        /* ========== EVENTS COLUMN ========== */
+        .events-column {
+            background: var(--bg-primary);
+        }
+
+        .events-column .column-header {
+            background: var(--bg-primary);
+        }
+
+        .date-range-selector {
+            display: flex;
+            gap: 4px;
+            background: var(--bg-card);
+            padding: 4px;
+            border-radius: 10px;
+        }
+
+        .date-range-btn {
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .date-range-btn:hover {
+            color: var(--text-secondary);
+        }
+
+        .date-range-btn.active {
+            background: var(--bg-card-elevated);
+            color: var(--text-primary);
+        }
+
+        .event-bucket {
+            margin-bottom: 24px;
+        }
+
+        .bucket-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            padding: 0 4px;
+        }
+
+        .bucket-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .bucket-indicator.overdue {
+            background: var(--red);
+            box-shadow: 0 0 12px var(--red);
+            animation: glow-pulse 2s infinite;
+        }
+
+        .bucket-indicator.today {
+            background: var(--amber);
+            box-shadow: 0 0 8px var(--amber);
+        }
+
+        .bucket-indicator.upcoming { background: var(--green); }
+        .bucket-indicator.later { background: var(--text-muted); }
+
+        @keyframes glow-pulse {
+            0%, 100% { box-shadow: 0 0 12px var(--red); }
+            50% { box-shadow: 0 0 20px var(--red), 0 0 30px var(--red); }
+        }
+
+        .bucket-title {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .bucket-title.overdue { color: var(--red); }
+        .bucket-title.today { color: var(--amber); }
+        .bucket-title.upcoming { color: var(--green); }
+        .bucket-title.later { color: var(--text-muted); }
+
+        .bucket-count {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-left: auto;
+        }
+
+        .bucket-amount {
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .bucket-amount.overdue { color: var(--red); }
+        .bucket-amount.today { color: var(--amber); }
+
+        .event-card {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 14px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .event-card:hover {
+            border-color: var(--border-hover);
+            background: var(--bg-card-elevated);
+        }
+
+        .event-card.overdue {
+            border-left: 3px solid var(--red);
+            background: var(--red-dim);
+        }
+
+        .event-card.today {
+            border-left: 3px solid var(--amber);
+            background: var(--amber-dim);
+        }
+
+        .event-type-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .event-type-icon.service { background: var(--purple-dim); }
+        .event-type-icon.billing { background: var(--blue-dim); }
+
+        .event-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .event-title {
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .event-subtitle {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .event-contract-link {
+            font-size: 10px;
+            color: var(--blue);
+            margin-top: 4px;
+        }
+
+        .event-right {
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .event-date {
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .event-date.overdue { color: var(--red); }
+        .event-date.today { color: var(--amber); }
+
+        .event-amount {
+            font-size: 13px;
+            font-weight: 700;
+            margin-top: 2px;
+        }
+
+        .event-sequence {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* ========== FINANCIALS COLUMN ========== */
+        .financials-summary {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .fin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .fin-type-badge {
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 4px 10px;
+            border-radius: 6px;
+        }
+
+        .fin-type-badge.receivable { background: var(--green-dim); color: var(--green); }
+        .fin-type-badge.payable { background: var(--red-dim); color: var(--red); }
+
+        .fin-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .fin-card {
+            background: var(--bg-card-elevated);
+            border-radius: 12px;
+            padding: 14px;
+        }
+
+        .fin-card.collected { background: var(--green-dim); }
+        .fin-card.outstanding { background: var(--amber-dim); }
+
+        .fin-card-value {
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin-bottom: 2px;
+        }
+
+        .fin-card.collected .fin-card-value { color: var(--green); }
+        .fin-card.outstanding .fin-card-value { color: var(--amber); }
+
+        .fin-card-label {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .collection-progress {
+            margin-bottom: 16px;
+        }
+
+        .collection-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+
+        .collection-bar {
+            height: 8px;
+            background: var(--bg-hover);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .collection-fill {
+            height: 100%;
+            background: var(--gradient-green);
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+
+        .collection-breakdown {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+            font-size: 10px;
+            color: var(--text-muted);
+            flex-wrap: wrap;
+        }
+
+        .breakdown-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .breakdown-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .breakdown-dot.paid { background: var(--green); }
+        .breakdown-dot.partial { background: var(--amber); }
+        .breakdown-dot.overdue { background: var(--red); }
+        .breakdown-dot.unpaid { background: var(--text-muted); }
+
+        .invoice-section-title {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            padding: 0 4px;
+        }
+
+        .invoice-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .invoice-item:hover {
+            border-color: var(--border-hover);
+            background: var(--bg-card-elevated);
+        }
+
+        .invoice-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .invoice-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: var(--bg-hover);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .invoice-number {
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .invoice-meta {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .invoice-amount {
+            font-size: 14px;
+            font-weight: 700;
+            text-align: right;
+        }
+
+        .invoice-status {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-top: 2px;
+            display: inline-block;
+        }
+
+        .invoice-status.paid { background: var(--green-dim); color: var(--green); }
+        .invoice-status.partial { background: var(--amber-dim); color: var(--amber); }
+        .invoice-status.overdue { background: var(--red-dim); color: var(--red); }
+        .invoice-status.unpaid { background: var(--bg-hover); color: var(--text-muted); }
+
+        /* ========== PROFILE DRAWER ========== */
+        .drawer-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .drawer-overlay.open {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .profile-drawer {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 420px;
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border);
+            z-index: 101;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .profile-drawer.open {
+            transform: translateX(0);
+        }
+
+        .drawer-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .drawer-header h3 {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .drawer-close {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            transition: all 0.2s;
+        }
+
+        .drawer-close:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .drawer-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        .drawer-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .drawer-edit-btn {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            background: var(--gradient-blue);
+            border: none;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .drawer-edit-btn:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 20px var(--blue-dim);
+        }
+
+        /* Profile Sections */
+        .profile-section {
+            margin-bottom: 24px;
+        }
+
+        .profile-section-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .profile-section-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .profile-section-title {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+        }
+
+        .profile-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            margin-bottom: 8px;
+        }
+
+        .profile-item-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: var(--bg-hover);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .profile-item-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .profile-item-label {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 2px;
+        }
+
+        .profile-item-value {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+            word-break: break-word;
+        }
+
+        .profile-item-badge {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: var(--green-dim);
+            color: var(--green);
+        }
+
+        .profile-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .profile-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 100px;
+            font-size: 12px;
+            font-weight: 600;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+        }
+
+        .profile-tag-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        /* Contact Person Card */
+        .contact-person-card {
+            padding: 14px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 10px;
+        }
+
+        .contact-person-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .contact-person-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: var(--gradient-purple);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .contact-person-name {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .contact-person-role {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .contact-person-channels {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .person-channel {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            background: var(--bg-hover);
+            border-radius: 6px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* ========== ACTION ISLAND ========== */
+        .action-island-wrapper {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 50;
+        }
+
+        .action-island {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px;
+            background: rgba(24, 24, 27, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            box-shadow:
+                0 20px 60px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+        }
+
+        .island-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0 12px;
+        }
+
+        .island-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            background: var(--gradient-green);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 700;
+            color: white;
+        }
+
+        .island-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .island-divider {
+            width: 1px;
+            height: 28px;
+            background: var(--border);
+        }
+
+        .island-actions {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .island-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 14px;
+            border: none;
+            border-radius: 100px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .island-btn-ghost {
+            background: transparent;
+            color: var(--text-muted);
+        }
+
+        .island-btn-ghost:hover {
+            color: var(--text-primary);
+            background: var(--bg-hover);
+        }
+
+        .island-btn-ghost.active {
+            background: var(--indigo-dim);
+            color: var(--indigo);
+        }
+
+        .island-btn-vani {
+            background: var(--gradient-vani);
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .island-btn-vani::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transform: translateX(-100%);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            100% { transform: translateX(100%); }
+        }
+
+        .island-btn-secondary {
+            background: var(--blue-dim);
+            color: var(--blue);
+        }
+
+        .island-btn-secondary:hover {
+            background: var(--blue);
+            color: white;
+        }
+
+        .island-btn-primary {
+            background: var(--gradient-green);
+            color: white;
+            box-shadow: 0 4px 20px var(--green-dim);
+        }
+
+        .island-btn-primary:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 30px var(--green-dim);
+        }
+
+        /* ========== SCROLLBAR ========== */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--border-hover);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="command-center">
+
+        <!-- ========== HERO HEADER ========== -->
+        <header class="hero-header">
+            <div class="hero-left">
+                <button class="back-btn">←</button>
+                <div class="avatar-block">
+                    <div class="avatar">
+                        RS
+                        <div class="avatar-badge">✓</div>
+                    </div>
+                    <div class="contact-meta">
+                        <h1>Ravi Sharma</h1>
+                        <div class="contact-subtitle">
+                            <span>TechCorp India Pvt Ltd</span>
+                            <span>•</span>
+                            <span>ravi.sharma@techcorp.com</span>
+                            <span class="status-badge">
+                                <span class="status-dot"></span>
+                                Active
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hero-stats">
+                <div class="hero-stat">
+                    <div class="hero-stat-value green">₹4,28,500</div>
+                    <div class="hero-stat-label">Lifetime Value</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="hero-stat-value amber">₹32,400</div>
+                    <div class="hero-stat-label">Outstanding</div>
+                </div>
+                <div class="hero-stat">
+                    <div class="hero-stat-value blue">92%</div>
+                    <div class="hero-stat-label">Health Score</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- ========== THREE COLUMN LAYOUT ========== -->
+        <div class="main-grid" id="mainGrid">
+
+            <!-- ========== LEFT: CONTRACTS ========== -->
+            <div class="column contracts-column">
+                <div class="column-header">
+                    <div class="column-title">
+                        <div class="column-title-icon" style="background: var(--green-dim);">📄</div>
+                        <h2>Contracts</h2>
+                        <span class="count">8</span>
+                    </div>
+                    <button class="column-action">+ New</button>
+                </div>
+
+                <div class="column-content">
+                    <div class="contract-filters">
+                        <button class="filter-pill active">All <span class="count">8</span></button>
+                        <button class="filter-pill">Active <span class="count">3</span></button>
+                        <button class="filter-pill">Review <span class="count">2</span></button>
+                        <button class="filter-pill">Pending <span class="count">2</span></button>
+                        <button class="filter-pill">Draft <span class="count">1</span></button>
+                    </div>
+
+                    <div class="contract-card active">
+                        <div class="contract-card-header">
+                            <span class="contract-status-badge active">Active</span>
+                            <span class="contract-value">₹1,44,000</span>
+                        </div>
+                        <div class="contract-title">Annual AC Maintenance</div>
+                        <div class="contract-number">CNT-2026-0042</div>
+                        <div class="contract-progress">
+                            <div class="progress-header">
+                                <span style="color: var(--text-muted);">8 of 12 months</span>
+                                <span style="color: var(--green);">67%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill green" style="width: 67%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="contract-card review">
+                        <div class="contract-card-header">
+                            <span class="contract-status-badge review">In Review</span>
+                            <span class="contract-value">₹1,25,000</span>
+                        </div>
+                        <div class="contract-title">Security System Installation</div>
+                        <div class="contract-number">CNT-2026-0089</div>
+                        <div class="contract-meta">
+                            <span class="contract-duration">Sent 3 days ago</span>
+                        </div>
+                    </div>
+
+                    <div class="contract-card pending">
+                        <div class="contract-card-header">
+                            <span class="contract-status-badge pending">Pending Sign</span>
+                            <span class="contract-value">₹48,000</span>
+                        </div>
+                        <div class="contract-title">Quarterly IT Support</div>
+                        <div class="contract-number">CNT-2026-0102</div>
+                        <div class="contract-meta">
+                            <span class="contract-duration">Awaiting signature</span>
+                        </div>
+                    </div>
+
+                    <div class="contract-card active">
+                        <div class="contract-card-header">
+                            <span class="contract-status-badge active">Active</span>
+                            <span class="contract-value">₹36,000</span>
+                        </div>
+                        <div class="contract-title">Monthly Server Monitoring</div>
+                        <div class="contract-number">CNT-2025-0891</div>
+                        <div class="contract-progress">
+                            <div class="progress-header">
+                                <span style="color: var(--text-muted);">10 of 12 months</span>
+                                <span style="color: var(--amber);">83%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill amber" style="width: 83%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="contract-card draft">
+                        <div class="contract-card-header">
+                            <span class="contract-status-badge draft">Draft</span>
+                            <span class="contract-value">₹72,000</span>
+                        </div>
+                        <div class="contract-title">Annual Network Audit</div>
+                        <div class="contract-number">CNT-2026-0115</div>
+                        <div class="contract-meta">
+                            <span class="contract-duration">Created yesterday</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== CENTER: EVENTS TIMELINE ========== -->
+            <div class="column events-column">
+                <div class="column-header">
+                    <div class="column-title">
+                        <div class="column-title-icon" style="background: var(--blue-dim);">📅</div>
+                        <h2>Events Timeline</h2>
+                    </div>
+                    <div class="date-range-selector">
+                        <button class="date-range-btn active">7 Days</button>
+                        <button class="date-range-btn">14 Days</button>
+                        <button class="date-range-btn">30 Days</button>
+                        <button class="date-range-btn">All</button>
+                    </div>
+                </div>
+
+                <div class="column-content">
+                    <div class="event-bucket">
+                        <div class="bucket-header">
+                            <span class="bucket-indicator overdue"></span>
+                            <span class="bucket-title overdue">Overdue</span>
+                            <span class="bucket-count">2 events</span>
+                            <span class="bucket-amount overdue">₹15,200</span>
+                        </div>
+
+                        <div class="event-card overdue">
+                            <div class="event-type-icon billing">💳</div>
+                            <div class="event-info">
+                                <div class="event-title">Invoice Payment Due</div>
+                                <div class="event-subtitle">INV-9022 • Quarterly AMC Fee</div>
+                                <div class="event-contract-link">→ Annual AC Maintenance</div>
+                            </div>
+                            <div class="event-right">
+                                <div class="event-date overdue">5 days ago</div>
+                                <div class="event-amount">₹12,000</div>
+                            </div>
+                        </div>
+
+                        <div class="event-card overdue">
+                            <div class="event-type-icon service">🔧</div>
+                            <div class="event-info">
+                                <div class="event-title">Scheduled Maintenance</div>
+                                <div class="event-subtitle">AC Unit #3 • Filter replacement</div>
+                                <div class="event-contract-link">→ Annual AC Maintenance</div>
+                            </div>
+                            <div class="event-right">
+                                <div class="event-date overdue">2 days ago</div>
+                                <div class="event-sequence">Visit 8/12</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="event-bucket">
+                        <div class="bucket-header">
+                            <span class="bucket-indicator today"></span>
+                            <span class="bucket-title today">Today</span>
+                            <span class="bucket-count">2 events</span>
+                            <span class="bucket-amount today">₹3,000</span>
+                        </div>
+
+                        <div class="event-card today">
+                            <div class="event-type-icon service">🔧</div>
+                            <div class="event-info">
+                                <div class="event-title">Server Health Check</div>
+                                <div class="event-subtitle">Scheduled maintenance • Sunil Kumar</div>
+                                <div class="event-contract-link">→ Monthly Server Monitoring</div>
+                            </div>
+                            <div class="event-right">
+                                <div class="event-date today">2:00 PM</div>
+                                <div class="event-sequence">Visit 10/12</div>
+                            </div>
+                        </div>
+
+                        <div class="event-card today">
+                            <div class="event-type-icon billing">💳</div>
+                            <div class="event-info">
+                                <div class="event-title">Monthly Invoice</div>
+                                <div class="event-subtitle">Auto-generated • Feb 2026</div>
+                                <div class="event-contract-link">→ Monthly Server Monitoring</div>
+                            </div>
+                            <div class="event-right">
+                                <div class="event-date today">Due Today</div>
+                                <div class="event-amount">₹3,000</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="event-bucket">
+                        <div class="bucket-header">
+                            <span class="bucket-indicator upcoming"></span>
+                            <span class="bucket-title upcoming">Upcoming (7 days)</span>
+                            <span class="bucket-count">4 events</span>
+                        </div>
+
+                        <div class="event-card">
+                            <div class="event-type-icon service">🔧</div>
+                            <div class="event-info">
+                                <div class="event-title">AC Filter Replacement</div>
+                                <div class="event-subtitle">All units • Deep cleaning</div>
+                                <div class="event-contract-link">→ Annual AC Maintenance</div>
+                            </div>
+                            <div class="event-right">
+                                <div class="event-date">Feb 8</div>
+                                <div class="event-sequence">In 3 days</div>
+                            </div>
+                        </div>
+
+                        <div class="event-card">
+                            <div class="event-type-icon billing">💳</div>
+                            <div class="event-info">
+                                <div class="event-title">EMI Payment</div>
+                                <div class="event-subtitle">Installment 4 of 6</div>
+                                <div class="event-contract-link">→ Security System Installation</div>
+                            </div>
+                            <div class="event-right">
+                                <div class="event-date">Feb 10</div>
+                                <div class="event-amount">₹20,833</div>
+                            </div>
+                        </div>
+
+                        <div class="event-card">
+                            <div class="event-type-icon service">🔧</div>
+                            <div class="event-info">
+                                <div class="event-title">Quarterly Audit</div>
+                                <div class="event-subtitle">Network performance review</div>
+                                <div class="event-contract-link">→ Quarterly IT Support</div>
+                            </div>
+                            <div class="event-right">
+                                <div class="event-date">Feb 12</div>
+                                <div class="event-sequence">In 7 days</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="event-bucket">
+                        <div class="bucket-header">
+                            <span class="bucket-indicator later"></span>
+                            <span class="bucket-title later">Later</span>
+                            <span class="bucket-count">8 more events</span>
+                        </div>
+                        <div style="text-align: center; padding: 16px; color: var(--text-muted); font-size: 13px;">
+                            Expand date range to see more →
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========== RIGHT: FINANCIALS ========== -->
+            <div class="column financials-column">
+                <div class="column-header">
+                    <div class="column-title">
+                        <div class="column-title-icon" style="background: var(--cyan-dim);">💰</div>
+                        <h2>Financials</h2>
+                    </div>
+                    <button class="column-action">Export ↓</button>
+                </div>
+
+                <div class="column-content">
+                    <div class="financials-summary">
+                        <div class="fin-header">
+                            <span class="fin-type-badge receivable">Accounts Receivable</span>
+                            <button style="font-size: 12px; color: var(--blue); background: none; border: none; cursor: pointer; font-weight: 600;">
+                                Record Payment
+                            </button>
+                        </div>
+
+                        <div class="fin-grid">
+                            <div class="fin-card collected">
+                                <div class="fin-card-value">₹3,96,100</div>
+                                <div class="fin-card-label">Collected</div>
+                            </div>
+                            <div class="fin-card outstanding">
+                                <div class="fin-card-value">₹32,400</div>
+                                <div class="fin-card-label">Outstanding</div>
+                            </div>
+                        </div>
+
+                        <div class="collection-progress">
+                            <div class="collection-header">
+                                <span style="color: var(--text-secondary);">Collection Rate</span>
+                                <span style="color: var(--green); font-weight: 700;">92.4%</span>
+                            </div>
+                            <div class="collection-bar">
+                                <div class="collection-fill" style="width: 92.4%"></div>
+                            </div>
+                            <div class="collection-breakdown">
+                                <span class="breakdown-item"><span class="breakdown-dot paid"></span>9 Paid</span>
+                                <span class="breakdown-item"><span class="breakdown-dot partial"></span>1 Partial</span>
+                                <span class="breakdown-item"><span class="breakdown-dot overdue"></span>1 Overdue</span>
+                                <span class="breakdown-item"><span class="breakdown-dot unpaid"></span>1 Unpaid</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="invoice-section-title">Recent Invoices</div>
+
+                    <div class="invoice-item">
+                        <div class="invoice-left">
+                            <div class="invoice-icon">📄</div>
+                            <div>
+                                <div class="invoice-number">INV-9022</div>
+                                <div class="invoice-meta">AMC Q4 • Due Jan 30</div>
+                            </div>
+                        </div>
+                        <div class="invoice-right">
+                            <div class="invoice-amount">₹12,000</div>
+                            <span class="invoice-status overdue">Overdue</span>
+                        </div>
+                    </div>
+
+                    <div class="invoice-item">
+                        <div class="invoice-left">
+                            <div class="invoice-icon">📄</div>
+                            <div>
+                                <div class="invoice-number">INV-9018</div>
+                                <div class="invoice-meta">Server Feb • EMI 4/6</div>
+                            </div>
+                        </div>
+                        <div class="invoice-right">
+                            <div class="invoice-amount">₹20,400</div>
+                            <span class="invoice-status partial">Partial</span>
+                        </div>
+                    </div>
+
+                    <div class="invoice-item">
+                        <div class="invoice-left">
+                            <div class="invoice-icon">📄</div>
+                            <div>
+                                <div class="invoice-number">INV-9015</div>
+                                <div class="invoice-meta">IT Support Q1</div>
+                            </div>
+                        </div>
+                        <div class="invoice-right">
+                            <div class="invoice-amount">₹12,000</div>
+                            <span class="invoice-status unpaid">Unpaid</span>
+                        </div>
+                    </div>
+
+                    <div class="invoice-item">
+                        <div class="invoice-left">
+                            <div class="invoice-icon">📄</div>
+                            <div>
+                                <div class="invoice-number">INV-8841</div>
+                                <div class="invoice-meta">Ad-hoc Repair</div>
+                            </div>
+                        </div>
+                        <div class="invoice-right">
+                            <div class="invoice-amount">₹1,500</div>
+                            <span class="invoice-status paid">Paid</span>
+                        </div>
+                    </div>
+
+                    <button style="width: 100%; padding: 12px; margin-top: 8px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; color: var(--text-muted); font-size: 13px; font-weight: 500; cursor: pointer;">
+                        View All 12 Invoices →
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ========== PROFILE DRAWER ========== -->
+    <div class="drawer-overlay" id="drawerOverlay" onclick="toggleDrawer()"></div>
+
+    <div class="profile-drawer" id="profileDrawer">
+        <div class="drawer-header">
+            <h3>👤 Contact Profile</h3>
+            <button class="drawer-close" onclick="toggleDrawer()">×</button>
+        </div>
+
+        <div class="drawer-content">
+            <!-- Contact Channels -->
+            <div class="profile-section">
+                <div class="profile-section-header">
+                    <div class="profile-section-icon" style="background: var(--blue-dim);">📱</div>
+                    <span class="profile-section-title">Contact Channels</span>
+                </div>
+
+                <div class="profile-item">
+                    <div class="profile-item-icon">✉️</div>
+                    <div class="profile-item-content">
+                        <div class="profile-item-label">Email (Primary)</div>
+                        <div class="profile-item-value">ravi.sharma@techcorp.com</div>
+                    </div>
+                    <span class="profile-item-badge">Verified</span>
+                </div>
+
+                <div class="profile-item">
+                    <div class="profile-item-icon">📱</div>
+                    <div class="profile-item-content">
+                        <div class="profile-item-label">Mobile (Primary)</div>
+                        <div class="profile-item-value">+91 98765 43210</div>
+                    </div>
+                    <span class="profile-item-badge">Verified</span>
+                </div>
+
+                <div class="profile-item">
+                    <div class="profile-item-icon">💬</div>
+                    <div class="profile-item-content">
+                        <div class="profile-item-label">WhatsApp</div>
+                        <div class="profile-item-value">+91 98765 43210</div>
+                    </div>
+                </div>
+
+                <div class="profile-item">
+                    <div class="profile-item-icon">☎️</div>
+                    <div class="profile-item-content">
+                        <div class="profile-item-label">Landline</div>
+                        <div class="profile-item-value">022-2456-7890</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Addresses -->
+            <div class="profile-section">
+                <div class="profile-section-header">
+                    <div class="profile-section-icon" style="background: var(--green-dim);">📍</div>
+                    <span class="profile-section-title">Addresses</span>
+                </div>
+
+                <div class="profile-item">
+                    <div class="profile-item-icon">🏢</div>
+                    <div class="profile-item-content">
+                        <div class="profile-item-label">Office (Primary)</div>
+                        <div class="profile-item-value">
+                            Unit 501-502, TechPark Tower<br>
+                            Andheri East, Mumbai 400069<br>
+                            Maharashtra, India
+                        </div>
+                    </div>
+                </div>
+
+                <div class="profile-item">
+                    <div class="profile-item-icon">🏭</div>
+                    <div class="profile-item-content">
+                        <div class="profile-item-label">Factory</div>
+                        <div class="profile-item-value">
+                            Plot 45, MIDC Industrial Area<br>
+                            Bhiwandi, Thane 421302
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Compliance Numbers -->
+            <div class="profile-section">
+                <div class="profile-section-header">
+                    <div class="profile-section-icon" style="background: var(--purple-dim);">🔐</div>
+                    <span class="profile-section-title">Compliance Numbers</span>
+                </div>
+
+                <div class="profile-item">
+                    <div class="profile-item-icon">📋</div>
+                    <div class="profile-item-content">
+                        <div class="profile-item-label">GST Number</div>
+                        <div class="profile-item-value">27AABCT1234F1ZH</div>
+                    </div>
+                    <span class="profile-item-badge">Verified</span>
+                </div>
+
+                <div class="profile-item">
+                    <div class="profile-item-icon">📋</div>
+                    <div class="profile-item-content">
+                        <div class="profile-item-label">PAN Number</div>
+                        <div class="profile-item-value">AABCT1234F</div>
+                    </div>
+                </div>
+
+                <div class="profile-item">
+                    <div class="profile-item-icon">📋</div>
+                    <div class="profile-item-content">
+                        <div class="profile-item-label">CIN</div>
+                        <div class="profile-item-value">U72200MH2015PTC123456</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contact Persons -->
+            <div class="profile-section">
+                <div class="profile-section-header">
+                    <div class="profile-section-icon" style="background: var(--amber-dim);">👥</div>
+                    <span class="profile-section-title">Contact Persons</span>
+                </div>
+
+                <div class="contact-person-card">
+                    <div class="contact-person-header">
+                        <div class="contact-person-avatar">AK</div>
+                        <div>
+                            <div class="contact-person-name">Amit Kumar</div>
+                            <div class="contact-person-role">Finance Manager</div>
+                        </div>
+                    </div>
+                    <div class="contact-person-channels">
+                        <span class="person-channel">✉️ amit.k@techcorp.com</span>
+                        <span class="person-channel">📱 +91 99887 76655</span>
+                    </div>
+                </div>
+
+                <div class="contact-person-card">
+                    <div class="contact-person-header">
+                        <div class="contact-person-avatar">PS</div>
+                        <div>
+                            <div class="contact-person-name">Priya Singh</div>
+                            <div class="contact-person-role">Operations Head</div>
+                        </div>
+                    </div>
+                    <div class="contact-person-channels">
+                        <span class="person-channel">✉️ priya.s@techcorp.com</span>
+                        <span class="person-channel">📱 +91 88776 65544</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tags & Classifications -->
+            <div class="profile-section">
+                <div class="profile-section-header">
+                    <div class="profile-section-icon" style="background: var(--cyan-dim);">🏷️</div>
+                    <span class="profile-section-title">Tags & Classifications</span>
+                </div>
+
+                <div class="profile-tags">
+                    <span class="profile-tag">
+                        <span class="profile-tag-dot" style="background: var(--green);"></span>
+                        Client
+                    </span>
+                    <span class="profile-tag">
+                        <span class="profile-tag-dot" style="background: var(--blue);"></span>
+                        Enterprise
+                    </span>
+                    <span class="profile-tag">
+                        <span class="profile-tag-dot" style="background: var(--purple);"></span>
+                        IT Services
+                    </span>
+                    <span class="profile-tag">
+                        <span class="profile-tag-dot" style="background: var(--amber);"></span>
+                        High Value
+                    </span>
+                    <span class="profile-tag">
+                        <span class="profile-tag-dot" style="background: var(--cyan);"></span>
+                        Mumbai Region
+                    </span>
+                </div>
+            </div>
+
+            <!-- Notes -->
+            <div class="profile-section">
+                <div class="profile-section-header">
+                    <div class="profile-section-icon" style="background: var(--bg-hover);">📝</div>
+                    <span class="profile-section-title">Notes</span>
+                </div>
+
+                <div class="profile-item">
+                    <div class="profile-item-content">
+                        <div class="profile-item-value" style="color: var(--text-secondary); font-size: 13px; line-height: 1.6;">
+                            Key account since 2023. Prefers communication via WhatsApp.
+                            Amit handles all billing queries. Annual review meeting scheduled for March.
+                            Very responsive to service requests.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="drawer-footer">
+            <button class="drawer-edit-btn">
+                ✏️ Edit Contact
+            </button>
+        </div>
+    </div>
+
+    <!-- ========== ACTION ISLAND ========== -->
+    <div class="action-island-wrapper">
+        <div class="action-island">
+            <div class="island-info">
+                <div class="island-avatar">RS</div>
+                <span class="island-name">Ravi Sharma</span>
+            </div>
+            <div class="island-divider"></div>
+            <div class="island-actions">
+                <button class="island-btn island-btn-ghost" id="profileBtn" onclick="toggleDrawer()">
+                    👤 Profile
+                </button>
+                <button class="island-btn island-btn-ghost">
+                    💬 Message
+                </button>
+                <button class="island-btn island-btn-vani">
+                    ✨ VaNi
+                </button>
+            </div>
+            <div class="island-divider"></div>
+            <div class="island-actions">
+                <button class="island-btn island-btn-secondary">💳 Invoice</button>
+                <button class="island-btn island-btn-primary">📄 Contract</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleDrawer() {
+            const drawer = document.getElementById('profileDrawer');
+            const overlay = document.getElementById('drawerOverlay');
+            const profileBtn = document.getElementById('profileBtn');
+            const mainGrid = document.getElementById('mainGrid');
+
+            drawer.classList.toggle('open');
+            overlay.classList.toggle('open');
+            profileBtn.classList.toggle('active');
+            mainGrid.classList.toggle('drawer-open');
+        }
+
+        // Close drawer on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const drawer = document.getElementById('profileDrawer');
+                if (drawer.classList.contains('open')) {
+                    toggleDrawer();
+                }
+            }
+        });
+    </script>
+
+</body>
+</html>
