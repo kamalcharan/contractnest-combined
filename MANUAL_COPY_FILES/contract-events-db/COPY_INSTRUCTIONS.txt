@@ -18,16 +18,22 @@ FILES TO COPY
    -> Copy to: contractnest-edge/supabase/migrations/contracts/013_contract_events_rpc_functions.sql
    -> Purpose: All RPC functions + PGMQ trigger
 
-3. contractnest-edge/supabase/functions/contract-events/index.ts
+3. contractnest-edge/supabase/migrations/contracts/014_add_computed_events_to_create_rpc.sql
+   -> Copy to: contractnest-edge/supabase/migrations/contracts/014_add_computed_events_to_create_rpc.sql
+   -> Purpose: PATCH - Adds computed_events to create_contract_transaction RPC
+
+4. contractnest-edge/supabase/functions/contract-events/index.ts
    -> Copy to: contractnest-edge/supabase/functions/contract-events/index.ts
    -> Purpose: Edge Function — CORS, HMAC, routing to RPCs (4 handlers)
 
 ===============================================
-APPLY ORDER (IMPORTANT: run 012 before 013)
+APPLY ORDER (IMPORTANT: run in this exact order)
 ===============================================
 
 Step 1: Run 012_contract_events_tables.sql in Supabase SQL Editor
 Step 2: Run 013_contract_events_rpc_functions.sql in Supabase SQL Editor
+Step 3: Run 014_add_computed_events_to_create_rpc.sql in Supabase SQL Editor
+        (This patches the existing create_contract_transaction RPC to include computed_events)
 
 ===============================================
 WHAT 012 CREATES (Tables)
@@ -125,3 +131,29 @@ AND trigger_name = 'trg_queue_contract_events';
 
 -- Test: call date summary (should return empty buckets)
 SELECT get_contract_events_date_summary('00000000-0000-0000-0000-000000000000');
+
+===============================================
+WHAT 014 PATCHES (create_contract_transaction RPC)
+===============================================
+
+This migration patches the existing create_contract_transaction RPC
+to include the computed_events JSONB column when inserting a new contract.
+
+WHY NEEDED:
+- The wizard sends computed_events in the payload
+- But the original RPC (002_contract_rpc_functions.sql) didn't include it
+- Without this patch, computed_events is always NULL in the database
+- The PGMQ trigger (013) checks computed_events, so events never get created
+
+CHANGES:
+1. Adds computed_events to INSERT column list (line 152)
+2. Adds p_payload->'computed_events' to VALUES (line 193)
+3. Adds computed_events_count to response (line 310)
+
+VERIFICATION:
+-- Create a new contract via wizard, then check:
+SELECT id, contract_number, computed_events
+FROM t_contracts
+WHERE id = '<new-contract-id>';
+
+-- Should show computed_events as JSONB array, NOT NULL
