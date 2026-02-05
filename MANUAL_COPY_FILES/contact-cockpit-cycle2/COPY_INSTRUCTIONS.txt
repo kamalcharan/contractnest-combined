@@ -1,0 +1,104 @@
+═══════════════════════════════════════════════════════════════════════════════
+📦 CONTACT 360° COCKPIT - CYCLE 2: ENHANCED HEADER WITH METRICS
+═══════════════════════════════════════════════════════════════════════════════
+
+Branch: contact-cockpit-cycle2
+Date: 2026-02-05
+
+Files Changed:
+  - contractnest-ui/src/components/contacts/view/cards/ContactHeaderCard.tsx (UPDATED)
+  - contractnest-ui/src/pages/contacts/view.tsx (UPDATED)
+
+Submodules Affected: contractnest-ui
+
+What's New in Cycle 2:
+  ✓ ContactHeaderCard enhanced with optional cockpitData prop
+  ✓ New "compact" variant shows: Name + Classifications + LTV + Outstanding + Health
+  ✓ LTV displays with smart currency formatting (₹5.1L, ₹2.3Cr)
+  ✓ Outstanding shows with warning color when > 0
+  ✓ Health Score with color-coded progress bar (green/amber/orange/red)
+  ✓ Removed ContactCockpitStatsBar (metrics now in header)
+  ✓ Backward compatible - default variant unchanged
+
+Layout Comparison:
+
+  OLD (2 components):
+  ┌────────────────────────────────────────────────────────┐
+  │ ContactHeaderCard (4-section: Name|Channels|Addr|Tags)│
+  └────────────────────────────────────────────────────────┘
+  ┌────────────────────────────────────────────────────────┐
+  │ ContactCockpitStatsBar (LTV | Contracts | Events | %) │
+  └────────────────────────────────────────────────────────┘
+
+  NEW (1 compact component):
+  ┌────────────────────────────────────────────────────────┐
+  │ [Avatar] Name       │  LTV: ₹5.1L  │ Outstanding │ 85% │
+  │         Client•Ven  │              │ ₹45K        │████░│
+  │         CON-001 Act │              │             │     │
+  └────────────────────────────────────────────────────────┘
+
+Production Checklist:
+  ✅ Transaction Management: N/A - display only
+  ✅ Race Condition Handling: N/A - read only
+  ✅ Error Handling: Yes - graceful fallback when no data
+  ✅ Toasts: N/A - no user actions
+  ✅ Loaders: Yes - skeleton loading state
+
+═══════════════════════════════════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+───────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files from MANUAL_COPY_FILES
+───────────────────────────────────
+# Copy Cycle 2 files (includes Cycle 1 dependencies)
+Copy-Item "MANUAL_COPY_FILES\contact-cockpit-cycle2\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+# Also ensure Cycle 1 files are present
+Copy-Item "MANUAL_COPY_FILES\contact-cockpit-cycle1\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "✅ All files copied!" -ForegroundColor Green
+
+STEP 3: Start Dev Server & Test
+───────────────────────────────────
+cd contractnest-ui
+npm run dev
+
+# Hard refresh browser: Ctrl+F5
+# Navigate to: /contacts/{contact-id}
+
+═══════════════════════════════════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+Compact Header (new):
+  - [ ] Header shows: Avatar + Name + Classifications inline
+  - [ ] Contact number and status badge visible
+  - [ ] LTV displays with proper formatting (₹5.1L or ₹2.3Cr)
+  - [ ] Outstanding shows in warning color (amber)
+  - [ ] Health Score shows with color-coded progress bar
+  - [ ] Loading skeleton appears while cockpitData loads
+  - [ ] Copy contact number works on click
+
+Health Score Colors:
+  - [ ] 80-100%: Green (Excellent)
+  - [ ] 60-79%: Amber (Good)
+  - [ ] 40-59%: Orange (Fair)
+  - [ ] 0-39%: Red (Needs Attention)
+
+Removed Components:
+  - [ ] ContactCockpitStatsBar no longer shows (merged into header)
+
+Backward Compatibility:
+  - [ ] Default variant still works if cockpitData not passed
+
+═══════════════════════════════════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with Cycle 3"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════════════════════════════════
