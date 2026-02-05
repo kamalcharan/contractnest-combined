@@ -10,35 +10,41 @@ FILES TO COPY:
 1. contractnest-ui/src/pages/contacts/view.tsx
    → Updated Contact 360° Command Center to use ContactHeaderCard
 
+2. contractnest-ui/src/components/contacts/view/cards/ContactHeaderCard.tsx
+   → Fixed compact variant to show ALL contact data + metrics
+
 WHAT WAS FIXED:
 ──────────────
-- Replaced custom inline header with ContactHeaderCard component
-- Uses variant="compact" to show LTV, Outstanding, Health Score metrics
-- ContactHeaderCard now displays ALL contact data:
+1. ContactHeaderCard.tsx - Compact variant now has TWO rows:
+   - ROW 1: Avatar + Name + Type + Status + Classifications + Contact Number + METRICS (LTV/Outstanding/Health)
+   - ROW 2: Contact Channels | Address | Tags (3-column grid)
+
+2. view.tsx - Contact Cockpit page:
+   - Uses ContactHeaderCard with variant="compact"
+   - Passes cockpitData for metrics
+
+COMPACT VARIANT NOW DISPLAYS:
+──────────────
   ✅ Avatar + Name + Type (Corporate/Individual icon)
-  ✅ Classifications (with proper styling)
-  ✅ Contact Number (in footer)
-  ✅ Contact Channels (mobile, email, whatsapp, etc.)
-  ✅ Addresses
-  ✅ Tags
-  ✅ Compliance Numbers (for corporate)
   ✅ Status Badge
-  ✅ LTV / Outstanding / Health Score (compact variant metrics)
+  ✅ Classifications (with proper styling)
+  ✅ Contact Number / ID
+  ✅ LTV / Outstanding / Health Score (metrics on right)
+  ✅ Contact Channels (mobile, email, whatsapp, etc.) - Row 2
+  ✅ Addresses - Row 2
+  ✅ Tags / Compliance Numbers - Row 2
 
 PREVIOUS ISSUE:
 ──────────────
-- ContactHeaderCard was imported but NOT used in the page
-- Page had custom inline header that only showed:
-  - Avatar, name, email, status
-  - LTV/Outstanding/Health (separately in header)
-- Missing: contact_number, all channels, tags, addresses, classifications
+- Compact variant only showed identity + metrics
+- Missing: contact_channels, tags, addresses, compliance_numbers
 
 NOW:
 ──────────────
-- Back button + Edit button in top bar
-- ContactHeaderCard with variant="compact" below
-- All contact data visible
-- Metrics (LTV/Outstanding/Health) shown in card's compact layout
+- Compact variant has 2-row layout
+- Row 1: Identity info + Metrics (LTV/Outstanding/Health)
+- Row 2: Contact details (Channels, Address, Tags) in 3-column grid
+- All data visible in a compact, organized layout
 - Theme-enabled via useTheme() context
 
 COPY COMMAND (PowerShell):
