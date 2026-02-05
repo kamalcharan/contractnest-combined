@@ -1,0 +1,68 @@
+═══════════════════════════════════════════════════════════════
+CONTACT 360° COCKPIT DESIGN - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════════════════
+Date: 2026-02-05
+Branch: claude/init-submodules-read-docs-3aDn6
+Feature: Contact 360° Command Center HTML Prototype
+
+═══════════════════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════════════════
+
+1. ClaudeDocumentation/contacts/contact-cockpit-360.html
+   Purpose: Complete 360° contact cockpit design
+
+═══════════════════════════════════════════════════════════════
+DESIGN FEATURES
+═══════════════════════════════════════════════════════════════
+
+THREE-COLUMN COMMAND CENTER LAYOUT:
+
+LEFT COLUMN - CONTRACTS:
+- Filter pills (All, Active, Review, Pending, Draft)
+- Contract cards with status badges
+- Progress bars for active contracts
+- Visual status indicators (left border colors)
+- Shows contracts in negotiation/review/pending
+
+CENTER COLUMN - EVENTS TIMELINE:
+- Date range selector (7/14/30 days)
+- Event buckets: Overdue (glowing red), Today (amber), Upcoming, Later
+- Events across ALL contracts aggregated
+- Service events (🔧) and Billing events (💳)
+- Links back to parent contract
+- Amount display for billing events
+- Sequence display for recurring events (Visit 8/12)
+
+RIGHT COLUMN - FINANCIALS:
+- AR/AP badge (Accounts Receivable/Payable)
+- Collected vs Outstanding amounts
+- Collection progress bar with percentage
+- Breakdown: Paid, Partial, Overdue, Unpaid counts
+- Invoice list with status badges
+- Record Payment action
+
+HERO HEADER:
+- Contact avatar with health badge
+- Name, company, email
+- Active status pill
+- LTV, Outstanding, Health Score metrics
+
+ACTION ISLAND:
+- Floating bottom bar
+- Contact avatar + name
+- Quick actions: Call, Message, Log
+- Primary actions: Invoice, New Contract
+
+═══════════════════════════════════════════════════════════════
+SUBMODULES AFFECTED
+═══════════════════════════════════════════════════════════════
+- ClaudeDocumentation (Documentation)
+
+═══════════════════════════════════════════════════════════════
+HOW TO VIEW
+═══════════════════════════════════════════════════════════════
+After copying, open in browser:
+D:\projects\core projects\ContractNest\contractnest-combined\ClaudeDocumentation\contacts\contact-cockpit-360.html
+
+═══════════════════════════════════════════════════════════════
