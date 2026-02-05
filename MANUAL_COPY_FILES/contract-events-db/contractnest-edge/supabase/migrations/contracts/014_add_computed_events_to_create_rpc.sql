@@ -2,11 +2,11 @@
 -- PATCH: Add computed_events to create_contract_transaction RPC
 -- Migration: contracts/014_add_computed_events_to_create_rpc.sql
 --
--- This patch updates the create_contract_transaction RPC to include
--- the computed_events JSONB column when inserting a new contract.
+-- MINIMAL PATCH: Only adds computed_events column to INSERT
+-- Preserves ALL existing logic (history, access, invoices, etc.)
 -- =============================================================
 
--- Drop and recreate the function with computed_events support
+-- Drop and recreate with computed_events support
 CREATE OR REPLACE FUNCTION create_contract_transaction(
     p_payload JSONB,
     p_idempotency_key VARCHAR DEFAULT NULL
@@ -17,33 +17,60 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-    v_idempotency       RECORD;
-    v_tenant_id         UUID;
-    v_contract_id       UUID;
-    v_contract_number   VARCHAR;
-    v_rfq_number        VARCHAR;
-    v_record_type       VARCHAR;
-    v_contract_type     VARCHAR;
-    v_acceptance_method VARCHAR;
-    v_initial_status    VARCHAR;
-    v_cnak              VARCHAR(12);
-    v_block             JSONB;
-    v_block_id          UUID;
-    v_vendor            JSONB;
-    v_vendor_id         UUID;
-    v_contact_info      RECORD;
-    v_response          JSONB;
+    -- Extracted fields
+    v_tenant_id UUID;
+    v_record_type VARCHAR(10);
+    v_contract_type VARCHAR(20);
+    v_is_live BOOLEAN;
+    v_created_by UUID;
+
+    -- Sequence
+    v_seq_result JSONB;
+    v_contract_number VARCHAR(30);
+    v_rfq_number VARCHAR(30);
+
+    -- Auto-accept
+    v_acceptance_method VARCHAR(20);
+    v_initial_status VARCHAR(30);
+
+    -- Result
+    v_contract_id UUID;
+    v_contract RECORD;
+
+    -- Blocks & Vendors
+    v_blocks JSONB;
+    v_vendors JSONB;
+    v_block JSONB;
+    v_vendor JSONB;
+    v_block_id UUID;
+
+    -- CNAK (ContractNest Access Key)
+    v_cnak VARCHAR(12);
+    v_access_secret VARCHAR(32);
+
+    -- Idempotency
+    v_idempotency RECORD;
 BEGIN
     -- ═══════════════════════════════════════════
-    -- STEP 0: Extract and validate tenant_id
+    -- STEP 0: Input validation
     -- ═══════════════════════════════════════════
     v_tenant_id := (p_payload->>'tenant_id')::UUID;
+    v_record_type := COALESCE(p_payload->>'record_type', 'contract');
+    v_contract_type := COALESCE(p_payload->>'contract_type', 'client');
+    v_is_live := COALESCE((p_payload->>'is_live')::BOOLEAN, true);
+    v_created_by := (p_payload->>'created_by')::UUID;
 
     IF v_tenant_id IS NULL THEN
         RETURN jsonb_build_object(
             'success', false,
-            'error', 'tenant_id is required',
-            'error_code', 'MISSING_TENANT_ID'
+            'error', 'tenant_id is required'
+        );
+    END IF;
+
+    IF p_payload->>'name' IS NULL OR TRIM(p_payload->>'name') = '' THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Contract name is required'
         );
     END IF;
 
@@ -64,57 +91,46 @@ BEGIN
     END IF;
 
     -- ═══════════════════════════════════════════
-    -- STEP 2: Determine record type, contract type, acceptance method
+    -- STEP 2: Generate sequence number
     -- ═══════════════════════════════════════════
-    v_record_type := COALESCE(p_payload->>'record_type', 'contract');
-    v_contract_type := p_payload->>'contract_type';
-    v_acceptance_method := COALESCE(p_payload->>'acceptance_method', 'manual');
-
-    -- Determine initial status based on record type
     IF v_record_type = 'rfq' THEN
-        v_initial_status := 'draft';
+        v_seq_result := get_next_formatted_sequence('PROJECT', v_tenant_id, v_is_live);
+        v_rfq_number := v_seq_result->>'formatted';
+    ELSE
+        v_seq_result := get_next_formatted_sequence('CONTRACT', v_tenant_id, v_is_live);
+        v_contract_number := v_seq_result->>'formatted';
+    END IF;
+
+    -- ═══════════════════════════════════════════
+    -- STEP 3: Determine initial status
+    --   Auto-accept rule: if acceptance_method = 'auto' → active
+    -- ═══════════════════════════════════════════
+    v_acceptance_method := p_payload->>'acceptance_method';
+
+    IF v_acceptance_method = 'auto' AND v_record_type = 'contract' THEN
+        v_initial_status := 'active';
     ELSE
         v_initial_status := 'draft';
     END IF;
 
     -- ═══════════════════════════════════════════
-    -- STEP 3: Generate contract number / RFQ number / CNAK
+    -- STEP 3.5: Generate CNAK (ContractNest Access Key)
+    --   Format: CNAK-XXXXXX (6 uppercase alphanumeric chars)
+    --   Unique within tenant_id scope
     -- ═══════════════════════════════════════════
-    IF v_record_type = 'rfq' THEN
-        v_rfq_number := generate_rfq_number(v_tenant_id);
-        v_contract_number := NULL;
-    ELSE
-        v_contract_number := generate_contract_number(v_tenant_id);
-        v_rfq_number := NULL;
-    END IF;
-
-    -- Generate CNAK (Contract Number Access Key)
-    v_cnak := generate_cnak();
-
-    -- Ensure CNAK is unique
-    WHILE EXISTS (SELECT 1 FROM t_contracts WHERE global_access_id = v_cnak) LOOP
-        v_cnak := generate_cnak();
+    LOOP
+        v_cnak := 'CNAK-' || upper(substr(md5(random()::text || clock_timestamp()::text), 1, 6));
+        -- Check uniqueness within this tenant only
+        IF NOT EXISTS (
+            SELECT 1 FROM t_contracts
+            WHERE tenant_id = v_tenant_id AND global_access_id = v_cnak
+        ) THEN
+            EXIT;
+        END IF;
     END LOOP;
 
     -- ═══════════════════════════════════════════
-    -- STEP 3b: Fetch buyer contact info if buyer_id provided
-    -- ═══════════════════════════════════════════
-    IF (p_payload->>'buyer_id') IS NOT NULL THEN
-        SELECT
-            company_name,
-            email,
-            phone,
-            primary_contact_person_id,
-            primary_contact_person_name
-        INTO v_contact_info
-        FROM t_contacts
-        WHERE id = (p_payload->>'buyer_id')::UUID
-          AND tenant_id = v_tenant_id
-          AND is_active = true;
-    END IF;
-
-    -- ═══════════════════════════════════════════
-    -- STEP 4: Insert contract (NOW WITH computed_events)
+    -- STEP 4: Insert contract (WITH computed_events)
     -- ═══════════════════════════════════════════
     INSERT INTO t_contracts (
         tenant_id,
@@ -169,12 +185,12 @@ BEGIN
         p_payload->>'description',
         v_initial_status,
         (p_payload->>'buyer_id')::UUID,
-        COALESCE(p_payload->>'buyer_name', v_contact_info.company_name),
-        COALESCE(p_payload->>'buyer_company', v_contact_info.company_name),
-        COALESCE(p_payload->>'buyer_email', v_contact_info.email),
-        COALESCE(p_payload->>'buyer_phone', v_contact_info.phone),
-        COALESCE((p_payload->>'buyer_contact_person_id')::UUID, v_contact_info.primary_contact_person_id),
-        COALESCE(p_payload->>'buyer_contact_person_name', v_contact_info.primary_contact_person_name),
+        p_payload->>'buyer_name',
+        p_payload->>'buyer_company',
+        p_payload->>'buyer_email',
+        p_payload->>'buyer_phone',
+        (p_payload->>'buyer_contact_person_id')::UUID,
+        p_payload->>'buyer_contact_person_name',
         v_acceptance_method,
         (p_payload->>'duration_value')::INTEGER,
         p_payload->>'duration_unit',
@@ -193,160 +209,242 @@ BEGIN
         p_payload->'computed_events',  -- ← NEW: Extract computed_events from payload
         v_cnak,
         1,
-        COALESCE((p_payload->>'is_live')::BOOLEAN, true),
+        v_is_live,
         true,
-        (p_payload->>'created_by')::UUID,
-        (p_payload->>'created_by')::UUID
+        v_created_by,
+        v_created_by
     )
     RETURNING id INTO v_contract_id;
 
     -- ═══════════════════════════════════════════
-    -- STEP 5: Insert blocks (if provided)
+    -- STEP 5: Bulk insert blocks
     -- ═══════════════════════════════════════════
-    IF p_payload->'blocks' IS NOT NULL AND jsonb_array_length(p_payload->'blocks') > 0 THEN
-        FOR v_block IN SELECT * FROM jsonb_array_elements(p_payload->'blocks')
-        LOOP
-            INSERT INTO t_contract_blocks (
-                contract_id,
-                tenant_id,
-                position,
-                source_type,
-                source_block_id,
-                block_name,
-                block_description,
-                category_id,
-                category_name,
-                unit_price,
-                quantity,
-                billing_cycle,
-                total_price,
-                flyby_type,
-                custom_fields,
-                is_live,
-                is_active,
-                created_by,
-                updated_by
-            )
-            VALUES (
-                v_contract_id,
-                v_tenant_id,
-                COALESCE((v_block->>'position')::INTEGER, 0),
-                COALESCE(v_block->>'source_type', 'catalog'),
-                (v_block->>'source_block_id')::UUID,
-                v_block->>'block_name',
-                v_block->>'block_description',
-                (v_block->>'category_id')::UUID,
-                v_block->>'category_name',
-                COALESCE((v_block->>'unit_price')::NUMERIC, 0),
-                COALESCE((v_block->>'quantity')::INTEGER, 1),
-                v_block->>'billing_cycle',
-                COALESCE((v_block->>'total_price')::NUMERIC, 0),
-                v_block->>'flyby_type',
-                COALESCE(v_block->'custom_fields', '{}'::JSONB),
-                COALESCE((p_payload->>'is_live')::BOOLEAN, true),
-                true,
-                (p_payload->>'created_by')::UUID,
-                (p_payload->>'created_by')::UUID
-            )
-            RETURNING id INTO v_block_id;
-        END LOOP;
-    END IF;
+    v_blocks := COALESCE(p_payload->'blocks', '[]'::JSONB);
+
+    FOR v_block IN SELECT * FROM jsonb_array_elements(v_blocks)
+    LOOP
+        INSERT INTO t_contract_blocks (
+            contract_id,
+            tenant_id,
+            position,
+            source_type,
+            source_block_id,
+            block_name,
+            block_description,
+            category_id,
+            category_name,
+            unit_price,
+            quantity,
+            billing_cycle,
+            total_price,
+            flyby_type,
+            custom_fields
+        )
+        VALUES (
+            v_contract_id,
+            v_tenant_id,
+            COALESCE((v_block->>'position')::INTEGER, 0),
+            COALESCE(v_block->>'source_type', 'flyby'),
+            (v_block->>'source_block_id')::UUID,
+            COALESCE(v_block->>'block_name', 'Untitled Block'),
+            v_block->>'block_description',
+            v_block->>'category_id',
+            v_block->>'category_name',
+            (v_block->>'unit_price')::NUMERIC,
+            (v_block->>'quantity')::INTEGER,
+            v_block->>'billing_cycle',
+            (v_block->>'total_price')::NUMERIC,
+            v_block->>'flyby_type',
+            COALESCE(v_block->'custom_fields', '{}'::JSONB)
+        );
+    END LOOP;
 
     -- ═══════════════════════════════════════════
-    -- STEP 6: Insert vendors (RFQ only)
+    -- STEP 6: Bulk insert vendors (RFQ only)
     -- ═══════════════════════════════════════════
-    IF v_record_type = 'rfq' AND p_payload->'vendors' IS NOT NULL AND jsonb_array_length(p_payload->'vendors') > 0 THEN
-        FOR v_vendor IN SELECT * FROM jsonb_array_elements(p_payload->'vendors')
+    IF v_record_type = 'rfq' THEN
+        v_vendors := COALESCE(p_payload->'vendors', '[]'::JSONB);
+
+        FOR v_vendor IN SELECT * FROM jsonb_array_elements(v_vendors)
         LOOP
             INSERT INTO t_contract_vendors (
                 contract_id,
                 tenant_id,
                 vendor_id,
-                contact_id,
-                contact_classification,
                 vendor_name,
-                status,
-                is_active,
-                created_by,
-                updated_by
+                vendor_company,
+                vendor_email,
+                response_status
             )
             VALUES (
                 v_contract_id,
                 v_tenant_id,
                 (v_vendor->>'vendor_id')::UUID,
-                (v_vendor->>'contact_id')::UUID,
-                COALESCE(v_vendor->>'contact_classification', 'vendor'),
                 v_vendor->>'vendor_name',
-                'pending',
-                true,
-                (p_payload->>'created_by')::UUID,
-                (p_payload->>'created_by')::UUID
-            )
-            RETURNING id INTO v_vendor_id;
+                v_vendor->>'vendor_company',
+                v_vendor->>'vendor_email',
+                'pending'
+            );
         END LOOP;
     END IF;
 
     -- ═══════════════════════════════════════════
-    -- STEP 7: Build response
+    -- STEP 7: Audit trail — history entry
     -- ═══════════════════════════════════════════
-    v_response := jsonb_build_object(
-        'success', true,
-        'data', (
-            SELECT jsonb_build_object(
-                'id', c.id,
-                'tenant_id', c.tenant_id,
-                'contract_number', c.contract_number,
-                'rfq_number', c.rfq_number,
-                'record_type', c.record_type,
-                'name', c.name,
-                'status', c.status,
-                'global_access_id', c.global_access_id,
-                'buyer_id', c.buyer_id,
-                'buyer_name', c.buyer_name,
-                'buyer_email', c.buyer_email,
-                'currency', c.currency,
-                'grand_total', c.grand_total,
-                'acceptance_method', c.acceptance_method,
-                'computed_events_count', COALESCE(jsonb_array_length(c.computed_events), 0),
-                'created_at', c.created_at
-            )
-            FROM t_contracts c
-            WHERE c.id = v_contract_id
+    INSERT INTO t_contract_history (
+        contract_id,
+        tenant_id,
+        action,
+        from_status,
+        to_status,
+        changes,
+        performed_by_type,
+        performed_by_id,
+        performed_by_name,
+        note
+    )
+    VALUES (
+        v_contract_id,
+        v_tenant_id,
+        'created',
+        NULL,
+        v_initial_status,
+        jsonb_build_object(
+            'record_type', v_record_type,
+            'contract_type', v_contract_type,
+            'blocks_count', jsonb_array_length(v_blocks),
+            'vendors_count', CASE WHEN v_record_type = 'rfq'
+                THEN jsonb_array_length(COALESCE(p_payload->'vendors', '[]'::JSONB))
+                ELSE 0
+            END
         ),
-        'created_at', NOW()
+        COALESCE(p_payload->>'performed_by_type', 'user'),
+        v_created_by,
+        p_payload->>'performed_by_name',
+        CASE v_record_type
+            WHEN 'rfq' THEN 'RFQ created'
+            ELSE 'Contract created'
+        END
     );
 
     -- ═══════════════════════════════════════════
-    -- STEP 8: Store idempotency (if key provided)
+    -- STEP 7.5: Insert contract access row (CNAK grant)
+    --   Grants the counterparty (buyer) access via CNAK
+    --   Generates a secret_code for public link validation
     -- ═══════════════════════════════════════════
-    IF p_idempotency_key IS NOT NULL THEN
-        PERFORM store_idempotency(
-            p_idempotency_key,
+    v_access_secret := replace(gen_random_uuid()::text, '-', '');
+
+    IF (p_payload->>'buyer_id') IS NOT NULL THEN
+        INSERT INTO t_contract_access (
+            contract_id,
+            global_access_id,
+            secret_code,
+            tenant_id,
+            creator_tenant_id,
+            accessor_tenant_id,
+            accessor_role,
+            accessor_contact_id,
+            accessor_email,
+            accessor_name,
+            status,
+            is_active,
+            created_by
+        )
+        VALUES (
+            v_contract_id,
+            v_cnak,
+            v_access_secret,
             v_tenant_id,
-            'create_contract_transaction',
-            'POST',
-            NULL,
-            201,
-            v_response,
-            24
+            v_tenant_id,                                        -- creator = owner tenant
+            NULL,                                               -- accessor tenant unknown at creation
+            COALESCE(v_contract_type, 'client'),                -- role from contract type
+            (p_payload->>'buyer_id')::UUID,                     -- contact reference
+            p_payload->>'buyer_email',
+            p_payload->>'buyer_name',
+            'pending',
+            true,
+            v_created_by
         );
     END IF;
 
-    RETURN v_response;
+    -- ═══════════════════════════════════════════
+    -- STEP 7.6: Auto-generate invoices (auto-accept only)
+    --   When acceptance_method = 'auto', contract starts as 'active'
+    --   so invoices are generated immediately at creation time.
+    -- ═══════════════════════════════════════════
+    IF v_initial_status = 'active' AND v_record_type = 'contract' THEN
+        PERFORM generate_contract_invoices(v_contract_id, v_tenant_id, v_created_by);
+    END IF;
+
+    -- ═══════════════════════════════════════════
+    -- STEP 8: Fetch the created contract for response
+    -- ═══════════════════════════════════════════
+    SELECT * INTO v_contract
+    FROM t_contracts
+    WHERE id = v_contract_id;
+
+    -- ═══════════════════════════════════════════
+    -- STEP 9: Build success response
+    -- ═══════════════════════════════════════════
+    DECLARE
+        v_response JSONB;
+    BEGIN
+        v_response := jsonb_build_object(
+            'success', true,
+            'data', jsonb_build_object(
+                'id', v_contract.id,
+                'tenant_id', v_contract.tenant_id,
+                'contract_number', v_contract.contract_number,
+                'rfq_number', v_contract.rfq_number,
+                'record_type', v_contract.record_type,
+                'contract_type', v_contract.contract_type,
+                'name', v_contract.name,
+                'status', v_contract.status,
+                'acceptance_method', v_contract.acceptance_method,
+                'buyer_name', v_contract.buyer_name,
+                'buyer_email', v_contract.buyer_email,
+                'total_value', v_contract.total_value,
+                'tax_total', v_contract.tax_total,
+                'grand_total', v_contract.grand_total,
+                'tax_breakdown', COALESCE(v_contract.tax_breakdown, '[]'::JSONB),
+                'currency', v_contract.currency,
+                'global_access_id', v_contract.global_access_id,
+                'access_secret', v_access_secret,
+                'version', v_contract.version,
+                'created_at', v_contract.created_at
+            ),
+            'created_at', NOW()
+        );
+
+        -- Store idempotency (if key provided)
+        IF p_idempotency_key IS NOT NULL THEN
+            PERFORM store_idempotency(
+                p_idempotency_key,
+                v_tenant_id,
+                'create_contract_transaction',
+                'POST',
+                NULL,
+                200,
+                v_response,
+                24
+            );
+        END IF;
+
+        RETURN v_response;
+    END;
 
 EXCEPTION WHEN OTHERS THEN
     RETURN jsonb_build_object(
         'success', false,
-        'error', SQLERRM,
-        'error_code', 'TRANSACTION_FAILED',
-        'sqlstate', SQLSTATE
+        'error', 'Failed to create contract',
+        'details', SQLERRM,
+        'error_code', SQLSTATE
     );
 END;
 $$;
 
--- Grant execute permissions
 GRANT EXECUTE ON FUNCTION create_contract_transaction(JSONB, VARCHAR) TO authenticated;
 GRANT EXECUTE ON FUNCTION create_contract_transaction(JSONB, VARCHAR) TO service_role;
 
 -- Add comment
-COMMENT ON FUNCTION create_contract_transaction IS 'Creates a contract with blocks, vendors, and computed_events in a single transaction';
+COMMENT ON FUNCTION create_contract_transaction IS 'Creates a contract with blocks, vendors, history, access, and computed_events in a single transaction';
