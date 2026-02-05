@@ -1,0 +1,34 @@
+═══════════════════════════════════════════════════════════════
+CONTACT COCKPIT V2 DESIGN - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════════════════
+Date: 2026-02-05
+Branch: claude/init-submodules-read-docs-3aDn6
+Feature: Contact Cockpit V2 HTML Prototype Design
+
+═══════════════════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════════════════
+
+1. ClaudeDocumentation/contacts/contact-cockpit-v2.html
+   Purpose: Innovative dark-mode command center design for contact page
+
+   Design Features:
+   - Hero section with health ring SVG, LTV, outstanding, health score
+   - Bento grid layout with 4 stat cards
+   - Contracts Pulse with progress visualization
+   - Events Radar with overdue/today/upcoming sections
+   - Recent Activity horizontal timeline
+   - Floating Action Island with contextual actions
+
+═══════════════════════════════════════════════════════════════
+SUBMODULES AFFECTED
+═══════════════════════════════════════════════════════════════
+- ClaudeDocumentation (Documentation)
+
+═══════════════════════════════════════════════════════════════
+HOW TO VIEW
+═══════════════════════════════════════════════════════════════
+After copying, open in browser:
+D:\projects\core projects\ContractNest\contractnest-combined\ClaudeDocumentation\contacts\contact-cockpit-v2.html
+
+═══════════════════════════════════════════════════════════════
