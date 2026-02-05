@@ -1,0 +1,44 @@
+═══════════════════════════════════════════════════════════════
+CONTACT COCKPIT EDGE FIX - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════════════════
+Date: 2026-02-05
+Branch: claude/init-submodules-read-docs-3aDn6
+Feature: Add cockpit_summary handler to Edge function
+
+═══════════════════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════════════════
+
+1. contractnest-edge/supabase/functions/contracts/index.ts
+   Purpose: Added cockpit_summary action handler for contact dashboard
+   Changes:
+   - Line 171-173: Added action check for 'cockpit_summary'
+   - Lines 505-541: Added handleCockpitSummary() function
+   - Calls RPC: get_contact_cockpit_summary
+
+═══════════════════════════════════════════════════════════════
+SUBMODULES AFFECTED
+═══════════════════════════════════════════════════════════════
+- contractnest-edge (Edge Functions)
+
+═══════════════════════════════════════════════════════════════
+WHAT THIS FIX DOES
+═══════════════════════════════════════════════════════════════
+The API controller at /api/contacts/:id/cockpit sends a POST request
+to the Edge function with { action: 'cockpit_summary', contact_id, ... }
+
+Previously, this fell through to handleCreate() which returned:
+  "Contract name is required" (ERROR)
+
+Now it properly routes to handleCockpitSummary() which calls:
+  get_contact_cockpit_summary RPC (SUCCESS)
+
+═══════════════════════════════════════════════════════════════
+POST-COPY REQUIREMENT
+═══════════════════════════════════════════════════════════════
+After copying and committing, deploy the Edge function:
+
+cd contractnest-edge
+supabase functions deploy contracts
+
+═══════════════════════════════════════════════════════════════
