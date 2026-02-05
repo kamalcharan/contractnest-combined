@@ -1,0 +1,160 @@
+================================================================================
+CONTRACT EVENTS UI LAYER - COPY INSTRUCTIONS
+================================================================================
+
+FILES INCLUDED:
+1. src/types/contractEvents.ts              - Type definitions & constants
+2. src/hooks/queries/useContractEventQueries.ts - TanStack Query hooks
+3. src/services/serviceURLs.contract-events.ts - Reference for serviceURLs.ts updates
+
+================================================================================
+STEP 1: COPY FILES TO contractnest-ui
+================================================================================
+
+Copy-Item "MANUAL_COPY_FILES\contract-events-ui\contractnest-ui\src\types\contractEvents.ts" -Destination "contractnest-ui\src\types\" -Force
+
+Copy-Item "MANUAL_COPY_FILES\contract-events-ui\contractnest-ui\src\hooks\queries\useContractEventQueries.ts" -Destination "contractnest-ui\src\hooks\queries\" -Force
+
+Write-Host "2 main UI files copied!" -ForegroundColor Green
+
+================================================================================
+STEP 2: UPDATE serviceURLs.ts (MANUAL EDIT)
+================================================================================
+
+Open: contractnest-ui/src/services/serviceURLs.ts
+
+Reference file: MANUAL_COPY_FILES/contract-events-ui/contractnest-ui/src/services/serviceURLs.contract-events.ts
+
+ADD this section after the CONTRACTS section (around line 892):
+
+  // =================================================================
+  // CONTRACT EVENTS (TIMELINE) ENDPOINTS
+  // =================================================================
+  CONTRACT_EVENTS: {
+    LIST: '/api/contract-events',
+    GET: (id: string) => `/api/contract-events/${id}`,
+    CREATE: '/api/contract-events',
+    UPDATE: (id: string) => `/api/contract-events/${id}`,
+    DATES: '/api/contract-events/dates',
+    HEALTH: '/api/contract-events/health',
+
+    LIST_WITH_FILTERS: (filters: ContractEventFilters = {}) => {
+      const params = new URLSearchParams();
+      if (filters.contract_id) params.append('contract_id', filters.contract_id);
+      if (filters.contact_id) params.append('contact_id', filters.contact_id);
+      if (filters.assigned_to) params.append('assigned_to', filters.assigned_to);
+      if (filters.status) params.append('status', filters.status);
+      if (filters.event_type) params.append('event_type', filters.event_type);
+      if (filters.date_from) params.append('date_from', filters.date_from);
+      if (filters.date_to) params.append('date_to', filters.date_to);
+      if (filters.page !== undefined) params.append('page', filters.page.toString());
+      if (filters.per_page !== undefined) params.append('per_page', filters.per_page.toString());
+      if (filters.sort_by) params.append('sort_by', filters.sort_by);
+      if (filters.sort_order) params.append('sort_order', filters.sort_order);
+      const queryString = params.toString();
+      return queryString ? `/api/contract-events?${queryString}` : '/api/contract-events';
+    },
+
+    DATES_WITH_FILTERS: (filters: ContractEventDateFilters = {}) => {
+      const params = new URLSearchParams();
+      if (filters.contract_id) params.append('contract_id', filters.contract_id);
+      if (filters.contact_id) params.append('contact_id', filters.contact_id);
+      if (filters.assigned_to) params.append('assigned_to', filters.assigned_to);
+      if (filters.event_type) params.append('event_type', filters.event_type);
+      const queryString = params.toString();
+      return queryString ? `/api/contract-events/dates?${queryString}` : '/api/contract-events/dates';
+    },
+  },
+
+--------------------------------------------------------------------------------
+
+ADD these types (after ContractCrudFilters around line 1119):
+
+// Contract Events filter interface
+export type ContractEventFilters = {
+  contract_id?: string;
+  contact_id?: string;
+  assigned_to?: string;
+  status?: 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'overdue';
+  event_type?: 'service' | 'billing';
+  date_from?: string;
+  date_to?: string;
+  page?: number;
+  per_page?: number;
+  sort_by?: 'scheduled_date' | 'created_at' | 'updated_at' | 'status' | 'event_type' | 'amount';
+  sort_order?: 'asc' | 'desc';
+};
+
+export type ContractEventDateFilters = {
+  contract_id?: string;
+  contact_id?: string;
+  assigned_to?: string;
+  event_type?: 'service' | 'billing';
+};
+
+--------------------------------------------------------------------------------
+
+ADD this export type (after ContractsEndpoints around line 1191):
+
+export type ContractEventsEndpoints = typeof API_ENDPOINTS.CONTRACT_EVENTS;
+
+================================================================================
+STEP 3: VERIFY
+================================================================================
+
+cd contractnest-ui
+npm run build
+
+# Should compile without errors
+
+npm run dev
+
+# Test by importing in any component:
+# import { useContractEvents, useTenantDateSummary } from '@/hooks/queries/useContractEventQueries';
+
+================================================================================
+HOOKS PROVIDED
+================================================================================
+
+Query Hooks:
+  useContractEvents(filters, options)       - List events with filters
+  useContractEventsForContract(contractId)  - Events for a specific contract
+  useContractEventsForCustomer(contactId)   - Events for a specific customer
+  useContractEventsForAssignee(assigneeId)  - Events assigned to a user
+  useContractEventDateSummary(filters)      - Date bucket summary
+  useDateSummaryForContract(contractId)     - Date summary for a contract
+  useDateSummaryForCustomer(contactId)      - Date summary for a customer
+  useTenantDateSummary()                    - Tenant-wide dashboard summary
+
+Mutation Hooks:
+  useContractEventOperations()
+    - createEvents(data)     - Bulk create events
+    - updateEvent(eventId, data) - Update single event
+    - updateStatus(eventId, newStatus, version, reason) - Quick status change
+
+Utility Hooks:
+  useInvalidateContractEvents()
+    - invalidateAll()        - Invalidate all event queries
+    - invalidateLists()      - Invalidate list queries only
+    - invalidateDateSummaries() - Invalidate date summaries
+    - invalidateForContract(contractId) - Invalidate for specific contract
+
+================================================================================
+USAGE EXAMPLES
+================================================================================
+
+// List all events for a contract (Timeline Tab)
+const { data, isLoading, error } = useContractEventsForContract(contractId);
+
+// Dashboard date summary
+const { data: summary } = useTenantDateSummary({ refetchInterval: 30000 });
+
+// Update event status
+const { updateStatus, isChangingStatus } = useContractEventOperations();
+await updateStatus({ eventId, newStatus: 'completed', version: event.version });
+
+// Bulk create events (from computed_events)
+const { createEvents } = useContractEventOperations();
+await createEvents({ contract_id: contractId, events: computedEvents });
+
+================================================================================
