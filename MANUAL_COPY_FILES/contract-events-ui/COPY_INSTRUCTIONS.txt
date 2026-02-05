@@ -3,23 +3,36 @@ CONTRACT EVENTS UI LAYER - COPY INSTRUCTIONS
 ================================================================================
 
 FILES INCLUDED:
-1. src/types/contractEvents.ts              - Type definitions & constants
-2. src/hooks/queries/useContractEventQueries.ts - TanStack Query hooks
-3. src/services/serviceURLs.contract-events.ts - Reference for serviceURLs.ts updates
+1. src/types/contractEvents.ts                    - Type definitions & constants
+2. src/hooks/queries/useContractEventQueries.ts   - TanStack Query hooks
+3. src/components/contracts/TimelineTab.tsx       - Timeline tab component
+4. src/pages/contracts/detail/index.tsx           - Updated contract detail page
+5. src/services/serviceURLs.contract-events.ts    - Reference for serviceURLs.ts updates
 
 ================================================================================
 STEP 1: COPY FILES TO contractnest-ui
 ================================================================================
 
+# Types
 Copy-Item "MANUAL_COPY_FILES\contract-events-ui\contractnest-ui\src\types\contractEvents.ts" -Destination "contractnest-ui\src\types\" -Force
 
+# Hooks
 Copy-Item "MANUAL_COPY_FILES\contract-events-ui\contractnest-ui\src\hooks\queries\useContractEventQueries.ts" -Destination "contractnest-ui\src\hooks\queries\" -Force
 
-Write-Host "2 main UI files copied!" -ForegroundColor Green
+# Components
+Copy-Item "MANUAL_COPY_FILES\contract-events-ui\contractnest-ui\src\components\contracts\TimelineTab.tsx" -Destination "contractnest-ui\src\components\contracts\" -Force
+
+# Pages (updated contract detail with Timeline tab integration)
+Copy-Item "MANUAL_COPY_FILES\contract-events-ui\contractnest-ui\src\pages\contracts\detail\index.tsx" -Destination "contractnest-ui\src\pages\contracts\detail\" -Force
+
+Write-Host "4 UI files copied!" -ForegroundColor Green
 
 ================================================================================
-STEP 2: UPDATE serviceURLs.ts (MANUAL EDIT)
+STEP 2: UPDATE serviceURLs.ts (MANUAL EDIT - OPTIONAL)
 ================================================================================
+
+NOTE: The hooks use inline API endpoints for now. If you want centralized URLs,
+update serviceURLs.ts using the reference file.
 
 Open: contractnest-ui/src/services/serviceURLs.ts
 
@@ -109,8 +122,32 @@ npm run build
 
 npm run dev
 
-# Test by importing in any component:
-# import { useContractEvents, useTenantDateSummary } from '@/hooks/queries/useContractEventQueries';
+# Navigate to any contract detail page -> Timeline tab
+# Example: /contracts/c1e393cb-5dd0-4bb0-8a92-bec3e25eddf8
+
+================================================================================
+WHAT'S NEW: TIMELINE TAB
+================================================================================
+
+The Timeline tab now shows:
+1. Date Summary Buckets - Overdue, Today, Tomorrow, This Week, Next Week, Later
+2. Events List - Grouped by date, with service and billing events
+3. Status Updates - Click status badge to change event status
+4. Loading/Error States - Proper handling for data fetching
+
+Event Statuses:
+  - scheduled   - Event is planned
+  - in_progress - Work has started
+  - completed   - Event is done (terminal)
+  - cancelled   - Event was cancelled (terminal)
+  - overdue     - Past scheduled date without completion
+
+Status Transitions:
+  scheduled   -> in_progress, cancelled
+  in_progress -> completed, cancelled
+  overdue     -> in_progress, completed, cancelled
+  completed   -> (terminal - no transitions)
+  cancelled   -> (terminal - no transitions)
 
 ================================================================================
 HOOKS PROVIDED
