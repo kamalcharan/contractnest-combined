@@ -478,9 +478,10 @@ ${primaryPhone ? `Phone: ${formatPhoneNumber(primaryPhone)}` : ''}`;
   };
 
   // Prepare cockpit data for header - Cycle 2
+  // Note: ltv, outstanding, health_score are at root level of cockpitData
   const headerCockpitData = cockpitData ? {
-    ltv: cockpitData.financials?.ltv || 0,
-    outstanding: cockpitData.financials?.outstanding || 0,
+    ltv: cockpitData.ltv || 0,
+    outstanding: cockpitData.outstanding || 0,
     health_score: cockpitData.health_score || 75,
   } : undefined;
 
