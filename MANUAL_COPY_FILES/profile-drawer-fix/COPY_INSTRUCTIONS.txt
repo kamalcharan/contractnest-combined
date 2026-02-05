@@ -1,0 +1,37 @@
+═══════════════════════════════════════════════════════════════════════════════
+PROFILE DRAWER FIX - FULL EDITING FUNCTIONALITY
+═══════════════════════════════════════════════════════════════════════════════
+
+Branch: claude/init-submodules-read-docs-3aDn6
+Date: 2026-02-05
+
+FILES TO COPY:
+──────────────
+1. contractnest-ui/src/components/contacts/cockpit/ProfileDrawer.tsx
+   → Complete rewrite with production-grade edit modal functionality
+
+WHAT WAS FIXED:
+──────────────
+- Added EditModal component for in-drawer editing
+- Added form sections imports (ContactChannelsSection, AddressesSection, etc.)
+- Added formData state management
+- Added handleSave function with proper API data transformation
+- Added renderModalContent function for each edit type
+- Status toggle and archive functionality retained
+
+EDIT MODALS NOW WORKING:
+──────────────
+✅ Contact Channels - Full CRUD
+✅ Classification - Selection/deselection
+✅ Contact Persons (Corporate) - Full CRUD
+✅ Tags - Add/remove
+✅ Addresses - Full CRUD
+✅ Compliance Numbers (Corporate) - Full CRUD
+✅ Status Toggle - Active/Inactive
+✅ Archive Contact - With confirmation
+
+COPY COMMAND (PowerShell):
+──────────────
+Copy-Item "MANUAL_COPY_FILES\profile-drawer-fix\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+═══════════════════════════════════════════════════════════════════════════════
