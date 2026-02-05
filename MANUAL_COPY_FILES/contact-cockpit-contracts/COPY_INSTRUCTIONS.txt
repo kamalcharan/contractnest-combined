@@ -1,0 +1,120 @@
+═══════════════════════════════════════════════════════════════════════════════
+CONTACT COCKPIT CONTRACTS - Reusable Components Integration
+═══════════════════════════════════════════════════════════════════════════════
+
+Branch: claude/init-submodules-acTX4
+Date: 2026-02-05
+
+PROBLEM SOLVED:
+───────────────
+Contact Cockpit (/contacts/:id) Column 1 had orphan/duplicate code instead of
+reusing components from ContractsHub. The custom code was not working properly.
+
+SOLUTION:
+───────────────
+1. Extracted reusable components from ContractsHub
+2. Updated Contact Cockpit to use the new components
+3. Removed all orphan/duplicate code
+
+FILES CREATED:
+───────────────
+1. contractnest-ui/src/components/contracts/PipelineBar.tsx
+   → Reusable status filter bar (works in both hub and cockpit)
+   → Has "compact" mode for Contact Cockpit (pill-style filters)
+   → Has "full" mode for ContractsHub (horizontal pipeline with counts)
+
+2. contractnest-ui/src/components/contracts/ContractCard.tsx
+   → Reusable contract card component
+   → Has "compact" variant for Contact Cockpit (simpler, no buyer info)
+   → Has "default" variant for ContractsHub (full details)
+
+3. contractnest-ui/src/components/contracts/index.ts
+   → Barrel export for all contract components
+
+FILES MODIFIED:
+───────────────
+4. contractnest-ui/src/pages/contacts/view.tsx
+   → Updated to import PipelineBar and ContractCard from @/components/contracts
+   → Removed orphan filter code (lines 424-445 OLD)
+   → Removed orphan card rendering code (lines 461-497 OLD)
+   → Removed getStatusColor helper function (now in ContractCard)
+   → Uses PipelineBar with compact={true} for status filtering
+   → Uses ContractCard with variant="compact" for rendering
+
+WHAT CHANGED:
+───────────────
+BEFORE (Broken):
+  - Custom inline filter buttons that didn't match ContractsHub
+  - Custom contract cards with inconsistent styling
+  - Hardcoded status colors that weren't theme-aware
+  - Code duplicated logic that existed in hub/
+
+AFTER (Working):
+  - PipelineBar component with compact mode (pill-style)
+  - ContractCard component with compact variant
+  - Theme-aware colors via useTheme()
+  - Single source of truth for contract UI components
+
+DATA FLOW:
+───────────────
+Contact Cockpit still uses useContactCockpit() hook for data:
+  cockpitData.contracts.contracts → array of contracts
+  cockpitData.contracts.by_status → status counts for filters
+
+This is intentional - the hook returns contact-specific data including
+contracts, events, and financials in a single API call.
+
+COMPONENT USAGE:
+───────────────
+// In Contact Cockpit (compact mode)
+<PipelineBar
+  statusCounts={contractsByStatus}
+  activeStatus={contractStatusFilter}
+  onStatusClick={setContractStatusFilter}
+  colors={colors}
+  compact={true}  // <-- Pill-style filters
+/>
+
+<ContractCard
+  contract={contractData}
+  colors={colors}
+  variant="compact"  // <-- Simpler card, no buyer info
+/>
+
+// In ContractsHub (full mode)
+<PipelineBar
+  statusCounts={stats.by_status}
+  activeStatus={statusFilter}
+  onStatusClick={setStatusFilter}
+  colors={colors}
+  compact={false}  // <-- Full pipeline with counts
+/>
+
+<ContractCard
+  contract={contractData}
+  colors={colors}
+  variant="default"  // <-- Full card with buyer, dates, etc.
+/>
+
+COPY COMMAND (PowerShell):
+───────────────
+Copy-Item "MANUAL_COPY_FILES\contact-cockpit-contracts\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+TESTING CHECKLIST:
+───────────────
+[ ] Navigate to /contacts/:id (Contact Cockpit)
+[ ] Verify Column 1 shows contract status filter pills
+[ ] Click filter pills - verify contracts filter correctly
+[ ] Click "All" - verify shows all contracts
+[ ] Click a contract card - verify navigates to /contracts/:id
+[ ] Verify contract cards show: status, amount, name, contract number, duration
+[ ] Test with contact that has no contracts - verify empty state
+[ ] Test in dark mode - verify theme colors work
+
+FUTURE REFACTORING (Optional):
+───────────────
+ContractsHub (hub/index.tsx) can be updated to import from
+@/components/contracts instead of defining components inline.
+This would make the hub smaller and ensure consistency.
+
+═══════════════════════════════════════════════════════════════════════════════
