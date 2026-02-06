@@ -9,7 +9,7 @@ Submodules Affected: contractnest-ui, contractnest-edge, contractnest-api
 FILES TO COPY
 ═══════════════════════════════════════════════════
 
-CONTRACTNEST-UI (2 files):
+CONTRACTNEST-UI (3 files):
 ────────────────────────────
 1. src/utils/constants/channels.ts
    → Fixed formatChannelValue greedy regex (was stripping entire phone number)
@@ -21,6 +21,13 @@ CONTRACTNEST-UI (2 files):
    → Phone input stripped of + character (matches Quick Add behavior)
    → Display logic handles both ISO and phone code country_code formats
    → Add channel normalizes country_code to ISO format
+
+3. src/pages/admin/subscription-management/index.tsx
+   → Added pagination controls (Prev/Next buttons + page numbers)
+   → Stores totalPages from API pagination response
+   → Page numbers use sliding window (max 5 visible) for many pages
+   → Changing page updates filters.page → triggers loadData via useEffect
+   → Backend already supported pagination (RPC, Edge, API) - only UI was missing
 
 CONTRACTNEST-EDGE (4 files):
 ────────────────────────────
@@ -77,6 +84,7 @@ cd "D:\projects\core projects\ContractNest\contractnest-combined"
 # UI files
 Copy-Item "MANUAL_COPY_FILES\fix-contact-channels-consistency\contractnest-ui\src\utils\constants\channels.ts" -Destination "contractnest-ui\src\utils\constants\channels.ts" -Force
 Copy-Item "MANUAL_COPY_FILES\fix-contact-channels-consistency\contractnest-ui\src\components\contacts\forms\ContactChannelsSection.tsx" -Destination "contractnest-ui\src\components\contacts\forms\ContactChannelsSection.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\fix-contact-channels-consistency\contractnest-ui\src\pages\admin\subscription-management\index.tsx" -Destination "contractnest-ui\src\pages\admin\subscription-management\index.tsx" -Force
 
 # Edge files
 Copy-Item "MANUAL_COPY_FILES\fix-contact-channels-consistency\contractnest-edge\supabase\functions\_shared\contacts\contactValidation.ts" -Destination "contractnest-edge\supabase\functions\_shared\contacts\contactValidation.ts" -Force
