@@ -1,0 +1,69 @@
+═══════════════════════════════════════════════════
+FIX: Contact Channels Data Consistency + Cockpit 400 Error + Error Code Mismatch
+═══════════════════════════════════════════════════
+
+Branch: fix-contact-channels-consistency
+Submodules Affected: contractnest-ui, contractnest-edge, contractnest-api
+
+═══════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════
+
+CONTRACTNEST-UI (2 files):
+────────────────────────────
+1. src/utils/constants/channels.ts
+   → Fixed formatChannelValue greedy regex (was stripping entire phone number)
+   → Added normalizeCountryCode utility function
+   → Smart country code stripping that validates local number length
+
+2. src/components/contacts/forms/ContactChannelsSection.tsx
+   → Edit mode now calls formatChannelValue on save (was missing - root cause of inconsistent values)
+   → Phone input stripped of + character (matches Quick Add behavior)
+   → Display logic handles both ISO and phone code country_code formats
+   → Add channel normalizes country_code to ISO format
+
+CONTRACTNEST-EDGE (3 files):
+────────────────────────────
+3. supabase/functions/_shared/contacts/contactValidation.ts
+   → Added normalizeContactChannels() function - normalizes value and country_code before storage
+   → Added country-specific phone validation (40+ countries with exact digit lengths)
+   → Fixed classifications list to match contactService.ts (was missing buyer, seller, etc.)
+   → WhatsApp now validated same as mobile/phone (was skipped before)
+   → Phone min length changed from 10 to 7 (some countries have 8-digit numbers)
+
+4. supabase/functions/_shared/contacts/contactService.ts
+   → Calls normalizeContactChannels() before create RPC
+   → Calls normalizeContactChannels() before update RPC
+   → Single source of truth for data normalization at storage layer
+
+5. supabase/functions/contracts/index.ts
+   → Added handleCockpitSummary() function (was completely missing - caused 400 error)
+   → Queries t_contracts, t_contract_events, t_invoices for contact cockpit data
+   → Computes LTV, outstanding, health_score, status breakdown
+   → Routed via POST with action: 'cockpit_summary'
+
+CONTRACTNEST-API (1 file):
+────────────────────────────
+6. src/controllers/contactController.ts
+   → Fixed error code mismatch: now handles both 'NOT_FOUND' and 'CONTACT_NOT_FOUND'
+   → Prevents incorrect 400 status when contact is genuinely not found (should be 404)
+
+═══════════════════════════════════════════════════
+COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# UI files
+Copy-Item "MANUAL_COPY_FILES\fix-contact-channels-consistency\contractnest-ui\src\utils\constants\channels.ts" -Destination "contractnest-ui\src\utils\constants\channels.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\fix-contact-channels-consistency\contractnest-ui\src\components\contacts\forms\ContactChannelsSection.tsx" -Destination "contractnest-ui\src\components\contacts\forms\ContactChannelsSection.tsx" -Force
+
+# Edge files
+Copy-Item "MANUAL_COPY_FILES\fix-contact-channels-consistency\contractnest-edge\supabase\functions\_shared\contacts\contactValidation.ts" -Destination "contractnest-edge\supabase\functions\_shared\contacts\contactValidation.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\fix-contact-channels-consistency\contractnest-edge\supabase\functions\_shared\contacts\contactService.ts" -Destination "contractnest-edge\supabase\functions\_shared\contacts\contactService.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\fix-contact-channels-consistency\contractnest-edge\supabase\functions\contracts\index.ts" -Destination "contractnest-edge\supabase\functions\contracts\index.ts" -Force
+
+# API files
+Copy-Item "MANUAL_COPY_FILES\fix-contact-channels-consistency\contractnest-api\src\controllers\contactController.ts" -Destination "contractnest-api\src\controllers\contactController.ts" -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
