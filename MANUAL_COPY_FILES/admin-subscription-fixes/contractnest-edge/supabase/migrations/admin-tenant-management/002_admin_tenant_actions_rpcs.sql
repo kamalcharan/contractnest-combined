@@ -15,12 +15,38 @@
 -- ============================================================================
 
 -- ============================================================================
--- STEP 0: Ensure t_tenants supports 'closed' status
+-- STEP 0a: Drop ALL existing functions to ensure clean replacement
+-- (Handles signature mismatches that prevent CREATE OR REPLACE from working)
+-- ============================================================================
+DROP FUNCTION IF EXISTS get_tenant_data_summary(UUID);
+DROP FUNCTION IF EXISTS admin_reset_test_data(UUID);
+DROP FUNCTION IF EXISTS admin_reset_all_data(UUID);
+DROP FUNCTION IF EXISTS admin_close_tenant_account(UUID);
+-- Drop BOTH old (7-param) and new (8-param) versions of get_admin_tenant_list
+DROP FUNCTION IF EXISTS get_admin_tenant_list(integer, integer, text, text, text, text, text);
+DROP FUNCTION IF EXISTS get_admin_tenant_list(integer, integer, text, text, text, text, text, text);
+
+-- ============================================================================
+-- STEP 0b: Ensure t_tenants supports 'closed' status
+-- Find and drop ANY check constraint on status column (handles unknown names)
 -- ============================================================================
 DO $$
+DECLARE
+  v_constraint_name text;
 BEGIN
-  -- Drop old constraint and add new one with 'closed'
-  ALTER TABLE t_tenants DROP CONSTRAINT IF EXISTS t_tenants_status_check;
+  -- Find ALL check constraints that reference the status column
+  FOR v_constraint_name IN
+    SELECT con.conname
+    FROM pg_constraint con
+    JOIN pg_attribute att ON att.attnum = ANY(con.conkey) AND att.attrelid = con.conrelid
+    WHERE con.conrelid = 't_tenants'::regclass
+      AND con.contype = 'c'
+      AND att.attname = 'status'
+  LOOP
+    EXECUTE 'ALTER TABLE t_tenants DROP CONSTRAINT IF EXISTS ' || quote_ident(v_constraint_name);
+  END LOOP;
+
+  -- Add new constraint with 'closed' included
   ALTER TABLE t_tenants ADD CONSTRAINT t_tenants_status_check
     CHECK (status IN ('active', 'inactive', 'suspended', 'trial', 'closed'));
 END $$;
