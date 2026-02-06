@@ -312,7 +312,8 @@ async function handleGetStats(
 
 // ==========================================================
 // HANDLER: POST cockpit_summary
-// Returns contracts, events, and financial data for a contact
+// Calls the get_contact_cockpit_summary RPC which returns
+// contracts, events, LTV, health score for a contact
 // ==========================================================
 async function handleCockpitSummary(
   supabase: any,
@@ -328,118 +329,25 @@ async function handleCockpitSummary(
   }
 
   try {
-    // 1. Fetch contracts for this contact
-    const { data: contracts, error: contractsError } = await supabase
-      .from('t_contracts')
-      .select('id, title, status, contract_type, record_type, start_date, end_date, total_value, created_at')
-      .eq('contact_id', contactId)
-      .eq('tenant_id', tenantId)
-      .eq('is_live', isLive)
-      .order('created_at', { ascending: false });
-
-    if (contractsError) {
-      console.error('Cockpit contracts query error:', contractsError);
-      return jsonResponse({ success: false, error: contractsError.message, code: 'QUERY_ERROR' }, 500);
-    }
-
-    // 2. Compute status breakdown
-    const byStatus: Record<string, number> = {};
-    (contracts || []).forEach((c: any) => {
-      byStatus[c.status] = (byStatus[c.status] || 0) + 1;
+    const { data, error } = await supabase.rpc('get_contact_cockpit_summary', {
+      p_contact_id: contactId,
+      p_tenant_id: tenantId,
+      p_is_live: isLive,
+      p_days_ahead: daysAhead
     });
 
-    // 3. Fetch events for these contracts
-    const contractIds = (contracts || []).map((c: any) => c.id);
-    let overdueEvents: any[] = [];
-    let upcomingEvents: any[] = [];
-
-    if (contractIds.length > 0) {
-      const now = new Date().toISOString();
-      const futureDate = new Date();
-      futureDate.setDate(futureDate.getDate() + daysAhead);
-      const futureDateStr = futureDate.toISOString();
-
-      // Overdue events
-      const { data: overdue } = await supabase
-        .from('t_contract_events')
-        .select('id, title, event_type, scheduled_date, status, contract_id')
-        .in('contract_id', contractIds)
-        .lt('scheduled_date', now)
-        .in('status', ['pending', 'scheduled'])
-        .order('scheduled_date', { ascending: true })
-        .limit(20);
-
-      overdueEvents = (overdue || []).map((e: any) => ({
-        ...e,
-        days_overdue: Math.floor((Date.now() - new Date(e.scheduled_date).getTime()) / (1000 * 60 * 60 * 24))
-      }));
-
-      // Upcoming events
-      const { data: upcoming } = await supabase
-        .from('t_contract_events')
-        .select('id, title, event_type, scheduled_date, status, contract_id')
-        .in('contract_id', contractIds)
-        .gte('scheduled_date', now)
-        .lte('scheduled_date', futureDateStr)
-        .in('status', ['pending', 'scheduled'])
-        .order('scheduled_date', { ascending: true })
-        .limit(20);
-
-      upcomingEvents = upcoming || [];
+    if (error) {
+      console.error('Cockpit RPC error:', error);
+      return jsonResponse({ success: false, error: error.message, code: 'QUERY_ERROR' }, 500);
     }
 
-    // 4. Compute financial metrics
-    let ltv = 0;
-    let outstanding = 0;
-
-    if (contractIds.length > 0) {
-      // LTV = sum of all contract total_value
-      ltv = (contracts || []).reduce((sum: number, c: any) => sum + (parseFloat(c.total_value) || 0), 0);
-
-      // Outstanding = sum of unpaid invoices
-      const { data: invoices } = await supabase
-        .from('t_invoices')
-        .select('total_amount, paid_amount, status')
-        .in('contract_id', contractIds)
-        .in('status', ['sent', 'overdue', 'partially_paid']);
-
-      outstanding = (invoices || []).reduce((sum: number, inv: any) => {
-        const total = parseFloat(inv.total_amount) || 0;
-        const paid = parseFloat(inv.paid_amount) || 0;
-        return sum + (total - paid);
-      }, 0);
+    // The RPC returns a JSONB object with success, data, generated_at
+    if (data && data.success === false) {
+      console.error('Cockpit RPC returned error:', data);
+      return jsonResponse({ success: false, error: data.error || 'RPC returned error', code: 'RPC_ERROR' }, 500);
     }
 
-    // 5. Compute health score (0-100)
-    let healthScore = 100;
-    if (overdueEvents.length > 0) {
-      healthScore -= Math.min(overdueEvents.length * 10, 40);
-    }
-    if (outstanding > 0 && ltv > 0) {
-      const outstandingRatio = outstanding / ltv;
-      healthScore -= Math.min(Math.round(outstandingRatio * 30), 30);
-    }
-    const activeContracts = (contracts || []).filter((c: any) => c.status === 'active').length;
-    if (activeContracts === 0 && (contracts || []).length > 0) {
-      healthScore -= 20;
-    }
-    healthScore = Math.max(0, Math.min(100, healthScore));
-
-    return jsonResponse({
-      success: true,
-      data: {
-        contracts: {
-          contracts: contracts || [],
-          by_status: byStatus,
-          total: (contracts || []).length
-        },
-        overdue_events: overdueEvents,
-        upcoming_events: upcomingEvents,
-        ltv,
-        outstanding,
-        health_score: healthScore
-      }
-    }, 200);
+    return jsonResponse(data || { success: true, data: {} }, 200);
 
   } catch (error: any) {
     console.error('Cockpit summary error:', error);

@@ -37,9 +37,9 @@ CONTRACTNEST-EDGE (3 files):
    → Single source of truth for data normalization at storage layer
 
 5. supabase/functions/contracts/index.ts
-   → Added handleCockpitSummary() function (was completely missing - caused 400 error)
-   → Queries t_contracts, t_contract_events, t_invoices for contact cockpit data
-   → Computes LTV, outstanding, health_score, status breakdown
+   → Fixed handleCockpitSummary() - now calls get_contact_cockpit_summary RPC
+   → Previous version had wrong column names (contact_id→buyer_id, title→block_name, etc.)
+   → RPC handles all aggregation: contracts, events, LTV, health score in a single DB call
    → Routed via POST with action: 'cockpit_summary'
 
 CONTRACTNEST-API (1 file):
