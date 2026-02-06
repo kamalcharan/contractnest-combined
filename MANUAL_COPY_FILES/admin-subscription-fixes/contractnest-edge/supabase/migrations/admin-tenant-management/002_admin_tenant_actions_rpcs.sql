@@ -99,25 +99,25 @@ BEGIN
 
   v_count := 0;
   BEGIN SELECT COUNT(*) INTO v_count FROM t_contracts WHERE tenant_id = p_tenant_id AND is_live = true;
-  EXCEPTION WHEN undefined_table THEN v_count := 0; END;
+  EXCEPTION WHEN OTHERS THEN v_count := 0; END;
   v_items := v_items || jsonb_build_array(jsonb_build_object('label', 'Contracts (Live)', 'count', v_count, 'table', 't_contracts'));
   v_total_records := v_total_records + v_count;
 
   v_count := 0;
   BEGIN SELECT COUNT(*) INTO v_count FROM t_contracts WHERE tenant_id = p_tenant_id AND is_live = false;
-  EXCEPTION WHEN undefined_table THEN v_count := 0; END;
+  EXCEPTION WHEN OTHERS THEN v_count := 0; END;
   v_items := v_items || jsonb_build_array(jsonb_build_object('label', 'Contracts (Test)', 'count', v_count, 'table', 't_contracts'));
   v_total_records := v_total_records + v_count;
 
   v_count := 0;
   BEGIN SELECT COUNT(*) INTO v_count FROM t_invoices WHERE tenant_id = p_tenant_id;
-  EXCEPTION WHEN undefined_table THEN v_count := 0; END;
+  EXCEPTION WHEN OTHERS THEN v_count := 0; END;
   v_items := v_items || jsonb_build_array(jsonb_build_object('label', 'Invoices', 'count', v_count, 'table', 't_invoices'));
   v_total_records := v_total_records + v_count;
 
   v_count := 0;
   BEGIN SELECT COUNT(*) INTO v_count FROM t_tenant_files WHERE tenant_id = p_tenant_id;
-  EXCEPTION WHEN undefined_table THEN v_count := 0; END;
+  EXCEPTION WHEN OTHERS THEN v_count := 0; END;
   v_items := v_items || jsonb_build_array(jsonb_build_object('label', 'Files', 'count', v_count, 'table', 't_tenant_files'));
   v_total_records := v_total_records + v_count;
 
@@ -212,64 +212,64 @@ BEGIN
   BEGIN
     SELECT ARRAY_AGG(id) INTO v_contract_ids
     FROM t_contracts WHERE tenant_id = p_tenant_id AND is_live = false;
-  EXCEPTION WHEN undefined_table THEN v_contract_ids := NULL; END;
+  EXCEPTION WHEN OTHERS THEN v_contract_ids := NULL; END;
 
   -- Delete contract child records (if any test contracts exist)
   IF v_contract_ids IS NOT NULL AND array_length(v_contract_ids, 1) > 0 THEN
     BEGIN DELETE FROM t_contract_event_audit WHERE tenant_id = p_tenant_id AND event_id IN (SELECT id FROM t_contract_events WHERE contract_id = ANY(v_contract_ids));
       GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
-    EXCEPTION WHEN undefined_table THEN NULL; END;
+    EXCEPTION WHEN OTHERS THEN NULL; END;
 
     BEGIN DELETE FROM t_contract_events WHERE contract_id = ANY(v_contract_ids);
       GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
       v_deleted_counts := v_deleted_counts || jsonb_build_object('contract_events', v_count);
-    EXCEPTION WHEN undefined_table THEN NULL; END;
+    EXCEPTION WHEN OTHERS THEN NULL; END;
 
     BEGIN DELETE FROM t_invoice_receipts WHERE tenant_id = p_tenant_id AND invoice_id IN (SELECT id FROM t_invoices WHERE contract_id = ANY(v_contract_ids));
       GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
-    EXCEPTION WHEN undefined_table THEN NULL; END;
+    EXCEPTION WHEN OTHERS THEN NULL; END;
 
     BEGIN DELETE FROM t_invoices WHERE contract_id = ANY(v_contract_ids);
       GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
       v_deleted_counts := v_deleted_counts || jsonb_build_object('invoices', v_count);
-    EXCEPTION WHEN undefined_table THEN NULL; END;
+    EXCEPTION WHEN OTHERS THEN NULL; END;
 
     BEGIN DELETE FROM t_contract_access WHERE contract_id = ANY(v_contract_ids);
       GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
-    EXCEPTION WHEN undefined_table THEN NULL; END;
+    EXCEPTION WHEN OTHERS THEN NULL; END;
 
     BEGIN DELETE FROM t_contract_vendors WHERE contract_id = ANY(v_contract_ids);
       GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
-    EXCEPTION WHEN undefined_table THEN NULL; END;
+    EXCEPTION WHEN OTHERS THEN NULL; END;
 
     BEGIN DELETE FROM t_contract_blocks WHERE contract_id = ANY(v_contract_ids);
       GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
-    EXCEPTION WHEN undefined_table THEN NULL; END;
+    EXCEPTION WHEN OTHERS THEN NULL; END;
 
     BEGIN DELETE FROM t_contract_history WHERE contract_id = ANY(v_contract_ids);
       GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
-    EXCEPTION WHEN undefined_table THEN NULL; END;
+    EXCEPTION WHEN OTHERS THEN NULL; END;
   END IF;
 
   -- Delete test contracts
   BEGIN DELETE FROM t_contracts WHERE tenant_id = p_tenant_id AND is_live = false;
     GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
     v_deleted_counts := v_deleted_counts || jsonb_build_object('contracts', v_count);
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   -- Delete test contacts and their children
   BEGIN DELETE FROM t_contact_channels WHERE contact_id IN (SELECT id FROM t_contacts WHERE tenant_id = p_tenant_id AND is_live = false);
     GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   BEGIN DELETE FROM t_contact_addresses WHERE contact_id IN (SELECT id FROM t_contacts WHERE tenant_id = p_tenant_id AND is_live = false);
     GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   BEGIN DELETE FROM t_contacts WHERE tenant_id = p_tenant_id AND is_live = false;
     GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
     v_deleted_counts := v_deleted_counts || jsonb_build_object('contacts', v_count);
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   RETURN jsonb_build_object(
     'success', true,
@@ -309,110 +309,110 @@ BEGIN
   -- Each wrapped in sub-block to skip if table doesn't exist
   BEGIN DELETE FROM t_contract_event_audit WHERE tenant_id = p_tenant_id;
     GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   BEGIN DELETE FROM t_contract_payment_events WHERE tenant_id = p_tenant_id;
     GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   BEGIN DELETE FROM t_contract_payment_requests WHERE tenant_id = p_tenant_id;
     GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   BEGIN DELETE FROM t_contract_events WHERE tenant_id = p_tenant_id;
     GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
     v_deleted_counts := v_deleted_counts || jsonb_build_object('contract_events', v_count);
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   BEGIN DELETE FROM t_invoice_receipts WHERE tenant_id = p_tenant_id;
     GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   BEGIN DELETE FROM t_invoices WHERE tenant_id = p_tenant_id;
     GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
     v_deleted_counts := v_deleted_counts || jsonb_build_object('invoices', v_count);
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   BEGIN DELETE FROM t_contract_access WHERE tenant_id = p_tenant_id;
     GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   BEGIN DELETE FROM t_contract_vendors WHERE contract_id IN (SELECT id FROM t_contracts WHERE tenant_id = p_tenant_id);
     GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   BEGIN DELETE FROM t_contract_blocks WHERE contract_id IN (SELECT id FROM t_contracts WHERE tenant_id = p_tenant_id);
     GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   BEGIN DELETE FROM t_contract_history WHERE contract_id IN (SELECT id FROM t_contracts WHERE tenant_id = p_tenant_id);
     GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   BEGIN DELETE FROM t_contracts WHERE tenant_id = p_tenant_id;
     GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
     v_deleted_counts := v_deleted_counts || jsonb_build_object('contracts', v_count);
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   -- Contact child tables
   BEGIN DELETE FROM t_contact_channels WHERE contact_id IN (SELECT id FROM t_contacts WHERE tenant_id = p_tenant_id);
     GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   BEGIN DELETE FROM t_contact_addresses WHERE contact_id IN (SELECT id FROM t_contacts WHERE tenant_id = p_tenant_id);
     GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   BEGIN DELETE FROM t_contacts WHERE tenant_id = p_tenant_id;
     GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
     v_deleted_counts := v_deleted_counts || jsonb_build_object('contacts', v_count);
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   -- Catalog
   BEGIN DELETE FROM t_catalog_items WHERE tenant_id = p_tenant_id;
     GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
     v_deleted_counts := v_deleted_counts || jsonb_build_object('catalog_items', v_count);
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   BEGIN DELETE FROM t_catalog_categories WHERE tenant_id = p_tenant_id;
     GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   -- Files
   BEGIN DELETE FROM t_tenant_files WHERE tenant_id = p_tenant_id;
     GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
     v_deleted_counts := v_deleted_counts || jsonb_build_object('files', v_count);
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   -- Sequences
   BEGIN DELETE FROM t_sequence_counters WHERE tenant_id = p_tenant_id;
     GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   -- Idempotency keys
   BEGIN DELETE FROM t_idempotency_keys WHERE tenant_id = p_tenant_id;
     GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   -- JTD records
   BEGIN DELETE FROM n_jtd_status_history WHERE jtd_id IN (SELECT id FROM n_jtd WHERE tenant_id = p_tenant_id);
     GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   BEGIN DELETE FROM n_jtd_history WHERE jtd_id IN (SELECT id FROM n_jtd WHERE tenant_id = p_tenant_id);
     GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   BEGIN DELETE FROM n_jtd WHERE tenant_id = p_tenant_id;
     GET DIAGNOSTICS v_count = ROW_COUNT; v_total := v_total + v_count;
     v_deleted_counts := v_deleted_counts || jsonb_build_object('jtd_records', v_count);
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   BEGIN DELETE FROM n_jtd_tenant_source_config WHERE tenant_id = p_tenant_id;
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   BEGIN DELETE FROM n_jtd_tenant_config WHERE tenant_id = p_tenant_id;
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   RETURN jsonb_build_object(
     'success', true,
@@ -463,29 +463,29 @@ BEGIN
   -- Step 3: Delete settings & config (not deleted by reset_all_data)
   -- Wrapped in sub-blocks to skip if table doesn't exist
   BEGIN DELETE FROM t_tax_rates WHERE tenant_id = p_tenant_id;
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   BEGIN DELETE FROM t_tax_info WHERE tenant_id = p_tenant_id;
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   BEGIN DELETE FROM t_tenant_profiles WHERE tenant_id = p_tenant_id;
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   BEGIN DELETE FROM t_tenant_integrations WHERE tenant_id = p_tenant_id;
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   BEGIN DELETE FROM t_tenant_onboarding WHERE tenant_id = p_tenant_id;
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   BEGIN DELETE FROM t_onboarding_step_status WHERE tenant_id = p_tenant_id;
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   BEGIN DELETE FROM t_bm_tenant_subscription WHERE tenant_id = p_tenant_id;
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   -- Step 4: Delete pending invitations
   BEGIN DELETE FROM t_user_invitations WHERE tenant_id = p_tenant_id;
-  EXCEPTION WHEN undefined_table THEN NULL; END;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
 
   -- Step 5: DELETE user-tenant relationships (not just deactivate)
   DELETE FROM t_user_tenants WHERE tenant_id = p_tenant_id;
@@ -505,17 +505,17 @@ BEGIN
   IF v_orphan_user_ids IS NOT NULL AND array_length(v_orphan_user_ids, 1) > 0 THEN
     BEGIN UPDATE t_audit_logs SET user_id = NULL
       WHERE user_id = ANY(v_orphan_user_ids);
-    EXCEPTION WHEN undefined_table THEN NULL; END;
+    EXCEPTION WHEN OTHERS THEN NULL; END;
 
     BEGIN UPDATE t_contacts SET auth_user_id = NULL
       WHERE auth_user_id = ANY(v_orphan_user_ids);
-    EXCEPTION WHEN undefined_table THEN NULL; END;
+    EXCEPTION WHEN OTHERS THEN NULL; END;
 
     BEGIN DELETE FROM t_user_auth_methods WHERE user_id = ANY(v_orphan_user_ids);
-    EXCEPTION WHEN undefined_table THEN NULL; END;
+    EXCEPTION WHEN OTHERS THEN NULL; END;
 
     BEGIN DELETE FROM t_user_profiles WHERE user_id = ANY(v_orphan_user_ids);
-    EXCEPTION WHEN undefined_table THEN NULL; END;
+    EXCEPTION WHEN OTHERS THEN NULL; END;
   END IF;
 
   -- Step 8: Mark tenant as closed
