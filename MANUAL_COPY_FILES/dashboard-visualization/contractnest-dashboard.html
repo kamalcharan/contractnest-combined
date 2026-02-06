@@ -1,0 +1,1247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ContractNest Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg-primary: #0f1729;
+    --bg-secondary: #1a2332;
+    --bg-card: rgba(26, 35, 50, 0.85);
+    --bg-card-hover: rgba(30, 42, 60, 0.95);
+    --glass: rgba(255,255,255,0.04);
+    --glass-border: rgba(255,255,255,0.08);
+    --text-primary: #e8ecf4;
+    --text-secondary: #8b97b0;
+    --text-muted: #5a6478;
+    --accent-blue: #3b82f6;
+    --accent-green: #10b981;
+    --accent-yellow: #f59e0b;
+    --accent-red: #ef4444;
+    --accent-purple: #8b5cf6;
+    --accent-pink: #ec4899;
+    --accent-cyan: #06b6d4;
+    --accent-orange: #f97316;
+    --gradient-blue: linear-gradient(135deg, #3b82f6, #2563eb);
+    --gradient-green: linear-gradient(135deg, #10b981, #059669);
+    --gradient-purple: linear-gradient(135deg, #8b5cf6, #7c3aed);
+    --gradient-red: linear-gradient(135deg, #ef4444, #dc2626);
+    --gradient-orange: linear-gradient(135deg, #f97316, #ea580c);
+    --gradient-cyan: linear-gradient(135deg, #06b6d4, #0891b2);
+    --shadow: 0 4px 24px rgba(0,0,0,0.3);
+    --shadow-lg: 0 8px 40px rgba(0,0,0,0.4);
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated background */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: radial-gradient(ellipse at 20% 50%, rgba(59,130,246,0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 20%, rgba(139,92,246,0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 60% 80%, rgba(16,185,129,0.05) 0%, transparent 50%);
+    animation: bgShift 20s ease-in-out infinite;
+    z-index: 0;
+  }
+  @keyframes bgShift {
+    0%,100% { transform: translate(0,0); }
+    33% { transform: translate(-2%,1%); }
+    66% { transform: translate(1%,-1%); }
+  }
+
+  .app { position: relative; z-index: 1; }
+
+  /* Header */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 32px;
+    border-bottom: 1px solid var(--glass-border);
+    backdrop-filter: blur(12px);
+    background: rgba(15,23,41,0.8);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--gradient-blue);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 16px; color: white;
+  }
+  .logo-text { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+  .logo-text span { color: var(--accent-blue); }
+  .header-right { display: flex; align-items: center; gap: 16px; }
+  .period-select {
+    background: var(--glass); border: 1px solid var(--glass-border);
+    color: var(--text-primary); padding: 8px 14px; border-radius: var(--radius-sm);
+    font-size: 13px; cursor: pointer; outline: none;
+  }
+  .period-select option { background: var(--bg-secondary); }
+  .header-badge {
+    padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+    background: rgba(16,185,129,0.15); color: var(--accent-green); border: 1px solid rgba(16,185,129,0.25);
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex; gap: 4px; padding: 12px 32px;
+    border-bottom: 1px solid var(--glass-border);
+    background: rgba(15,23,41,0.5);
+    overflow-x: auto;
+  }
+  .tab {
+    padding: 10px 20px; border-radius: var(--radius-sm);
+    font-size: 13px; font-weight: 500; cursor: pointer;
+    color: var(--text-secondary); background: transparent;
+    border: 1px solid transparent;
+    transition: all 0.2s ease; white-space: nowrap;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .tab:hover { color: var(--text-primary); background: var(--glass); }
+  .tab.active {
+    color: var(--accent-blue); background: rgba(59,130,246,0.1);
+    border-color: rgba(59,130,246,0.3);
+  }
+  .tab-icon { font-size: 16px; }
+
+  /* Main Content */
+  .main { padding: 24px 32px; max-width: 1440px; margin: 0 auto; }
+
+  /* Section */
+  .section { margin-bottom: 28px; }
+  .section-title {
+    font-size: 14px; font-weight: 600; color: var(--text-secondary);
+    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-title::before {
+    content: ''; width: 3px; height: 16px; border-radius: 2px;
+    background: var(--accent-blue);
+  }
+
+  /* KPI Cards */
+  .kpi-row { display: grid; gap: 16px; margin-bottom: 24px; }
+  .kpi-row.cols-4 { grid-template-columns: repeat(4, 1fr); }
+  .kpi-row.cols-5 { grid-template-columns: repeat(5, 1fr); }
+  .kpi-row.cols-3 { grid-template-columns: repeat(3, 1fr); }
+
+  .kpi-card {
+    background: var(--bg-card);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    padding: 20px;
+    backdrop-filter: blur(8px);
+    transition: all 0.25s ease;
+    position: relative; overflow: hidden;
+  }
+  .kpi-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(59,130,246,0.2);
+    box-shadow: var(--shadow);
+  }
+  .kpi-card::after {
+    content: ''; position: absolute; top: 0; left: 0; right: 0;
+    height: 3px; border-radius: 2px 2px 0 0;
+  }
+  .kpi-card.blue::after { background: var(--gradient-blue); }
+  .kpi-card.green::after { background: var(--gradient-green); }
+  .kpi-card.purple::after { background: var(--gradient-purple); }
+  .kpi-card.red::after { background: var(--gradient-red); }
+  .kpi-card.orange::after { background: var(--gradient-orange); }
+  .kpi-card.cyan::after { background: var(--gradient-cyan); }
+
+  .kpi-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .kpi-label { font-size: 12px; color: var(--text-secondary); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+  .kpi-icon {
+    width: 36px; height: 36px; border-radius: 10px; display: flex;
+    align-items: center; justify-content: center; font-size: 18px;
+  }
+  .kpi-icon.blue { background: rgba(59,130,246,0.15); color: var(--accent-blue); }
+  .kpi-icon.green { background: rgba(16,185,129,0.15); color: var(--accent-green); }
+  .kpi-icon.purple { background: rgba(139,92,246,0.15); color: var(--accent-purple); }
+  .kpi-icon.red { background: rgba(239,68,68,0.15); color: var(--accent-red); }
+  .kpi-icon.orange { background: rgba(249,115,22,0.15); color: var(--accent-orange); }
+  .kpi-icon.cyan { background: rgba(6,182,212,0.15); color: var(--accent-cyan); }
+
+  .kpi-value { font-size: 28px; font-weight: 700; line-height: 1.1; margin-bottom: 4px; }
+  .kpi-change { font-size: 12px; display: flex; align-items: center; gap: 4px; }
+  .kpi-change.up { color: var(--accent-green); }
+  .kpi-change.down { color: var(--accent-red); }
+  .kpi-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+  /* Charts Grid */
+  .chart-row { display: grid; gap: 16px; margin-bottom: 24px; }
+  .chart-row.cols-2 { grid-template-columns: 1fr 1fr; }
+  .chart-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .chart-row.full { grid-template-columns: 1fr; }
+
+  .chart-card {
+    background: var(--bg-card);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    padding: 20px;
+    backdrop-filter: blur(8px);
+  }
+  .chart-card-title {
+    font-size: 14px; font-weight: 600; margin-bottom: 4px;
+  }
+  .chart-card-subtitle { font-size: 12px; color: var(--text-secondary); margin-bottom: 16px; }
+  .chart-container { position: relative; height: 260px; }
+  .chart-container.tall { height: 320px; }
+
+  /* CRO Funnel */
+  .funnel-container { padding: 8px 0; }
+  .funnel-step {
+    display: flex; align-items: center; gap: 16px;
+    margin-bottom: 8px; position: relative;
+  }
+  .funnel-bar-wrap { flex: 1; position: relative; }
+  .funnel-bar {
+    height: 44px; border-radius: 8px; display: flex;
+    align-items: center; padding: 0 16px; position: relative;
+    transition: all 0.3s ease; cursor: pointer;
+  }
+  .funnel-bar:hover { filter: brightness(1.15); transform: scaleX(1.02); transform-origin: left; }
+  .funnel-bar-label {
+    font-size: 13px; font-weight: 600; color: white; z-index: 2;
+    display: flex; align-items: center; justify-content: space-between; width: 100%;
+  }
+  .funnel-count { font-weight: 700; font-size: 16px; }
+  .funnel-meta {
+    display: flex; flex-direction: column; align-items: flex-end; min-width: 100px;
+  }
+  .funnel-rate { font-size: 18px; font-weight: 700; color: var(--text-primary); }
+  .funnel-rate-label { font-size: 11px; color: var(--text-secondary); }
+  .funnel-drop {
+    font-size: 11px; color: var(--accent-red); margin: 2px 0 2px 56px;
+    display: flex; align-items: center; gap: 4px;
+  }
+
+  /* Tables */
+  .data-table { width: 100%; border-collapse: collapse; }
+  .data-table th {
+    text-align: left; font-size: 11px; font-weight: 600;
+    color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;
+    padding: 10px 14px; border-bottom: 1px solid var(--glass-border);
+  }
+  .data-table td {
+    padding: 12px 14px; font-size: 13px;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+  }
+  .data-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .data-table .text-right { text-align: right; }
+
+  /* Status badges */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+  }
+  .badge.green { background: rgba(16,185,129,0.15); color: var(--accent-green); }
+  .badge.blue { background: rgba(59,130,246,0.15); color: var(--accent-blue); }
+  .badge.yellow { background: rgba(245,158,11,0.15); color: var(--accent-yellow); }
+  .badge.red { background: rgba(239,68,68,0.15); color: var(--accent-red); }
+  .badge.purple { background: rgba(139,92,246,0.15); color: var(--accent-purple); }
+  .badge.orange { background: rgba(249,115,22,0.15); color: var(--accent-orange); }
+  .badge-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .badge-dot.green { background: var(--accent-green); }
+  .badge-dot.red { background: var(--accent-red); }
+  .badge-dot.yellow { background: var(--accent-yellow); }
+  .badge-dot.blue { background: var(--accent-blue); }
+
+  /* Progress bars */
+  .progress-bar-wrap { display: flex; align-items: center; gap: 10px; }
+  .progress-bar {
+    flex: 1; height: 8px; background: rgba(255,255,255,0.06);
+    border-radius: 4px; overflow: hidden;
+  }
+  .progress-fill { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+  .progress-label { font-size: 12px; font-weight: 600; min-width: 40px; text-align: right; }
+
+  /* Event timeline dots */
+  .event-buckets { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+  .event-bucket {
+    text-align: center; padding: 16px 12px; border-radius: var(--radius);
+    background: var(--glass); border: 1px solid var(--glass-border);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .event-bucket:hover { border-color: rgba(59,130,246,0.3); transform: translateY(-2px); }
+  .event-bucket-count { font-size: 32px; font-weight: 700; line-height: 1.2; }
+  .event-bucket-label { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+
+  /* Health Score Ring */
+  .health-ring {
+    width: 64px; height: 64px; position: relative;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .health-ring svg { position: absolute; transform: rotate(-90deg); }
+  .health-ring-value { font-size: 16px; font-weight: 700; z-index: 2; }
+
+  /* Referring table */
+  .referral-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px; border-radius: 6px; font-size: 12px;
+    background: rgba(139,92,246,0.1); color: var(--accent-purple);
+  }
+
+  /* CRO Insight Cards */
+  .cro-insight {
+    background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(139,92,246,0.08));
+    border: 1px solid rgba(59,130,246,0.15);
+    border-radius: var(--radius); padding: 16px 20px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .cro-insight-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; flex-shrink: 0;
+  }
+  .cro-insight-text { flex: 1; }
+  .cro-insight-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+  .cro-insight-desc { font-size: 12px; color: var(--text-secondary); }
+  .cro-insight-action {
+    padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600;
+    background: var(--gradient-blue); color: white; border: none; cursor: pointer;
+    white-space: nowrap;
+  }
+
+  /* Tab content */
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Mini sparkline placeholder */
+  .sparkline { display: flex; align-items: flex-end; gap: 2px; height: 24px; }
+  .sparkline-bar {
+    width: 4px; border-radius: 2px; background: var(--accent-blue); opacity: 0.6;
+    transition: all 0.2s;
+  }
+  .sparkline-bar:hover { opacity: 1; }
+
+  /* CNAK card */
+  .cnak-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .cnak-stat {
+    text-align: center; padding: 16px;
+    background: var(--glass); border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+  }
+  .cnak-stat-value { font-size: 24px; font-weight: 700; }
+  .cnak-stat-label { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+  /* Aging table colors */
+  .aging-current { color: var(--accent-green); }
+  .aging-30 { color: var(--accent-yellow); }
+  .aging-60 { color: var(--accent-orange); }
+  .aging-90 { color: var(--accent-red); }
+  .aging-90plus { color: #ff4757; }
+
+  /* Responsive */
+  @media (max-width: 1100px) {
+    .kpi-row.cols-4 { grid-template-columns: repeat(2, 1fr); }
+    .kpi-row.cols-5 { grid-template-columns: repeat(3, 1fr); }
+    .chart-row.cols-2 { grid-template-columns: 1fr; }
+    .chart-row.cols-3 { grid-template-columns: 1fr; }
+    .cnak-grid { grid-template-columns: repeat(2, 1fr); }
+    .event-buckets { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 640px) {
+    .main { padding: 16px; }
+    .header { padding: 12px 16px; }
+    .tabs { padding: 8px 16px; }
+    .kpi-row.cols-4, .kpi-row.cols-5, .kpi-row.cols-3 { grid-template-columns: 1fr; }
+  }
+
+  /* Animate in */
+  @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+  .animate-in { animation: fadeUp 0.4s ease forwards; }
+  .delay-1 { animation-delay: 0.05s; opacity: 0; }
+  .delay-2 { animation-delay: 0.1s; opacity: 0; }
+  .delay-3 { animation-delay: 0.15s; opacity: 0; }
+  .delay-4 { animation-delay: 0.2s; opacity: 0; }
+  .delay-5 { animation-delay: 0.25s; opacity: 0; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">CN</div>
+      <div class="logo-text">Contract<span>Nest</span></div>
+    </div>
+    <div class="header-right">
+      <span class="header-badge">Live Data</span>
+      <select class="period-select">
+        <option>This Month</option>
+        <option>Last 30 Days</option>
+        <option>This Quarter</option>
+        <option>Last Quarter</option>
+        <option>YTD 2026</option>
+        <option>Last 12 Months</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('home')"><span class="tab-icon">&#9679;</span> Overview</div>
+    <div class="tab" onclick="switchTab('cro')"><span class="tab-icon">&#9650;</span> CRO &amp; Funnel</div>
+    <div class="tab" onclick="switchTab('billing')"><span class="tab-icon">&#8377;</span> Billing (AR/AP)</div>
+    <div class="tab" onclick="switchTab('events')"><span class="tab-icon">&#128197;</span> Events</div>
+    <div class="tab" onclick="switchTab('hub')"><span class="tab-icon">&#128196;</span> Contract Hub</div>
+    <div class="tab" onclick="switchTab('people')"><span class="tab-icon">&#128101;</span> People &amp; Referrals</div>
+  </div>
+
+  <div class="main">
+
+    <!-- ============ TAB: OVERVIEW ============ -->
+    <div id="tab-home" class="tab-content active">
+
+      <!-- KPI Row -->
+      <div class="kpi-row cols-4">
+        <div class="kpi-card blue animate-in delay-1">
+          <div class="kpi-header">
+            <span class="kpi-label">Active Contracts</span>
+            <div class="kpi-icon blue">&#128196;</div>
+          </div>
+          <div class="kpi-value">47</div>
+          <div class="kpi-change up">&#9650; 12% <span style="color:var(--text-muted)">vs last month</span></div>
+          <div class="kpi-sub">Total value: &#8377;32,45,000</div>
+        </div>
+        <div class="kpi-card green animate-in delay-2">
+          <div class="kpi-header">
+            <span class="kpi-label">Revenue Collected</span>
+            <div class="kpi-icon green">&#8377;</div>
+          </div>
+          <div class="kpi-value">&#8377;18.6L</div>
+          <div class="kpi-change up">&#9650; 8.5% <span style="color:var(--text-muted)">vs last month</span></div>
+          <div class="kpi-sub">Collection rate: 78%</div>
+        </div>
+        <div class="kpi-card red animate-in delay-3">
+          <div class="kpi-header">
+            <span class="kpi-label">Overdue Events</span>
+            <div class="kpi-icon red">&#9888;</div>
+          </div>
+          <div class="kpi-value">8</div>
+          <div class="kpi-change down">&#9660; 3 more <span style="color:var(--text-muted)">than last week</span></div>
+          <div class="kpi-sub">5 service, 3 billing</div>
+        </div>
+        <div class="kpi-card purple animate-in delay-4">
+          <div class="kpi-header">
+            <span class="kpi-label">Conversion Rate</span>
+            <div class="kpi-icon purple">&#9650;</div>
+          </div>
+          <div class="kpi-value">34.2%</div>
+          <div class="kpi-change up">&#9650; 2.1% <span style="color:var(--text-muted)">vs last month</span></div>
+          <div class="kpi-sub">Lead &rarr; Signed Contract</div>
+        </div>
+      </div>
+
+      <!-- Charts Row -->
+      <div class="chart-row cols-2">
+        <div class="chart-card animate-in delay-2">
+          <div class="chart-card-title">Contract Pipeline</div>
+          <div class="chart-card-subtitle">Contracts by status stage</div>
+          <div class="chart-container"><canvas id="chart-pipeline"></canvas></div>
+        </div>
+        <div class="chart-card animate-in delay-3">
+          <div class="chart-card-title">Revenue Trend</div>
+          <div class="chart-card-subtitle">Invoiced vs. Collected (last 6 months)</div>
+          <div class="chart-container"><canvas id="chart-revenue"></canvas></div>
+        </div>
+      </div>
+
+      <!-- CRO Insights Row -->
+      <div class="section-title">CRO Insights</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px;">
+        <div class="cro-insight animate-in delay-3">
+          <div class="cro-insight-icon" style="background:rgba(239,68,68,0.12);">&#128680;</div>
+          <div class="cro-insight-text">
+            <div class="cro-insight-title">3 proposals pending &gt; 7 days</div>
+            <div class="cro-insight-desc">Acceptance rate drops 40% after 7 days. Follow up now to recover &#8377;4.2L in pipeline value.</div>
+          </div>
+          <button class="cro-insight-action">Follow Up</button>
+        </div>
+        <div class="cro-insight animate-in delay-4">
+          <div class="cro-insight-icon" style="background:rgba(16,185,129,0.12);">&#128200;</div>
+          <div class="cro-insight-text">
+            <div class="cro-insight-title">CNAK links converting at 67%</div>
+            <div class="cro-insight-desc">Top performing: "IT Support Annual" template. 12 views &rarr; 8 accepted.</div>
+          </div>
+          <button class="cro-insight-action">View Details</button>
+        </div>
+      </div>
+
+      <!-- Recent Activity + Upcoming Events -->
+      <div class="chart-row cols-2">
+        <div class="chart-card animate-in delay-4">
+          <div class="chart-card-title">Upcoming Events (Next 7 Days)</div>
+          <div class="chart-card-subtitle">Service &amp; billing milestones</div>
+          <table class="data-table">
+            <thead><tr><th>Date</th><th>Contract</th><th>Type</th><th>Assignee</th></tr></thead>
+            <tbody>
+              <tr><td style="color:var(--accent-red);font-weight:600;">Today</td><td>AMC-Wipro Q2</td><td><span class="badge red"><span class="badge-dot red"></span> Billing</span></td><td>Rahul S.</td></tr>
+              <tr><td>Tomorrow</td><td>Cloud Infra - TCS</td><td><span class="badge blue"><span class="badge-dot blue"></span> Service</span></td><td>Priya M.</td></tr>
+              <tr><td>Feb 8</td><td>Security Audit - HCL</td><td><span class="badge blue"><span class="badge-dot blue"></span> Service</span></td><td>Amit K.</td></tr>
+              <tr><td>Feb 9</td><td>SLA Review - Infosys</td><td><span class="badge green"><span class="badge-dot green"></span> Service</span></td><td>Neha R.</td></tr>
+              <tr><td>Feb 10</td><td>AMC-Wipro Q2</td><td><span class="badge yellow"><span class="badge-dot yellow"></span> Billing</span></td><td>Rahul S.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="chart-card animate-in delay-5">
+          <div class="chart-card-title">Top Customers by LTV</div>
+          <div class="chart-card-subtitle">Lifetime value ranking</div>
+          <table class="data-table">
+            <thead><tr><th>Customer</th><th>Contracts</th><th class="text-right">LTV</th><th>Health</th></tr></thead>
+            <tbody>
+              <tr><td>Wipro Technologies</td><td>8</td><td class="text-right" style="font-weight:600;">&#8377;12,50,000</td><td><span class="badge green">92</span></td></tr>
+              <tr><td>TCS Digital</td><td>5</td><td class="text-right" style="font-weight:600;">&#8377;8,75,000</td><td><span class="badge green">88</span></td></tr>
+              <tr><td>HCL Technologies</td><td>4</td><td class="text-right" style="font-weight:600;">&#8377;6,20,000</td><td><span class="badge yellow">71</span></td></tr>
+              <tr><td>Infosys BPM</td><td>6</td><td class="text-right" style="font-weight:600;">&#8377;5,90,000</td><td><span class="badge green">85</span></td></tr>
+              <tr><td>Tech Mahindra</td><td>3</td><td class="text-right" style="font-weight:600;">&#8377;4,10,000</td><td><span class="badge red">45</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ TAB: CRO & FUNNEL ============ -->
+    <div id="tab-cro" class="tab-content">
+
+      <div class="section-title">Conversion Funnel</div>
+
+      <!-- Full Funnel -->
+      <div class="chart-card" style="margin-bottom:24px;">
+        <div class="chart-card-title">Lead-to-Revenue Funnel</div>
+        <div class="chart-card-subtitle">Full conversion pipeline &mdash; click each stage for details</div>
+        <div class="funnel-container">
+          <div class="funnel-step">
+            <div class="funnel-bar-wrap">
+              <div class="funnel-bar" style="width:100%;background:linear-gradient(135deg,#3b82f6,#60a5fa);">
+                <div class="funnel-bar-label">
+                  <span>&#128101; Contacts Created</span>
+                  <span class="funnel-count">248</span>
+                </div>
+              </div>
+            </div>
+            <div class="funnel-meta"><div class="funnel-rate">100%</div><div class="funnel-rate-label">Total Pool</div></div>
+          </div>
+          <div class="funnel-drop">&#8627; 42% drop-off &mdash; 104 contacts never received a proposal</div>
+
+          <div class="funnel-step">
+            <div class="funnel-bar-wrap">
+              <div class="funnel-bar" style="width:58%;background:linear-gradient(135deg,#8b5cf6,#a78bfa);">
+                <div class="funnel-bar-label">
+                  <span>&#128196; RFQ / Proposal Sent</span>
+                  <span class="funnel-count">144</span>
+                </div>
+              </div>
+            </div>
+            <div class="funnel-meta"><div class="funnel-rate">58.1%</div><div class="funnel-rate-label">Proposal Rate</div></div>
+          </div>
+          <div class="funnel-drop">&#8627; 18% drop-off &mdash; 26 proposals expired or were rejected</div>
+
+          <div class="funnel-step">
+            <div class="funnel-bar-wrap">
+              <div class="funnel-bar" style="width:47.6%;background:linear-gradient(135deg,#06b6d4,#22d3ee);">
+                <div class="funnel-bar-label">
+                  <span>&#128197; CNAK Link Opened</span>
+                  <span class="funnel-count">118</span>
+                </div>
+              </div>
+            </div>
+            <div class="funnel-meta"><div class="funnel-rate">81.9%</div><div class="funnel-rate-label">Open Rate</div></div>
+          </div>
+          <div class="funnel-drop">&#8627; 13.7% drop-off &mdash; 33 opened but never signed</div>
+
+          <div class="funnel-step">
+            <div class="funnel-bar-wrap">
+              <div class="funnel-bar" style="width:34.3%;background:linear-gradient(135deg,#10b981,#34d399);">
+                <div class="funnel-bar-label">
+                  <span>&#9989; Contract Signed</span>
+                  <span class="funnel-count">85</span>
+                </div>
+              </div>
+            </div>
+            <div class="funnel-meta"><div class="funnel-rate">72.0%</div><div class="funnel-rate-label">Acceptance Rate</div></div>
+          </div>
+          <div class="funnel-drop">&#8627; 5.6% drop-off &mdash; 11 signed but never invoiced</div>
+
+          <div class="funnel-step">
+            <div class="funnel-bar-wrap">
+              <div class="funnel-bar" style="width:29.8%;background:linear-gradient(135deg,#f59e0b,#fbbf24);">
+                <div class="funnel-bar-label">
+                  <span>&#128176; First Invoice Paid</span>
+                  <span class="funnel-count">74</span>
+                </div>
+              </div>
+            </div>
+            <div class="funnel-meta"><div class="funnel-rate">87.1%</div><div class="funnel-rate-label">Payment Rate</div></div>
+          </div>
+
+          <div class="funnel-step">
+            <div class="funnel-bar-wrap">
+              <div class="funnel-bar" style="width:22%;background:linear-gradient(135deg,#ec4899,#f472b6);">
+                <div class="funnel-bar-label">
+                  <span>&#128257; Repeat / Renewal</span>
+                  <span class="funnel-count">55</span>
+                </div>
+              </div>
+            </div>
+            <div class="funnel-meta"><div class="funnel-rate">74.3%</div><div class="funnel-rate-label">Retention Rate</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CRO KPIs -->
+      <div class="kpi-row cols-5" style="margin-bottom:24px;">
+        <div class="kpi-card blue">
+          <div class="kpi-label">Avg. Time to Sign</div>
+          <div class="kpi-value" style="font-size:24px;">3.2 days</div>
+          <div class="kpi-change up">&#9650; 0.8 days faster</div>
+        </div>
+        <div class="kpi-card green">
+          <div class="kpi-label">CNAK Conversion</div>
+          <div class="kpi-value" style="font-size:24px;">67%</div>
+          <div class="kpi-change up">&#9650; 5% vs last month</div>
+        </div>
+        <div class="kpi-card purple">
+          <div class="kpi-label">Proposal Win Rate</div>
+          <div class="kpi-value" style="font-size:24px;">59%</div>
+          <div class="kpi-change down">&#9660; 2% vs last month</div>
+        </div>
+        <div class="kpi-card orange">
+          <div class="kpi-label">Avg. Deal Size</div>
+          <div class="kpi-value" style="font-size:24px;">&#8377;3.8L</div>
+          <div class="kpi-change up">&#9650; 12% growth</div>
+        </div>
+        <div class="kpi-card cyan">
+          <div class="kpi-label">Customer LTV</div>
+          <div class="kpi-value" style="font-size:24px;">&#8377;7.2L</div>
+          <div class="kpi-change up">&#9650; 18% growth</div>
+        </div>
+      </div>
+
+      <!-- CRO Charts -->
+      <div class="chart-row cols-2">
+        <div class="chart-card">
+          <div class="chart-card-title">Conversion by Contract Type</div>
+          <div class="chart-card-subtitle">Win rate comparison across contract types</div>
+          <div class="chart-container"><canvas id="chart-cro-type"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-card-title">Time-to-Close Trend</div>
+          <div class="chart-card-subtitle">Average days from proposal to signed (last 6 months)</div>
+          <div class="chart-container"><canvas id="chart-cro-time"></canvas></div>
+        </div>
+      </div>
+
+      <!-- CRO Insights -->
+      <div class="section-title" style="margin-top:8px;">Optimization Opportunities</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:24px;">
+        <div class="cro-insight" style="flex-direction:column;align-items:flex-start;gap:8px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div class="cro-insight-icon" style="background:rgba(239,68,68,0.12);width:36px;height:36px;font-size:18px;">&#128680;</div>
+            <div class="cro-insight-title">Stale Proposals</div>
+          </div>
+          <div class="cro-insight-desc">7 proposals pending &gt; 5 days. Each day reduces conversion by 8%. Potential lost revenue: &#8377;6.8L</div>
+        </div>
+        <div class="cro-insight" style="flex-direction:column;align-items:flex-start;gap:8px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div class="cro-insight-icon" style="background:rgba(245,158,11,0.12);width:36px;height:36px;font-size:18px;">&#128276;</div>
+            <div class="cro-insight-title">No Follow-up</div>
+          </div>
+          <div class="cro-insight-desc">15 CNAK links viewed but no action taken. Auto-reminder after 48h increases conversion by 23%.</div>
+        </div>
+        <div class="cro-insight" style="flex-direction:column;align-items:flex-start;gap:8px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div class="cro-insight-icon" style="background:rgba(16,185,129,0.12);width:36px;height:36px;font-size:18px;">&#128165;</div>
+            <div class="cro-insight-title">Upsell Ready</div>
+          </div>
+          <div class="cro-insight-desc">4 customers approaching contract end. Renewal + upsell opportunity: &#8377;8.2L. Best time: 30 days before expiry.</div>
+        </div>
+      </div>
+
+      <!-- CNAK Tracking -->
+      <div class="chart-card">
+        <div class="chart-card-title">CNAK (ContractNest Access Key) Performance</div>
+        <div class="chart-card-subtitle">Public contract link analytics</div>
+        <div class="cnak-grid" style="margin-bottom:16px;">
+          <div class="cnak-stat"><div class="cnak-stat-value" style="color:var(--accent-blue);">32</div><div class="cnak-stat-label">Active Links</div></div>
+          <div class="cnak-stat"><div class="cnak-stat-value" style="color:var(--accent-purple);">847</div><div class="cnak-stat-label">Total Views</div></div>
+          <div class="cnak-stat"><div class="cnak-stat-value" style="color:var(--accent-green);">67%</div><div class="cnak-stat-label">View &rarr; Accept</div></div>
+          <div class="cnak-stat"><div class="cnak-stat-value" style="color:var(--accent-orange);">2.1 days</div><div class="cnak-stat-label">Avg. Response Time</div></div>
+        </div>
+        <table class="data-table">
+          <thead><tr><th>Template</th><th>Links</th><th>Views</th><th>Accepted</th><th>Conv. Rate</th><th>Avg. Value</th></tr></thead>
+          <tbody>
+            <tr><td>IT Support Annual AMC</td><td>12</td><td>245</td><td>8</td><td><span class="badge green">66.7%</span></td><td class="text-right">&#8377;4,50,000</td></tr>
+            <tr><td>Cloud Infrastructure</td><td>8</td><td>189</td><td>6</td><td><span class="badge green">75.0%</span></td><td class="text-right">&#8377;6,80,000</td></tr>
+            <tr><td>Security Audit Package</td><td>6</td><td>156</td><td>3</td><td><span class="badge yellow">50.0%</span></td><td class="text-right">&#8377;2,80,000</td></tr>
+            <tr><td>Staff Augmentation</td><td>4</td><td>134</td><td>1</td><td><span class="badge red">25.0%</span></td><td class="text-right">&#8377;8,50,000</td></tr>
+            <tr><td>Managed Services</td><td>2</td><td>123</td><td>2</td><td><span class="badge green">100%</span></td><td class="text-right">&#8377;12,00,000</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ============ TAB: BILLING ============ -->
+    <div id="tab-billing" class="tab-content">
+
+      <div class="kpi-row cols-5">
+        <div class="kpi-card green">
+          <div class="kpi-header"><span class="kpi-label">Total Receivable</span><div class="kpi-icon green">&#8377;</div></div>
+          <div class="kpi-value" style="font-size:24px;">&#8377;24.8L</div>
+          <div class="kpi-sub">42 open invoices</div>
+        </div>
+        <div class="kpi-card blue">
+          <div class="kpi-header"><span class="kpi-label">Collected (MTD)</span><div class="kpi-icon blue">&#10003;</div></div>
+          <div class="kpi-value" style="font-size:24px;">&#8377;18.6L</div>
+          <div class="kpi-change up">&#9650; 8.5%</div>
+        </div>
+        <div class="kpi-card red">
+          <div class="kpi-header"><span class="kpi-label">Overdue Amount</span><div class="kpi-icon red">&#9888;</div></div>
+          <div class="kpi-value" style="font-size:24px;">&#8377;6.2L</div>
+          <div class="kpi-change down">&#9660; 15 invoices</div>
+        </div>
+        <div class="kpi-card purple">
+          <div class="kpi-header"><span class="kpi-label">Collection Rate</span><div class="kpi-icon purple">%</div></div>
+          <div class="kpi-value" style="font-size:24px;">78%</div>
+          <div class="kpi-change up">&#9650; 3%</div>
+        </div>
+        <div class="kpi-card orange">
+          <div class="kpi-header"><span class="kpi-label">Avg. DSO</span><div class="kpi-icon orange">&#128197;</div></div>
+          <div class="kpi-value" style="font-size:24px;">28 days</div>
+          <div class="kpi-change down">&#9660; 2 days slower</div>
+        </div>
+      </div>
+
+      <div class="chart-row cols-2">
+        <div class="chart-card">
+          <div class="chart-card-title">Invoice Status Breakdown</div>
+          <div class="chart-card-subtitle">Distribution by payment status</div>
+          <div class="chart-container"><canvas id="chart-invoice-status"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-card-title">Cash Flow Timeline</div>
+          <div class="chart-card-subtitle">Monthly inflows vs outflows</div>
+          <div class="chart-container"><canvas id="chart-cashflow"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Aging Table -->
+      <div class="chart-card" style="margin-bottom:24px;">
+        <div class="chart-card-title">Invoice Aging Report</div>
+        <div class="chart-card-subtitle">Outstanding receivables by age bucket</div>
+        <table class="data-table">
+          <thead><tr><th>Age Bucket</th><th>Invoices</th><th class="text-right">Amount</th><th>% of Total</th><th>Trend</th></tr></thead>
+          <tbody>
+            <tr><td class="aging-current" style="font-weight:600;">Current (Not Due)</td><td>12</td><td class="text-right">&#8377;8,45,000</td><td><div class="progress-bar-wrap"><div class="progress-bar"><div class="progress-fill" style="width:34%;background:var(--accent-green);"></div></div><span class="progress-label">34%</span></div></td><td><span class="badge green">Healthy</span></td></tr>
+            <tr><td class="aging-30" style="font-weight:600;">1&ndash;30 Days Overdue</td><td>8</td><td class="text-right">&#8377;5,22,000</td><td><div class="progress-bar-wrap"><div class="progress-bar"><div class="progress-fill" style="width:21%;background:var(--accent-yellow);"></div></div><span class="progress-label">21%</span></div></td><td><span class="badge yellow">Monitor</span></td></tr>
+            <tr><td class="aging-60" style="font-weight:600;">31&ndash;60 Days</td><td>5</td><td class="text-right">&#8377;4,18,000</td><td><div class="progress-bar-wrap"><div class="progress-bar"><div class="progress-fill" style="width:17%;background:var(--accent-orange);"></div></div><span class="progress-label">17%</span></div></td><td><span class="badge orange">At Risk</span></td></tr>
+            <tr><td class="aging-90" style="font-weight:600;">61&ndash;90 Days</td><td>3</td><td class="text-right">&#8377;3,15,000</td><td><div class="progress-bar-wrap"><div class="progress-bar"><div class="progress-fill" style="width:13%;background:var(--accent-red);"></div></div><span class="progress-label">13%</span></div></td><td><span class="badge red">Critical</span></td></tr>
+            <tr><td class="aging-90plus" style="font-weight:600;">90+ Days</td><td>4</td><td class="text-right">&#8377;3,80,000</td><td><div class="progress-bar-wrap"><div class="progress-bar"><div class="progress-fill" style="width:15%;background:#ff4757;"></div></div><span class="progress-label">15%</span></div></td><td><span class="badge red">Escalate</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Top Debtors -->
+      <div class="chart-card">
+        <div class="chart-card-title">Top Outstanding Accounts</div>
+        <div class="chart-card-subtitle">Customers with highest unpaid balances</div>
+        <table class="data-table">
+          <thead><tr><th>Customer</th><th>Open Invoices</th><th class="text-right">Outstanding</th><th>Oldest Invoice</th><th>Action</th></tr></thead>
+          <tbody>
+            <tr><td>Tech Mahindra</td><td>4</td><td class="text-right" style="font-weight:700;color:var(--accent-red);">&#8377;4,80,000</td><td><span class="badge red">92 days</span></td><td><button class="cro-insight-action" style="font-size:11px;padding:4px 10px;">Send Reminder</button></td></tr>
+            <tr><td>Mindtree Ltd</td><td>3</td><td class="text-right" style="font-weight:700;color:var(--accent-orange);">&#8377;3,65,000</td><td><span class="badge orange">58 days</span></td><td><button class="cro-insight-action" style="font-size:11px;padding:4px 10px;">Send Reminder</button></td></tr>
+            <tr><td>L&T Infotech</td><td>2</td><td class="text-right" style="font-weight:700;color:var(--accent-yellow);">&#8377;2,90,000</td><td><span class="badge yellow">34 days</span></td><td><button class="cro-insight-action" style="font-size:11px;padding:4px 10px;">Send Reminder</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ============ TAB: EVENTS ============ -->
+    <div id="tab-events" class="tab-content">
+
+      <div class="section-title">Event Timeline Summary</div>
+      <div class="event-buckets" style="margin-bottom:24px;">
+        <div class="event-bucket" style="border-color:rgba(239,68,68,0.3);">
+          <div class="event-bucket-count" style="color:var(--accent-red);">8</div>
+          <div class="event-bucket-label">Overdue</div>
+        </div>
+        <div class="event-bucket" style="border-color:rgba(59,130,246,0.3);">
+          <div class="event-bucket-count" style="color:var(--accent-blue);">3</div>
+          <div class="event-bucket-label">Today</div>
+        </div>
+        <div class="event-bucket" style="border-color:rgba(139,92,246,0.3);">
+          <div class="event-bucket-count" style="color:var(--accent-purple);">5</div>
+          <div class="event-bucket-label">Tomorrow</div>
+        </div>
+        <div class="event-bucket" style="border-color:rgba(245,158,11,0.3);">
+          <div class="event-bucket-count" style="color:var(--accent-yellow);">12</div>
+          <div class="event-bucket-label">This Week</div>
+        </div>
+        <div class="event-bucket" style="border-color:rgba(16,185,129,0.3);">
+          <div class="event-bucket-count" style="color:var(--accent-green);">15</div>
+          <div class="event-bucket-label">Next Week</div>
+        </div>
+      </div>
+
+      <div class="chart-row cols-2">
+        <div class="chart-card">
+          <div class="chart-card-title">Events by Type</div>
+          <div class="chart-card-subtitle">Service vs Billing events (last 6 months)</div>
+          <div class="chart-container"><canvas id="chart-events-type"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-card-title">Team Workload</div>
+          <div class="chart-card-subtitle">Active events assigned per team member</div>
+          <div class="chart-container"><canvas id="chart-workload"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Overdue Events Table -->
+      <div class="chart-card" style="margin-top:0;">
+        <div class="chart-card-title" style="color:var(--accent-red);">Overdue Events Requiring Attention</div>
+        <div class="chart-card-subtitle">Sorted by days overdue (most urgent first)</div>
+        <table class="data-table">
+          <thead><tr><th>Contract</th><th>Event</th><th>Type</th><th>Due Date</th><th>Days Late</th><th>Assignee</th></tr></thead>
+          <tbody>
+            <tr><td>AMC - Wipro Q2</td><td>EMI 3/6 Collection</td><td><span class="badge red"><span class="badge-dot red"></span> Billing</span></td><td>Jan 25</td><td style="color:var(--accent-red);font-weight:700;">12 days</td><td>Rahul S.</td></tr>
+            <tr><td>Cloud Infra - TCS</td><td>Server Migration Phase 2</td><td><span class="badge blue"><span class="badge-dot blue"></span> Service</span></td><td>Jan 28</td><td style="color:var(--accent-red);font-weight:700;">9 days</td><td>Priya M.</td></tr>
+            <tr><td>Security Audit - HCL</td><td>Vulnerability Report</td><td><span class="badge blue"><span class="badge-dot blue"></span> Service</span></td><td>Jan 30</td><td style="color:var(--accent-orange);font-weight:700;">7 days</td><td>Amit K.</td></tr>
+            <tr><td>SLA Review - Infosys</td><td>Quarterly Assessment</td><td><span class="badge blue"><span class="badge-dot blue"></span> Service</span></td><td>Jan 31</td><td style="color:var(--accent-orange);font-weight:700;">6 days</td><td>Neha R.</td></tr>
+            <tr><td>Data Analytics - Wipro</td><td>Dashboard Delivery</td><td><span class="badge blue"><span class="badge-dot blue"></span> Service</span></td><td>Feb 1</td><td style="color:var(--accent-yellow);font-weight:700;">5 days</td><td>Vikram T.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ============ TAB: CONTRACT HUB ============ -->
+    <div id="tab-hub" class="tab-content">
+
+      <div class="section-title">Contract Pipeline Status</div>
+      <div class="kpi-row" style="grid-template-columns:repeat(6,1fr);margin-bottom:24px;">
+        <div class="kpi-card" style="text-align:center;padding:16px;">
+          <div class="kpi-label" style="margin-bottom:8px;">Draft</div>
+          <div class="kpi-value" style="font-size:28px;color:var(--text-muted);">4</div>
+        </div>
+        <div class="kpi-card" style="text-align:center;padding:16px;">
+          <div class="kpi-label" style="margin-bottom:8px;">Pending Review</div>
+          <div class="kpi-value" style="font-size:28px;color:var(--accent-yellow);">2</div>
+        </div>
+        <div class="kpi-card" style="text-align:center;padding:16px;">
+          <div class="kpi-label" style="margin-bottom:8px;">Pending Accept</div>
+          <div class="kpi-value" style="font-size:28px;color:var(--accent-orange);">7</div>
+        </div>
+        <div class="kpi-card" style="text-align:center;padding:16px;">
+          <div class="kpi-label" style="margin-bottom:8px;">Active</div>
+          <div class="kpi-value" style="font-size:28px;color:var(--accent-green);">47</div>
+        </div>
+        <div class="kpi-card" style="text-align:center;padding:16px;">
+          <div class="kpi-label" style="margin-bottom:8px;">Completed</div>
+          <div class="kpi-value" style="font-size:28px;color:var(--accent-blue);">89</div>
+        </div>
+        <div class="kpi-card" style="text-align:center;padding:16px;">
+          <div class="kpi-label" style="margin-bottom:8px;">Expired</div>
+          <div class="kpi-value" style="font-size:28px;color:var(--accent-red);">3</div>
+        </div>
+      </div>
+
+      <div class="chart-row cols-2">
+        <div class="chart-card">
+          <div class="chart-card-title">Contract Value by Type</div>
+          <div class="chart-card-subtitle">Distribution across contract types</div>
+          <div class="chart-container"><canvas id="chart-contract-type"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-card-title">New Contracts Trend</div>
+          <div class="chart-card-subtitle">Contracts created per month</div>
+          <div class="chart-container"><canvas id="chart-contract-trend"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Top Contracts -->
+      <div class="chart-card">
+        <div class="chart-card-title">Top Active Contracts by Value</div>
+        <div class="chart-card-subtitle">Highest value active contracts with event completion progress</div>
+        <table class="data-table">
+          <thead><tr><th>Contract</th><th>Buyer</th><th>Type</th><th class="text-right">Value</th><th>Progress</th><th>Expiry</th></tr></thead>
+          <tbody>
+            <tr><td style="font-weight:600;">Managed Services - Wipro</td><td>Wipro Technologies</td><td><span class="badge purple">Retainer</span></td><td class="text-right" style="font-weight:700;">&#8377;12,00,000</td><td><div class="progress-bar-wrap"><div class="progress-bar" style="width:120px;"><div class="progress-fill" style="width:75%;background:var(--accent-green);"></div></div><span class="progress-label">75%</span></div></td><td>Mar 2026</td></tr>
+            <tr><td style="font-weight:600;">Cloud Infra - TCS</td><td>TCS Digital</td><td><span class="badge blue">Fixed Price</span></td><td class="text-right" style="font-weight:700;">&#8377;8,50,000</td><td><div class="progress-bar-wrap"><div class="progress-bar" style="width:120px;"><div class="progress-fill" style="width:45%;background:var(--accent-blue);"></div></div><span class="progress-label">45%</span></div></td><td>Jun 2026</td></tr>
+            <tr><td style="font-weight:600;">Security Suite - HCL</td><td>HCL Technologies</td><td><span class="badge green">Subscription</span></td><td class="text-right" style="font-weight:700;">&#8377;6,80,000</td><td><div class="progress-bar-wrap"><div class="progress-bar" style="width:120px;"><div class="progress-fill" style="width:60%;background:var(--accent-purple);"></div></div><span class="progress-label">60%</span></div></td><td>Sep 2026</td></tr>
+            <tr><td style="font-weight:600;">Staff Aug - Infosys</td><td>Infosys BPM</td><td><span class="badge orange">T&M</span></td><td class="text-right" style="font-weight:700;">&#8377;5,20,000</td><td><div class="progress-bar-wrap"><div class="progress-bar" style="width:120px;"><div class="progress-fill" style="width:30%;background:var(--accent-orange);"></div></div><span class="progress-label">30%</span></div></td><td>Dec 2026</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ============ TAB: PEOPLE & REFERRALS ============ -->
+    <div id="tab-people" class="tab-content">
+
+      <div class="kpi-row cols-5">
+        <div class="kpi-card blue">
+          <div class="kpi-header"><span class="kpi-label">Total Contacts</span><div class="kpi-icon blue">&#128101;</div></div>
+          <div class="kpi-value" style="font-size:24px;">248</div>
+          <div class="kpi-change up">&#9650; 18 this month</div>
+        </div>
+        <div class="kpi-card green">
+          <div class="kpi-header"><span class="kpi-label">Buyers</span></div>
+          <div class="kpi-value" style="font-size:24px;">126</div>
+          <div class="kpi-sub">50.8% of contacts</div>
+        </div>
+        <div class="kpi-card purple">
+          <div class="kpi-header"><span class="kpi-label">Sellers / Vendors</span></div>
+          <div class="kpi-value" style="font-size:24px;">78</div>
+          <div class="kpi-sub">31.5% of contacts</div>
+        </div>
+        <div class="kpi-card orange">
+          <div class="kpi-header"><span class="kpi-label">Partners</span></div>
+          <div class="kpi-value" style="font-size:24px;">32</div>
+          <div class="kpi-sub">12.9% of contacts</div>
+        </div>
+        <div class="kpi-card cyan">
+          <div class="kpi-header"><span class="kpi-label">Referring Customers</span></div>
+          <div class="kpi-value" style="font-size:24px;">12</div>
+          <div class="kpi-sub">Generated &#8377;14.2L</div>
+        </div>
+      </div>
+
+      <div class="chart-row cols-2">
+        <div class="chart-card">
+          <div class="chart-card-title">Contact Classification</div>
+          <div class="chart-card-subtitle">Distribution by type</div>
+          <div class="chart-container"><canvas id="chart-contact-class"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-card-title">New Contacts Trend</div>
+          <div class="chart-card-subtitle">Contacts created per month</div>
+          <div class="chart-container"><canvas id="chart-contact-trend"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Referring Customers -->
+      <div class="chart-card" style="margin-bottom:24px;">
+        <div class="chart-card-title">Referral Program Performance</div>
+        <div class="chart-card-subtitle">Customers who referred new business</div>
+        <table class="data-table">
+          <thead><tr><th>Referrer</th><th>Referred Contacts</th><th>Contracts Won</th><th class="text-right">Revenue Generated</th><th>Conv. Rate</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td style="font-weight:600;">Wipro Technologies</td><td>5</td><td>4</td><td class="text-right" style="font-weight:700;">&#8377;5,20,000</td><td><span class="badge green">80%</span></td><td><span class="referral-badge">&#11088; Gold Referrer</span></td></tr>
+            <tr><td style="font-weight:600;">TCS Digital</td><td>3</td><td>2</td><td class="text-right" style="font-weight:700;">&#8377;3,80,000</td><td><span class="badge green">67%</span></td><td><span class="referral-badge">&#11088; Gold Referrer</span></td></tr>
+            <tr><td style="font-weight:600;">Infosys BPM</td><td>4</td><td>2</td><td class="text-right" style="font-weight:700;">&#8377;2,90,000</td><td><span class="badge yellow">50%</span></td><td><span class="referral-badge" style="background:rgba(245,158,11,0.1);color:var(--accent-yellow);">Silver Referrer</span></td></tr>
+            <tr><td style="font-weight:600;">HCL Technologies</td><td>2</td><td>1</td><td class="text-right" style="font-weight:700;">&#8377;1,50,000</td><td><span class="badge yellow">50%</span></td><td><span class="referral-badge" style="background:rgba(245,158,11,0.1);color:var(--accent-yellow);">Silver Referrer</span></td></tr>
+            <tr><td style="font-weight:600;">Mphasis Ltd</td><td>3</td><td>0</td><td class="text-right" style="color:var(--text-muted);">&#8377;0</td><td><span class="badge red">0%</span></td><td><span class="referral-badge" style="background:rgba(255,255,255,0.05);color:var(--text-muted);">Pending</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- CRO: Contact-to-Customer Conversion -->
+      <div class="chart-card">
+        <div class="chart-card-title">Contact-to-Customer Conversion (CRO)</div>
+        <div class="chart-card-subtitle">How contacts flow through the business pipeline</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:16px 0;">
+          <div style="text-align:center;">
+            <div style="font-size:36px;font-weight:700;color:var(--accent-blue);">248</div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">Total Contacts</div>
+            <div style="font-size:11px;color:var(--text-muted);">100%</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:36px;font-weight:700;color:var(--accent-purple);">144</div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">Received Proposal</div>
+            <div style="font-size:11px;color:var(--accent-green);">58.1%</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:36px;font-weight:700;color:var(--accent-green);">85</div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">Active Customer</div>
+            <div style="font-size:11px;color:var(--accent-green);">34.3%</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:36px;font-weight:700;color:var(--accent-orange);">55</div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">Repeat Customer</div>
+            <div style="font-size:11px;color:var(--accent-green);">22.2%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+// Tab switching
+function switchTab(tabId) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + tabId).classList.add('active');
+  event.currentTarget.classList.add('active');
+  // Init charts for this tab
+  initCharts(tabId);
+}
+
+// Chart.js defaults
+Chart.defaults.color = '#8b97b0';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+Chart.defaults.font.family = "'Inter', sans-serif";
+Chart.defaults.font.size = 12;
+Chart.defaults.plugins.legend.labels.usePointStyle = true;
+Chart.defaults.plugins.legend.labels.pointStyleWidth = 10;
+Chart.defaults.plugins.legend.labels.padding = 16;
+
+const chartsCreated = {};
+
+function initCharts(tab) {
+  if (chartsCreated[tab]) return;
+  chartsCreated[tab] = true;
+
+  if (tab === 'home') {
+    // Pipeline Chart
+    new Chart(document.getElementById('chart-pipeline'), {
+      type: 'bar',
+      data: {
+        labels: ['Draft', 'Pending Review', 'Pending Accept', 'Active', 'Completed', 'Expired'],
+        datasets: [{
+          label: 'Contracts',
+          data: [4, 2, 7, 47, 89, 3],
+          backgroundColor: ['#64748b','#f59e0b','#f97316','#10b981','#3b82f6','#ef4444'],
+          borderRadius: 6, borderSkipped: false, barThickness: 32,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.04)' } }, x: { grid: { display: false } } }
+      }
+    });
+
+    // Revenue Chart
+    new Chart(document.getElementById('chart-revenue'), {
+      type: 'line',
+      data: {
+        labels: ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb'],
+        datasets: [
+          { label: 'Invoiced', data: [14.2, 16.8, 15.5, 19.2, 22.1, 24.8], borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', fill: true, tension: 0.4, pointRadius: 4 },
+          { label: 'Collected', data: [11.5, 14.2, 13.8, 16.5, 17.8, 18.6], borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', fill: true, tension: 0.4, pointRadius: 4 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        scales: {
+          y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: v => v + 'L' } },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+  }
+
+  if (tab === 'cro') {
+    // CRO by type
+    new Chart(document.getElementById('chart-cro-type'), {
+      type: 'bar',
+      data: {
+        labels: ['Fixed Price', 'T&M', 'Retainer', 'Milestone', 'Subscription'],
+        datasets: [
+          { label: 'Proposals', data: [45, 28, 32, 18, 21], backgroundColor: 'rgba(139,92,246,0.3)', borderColor: '#8b5cf6', borderWidth: 1, borderRadius: 4 },
+          { label: 'Won', data: [28, 14, 22, 10, 11], backgroundColor: 'rgba(16,185,129,0.3)', borderColor: '#10b981', borderWidth: 1, borderRadius: 4 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.04)' } }, x: { grid: { display: false } } }
+      }
+    });
+
+    // Time to close
+    new Chart(document.getElementById('chart-cro-time'), {
+      type: 'line',
+      data: {
+        labels: ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb'],
+        datasets: [{
+          label: 'Days to Close', data: [5.8, 5.2, 4.6, 4.1, 3.8, 3.2],
+          borderColor: '#06b6d4', backgroundColor: 'rgba(6,182,212,0.1)', fill: true, tension: 0.4, pointRadius: 5,
+          pointBackgroundColor: '#06b6d4',
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        scales: {
+          y: { beginAtZero: false, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: v => v + 'd' } },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+  }
+
+  if (tab === 'billing') {
+    // Invoice Status Donut
+    new Chart(document.getElementById('chart-invoice-status'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Paid', 'Partially Paid', 'Unpaid', 'Overdue', 'Cancelled'],
+        datasets: [{
+          data: [45, 8, 12, 15, 4],
+          backgroundColor: ['#10b981','#3b82f6','#f59e0b','#ef4444','#64748b'],
+          borderWidth: 0, hoverOffset: 8,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '65%',
+        plugins: { legend: { position: 'right' } }
+      }
+    });
+
+    // Cash Flow
+    new Chart(document.getElementById('chart-cashflow'), {
+      type: 'bar',
+      data: {
+        labels: ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb'],
+        datasets: [
+          { label: 'Inflows (AR)', data: [11.5, 14.2, 13.8, 16.5, 17.8, 18.6], backgroundColor: 'rgba(16,185,129,0.6)', borderRadius: 4, barThickness: 24 },
+          { label: 'Outflows (AP)', data: [-3.2, -4.1, -3.5, -5.8, -4.2, -3.9], backgroundColor: 'rgba(239,68,68,0.6)', borderRadius: 4, barThickness: 24 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        scales: {
+          y: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { callback: v => (v >= 0 ? '+' : '') + v + 'L' } },
+          x: { grid: { display: false }, stacked: false }
+        }
+      }
+    });
+  }
+
+  if (tab === 'events') {
+    // Events by type stacked
+    new Chart(document.getElementById('chart-events-type'), {
+      type: 'bar',
+      data: {
+        labels: ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb'],
+        datasets: [
+          { label: 'Service', data: [18, 22, 25, 28, 32, 35], backgroundColor: 'rgba(59,130,246,0.6)', borderRadius: 4 },
+          { label: 'Billing', data: [12, 14, 16, 18, 20, 22], backgroundColor: 'rgba(245,158,11,0.6)', borderRadius: 4 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, scales: {
+          y: { stacked: true, beginAtZero: true, grid: { color: 'rgba(255,255,255,0.04)' } },
+          x: { stacked: true, grid: { display: false } }
+        }
+      }
+    });
+
+    // Team Workload
+    new Chart(document.getElementById('chart-workload'), {
+      type: 'bar',
+      data: {
+        labels: ['Rahul S.', 'Priya M.', 'Amit K.', 'Neha R.', 'Vikram T.'],
+        datasets: [
+          { label: 'In Progress', data: [5, 4, 3, 6, 2], backgroundColor: 'rgba(59,130,246,0.6)', borderRadius: 4 },
+          { label: 'Overdue', data: [2, 1, 2, 1, 2], backgroundColor: 'rgba(239,68,68,0.6)', borderRadius: 4 },
+          { label: 'Scheduled', data: [8, 6, 5, 4, 7], backgroundColor: 'rgba(16,185,129,0.3)', borderRadius: 4 }
+        ]
+      },
+      options: {
+        indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+        scales: {
+          x: { stacked: true, grid: { color: 'rgba(255,255,255,0.04)' } },
+          y: { stacked: true, grid: { display: false } }
+        }
+      }
+    });
+  }
+
+  if (tab === 'hub') {
+    // Contract type donut
+    new Chart(document.getElementById('chart-contract-type'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Fixed Price', 'Time & Materials', 'Retainer', 'Milestone', 'Subscription'],
+        datasets: [{
+          data: [35, 18, 22, 12, 13],
+          backgroundColor: ['#3b82f6','#f59e0b','#8b5cf6','#10b981','#ec4899'],
+          borderWidth: 0, hoverOffset: 8,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '60%',
+        plugins: { legend: { position: 'right' } }
+      }
+    });
+
+    // Contract creation trend
+    new Chart(document.getElementById('chart-contract-trend'), {
+      type: 'line',
+      data: {
+        labels: ['Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb'],
+        datasets: [{
+          label: 'New Contracts',
+          data: [6,8,5,9,7,11,10,14,12,15,13,16],
+          borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,0.1)', fill: true, tension: 0.4,
+          pointRadius: 4, pointBackgroundColor: '#8b5cf6',
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.04)' } }, x: { grid: { display: false } } }
+      }
+    });
+  }
+
+  if (tab === 'people') {
+    // Contact classification
+    new Chart(document.getElementById('chart-contact-class'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Buyer', 'Seller', 'Vendor', 'Partner', 'Team'],
+        datasets: [{
+          data: [126, 42, 36, 32, 12],
+          backgroundColor: ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#06b6d4'],
+          borderWidth: 0, hoverOffset: 8,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '60%',
+        plugins: { legend: { position: 'right' } }
+      }
+    });
+
+    // Contact trend
+    new Chart(document.getElementById('chart-contact-trend'), {
+      type: 'bar',
+      data: {
+        labels: ['Sep','Oct','Nov','Dec','Jan','Feb'],
+        datasets: [{
+          label: 'New Contacts',
+          data: [12, 18, 15, 22, 20, 18],
+          backgroundColor: 'rgba(59,130,246,0.5)', borderColor: '#3b82f6', borderWidth: 1, borderRadius: 6,
+          barThickness: 28,
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.04)' } }, x: { grid: { display: false } } }
+      }
+    });
+  }
+}
+
+// Init home tab charts on load
+window.addEventListener('DOMContentLoaded', () => initCharts('home'));
+</script>
+</body>
+</html>
