@@ -1,0 +1,88 @@
+═══════════════════════════════════════════════════
+ADMIN SUBSCRIPTION MANAGEMENT FIXES
+═══════════════════════════════════════════════════
+
+Branch: admin-subscription-fixes
+Date: 2026-02-06
+
+Fixes:
+  1. Close Account / Reset Data 500 errors (4 missing RPCs created)
+  2. "Test Account" quick filter added
+  3. Owner info displayed on tenant cards
+  4. Search by owner email now works
+  5. is_test filter passed through full stack (UI→API→Edge→RPC)
+  6. 'closed' status added to t_tenants constraint
+
+═══════════════════════════════════════════════════
+SUBMODULES AFFECTED
+═══════════════════════════════════════════════════
+
+  - contractnest-edge (SQL migration + edge function)
+  - contractnest-api (routes + service)
+  - contractnest-ui (types, filters, cards, page, serviceURLs)
+
+═══════════════════════════════════════════════════
+FILES CHANGED
+═══════════════════════════════════════════════════
+
+EDGE (contractnest-edge):
+  - supabase/migrations/admin-tenant-management/002_admin_tenant_actions_rpcs.sql [NEW - Run in Supabase SQL Editor]
+  - supabase/functions/admin-tenant-management/index.ts [MODIFIED - added is_test param]
+
+API (contractnest-api):
+  - src/services/adminTenantService.ts [MODIFIED - added is_test filter support]
+  - src/routes/adminTenantRoutes.ts [MODIFIED - added is_test query param parsing]
+
+UI (contractnest-ui):
+  - src/types/tenantManagement.ts [MODIFIED - added TenantOwnerInfo, is_test, QuickFilterType]
+  - src/components/subscription/filters/TenantFilters.tsx [MODIFIED - added Test Account quick filter]
+  - src/components/subscription/cards/TenantCard.tsx [MODIFIED - added owner display]
+  - src/pages/admin/subscription-management/index.tsx [MODIFIED - is_test filter in loadData + quick filter handler]
+  - src/services/serviceURLs.ts [MODIFIED - is_test in AdminTenantListFilters + LIST_WITH_FILTERS]
+
+═══════════════════════════════════════════════════
+IMPORTANT: SQL MIGRATION
+═══════════════════════════════════════════════════
+
+BEFORE testing, you MUST run the SQL migration in Supabase SQL Editor:
+  File: contractnest-edge/supabase/migrations/admin-tenant-management/002_admin_tenant_actions_rpcs.sql
+
+This creates 4 missing RPCs + updates get_admin_tenant_list:
+  - get_tenant_data_summary (delete preview)
+  - admin_reset_test_data (delete is_live=false records)
+  - admin_reset_all_data (delete ALL data, keep account)
+  - admin_close_tenant_account (delete ALL data + close account)
+  - get_admin_tenant_list (updated: owner join, is_test filter, search by email)
+
+Also adds 'closed' to t_tenants status constraint.
+
+═══════════════════════════════════════════════════
+COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Edge
+Copy-Item "MANUAL_COPY_FILES\admin-subscription-fixes\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+# API
+Copy-Item "MANUAL_COPY_FILES\admin-subscription-fixes\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+
+# UI
+Copy-Item "MANUAL_COPY_FILES\admin-subscription-fixes\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+
+- [ ] Run 002_admin_tenant_actions_rpcs.sql in Supabase SQL Editor
+- [ ] Navigate to /admin/subscription-management
+- [ ] Verify tenant cards show owner name + email
+- [ ] Click "Test Account" quick filter - should show only test tenants
+- [ ] Search by owner email (e.g., kamalcharan@gmail.com)
+- [ ] Click "Close Account" on a test tenant - should work without 500
+- [ ] Click "Reset Test Data" - should work without 500
+- [ ] Click "Reset All Data" - should work without 500
+- [ ] Verify pagination still works correctly
