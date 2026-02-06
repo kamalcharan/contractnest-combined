@@ -1,5 +1,5 @@
 ═══════════════════════════════════════════════════
-FIX: Contact Channels Data Consistency + Cockpit 400 Error + Error Code Mismatch
+FIX: Contact Channels Data Consistency + Cockpit 400 Error + Error Code Mismatch + Contract Creation 400 Fix
 ═══════════════════════════════════════════════════
 
 Branch: fix-contact-channels-consistency
@@ -22,7 +22,7 @@ CONTRACTNEST-UI (2 files):
    → Display logic handles both ISO and phone code country_code formats
    → Add channel normalizes country_code to ISO format
 
-CONTRACTNEST-EDGE (3 files):
+CONTRACTNEST-EDGE (4 files):
 ────────────────────────────
 3. supabase/functions/_shared/contacts/contactValidation.ts
    → Added normalizeContactChannels() function - normalizes value and country_code before storage
@@ -42,11 +42,31 @@ CONTRACTNEST-EDGE (3 files):
    → RPC handles all aggregation: contracts, events, LTV, health score in a single DB call
    → Routed via POST with action: 'cockpit_summary'
 
+6. supabase/migrations/contracts/016_fix_create_contract_rpc.sql
+   → CRITICAL: Restores create_contract_transaction RPC to correct version
+   → Someone modified the RPC directly in the DB, adding reference to non-existent 't_contact_persons' table
+   → This caused ALL contract creation to fail with 400 "relation t_contact_persons does not exist"
+   → Fix: Re-applies the correct RPC from migration 014 (CREATE OR REPLACE overwrites broken version)
+
 CONTRACTNEST-API (1 file):
 ────────────────────────────
-6. src/controllers/contactController.ts
+7. src/controllers/contactController.ts
    → Fixed error code mismatch: now handles both 'NOT_FOUND' and 'CONTACT_NOT_FOUND'
    → Prevents incorrect 400 status when contact is genuinely not found (should be 404)
+
+═══════════════════════════════════════════════════
+URGENT: FIX CONTRACT CREATION (Run in Supabase SQL Editor)
+═══════════════════════════════════════════════════
+
+The create_contract_transaction RPC was modified directly in the database
+to reference a non-existent table 't_contact_persons'. This breaks ALL
+contract creation. To fix immediately:
+
+1. Open Supabase Dashboard → SQL Editor
+2. Copy the ENTIRE contents of:
+   MANUAL_COPY_FILES\fix-contact-channels-consistency\contractnest-edge\supabase\migrations\contracts\016_fix_create_contract_rpc.sql
+3. Paste and run it in the SQL Editor
+4. Contract creation will work again immediately
 
 ═══════════════════════════════════════════════════
 COPY COMMANDS (PowerShell)
@@ -62,6 +82,9 @@ Copy-Item "MANUAL_COPY_FILES\fix-contact-channels-consistency\contractnest-ui\sr
 Copy-Item "MANUAL_COPY_FILES\fix-contact-channels-consistency\contractnest-edge\supabase\functions\_shared\contacts\contactValidation.ts" -Destination "contractnest-edge\supabase\functions\_shared\contacts\contactValidation.ts" -Force
 Copy-Item "MANUAL_COPY_FILES\fix-contact-channels-consistency\contractnest-edge\supabase\functions\_shared\contacts\contactService.ts" -Destination "contractnest-edge\supabase\functions\_shared\contacts\contactService.ts" -Force
 Copy-Item "MANUAL_COPY_FILES\fix-contact-channels-consistency\contractnest-edge\supabase\functions\contracts\index.ts" -Destination "contractnest-edge\supabase\functions\contracts\index.ts" -Force
+
+# Migration file (for codebase tracking - must be run in Supabase SQL Editor)
+Copy-Item "MANUAL_COPY_FILES\fix-contact-channels-consistency\contractnest-edge\supabase\migrations\contracts\016_fix_create_contract_rpc.sql" -Destination "contractnest-edge\supabase\migrations\contracts\016_fix_create_contract_rpc.sql" -Force
 
 # API files
 Copy-Item "MANUAL_COPY_FILES\fix-contact-channels-consistency\contractnest-api\src\controllers\contactController.ts" -Destination "contractnest-api\src\controllers\contactController.ts" -Force
