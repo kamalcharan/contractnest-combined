@@ -1,0 +1,126 @@
+===============================================================================
+CNAK CLAIM FEATURE - UI Layer (Step 3 of 4)
+===============================================================================
+
+Branch: claude/init-submodules-acTX4
+Date: 2026-02-06
+
+PREREQUISITES:
+--------------
+Step 1 (Backend - SQL/RPC) must be deployed first
+Step 2 (API layer) must be deployed first
+
+===============================================================================
+STEP 1: COPY UI FILES
+===============================================================================
+
+PowerShell:
+-----------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\cnak-claim-ui\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Write-Host "UI files copied!" -ForegroundColor Green
+
+Bash:
+-----------
+cp -r MANUAL_COPY_FILES/cnak-claim-ui/contractnest-ui/* contractnest-ui/
+
+===============================================================================
+STEP 2: START DEV SERVER & TEST
+===============================================================================
+
+cd contractnest-ui
+npm run dev
+
+# Hard refresh browser: Ctrl+F5
+
+===============================================================================
+FILES MODIFIED/CREATED
+===============================================================================
+
+MODIFIED FILES:
+---------------
+1. contractnest-ui/src/utils/constants/industryMenus.ts
+   - Added: "Claim Contract" submenu item under Contracts menu
+   - Icon: Download
+   - Path: /contracts/claim
+
+2. contractnest-ui/src/services/serviceURLs.ts
+   - Added: CLAIM: '/api/contracts/claim' endpoint in CONTRACTS section
+
+3. contractnest-ui/src/App.tsx
+   - Added: Import for ClaimContractPage
+   - Added: Route for /contracts/claim with ProtectedRoute wrapper
+
+NEW FILES:
+----------
+4. contractnest-ui/src/pages/contracts/claim/index.tsx (NEW)
+   - CNAK claim page component
+   - Features:
+     * CNAK input with format validation (CNAK-XXXXXX)
+     * Auto-uppercase and auto-prefix
+     * Success/Error result display
+     * Navigation to contract detail on success
+     * Loading state with VaNiLoader
+     * Toast notifications for feedback
+     * Theme-aware styling (light/dark mode)
+     * URL parameter support (?code=CNAK-XXXXXX)
+
+===============================================================================
+UI FEATURES
+===============================================================================
+
+CLAIM PAGE (/contracts/claim):
+------------------------------
+- Input field for CNAK code
+- Format validation with visual feedback (green checkmark / yellow warning)
+- Auto-formatting (uppercase, prefix handling)
+- Debounced submission to prevent double-clicks
+- Success card showing:
+  * Contract name and number
+  * Seller information
+  * "New Contact" badge if seller was auto-created
+  * Navigation buttons
+- Error card with retry option
+- Help section explaining CNAK codes
+
+MENU ITEM:
+----------
+Location: Left sidebar > Contracts > Claim Contract
+Icon: Download (Lucide)
+Path: /contracts/claim
+
+URL PARAMETERS:
+---------------
+Supports pre-filling CNAK via URL:
+- /contracts/claim?code=CNAK-XXXXXX
+- /contracts/claim?cnak=CNAK-XXXXXX
+
+===============================================================================
+TESTING CHECKLIST
+===============================================================================
+
+After deploying:
+
+[ ] Menu: "Claim Contract" appears under Contracts menu
+[ ] Route: /contracts/claim loads the claim page
+[ ] Input: CNAK format validation works (green checkmark for valid)
+[ ] Input: Auto-uppercase works
+[ ] Claim: Valid CNAK shows success with contract details
+[ ] Claim: Already claimed shows "already in hub" message
+[ ] Claim: Invalid CNAK shows error
+[ ] Claim: Missing CNAK shows error
+[ ] Navigation: "View Contract" button navigates correctly
+[ ] Navigation: "View All Contracts" button navigates correctly
+[ ] Toast: Success toast appears on claim
+[ ] Toast: Error toast appears on failure
+[ ] Theme: Light/dark mode styling works
+[ ] URL: ?code=CNAK-XXXXXX pre-fills the input
+
+===============================================================================
+NEXT STEPS
+===============================================================================
+
+After testing UI:
+- Step 4: Welcome page (post-signup CNAK claim flow)
+
+===============================================================================
