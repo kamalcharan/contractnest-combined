@@ -1,6 +1,7 @@
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- FIX V2: get_contract_by_id - Minimal change from original
 -- This keeps the original logic intact and only adds accessor support as fallback
+-- FIX: Split jsonb_build_object to avoid >100 arguments limit
 -- ═══════════════════════════════════════════════════════════════════════════════
 
 CREATE OR REPLACE FUNCTION get_contract_by_id(
@@ -21,6 +22,7 @@ DECLARE
     v_vendors JSONB;
     v_attachments JSONB;
     v_history JSONB;
+    v_result_data JSONB;
 BEGIN
     -- ═══════════════════════════════════════════
     -- STEP 0: Input validation
@@ -41,7 +43,6 @@ BEGIN
 
     -- ═══════════════════════════════════════════
     -- STEP 1: Try to fetch as OWNED contract first
-    -- (Identical to original query)
     -- ═══════════════════════════════════════════
     SELECT * INTO v_contract
     FROM t_contracts
@@ -53,7 +54,6 @@ BEGIN
     -- STEP 2: If not owned, check if ACCESSED via t_contract_access
     -- ═══════════════════════════════════════════
     IF v_contract.id IS NULL THEN
-        -- Check t_contract_access for accessor rights
         SELECT ca.* INTO v_access
         FROM t_contract_access ca
         WHERE ca.contract_id = p_contract_id
@@ -62,7 +62,6 @@ BEGIN
           AND ca.is_active = true;
 
         IF v_access.id IS NOT NULL THEN
-            -- Accessor has rights - fetch the contract (without tenant restriction)
             SELECT * INTO v_contract
             FROM t_contracts
             WHERE id = p_contract_id
@@ -87,7 +86,6 @@ BEGIN
 
     -- ═══════════════════════════════════════════
     -- STEP 4: Determine effective contract_type
-    -- For accessors: flip client <-> vendor
     -- ═══════════════════════════════════════════
     IF v_is_accessor THEN
         v_effective_contract_type := CASE v_contract.contract_type
@@ -100,7 +98,7 @@ BEGIN
     END IF;
 
     -- ═══════════════════════════════════════════
-    -- STEP 5: Fetch blocks (ordered by position)
+    -- STEP 5: Fetch blocks
     -- ═══════════════════════════════════════════
     SELECT COALESCE(
         jsonb_agg(
@@ -130,7 +128,7 @@ BEGIN
     WHERE cb.contract_id = p_contract_id;
 
     -- ═══════════════════════════════════════════
-    -- STEP 6: Fetch vendors (RFQ only)
+    -- STEP 6: Fetch vendors
     -- ═══════════════════════════════════════════
     SELECT COALESCE(
         jsonb_agg(
@@ -180,7 +178,7 @@ BEGIN
     WHERE ca.contract_id = p_contract_id;
 
     -- ═══════════════════════════════════════════
-    -- STEP 8: Fetch recent history (last 20 entries)
+    -- STEP 8: Fetch history
     -- ═══════════════════════════════════════════
     SELECT COALESCE(
         jsonb_agg(
@@ -209,83 +207,98 @@ BEGIN
     ) ch;
 
     -- ═══════════════════════════════════════════
-    -- STEP 9: Return full contract with embedded data
+    -- STEP 9: Build result using concatenation (avoids 100 arg limit)
+    -- ═══════════════════════════════════════════
+
+    -- Core fields
+    v_result_data := jsonb_build_object(
+        'id', v_contract.id,
+        'tenant_id', v_contract.tenant_id,
+        'contract_number', v_contract.contract_number,
+        'rfq_number', v_contract.rfq_number,
+        'record_type', v_contract.record_type,
+        'contract_type', v_effective_contract_type,
+        'path', v_contract.path,
+        'template_id', v_contract.template_id,
+        'name', v_contract.name,
+        'description', v_contract.description,
+        'status', v_contract.status
+    );
+
+    -- Buyer fields
+    v_result_data := v_result_data || jsonb_build_object(
+        'buyer_id', v_contract.buyer_id,
+        'buyer_name', v_contract.buyer_name,
+        'buyer_company', v_contract.buyer_company,
+        'buyer_email', v_contract.buyer_email,
+        'buyer_phone', v_contract.buyer_phone,
+        'buyer_contact_person_id', v_contract.buyer_contact_person_id,
+        'buyer_contact_person_name', v_contract.buyer_contact_person_name,
+        'global_access_id', v_contract.global_access_id
+    );
+
+    -- Duration & Acceptance fields
+    v_result_data := v_result_data || jsonb_build_object(
+        'acceptance_method', v_contract.acceptance_method,
+        'duration_value', v_contract.duration_value,
+        'duration_unit', v_contract.duration_unit,
+        'grace_period_value', v_contract.grace_period_value,
+        'grace_period_unit', v_contract.grace_period_unit
+    );
+
+    -- Billing fields
+    v_result_data := v_result_data || jsonb_build_object(
+        'currency', v_contract.currency,
+        'billing_cycle_type', v_contract.billing_cycle_type,
+        'payment_mode', v_contract.payment_mode,
+        'emi_months', v_contract.emi_months,
+        'per_block_payment_type', v_contract.per_block_payment_type
+    );
+
+    -- Financial fields
+    v_result_data := v_result_data || jsonb_build_object(
+        'total_value', v_contract.total_value,
+        'tax_total', v_contract.tax_total,
+        'grand_total', v_contract.grand_total,
+        'selected_tax_rate_ids', v_contract.selected_tax_rate_ids,
+        'tax_breakdown', COALESCE(v_contract.tax_breakdown, '[]'::JSONB)
+    );
+
+    -- Date fields
+    v_result_data := v_result_data || jsonb_build_object(
+        'sent_at', v_contract.sent_at,
+        'accepted_at', v_contract.accepted_at,
+        'completed_at', v_contract.completed_at
+    );
+
+    -- Audit fields
+    v_result_data := v_result_data || jsonb_build_object(
+        'version', v_contract.version,
+        'is_live', v_contract.is_live,
+        'created_by', v_contract.created_by,
+        'updated_by', v_contract.updated_by,
+        'created_at', v_contract.created_at,
+        'updated_at', v_contract.updated_at
+    );
+
+    -- Access & embedded data
+    v_result_data := v_result_data || jsonb_build_object(
+        'access_type', CASE WHEN v_is_accessor THEN 'accessor' ELSE 'owner' END,
+        'blocks', v_blocks,
+        'vendors', v_vendors,
+        'attachments', v_attachments,
+        'history', v_history,
+        'blocks_count', jsonb_array_length(v_blocks),
+        'vendors_count', jsonb_array_length(v_vendors),
+        'attachments_count', jsonb_array_length(v_attachments)
+    );
+
+    -- ═══════════════════════════════════════════
+    -- STEP 10: Return result
     -- ═══════════════════════════════════════════
     RETURN jsonb_build_object(
         'success', true,
-        'data', jsonb_build_object(
-            'id', v_contract.id,
-            'tenant_id', v_contract.tenant_id,
-            'contract_number', v_contract.contract_number,
-            'rfq_number', v_contract.rfq_number,
-            'record_type', v_contract.record_type,
-            'contract_type', v_effective_contract_type,
-            'path', v_contract.path,
-            'template_id', v_contract.template_id,
-            'name', v_contract.name,
-            'description', v_contract.description,
-            'status', v_contract.status,
-
-            -- Counterparty
-            'buyer_id', v_contract.buyer_id,
-            'buyer_name', v_contract.buyer_name,
-            'buyer_company', v_contract.buyer_company,
-            'buyer_email', v_contract.buyer_email,
-            'buyer_phone', v_contract.buyer_phone,
-            'buyer_contact_person_id', v_contract.buyer_contact_person_id,
-            'buyer_contact_person_name', v_contract.buyer_contact_person_name,
-
-            -- CNAK
-            'global_access_id', v_contract.global_access_id,
-
-            -- Acceptance & Duration
-            'acceptance_method', v_contract.acceptance_method,
-            'duration_value', v_contract.duration_value,
-            'duration_unit', v_contract.duration_unit,
-            'grace_period_value', v_contract.grace_period_value,
-            'grace_period_unit', v_contract.grace_period_unit,
-
-            -- Billing
-            'currency', v_contract.currency,
-            'billing_cycle_type', v_contract.billing_cycle_type,
-            'payment_mode', v_contract.payment_mode,
-            'emi_months', v_contract.emi_months,
-            'per_block_payment_type', v_contract.per_block_payment_type,
-
-            -- Financials
-            'total_value', v_contract.total_value,
-            'tax_total', v_contract.tax_total,
-            'grand_total', v_contract.grand_total,
-            'selected_tax_rate_ids', v_contract.selected_tax_rate_ids,
-            'tax_breakdown', COALESCE(v_contract.tax_breakdown, '[]'::JSONB),
-
-            -- Dates
-            'sent_at', v_contract.sent_at,
-            'accepted_at', v_contract.accepted_at,
-            'completed_at', v_contract.completed_at,
-
-            -- Version & Audit
-            'version', v_contract.version,
-            'is_live', v_contract.is_live,
-            'created_by', v_contract.created_by,
-            'updated_by', v_contract.updated_by,
-            'created_at', v_contract.created_at,
-            'updated_at', v_contract.updated_at,
-
-            -- Access metadata (helps UI know if this is an accessed contract)
-            'access_type', CASE WHEN v_is_accessor THEN 'accessor' ELSE 'owner' END,
-
-            -- Embedded relations
-            'blocks', v_blocks,
-            'vendors', v_vendors,
-            'attachments', v_attachments,
-            'history', v_history,
-
-            -- Computed counts
-            'blocks_count', jsonb_array_length(v_blocks),
-            'vendors_count', jsonb_array_length(v_vendors),
-            'attachments_count', jsonb_array_length(v_attachments)
-        ),
+        'data', v_result_data,
         'retrieved_at', NOW()
     );
 
