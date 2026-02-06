@@ -445,93 +445,106 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 DECLARE
-  v_reset_result jsonb;
   v_tenant_user_ids UUID[];
   v_orphan_user_ids UUID[];
+  v_cleanup_errors text[] := '{}';
+  v_err text;
 BEGIN
-  -- Step 1: Collect all user_ids belonging to this tenant
-  SELECT ARRAY_AGG(user_id) INTO v_tenant_user_ids
-  FROM t_user_tenants WHERE tenant_id = p_tenant_id AND user_id IS NOT NULL;
-
-  -- Step 2: Delete all data using the reset function
-  v_reset_result := admin_reset_all_data(p_tenant_id);
-
-  IF NOT (v_reset_result->>'success')::boolean THEN
-    RETURN v_reset_result;
-  END IF;
-
-  -- Step 3: Delete settings & config (not deleted by reset_all_data)
-  -- Wrapped in sub-blocks to skip if table doesn't exist
-  BEGIN DELETE FROM t_tax_rates WHERE tenant_id = p_tenant_id;
-  EXCEPTION WHEN OTHERS THEN NULL; END;
-
-  BEGIN DELETE FROM t_tax_info WHERE tenant_id = p_tenant_id;
-  EXCEPTION WHEN OTHERS THEN NULL; END;
-
-  BEGIN DELETE FROM t_tenant_profiles WHERE tenant_id = p_tenant_id;
-  EXCEPTION WHEN OTHERS THEN NULL; END;
-
-  BEGIN DELETE FROM t_tenant_integrations WHERE tenant_id = p_tenant_id;
-  EXCEPTION WHEN OTHERS THEN NULL; END;
-
-  BEGIN DELETE FROM t_tenant_onboarding WHERE tenant_id = p_tenant_id;
-  EXCEPTION WHEN OTHERS THEN NULL; END;
-
-  BEGIN DELETE FROM t_onboarding_step_status WHERE tenant_id = p_tenant_id;
-  EXCEPTION WHEN OTHERS THEN NULL; END;
-
-  BEGIN DELETE FROM t_bm_tenant_subscription WHERE tenant_id = p_tenant_id;
-  EXCEPTION WHEN OTHERS THEN NULL; END;
-
-  -- Step 4: Delete pending invitations
-  BEGIN DELETE FROM t_user_invitations WHERE tenant_id = p_tenant_id;
-  EXCEPTION WHEN OTHERS THEN NULL; END;
-
-  -- Step 5: DELETE user-tenant relationships (not just deactivate)
-  DELETE FROM t_user_tenants WHERE tenant_id = p_tenant_id;
-
-  -- Step 6: Find orphan users (users who have NO remaining tenant memberships)
-  IF v_tenant_user_ids IS NOT NULL AND array_length(v_tenant_user_ids, 1) > 0 THEN
-    SELECT ARRAY_AGG(uid) INTO v_orphan_user_ids
-    FROM (
-      SELECT unnest(v_tenant_user_ids) AS uid
-      EXCEPT
-      SELECT DISTINCT user_id FROM t_user_tenants WHERE user_id = ANY(v_tenant_user_ids)
-    ) orphans;
-  END IF;
-
-  -- Step 7: Clean up FK references that block auth.users deletion
-  -- t_audit_logs.user_id has NO CASCADE - must nullify
-  IF v_orphan_user_ids IS NOT NULL AND array_length(v_orphan_user_ids, 1) > 0 THEN
-    BEGIN UPDATE t_audit_logs SET user_id = NULL
-      WHERE user_id = ANY(v_orphan_user_ids);
-    EXCEPTION WHEN OTHERS THEN NULL; END;
-
-    BEGIN UPDATE t_contacts SET auth_user_id = NULL
-      WHERE auth_user_id = ANY(v_orphan_user_ids);
-    EXCEPTION WHEN OTHERS THEN NULL; END;
-
-    BEGIN DELETE FROM t_user_auth_methods WHERE user_id = ANY(v_orphan_user_ids);
-    EXCEPTION WHEN OTHERS THEN NULL; END;
-
-    BEGIN DELETE FROM t_user_profiles WHERE user_id = ANY(v_orphan_user_ids);
-    EXCEPTION WHEN OTHERS THEN NULL; END;
-  END IF;
-
-  -- Step 8: Mark tenant as closed
+  -- ============================================================
+  -- STEP 1 (CRITICAL): Mark tenant as closed FIRST
+  -- This ensures the status updates even if cleanup fails
+  -- ============================================================
   UPDATE t_tenants
   SET status = 'closed', updated_at = NOW()
   WHERE id = p_tenant_id;
 
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('success', false, 'error', 'Tenant not found: ' || p_tenant_id);
+  END IF;
+
+  -- ============================================================
+  -- STEP 2: Collect user_ids before deleting relationships
+  -- ============================================================
+  BEGIN
+    SELECT ARRAY_AGG(user_id) INTO v_tenant_user_ids
+    FROM t_user_tenants WHERE tenant_id = p_tenant_id AND user_id IS NOT NULL;
+  EXCEPTION WHEN OTHERS THEN
+    GET STACKED DIAGNOSTICS v_err = MESSAGE_TEXT;
+    v_cleanup_errors := array_append(v_cleanup_errors, 'collect_users: ' || v_err);
+  END;
+
+  -- ============================================================
+  -- STEP 3: Best-effort data cleanup (each step independent)
+  -- ============================================================
+
+  -- Delete contract-related data
+  BEGIN PERFORM admin_reset_all_data(p_tenant_id);
+  EXCEPTION WHEN OTHERS THEN
+    GET STACKED DIAGNOSTICS v_err = MESSAGE_TEXT;
+    v_cleanup_errors := array_append(v_cleanup_errors, 'reset_all_data: ' || v_err);
+  END;
+
+  -- Delete config/settings
+  BEGIN DELETE FROM t_tax_rates WHERE tenant_id = p_tenant_id;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN DELETE FROM t_tax_info WHERE tenant_id = p_tenant_id;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN DELETE FROM t_tenant_profiles WHERE tenant_id = p_tenant_id;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN DELETE FROM t_tenant_integrations WHERE tenant_id = p_tenant_id;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN DELETE FROM t_tenant_onboarding WHERE tenant_id = p_tenant_id;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN DELETE FROM t_onboarding_step_status WHERE tenant_id = p_tenant_id;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN DELETE FROM t_bm_tenant_subscription WHERE tenant_id = p_tenant_id;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
+  BEGIN DELETE FROM t_user_invitations WHERE tenant_id = p_tenant_id;
+  EXCEPTION WHEN OTHERS THEN NULL; END;
+
+  -- Delete user-tenant relationships
+  BEGIN DELETE FROM t_user_tenants WHERE tenant_id = p_tenant_id;
+  EXCEPTION WHEN OTHERS THEN
+    GET STACKED DIAGNOSTICS v_err = MESSAGE_TEXT;
+    v_cleanup_errors := array_append(v_cleanup_errors, 'delete_user_tenants: ' || v_err);
+  END;
+
+  -- ============================================================
+  -- STEP 4: Find orphan users and clean FK refs
+  -- ============================================================
+  IF v_tenant_user_ids IS NOT NULL AND array_length(v_tenant_user_ids, 1) > 0 THEN
+    BEGIN
+      SELECT ARRAY_AGG(uid) INTO v_orphan_user_ids
+      FROM (
+        SELECT unnest(v_tenant_user_ids) AS uid
+        EXCEPT
+        SELECT DISTINCT user_id FROM t_user_tenants WHERE user_id = ANY(v_tenant_user_ids)
+      ) orphans;
+    EXCEPTION WHEN OTHERS THEN NULL; END;
+  END IF;
+
+  IF v_orphan_user_ids IS NOT NULL AND array_length(v_orphan_user_ids, 1) > 0 THEN
+    BEGIN UPDATE t_audit_logs SET user_id = NULL WHERE user_id = ANY(v_orphan_user_ids);
+    EXCEPTION WHEN OTHERS THEN NULL; END;
+    BEGIN UPDATE t_contacts SET auth_user_id = NULL WHERE auth_user_id = ANY(v_orphan_user_ids);
+    EXCEPTION WHEN OTHERS THEN NULL; END;
+    BEGIN DELETE FROM t_user_auth_methods WHERE user_id = ANY(v_orphan_user_ids);
+    EXCEPTION WHEN OTHERS THEN NULL; END;
+    BEGIN DELETE FROM t_user_profiles WHERE user_id = ANY(v_orphan_user_ids);
+    EXCEPTION WHEN OTHERS THEN NULL; END;
+  END IF;
+
+  -- ============================================================
+  -- ALWAYS return success (status is already 'closed')
+  -- ============================================================
   RETURN jsonb_build_object(
     'success', true,
-    'deleted_counts', v_reset_result->'deleted_counts',
-    'total_deleted', (v_reset_result->>'total_deleted')::integer,
     'tenant_id', p_tenant_id,
     'tenant_status', 'closed',
     'scope', 'close_account',
     'orphan_user_ids', COALESCE(to_jsonb(v_orphan_user_ids), '[]'::jsonb),
-    'note', 'Auth users NOT auto-deleted. Orphan user_ids returned - delete these from Supabase Dashboard > Authentication.'
+    'cleanup_errors', to_jsonb(v_cleanup_errors),
+    'note', 'Auth users NOT auto-deleted. Orphan user_ids returned - delete from Supabase Dashboard > Authentication.'
   );
 
 EXCEPTION WHEN OTHERS THEN
