@@ -1,0 +1,136 @@
+═══════════════════════════════════════════════════════════════════════════════
+CNAK CLAIM FEATURE - API Layer (Step 2 of 4)
+═══════════════════════════════════════════════════════════════════════════════
+
+Branch: claude/init-submodules-acTX4
+Date: 2026-02-06
+
+PREREQUISITE:
+─────────────
+Step 1 (Backend - SQL/RPC) must be deployed first.
+See: MANUAL_COPY_FILES/cnak-claim-feature/COPY_INSTRUCTIONS.txt
+
+═══════════════════════════════════════════════════════════════════════════════
+STEP 1: COPY API FILES
+═══════════════════════════════════════════════════════════════════════════════
+
+PowerShell:
+───────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\cnak-claim-api\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Write-Host "API files copied!" -ForegroundColor Green
+
+Bash:
+───────────
+cp -r MANUAL_COPY_FILES/cnak-claim-api/contractnest-api/* contractnest-api/
+
+═══════════════════════════════════════════════════════════════════════════════
+STEP 2: COPY EDGE FUNCTION (Updated)
+═══════════════════════════════════════════════════════════════════════════════
+
+PowerShell:
+───────────
+Copy-Item "MANUAL_COPY_FILES\cnak-claim-api\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Write-Host "Edge function copied!" -ForegroundColor Green
+
+Bash:
+───────────
+cp -r MANUAL_COPY_FILES/cnak-claim-api/contractnest-edge/* contractnest-edge/
+
+═══════════════════════════════════════════════════════════════════════════════
+STEP 3: DEPLOY EDGE FUNCTION
+═══════════════════════════════════════════════════════════════════════════════
+
+cd contractnest-edge
+supabase functions deploy contracts
+
+═══════════════════════════════════════════════════════════════════════════════
+STEP 4: RESTART API SERVER
+═══════════════════════════════════════════════════════════════════════════════
+
+cd contractnest-api
+npm run dev
+
+═══════════════════════════════════════════════════════════════════════════════
+FILES MODIFIED
+═══════════════════════════════════════════════════════════════════════════════
+
+API FILES:
+──────────
+1. contractnest-api/src/routes/contractRoutes.ts
+   - Added: POST /api/contracts/claim route
+
+2. contractnest-api/src/controllers/contractController.ts
+   - Added: claimContract() method
+
+3. contractnest-api/src/services/contractService.ts
+   - Added: claimContract() method
+
+EDGE FUNCTION:
+──────────────
+4. contractnest-edge/supabase/functions/contracts/index.ts
+   - Added: isClaimRequest route detection
+   - Added: POST /contracts/claim routing
+   - Added: handleClaimContract() handler function
+
+═══════════════════════════════════════════════════════════════════════════════
+API ENDPOINT
+═══════════════════════════════════════════════════════════════════════════════
+
+POST /api/contracts/claim
+Headers:
+  - Authorization: Bearer <jwt> (required)
+  - x-tenant-id: <uuid> (required)
+Body: { "cnak": "CNAK-XXXXXX" }
+
+Response (success):
+{
+  "success": true,
+  "message": "Contract claimed successfully!",
+  "contract": { id, name, contract_number, ... },
+  "seller": { contact_id, name, is_new_contact },
+  "claimed_at": "2026-02-06T..."
+}
+
+Response (already claimed by same tenant):
+{
+  "success": true,
+  "already_claimed": true,
+  "message": "This contract is already in your ContractHub.",
+  "contract": { ... }
+}
+
+Response (errors):
+- 400: { success: false, error: "CNAK is required" }
+- 400: { success: false, error: "x-tenant-id header is required" }
+- 400: { success: false, error: "Invalid or expired CNAK" }
+- 400: { success: false, error: "Contract has not been accepted yet" }
+- 400: { success: false, error: "Cannot claim your own contract" }
+- 400: { success: false, error: "Contract already claimed by another workspace" }
+
+═══════════════════════════════════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+After deploying:
+
+[ ] Test POST /api/contracts/claim with valid accepted CNAK
+[ ] Test response includes contract details and seller info
+[ ] Test GET /api/contracts returns claimed contract (access_type = 'accessor')
+[ ] Test error: missing CNAK
+[ ] Test error: missing x-tenant-id header
+[ ] Test error: invalid CNAK
+[ ] Test error: contract not accepted
+[ ] Test error: cannot claim own contract
+[ ] Test: same-tenant re-claim returns already_claimed=true
+[ ] Verify existing contract flows still work (list, create, update, etc.)
+
+═══════════════════════════════════════════════════════════════════════════════
+NEXT STEPS
+═══════════════════════════════════════════════════════════════════════════════
+
+After testing API:
+- Step 3: UI - Left menu + Claim page
+- Step 4: UI - Welcome page (post-signup flow)
+
+═══════════════════════════════════════════════════════════════════════════════
