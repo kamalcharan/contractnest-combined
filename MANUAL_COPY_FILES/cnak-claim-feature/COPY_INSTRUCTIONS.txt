@@ -1,0 +1,140 @@
+═══════════════════════════════════════════════════════════════════════════════
+CNAK CLAIM FEATURE - Backend Implementation (Step 1 of 4)
+═══════════════════════════════════════════════════════════════════════════════
+
+Branch: claude/init-submodules-acTX4
+Date: 2026-02-06
+
+FEATURE OVERVIEW:
+───────────────
+This implements the backend for CNAK contract claim functionality:
+- Buyers can claim contracts shared with them using CNAK codes
+- ContractHub shows both owned contracts AND claimed contracts
+- Seller is auto-created as vendor contact in buyer's space
+
+═══════════════════════════════════════════════════════════════════════════════
+STEP 1: RUN SQL SCRIPTS IN SUPABASE
+═══════════════════════════════════════════════════════════════════════════════
+
+Open Supabase SQL Editor and run the contents of:
+  sql-scripts/001_cnak_claim_feature.sql
+
+This script contains:
+1. Table alterations (new columns for tracking)
+2. Modified get_contracts_list RPC (includes claimed contracts)
+3. New claim_contract_by_cnak RPC (handles claim logic)
+
+═══════════════════════════════════════════════════════════════════════════════
+STEP 2: COPY EDGE FUNCTION
+═══════════════════════════════════════════════════════════════════════════════
+
+PowerShell:
+───────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\cnak-claim-feature\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Write-Host "Edge function copied!" -ForegroundColor Green
+
+Bash:
+───────────
+cp -r MANUAL_COPY_FILES/cnak-claim-feature/contractnest-edge/* contractnest-edge/
+
+═══════════════════════════════════════════════════════════════════════════════
+STEP 3: DEPLOY EDGE FUNCTION
+═══════════════════════════════════════════════════════════════════════════════
+
+cd contractnest-edge
+supabase functions deploy contracts
+
+═══════════════════════════════════════════════════════════════════════════════
+CHANGES MADE
+═══════════════════════════════════════════════════════════════════════════════
+
+DATABASE CHANGES:
+─────────────────
+1. t_contract_access - Added columns:
+   - claimed_at (TIMESTAMPTZ) - When the contract was claimed
+   - claimed_by (UUID) - Who claimed it
+
+2. t_contacts - Added columns:
+   - source (VARCHAR) - How the contact was created (e.g., 'cnak_claim')
+   - source_tenant_id (UUID) - Link to originating tenant
+   - source_cnak (VARCHAR) - CNAK code used for claim
+
+RPC CHANGES:
+────────────
+1. get_contracts_list (MODIFIED)
+   - Now includes contracts from t_contract_access via UNION
+   - New fields in response: access_type ('owner' | 'accessor'), access_role
+   - Contract type flipped for accessed contracts (client → vendor)
+
+2. claim_contract_by_cnak (NEW)
+   - Validates CNAK and status
+   - Prevents self-claim and double-claim
+   - Creates seller as vendor contact
+   - Updates accessor_tenant_id
+
+EDGE FUNCTION CHANGES:
+──────────────────────
+1. contracts/index.ts
+   - Added isClaimRequest route detection
+   - Added POST /contracts/claim route
+   - Added handleClaimContract handler
+
+═══════════════════════════════════════════════════════════════════════════════
+API ENDPOINT
+═══════════════════════════════════════════════════════════════════════════════
+
+POST /api/contracts/claim
+Headers: x-tenant-id (required), Authorization (required)
+Body: { "cnak": "CNAK-XXXXXX" }
+
+Response (success):
+{
+  "success": true,
+  "message": "Contract claimed successfully!",
+  "contract": { id, name, contract_number, ... },
+  "seller": { contact_id, name, is_new_contact },
+  "claimed_at": "2026-02-06T..."
+}
+
+Response (already claimed by same tenant):
+{
+  "success": true,
+  "already_claimed": true,
+  "message": "This contract is already in your ContractHub.",
+  "contract": { ... }
+}
+
+Response (errors):
+- Invalid CNAK
+- Contract not accepted yet
+- Already claimed by another tenant
+- Cannot claim own contract
+
+═══════════════════════════════════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+After deploying:
+
+[ ] Test get_contracts_list shows owned contracts (existing behavior)
+[ ] Test claim_contract_by_cnak with valid accepted CNAK
+[ ] Test claim creates seller as vendor contact
+[ ] Test get_contracts_list shows claimed contract (access_type = 'accessor')
+[ ] Test contract_type flip (seller's client → buyer's vendor)
+[ ] Test error: invalid CNAK
+[ ] Test error: contract not accepted
+[ ] Test error: already claimed by another tenant
+[ ] Test error: cannot claim own contract
+[ ] Test: same-tenant re-claim returns already_claimed=true
+
+═══════════════════════════════════════════════════════════════════════════════
+NEXT STEPS
+═══════════════════════════════════════════════════════════════════════════════
+
+After testing backend:
+- Step 2: API layer (Node.js contractController/contractService)
+- Step 3: UI - Left menu + Claim page
+- Step 4: UI - Welcome page (post-signup flow)
+
+═══════════════════════════════════════════════════════════════════════════════
