@@ -1,0 +1,32 @@
+═══════════════════════════════════════════════════
+FIX: Contract Review Link URL Format
+═══════════════════════════════════════════════════
+
+ISSUE:
+- Email/WhatsApp sending wrong URL: /contracts/review?code=...
+- Should be: /contract-review?secret=...
+
+FILES TO COPY:
+─────────────────────────────────
+1. contractnest-edge/supabase/functions/contracts/index.ts
+   → Changed line 567: URL path and query param name
+
+2. contractnest-edge/supabase/functions/contracts/jtd-integration.ts
+   → Changed line 115: Regex for WhatsApp suffix extraction
+
+WHAT WAS FIXED:
+─────────────────────────────────
+index.ts (line 567):
+  BEFORE: /contracts/review?cnak=...&code=...
+  AFTER:  /contract-review?cnak=...&secret=...
+
+jtd-integration.ts (line 115):
+  BEFORE: replace(/^.*\/review\//, '')
+  AFTER:  replace(/^.*\?/, '')
+
+NOTE FOR WHATSAPP:
+─────────────────────────────────
+The MSG91 template button URL should be configured as:
+https://www.contractnest.com/contract-review?{{1}}
+
+The suffix passed will be: cnak=CNAK-XXXXXX&secret=abc123
