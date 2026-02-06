@@ -3,7 +3,17 @@
 
 import React, { useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Download, FileText, ArrowRight, CheckCircle, AlertCircle } from 'lucide-react';
+import {
+  Download,
+  FileText,
+  ArrowRight,
+  CheckCircle,
+  AlertCircle,
+  Sparkles,
+  Link2,
+  Shield,
+  Users
+} from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { vaniToast } from '@/components/common/toast';
@@ -158,274 +168,431 @@ const ClaimContractPage: React.FC = () => {
     }
   };
 
+  const handleTryAgain = () => {
+    setClaimResult(null);
+    setCnak('');
+  };
+
   // Loading state
   if (isSubmitting) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="flex items-center justify-center min-h-[70vh]">
         <VaNiLoader message="Claiming contract..." />
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
-      {/* Page Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
+    <div
+      className="min-h-[calc(100vh-120px)] p-6"
+      style={{ backgroundColor: colors.background }}
+    >
+      <div className="max-w-4xl mx-auto">
+
+        {/* Hero Section */}
+        <div
+          className="rounded-2xl p-8 mb-8 relative overflow-hidden"
+          style={{
+            background: `linear-gradient(135deg, ${colors.primary}15 0%, ${colors.primary}05 100%)`,
+            border: `1px solid ${colors.primary}20`
+          }}
+        >
+          {/* Decorative circles */}
           <div
-            className="p-2 rounded-lg"
-            style={{ backgroundColor: `${colors.primary}15` }}
-          >
-            <Download className="w-6 h-6" style={{ color: colors.primary }} />
-          </div>
-          <h1
-            className="text-2xl font-semibold"
-            style={{ color: colors.text }}
-          >
-            Claim Contract
-          </h1>
-        </div>
-        <p
-          className="text-sm ml-11"
-          style={{ color: colors.textSecondary }}
-        >
-          Enter a CNAK code to add a shared contract to your ContractHub
-        </p>
-      </div>
+            className="absolute -top-20 -right-20 w-64 h-64 rounded-full opacity-10"
+            style={{ backgroundColor: colors.primary }}
+          />
+          <div
+            className="absolute -bottom-10 -left-10 w-40 h-40 rounded-full opacity-10"
+            style={{ backgroundColor: colors.primary }}
+          />
 
-      {/* Claim Form Card */}
-      <div
-        className="rounded-xl border p-6 mb-6"
-        style={{
-          backgroundColor: colors.surface,
-          borderColor: colors.border
-        }}
-      >
-        <form onSubmit={handleSubmit}>
-          {/* CNAK Input */}
-          <div className="mb-6">
-            <label
-              htmlFor="cnak-input"
-              className="block text-sm font-medium mb-2"
-              style={{ color: colors.text }}
-            >
-              CNAK Code
-            </label>
-            <div className="relative">
-              <input
-                id="cnak-input"
-                type="text"
-                value={cnak}
-                onChange={handleCnakChange}
-                placeholder="CNAK-XXXXXX"
-                className="w-full px-4 py-3 rounded-lg border text-lg font-mono tracking-wider focus:outline-none focus:ring-2 transition-all"
-                style={{
-                  backgroundColor: colors.background,
-                  borderColor: isValidCnak(cnak) ? colors.success : colors.border,
-                  color: colors.text,
-                  // @ts-ignore
-                  '--tw-ring-color': colors.primary
-                }}
-                autoComplete="off"
-                autoFocus
-              />
-              {cnak && (
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  {isValidCnak(cnak) ? (
-                    <CheckCircle className="w-5 h-5" style={{ color: colors.success }} />
-                  ) : (
-                    <AlertCircle className="w-5 h-5" style={{ color: colors.warning }} />
-                  )}
-                </div>
-              )}
-            </div>
-            <p
-              className="text-xs mt-2"
-              style={{ color: colors.textSecondary }}
-            >
-              The CNAK code was shared with you by the contract owner (e.g., via email)
-            </p>
-          </div>
-
-          {/* Submit Button */}
-          <button
-            type="submit"
-            disabled={!isValidCnak(cnak) || isSubmitting}
-            className="w-full py-3 px-4 rounded-lg font-medium flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{
-              backgroundColor: isValidCnak(cnak) ? colors.primary : colors.border,
-              color: isValidCnak(cnak) ? '#fff' : colors.textSecondary
-            }}
-          >
-            <Download className="w-5 h-5" />
-            Claim Contract
-            <ArrowRight className="w-5 h-5" />
-          </button>
-        </form>
-      </div>
-
-      {/* Success Result Card */}
-      {claimResult?.success && (
-        <div
-          className="rounded-xl border p-6 animate-in fade-in slide-in-from-bottom-4"
-          style={{
-            backgroundColor: `${colors.success}10`,
-            borderColor: colors.success
-          }}
-        >
-          <div className="flex items-start gap-4">
+          <div className="relative z-10 flex items-start gap-6">
+            {/* Icon */}
             <div
-              className="p-2 rounded-full"
-              style={{ backgroundColor: `${colors.success}20` }}
+              className="p-4 rounded-2xl shrink-0"
+              style={{
+                backgroundColor: colors.primary,
+                boxShadow: `0 8px 32px ${colors.primary}40`
+              }}
             >
-              <CheckCircle className="w-6 h-6" style={{ color: colors.success }} />
+              <Download className="w-10 h-10 text-white" />
             </div>
+
+            {/* Text */}
             <div className="flex-1">
-              <h3
-                className="font-semibold mb-1"
+              <h1
+                className="text-3xl font-bold mb-2"
                 style={{ color: colors.text }}
               >
-                {claimResult.already_claimed
-                  ? 'Contract Already in Your Hub'
-                  : 'Contract Claimed Successfully!'
-                }
-              </h3>
-
-              {claimResult.contract && (
-                <div className="mt-3 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4" style={{ color: colors.textSecondary }} />
-                    <span style={{ color: colors.text }}>
-                      {claimResult.contract.name}
-                    </span>
-                  </div>
-                  <div
-                    className="text-sm"
-                    style={{ color: colors.textSecondary }}
-                  >
-                    Contract #: {claimResult.contract.contract_number}
-                  </div>
-                  {claimResult.seller && !claimResult.already_claimed && (
-                    <div
-                      className="text-sm"
-                      style={{ color: colors.textSecondary }}
-                    >
-                      Seller: {claimResult.seller.name}
-                      {claimResult.seller.is_new_contact && (
-                        <span
-                          className="ml-2 px-2 py-0.5 rounded text-xs"
-                          style={{
-                            backgroundColor: `${colors.primary}20`,
-                            color: colors.primary
-                          }}
-                        >
-                          New Contact
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="mt-4 flex gap-3">
-                <button
-                  onClick={handleViewContract}
-                  className="px-4 py-2 rounded-lg font-medium text-sm transition-all"
-                  style={{
-                    backgroundColor: colors.primary,
-                    color: '#fff'
-                  }}
-                >
-                  View Contract
-                </button>
-                <button
-                  onClick={handleViewContracts}
-                  className="px-4 py-2 rounded-lg font-medium text-sm transition-all"
-                  style={{
-                    backgroundColor: colors.background,
-                    color: colors.text,
-                    border: `1px solid ${colors.border}`
-                  }}
-                >
-                  View All Contracts
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Error Result Card */}
-      {claimResult && !claimResult.success && (
-        <div
-          className="rounded-xl border p-6 animate-in fade-in slide-in-from-bottom-4"
-          style={{
-            backgroundColor: `${colors.error}10`,
-            borderColor: colors.error
-          }}
-        >
-          <div className="flex items-start gap-4">
-            <div
-              className="p-2 rounded-full"
-              style={{ backgroundColor: `${colors.error}20` }}
-            >
-              <AlertCircle className="w-6 h-6" style={{ color: colors.error }} />
-            </div>
-            <div className="flex-1">
-              <h3
-                className="font-semibold mb-1"
-                style={{ color: colors.text }}
-              >
-                Unable to Claim Contract
-              </h3>
+                Claim Contract
+              </h1>
               <p
-                className="text-sm"
+                className="text-lg"
                 style={{ color: colors.textSecondary }}
               >
-                {claimResult.error || 'An unknown error occurred'}
+                Enter your CNAK code to add a shared contract to your ContractHub.
+                Once claimed, you'll have full access to view and manage this contract.
               </p>
-
-              <div className="mt-4">
-                <button
-                  onClick={() => {
-                    setClaimResult(null);
-                    setCnak('');
-                  }}
-                  className="px-4 py-2 rounded-lg font-medium text-sm transition-all"
-                  style={{
-                    backgroundColor: colors.background,
-                    color: colors.text,
-                    border: `1px solid ${colors.border}`
-                  }}
-                >
-                  Try Again
-                </button>
-              </div>
             </div>
           </div>
         </div>
-      )}
 
-      {/* Help Section */}
-      <div
-        className="mt-8 p-4 rounded-lg"
-        style={{ backgroundColor: `${colors.info}10` }}
-      >
-        <h4
-          className="font-medium mb-2 text-sm"
-          style={{ color: colors.text }}
-        >
-          What is a CNAK code?
-        </h4>
-        <p
-          className="text-sm"
-          style={{ color: colors.textSecondary }}
-        >
-          CNAK (ContractNest Access Key) is a unique code that allows you to access and claim
-          contracts shared with you. When someone shares a contract with you, they'll send
-          you a CNAK code (format: CNAK-XXXXXX). Enter it above to add the contract to your
-          ContractHub.
-        </p>
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+          {/* Main Form Card - Takes 3 columns */}
+          <div className="lg:col-span-3">
+            <div
+              className="rounded-xl border p-6 h-full"
+              style={{
+                backgroundColor: colors.surface,
+                borderColor: colors.border
+              }}
+            >
+              <form onSubmit={handleSubmit}>
+                {/* CNAK Input */}
+                <div className="mb-6">
+                  <label
+                    htmlFor="cnak-input"
+                    className="block text-sm font-semibold mb-3"
+                    style={{ color: colors.text }}
+                  >
+                    CNAK Code
+                  </label>
+                  <div className="relative">
+                    <div
+                      className="absolute left-4 top-1/2 -translate-y-1/2"
+                      style={{ color: colors.textSecondary }}
+                    >
+                      <Link2 className="w-5 h-5" />
+                    </div>
+                    <input
+                      id="cnak-input"
+                      type="text"
+                      value={cnak}
+                      onChange={handleCnakChange}
+                      placeholder="CNAK-XXXXXX"
+                      className="w-full pl-12 pr-12 py-4 rounded-xl border-2 text-xl font-mono tracking-widest focus:outline-none transition-all"
+                      style={{
+                        backgroundColor: colors.background,
+                        borderColor: cnak
+                          ? (isValidCnak(cnak) ? colors.success : colors.warning)
+                          : colors.border,
+                        color: colors.text,
+                      }}
+                      autoComplete="off"
+                      autoFocus
+                    />
+                    {cnak && (
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                        {isValidCnak(cnak) ? (
+                          <CheckCircle className="w-6 h-6" style={{ color: colors.success }} />
+                        ) : (
+                          <AlertCircle className="w-6 h-6" style={{ color: colors.warning }} />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <p
+                    className="text-sm mt-3"
+                    style={{ color: colors.textSecondary }}
+                  >
+                    The CNAK code was shared with you via email or message from the contract owner.
+                  </p>
+                </div>
+
+                {/* Submit Button */}
+                <button
+                  type="submit"
+                  disabled={!isValidCnak(cnak) || isSubmitting}
+                  className="w-full py-4 px-6 rounded-xl font-semibold text-lg flex items-center justify-center gap-3 transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  style={{
+                    backgroundColor: isValidCnak(cnak) ? colors.primary : colors.border,
+                    color: isValidCnak(cnak) ? '#ffffff' : colors.textSecondary,
+                    boxShadow: isValidCnak(cnak) ? `0 4px 14px ${colors.primary}40` : 'none'
+                  }}
+                >
+                  <Download className="w-5 h-5" />
+                  Claim Contract
+                  <ArrowRight className="w-5 h-5" />
+                </button>
+              </form>
+
+              {/* Success Result */}
+              {claimResult?.success && (
+                <div
+                  className="mt-6 rounded-xl border-2 p-6 animate-in fade-in slide-in-from-bottom-4"
+                  style={{
+                    backgroundColor: `${colors.success}08`,
+                    borderColor: colors.success
+                  }}
+                >
+                  <div className="flex items-start gap-4">
+                    <div
+                      className="p-3 rounded-full shrink-0"
+                      style={{ backgroundColor: `${colors.success}20` }}
+                    >
+                      <CheckCircle className="w-6 h-6" style={{ color: colors.success }} />
+                    </div>
+                    <div className="flex-1">
+                      <h3
+                        className="font-bold text-lg mb-2"
+                        style={{ color: colors.success }}
+                      >
+                        {claimResult.already_claimed
+                          ? 'Contract Already in Your Hub'
+                          : 'Contract Claimed Successfully!'
+                        }
+                      </h3>
+                      <p
+                        className="text-sm mb-3"
+                        style={{ color: colors.textSecondary }}
+                      >
+                        {claimResult.message || (claimResult.already_claimed
+                          ? 'This contract was previously claimed and is available in your ContractHub.'
+                          : 'The contract has been added to your ContractHub.'
+                        )}
+                      </p>
+
+                      {claimResult.contract && (
+                        <div
+                          className="p-4 rounded-lg mb-4"
+                          style={{ backgroundColor: colors.background }}
+                        >
+                          <div className="flex items-center gap-3 mb-2">
+                            <FileText className="w-5 h-5" style={{ color: colors.primary }} />
+                            <span
+                              className="font-semibold"
+                              style={{ color: colors.text }}
+                            >
+                              {claimResult.contract.name}
+                            </span>
+                          </div>
+                          <div
+                            className="text-sm grid grid-cols-2 gap-2"
+                            style={{ color: colors.textSecondary }}
+                          >
+                            <span>Contract #: {claimResult.contract.contract_number}</span>
+                            <span>Type: {claimResult.contract.contract_type}</span>
+                          </div>
+                          {claimResult.seller && !claimResult.already_claimed && (
+                            <div
+                              className="flex items-center gap-2 mt-2 text-sm"
+                              style={{ color: colors.textSecondary }}
+                            >
+                              <Users className="w-4 h-4" />
+                              <span>Seller: {claimResult.seller.name}</span>
+                              {claimResult.seller.is_new_contact && (
+                                <span
+                                  className="px-2 py-0.5 rounded text-xs font-medium"
+                                  style={{
+                                    backgroundColor: `${colors.primary}20`,
+                                    color: colors.primary
+                                  }}
+                                >
+                                  New Contact Added
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="flex gap-3">
+                        <button
+                          onClick={handleViewContract}
+                          className="flex-1 px-4 py-3 rounded-lg font-semibold text-sm transition-all hover:opacity-90"
+                          style={{
+                            backgroundColor: colors.primary,
+                            color: '#ffffff'
+                          }}
+                        >
+                          View Contract
+                        </button>
+                        <button
+                          onClick={handleViewContracts}
+                          className="flex-1 px-4 py-3 rounded-lg font-semibold text-sm transition-all hover:opacity-90"
+                          style={{
+                            backgroundColor: colors.background,
+                            color: colors.text,
+                            border: `1px solid ${colors.border}`
+                          }}
+                        >
+                          View All Contracts
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Error Result */}
+              {claimResult && !claimResult.success && (
+                <div
+                  className="mt-6 rounded-xl border-2 p-6 animate-in fade-in slide-in-from-bottom-4"
+                  style={{
+                    backgroundColor: `${colors.error}08`,
+                    borderColor: colors.error
+                  }}
+                >
+                  <div className="flex items-start gap-4">
+                    <div
+                      className="p-3 rounded-full shrink-0"
+                      style={{ backgroundColor: `${colors.error}20` }}
+                    >
+                      <AlertCircle className="w-6 h-6" style={{ color: colors.error }} />
+                    </div>
+                    <div className="flex-1">
+                      <h3
+                        className="font-bold text-lg mb-2"
+                        style={{ color: colors.error }}
+                      >
+                        Unable to Claim Contract
+                      </h3>
+                      <p
+                        className="text-sm mb-4"
+                        style={{ color: colors.textSecondary }}
+                      >
+                        {claimResult.error || 'An unknown error occurred. Please check the CNAK code and try again.'}
+                      </p>
+
+                      <button
+                        onClick={handleTryAgain}
+                        className="px-4 py-3 rounded-lg font-semibold text-sm transition-all hover:opacity-90"
+                        style={{
+                          backgroundColor: colors.background,
+                          color: colors.text,
+                          border: `1px solid ${colors.border}`
+                        }}
+                      >
+                        Try Again
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Info Sidebar - Takes 2 columns */}
+          <div className="lg:col-span-2 space-y-4">
+            {/* What is CNAK */}
+            <div
+              className="rounded-xl border p-5"
+              style={{
+                backgroundColor: colors.surface,
+                borderColor: colors.border
+              }}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div
+                  className="p-2 rounded-lg"
+                  style={{ backgroundColor: `${colors.info}15` }}
+                >
+                  <Sparkles className="w-5 h-5" style={{ color: colors.info }} />
+                </div>
+                <h4
+                  className="font-semibold"
+                  style={{ color: colors.text }}
+                >
+                  What is CNAK?
+                </h4>
+              </div>
+              <p
+                className="text-sm leading-relaxed"
+                style={{ color: colors.textSecondary }}
+              >
+                <strong>CNAK</strong> (ContractNest Access Key) is a unique code that allows
+                secure contract sharing between businesses. When someone shares a contract
+                with you, they'll send a CNAK code in format <code
+                  className="px-1.5 py-0.5 rounded text-xs"
+                  style={{ backgroundColor: colors.background }}
+                >CNAK-XXXXXX</code>.
+              </p>
+            </div>
+
+            {/* How it works */}
+            <div
+              className="rounded-xl border p-5"
+              style={{
+                backgroundColor: colors.surface,
+                borderColor: colors.border
+              }}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div
+                  className="p-2 rounded-lg"
+                  style={{ backgroundColor: `${colors.primary}15` }}
+                >
+                  <FileText className="w-5 h-5" style={{ color: colors.primary }} />
+                </div>
+                <h4
+                  className="font-semibold"
+                  style={{ color: colors.text }}
+                >
+                  How it Works
+                </h4>
+              </div>
+              <ol
+                className="text-sm space-y-2"
+                style={{ color: colors.textSecondary }}
+              >
+                <li className="flex gap-2">
+                  <span
+                    className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                    style={{ backgroundColor: `${colors.primary}20`, color: colors.primary }}
+                  >1</span>
+                  <span>Receive CNAK code via email</span>
+                </li>
+                <li className="flex gap-2">
+                  <span
+                    className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                    style={{ backgroundColor: `${colors.primary}20`, color: colors.primary }}
+                  >2</span>
+                  <span>Enter the code above</span>
+                </li>
+                <li className="flex gap-2">
+                  <span
+                    className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                    style={{ backgroundColor: `${colors.primary}20`, color: colors.primary }}
+                  >3</span>
+                  <span>Contract appears in your hub</span>
+                </li>
+              </ol>
+            </div>
+
+            {/* Security */}
+            <div
+              className="rounded-xl border p-5"
+              style={{
+                backgroundColor: colors.surface,
+                borderColor: colors.border
+              }}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <div
+                  className="p-2 rounded-lg"
+                  style={{ backgroundColor: `${colors.success}15` }}
+                >
+                  <Shield className="w-5 h-5" style={{ color: colors.success }} />
+                </div>
+                <h4
+                  className="font-semibold"
+                  style={{ color: colors.text }}
+                >
+                  Secure & Private
+                </h4>
+              </div>
+              <p
+                className="text-sm leading-relaxed"
+                style={{ color: colors.textSecondary }}
+              >
+                CNAK codes are encrypted and can only be used once per workspace.
+                Your contract data remains secure and private.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
