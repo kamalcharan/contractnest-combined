@@ -1,0 +1,23 @@
+INTEGRATION SAVE FIX - Razorpay 500 Error
+==========================================
+Branch: integration-save-fix
+Submodules Affected: contractnest-edge
+
+Root Cause:
+  encryptData() returns a base64 string (e.g. "KtXyZ...")
+  This string was passed directly to p_credentials in the save_tenant_integration RPC
+  The credentials column is JSONB, so PostgreSQL failed with:
+    "invalid input syntax for type json: Token 'Kt' is invalid"
+
+Fix:
+  Wrapped encrypted string in JSON object: { encrypted: "base64string" }
+  Updated decrypt path to extract .encrypted field (with legacy fallback)
+
+Files to Copy:
+--------------
+1. contractnest-edge/supabase/functions/integrations/index.ts
+   → Wrap encrypted credentials as JSON object for JSONB column
+   → Handle both new { encrypted: "..." } and legacy string format on decrypt
+
+Deployment Required:
+  supabase functions deploy integrations
