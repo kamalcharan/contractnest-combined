@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ContractNest — Ops Cockpit v3</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --brand: #0F172A;
+            --accent: #4F46E5;
+            --accent-light: #6366F1;
+            --bg: #F1F5F9;
+            --card: #FFFFFF;
+            --border: #E2E8F0;
+            --border-light: #F1F5F9;
+            --text-main: #1E293B;
+            --text-secondary: #475569;
+            --text-muted: #94A3B8;
+            --red: #EF4444; --red-bg: #FEF2F2; --red-border: #FECACA;
+            --green: #22C55E; --green-bg: #F0FDF4; --green-border: #BBF7D0;
+            --blue: #0EA5E9; --blue-bg: #F0F9FF; --blue-border: #BAE6FD;
+            --amber: #F59E0B; --amber-bg: #FFFBEB; --amber-border: #FDE68A;
+            --purple: #7C3AED; --purple-bg: #F5F3FF; --purple-border: #DDD6FE;
+            --teal: #14B8A6; --teal-bg: #F0FDFA; --teal-border: #99F6E4;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text-main); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+        /* ============ TOPBAR ============ */
+        .topbar { background: var(--brand); color: white; padding: 0 28px; height: 56px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+        .topbar-left { display: flex; align-items: center; gap: 20px; }
+        .topbar-logo { font-size: 15px; font-weight: 800; letter-spacing: -0.3px; }
+        .topbar-logo span { color: var(--accent-light); }
+        .topbar-breadcrumb { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+        .topbar-breadcrumb .sep { opacity: 0.4; }
+        .topbar-breadcrumb .current { color: white; font-weight: 600; }
+        .topbar-right { display: flex; align-items: center; gap: 16px; }
+        .topbar-date { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+        .topbar-avatar { width: 30px; height: 30px; border-radius: 8px; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+
+        /* ============ PERSPECTIVE BAR ============ */
+        .perspective-bar { background: white; border-bottom: 1px solid var(--border); padding: 10px 28px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+        .perspective-left { display: flex; align-items: center; gap: 16px; }
+        .perspective-right { display: flex; align-items: center; gap: 16px; }
+        .perspective-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--text-muted); font-weight: 700; }
+        .perspective-group { display: flex; align-items: center; gap: 10px; }
+        .perspective-switcher { display: flex; background: var(--bg); padding: 3px; border-radius: 10px; gap: 3px; }
+        .p-btn { padding: 7px 16px; border-radius: 8px; border: none; background: transparent; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+        .p-btn:hover { background: rgba(0,0,0,0.04); }
+        .p-btn.active { background: white; color: var(--text-main); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+        .p-btn .dot { width: 7px; height: 7px; border-radius: 50%; }
+        .p-btn.revenue .dot { background: var(--green); }
+        .p-btn.expense .dot { background: var(--blue); }
+        .divider { width: 1px; height: 24px; background: var(--border); }
+        .cta-group { display: flex; gap: 8px; }
+        .cta-btn { padding: 7px 14px; border-radius: 8px; border: none; font-size: 11px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: all 0.15s; }
+        .cta-primary { background: var(--accent); color: white; }
+        .cta-primary:hover { background: var(--accent-light); }
+        .cta-secondary { background: var(--bg); color: var(--text-secondary); border: 1px solid var(--border); }
+        .cta-secondary:hover { border-color: #CBD5E1; background: #E8ECF1; }
+        .period-selector { display: flex; align-items: center; gap: 4px; background: var(--bg); padding: 3px; border-radius: 8px; }
+        .period-btn { padding: 5px 10px; border: none; background: transparent; border-radius: 6px; font-size: 10px; font-weight: 600; color: var(--text-muted); cursor: pointer; }
+        .period-btn.active { background: white; color: var(--text-main); box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+        .data-toggle { display: flex; align-items: center; gap: 6px; }
+        .data-toggle-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); }
+        .toggle-switch { position: relative; display: inline-block; width: 32px; height: 18px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-track { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background: #CBD5E1; border-radius: 18px; transition: 0.25s; }
+        .toggle-track:before { position: absolute; content: ""; height: 12px; width: 12px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: 0.25s; }
+        .toggle-switch input:checked + .toggle-track { background: var(--accent); }
+        .toggle-switch input:checked + .toggle-track:before { transform: translateX(14px); }
+
+        /* ============ LAYOUT ============ */
+        .main-wrapper { display: flex; flex: 1; overflow: hidden; }
+        .content-area { flex: 1; overflow-y: auto; padding: 20px 28px; }
+
+        /* ============ STAT CARDS ============ */
+        .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
+        .stat-card { background: var(--card); padding: 16px 18px; border-radius: 12px; border: 1px solid var(--border); position: relative; overflow: hidden; transition: all 0.2s; cursor: pointer; }
+        .stat-card:hover { border-color: #CBD5E1; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        .stat-card .accent-bar { position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+        .stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); font-weight: 700; margin-bottom: 6px; }
+        .stat-value { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; line-height: 1; margin-bottom: 5px; }
+        .stat-change { font-size: 10px; font-weight: 600; display: flex; align-items: center; gap: 3px; }
+        .stat-change.up { color: var(--green); }
+        .stat-change.down { color: var(--red); }
+        .stat-change.neutral { color: var(--text-muted); }
+        .stat-sub { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+        /* ============ AWAITING ACCEPTANCE CARD ============ */
+        .acceptance-card { background: var(--card); border-radius: 12px; border: 1px solid var(--border); margin-bottom: 18px; overflow: hidden; }
+        .acceptance-header { padding: 12px 18px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .acceptance-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); font-weight: 700; display: flex; align-items: center; gap: 8px; }
+        .acceptance-count { font-size: 10px; background: var(--purple-bg); color: var(--purple); border: 1px solid var(--purple-border); padding: 2px 8px; border-radius: 10px; font-weight: 800; }
+        .acceptance-hub-link { font-size: 10px; font-weight: 700; color: var(--accent); cursor: pointer; text-decoration: none; }
+        .acceptance-hub-link:hover { text-decoration: underline; }
+        .acceptance-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0; }
+        .acceptance-item { padding: 14px 18px; border-right: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light); display: flex; align-items: center; gap: 12px; transition: background 0.15s; cursor: pointer; }
+        .acceptance-item:hover { background: #FAFBFC; }
+
+        .acc-avatar { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; flex-shrink: 0; color: white; }
+        .acc-content { flex: 1; min-width: 0; }
+        .acc-contract { font-size: 12px; font-weight: 700; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .acc-contact { font-size: 10px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
+        .acc-sent { font-size: 10px; color: var(--text-muted); }
+
+        .acc-status-group { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+        .acc-seen-badge { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 3px 8px; border-radius: 5px; white-space: nowrap; }
+        .acc-seen-badge.seen { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+        .acc-seen-badge.not-seen { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+        .acc-seen-badge.opened { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+
+        .acc-action-btn { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border); background: white; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s; flex-shrink: 0; }
+        .acc-action-btn:hover { background: var(--bg); border-color: #CBD5E1; }
+        .acc-action-btn svg { width: 14px; height: 14px; stroke: var(--text-secondary); }
+        .acc-action-btn.resend:hover { border-color: var(--accent); background: var(--accent); }
+        .acc-action-btn.resend:hover svg { stroke: white; }
+
+        /* ============ SECTIONS GRID ============ */
+        .sections-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .section-box { background: var(--card); border-radius: 12px; border: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; min-height: 320px; }
+        .section-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+        .section-header-top { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+        .section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); font-weight: 700; }
+        .section-count { font-size: 10px; background: var(--bg); padding: 2px 7px; border-radius: 5px; font-weight: 700; color: var(--text-secondary); }
+        .section-filters { display: flex; gap: 3px; width: 100%; }
+        .sf-btn { padding: 4px 8px; border: none; background: transparent; border-radius: 5px; font-size: 10px; font-weight: 600; color: var(--text-muted); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+        .sf-btn:hover { background: var(--bg); color: var(--text-secondary); }
+        .sf-btn.active { background: var(--bg); color: var(--text-main); font-weight: 700; }
+        .sf-divider { width: 1px; height: 16px; background: var(--border); align-self: center; margin: 0 2px; }
+        .section-body { flex: 1; overflow-y: auto; }
+
+        /* ============ TIMELINE ITEMS ============ */
+        .timeline-item { padding: 12px 16px; border-bottom: 1px solid var(--border-light); display: flex; align-items: flex-start; gap: 10px; cursor: pointer; transition: background 0.15s; }
+        .timeline-item:hover { background: #FAFBFC; }
+        .timeline-item:last-child { border-bottom: none; }
+        .tl-indicator { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+        .tl-indicator.overdue { background: var(--red); box-shadow: 0 0 6px rgba(239,68,68,0.3); }
+        .tl-indicator.due-soon { background: var(--amber); box-shadow: 0 0 6px rgba(245,158,11,0.3); }
+        .tl-indicator.on-track { background: var(--green); }
+        .tl-indicator.info { background: var(--blue); }
+        .tl-content { flex: 1; min-width: 0; }
+        .tl-title { font-size: 12px; font-weight: 600; margin-bottom: 2px; }
+        .tl-sub { font-size: 10px; color: var(--text-muted); }
+        .tl-tag { display: inline-block; font-size: 8px; font-weight: 700; padding: 1px 5px; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.3px; margin-top: 3px; }
+        .tl-tag.deliverable { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+        .tl-tag.invoice { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+        .tl-tag.sla { background: var(--purple-bg); color: var(--purple); border: 1px solid var(--purple-border); }
+        .tl-tag.renewal { background: var(--teal-bg); color: var(--teal); border: 1px solid var(--teal-border); }
+        .tl-meta { text-align: right; flex-shrink: 0; }
+        .tl-amount { font-size: 12px; font-weight: 700; }
+        .tl-date { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+        /* ============ ACTION QUEUE ============ */
+        .action-item { padding: 11px 16px; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; gap: 10px; cursor: pointer; transition: background 0.15s; }
+        .action-item:hover { background: #FAFBFC; }
+        .action-item:last-child { border-bottom: none; }
+        .action-item.draft-item { background: var(--amber-bg); border-bottom-color: var(--amber-border); }
+        .action-item.draft-item:hover { background: #FEF3C7; }
+        .action-icon { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+        .action-icon.invoice { background: var(--red-bg); border: 1px solid var(--red-border); }
+        .action-icon.contract { background: var(--amber-bg); border: 1px solid var(--amber-border); }
+        .action-icon.payment { background: var(--blue-bg); border: 1px solid var(--blue-border); }
+        .action-icon.sla { background: var(--purple-bg); border: 1px solid var(--purple-border); }
+        .action-icon.draft { background: var(--amber-bg); border: 1px solid var(--amber-border); }
+        .action-icon.evidence { background: var(--teal-bg); border: 1px solid var(--teal-border); }
+        .action-content { flex: 1; min-width: 0; }
+        .action-title { font-size: 11px; font-weight: 600; margin-bottom: 1px; }
+        .action-sub { font-size: 10px; color: var(--text-muted); }
+        .action-cta { font-size: 9px; font-weight: 700; padding: 4px 10px; border-radius: 6px; border: none; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+        .action-cta.urgent { background: var(--red); color: white; }
+        .action-cta.pending { background: var(--amber); color: white; }
+        .action-cta.review { background: var(--accent); color: white; }
+        .action-cta.draft-cta { background: var(--text-main); color: white; }
+
+        /* ============ VANI SIDEBAR ============ */
+        .sidebar-vani { width: 280px; background: white; border-left: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; }
+        .vani-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+        .vani-indicator { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .vani-indicator.standby { background: var(--text-muted); opacity: 0.4; }
+        .vani-name { font-size: 13px; font-weight: 700; }
+        .vani-status { font-size: 10px; color: var(--text-muted); font-weight: 500; }
+        .vani-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; text-align: center; }
+        .vani-empty-icon { width: 56px; height: 56px; border-radius: 14px; background: var(--bg); display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
+        .vani-empty-icon svg { width: 24px; height: 24px; stroke: var(--text-muted); opacity: 0.4; }
+        .vani-empty-title { font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 5px; }
+        .vani-empty-text { font-size: 10px; color: var(--text-muted); line-height: 1.5; max-width: 180px; }
+        .vani-future-list { margin-top: 16px; text-align: left; width: 100%; padding: 0 8px; }
+        .vani-future-item { font-size: 9px; color: var(--text-muted); padding: 4px 0; display: flex; align-items: center; gap: 6px; }
+        .vani-future-item .vf-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--border); flex-shrink: 0; }
+        .vani-empty-badge { margin-top: 14px; font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 3px 8px; border-radius: 5px; background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); }
+
+        /* ============ FOOTER ============ */
+        .footer-status { background: white; border-top: 1px solid var(--border); padding: 6px 28px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+        .footer-left { display: flex; align-items: center; gap: 14px; }
+        .footer-pill { display: flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 600; color: var(--text-muted); }
+        .footer-pill .dot { width: 5px; height: 5px; border-radius: 50%; }
+        .footer-sync { font-size: 10px; color: var(--text-muted); }
+
+        /* ============ EMPTY STATE ============ */
+        .cockpit-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 40px; text-align: center; }
+        .empty-graphic { width: 72px; height: 72px; border-radius: 18px; background: var(--bg); border: 2px dashed var(--border); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
+        .empty-graphic svg { width: 32px; height: 32px; stroke: var(--text-muted); opacity: 0.35; }
+        .cockpit-empty h3 { font-size: 15px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; }
+        .cockpit-empty p { font-size: 11px; color: var(--text-muted); line-height: 1.6; max-width: 320px; }
+        .empty-hints { margin-top: 20px; display: flex; gap: 8px; }
+        .empty-hint { padding: 7px 12px; border-radius: 8px; background: var(--bg); border: 1px solid var(--border); font-size: 10px; font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; gap: 5px; cursor: pointer; transition: all 0.15s; }
+        .empty-hint:hover { border-color: var(--accent); color: var(--accent); }
+        .empty-hint .hint-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+        /* ============ NO-DATA INLINE ============ */
+        .no-data-msg { padding: 40px 16px; text-align: center; color: var(--text-muted); font-size: 11px; }
+    </style>
+</head>
+<body>
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+        <div class="topbar-left">
+            <div class="topbar-logo">Contract<span>Nest</span></div>
+            <div class="topbar-breadcrumb">
+                <span>Ops</span><span class="sep">/</span><span class="current">Cockpit</span>
+            </div>
+        </div>
+        <div class="topbar-right">
+            <div class="topbar-date">Feb 7, 2026 — FY 2025-26</div>
+            <div class="topbar-avatar">CB</div>
+        </div>
+    </div>
+
+    <!-- PERSPECTIVE BAR -->
+    <div class="perspective-bar">
+        <div class="perspective-left">
+            <div class="perspective-group">
+                <span class="perspective-label">Perspective</span>
+                <div class="perspective-switcher">
+                    <button class="p-btn revenue active" onclick="switchPerspective('revenue', this)">
+                        <span class="dot"></span> Revenue · Clients
+                    </button>
+                    <button class="p-btn expense" onclick="switchPerspective('expense', this)">
+                        <span class="dot"></span> Expense · Vendors
+                    </button>
+                </div>
+            </div>
+            <div class="divider"></div>
+            <div class="cta-group">
+                <button class="cta-btn cta-primary" id="ctaPrimary">+ New Client Contract</button>
+                <button class="cta-btn cta-secondary" id="ctaSecondary">+ Add Client</button>
+            </div>
+        </div>
+        <div class="perspective-right">
+            <div class="perspective-group">
+                <span class="perspective-label">Period</span>
+                <div class="period-selector">
+                    <button class="period-btn" onclick="setPeriod(this)">MTD</button>
+                    <button class="period-btn active" onclick="setPeriod(this)">QTD</button>
+                    <button class="period-btn" onclick="setPeriod(this)">YTD</button>
+                    <button class="period-btn" onclick="setPeriod(this)">Custom</button>
+                </div>
+            </div>
+            <div class="divider"></div>
+            <div class="data-toggle">
+                <span class="data-toggle-label" id="toggleLabel">Demo</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="dataToggle" onchange="toggleData()" checked>
+                    <span class="toggle-track"></span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-wrapper">
+        <main class="content-area" id="mainContent"></main>
+
+        <!-- VANI SIDEBAR -->
+        <aside class="sidebar-vani">
+            <div class="vani-header">
+                <div class="vani-indicator standby"></div>
+                <div>
+                    <div class="vani-name">VaNi</div>
+                    <div class="vani-status">Orchestrator · Standby</div>
+                </div>
+            </div>
+            <div class="vani-body">
+                <div class="vani-empty-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 0 0-2.455 2.456Z"/>
+                    </svg>
+                </div>
+                <div class="vani-empty-title">Intelligence Awaiting</div>
+                <div class="vani-empty-text">VaNi will surface proactive insights here.</div>
+                <div class="vani-future-list">
+                    <div class="vani-future-item"><span class="vf-dot"></span>SLA breach alerts</div>
+                    <div class="vani-future-item"><span class="vf-dot"></span>Renewal reminders</div>
+                    <div class="vani-future-item"><span class="vf-dot"></span>Payment nudges</div>
+                    <div class="vani-future-item"><span class="vf-dot"></span>Compliance flags</div>
+                </div>
+                <div class="vani-empty-badge">Coming Soon</div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer-status">
+        <div class="footer-left">
+            <div class="footer-pill"><span class="dot" style="background:var(--green);"></span><span id="footerContracts">8 Active Contracts</span></div>
+            <div class="footer-pill"><span class="dot" style="background:var(--blue);"></span><span id="footerContacts">6 Clients</span></div>
+            <div class="footer-pill"><span class="dot" style="background:var(--amber);"></span><span id="footerActions">5 Pending Actions</span></div>
+        </div>
+        <div class="footer-sync">Last sync: just now</div>
+    </div>
+
+<script>
+let currentPerspective = 'revenue';
+let showDummyData = true;
+let activeTimelineWindow = 'week';
+let activeTimelineType = 'all';
+let activeActionFilter = 'all';
+
+/* ================================================================
+   SVG ICONS (inline to avoid external deps)
+   ================================================================ */
+const ICONS = {
+    eye: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>`,
+    resend: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"/></svg>`
+};
+
+/* ================================================================
+   DATA
+   ================================================================ */
+const cockpitData = {
+    revenue: {
+        stats: [
+            { label: 'LTV Portfolio', value: '\u20B972.4L', change: '+12.3%', dir: 'up', sub: 'across 8 client contracts' },
+            { label: 'Accounts Receivable', value: '\u20B91,16,743', change: '2 overdue', dir: 'down', sub: 'oldest: 14 days past due' },
+            { label: 'SLA Health', value: '88%', change: '-2.1%', dir: 'down', sub: '7/8 contracts within SLA' },
+            { label: 'Active Deliverables', value: '14', change: '3 due today', dir: 'neutral', sub: '6 scheduled this week' }
+        ],
+        acceptance: [
+            { id: 'CN-1039', name: 'Annual Security Audit', contact: 'Bright Solutions', initials: 'BS', color: '#7C3AED', sentDays: 5, status: 'not-seen' },
+            { id: 'CN-1041', name: 'Office Equipment Lease', contact: 'QuickStock Traders', initials: 'QT', color: '#0EA5E9', sentDays: 2, status: 'seen' },
+            { id: 'CN-1044', name: 'IT Support Retainer', contact: 'DataSync Corp', initials: 'DC', color: '#14B8A6', sentDays: 1, status: 'opened' }
+        ],
+        timeline: [
+            { title: 'Equipment Calibration \u2014 Q4 Service', sub: 'Acme Industries \xb7 CN-1042', indicator: 'overdue', amount: '\u20B965,268', date: 'Overdue 3d', type: 'deliverable', window: 'today' },
+            { title: 'Monthly Maintenance Visit', sub: 'Vikuna Technologies \xb7 CN-1038', indicator: 'due-soon', amount: '\u20B95,936', date: 'Due today', type: 'deliverable', window: 'today' },
+            { title: 'Invoice INV-00016 Payment Due', sub: 'Vikuna Technologies \xb7 CN-1038', indicator: 'overdue', amount: '\u20B95,936', date: 'Overdue 7d', type: 'invoice', window: 'today' },
+            { title: 'Software License Renewal', sub: 'DataSync Corp \xb7 CN-1045', indicator: 'on-track', amount: '\u20B924,000', date: 'Feb 12', type: 'deliverable', window: 'week' },
+            { title: 'SLA Review \u2014 Quarterly', sub: 'Acme Industries \xb7 CN-1042', indicator: 'due-soon', amount: '\u2014', date: 'Feb 13', type: 'sla', window: 'week' },
+            { title: 'Invoice INV-00017 Due', sub: 'SecureServe Pro \xb7 CN-1036', indicator: 'on-track', amount: '\u20B912,500', date: 'Feb 14', type: 'invoice', window: 'week' },
+            { title: 'Annual Compliance Audit', sub: 'SecureServe Pro \xb7 CN-1036', indicator: 'on-track', amount: '\u20B912,500', date: 'Feb 18', type: 'deliverable', window: 'month' },
+            { title: 'Staff Training \u2014 Batch 2', sub: 'Acme Industries \xb7 CN-1042', indicator: 'info', amount: '\u2014', date: 'Feb 22', type: 'deliverable', window: 'month' },
+            { title: 'Contract CN-1038 Renewal', sub: 'Vikuna Technologies', indicator: 'info', amount: '\u20B971,232', date: 'Mar 1', type: 'renewal', window: 'month' }
+        ],
+        actions: [
+            { icon: '\u270F\uFE0F', type: 'draft', title: 'CN-1050 \u2014 Annual Maintenance', sub: 'Acme Industries \xb7 60% complete \xb7 3 days ago', cta: 'Continue Draft \u2192', ctaType: 'draft-cta', priority: 'draft' },
+            { icon: '\u270F\uFE0F', type: 'draft', title: 'CN-1051 \u2014 Security Consulting', sub: 'Bright Solutions \xb7 20% complete \xb7 today', cta: 'Continue Draft \u2192', ctaType: 'draft-cta', priority: 'draft' },
+            { icon: '\u26A1', type: 'invoice', title: 'Invoice INV-00016 overdue', sub: 'Vikuna Tech \xb7 \u20B95,936 \xb7 7 days past due', cta: 'Send Reminder', ctaType: 'urgent', priority: 'urgent' },
+            { icon: '\uD83D\uDD12', type: 'sla', title: 'Evidence upload pending \u2014 CN-1042', sub: 'Acme Industries \xb7 Calibration report \xb7 2 days left', cta: 'Upload Now', ctaType: 'urgent', priority: 'urgent' },
+            { icon: '\uD83D\uDCB0', type: 'payment', title: 'Record payment \u2014 Acme Industries', sub: 'INV-00014 \xb7 \u20B932,500 \xb7 Bank transfer confirmed', cta: 'Record', ctaType: 'review', priority: 'review' }
+        ],
+        footer: { contracts: '8 Active Contracts', contacts: '6 Clients', actions: '5 Pending Actions' }
+    },
+    expense: {
+        stats: [
+            { label: 'Total Commitments', value: '\u20B945.2L', change: '+5.8%', dir: 'up', sub: 'across 4 vendor contracts' },
+            { label: 'Accounts Payable', value: '\u20B983,715', change: '1 due tomorrow', dir: 'neutral', sub: 'next: EMI installment' },
+            { label: 'Vendor Performance', value: '96.1%', change: '+0.4%', dir: 'up', sub: '4/4 vendors within SLA' },
+            { label: 'Open RFQs', value: '02', change: '1 closing soon', dir: 'neutral', sub: 'HVAC & Security Systems' }
+        ],
+        acceptance: [
+            { id: 'CN-2033', name: 'Facility Management', contact: 'CleanSpace Inc', initials: 'CI', color: '#F59E0B', sentDays: 4, status: 'not-seen' },
+            { id: 'CN-2034', name: 'Network Infra Upgrade', contact: 'TechForce Inc', initials: 'TF', color: '#7C3AED', sentDays: 1, status: 'opened' }
+        ],
+        timeline: [
+            { title: 'EMI Installment 3/12', sub: 'CloudVault Inc \xb7 CN-2018', indicator: 'due-soon', amount: '\u20B98,371', date: 'Due tomorrow', type: 'invoice', window: 'today' },
+            { title: 'Quarterly Security Audit', sub: 'SecureServe Pro \xb7 CN-2022', indicator: 'on-track', amount: '\u20B918,000', date: 'Feb 15', type: 'deliverable', window: 'week' },
+            { title: 'HVAC Preventive Maintenance', sub: 'CoolAir Systems \xb7 CN-2025', indicator: 'on-track', amount: '\u20B96,200', date: 'Feb 20', type: 'deliverable', window: 'month' },
+            { title: 'Office Supplies \u2014 Monthly', sub: 'QuickStock Traders \xb7 CN-2030', indicator: 'info', amount: '\u20B93,450', date: 'Mar 1', type: 'invoice', window: 'month' }
+        ],
+        actions: [
+            { icon: '\u270F\uFE0F', type: 'draft', title: 'CN-2035 \u2014 IT Support Contract', sub: 'TechForce Inc \xb7 40% complete \xb7 yesterday', cta: 'Continue Draft \u2192', ctaType: 'draft-cta', priority: 'draft' },
+            { icon: '\uD83D\uDCC4', type: 'invoice', title: 'New invoice from SecureServe', sub: 'INV-V-0088 \xb7 \u20B918,000 \xb7 Received today', cta: 'Review', ctaType: 'review', priority: 'review' },
+            { icon: '\uD83D\uDCCB', type: 'contract', title: 'RFQ-0045 closing in 2 days', sub: 'HVAC Annual Contract \xb7 3 vendor responses', cta: 'Compare Bids', ctaType: 'pending', priority: 'pending' },
+            { icon: '\uD83D\uDCB0', type: 'payment', title: 'Approve payment \u2014 CloudVault EMI', sub: '\u20B98,371 \xb7 Auto-debit scheduled tomorrow', cta: 'Approve', ctaType: 'review', priority: 'review' }
+        ],
+        footer: { contracts: '4 Active Contracts', contacts: '4 Vendors', actions: '4 Pending Actions' }
+    }
+};
+
+/* ================================================================
+   RENDER
+   ================================================================ */
+function render() {
+    const main = document.getElementById('mainContent');
+    updateCTAs();
+    if (!showDummyData) { renderEmptyState(main); return; }
+
+    const d = cockpitData[currentPerspective];
+    const accent = currentPerspective === 'revenue' ? 'var(--green)' : 'var(--blue)';
+    let html = '';
+
+    // --- STATS ---
+    html += `<div class="stats-row">`;
+    d.stats.forEach((s, i) => {
+        html += `<div class="stat-card">
+            <div class="accent-bar" style="background:${i === 0 ? accent : 'var(--border)'};"></div>
+            <div class="stat-label">${s.label}</div>
+            <div class="stat-value">${s.value}</div>
+            <div class="stat-change ${s.dir}">${s.dir === 'up' ? '\u2191' : s.dir === 'down' ? '\u2193' : '\xb7'} ${s.change}</div>
+            <div class="stat-sub">${s.sub}</div>
+        </div>`;
+    });
+    html += `</div>`;
+
+    // --- AWAITING ACCEPTANCE ---
+    if (d.acceptance.length > 0) {
+        html += `<div class="acceptance-card">
+            <div class="acceptance-header">
+                <div class="acceptance-title">
+                    Awaiting Acceptance
+                    <span class="acceptance-count">${String(d.acceptance.length).padStart(2, '0')}</span>
+                </div>
+                <a class="acceptance-hub-link" onclick="alert('Navigate to /contracts?status=pending_acceptance')">View all in Hub \u2192</a>
+            </div>
+            <div class="acceptance-body">`;
+        d.acceptance.forEach(a => {
+            const statusLabel = a.status === 'seen' ? 'Viewed' : a.status === 'opened' ? 'Opened' : 'Not Seen';
+            const statusClass = a.status === 'seen' ? 'seen' : a.status === 'opened' ? 'opened' : 'not-seen';
+            html += `<div class="acceptance-item">
+                <div class="acc-avatar" style="background:${a.color};">${a.initials}</div>
+                <div class="acc-content">
+                    <div class="acc-contract">${a.id} \u2014 ${a.name}</div>
+                    <div class="acc-contact">${a.contact} \xb7 <span class="acc-sent">Sent ${a.sentDays}d ago</span></div>
+                </div>
+                <div class="acc-status-group">
+                    <span class="acc-seen-badge ${statusClass}">${statusLabel}</span>
+                    <button class="acc-action-btn" title="View contract" onclick="alert('Open contract ${a.id}')">${ICONS.eye}</button>
+                    <button class="acc-action-btn resend" title="Resend notification" onclick="alert('Resend to ${a.contact}')">${ICONS.resend}</button>
+                </div>
+            </div>`;
+        });
+        html += `</div></div>`;
+    }
+
+    // --- SECTIONS: Service Events + Action Queue ---
+    const filteredTimeline = filterTimeline(d.timeline);
+    const filteredActions = filterActions(d.actions);
+
+    html += `<div class="sections-grid">`;
+
+    // SERVICE EVENTS
+    html += `<div class="section-box">
+        <div class="section-header">
+            <div class="section-header-top">
+                <span class="section-title">Service Events</span>
+                <span class="section-count">${filteredTimeline.length} events</span>
+            </div>
+            <div class="section-filters">
+                <button class="sf-btn ${activeTimelineWindow === 'today' ? 'active' : ''}" onclick="setTimelineWindow('today')">Today</button>
+                <button class="sf-btn ${activeTimelineWindow === 'week' ? 'active' : ''}" onclick="setTimelineWindow('week')">This Week</button>
+                <button class="sf-btn ${activeTimelineWindow === 'month' ? 'active' : ''}" onclick="setTimelineWindow('month')">This Month</button>
+                <div class="sf-divider"></div>
+                <button class="sf-btn ${activeTimelineType === 'all' ? 'active' : ''}" onclick="setTimelineType('all')">All</button>
+                <button class="sf-btn ${activeTimelineType === 'deliverable' ? 'active' : ''}" onclick="setTimelineType('deliverable')">Deliverables</button>
+                <button class="sf-btn ${activeTimelineType === 'invoice' ? 'active' : ''}" onclick="setTimelineType('invoice')">Invoices</button>
+                <button class="sf-btn ${activeTimelineType === 'sla' ? 'active' : ''}" onclick="setTimelineType('sla')">SLA</button>
+                <button class="sf-btn ${activeTimelineType === 'renewal' ? 'active' : ''}" onclick="setTimelineType('renewal')">Renewals</button>
+            </div>
+        </div>
+        <div class="section-body">`;
+    if (filteredTimeline.length === 0) {
+        html += `<div class="no-data-msg">No events matching this filter.</div>`;
+    }
+    filteredTimeline.forEach(t => {
+        html += `<div class="timeline-item">
+            <div class="tl-indicator ${t.indicator}"></div>
+            <div class="tl-content">
+                <div class="tl-title">${t.title}</div>
+                <div class="tl-sub">${t.sub}</div>
+                <span class="tl-tag ${t.type}">${t.type}</span>
+            </div>
+            <div class="tl-meta">
+                <div class="tl-amount">${t.amount}</div>
+                <div class="tl-date">${t.date}</div>
+            </div>
+        </div>`;
+    });
+    html += `</div></div>`;
+
+    // ACTION QUEUE
+    html += `<div class="section-box">
+        <div class="section-header">
+            <div class="section-header-top">
+                <span class="section-title">Action Queue</span>
+                <span class="section-count">${filteredActions.length} items</span>
+            </div>
+            <div class="section-filters">
+                <button class="sf-btn ${activeActionFilter === 'all' ? 'active' : ''}" onclick="setActionFilter('all')">All</button>
+                <button class="sf-btn ${activeActionFilter === 'draft' ? 'active' : ''}" onclick="setActionFilter('draft')">Drafts</button>
+                <button class="sf-btn ${activeActionFilter === 'urgent' ? 'active' : ''}" onclick="setActionFilter('urgent')">Urgent</button>
+                <button class="sf-btn ${activeActionFilter === 'review' ? 'active' : ''}" onclick="setActionFilter('review')">Review</button>
+            </div>
+        </div>
+        <div class="section-body">`;
+    if (filteredActions.length === 0) {
+        html += `<div class="no-data-msg">No actions matching this filter.</div>`;
+    }
+    filteredActions.forEach(a => {
+        const isDraft = a.priority === 'draft';
+        html += `<div class="action-item ${isDraft ? 'draft-item' : ''}">
+            <div class="action-icon ${a.type}">${a.icon}</div>
+            <div class="action-content">
+                <div class="action-title">${a.title}</div>
+                <div class="action-sub">${a.sub}</div>
+            </div>
+            <button class="action-cta ${a.ctaType}">${a.cta}</button>
+        </div>`;
+    });
+    html += `</div></div></div>`;
+
+    main.innerHTML = html;
+
+    document.getElementById('footerContracts').textContent = d.footer.contracts;
+    document.getElementById('footerContacts').textContent = d.footer.contacts;
+    document.getElementById('footerActions').textContent = d.footer.actions;
+}
+
+/* ================================================================
+   FILTERS
+   ================================================================ */
+const windowRank = { today: 1, week: 2, month: 3 };
+
+function filterTimeline(events) {
+    return events.filter(e => {
+        const wMatch = windowRank[e.window] <= windowRank[activeTimelineWindow];
+        const tMatch = activeTimelineType === 'all' || e.type === activeTimelineType;
+        return wMatch && tMatch;
+    });
+}
+
+function filterActions(actions) {
+    if (activeActionFilter === 'all') return actions;
+    return actions.filter(a => a.priority === activeActionFilter);
+}
+
+function setTimelineWindow(w) { activeTimelineWindow = w; render(); }
+function setTimelineType(t) { activeTimelineType = t; render(); }
+function setActionFilter(f) { activeActionFilter = f; render(); }
+
+/* ================================================================
+   CTAs
+   ================================================================ */
+function updateCTAs() {
+    document.getElementById('ctaPrimary').textContent = currentPerspective === 'revenue' ? '+ New Client Contract' : '+ New Vendor Contract';
+    document.getElementById('ctaSecondary').textContent = currentPerspective === 'revenue' ? '+ Add Client' : '+ Add Vendor';
+}
+
+/* ================================================================
+   EMPTY STATE
+   ================================================================ */
+function renderEmptyState(main) {
+    const label = currentPerspective === 'revenue' ? 'Revenue \xb7 Clients' : 'Expense \xb7 Vendors';
+    const color = currentPerspective === 'revenue' ? 'var(--green)' : 'var(--blue)';
+    const cType = currentPerspective === 'revenue' ? 'client' : 'vendor';
+    const statLabels = currentPerspective === 'revenue'
+        ? ['LTV Portfolio', 'Accounts Receivable', 'SLA Health', 'Active Deliverables']
+        : ['Total Commitments', 'Accounts Payable', 'Vendor Performance', 'Open RFQs'];
+
+    let html = `<div class="stats-row">`;
+    statLabels.forEach((l, i) => {
+        html += `<div class="stat-card" style="opacity:0.4;">
+            <div class="accent-bar" style="background:${i === 0 ? color : 'var(--border)'};"></div>
+            <div class="stat-label">${l}</div>
+            <div class="stat-value" style="color:var(--text-muted);">\u2014</div>
+            <div class="stat-change neutral">No data yet</div>
+        </div>`;
+    });
+    html += `</div>`;
+
+    html += `<div class="cockpit-empty">
+        <div class="empty-graphic">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0 .5 1.5m-.5-1.5h-9.5m0 0-.5 1.5M9 11.25v1.5M12 9v3.75m3-6v6"/>
+            </svg>
+        </div>
+        <h3>No ${label} Data Yet</h3>
+        <p>Your cockpit will come alive as you create contracts and manage ${cType} relationships.</p>
+        <div class="empty-hints">
+            <div class="empty-hint"><span class="hint-dot" style="background:var(--accent);"></span>Create a Contract</div>
+            <div class="empty-hint"><span class="hint-dot" style="background:${color};"></span>Add a ${cType === 'client' ? 'Client' : 'Vendor'}</div>
+        </div>
+    </div>`;
+
+    main.innerHTML = html;
+    document.getElementById('footerContracts').textContent = '0 Active Contracts';
+    document.getElementById('footerContacts').textContent = currentPerspective === 'revenue' ? '0 Clients' : '0 Vendors';
+    document.getElementById('footerActions').textContent = '0 Pending Actions';
+}
+
+/* ================================================================
+   INTERACTIONS
+   ================================================================ */
+function switchPerspective(perspective, btn) {
+    currentPerspective = perspective;
+    activeTimelineWindow = 'week';
+    activeTimelineType = 'all';
+    activeActionFilter = 'all';
+    document.querySelectorAll('.p-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    render();
+}
+
+function setPeriod(btn) {
+    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+
+function toggleData() {
+    showDummyData = document.getElementById('dataToggle').checked;
+    document.getElementById('toggleLabel').textContent = showDummyData ? 'Demo' : 'Empty';
+    render();
+}
+
+render();
+</script>
+</body>
+</html>
