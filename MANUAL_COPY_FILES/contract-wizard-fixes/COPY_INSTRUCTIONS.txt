@@ -1,0 +1,22 @@
+CONTRACT WIZARD - 5 UI FIXES
+=============================
+Branch: contract-wizard-fixes
+Submodules Affected: contractnest-ui
+
+Files to Copy:
+--------------
+
+1. contractnest-ui/src/components/contracts/ContractWizard/steps/BuyerSelectionStep.tsx
+   → WhatsApp number fallback to mobile/phone number
+
+2. contractnest-ui/src/components/catalog-studio/FlyByBlockCard.tsx
+   → RichTextEditor for description + search filter on tax dropdown
+
+3. contractnest-ui/src/components/contracts/ContractWizard/steps/EventsPreviewStep.tsx
+   → Uses shared EventCard component from TimelineTab
+
+4. contractnest-ui/src/components/contracts/TimelineTab.tsx
+   → Exported EventCard component + hideActions prop
+
+5. contractnest-ui/src/components/contracts/ContractWizard/steps/ReviewSendStep.tsx
+   → PDF strikethrough fix on block names + HTML description rendering via dangerouslySetInnerHTML
