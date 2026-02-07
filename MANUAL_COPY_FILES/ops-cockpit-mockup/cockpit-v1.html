@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ContractNest — Ops Cockpit v1</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --brand: #0F172A;
+            --brand-light: #1E293B;
+            --accent: #4F46E5;
+            --accent-light: #6366F1;
+            --bg: #F1F5F9;
+            --card: #FFFFFF;
+            --border: #E2E8F0;
+            --border-light: #F1F5F9;
+            --text-main: #1E293B;
+            --text-secondary: #475569;
+            --text-muted: #94A3B8;
+            --red: #EF4444;
+            --red-bg: #FEF2F2;
+            --red-border: #FECACA;
+            --green: #22C55E;
+            --green-bg: #F0FDF4;
+            --green-border: #BBF7D0;
+            --blue: #0EA5E9;
+            --blue-bg: #F0F9FF;
+            --blue-border: #BAE6FD;
+            --amber: #F59E0B;
+            --amber-bg: #FFFBEB;
+            --amber-border: #FDE68A;
+            --purple: #7C3AED;
+            --purple-bg: #F5F3FF;
+            --purple-border: #DDD6FE;
+
+            /* Perspective theming */
+            --perspective-color: var(--green);
+            --perspective-bg: var(--green-bg);
+            --perspective-border: var(--green-border);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text-main); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+        /* ============ TOP BAR ============ */
+        .topbar {
+            background: var(--brand);
+            color: white;
+            padding: 0 28px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .topbar-left { display: flex; align-items: center; gap: 20px; }
+        .topbar-logo { font-size: 15px; font-weight: 800; letter-spacing: -0.3px; }
+        .topbar-logo span { color: var(--accent-light); }
+        .topbar-breadcrumb { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+        .topbar-breadcrumb .sep { opacity: 0.4; }
+        .topbar-breadcrumb .current { color: white; font-weight: 600; }
+
+        .topbar-right { display: flex; align-items: center; gap: 16px; }
+        .topbar-date { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+        .topbar-avatar { width: 30px; height: 30px; border-radius: 8px; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+
+        /* ============ PERSPECTIVE BAR ============ */
+        .perspective-bar {
+            background: white;
+            border-bottom: 1px solid var(--border);
+            padding: 12px 28px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+        .perspective-group { display: flex; align-items: center; gap: 12px; }
+        .perspective-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.2px; color: var(--text-muted); font-weight: 700; }
+
+        .perspective-switcher { display: flex; background: var(--bg); padding: 3px; border-radius: 10px; gap: 3px; }
+        .p-btn {
+            padding: 8px 20px; border-radius: 8px; border: none; background: transparent;
+            font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+            color: var(--text-secondary); display: flex; align-items: center; gap: 7px;
+        }
+        .p-btn:hover { background: rgba(0,0,0,0.04); }
+        .p-btn.active { background: white; color: var(--text-main); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+        .p-btn .dot { width: 7px; height: 7px; border-radius: 50%; }
+        .p-btn.revenue .dot { background: var(--green); }
+        .p-btn.expense .dot { background: var(--blue); }
+
+        .period-selector {
+            display: flex; align-items: center; gap: 6px;
+            background: var(--bg); padding: 4px; border-radius: 8px;
+        }
+        .period-btn {
+            padding: 6px 12px; border: none; background: transparent; border-radius: 6px;
+            font-size: 11px; font-weight: 600; color: var(--text-muted); cursor: pointer;
+        }
+        .period-btn.active { background: white; color: var(--text-main); box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+
+        /* ============ LAYOUT ============ */
+        .main-wrapper { display: flex; flex: 1; overflow: hidden; }
+        .content-area { flex: 1; overflow-y: auto; padding: 24px 28px; }
+
+        /* ============ STAT CARDS ============ */
+        .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+        .stat-card {
+            background: var(--card); padding: 18px 20px; border-radius: 14px;
+            border: 1px solid var(--border); position: relative; overflow: hidden;
+            transition: all 0.2s;
+        }
+        .stat-card:hover { border-color: #CBD5E1; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+        .stat-card .accent-bar { position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+        .stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); font-weight: 700; margin-bottom: 8px; }
+        .stat-value { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; line-height: 1; margin-bottom: 6px; }
+        .stat-change { font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+        .stat-change.up { color: var(--green); }
+        .stat-change.down { color: var(--red); }
+        .stat-change.neutral { color: var(--text-muted); }
+        .stat-sub { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+        /* ============ GRID SECTIONS ============ */
+        .sections-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+        .section-box {
+            background: var(--card); border-radius: 14px; border: 1px solid var(--border);
+            display: flex; flex-direction: column; overflow: hidden; min-height: 320px;
+        }
+        .section-header {
+            padding: 14px 18px; border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); font-weight: 700; }
+        .section-count { font-size: 10px; background: var(--bg); padding: 3px 8px; border-radius: 6px; font-weight: 700; color: var(--text-secondary); }
+        .section-body { flex: 1; overflow-y: auto; }
+
+        /* ============ TIMELINE ITEMS ============ */
+        .timeline-item {
+            padding: 14px 18px; border-bottom: 1px solid var(--border-light);
+            display: flex; align-items: flex-start; gap: 12px; cursor: pointer;
+            transition: background 0.15s;
+        }
+        .timeline-item:hover { background: #FAFBFC; }
+        .timeline-item:last-child { border-bottom: none; }
+
+        .tl-indicator { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+        .tl-indicator.overdue { background: var(--red); box-shadow: 0 0 6px rgba(239,68,68,0.3); }
+        .tl-indicator.due-soon { background: var(--amber); box-shadow: 0 0 6px rgba(245,158,11,0.3); }
+        .tl-indicator.on-track { background: var(--green); }
+        .tl-indicator.info { background: var(--blue); }
+
+        .tl-content { flex: 1; min-width: 0; }
+        .tl-title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+        .tl-sub { font-size: 11px; color: var(--text-muted); }
+        .tl-meta { text-align: right; flex-shrink: 0; }
+        .tl-amount { font-size: 13px; font-weight: 700; }
+        .tl-date { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+        /* ============ ACTION QUEUE ITEMS ============ */
+        .action-item {
+            padding: 14px 18px; border-bottom: 1px solid var(--border-light);
+            display: flex; align-items: center; gap: 12px; cursor: pointer;
+            transition: background 0.15s;
+        }
+        .action-item:hover { background: #FAFBFC; }
+        .action-item:last-child { border-bottom: none; }
+
+        .action-icon {
+            width: 32px; height: 32px; border-radius: 8px; display: flex;
+            align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;
+        }
+        .action-icon.invoice { background: var(--red-bg); border: 1px solid var(--red-border); }
+        .action-icon.contract { background: var(--amber-bg); border: 1px solid var(--amber-border); }
+        .action-icon.payment { background: var(--blue-bg); border: 1px solid var(--blue-border); }
+        .action-icon.sla { background: var(--purple-bg); border: 1px solid var(--purple-border); }
+
+        .action-content { flex: 1; min-width: 0; }
+        .action-title { font-size: 12px; font-weight: 600; margin-bottom: 1px; }
+        .action-sub { font-size: 11px; color: var(--text-muted); }
+        .action-badge {
+            font-size: 9px; font-weight: 700; padding: 3px 8px; border-radius: 5px;
+            text-transform: uppercase; letter-spacing: 0.5px; flex-shrink: 0;
+        }
+        .action-badge.urgent { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+        .action-badge.pending { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+        .action-badge.review { background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-border); }
+
+        /* ============ PIPELINE BAR ============ */
+        .pipeline-bar {
+            background: var(--card); border-radius: 14px; border: 1px solid var(--border);
+            padding: 16px 20px; margin-bottom: 20px;
+        }
+        .pipeline-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+        .pipeline-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); font-weight: 700; }
+        .pipeline-stages { display: flex; gap: 4px; align-items: stretch; }
+        .pipeline-stage {
+            flex: 1; text-align: center; padding: 10px 6px; border-radius: 8px;
+            background: var(--bg); cursor: pointer; transition: all 0.2s; position: relative;
+        }
+        .pipeline-stage:hover { background: #E8ECF1; }
+        .pipeline-stage.active { background: var(--accent); color: white; }
+        .pipeline-stage .ps-count { font-size: 18px; font-weight: 800; display: block; line-height: 1; }
+        .pipeline-stage .ps-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; opacity: 0.7; margin-top: 4px; display: block; }
+        .pipeline-connector { width: 12px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 10px; }
+
+        /* ============ VANI SIDEBAR ============ */
+        .sidebar-vani {
+            width: 300px; background: white; border-left: 1px solid var(--border);
+            display: flex; flex-direction: column; flex-shrink: 0;
+        }
+        .vani-header {
+            padding: 16px 20px; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; gap: 10px;
+        }
+        .vani-indicator {
+            width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+        }
+        .vani-indicator.standby { background: var(--text-muted); opacity: 0.4; }
+        .vani-indicator.active { background: var(--green); box-shadow: 0 0 8px var(--green); }
+        .vani-name { font-size: 13px; font-weight: 700; }
+        .vani-status { font-size: 10px; color: var(--text-muted); font-weight: 500; }
+
+        .vani-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 24px; text-align: center; }
+        .vani-empty-icon { width: 64px; height: 64px; border-radius: 16px; background: var(--bg); display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
+        .vani-empty-icon svg { width: 28px; height: 28px; stroke: var(--text-muted); opacity: 0.4; }
+        .vani-empty-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
+        .vani-empty-text { font-size: 11px; color: var(--text-muted); line-height: 1.5; max-width: 200px; }
+        .vani-empty-badge {
+            margin-top: 16px; font-size: 9px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 1px; padding: 4px 10px; border-radius: 6px;
+            background: var(--bg); color: var(--text-muted); border: 1px solid var(--border);
+        }
+
+        /* ============ FOOTER STATUS ============ */
+        .footer-status {
+            background: white; border-top: 1px solid var(--border);
+            padding: 8px 28px; display: flex; align-items: center; justify-content: space-between;
+            flex-shrink: 0;
+        }
+        .footer-left { display: flex; align-items: center; gap: 16px; }
+        .footer-pill {
+            display: flex; align-items: center; gap: 5px;
+            font-size: 10px; font-weight: 600; color: var(--text-muted);
+        }
+        .footer-pill .dot { width: 5px; height: 5px; border-radius: 50%; }
+        .footer-sync { font-size: 10px; color: var(--text-muted); }
+
+    </style>
+</head>
+<body>
+
+    <!-- TOP BAR -->
+    <div class="topbar">
+        <div class="topbar-left">
+            <div class="topbar-logo">Contract<span>Nest</span></div>
+            <div class="topbar-breadcrumb">
+                <span>Ops</span>
+                <span class="sep">/</span>
+                <span class="current">Cockpit</span>
+            </div>
+        </div>
+        <div class="topbar-right">
+            <div class="topbar-date">Feb 7, 2026 — FY 2025-26</div>
+            <div class="topbar-avatar">CB</div>
+        </div>
+    </div>
+
+    <!-- PERSPECTIVE BAR -->
+    <div class="perspective-bar">
+        <div class="perspective-group">
+            <span class="perspective-label">Perspective</span>
+            <div class="perspective-switcher" id="perspectiveSwitcher">
+                <button class="p-btn revenue active" onclick="switchPerspective('revenue', this)">
+                    <span class="dot"></span> Revenue · Clients
+                </button>
+                <button class="p-btn expense" onclick="switchPerspective('expense', this)">
+                    <span class="dot"></span> Expense · Vendors
+                </button>
+            </div>
+        </div>
+        <div class="perspective-group">
+            <span class="perspective-label">Period</span>
+            <div class="period-selector">
+                <button class="period-btn" onclick="setPeriod(this)">MTD</button>
+                <button class="period-btn active" onclick="setPeriod(this)">QTD</button>
+                <button class="period-btn" onclick="setPeriod(this)">YTD</button>
+                <button class="period-btn" onclick="setPeriod(this)">Custom</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-wrapper">
+        <main class="content-area" id="mainContent"></main>
+
+        <!-- VANI SIDEBAR — EMPTY STATE -->
+        <aside class="sidebar-vani">
+            <div class="vani-header">
+                <div class="vani-indicator standby"></div>
+                <div>
+                    <div class="vani-name">VaNi</div>
+                    <div class="vani-status">Orchestrator · Standby</div>
+                </div>
+            </div>
+            <div class="vani-body">
+                <div class="vani-empty-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 0 0-2.455 2.456Z"/>
+                    </svg>
+                </div>
+                <div class="vani-empty-title">Intelligence Awaiting</div>
+                <div class="vani-empty-text">VaNi will surface operational insights, alerts, and recommended actions here.</div>
+                <div class="vani-empty-badge">Coming Soon</div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- FOOTER STATUS BAR -->
+    <div class="footer-status">
+        <div class="footer-left">
+            <div class="footer-pill">
+                <span class="dot" style="background: var(--green);"></span>
+                <span id="footerContracts">12 Active Contracts</span>
+            </div>
+            <div class="footer-pill">
+                <span class="dot" style="background: var(--blue);"></span>
+                <span id="footerContacts">8 Contacts</span>
+            </div>
+            <div class="footer-pill">
+                <span class="dot" style="background: var(--amber);"></span>
+                <span id="footerActions">4 Pending Actions</span>
+            </div>
+        </div>
+        <div class="footer-sync">Last sync: just now</div>
+    </div>
+
+    <script>
+        let currentPerspective = 'revenue';
+
+        /* -------- DATA -------- */
+        const cockpitData = {
+            revenue: {
+                stats: [
+                    { label: 'LTV Portfolio', value: '₹72.4L', change: '+12.3%', dir: 'up', sub: 'across 8 client contracts' },
+                    { label: 'Accounts Receivable', value: '₹1,16,743', change: '2 overdue', dir: 'down', sub: 'oldest: 14 days past due' },
+                    { label: 'SLA Health', value: '88%', change: '-2.1%', dir: 'down', sub: '7/8 contracts within SLA' },
+                    { label: 'Active Deliverables', value: '14', change: '3 due today', dir: 'neutral', sub: '6 scheduled this week' }
+                ],
+                pipeline: [
+                    { label: 'Draft', count: 2 },
+                    { label: 'In Review', count: 1 },
+                    { label: 'Pending', count: 3 },
+                    { label: 'Active', count: 8 },
+                    { label: 'Completed', count: 12 },
+                    { label: 'Expired', count: 1 }
+                ],
+                timeline: [
+                    { title: 'Equipment Calibration — Q4 Service', sub: 'Acme Industries · CN-1042', indicator: 'overdue', amount: '₹65,268', date: 'Overdue 3d' },
+                    { title: 'Monthly Maintenance Visit', sub: 'Vikuna Technologies · CN-1038', indicator: 'due-soon', amount: '₹5,936', date: 'Due today' },
+                    { title: 'Software License Renewal', sub: 'DataSync Corp · CN-1045', indicator: 'on-track', amount: '₹24,000', date: 'Feb 12' },
+                    { title: 'Annual Compliance Audit', sub: 'SecureServe Pro · CN-1036', indicator: 'on-track', amount: '₹12,500', date: 'Feb 18' },
+                    { title: 'Staff Training — Batch 2', sub: 'Acme Industries · CN-1042', indicator: 'info', amount: '—', date: 'Feb 22' }
+                ],
+                actions: [
+                    { icon: '⚡', type: 'invoice', title: 'Invoice INV-00016 overdue', sub: 'Vikuna Tech · ₹5,936 · 7 days past due', badge: 'Urgent', badgeType: 'urgent' },
+                    { icon: '📋', type: 'contract', title: 'Contract CN-1039 awaiting acceptance', sub: 'Bright Solutions · Sent 5 days ago', badge: 'Pending', badgeType: 'pending' },
+                    { icon: '💰', type: 'payment', title: 'Record payment — Acme Industries', sub: 'INV-00014 · ₹32,500 · Bank confirmed', badge: 'Review', badgeType: 'review' },
+                    { icon: '🔒', type: 'sla', title: 'SLA breach approaching — CN-1042', sub: 'Evidence upload pending · 2 days left', badge: 'Urgent', badgeType: 'urgent' }
+                ],
+                footer: { contracts: '8 Active Contracts', contacts: '6 Clients', actions: '4 Pending Actions' }
+            },
+            expense: {
+                stats: [
+                    { label: 'Total Commitments', value: '₹45.2L', change: '+5.8%', dir: 'up', sub: 'across 4 vendor contracts' },
+                    { label: 'Accounts Payable', value: '₹83,715', change: '1 due tomorrow', dir: 'neutral', sub: 'next: EMI installment' },
+                    { label: 'Vendor Performance', value: '96.1%', change: '+0.4%', dir: 'up', sub: '4/4 vendors within SLA' },
+                    { label: 'Open RFQs', value: '02', change: '1 closing soon', dir: 'neutral', sub: 'HVAC & Security Systems' }
+                ],
+                pipeline: [
+                    { label: 'Draft', count: 1 },
+                    { label: 'In Review', count: 2 },
+                    { label: 'Pending', count: 1 },
+                    { label: 'Active', count: 4 },
+                    { label: 'Completed', count: 7 },
+                    { label: 'Expired', count: 0 }
+                ],
+                timeline: [
+                    { title: 'EMI Installment 3/12', sub: 'CloudVault Inc · CN-2018', indicator: 'due-soon', amount: '₹8,371', date: 'Due tomorrow' },
+                    { title: 'Quarterly Security Audit', sub: 'SecureServe Pro · CN-2022', indicator: 'on-track', amount: '₹18,000', date: 'Feb 15' },
+                    { title: 'HVAC Preventive Maintenance', sub: 'CoolAir Systems · CN-2025', indicator: 'on-track', amount: '₹6,200', date: 'Feb 20' },
+                    { title: 'Office Supplies — Monthly', sub: 'QuickStock Traders · CN-2030', indicator: 'info', amount: '₹3,450', date: 'Mar 1' }
+                ],
+                actions: [
+                    { icon: '📄', type: 'invoice', title: 'New invoice from SecureServe', sub: 'INV-V-0088 · ₹18,000 · Received today', badge: 'Review', badgeType: 'review' },
+                    { icon: '📋', type: 'contract', title: 'RFQ-0045 closing in 2 days', sub: 'HVAC Annual Contract · 3 vendor responses', badge: 'Pending', badgeType: 'pending' },
+                    { icon: '🔒', type: 'sla', title: 'Evidence missing — CoolAir Systems', sub: 'Maintenance report not uploaded · CN-2025', badge: 'Pending', badgeType: 'pending' },
+                    { icon: '💰', type: 'payment', title: 'Approve payment — CloudVault EMI', sub: '₹8,371 · Auto-debit scheduled tomorrow', badge: 'Review', badgeType: 'review' }
+                ],
+                footer: { contracts: '4 Active Contracts', contacts: '4 Vendors', actions: '4 Pending Actions' }
+            }
+        };
+
+        /* -------- RENDER -------- */
+        function render() {
+            const d = cockpitData[currentPerspective];
+            const main = document.getElementById('mainContent');
+            const accentColor = currentPerspective === 'revenue' ? 'var(--green)' : 'var(--blue)';
+
+            // --- Stats ---
+            let html = `<div class="stats-row">`;
+            d.stats.forEach((s, i) => {
+                html += `
+                <div class="stat-card">
+                    <div class="accent-bar" style="background: ${i === 0 ? accentColor : 'var(--border)'};"></div>
+                    <div class="stat-label">${s.label}</div>
+                    <div class="stat-value">${s.value}</div>
+                    <div class="stat-change ${s.dir}">${s.dir === 'up' ? '↑' : s.dir === 'down' ? '↓' : '·'} ${s.change}</div>
+                    <div class="stat-sub">${s.sub}</div>
+                </div>`;
+            });
+            html += `</div>`;
+
+            // --- Pipeline ---
+            html += `<div class="pipeline-bar">
+                <div class="pipeline-header">
+                    <span class="pipeline-title">Contract Pipeline · ${currentPerspective === 'revenue' ? 'Client Contracts' : 'Vendor Contracts'}</span>
+                </div>
+                <div class="pipeline-stages">`;
+            d.pipeline.forEach((p, i) => {
+                if (i > 0) html += `<div class="pipeline-connector">›</div>`;
+                html += `
+                <div class="pipeline-stage ${p.label === 'Active' ? 'active' : ''}">
+                    <span class="ps-count">${String(p.count).padStart(2, '0')}</span>
+                    <span class="ps-label">${p.label}</span>
+                </div>`;
+            });
+            html += `</div></div>`;
+
+            // --- Two Column: Timeline + Actions ---
+            html += `<div class="sections-grid">`;
+
+            // Timeline
+            html += `
+            <div class="section-box">
+                <div class="section-header">
+                    <span class="section-title">Operational Timeline</span>
+                    <span class="section-count">${d.timeline.length} events</span>
+                </div>
+                <div class="section-body">`;
+            d.timeline.forEach(t => {
+                html += `
+                <div class="timeline-item">
+                    <div class="tl-indicator ${t.indicator}"></div>
+                    <div class="tl-content">
+                        <div class="tl-title">${t.title}</div>
+                        <div class="tl-sub">${t.sub}</div>
+                    </div>
+                    <div class="tl-meta">
+                        <div class="tl-amount">${t.amount}</div>
+                        <div class="tl-date">${t.date}</div>
+                    </div>
+                </div>`;
+            });
+            html += `</div></div>`;
+
+            // Action Queue
+            html += `
+            <div class="section-box">
+                <div class="section-header">
+                    <span class="section-title">Action Queue</span>
+                    <span class="section-count">${d.actions.length} items</span>
+                </div>
+                <div class="section-body">`;
+            d.actions.forEach(a => {
+                html += `
+                <div class="action-item">
+                    <div class="action-icon ${a.type}">${a.icon}</div>
+                    <div class="action-content">
+                        <div class="action-title">${a.title}</div>
+                        <div class="action-sub">${a.sub}</div>
+                    </div>
+                    <span class="action-badge ${a.badgeType}">${a.badge}</span>
+                </div>`;
+            });
+            html += `</div></div>`;
+
+            html += `</div>`;
+            main.innerHTML = html;
+
+            // Footer
+            document.getElementById('footerContracts').textContent = d.footer.contracts;
+            document.getElementById('footerContacts').textContent = d.footer.contacts;
+            document.getElementById('footerActions').textContent = d.footer.actions;
+        }
+
+        /* -------- INTERACTIONS -------- */
+        function switchPerspective(perspective, btn) {
+            currentPerspective = perspective;
+            document.querySelectorAll('.p-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            render();
+        }
+
+        function setPeriod(btn) {
+            document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        render();
+    </script>
+</body>
+</html>
