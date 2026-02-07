@@ -1,0 +1,35 @@
+============================================================
+OPS COCKPIT — D2: Revenue Operational Cards + Feedback
+============================================================
+
+Branch: ops-cockpit-d2
+Submodules Affected: contractnest-ui
+
+Files Changed:
+  - contractnest-ui/src/pages/ops/cockpit/index.tsx [UPDATE]
+    Purpose: Full cockpit with revenue operational cards + 4 feedback fixes:
+      1) Contacts-style Tailwind theming (no inline rgba styles)
+      2) Awaiting Acceptance matching cockpit-v3.html (grid, avatars, scrollable)
+      3) 35/65 two-column layout: BucketCards left, Service Events right
+      4) Perspective switcher moved below "Operations Cockpit" heading
+
+No new files. No API/Edge changes. No new dependencies.
+
+============================================================
+COPY COMMAND (PowerShell):
+============================================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\ops-cockpit-d2\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Write-Host "Done — 1 file copied" -ForegroundColor Green
+
+============================================================
+TEST:
+============================================================
+
+cd contractnest-ui
+npm run dev
+# Navigate to /ops/cockpit
+# Ctrl+F5 hard refresh
+
+============================================================
