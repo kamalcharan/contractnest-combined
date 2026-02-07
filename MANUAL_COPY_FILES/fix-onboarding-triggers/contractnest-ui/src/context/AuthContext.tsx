@@ -446,8 +446,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const response = await api.get(API_ENDPOINTS.ONBOARDING.STATUS);
 
-      if (response.data) {
-        const isComplete = response.data.onboarding?.is_completed || false;
+      if (response.data && response.data.data) {
+        const isComplete = response.data.data.is_complete || false;
         setHasCompletedOnboarding(isComplete);
 
         // Store in session to avoid repeated checks

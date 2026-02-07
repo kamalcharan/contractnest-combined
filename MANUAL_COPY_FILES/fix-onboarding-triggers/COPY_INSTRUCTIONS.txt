@@ -1,20 +1,43 @@
 ═══════════════════════════════════════════════════
-FIX: Onboarding trigger and completion bugs
+FIX: Onboarding triggers, completion, and seed data
 ═══════════════════════════════════════════════════
 
-Submodules Affected: contractnest-ui
+Submodules Affected: contractnest-ui, contractnest-edge, contractnest-api
 
-Files Modified:
-  1. contractnest-ui/src/context/AuthContext.tsx
+Files Modified/Created:
+  contractnest-ui:
+    1. src/context/AuthContext.tsx - Fixed onboarding status check + added markOnboardingComplete + stale state guard fix
+
+  contractnest-edge:
+    2. supabase/functions/auth/handlers/seedData.ts - NEW: Default Tags (VIP) and Compliance (GST, PAN) seed functions
+    3. supabase/functions/auth/handlers/registration.ts - Wired seed functions into registration flow
+
+  contractnest-api:
+    4. src/seeds/tags.seed.ts - NEW: Tags seed definition
+    5. src/seeds/compliance.seed.ts - NEW: Compliance Numbers seed definition
+    6. src/seeds/SeedRegistry.ts - Registered tags and compliance in seed registry
+    7. src/seeds/index.ts - Added exports for new seed modules
 
 Copy Commands (PowerShell):
+  # UI
   Copy-Item "MANUAL_COPY_FILES\fix-onboarding-triggers\contractnest-ui\src\context\AuthContext.tsx" -Destination "contractnest-ui\src\context\AuthContext.tsx" -Force
 
-Changes Made:
-  1. Fixed checkOnboardingStatus() - was reading response.data.data.is_complete
-     (wrong path + wrong field name). Changed to response.data.onboarding?.is_completed
-     which matches the actual API response structure.
+  # Edge Functions
+  Copy-Item "MANUAL_COPY_FILES\fix-onboarding-triggers\contractnest-edge\supabase\functions\auth\handlers\seedData.ts" -Destination "contractnest-edge\supabase\functions\auth\handlers\seedData.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\fix-onboarding-triggers\contractnest-edge\supabase\functions\auth\handlers\registration.ts" -Destination "contractnest-edge\supabase\functions\auth\handlers\registration.ts" -Force
 
-  2. Added markOnboardingComplete() method to AuthContext interface and provider.
-     CompleteStep.tsx calls this method but it didn't exist, causing a TypeError
-     that prevented navigation to dashboard after onboarding completion.
+  # API
+  Copy-Item "MANUAL_COPY_FILES\fix-onboarding-triggers\contractnest-api\src\seeds\tags.seed.ts" -Destination "contractnest-api\src\seeds\tags.seed.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\fix-onboarding-triggers\contractnest-api\src\seeds\compliance.seed.ts" -Destination "contractnest-api\src\seeds\compliance.seed.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\fix-onboarding-triggers\contractnest-api\src\seeds\SeedRegistry.ts" -Destination "contractnest-api\src\seeds\SeedRegistry.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\fix-onboarding-triggers\contractnest-api\src\seeds\index.ts" -Destination "contractnest-api\src\seeds\index.ts" -Force
+
+Changes Summary:
+  1. AuthContext: Fixed stale state guard (API headers instead of React state),
+     added markOnboardingComplete(), corrected response path for onboarding status
+
+  2. Registration: Auto-seeds Tags (VIP) and Compliance Numbers (GST, PAN)
+     for every new tenant during signup (same pattern as Roles seeding)
+
+  3. API Seeds: Added tags.seed.ts and compliance.seed.ts with seed definitions,
+     registered in SeedRegistry for /api/seeds endpoints
