@@ -378,21 +378,29 @@ const OpsCockpitPage: React.FC = () => {
   const isLoading = profileLoading || statsLoading || summaryLoading;
   const isRefreshing = statsFetching || summaryFetching;
 
-  // Derived stats
+  // Derived stats — guard every value with Number() to prevent undefined reaching StatCard
   const stats = useMemo(() => {
     if (!contractStats) return { active: 0, pendingAcceptance: 0, drafts: 0, total: 0 };
     const byStatus = contractStats.by_status || {};
     return {
-      active: byStatus.active || 0,
-      pendingAcceptance: byStatus.pending_acceptance || 0,
-      drafts: byStatus.draft || 0,
-      total: contractStats.total || 0,
+      active: Number(byStatus.active) || 0,
+      pendingAcceptance: Number(byStatus.pending_acceptance) || 0,
+      drafts: Number(byStatus.draft) || 0,
+      total: Number(contractStats.total) || 0,
     };
   }, [contractStats]);
 
   // Event urgency from tenant-wide date summary
+  // Normalize each bucket to ensure count/service_count/billing_count are always numbers
   const urgency = useMemo(() => {
     const empty = { count: 0, service_count: 0, billing_count: 0, billing_amount: 0, by_status: {} };
+    const safeBucket = (b: any) => ({
+      count: Number(b?.count) || 0,
+      service_count: Number(b?.service_count) || 0,
+      billing_count: Number(b?.billing_count) || 0,
+      billing_amount: Number(b?.billing_amount) || 0,
+      by_status: b?.by_status || {},
+    });
     if (!dateSummary) {
       return {
         overdue: empty,
@@ -404,7 +412,18 @@ const OpsCockpitPage: React.FC = () => {
         totals: { total_events: 0, total_billing_amount: 0 },
       };
     }
-    return dateSummary;
+    return {
+      overdue: safeBucket(dateSummary.overdue),
+      today: safeBucket(dateSummary.today),
+      tomorrow: safeBucket(dateSummary.tomorrow),
+      this_week: safeBucket(dateSummary.this_week),
+      next_week: safeBucket(dateSummary.next_week),
+      later: safeBucket(dateSummary.later),
+      totals: {
+        total_events: Number(dateSummary.totals?.total_events) || 0,
+        total_billing_amount: Number(dateSummary.totals?.total_billing_amount) || 0,
+      },
+    };
   }, [dateSummary]);
 
   // Refresh all data
