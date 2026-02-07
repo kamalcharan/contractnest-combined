@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact 360° View - ContractNest</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #e4e8ec 100%);
+            min-height: 100vh;
+            padding: 24px;
+            color: #1a1a2e;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .page-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .back-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: white;
+            border: 1px solid #e5e7eb;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: #6b7280;
+            transition: all 0.2s;
+        }
+
+        .back-btn:hover {
+            background: #f3f4f6;
+            color: #4F46E5;
+        }
+
+        .page-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a1a2e;
+        }
+
+        .page-subtitle {
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        /* Main Grid */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 380px 1fr;
+            gap: 24px;
+        }
+
+        /* Left Column - Profile */
+        .profile-section {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            border: 1px solid #e5e7eb;
+        }
+
+        /* Profile Card */
+        .profile-card {
+            text-align: center;
+        }
+
+        .avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4F46E5, #7C3AED);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            font-weight: 700;
+            margin: 0 auto 16px;
+            box-shadow: 0 8px 24px rgba(79, 70, 229, 0.3);
+        }
+
+        .contact-name {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .contact-company {
+            font-size: 15px;
+            color: #6b7280;
+            margin-bottom: 12px;
+        }
+
+        .contact-type-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #4F46E5, #7C3AED);
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .contact-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 16px;
+        }
+
+        .action-btn {
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .action-btn.primary {
+            background: linear-gradient(135deg, #4F46E5, #7C3AED);
+            color: white;
+        }
+
+        .action-btn.secondary {
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #e5e7eb;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        /* Contact Info Card */
+        .info-section {
+            margin-top: 20px;
+            text-align: left;
+        }
+
+        .info-section-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+
+        .info-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .info-item:last-child {
+            border-bottom: none;
+        }
+
+        .info-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: #f3f4f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .info-content {
+            flex: 1;
+        }
+
+        .info-label {
+            font-size: 12px;
+            color: #9ca3af;
+            margin-bottom: 2px;
+        }
+
+        .info-value {
+            font-size: 14px;
+            color: #1a1a2e;
+            font-weight: 500;
+        }
+
+        .info-value a {
+            color: #4F46E5;
+            text-decoration: none;
+        }
+
+        /* Quick Stats Card */
+        .quick-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .stat-box {
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a1a2e;
+        }
+
+        .stat-value.green { color: #059669; }
+        .stat-value.blue { color: #4F46E5; }
+        .stat-value.orange { color: #d97706; }
+        .stat-value.red { color: #dc2626; }
+
+        .stat-label {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+
+        /* Right Column */
+        .content-section {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Tab Navigation */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            background: white;
+            padding: 8px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+
+        .tab {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #6b7280;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            background: transparent;
+        }
+
+        .tab.active {
+            background: linear-gradient(135deg, #4F46E5, #7C3AED);
+            color: white;
+        }
+
+        .tab:hover:not(.active) {
+            background: #f3f4f6;
+        }
+
+        /* Contracts Section */
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .view-all-btn {
+            font-size: 13px;
+            color: #4F46E5;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        /* Contract Cards */
+        .contracts-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+
+        .contract-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #e5e7eb;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .contract-card:hover {
+            border-color: #4F46E5;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .contract-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .contract-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-bottom: 4px;
+        }
+
+        .contract-number {
+            font-size: 12px;
+            color: #9ca3af;
+            font-family: monospace;
+        }
+
+        .contract-status {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .status-active {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-draft {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+
+        .status-completed {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .contract-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #f3f4f6;
+        }
+
+        .contract-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #059669;
+        }
+
+        .contract-role {
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: #ede9fe;
+            color: #7c3aed;
+            font-weight: 600;
+        }
+
+        /* Invoices Table */
+        .invoices-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .invoices-table th {
+            text-align: left;
+            padding: 12px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            background: #f9fafb;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .invoices-table td {
+            padding: 16px;
+            font-size: 14px;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .invoice-number {
+            font-weight: 600;
+            color: #4F46E5;
+        }
+
+        .invoice-status {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .invoice-paid {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .invoice-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .invoice-overdue {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        /* Activity Timeline */
+        .timeline {
+            position: relative;
+            padding-left: 32px;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 11px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #e5e7eb;
+        }
+
+        .timeline-item {
+            position: relative;
+            padding-bottom: 24px;
+        }
+
+        .timeline-item:last-child {
+            padding-bottom: 0;
+        }
+
+        .timeline-dot {
+            position: absolute;
+            left: -32px;
+            top: 0;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: white;
+            border: 3px solid #4F46E5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+        }
+
+        .timeline-dot.green { border-color: #059669; }
+        .timeline-dot.orange { border-color: #d97706; }
+        .timeline-dot.blue { border-color: #3b82f6; }
+        .timeline-dot.purple { border-color: #7c3aed; }
+
+        .timeline-content {
+            background: #f9fafb;
+            border-radius: 10px;
+            padding: 14px 18px;
+        }
+
+        .timeline-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1a1a2e;
+            margin-bottom: 4px;
+        }
+
+        .timeline-desc {
+            font-size: 13px;
+            color: #6b7280;
+        }
+
+        .timeline-time {
+            font-size: 11px;
+            color: #9ca3af;
+            margin-top: 8px;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #9ca3af;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        /* Communication Actions */
+        .comm-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .comm-btn {
+            flex: 1;
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .comm-btn:hover {
+            border-color: #4F46E5;
+            background: #f5f3ff;
+        }
+
+        .comm-btn-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .comm-btn-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        /* Tags */
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .tag {
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+
+        .tag.vip {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .tag.active {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .contracts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Page Header -->
+        <div class="page-header">
+            <button class="back-btn">←</button>
+            <div>
+                <h1 class="page-title">Contact Details</h1>
+                <p class="page-subtitle">View and manage contact information</p>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <!-- Left Column - Profile -->
+            <div class="profile-section">
+                <!-- Profile Card -->
+                <div class="card profile-card">
+                    <div class="avatar">AJ</div>
+                    <h2 class="contact-name">Acme Industries</h2>
+                    <p class="contact-company">John Smith • CEO</p>
+                    <span class="contact-type-badge">Corporate Client</span>
+
+                    <div class="tags">
+                        <span class="tag vip">VIP Customer</span>
+                        <span class="tag active">Active</span>
+                        <span class="tag">Enterprise</span>
+                    </div>
+
+                    <div class="contact-actions">
+                        <button class="action-btn primary">+ New Contract</button>
+                        <button class="action-btn secondary">Edit</button>
+                    </div>
+
+                    <!-- Contact Info -->
+                    <div class="info-section">
+                        <h4 class="info-section-title">Contact Information</h4>
+
+                        <div class="info-item">
+                            <div class="info-icon">📧</div>
+                            <div class="info-content">
+                                <div class="info-label">Email</div>
+                                <div class="info-value"><a href="mailto:john@acme.com">john@acme.com</a></div>
+                            </div>
+                        </div>
+
+                        <div class="info-item">
+                            <div class="info-icon">📱</div>
+                            <div class="info-content">
+                                <div class="info-label">Phone</div>
+                                <div class="info-value">+1 (555) 123-4567</div>
+                            </div>
+                        </div>
+
+                        <div class="info-item">
+                            <div class="info-icon">🏢</div>
+                            <div class="info-content">
+                                <div class="info-label">Address</div>
+                                <div class="info-value">123 Business Ave, Suite 100<br>San Francisco, CA 94102</div>
+                            </div>
+                        </div>
+
+                        <div class="info-item">
+                            <div class="info-icon">🌐</div>
+                            <div class="info-content">
+                                <div class="info-label">Website</div>
+                                <div class="info-value"><a href="#">www.acme.com</a></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Stats -->
+                <div class="card">
+                    <h4 class="info-section-title">Relationship Summary</h4>
+                    <div class="quick-stats">
+                        <div class="stat-box">
+                            <div class="stat-value blue">5</div>
+                            <div class="stat-label">Total Contracts</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value green">$125,000</div>
+                            <div class="stat-label">Lifetime Value</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value green">3</div>
+                            <div class="stat-label">Active</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-value orange">1</div>
+                            <div class="stat-label">Pending Payment</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Communication -->
+                <div class="card">
+                    <h4 class="info-section-title">Quick Actions</h4>
+                    <div class="comm-actions">
+                        <div class="comm-btn">
+                            <div class="comm-btn-icon">📧</div>
+                            <div class="comm-btn-label">Send Email</div>
+                        </div>
+                        <div class="comm-btn">
+                            <div class="comm-btn-icon">💬</div>
+                            <div class="comm-btn-label">WhatsApp</div>
+                        </div>
+                        <div class="comm-btn">
+                            <div class="comm-btn-icon">📄</div>
+                            <div class="comm-btn-label">Send Invoice</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column - Content -->
+            <div class="content-section">
+                <!-- Tabs -->
+                <div class="tabs">
+                    <button class="tab active">Contracts</button>
+                    <button class="tab">Invoices</button>
+                    <button class="tab">Activity</button>
+                    <button class="tab">Communications</button>
+                    <button class="tab">Documents</button>
+                </div>
+
+                <!-- Contracts Tab Content -->
+                <div class="card">
+                    <div class="section-header">
+                        <h3 class="section-title">Contracts with Acme Industries</h3>
+                        <a href="#" class="view-all-btn">View All →</a>
+                    </div>
+
+                    <div class="contracts-grid">
+                        <!-- Contract 1 -->
+                        <div class="contract-card">
+                            <div class="contract-header">
+                                <div>
+                                    <div class="contract-title">Annual IT Support Agreement</div>
+                                    <div class="contract-number">CNT-2024-0042</div>
+                                </div>
+                                <span class="contract-status status-active">Active</span>
+                            </div>
+                            <div class="contract-meta">
+                                <div class="contract-value">$24,000/yr</div>
+                                <span class="contract-role">As Vendor</span>
+                            </div>
+                        </div>
+
+                        <!-- Contract 2 -->
+                        <div class="contract-card">
+                            <div class="contract-header">
+                                <div>
+                                    <div class="contract-title">Cloud Infrastructure Setup</div>
+                                    <div class="contract-number">CNT-2024-0038</div>
+                                </div>
+                                <span class="contract-status status-completed">Completed</span>
+                            </div>
+                            <div class="contract-meta">
+                                <div class="contract-value">$45,000</div>
+                                <span class="contract-role">As Vendor</span>
+                            </div>
+                        </div>
+
+                        <!-- Contract 3 -->
+                        <div class="contract-card">
+                            <div class="contract-header">
+                                <div>
+                                    <div class="contract-title">Security Audit Q1 2024</div>
+                                    <div class="contract-number">CNT-2024-0051</div>
+                                </div>
+                                <span class="contract-status status-pending">Pending Sign-off</span>
+                            </div>
+                            <div class="contract-meta">
+                                <div class="contract-value">$8,500</div>
+                                <span class="contract-role">As Vendor</span>
+                            </div>
+                        </div>
+
+                        <!-- Contract 4 -->
+                        <div class="contract-card">
+                            <div class="contract-header">
+                                <div>
+                                    <div class="contract-title">Hardware Procurement</div>
+                                    <div class="contract-number">CNT-2023-0089</div>
+                                </div>
+                                <span class="contract-status status-draft">Draft</span>
+                            </div>
+                            <div class="contract-meta">
+                                <div class="contract-value">$12,000</div>
+                                <span class="contract-role">As Client</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Invoices Section -->
+                <div class="card">
+                    <div class="section-header">
+                        <h3 class="section-title">Recent Invoices</h3>
+                        <a href="#" class="view-all-btn">View All →</a>
+                    </div>
+
+                    <table class="invoices-table">
+                        <thead>
+                            <tr>
+                                <th>Invoice #</th>
+                                <th>Contract</th>
+                                <th>Amount</th>
+                                <th>Due Date</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="invoice-number">INV-2024-0156</span></td>
+                                <td>Annual IT Support Agreement</td>
+                                <td><strong>$2,000.00</strong></td>
+                                <td>Feb 15, 2024</td>
+                                <td><span class="invoice-status invoice-paid">Paid</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="invoice-number">INV-2024-0148</span></td>
+                                <td>Annual IT Support Agreement</td>
+                                <td><strong>$2,000.00</strong></td>
+                                <td>Jan 15, 2024</td>
+                                <td><span class="invoice-status invoice-paid">Paid</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="invoice-number">INV-2024-0162</span></td>
+                                <td>Security Audit Q1 2024</td>
+                                <td><strong>$4,250.00</strong></td>
+                                <td>Mar 01, 2024</td>
+                                <td><span class="invoice-status invoice-pending">Pending</span></td>
+                            </tr>
+                            <tr>
+                                <td><span class="invoice-number">INV-2023-0892</span></td>
+                                <td>Cloud Infrastructure Setup</td>
+                                <td><strong>$15,000.00</strong></td>
+                                <td>Dec 10, 2023</td>
+                                <td><span class="invoice-status invoice-overdue">Overdue</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Activity Timeline -->
+                <div class="card">
+                    <div class="section-header">
+                        <h3 class="section-title">Recent Activity</h3>
+                        <a href="#" class="view-all-btn">View All →</a>
+                    </div>
+
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <div class="timeline-dot green">✓</div>
+                            <div class="timeline-content">
+                                <div class="timeline-title">Invoice INV-2024-0156 Paid</div>
+                                <div class="timeline-desc">Payment of $2,000.00 received for Annual IT Support Agreement</div>
+                                <div class="timeline-time">Today at 2:30 PM</div>
+                            </div>
+                        </div>
+
+                        <div class="timeline-item">
+                            <div class="timeline-dot blue">📧</div>
+                            <div class="timeline-content">
+                                <div class="timeline-title">Contract Sent for Sign-off</div>
+                                <div class="timeline-desc">Security Audit Q1 2024 sent via email to john@acme.com</div>
+                                <div class="timeline-time">Yesterday at 10:15 AM</div>
+                            </div>
+                        </div>
+
+                        <div class="timeline-item">
+                            <div class="timeline-dot purple">📝</div>
+                            <div class="timeline-content">
+                                <div class="timeline-title">Contract Created</div>
+                                <div class="timeline-desc">New contract "Security Audit Q1 2024" created</div>
+                                <div class="timeline-time">Feb 5, 2024 at 3:45 PM</div>
+                            </div>
+                        </div>
+
+                        <div class="timeline-item">
+                            <div class="timeline-dot orange">⚠️</div>
+                            <div class="timeline-content">
+                                <div class="timeline-title">Payment Reminder Sent</div>
+                                <div class="timeline-desc">Reminder for INV-2023-0892 ($15,000) sent via WhatsApp</div>
+                                <div class="timeline-time">Feb 3, 2024 at 9:00 AM</div>
+                            </div>
+                        </div>
+
+                        <div class="timeline-item">
+                            <div class="timeline-dot green">✓</div>
+                            <div class="timeline-content">
+                                <div class="timeline-title">Contract Completed</div>
+                                <div class="timeline-desc">Cloud Infrastructure Setup marked as completed</div>
+                                <div class="timeline-time">Jan 28, 2024 at 5:00 PM</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
