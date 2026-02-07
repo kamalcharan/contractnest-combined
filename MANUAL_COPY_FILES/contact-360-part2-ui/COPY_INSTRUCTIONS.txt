@@ -1,0 +1,31 @@
+═══════════════════════════════════════════════════
+CONTACT 360 VIEW - PART 2: UI HEADER + CONTRACTS COLUMN
+═══════════════════════════════════════════════════
+Date: 2026-02-07
+Branch: contact-360-part2-ui
+
+SUBMODULES AFFECTED:
+  - contractnest-ui (2 files modified)
+
+═══════════════════════════════════════════════════
+FILES TO COPY:
+═══════════════════════════════════════════════════
+
+1. contractnest-ui/src/pages/contacts/view.tsx
+   → MODIFIED: Hero header with urgency indicator + classification badges
+   → MODIFIED: Contracts column with role filter pills (All/Client/Vendor/Partner)
+   → MODIFIED: Enhanced ContractCard props passing v2 fields
+
+2. contractnest-ui/src/components/contracts/ContractCard.tsx
+   → MODIFIED: Compact variant now shows contact_role badge, CNAK status badge
+   → MODIFIED: Added ExternalLink icon on hover for contract navigation
+   → MODIFIED: ContractCardData interface extended with contact_role, global_access_id, cnak_status
+
+═══════════════════════════════════════════════════
+DEPENDS ON:
+═══════════════════════════════════════════════════
+Part 1 (Backend) must be deployed first:
+  - 016_contact_cockpit_summary_v2.sql → Supabase SQL
+  - contracts/index.ts → Edge Function
+  - contactController.ts → API
+  - contactCockpit.ts types → already in Part 1
