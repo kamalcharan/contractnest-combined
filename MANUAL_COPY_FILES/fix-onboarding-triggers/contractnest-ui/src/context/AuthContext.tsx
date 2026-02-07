@@ -430,8 +430,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Function to check onboarding status
   const checkOnboardingStatus = async (): Promise<boolean> => {
     try {
-      // Only check if user is authenticated and has a current tenant
-      if (!isAuthenticated || !currentTenant) {
+      // Check API headers instead of React state to avoid stale state during login
+      const hasAuth = api.defaults.headers.common['Authorization'];
+      const hasTenant = api.defaults.headers.common['x-tenant-id'];
+      if (!hasAuth || !hasTenant) {
         return true; // Don't block if not authenticated
       }
 
