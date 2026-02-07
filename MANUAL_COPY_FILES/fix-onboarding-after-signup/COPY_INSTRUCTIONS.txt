@@ -1,0 +1,48 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS - fix-onboarding-after-signup
+═══════════════════════════════════════════════════
+
+Branch: fix-onboarding-after-signup
+Date: 2026-02-07
+Submodules Affected: contractnest-ui
+
+═══════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════
+
+1. contractnest-ui/src/context/AuthContext.tsx
+   Source: MANUAL_COPY_FILES/fix-onboarding-after-signup/contractnest-ui/src/context/AuthContext.tsx
+   Destination: contractnest-ui/src/context/AuthContext.tsx
+   Purpose: Fix onboarding not triggering after signup/login
+
+═══════════════════════════════════════════════════
+BUGS FIXED (3 compounding bugs in checkOnboardingStatus)
+═══════════════════════════════════════════════════
+
+Bug 1: STALE CLOSURE
+  - checkOnboardingStatus used React state variables (isAuthenticated, currentTenant)
+    that hadn't been updated yet when called during login/init
+  - FIX: Now checks API headers (api.defaults.headers.common) which ARE set synchronously
+
+Bug 2: WRONG RESPONSE FORMAT
+  - Checked response.data.data (assumed a 'data' wrapper), but the API returns the
+    object directly at response.data — so response.data.data was always undefined
+  - FIX: Now reads response.data directly
+
+Bug 3: WRONG FIELD NAME
+  - Checked for is_complete, but the API uses needs_onboarding (boolean) and
+    onboarding.is_completed — so the check always fell through to return true
+  - FIX: Now checks data.needs_onboarding (primary) with onboarding.is_completed fallback
+
+Bug 4: MISSING markOnboardingComplete FUNCTION
+  - CompleteStep.tsx destructured markOnboardingComplete from useAuth(), but this
+    function did not exist — causing a runtime crash when completing onboarding
+  - FIX: Added markOnboardingComplete to AuthContext interface and implementation
+
+═══════════════════════════════════════════════════
+COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\fix-onboarding-after-signup\contractnest-ui\src\context\AuthContext.tsx" -Destination "contractnest-ui\src\context\AuthContext.tsx" -Force
+Write-Host "All files copied!" -ForegroundColor Green
