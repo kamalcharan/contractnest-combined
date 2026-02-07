@@ -1,0 +1,20 @@
+═══════════════════════════════════════════════════
+FIX: Onboarding trigger and completion bugs
+═══════════════════════════════════════════════════
+
+Submodules Affected: contractnest-ui
+
+Files Modified:
+  1. contractnest-ui/src/context/AuthContext.tsx
+
+Copy Commands (PowerShell):
+  Copy-Item "MANUAL_COPY_FILES\fix-onboarding-triggers\contractnest-ui\src\context\AuthContext.tsx" -Destination "contractnest-ui\src\context\AuthContext.tsx" -Force
+
+Changes Made:
+  1. Fixed checkOnboardingStatus() - was reading response.data.data.is_complete
+     (wrong path + wrong field name). Changed to response.data.onboarding?.is_completed
+     which matches the actual API response structure.
+
+  2. Added markOnboardingComplete() method to AuthContext interface and provider.
+     CompleteStep.tsx calls this method but it didn't exist, causing a TypeError
+     that prevented navigation to dashboard after onboarding completion.
