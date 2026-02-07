@@ -1,0 +1,41 @@
+═══════════════════════════════════════════════════
+CONTACT 360 VIEW - PART 1: BACKEND
+═══════════════════════════════════════════════════
+Date: 2026-02-07
+Branch: contact-360-part1-backend
+
+SUBMODULES AFFECTED:
+  - contractnest-edge (3 files: 1 modified, 2 new)
+  - contractnest-api  (1 file modified)
+  - contractnest-ui   (1 file modified)
+
+═══════════════════════════════════════════════════
+FILES TO COPY:
+═══════════════════════════════════════════════════
+
+1. contractnest-edge/supabase/functions/contracts/index.ts
+   → MODIFIED: Added cockpit-summary path route + handleCockpitSummary handler
+
+2. contractnest-edge/supabase/migrations/contracts/015_contact_cockpit_summary_rpc_BACKUP.sql
+   → NEW: Backup of original RPC (rollback safety)
+
+3. contractnest-edge/supabase/migrations/contracts/016_contact_cockpit_summary_v2.sql
+   → NEW: Enhanced RPC with multi-role, CNAK, outstanding, invoices, urgency
+
+4. contractnest-api/src/controllers/contactController.ts
+   → MODIFIED: Changed cockpit URL to path-based /contracts/cockpit-summary
+
+5. contractnest-ui/src/types/contactCockpit.ts
+   → MODIFIED: Added ContactRole, CnakStatus, UrgencyLevel, CockpitInvoice, PaymentPattern types
+
+═══════════════════════════════════════════════════
+DEPLOYMENT ORDER:
+═══════════════════════════════════════════════════
+
+STEP 1: Deploy SQL migration (016_contact_cockpit_summary_v2.sql) to Supabase
+STEP 2: Deploy Edge Function (contracts/index.ts) to Supabase
+STEP 3: Deploy API (contactController.ts)
+STEP 4: UI types are consumed at build time - no separate deploy needed
+
+ROLLBACK:
+  Run 015_contact_cockpit_summary_rpc_BACKUP.sql to restore original RPC
