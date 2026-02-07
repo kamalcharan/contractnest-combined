@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact 360° Command Center - ContractNest</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --brand-primary: #4F46E5;
+            --brand-secondary: #7C3AED;
+            --green: #22c55e;
+            --orange: #f59e0b;
+            --red: #ef4444;
+            --blue: #3b82f6;
+            --cyan: #06b6d4;
+            --purple: #a855f7;
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border: #e2e8f0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════ */
+        /* HERO HEADER */
+        /* ═══════════════════════════════════════════════════════════════════ */
+        .hero-header {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 24px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .back-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: var(--bg-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+
+        .back-btn:hover {
+            border-color: var(--brand-primary);
+            color: var(--brand-primary);
+        }
+
+        .avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .contact-info h1 {
+            font-size: 20px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .contact-info h1 .icon {
+            color: var(--brand-primary);
+        }
+
+        .contact-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .status-badge.active {
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--green);
+        }
+
+        .status-badge .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        /* Role Badges */
+        .role-badges {
+            display: flex;
+            gap: 6px;
+            margin-left: 8px;
+        }
+
+        .role-badge {
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .role-badge.client {
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--green);
+        }
+
+        .role-badge.vendor {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--blue);
+        }
+
+        .role-badge.partner {
+            background: rgba(168, 85, 247, 0.15);
+            color: var(--purple);
+        }
+
+        /* Header Stats */
+        .header-stats {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+        }
+
+        .stat-item {
+            text-align: right;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .stat-value.green { color: var(--green); }
+        .stat-value.orange { color: var(--orange); }
+        .stat-value.blue { color: var(--blue); }
+
+        .stat-label {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+        }
+
+        .edit-btn {
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--bg-primary);
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .edit-btn:hover {
+            border-color: var(--brand-primary);
+            color: var(--brand-primary);
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════ */
+        /* THREE COLUMN LAYOUT */
+        /* ═══════════════════════════════════════════════════════════════════ */
+        .main-content {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            overflow: hidden;
+        }
+
+        .column {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border-right: 1px solid var(--border);
+        }
+
+        .column:last-child {
+            border-right: none;
+        }
+
+        .column-header {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .column-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .column-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .column-icon.green { background: rgba(34, 197, 94, 0.15); }
+        .column-icon.blue { background: rgba(59, 130, 246, 0.15); }
+        .column-icon.cyan { background: rgba(6, 182, 212, 0.15); }
+
+        .column-title h2 {
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+        }
+
+        .column-title .count {
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: var(--bg-primary);
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .column-action {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--blue);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .column-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        /* Filter Pills */
+        .filter-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .filter-pill {
+            padding: 6px 12px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            background: transparent;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-pill.active {
+            background: rgba(59, 130, 246, 0.1);
+            border-color: var(--blue);
+            color: var(--blue);
+        }
+
+        .filter-pill .num {
+            margin-left: 4px;
+            opacity: 0.7;
+        }
+
+        /* ─────────────────────────────────────────────────────────────────── */
+        /* CONTRACTS COLUMN */
+        /* ─────────────────────────────────────────────────────────────────── */
+        .contract-card {
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            border-left-width: 3px;
+            background: var(--bg-secondary);
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .contract-card:hover {
+            transform: translateX(4px);
+            border-color: var(--brand-primary);
+        }
+
+        .contract-card.active { border-left-color: var(--green); }
+        .contract-card.draft { border-left-color: #71717a; }
+        .contract-card.pending { border-left-color: var(--orange); }
+        .contract-card.signed { border-left-color: var(--green); }
+
+        .contract-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .contract-status {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .contract-status.active { background: rgba(34, 197, 94, 0.15); color: var(--green); }
+        .contract-status.draft { background: rgba(113, 113, 122, 0.15); color: #71717a; }
+        .contract-status.pending { background: rgba(245, 158, 11, 0.15); color: var(--orange); }
+        .contract-status.signed { background: rgba(34, 197, 94, 0.15); color: var(--green); }
+
+        .contract-value {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .contract-name {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .contract-number {
+            font-size: 12px;
+            font-family: monospace;
+            color: var(--text-secondary);
+        }
+
+        .contract-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+
+        .contract-role {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .contract-role.as-vendor {
+            background: rgba(59, 130, 246, 0.1);
+            color: var(--blue);
+        }
+
+        .contract-role.as-client {
+            background: rgba(34, 197, 94, 0.1);
+            color: var(--green);
+        }
+
+        .contract-duration {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* ─────────────────────────────────────────────────────────────────── */
+        /* EVENTS COLUMN */
+        /* ─────────────────────────────────────────────────────────────────── */
+        .date-range-toggle {
+            display: flex;
+            gap: 4px;
+            padding: 4px;
+            border-radius: 8px;
+            background: var(--bg-primary);
+        }
+
+        .date-range-btn {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: none;
+            background: transparent;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .date-range-btn.active {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .event-bucket {
+            margin-bottom: 24px;
+        }
+
+        .bucket-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            padding: 0 4px;
+        }
+
+        .bucket-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .bucket-dot.overdue {
+            background: var(--red);
+            box-shadow: 0 0 12px var(--red);
+            animation: pulse 2s infinite;
+        }
+
+        .bucket-dot.today {
+            background: var(--orange);
+            box-shadow: 0 0 8px var(--orange);
+        }
+
+        .bucket-dot.upcoming {
+            background: var(--green);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .bucket-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .bucket-label.overdue { color: var(--red); }
+        .bucket-label.today { color: var(--orange); }
+        .bucket-label.upcoming { color: var(--green); }
+
+        .bucket-count {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin-left: auto;
+        }
+
+        .event-card {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            border-left-width: 3px;
+            border-left-style: solid;
+        }
+
+        .event-card.overdue {
+            background: rgba(239, 68, 68, 0.08);
+            border-left-color: var(--red);
+        }
+
+        .event-card.today {
+            background: rgba(245, 158, 11, 0.08);
+            border-left-color: var(--orange);
+        }
+
+        .event-card.upcoming {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-left-width: 3px;
+            border-left-color: var(--green);
+        }
+
+        .event-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .event-icon.billing { background: rgba(59, 130, 246, 0.15); }
+        .event-icon.service { background: rgba(168, 85, 247, 0.15); }
+
+        .event-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .event-title {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .event-contract {
+            font-size: 12px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .event-meta {
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .event-date {
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .event-date.overdue { color: var(--red); }
+        .event-date.today { color: var(--orange); }
+
+        .event-amount {
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .event-sequence {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        /* ─────────────────────────────────────────────────────────────────── */
+        /* FINANCIALS COLUMN */
+        /* ─────────────────────────────────────────────────────────────────── */
+        .summary-card {
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            background: var(--bg-secondary);
+            margin-bottom: 20px;
+        }
+
+        .summary-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .summary-badge {
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--green);
+        }
+
+        .summary-action {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--blue);
+            cursor: pointer;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .summary-box {
+            padding: 16px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .summary-box.green { background: rgba(34, 197, 94, 0.1); }
+        .summary-box.orange { background: rgba(245, 158, 11, 0.1); }
+
+        .summary-box-value {
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        .summary-box-value.green { color: var(--green); }
+        .summary-box-value.orange { color: var(--orange); }
+
+        .summary-box-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .progress-section {
+            margin-top: 16px;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+
+        .progress-label { color: var(--text-secondary); }
+        .progress-value { font-weight: 700; color: var(--green); }
+
+        .progress-bar {
+            height: 8px;
+            border-radius: 4px;
+            background: var(--border);
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            background: linear-gradient(90deg, var(--green), #16a34a);
+            transition: width 0.5s ease;
+        }
+
+        /* Invoice Table */
+        .section-label {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            padding: 0 4px;
+        }
+
+        .invoice-list {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .invoice-row {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            gap: 12px;
+        }
+
+        .invoice-row:last-child {
+            border-bottom: none;
+        }
+
+        .invoice-number {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--brand-primary);
+            min-width: 100px;
+        }
+
+        .invoice-contract {
+            flex: 1;
+            font-size: 12px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .invoice-amount {
+            font-size: 14px;
+            font-weight: 700;
+            min-width: 80px;
+            text-align: right;
+        }
+
+        .invoice-status {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .invoice-status.paid { background: rgba(34, 197, 94, 0.15); color: var(--green); }
+        .invoice-status.pending { background: rgba(245, 158, 11, 0.15); color: var(--orange); }
+        .invoice-status.overdue { background: rgba(239, 68, 68, 0.15); color: var(--red); }
+
+        /* ═══════════════════════════════════════════════════════════════════ */
+        /* ACTION ISLAND (Floating Bottom Bar) */
+        /* ═══════════════════════════════════════════════════════════════════ */
+        .action-island {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 20px;
+            background: var(--text-primary);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+        }
+
+        .island-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            border-radius: 12px;
+            border: none;
+            background: transparent;
+            color: white;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .island-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .island-btn.primary {
+            background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+        }
+
+        .island-btn.primary:hover {
+            opacity: 0.9;
+        }
+
+        .island-divider {
+            width: 1px;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .island-btn .icon {
+            font-size: 16px;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════ */
+        /* EMPTY STATES */
+        /* ═══════════════════════════════════════════════════════════════════ */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+        .empty-state-text {
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- HERO HEADER -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <header class="hero-header">
+        <div class="header-left">
+            <button class="back-btn">←</button>
+
+            <div class="avatar">AI</div>
+
+            <div class="contact-info">
+                <h1>
+                    Acme Industries
+                    <span class="icon">🏢</span>
+                    <!-- Multi-Role Badges -->
+                    <div class="role-badges">
+                        <span class="role-badge client">Client</span>
+                        <span class="role-badge vendor">Vendor</span>
+                    </div>
+                </h1>
+                <div class="contact-meta">
+                    <span>john@acme.com</span>
+                    <span class="status-badge active">
+                        <span class="dot"></span>
+                        Active
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="header-stats">
+            <div class="stat-item">
+                <div class="stat-value green">₹1.25Cr</div>
+                <div class="stat-label">Lifetime Value</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value orange">₹15L</div>
+                <div class="stat-label">Outstanding</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value blue">85%</div>
+                <div class="stat-label">Health Score</div>
+            </div>
+            <button class="edit-btn">
+                <span>✏️</span>
+                Edit
+            </button>
+        </div>
+    </header>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- THREE COLUMN LAYOUT -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <main class="main-content">
+
+        <!-- ─────────────────────────────────────────────────────────────────── -->
+        <!-- COLUMN 1: CONTRACTS -->
+        <!-- ─────────────────────────────────────────────────────────────────── -->
+        <section class="column">
+            <div class="column-header">
+                <div class="column-title">
+                    <div class="column-icon green">📄</div>
+                    <h2>Contracts</h2>
+                    <span class="count">5</span>
+                </div>
+                <span class="column-action">+ New</span>
+            </div>
+
+            <div class="filter-pills">
+                <button class="filter-pill active">All <span class="num">5</span></button>
+                <button class="filter-pill">Active <span class="num">3</span></button>
+                <button class="filter-pill">Draft <span class="num">1</span></button>
+                <button class="filter-pill">Pending <span class="num">1</span></button>
+            </div>
+
+            <div class="column-body">
+                <!-- Contract 1: As Vendor -->
+                <div class="contract-card active">
+                    <div class="contract-header">
+                        <span class="contract-status active">Active</span>
+                        <span class="contract-value">₹24L/yr</span>
+                    </div>
+                    <div class="contract-name">Annual IT Support Agreement</div>
+                    <div class="contract-number">CNT-2024-0042</div>
+                    <div class="contract-footer">
+                        <span class="contract-role as-vendor">As Vendor</span>
+                        <span class="contract-duration">12 months</span>
+                    </div>
+                </div>
+
+                <!-- Contract 2: As Vendor -->
+                <div class="contract-card signed">
+                    <div class="contract-header">
+                        <span class="contract-status signed">Signed</span>
+                        <span class="contract-value">₹45L</span>
+                    </div>
+                    <div class="contract-name">Cloud Infrastructure Setup</div>
+                    <div class="contract-number">CNT-2024-0038</div>
+                    <div class="contract-footer">
+                        <span class="contract-role as-vendor">As Vendor</span>
+                        <span class="contract-duration">One-time</span>
+                    </div>
+                </div>
+
+                <!-- Contract 3: As Client -->
+                <div class="contract-card active">
+                    <div class="contract-header">
+                        <span class="contract-status active">Active</span>
+                        <span class="contract-value">₹8.5L</span>
+                    </div>
+                    <div class="contract-name">Security Audit Services</div>
+                    <div class="contract-number">CNT-2024-0051</div>
+                    <div class="contract-footer">
+                        <span class="contract-role as-client">As Client</span>
+                        <span class="contract-duration">6 months</span>
+                    </div>
+                </div>
+
+                <!-- Contract 4: Pending -->
+                <div class="contract-card pending">
+                    <div class="contract-header">
+                        <span class="contract-status pending">Pending Sign-off</span>
+                        <span class="contract-value">₹12L</span>
+                    </div>
+                    <div class="contract-name">Hardware Procurement Q1</div>
+                    <div class="contract-number">CNT-2024-0067</div>
+                    <div class="contract-footer">
+                        <span class="contract-role as-vendor">As Vendor</span>
+                        <span class="contract-duration">3 months</span>
+                    </div>
+                </div>
+
+                <!-- Contract 5: Draft -->
+                <div class="contract-card draft">
+                    <div class="contract-header">
+                        <span class="contract-status draft">Draft</span>
+                        <span class="contract-value">₹6L</span>
+                    </div>
+                    <div class="contract-name">Training Program 2024</div>
+                    <div class="contract-number">CNT-2024-0072</div>
+                    <div class="contract-footer">
+                        <span class="contract-role as-vendor">As Vendor</span>
+                        <span class="contract-duration">1 month</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ─────────────────────────────────────────────────────────────────── -->
+        <!-- COLUMN 2: EVENTS TIMELINE -->
+        <!-- ─────────────────────────────────────────────────────────────────── -->
+        <section class="column">
+            <div class="column-header">
+                <div class="column-title">
+                    <div class="column-icon blue">📅</div>
+                    <h2>Events Timeline</h2>
+                </div>
+                <div class="date-range-toggle">
+                    <button class="date-range-btn active">7D</button>
+                    <button class="date-range-btn">14D</button>
+                    <button class="date-range-btn">30D</button>
+                </div>
+            </div>
+
+            <div class="column-body">
+                <!-- OVERDUE BUCKET -->
+                <div class="event-bucket">
+                    <div class="bucket-header">
+                        <span class="bucket-dot overdue"></span>
+                        <span class="bucket-label overdue">Overdue</span>
+                        <span class="bucket-count">2 events</span>
+                    </div>
+
+                    <div class="event-card overdue">
+                        <div class="event-icon billing">💳</div>
+                        <div class="event-content">
+                            <div class="event-title">Monthly Payment</div>
+                            <div class="event-contract">Cloud Infrastructure Setup</div>
+                        </div>
+                        <div class="event-meta">
+                            <div class="event-date overdue">5d ago</div>
+                            <div class="event-amount">₹15L</div>
+                        </div>
+                    </div>
+
+                    <div class="event-card overdue">
+                        <div class="event-icon service">🔧</div>
+                        <div class="event-content">
+                            <div class="event-title">Quarterly Review</div>
+                            <div class="event-contract">Annual IT Support</div>
+                        </div>
+                        <div class="event-meta">
+                            <div class="event-date overdue">2d ago</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TODAY BUCKET -->
+                <div class="event-bucket">
+                    <div class="bucket-header">
+                        <span class="bucket-dot today"></span>
+                        <span class="bucket-label today">Today</span>
+                        <span class="bucket-count">1 event</span>
+                    </div>
+
+                    <div class="event-card today">
+                        <div class="event-icon billing">💳</div>
+                        <div class="event-content">
+                            <div class="event-title">Support Fee - Feb</div>
+                            <div class="event-contract">Annual IT Support Agreement</div>
+                        </div>
+                        <div class="event-meta">
+                            <div class="event-date today">Today</div>
+                            <div class="event-amount">₹2L</div>
+                            <div class="event-sequence">2/12</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- UPCOMING BUCKET -->
+                <div class="event-bucket">
+                    <div class="bucket-header">
+                        <span class="bucket-dot upcoming"></span>
+                        <span class="bucket-label upcoming">Upcoming (7 days)</span>
+                        <span class="bucket-count">3 events</span>
+                    </div>
+
+                    <div class="event-card upcoming">
+                        <div class="event-icon billing">💳</div>
+                        <div class="event-content">
+                            <div class="event-title">Audit Payment - 50%</div>
+                            <div class="event-contract">Security Audit Services</div>
+                        </div>
+                        <div class="event-meta">
+                            <div class="event-date">Feb 12</div>
+                            <div class="event-amount">₹4.25L</div>
+                            <div class="event-sequence">1/2</div>
+                        </div>
+                    </div>
+
+                    <div class="event-card upcoming">
+                        <div class="event-icon service">🔧</div>
+                        <div class="event-content">
+                            <div class="event-title">Server Maintenance</div>
+                            <div class="event-contract">Annual IT Support Agreement</div>
+                        </div>
+                        <div class="event-meta">
+                            <div class="event-date">Feb 14</div>
+                        </div>
+                    </div>
+
+                    <div class="event-card upcoming">
+                        <div class="event-icon billing">💳</div>
+                        <div class="event-content">
+                            <div class="event-title">Hardware Advance</div>
+                            <div class="event-contract">Hardware Procurement Q1</div>
+                        </div>
+                        <div class="event-meta">
+                            <div class="event-date">Feb 15</div>
+                            <div class="event-amount">₹6L</div>
+                            <div class="event-sequence">1/2</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ─────────────────────────────────────────────────────────────────── -->
+        <!-- COLUMN 3: FINANCIALS -->
+        <!-- ─────────────────────────────────────────────────────────────────── -->
+        <section class="column">
+            <div class="column-header">
+                <div class="column-title">
+                    <div class="column-icon cyan">💰</div>
+                    <h2>Financials</h2>
+                </div>
+                <span class="column-action">Export ↓</span>
+            </div>
+
+            <div class="column-body">
+                <!-- Accounts Receivable Summary -->
+                <div class="summary-card">
+                    <div class="summary-header">
+                        <span class="summary-badge">Accounts Receivable</span>
+                        <span class="summary-action">Record Payment</span>
+                    </div>
+
+                    <div class="summary-grid">
+                        <div class="summary-box green">
+                            <div class="summary-box-value green">₹1.1Cr</div>
+                            <div class="summary-box-label">Collected</div>
+                        </div>
+                        <div class="summary-box orange">
+                            <div class="summary-box-value orange">₹15L</div>
+                            <div class="summary-box-label">Outstanding</div>
+                        </div>
+                    </div>
+
+                    <div class="progress-section">
+                        <div class="progress-header">
+                            <span class="progress-label">Collection Rate</span>
+                            <span class="progress-value">88%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: 88%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Invoices -->
+                <div class="section-label">Recent Invoices</div>
+                <div class="invoice-list">
+                    <div class="invoice-row">
+                        <span class="invoice-number">INV-2024-0156</span>
+                        <span class="invoice-contract">IT Support - Feb</span>
+                        <span class="invoice-amount">₹2L</span>
+                        <span class="invoice-status paid">Paid</span>
+                    </div>
+                    <div class="invoice-row">
+                        <span class="invoice-number">INV-2024-0148</span>
+                        <span class="invoice-contract">IT Support - Jan</span>
+                        <span class="invoice-amount">₹2L</span>
+                        <span class="invoice-status paid">Paid</span>
+                    </div>
+                    <div class="invoice-row">
+                        <span class="invoice-number">INV-2024-0162</span>
+                        <span class="invoice-contract">Security Audit</span>
+                        <span class="invoice-amount">₹4.25L</span>
+                        <span class="invoice-status pending">Pending</span>
+                    </div>
+                    <div class="invoice-row">
+                        <span class="invoice-number">INV-2023-0892</span>
+                        <span class="invoice-contract">Cloud Setup</span>
+                        <span class="invoice-amount">₹15L</span>
+                        <span class="invoice-status overdue">Overdue</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- ACTION ISLAND (Floating Bottom Bar) -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div class="action-island">
+        <button class="island-btn primary">
+            <span class="icon">📄</span>
+            New Contract
+        </button>
+
+        <div class="island-divider"></div>
+
+        <button class="island-btn">
+            <span class="icon">📧</span>
+            Email
+        </button>
+
+        <button class="island-btn">
+            <span class="icon">💬</span>
+            WhatsApp
+        </button>
+
+        <button class="island-btn">
+            <span class="icon">📞</span>
+            Call
+        </button>
+
+        <div class="island-divider"></div>
+
+        <button class="island-btn">
+            <span class="icon">👤</span>
+            Profile
+        </button>
+    </div>
+</body>
+</html>
