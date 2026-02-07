@@ -2,7 +2,7 @@
 // Operations Cockpit — Revenue & Expense command center
 // D1: Shell + Stats + Event Urgency + VaNi Sidebar + Footer
 // D2: Awaiting Acceptance + Service Events + Action Queue (Revenue)
-// Feedback: contacts theme, v3 HTML acceptance style, 2-col event layout, switcher below heading
+// Theme: Uses currentTheme brand colors (not hardcoded green)
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -60,6 +60,13 @@ type QueueFilter = 'all' | 'drafts' | 'urgent' | 'pending';
 // =================================================================
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** Append hex alpha to a #RRGGBB color string */
+const withOpacity = (hex: string, opacity: number): string => {
+  const base = (hex || '#6B7280').slice(0, 7);
+  const alpha = Math.round(opacity * 255).toString(16).padStart(2, '0');
+  return base + alpha;
+};
 
 const formatEventDate = (dateStr: string): string => {
   const d = new Date(dateStr);
@@ -141,12 +148,14 @@ interface PerspectiveSwitcherProps {
   active: Perspective;
   onChange: (p: Perspective) => void;
   isDarkMode: boolean;
+  brandColor: string;
 }
 
 const PerspectiveSwitcher: React.FC<PerspectiveSwitcherProps> = ({
   active,
   onChange,
   isDarkMode,
+  brandColor,
 }) => {
   const perspectives: Array<{ id: Perspective; label: string; sublabel: string }> = [
     { id: 'revenue', label: 'Revenue', sublabel: 'Clients' },
@@ -165,14 +174,15 @@ const PerspectiveSwitcher: React.FC<PerspectiveSwitcherProps> = ({
             onClick={() => onChange(p.id)}
             className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-all duration-200 ${
               isActive
-                ? 'bg-green-600 text-white shadow-sm'
+                ? 'text-white shadow-sm'
                 : isDarkMode
                   ? 'text-gray-400 hover:text-gray-200'
                   : 'text-gray-500 hover:text-gray-700'
             }`}
+            style={isActive ? { backgroundColor: brandColor } : undefined}
           >
             {p.label}
-            <span className={`ml-1 text-xs font-normal ${isActive ? 'text-green-100' : ''}`}>
+            <span className={`ml-1 text-xs font-normal ${isActive ? 'opacity-80' : ''}`}>
               · {p.sublabel}
             </span>
           </button>
@@ -255,11 +265,11 @@ const BucketCard: React.FC<BucketCardProps> = ({
     </div>
     <div className={`flex items-center gap-3 text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
       <span className="flex items-center gap-1">
-        <Wrench className="w-3 h-3 text-green-500" />
+        <Wrench className="w-3 h-3" style={{ color: '#10B981' }} />
         {serviceCount}
       </span>
       <span className="flex items-center gap-1">
-        <DollarSign className="w-3 h-3 text-amber-500" />
+        <DollarSign className="w-3 h-3" style={{ color: '#F59E0B' }} />
         {billingCount}
       </span>
     </div>
@@ -342,7 +352,8 @@ const FooterStatusBar: React.FC<{
   isRefreshing: boolean;
   onRefresh: () => void;
   isDarkMode: boolean;
-}> = ({ totalContracts, totalEvents, isRefreshing, onRefresh, isDarkMode }) => {
+  brandColor: string;
+}> = ({ totalContracts, totalEvents, isRefreshing, onRefresh, isDarkMode, brandColor }) => {
   const [lastRefreshed, setLastRefreshed] = useState(new Date());
 
   useEffect(() => {
@@ -370,11 +381,11 @@ const FooterStatusBar: React.FC<{
         <button
           onClick={onRefresh}
           disabled={isRefreshing}
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
-            isDarkMode
-              ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
-              : 'bg-green-50 text-green-700 hover:bg-green-100'
-          }`}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all"
+          style={{
+            backgroundColor: withOpacity(brandColor, isDarkMode ? 0.2 : 0.08),
+            color: brandColor,
+          }}
         >
           <RefreshCw className={`h-3 w-3 ${isRefreshing ? 'animate-spin' : ''}`} />
           {isRefreshing ? 'Syncing...' : 'Refresh'}
@@ -397,14 +408,15 @@ const AwaitingAcceptanceCard: React.FC<{
   onResend: (id: string) => void;
   isSending: boolean;
   isDarkMode: boolean;
-}> = ({ contracts, isLoading, onView, onResend, isSending, isDarkMode }) => {
+  brandColor: string;
+}> = ({ contracts, isLoading, onView, onResend, isSending, isDarkMode, brandColor }) => {
   const navigate = useNavigate();
 
   if (isLoading) {
     return (
       <div className={`rounded-xl border ${isDarkMode ? 'border-gray-700 bg-gray-800/50' : 'border-gray-200 bg-white'}`}>
         <div className="p-5 flex items-center justify-center py-10">
-          <Loader2 className="h-5 w-5 animate-spin text-green-500" />
+          <Loader2 className="h-5 w-5 animate-spin" style={{ color: brandColor }} />
           <span className={`ml-2 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Loading...</span>
         </div>
       </div>
@@ -435,7 +447,8 @@ const AwaitingAcceptanceCard: React.FC<{
         </div>
         <button
           onClick={() => navigate('/contracts?status=pending_acceptance')}
-          className="text-[10px] font-bold text-green-600 hover:underline"
+          className="text-[10px] font-bold hover:underline"
+          style={{ color: brandColor }}
         >
           View all in Hub →
         </button>
@@ -517,10 +530,13 @@ const AwaitingAcceptanceCard: React.FC<{
                       disabled={isSending}
                       className={`w-7 h-7 rounded-md border flex items-center justify-center transition-all ${
                         isDarkMode
-                          ? 'border-gray-600 bg-gray-700 hover:bg-green-600 hover:border-green-600'
-                          : 'border-gray-200 bg-white hover:bg-green-600 hover:border-green-600'
+                          ? 'border-gray-600 bg-gray-700'
+                          : 'border-gray-200 bg-white'
                       } group`}
                       title="Resend notification"
+                      style={{ '--hover-brand': brandColor } as React.CSSProperties}
+                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = brandColor; e.currentTarget.style.borderColor = brandColor; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ''; e.currentTarget.style.borderColor = ''; }}
                     >
                       {isSending ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-400" />
@@ -549,7 +565,8 @@ const EventCard: React.FC<{
   onViewContract: (contractId: string) => void;
   isUpdatingStatus: boolean;
   isDarkMode: boolean;
-}> = ({ event, onStatusChange, onViewContract, isUpdatingStatus, isDarkMode }) => {
+  brandColor: string;
+}> = ({ event, onStatusChange, onViewContract, isUpdatingStatus, isDarkMode, brandColor }) => {
   const isService = event.event_type === 'service';
   const statusCfg = getEventStatusConfig(event.status);
   const StatusIcon = statusCfg.icon;
@@ -611,11 +628,11 @@ const EventCard: React.FC<{
             <button
               onClick={(e) => { e.stopPropagation(); onStatusChange(event.id, transitions[0] as ContractEventStatus, event.version); }}
               disabled={isUpdatingStatus}
-              className={`text-[9px] font-semibold px-1.5 py-0.5 rounded transition-all ${
-                isDarkMode
-                  ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
-                  : 'bg-green-50 text-green-700 hover:bg-green-100'
-              }`}
+              className="text-[9px] font-semibold px-1.5 py-0.5 rounded transition-all"
+              style={{
+                backgroundColor: withOpacity(brandColor, isDarkMode ? 0.2 : 0.08),
+                color: brandColor,
+              }}
             >
               {isUpdatingStatus ? '...' : `→ ${transitions[0]}`}
             </button>
@@ -639,10 +656,11 @@ const ServiceEventsSection: React.FC<{
   isUpdatingStatus: boolean;
   onViewContract: (contractId: string) => void;
   isDarkMode: boolean;
+  brandColor: string;
 }> = ({
   events, isLoading, timeFilter, typeFilter,
   onTimeFilterChange, onTypeFilterChange,
-  onStatusChange, isUpdatingStatus, onViewContract, isDarkMode,
+  onStatusChange, isUpdatingStatus, onViewContract, isDarkMode, brandColor,
 }) => {
   const filteredEvents = useMemo(() => {
     if (typeFilter === 'all') return events;
@@ -684,7 +702,7 @@ const ServiceEventsSection: React.FC<{
       <div className="flex-1 overflow-y-auto p-3">
         {isLoading ? (
           <div className="flex items-center justify-center py-10">
-            <Loader2 className="h-5 w-5 animate-spin text-green-500" />
+            <Loader2 className="h-5 w-5 animate-spin" style={{ color: brandColor }} />
             <span className={`ml-2 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Loading events...</span>
           </div>
         ) : filteredEvents.length === 0 ? (
@@ -705,6 +723,7 @@ const ServiceEventsSection: React.FC<{
                 onViewContract={onViewContract}
                 isUpdatingStatus={isUpdatingStatus}
                 isDarkMode={isDarkMode}
+                brandColor={brandColor}
               />
             ))}
           </div>
@@ -809,7 +828,7 @@ const ActionQueueCard: React.FC<{
       <div className="overflow-y-auto" style={{ maxHeight: '300px' }}>
         {isLoading ? (
           <div className="flex items-center justify-center py-10">
-            <Loader2 className="h-5 w-5 animate-spin text-green-500" />
+            <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
             <span className={`ml-2 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Loading...</span>
           </div>
         ) : filteredItems.length === 0 ? (
@@ -859,7 +878,11 @@ const ActionQueueCard: React.FC<{
 
 const OpsCockpitPage: React.FC = () => {
   const navigate = useNavigate();
-  const { isDarkMode } = useTheme();
+  const { isDarkMode, currentTheme } = useTheme();
+
+  // ─── Theme colors ─────────────────────────────────────────────
+  const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
+  const brandColor = colors.brand.primary;
 
   // Tenant profile — for default perspective
   const { profile, loading: profileLoading } = useTenantContext();
@@ -976,19 +999,22 @@ const OpsCockpitPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen p-6">
+    <div
+      className="min-h-screen p-6 transition-colors"
+      style={{ backgroundColor: colors.utility.primaryBackground }}
+    >
       {/* ═══════ HEADER ═══════ */}
       <div className="flex items-start justify-between mb-6">
         <div>
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-green-500/10">
-              <Gauge className="h-5 w-5 text-green-500" />
+            <div className="p-2 rounded-lg" style={{ backgroundColor: withOpacity(brandColor, 0.1) }}>
+              <Gauge className="h-5 w-5" style={{ color: brandColor }} />
             </div>
             <div>
-              <h1 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+              <h1 style={{ color: colors.utility.primaryText }} className="text-xl font-bold">
                 Operations Cockpit
               </h1>
-              <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              <p style={{ color: colors.utility.secondaryText }} className="text-xs">
                 {activePerspective === 'revenue'
                   ? 'Revenue operations — what needs your attention today'
                   : 'Expense operations — procurement & vendor management'}
@@ -1001,6 +1027,7 @@ const OpsCockpitPage: React.FC = () => {
               active={activePerspective}
               onChange={(p) => setPerspective(p)}
               isDarkMode={isDarkMode}
+              brandColor={brandColor}
             />
           </div>
         </div>
@@ -1013,11 +1040,11 @@ const OpsCockpitPage: React.FC = () => {
               <button
                 key={cta.label}
                 onClick={cta.action}
-                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all ${
-                  isDarkMode
-                    ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
-                    : 'bg-green-50 text-green-700 hover:bg-green-100'
-                }`}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all"
+                style={{
+                  backgroundColor: withOpacity(brandColor, isDarkMode ? 0.2 : 0.08),
+                  color: brandColor,
+                }}
               >
                 <Icon className="h-3.5 w-3.5" />
                 {cta.label}
@@ -1027,9 +1054,9 @@ const OpsCockpitPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ═══════ STAT CARDS ROW ═══════ */}
+      {/* ═══════ ROW 1: STAT CARDS ═══════ */}
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <StatCard label="Active Contracts" value={stats.active} icon={FileText} iconColor="#10B981" size="sm" />
+        <StatCard label="Active Contracts" value={stats.active} icon={FileText} iconColor={brandColor} size="sm" />
         <StatCard label="Pending Acceptance" value={stats.pendingAcceptance} icon={Send} iconColor="#F59E0B" size="sm" />
         <StatCard label="Drafts" value={stats.drafts} icon={FileText} iconColor="#6B7280" size="sm" />
         <StatCard label="Overdue Events" value={urgency.overdue.count} icon={AlertTriangle}
@@ -1041,7 +1068,20 @@ const OpsCockpitPage: React.FC = () => {
         {/* Left: Main Content */}
         <div className="space-y-6">
 
-          {/* ═══ Event Schedule (left 35%) + Service Events (right 65%) ═══ */}
+          {/* ═══ ROW 2: Awaiting Acceptance (revenue) — per v3 HTML ═══ */}
+          {activePerspective === 'revenue' && (
+            <AwaitingAcceptanceCard
+              contracts={pendingAcceptanceContracts}
+              isLoading={acceptanceLoading}
+              onView={handleViewContract}
+              onResend={handleResendNotification}
+              isSending={isSendingNotification}
+              isDarkMode={isDarkMode}
+              brandColor={brandColor}
+            />
+          )}
+
+          {/* ═══ ROW 3: Event Schedule (left 35%) + Service Events (right 65%) ═══ */}
           <div className="grid gap-4" style={{ gridTemplateColumns: '35% 65%' }}>
             {/* Left: Event urgency buckets (stacked vertically) */}
             <div className={`rounded-xl border p-4 ${
@@ -1049,7 +1089,7 @@ const OpsCockpitPage: React.FC = () => {
             }`}>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-green-500" />
+                  <Clock className="h-4 w-4" style={{ color: brandColor }} />
                   <span className={`text-[11px] uppercase tracking-wider font-bold ${
                     isDarkMode ? 'text-gray-400' : 'text-gray-500'
                   }`}>
@@ -1096,34 +1136,22 @@ const OpsCockpitPage: React.FC = () => {
               isUpdatingStatus={isChangingStatus}
               onViewContract={handleViewContract}
               isDarkMode={isDarkMode}
+              brandColor={brandColor}
             />
           </div>
 
-          {/* ═══ D2: Revenue Operational Cards ═══ */}
+          {/* ═══ ROW 4: Action Queue (revenue) ═══ */}
           {activePerspective === 'revenue' && (
-            <>
-              {/* Awaiting Acceptance */}
-              <AwaitingAcceptanceCard
-                contracts={pendingAcceptanceContracts}
-                isLoading={acceptanceLoading}
-                onView={handleViewContract}
-                onResend={handleResendNotification}
-                isSending={isSendingNotification}
-                isDarkMode={isDarkMode}
-              />
-
-              {/* Action Queue */}
-              <ActionQueueCard
-                draftContracts={draftContracts}
-                overdueEvents={overdueEvents}
-                pendingContracts={pendingReviewContracts}
-                isLoading={draftsLoading || overdueLoading || pendingLoading}
-                onViewContract={handleViewContract}
-                queueFilter={queueFilter}
-                onQueueFilterChange={setQueueFilter}
-                isDarkMode={isDarkMode}
-              />
-            </>
+            <ActionQueueCard
+              draftContracts={draftContracts}
+              overdueEvents={overdueEvents}
+              pendingContracts={pendingReviewContracts}
+              isLoading={draftsLoading || overdueLoading || pendingLoading}
+              onViewContract={handleViewContract}
+              queueFilter={queueFilter}
+              onQueueFilterChange={setQueueFilter}
+              isDarkMode={isDarkMode}
+            />
           )}
 
           {/* Expense placeholder — D3/D4 */}
@@ -1157,6 +1185,7 @@ const OpsCockpitPage: React.FC = () => {
         isRefreshing={isRefreshing}
         onRefresh={handleRefresh}
         isDarkMode={isDarkMode}
+        brandColor={brandColor}
       />
     </div>
   );
