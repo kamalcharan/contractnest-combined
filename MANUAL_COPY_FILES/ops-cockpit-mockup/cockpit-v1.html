@@ -248,6 +248,44 @@
         .footer-pill .dot { width: 5px; height: 5px; border-radius: 50%; }
         .footer-sync { font-size: 10px; color: var(--text-muted); }
 
+        /* ============ DATA TOGGLE ============ */
+        .data-toggle { display: flex; align-items: center; gap: 8px; }
+        .data-toggle-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); }
+        .toggle-switch { position: relative; display: inline-block; width: 36px; height: 20px; }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-track {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background: #CBD5E1; border-radius: 20px; transition: 0.25s;
+        }
+        .toggle-track:before {
+            position: absolute; content: ""; height: 14px; width: 14px;
+            left: 3px; bottom: 3px; background: white; border-radius: 50%;
+            transition: 0.25s; box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+        }
+        .toggle-switch input:checked + .toggle-track { background: var(--accent); }
+        .toggle-switch input:checked + .toggle-track:before { transform: translateX(16px); }
+
+        /* ============ EMPTY STATE ============ */
+        .cockpit-empty {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 80px 40px; text-align: center; min-height: 70vh;
+        }
+        .empty-graphic {
+            width: 80px; height: 80px; border-radius: 20px; background: var(--bg);
+            border: 2px dashed var(--border); display: flex; align-items: center;
+            justify-content: center; margin-bottom: 20px;
+        }
+        .empty-graphic svg { width: 36px; height: 36px; stroke: var(--text-muted); opacity: 0.35; }
+        .cockpit-empty h3 { font-size: 16px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px; }
+        .cockpit-empty p { font-size: 12px; color: var(--text-muted); line-height: 1.6; max-width: 340px; }
+        .empty-hints { margin-top: 24px; display: flex; gap: 10px; }
+        .empty-hint {
+            padding: 8px 14px; border-radius: 8px; background: var(--bg);
+            border: 1px solid var(--border); font-size: 11px; font-weight: 600;
+            color: var(--text-secondary); display: flex; align-items: center; gap: 6px;
+        }
+        .empty-hint .hint-dot { width: 6px; height: 6px; border-radius: 50%; }
+
     </style>
 </head>
 <body>
@@ -281,13 +319,23 @@
                 </button>
             </div>
         </div>
-        <div class="perspective-group">
-            <span class="perspective-label">Period</span>
-            <div class="period-selector">
-                <button class="period-btn" onclick="setPeriod(this)">MTD</button>
-                <button class="period-btn active" onclick="setPeriod(this)">QTD</button>
-                <button class="period-btn" onclick="setPeriod(this)">YTD</button>
-                <button class="period-btn" onclick="setPeriod(this)">Custom</button>
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <div class="perspective-group">
+                <span class="perspective-label">Period</span>
+                <div class="period-selector">
+                    <button class="period-btn" onclick="setPeriod(this)">MTD</button>
+                    <button class="period-btn active" onclick="setPeriod(this)">QTD</button>
+                    <button class="period-btn" onclick="setPeriod(this)">YTD</button>
+                    <button class="period-btn" onclick="setPeriod(this)">Custom</button>
+                </div>
+            </div>
+            <div style="width:1px; height:24px; background: var(--border);"></div>
+            <div class="data-toggle">
+                <span class="data-toggle-label" id="toggleLabel">Dummy Data</span>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="dataToggle" onchange="toggleData()" checked>
+                    <span class="toggle-track"></span>
+                </label>
             </div>
         </div>
     </div>
@@ -338,6 +386,7 @@
 
     <script>
         let currentPerspective = 'revenue';
+        let showDummyData = true;
 
         /* -------- DATA -------- */
         const cockpitData = {
@@ -402,10 +451,23 @@
             }
         };
 
+        /* -------- TOGGLE -------- */
+        function toggleData() {
+            showDummyData = document.getElementById('dataToggle').checked;
+            document.getElementById('toggleLabel').textContent = showDummyData ? 'Dummy Data' : 'Empty State';
+            render();
+        }
+
         /* -------- RENDER -------- */
         function render() {
-            const d = cockpitData[currentPerspective];
             const main = document.getElementById('mainContent');
+
+            if (!showDummyData) {
+                renderEmptyState(main);
+                return;
+            }
+
+            const d = cockpitData[currentPerspective];
             const accentColor = currentPerspective === 'revenue' ? 'var(--green)' : 'var(--blue)';
 
             // --- Stats ---
@@ -493,6 +555,73 @@
             document.getElementById('footerContracts').textContent = d.footer.contracts;
             document.getElementById('footerContacts').textContent = d.footer.contacts;
             document.getElementById('footerActions').textContent = d.footer.actions;
+        }
+
+        /* -------- EMPTY STATE -------- */
+        function renderEmptyState(main) {
+            const perspectiveLabel = currentPerspective === 'revenue' ? 'Revenue · Clients' : 'Expense · Vendors';
+            const perspectiveColor = currentPerspective === 'revenue' ? 'var(--green)' : 'var(--blue)';
+
+            // Empty stat cards with dashes
+            let html = `<div class="stats-row">`;
+            const emptyStats = currentPerspective === 'revenue'
+                ? ['LTV Portfolio', 'Accounts Receivable', 'SLA Health', 'Active Deliverables']
+                : ['Total Commitments', 'Accounts Payable', 'Vendor Performance', 'Open RFQs'];
+            emptyStats.forEach((label, i) => {
+                html += `
+                <div class="stat-card" style="opacity: 0.5;">
+                    <div class="accent-bar" style="background: ${i === 0 ? perspectiveColor : 'var(--border)'};"></div>
+                    <div class="stat-label">${label}</div>
+                    <div class="stat-value" style="color: var(--text-muted);">—</div>
+                    <div class="stat-change neutral">No data yet</div>
+                </div>`;
+            });
+            html += `</div>`;
+
+            // Empty pipeline
+            html += `<div class="pipeline-bar" style="opacity: 0.5;">
+                <div class="pipeline-header">
+                    <span class="pipeline-title">Contract Pipeline · ${currentPerspective === 'revenue' ? 'Client Contracts' : 'Vendor Contracts'}</span>
+                </div>
+                <div class="pipeline-stages">`;
+            ['Draft', 'In Review', 'Pending', 'Active', 'Completed', 'Expired'].forEach((label, i) => {
+                if (i > 0) html += `<div class="pipeline-connector">›</div>`;
+                html += `
+                <div class="pipeline-stage">
+                    <span class="ps-count">00</span>
+                    <span class="ps-label">${label}</span>
+                </div>`;
+            });
+            html += `</div></div>`;
+
+            // Central empty state message
+            html += `
+            <div class="cockpit-empty">
+                <div class="empty-graphic">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0 .5 1.5m-.5-1.5h-9.5m0 0-.5 1.5M9 11.25v1.5M12 9v3.75m3-6v6"/>
+                    </svg>
+                </div>
+                <h3>No ${perspectiveLabel} Data Yet</h3>
+                <p>Your operational cockpit will come alive as you create contracts and manage ${currentPerspective === 'revenue' ? 'client' : 'vendor'} relationships. Start by adding your first ${currentPerspective === 'revenue' ? 'client contract' : 'vendor contract'}.</p>
+                <div class="empty-hints">
+                    <div class="empty-hint">
+                        <span class="hint-dot" style="background: var(--accent);"></span>
+                        Create a Contract
+                    </div>
+                    <div class="empty-hint">
+                        <span class="hint-dot" style="background: ${perspectiveColor};"></span>
+                        Add a ${currentPerspective === 'revenue' ? 'Client' : 'Vendor'}
+                    </div>
+                </div>
+            </div>`;
+
+            main.innerHTML = html;
+
+            // Footer — empty state
+            document.getElementById('footerContracts').textContent = '0 Active Contracts';
+            document.getElementById('footerContacts').textContent = currentPerspective === 'revenue' ? '0 Clients' : '0 Vendors';
+            document.getElementById('footerActions').textContent = '0 Pending Actions';
         }
 
         /* -------- INTERACTIONS -------- */
