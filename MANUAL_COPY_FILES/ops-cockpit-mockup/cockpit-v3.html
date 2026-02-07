@@ -209,6 +209,68 @@
         .empty-hint:hover { border-color: var(--accent); color: var(--accent); }
         .empty-hint .hint-dot { width: 6px; height: 6px; border-radius: 50%; }
 
+        /* ============ CNAK VERIFICATION CARD ============ */
+        .cnak-card { background: var(--card); border-radius: 12px; border: 1px solid var(--border); margin-bottom: 18px; overflow: hidden; }
+        .cnak-header { padding: 12px 18px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .cnak-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); font-weight: 700; display: flex; align-items: center; gap: 8px; }
+        .cnak-count { font-size: 10px; background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-border); padding: 2px 8px; border-radius: 10px; font-weight: 800; }
+        .cnak-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 0; }
+        .cnak-item { padding: 14px 18px; border-right: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light); display: flex; align-items: center; gap: 12px; transition: background 0.15s; cursor: pointer; }
+        .cnak-item:hover { background: #FAFBFC; }
+        .cnak-avatar { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; flex-shrink: 0; color: white; }
+        .cnak-content { flex: 1; min-width: 0; }
+        .cnak-contract { font-size: 12px; font-weight: 700; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .cnak-from { font-size: 10px; color: var(--text-muted); }
+        .cnak-code { font-size: 9px; font-weight: 700; font-family: 'Courier New', monospace; color: var(--accent); background: var(--bg); padding: 1px 5px; border-radius: 3px; margin-left: 4px; }
+        .cnak-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+        .cnak-status { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 3px 8px; border-radius: 5px; white-space: nowrap; }
+        .cnak-status.not-reviewed { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+        .cnak-status.under-review { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+        .cnak-action-btn { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border); background: white; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s; flex-shrink: 0; }
+        .cnak-action-btn:hover { background: var(--bg); border-color: #CBD5E1; }
+        .cnak-action-btn svg { width: 14px; height: 14px; stroke: var(--text-secondary); }
+        .cnak-accept-btn { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--green-border); background: var(--green-bg); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s; flex-shrink: 0; }
+        .cnak-accept-btn:hover { background: var(--green); border-color: var(--green); }
+        .cnak-accept-btn:hover svg { stroke: white; }
+        .cnak-accept-btn svg { width: 14px; height: 14px; stroke: var(--green); }
+        .cnak-reject-btn { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--red-border); background: var(--red-bg); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s; flex-shrink: 0; }
+        .cnak-reject-btn:hover { background: var(--red); border-color: var(--red); }
+        .cnak-reject-btn:hover svg { stroke: white; }
+        .cnak-reject-btn svg { width: 14px; height: 14px; stroke: var(--red); }
+
+        /* ============ RFQ TRACKER CARD ============ */
+        .rfq-card { background: var(--card); border-radius: 12px; border: 1px solid var(--border); margin-bottom: 18px; overflow: hidden; }
+        .rfq-header { padding: 12px 18px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .rfq-title { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); font-weight: 700; display: flex; align-items: center; gap: 8px; }
+        .rfq-count { font-size: 10px; background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); padding: 2px 8px; border-radius: 10px; font-weight: 800; }
+        .rfq-hub-link { font-size: 10px; font-weight: 700; color: var(--accent); cursor: pointer; text-decoration: none; }
+        .rfq-hub-link:hover { text-decoration: underline; }
+        .rfq-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 0; }
+        .rfq-item { padding: 14px 18px; border-right: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light); transition: background 0.15s; cursor: pointer; }
+        .rfq-item:hover { background: #FAFBFC; }
+        .rfq-item-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        .rfq-icon { width: 36px; height: 36px; border-radius: 10px; background: var(--amber-bg); border: 1px solid var(--amber-border); display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+        .rfq-info { flex: 1; min-width: 0; }
+        .rfq-name { font-size: 12px; font-weight: 700; margin-bottom: 2px; }
+        .rfq-id { font-size: 10px; color: var(--text-muted); }
+        .rfq-status-badge { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding: 3px 8px; border-radius: 5px; white-space: nowrap; flex-shrink: 0; }
+        .rfq-status-badge.sent { background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-border); }
+        .rfq-status-badge.quotes-received { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+        .rfq-status-badge.awarded { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+        .rfq-progress { margin-bottom: 10px; }
+        .rfq-progress-label { font-size: 10px; color: var(--text-muted); margin-bottom: 5px; display: flex; justify-content: space-between; }
+        .rfq-progress-bar { height: 4px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+        .rfq-progress-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+        .rfq-item-bottom { display: flex; justify-content: space-between; align-items: center; }
+        .rfq-deadline { font-size: 10px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
+        .rfq-deadline-dot { width: 5px; height: 5px; border-radius: 50%; }
+        .rfq-cta { font-size: 9px; font-weight: 700; padding: 4px 10px; border-radius: 6px; border: none; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+        .rfq-cta.compare { background: var(--accent); color: white; }
+        .rfq-cta.compare:hover { background: var(--accent-light); }
+        .rfq-cta.convert { background: var(--green); color: white; }
+        .rfq-cta.convert:hover { background: #16A34A; }
+        .rfq-cta.waiting { background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); cursor: default; }
+
         /* ============ NO-DATA INLINE ============ */
         .no-data-msg { padding: 40px 16px; text-align: center; color: var(--text-muted); font-size: 11px; }
     </style>
@@ -323,7 +385,9 @@ let activeActionFilter = 'all';
    ================================================================ */
 const ICONS = {
     eye: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/></svg>`,
-    resend: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"/></svg>`
+    resend: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"/></svg>`,
+    check: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5"/></svg>`,
+    x: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/></svg>`
 };
 
 /* ================================================================
@@ -369,23 +433,30 @@ const cockpitData = {
             { label: 'Vendor Performance', value: '96.1%', change: '+0.4%', dir: 'up', sub: '4/4 vendors within SLA' },
             { label: 'Open RFQs', value: '02', change: '1 closing soon', dir: 'neutral', sub: 'HVAC & Security Systems' }
         ],
-        acceptance: [
-            { id: 'CN-2033', name: 'Facility Management', contact: 'CleanSpace Inc', initials: 'CI', color: '#F59E0B', sentDays: 4, status: 'not-seen' },
-            { id: 'CN-2034', name: 'Network Infra Upgrade', contact: 'TechForce Inc', initials: 'TF', color: '#7C3AED', sentDays: 1, status: 'opened' }
+        cnak: [
+            { id: 'CN-2040', name: 'HVAC Annual Maintenance', seller: 'CoolAir Systems', initials: 'CA', color: '#0EA5E9', receivedDays: 3, cnakCode: 'CNAK-7X9K2M', status: 'not-reviewed', amount: '\u20B96,200/yr' },
+            { id: 'CN-2041', name: 'Cybersecurity Retainer', seller: 'SecureServe Pro', initials: 'SP', color: '#7C3AED', receivedDays: 1, cnakCode: 'CNAK-4F8L1N', status: 'under-review', amount: '\u20B918,000/qtr' },
+            { id: 'CN-2042', name: 'Office Cleaning Contract', seller: 'CleanSpace Inc', initials: 'CI', color: '#F59E0B', receivedDays: 0, cnakCode: 'CNAK-9B3D5R', status: 'not-reviewed', amount: '\u20B93,500/mo' }
+        ],
+        rfqs: [
+            { id: 'RFQ-0045', name: 'HVAC Annual Contract', vendorsInvited: 4, quotesReceived: 3, status: 'quotes_received', deadline: '2d left', deadlineUrgency: 'amber', progressPct: 75 },
+            { id: 'RFQ-0046', name: 'IT Security Audit Services', vendorsInvited: 3, quotesReceived: 0, status: 'sent', deadline: '5d left', deadlineUrgency: 'green', progressPct: 0 },
+            { id: 'RFQ-0044', name: 'Office Furniture Refresh', vendorsInvited: 5, quotesReceived: 5, status: 'awarded', deadline: 'Closed', deadlineUrgency: 'muted', progressPct: 100 }
         ],
         timeline: [
             { title: 'EMI Installment 3/12', sub: 'CloudVault Inc \xb7 CN-2018', indicator: 'due-soon', amount: '\u20B98,371', date: 'Due tomorrow', type: 'invoice', window: 'today' },
             { title: 'Quarterly Security Audit', sub: 'SecureServe Pro \xb7 CN-2022', indicator: 'on-track', amount: '\u20B918,000', date: 'Feb 15', type: 'deliverable', window: 'week' },
+            { title: 'Invoice INV-V-0088 Due', sub: 'SecureServe Pro \xb7 CN-2022', indicator: 'on-track', amount: '\u20B918,000', date: 'Feb 16', type: 'invoice', window: 'week' },
             { title: 'HVAC Preventive Maintenance', sub: 'CoolAir Systems \xb7 CN-2025', indicator: 'on-track', amount: '\u20B96,200', date: 'Feb 20', type: 'deliverable', window: 'month' },
             { title: 'Office Supplies \u2014 Monthly', sub: 'QuickStock Traders \xb7 CN-2030', indicator: 'info', amount: '\u20B93,450', date: 'Mar 1', type: 'invoice', window: 'month' }
         ],
         actions: [
             { icon: '\u270F\uFE0F', type: 'draft', title: 'CN-2035 \u2014 IT Support Contract', sub: 'TechForce Inc \xb7 40% complete \xb7 yesterday', cta: 'Continue Draft \u2192', ctaType: 'draft-cta', priority: 'draft' },
-            { icon: '\uD83D\uDCC4', type: 'invoice', title: 'New invoice from SecureServe', sub: 'INV-V-0088 \xb7 \u20B918,000 \xb7 Received today', cta: 'Review', ctaType: 'review', priority: 'review' },
-            { icon: '\uD83D\uDCCB', type: 'contract', title: 'RFQ-0045 closing in 2 days', sub: 'HVAC Annual Contract \xb7 3 vendor responses', cta: 'Compare Bids', ctaType: 'pending', priority: 'pending' },
-            { icon: '\uD83D\uDCB0', type: 'payment', title: 'Approve payment \u2014 CloudVault EMI', sub: '\u20B98,371 \xb7 Auto-debit scheduled tomorrow', cta: 'Approve', ctaType: 'review', priority: 'review' }
+            { icon: '\uD83D\uDCC4', type: 'invoice', title: 'New invoice from SecureServe', sub: 'INV-V-0088 \xb7 \u20B918,000 \xb7 Received today', cta: 'Review & Pay', ctaType: 'review', priority: 'review' },
+            { icon: '\uD83D\uDCB0', type: 'payment', title: 'Approve payment \u2014 CloudVault EMI', sub: '\u20B98,371 \xb7 Auto-debit scheduled tomorrow', cta: 'Approve', ctaType: 'review', priority: 'review' },
+            { icon: '\uD83D\uDD12', type: 'sla', title: 'Request evidence \u2014 CoolAir Systems', sub: 'Maintenance report not uploaded \xb7 CN-2025', cta: 'Request', ctaType: 'pending', priority: 'pending' }
         ],
-        footer: { contracts: '4 Active Contracts', contacts: '4 Vendors', actions: '4 Pending Actions' }
+        footer: { contracts: '4 Active Contracts', contacts: '4 Vendors', actions: '6 Pending Actions' }
     }
 };
 
@@ -414,34 +485,118 @@ function render() {
     });
     html += `</div>`;
 
-    // --- AWAITING ACCEPTANCE ---
-    if (d.acceptance.length > 0) {
-        html += `<div class="acceptance-card">
-            <div class="acceptance-header">
-                <div class="acceptance-title">
-                    Awaiting Acceptance
-                    <span class="acceptance-count">${String(d.acceptance.length).padStart(2, '0')}</span>
+    // --- PERSPECTIVE-SPECIFIC CARDS ---
+    if (currentPerspective === 'revenue') {
+        // SELLER: Awaiting Acceptance (outbound)
+        if (d.acceptance && d.acceptance.length > 0) {
+            html += `<div class="acceptance-card">
+                <div class="acceptance-header">
+                    <div class="acceptance-title">
+                        Awaiting Acceptance
+                        <span class="acceptance-count">${String(d.acceptance.length).padStart(2, '0')}</span>
+                    </div>
+                    <a class="acceptance-hub-link" onclick="alert('Navigate to /contracts?status=pending_acceptance')">View all in Hub \u2192</a>
                 </div>
-                <a class="acceptance-hub-link" onclick="alert('Navigate to /contracts?status=pending_acceptance')">View all in Hub \u2192</a>
-            </div>
-            <div class="acceptance-body">`;
-        d.acceptance.forEach(a => {
-            const statusLabel = a.status === 'seen' ? 'Viewed' : a.status === 'opened' ? 'Opened' : 'Not Seen';
-            const statusClass = a.status === 'seen' ? 'seen' : a.status === 'opened' ? 'opened' : 'not-seen';
-            html += `<div class="acceptance-item">
-                <div class="acc-avatar" style="background:${a.color};">${a.initials}</div>
-                <div class="acc-content">
-                    <div class="acc-contract">${a.id} \u2014 ${a.name}</div>
-                    <div class="acc-contact">${a.contact} \xb7 <span class="acc-sent">Sent ${a.sentDays}d ago</span></div>
+                <div class="acceptance-body">`;
+            d.acceptance.forEach(a => {
+                const statusLabel = a.status === 'seen' ? 'Viewed' : a.status === 'opened' ? 'Opened' : 'Not Seen';
+                const statusClass = a.status === 'seen' ? 'seen' : a.status === 'opened' ? 'opened' : 'not-seen';
+                html += `<div class="acceptance-item">
+                    <div class="acc-avatar" style="background:${a.color};">${a.initials}</div>
+                    <div class="acc-content">
+                        <div class="acc-contract">${a.id} \u2014 ${a.name}</div>
+                        <div class="acc-contact">${a.contact} \xb7 <span class="acc-sent">Sent ${a.sentDays}d ago</span></div>
+                    </div>
+                    <div class="acc-status-group">
+                        <span class="acc-seen-badge ${statusClass}">${statusLabel}</span>
+                        <button class="acc-action-btn" title="View contract" onclick="alert('Open contract ${a.id}')">${ICONS.eye}</button>
+                        <button class="acc-action-btn resend" title="Resend notification" onclick="alert('Resend to ${a.contact}')">${ICONS.resend}</button>
+                    </div>
+                </div>`;
+            });
+            html += `</div></div>`;
+        }
+    } else {
+        // BUYER: CNAK Verification (incoming from sellers)
+        if (d.cnak && d.cnak.length > 0) {
+            html += `<div class="cnak-card">
+                <div class="cnak-header">
+                    <div class="cnak-title">
+                        CNAK Verification \u2014 Incoming Contracts
+                        <span class="cnak-count">${String(d.cnak.length).padStart(2, '0')}</span>
+                    </div>
+                    <a class="acceptance-hub-link" onclick="alert('Navigate to /contracts/claim')">Claim via CNAK \u2192</a>
                 </div>
-                <div class="acc-status-group">
-                    <span class="acc-seen-badge ${statusClass}">${statusLabel}</span>
-                    <button class="acc-action-btn" title="View contract" onclick="alert('Open contract ${a.id}')">${ICONS.eye}</button>
-                    <button class="acc-action-btn resend" title="Resend notification" onclick="alert('Resend to ${a.contact}')">${ICONS.resend}</button>
+                <div class="cnak-body">`;
+            d.cnak.forEach(c => {
+                const statusLabel = c.status === 'under-review' ? 'Under Review' : 'Not Reviewed';
+                html += `<div class="cnak-item">
+                    <div class="cnak-avatar" style="background:${c.color};">${c.initials}</div>
+                    <div class="cnak-content">
+                        <div class="cnak-contract">${c.id} \u2014 ${c.name}</div>
+                        <div class="cnak-from">From: ${c.seller} \xb7 ${c.receivedDays === 0 ? 'Today' : c.receivedDays + 'd ago'} \xb7 <span style="font-weight:700;">${c.amount}</span></div>
+                    </div>
+                    <div class="cnak-actions">
+                        <span class="cnak-code">${c.cnakCode}</span>
+                        <span class="cnak-status ${c.status}">${statusLabel}</span>
+                        <button class="cnak-action-btn" title="View contract" onclick="alert('Review contract ${c.id} via ${c.cnakCode}')">${ICONS.eye}</button>
+                        <button class="cnak-accept-btn" title="Accept contract" onclick="alert('Accept ${c.id}')">${ICONS.check}</button>
+                        <button class="cnak-reject-btn" title="Reject contract" onclick="alert('Reject ${c.id}')">${ICONS.x}</button>
+                    </div>
+                </div>`;
+            });
+            html += `</div></div>`;
+        }
+
+        // BUYER: RFQ Tracker (outbound procurement)
+        if (d.rfqs && d.rfqs.length > 0) {
+            html += `<div class="rfq-card">
+                <div class="rfq-header">
+                    <div class="rfq-title">
+                        RFQ Tracker \u2014 Active Procurement
+                        <span class="rfq-count">${String(d.rfqs.length).padStart(2, '0')}</span>
+                    </div>
+                    <a class="rfq-hub-link" onclick="alert('Navigate to /contracts?record_type=rfq')">View all RFQs \u2192</a>
                 </div>
-            </div>`;
-        });
-        html += `</div></div>`;
+                <div class="rfq-body">`;
+            d.rfqs.forEach(r => {
+                const statusLabel = r.status === 'quotes_received' ? 'Quotes In' : r.status === 'awarded' ? 'Awarded' : 'Sent';
+                const statusClass = r.status === 'quotes_received' ? 'quotes-received' : r.status === 'awarded' ? 'awarded' : 'sent';
+                const progressColor = r.status === 'awarded' ? 'var(--green)' : r.quotesReceived > 0 ? 'var(--amber)' : 'var(--blue)';
+                let ctaLabel, ctaClass;
+                if (r.status === 'quotes_received') { ctaLabel = 'Compare Bids'; ctaClass = 'compare'; }
+                else if (r.status === 'awarded') { ctaLabel = 'Convert to Contract'; ctaClass = 'convert'; }
+                else { ctaLabel = 'Waiting...'; ctaClass = 'waiting'; }
+
+                html += `<div class="rfq-item">
+                    <div class="rfq-item-top">
+                        <div class="rfq-icon">\uD83D\uDCE8</div>
+                        <div class="rfq-info">
+                            <div class="rfq-name">${r.name}</div>
+                            <div class="rfq-id">${r.id} \xb7 ${r.vendorsInvited} vendors invited</div>
+                        </div>
+                        <span class="rfq-status-badge ${statusClass}">${statusLabel}</span>
+                    </div>
+                    <div class="rfq-progress">
+                        <div class="rfq-progress-label">
+                            <span>Vendor Responses</span>
+                            <span style="font-weight:700;">${r.quotesReceived}/${r.vendorsInvited}</span>
+                        </div>
+                        <div class="rfq-progress-bar">
+                            <div class="rfq-progress-fill" style="width:${r.progressPct}%; background:${progressColor};"></div>
+                        </div>
+                    </div>
+                    <div class="rfq-item-bottom">
+                        <div class="rfq-deadline">
+                            <span class="rfq-deadline-dot" style="background:var(--${r.deadlineUrgency === 'muted' ? 'text-muted' : r.deadlineUrgency});"></span>
+                            ${r.deadline}
+                        </div>
+                        <button class="rfq-cta ${ctaClass}">${ctaLabel}</button>
+                    </div>
+                </div>`;
+            });
+            html += `</div></div>`;
+        }
     }
 
     // --- SECTIONS: Service Events + Action Queue ---
@@ -553,8 +708,13 @@ function setActionFilter(f) { activeActionFilter = f; render(); }
    CTAs
    ================================================================ */
 function updateCTAs() {
-    document.getElementById('ctaPrimary').textContent = currentPerspective === 'revenue' ? '+ New Client Contract' : '+ New Vendor Contract';
-    document.getElementById('ctaSecondary').textContent = currentPerspective === 'revenue' ? '+ Add Client' : '+ Add Vendor';
+    if (currentPerspective === 'revenue') {
+        document.getElementById('ctaPrimary').textContent = '+ New Client Contract';
+        document.getElementById('ctaSecondary').textContent = '+ Add Client';
+    } else {
+        document.getElementById('ctaPrimary').textContent = '+ New RFQ';
+        document.getElementById('ctaSecondary').textContent = '+ Claim CNAK';
+    }
 }
 
 /* ================================================================
@@ -588,8 +748,13 @@ function renderEmptyState(main) {
         <h3>No ${label} Data Yet</h3>
         <p>Your cockpit will come alive as you create contracts and manage ${cType} relationships.</p>
         <div class="empty-hints">
-            <div class="empty-hint"><span class="hint-dot" style="background:var(--accent);"></span>Create a Contract</div>
-            <div class="empty-hint"><span class="hint-dot" style="background:${color};"></span>Add a ${cType === 'client' ? 'Client' : 'Vendor'}</div>
+            ${currentPerspective === 'revenue'
+                ? `<div class="empty-hint"><span class="hint-dot" style="background:var(--accent);"></span>Create a Contract</div>
+                   <div class="empty-hint"><span class="hint-dot" style="background:${color};"></span>Add a Client</div>`
+                : `<div class="empty-hint"><span class="hint-dot" style="background:var(--accent);"></span>Create an RFQ</div>
+                   <div class="empty-hint"><span class="hint-dot" style="background:${color};"></span>Claim a CNAK</div>
+                   <div class="empty-hint"><span class="hint-dot" style="background:var(--amber);"></span>Add a Vendor</div>`
+            }
         </div>
     </div>`;
 
