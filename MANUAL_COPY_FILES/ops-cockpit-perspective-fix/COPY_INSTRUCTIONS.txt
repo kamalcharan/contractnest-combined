@@ -1,0 +1,54 @@
+============================================================
+OPS COCKPIT — PERSPECTIVE DATA FIX
+============================================================
+
+Branch: ops-cockpit-perspective-fix
+Submodules Affected: contractnest-ui
+
+Problem Fixed:
+  Both Revenue and Expense perspectives showed IDENTICAL data.
+  Stats, contract lists, CNAK, event schedules — all the same numbers.
+
+Root Cause:
+  All data hooks fetched contracts/events WITHOUT contract_type filter.
+  Revenue (client) and Expense (vendor) were pulling the same unfiltered data.
+
+Fix Applied:
+  1) Added perspectiveType = 'client' (revenue) | 'vendor' (expense)
+  2) ALL useContracts() calls now include contract_type: perspectiveType
+     - Active, Pending Acceptance, Draft, Pending Review — all filtered
+  3) Stats computed from per-perspective query total_count (not aggregate)
+  4) Events client-side filtered using perspective contract IDs
+  5) Event schedule buckets computed from perspective-filtered events
+  6) Removed useTenantDateSummary dependency (replaced with client-side bucketing)
+
+Files Changed:
+  - contractnest-ui/src/pages/ops/cockpit/index.tsx [UPDATE]
+
+No new files. No API/Edge changes. No new dependencies.
+
+============================================================
+COPY COMMAND (PowerShell):
+============================================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\ops-cockpit-perspective-fix\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Write-Host "Done — 1 file copied" -ForegroundColor Green
+
+============================================================
+TEST:
+============================================================
+
+cd contractnest-ui
+npm run dev
+# Navigate to /ops/cockpit
+# Ctrl+F5 hard refresh
+
+Verify:
+  1) Revenue perspective: Stats, Awaiting Acceptance, Events reflect CLIENT contracts
+  2) Expense perspective: Stats, CNAK, Events reflect VENDOR contracts
+  3) Switch between perspectives — numbers DIFFER
+  4) Event Schedule buckets show different counts per perspective
+  5) Action Queue shows different drafts/overdue/pending per perspective
+
+============================================================
