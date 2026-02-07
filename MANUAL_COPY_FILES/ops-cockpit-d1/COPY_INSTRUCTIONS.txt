@@ -1,0 +1,31 @@
+============================================================
+OPS COCKPIT — D1: Shell + Revenue Stats
+============================================================
+
+Branch: ops-cockpit-d1
+Submodules Affected: contractnest-ui
+
+Files Changed:
+  - contractnest-ui/src/pages/ops/cockpit/index.tsx [UPDATE]
+    Purpose: Replace Coming Soon placeholder with full cockpit page
+
+No new files. No API/Edge changes. No new dependencies.
+
+============================================================
+COPY COMMAND (PowerShell):
+============================================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\ops-cockpit-d1\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Write-Host "Done — 1 file copied" -ForegroundColor Green
+
+============================================================
+TEST:
+============================================================
+
+cd contractnest-ui
+npm run dev
+# Navigate to /ops/cockpit
+# Ctrl+F5 hard refresh
+
+============================================================
