@@ -1,0 +1,25 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — ops-cockpit-revenue-fixes
+═══════════════════════════════════════════════════
+
+Submodules Affected: contractnest-ui
+
+Files Modified (1):
+  contractnest-ui/src/pages/ops/cockpit/index.tsx
+    - Ops Cockpit page: 6 revenue-side fixes
+
+Changes Summary:
+  1. +Add Client button: Matches /contacts style (rounded-full, solid brand bg, glow shadow, hover:scale-105). Opens QuickAddContactDrawer inline.
+  2. +New Contract button: Opens ContractWizard modal with contractType='client' instead of navigating away.
+  3. Removed "Active Contracts" stat card — now 3 cards (grid-cols-3): Pending Acceptance, Drafts, Overdue Events.
+  4. PerspectiveSwitcher moved inline beside the header (same row), not below.
+  5. VaNi sidebar moved up — now starts at stat-card level (stats + content inside the 2-col grid).
+  6. Awaiting Acceptance card: Uses theme colors.utility.secondaryBackground + proper border + subtle boxShadow for visibility.
+
+═══════════════════════════════════════════════════
+COPY COMMAND (PowerShell):
+═══════════════════════════════════════════════════
+
+Copy-Item "MANUAL_COPY_FILES\ops-cockpit-revenue-fixes\contractnest-ui\src\pages\ops\cockpit\index.tsx" -Destination "contractnest-ui\src\pages\ops\cockpit\index.tsx" -Force
+
+═══════════════════════════════════════════════════
