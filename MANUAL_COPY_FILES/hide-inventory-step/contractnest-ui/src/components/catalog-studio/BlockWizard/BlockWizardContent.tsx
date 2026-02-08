@@ -326,7 +326,6 @@ const BlockWizardContent: React.FC<BlockWizardContentProps> = ({
       case 'spare':
         switch (currentStep) {
           case 3: return <PricingStep formData={formData} onChange={handleFormChange} />;
-          case 4: return <FulfillmentStep formData={formData} onChange={handleFormChange} />;
         }
         break;
 

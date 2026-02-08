@@ -15,7 +15,6 @@ export const WIZARD_STEPS: Record<string, WizardStep[]> = {
     { id: 1, label: 'Type' },
     { id: 2, label: 'Basic Info' },
     { id: 3, label: 'Pricing' },
-    { id: 4, label: 'Fulfillment' },
   ],
   billing: [
     { id: 1, label: 'Type' },
