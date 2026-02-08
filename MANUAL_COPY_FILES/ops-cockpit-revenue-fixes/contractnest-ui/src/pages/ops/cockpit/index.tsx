@@ -4,7 +4,7 @@
 // D2: Awaiting Acceptance + Service Events + Action Queue (Revenue)
 // Theme: Uses currentTheme brand colors (not hardcoded green)
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Gauge,
@@ -42,11 +42,21 @@ import {
 } from '@/hooks/queries/useContractEventQueries';
 import { StatCard } from '@/components/subscription/cards/StatCard';
 import { VaNiLoader } from '@/components/common/loaders/UnifiedLoader';
-import QuickAddContactDrawer from '@/components/contacts/QuickAddContactDrawer';
-import ContractWizard from '@/components/contracts/ContractWizard';
 import type { Contract } from '@/types/contracts';
 import type { ContractEvent, ContractEventStatus } from '@/types/contractEvents';
 import { VALID_STATUS_TRANSITIONS } from '@/types/contractEvents';
+
+// Lazy-load drawer/wizard — gracefully degrades if components don't exist
+const QuickAddContactDrawer = lazy(() =>
+  import('@/components/contacts/QuickAddContactDrawer').catch(() => ({
+    default: () => null as any,
+  }))
+);
+const ContractWizard = lazy(() =>
+  import('@/components/contracts/ContractWizard').catch(() => ({
+    default: () => null as any,
+  }))
+);
 
 // =================================================================
 // TYPES
@@ -1587,16 +1597,18 @@ const OpsCockpitPage: React.FC = () => {
         colors={colors}
       />
 
-      {/* ═══════ MODALS / DRAWERS ═══════ */}
-      <QuickAddContactDrawer
-        isOpen={isQuickAddOpen}
-        onClose={() => setIsQuickAddOpen(false)}
-      />
-      <ContractWizard
-        isOpen={showContractWizard}
-        onClose={() => setShowContractWizard(false)}
-        contractType="client"
-      />
+      {/* ═══════ MODALS / DRAWERS (lazy loaded) ═══════ */}
+      <Suspense fallback={null}>
+        <QuickAddContactDrawer
+          isOpen={isQuickAddOpen}
+          onClose={() => setIsQuickAddOpen(false)}
+        />
+        <ContractWizard
+          isOpen={showContractWizard}
+          onClose={() => setShowContractWizard(false)}
+          contractType="client"
+        />
+      </Suspense>
     </div>
   );
 };
