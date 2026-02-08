@@ -1,0 +1,24 @@
+================================================================
+COPY INSTRUCTIONS - Hide Inventory Step from Spare Block Wizard
+================================================================
+
+Feature: Remove Inventory Settings step from spare block wizard
+Submodules Affected: contractnest-ui
+
+Files to copy (3 files):
+─────────────────────────────────────────────────────────────────
+
+1. contractnest-ui/src/utils/catalog-studio/wizard-data.ts
+   → Removed Inventory step from WIZARD_STEPS.spare (5 steps → 4 steps)
+
+2. contractnest-ui/src/utils/catalog-studio/categories.ts
+   → Removed 'inventory' from CATEGORY_METADATA.spare.wizardSteps
+
+3. contractnest-ui/src/components/catalog-studio/BlockWizard/BlockWizardContent.tsx
+   → Removed InventoryStep rendering from spare case (step 3 → PricingStep, step 4 → FulfillmentStep)
+   → Removed stock quantity validation from spare step 3
+   → Shifted pricing validation from step 4 to step 3
+
+PowerShell Copy Commands:
+─────────────────────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\hide-inventory-step\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
