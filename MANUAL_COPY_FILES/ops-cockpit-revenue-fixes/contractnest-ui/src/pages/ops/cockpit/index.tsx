@@ -473,37 +473,37 @@ const AwaitingAcceptanceCard: React.FC<{
             {String(contracts.length).padStart(2, '0')}
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {/* Carousel left/right buttons */}
           {contracts.length > VISIBLE_COUNT && (
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <button
                 onClick={handleScrollLeft}
                 disabled={!canScrollLeft}
-                className="w-6 h-6 rounded-md border flex items-center justify-center transition-all"
+                className="w-7 h-7 rounded-md border flex items-center justify-center transition-all hover:shadow-sm"
                 style={{
-                  borderColor: colors.utility.primaryText + '20',
-                  backgroundColor: canScrollLeft ? colors.utility.secondaryBackground : 'transparent',
-                  opacity: canScrollLeft ? 1 : 0.35,
+                  borderColor: canScrollLeft ? brandColor + '50' : colors.utility.primaryText + '15',
+                  backgroundColor: canScrollLeft ? brandColor + '10' : colors.utility.secondaryBackground,
+                  opacity: canScrollLeft ? 1 : 0.4,
                   cursor: canScrollLeft ? 'pointer' : 'default',
                 }}
                 title="Scroll left"
               >
-                <ChevronLeft className="h-3.5 w-3.5" style={{ color: colors.utility.secondaryText }} />
+                <ChevronLeft className="h-4 w-4" style={{ color: canScrollLeft ? brandColor : colors.utility.secondaryText }} />
               </button>
               <button
                 onClick={handleScrollRight}
                 disabled={!canScrollRight}
-                className="w-6 h-6 rounded-md border flex items-center justify-center transition-all"
+                className="w-7 h-7 rounded-md border flex items-center justify-center transition-all hover:shadow-sm"
                 style={{
-                  borderColor: colors.utility.primaryText + '20',
-                  backgroundColor: canScrollRight ? colors.utility.secondaryBackground : 'transparent',
-                  opacity: canScrollRight ? 1 : 0.35,
+                  borderColor: canScrollRight ? brandColor + '50' : colors.utility.primaryText + '15',
+                  backgroundColor: canScrollRight ? brandColor + '10' : colors.utility.secondaryBackground,
+                  opacity: canScrollRight ? 1 : 0.4,
                   cursor: canScrollRight ? 'pointer' : 'default',
                 }}
                 title="Scroll right"
               >
-                <ChevronRight className="h-3.5 w-3.5" style={{ color: colors.utility.secondaryText }} />
+                <ChevronRight className="h-4 w-4" style={{ color: canScrollRight ? brandColor : colors.utility.secondaryText }} />
               </button>
             </div>
           )}
@@ -975,7 +975,7 @@ const ServiceEventsSection: React.FC<{
   return (
     <div
       className="rounded-xl border shadow-sm overflow-hidden flex flex-col"
-      style={{ minHeight: '320px', backgroundColor: colors.utility.secondaryBackground, borderColor: colors.utility.primaryText + '20' }}
+      style={{ minHeight: '320px', minWidth: 0, backgroundColor: colors.utility.secondaryBackground, borderColor: colors.utility.primaryText + '20' }}
     >
       {/* Header + filters — matches v3 .section-header */}
       <div className="px-4 py-3 border-b" style={{ borderColor: colors.utility.primaryText + '15' }}>
@@ -1383,8 +1383,8 @@ const OpsCockpitPage: React.FC = () => {
 
   return (
     <div
-      className="min-h-screen p-6 transition-colors"
-      style={{ backgroundColor: colors.utility.primaryBackground }}
+      className="min-h-screen p-6 transition-colors overflow-x-hidden"
+      style={{ backgroundColor: colors.utility.primaryBackground, maxWidth: '100vw', overflowX: 'hidden' }}
     >
       {/* ═══════ HEADER ═══════ */}
       <div className="flex items-center justify-between mb-6">
@@ -1464,15 +1464,25 @@ const OpsCockpitPage: React.FC = () => {
 
       {/* ═══════ MAIN GRID: Content + VaNi Sidebar (VaNi starts at stat-card level) ═══════ */}
       <div className="grid gap-6" style={{ gridTemplateColumns: '1fr 300px' }}>
-        {/* Left: Main Content */}
-        <div className="space-y-6">
+        {/* Left: Main Content — min-width:0 prevents grid blowout */}
+        <div className="space-y-6" style={{ minWidth: 0 }}>
 
-          {/* ═══ ROW 1: STAT CARDS (3 cards) ═══ */}
+          {/* ═══ ROW 1: STAT CARDS (3 cards) — wrapped for border visibility ═══ */}
           <div className="grid grid-cols-3 gap-4">
-            <StatCard label="Pending Acceptance" value={stats.pendingAcceptance} icon={Send} iconColor="#F59E0B" size="sm" />
-            <StatCard label="Drafts" value={stats.drafts} icon={FileText} iconColor="#6B7280" size="sm" />
-            <StatCard label="Overdue Events" value={urgency.overdue.count} icon={AlertTriangle}
-              iconColor={urgency.overdue.count > 0 ? '#EF4444' : '#6B7280'} size="sm" />
+            {[
+              { label: 'Pending Acceptance', value: stats.pendingAcceptance, icon: Send, iconColor: '#F59E0B' },
+              { label: 'Drafts', value: stats.drafts, icon: FileText, iconColor: '#6B7280' },
+              { label: 'Overdue Events', value: urgency.overdue.count, icon: AlertTriangle,
+                iconColor: urgency.overdue.count > 0 ? '#EF4444' : '#6B7280' },
+            ].map((card) => (
+              <div
+                key={card.label}
+                className="rounded-2xl border shadow-sm"
+                style={{ borderColor: colors.utility.primaryText + '15' }}
+              >
+                <StatCard label={card.label} value={card.value} icon={card.icon} iconColor={card.iconColor} size="sm" />
+              </div>
+            ))}
           </div>
 
           {/* ═══ ROW 2: Awaiting Acceptance (revenue) — per v3 HTML ═══ */}
@@ -1509,11 +1519,11 @@ const OpsCockpitPage: React.FC = () => {
           )}
 
           {/* ═══ ROW 3: Event Schedule (left 35%) + Service Events (right 65%) ═══ */}
-          <div className="grid gap-4" style={{ gridTemplateColumns: '35% 65%' }}>
+          <div className="grid gap-4" style={{ gridTemplateColumns: '7fr 13fr' }}>
             {/* Left: Event urgency buckets (stacked vertically) */}
             <div
               className="rounded-xl border shadow-sm p-4"
-              style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: colors.utility.primaryText + '20' }}
+              style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: colors.utility.primaryText + '20', minWidth: 0 }}
             >
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
