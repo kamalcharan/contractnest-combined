@@ -1381,11 +1381,18 @@ const OpsCockpitPage: React.FC = () => {
     );
   }
 
+  console.log('🔴 OPS COCKPIT V4 LOADED — if you see this in console, the file is active');
+
   return (
     <div
       className="min-h-screen p-6 transition-colors"
       style={{ backgroundColor: colors.utility.primaryBackground }}
     >
+      {/* DEBUG BANNER — Remove after confirming file loads */}
+      <div style={{ backgroundColor: '#EF4444', color: 'white', padding: '12px 16px', borderRadius: '8px', marginBottom: '16px', fontSize: '14px', fontWeight: 'bold', textAlign: 'center' }}>
+        ⚠️ OPS COCKPIT V4 — If you see this red banner, the new file is loaded correctly. Remove this banner after testing.
+      </div>
+
       {/* ═══════ HEADER ═══════ */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
