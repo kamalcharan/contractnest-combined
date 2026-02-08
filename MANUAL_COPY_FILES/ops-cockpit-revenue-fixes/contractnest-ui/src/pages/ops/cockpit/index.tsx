@@ -739,7 +739,7 @@ const CnakClaimCTA: React.FC<{
 
           {/* CTA Button */}
           <button
-            onClick={() => navigate('/welcome')}
+            onClick={() => navigate('/contracts/claim')}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-xs font-bold text-white transition-all hover:scale-[1.02] active:scale-[0.98]"
             style={{
               backgroundColor: brandColor,
