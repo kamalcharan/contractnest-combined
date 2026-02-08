@@ -211,23 +211,33 @@ const FilterPill: React.FC<{
   isActive: boolean;
   onClick: () => void;
   isDarkMode: boolean;
+  brandColor: string;
+  colors: any;
   count?: number;
-}> = ({ label, isActive, onClick, isDarkMode, count }) => (
+}> = ({ label, isActive, onClick, isDarkMode, brandColor, colors, count }) => (
   <button
     onClick={onClick}
-    className={`px-2.5 py-1 rounded-md text-[10px] font-semibold transition-all whitespace-nowrap ${
-      isActive
-        ? isDarkMode ? 'bg-gray-600 text-white font-bold' : 'bg-gray-200 text-gray-900 font-bold'
-        : isDarkMode ? 'text-gray-500 hover:text-gray-300' : 'text-gray-400 hover:text-gray-600'
-    }`}
+    className="px-2.5 py-1 rounded-md text-[10px] font-semibold transition-all whitespace-nowrap"
+    style={isActive ? {
+      backgroundColor: brandColor + (isDarkMode ? '25' : '12'),
+      color: brandColor,
+      fontWeight: 700,
+    } : {
+      color: colors.utility.secondaryText,
+    }}
   >
     {label}
     {count !== undefined && count > 0 && (
-      <span className={`ml-1 px-1 py-0.5 rounded text-[9px] ${
-        isActive
-          ? isDarkMode ? 'bg-gray-500' : 'bg-gray-300'
-          : isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
-      }`}>
+      <span
+        className="ml-1 px-1 py-0.5 rounded text-[9px]"
+        style={isActive ? {
+          backgroundColor: brandColor + '20',
+          color: brandColor,
+        } : {
+          backgroundColor: colors.utility.primaryText + '08',
+          color: colors.utility.secondaryText,
+        }}
+      >
         {count}
       </span>
     )}
@@ -260,8 +270,8 @@ const BucketCard: React.FC<BucketCardProps> = ({
   <div
     className="p-3 rounded-xl border shadow-sm transition-all"
     style={{
-      backgroundColor: colors.utility.secondaryBackground,
-      borderColor: colors.utility.primaryText + '20',
+      backgroundColor: colors.utility.primaryBackground,
+      borderColor: colors.utility.primaryText + '15',
       borderLeftWidth: isHighlighted ? '3px' : '1px',
       borderLeftColor: isHighlighted ? color : undefined,
     }}
@@ -880,8 +890,8 @@ const EventCard: React.FC<{
     <div
       className="p-3 rounded-xl border shadow-sm transition-all cursor-pointer hover:shadow-md"
       style={{
-        backgroundColor: colors.utility.secondaryBackground,
-        borderColor: colors.utility.primaryText + '20',
+        backgroundColor: colors.utility.primaryBackground,
+        borderColor: colors.utility.primaryText + '15',
       }}
       onClick={() => onViewContract(event.contract_id)}
     >
@@ -993,12 +1003,12 @@ const ServiceEventsSection: React.FC<{
         <div className="flex items-center gap-0.5">
           {(['today', 'week', 'month'] as EventTimeFilter[]).map((f) => (
             <FilterPill key={f} label={f === 'today' ? 'Today' : f === 'week' ? 'This Week' : 'This Month'}
-              isActive={timeFilter === f} onClick={() => onTimeFilterChange(f)} isDarkMode={isDarkMode} />
+              isActive={timeFilter === f} onClick={() => onTimeFilterChange(f)} isDarkMode={isDarkMode} brandColor={brandColor} colors={colors} />
           ))}
-          <div className={`w-px h-4 mx-1 ${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'}`} />
+          <div className="w-px h-4 mx-1" style={{ backgroundColor: colors.utility.primaryText + '15' }} />
           {(['all', 'service', 'billing'] as EventTypeFilter[]).map((f) => (
             <FilterPill key={f} label={f === 'all' ? 'All' : f === 'service' ? 'Deliverables' : 'Invoices'}
-              isActive={typeFilter === f} onClick={() => onTypeFilterChange(f)} isDarkMode={isDarkMode} />
+              isActive={typeFilter === f} onClick={() => onTypeFilterChange(f)} isDarkMode={isDarkMode} brandColor={brandColor} colors={colors} />
           ))}
         </div>
       </div>
@@ -1055,10 +1065,11 @@ const ActionQueueCard: React.FC<{
   queueFilter: QueueFilter;
   onQueueFilterChange: (f: QueueFilter) => void;
   isDarkMode: boolean;
+  brandColor: string;
   colors: any;
 }> = ({
   draftContracts, overdueEvents, pendingContracts,
-  isLoading, onViewContract, queueFilter, onQueueFilterChange, isDarkMode, colors,
+  isLoading, onViewContract, queueFilter, onQueueFilterChange, isDarkMode, brandColor, colors,
 }) => {
   const queueItems = useMemo(() => {
     const items: Array<{
@@ -1125,6 +1136,8 @@ const ActionQueueCard: React.FC<{
               isActive={queueFilter === f}
               onClick={() => onQueueFilterChange(f)}
               isDarkMode={isDarkMode}
+              brandColor={brandColor}
+              colors={colors}
               count={counts[f]}
             />
           ))}
@@ -1153,7 +1166,7 @@ const ActionQueueCard: React.FC<{
                 className="flex items-center gap-3 px-4 py-3 transition-colors cursor-pointer"
                 style={{ borderBottom: `1px solid ${colors.utility.primaryText}10` }}
                 onClick={() => onViewContract(item.contractId)}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255,255,255,0.03)' : '#FAFBFC'; }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = brandColor + '08'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ''; }}
               >
                 <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
@@ -1588,6 +1601,7 @@ const OpsCockpitPage: React.FC = () => {
             queueFilter={queueFilter}
             onQueueFilterChange={setQueueFilter}
             isDarkMode={isDarkMode}
+            brandColor={brandColor}
             colors={colors}
           />
         </div>
