@@ -1,0 +1,18 @@
+================================================================
+COPY INSTRUCTIONS - Fix Public Contract Validate/Respond Endpoints
+================================================================
+
+Feature: Add missing PUBLIC_VALIDATE and PUBLIC_RESPOND endpoint definitions
+Submodules Affected: contractnest-ui
+
+Files to copy (1 file):
+─────────────────────────────────────────────────────────────────
+
+1. contractnest-ui/src/services/serviceURLs.ts
+   → Added PUBLIC_VALIDATE: '/api/contracts/public/validate'
+   → Added PUBLIC_RESPOND: '/api/contracts/public/respond'
+   → These endpoints were referenced in review/index.tsx but never defined
+
+PowerShell Copy Commands:
+─────────────────────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\fix-public-validate\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
