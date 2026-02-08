@@ -1,0 +1,23 @@
+================================================================
+COPY INSTRUCTIONS - Nudge Confirmation Modal for Contract Sign-off
+================================================================
+
+Feature: Show nudge sequence screen before sending contract sign-off notifications
+Submodules Affected: contractnest-ui
+
+Files to copy (2 files):
+─────────────────────────────────────────────────────────────────
+
+1. contractnest-ui/src/components/contracts/NudgeConfirmationModal.tsx [NEW]
+   → Themed nudge modal with sequence flow, WhatsApp preview, CNAK display
+
+2. contractnest-ui/src/pages/ops/cockpit/index.tsx [MODIFIED]
+   → Imported NudgeConfirmationModal
+   → Added nudgeContract state
+   → Changed Send click to open modal instead of direct send
+   → Added handleNudgeConfirm to send on confirmation
+   → Added modal JSX before Suspense block
+
+PowerShell Copy Commands:
+─────────────────────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\nudge-modal\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
