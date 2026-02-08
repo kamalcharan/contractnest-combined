@@ -636,169 +636,120 @@ const AwaitingAcceptanceCard: React.FC<{
   );
 };
 
-// ─── CNAK Verification Card (expense — v3 HTML style) ───────────
+// ─── CNAK Claim CTA (expense — replaces data-driven card) ───────
 
-const CnakVerificationCard: React.FC<{
-  contracts: Contract[];
-  isLoading: boolean;
-  onView: (id: string) => void;
-  onAccept: (id: string) => void;
-  onReject: (id: string) => void;
-  isProcessing: boolean;
+const CnakClaimCTA: React.FC<{
   isDarkMode: boolean;
   brandColor: string;
-}> = ({ contracts, isLoading, onView, onAccept, onReject, isProcessing, isDarkMode, brandColor }) => {
+  colors: any;
+}> = ({ isDarkMode, brandColor, colors }) => {
   const navigate = useNavigate();
 
-  if (isLoading) {
-    return (
-      <div className={`rounded-xl border ${isDarkMode ? 'border-gray-700 bg-gray-800/50' : 'border-gray-200 bg-white'}`}>
-        <div className="p-5 flex items-center justify-center py-10">
-          <Loader2 className="h-5 w-5 animate-spin" style={{ color: brandColor }} />
-          <span className={`ml-2 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Loading...</span>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className={`rounded-xl border overflow-hidden ${
-      isDarkMode ? 'border-gray-700 bg-gray-800/50' : 'border-gray-200 bg-white'
-    }`}>
-      {/* Header — matches v3 .cnak-header */}
-      <div className={`px-4 py-3 flex items-center justify-between border-b ${
-        isDarkMode ? 'border-gray-700' : 'border-gray-200'
-      }`}>
-        <div className="flex items-center gap-2">
-          <span className={`text-[11px] uppercase tracking-wider font-bold ${
-            isDarkMode ? 'text-gray-400' : 'text-gray-500'
-          }`}>
-            CNAK Verification — Incoming Contracts
-          </span>
-          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
-            isDarkMode
-              ? 'bg-blue-500/10 text-blue-400 border-blue-500/30'
-              : 'bg-blue-50 text-blue-600 border-blue-200'
-          }`}>
-            {String(contracts.length).padStart(2, '0')}
-          </span>
-        </div>
-        <button
-          onClick={() => navigate('/contracts/claim')}
-          className="text-[10px] font-bold hover:underline"
-          style={{ color: brandColor }}
+    <div
+      className="rounded-xl border overflow-hidden"
+      style={{
+        backgroundColor: colors.utility.secondaryBackground,
+        borderColor: colors.utility.primaryText + '15',
+        boxShadow: isDarkMode ? '0 2px 8px rgba(0,0,0,0.2)' : '0 2px 8px rgba(0,0,0,0.04)',
+      }}
+    >
+      {/* Header */}
+      <div
+        className="px-4 py-3 border-b flex items-center gap-2"
+        style={{ borderColor: colors.utility.primaryText + '15' }}
+      >
+        <ShieldCheck className="h-3.5 w-3.5" style={{ color: brandColor }} />
+        <span
+          className="text-[11px] uppercase tracking-wider font-bold"
+          style={{ color: colors.utility.secondaryText }}
         >
-          Claim via CNAK →
-        </button>
+          CNAK · Digital Visibility
+        </span>
       </div>
 
-      {/* Body — grid layout, scrollable, matches v3 .cnak-body */}
-      <div className="overflow-y-auto" style={{ maxHeight: '280px' }}>
-        {contracts.length === 0 ? (
-          <div className="text-center py-8">
-            <ShieldCheck className="h-8 w-8 mx-auto mb-2" style={{ color: brandColor }} />
-            <p className={`text-xs font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>No pending verifications</p>
-            <p className={`text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Incoming contracts will appear here</p>
+      {/* Body — horizontal layout: illustration + content */}
+      <div className="p-6 flex items-center gap-6">
+        {/* Left: Icon composition */}
+        <div className="flex-shrink-0 relative">
+          <div
+            className="w-[88px] h-[88px] rounded-2xl flex items-center justify-center"
+            style={{
+              background: `linear-gradient(135deg, ${brandColor}${isDarkMode ? '18' : '0C'}, ${brandColor}${isDarkMode ? '08' : '04'})`,
+              border: `1px solid ${brandColor}${isDarkMode ? '25' : '15'}`,
+            }}
+          >
+            <ShieldCheck className="h-10 w-10" style={{ color: brandColor, opacity: 0.9 }} />
           </div>
-        ) : (
-          <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
-            {contracts.map((contract) => {
-              const initials = getInitials(contract.buyer_name || contract.buyer_company);
-              const avatarColor = getAvatarColor(contract.buyer_name || contract.id);
-              const receivedDays = contract.sent_at ? daysSince(contract.sent_at) : null;
-              const cnakCode = contract.global_access_id || '—';
-              const amount = contract.grand_total || contract.total_value;
+          {/* Floating document badge */}
+          <div
+            className="absolute -bottom-1.5 -right-1.5 w-8 h-8 rounded-xl flex items-center justify-center shadow-lg"
+            style={{ backgroundColor: brandColor }}
+          >
+            <FileText className="h-4 w-4 text-white" />
+          </div>
+          {/* Subtle dot accent */}
+          <div
+            className="absolute -top-1 -left-1 w-3 h-3 rounded-full"
+            style={{ backgroundColor: brandColor + '30' }}
+          />
+        </div>
 
+        {/* Right: Content */}
+        <div className="flex-1 min-w-0">
+          <h3
+            className="text-[15px] font-bold mb-1.5 leading-snug"
+            style={{ color: colors.utility.primaryText }}
+          >
+            Claim Digital Visibility
+            <span className="block text-xs font-semibold mt-0.5" style={{ color: colors.utility.secondaryText }}>
+              on Vendor Contracts
+            </span>
+          </h3>
+          <p
+            className="text-xs leading-relaxed mb-4"
+            style={{ color: colors.utility.secondaryText }}
+          >
+            Received a contract from a vendor? Use the <strong style={{ color: colors.utility.primaryText }}>CNAK</strong> (ContractNest Access Key) shared with you to securely claim and track it in your ContractHub.
+          </p>
+
+          {/* Benefit highlights */}
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mb-5">
+            {[
+              { icon: ShieldCheck, text: 'Secure verification' },
+              { icon: Eye, text: 'Instant contract visibility' },
+              { icon: Calendar, text: 'Track events & milestones' },
+            ].map((item) => {
+              const Icon = item.icon;
               return (
-                <div
-                  key={contract.id}
-                  className={`flex items-center gap-3 px-4 py-3.5 border-b transition-colors cursor-pointer ${
-                    isDarkMode
-                      ? 'border-gray-700/50 hover:bg-gray-700/30'
-                      : 'border-gray-100 hover:bg-gray-50'
-                  }`}
-                  style={{ borderRight: '1px solid', borderRightColor: isDarkMode ? 'rgba(55,65,81,0.5)' : 'rgba(243,244,246,1)' }}
-                  onClick={() => onView(contract.id)}
-                >
-                  {/* Avatar */}
+                <div key={item.text} className="flex items-center gap-1.5">
                   <div
-                    className="w-9 h-9 rounded-lg flex items-center justify-center text-xs font-extrabold text-white flex-shrink-0"
-                    style={{ backgroundColor: avatarColor }}
+                    className="w-5 h-5 rounded-md flex items-center justify-center"
+                    style={{ backgroundColor: brandColor + (isDarkMode ? '20' : '10') }}
                   >
-                    {initials}
+                    <Icon className="h-3 w-3" style={{ color: brandColor }} />
                   </div>
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-xs font-bold truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                      {contract.contract_number} — {contract.title}
-                    </p>
-                    <p className={`text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                      From: {contract.buyer_name || contract.buyer_company || 'Unknown'}
-                      {receivedDays !== null && ` · ${receivedDays === 0 ? 'Today' : `${receivedDays}d ago`}`}
-                      {amount != null && amount > 0 && (
-                        <span className="font-bold"> · {Number(amount).toLocaleString()}</span>
-                      )}
-                    </p>
-                  </div>
-
-                  {/* CNAK Code + Status + Actions */}
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <span className={`text-[9px] font-bold font-mono px-1.5 py-0.5 rounded ${
-                      isDarkMode
-                        ? 'bg-gray-700 text-blue-400'
-                        : 'bg-gray-100 text-blue-600'
-                    }`}>
-                      {cnakCode}
-                    </span>
-                    <span className={`text-[8px] font-bold uppercase tracking-wider px-2 py-1 rounded border ${
-                      isDarkMode
-                        ? 'bg-red-500/10 text-red-400 border-red-500/30'
-                        : 'bg-red-50 text-red-600 border-red-200'
-                    }`}>
-                      Not Reviewed
-                    </span>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onView(contract.id); }}
-                      className={`w-7 h-7 rounded-md border flex items-center justify-center transition-all ${
-                        isDarkMode
-                          ? 'border-gray-600 bg-gray-700 hover:bg-gray-600'
-                          : 'border-gray-200 bg-white hover:bg-gray-50'
-                      }`}
-                      title="View contract"
-                    >
-                      <Eye className={`h-3.5 w-3.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`} />
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onAccept(contract.id); }}
-                      disabled={isProcessing}
-                      className={`w-7 h-7 rounded-md border flex items-center justify-center transition-all ${
-                        isDarkMode
-                          ? 'border-green-500/30 bg-green-500/10 hover:bg-green-500 hover:border-green-500'
-                          : 'border-green-200 bg-green-50 hover:bg-green-500 hover:border-green-500'
-                      } group`}
-                      title="Accept contract"
-                    >
-                      <CheckCircle2 className="h-3.5 w-3.5 text-green-500 group-hover:text-white" />
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onReject(contract.id); }}
-                      disabled={isProcessing}
-                      className={`w-7 h-7 rounded-md border flex items-center justify-center transition-all ${
-                        isDarkMode
-                          ? 'border-red-500/30 bg-red-500/10 hover:bg-red-500 hover:border-red-500'
-                          : 'border-red-200 bg-red-50 hover:bg-red-500 hover:border-red-500'
-                      } group`}
-                      title="Reject contract"
-                    >
-                      <XCircle className="h-3.5 w-3.5 text-red-500 group-hover:text-white" />
-                    </button>
-                  </div>
+                  <span className="text-[11px] font-medium" style={{ color: colors.utility.secondaryText }}>
+                    {item.text}
+                  </span>
                 </div>
               );
             })}
           </div>
-        )}
+
+          {/* CTA Button */}
+          <button
+            onClick={() => navigate('/welcome')}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-xs font-bold text-white transition-all hover:scale-[1.02] active:scale-[0.98]"
+            style={{
+              backgroundColor: brandColor,
+              boxShadow: `0 4px 14px ${brandColor}35`,
+            }}
+          >
+            <ShieldCheck className="h-3.5 w-3.5" />
+            Claim Contract via CNAK
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1261,7 +1212,7 @@ const OpsCockpitPage: React.FC = () => {
   });
 
   // Mutations
-  const { sendNotification, isSendingNotification, updateStatus: updateContractStatus, isChangingStatus: isChangingContractStatus } = useContractOperations();
+  const { sendNotification, isSendingNotification } = useContractOperations();
   const { updateStatus: updateEventStatus, isChangingStatus } = useContractEventOperations();
 
   // Derived
@@ -1373,13 +1324,6 @@ const OpsCockpitPage: React.FC = () => {
   const handleEventStatusChange = useCallback(async (eventId: string, newStatus: ContractEventStatus, version: number) => {
     try { await updateEventStatus({ eventId, newStatus, version }); } catch { /* toast handled */ }
   }, [updateEventStatus]);
-  const handleAcceptContract = useCallback(async (contractId: string) => {
-    try { await updateContractStatus({ contractId, statusData: { status: 'active' as any } }); } catch { /* toast handled */ }
-  }, [updateContractStatus]);
-  const handleRejectContract = useCallback(async (contractId: string) => {
-    try { await updateContractStatus({ contractId, statusData: { status: 'cancelled' as any } }); } catch { /* toast handled */ }
-  }, [updateContractStatus]);
-
   // CTAs
   const expenseCTAs = [
     { label: 'New RFQ', icon: Plus, action: () => navigate('/contracts/create') },
@@ -1512,17 +1456,12 @@ const OpsCockpitPage: React.FC = () => {
             />
           )}
 
-          {/* ═══ ROW 2: CNAK Verification (expense) — per v3 HTML ═══ */}
+          {/* ═══ ROW 2: CNAK Claim CTA (expense) — informational card ═══ */}
           {activePerspective === 'expense' && (
-            <CnakVerificationCard
-              contracts={pendingAcceptanceContracts}
-              isLoading={acceptanceLoading}
-              onView={handleViewContract}
-              onAccept={handleAcceptContract}
-              onReject={handleRejectContract}
-              isProcessing={isChangingContractStatus}
+            <CnakClaimCTA
               isDarkMode={isDarkMode}
               brandColor={brandColor}
+              colors={colors}
             />
           )}
 
