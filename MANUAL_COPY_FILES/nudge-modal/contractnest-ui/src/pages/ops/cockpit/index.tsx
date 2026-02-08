@@ -36,7 +36,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useTenantContext } from '@/contexts/TenantContext';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { useContractStats, useContracts, useContractOperations } from '@/hooks/queries/useContractQueries';
 import {
   useContractEvents,
