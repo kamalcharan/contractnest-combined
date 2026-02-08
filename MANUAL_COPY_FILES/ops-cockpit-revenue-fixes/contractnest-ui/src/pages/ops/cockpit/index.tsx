@@ -761,7 +761,8 @@ const CnakClaimCTA: React.FC<{
 const RfqTrackerCard: React.FC<{
   isDarkMode: boolean;
   brandColor: string;
-}> = ({ isDarkMode, brandColor }) => {
+  onCreateContract?: () => void;
+}> = ({ isDarkMode, brandColor, onCreateContract }) => {
   const navigate = useNavigate();
 
   return (
@@ -810,7 +811,7 @@ const RfqTrackerCard: React.FC<{
           Create a Request for Quotation to start procurement from vendors
         </p>
         <button
-          onClick={() => navigate('/contracts?contract_type=vendor')}
+          onClick={() => onCreateContract ? onCreateContract() : navigate('/contracts?contract_type=vendor')}
           className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold text-white transition-all"
           style={{ backgroundColor: brandColor }}
         >
@@ -1416,7 +1417,7 @@ const OpsCockpitPage: React.FC = () => {
           ) : (
             <>
               <button
-                onClick={() => navigate('/contracts?contract_type=vendor')}
+                onClick={() => setShowContractWizard(true)}
                 className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all"
                 style={{
                   backgroundColor: withOpacity(brandColor, isDarkMode ? 0.2 : 0.08),
@@ -1490,7 +1491,7 @@ const OpsCockpitPage: React.FC = () => {
 
           {/* ═══ ROW 3: RFQ Tracker (expense) — themed empty state ═══ */}
           {activePerspective === 'expense' && (
-            <RfqTrackerCard isDarkMode={isDarkMode} brandColor={brandColor} />
+            <RfqTrackerCard isDarkMode={isDarkMode} brandColor={brandColor} onCreateContract={() => setShowContractWizard(true)} />
           )}
 
           {/* ═══ ROW 3: Event Schedule (left 35%) + Service Events (right 65%) ═══ */}
