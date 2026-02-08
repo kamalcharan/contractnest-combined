@@ -1,6 +1,7 @@
 // src/components/contracts/NudgeConfirmationModal.tsx
 // Nudge confirmation screen before sending contract sign-off notifications
-// Shows sequence flow + WhatsApp preview + CNAK info
+// Shows sequence flow + WhatsApp preview (matching actual template) + CNAK info
+// Channel resolution happens on Edge via t_contact_channels (buyer_id lookup)
 
 import React from 'react';
 import {
@@ -10,7 +11,6 @@ import {
   AlertTriangle,
   Loader2,
   Send,
-  X,
   Smartphone,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -70,8 +70,7 @@ const NudgeConfirmationModal: React.FC<NudgeConfirmationModalProps> = ({
   const contractNumber = contract.contract_number || '';
   const contractValue = formatValue(contract.total_value, contract.currency);
   const cnak = contract.global_access_id || '—';
-  const hasEmail = !!contract.buyer_email;
-  const hasPhone = !!contract.buyer_phone;
+  const hasBuyerId = !!contract.buyer_id;
   const sentDate = contract.sent_at ? formatDate(contract.sent_at) : null;
 
   // Colors derived from theme
@@ -91,17 +90,14 @@ const NudgeConfirmationModal: React.FC<NudgeConfirmationModalProps> = ({
       time: sentDate ? `Completed \u00B7 ${sentDate}` : 'Pending',
       desc: 'Contract Sent',
       channel: 'System Action',
-      icon: <CheckCircle2 className="h-3 w-3" />,
-      channelColor: dimText,
+      channelDot: undefined as string | undefined,
     },
     {
       completed: false,
       active: true,
       time: 'Immediate Action',
       desc: 'Friendly Sign-off Reminder',
-      channel: 'WhatsApp Business',
-      icon: <Smartphone className="h-3 w-3" />,
-      channelColor: whatsappGreen,
+      channel: 'WhatsApp + Email',
       channelDot: whatsappGreen,
     },
     {
@@ -110,8 +106,7 @@ const NudgeConfirmationModal: React.FC<NudgeConfirmationModalProps> = ({
       time: 'T+48 Hours',
       desc: 'Formal Email Follow-up',
       channel: 'Accounts Email',
-      icon: <Mail className="h-3 w-3" />,
-      channelColor: dimText,
+      channelDot: undefined as string | undefined,
     },
     {
       completed: false,
@@ -119,8 +114,7 @@ const NudgeConfirmationModal: React.FC<NudgeConfirmationModalProps> = ({
       time: 'T+72 Hours',
       desc: 'Seller Intervention',
       channel: 'Human Handover',
-      icon: <AlertTriangle className="h-3 w-3" />,
-      channelColor: dimText,
+      channelDot: undefined as string | undefined,
     },
   ];
 
@@ -244,7 +238,7 @@ const NudgeConfirmationModal: React.FC<NudgeConfirmationModalProps> = ({
                     Today, {new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
                   </div>
 
-                  {/* Message bubble */}
+                  {/* Message bubble — matches actual contract_signoff WhatsApp template */}
                   <div
                     className="relative self-start rounded-lg px-3 py-2.5 text-[12px] leading-relaxed"
                     style={{
@@ -267,16 +261,16 @@ const NudgeConfirmationModal: React.FC<NudgeConfirmationModalProps> = ({
                       }}
                     />
 
-                    Hi <b>{buyerName}</b>, {senderName} here! <br /><br />
-                    Your contract <b>{contractTitle}</b> ({contractNumber})
+                    Hi <b>{buyerName}</b>, <b>{senderName}</b> has shared
+                    {' '}&quot;<b>{contractTitle}</b>&quot; ({contractNumber})
                     {contractValue && (
-                      <>
-                        {' '}worth <b>{contractValue}</b>
-                      </>
+                      <>{' '}worth <b>{contractValue}</b></>
                     )}{' '}
-                    is awaiting your review.
+                    for your review.
                     <br /><br />
-                    Please review and accept at your earliest convenience.
+                    <span style={{ fontSize: '11px', color: '#6B7280' }}>
+                      Ref: {cnak}
+                    </span>
                     <br /><br />
                     <span style={{ color: brandColor, fontWeight: 700, fontSize: '11px' }}>
                       [Review Contract]
@@ -284,23 +278,17 @@ const NudgeConfirmationModal: React.FC<NudgeConfirmationModalProps> = ({
                   </div>
                 </div>
 
-                {/* Channel indicators */}
+                {/* Channel indicators — resolved from contact channels by Edge */}
                 <div className="mt-3 flex items-center gap-3">
-                  {hasPhone && (
-                    <span className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: whatsappGreen }}>
-                      <MessageSquare className="h-3 w-3" /> WhatsApp
-                    </span>
-                  )}
-                  {hasEmail && (
-                    <span className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: dimText }}>
-                      <Mail className="h-3 w-3" /> Email
-                    </span>
-                  )}
-                  {!hasPhone && !hasEmail && (
-                    <span className="text-[10px] font-semibold" style={{ color: colors.semantic.error }}>
-                      No contact channels available
-                    </span>
-                  )}
+                  <span className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: whatsappGreen }}>
+                    <MessageSquare className="h-3 w-3" /> WhatsApp
+                  </span>
+                  <span className="flex items-center gap-1 text-[10px] font-semibold" style={{ color: dimText }}>
+                    <Mail className="h-3 w-3" /> Email
+                  </span>
+                  <span className="text-[10px]" style={{ color: dimText }}>
+                    (via contact channels)
+                  </span>
                 </div>
               </div>
             </div>
@@ -318,10 +306,7 @@ const NudgeConfirmationModal: React.FC<NudgeConfirmationModalProps> = ({
                   CNAK: <b style={{ color: primaryText, letterSpacing: '0.5px' }}>{cnak}</b>
                 </span>
                 <span className="text-[11px]" style={{ color: dimText }}>
-                  Channels:{' '}
-                  <b style={{ color: primaryText }}>
-                    {[hasPhone && 'WhatsApp', hasEmail && 'Email'].filter(Boolean).join(' + ') || 'None'}
-                  </b>
+                  Buyer: <b style={{ color: primaryText }}>{buyerName}</b>
                 </span>
               </div>
 
@@ -340,7 +325,7 @@ const NudgeConfirmationModal: React.FC<NudgeConfirmationModalProps> = ({
                 </button>
                 <button
                   onClick={onConfirm}
-                  disabled={isSending || (!hasPhone && !hasEmail)}
+                  disabled={isSending || !hasBuyerId}
                   className="px-5 py-2 text-sm font-bold rounded-lg text-white flex items-center gap-2 transition-all disabled:opacity-50"
                   style={{ backgroundColor: brandColor }}
                 >
