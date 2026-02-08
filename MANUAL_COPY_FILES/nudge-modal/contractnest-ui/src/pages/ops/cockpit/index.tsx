@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useTenantContext } from '@/contexts/TenantContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useContractStats, useContracts, useContractOperations } from '@/hooks/queries/useContractQueries';
 import {
   useContractEvents,
@@ -1159,6 +1160,7 @@ const OpsCockpitPage: React.FC = () => {
 
   // Tenant profile — for default perspective
   const { profile, loading: profileLoading } = useTenantContext();
+  const { currentTenant } = useAuth();
 
   // Perspective state
   const [perspective, setPerspective] = useState<Perspective | null>(null);
@@ -1604,7 +1606,7 @@ const OpsCockpitPage: React.FC = () => {
           onClose={() => setNudgeContract(null)}
           onConfirm={handleNudgeConfirm}
           contract={nudgeContract}
-          senderName={profile?.business_name || 'Your Business'}
+          senderName={profile?.business_name || currentTenant?.name || ''}
           isSending={isSendingNotification}
         />
       )}
