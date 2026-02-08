@@ -23,6 +23,7 @@ import {
   CreditCard,
   Clock,
   Eye,
+  ChevronLeft,
   ChevronRight,
   CalendarDays,
   Receipt,
@@ -420,11 +421,20 @@ const AwaitingAcceptanceCard: React.FC<{
   colors: any;
 }> = ({ contracts, isLoading, onView, onResend, isSending, isDarkMode, brandColor, colors }) => {
   const navigate = useNavigate();
+  const [scrollIndex, setScrollIndex] = useState(0);
+  const VISIBLE_COUNT = 4;
+  const GAP = 12; // gap-3 = 12px
 
   const cardBg = colors.utility.secondaryBackground;
   const cardBorder = colors.utility.primaryText + '15';
   const cardShadow = isDarkMode ? '0 2px 8px rgba(0,0,0,0.2)' : '0 2px 8px rgba(0,0,0,0.04)';
-  const itemBorder = isDarkMode ? colors.utility.primaryText + '10' : '#F1F5F9';
+
+  const maxIndex = Math.max(0, contracts.length - VISIBLE_COUNT);
+  const canScrollLeft = scrollIndex > 0;
+  const canScrollRight = scrollIndex < maxIndex;
+
+  const handleScrollLeft = () => setScrollIndex((prev) => Math.max(0, prev - 1));
+  const handleScrollRight = () => setScrollIndex((prev) => Math.min(maxIndex, prev + 1));
 
   if (isLoading) {
     return (
@@ -439,7 +449,7 @@ const AwaitingAcceptanceCard: React.FC<{
 
   return (
     <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: cardBg, borderColor: cardBorder, boxShadow: cardShadow }}>
-      {/* Header — matches v3 .acceptance-header */}
+      {/* Header with inline carousel nav arrows */}
       <div className="px-4 py-3 flex items-center justify-between border-b" style={{ borderColor: cardBorder }}>
         <div className="flex items-center gap-2">
           <span className={`text-[11px] uppercase tracking-wider font-bold`} style={{ color: colors.utility.secondaryText }}>
@@ -453,20 +463,52 @@ const AwaitingAcceptanceCard: React.FC<{
             {String(contracts.length).padStart(2, '0')}
           </span>
         </div>
-        <button
-          onClick={() => navigate('/contracts?status=pending_acceptance')}
-          className="text-[10px] font-bold hover:underline"
-          style={{ color: brandColor }}
-        >
-          View all in Hub →
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Carousel left/right buttons */}
+          {contracts.length > VISIBLE_COUNT && (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={handleScrollLeft}
+                disabled={!canScrollLeft}
+                className="w-6 h-6 rounded-md border flex items-center justify-center transition-all"
+                style={{
+                  borderColor: colors.utility.primaryText + '20',
+                  backgroundColor: canScrollLeft ? colors.utility.secondaryBackground : 'transparent',
+                  opacity: canScrollLeft ? 1 : 0.35,
+                  cursor: canScrollLeft ? 'pointer' : 'default',
+                }}
+                title="Scroll left"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" style={{ color: colors.utility.secondaryText }} />
+              </button>
+              <button
+                onClick={handleScrollRight}
+                disabled={!canScrollRight}
+                className="w-6 h-6 rounded-md border flex items-center justify-center transition-all"
+                style={{
+                  borderColor: colors.utility.primaryText + '20',
+                  backgroundColor: canScrollRight ? colors.utility.secondaryBackground : 'transparent',
+                  opacity: canScrollRight ? 1 : 0.35,
+                  cursor: canScrollRight ? 'pointer' : 'default',
+                }}
+                title="Scroll right"
+              >
+                <ChevronRight className="h-3.5 w-3.5" style={{ color: colors.utility.secondaryText }} />
+              </button>
+            </div>
+          )}
+          <button
+            onClick={() => navigate('/contracts?status=pending_acceptance')}
+            className="text-[10px] font-bold hover:underline"
+            style={{ color: brandColor }}
+          >
+            View all in Hub →
+          </button>
+        </div>
       </div>
 
-      {/* Body — single-row horizontal scroll with stat-card-sized items */}
-      <div
-        className="overflow-x-auto"
-        style={{ scrollbarWidth: 'thin' }}
-      >
+      {/* Body — controlled inline carousel, NO overflow scroll */}
+      <div className="overflow-hidden">
         {contracts.length === 0 ? (
           <div className="text-center py-8">
             <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-500" />
@@ -474,92 +516,99 @@ const AwaitingAcceptanceCard: React.FC<{
             <p className={`text-[10px]`} style={{ color: colors.utility.secondaryText }}>No contracts awaiting acceptance</p>
           </div>
         ) : (
-          <div className="flex gap-3 p-4" style={{ minWidth: 'min-content' }}>
-            {contracts.map((contract) => {
-              const status = getAcceptanceStatus(contract);
-              const initials = getInitials(contract.buyer_name || contract.buyer_company);
-              const avatarColor = getAvatarColor(contract.buyer_name || contract.id);
-              const sentDays = contract.sent_at ? daysSince(contract.sent_at) : null;
+          <div className="p-4">
+            <div
+              className="flex gap-3 transition-transform duration-300 ease-in-out"
+              style={{
+                transform: `translateX(-${scrollIndex * (280 + GAP)}px)`,
+              }}
+            >
+              {contracts.map((contract) => {
+                const status = getAcceptanceStatus(contract);
+                const initials = getInitials(contract.buyer_name || contract.buyer_company);
+                const avatarColor = getAvatarColor(contract.buyer_name || contract.id);
+                const sentDays = contract.sent_at ? daysSince(contract.sent_at) : null;
 
-              return (
-                <div
-                  key={contract.id}
-                  className="rounded-lg border shadow-sm hover:shadow-md transition-all cursor-pointer flex-shrink-0"
-                  style={{
-                    width: '280px',
-                    backgroundColor: colors.utility.primaryBackground,
-                    borderColor: colors.utility.primaryText + '20',
-                  }}
-                  onClick={() => onView(contract.id)}
-                >
-                  {/* Top row: Avatar + contract info */}
-                  <div className="p-3.5 pb-2.5">
-                    <div className="flex items-start gap-3">
-                      <div
-                        className="w-10 h-10 rounded-lg flex items-center justify-center text-xs font-extrabold text-white flex-shrink-0"
-                        style={{ backgroundColor: avatarColor }}
-                      >
-                        {initials}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-bold truncate" style={{ color: colors.utility.primaryText }}>
-                          {contract.title}
-                        </p>
-                        <p className="text-[10px] mt-0.5" style={{ color: colors.utility.secondaryText }}>
-                          {contract.contract_number}
-                        </p>
-                        <p className="text-[10px] truncate mt-0.5" style={{ color: colors.utility.secondaryText }}>
-                          {contract.buyer_name || contract.buyer_company || 'Unknown'}
-                          {sentDays !== null && <span> · Sent {sentDays}d ago</span>}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Bottom row: Status badge + actions */}
+                return (
                   <div
-                    className="px-3.5 py-2.5 flex items-center justify-between border-t"
-                    style={{ borderColor: colors.utility.primaryText + '10' }}
+                    key={contract.id}
+                    className="rounded-lg border shadow-sm hover:shadow-md transition-all cursor-pointer flex-shrink-0"
+                    style={{
+                      width: '280px',
+                      backgroundColor: colors.utility.primaryBackground,
+                      borderColor: colors.utility.primaryText + '20',
+                    }}
+                    onClick={() => onView(contract.id)}
                   >
-                    <span
-                      className="text-[8px] font-bold uppercase tracking-wider px-2 py-1 rounded border"
-                      style={{
-                        color: status.color,
-                        backgroundColor: status.color + '10',
-                        borderColor: status.color + '30',
-                      }}
+                    {/* Top row: Avatar + contract info */}
+                    <div className="p-3.5 pb-2.5">
+                      <div className="flex items-start gap-3">
+                        <div
+                          className="w-10 h-10 rounded-lg flex items-center justify-center text-xs font-extrabold text-white flex-shrink-0"
+                          style={{ backgroundColor: avatarColor }}
+                        >
+                          {initials}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold truncate" style={{ color: colors.utility.primaryText }}>
+                            {contract.title}
+                          </p>
+                          <p className="text-[10px] mt-0.5" style={{ color: colors.utility.secondaryText }}>
+                            {contract.contract_number}
+                          </p>
+                          <p className="text-[10px] truncate mt-0.5" style={{ color: colors.utility.secondaryText }}>
+                            {contract.buyer_name || contract.buyer_company || 'Unknown'}
+                            {sentDays !== null && <span> · Sent {sentDays}d ago</span>}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bottom row: Status badge + actions */}
+                    <div
+                      className="px-3.5 py-2.5 flex items-center justify-between border-t"
+                      style={{ borderColor: colors.utility.primaryText + '10' }}
                     >
-                      {status.label}
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onView(contract.id); }}
-                        className="w-7 h-7 rounded-md border flex items-center justify-center transition-all"
-                        style={{ borderColor: colors.utility.primaryText + '20', backgroundColor: colors.utility.secondaryBackground }}
-                        title="View contract"
+                      <span
+                        className="text-[8px] font-bold uppercase tracking-wider px-2 py-1 rounded border"
+                        style={{
+                          color: status.color,
+                          backgroundColor: status.color + '10',
+                          borderColor: status.color + '30',
+                        }}
                       >
-                        <Eye className="h-3.5 w-3.5" style={{ color: colors.utility.secondaryText }} />
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onResend(contract.id); }}
-                        disabled={isSending}
-                        className="w-7 h-7 rounded-md border flex items-center justify-center transition-all group"
-                        style={{ borderColor: colors.utility.primaryText + '20', backgroundColor: colors.utility.secondaryBackground }}
-                        title="Resend notification"
-                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = brandColor; e.currentTarget.style.borderColor = brandColor; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ''; e.currentTarget.style.borderColor = ''; }}
-                      >
-                        {isSending ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" style={{ color: colors.utility.secondaryText }} />
-                        ) : (
-                          <Send className="h-3.5 w-3.5 group-hover:text-white" style={{ color: colors.utility.secondaryText }} />
-                        )}
-                      </button>
+                        {status.label}
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onView(contract.id); }}
+                          className="w-7 h-7 rounded-md border flex items-center justify-center transition-all"
+                          style={{ borderColor: colors.utility.primaryText + '20', backgroundColor: colors.utility.secondaryBackground }}
+                          title="View contract"
+                        >
+                          <Eye className="h-3.5 w-3.5" style={{ color: colors.utility.secondaryText }} />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onResend(contract.id); }}
+                          disabled={isSending}
+                          className="w-7 h-7 rounded-md border flex items-center justify-center transition-all group"
+                          style={{ borderColor: colors.utility.primaryText + '20', backgroundColor: colors.utility.secondaryBackground }}
+                          title="Resend notification"
+                          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = brandColor; e.currentTarget.style.borderColor = brandColor; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ''; e.currentTarget.style.borderColor = ''; }}
+                        >
+                          {isSending ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" style={{ color: colors.utility.secondaryText }} />
+                          ) : (
+                            <Send className="h-3.5 w-3.5 group-hover:text-white" style={{ color: colors.utility.secondaryText }} />
+                          )}
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

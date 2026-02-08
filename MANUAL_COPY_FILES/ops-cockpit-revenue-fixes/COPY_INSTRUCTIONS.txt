@@ -1,5 +1,5 @@
 ═══════════════════════════════════════════════════
-COPY INSTRUCTIONS — ops-cockpit-revenue-fixes (v2)
+COPY INSTRUCTIONS — ops-cockpit-revenue-fixes (v3)
 ═══════════════════════════════════════════════════
 
 Submodules Affected: contractnest-ui
@@ -8,8 +8,13 @@ Files Modified (1):
   contractnest-ui/src/pages/ops/cockpit/index.tsx
     - Ops Cockpit page: Revenue-side fixes + card visibility overhaul
 
-Changes Summary (v2 additions):
-  A. Awaiting Acceptance → single-row horizontal scroll with 280px stat-card-sized items
+Changes Summary (v3 — carousel fix):
+  A. Awaiting Acceptance → CONTROLLED INLINE CAROUSEL (not overflow-x scroll)
+     - Shows 4 cards at a time, each 280px wide
+     - Left/Right arrow buttons in the header area
+     - Cards slide via CSS translateX on button click (smooth 300ms transition)
+     - overflow: hidden on container — NO page-level horizontal scrolling
+     - Arrow buttons auto-hide when ≤4 cards, disabled at boundaries
   B. ALL container cards now use contacts/contracts pattern:
      - backgroundColor: colors.utility.secondaryBackground
      - borderColor: colors.utility.primaryText + '20'
