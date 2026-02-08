@@ -1,0 +1,23 @@
+OPS COCKPIT - 6 UI FIXES
+=========================
+Branch: ops-cockpit-fixes
+Submodules Affected: contractnest-ui
+
+Fixes:
+------
+1. (+Add Client) button now opens QuickAddContactDrawer (same as /contacts page)
+2. (+New Contract) button now opens ContractWizard modal (same as /contracts hub)
+3. Removed 'Active Contracts' statistics card (3 cards remain: Pending Acceptance, Drafts, Overdue Events)
+4. Revenue/Expense perspective switcher moved inline beside header (was below)
+5. VaNi sidebar moved up — main grid now starts at stat cards level
+6. Awaiting Acceptance changed to single-line horizontal scrolling cards
+
+Files to Copy:
+--------------
+1. contractnest-ui/src/pages/ops/cockpit/index.tsx
+   → All 6 fixes applied to the Operations Cockpit page
+
+Copy Command (PowerShell):
+--------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\ops-cockpit-fixes\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
