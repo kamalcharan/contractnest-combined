@@ -155,8 +155,55 @@ const getAvatarColor = (str: string): string => {
 // SUB-COMPONENTS
 // =================================================================
 
-// ─── Perspective Flip Link ───────────────────────────────────────
-// Minimal "flip to X ops" inline link with animated arrow icon
+// ─── Perspective Switcher ────────────────────────────────────────
+
+interface PerspectiveSwitcherProps {
+  active: Perspective;
+  onChange: (p: Perspective) => void;
+  isDarkMode: boolean;
+  brandColor: string;
+}
+
+const PerspectiveSwitcher: React.FC<PerspectiveSwitcherProps> = ({
+  active,
+  onChange,
+  isDarkMode,
+  brandColor,
+}) => {
+  const perspectives: Array<{ id: Perspective; label: string; sublabel: string }> = [
+    { id: 'revenue', label: 'Revenue', sublabel: 'Clients' },
+    { id: 'expense', label: 'Expense', sublabel: 'Vendors' },
+  ];
+
+  return (
+    <div className={`inline-flex rounded-lg p-0.5 gap-0.5 ${
+      isDarkMode ? 'bg-gray-800' : 'bg-gray-100'
+    }`}>
+      {perspectives.map((p) => {
+        const isActive = active === p.id;
+        return (
+          <button
+            key={p.id}
+            onClick={() => onChange(p.id)}
+            className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-all duration-200 ${
+              isActive
+                ? 'text-white shadow-sm'
+                : isDarkMode
+                  ? 'text-gray-400 hover:text-gray-200'
+                  : 'text-gray-500 hover:text-gray-700'
+            }`}
+            style={isActive ? { backgroundColor: brandColor } : undefined}
+          >
+            {p.label}
+            <span className={`ml-1 text-xs font-normal ${isActive ? 'opacity-80' : ''}`}>
+              · {p.sublabel}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+};
 
 // ─── Filter Pill (contacts-style) ───────────────────────────────
 
@@ -740,7 +787,7 @@ const RfqTrackerCard: React.FC<{
           </span>
         </div>
         <button
-          onClick={() => navigate('/contracts?record_type=rfq')}
+          onClick={() => navigate('/contracts?contract_type=vendor')}
           className="text-[10px] font-bold hover:underline"
           style={{ color: brandColor }}
         >
@@ -763,7 +810,7 @@ const RfqTrackerCard: React.FC<{
           Create a Request for Quotation to start procurement from vendors
         </p>
         <button
-          onClick={() => navigate('/contracts/create')}
+          onClick={() => navigate('/contracts?contract_type=vendor')}
           className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold text-white transition-all"
           style={{ backgroundColor: brandColor }}
         >
@@ -1316,20 +1363,27 @@ const OpsCockpitPage: React.FC = () => {
               </p>
             </div>
           </div>
-          {/* Flip perspective — minimal animated link */}
-          <button
-            onClick={() => setPerspective(activePerspective === 'revenue' ? 'expense' : 'revenue')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all group"
-            style={{ color: brandColor }}
-          >
-            <ArrowRightLeft
-              className="h-3.5 w-3.5 transition-transform duration-300 group-hover:rotate-180"
-              style={{ color: brandColor }}
+          {/* Perspective switcher + flip link */}
+          <div className="flex items-center gap-3">
+            <PerspectiveSwitcher
+              active={activePerspective}
+              onChange={(p) => setPerspective(p)}
+              isDarkMode={isDarkMode}
+              brandColor={brandColor}
             />
-            <span className="group-hover:underline">
-              flip to {activePerspective === 'revenue' ? 'Expense' : 'Revenue'} ops
-            </span>
-          </button>
+            <button
+              onClick={() => setPerspective(activePerspective === 'revenue' ? 'expense' : 'revenue')}
+              className="flex items-center gap-1.5 text-[11px] font-medium transition-all group"
+              style={{ color: brandColor }}
+            >
+              <ArrowRightLeft
+                className="h-3 w-3 transition-transform duration-300 group-hover:rotate-180"
+              />
+              <span className="group-hover:underline">
+                flip to {activePerspective === 'revenue' ? 'Expense' : 'Revenue'} ops
+              </span>
+            </button>
+          </div>
         </div>
 
         {/* CTAs — right side */}
@@ -1362,7 +1416,7 @@ const OpsCockpitPage: React.FC = () => {
           ) : (
             <>
               <button
-                onClick={() => setShowContractWizard(true)}
+                onClick={() => navigate('/contracts?contract_type=vendor')}
                 className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all"
                 style={{
                   backgroundColor: withOpacity(brandColor, isDarkMode ? 0.2 : 0.08),
