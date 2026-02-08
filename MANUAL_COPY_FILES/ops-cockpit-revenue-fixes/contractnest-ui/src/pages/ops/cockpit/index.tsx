@@ -233,6 +233,7 @@ interface BucketCardProps {
   color: string;
   isDarkMode: boolean;
   isHighlighted?: boolean;
+  colors: any;
 }
 
 const BucketCard: React.FC<BucketCardProps> = ({
@@ -243,12 +244,13 @@ const BucketCard: React.FC<BucketCardProps> = ({
   color,
   isDarkMode,
   isHighlighted,
+  colors,
 }) => (
   <div
-    className={`p-3 rounded-xl border transition-all ${
-      isDarkMode ? 'border-gray-700 bg-gray-800/50' : 'border-gray-200 bg-white'
-    }`}
+    className="p-3 rounded-xl border shadow-sm transition-all"
     style={{
+      backgroundColor: colors.utility.secondaryBackground,
+      borderColor: colors.utility.primaryText + '20',
       borderLeftWidth: isHighlighted ? '3px' : '1px',
       borderLeftColor: isHighlighted ? color : undefined,
     }}
@@ -258,13 +260,13 @@ const BucketCard: React.FC<BucketCardProps> = ({
         {title}
       </span>
       <span
-        className={`text-lg font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}
-        style={{ color: isHighlighted ? color : undefined }}
+        className="text-lg font-bold"
+        style={{ color: isHighlighted ? color : colors.utility.primaryText }}
       >
         {count}
       </span>
     </div>
-    <div className={`flex items-center gap-3 text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+    <div className="flex items-center gap-3 text-[10px]" style={{ color: colors.utility.secondaryText }}>
       <span className="flex items-center gap-1">
         <Wrench className="w-3 h-3" style={{ color: '#10B981' }} />
         {serviceCount}
@@ -279,7 +281,7 @@ const BucketCard: React.FC<BucketCardProps> = ({
 
 // ─── VaNi Sidebar (Coming Soon) ────────────────────────────────
 
-const VaNiSidebar: React.FC<{ isDarkMode: boolean }> = ({ isDarkMode }) => {
+const VaNiSidebar: React.FC<{ isDarkMode: boolean; colors: any }> = ({ isDarkMode, colors }) => {
   const futureItems = [
     { icon: AlertTriangle, label: 'SLA Breach Alerts', description: 'Auto-detect SLA violations' },
     { icon: BellRing, label: 'Renewal Reminders', description: 'Smart renewal nudges' },
@@ -289,52 +291,55 @@ const VaNiSidebar: React.FC<{ isDarkMode: boolean }> = ({ isDarkMode }) => {
   ];
 
   return (
-    <div className={`rounded-xl border overflow-hidden ${
-      isDarkMode ? 'border-gray-700 bg-gray-800/50' : 'border-gray-200 bg-white'
-    }`}>
-      <div className={`px-5 py-4 border-b flex items-center gap-2.5 ${
-        isDarkMode ? 'border-gray-700' : 'border-gray-200'
-      }`}>
+    <div
+      className="rounded-xl border shadow-sm overflow-hidden"
+      style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: colors.utility.primaryText + '20' }}
+    >
+      <div className="px-5 py-4 border-b flex items-center gap-2.5" style={{ borderColor: colors.utility.primaryText + '15' }}>
         <div className="p-2 rounded-lg bg-purple-500/10">
           <Sparkles className="h-4 w-4 text-purple-500" />
         </div>
         <div>
-          <h3 className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>VaNi</h3>
-          <p className={`text-[10px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>AI Operations Assistant</p>
+          <h3 className="text-sm font-bold" style={{ color: colors.utility.primaryText }}>VaNi</h3>
+          <p className="text-[10px]" style={{ color: colors.utility.secondaryText }}>AI Operations Assistant</p>
         </div>
       </div>
       <div className="p-5">
-        <div className={`text-center py-6 mb-4 rounded-xl ${isDarkMode ? 'bg-gray-700/30' : 'bg-gray-50'}`}>
+        <div
+          className="text-center py-6 mb-4 rounded-xl"
+          style={{ backgroundColor: colors.utility.primaryText + '06' }}
+        >
           <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3 ${
             isDarkMode ? 'bg-purple-500/10' : 'bg-purple-50'
           }`}>
             <Sparkles className="h-7 w-7 text-purple-500" />
           </div>
-          <p className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Coming Soon</p>
-          <p className={`text-xs px-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+          <p className="text-sm font-semibold mb-1" style={{ color: colors.utility.primaryText }}>Coming Soon</p>
+          <p className="text-xs px-4" style={{ color: colors.utility.secondaryText }}>
             VaNi will proactively surface alerts and recommendations here
           </p>
         </div>
         <div className="space-y-2.5">
-          <p className={`text-[10px] font-bold uppercase tracking-wider px-1 ${
-            isDarkMode ? 'text-gray-500' : 'text-gray-400'
-          }`}>
+          <p className="text-[10px] font-bold uppercase tracking-wider px-1" style={{ color: colors.utility.secondaryText }}>
             Planned Capabilities
           </p>
           {futureItems.map((item) => {
             const Icon = item.icon;
             return (
-              <div key={item.label} className={`flex items-center gap-3 p-2.5 rounded-lg ${
-                isDarkMode ? 'bg-gray-700/30' : 'bg-gray-50'
-              }`}>
-                <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                  isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
-                }`}>
-                  <Icon className={`h-3.5 w-3.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+              <div
+                key={item.label}
+                className="flex items-center gap-3 p-2.5 rounded-lg"
+                style={{ backgroundColor: colors.utility.primaryText + '06' }}
+              >
+                <div
+                  className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: colors.utility.primaryText + '10' }}
+                >
+                  <Icon className="h-3.5 w-3.5" style={{ color: colors.utility.secondaryText }} />
                 </div>
                 <div className="min-w-0">
-                  <p className={`text-xs font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{item.label}</p>
-                  <p className={`text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{item.description}</p>
+                  <p className="text-xs font-medium" style={{ color: colors.utility.primaryText }}>{item.label}</p>
+                  <p className="text-[10px]" style={{ color: colors.utility.secondaryText }}>{item.description}</p>
                 </div>
               </div>
             );
@@ -354,7 +359,8 @@ const FooterStatusBar: React.FC<{
   onRefresh: () => void;
   isDarkMode: boolean;
   brandColor: string;
-}> = ({ totalContracts, totalEvents, isRefreshing, onRefresh, isDarkMode, brandColor }) => {
+  colors: any;
+}> = ({ totalContracts, totalEvents, isRefreshing, onRefresh, isDarkMode, brandColor, colors }) => {
   const [lastRefreshed, setLastRefreshed] = useState(new Date());
 
   useEffect(() => {
@@ -362,10 +368,11 @@ const FooterStatusBar: React.FC<{
   }, [isRefreshing]);
 
   return (
-    <div className={`mt-6 px-5 py-3 rounded-xl border flex items-center justify-between ${
-      isDarkMode ? 'border-gray-700 bg-gray-800/50' : 'border-gray-200 bg-white'
-    }`}>
-      <div className={`flex items-center gap-4 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+    <div
+      className="mt-6 px-5 py-3 rounded-xl border shadow-sm flex items-center justify-between"
+      style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: colors.utility.primaryText + '20' }}
+    >
+      <div className="flex items-center gap-4 text-xs" style={{ color: colors.utility.secondaryText }}>
         <span className="flex items-center gap-1.5">
           <FileText className="h-3 w-3" />
           {totalContracts} contracts
@@ -376,7 +383,7 @@ const FooterStatusBar: React.FC<{
         </span>
       </div>
       <div className="flex items-center gap-3">
-        <span className={`text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+        <span className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
           Synced {lastRefreshed.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </span>
         <button
@@ -455,10 +462,10 @@ const AwaitingAcceptanceCard: React.FC<{
         </button>
       </div>
 
-      {/* Body — grid layout, scrollable, matches v3 .acceptance-body */}
+      {/* Body — single-row horizontal scroll with stat-card-sized items */}
       <div
-        className="overflow-y-auto"
-        style={{ maxHeight: '280px' }}
+        className="overflow-x-auto"
+        style={{ scrollbarWidth: 'thin' }}
       >
         {contracts.length === 0 ? (
           <div className="text-center py-8">
@@ -467,7 +474,7 @@ const AwaitingAcceptanceCard: React.FC<{
             <p className={`text-[10px]`} style={{ color: colors.utility.secondaryText }}>No contracts awaiting acceptance</p>
           </div>
         ) : (
-          <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
+          <div className="flex gap-3 p-4" style={{ minWidth: 'min-content' }}>
             {contracts.map((contract) => {
               const status = getAcceptanceStatus(contract);
               const initials = getInitials(contract.buyer_name || contract.buyer_company);
@@ -477,76 +484,78 @@ const AwaitingAcceptanceCard: React.FC<{
               return (
                 <div
                   key={contract.id}
-                  className="flex items-center gap-3 px-4 py-3 transition-colors cursor-pointer"
+                  className="rounded-lg border shadow-sm hover:shadow-md transition-all cursor-pointer flex-shrink-0"
                   style={{
-                    borderBottom: `1px solid ${itemBorder}`,
-                    borderRight: `1px solid ${itemBorder}`,
+                    width: '280px',
+                    backgroundColor: colors.utility.primaryBackground,
+                    borderColor: colors.utility.primaryText + '20',
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255,255,255,0.03)' : '#FAFBFC'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ''; }}
+                  onClick={() => onView(contract.id)}
                 >
-                  {/* Avatar */}
+                  {/* Top row: Avatar + contract info */}
+                  <div className="p-3.5 pb-2.5">
+                    <div className="flex items-start gap-3">
+                      <div
+                        className="w-10 h-10 rounded-lg flex items-center justify-center text-xs font-extrabold text-white flex-shrink-0"
+                        style={{ backgroundColor: avatarColor }}
+                      >
+                        {initials}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold truncate" style={{ color: colors.utility.primaryText }}>
+                          {contract.title}
+                        </p>
+                        <p className="text-[10px] mt-0.5" style={{ color: colors.utility.secondaryText }}>
+                          {contract.contract_number}
+                        </p>
+                        <p className="text-[10px] truncate mt-0.5" style={{ color: colors.utility.secondaryText }}>
+                          {contract.buyer_name || contract.buyer_company || 'Unknown'}
+                          {sentDays !== null && <span> · Sent {sentDays}d ago</span>}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bottom row: Status badge + actions */}
                   <div
-                    className="w-9 h-9 rounded-lg flex items-center justify-center text-xs font-extrabold text-white flex-shrink-0"
-                    style={{ backgroundColor: avatarColor }}
+                    className="px-3.5 py-2.5 flex items-center justify-between border-t"
+                    style={{ borderColor: colors.utility.primaryText + '10' }}
                   >
-                    {initials}
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-xs font-bold truncate`} style={{ color: colors.utility.primaryText }}>
-                      {contract.contract_number} — {contract.title}
-                    </p>
-                    <p className={`text-[10px] flex items-center gap-1`} style={{ color: colors.utility.secondaryText }}>
-                      {contract.buyer_name || contract.buyer_company || 'Unknown'}
-                      {sentDays !== null && (
-                        <span> · Sent {sentDays}d ago</span>
-                      )}
-                    </p>
-                  </div>
-
-                  {/* Status + Actions */}
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
                     <span
-                      className={`text-[8px] font-bold uppercase tracking-wider px-2 py-1 rounded border ${
-                        isDarkMode ? status.bgClass.replace('dark:', '') : status.bgClass.split(' ')[0]
-                      } ${isDarkMode ? status.borderClass.replace('dark:', '') : status.borderClass.split(' ')[0]}`}
-                      style={{ color: status.color }}
+                      className="text-[8px] font-bold uppercase tracking-wider px-2 py-1 rounded border"
+                      style={{
+                        color: status.color,
+                        backgroundColor: status.color + '10',
+                        borderColor: status.color + '30',
+                      }}
                     >
                       {status.label}
                     </span>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onView(contract.id); }}
-                      className={`w-7 h-7 rounded-md border flex items-center justify-center transition-all ${
-                        isDarkMode
-                          ? 'border-gray-600 bg-gray-700 hover:bg-gray-600'
-                          : 'border-gray-200 bg-white hover:bg-gray-50'
-                      }`}
-                      title="View contract"
-                    >
-                      <Eye className={`h-3.5 w-3.5 ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`} />
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onResend(contract.id); }}
-                      disabled={isSending}
-                      className={`w-7 h-7 rounded-md border flex items-center justify-center transition-all ${
-                        isDarkMode
-                          ? 'border-gray-600 bg-gray-700'
-                          : 'border-gray-200 bg-white'
-                      } group`}
-                      title="Resend notification"
-                      onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = brandColor; e.currentTarget.style.borderColor = brandColor; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ''; e.currentTarget.style.borderColor = ''; }}
-                    >
-                      {isSending ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin text-gray-400" />
-                      ) : (
-                        <Send className={`h-3.5 w-3.5 ${
-                          isDarkMode ? 'text-gray-300' : 'text-gray-500'
-                        } group-hover:text-white`} />
-                      )}
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onView(contract.id); }}
+                        className="w-7 h-7 rounded-md border flex items-center justify-center transition-all"
+                        style={{ borderColor: colors.utility.primaryText + '20', backgroundColor: colors.utility.secondaryBackground }}
+                        title="View contract"
+                      >
+                        <Eye className="h-3.5 w-3.5" style={{ color: colors.utility.secondaryText }} />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onResend(contract.id); }}
+                        disabled={isSending}
+                        className="w-7 h-7 rounded-md border flex items-center justify-center transition-all group"
+                        style={{ borderColor: colors.utility.primaryText + '20', backgroundColor: colors.utility.secondaryBackground }}
+                        title="Resend notification"
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = brandColor; e.currentTarget.style.borderColor = brandColor; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ''; e.currentTarget.style.borderColor = ''; }}
+                      >
+                        {isSending ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" style={{ color: colors.utility.secondaryText }} />
+                        ) : (
+                          <Send className="h-3.5 w-3.5 group-hover:text-white" style={{ color: colors.utility.secondaryText }} />
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -801,7 +810,8 @@ const EventCard: React.FC<{
   isUpdatingStatus: boolean;
   isDarkMode: boolean;
   brandColor: string;
-}> = ({ event, onStatusChange, onViewContract, isUpdatingStatus, isDarkMode, brandColor }) => {
+  colors: any;
+}> = ({ event, onStatusChange, onViewContract, isUpdatingStatus, isDarkMode, brandColor, colors }) => {
   const isService = event.event_type === 'service';
   const statusCfg = getEventStatusConfig(event.status);
   const StatusIcon = statusCfg.icon;
@@ -809,11 +819,11 @@ const EventCard: React.FC<{
 
   return (
     <div
-      className={`p-3 rounded-xl border transition-all cursor-pointer ${
-        isDarkMode
-          ? 'border-gray-700 bg-gray-800/50 hover:bg-gray-700/50'
-          : 'border-gray-200 bg-white hover:bg-gray-50'
-      }`}
+      className="p-3 rounded-xl border shadow-sm transition-all cursor-pointer hover:shadow-md"
+      style={{
+        backgroundColor: colors.utility.secondaryBackground,
+        borderColor: colors.utility.primaryText + '20',
+      }}
       onClick={() => onViewContract(event.contract_id)}
     >
       <div className="flex items-start gap-2.5">
@@ -824,14 +834,14 @@ const EventCard: React.FC<{
 
         {/* Info */}
         <div className="flex-1 min-w-0">
-          <p className={`text-xs font-bold truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+          <p className="text-xs font-bold truncate" style={{ color: colors.utility.primaryText }}>
             {event.block_name}
           </p>
-          <p className={`text-[10px] truncate mt-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+          <p className="text-[10px] truncate mt-0.5" style={{ color: colors.utility.secondaryText }}>
             {event.contract_title || event.contract_number || 'Contract'}
           </p>
           <div className="flex items-center gap-2 mt-1.5">
-            <span className={`text-[10px] flex items-center gap-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+            <span className="text-[10px] flex items-center gap-1" style={{ color: colors.utility.secondaryText }}>
               <Calendar className="w-3 h-3" />
               {formatEventDate(event.scheduled_date)}
             </span>
@@ -892,10 +902,11 @@ const ServiceEventsSection: React.FC<{
   onViewContract: (contractId: string) => void;
   isDarkMode: boolean;
   brandColor: string;
+  colors: any;
 }> = ({
   events, isLoading, timeFilter, typeFilter,
   onTimeFilterChange, onTypeFilterChange,
-  onStatusChange, isUpdatingStatus, onViewContract, isDarkMode, brandColor,
+  onStatusChange, isUpdatingStatus, onViewContract, isDarkMode, brandColor, colors,
 }) => {
   const filteredEvents = useMemo(() => {
     if (typeFilter === 'all') return events;
@@ -903,20 +914,20 @@ const ServiceEventsSection: React.FC<{
   }, [events, typeFilter]);
 
   return (
-    <div className={`rounded-xl border overflow-hidden flex flex-col ${
-      isDarkMode ? 'border-gray-700 bg-gray-800/50' : 'border-gray-200 bg-white'
-    }`} style={{ minHeight: '320px' }}>
+    <div
+      className="rounded-xl border shadow-sm overflow-hidden flex flex-col"
+      style={{ minHeight: '320px', backgroundColor: colors.utility.secondaryBackground, borderColor: colors.utility.primaryText + '20' }}
+    >
       {/* Header + filters — matches v3 .section-header */}
-      <div className={`px-4 py-3 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+      <div className="px-4 py-3 border-b" style={{ borderColor: colors.utility.primaryText + '15' }}>
         <div className="flex items-center justify-between mb-2">
-          <span className={`text-[11px] uppercase tracking-wider font-bold ${
-            isDarkMode ? 'text-gray-400' : 'text-gray-500'
-          }`}>
+          <span className="text-[11px] uppercase tracking-wider font-bold" style={{ color: colors.utility.secondaryText }}>
             Service Events
           </span>
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-            isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
-          }`}>
+          <span
+            className="text-[10px] font-bold px-2 py-0.5 rounded"
+            style={{ backgroundColor: colors.utility.primaryText + '10', color: colors.utility.secondaryText }}
+          >
             {filteredEvents.length}
           </span>
         </div>
@@ -938,13 +949,13 @@ const ServiceEventsSection: React.FC<{
         {isLoading ? (
           <div className="flex items-center justify-center py-10">
             <Loader2 className="h-5 w-5 animate-spin" style={{ color: brandColor }} />
-            <span className={`ml-2 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Loading events...</span>
+            <span className="ml-2 text-xs" style={{ color: colors.utility.secondaryText }}>Loading events...</span>
           </div>
         ) : filteredEvents.length === 0 ? (
           <div className="text-center py-10">
-            <Calendar className={`h-8 w-8 mx-auto mb-2 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
-            <p className={`text-xs font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>No events</p>
-            <p className={`text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+            <Calendar className="h-8 w-8 mx-auto mb-2" style={{ color: colors.utility.secondaryText }} />
+            <p className="text-xs font-medium" style={{ color: colors.utility.primaryText }}>No events</p>
+            <p className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
               No {typeFilter !== 'all' ? typeFilter : ''} events for this period
             </p>
           </div>
@@ -959,12 +970,13 @@ const ServiceEventsSection: React.FC<{
                 isUpdatingStatus={isUpdatingStatus}
                 isDarkMode={isDarkMode}
                 brandColor={brandColor}
+                colors={colors}
               />
             ))}
           </div>
         )}
         {filteredEvents.length > 6 && (
-          <p className={`text-center text-[10px] pt-2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+          <p className="text-center text-[10px] pt-2" style={{ color: colors.utility.secondaryText }}>
             +{filteredEvents.length - 6} more events
           </p>
         )}
@@ -984,9 +996,10 @@ const ActionQueueCard: React.FC<{
   queueFilter: QueueFilter;
   onQueueFilterChange: (f: QueueFilter) => void;
   isDarkMode: boolean;
+  colors: any;
 }> = ({
   draftContracts, overdueEvents, pendingContracts,
-  isLoading, onViewContract, queueFilter, onQueueFilterChange, isDarkMode,
+  isLoading, onViewContract, queueFilter, onQueueFilterChange, isDarkMode, colors,
 }) => {
   const queueItems = useMemo(() => {
     const items: Array<{
@@ -1029,20 +1042,20 @@ const ActionQueueCard: React.FC<{
   }), [queueItems.length, draftContracts.length, overdueEvents.length, pendingContracts.length]);
 
   return (
-    <div className={`rounded-xl border overflow-hidden ${
-      isDarkMode ? 'border-gray-700 bg-gray-800/50' : 'border-gray-200 bg-white'
-    }`}>
+    <div
+      className="rounded-xl border shadow-sm overflow-hidden"
+      style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: colors.utility.primaryText + '20' }}
+    >
       {/* Header */}
-      <div className={`px-4 py-3 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+      <div className="px-4 py-3 border-b" style={{ borderColor: colors.utility.primaryText + '15' }}>
         <div className="flex items-center justify-between mb-2">
-          <span className={`text-[11px] uppercase tracking-wider font-bold ${
-            isDarkMode ? 'text-gray-400' : 'text-gray-500'
-          }`}>
+          <span className="text-[11px] uppercase tracking-wider font-bold" style={{ color: colors.utility.secondaryText }}>
             Action Queue
           </span>
-          <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-            isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
-          }`}>
+          <span
+            className="text-[10px] font-bold px-2 py-0.5 rounded"
+            style={{ backgroundColor: colors.utility.primaryText + '10', color: colors.utility.secondaryText }}
+          >
             {counts.all}
           </span>
         </div>
@@ -1063,14 +1076,14 @@ const ActionQueueCard: React.FC<{
       <div className="overflow-y-auto" style={{ maxHeight: '300px' }}>
         {isLoading ? (
           <div className="flex items-center justify-center py-10">
-            <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-            <span className={`ml-2 text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Loading...</span>
+            <Loader2 className="h-5 w-5 animate-spin" style={{ color: colors.utility.secondaryText }} />
+            <span className="ml-2 text-xs" style={{ color: colors.utility.secondaryText }}>Loading...</span>
           </div>
         ) : filteredItems.length === 0 ? (
           <div className="text-center py-8">
             <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-green-500" />
-            <p className={`text-xs font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Queue clear</p>
-            <p className={`text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>No actions pending</p>
+            <p className="text-xs font-medium" style={{ color: colors.utility.primaryText }}>Queue clear</p>
+            <p className="text-[10px]" style={{ color: colors.utility.secondaryText }}>No actions pending</p>
           </div>
         ) : (
           filteredItems.map((item) => {
@@ -1078,26 +1091,25 @@ const ActionQueueCard: React.FC<{
             return (
               <div
                 key={item.id}
-                className={`flex items-center gap-3 px-4 py-3 border-b transition-colors cursor-pointer ${
-                  isDarkMode
-                    ? 'border-gray-700/50 hover:bg-gray-700/30'
-                    : 'border-gray-100 hover:bg-gray-50'
-                }`}
+                className="flex items-center gap-3 px-4 py-3 transition-colors cursor-pointer"
+                style={{ borderBottom: `1px solid ${colors.utility.primaryText}10` }}
                 onClick={() => onViewContract(item.contractId)}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255,255,255,0.03)' : '#FAFBFC'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = ''; }}
               >
                 <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
                 <div className="flex-1 min-w-0">
-                  <p className={`text-xs font-bold truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  <p className="text-xs font-bold truncate" style={{ color: colors.utility.primaryText }}>
                     {item.title}
                   </p>
-                  <p className={`text-[10px] truncate ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <p className="text-[10px] truncate" style={{ color: colors.utility.secondaryText }}>
                     {item.subtitle}
                   </p>
                 </div>
-                <span className={`text-[10px] flex-shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                <span className="text-[10px] flex-shrink-0" style={{ color: colors.utility.secondaryText }}>
                   {formatEventDate(item.date)}
                 </span>
-                <ChevronRight className={`h-3 w-3 flex-shrink-0 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
+                <ChevronRight className="h-3 w-3 flex-shrink-0" style={{ color: colors.utility.secondaryText + '60' }} />
               </div>
             );
           })
@@ -1440,43 +1452,43 @@ const OpsCockpitPage: React.FC = () => {
           {/* ═══ ROW 3: Event Schedule (left 35%) + Service Events (right 65%) ═══ */}
           <div className="grid gap-4" style={{ gridTemplateColumns: '35% 65%' }}>
             {/* Left: Event urgency buckets (stacked vertically) */}
-            <div className={`rounded-xl border p-4 ${
-              isDarkMode ? 'border-gray-700 bg-gray-800/50' : 'border-gray-200 bg-white'
-            }`}>
+            <div
+              className="rounded-xl border shadow-sm p-4"
+              style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: colors.utility.primaryText + '20' }}
+            >
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4" style={{ color: brandColor }} />
-                  <span className={`text-[11px] uppercase tracking-wider font-bold ${
-                    isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                  }`}>
+                  <span className="text-[11px] uppercase tracking-wider font-bold" style={{ color: colors.utility.secondaryText }}>
                     Event Schedule
                   </span>
                 </div>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                  isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
-                }`}>
+                <span
+                  className="text-[10px] font-bold px-2 py-0.5 rounded"
+                  style={{ backgroundColor: colors.utility.primaryText + '10', color: colors.utility.secondaryText }}
+                >
                   {urgency.totals.total_events}
                 </span>
               </div>
               <div className="space-y-2">
                 <BucketCard title="Overdue" count={urgency.overdue.count}
                   serviceCount={urgency.overdue.service_count} billingCount={urgency.overdue.billing_count}
-                  color="#EF4444" isDarkMode={isDarkMode} isHighlighted={urgency.overdue.count > 0} />
+                  color="#EF4444" isDarkMode={isDarkMode} isHighlighted={urgency.overdue.count > 0} colors={colors} />
                 <BucketCard title="Today" count={urgency.today.count}
                   serviceCount={urgency.today.service_count} billingCount={urgency.today.billing_count}
-                  color="#3B82F6" isDarkMode={isDarkMode} isHighlighted={urgency.today.count > 0} />
+                  color="#3B82F6" isDarkMode={isDarkMode} isHighlighted={urgency.today.count > 0} colors={colors} />
                 <BucketCard title="Tomorrow" count={urgency.tomorrow.count}
                   serviceCount={urgency.tomorrow.service_count} billingCount={urgency.tomorrow.billing_count}
-                  color="#8B5CF6" isDarkMode={isDarkMode} />
+                  color="#8B5CF6" isDarkMode={isDarkMode} colors={colors} />
                 <BucketCard title="This Week" count={urgency.this_week.count}
                   serviceCount={urgency.this_week.service_count} billingCount={urgency.this_week.billing_count}
-                  color="#06B6D4" isDarkMode={isDarkMode} />
+                  color="#06B6D4" isDarkMode={isDarkMode} colors={colors} />
                 <BucketCard title="Next Week" count={urgency.next_week.count}
                   serviceCount={urgency.next_week.service_count} billingCount={urgency.next_week.billing_count}
-                  color="#F59E0B" isDarkMode={isDarkMode} />
+                  color="#F59E0B" isDarkMode={isDarkMode} colors={colors} />
                 <BucketCard title="Later" count={urgency.later.count}
                   serviceCount={urgency.later.service_count} billingCount={urgency.later.billing_count}
-                  color="#6B7280" isDarkMode={isDarkMode} />
+                  color="#6B7280" isDarkMode={isDarkMode} colors={colors} />
               </div>
             </div>
 
@@ -1493,6 +1505,7 @@ const OpsCockpitPage: React.FC = () => {
               onViewContract={handleViewContract}
               isDarkMode={isDarkMode}
               brandColor={brandColor}
+              colors={colors}
             />
           </div>
 
@@ -1506,11 +1519,12 @@ const OpsCockpitPage: React.FC = () => {
             queueFilter={queueFilter}
             onQueueFilterChange={setQueueFilter}
             isDarkMode={isDarkMode}
+            colors={colors}
           />
         </div>
 
         {/* Right: VaNi Sidebar (starts at stat-card level) */}
-        <VaNiSidebar isDarkMode={isDarkMode} />
+        <VaNiSidebar isDarkMode={isDarkMode} colors={colors} />
       </div>
 
       {/* ═══════ FOOTER ═══════ */}
@@ -1521,6 +1535,7 @@ const OpsCockpitPage: React.FC = () => {
         onRefresh={handleRefresh}
         isDarkMode={isDarkMode}
         brandColor={brandColor}
+        colors={colors}
       />
 
       {/* ═══════ MODALS / DRAWERS ═══════ */}

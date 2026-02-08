@@ -1,20 +1,22 @@
 ═══════════════════════════════════════════════════
-COPY INSTRUCTIONS — ops-cockpit-revenue-fixes
+COPY INSTRUCTIONS — ops-cockpit-revenue-fixes (v2)
 ═══════════════════════════════════════════════════
 
 Submodules Affected: contractnest-ui
 
 Files Modified (1):
   contractnest-ui/src/pages/ops/cockpit/index.tsx
-    - Ops Cockpit page: 6 revenue-side fixes
+    - Ops Cockpit page: Revenue-side fixes + card visibility overhaul
 
-Changes Summary:
-  1. +Add Client button: Matches /contacts style (rounded-full, solid brand bg, glow shadow, hover:scale-105). Opens QuickAddContactDrawer inline.
-  2. +New Contract button: Opens ContractWizard modal with contractType='client' instead of navigating away.
-  3. Removed "Active Contracts" stat card — now 3 cards (grid-cols-3): Pending Acceptance, Drafts, Overdue Events.
-  4. PerspectiveSwitcher moved inline beside the header (same row), not below.
-  5. VaNi sidebar moved up — now starts at stat-card level (stats + content inside the 2-col grid).
-  6. Awaiting Acceptance card: Uses theme colors.utility.secondaryBackground + proper border + subtle boxShadow for visibility.
+Changes Summary (v2 additions):
+  A. Awaiting Acceptance → single-row horizontal scroll with 280px stat-card-sized items
+  B. ALL container cards now use contacts/contracts pattern:
+     - backgroundColor: colors.utility.secondaryBackground
+     - borderColor: colors.utility.primaryText + '20'
+     - Tailwind shadow-sm class
+  C. Components updated: VaNiSidebar, BucketCard, Event Schedule wrapper,
+     ServiceEventsSection, EventCard, ActionQueueCard, FooterStatusBar
+  D. Expense-side components (CnakVerificationCard, RfqTrackerCard) untouched — for later
 
 ═══════════════════════════════════════════════════
 COPY COMMAND (PowerShell):
