@@ -1,0 +1,39 @@
+═══════════════════════════════════════════════════
+CYCLE 3 — API LAYER (Tenant Forms: Selections + Submissions)
+═══════════════════════════════════════════════════
+
+Submodule: contractnest-api
+Branch: main
+
+Files Changed:
+  1. src/index.ts              — Added /api/forms route registration
+  2. src/routes/tenantFormsRoutes.ts    — NEW: 6 endpoints (selections + submissions)
+  3. src/services/tenantFormsService.ts — NEW: Edge proxy service
+  4. src/validators/tenantFormsValidators.ts — NEW: express-validator chains
+  5. src/types/tenantForms.dto.ts       — NEW: DTOs for request/response
+
+═══════════════════════════════════════════════════
+COPY COMMAND (PowerShell)
+═══════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\cycle3-api\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+
+Write-Host "✅ Cycle 3 API files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+NEW API ENDPOINTS
+═══════════════════════════════════════════════════
+
+Base: /api/forms
+
+SELECTIONS:
+  GET  /api/forms/selections         — List tenant's selected templates
+  POST /api/forms/selections         — Toggle template selection on/off
+
+SUBMISSIONS:
+  GET  /api/forms/submissions        — List submissions (filter by event/contract/template)
+  GET  /api/forms/submissions/:id    — Get single submission
+  POST /api/forms/submissions        — Create submission
+  PUT  /api/forms/submissions/:id    — Update submission (draft/submitted only)
