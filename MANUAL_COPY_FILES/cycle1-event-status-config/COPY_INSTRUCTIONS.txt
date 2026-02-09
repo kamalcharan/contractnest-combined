@@ -1,0 +1,8 @@
+COPY INSTRUCTIONS — Cycle 1 Batch 1: Events Plan + Status Config Migration
+==========================================================================
+
+Files:
+1. ClaudeDocumentation/contractUI/eventsplan.md  — Full 3-cycle execution plan
+2. contractnest-edge/supabase/migrations/contracts/018_event_status_config.sql — Status config tables + RPCs + seed data
+
+Submodules Affected: ClaudeDocumentation, contractnest-edge

@@ -1,0 +1,43 @@
+============================================================================
+SmartForms — Cycle 1 Step 4: UI Layer (Admin Shell)
+============================================================================
+
+SUBMODULES AFFECTED: contractnest-ui
+
+FILES (all included in copy — no manual edits needed):
+  1. contractnest-ui/src/services/serviceURLs.ts
+     → Added ADMIN.SMART_FORMS block (12 endpoints + LIST_WITH_FILTERS helper)
+     → Added SmartFormsFilters type + SmartFormsEndpoints export
+
+  2. contractnest-ui/src/pages/admin/smart-forms/types/smartFormsAdmin.types.ts
+     → TypeScript types: FormTemplate, FormTemplateFilters, Pagination, payloads, constants
+
+  3. contractnest-ui/src/pages/admin/smart-forms/hooks/useSmartFormsAdmin.ts
+     → useFormTemplates() — list with filters
+     → useFormTemplate() — get single by ID
+     → useFormTemplateMutations() — CRUD + workflow actions with race condition guard
+
+  4. contractnest-ui/src/pages/admin/smart-forms/SmartFormsAdminPage.tsx
+     → Admin Form Library page: list, filter, status badges, workflow actions, confirmation dialog, pagination, toast + loaders
+
+  5. contractnest-ui/src/utils/constants/industryMenus.ts
+     → Added Smart Forms menu item (adminOnly: true)
+
+  6. contractnest-ui/src/App.tsx
+     → Added import for SmartFormsAdminPage
+     → Added route block: /admin/smart-forms (ProtectedRoute + MainLayout)
+
+RACE CONDITION HANDLING:
+  ✅ activeRequestRef guard in useFormTemplateMutations — prevents duplicate concurrent mutations
+  ✅ operationKey per action (e.g., "clone-{id}", "approve-{id}") — granular locking
+  ✅ Loading state shared across mutations — disables buttons during execution
+  ✅ Error cleared on new request — no stale errors
+
+PRODUCTION CHECKLIST:
+  ✅ Error Handling: try-catch in all hooks, error state surfaced to UI
+  ✅ Toasts: vaniToast.success/error for all actions
+  ✅ Loaders: VaNiLoader for list loading
+  ✅ Race Conditions: activeRequestRef guard in mutations hook
+  ✅ Admin Gate: currentTenant?.is_admin check
+
+============================================================================
