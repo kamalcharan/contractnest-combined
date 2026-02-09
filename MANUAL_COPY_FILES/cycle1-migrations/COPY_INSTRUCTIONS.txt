@@ -1,25 +1,27 @@
 ============================================================================
-SmartForms — Cycle 1 Step 1: Database Migration
+SmartForms — Cycle 1 Step 1: Database Migration (with m_form_ prefix)
 ============================================================================
 
 SUBMODULES AFFECTED: contractnest-edge
 
 FILES:
-  1. contractnest-edge/supabase/functions/smart-forms/migration.sql
-     → New file — SmartForms database schema
+  1. contractnest-edge/supabase/migrations/smart-forms/001_create_smart_forms_tables.sql
+     → Full schema with m_form_ prefix (for fresh installs)
 
-WHAT THIS CREATES:
-  - form_templates          — Global form definitions (admin-managed, no tenant_id)
-  - tenant_form_selections  — Tenant selects which approved forms to use in their workspace
-  - form_template_mappings  — Tenant maps forms to contracts/service events
-  - form_submissions        — Completed form responses (JSONB)
-  - form_attachments        — File upload metadata linked to submissions
-  - Storage bucket          — 'form-attachments' (private, 100MB limit)
-  - RLS policies            — Tenant isolation on all tenant-scoped tables
-  - Indexes                 — GIN indexes on JSONB, standard B-tree on FKs
+  2. contractnest-edge/supabase/migrations/smart-forms/002_rename_tables_m_form_prefix.sql
+     → ALTER RENAME migration (for existing DBs that already ran original migration)
 
-HOW TO RUN:
-  Execute this SQL in your Supabase SQL Editor (Dashboard → SQL Editor → New Query)
-  Copy the entire contents of migration.sql and run it.
+TABLE NAME MAPPING:
+  form_templates          → m_form_templates
+  tenant_form_selections  → m_form_tenant_selections
+  form_template_mappings  → m_form_template_mappings
+  form_submissions        → m_form_submissions
+  form_attachments        → m_form_attachments
+
+FOR EXISTING DB (already ran original migration):
+  Run ONLY: 002_rename_tables_m_form_prefix.sql
+
+FOR FRESH DB:
+  Run ONLY: 001_create_smart_forms_tables.sql
 
 ============================================================================
