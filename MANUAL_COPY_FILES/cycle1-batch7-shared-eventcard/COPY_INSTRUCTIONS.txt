@@ -1,0 +1,29 @@
+===============================================================
+BATCH 7: Shared EventCard — One Component, Same UX Everywhere
+===============================================================
+Branch: cycle1-batch7-shared-eventcard
+Date: 2026-02-09
+
+Submodules Affected: contractnest-ui
+
+Files Changed:
+  1. contractnest-ui/src/components/contracts/EventCard.tsx  [NEW]
+     - Shared EventCard with variant="full" and variant="compact"
+     - Full: Timeline detail pages (icon, name, amount row, status dropdown)
+     - Compact: Cockpit grids (tighter layout, same status dropdown UX)
+     - Status badge is clickable → expands "Change to:" with all valid transitions
+     - No more blind auto-advance on single click
+     - Dynamic DB colors + fallback transitions built in
+
+  2. contractnest-ui/src/components/contracts/TimelineTab.tsx  [MODIFIED]
+     - Removed local EventCard, EventCardProps, getStatusConfig, STATUS_ICON_MAP
+     - Imports shared EventCard from @/components/contracts/EventCard
+     - Same visual output, zero behavior change
+
+  3. contractnest-ui/src/pages/ops/cockpit/index.tsx  [MODIFIED]
+     - Removed CockpitEventCard component (~100 lines)
+     - Removed getEventStatusConfig and STATUS_ICON_MAP helpers
+     - Imports shared EventCard with variant="compact"
+     - Same clickable status badge + dropdown UX as Timeline
+
+===============================================================
