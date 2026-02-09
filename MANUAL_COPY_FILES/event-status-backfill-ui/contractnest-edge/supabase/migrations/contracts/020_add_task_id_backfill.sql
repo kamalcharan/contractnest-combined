@@ -24,75 +24,43 @@ BEGIN
 END;
 $$;
 
--- Step 2: Backfill task_ids for all existing events that don't have one
+-- Step 2: Backfill task_ids using a single UPDATE with window function
 -- Assigns sequential TSK-XXXXX per tenant, ordered by created_at
+UPDATE t_contract_events e
+SET task_id = 'TSK-' || LPAD((n.seq_num)::TEXT, 5, '0')
+FROM (
+    SELECT
+        id,
+        (ROW_NUMBER() OVER (PARTITION BY tenant_id ORDER BY created_at, id) + 10000)::INT AS seq_num
+    FROM t_contract_events
+    WHERE task_id IS NULL
+) n
+WHERE e.id = n.id;
+
+-- Step 3: Advance the TASK sequence counter in t_category_details
+-- so new auto-generated task_ids don't collide with backfilled ones
 DO $$
 DECLARE
-    v_tenant RECORD;
-    v_event RECORD;
-    v_counter INT;
-    v_task_id TEXT;
-    v_total_updated INT := 0;
-    v_tenant_count INT := 0;
-    v_max_counter INT;
+    v_rec RECORD;
 BEGIN
-    RAISE NOTICE '=== Starting task_id backfill ===';
-
-    -- Process each tenant separately
-    FOR v_tenant IN
-        SELECT DISTINCT tenant_id
+    FOR v_rec IN
+        SELECT
+            tenant_id,
+            COUNT(*) + 10001 AS next_val
         FROM t_contract_events
-        WHERE task_id IS NULL
-        ORDER BY tenant_id
+        WHERE task_id IS NOT NULL
+        GROUP BY tenant_id
     LOOP
-        v_counter := 10001;  -- TSK start value from sequences.seed.ts
-        v_tenant_count := v_tenant_count + 1;
-
-        -- Assign sequential task_ids within this tenant
-        FOR v_event IN
-            SELECT id
-            FROM t_contract_events
-            WHERE tenant_id = v_tenant.tenant_id
-              AND task_id IS NULL
-            ORDER BY created_at, id
-        LOOP
-            v_task_id := 'TSK-' || LPAD(v_counter::TEXT, 5, '0');
-
-            UPDATE t_contract_events
-            SET task_id = v_task_id
-            WHERE id = v_event.id;
-
-            v_counter := v_counter + 1;
-            v_total_updated := v_total_updated + 1;
-        END LOOP;
-
-        v_max_counter := v_counter;  -- Next available number
-
-        RAISE NOTICE 'Tenant [%]: assigned % task_ids (TSK-10001 to TSK-%)',
-            v_tenant.tenant_id,
-            v_counter - 10001,
-            LPAD((v_counter - 1)::TEXT, 5, '0');
-
-        -- Step 3: Update the sequence counter in t_category_details
-        -- so next auto-generated task_id picks up from where we left off
         UPDATE t_category_details
         SET form_settings = jsonb_set(
-            COALESCE(form_settings, '{}'::jsonb),
+            COALESCE(form_settings, '{}'::JSONB),
             '{start_value}',
-            to_jsonb(v_max_counter)
+            to_jsonb(v_rec.next_val)
         )
-        WHERE tenant_id = v_tenant.tenant_id
+        WHERE tenant_id = v_rec.tenant_id
           AND sub_cat_name = 'TASK'
-          AND COALESCE((form_settings->>'start_value')::INT, 10001) < v_max_counter;
-
-        IF FOUND THEN
-            RAISE NOTICE 'Tenant [%]: advanced TASK sequence counter to %',
-                v_tenant.tenant_id, v_max_counter;
-        END IF;
+          AND COALESCE((form_settings->>'start_value')::INT, 10001) < v_rec.next_val;
     END LOOP;
-
-    RAISE NOTICE '=== Backfill complete: % events across % tenants ===',
-        v_total_updated, v_tenant_count;
 END;
 $$;
 
