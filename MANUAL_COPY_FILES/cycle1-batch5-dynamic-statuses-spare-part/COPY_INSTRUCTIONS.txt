@@ -1,0 +1,35 @@
+===============================================================
+BATCH 5: Dynamic Statuses + Spare Part + ServiceURLs + TaskID Auto-Gen
+===============================================================
+Branch: cycle1-batch5-dynamic-statuses-spare-part
+Date: 2026-02-09
+
+Submodules Affected: contractnest-ui, contractnest-edge
+
+Files Changed:
+  1. contractnest-ui/src/services/serviceURLs.ts
+     - Added CONTRACT_EVENTS section (moved from inline in hooks)
+     - Endpoints: LIST_WITH_FILTERS, DATES_WITH_FILTERS, CREATE, UPDATE, DELETE
+
+  2. contractnest-ui/src/types/contractEvents.ts
+     - Added spare_part to CONTRACT_EVENT_TYPES
+     - Added task_id to ContractEvent interface
+     - Deprecated hardcoded statuses/transitions (now DB-driven)
+     - ContractEventStatus changed to string (dynamic)
+
+  3. contractnest-ui/src/hooks/queries/useContractEventQueries.ts
+     - Replaced inline endpoint definitions with API_ENDPOINTS.CONTRACT_EVENTS
+     - All hooks now use serviceURLs.ts (mandatory pattern)
+
+  4. contractnest-ui/src/components/contracts/TimelineTab.tsx
+     - Dynamic status colors from DB (hex_color field)
+     - STATUS_ICON_MAP maps DB icon_name to Lucide components
+     - Spare part event type support (third section)
+     - Events grouped: service, spare_part, billing
+
+  5. contractnest-edge/supabase/migrations/contracts/021_auto_generate_task_id.sql
+     - Updates insert_contract_events_batch RPC
+     - Auto-generates TSK-xxxxx task_id using t_category_details sequence
+     - Advances sequence counter after batch insert
+
+===============================================================
