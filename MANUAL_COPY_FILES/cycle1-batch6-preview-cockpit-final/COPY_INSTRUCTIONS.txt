@@ -1,0 +1,27 @@
+===============================================================
+BATCH 6 (FINAL): Spare Part + Dynamic Statuses in Preview & Cockpit
+===============================================================
+Branch: cycle1-batch6-preview-cockpit-final
+Date: 2026-02-09
+
+Submodules Affected: contractnest-ui
+
+Files Changed:
+  1. contractnest-ui/src/components/contracts/ContractWizard/steps/EventsPreviewStep.tsx
+     - Added Package icon import for spare_part
+     - Added task_id: null to dbEvent conversion
+     - spare_part accent color (info blue)
+     - Sort order: service → spare_part → billing
+     - Left column groups service + spare_part together
+     - Info panel text updated for spare parts
+
+  2. contractnest-ui/src/pages/ops/cockpit/index.tsx
+     - Removed deprecated VALID_STATUS_TRANSITIONS import
+     - Added useEventStatuses + useEventTransitions hooks
+     - Dynamic status colors from DB (hex_color)
+     - CockpitEventCard: spare_part type badge (PART / Package icon)
+     - BucketCard: spare_part_count display
+     - ServiceEventsSection: Parts filter pill added
+     - All status transitions now DB-driven
+
+===============================================================
