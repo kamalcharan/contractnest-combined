@@ -17,21 +17,8 @@ FILES:
   4. contractnest-api/src/routes/adminFormsRoutes.ts
      → Express router with 12 endpoints (matches adminJtdRoutes pattern)
 
-  5. contractnest-api/src/index.ts  ← MANUAL EDIT REQUIRED (see below)
-     → Register routes at /api/admin/forms
-
-MANUAL EDIT — index.ts:
-  Add the following block AFTER the Admin JTD Management Routes block
-  (after line ~827, before the Tenant Account Routes block):
-
-  // Admin Forms Management Routes (Smart Forms)
-  try {
-    const adminFormsRoutes = require('./routes/adminFormsRoutes').default;
-    app.use('/api/admin/forms', adminFormsRoutes);
-    console.log('✅ Admin Forms management routes registered at /api/admin/forms');
-  } catch (error) {
-    console.error('❌ Failed to register admin Forms management routes:', error);
-  }
+  5. contractnest-api/src/index.ts
+     → Updated with route registration at /api/admin/forms (included in copy)
 
 API ROUTES:
   GET    /api/admin/forms              — List templates (filters + pagination)
