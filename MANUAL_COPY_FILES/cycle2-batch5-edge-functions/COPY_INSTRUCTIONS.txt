@@ -1,0 +1,73 @@
+===============================================================
+BATCH 5 (Cycle 2): RPC Functions + Edge Functions
+===============================================================
+Branch: cycle2-batch5-edge-functions
+Date: 2026-02-09
+
+Submodules Affected: contractnest-edge
+
+Files Changed (6 files):
+
+  RPC MIGRATIONS (run AFTER batch 4 migrations 022-025):
+  ──────────────────────────────────────────────────────
+  1. contractnest-edge/supabase/migrations/contracts/026_service_ticket_rpcs.sql  [NEW]
+     - create_service_ticket: Generate TKT number, link events, audit
+     - update_service_ticket: Status/assignment/notes with optimistic concurrency + audit
+     - get_service_tickets_list: Paginated list with contract/status/assignment/date filters
+     - get_service_ticket_detail: Single ticket with linked events + evidence
+
+  2. contractnest-edge/supabase/migrations/contracts/027_service_evidence_rpcs.sql  [NEW]
+     - create_service_evidence: Create evidence record (upload-form/otp/service-form) + audit
+     - update_service_evidence: Verify/reject/update_file/verify_otp/update_form + audit
+     - get_service_evidence_list: List by ticket/contract/type/status
+
+  3. contractnest-edge/supabase/migrations/contracts/028_audit_log_rpc.sql  [NEW]
+     - get_audit_log: Paginated query with category/entity/date filters + category_counts
+
+  EDGE FUNCTIONS:
+  ──────────────────────────────────────────────────────
+  4. contractnest-edge/supabase/functions/service-tickets/index.ts  [NEW ~260 lines]
+     Routes:
+       GET    /service-tickets               → list (paginated)
+       GET    /service-tickets/:id           → detail (ticket + events + evidence)
+       POST   /service-tickets               → create
+       PATCH  /service-tickets/:id           → update (status, assignment, notes)
+
+  5. contractnest-edge/supabase/functions/service-evidence/index.ts  [NEW ~250 lines]
+     Routes:
+       GET    /service-evidence              → list (by ticket/contract/type)
+       POST   /service-evidence              → create (upload-form, otp, service-form)
+       PATCH  /service-evidence/:id          → update (verify, reject, verify_otp, update_file, update_form)
+
+  6. contractnest-edge/supabase/functions/audit-log/index.ts  [NEW ~130 lines]
+     Routes:
+       GET    /audit-log                     → list (paginated, category/entity/date filters)
+
+Run Order: 026 → 027 → 028 (after 022-025 from batch 4)
+
+===============================================================
+COPY COMMANDS (PowerShell):
+===============================================================
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\cycle2-batch5-edge-functions\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "All 6 files copied (3 RPCs + 3 edge functions)!" -ForegroundColor Green
+
+===============================================================
+APPLY MIGRATIONS (Supabase SQL Editor):
+===============================================================
+# Run in order after batch 4 migrations:
+# 1. 026_service_ticket_rpcs.sql
+# 2. 027_service_evidence_rpcs.sql
+# 3. 028_audit_log_rpc.sql
+
+===============================================================
+DEPLOY EDGE FUNCTIONS (Supabase CLI):
+===============================================================
+cd contractnest-edge
+supabase functions deploy service-tickets
+supabase functions deploy service-evidence
+supabase functions deploy audit-log
+
+===============================================================
