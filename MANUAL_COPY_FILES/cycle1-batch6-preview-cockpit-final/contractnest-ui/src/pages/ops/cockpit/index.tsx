@@ -72,7 +72,7 @@ const ContractWizard = lazy(() =>
 
 type Perspective = 'revenue' | 'expense';
 type EventTimeFilter = 'today' | 'week' | 'month';
-type EventTypeFilter = 'all' | 'service' | 'billing' | 'spare_part';
+type EventTypeFilter = 'all' | 'service' | 'billing';
 type QueueFilter = 'all' | 'drafts' | 'urgent' | 'pending';
 
 // =================================================================
@@ -873,7 +873,16 @@ const CockpitEventCard: React.FC<{
   const isSparePart = event.event_type === 'spare_part';
   const statusCfg = getEventStatusConfig(event.status, statusDefs);
   const StatusIcon = statusCfg.icon;
-  const transitions = allowedTransitions || [];
+
+  // Fallback transitions when DB data hasn't loaded yet
+  const FALLBACK_TRANSITIONS: Record<string, string[]> = {
+    scheduled: ['in_progress'],
+    in_progress: ['completed'],
+    overdue: ['in_progress'],
+  };
+  const transitions = (allowedTransitions && allowedTransitions.length > 0)
+    ? allowedTransitions
+    : (FALLBACK_TRANSITIONS[event.status] || []);
 
   const typeConfig = isSparePart
     ? { label: 'PART', icon: Package, colorClass: isDarkMode ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-600' }
@@ -978,6 +987,8 @@ const ServiceEventsSection: React.FC<{
 }) => {
   const filteredEvents = useMemo(() => {
     if (typeFilter === 'all') return events;
+    // spare_part is a subset of service — "Deliverables" shows both
+    if (typeFilter === 'service') return events.filter((e) => e.event_type === 'service' || e.event_type === 'spare_part');
     return events.filter((e) => e.event_type === typeFilter);
   }, [events, typeFilter]);
 
@@ -1005,9 +1016,9 @@ const ServiceEventsSection: React.FC<{
               isActive={timeFilter === f} onClick={() => onTimeFilterChange(f)} isDarkMode={isDarkMode} brandColor={brandColor} colors={colors} />
           ))}
           <div className="w-px h-4 mx-1" style={{ backgroundColor: colors.utility.primaryText + '15' }} />
-          {(['all', 'service', 'spare_part', 'billing'] as EventTypeFilter[]).map((f) => (
+          {(['all', 'service', 'billing'] as EventTypeFilter[]).map((f) => (
             <FilterPill key={f}
-              label={f === 'all' ? 'All' : f === 'service' ? 'Deliverables' : f === 'spare_part' ? 'Parts' : 'Invoices'}
+              label={f === 'all' ? 'All' : f === 'service' ? 'Deliverables' : 'Invoices'}
               isActive={typeFilter === f} onClick={() => onTypeFilterChange(f)} isDarkMode={isDarkMode} brandColor={brandColor} colors={colors} />
           ))}
         </div>
