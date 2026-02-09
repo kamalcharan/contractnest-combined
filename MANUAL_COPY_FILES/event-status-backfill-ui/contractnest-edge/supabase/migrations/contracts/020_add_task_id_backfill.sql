@@ -80,8 +80,7 @@ BEGIN
             COALESCE(form_settings, '{}'::jsonb),
             '{start_value}',
             to_jsonb(v_max_counter)
-        ),
-        updated_at = now()
+        )
         WHERE tenant_id = v_tenant.tenant_id
           AND sub_cat_name = 'TASK'
           AND COALESCE((form_settings->>'start_value')::INT, 10001) < v_max_counter;

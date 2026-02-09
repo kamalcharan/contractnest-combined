@@ -22,7 +22,7 @@ BEGIN
     FOR v_tenant IN
         SELECT id, name
         FROM t_tenants
-        WHERE is_active = true
+        WHERE status = 'active'
         ORDER BY created_at
     LOOP
         v_result := seed_event_status_defaults(v_tenant.id);
