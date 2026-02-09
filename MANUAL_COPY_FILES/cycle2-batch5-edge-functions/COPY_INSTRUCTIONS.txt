@@ -1,12 +1,12 @@
 ===============================================================
-BATCH 5 (Cycle 2): RPC Functions + Edge Functions
+BATCH 5 (Cycle 2): RPC Functions + Unified Edge Function
 ===============================================================
 Branch: cycle2-batch5-edge-functions
 Date: 2026-02-09
 
 Submodules Affected: contractnest-edge
 
-Files Changed (6 files):
+Files Changed (4 files):
 
   RPC MIGRATIONS (run AFTER batch 4 migrations 022-025):
   ──────────────────────────────────────────────────────
@@ -24,24 +24,19 @@ Files Changed (6 files):
   3. contractnest-edge/supabase/migrations/contracts/028_audit_log_rpc.sql  [NEW]
      - get_audit_log: Paginated query with category/entity/date filters + category_counts
 
-  EDGE FUNCTIONS:
+  UNIFIED EDGE FUNCTION:
   ──────────────────────────────────────────────────────
-  4. contractnest-edge/supabase/functions/service-tickets/index.ts  [NEW ~260 lines]
+  4. contractnest-edge/supabase/functions/service-execution/index.ts  [NEW ~370 lines]
      Routes:
-       GET    /service-tickets               → list (paginated)
-       GET    /service-tickets/:id           → detail (ticket + events + evidence)
-       POST   /service-tickets               → create
-       PATCH  /service-tickets/:id           → update (status, assignment, notes)
-
-  5. contractnest-edge/supabase/functions/service-evidence/index.ts  [NEW ~250 lines]
-     Routes:
-       GET    /service-evidence              → list (by ticket/contract/type)
-       POST   /service-evidence              → create (upload-form, otp, service-form)
-       PATCH  /service-evidence/:id          → update (verify, reject, verify_otp, update_file, update_form)
-
-  6. contractnest-edge/supabase/functions/audit-log/index.ts  [NEW ~130 lines]
-     Routes:
-       GET    /audit-log                     → list (paginated, category/entity/date filters)
+       GET    /service-execution                              → list tickets
+       GET    /service-execution/:ticketId                    → ticket detail (events + evidence)
+       POST   /service-execution                              → create ticket
+       PATCH  /service-execution/:ticketId                    → update ticket
+       GET    /service-execution/:ticketId/evidence           → list evidence for ticket
+       GET    /service-execution/evidence?contract_id=...     → list evidence contract-wide
+       POST   /service-execution/:ticketId/evidence           → upload evidence
+       PATCH  /service-execution/:ticketId/evidence/:evidId   → verify/reject evidence
+       GET    /service-execution/audit?contract_id=...        → audit log
 
 Run Order: 026 → 027 → 028 (after 022-025 from batch 4)
 
@@ -52,7 +47,7 @@ cd "D:\projects\core projects\ContractNest\contractnest-combined"
 
 Copy-Item "MANUAL_COPY_FILES\cycle2-batch5-edge-functions\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
 
-Write-Host "All 6 files copied (3 RPCs + 3 edge functions)!" -ForegroundColor Green
+Write-Host "All 4 files copied (3 RPCs + 1 unified edge function)!" -ForegroundColor Green
 
 ===============================================================
 APPLY MIGRATIONS (Supabase SQL Editor):
@@ -63,11 +58,9 @@ APPLY MIGRATIONS (Supabase SQL Editor):
 # 3. 028_audit_log_rpc.sql
 
 ===============================================================
-DEPLOY EDGE FUNCTIONS (Supabase CLI):
+DEPLOY EDGE FUNCTION (Supabase CLI):
 ===============================================================
 cd contractnest-edge
-supabase functions deploy service-tickets
-supabase functions deploy service-evidence
-supabase functions deploy audit-log
+supabase functions deploy service-execution
 
 ===============================================================
