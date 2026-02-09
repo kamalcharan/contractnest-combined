@@ -150,7 +150,7 @@ const TimelineTab: React.FC<TimelineTabProps> = ({ contractId, currency, colors 
   }, [serviceTransitions, billingTransitions, sparePartTransitions]);
 
   // Mutations
-  const { updateStatus, isChangingStatus } = useContractEventOperations();
+  const { updateStatus, changingStatusEventId } = useContractEventOperations();
 
   // Group events by date
   const groupedEvents = useMemo(() => {
@@ -356,7 +356,7 @@ const TimelineTab: React.FC<TimelineTabProps> = ({ contractId, currency, colors 
                     currency={currency}
                     colors={colors}
                     onStatusChange={handleStatusChange}
-                    isUpdating={isChangingStatus}
+                    updatingEventId={changingStatusEventId}
                     statusDefs={statusDefsByType[event.event_type]}
                     allowedTransitions={transitionsByType[event.event_type]?.[event.status] || []}
                   />

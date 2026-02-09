@@ -106,7 +106,10 @@ export interface EventCardProps {
   currency?: string;
   colors: any;
   onStatusChange: (eventId: string, newStatus: ContractEventStatus, version: number) => void;
-  isUpdating: boolean;
+  /** @deprecated Use updatingEventId instead for per-card loading */
+  isUpdating?: boolean;
+  /** The event ID currently being status-changed (only that card shows spinner) */
+  updatingEventId?: string | null;
   hideActions?: boolean;
   statusDefs?: EventStatusDefinition[];
   allowedTransitions?: string[];
@@ -123,7 +126,8 @@ export const EventCard: React.FC<EventCardProps> = ({
   currency = 'INR',
   colors,
   onStatusChange,
-  isUpdating,
+  isUpdating: isUpdatingLegacy,
+  updatingEventId,
   hideActions,
   statusDefs,
   allowedTransitions,
@@ -134,6 +138,11 @@ export const EventCard: React.FC<EventCardProps> = ({
   const isService = event.event_type === 'service';
   const isSparePart = event.event_type === 'spare_part';
   const isCompact = variant === 'compact';
+
+  // Per-card updating: only THIS card shows spinner
+  const isThisUpdating = updatingEventId
+    ? updatingEventId === event.id
+    : (isUpdatingLegacy ?? false);
 
   const accent = isSparePart
     ? (colors.semantic?.info || '#3B82F6')
@@ -215,19 +224,19 @@ export const EventCard: React.FC<EventCardProps> = ({
             {/* Status badge — clickable to expand transitions */}
             <button
               onClick={(e) => { e.stopPropagation(); hasActions && setShowActions(!showActions); }}
-              disabled={!hasActions || isUpdating}
+              disabled={!hasActions || isThisUpdating}
               className={`flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full transition-all flex-shrink-0 ${
                 hasActions ? 'cursor-pointer hover:opacity-80' : 'cursor-default'
               }`}
               style={{ backgroundColor: statusConfig.bg, color: statusConfig.color }}
             >
-              {isUpdating ? (
+              {isThisUpdating ? (
                 <Loader2 className="w-3 h-3 animate-spin" />
               ) : (
                 <StatusIcon className="w-3 h-3" />
               )}
               {statusConfig.label}
-              {hasActions && !isUpdating && (
+              {hasActions && !isThisUpdating && (
                 showActions ? <ChevronUp className="w-2.5 h-2.5" /> : <ChevronDown className="w-2.5 h-2.5" />
               )}
             </button>
@@ -330,19 +339,19 @@ export const EventCard: React.FC<EventCardProps> = ({
             {/* Status badge with dropdown trigger */}
             <button
               onClick={() => hasActions && setShowActions(!showActions)}
-              disabled={!hasActions || isUpdating}
+              disabled={!hasActions || isThisUpdating}
               className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full transition-all ${
                 hasActions ? 'cursor-pointer hover:opacity-80' : 'cursor-default'
               }`}
               style={{ backgroundColor: statusConfig.bg, color: statusConfig.color }}
             >
-              {isUpdating ? (
+              {isThisUpdating ? (
                 <Loader2 className="w-3 h-3 animate-spin" />
               ) : (
                 <StatusIcon className="w-3 h-3" />
               )}
               {statusConfig.label}
-              {hasActions && !isUpdating && (
+              {hasActions && !isThisUpdating && (
                 showActions ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
               )}
             </button>

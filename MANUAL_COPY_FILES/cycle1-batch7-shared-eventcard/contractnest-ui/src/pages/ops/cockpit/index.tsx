@@ -830,7 +830,7 @@ const ServiceEventsSection: React.FC<{
   onTimeFilterChange: (f: EventTimeFilter) => void;
   onTypeFilterChange: (f: EventTypeFilter) => void;
   onStatusChange: (eventId: string, newStatus: ContractEventStatus, version: number) => void;
-  isUpdatingStatus: boolean;
+  updatingEventId?: string | null;
   onViewContract: (contractId: string) => void;
   isDarkMode: boolean;
   brandColor: string;
@@ -840,7 +840,7 @@ const ServiceEventsSection: React.FC<{
 }> = ({
   events, isLoading, timeFilter, typeFilter,
   onTimeFilterChange, onTypeFilterChange,
-  onStatusChange, isUpdatingStatus, onViewContract, isDarkMode, brandColor, colors,
+  onStatusChange, updatingEventId, onViewContract, isDarkMode, brandColor, colors,
   statusDefsByType, transitionsByType,
 }) => {
   const filteredEvents = useMemo(() => {
@@ -906,7 +906,7 @@ const ServiceEventsSection: React.FC<{
                 colors={colors}
                 variant="compact"
                 onStatusChange={onStatusChange}
-                isUpdating={isUpdatingStatus}
+                updatingEventId={updatingEventId}
                 onViewContract={onViewContract}
                 statusDefs={statusDefsByType?.[event.event_type]}
                 allowedTransitions={transitionsByType?.[event.event_type]?.[event.status] || []}
@@ -1137,7 +1137,7 @@ const OpsCockpitPage: React.FC = () => {
 
   // Mutations
   const { sendNotification, isSendingNotification } = useContractOperations();
-  const { updateStatus: updateEventStatus, isChangingStatus } = useContractEventOperations();
+  const { updateStatus: updateEventStatus, isChangingStatus, changingStatusEventId } = useContractEventOperations();
 
   // Dynamic status definitions + transitions (10min staleTime, fetch-once)
   const { data: serviceStatuses } = useEventStatuses('service');
@@ -1514,7 +1514,7 @@ const OpsCockpitPage: React.FC = () => {
               onTimeFilterChange={setEventTimeFilter}
               onTypeFilterChange={setEventTypeFilter}
               onStatusChange={handleEventStatusChange}
-              isUpdatingStatus={isChangingStatus}
+              updatingEventId={changingStatusEventId}
               onViewContract={handleViewContract}
               isDarkMode={isDarkMode}
               brandColor={brandColor}
