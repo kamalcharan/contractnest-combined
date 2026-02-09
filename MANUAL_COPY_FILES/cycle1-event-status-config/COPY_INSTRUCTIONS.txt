@@ -1,8 +1,28 @@
-COPY INSTRUCTIONS — Cycle 1 Batch 1: Events Plan + Status Config Migration
-==========================================================================
+COPY INSTRUCTIONS — Cycle 1: Event Status Configuration System
+================================================================
 
-Files:
-1. ClaudeDocumentation/contractUI/eventsplan.md  — Full 3-cycle execution plan
-2. contractnest-edge/supabase/migrations/contracts/018_event_status_config.sql — Status config tables + RPCs + seed data
+Branch: claude/init-submodules-setup-SmbfL
 
-Submodules Affected: ClaudeDocumentation, contractnest-edge
+Files (7 total):
+================================================================
+
+FILE 1: ClaudeDocumentation/contractUI/eventsplan.md
+  Purpose: Full 3-cycle execution plan document
+
+FILE 2: contractnest-edge/supabase/migrations/contracts/018_event_status_config.sql
+  Purpose: DB tables (m_event_status_config + m_event_status_transitions), 7 RPCs, seed data for 3 event types
+
+FILE 3: contractnest-edge/supabase/functions/event-status-config/index.ts
+  Purpose: Edge function - CRUD for statuses + transitions + seed (7 routes, single RPC per handler)
+
+FILE 4: contractnest-api/src/types/eventStatusConfigTypes.ts
+  Purpose: Request/response DTOs for all status config endpoints
+
+FILE 5: contractnest-api/src/routes/eventStatusConfigRoutes.ts
+  Purpose: Express routes with express-validator, authenticate + ensureTenant + rateLimit
+
+FILE 6: contractnest-api/src/controllers/eventStatusConfigController.ts
+  Purpose: Controller - validate, extract context, call service, map response
+
+================================================================
+Submodules Affected: ClaudeDocumentation, contractnest-edge, contractnest-api
