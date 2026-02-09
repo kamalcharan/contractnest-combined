@@ -24,7 +24,7 @@
 CREATE TABLE IF NOT EXISTS m_event_status_config (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id       UUID,                   -- NULL = system default, UUID = tenant override
-    event_type      TEXT NOT NULL,           -- 'service' | 'spare_part' | 'billing'
+    event_type      TEXT NOT NULL,           -- e.g. 'service', 'spare_part', 'billing' (open-ended, validated at app layer)
     status_code     TEXT NOT NULL,           -- machine name: 'in_progress', 'payment_pending'
     display_name    TEXT NOT NULL,           -- UI label: 'In Progress', 'Payment Pending'
     description     TEXT,                    -- tooltip/help text
@@ -39,13 +39,7 @@ CREATE TABLE IF NOT EXISTS m_event_status_config (
     updated_at      TIMESTAMPTZ DEFAULT now(),
 
     -- Unique: one status_code per event_type per tenant scope
-    CONSTRAINT uq_event_status_tenant UNIQUE (tenant_id, event_type, status_code),
-
-    -- Valid event types
-    CONSTRAINT chk_event_type CHECK (event_type IN ('service', 'spare_part', 'billing')),
-
-    -- Valid source
-    CONSTRAINT chk_source CHECK (source IN ('system', 'tenant', 'vani'))
+    CONSTRAINT uq_event_status_tenant UNIQUE (tenant_id, event_type, status_code)
 );
 
 -- Indexes
@@ -75,10 +69,7 @@ CREATE TABLE IF NOT EXISTS m_event_status_transitions (
     CONSTRAINT uq_event_transition_tenant UNIQUE (tenant_id, event_type, from_status, to_status),
 
     -- Cannot transition to self
-    CONSTRAINT chk_no_self_transition CHECK (from_status <> to_status),
-
-    -- Valid event types
-    CONSTRAINT chk_transition_event_type CHECK (event_type IN ('service', 'spare_part', 'billing'))
+    CONSTRAINT chk_no_self_transition CHECK (from_status <> to_status)
 );
 
 -- Indexes
