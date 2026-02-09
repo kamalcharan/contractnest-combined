@@ -1,0 +1,25 @@
+===============================================================
+BATCH 2 (Cycle 2): Operations Tab — replaces Timeline
+===============================================================
+Branch: cycle2-batch2-operations-tab
+Date: 2026-02-09
+
+Submodules Affected: contractnest-ui
+
+Files Changed:
+  1. contractnest-ui/src/components/contracts/OperationsTab.tsx  [NEW ~650 lines]
+     - Promise vs Reality strip with progress bars per event type
+     - Date-grouped events: Deliverables + Billing sub-sections
+     - Action strips: "Start Service" and "Generate Invoice" buttons
+     - Completed date groups collapse into service ticket summary cards
+     - Slide-in Service Execution panel (right drawer)
+     - Evidence required section, assigned person, notes
+     - Reuses existing EventCard component and all event hooks
+
+  2. contractnest-ui/src/pages/contracts/detail/index.tsx  [MODIFIED]
+     - Tab "Timeline" → "Operations" (same position, 2nd tab)
+     - Tab "Document" moved to last position
+     - Import OperationsTab, render instead of TimelineTab
+     - Tab order: Overview | Operations | Financials | Evidence | Communication | Audit | Document
+
+===============================================================
