@@ -1,0 +1,25 @@
+============================================================================
+SmartForms — Cycle 1 Step 1: Database Migration
+============================================================================
+
+SUBMODULES AFFECTED: contractnest-edge
+
+FILES:
+  1. contractnest-edge/supabase/functions/smart-forms/migration.sql
+     → New file — SmartForms database schema
+
+WHAT THIS CREATES:
+  - form_templates          — Global form definitions (admin-managed, no tenant_id)
+  - tenant_form_selections  — Tenant selects which approved forms to use in their workspace
+  - form_template_mappings  — Tenant maps forms to contracts/service events
+  - form_submissions        — Completed form responses (JSONB)
+  - form_attachments        — File upload metadata linked to submissions
+  - Storage bucket          — 'form-attachments' (private, 100MB limit)
+  - RLS policies            — Tenant isolation on all tenant-scoped tables
+  - Indexes                 — GIN indexes on JSONB, standard B-tree on FKs
+
+HOW TO RUN:
+  Execute this SQL in your Supabase SQL Editor (Dashboard → SQL Editor → New Query)
+  Copy the entire contents of migration.sql and run it.
+
+============================================================================
