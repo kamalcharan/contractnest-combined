@@ -54,6 +54,11 @@ export interface OperationsTabProps {
   contractId: string;
   currency: string;
   colors: any;
+  /** Contract-level info for the Ops banner right side */
+  buyerName?: string;
+  contractValue?: number;
+  collectedAmount?: number;
+  collectionPct?: number;
 }
 
 interface DateGroup {
@@ -117,59 +122,62 @@ const getMockTicket = (date: string, eventCount: number) => {
 };
 
 // ═══════════════════════════════════════════════════
-// PROMISE vs REALITY STRIP
+// PROMISE vs REALITY — COMPACT STRIP
 // ═══════════════════════════════════════════════════
 
 interface PromiseRealityProps {
   events: ContractEvent[];
   colors: any;
+  currency: string;
+  buyerName?: string;
+  contractValue?: number;
+  collectedAmount?: number;
+  collectionPct?: number;
 }
 
-const ProgressRing: React.FC<{
+/** Compact inline progress pill for a single event type */
+const ProgressPill: React.FC<{
+  icon: React.ElementType;
+  label: string;
   done: number;
   total: number;
-  label: string;
-  icon: React.ElementType;
+  isUnlimited: boolean;
   accentColor: string;
   colors: any;
-}> = ({ done, total, label, icon: Icon, accentColor, colors }) => {
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+}> = ({ icon: Icon, label, done, total, isUnlimited, accentColor, colors }) => {
+  const pct = !isUnlimited && total > 0 ? Math.round((done / total) * 100) : 0;
   return (
-    <div className="flex items-center gap-3 flex-1 min-w-[140px]">
-      <div
-        className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
-        style={{ background: `linear-gradient(135deg, ${accentColor}18, ${accentColor}08)` }}
-      >
-        <Icon className="w-5 h-5" style={{ color: accentColor }} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: colors.utility.secondaryText }}>
-            {label}
-          </span>
-          <span className="text-xs font-bold" style={{ color: colors.utility.primaryText }}>
-            {done}/{total}
-          </span>
-        </div>
-        <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: `${colors.utility.primaryText}10` }}>
+    <div className="flex items-center gap-2">
+      <Icon className="w-3.5 h-3.5 flex-shrink-0" style={{ color: accentColor }} />
+      <span className="text-[10px] font-bold" style={{ color: colors.utility.primaryText }}>
+        {label}
+      </span>
+      <span className="text-[10px] font-semibold" style={{ color: accentColor }}>
+        {isUnlimited ? (
+          <>{done} done <span style={{ fontSize: '11px' }}>&infin;</span></>
+        ) : (
+          <>{done}/{total}</>
+        )}
+      </span>
+      {!isUnlimited && total > 0 && (
+        <div className="w-14 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: `${colors.utility.primaryText}10` }}>
           <div
-            className="h-full rounded-full transition-all duration-700"
-            style={{
-              width: `${pct}%`,
-              background: `linear-gradient(90deg, ${accentColor}, ${accentColor}CC)`,
-            }}
+            className="h-full rounded-full transition-all duration-500"
+            style={{ width: `${pct}%`, backgroundColor: accentColor }}
           />
         </div>
-      </div>
+      )}
     </div>
   );
 };
 
-const PromiseRealityStrip: React.FC<PromiseRealityProps> = ({ events, colors }) => {
+const PromiseRealityStrip: React.FC<PromiseRealityProps> = ({
+  events, colors, currency, buyerName, contractValue, collectedAmount, collectionPct,
+}) => {
   const stats = useMemo(() => {
-    const service = { total: 0, done: 0 };
-    const sparePart = { total: 0, done: 0 };
-    const billing = { total: 0, done: 0 };
+    const service = { total: 0, done: 0, unlimited: false };
+    const sparePart = { total: 0, done: 0, unlimited: false };
+    const billing = { total: 0, done: 0, unlimited: false };
     let overdueCount = 0;
     let nextDue: string | null = null;
 
@@ -180,6 +188,8 @@ const PromiseRealityStrip: React.FC<PromiseRealityProps> = ({ events, colors }) 
       bucket.total++;
       if (e.status === 'completed') bucket.done++;
       if (e.status === 'overdue') overdueCount++;
+      // Detect unlimited: total_occurrences === 0 means open-ended
+      if (e.total_occurrences === 0) bucket.unlimited = true;
       if (e.status !== 'completed' && e.status !== 'cancelled') {
         if (!nextDue || e.scheduled_date < nextDue) nextDue = e.scheduled_date;
       }
@@ -189,70 +199,109 @@ const PromiseRealityStrip: React.FC<PromiseRealityProps> = ({ events, colors }) 
   }, [events]);
 
   const nextDueInfo = stats.nextDue ? getDateLabel(stats.nextDue) : null;
+  const hasSpareParts = stats.sparePart.total > 0;
 
   return (
     <div
-      className="rounded-xl border p-5 mb-6"
+      className="rounded-xl border px-4 py-3 mb-5 flex items-center gap-0"
       style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: `${colors.utility.primaryText}10` }}
     >
-      {/* Progress Bars */}
-      <div className="flex flex-wrap gap-6 mb-4">
-        <ProgressRing
+      {/* Left: Progress pills + Next due */}
+      <div className="flex items-center gap-4 flex-1 min-w-0 flex-wrap">
+        <ProgressPill
+          icon={Wrench}
+          label="Services"
           done={stats.service.done}
           total={stats.service.total}
-          label="Services"
-          icon={Wrench}
+          isUnlimited={stats.service.unlimited}
           accentColor={colors.semantic?.success || '#10B981'}
           colors={colors}
         />
-        {stats.sparePart.total > 0 && (
-          <ProgressRing
+        {hasSpareParts && (
+          <ProgressPill
+            icon={Package}
+            label="Parts"
             done={stats.sparePart.done}
             total={stats.sparePart.total}
-            label="Deliverables"
-            icon={Package}
+            isUnlimited={stats.sparePart.unlimited}
             accentColor={colors.semantic?.info || '#3B82F6'}
             colors={colors}
           />
         )}
-        <ProgressRing
+        <ProgressPill
+          icon={DollarSign}
+          label="Billing"
           done={stats.billing.done}
           total={stats.billing.total}
-          label="Billing"
-          icon={DollarSign}
+          isUnlimited={stats.billing.unlimited}
           accentColor={colors.semantic?.warning || '#F59E0B'}
           colors={colors}
         />
+
+        {/* Separator */}
+        <div className="h-5 w-px flex-shrink-0" style={{ backgroundColor: `${colors.utility.primaryText}12` }} />
+
+        {/* Next due */}
+        {nextDueInfo ? (
+          <span className="text-[10px] flex items-center gap-1 flex-shrink-0" style={{ color: colors.utility.secondaryText }}>
+            <Calendar className="w-3 h-3" style={{ color: colors.brand.primary }} />
+            Next:{' '}
+            <span className="font-bold" style={{ color: colors.utility.primaryText }}>
+              {formatEventDate(stats.nextDue!)}
+            </span>
+          </span>
+        ) : (
+          <span className="text-[10px] font-semibold flex-shrink-0" style={{ color: colors.semantic?.success || '#10B981' }}>
+            All done
+          </span>
+        )}
+
+        {/* Overdue badge */}
+        {stats.overdueCount > 0 && (
+          <span
+            className="text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 flex-shrink-0"
+            style={{ backgroundColor: `${colors.semantic.error}10`, color: colors.semantic.error }}
+          >
+            <AlertTriangle className="w-2.5 h-2.5" />
+            {stats.overdueCount} overdue
+          </span>
+        )}
       </div>
 
-      {/* Footer: Next due + Overdue count */}
-      <div className="flex items-center justify-between pt-3 border-t" style={{ borderColor: `${colors.utility.primaryText}08` }}>
-        {nextDueInfo ? (
-          <div className="flex items-center gap-2">
-            <Calendar className="w-3.5 h-3.5" style={{ color: colors.brand.primary }} />
-            <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
-              Next due:{' '}
-              <span className="font-bold" style={{ color: colors.utility.primaryText }}>
-                {formatEventDate(stats.nextDue!)}
-              </span>{' '}
-              <span style={{ color: nextDueInfo.urgency === 'today' ? colors.brand.primary : colors.utility.secondaryText }}>
-                ({nextDueInfo.label})
-              </span>
-            </span>
+      {/* Right: Contact + Financial snapshot */}
+      {(buyerName || contractValue != null) && (
+        <>
+          <div className="h-5 w-px mx-3 flex-shrink-0" style={{ backgroundColor: `${colors.utility.primaryText}12` }} />
+          <div className="flex items-center gap-3 flex-shrink-0">
+            {buyerName && (
+              <div className="flex items-center gap-1.5">
+                <User className="w-3 h-3" style={{ color: colors.brand.primary }} />
+                <span className="text-[10px] font-bold max-w-[120px] truncate" style={{ color: colors.utility.primaryText }}>
+                  {buyerName}
+                </span>
+              </div>
+            )}
+            {contractValue != null && (
+              <div className="text-right">
+                <span className="text-[10px] font-bold" style={{ color: colors.utility.primaryText }}>
+                  {formatCurrency(collectedAmount ?? 0, currency)}/{formatCurrency(contractValue, currency)}
+                </span>
+                {collectionPct != null && (
+                  <div className="w-16 h-1 rounded-full mt-0.5 overflow-hidden" style={{ backgroundColor: `${colors.utility.primaryText}10` }}>
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${Math.min(collectionPct, 100)}%`,
+                        backgroundColor: collectionPct >= 100 ? colors.semantic.success : colors.brand.primary,
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-        ) : (
-          <span className="text-xs" style={{ color: colors.semantic?.success || '#10B981' }}>All events completed</span>
-        )}
-        {stats.overdueCount > 0 && (
-          <div
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-            style={{ backgroundColor: `${colors.semantic.error}12`, color: colors.semantic.error }}
-          >
-            <AlertTriangle className="w-3 h-3" />
-            <span className="text-[10px] font-bold">{stats.overdueCount} overdue</span>
-          </div>
-        )}
-      </div>
+        </>
+      )}
     </div>
   );
 };
@@ -730,7 +779,9 @@ const DateGroupHeader: React.FC<DateHeaderProps> = ({
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════
 
-const OperationsTab: React.FC<OperationsTabProps> = ({ contractId, currency, colors }) => {
+const OperationsTab: React.FC<OperationsTabProps> = ({
+  contractId, currency, colors, buyerName, contractValue, collectedAmount, collectionPct,
+}) => {
   const { isDarkMode } = useTheme();
 
   const [servicePanel, setServicePanel] = useState<ServicePanelState>({
@@ -881,8 +932,16 @@ const OperationsTab: React.FC<OperationsTabProps> = ({ contractId, currency, col
   // ─── Main render ───
   return (
     <div>
-      {/* Promise vs Reality */}
-      <PromiseRealityStrip events={eventsData.items} colors={colors} />
+      {/* Promise vs Reality — compact strip */}
+      <PromiseRealityStrip
+        events={eventsData.items}
+        colors={colors}
+        currency={currency}
+        buyerName={buyerName}
+        contractValue={contractValue}
+        collectedAmount={collectedAmount}
+        collectionPct={collectionPct}
+      />
 
       {/* Date Groups */}
       <div className="space-y-8">

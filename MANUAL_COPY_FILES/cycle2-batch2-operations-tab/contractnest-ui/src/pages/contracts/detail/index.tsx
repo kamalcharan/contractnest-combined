@@ -216,11 +216,10 @@ const mapContractToReviewProps = (contract: ContractDetail): ReviewSendStepProps
 // TAB DEFINITIONS
 // ═══════════════════════════════════════════════════
 
-type TabId = 'overview' | 'operations' | 'financials' | 'evidence' | 'communication' | 'audit' | 'document';
+type TabId = 'operations' | 'financials' | 'evidence' | 'communication' | 'audit' | 'document';
 
 const TAB_DEFINITIONS: Array<{ id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }> = [
-  { id: 'overview', label: 'Overview', icon: ClipboardList },
-  { id: 'operations', label: 'Operations', icon: Calendar },
+  { id: 'operations', label: 'Ops Overview', icon: Calendar },
   { id: 'financials', label: 'Financials', icon: DollarSign },
   { id: 'evidence', label: 'Evidence', icon: Camera },
   { id: 'communication', label: 'Communication', icon: MessageSquare },
@@ -1149,7 +1148,7 @@ const ContractDetailPage: React.FC = () => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
 
-  const [activeTab, setActiveTab] = useState<TabId>('overview');
+  const [activeTab, setActiveTab] = useState<TabId>('operations');
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   // expandedInvoiceId removed — invoice cards are now flat with 3 action icons
 
@@ -1241,34 +1240,18 @@ const ContractDetailPage: React.FC = () => {
   // ─── Tab content ───
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'overview':
-        return (
-          <div className="grid gap-6" style={{ gridTemplateColumns: '1fr 420px' }}>
-            {/* Left Column */}
-            <div className="space-y-6">
-              <BlocksCard blocks={contract.blocks} currency={contract.currency} colors={colors} />
-              <TaskTimeline colors={colors} />
-              <VendorsCard vendors={contract.vendors} colors={colors} />
-              <AttachmentsCard attachments={contract.attachments} colors={colors} />
-            </div>
-
-            {/* Right Sidebar */}
-            <div className="space-y-5">
-              <ContactHeaderCard contact={buildBuyerContactObject(contract)} />
-              <FinancialHealth
-                contract={contract}
-                colors={colors}
-                hasActiveGateway={hasActiveGateway}
-                onRecordPayment={() => setIsPaymentDialogOpen(true)}
-                onViewInvoice={handleViewInvoice}
-              />
-              <ContractDetailsCard contract={contract} colors={colors} />
-              <AuditTrail history={contract.history} colors={colors} />
-            </div>
-          </div>
-        );
       case 'operations':
-        return <OperationsTab contractId={contract.id} currency={contract.currency || 'INR'} colors={colors} />;
+        return (
+          <OperationsTab
+            contractId={contract.id}
+            currency={contract.currency || 'INR'}
+            colors={colors}
+            buyerName={contract.buyer_name}
+            contractValue={grandTotal}
+            collectedAmount={pageSummary?.total_paid ?? 0}
+            collectionPct={pageSummary?.collection_percentage ?? 0}
+          />
+        );
       case 'financials':
         return (
           <div className="grid gap-6" style={{ gridTemplateColumns: '1fr 400px' }}>
