@@ -1,0 +1,25 @@
+===============================================================
+BATCH 1 (Cycle 2): Enable Appointments Menu + Scaffold Page
+===============================================================
+Branch: cycle2-batch1-enable-appointments
+Date: 2026-02-09
+
+Submodules Affected: contractnest-ui
+
+Files Changed:
+  1. contractnest-ui/src/utils/constants/industryMenus.ts  [MODIFIED]
+     - Uncommented appointments menu item (id: 'appointments', path: '/appointments')
+     - Templates and Tasks remain commented out
+     - Industry overrides for appointments already existed (healthcare, financial, etc.)
+
+  2. contractnest-ui/src/App.tsx  [MODIFIED]
+     - Added import for AppointmentsPage
+     - Added /appointments route with ProtectedRoute + MainLayout wrapper
+
+  3. contractnest-ui/src/pages/appointments/index.tsx  [NEW]
+     - Scaffold page showing existing UpcomingAppointments widget (mock data)
+     - Page header with disabled "New Appointment" button
+     - Side panel explaining what's coming in Cycle 2
+     - Will be replaced with full list/create/detail in later batches
+
+===============================================================
