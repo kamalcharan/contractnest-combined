@@ -4,10 +4,10 @@
 
 import React, { useState, useCallback } from 'react';
 import { useAuth } from '../../../context/AuthContext';
-import { useTheme } from '../../../context/ThemeContext';
+import { useTheme } from '../../../contexts/ThemeContext';
 import { useFormTemplates, useFormTemplateMutations } from './hooks/useSmartFormsAdmin';
-import { vaniToast } from '../../../components/common/toast';
-import { VaNiLoader } from '../../../components/common/loaders/UnifiedLoader';
+import { vaniToast } from '@/components/common/toast';
+import { VaNiLoader } from '@/components/common/loaders';
 import type { FormTemplateFilters, FormTemplate, FormStatus } from './types/smartFormsAdmin.types';
 import { FORM_CATEGORIES, FORM_TYPES, FORM_STATUSES } from './types/smartFormsAdmin.types';
 
