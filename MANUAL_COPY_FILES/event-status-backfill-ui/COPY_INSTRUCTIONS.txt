@@ -1,0 +1,11 @@
+Batch: Backfill Migrations + UI Event Status Config
+====================================================
+
+Files:
+  1. contractnest-edge/supabase/migrations/contracts/019_backfill_event_status_existing_tenants.sql  (NEW)
+  2. contractnest-edge/supabase/migrations/contracts/020_add_task_id_backfill.sql                    (NEW)
+  3. contractnest-ui/src/types/eventStatusConfig.ts                                                  (NEW)
+  4. contractnest-ui/src/services/serviceURLs.ts                                                     (MODIFIED)
+  5. contractnest-ui/src/hooks/queries/useEventStatusConfigQueries.ts                                (NEW)
+
+Submodules Affected: contractnest-edge, contractnest-ui
