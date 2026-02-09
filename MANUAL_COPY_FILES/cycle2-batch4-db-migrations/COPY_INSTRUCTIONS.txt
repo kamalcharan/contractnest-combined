@@ -1,0 +1,64 @@
+===============================================================
+BATCH 4 (Cycle 2): Database Migrations — Service Tickets, Evidence, Audit
+===============================================================
+Branch: cycle2-batch4-db-migrations
+Date: 2026-02-09
+
+Submodules Affected: contractnest-edge
+
+Files Changed:
+  1. contractnest-edge/supabase/migrations/contracts/022_service_tickets_table.sql  [NEW]
+     - t_service_tickets table: groups events into field-executable work units
+     - Columns: ticket_number (TKT-XXXXX), status lifecycle, assignment, notes
+     - Denormalized: assigned_to_name, created_by_name (for CNAK buyer view)
+     - Optimistic concurrency (version column)
+     - Indexes: contract, tenant, assignment, ticket_number (unique)
+     - RLS: tenant member + service role
+     - Seeds TKT sequence config for all existing tenants
+
+  2. contractnest-edge/supabase/migrations/contracts/023_service_ticket_events_junction.sql  [NEW]
+     - t_service_ticket_events junction table: many-to-many ticket ↔ events
+     - Denormalized: event_type, block_name
+     - UNIQUE(ticket_id, event_id)
+     - RLS via ticket's tenant_id
+
+  3. contractnest-edge/supabase/migrations/contracts/024_service_evidence_table.sql  [NEW]
+     - t_service_evidence table: evidence collected during service execution
+     - Three evidence types matching cat_blocks.config.evidence_types:
+       • upload-form: file_url, file_name, file_size, file_type, file_thumbnail_url
+       • otp: otp_code, otp_sent_to, otp_verified, otp_verified_at, otp_verified_by_name
+       • service-form: form_template_id, form_template_name, form_data (JSONB)
+     - Status: pending → uploaded → verified / rejected
+     - Denormalized: block_name, uploaded_by_name, verified_by_name, otp_verified_by_name
+     - RLS: tenant member + service role
+
+  4. contractnest-edge/supabase/migrations/contracts/025_audit_log_table.sql  [NEW]
+     - t_audit_log table: unified immutable audit trail for all contract-level changes
+     - entity_type + entity_id for polymorphic references
+     - Categories: status | content | assignment | evidence | billing
+     - JSONB old_value/new_value for rich change data
+     - Denormalized: performed_by_name
+     - Append-only: no UPDATE/DELETE for authenticated users
+     - RLS: tenant member + service role
+
+Run Order: 022 → 023 → 024 → 025 (023/024 depend on 022)
+
+===============================================================
+COPY COMMANDS (PowerShell):
+===============================================================
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\cycle2-batch4-db-migrations\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "All 4 migration files copied!" -ForegroundColor Green
+
+===============================================================
+APPLY MIGRATIONS (Supabase):
+===============================================================
+# Run in Supabase SQL Editor in order:
+# 1. 022_service_tickets_table.sql
+# 2. 023_service_ticket_events_junction.sql
+# 3. 024_service_evidence_table.sql
+# 4. 025_audit_log_table.sql
+
+===============================================================
