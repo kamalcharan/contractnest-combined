@@ -1242,15 +1242,29 @@ const ContractDetailPage: React.FC = () => {
     switch (activeTab) {
       case 'operations':
         return (
-          <OperationsTab
-            contractId={contract.id}
-            currency={contract.currency || 'INR'}
-            colors={colors}
-            buyerName={contract.buyer_name}
-            contractValue={grandTotal}
-            collectedAmount={pageSummary?.total_paid ?? 0}
-            collectionPct={pageSummary?.collection_percentage ?? 0}
-          />
+          <div className="grid gap-6" style={{ gridTemplateColumns: '1fr 380px' }}>
+            {/* Left: Operations view */}
+            <OperationsTab
+              contractId={contract.id}
+              currency={contract.currency || 'INR'}
+              colors={colors}
+              buyerName={contract.buyer_name}
+              contractValue={grandTotal}
+              collectedAmount={pageSummary?.total_paid ?? 0}
+              collectionPct={pageSummary?.collection_percentage ?? 0}
+            />
+            {/* Right: Contact + Financial Health (from old Overview) */}
+            <div className="space-y-5">
+              <ContactHeaderCard contact={buildBuyerContactObject(contract)} />
+              <FinancialHealth
+                contract={contract}
+                colors={colors}
+                hasActiveGateway={hasActiveGateway}
+                onRecordPayment={() => setIsPaymentDialogOpen(true)}
+                onViewInvoice={handleViewInvoice}
+              />
+            </div>
+          </div>
         );
       case 'financials':
         return (
