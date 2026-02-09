@@ -1,9 +1,10 @@
-Files 7 & 8: Event Status Config Service + Seed Data
-=====================================================
+Files 7 & 8: Event Status Config Service + Seed Data + Route Registration
+==========================================================================
 
 Files:
   1. contractnest-api/src/services/eventStatusConfigService.ts  (NEW)
   2. contractnest-api/src/seeds/eventStatuses.seed.ts           (NEW)
   3. contractnest-api/src/seeds/SeedRegistry.ts                 (MODIFIED)
+  4. contractnest-api/src/index.ts                              (MODIFIED - route registration)
 
 Submodules Affected: contractnest-api
