@@ -1,0 +1,37 @@
+===============================================================
+BATCH 6 (Cycle 2): API Layer — Service Execution
+===============================================================
+Date: 2026-02-09
+Submodules Affected: contractnest-api
+
+Files Changed (5 files):
+
+  1. src/services/serviceExecutionService.ts     [NEW] - HMAC-signed HTTP client for edge
+  2. src/controllers/serviceExecutionController.ts [NEW] - Class-based, 7 endpoint handlers
+  3. src/validators/serviceExecutionValidators.ts  [NEW] - express-validator chains
+  4. src/routes/serviceExecutionRoutes.ts          [NEW] - Auth + tenant + rate limit + routes
+  5. src/index.ts                                  [MODIFIED] - Load + register routes
+
+API Routes:
+  GET    /api/service-execution                              → list tickets
+  GET    /api/service-execution/:ticketId                    → ticket detail
+  POST   /api/service-execution                              → create ticket
+  PATCH  /api/service-execution/:ticketId                    → update ticket
+  GET    /api/service-execution/:ticketId/evidence           → list evidence for ticket
+  POST   /api/service-execution/:ticketId/evidence           → upload evidence
+  PATCH  /api/service-execution/:ticketId/evidence/:evidId   → verify/reject evidence
+  GET    /api/service-execution/evidence                     → evidence contract-wide
+  GET    /api/service-execution/audit                        → audit log
+
+===============================================================
+COPY COMMANDS (PowerShell):
+===============================================================
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\cycle2-batch6-api-layer\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+
+Write-Host "All 5 API files copied!" -ForegroundColor Green
+
+# Restart API server:
+cd contractnest-api && npm run dev
+===============================================================
