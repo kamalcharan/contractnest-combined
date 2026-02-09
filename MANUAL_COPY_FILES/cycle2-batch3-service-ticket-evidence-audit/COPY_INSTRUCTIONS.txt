@@ -1,0 +1,50 @@
+===============================================================
+BATCH 3 (Cycle 2): Service Ticket Detail + Evidence Tab + Audit Tab
+===============================================================
+Branch: cycle2-batch3-service-ticket-evidence-audit
+Date: 2026-02-09
+
+Submodules Affected: contractnest-ui
+
+Files Changed:
+  1. contractnest-ui/src/components/contracts/ServiceTicketDetail.tsx  [NEW ~310 lines]
+     - Slide-in panel (right drawer) for viewing completed ticket details
+     - Evidence gallery with type icons (photo, document, OTP, form)
+     - Assigned technician card with completion status
+     - Linked events section (collapsible, shows service/spare_part/billing)
+     - Service notes (read-only)
+     - Ticket status timeline (collapsible: Created → Assigned → Started → Evidence → Completed)
+     - Download Report + Close action buttons
+     - Mock data, to be wired to real API later
+
+  2. contractnest-ui/src/components/contracts/EvidenceTab.tsx  [NEW ~290 lines]
+     - Replaces Evidence placeholder tab with real content
+     - Summary strip: total evidence items, tickets count, verified/total, coverage %
+     - Filter bar: All | Photos | Documents | Verifications | Forms
+     - Grouped by service ticket (expandable)
+     - Each evidence item: type icon, label, subtitle, status (verified/uploaded/pending), timestamp
+     - View button per item (ready for future viewer integration)
+     - Loads contract events to build mock ticket evidence
+
+  3. contractnest-ui/src/components/contracts/AuditTab.tsx  [NEW ~280 lines]
+     - Replaces inline AuditTrail component with enhanced version
+     - Summary strip: total entries + category counts
+     - Filter bar: All | Status | Content | Assignments | Evidence | Billing
+     - Rich entries with: icon, description, from→to detail (for status/assignment changes), string detail (for content/evidence)
+     - Performed by + time ago + category badge
+     - Load more pagination (15 per page)
+     - Merges real contract.history with mock supplementary entries
+
+  4. contractnest-ui/src/components/contracts/OperationsTab.tsx  [MODIFIED]
+     - Added "View" button to TicketSummaryCard (opens ServiceTicketDetail panel)
+     - Added ticketDetail state + handleViewTicket callback
+     - Renders ServiceTicketDetail slide-in panel alongside ServiceExecutionPanel
+     - Imported ServiceTicketDetail + TicketDetailState type
+
+  5. contractnest-ui/src/pages/contracts/detail/index.tsx  [MODIFIED]
+     - Imported EvidenceTab and AuditTab components
+     - Evidence tab: replaced PlaceholderTab with EvidenceTab component
+     - Audit tab: replaced inline AuditTrail with AuditTab component
+     - Existing inline AuditTrail component still in file (no longer rendered from any tab)
+
+===============================================================
