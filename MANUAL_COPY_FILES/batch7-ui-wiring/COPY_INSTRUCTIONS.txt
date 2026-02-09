@@ -1,0 +1,58 @@
+═══════════════════════════════════════════════════
+BATCH 7: UI HOOKS + WIRING — Service Execution
+═══════════════════════════════════════════════════
+
+Submodules Affected: contractnest-ui
+
+Files Changed:
+  1. contractnest-ui/src/services/serviceURLs.ts
+     — Added SERVICE_EXECUTION endpoint section (tickets, evidence, audit)
+     — Added ServiceTicketFilters, ServiceEvidenceFilters, AuditLogFilters types
+
+  2. contractnest-ui/src/hooks/queries/useServiceExecution.ts [NEW]
+     — React Query hooks for all service execution endpoints
+     — Queries: useServiceTickets, useServiceTicketDetail, useServiceEvidence, useContractEvidence, useTicketEvidence, useAuditLog, useContractAuditLog
+     — Mutations: useCreateServiceTicket, useUpdateServiceTicket, useCreateServiceEvidence, useUpdateServiceEvidence
+
+  3. contractnest-ui/src/components/contracts/OperationsTab.tsx
+     — Replaced MOCK_TECHS and getMockTicket with real API data
+     — TicketSummaryCard now uses real ticket data from useServiceTicketsForContract
+     — ServiceExecutionPanel uses real team members from useContactsForResourceDropdown
+     — ServiceExecutionPanel creates real tickets via useCreateServiceTicket mutation
+
+  4. contractnest-ui/src/components/contracts/ServiceTicketDetail.tsx
+     — Replaced getMockEvidence/getMockTimeline with real API hooks
+     — Fetches real ticket detail + evidence via useServiceTicketDetail / useTicketEvidence
+     — Falls back to props data when no ticketId provided
+
+  5. contractnest-ui/src/components/contracts/EvidenceTab.tsx
+     — Replaced buildMockTickets/EVIDENCE_TEMPLATES with real API
+     — Uses useContractEvidence + useServiceTicketsForContract
+     — Groups real evidence by ticket, shows real verification status
+
+  6. contractnest-ui/src/components/contracts/AuditTab.tsx
+     — Replaced mock supplementary entries with real audit log API
+     — Uses useContractAuditLog hook
+     — Merges API audit entries with contract.history (fallback)
+
+═══════════════════════════════════════════════════
+COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\batch7-ui-wiring\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "✅ Batch 7 files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] OperationsTab loads without errors (empty state if no tickets yet)
+- [ ] Click "Start Service" → slide-in panel shows real team members dropdown
+- [ ] Create a ticket → ticket created via API, toast shown
+- [ ] Completed date groups show real ticket data if available
+- [ ] Click "View" on ticket → ServiceTicketDetail fetches real detail + evidence
+- [ ] EvidenceTab shows "No Evidence Yet" empty state (or real evidence if exists)
+- [ ] AuditTab shows contract.history entries + any API audit entries
+- [ ] Filter buttons work on Evidence and Audit tabs
