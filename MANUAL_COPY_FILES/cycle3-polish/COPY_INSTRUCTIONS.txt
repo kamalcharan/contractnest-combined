@@ -1,0 +1,67 @@
+═══════════════════════════════════════════════════
+CYCLE 3 POLISH — Theme Fixes, RichTextEditor, ConfirmationDialog, 30:70 Layout
+═══════════════════════════════════════════════════
+
+Submodule: contractnest-ui
+Branch: main
+
+WHAT WAS FIXED:
+  1. Theme property names: textPrimary→primaryText, textSecondary→secondaryText, borderLight→secondaryText+'20'
+  2. Hardcoded error/warning/success colors replaced with colors.semantic.*
+  3. Hardcoded button colors replaced with colors.brand.primary/secondary
+  4. window.confirm() replaced with product ConfirmationDialog
+  5. Textarea fields now use product RichTextEditor (Tiptap)
+  6. SmartFormsSelectionPage → 30:70 layout with form preview panel
+  7. Description field added to FormEditorPage top bar
+
+Files Changed (6 files):
+  Admin (Cycle 2 overwrites):
+    1. src/pages/admin/smart-forms/FormEditorPage.tsx          — ConfirmationDialog + description + theme fix
+    2. src/pages/admin/smart-forms/components/LiveFormPreview.tsx — Theme property names + semantic colors
+    3. src/pages/admin/smart-forms/components/FieldPalette.tsx    — Theme property names
+    4. src/pages/admin/smart-forms/components/SchemaToolbar.tsx   — Theme property names + semantic/brand colors
+
+  Tenant (Cycle 3 overwrites):
+    5. src/pages/settings/smart-forms/SmartFormsSelectionPage.tsx  — 30:70 layout + inline theme
+    6. src/pages/settings/smart-forms/components/FormRenderer.tsx  — Inline theme + RichTextEditor
+
+═══════════════════════════════════════════════════
+COPY COMMAND (PowerShell)
+═══════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\cycle3-polish\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Cycle 3 Polish files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+
+Theme:
+  - [ ] Admin Form Editor — colors match product theme in BOTH light and dark mode
+  - [ ] Live Preview panel — text/backgrounds use theme colors, not hardcoded
+  - [ ] FieldPalette — borders and text use theme colors
+  - [ ] SchemaToolbar — status indicators (error=red, warning=amber, saved=green) from theme
+  - [ ] Save/Submit Review buttons use brand colors from theme
+
+ConfirmationDialog:
+  - [ ] Click Back arrow with unsaved changes → product dialog appears (not browser dialog)
+  - [ ] Click "Stay" → stays on editor
+  - [ ] Click "Leave" → navigates to list
+
+RichTextEditor:
+  - [ ] Textarea fields in FormRenderer show Tiptap toolbar (bold, italic, underline, lists)
+  - [ ] Text formatting works
+
+Description Field:
+  - [ ] Form Editor top bar shows description input next to title
+  - [ ] Description is included in save payload
+
+30:70 Layout:
+  - [ ] Selection page shows 30% list on left, 70% preview on right
+  - [ ] Click a form → preview renders in right panel (readOnly)
+  - [ ] Preview shows form name, description, tags, version
+  - [ ] Toggle still works from list
+  - [ ] Empty state when no form selected ("Select a form to preview")
