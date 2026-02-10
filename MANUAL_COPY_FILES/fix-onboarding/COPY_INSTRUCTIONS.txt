@@ -1,0 +1,26 @@
+═══════════════════════════════════════════════════
+FIX: ONBOARDING RECURRING REGRESSION
+═══════════════════════════════════════════════════
+
+Submodules Affected: contractnest-ui
+
+Files to Copy:
+─────────────────────────────────────────────────
+
+1. contractnest-ui/src/context/AuthContext.tsx
+   Purpose: 5 targeted fixes to prevent onboarding from silently being skipped
+
+CHANGES MADE (all in AuthContext.tsx):
+─────────────────────────────────────────────────
+
+Fix 1 (Line 178): Default hasCompletedOnboarding to FALSE (was TRUE)
+Fix 2 (Lines 430-468): checkOnboardingStatus() — missing headers returns FALSE,
+       API failure returns FALSE, unknown state returns FALSE.
+       Also: tenant-scoped sessionStorage key to prevent cross-tenant cache leaks.
+Fix 3 (Line 602): BroadcastChannel logout sets FALSE (was TRUE)
+Fix 4 (Line 1255): Main logout sets FALSE (was TRUE)
+Fix 5 (Lines 1263-1285): updateCurrentTenant is now async,
+       resets hasCompletedOnboarding to FALSE before awaiting API check,
+       prevents fire-and-forget race condition.
+
+═══════════════════════════════════════════════════
