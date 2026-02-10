@@ -25,6 +25,7 @@ import {
   Zap,
   ArrowLeft,
   Trash2,
+  Briefcase,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
@@ -34,7 +35,8 @@ import {
   useCreateServiceTicket,
 } from '@/hooks/queries/useServiceExecution';
 import { useContactsForResourceDropdown } from '@/hooks/queries/useContactsResource';
-import BlockLibraryMini from '@/components/catalog-studio/BlockLibraryMini';
+import { useCatBlocksTest } from '@/hooks/queries/useCatBlocksTest';
+import { catBlocksToBlocks } from '@/utils/catalog-studio/catBlockAdapter';
 import type { Block } from '@/types/catalogStudio';
 import type {
   ContractEvent,
@@ -98,6 +100,386 @@ const FALLBACK_TRANSITIONS: Record<string, string[]> = {
   scheduled: ['in_progress'],
   in_progress: ['completed'],
   overdue: ['in_progress'],
+};
+
+// Pricing-only categories for beyond-scope
+const PRICING_CATEGORIES = [
+  { id: 'service', name: 'Service', icon: Briefcase, color: '#4F46E5', bgColor: '#EEF2FF' },
+  { id: 'spare', name: 'Spare Part', icon: Package, color: '#059669', bgColor: '#ECFDF5' },
+];
+
+// Check if a block has pricing in the given currency
+const blockMatchesCurrency = (block: Block, cur: string | undefined): boolean => {
+  if (!cur) return true;
+  const records = (block.meta?.pricingRecords || block.config?.pricingRecords) as
+    Array<{ currency: string; is_active: boolean }> | undefined;
+  if (!records || records.length === 0) {
+    return (block.currency || 'INR') === cur;
+  }
+  return records.some(r => r.currency === cur && r.is_active !== false);
+};
+
+// ═══════════════════════════════════════════════════
+// BEYOND SCOPE PANEL — pricing blocks only
+// ═══════════════════════════════════════════════════
+
+interface BeyondScopePanelProps {
+  colors: any;
+  currency: string;
+  beyondScopeItems: BeyondScopeItem[];
+  onAddBlock: (block: Block) => void;
+  onAddFlyBy: (type: 'service' | 'spare') => void;
+  onRemoveItem: (id: string) => void;
+  onClose: () => void;
+}
+
+const BeyondScopePanel: React.FC<BeyondScopePanelProps> = ({
+  colors,
+  currency,
+  beyondScopeItems,
+  onAddBlock,
+  onAddFlyBy,
+  onRemoveItem,
+  onClose,
+}) => {
+  const [blockSearch, setBlockSearch] = useState('');
+  const { data: blocksResponse, isLoading: loadingBlocks } = useCatBlocksTest();
+
+  // Convert and filter to pricing-only blocks (service + spare)
+  const pricingBlocks = useMemo(() => {
+    const rawBlocks = blocksResponse?.data?.blocks;
+    if (!rawBlocks || !Array.isArray(rawBlocks)) return [];
+    const allBlocks = catBlocksToBlocks(rawBlocks);
+    return allBlocks.filter(
+      (b) => (b.categoryId === 'service' || b.categoryId === 'spare') && blockMatchesCurrency(b, currency)
+    );
+  }, [blocksResponse, currency]);
+
+  // Group by category and filter by search
+  const groupedBlocks = useMemo(() => {
+    const q = blockSearch.toLowerCase().trim();
+    return PRICING_CATEGORIES.map((cat) => ({
+      ...cat,
+      blocks: pricingBlocks.filter(
+        (b) =>
+          b.categoryId === cat.id &&
+          (!q || b.name.toLowerCase().includes(q) || (b.description || '').toLowerCase().includes(q))
+      ),
+    }));
+  }, [pricingBlocks, blockSearch]);
+
+  const selectedIds = new Set(beyondScopeItems.map((b) => b.id));
+
+  return (
+    <>
+      <div
+        className="fixed inset-0 z-40 transition-opacity"
+        style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+        onClick={onClose}
+      />
+      <div
+        className="fixed top-0 right-0 bottom-0 z-50 w-full md:w-[700px] lg:w-[900px] shadow-2xl border-l flex flex-col animate-slide-in-right"
+        style={{
+          backgroundColor: colors.utility.primaryBackground,
+          borderColor: `${colors.utility.primaryText}15`,
+        }}
+      >
+        {/* Header */}
+        <div
+          className="flex-shrink-0 px-5 py-4 border-b flex items-center gap-3"
+          style={{
+            backgroundColor: colors.utility.secondaryBackground,
+            borderColor: `${colors.utility.primaryText}10`,
+          }}
+        >
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:opacity-70 transition-opacity"
+            style={{ color: colors.utility.secondaryText }}
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <div
+            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: `${colors.semantic.warning}15` }}
+          >
+            <Zap className="w-4 h-4" style={{ color: colors.semantic.warning }} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-sm font-bold" style={{ color: colors.utility.primaryText }}>
+              Add Beyond Scope Services
+            </h2>
+            <p className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
+              Pricing blocks outside the contract — will be chargeable
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg hover:opacity-70 transition-opacity"
+            style={{ color: colors.utility.secondaryText }}
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* 2-Column: Library | Selected */}
+        <div className="flex-1 overflow-hidden flex">
+          {/* Left: Pricing blocks + Flyby */}
+          <div
+            className="flex-1 overflow-y-auto border-r flex flex-col"
+            style={{ borderColor: `${colors.utility.primaryText}08` }}
+          >
+            {/* FlyBy Quick-Add (always visible at top) */}
+            <div
+              className="flex-shrink-0 p-4 border-b space-y-2"
+              style={{
+                borderColor: `${colors.utility.primaryText}08`,
+                backgroundColor: colors.utility.secondaryBackground,
+              }}
+            >
+              <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: colors.utility.secondaryText }}>
+                Quick Add (Fly-by)
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => onAddFlyBy('service')}
+                  className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-lg border-2 border-dashed text-xs font-medium transition-all hover:shadow-sm"
+                  style={{
+                    borderColor: '#4F46E540',
+                    color: '#4F46E5',
+                    backgroundColor: '#EEF2FF',
+                  }}
+                >
+                  <Zap className="w-3.5 h-3.5" />
+                  <Briefcase className="w-3.5 h-3.5" />
+                  Custom Service
+                </button>
+                <button
+                  onClick={() => onAddFlyBy('spare')}
+                  className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-lg border-2 border-dashed text-xs font-medium transition-all hover:shadow-sm"
+                  style={{
+                    borderColor: '#05966940',
+                    color: '#059669',
+                    backgroundColor: '#ECFDF5',
+                  }}
+                >
+                  <Zap className="w-3.5 h-3.5" />
+                  <Package className="w-3.5 h-3.5" />
+                  Custom Spare Part
+                </button>
+              </div>
+            </div>
+
+            {/* Search */}
+            <div className="flex-shrink-0 p-3">
+              <div className="relative">
+                <Search
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5"
+                  style={{ color: colors.utility.secondaryText }}
+                />
+                <input
+                  type="text"
+                  placeholder="Search pricing blocks..."
+                  value={blockSearch}
+                  onChange={(e) => setBlockSearch(e.target.value)}
+                  className="w-full pl-8 pr-3 py-2 text-xs rounded-lg border"
+                  style={{
+                    backgroundColor: colors.utility.secondaryBackground,
+                    borderColor: `${colors.utility.primaryText}15`,
+                    color: colors.utility.primaryText,
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Block list */}
+            <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-4">
+              {loadingBlocks ? (
+                <div className="flex items-center justify-center py-10">
+                  <Loader2 className="w-5 h-5 animate-spin" style={{ color: colors.brand.primary }} />
+                </div>
+              ) : (
+                groupedBlocks.map((cat) => (
+                  <div key={cat.id}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div
+                        className="w-5 h-5 rounded flex items-center justify-center"
+                        style={{ backgroundColor: cat.bgColor }}
+                      >
+                        <cat.icon className="w-3 h-3" style={{ color: cat.color }} />
+                      </div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: cat.color }}>
+                        {cat.name} ({cat.blocks.length})
+                      </span>
+                    </div>
+                    {cat.blocks.length === 0 ? (
+                      <p className="text-[10px] pl-7 mb-2" style={{ color: colors.utility.secondaryText }}>
+                        No {cat.name.toLowerCase()} blocks {blockSearch ? 'match' : 'available'}
+                      </p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {cat.blocks.map((block) => {
+                          const isSelected = selectedIds.has(block.id);
+                          return (
+                            <div
+                              key={block.id}
+                              className="flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-all"
+                              style={{
+                                backgroundColor: isSelected ? `${cat.color}08` : colors.utility.secondaryBackground,
+                                borderColor: isSelected ? `${cat.color}30` : `${colors.utility.primaryText}10`,
+                                opacity: isSelected ? 0.6 : 1,
+                              }}
+                            >
+                              <div
+                                className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                                style={{ backgroundColor: cat.bgColor }}
+                              >
+                                <cat.icon className="w-3.5 h-3.5" style={{ color: cat.color }} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium truncate" style={{ color: colors.utility.primaryText }}>
+                                  {block.name}
+                                </p>
+                                {block.description && (
+                                  <p className="text-[10px] truncate" style={{ color: colors.utility.secondaryText }}>
+                                    {block.description}
+                                  </p>
+                                )}
+                              </div>
+                              {!isSelected ? (
+                                <button
+                                  onClick={() => onAddBlock(block)}
+                                  className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all hover:shadow-sm"
+                                  style={{ backgroundColor: cat.color }}
+                                >
+                                  <Plus className="w-4 h-4 text-white" />
+                                </button>
+                              ) : (
+                                <span className="text-[9px] font-bold px-2 py-1 rounded-full" style={{ backgroundColor: `${cat.color}15`, color: cat.color }}>
+                                  Added
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Right: Selected beyond-scope items */}
+          <div
+            className="w-[300px] flex-shrink-0 overflow-y-auto p-4 space-y-3"
+            style={{ backgroundColor: colors.utility.primaryBackground }}
+          >
+            <h3
+              className="text-[10px] font-bold uppercase tracking-wider"
+              style={{ color: colors.utility.secondaryText }}
+            >
+              Selected ({beyondScopeItems.length})
+            </h3>
+
+            {beyondScopeItems.length === 0 ? (
+              <div
+                className="rounded-lg border-2 border-dashed p-6 text-center"
+                style={{
+                  borderColor: `${colors.utility.primaryText}10`,
+                  backgroundColor: colors.utility.secondaryBackground,
+                }}
+              >
+                <Zap className="w-6 h-6 mx-auto mb-2" style={{ color: `${colors.utility.secondaryText}30` }} />
+                <p className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
+                  Click + on blocks or use Fly-by to add services
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {beyondScopeItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-lg border p-3 flex items-start gap-2"
+                    style={{
+                      backgroundColor: colors.utility.secondaryBackground,
+                      borderColor: `${colors.semantic.warning}20`,
+                    }}
+                  >
+                    <Zap className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: colors.semantic.warning }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate" style={{ color: colors.utility.primaryText }}>
+                        {item.name}
+                      </p>
+                      {item.isFlyBy && (
+                        <span className="text-[9px] font-semibold" style={{ color: colors.semantic.warning }}>
+                          Fly-by
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => onRemoveItem(item.id)}
+                      className="p-1 rounded hover:opacity-70 transition-opacity flex-shrink-0"
+                    >
+                      <Trash2 className="w-3 h-3" style={{ color: colors.semantic.error }} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Chargeable notice */}
+            <div
+              className="flex items-start gap-2 rounded-lg p-3 mt-4"
+              style={{
+                backgroundColor: `${colors.semantic.warning}08`,
+                border: `1px solid ${colors.semantic.warning}20`,
+              }}
+            >
+              <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: colors.semantic.warning }} />
+              <p className="text-[10px] leading-relaxed" style={{ color: colors.utility.secondaryText }}>
+                Beyond scope services are outside the contract terms and may be billed separately.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div
+          className="flex-shrink-0 px-5 py-3 border-t flex items-center justify-end gap-3"
+          style={{
+            backgroundColor: colors.utility.secondaryBackground,
+            borderColor: `${colors.utility.primaryText}10`,
+          }}
+        >
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
+            style={{ color: colors.utility.secondaryText }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onClose}
+            disabled={beyondScopeItems.length === 0}
+            className="px-4 py-2 rounded-lg text-xs font-bold transition-opacity hover:opacity-90 disabled:opacity-40"
+            style={{ backgroundColor: colors.semantic.warning, color: '#ffffff' }}
+          >
+            Add {beyondScopeItems.length} Service{beyondScopeItems.length !== 1 ? 's' : ''}
+          </button>
+        </div>
+      </div>
+      <style>{`
+        @keyframes slideInRight {
+          from { transform: translateX(100%); }
+          to { transform: translateX(0); }
+        }
+        .animate-slide-in-right {
+          animation: slideInRight 0.25s ease-out;
+        }
+      `}</style>
+    </>
+  );
 };
 
 // ═══════════════════════════════════════════════════
@@ -262,182 +644,23 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
   // ─── Beyond Scope Panel (full drawer takeover) ───
   if (showBeyondScope) {
     return (
-      <>
-        <div
-          className="fixed inset-0 z-40 transition-opacity"
-          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
-          onClick={() => setShowBeyondScope(false)}
-        />
-        <div
-          className="fixed top-0 right-0 bottom-0 z-50 w-full md:w-[700px] lg:w-[900px] shadow-2xl border-l flex flex-col animate-slide-in-right"
-          style={{
-            backgroundColor: colors.utility.primaryBackground,
-            borderColor: `${colors.utility.primaryText}15`,
-          }}
-        >
-          {/* Beyond Scope Header */}
-          <div
-            className="flex-shrink-0 px-5 py-4 border-b flex items-center gap-3"
-            style={{
-              backgroundColor: colors.utility.secondaryBackground,
-              borderColor: `${colors.utility.primaryText}10`,
-            }}
-          >
-            <button
-              onClick={() => setShowBeyondScope(false)}
-              className="p-1.5 rounded-lg hover:opacity-70 transition-opacity"
-              style={{ color: colors.utility.secondaryText }}
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </button>
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-              style={{ backgroundColor: `${colors.semantic.warning}15` }}
-            >
-              <Zap className="w-4 h-4" style={{ color: colors.semantic.warning }} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="text-sm font-bold" style={{ color: colors.utility.primaryText }}>
-                Add Beyond Scope Services
-              </h2>
-              <p className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
-                Services outside the contract — will be chargeable
-              </p>
-            </div>
-            <button
-              onClick={() => setShowBeyondScope(false)}
-              className="p-2 rounded-lg hover:opacity-70 transition-opacity"
-              style={{ color: colors.utility.secondaryText }}
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          {/* 2-Column: Library | Selected */}
-          <div className="flex-1 overflow-hidden flex">
-            {/* Left: Block Library */}
-            <div className="flex-1 overflow-y-auto border-r" style={{ borderColor: `${colors.utility.primaryText}08` }}>
-              <BlockLibraryMini
-                selectedBlockIds={beyondScopeItems.map((b) => b.id)}
-                onAddBlock={handleAddBeyondScopeBlock}
-                currency={currency}
-                flyByTypes={['service', 'spare']}
-                onAddFlyByBlock={(type) => {
-                  const flyById = `flyby-${Date.now()}`;
-                  setBeyondScopeItems((prev) => [...prev, {
-                    id: flyById,
-                    name: `Custom ${type === 'spare' ? 'Spare Part' : 'Service'}`,
-                    categoryId: type === 'spare' ? 'spare_part' : 'service',
-                    isFlyBy: true,
-                  }]);
-                }}
-                maxHeight="100%"
-              />
-            </div>
-
-            {/* Right: Selected beyond-scope items */}
-            <div className="w-[300px] flex-shrink-0 overflow-y-auto p-4 space-y-3">
-              <h3
-                className="text-[10px] font-bold uppercase tracking-wider"
-                style={{ color: colors.utility.secondaryText }}
-              >
-                Selected ({beyondScopeItems.length})
-              </h3>
-
-              {beyondScopeItems.length === 0 ? (
-                <div
-                  className="rounded-lg border-2 border-dashed p-6 text-center"
-                  style={{ borderColor: `${colors.utility.primaryText}10` }}
-                >
-                  <Zap className="w-6 h-6 mx-auto mb-2" style={{ color: `${colors.utility.secondaryText}30` }} />
-                  <p className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
-                    Click + on blocks from the library to add them
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {beyondScopeItems.map((item) => (
-                    <div
-                      key={item.id}
-                      className="rounded-lg border p-3 flex items-start gap-2"
-                      style={{
-                        backgroundColor: colors.utility.secondaryBackground,
-                        borderColor: `${colors.semantic.warning}20`,
-                      }}
-                    >
-                      <Zap className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: colors.semantic.warning }} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate" style={{ color: colors.utility.primaryText }}>
-                          {item.name}
-                        </p>
-                        {item.isFlyBy && (
-                          <span className="text-[9px] font-semibold" style={{ color: colors.semantic.warning }}>
-                            Fly-by
-                          </span>
-                        )}
-                      </div>
-                      <button
-                        onClick={() => handleRemoveBeyondScope(item.id)}
-                        className="p-1 rounded hover:opacity-70 transition-opacity flex-shrink-0"
-                      >
-                        <Trash2 className="w-3 h-3" style={{ color: colors.semantic.error }} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Chargeable notice */}
-              <div
-                className="flex items-start gap-2 rounded-lg p-3 mt-4"
-                style={{
-                  backgroundColor: `${colors.semantic.warning}08`,
-                  border: `1px solid ${colors.semantic.warning}20`,
-                }}
-              >
-                <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: colors.semantic.warning }} />
-                <p className="text-[10px] leading-relaxed" style={{ color: colors.utility.secondaryText }}>
-                  Beyond scope services are outside the contract terms and may be billed separately.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div
-            className="flex-shrink-0 px-5 py-3 border-t flex items-center justify-end gap-3"
-            style={{
-              backgroundColor: colors.utility.secondaryBackground,
-              borderColor: `${colors.utility.primaryText}10`,
-            }}
-          >
-            <button
-              onClick={() => setShowBeyondScope(false)}
-              className="px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
-              style={{ color: colors.utility.secondaryText }}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() => setShowBeyondScope(false)}
-              disabled={beyondScopeItems.length === 0}
-              className="px-4 py-2 rounded-lg text-xs font-bold transition-opacity hover:opacity-90 disabled:opacity-40"
-              style={{ backgroundColor: colors.semantic.warning, color: '#ffffff' }}
-            >
-              Add {beyondScopeItems.length} Service{beyondScopeItems.length !== 1 ? 's' : ''}
-            </button>
-          </div>
-        </div>
-        <style>{`
-          @keyframes slideInRight {
-            from { transform: translateX(100%); }
-            to { transform: translateX(0); }
-          }
-          .animate-slide-in-right {
-            animation: slideInRight 0.25s ease-out;
-          }
-        `}</style>
-      </>
+      <BeyondScopePanel
+        colors={colors}
+        currency={currency}
+        beyondScopeItems={beyondScopeItems}
+        onAddBlock={handleAddBeyondScopeBlock}
+        onAddFlyBy={(type) => {
+          const flyById = `flyby-${Date.now()}`;
+          setBeyondScopeItems((prev) => [...prev, {
+            id: flyById,
+            name: `Custom ${type === 'spare' ? 'Spare Part' : 'Service'}`,
+            categoryId: type === 'spare' ? 'spare_part' : 'service',
+            isFlyBy: true,
+          }]);
+        }}
+        onRemoveItem={handleRemoveBeyondScope}
+        onClose={() => setShowBeyondScope(false)}
+      />
     );
   }
 
