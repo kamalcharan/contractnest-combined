@@ -1,0 +1,24 @@
+═══════════════════════════════════════════════════
+ SERVICE EXECUTION DRAWER — Step 3
+═══════════════════════════════════════════════════
+
+Files:
+  1. contractnest-ui/src/components/contracts/ServiceExecutionDrawer.tsx (NEW)
+     - Complete new service execution drawer with 2-column layout
+     - Left: Event cards with inline status change, add from contract, beyond scope, notes
+     - Right: Evidence section driven by contract evidence policy (none/upload/smart_form)
+     - Responsive: 2-col on desktop (900px), single-col on mobile (full-screen)
+     - Team member selector with search, loading, error handling
+
+  2. contractnest-ui/src/components/contracts/OperationsTab.tsx (MODIFIED)
+     - Removed inline ServiceExecutionPanel (310+ lines deleted)
+     - Imported and wired new ServiceExecutionDrawer
+     - Passes statusDefsByType and transitionsByType as props
+     - Passes allContractEvents for "Add from Contract" feature
+     - Cleaned up unused imports
+
+Submodules Affected: contractnest-ui
+
+Copy Command (PowerShell):
+  cd "D:\projects\core projects\ContractNest\contractnest-combined"
+  xcopy "MANUAL_COPY_FILES\service-execution-drawer\contractnest-ui" "contractnest-ui\" /S /Y
