@@ -31,6 +31,7 @@ import {
   useContractEventsForContract,
   useContractEventOperations,
 } from '@/hooks/queries/useContractEventQueries';
+import { useContract } from '@/hooks/queries/useContractQueries';
 import {
   useEventStatuses,
   useEventTransitions,
@@ -546,6 +547,7 @@ const OperationsTab: React.FC<OperationsTabProps> = ({
   });
 
   // ─── Data hooks ───
+  const { data: contractData } = useContract(contractId);
   const {
     data: eventsData,
     isLoading,
@@ -886,7 +888,8 @@ const OperationsTab: React.FC<OperationsTabProps> = ({
         events={servicePanel.events}
         allContractEvents={eventsData?.items || []}
         currency={currency}
-        evidencePolicyType="none"
+        evidencePolicyType={contractData?.evidence_policy_type || 'none'}
+        evidenceSelectedForms={contractData?.evidence_selected_forms}
         statusDefsByType={statusDefsByType}
         transitionsByType={transitionsByType}
         onClose={() => setServicePanel({ isOpen: false, date: '', events: [] })}

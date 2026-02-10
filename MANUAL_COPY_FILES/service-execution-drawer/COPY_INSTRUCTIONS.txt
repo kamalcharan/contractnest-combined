@@ -1,21 +1,27 @@
-═══════════════════════════════════════════════════
- SERVICE EXECUTION DRAWER — Step 3
-═══════════════════════════════════════════════════
+===============================================
+ SERVICE EXECUTION DRAWER — Step 3 (v2)
+===============================================
 
 Files:
   1. contractnest-ui/src/components/contracts/ServiceExecutionDrawer.tsx (NEW)
-     - Complete new service execution drawer with 2-column layout
-     - Left: Event cards with inline status change, add from contract, beyond scope, notes
+     - Complete 2-column service execution drawer
+     - Left: Event cards with inline status, add from contract, beyond scope, notes
      - Right: Evidence section driven by contract evidence policy (none/upload/smart_form)
-     - Responsive: 2-col on desktop (900px), single-col on mobile (full-screen)
-     - Team member selector with search, loading, error handling
+     - Beyond Scope: opens BlockLibraryMini panel with master data + flyby support
+     - Evidence reads from contract's evidence_policy_type and evidence_selected_forms
+     - Fixed: solid background using primaryBackground (was mainBackground=undefined)
+     - Fixed: backdrop opacity 0.5
 
   2. contractnest-ui/src/components/contracts/OperationsTab.tsx (MODIFIED)
      - Removed inline ServiceExecutionPanel (310+ lines deleted)
      - Imported and wired new ServiceExecutionDrawer
-     - Passes statusDefsByType and transitionsByType as props
-     - Passes allContractEvents for "Add from Contract" feature
-     - Cleaned up unused imports
+     - Added useContract(contractId) to fetch contract evidence policy
+     - Passes actual evidencePolicyType + evidenceSelectedForms from contract data
+     - Passes statusDefsByType and transitionsByType
+
+  3. contractnest-ui/src/types/contracts.ts (MODIFIED)
+     - Added evidence_policy_type field to Contract interface
+     - Added evidence_selected_forms field to Contract interface
 
 Submodules Affected: contractnest-ui
 
