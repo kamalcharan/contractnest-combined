@@ -888,8 +888,8 @@ const OperationsTab: React.FC<OperationsTabProps> = ({
         events={servicePanel.events}
         allContractEvents={eventsData?.items || []}
         currency={currency}
-        evidencePolicyType={contractData?.evidence_policy_type || 'none'}
-        evidenceSelectedForms={contractData?.evidence_selected_forms}
+        evidencePolicyType={contractData?.evidence_policy_type || contractData?.metadata?.evidence_policy_type || 'none'}
+        evidenceSelectedForms={contractData?.evidence_selected_forms || contractData?.metadata?.evidence_selected_forms}
         statusDefsByType={statusDefsByType}
         transitionsByType={transitionsByType}
         onClose={() => setServicePanel({ isOpen: false, date: '', events: [] })}
