@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ContractNest Dashboard v2 — Mockup</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+  :root {
+    --brand: #6366f1;
+    --brand-dark: #4f46e5;
+    --brand-light: #818cf8;
+    --brand-bg: #eef2ff;
+    --surface: #ffffff;
+    --surface-2: #f8fafc;
+    --border: #e2e8f0;
+    --text-primary: #0f172a;
+    --text-secondary: #64748b;
+    --text-muted: #94a3b8;
+    --radius: 16px;
+    --radius-sm: 12px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.07);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,0.1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--surface-2);
+    color: var(--text-primary);
+    line-height: 1.5;
+  }
+  .page { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
+
+  /* ─── HERO ─── */
+  .hero { text-align: center; margin-bottom: 40px; }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border-radius: 100px;
+    background: var(--brand-bg); border: 1px solid rgba(99,102,241,0.2);
+    font-size: 13px; font-weight: 600; color: var(--brand);
+    margin-bottom: 16px;
+  }
+  .hero-badge svg { width: 14px; height: 14px; }
+  .hero h1 {
+    font-size: 30px; font-weight: 800; letter-spacing: -0.5px;
+    margin-bottom: 10px;
+  }
+  .hero h1 span { color: var(--brand); }
+  .hero .subtitle {
+    font-size: 16px; color: var(--text-secondary);
+    max-width: 560px; margin: 0 auto 6px;
+  }
+  .hero .sub2 {
+    font-size: 13px; color: var(--text-muted);
+    max-width: 460px; margin: 0 auto;
+  }
+
+  /* ─── THE CONTRACT STORY (3 pillars) ─── */
+  .pillars { margin-bottom: 40px; }
+  .pillars-header { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; }
+  .pillars-header h2 { font-size: 16px; font-weight: 700; }
+  .pillars-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+    position: relative;
+  }
+  .pillar {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 28px 24px 24px;
+    position: relative; transition: all 0.25s; cursor: pointer; overflow: hidden;
+  }
+  .pillar::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+  .pillar:nth-child(1)::before { background: linear-gradient(90deg, #6366f1, #818cf8); }
+  .pillar:nth-child(2)::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+  .pillar:nth-child(3)::before { background: linear-gradient(90deg, #10b981, #34d399); }
+  .pillar:hover { border-color: var(--brand-light); box-shadow: var(--shadow-lg); transform: translateY(-4px); }
+
+  .pillar-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 14px;
+  }
+  .pillar-icon svg { width: 22px; height: 22px; }
+  .pillar-roles {
+    display: flex; gap: 6px; margin-bottom: 12px;
+  }
+  .role-tag {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; padding: 3px 8px; border-radius: 4px;
+  }
+  .role-seller { background: #dbeafe; color: #2563eb; }
+  .role-buyer { background: #fce7f3; color: #db2777; }
+  .pillar h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .pillar p { font-size: 13px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.6; }
+  .pillar-cta {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: 8px;
+    background: var(--brand); color: white;
+    font-size: 13px; font-weight: 600;
+    border: none; cursor: pointer; transition: background 0.2s; text-decoration: none;
+  }
+  .pillar-cta:hover { background: var(--brand-dark); }
+  .pillar-cta svg { width: 14px; height: 14px; }
+
+  /* connector arrows */
+  .conn { display: none; }
+  @media (min-width: 768px) {
+    .conn {
+      display: flex; align-items: center; justify-content: center;
+      position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
+      width: 24px; height: 24px;
+    }
+    .conn-1 { left: calc(33.33% - 12px); }
+    .conn-2 { left: calc(66.66% - 12px); }
+    .conn svg { width: 20px; height: 20px; color: var(--text-muted); }
+  }
+
+  /* ─── EQUIPMENT GRID ─── */
+  .equipment-section { margin-bottom: 36px; }
+  .equip-header {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    margin-bottom: 18px; flex-wrap: wrap; gap: 8px;
+  }
+  .equip-header-left h2 { font-size: 18px; font-weight: 800; letter-spacing: -0.3px; margin-bottom: 4px; }
+  .equip-header-left p { font-size: 13px; color: var(--text-secondary); }
+  .equip-cta-top {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 18px; border-radius: 8px;
+    background: var(--brand); color: white;
+    font-size: 13px; font-weight: 600;
+    text-decoration: none; transition: background 0.2s; white-space: nowrap;
+  }
+  .equip-cta-top:hover { background: var(--brand-dark); }
+  .equip-cta-top svg { width: 14px; height: 14px; }
+
+  .equip-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
+  }
+  .equip-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 20px 16px;
+    text-align: center; cursor: pointer; transition: all 0.2s;
+    position: relative;
+  }
+  .equip-card:hover {
+    border-color: var(--brand-light); box-shadow: var(--shadow-md);
+    transform: translateY(-3px);
+  }
+  .equip-emoji {
+    font-size: 36px; margin-bottom: 10px; display: block;
+    filter: grayscale(0.1);
+  }
+  .equip-card h4 { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+  .equip-card p { font-size: 11px; color: var(--text-muted); }
+  .equip-plus {
+    position: absolute; top: 8px; right: 8px;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--brand-bg); display: flex;
+    align-items: center; justify-content: center;
+    opacity: 0; transition: opacity 0.2s;
+  }
+  .equip-card:hover .equip-plus { opacity: 1; }
+  .equip-plus svg { width: 12px; height: 12px; color: var(--brand); }
+
+  /* "and more" card */
+  .equip-more {
+    background: var(--brand-bg); border: 2px dashed rgba(99,102,241,0.3);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .equip-more:hover { border-color: var(--brand); background: #e0e7ff; }
+  .equip-more-icon {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: rgba(99,102,241,0.15); display: flex;
+    align-items: center; justify-content: center; margin-bottom: 8px;
+  }
+  .equip-more-icon svg { width: 20px; height: 20px; color: var(--brand); }
+  .equip-more h4 { color: var(--brand); }
+  .equip-more p { color: var(--brand); opacity: 0.7; }
+
+  /* ─── CONTRACT VALUE PROP STRIP ─── */
+  .value-strip {
+    background: linear-gradient(135deg, #0f172a, #1e293b 60%, #334155);
+    border-radius: var(--radius); padding: 28px 32px;
+    margin-bottom: 32px; position: relative; overflow: hidden;
+  }
+  .value-strip::after {
+    content: ''; position: absolute; top: -30px; right: -30px;
+    width: 160px; height: 160px; border-radius: 50%;
+    background: rgba(99,102,241,0.12);
+  }
+  .vs-content { position: relative; z-index: 1; }
+  .vs-top {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 20px;
+  }
+  .vs-icon {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: rgba(99,102,241,0.2); display: flex;
+    align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .vs-icon svg { width: 18px; height: 18px; color: var(--brand-light); }
+  .vs-top-text h3 { font-size: 15px; font-weight: 700; color: #fff; }
+  .vs-top-text p { font-size: 12px; color: #94a3b8; }
+  .vs-features {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+  }
+  .vs-feat {
+    display: flex; align-items: flex-start; gap: 8px;
+  }
+  .vs-check {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: rgba(16,185,129,0.15); display: flex;
+    align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;
+  }
+  .vs-check svg { width: 12px; height: 12px; color: #34d399; }
+  .vs-feat-text { font-size: 12px; color: #cbd5e1; line-height: 1.5; }
+  .vs-feat-text strong { color: #f1f5f9; display: block; font-size: 13px; }
+
+  /* ─── QUICK ACTIONS ─── */
+  .qa-section { margin-bottom: 32px; }
+  .qa-header { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+  .qa-header h2 { font-size: 16px; font-weight: 700; }
+  .qa-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .qa-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 18px;
+    cursor: pointer; transition: all 0.2s; text-decoration: none; color: inherit;
+  }
+  .qa-card:hover { border-color: var(--brand-light); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+  .qa-icon {
+    width: 36px; height: 36px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; margin-bottom: 12px;
+  }
+  .qa-icon svg { width: 18px; height: 18px; }
+  .qa-card h3 { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+  .qa-card p { font-size: 11px; color: var(--text-secondary); line-height: 1.5; }
+
+  /* ─── WHATSAPP STRIP ─── */
+  .wa-strip {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 14px 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  }
+  .wa-strip:hover { border-color: #86efac; }
+  .wa-left { display: flex; align-items: center; gap: 10px; }
+  .wa-dot {
+    width: 32px; height: 32px; border-radius: 8px; background: #dcfce7;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .wa-dot svg { width: 16px; height: 16px; color: #16a34a; }
+  .wa-left h4 { font-size: 13px; font-weight: 600; }
+  .wa-left p { font-size: 11px; color: var(--text-secondary); }
+  .wa-link {
+    font-size: 12px; font-weight: 600; color: #16a34a;
+    text-decoration: none; display: flex; align-items: center; gap: 4px; white-space: nowrap;
+  }
+  .wa-link svg { width: 14px; height: 14px; }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 900px) {
+    .pillars-grid { grid-template-columns: 1fr; }
+    .equip-grid { grid-template-columns: repeat(2, 1fr); }
+    .vs-features { grid-template-columns: repeat(2, 1fr); }
+    .qa-grid { grid-template-columns: repeat(2, 1fr); }
+    .conn { display: none; }
+  }
+  @media (max-width: 600px) {
+    .equip-grid { grid-template-columns: repeat(2, 1fr); }
+    .vs-features { grid-template-columns: 1fr; }
+    .qa-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ═══ HERO ═══ -->
+  <div class="hero">
+    <div class="hero-badge">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+      ContractNest
+    </div>
+    <h1>Every service commitment<br>deserves a <span>digital contract</span></h1>
+    <p class="subtitle">Whether you're a vendor servicing equipment or a buyer managing maintenance — ContractNest is the bridge that keeps both sides accountable.</p>
+    <p class="sub2">Vendor or Buyer. Seller or Customer. One contract connects both.</p>
+  </div>
+
+  <!-- ═══ 3 PILLARS (Vendor + Buyer neutral) ═══ -->
+  <div class="pillars">
+    <div class="pillars-header">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <h2>How ContractNest works</h2>
+    </div>
+
+    <div class="pillars-grid">
+      <div class="conn conn-1">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      </div>
+      <div class="conn conn-2">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      </div>
+
+      <!-- Pillar 1: Define -->
+      <div class="pillar">
+        <div class="pillar-icon" style="background: var(--brand-bg);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="14" y="3" rx="1"/><path d="M10 21V8a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5a1 1 0 0 0-1-1H3"/></svg>
+        </div>
+        <div class="pillar-roles">
+          <span class="role-tag role-seller">Seller</span>
+          <span class="role-tag role-buyer">Buyer</span>
+        </div>
+        <h3>Define Your Services</h3>
+        <p>Build a catalog of services with pricing, delivery terms, SLAs and evidence policies. Both parties see the same commitments.</p>
+        <a href="/catalog-studio" class="pillar-cta">
+          Build Catalog
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </a>
+      </div>
+
+      <!-- Pillar 2: Contract -->
+      <div class="pillar">
+        <div class="pillar-icon" style="background: #fef3c7;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 12h4"/><path d="M10 16h4"/></svg>
+        </div>
+        <div class="pillar-roles">
+          <span class="role-tag role-seller">Seller sends</span>
+          <span class="role-tag role-buyer">Buyer accepts</span>
+        </div>
+        <h3>Create a Digital Contract</h3>
+        <p>Service commitments are locked into a contract. Billing cycles, schedules, and deliverables — agreed by both sides digitally.</p>
+        <a href="/contracts" class="pillar-cta">
+          Create Contract
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </a>
+      </div>
+
+      <!-- Pillar 3: Operate -->
+      <div class="pillar">
+        <div class="pillar-icon" style="background: #d1fae5;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>
+        </div>
+        <div class="pillar-roles">
+          <span class="role-tag role-seller">Tracks revenue</span>
+          <span class="role-tag role-buyer">Tracks expenses</span>
+        </div>
+        <h3>Operate &amp; Track</h3>
+        <p>One cockpit for both sides. Service events, invoices, payments, evidence — everything tied back to the contract.</p>
+        <a href="/ops/cockpit" class="pillar-cta">
+          Open Cockpit
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ EQUIPMENT GRID ═══ -->
+  <div class="equipment-section">
+    <div class="equip-header">
+      <div class="equip-header-left">
+        <h2>What are you maintaining today?</h2>
+        <p>Every piece of equipment you manage has service contracts behind it. Digitize them.</p>
+      </div>
+      <a href="/contracts" class="equip-cta-top">
+        + New Contract
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      </a>
+    </div>
+
+    <!-- Row label: Equipment -->
+    <div style="margin-bottom:8px;"><span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Equipment</span></div>
+    <div class="equip-grid" style="margin-bottom:20px;">
+      <div class="equip-card">
+        <div class="equip-plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+        <span class="equip-emoji">❄️</span>
+        <h4>HVAC &amp; Air Conditioning</h4>
+        <p>AMC &middot; Preventive maintenance</p>
+      </div>
+
+      <div class="equip-card">
+        <div class="equip-plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+        <span class="equip-emoji">🛗</span>
+        <h4>Elevators &amp; Lifts</h4>
+        <p>Safety inspections &middot; AMC</p>
+      </div>
+
+      <div class="equip-card">
+        <div class="equip-plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+        <span class="equip-emoji">📹</span>
+        <h4>CCTV &amp; Security</h4>
+        <p>Surveillance &middot; Monitoring</p>
+      </div>
+
+      <div class="equip-card">
+        <div class="equip-plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+        <span class="equip-emoji">🔥</span>
+        <h4>Fire Safety Systems</h4>
+        <p>Compliance &middot; Annual service</p>
+      </div>
+
+      <div class="equip-card">
+        <div class="equip-plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+        <span class="equip-emoji">⚡</span>
+        <h4>Generators &amp; UPS</h4>
+        <p>Power backup &middot; Load testing</p>
+      </div>
+
+      <div class="equip-card">
+        <div class="equip-plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+        <span class="equip-emoji">💧</span>
+        <h4>Water Purifiers</h4>
+        <p>Filter replacement &middot; Servicing</p>
+      </div>
+
+      <div class="equip-card">
+        <div class="equip-plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+        <span class="equip-emoji">🖨️</span>
+        <h4>Printers &amp; Copiers</h4>
+        <p>Toner &middot; Preventive service</p>
+      </div>
+
+      <div class="equip-card">
+        <div class="equip-plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+        <span class="equip-emoji">☀️</span>
+        <h4>Solar Panels</h4>
+        <p>Cleaning &middot; Inverter service</p>
+      </div>
+    </div>
+
+    <!-- Row label: Operations & Industry -->
+    <div style="margin-bottom:8px;"><span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);">Operations &amp; Industry</span></div>
+    <div class="equip-grid">
+      <div class="equip-card">
+        <div class="equip-plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+        <span class="equip-emoji">🏭</span>
+        <h4>Factory Maintenance</h4>
+        <p>Machinery &middot; Production lines</p>
+      </div>
+
+      <div class="equip-card">
+        <div class="equip-plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+        <span class="equip-emoji">🧪</span>
+        <h4>Clean Room Services</h4>
+        <p>Particle counts &middot; Certification</p>
+      </div>
+
+      <div class="equip-card">
+        <div class="equip-plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+        <span class="equip-emoji">💚</span>
+        <h4>Health &amp; Wellness Plans</h4>
+        <p>Recurring checkups &middot; Programs</p>
+      </div>
+
+      <div class="equip-card">
+        <div class="equip-plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+        <span class="equip-emoji">🧹</span>
+        <h4>Facility Management</h4>
+        <p>Housekeeping &middot; Pest control</p>
+      </div>
+
+      <div class="equip-card">
+        <div class="equip-plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+        <span class="equip-emoji">🌿</span>
+        <h4>Landscaping &amp; Garden</h4>
+        <p>Green maintenance &middot; Seasonal</p>
+      </div>
+
+      <div class="equip-card">
+        <div class="equip-plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+        <span class="equip-emoji">🖥️</span>
+        <h4>IT Infrastructure</h4>
+        <p>Servers &middot; Network &middot; Support</p>
+      </div>
+
+      <div class="equip-card">
+        <div class="equip-plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+        <span class="equip-emoji">🚗</span>
+        <h4>Fleet &amp; Vehicles</h4>
+        <p>Service contracts &middot; Insurance</p>
+      </div>
+
+      <!-- "and more" card -->
+      <div class="equip-card equip-more">
+        <div class="equip-more-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </div>
+        <h4>Anything You Maintain</h4>
+        <p>If it has a service contract, it belongs here</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ WHAT'S IN A CONTRACT (value strip) ═══ -->
+  <div class="value-strip">
+    <div class="vs-content">
+      <div class="vs-top">
+        <div class="vs-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>
+        </div>
+        <div class="vs-top-text">
+          <h3>Every contract you create includes</h3>
+          <p>Service commitments, baked into a digital agreement both sides can trust</p>
+        </div>
+      </div>
+      <div class="vs-features">
+        <div class="vs-feat">
+          <div class="vs-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="vs-feat-text"><strong>Service Schedule</strong>Recurring visits, one-time jobs, or on-demand</div>
+        </div>
+        <div class="vs-feat">
+          <div class="vs-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="vs-feat-text"><strong>Billing &amp; Invoicing</strong>Auto-generated invoices tied to each cycle</div>
+        </div>
+        <div class="vs-feat">
+          <div class="vs-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="vs-feat-text"><strong>Digital Evidence</strong>Photos, forms &amp; proof of work uploaded per visit</div>
+        </div>
+        <div class="vs-feat">
+          <div class="vs-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
+          <div class="vs-feat-text"><strong>Acceptance &amp; Tracking</strong>Buyer accepts, both sides track progress</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ QUICK ACTIONS ═══ -->
+  <div class="qa-section">
+    <div class="qa-header">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      <h2>Quick actions</h2>
+    </div>
+    <div class="qa-grid">
+      <a href="/contacts" class="qa-card">
+        <div class="qa-icon" style="background: #dbeafe;"><svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg></div>
+        <h3>Add Contacts</h3>
+        <p>Import customers or vendors you work with</p>
+      </a>
+      <a href="/settings/business-profile" class="qa-card">
+        <div class="qa-icon" style="background: #fef3c7;"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg></div>
+        <h3>Business Profile</h3>
+        <p>Brand, logo &amp; preferences</p>
+      </a>
+      <a href="/appointments" class="qa-card">
+        <div class="qa-icon" style="background: #d1fae5;"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path d="m9 16 2 2 4-4"/></svg></div>
+        <h3>Appointments</h3>
+        <p>Schedule service visits</p>
+      </a>
+      <a href="/service-contracts/templates" class="qa-card">
+        <div class="qa-icon" style="background: #fce7f3;"><svg viewBox="0 0 24 24" fill="none" stroke="#ec4899" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg></div>
+        <h3>Templates</h3>
+        <p>Reuse contract templates</p>
+      </a>
+    </div>
+  </div>
+
+  <!-- ═══ WHATSAPP (subtle) ═══ -->
+  <div class="wa-strip">
+    <div class="wa-left">
+      <div class="wa-dot"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+      <div>
+        <h4>Discoverable via WhatsApp AI Bot</h4>
+        <p>Let customers find you through our BBB WhatsApp network</p>
+      </div>
+    </div>
+    <a href="/settings/configure/customer-channels/groups" class="wa-link">
+      Configure
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+    </a>
+  </div>
+
+</div>
+</body>
+</html>
