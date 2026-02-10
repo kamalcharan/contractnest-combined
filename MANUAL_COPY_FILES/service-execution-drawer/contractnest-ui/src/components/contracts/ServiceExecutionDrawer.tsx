@@ -252,7 +252,7 @@ const BeyondScopePanel: React.FC<BeyondScopePanelProps> = ({
                 >
                   <Zap className="w-3.5 h-3.5" />
                   <Briefcase className="w-3.5 h-3.5" />
-                  Custom Service
+                  FlyBy Service
                 </button>
                 <button
                   onClick={() => onAddFlyBy('spare')}
@@ -265,7 +265,7 @@ const BeyondScopePanel: React.FC<BeyondScopePanelProps> = ({
                 >
                   <Zap className="w-3.5 h-3.5" />
                   <Package className="w-3.5 h-3.5" />
-                  Custom Spare Part
+                  FlyBy Spare Part
                 </button>
               </div>
             </div>
@@ -650,11 +650,11 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
         beyondScopeItems={beyondScopeItems}
         onAddBlock={handleAddBeyondScopeBlock}
         onAddFlyBy={(type) => {
-          const flyById = `flyby-${Date.now()}`;
+          const flyById = `flyby-${type}-${Date.now()}`;
           setBeyondScopeItems((prev) => [...prev, {
             id: flyById,
-            name: `Custom ${type === 'spare' ? 'Spare Part' : 'Service'}`,
-            categoryId: type === 'spare' ? 'spare_part' : 'service',
+            name: `FlyBy ${type === 'spare' ? 'Spare Part' : 'Service'}`,
+            categoryId: type,
             isFlyBy: true,
           }]);
         }}
