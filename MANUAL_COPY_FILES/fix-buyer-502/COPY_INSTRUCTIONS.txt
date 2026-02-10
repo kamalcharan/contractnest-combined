@@ -1,0 +1,31 @@
+═══════════════════════════════════════════════════
+FIX: BUYER-SIDE 502 ON CONTRACT VIEW
+═══════════════════════════════════════════════════
+
+THIS IS A SQL MIGRATION — RUN IN SUPABASE SQL EDITOR
+
+File:
+  contractnest-edge/supabase/migrations/contracts/031_fix_get_contract_by_id_buyer_access.sql
+
+Purpose:
+  get_contract_by_id only checked tenant_id = requesting_tenant (owner).
+  Buyer's tenant is different from the contract owner's tenant, so
+  the query returned NULL → "not found" → 502.
+
+Fix:
+  Now checks BOTH:
+  1. Owner: WHERE tenant_id = p_tenant_id (existing, works for seller)
+  2. Accessor: Falls back to t_contract_access table to check if the
+     requesting tenant has an active access grant (buyer/vendor/partner)
+
+Also adds:
+  - access_role field in response ('owner' | 'client' | 'vendor' | 'partner')
+  - Respects expires_at on access grants
+
+HOW TO APPLY:
+  1. Open Supabase Dashboard → SQL Editor
+  2. Copy-paste the ENTIRE contents of the .sql file
+  3. Run it (both Live and Test environments)
+  4. Verify: buyer can now view contracts
+
+═══════════════════════════════════════════════════
