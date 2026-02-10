@@ -235,7 +235,7 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
       {/* Backdrop */}
       <div
         className="fixed inset-0 z-40 transition-opacity"
-        style={{ backgroundColor: 'rgba(0,0,0,0.35)' }}
+        style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
         onClick={onClose}
       />
 
@@ -243,7 +243,7 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
       <div
         className="fixed top-0 right-0 bottom-0 z-50 w-full md:w-[700px] lg:w-[900px] shadow-2xl border-l flex flex-col animate-slide-in-right"
         style={{
-          backgroundColor: colors.utility.mainBackground,
+          backgroundColor: colors.utility.primaryBackground,
           borderColor: `${colors.utility.primaryText}15`,
         }}
       >
