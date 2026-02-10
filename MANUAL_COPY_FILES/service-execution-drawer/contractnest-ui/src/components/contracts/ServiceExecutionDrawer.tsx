@@ -1,6 +1,6 @@
 // src/components/contracts/ServiceExecutionDrawer.tsx
 // Redesigned Service Execution Drawer — 2-column layout
-// Left: Event cards with inline status, add events, notes
+// Left: Event cards with inline status, add events (from contract + beyond scope), notes
 // Right: Evidence section driven by contract evidence policy
 // Responsive: 2-col on desktop, single-col stacked on mobile
 
@@ -23,6 +23,8 @@ import {
   Ticket,
   Search,
   Zap,
+  ArrowLeft,
+  Trash2,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
@@ -32,6 +34,8 @@ import {
   useCreateServiceTicket,
 } from '@/hooks/queries/useServiceExecution';
 import { useContactsForResourceDropdown } from '@/hooks/queries/useContactsResource';
+import BlockLibraryMini from '@/components/catalog-studio/BlockLibraryMini';
+import type { Block } from '@/types/catalogStudio';
 import type {
   ContractEvent,
   ContractEventStatus,
@@ -44,6 +48,21 @@ import type { EventStatusDefinition } from '@/types/eventStatusConfig';
 
 export type EvidencePolicyType = 'none' | 'upload' | 'smart_form';
 
+export interface EvidenceSelectedForm {
+  form_template_id: string;
+  name: string;
+  sequence: number;
+}
+
+// Beyond-scope block that user adds from master data
+interface BeyondScopeItem {
+  id: string;
+  name: string;
+  description?: string;
+  categoryId: string;
+  isFlyBy?: boolean;
+}
+
 export interface ServiceExecutionDrawerProps {
   isOpen: boolean;
   contractId: string;
@@ -52,6 +71,7 @@ export interface ServiceExecutionDrawerProps {
   allContractEvents?: ContractEvent[];
   currency: string;
   evidencePolicyType?: EvidencePolicyType;
+  evidenceSelectedForms?: EvidenceSelectedForm[];
   statusDefsByType?: Record<string, EventStatusDefinition[]>;
   transitionsByType?: Record<string, Record<string, string[]>>;
   onClose: () => void;
@@ -92,6 +112,7 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
   allContractEvents = [],
   currency,
   evidencePolicyType = 'none',
+  evidenceSelectedForms = [],
   statusDefsByType = {},
   transitionsByType = {},
   onClose,
@@ -101,12 +122,14 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
 
   // ─── State ───
   const [drawerEvents, setDrawerEvents] = useState<ContractEvent[]>(initialEvents);
+  const [beyondScopeItems, setBeyondScopeItems] = useState<BeyondScopeItem[]>([]);
   const [notes, setNotes] = useState('');
   const [assigneeId, setAssigneeId] = useState('');
   const [assigneeName, setAssigneeName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showAddFromContract, setShowAddFromContract] = useState(false);
-  const [showAddNew, setShowAddNew] = useState(false);
+  const [showBeyondScope, setShowBeyondScope] = useState(false);
+  const [showTeamDropdown, setShowTeamDropdown] = useState(false);
   const [statusDropdownId, setStatusDropdownId] = useState<string | null>(null);
   const [teamSearch, setTeamSearch] = useState('');
 
@@ -137,21 +160,11 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
     );
   }, [allContractEvents, drawerEvents]);
 
-  // Filtered team members
-  const filteredTeam = useMemo(() => {
-    if (!teamSearch) return teamMembers;
-    const q = teamSearch.toLowerCase();
-    return teamMembers.filter(
-      (m) => m.label.toLowerCase().includes(q) || (m.email && m.email.toLowerCase().includes(q))
-    );
-  }, [teamMembers, teamSearch]);
-
   // ─── Handlers ───
   const handleStatusChange = useCallback(
     async (eventId: string, newStatus: ContractEventStatus, version: number) => {
       try {
         await updateStatus({ eventId, newStatus, version });
-        // Update local state
         setDrawerEvents((prev) =>
           prev.map((e) =>
             e.id === eventId ? { ...e, status: newStatus, version: e.version + 1 } : e
@@ -177,11 +190,28 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
     setDrawerEvents((prev) => prev.filter((e) => e.id !== eventId));
   }, []);
 
+  const handleAddBeyondScopeBlock = useCallback((block: Block) => {
+    setBeyondScopeItems((prev) => {
+      if (prev.some((b) => b.id === block.id)) return prev;
+      return [...prev, {
+        id: block.id,
+        name: block.name,
+        description: block.description,
+        categoryId: block.categoryId,
+      }];
+    });
+  }, []);
+
+  const handleRemoveBeyondScope = useCallback((id: string) => {
+    setBeyondScopeItems((prev) => prev.filter((b) => b.id !== id));
+  }, []);
+
   const handleSelectTeamMember = useCallback(
     (value: string, label: string) => {
       setAssigneeId(value);
       setAssigneeName(label);
       setTeamSearch('');
+      setShowTeamDropdown(false);
     },
     []
   );
@@ -212,7 +242,6 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
   };
 
   const getStatusConfig = (status: string, eventType?: string) => {
-    // Use status defs from props if available
     const defs = eventType ? statusDefsByType[eventType] : [];
     const def = defs?.find((s) => s.status_key === status);
     if (def) {
@@ -230,6 +259,189 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
 
   if (!isOpen) return null;
 
+  // ─── Beyond Scope Panel (full drawer takeover) ───
+  if (showBeyondScope) {
+    return (
+      <>
+        <div
+          className="fixed inset-0 z-40 transition-opacity"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+          onClick={() => setShowBeyondScope(false)}
+        />
+        <div
+          className="fixed top-0 right-0 bottom-0 z-50 w-full md:w-[700px] lg:w-[900px] shadow-2xl border-l flex flex-col animate-slide-in-right"
+          style={{
+            backgroundColor: colors.utility.primaryBackground,
+            borderColor: `${colors.utility.primaryText}15`,
+          }}
+        >
+          {/* Beyond Scope Header */}
+          <div
+            className="flex-shrink-0 px-5 py-4 border-b flex items-center gap-3"
+            style={{
+              backgroundColor: colors.utility.secondaryBackground,
+              borderColor: `${colors.utility.primaryText}10`,
+            }}
+          >
+            <button
+              onClick={() => setShowBeyondScope(false)}
+              className="p-1.5 rounded-lg hover:opacity-70 transition-opacity"
+              style={{ color: colors.utility.secondaryText }}
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: `${colors.semantic.warning}15` }}
+            >
+              <Zap className="w-4 h-4" style={{ color: colors.semantic.warning }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-sm font-bold" style={{ color: colors.utility.primaryText }}>
+                Add Beyond Scope Services
+              </h2>
+              <p className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
+                Services outside the contract — will be chargeable
+              </p>
+            </div>
+            <button
+              onClick={() => setShowBeyondScope(false)}
+              className="p-2 rounded-lg hover:opacity-70 transition-opacity"
+              style={{ color: colors.utility.secondaryText }}
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* 2-Column: Library | Selected */}
+          <div className="flex-1 overflow-hidden flex">
+            {/* Left: Block Library */}
+            <div className="flex-1 overflow-y-auto border-r" style={{ borderColor: `${colors.utility.primaryText}08` }}>
+              <BlockLibraryMini
+                selectedBlockIds={beyondScopeItems.map((b) => b.id)}
+                onAddBlock={handleAddBeyondScopeBlock}
+                currency={currency}
+                flyByTypes={['service', 'spare']}
+                onAddFlyByBlock={(type) => {
+                  const flyById = `flyby-${Date.now()}`;
+                  setBeyondScopeItems((prev) => [...prev, {
+                    id: flyById,
+                    name: `Custom ${type === 'spare' ? 'Spare Part' : 'Service'}`,
+                    categoryId: type === 'spare' ? 'spare_part' : 'service',
+                    isFlyBy: true,
+                  }]);
+                }}
+                maxHeight="100%"
+              />
+            </div>
+
+            {/* Right: Selected beyond-scope items */}
+            <div className="w-[300px] flex-shrink-0 overflow-y-auto p-4 space-y-3">
+              <h3
+                className="text-[10px] font-bold uppercase tracking-wider"
+                style={{ color: colors.utility.secondaryText }}
+              >
+                Selected ({beyondScopeItems.length})
+              </h3>
+
+              {beyondScopeItems.length === 0 ? (
+                <div
+                  className="rounded-lg border-2 border-dashed p-6 text-center"
+                  style={{ borderColor: `${colors.utility.primaryText}10` }}
+                >
+                  <Zap className="w-6 h-6 mx-auto mb-2" style={{ color: `${colors.utility.secondaryText}30` }} />
+                  <p className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
+                    Click + on blocks from the library to add them
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {beyondScopeItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="rounded-lg border p-3 flex items-start gap-2"
+                      style={{
+                        backgroundColor: colors.utility.secondaryBackground,
+                        borderColor: `${colors.semantic.warning}20`,
+                      }}
+                    >
+                      <Zap className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: colors.semantic.warning }} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate" style={{ color: colors.utility.primaryText }}>
+                          {item.name}
+                        </p>
+                        {item.isFlyBy && (
+                          <span className="text-[9px] font-semibold" style={{ color: colors.semantic.warning }}>
+                            Fly-by
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleRemoveBeyondScope(item.id)}
+                        className="p-1 rounded hover:opacity-70 transition-opacity flex-shrink-0"
+                      >
+                        <Trash2 className="w-3 h-3" style={{ color: colors.semantic.error }} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Chargeable notice */}
+              <div
+                className="flex items-start gap-2 rounded-lg p-3 mt-4"
+                style={{
+                  backgroundColor: `${colors.semantic.warning}08`,
+                  border: `1px solid ${colors.semantic.warning}20`,
+                }}
+              >
+                <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: colors.semantic.warning }} />
+                <p className="text-[10px] leading-relaxed" style={{ color: colors.utility.secondaryText }}>
+                  Beyond scope services are outside the contract terms and may be billed separately.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div
+            className="flex-shrink-0 px-5 py-3 border-t flex items-center justify-end gap-3"
+            style={{
+              backgroundColor: colors.utility.secondaryBackground,
+              borderColor: `${colors.utility.primaryText}10`,
+            }}
+          >
+            <button
+              onClick={() => setShowBeyondScope(false)}
+              className="px-4 py-2 rounded-lg text-xs font-semibold transition-opacity hover:opacity-80"
+              style={{ color: colors.utility.secondaryText }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => setShowBeyondScope(false)}
+              disabled={beyondScopeItems.length === 0}
+              className="px-4 py-2 rounded-lg text-xs font-bold transition-opacity hover:opacity-90 disabled:opacity-40"
+              style={{ backgroundColor: colors.semantic.warning, color: '#ffffff' }}
+            >
+              Add {beyondScopeItems.length} Service{beyondScopeItems.length !== 1 ? 's' : ''}
+            </button>
+          </div>
+        </div>
+        <style>{`
+          @keyframes slideInRight {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+          }
+          .animate-slide-in-right {
+            animation: slideInRight 0.25s ease-out;
+          }
+        `}</style>
+      </>
+    );
+  }
+
+  // ─── Main Drawer ───
   return (
     <>
       {/* Backdrop */}
@@ -281,7 +493,7 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
           {/* Team Member Selector */}
           <div className="relative flex-shrink-0">
             <button
-              onClick={() => setShowAddNew((prev) => !prev)}
+              onClick={() => setShowTeamDropdown((prev) => !prev)}
               className="flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-all hover:shadow-sm"
               style={{
                 backgroundColor: assigneeId ? `${colors.brand.primary}08` : colors.utility.secondaryBackground,
@@ -294,9 +506,9 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
               <ChevronDown className="w-3 h-3" />
             </button>
 
-            {showAddNew && (
+            {showTeamDropdown && (
               <>
-                <div className="fixed inset-0 z-10" onClick={() => setShowAddNew(false)} />
+                <div className="fixed inset-0 z-10" onClick={() => setShowTeamDropdown(false)} />
                 <div
                   className="absolute right-0 top-full mt-1 w-72 rounded-xl border shadow-xl z-20 overflow-hidden"
                   style={{
@@ -304,7 +516,6 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
                     borderColor: `${colors.utility.primaryText}15`,
                   }}
                 >
-                  {/* Search */}
                   <div
                     className="px-3 py-2 border-b flex items-center gap-2"
                     style={{ borderColor: `${colors.utility.primaryText}08` }}
@@ -329,18 +540,15 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
                       <p className="text-xs text-center py-4" style={{ color: colors.semantic.error }}>
                         Failed to load team members
                       </p>
-                    ) : filteredTeam.length === 0 ? (
+                    ) : teamMembers.length === 0 ? (
                       <p className="text-xs text-center py-4" style={{ color: colors.utility.secondaryText }}>
                         No team members found
                       </p>
                     ) : (
-                      filteredTeam.map((member) => (
+                      teamMembers.map((member) => (
                         <button
                           key={member.value}
-                          onClick={() => {
-                            handleSelectTeamMember(member.value, member.label);
-                            setShowAddNew(false);
-                          }}
+                          onClick={() => handleSelectTeamMember(member.value, member.label)}
                           className="w-full px-3 py-2.5 text-left flex items-center gap-3 transition-opacity hover:opacity-80"
                           style={{
                             borderBottom: `1px solid ${colors.utility.primaryText}06`,
@@ -365,7 +573,7 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
                           </div>
                           {member.value === assigneeId && (
                             <div className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center">
-                              <span className="text-white text-[8px]">✓</span>
+                              <span className="text-white text-[8px] font-bold">&#10003;</span>
                             </div>
                           )}
                         </button>
@@ -387,13 +595,16 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
         </div>
 
         {/* ═══ BODY — 2-Column ═══ */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-0 h-full">
+        <div className="flex-1 overflow-hidden">
+          <div className="grid grid-cols-1 md:grid-cols-2 h-full">
 
             {/* ══════ LEFT COLUMN: Events + Notes ══════ */}
             <div
-              className="p-5 space-y-5 md:border-r md:overflow-y-auto"
-              style={{ borderColor: `${colors.utility.primaryText}08` }}
+              className="p-5 space-y-5 overflow-y-auto md:border-r"
+              style={{
+                borderColor: `${colors.utility.primaryText}08`,
+                backgroundColor: colors.utility.primaryBackground,
+              }}
             >
               {/* ─── Service Events ─── */}
               <div>
@@ -424,7 +635,7 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
                         <div className="flex items-start gap-3">
                           <div
                             className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                            style={{ backgroundColor: `${typeConf.color}12` }}
+                            style={{ backgroundColor: `${typeConf.color}15` }}
                           >
                             <TypeIcon className="w-4 h-4" style={{ color: typeConf.color }} />
                           </div>
@@ -445,7 +656,7 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
                               disabled={isUpdating || transitions.length === 0}
                               className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold transition-all disabled:opacity-60"
                               style={{
-                                backgroundColor: `${statusConf.color}12`,
+                                backgroundColor: `${statusConf.color}15`,
                                 color: statusConf.color,
                                 border: `1px solid ${statusConf.color}25`,
                               }}
@@ -494,7 +705,7 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
                             )}
                           </div>
 
-                          {/* Remove button — only for added events not originally in the group */}
+                          {/* Remove button — only for events added after drawer opened */}
                           {!initialEvents.some((ie) => ie.id === event.id) && (
                             <button
                               onClick={() => handleRemoveEvent(event.id)}
@@ -505,17 +716,6 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
                             </button>
                           )}
                         </div>
-
-                        {/* Beyond scope warning */}
-                        {event.contract_id !== contractId && (
-                          <div
-                            className="mt-2 px-2 py-1 rounded text-[9px] font-semibold flex items-center gap-1"
-                            style={{ backgroundColor: `${colors.semantic.warning}10`, color: colors.semantic.warning }}
-                          >
-                            <AlertTriangle className="w-3 h-3" />
-                            Beyond contract scope — chargeable
-                          </div>
-                        )}
                       </div>
                     );
                   })}
@@ -523,7 +723,10 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
                   {deliverables.length === 0 && (
                     <div
                       className="rounded-lg border-2 border-dashed p-6 text-center"
-                      style={{ borderColor: `${colors.utility.primaryText}10` }}
+                      style={{
+                        borderColor: `${colors.utility.primaryText}10`,
+                        backgroundColor: colors.utility.secondaryBackground,
+                      }}
                     >
                       <Wrench className="w-6 h-6 mx-auto mb-2" style={{ color: `${colors.utility.secondaryText}40` }} />
                       <p className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
@@ -533,6 +736,47 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
                   )}
                 </div>
               </div>
+
+              {/* ─── Beyond Scope Items ─── */}
+              {beyondScopeItems.length > 0 && (
+                <div>
+                  <h3
+                    className="text-[10px] font-bold uppercase tracking-wider mb-3 flex items-center gap-2"
+                    style={{ color: colors.semantic.warning }}
+                  >
+                    <AlertTriangle className="w-3 h-3" />
+                    Beyond Scope ({beyondScopeItems.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {beyondScopeItems.map((item) => (
+                      <div
+                        key={item.id}
+                        className="rounded-lg border p-3 flex items-center gap-3"
+                        style={{
+                          backgroundColor: `${colors.semantic.warning}06`,
+                          borderColor: `${colors.semantic.warning}20`,
+                        }}
+                      >
+                        <Zap className="w-4 h-4 flex-shrink-0" style={{ color: colors.semantic.warning }} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold truncate" style={{ color: colors.utility.primaryText }}>
+                            {item.name}
+                          </p>
+                          <p className="text-[9px] font-semibold" style={{ color: colors.semantic.warning }}>
+                            Chargeable {item.isFlyBy ? '(Fly-by)' : ''}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleRemoveBeyondScope(item.id)}
+                          className="p-1 rounded hover:opacity-70 transition-opacity flex-shrink-0"
+                        >
+                          <X className="w-3 h-3" style={{ color: colors.semantic.error }} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* ─── Billing Events ─── */}
               {billingEvents.length > 0 && (
@@ -586,21 +830,20 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
                     <button
                       onClick={() => {
                         setShowAddFromContract(!showAddFromContract);
-                        setShowAddNew(false);
                       }}
                       disabled={unconsumedEvents.length === 0}
                       className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border text-xs font-medium transition-all hover:shadow-sm disabled:opacity-40"
                       style={{
                         borderColor: `${colors.brand.primary}25`,
                         color: colors.brand.primary,
-                        backgroundColor: `${colors.brand.primary}04`,
+                        backgroundColor: `${colors.brand.primary}06`,
                       }}
                     >
                       <Plus className="w-3.5 h-3.5" />
                       From Contract
                       {unconsumedEvents.length > 0 && (
                         <span
-                          className="text-[9px] px-1 py-0.5 rounded-full"
+                          className="text-[9px] px-1.5 py-0.5 rounded-full font-bold"
                           style={{ backgroundColor: `${colors.brand.primary}15` }}
                         >
                           {unconsumedEvents.length}
@@ -635,7 +878,7 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
                                     {event.block_name}
                                   </p>
                                   <p className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
-                                    {tc.label} #{event.sequence_number} — {formatDate(event.scheduled_date)}
+                                    {tc.label} #{event.sequence_number} &mdash; {formatDate(event.scheduled_date)}
                                   </p>
                                 </div>
                               </button>
@@ -647,11 +890,12 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
                   </div>
 
                   <button
+                    onClick={() => setShowBeyondScope(true)}
                     className="flex items-center gap-2 px-3 py-2.5 rounded-lg border text-xs font-medium transition-all hover:shadow-sm"
                     style={{
                       borderColor: `${colors.semantic.warning}25`,
                       color: colors.semantic.warning,
-                      backgroundColor: `${colors.semantic.warning}04`,
+                      backgroundColor: `${colors.semantic.warning}06`,
                     }}
                     title="Add services beyond contract scope"
                   >
@@ -685,26 +929,29 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
             </div>
 
             {/* ══════ RIGHT COLUMN: Evidence ══════ */}
-            <div className="p-5 space-y-5 md:overflow-y-auto">
+            <div
+              className="p-5 space-y-5 overflow-y-auto"
+              style={{ backgroundColor: colors.utility.primaryBackground }}
+            >
               <h3
-                className="text-[10px] font-bold uppercase tracking-wider"
+                className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-2"
                 style={{ color: colors.utility.secondaryText }}
               >
                 Evidence
                 <span
-                  className="ml-2 text-[9px] font-semibold px-1.5 py-0.5 rounded-full normal-case tracking-normal"
+                  className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full normal-case tracking-normal"
                   style={{
                     backgroundColor:
                       evidencePolicyType === 'smart_form'
-                        ? `${colors.brand.primary}12`
+                        ? `${colors.brand.primary}15`
                         : evidencePolicyType === 'upload'
-                        ? `${colors.semantic.info}12`
+                        ? `#3B82F615`
                         : `${colors.utility.primaryText}08`,
                     color:
                       evidencePolicyType === 'smart_form'
                         ? colors.brand.primary
                         : evidencePolicyType === 'upload'
-                        ? colors.semantic.info
+                        ? '#3B82F6'
                         : colors.utility.secondaryText,
                   }}
                 >
@@ -720,11 +967,14 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
               {evidencePolicyType === 'none' && (
                 <div
                   className="rounded-xl border-2 border-dashed p-8 text-center"
-                  style={{ borderColor: `${colors.utility.primaryText}10` }}
+                  style={{
+                    borderColor: `${colors.utility.primaryText}10`,
+                    backgroundColor: colors.utility.secondaryBackground,
+                  }}
                 >
                   <ShieldOff
                     className="w-10 h-10 mx-auto mb-3"
-                    style={{ color: `${colors.utility.secondaryText}30` }}
+                    style={{ color: `${colors.utility.secondaryText}40` }}
                   />
                   <p className="text-sm font-medium" style={{ color: colors.utility.secondaryText }}>
                     No evidence required
@@ -742,7 +992,7 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
                     className="rounded-xl border-2 border-dashed p-8 text-center cursor-pointer transition-all hover:shadow-sm"
                     style={{
                       borderColor: `${colors.brand.primary}25`,
-                      backgroundColor: `${colors.brand.primary}03`,
+                      backgroundColor: colors.utility.secondaryBackground,
                     }}
                   >
                     <Upload
@@ -768,58 +1018,96 @@ const ServiceExecutionDrawer: React.FC<ServiceExecutionDrawerProps> = ({
                   <div
                     className="flex items-start gap-3 rounded-lg border p-3"
                     style={{
-                      backgroundColor: `${colors.semantic.info || '#3B82F6'}06`,
-                      borderColor: `${colors.semantic.info || '#3B82F6'}20`,
+                      backgroundColor: `#3B82F608`,
+                      borderColor: `#3B82F620`,
                     }}
                   >
-                    <ClipboardList className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: colors.semantic.info || '#3B82F6' }} />
+                    <ClipboardList className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#3B82F6' }} />
                     <p className="text-[11px] leading-relaxed" style={{ color: colors.utility.secondaryText }}>
-                      Smart forms configured for this contract will appear here.
-                      Complete each form to capture the required evidence.
+                      Complete each form below to capture the required evidence for this service.
                     </p>
                   </div>
 
-                  {/* Placeholder for FormRenderer integration */}
-                  <div
-                    className="rounded-xl border p-5"
-                    style={{
-                      backgroundColor: colors.utility.secondaryBackground,
-                      borderColor: `${colors.utility.primaryText}10`,
-                    }}
-                  >
-                    <div className="flex items-center gap-3 mb-3">
-                      <div
-                        className="w-8 h-8 rounded-lg flex items-center justify-center"
-                        style={{ backgroundColor: `${colors.brand.primary}10` }}
-                      >
-                        <FileText className="w-4 h-4" style={{ color: colors.brand.primary }} />
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold" style={{ color: colors.utility.primaryText }}>
-                          Service Execution Forms
-                        </p>
-                        <p className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
-                          Forms from contract evidence policy
-                        </p>
-                      </div>
-                    </div>
-
+                  {/* Render configured forms from evidence policy */}
+                  {evidenceSelectedForms.length > 0 ? (
+                    evidenceSelectedForms
+                      .sort((a, b) => a.sequence - b.sequence)
+                      .map((form, idx) => (
+                        <div
+                          key={form.form_template_id}
+                          className="rounded-xl border p-4"
+                          style={{
+                            backgroundColor: colors.utility.secondaryBackground,
+                            borderColor: `${colors.utility.primaryText}10`,
+                          }}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                              style={{ backgroundColor: `${colors.brand.primary}10` }}
+                            >
+                              <span className="text-xs font-bold" style={{ color: colors.brand.primary }}>
+                                {idx + 1}
+                              </span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold truncate" style={{ color: colors.utility.primaryText }}>
+                                {form.name}
+                              </p>
+                              <p className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
+                                Form #{idx + 1} of {evidenceSelectedForms.length}
+                              </p>
+                            </div>
+                            <button
+                              className="px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all hover:opacity-90"
+                              style={{ backgroundColor: colors.brand.primary, color: '#ffffff' }}
+                            >
+                              Open Form
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                  ) : (
                     <div
-                      className="rounded-lg border-2 border-dashed p-6 text-center"
-                      style={{ borderColor: `${colors.utility.primaryText}10` }}
+                      className="rounded-xl border p-5"
+                      style={{
+                        backgroundColor: colors.utility.secondaryBackground,
+                        borderColor: `${colors.utility.primaryText}10`,
+                      }}
                     >
-                      <ClipboardList
-                        className="w-8 h-8 mx-auto mb-2"
-                        style={{ color: `${colors.utility.secondaryText}30` }}
-                      />
-                      <p className="text-xs" style={{ color: colors.utility.secondaryText }}>
-                        FormRenderer will render here based on contract evidence policy
-                      </p>
-                      <p className="text-[10px] mt-1" style={{ color: `${colors.utility.secondaryText}60` }}>
-                        Integration with FormRenderer pending API wiring
-                      </p>
+                      <div className="flex items-center gap-3 mb-3">
+                        <div
+                          className="w-8 h-8 rounded-lg flex items-center justify-center"
+                          style={{ backgroundColor: `${colors.brand.primary}10` }}
+                        >
+                          <FileText className="w-4 h-4" style={{ color: colors.brand.primary }} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold" style={{ color: colors.utility.primaryText }}>
+                            Service Execution Forms
+                          </p>
+                          <p className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
+                            Forms from contract evidence policy
+                          </p>
+                        </div>
+                      </div>
+                      <div
+                        className="rounded-lg border-2 border-dashed p-6 text-center"
+                        style={{ borderColor: `${colors.utility.primaryText}10` }}
+                      >
+                        <ClipboardList
+                          className="w-8 h-8 mx-auto mb-2"
+                          style={{ color: `${colors.utility.secondaryText}30` }}
+                        />
+                        <p className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                          No forms configured yet
+                        </p>
+                        <p className="text-[10px] mt-1" style={{ color: `${colors.utility.secondaryText}60` }}>
+                          Smart forms will appear once configured in the contract evidence policy
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
             </div>
