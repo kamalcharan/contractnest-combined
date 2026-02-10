@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ContractNest Dashboard — Mockup</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+  :root {
+    --brand: #6366f1;
+    --brand-dark: #4f46e5;
+    --brand-light: #818cf8;
+    --brand-bg: #eef2ff;
+    --surface: #ffffff;
+    --surface-2: #f8fafc;
+    --border: #e2e8f0;
+    --text-primary: #0f172a;
+    --text-secondary: #64748b;
+    --text-muted: #94a3b8;
+    --success: #10b981;
+    --amber: #f59e0b;
+    --blue: #3b82f6;
+    --rose: #f43f5e;
+    --radius: 16px;
+    --radius-sm: 12px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.04);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,0.1), 0 4px 8px rgba(0,0,0,0.04);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--surface-2);
+    color: var(--text-primary);
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  .page { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
+
+  /* ─── SECTION 1: HERO ─── */
+  .hero {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 100px;
+    background: var(--brand-bg);
+    border: 1px solid rgba(99,102,241,0.2);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--brand);
+    margin-bottom: 16px;
+  }
+  .hero-badge svg { width: 14px; height: 14px; }
+  .hero h1 {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    letter-spacing: -0.5px;
+  }
+  .hero p {
+    font-size: 15px;
+    color: var(--text-secondary);
+    max-width: 520px;
+    margin: 0 auto;
+  }
+
+  /* ─── SECTION 2: JOURNEY STEPS ─── */
+  .journey {
+    margin-bottom: 32px;
+  }
+  .journey-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .journey-header h2 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+  .journey-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    position: relative;
+  }
+
+  .step-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px 24px 24px;
+    position: relative;
+    transition: all 0.25s ease;
+    cursor: pointer;
+    overflow: hidden;
+  }
+  .step-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--brand), var(--brand-light));
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+  .step-card:hover {
+    border-color: var(--brand-light);
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-4px);
+  }
+  .step-number {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--brand);
+    color: white;
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 16px;
+  }
+  .step-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    background: var(--brand-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+  .step-icon svg { width: 22px; height: 22px; color: var(--brand); }
+  .step-card h3 {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: var(--text-primary);
+  }
+  .step-card p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 18px;
+    line-height: 1.55;
+  }
+  .step-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    background: var(--brand);
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s;
+    text-decoration: none;
+  }
+  .step-cta:hover { background: var(--brand-dark); }
+  .step-cta svg { width: 14px; height: 14px; }
+
+  /* Connector dots between steps */
+  .connector {
+    display: none; /* hidden on mobile */
+  }
+
+  @media (min-width: 768px) {
+    .connector {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 2;
+      width: 24px;
+      height: 24px;
+    }
+    .connector-1 { left: calc(33.33% - 12px); }
+    .connector-2 { left: calc(66.66% - 12px); }
+    .connector svg { width: 20px; height: 20px; color: var(--brand-light); }
+  }
+
+  /* ─── SECTION 3: MAINTENANCE BANNER ─── */
+  .maintenance-banner {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+    border-radius: var(--radius);
+    padding: 36px 32px;
+    margin-bottom: 32px;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.25s ease;
+  }
+  .maintenance-banner:hover {
+    box-shadow: 0 16px 40px rgba(15,23,42,0.3);
+    transform: translateY(-2px);
+  }
+  .maintenance-banner::after {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    background: rgba(99,102,241,0.15);
+  }
+  .maintenance-banner::before {
+    content: '';
+    position: absolute;
+    bottom: -60px; left: -30px;
+    width: 160px; height: 160px;
+    border-radius: 50%;
+    background: rgba(99,102,241,0.08);
+  }
+  .banner-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .banner-text { flex: 1; min-width: 280px; }
+  .banner-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: rgba(99,102,241,0.2);
+    color: var(--brand-light);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+  }
+  .banner-label svg { width: 12px; height: 12px; }
+  .maintenance-banner h2 {
+    font-size: 22px;
+    font-weight: 800;
+    color: #ffffff;
+    margin-bottom: 8px;
+    letter-spacing: -0.3px;
+  }
+  .maintenance-banner p {
+    font-size: 14px;
+    color: #94a3b8;
+    max-width: 480px;
+    line-height: 1.6;
+  }
+  .banner-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: 10px;
+    background: var(--brand);
+    color: white;
+    font-size: 14px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .banner-cta:hover {
+    background: var(--brand-light);
+    box-shadow: 0 4px 16px rgba(99,102,241,0.4);
+  }
+  .banner-cta svg { width: 16px; height: 16px; }
+
+  /* ─── SECTION 4: QUICK ACTIONS ─── */
+  .quick-actions {
+    margin-bottom: 32px;
+  }
+  .quick-actions-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .quick-actions-header h2 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+  .qa-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+  }
+  .qa-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    color: inherit;
+  }
+  .qa-card:hover {
+    border-color: var(--brand-light);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+  }
+  .qa-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+  }
+  .qa-icon svg { width: 20px; height: 20px; }
+  .qa-card h3 {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    color: var(--text-primary);
+  }
+  .qa-card p {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .qa-arrow {
+    display: flex;
+    align-items: center;
+    margin-top: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--brand);
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .qa-card:hover .qa-arrow { opacity: 1; }
+  .qa-arrow svg { width: 14px; height: 14px; }
+
+  /* ─── SECTION 5: WHATSAPP (SUBTLE) ─── */
+  .whatsapp-strip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .whatsapp-strip:hover {
+    border-color: #25d366;
+    box-shadow: 0 2px 12px rgba(37,211,102,0.1);
+  }
+  .wa-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .wa-icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    background: #dcfce7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .wa-icon svg { width: 18px; height: 18px; color: #16a34a; }
+  .wa-text h4 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .wa-text p {
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  .wa-link {
+    font-size: 13px;
+    font-weight: 600;
+    color: #16a34a;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .wa-link svg { width: 14px; height: 14px; }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 900px) {
+    .journey-grid { grid-template-columns: 1fr; }
+    .qa-grid { grid-template-columns: repeat(2, 1fr); }
+    .connector { display: none; }
+  }
+  @media (max-width: 600px) {
+    .qa-grid { grid-template-columns: 1fr; }
+    .banner-content { flex-direction: column; text-align: center; }
+    .banner-cta { width: 100%; justify-content: center; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ═══ SECTION 1: HERO ═══ -->
+  <div class="hero">
+    <div class="hero-badge">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+      ContractNest
+    </div>
+    <h1>Your Digital Contract Bridge</h1>
+    <p>Connect with your customers, digitize service contracts, and manage equipment maintenance — all from one platform.</p>
+  </div>
+
+  <!-- ═══ SECTION 2: JOURNEY STEPS ═══ -->
+  <div class="journey">
+    <div class="journey-header">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <h2>Get started in 3 steps</h2>
+    </div>
+
+    <div class="journey-grid">
+      <!-- Connectors -->
+      <div class="connector connector-1">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      </div>
+      <div class="connector connector-2">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      </div>
+
+      <!-- Step 1 -->
+      <div class="step-card">
+        <span class="step-number">1</span>
+        <div class="step-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="14" y="3" rx="1"/><path d="M10 21V8a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5a1 1 0 0 0-1-1H3"/></svg>
+        </div>
+        <h3>Build Your Service Catalog</h3>
+        <p>Define your services, pricing, delivery terms and SLAs. Create reusable service blocks your team can use.</p>
+        <a href="/catalog-studio" class="step-cta">
+          Get Started
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </a>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="step-card">
+        <span class="step-number">2</span>
+        <div class="step-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 12h4"/><path d="M10 16h4"/></svg>
+        </div>
+        <h3>Offer Services to Customers</h3>
+        <p>Send professional digital contracts to your customers. Track acceptance, billing cycles and payments in real-time.</p>
+        <a href="/contracts" class="step-cta">
+          Create Contract
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </a>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="step-card">
+        <span class="step-number">3</span>
+        <div class="step-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>
+        </div>
+        <h3>Manage Operations</h3>
+        <p>Track revenue, expenses, service events and compliance from one cockpit. Both buyer and seller views unified.</p>
+        <a href="/ops/cockpit" class="step-cta">
+          Open Cockpit
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SECTION 3: MAINTENANCE BANNER ═══ -->
+  <div class="maintenance-banner">
+    <div class="banner-content">
+      <div class="banner-text">
+        <div class="banner-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76Z"/></svg>
+          Equipment &amp; Maintenance
+        </div>
+        <h2>Digitize Your Maintenance Contracts</h2>
+        <p>Stop managing AMCs on paper. Create recurring service schedules, automate billing cycles, track every visit, and collect digital evidence of work done.</p>
+      </div>
+      <a href="/contracts" class="banner-cta">
+        Start Now
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      </a>
+    </div>
+  </div>
+
+  <!-- ═══ SECTION 4: QUICK ACTIONS ═══ -->
+  <div class="quick-actions">
+    <div class="quick-actions-header">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      <h2>Quick actions</h2>
+    </div>
+
+    <div class="qa-grid">
+      <!-- Add Customers -->
+      <a href="/contacts" class="qa-card">
+        <div class="qa-icon" style="background: #dbeafe;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>
+        </div>
+        <h3>Add Customers</h3>
+        <p>Import or invite your customer contacts to start sending contracts</p>
+        <div class="qa-arrow">
+          Go
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </div>
+      </a>
+
+      <!-- Business Profile -->
+      <a href="/settings/business-profile" class="qa-card">
+        <div class="qa-icon" style="background: #fef3c7;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>
+        </div>
+        <h3>Business Profile</h3>
+        <p>Set up your brand, logo, and business preferences</p>
+        <div class="qa-arrow">
+          Go
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </div>
+      </a>
+
+      <!-- Appointments -->
+      <a href="/appointments" class="qa-card">
+        <div class="qa-icon" style="background: #d1fae5;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/><path d="m9 16 2 2 4-4"/></svg>
+        </div>
+        <h3>Appointments</h3>
+        <p>Schedule and track service visits for your contracts</p>
+        <div class="qa-arrow">
+          Go
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </div>
+      </a>
+
+      <!-- Templates -->
+      <a href="/service-contracts/templates" class="qa-card">
+        <div class="qa-icon" style="background: #fce7f3;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#ec4899" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>
+        </div>
+        <h3>Contract Templates</h3>
+        <p>Reuse templates to speed up contract creation</p>
+        <div class="qa-arrow">
+          Go
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <!-- ═══ SECTION 5: WHATSAPP (TONED DOWN) ═══ -->
+  <div class="whatsapp-strip">
+    <div class="wa-left">
+      <div class="wa-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </div>
+      <div class="wa-text">
+        <h4>Also discoverable via WhatsApp AI Bot</h4>
+        <p>Let customers find and reach you through our BBB WhatsApp network</p>
+      </div>
+    </div>
+    <a href="/settings/configure/customer-channels/groups" class="wa-link">
+      Configure
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+    </a>
+  </div>
+
+</div>
+</body>
+</html>
