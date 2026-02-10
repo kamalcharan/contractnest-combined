@@ -1,0 +1,16 @@
+═══════════════════════════════════════════════════
+V4 DASHBOARD + HIDE APPOINTMENTS MENU
+═══════════════════════════════════════════════════
+
+Submodules Affected: contractnest-ui
+
+Files to Copy:
+─────────────────────────────────────────────────
+
+1. contractnest-ui/src/pages/Dashboard.tsx
+   Purpose: Full rewrite — v4 split-layout dashboard replacing old "coming soon" placeholder
+
+2. contractnest-ui/src/utils/constants/industryMenus.ts
+   Purpose: Appointments menu item commented out (hidden from sidebar)
+
+═══════════════════════════════════════════════════
