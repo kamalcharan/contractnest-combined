@@ -1,0 +1,24 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — fix-get-contract-arg-limit
+═══════════════════════════════════════════════════
+
+Bug Fixed: get_contract_by_id RPC exceeds PostgreSQL 100-argument limit
+           after migration 029 added evidence_policy_type and
+           evidence_selected_forms (52 pairs = 104 args > 100 limit).
+           Error: "cannot pass more than 100 arguments to a function" (54023)
+
+Submodules Affected: contractnest-edge
+
+Files:
+──────────────
+1. contractnest-edge/supabase/migrations/contracts/030_fix_get_contract_by_id_arg_limit.sql
+   PURPOSE: Replaces get_contract_by_id with a version that splits
+            jsonb_build_object into two parts merged with || operator.
+            Part A: 26 pairs (52 args) — core + counterparty + terms
+            Part B: 26 pairs (52 args) — financials + evidence + dates + relations
+
+ACTION REQUIRED:
+──────────────
+Run this SQL in the Supabase SQL Editor directly.
+This is a CREATE OR REPLACE so it safely overwrites the broken version.
+No data migration needed — the output is identical, just built differently.
