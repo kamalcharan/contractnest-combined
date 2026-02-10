@@ -1097,10 +1097,10 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
             policyType={wizardState.evidencePolicyType}
             selectedForms={wizardState.evidenceSelectedForms}
             onPolicyTypeChange={(type) =>
-              updateWizardState({ evidencePolicyType: type })
+              updateWizardState('evidencePolicyType', type)
             }
             onSelectedFormsChange={(forms) =>
-              updateWizardState({ evidenceSelectedForms: forms })
+              updateWizardState('evidenceSelectedForms', forms)
             }
           />
         );
