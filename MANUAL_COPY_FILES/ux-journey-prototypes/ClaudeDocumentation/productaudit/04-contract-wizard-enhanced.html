@@ -1,0 +1,2621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ContractNest — Enhanced Contract Creation Wizard [P1+P2]</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ============================================
+   DESIGN SYSTEM
+   ============================================ */
+:root {
+  --cn-primary: #1e3a5f;
+  --cn-primary-light: #2d5a8e;
+  --cn-primary-50: #eef4fb;
+  --cn-primary-100: #d4e4f7;
+  --cn-accent: #f97316;
+  --cn-accent-light: #fb923c;
+  --cn-accent-50: #fff7ed;
+  --cn-equipment: #d97706;
+  --cn-equipment-bg: #fffbeb;
+  --cn-equipment-border: #fde68a;
+  --cn-entity: #059669;
+  --cn-entity-bg: #ecfdf5;
+  --cn-entity-border: #a7f3d0;
+  --cn-general: #6366f1;
+  --cn-general-bg: #eef2ff;
+  --cn-general-border: #c7d2fe;
+  --cn-good: #10b981;
+  --cn-fair: #f59e0b;
+  --cn-poor: #ef4444;
+  --cn-critical: #dc2626;
+  --cn-bg: #f8fafc;
+  --cn-surface: #ffffff;
+  --cn-border: #e2e8f0;
+  --cn-border-light: #f1f5f9;
+  --cn-text: #0f172a;
+  --cn-text-secondary: #475569;
+  --cn-text-muted: #94a3b8;
+  --nom-amc: #3b82f6;
+  --nom-cmc: #8b5cf6;
+  --nom-fmc: #10b981;
+  --nom-pmc: #06b6d4;
+  --nom-bmc: #f97316;
+  --nom-sla: #6366f1;
+  --nom-retainer: #ec4899;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.08), 0 8px 10px -6px rgba(0,0,0,0.04);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--cn-bg);
+  color: var(--cn-text);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Phase Badge */
+.phase-badge {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  background: linear-gradient(135deg, var(--cn-primary), var(--nom-amc));
+  color: white;
+  padding: 8px 18px;
+  border-radius: 30px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.phase-badge::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: #4ade80;
+  border-radius: 50%;
+  animation: pulse-dot 2s infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ============================================
+   WIZARD SHELL
+   ============================================ */
+.wizard-shell {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 24px 100px;
+  min-height: 100vh;
+}
+
+/* ============================================
+   STEP PROGRESS BAR
+   ============================================ */
+.step-progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin-bottom: 36px;
+  padding: 20px 0;
+  position: relative;
+}
+.step-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.step-node {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  opacity: 1;
+  transform: scale(1);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  max-width: 300px;
+  overflow: hidden;
+}
+.step-node.hidden {
+  max-width: 0;
+  opacity: 0;
+  transform: scale(0.8);
+  overflow: hidden;
+}
+.step-circle-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  min-width: 80px;
+}
+.step-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  border: 2px solid var(--cn-border);
+  background: var(--cn-surface);
+  color: var(--cn-text-muted);
+  transition: all 0.3s;
+  position: relative;
+}
+.step-circle.active {
+  border-color: var(--cn-primary);
+  background: var(--cn-primary);
+  color: white;
+  box-shadow: 0 0 0 4px rgba(30, 58, 95, 0.15);
+}
+.step-circle.completed {
+  border-color: var(--cn-good);
+  background: var(--cn-good);
+  color: white;
+}
+.step-circle.completed svg {
+  width: 16px;
+  height: 16px;
+}
+.step-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--cn-text-muted);
+  text-align: center;
+  white-space: nowrap;
+  transition: color 0.3s;
+}
+.step-label.active {
+  color: var(--cn-primary);
+  font-weight: 700;
+}
+.step-label.completed {
+  color: var(--cn-good);
+}
+.step-connector {
+  width: 40px;
+  height: 2px;
+  background: var(--cn-border);
+  transition: background 0.3s;
+  flex-shrink: 0;
+}
+.step-connector.completed {
+  background: var(--cn-good);
+}
+
+/* ============================================
+   WIZARD CONTENT AREA
+   ============================================ */
+.wizard-viewport {
+  position: relative;
+  overflow: hidden;
+  min-height: 500px;
+}
+.wizard-step {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  opacity: 0;
+  transform: translateX(60px);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  visibility: hidden;
+}
+.wizard-step.active {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: all;
+  position: relative;
+  visibility: visible;
+}
+.wizard-step.exit-left {
+  opacity: 0;
+  transform: translateX(-60px);
+}
+.wizard-step.enter-right {
+  transform: translateX(60px);
+}
+
+/* Step Header */
+.step-header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+.step-header .step-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cn-primary);
+  background: var(--cn-primary-50);
+  padding: 5px 14px;
+  border-radius: 20px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.step-header h2 {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+  margin-bottom: 6px;
+}
+.step-header p {
+  font-size: 14px;
+  color: var(--cn-text-secondary);
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+/* ============================================
+   STEP 1: NOMENCLATURE
+   ============================================ */
+.suggestion-banner {
+  background: linear-gradient(135deg, var(--cn-primary-50), #e0ecfb);
+  border: 1px solid var(--cn-primary-100);
+  border-radius: var(--radius-lg);
+  padding: 14px 20px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.suggestion-banner .sb-icon {
+  width: 38px;
+  height: 38px;
+  background: white;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+  box-shadow: var(--shadow-sm);
+}
+.suggestion-banner .sb-text {
+  flex: 1;
+}
+.suggestion-banner .sb-text strong {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--cn-primary);
+}
+.suggestion-banner .sb-text p {
+  font-size: 12px;
+  color: var(--cn-text-secondary);
+  margin-top: 1px;
+}
+.suggested-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.suggested-tag {
+  background: white;
+  border: 1px solid var(--cn-primary-100);
+  color: var(--cn-primary);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 16px;
+  white-space: nowrap;
+}
+
+.nom-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.nom-card {
+  background: var(--cn-surface);
+  border: 2px solid var(--cn-border);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+.nom-card:hover {
+  border-color: var(--cn-primary-100);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+.nom-card.selected {
+  border-color: var(--cn-primary);
+  background: var(--cn-primary-50);
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.1);
+}
+.nom-card .nom-check {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--cn-primary);
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.nom-card.selected .nom-check {
+  display: flex;
+}
+.nom-card .nom-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+.nom-card .nom-short {
+  font-size: 15px;
+  font-weight: 800;
+  margin-bottom: 1px;
+}
+.nom-card .nom-full {
+  font-size: 11px;
+  color: var(--cn-text-secondary);
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+.nom-card .nom-desc {
+  font-size: 12px;
+  color: var(--cn-text-muted);
+  line-height: 1.4;
+  margin-bottom: 10px;
+}
+.nom-card .nom-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.nom-type-equipment {
+  background: var(--cn-equipment-bg);
+  color: var(--cn-equipment);
+  border: 1px solid var(--cn-equipment-border);
+}
+.nom-type-entity {
+  background: var(--cn-entity-bg);
+  color: var(--cn-entity);
+  border: 1px solid var(--cn-entity-border);
+}
+.nom-type-general {
+  background: var(--cn-general-bg);
+  color: var(--cn-general);
+  border: 1px solid var(--cn-general-border);
+}
+
+/* ============================================
+   STEP 2: COUNTERPARTY
+   ============================================ */
+.search-input-wrap {
+  position: relative;
+  margin-bottom: 20px;
+}
+.search-input-wrap input {
+  width: 100%;
+  padding: 12px 16px 12px 44px;
+  border: 1px solid var(--cn-border);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-family: inherit;
+  background: var(--cn-surface);
+  color: var(--cn-text);
+  transition: all 0.2s;
+}
+.search-input-wrap input:focus {
+  outline: none;
+  border-color: var(--cn-primary);
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.1);
+}
+.search-input-wrap input::placeholder { color: var(--cn-text-muted); }
+.search-input-wrap .s-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--cn-text-muted);
+  font-size: 16px;
+}
+
+.contact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.contact-card {
+  background: var(--cn-surface);
+  border: 2px solid var(--cn-border);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.contact-card:hover {
+  border-color: var(--cn-primary-100);
+  box-shadow: var(--shadow-md);
+}
+.contact-card.selected {
+  border-color: var(--cn-primary);
+  background: var(--cn-primary-50);
+}
+.contact-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 800;
+  color: white;
+  flex-shrink: 0;
+}
+.contact-info {
+  flex: 1;
+  min-width: 0;
+}
+.contact-info .c-name {
+  font-size: 15px;
+  font-weight: 700;
+}
+.contact-info .c-person {
+  font-size: 12px;
+  color: var(--cn-text-secondary);
+  margin-top: 1px;
+}
+.contact-info .c-details {
+  display: flex;
+  gap: 16px;
+  margin-top: 4px;
+}
+.contact-info .c-detail {
+  font-size: 11px;
+  color: var(--cn-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.contact-check {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--cn-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+.contact-card.selected .contact-check {
+  border-color: var(--cn-primary);
+  background: var(--cn-primary);
+}
+.quick-add-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--cn-primary);
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 14px;
+  padding: 8px 0;
+}
+.quick-add-link:hover { text-decoration: underline; }
+
+/* ============================================
+   STEP 3: CONTRACT DETAILS
+   ============================================ */
+.details-form {
+  background: var(--cn-surface);
+  border: 1px solid var(--cn-border);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+}
+.form-section {
+  margin-bottom: 24px;
+}
+.form-section:last-child { margin-bottom: 0; }
+.form-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cn-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--cn-border-light);
+}
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.form-row.three-col {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+.form-row:last-child { margin-bottom: 0; }
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.form-group.full {
+  grid-column: 1 / -1;
+}
+.form-group label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cn-text-secondary);
+}
+.form-group label .req { color: var(--cn-poor); }
+.form-group input,
+.form-group select,
+.form-group textarea {
+  padding: 10px 12px;
+  border: 1px solid var(--cn-border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--cn-surface);
+  color: var(--cn-text);
+  transition: border-color 0.2s;
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--cn-primary);
+  box-shadow: 0 0 0 3px rgba(30, 58, 95, 0.08);
+}
+.form-group textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+.auto-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--cn-good);
+  background: #ecfdf5;
+  padding: 2px 8px;
+  border-radius: 8px;
+  margin-left: 6px;
+}
+
+/* ============================================
+   STEP 4: EQUIPMENT SELECTION
+   ============================================ */
+.equip-banner {
+  background: linear-gradient(135deg, var(--cn-equipment-bg), #fef3c7);
+  border: 1px solid var(--cn-equipment-border);
+  border-radius: var(--radius-lg);
+  padding: 14px 20px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.equip-banner .eb-icon {
+  width: 38px;
+  height: 38px;
+  background: white;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.equip-banner .eb-text {
+  flex: 1;
+  font-size: 13px;
+  color: var(--cn-text-secondary);
+}
+.equip-banner .eb-text strong {
+  color: var(--cn-equipment);
+  font-weight: 700;
+}
+
+.equip-layout {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 16px;
+  min-height: 400px;
+}
+.equip-sidebar {
+  background: var(--cn-surface);
+  border: 1px solid var(--cn-border);
+  border-radius: var(--radius-lg);
+  padding: 12px;
+  align-self: start;
+}
+.equip-cat-item {
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--cn-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+.equip-cat-item:hover {
+  background: var(--cn-bg);
+}
+.equip-cat-item.active {
+  background: var(--cn-primary-50);
+  color: var(--cn-primary);
+  font-weight: 600;
+}
+.equip-cat-item .cat-emoji {
+  font-size: 16px;
+}
+.equip-cat-item .cat-count {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--cn-bg);
+  padding: 1px 7px;
+  border-radius: 8px;
+  color: var(--cn-text-muted);
+}
+.equip-cat-item.active .cat-count {
+  background: var(--cn-primary);
+  color: white;
+}
+
+.equip-main {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.equip-item {
+  background: var(--cn-surface);
+  border: 2px solid var(--cn-border);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.equip-item:hover {
+  border-color: var(--cn-primary-100);
+  box-shadow: var(--shadow-md);
+}
+.equip-item.checked {
+  border-color: var(--cn-primary);
+  background: var(--cn-primary-50);
+}
+.equip-checkbox {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--cn-border);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+  transition: all 0.2s;
+}
+.equip-item.checked .equip-checkbox {
+  border-color: var(--cn-primary);
+  background: var(--cn-primary);
+}
+.equip-item-info {
+  flex: 1;
+  min-width: 0;
+}
+.equip-item-info .ei-name {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.equip-item-info .ei-model {
+  font-size: 12px;
+  color: var(--cn-text-secondary);
+  margin-bottom: 4px;
+}
+.equip-item-info .ei-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--cn-text-muted);
+  flex-wrap: wrap;
+}
+.equip-item-info .ei-meta span {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.condition-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 8px;
+}
+.condition-badge.good { background: #d1fae5; color: var(--cn-good); }
+.condition-badge.fair { background: #fef3c7; color: var(--cn-fair); }
+.condition-badge.poor { background: #fee2e2; color: var(--cn-poor); }
+
+.equip-item-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.coverage-select {
+  padding: 6px 10px;
+  border: 1px solid var(--cn-border);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-family: inherit;
+  background: var(--cn-surface);
+  color: var(--cn-text);
+  cursor: pointer;
+}
+.coverage-select:focus {
+  outline: none;
+  border-color: var(--cn-primary);
+}
+
+.equip-summary {
+  background: var(--cn-surface);
+  border: 1px solid var(--cn-border);
+  border-radius: var(--radius-lg);
+  padding: 14px 20px;
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.equip-summary .es-left {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cn-text);
+}
+.equip-summary .es-left .count {
+  color: var(--cn-primary);
+  font-weight: 800;
+}
+.equip-summary .es-detail {
+  font-size: 12px;
+  color: var(--cn-text-secondary);
+}
+.equip-summary-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.toggle-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--cn-text-secondary);
+  font-weight: 500;
+}
+.toggle-switch {
+  width: 36px;
+  height: 20px;
+  background: var(--cn-border);
+  border-radius: 10px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.toggle-switch.on {
+  background: var(--cn-primary);
+}
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: white;
+  transition: transform 0.2s;
+  box-shadow: var(--shadow-sm);
+}
+.toggle-switch.on::after {
+  transform: translateX(16px);
+}
+.add-equip-link {
+  font-size: 12px;
+  color: var(--cn-primary);
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.add-equip-link:hover { text-decoration: underline; }
+
+/* ============================================
+   STEP 5: SERVICE BLOCKS
+   ============================================ */
+.service-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.service-block-card {
+  background: var(--cn-surface);
+  border: 1px solid var(--cn-border);
+  border-radius: var(--radius-lg);
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  transition: all 0.2s;
+}
+.service-block-card:hover {
+  box-shadow: var(--shadow-md);
+}
+.sbc-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.sbc-info {
+  flex: 1;
+}
+.sbc-info .sbc-name {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.sbc-info .sbc-desc {
+  font-size: 12px;
+  color: var(--cn-text-secondary);
+}
+.sbc-pricing {
+  text-align: right;
+  flex-shrink: 0;
+}
+.sbc-pricing .sbc-calc {
+  font-size: 12px;
+  color: var(--cn-text-muted);
+  margin-bottom: 2px;
+}
+.sbc-pricing .sbc-total {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--cn-text);
+}
+
+.apply-all-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  background: var(--cn-primary-50);
+  border: 1px solid var(--cn-primary-100);
+  border-radius: var(--radius-md);
+  margin-top: 16px;
+}
+.apply-checkbox {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--cn-primary);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--cn-primary);
+  flex-shrink: 0;
+}
+.apply-all-row .apply-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cn-primary);
+}
+
+.service-total-strip {
+  background: var(--cn-surface);
+  border: 2px solid var(--cn-primary);
+  border-radius: var(--radius-lg);
+  padding: 18px 24px;
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.service-total-strip .st-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cn-text-secondary);
+}
+.service-total-strip .st-amount {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--cn-primary);
+}
+
+/* ============================================
+   STEP 6: BILLING
+   ============================================ */
+.billing-table-wrap {
+  background: var(--cn-surface);
+  border: 1px solid var(--cn-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.billing-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.billing-table th {
+  padding: 12px 20px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cn-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: var(--cn-bg);
+  border-bottom: 1px solid var(--cn-border);
+}
+.billing-table th:last-child {
+  text-align: right;
+}
+.billing-table td {
+  padding: 14px 20px;
+  font-size: 13px;
+  color: var(--cn-text);
+  border-bottom: 1px solid var(--cn-border-light);
+}
+.billing-table td:last-child {
+  text-align: right;
+  font-weight: 700;
+}
+.billing-table tr:last-child td {
+  border-bottom: none;
+}
+.billing-table .line-desc {
+  font-weight: 600;
+}
+.billing-table .line-meta {
+  font-size: 11px;
+  color: var(--cn-text-muted);
+  margin-top: 2px;
+}
+
+.billing-summary {
+  background: var(--cn-bg);
+  border-top: 2px solid var(--cn-border);
+  padding: 16px 20px;
+}
+.billing-summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 13px;
+  color: var(--cn-text-secondary);
+}
+.billing-summary-row.total {
+  border-top: 2px solid var(--cn-border);
+  margin-top: 8px;
+  padding-top: 12px;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--cn-text);
+}
+
+.per-equip-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  font-size: 12px;
+  color: var(--cn-text-secondary);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* ============================================
+   STEP 7: EVENTS TIMELINE
+   ============================================ */
+.timeline-container {
+  background: var(--cn-surface);
+  border: 1px solid var(--cn-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.timeline-header {
+  display: flex;
+  border-bottom: 1px solid var(--cn-border);
+  background: var(--cn-bg);
+}
+.tl-label-col {
+  width: 180px;
+  min-width: 180px;
+  padding: 12px 16px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cn-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-right: 1px solid var(--cn-border);
+}
+.tl-months {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  flex: 1;
+}
+.tl-month {
+  padding: 12px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--cn-text-muted);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  border-right: 1px solid var(--cn-border-light);
+}
+.tl-month:last-child { border-right: none; }
+
+.timeline-body {
+  /* rows */
+}
+.tl-row {
+  display: flex;
+  border-bottom: 1px solid var(--cn-border-light);
+  min-height: 56px;
+}
+.tl-row:last-child { border-bottom: none; }
+.tl-row-label {
+  width: 180px;
+  min-width: 180px;
+  padding: 14px 16px;
+  border-right: 1px solid var(--cn-border);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+.tl-row-label .tl-equip-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--cn-text);
+}
+.tl-row-label .tl-equip-sn {
+  font-size: 10px;
+  color: var(--cn-text-muted);
+}
+.tl-row-events {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  flex: 1;
+  position: relative;
+  align-items: center;
+}
+.tl-cell {
+  position: relative;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid var(--cn-border-light);
+  padding: 4px 2px;
+}
+.tl-cell:last-child { border-right: none; }
+
+.tl-event {
+  width: 90%;
+  padding: 4px 0;
+  border-radius: 4px;
+  font-size: 8px;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+}
+.tl-event:hover {
+  transform: scale(1.1);
+  z-index: 10;
+}
+.tl-event.service {
+  background: #dbeafe;
+  color: var(--nom-amc);
+  border: 1px solid #93c5fd;
+}
+.tl-event.billing {
+  background: #d1fae5;
+  color: var(--cn-good);
+  border: 1px solid #6ee7b7;
+}
+.tl-event.service:hover {
+  background: #bfdbfe;
+}
+.tl-event.billing:hover {
+  background: #a7f3d0;
+}
+
+/* Tooltip */
+.tl-tooltip {
+  display: none;
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--cn-text);
+  color: white;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  z-index: 100;
+  margin-bottom: 6px;
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
+}
+.tl-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--cn-text);
+}
+.tl-event:hover .tl-tooltip {
+  display: block;
+}
+
+.timeline-legend {
+  padding: 12px 20px;
+  border-top: 1px solid var(--cn-border);
+  display: flex;
+  gap: 20px;
+  background: var(--cn-bg);
+}
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--cn-text-secondary);
+}
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+.legend-dot.service {
+  background: #dbeafe;
+  border: 1px solid #93c5fd;
+}
+.legend-dot.billing {
+  background: #d1fae5;
+  border: 1px solid #6ee7b7;
+}
+
+/* ============================================
+   STEP 8: REVIEW
+   ============================================ */
+.review-card {
+  background: var(--cn-surface);
+  border: 1px solid var(--cn-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.review-top {
+  padding: 24px 28px;
+  background: linear-gradient(135deg, var(--cn-primary-50), #e0ecfb);
+  border-bottom: 1px solid var(--cn-primary-100);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.review-top .rt-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.review-nom-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border-radius: var(--radius-md);
+  background: white;
+  border: 2px solid var(--nom-amc);
+  box-shadow: var(--shadow-sm);
+}
+.review-nom-badge .rnb-short {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--nom-amc);
+}
+.review-nom-badge .rnb-full {
+  font-size: 12px;
+  color: var(--cn-text-secondary);
+  font-weight: 500;
+}
+.review-top .rt-value {
+  text-align: right;
+}
+.review-top .rt-value .rv-amount {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--cn-primary);
+}
+.review-top .rt-value .rv-note {
+  font-size: 11px;
+  color: var(--cn-text-muted);
+}
+
+.review-body {
+  padding: 24px 28px;
+}
+.review-section {
+  margin-bottom: 24px;
+}
+.review-section:last-child { margin-bottom: 0; }
+.review-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cn-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--cn-border-light);
+}
+.review-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.review-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.review-field .rf-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--cn-text-muted);
+}
+.review-field .rf-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--cn-text);
+}
+
+.review-equip-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.review-equip-table th {
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cn-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  background: var(--cn-bg);
+  border-bottom: 1px solid var(--cn-border);
+}
+.review-equip-table td {
+  padding: 10px 12px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--cn-border-light);
+}
+.review-equip-table tr:last-child td { border-bottom: none; }
+
+.review-actions {
+  padding: 20px 28px;
+  border-top: 1px solid var(--cn-border);
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+/* ============================================
+   NAVIGATION
+   ============================================ */
+.wizard-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid var(--cn-border);
+}
+.nav-btn {
+  padding: 12px 28px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.nav-btn.secondary {
+  background: var(--cn-surface);
+  border: 1px solid var(--cn-border);
+  color: var(--cn-text-secondary);
+}
+.nav-btn.secondary:hover {
+  border-color: var(--cn-primary);
+  color: var(--cn-primary);
+}
+.nav-btn.primary {
+  background: linear-gradient(135deg, var(--cn-primary), var(--cn-primary-light));
+  border: none;
+  color: white;
+  box-shadow: var(--shadow-md);
+}
+.nav-btn.primary:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-1px);
+}
+.nav-btn.success {
+  background: linear-gradient(135deg, var(--cn-good), #059669);
+  border: none;
+  color: white;
+  box-shadow: var(--shadow-md);
+}
+.nav-btn.success:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-1px);
+}
+.nav-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none !important;
+}
+.nav-btn .arrow { font-size: 18px; }
+
+/* ============================================
+   JOURNEY MAP
+   ============================================ */
+.journey-map-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1000;
+  background: var(--cn-surface);
+  border: 1px solid var(--cn-border);
+  border-radius: var(--radius-lg);
+  padding: 12px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cn-text);
+  cursor: pointer;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+.journey-map-btn:hover {
+  box-shadow: var(--shadow-xl);
+  transform: translateY(-2px);
+}
+.journey-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  justify-content: center;
+  align-items: center;
+}
+.journey-overlay.active { display: flex; }
+.journey-panel {
+  background: var(--cn-surface);
+  border-radius: var(--radius-xl);
+  padding: 32px;
+  max-width: 760px;
+  width: 90%;
+  box-shadow: var(--shadow-xl);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.journey-panel h3 {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.journey-panel .jp-sub {
+  font-size: 13px;
+  color: var(--cn-text-secondary);
+  margin-bottom: 20px;
+}
+.journey-flow {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.journey-item {
+  padding: 14px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--cn-border);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  color: var(--cn-text);
+  display: block;
+}
+.journey-item:hover { border-color: var(--cn-primary); background: var(--cn-primary-50); }
+.journey-item.current { border-color: var(--cn-primary); background: var(--cn-primary-50); }
+.journey-item .j-phase { font-size: 10px; font-weight: 700; color: var(--cn-primary); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.3px; }
+.journey-item .j-name { font-weight: 700; font-size: 13px; }
+.journey-item .j-desc { font-size: 11px; color: var(--cn-text-muted); margin-top: 3px; }
+.journey-close {
+  margin-top: 20px;
+  text-align: right;
+}
+.journey-close button {
+  padding: 8px 20px;
+  border: 1px solid var(--cn-border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  background: var(--cn-surface);
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--cn-text-secondary);
+}
+
+/* ============================================
+   TOAST
+   ============================================ */
+.toast-container {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3000;
+}
+.toast {
+  background: var(--cn-text);
+  color: white;
+  padding: 12px 24px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: var(--shadow-xl);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  opacity: 0;
+  transform: translateY(-20px);
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+.toast .toast-icon { font-size: 16px; }
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-in {
+  animation: fadeInUp 0.4s ease both;
+}
+</style>
+</head>
+<body>
+
+<!-- Phase Badge -->
+<div class="phase-badge">P1 + P2 — Wizard</div>
+
+<!-- Toast -->
+<div class="toast-container">
+  <div class="toast" id="toast">
+    <span class="toast-icon"></span>
+    <span class="toast-msg"></span>
+  </div>
+</div>
+
+<!-- Main Wizard Shell -->
+<div class="wizard-shell">
+
+  <!-- Step Progress Bar -->
+  <div class="step-progress" id="stepProgress">
+    <!-- Steps rendered by JS -->
+  </div>
+
+  <!-- Wizard Content Viewport -->
+  <div class="wizard-viewport" id="wizardViewport">
+
+    <!-- ======================== STEP 1: NOMENCLATURE ======================== -->
+    <div class="wizard-step active" data-step="nomenclature">
+      <div class="step-header">
+        <div class="step-tag">Step 1 of 8</div>
+        <h2>Select Contract Nomenclature</h2>
+        <p>Choose the type of contract you want to create. This determines the workflow and required fields.</p>
+      </div>
+
+      <div class="suggestion-banner animate-in">
+        <div class="sb-icon">🏥</div>
+        <div class="sb-text">
+          <strong>Recommended for Healthcare</strong>
+          <p>Based on your industry profile, these nomenclatures are most common</p>
+        </div>
+        <div class="suggested-tags">
+          <span class="suggested-tag">AMC</span>
+          <span class="suggested-tag">CMC</span>
+          <span class="suggested-tag">PMC</span>
+        </div>
+      </div>
+
+      <div class="nom-grid" id="nomGrid">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+
+    <!-- ======================== STEP 2: COUNTERPARTY ======================== -->
+    <div class="wizard-step" data-step="counterparty">
+      <div class="step-header">
+        <div class="step-tag">Step 2</div>
+        <h2>Select Counterparty</h2>
+        <p>Choose the vendor, client, or partner for this contract.</p>
+      </div>
+
+      <div class="search-input-wrap">
+        <span class="s-icon">&#128269;</span>
+        <input type="text" placeholder="Search contacts by name, company, or email..." id="contactSearch">
+      </div>
+
+      <div class="contact-list" id="contactList">
+        <!-- Rendered by JS -->
+      </div>
+
+      <div class="quick-add-link">+ Quick add new contact</div>
+    </div>
+
+    <!-- ======================== STEP 3: CONTRACT DETAILS ======================== -->
+    <div class="wizard-step" data-step="details">
+      <div class="step-header">
+        <div class="step-tag">Step 3</div>
+        <h2>Contract Details</h2>
+        <p>Review and customize the core contract information.</p>
+      </div>
+
+      <div class="details-form">
+        <div class="form-section">
+          <div class="form-section-title">Basic Information</div>
+          <div class="form-row">
+            <div class="form-group full">
+              <label>Contract Name <span class="req">*</span> <span class="auto-badge">Auto-suggested</span></label>
+              <input type="text" id="contractName" value="AMC — Apollo Hospitals — 2026">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Contract Number <span class="auto-badge">Auto-generated</span></label>
+              <input type="text" value="CON-10058" readonly style="background: var(--cn-bg); color: var(--cn-text-muted);">
+            </div>
+            <div class="form-group">
+              <label>Duration (months)</label>
+              <input type="number" value="12" id="contractDuration">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">Schedule & Currency</div>
+          <div class="form-row three-col">
+            <div class="form-group">
+              <label>Start Date <span class="req">*</span></label>
+              <input type="date" value="2026-01-01" id="startDate">
+            </div>
+            <div class="form-group">
+              <label>End Date <span class="auto-badge">Auto</span></label>
+              <input type="date" value="2026-12-31" readonly style="background: var(--cn-bg);">
+            </div>
+            <div class="form-group">
+              <label>Currency</label>
+              <select>
+                <option selected>INR (₹) — Indian Rupee</option>
+                <option>USD ($) — US Dollar</option>
+                <option>EUR — Euro</option>
+                <option>GBP (£) — British Pound</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Grace Period (days)</label>
+              <input type="number" value="15">
+            </div>
+            <div class="form-group">
+              <label>Renewal</label>
+              <select>
+                <option selected>Auto-renew</option>
+                <option>Manual renewal</option>
+                <option>Non-renewable</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-title">Description</div>
+          <div class="form-group full">
+            <textarea placeholder="Describe the scope and purpose of this contract...">Annual Maintenance Contract covering preventive maintenance, spare parts, and emergency breakdown support for medical imaging equipment at Apollo Hospitals, Jubilee Hills, Hyderabad.</textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================== STEP 4: EQUIPMENT ======================== -->
+    <div class="wizard-step" data-step="equipment">
+      <div class="step-header">
+        <div class="step-tag">Step 4 — Equipment</div>
+        <h2>Select Equipment</h2>
+        <p>Choose the equipment items covered under this contract.</p>
+      </div>
+
+      <div class="equip-banner animate-in">
+        <div class="eb-icon">&#9881;&#65039;</div>
+        <div class="eb-text">
+          <strong>AMC contracts are equipment-based.</strong> Select the equipment covered by this contract. You can set coverage type per equipment.
+        </div>
+      </div>
+
+      <div class="equip-layout">
+        <div class="equip-sidebar" id="equipSidebar">
+          <!-- Rendered by JS -->
+        </div>
+        <div class="equip-main" id="equipMain">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+
+      <div class="equip-summary" id="equipSummary">
+        <div>
+          <div class="es-left"><span class="count" id="equipCount">3</span> equipment selected</div>
+          <div class="es-detail" id="equipDetail">Total coverage: 2 MRI + 1 CT</div>
+        </div>
+        <div class="equip-summary-actions">
+          <div class="toggle-wrap">
+            <div class="toggle-switch on" id="buyerToggle" onclick="toggleSwitch(this)"></div>
+            <span>Let buyer add equipment</span>
+          </div>
+          <span class="add-equip-link">Equipment not listed? Add new &#8594;</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================== STEP 5: SERVICE BLOCKS ======================== -->
+    <div class="wizard-step" data-step="services">
+      <div class="step-header">
+        <div class="step-tag">Step 5</div>
+        <h2>Service Blocks</h2>
+        <p>Configure the service packages and pricing for this contract.</p>
+      </div>
+
+      <div class="service-blocks">
+        <div class="service-block-card animate-in">
+          <div class="sbc-icon" style="background: #dbeafe;">🔧</div>
+          <div class="sbc-info">
+            <div class="sbc-name">Quarterly Preventive Maintenance</div>
+            <div class="sbc-desc">Scheduled maintenance visits every quarter, including inspection, calibration, cleaning, and performance testing</div>
+          </div>
+          <div class="sbc-pricing">
+            <div class="sbc-calc">₹50,000/visit x 4 visits</div>
+            <div class="sbc-total">₹2,00,000</div>
+          </div>
+        </div>
+
+        <div class="service-block-card animate-in" style="animation-delay: 0.1s;">
+          <div class="sbc-icon" style="background: #fef3c7;">&#128230;</div>
+          <div class="sbc-info">
+            <div class="sbc-name">Spare Parts Coverage</div>
+            <div class="sbc-desc">Comprehensive spare parts replacement including filters, coils, tubes, and consumables. Excludes glass components.</div>
+          </div>
+          <div class="sbc-pricing">
+            <div class="sbc-calc">Annual flat rate</div>
+            <div class="sbc-total">₹75,000</div>
+          </div>
+        </div>
+
+        <div class="service-block-card animate-in" style="animation-delay: 0.2s;">
+          <div class="sbc-icon" style="background: #fee2e2;">&#128680;</div>
+          <div class="sbc-info">
+            <div class="sbc-name">Emergency Breakdown Support</div>
+            <div class="sbc-desc">24/7 emergency response with 4-hour SLA for critical equipment failures. Includes remote diagnostics.</div>
+          </div>
+          <div class="sbc-pricing">
+            <div class="sbc-calc">Annual, 4-hour SLA</div>
+            <div class="sbc-total">₹25,000</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="apply-all-row animate-in" style="animation-delay: 0.3s;">
+        <div class="apply-checkbox">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+        </div>
+        <span class="apply-text">Apply all service blocks to all selected equipment (3 items)</span>
+      </div>
+
+      <div class="service-total-strip animate-in" style="animation-delay: 0.4s;">
+        <div class="st-label">Total Service Value (per equipment, annual)</div>
+        <div class="st-amount">₹3,00,000/year</div>
+      </div>
+    </div>
+
+    <!-- ======================== STEP 6: BILLING ======================== -->
+    <div class="wizard-step" data-step="billing">
+      <div class="step-header">
+        <div class="step-tag">Step 6</div>
+        <h2>Billing View</h2>
+        <p>Review the complete billing breakdown for this contract.</p>
+      </div>
+
+      <div class="billing-table-wrap">
+        <table class="billing-table">
+          <thead>
+            <tr>
+              <th style="width: 50%;">Line Item</th>
+              <th>Qty</th>
+              <th>Rate</th>
+              <th>Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div class="line-desc">Quarterly Preventive Maintenance</div>
+                <div class="line-meta">3 equipment x 4 visits x ₹50,000/visit</div>
+              </td>
+              <td>12</td>
+              <td>₹50,000</td>
+              <td>₹6,00,000</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="line-desc">Spare Parts Coverage</div>
+                <div class="line-meta">3 equipment x ₹75,000/year</div>
+              </td>
+              <td>3</td>
+              <td>₹75,000</td>
+              <td>₹2,25,000</td>
+            </tr>
+            <tr>
+              <td>
+                <div class="line-desc">Emergency Breakdown Support</div>
+                <div class="line-meta">3 equipment x ₹25,000/year (4-hr SLA)</div>
+              </td>
+              <td>3</td>
+              <td>₹25,000</td>
+              <td>₹75,000</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="billing-summary">
+          <div class="billing-summary-row">
+            <span>Subtotal</span>
+            <span style="font-weight: 700;">₹9,00,000</span>
+          </div>
+          <div class="billing-summary-row">
+            <span>GST @ 18%</span>
+            <span style="font-weight: 700;">₹1,62,000</span>
+          </div>
+          <div class="billing-summary-row total">
+            <span>Grand Total</span>
+            <span>₹10,62,000</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="per-equip-toggle" onclick="showToast('Per-equipment breakdown toggled')">
+        <div class="toggle-switch" onclick="toggleSwitch(this); event.stopPropagation();"></div>
+        <span>Show per-equipment breakdown</span>
+      </div>
+    </div>
+
+    <!-- ======================== STEP 7: EVENTS TIMELINE ======================== -->
+    <div class="wizard-step" data-step="events">
+      <div class="step-header">
+        <div class="step-tag">Step 7 — Events Preview</div>
+        <h2>Service & Billing Timeline</h2>
+        <p>Visual preview of all scheduled service visits and billing events across the contract period.</p>
+      </div>
+
+      <div class="timeline-container" id="timelineContainer">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+
+    <!-- ======================== STEP 8: REVIEW ======================== -->
+    <div class="wizard-step" data-step="review">
+      <div class="step-header">
+        <div class="step-tag">Step 8 — Final Review</div>
+        <h2>Review & Send</h2>
+        <p>Review all contract details before sending to the counterparty.</p>
+      </div>
+
+      <div class="review-card">
+        <div class="review-top">
+          <div class="rt-left">
+            <div class="review-nom-badge">
+              <span class="rnb-short">AMC</span>
+              <span class="rnb-full">Annual Maintenance Contract</span>
+            </div>
+          </div>
+          <div class="rt-value">
+            <div class="rv-amount">₹10,62,000</div>
+            <div class="rv-note">including GST @ 18%</div>
+          </div>
+        </div>
+
+        <div class="review-body">
+          <div class="review-section">
+            <div class="review-section-title">Counterparty</div>
+            <div class="review-grid">
+              <div class="review-field">
+                <span class="rf-label">Company</span>
+                <span class="rf-value">Apollo Hospitals</span>
+              </div>
+              <div class="review-field">
+                <span class="rf-label">Contact Person</span>
+                <span class="rf-value">Dr. Rajesh Kumar</span>
+              </div>
+              <div class="review-field">
+                <span class="rf-label">Email</span>
+                <span class="rf-value">rajesh.kumar@apollohospitals.com</span>
+              </div>
+              <div class="review-field">
+                <span class="rf-label">Phone</span>
+                <span class="rf-value">+91 98765 43210</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="review-section">
+            <div class="review-section-title">Contract Details</div>
+            <div class="review-grid">
+              <div class="review-field">
+                <span class="rf-label">Contract Number</span>
+                <span class="rf-value">CON-10058</span>
+              </div>
+              <div class="review-field">
+                <span class="rf-label">Duration</span>
+                <span class="rf-value">12 months (Jan 2026 - Dec 2026)</span>
+              </div>
+              <div class="review-field">
+                <span class="rf-label">Grace Period</span>
+                <span class="rf-value">15 days</span>
+              </div>
+              <div class="review-field">
+                <span class="rf-label">Renewal</span>
+                <span class="rf-value">Auto-renew</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="review-section">
+            <div class="review-section-title">Equipment (3 items)</div>
+            <table class="review-equip-table">
+              <thead>
+                <tr>
+                  <th>Equipment</th>
+                  <th>Serial Number</th>
+                  <th>Location</th>
+                  <th>Condition</th>
+                  <th>Coverage</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="font-weight: 600;">MRI Scanner — GE Signa HDxt 1.5T</td>
+                  <td style="font-family: monospace; font-size: 12px; color: var(--cn-text-muted);">GE2024MRI001</td>
+                  <td>Radiology, Floor 2</td>
+                  <td><span class="condition-badge good">Good</span></td>
+                  <td style="font-weight: 600; color: var(--nom-amc);">Full (CMC)</td>
+                </tr>
+                <tr>
+                  <td style="font-weight: 600;">CT Scanner — Philips Ingenuity</td>
+                  <td style="font-family: monospace; font-size: 12px; color: var(--cn-text-muted);">PH2024CT001</td>
+                  <td>Radiology, Floor 2</td>
+                  <td><span class="condition-badge good">Good</span></td>
+                  <td style="font-weight: 600; color: var(--nom-amc);">Full (CMC)</td>
+                </tr>
+                <tr>
+                  <td style="font-weight: 600;">X-Ray Machine — Fujifilm FDR</td>
+                  <td style="font-family: monospace; font-size: 12px; color: var(--cn-text-muted);">FJ2024XR001</td>
+                  <td>Emergency, Floor 1</td>
+                  <td><span class="condition-badge good">Good</span></td>
+                  <td style="font-weight: 600; color: var(--nom-pmc);">Preventive Only</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="review-actions">
+          <button class="nav-btn secondary" onclick="showToast('Contract saved as draft')">
+            Save as Draft
+          </button>
+          <button class="nav-btn success" onclick="showToast('Contract sent to Apollo Hospitals!')">
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+            Send Contract
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Navigation -->
+  <div class="wizard-nav" id="wizardNav">
+    <button class="nav-btn secondary" id="btnBack" onclick="goBack()">
+      <span class="arrow">&#8592;</span> Back
+    </button>
+    <button class="nav-btn primary" id="btnNext" onclick="goNext()">
+      Continue <span class="arrow">&#8594;</span>
+    </button>
+  </div>
+
+</div>
+
+<!-- Journey Map Button -->
+<button class="journey-map-btn" onclick="toggleJourney()">
+  <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+  Journey Map
+</button>
+
+<!-- Journey Overlay -->
+<div class="journey-overlay" id="journeyOverlay" onclick="if(event.target===this)toggleJourney()">
+  <div class="journey-panel">
+    <h3>UX Journey Map</h3>
+    <p class="jp-sub">6 prototype screens demonstrating the ContractNest product audit journey</p>
+    <div class="journey-flow">
+      <a class="journey-item" href="01-nomenclature-picker.html">
+        <div class="j-phase">File 1 — P0</div>
+        <div class="j-name">Nomenclature Picker</div>
+        <div class="j-desc">Contract type selection</div>
+      </a>
+      <a class="journey-item" href="02-equipment-registry.html">
+        <div class="j-phase">File 2 — P1</div>
+        <div class="j-name">Equipment Registry</div>
+        <div class="j-desc">Equipment management</div>
+      </a>
+      <a class="journey-item" href="03-entity-registry.html">
+        <div class="j-phase">File 3 — P1</div>
+        <div class="j-name">Entity Registry</div>
+        <div class="j-desc">Entity management</div>
+      </a>
+      <a class="journey-item current" href="04-contract-wizard-enhanced.html">
+        <div class="j-phase">File 4 — P1+P2 Hero</div>
+        <div class="j-name">Contract Wizard</div>
+        <div class="j-desc">Enhanced creation flow</div>
+      </a>
+      <a class="journey-item" href="05-contract-dashboard.html">
+        <div class="j-phase">File 5 — P2</div>
+        <div class="j-name">Contract Dashboard</div>
+        <div class="j-desc">Overview & tracking</div>
+      </a>
+      <a class="journey-item" href="06-event-engine.html">
+        <div class="j-phase">File 6 — P2</div>
+        <div class="j-name">Event Engine</div>
+        <div class="j-desc">Automated scheduling</div>
+      </a>
+    </div>
+    <div class="journey-close">
+      <button onclick="toggleJourney()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================
+   DATA
+   ============================================ */
+const nomenclatures = [
+  { id: 'amc', short: 'AMC', full: 'Annual Maintenance Contract', desc: 'Comprehensive annual coverage for equipment maintenance and support', type: 'equipment', color: '#3b82f6', icon: '🔧', duration: 12, needsEquipment: true },
+  { id: 'cmc', short: 'CMC', full: 'Comprehensive Maintenance Contract', desc: 'All-inclusive coverage including parts, labor, and preventive maintenance', type: 'equipment', color: '#8b5cf6', icon: '🛡️', duration: 12, needsEquipment: true },
+  { id: 'fmc', short: 'FMC', full: 'Facility Management Contract', desc: 'End-to-end facility operations, housekeeping, and infrastructure maintenance', type: 'entity', color: '#10b981', icon: '🏢', duration: 24, needsEquipment: false },
+  { id: 'pmc', short: 'PMC', full: 'Preventive Maintenance Contract', desc: 'Scheduled preventive maintenance visits with inspection and calibration', type: 'equipment', color: '#06b6d4', icon: '📋', duration: 12, needsEquipment: true },
+  { id: 'sla', short: 'SLA', full: 'Service Level Agreement', desc: 'Defined service metrics, response times, and performance guarantees', type: 'general', color: '#6366f1', icon: '📊', duration: 12, needsEquipment: false },
+  { id: 'retainer', short: 'Retainer', full: 'Retainer Agreement', desc: 'Ongoing engagement with reserved hours and priority access to services', type: 'general', color: '#ec4899', icon: '📎', duration: 6, needsEquipment: false },
+];
+
+const contacts = [
+  { id: 1, company: 'Apollo Hospitals', person: 'Dr. Rajesh Kumar', email: 'rajesh.kumar@apollohospitals.com', phone: '+91 98765 43210', color: '#3b82f6', initials: 'AH' },
+  { id: 2, company: 'Fortis Healthcare', person: 'Priya Sharma', email: 'priya.sharma@fortishealthcare.com', phone: '+91 98234 56789', color: '#8b5cf6', initials: 'FH' },
+  { id: 3, company: 'Max Hospital', person: 'Dr. Anil Gupta', email: 'anil.gupta@maxhealthcare.com', phone: '+91 99001 23456', color: '#10b981', initials: 'MH' },
+  { id: 4, company: 'Manipal Hospitals', person: 'Srinivas Rao', email: 'srinivas.rao@manipalhospitals.com', phone: '+91 97654 32100', color: '#f97316', initials: 'MP' },
+  { id: 5, company: 'KIMS Hospital', person: 'Dr. Kavitha Reddy', email: 'kavitha.reddy@kimshospitals.com', phone: '+91 96543 21098', color: '#06b6d4', initials: 'KH' },
+];
+
+const equipCategories = [
+  { id: 'imaging', name: 'Medical Imaging', emoji: '🏥', count: 4 },
+  { id: 'lifesupport', name: 'Life Support', emoji: '❤️', count: 3 },
+  { id: 'hvac', name: 'HVAC', emoji: '❄️', count: 2 },
+  { id: 'elevators', name: 'Elevators', emoji: '🛗', count: 2 },
+  { id: 'power', name: 'Power Systems', emoji: '⚡', count: 1 },
+];
+
+const equipment = [
+  { id: 1, name: 'MRI Scanner', model: 'GE Signa HDxt 1.5T', sn: 'GE2024MRI001', location: 'Radiology, Floor 2', condition: 'good', cat: 'imaging', checked: true, coverage: 'full' },
+  { id: 2, name: 'MRI Scanner', model: 'Siemens Magnetom Aera', sn: 'SI2023MRI002', location: 'Radiology, Floor 2', condition: 'fair', cat: 'imaging', checked: false, coverage: 'full' },
+  { id: 3, name: 'CT Scanner', model: 'Philips Ingenuity', sn: 'PH2024CT001', location: 'Radiology, Floor 2', condition: 'good', cat: 'imaging', checked: true, coverage: 'full' },
+  { id: 4, name: 'X-Ray Machine', model: 'Fujifilm FDR', sn: 'FJ2024XR001', location: 'Emergency, Floor 1', condition: 'good', cat: 'imaging', checked: true, coverage: 'preventive' },
+];
+
+const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+/* ============================================
+   STATE
+   ============================================ */
+const allStepKeys = ['nomenclature','counterparty','details','equipment','services','billing','events','review'];
+const stepLabels = {
+  nomenclature: 'Type',
+  counterparty: 'Party',
+  details: 'Details',
+  equipment: 'Equipment',
+  services: 'Services',
+  billing: 'Billing',
+  events: 'Timeline',
+  review: 'Review',
+};
+
+let currentStepIndex = 0;
+let selectedNom = 'amc';
+let selectedContact = 1;
+let activeCat = 'imaging';
+let showEquipmentStep = true;
+
+function getVisibleSteps() {
+  if (showEquipmentStep) return [...allStepKeys];
+  return allStepKeys.filter(s => s !== 'equipment');
+}
+
+/* ============================================
+   RENDER: STEP PROGRESS
+   ============================================ */
+function renderProgress() {
+  const bar = document.getElementById('stepProgress');
+  const steps = getVisibleSteps();
+  let html = '<div class="step-indicator">';
+
+  steps.forEach((key, i) => {
+    const isActive = i === currentStepIndex;
+    const isCompleted = i < currentStepIndex;
+
+    if (i > 0) {
+      html += `<div class="step-connector ${isCompleted ? 'completed' : ''}"></div>`;
+    }
+
+    html += `<div class="step-node" data-key="${key}">`;
+    html += `<div class="step-circle-wrap" onclick="jumpToStep(${i})">`;
+
+    if (isCompleted) {
+      html += `<div class="step-circle completed"><svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg></div>`;
+      html += `<div class="step-label completed">${stepLabels[key]}</div>`;
+    } else if (isActive) {
+      html += `<div class="step-circle active">${i + 1}</div>`;
+      html += `<div class="step-label active">${stepLabels[key]}</div>`;
+    } else {
+      html += `<div class="step-circle">${i + 1}</div>`;
+      html += `<div class="step-label">${stepLabels[key]}</div>`;
+    }
+
+    html += `</div></div>`;
+  });
+
+  html += '</div>';
+  bar.innerHTML = html;
+}
+
+/* ============================================
+   RENDER: NOMENCLATURE CARDS
+   ============================================ */
+function renderNomCards() {
+  const grid = document.getElementById('nomGrid');
+  grid.innerHTML = nomenclatures.map(n => {
+    const sel = selectedNom === n.id;
+    const typeClass = n.type === 'equipment' ? 'nom-type-equipment' : (n.type === 'entity' ? 'nom-type-entity' : 'nom-type-general');
+    const typeLabel = n.type.charAt(0).toUpperCase() + n.type.slice(1);
+
+    return `
+      <div class="nom-card ${sel ? 'selected' : ''}" onclick="selectNom('${n.id}')">
+        <div class="nom-check">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+        </div>
+        <div class="nom-icon" style="background: ${n.color}15; color: ${n.color};">${n.icon}</div>
+        <div class="nom-short" style="color: ${n.color};">${n.short}</div>
+        <div class="nom-full">${n.full}</div>
+        <div class="nom-desc">${n.desc}</div>
+        <span class="nom-type-badge ${typeClass}">${typeLabel}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+function selectNom(id) {
+  selectedNom = id;
+  const nom = nomenclatures.find(n => n.id === id);
+  const oldShowEquip = showEquipmentStep;
+  showEquipmentStep = nom.needsEquipment;
+
+  renderNomCards();
+
+  // Update contract name
+  const nameInput = document.getElementById('contractName');
+  const contact = contacts.find(c => c.id === selectedContact);
+  if (nameInput && contact) {
+    nameInput.value = `${nom.short} — ${contact.company} — 2026`;
+  }
+
+  // If equipment visibility changed, re-render progress
+  if (oldShowEquip !== showEquipmentStep) {
+    renderProgress();
+    showToast(showEquipmentStep
+      ? 'Equipment step added — ' + nom.short + ' is equipment-based'
+      : 'Equipment step removed — ' + nom.short + ' is not equipment-based'
+    );
+  }
+}
+
+/* ============================================
+   RENDER: CONTACTS
+   ============================================ */
+function renderContacts(filter) {
+  const list = document.getElementById('contactList');
+  const filtered = filter
+    ? contacts.filter(c => c.company.toLowerCase().includes(filter) || c.person.toLowerCase().includes(filter))
+    : contacts;
+
+  list.innerHTML = filtered.map(c => {
+    const sel = selectedContact === c.id;
+    return `
+      <div class="contact-card ${sel ? 'selected' : ''}" onclick="selectContact(${c.id})">
+        <div class="contact-avatar" style="background: ${c.color};">${c.initials}</div>
+        <div class="contact-info">
+          <div class="c-name">${c.company}</div>
+          <div class="c-person">${c.person}</div>
+          <div class="c-details">
+            <span class="c-detail">&#9993; ${c.email}</span>
+            <span class="c-detail">&#9742; ${c.phone}</span>
+          </div>
+        </div>
+        <div class="contact-check">
+          ${sel ? '<svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>' : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function selectContact(id) {
+  selectedContact = id;
+  renderContacts();
+
+  const nom = nomenclatures.find(n => n.id === selectedNom);
+  const contact = contacts.find(c => c.id === id);
+  const nameInput = document.getElementById('contractName');
+  if (nameInput && nom && contact) {
+    nameInput.value = `${nom.short} — ${contact.company} — 2026`;
+  }
+}
+
+/* ============================================
+   RENDER: EQUIPMENT
+   ============================================ */
+function renderEquipSidebar() {
+  const sidebar = document.getElementById('equipSidebar');
+  sidebar.innerHTML = equipCategories.map(c => `
+    <div class="equip-cat-item ${c.id === activeCat ? 'active' : ''}" onclick="selectCat('${c.id}')">
+      <span class="cat-emoji">${c.emoji}</span>
+      <span>${c.name}</span>
+      <span class="cat-count">${c.count}</span>
+    </div>
+  `).join('');
+}
+
+function selectCat(id) {
+  activeCat = id;
+  renderEquipSidebar();
+  // Only show imaging equipment for demo
+  if (id !== 'imaging') {
+    document.getElementById('equipMain').innerHTML = `
+      <div style="text-align:center;padding:60px 20px;color:var(--cn-text-muted);">
+        <div style="font-size:40px;margin-bottom:12px;">${equipCategories.find(c=>c.id===id).emoji}</div>
+        <div style="font-size:14px;font-weight:600;color:var(--cn-text-secondary);">No ${equipCategories.find(c=>c.id===id).name} equipment shown in demo</div>
+        <div style="font-size:12px;margin-top:4px;">Select Medical Imaging to see equipment items</div>
+      </div>
+    `;
+  } else {
+    renderEquipList();
+  }
+}
+
+function renderEquipList() {
+  const main = document.getElementById('equipMain');
+  main.innerHTML = equipment.map(e => {
+    const condClass = e.condition;
+    const condLabel = e.condition.charAt(0).toUpperCase() + e.condition.slice(1);
+    const coverageOptions = [
+      { val: 'full', label: 'Full (CMC)' },
+      { val: 'preventive', label: 'Preventive Only (PMC)' },
+      { val: 'breakdown', label: 'Breakdown Only (BMC)' },
+    ];
+
+    return `
+      <div class="equip-item ${e.checked ? 'checked' : ''}" onclick="toggleEquip(${e.id})">
+        <div class="equip-checkbox">
+          ${e.checked ? '<svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>' : ''}
+        </div>
+        <div class="equip-item-info">
+          <div class="ei-name">${e.name}</div>
+          <div class="ei-model">${e.model}</div>
+          <div class="ei-meta">
+            <span>SN: ${e.sn}</span>
+            <span>&#128205; ${e.location}</span>
+            <span class="condition-badge ${condClass}">${condLabel}</span>
+          </div>
+        </div>
+        <div class="equip-item-right" onclick="event.stopPropagation();">
+          <select class="coverage-select" onchange="setCoverage(${e.id}, this.value)">
+            ${coverageOptions.map(o => `<option value="${o.val}" ${e.coverage === o.val ? 'selected' : ''}>${o.label}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function toggleEquip(id) {
+  const eq = equipment.find(e => e.id === id);
+  eq.checked = !eq.checked;
+  renderEquipList();
+  updateEquipSummary();
+}
+
+function setCoverage(id, val) {
+  const eq = equipment.find(e => e.id === id);
+  eq.coverage = val;
+}
+
+function updateEquipSummary() {
+  const checked = equipment.filter(e => e.checked);
+  document.getElementById('equipCount').textContent = checked.length;
+
+  const counts = {};
+  checked.forEach(e => {
+    const type = e.name;
+    counts[type] = (counts[type] || 0) + 1;
+  });
+  const detail = Object.entries(counts).map(([name, count]) => `${count} ${name}`).join(' + ');
+  document.getElementById('equipDetail').textContent = 'Total coverage: ' + (detail || 'None');
+}
+
+/* ============================================
+   RENDER: EVENTS TIMELINE
+   ============================================ */
+function renderTimeline() {
+  const container = document.getElementById('timelineContainer');
+  const checkedEquip = equipment.filter(e => e.checked);
+
+  // Service events: Q1(Jan), Q2(Apr), Q3(Jul), Q4(Oct) - staggered per equipment
+  const serviceMonths = [
+    [0, 3, 6, 9],   // equipment 1
+    [1, 4, 7, 10],  // equipment 2 (staggered by 1 month)
+    [0, 3, 6, 9],   // equipment 3
+  ];
+
+  // Billing events: quarterly end (Mar, Jun, Sep, Dec)
+  const billingMonths = [2, 5, 8, 11];
+  const pmLabels = ['Q1 PM', 'Q2 PM', 'Q3 PM', 'Q4 PM'];
+  const billingLabels = ['Q1 Pay', 'Q2 Pay', 'Q3 Pay', 'Q4 Pay'];
+  const pmDates = ['15 Jan', '15 Apr', '15 Jul', '15 Oct'];
+  const pmDatesStagger = ['15 Feb', '15 May', '15 Aug', '15 Nov'];
+  const billingDates = ['31 Mar', '30 Jun', '30 Sep', '31 Dec'];
+
+  let html = '';
+
+  // Header
+  html += '<div class="timeline-header">';
+  html += '<div class="tl-label-col">Equipment</div>';
+  html += '<div class="tl-months">';
+  months.forEach(m => {
+    html += `<div class="tl-month">${m}</div>`;
+  });
+  html += '</div></div>';
+
+  // Body
+  html += '<div class="timeline-body">';
+  checkedEquip.forEach((eq, eIdx) => {
+    const sMons = serviceMonths[eIdx % serviceMonths.length];
+    const dates = eIdx === 1 ? pmDatesStagger : pmDates;
+
+    // Service row
+    html += '<div class="tl-row">';
+    html += `<div class="tl-row-label">
+      <span class="tl-equip-name">${eq.name} #${eIdx + 1}</span>
+      <span class="tl-equip-sn">${eq.sn}</span>
+    </div>`;
+    html += '<div class="tl-row-events">';
+    for (let m = 0; m < 12; m++) {
+      html += '<div class="tl-cell">';
+      const sIdx = sMons.indexOf(m);
+      if (sIdx !== -1) {
+        html += `<div class="tl-event service">${pmLabels[sIdx]}
+          <div class="tl-tooltip">${pmLabels[sIdx]} — ${dates[sIdx]} 2026<br>${eq.name} (${eq.model})</div>
+        </div>`;
+      }
+      const bIdx = billingMonths.indexOf(m);
+      if (bIdx !== -1 && eIdx === 0) {
+        // show billing only on first equipment row to avoid repetition
+      }
+      html += '</div>';
+    }
+    html += '</div></div>';
+  });
+
+  // Billing row
+  html += '<div class="tl-row" style="background: #f0fdf4;">';
+  html += `<div class="tl-row-label">
+    <span class="tl-equip-name" style="color: var(--cn-good);">Billing Events</span>
+    <span class="tl-equip-sn">Quarterly payments</span>
+  </div>`;
+  html += '<div class="tl-row-events">';
+  for (let m = 0; m < 12; m++) {
+    html += '<div class="tl-cell">';
+    const bIdx = billingMonths.indexOf(m);
+    if (bIdx !== -1) {
+      html += `<div class="tl-event billing">${billingLabels[bIdx]}
+        <div class="tl-tooltip">${billingLabels[bIdx]} — ${billingDates[bIdx]} 2026<br>₹2,65,500 (quarterly installment)</div>
+      </div>`;
+    }
+    html += '</div>';
+  }
+  html += '</div></div>';
+
+  html += '</div>';
+
+  // Legend
+  html += `<div class="timeline-legend">
+    <div class="legend-item"><div class="legend-dot service"></div> Service / PM Visit</div>
+    <div class="legend-item"><div class="legend-dot billing"></div> Billing / Payment</div>
+  </div>`;
+
+  container.innerHTML = html;
+}
+
+/* ============================================
+   NAVIGATION
+   ============================================ */
+function goNext() {
+  const steps = getVisibleSteps();
+  if (currentStepIndex >= steps.length - 1) return;
+
+  const allStepEls = document.querySelectorAll('.wizard-step');
+  const currentKey = steps[currentStepIndex];
+  const nextKey = steps[currentStepIndex + 1];
+
+  // Exit current
+  allStepEls.forEach(el => {
+    if (el.dataset.step === currentKey) {
+      el.classList.remove('active');
+      el.classList.add('exit-left');
+      setTimeout(() => el.classList.remove('exit-left'), 400);
+    }
+  });
+
+  currentStepIndex++;
+
+  // Enter next
+  setTimeout(() => {
+    allStepEls.forEach(el => {
+      if (el.dataset.step === nextKey) {
+        el.classList.add('enter-right');
+        el.classList.add('active');
+        setTimeout(() => el.classList.remove('enter-right'), 50);
+      }
+    });
+
+    renderProgress();
+    updateNav();
+    onStepEnter(nextKey);
+  }, 150);
+}
+
+function goBack() {
+  const steps = getVisibleSteps();
+  if (currentStepIndex <= 0) return;
+
+  const allStepEls = document.querySelectorAll('.wizard-step');
+  const currentKey = steps[currentStepIndex];
+  const prevKey = steps[currentStepIndex - 1];
+
+  allStepEls.forEach(el => {
+    if (el.dataset.step === currentKey) {
+      el.classList.remove('active');
+      el.classList.add('enter-right');
+      setTimeout(() => el.classList.remove('enter-right'), 400);
+    }
+  });
+
+  currentStepIndex--;
+
+  setTimeout(() => {
+    allStepEls.forEach(el => {
+      if (el.dataset.step === prevKey) {
+        el.classList.add('exit-left');
+        el.classList.add('active');
+        setTimeout(() => el.classList.remove('exit-left'), 50);
+      }
+    });
+
+    renderProgress();
+    updateNav();
+  }, 150);
+}
+
+function jumpToStep(idx) {
+  if (idx >= currentStepIndex) return; // only allow jumping to completed steps
+  const steps = getVisibleSteps();
+  const allStepEls = document.querySelectorAll('.wizard-step');
+  const currentKey = steps[currentStepIndex];
+  const targetKey = steps[idx];
+
+  allStepEls.forEach(el => {
+    el.classList.remove('active', 'exit-left', 'enter-right');
+  });
+
+  currentStepIndex = idx;
+
+  setTimeout(() => {
+    allStepEls.forEach(el => {
+      if (el.dataset.step === targetKey) {
+        el.classList.add('active');
+      }
+    });
+    renderProgress();
+    updateNav();
+  }, 50);
+}
+
+function updateNav() {
+  const steps = getVisibleSteps();
+  const btnBack = document.getElementById('btnBack');
+  const btnNext = document.getElementById('btnNext');
+
+  btnBack.style.visibility = currentStepIndex === 0 ? 'hidden' : 'visible';
+
+  if (currentStepIndex === steps.length - 1) {
+    btnNext.style.display = 'none';
+  } else {
+    btnNext.style.display = '';
+  }
+}
+
+function onStepEnter(key) {
+  if (key === 'equipment') {
+    renderEquipSidebar();
+    renderEquipList();
+    updateEquipSummary();
+  }
+  if (key === 'events') {
+    renderTimeline();
+  }
+}
+
+/* ============================================
+   UTILITIES
+   ============================================ */
+function toggleSwitch(el) {
+  el.classList.toggle('on');
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.querySelector('.toast-msg').textContent = msg;
+  toast.querySelector('.toast-icon').textContent = '✓';
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2500);
+}
+
+function toggleJourney() {
+  document.getElementById('journeyOverlay').classList.toggle('active');
+}
+
+/* ============================================
+   SEARCH
+   ============================================ */
+document.getElementById('contactSearch').addEventListener('input', function() {
+  renderContacts(this.value.toLowerCase());
+});
+
+/* ============================================
+   INIT
+   ============================================ */
+function init() {
+  renderProgress();
+  renderNomCards();
+  renderContacts();
+  updateNav();
+}
+
+init();
+</script>
+</body>
+</html>

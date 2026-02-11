@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ContractNest — Equipment Registry [P1]</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --cn-primary: #1e3a5f; --cn-primary-light: #2d5a8e; --cn-primary-50: #eef4fb; --cn-primary-100: #d4e4f7;
+  --cn-accent: #f97316; --cn-equipment: #d97706; --cn-equipment-bg: #fffbeb; --cn-equipment-border: #fde68a;
+  --cn-entity: #059669; --cn-entity-bg: #ecfdf5; --cn-good: #10b981; --cn-fair: #f59e0b; --cn-poor: #ef4444; --cn-critical: #dc2626;
+  --cn-bg: #f8fafc; --cn-surface: #ffffff; --cn-border: #e2e8f0; --cn-border-light: #f1f5f9;
+  --cn-text: #0f172a; --cn-text-secondary: #475569; --cn-text-muted: #94a3b8;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05); --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.08), 0 8px 10px -6px rgba(0,0,0,0.04);
+  --radius-sm: 6px; --radius-md: 10px; --radius-lg: 14px; --radius-xl: 20px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Inter', -apple-system, sans-serif; background: var(--cn-bg); color: var(--cn-text); -webkit-font-smoothing: antialiased; }
+
+/* Phase Badge */
+.phase-badge { position: fixed; top: 20px; right: 20px; z-index: 1000; background: linear-gradient(135deg, var(--cn-equipment), #b45309); color: white; padding: 8px 18px; border-radius: 30px; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; box-shadow: var(--shadow-lg); display: flex; align-items: center; gap: 6px; }
+.phase-badge::before { content: ''; width: 8px; height: 8px; background: #fbbf24; border-radius: 50%; animation: pulse-dot 2s infinite; }
+@keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+/* Journey Map */
+.journey-map-btn { position: fixed; bottom: 24px; right: 24px; z-index: 1000; background: var(--cn-surface); border: 1px solid var(--cn-border); border-radius: var(--radius-lg); padding: 12px 20px; font-size: 13px; font-weight: 600; color: var(--cn-text); cursor: pointer; box-shadow: var(--shadow-lg); display: flex; align-items: center; gap: 8px; transition: all 0.2s; }
+.journey-map-btn:hover { box-shadow: var(--shadow-xl); transform: translateY(-2px); }
+
+/* Layout */
+.app-shell { display: flex; height: 100vh; overflow: hidden; }
+
+/* Page Header */
+.page-header { padding: 24px 32px 20px; border-bottom: 1px solid var(--cn-border); background: var(--cn-surface); }
+.page-header .breadcrumb { font-size: 12px; color: var(--cn-text-muted); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+.page-header .breadcrumb a { color: var(--cn-primary); text-decoration: none; }
+.page-header h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.3px; display: flex; align-items: center; gap: 12px; }
+.page-header .subtitle { font-size: 13px; color: var(--cn-text-secondary); margin-top: 4px; }
+
+/* Sidebar */
+.sidebar { width: 280px; min-width: 280px; background: var(--cn-surface); border-right: 1px solid var(--cn-border); display: flex; flex-direction: column; overflow: hidden; }
+.sidebar-header { padding: 20px 20px 16px; border-bottom: 1px solid var(--cn-border-light); }
+.sidebar-header h3 { font-size: 13px; font-weight: 700; color: var(--cn-text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; }
+.sidebar-search { width: 100%; padding: 8px 12px; border: 1px solid var(--cn-border); border-radius: var(--radius-sm); font-size: 13px; font-family: inherit; background: var(--cn-bg); }
+.sidebar-search:focus { outline: none; border-color: var(--cn-primary); }
+.sidebar-list { flex: 1; overflow-y: auto; padding: 8px; }
+.sidebar-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-md); cursor: pointer; transition: all 0.15s; margin-bottom: 2px; }
+.sidebar-item:hover { background: var(--cn-bg); }
+.sidebar-item.active { background: var(--cn-primary-50); }
+.sidebar-item .cat-icon { width: 32px; height: 32px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+.sidebar-item .cat-info { flex: 1; min-width: 0; }
+.sidebar-item .cat-name { font-size: 13px; font-weight: 600; color: var(--cn-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sidebar-item .cat-count { font-size: 11px; color: var(--cn-text-muted); }
+.sidebar-item .count-badge { background: var(--cn-bg); color: var(--cn-text-secondary); font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; flex-shrink: 0; }
+.sidebar-item.active .count-badge { background: var(--cn-primary); color: white; }
+
+/* Main Content */
+.main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.content-area { flex: 1; overflow-y: auto; padding: 24px 32px; }
+
+/* View Toggle & Actions */
+.content-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; gap: 16px; flex-wrap: wrap; }
+.toolbar-left { display: flex; align-items: center; gap: 12px; }
+.toolbar-left .result-count { font-size: 13px; color: var(--cn-text-secondary); }
+.toolbar-left .result-count strong { color: var(--cn-text); font-weight: 700; }
+.toolbar-right { display: flex; align-items: center; gap: 8px; }
+.add-btn { display: flex; align-items: center; gap: 6px; padding: 9px 18px; background: linear-gradient(135deg, var(--cn-primary), var(--cn-primary-light)); color: white; border: none; border-radius: var(--radius-md); font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.2s; }
+.add-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+.import-btn { display: flex; align-items: center; gap: 6px; padding: 9px 16px; background: var(--cn-surface); border: 1px solid var(--cn-border); border-radius: var(--radius-md); font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; color: var(--cn-text-secondary); transition: all 0.2s; }
+.import-btn:hover { border-color: var(--cn-primary); color: var(--cn-primary); }
+
+/* Empty State */
+.empty-state { text-align: center; padding: 60px 24px; animation: fadeInUp 0.5s ease; }
+.empty-state .illustration { font-size: 64px; margin-bottom: 20px; display: flex; justify-content: center; gap: 12px; filter: grayscale(0.3); }
+.empty-state h2 { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+.empty-state p { font-size: 14px; color: var(--cn-text-secondary); max-width: 480px; margin: 0 auto 28px; line-height: 1.6; }
+.suggestion-grid { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; max-width: 600px; margin: 0 auto 24px; }
+.suggestion-chip { display: flex; align-items: center; gap: 8px; padding: 10px 18px; border: 1.5px solid var(--cn-border); border-radius: 30px; background: var(--cn-surface); cursor: pointer; transition: all 0.2s; font-size: 13px; font-weight: 500; color: var(--cn-text); }
+.suggestion-chip:hover { border-color: var(--cn-equipment); background: var(--cn-equipment-bg); color: var(--cn-equipment); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.suggestion-chip.added { border-color: var(--cn-good); background: #ecfdf5; color: var(--cn-good); }
+.suggestion-chip .chip-icon { font-size: 16px; }
+.custom-add-link { font-size: 13px; color: var(--cn-primary); font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; }
+.custom-add-link:hover { text-decoration: underline; }
+
+/* Equipment Grid */
+.equip-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+
+/* Equipment Card */
+.equip-card { background: var(--cn-surface); border: 1px solid var(--cn-border); border-radius: var(--radius-lg); padding: 20px; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden; }
+.equip-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); border-color: var(--cn-primary-100); }
+.equip-card .card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
+.equip-card .equip-icon { width: 44px; height: 44px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 22px; background: var(--cn-equipment-bg); }
+.condition-dot { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 12px; }
+.condition-dot.good { background: #d1fae5; color: var(--cn-good); }
+.condition-dot.fair { background: #fef3c7; color: var(--cn-fair); }
+.condition-dot.poor { background: #fee2e2; color: var(--cn-poor); }
+.equip-card .equip-name { font-size: 15px; font-weight: 700; margin-bottom: 2px; color: var(--cn-text); }
+.equip-card .equip-model { font-size: 12px; color: var(--cn-text-muted); margin-bottom: 12px; }
+.equip-card .equip-details { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.equip-detail { display: flex; flex-direction: column; gap: 1px; }
+.equip-detail .label { font-size: 10px; font-weight: 600; color: var(--cn-text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.equip-detail .value { font-size: 12px; font-weight: 500; color: var(--cn-text-secondary); }
+.warranty-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 8px; margin-top: 10px; }
+.warranty-badge.active { background: #d1fae5; color: var(--cn-good); }
+.warranty-badge.expiring { background: #fef3c7; color: var(--cn-fair); }
+.warranty-badge.expired { background: #fee2e2; color: var(--cn-poor); }
+.equip-card .contract-link { display: flex; align-items: center; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--cn-border-light); font-size: 11px; color: var(--cn-primary); font-weight: 600; }
+
+/* Slide-in Panel */
+.slide-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 520px; max-width: 95vw; background: var(--cn-surface); z-index: 600; transform: translateX(100%); transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: -10px 0 40px rgba(0,0,0,0.12); display: flex; flex-direction: column; }
+.slide-panel.open { transform: translateX(0); }
+.slide-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.2); backdrop-filter: blur(2px); z-index: 599; display: none; }
+.slide-backdrop.open { display: block; }
+.panel-header { padding: 24px 28px; border-bottom: 1px solid var(--cn-border); display: flex; align-items: center; justify-content: space-between; }
+.panel-header h2 { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+.panel-close { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--cn-border); background: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--cn-text-secondary); transition: all 0.2s; }
+.panel-close:hover { background: var(--cn-bg); }
+.panel-body { flex: 1; overflow-y: auto; padding: 24px 28px; }
+.panel-footer { padding: 16px 28px; border-top: 1px solid var(--cn-border); display: flex; gap: 12px; justify-content: flex-end; }
+.panel-footer .btn-secondary { padding: 10px 20px; border: 1px solid var(--cn-border); border-radius: var(--radius-md); font-size: 13px; font-weight: 600; background: var(--cn-surface); cursor: pointer; font-family: inherit; color: var(--cn-text-secondary); }
+.panel-footer .btn-primary { padding: 10px 24px; background: linear-gradient(135deg, var(--cn-primary), var(--cn-primary-light)); color: white; border: none; border-radius: var(--radius-md); font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; }
+
+/* Form Styles */
+.form-section { margin-bottom: 24px; }
+.form-section h4 { font-size: 11px; font-weight: 700; color: var(--cn-text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--cn-border-light); }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-group.full { grid-column: 1 / -1; }
+.form-group label { font-size: 12px; font-weight: 600; color: var(--cn-text-secondary); }
+.form-group label .required { color: var(--cn-poor); }
+.form-group input, .form-group select, .form-group textarea {
+  padding: 9px 12px; border: 1px solid var(--cn-border); border-radius: var(--radius-sm);
+  font-size: 13px; font-family: inherit; background: var(--cn-surface); color: var(--cn-text); transition: border-color 0.2s;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--cn-primary); box-shadow: 0 0 0 3px rgba(30,58,95,0.08); }
+.form-group textarea { resize: vertical; min-height: 60px; }
+
+/* Criticality Selector */
+.criticality-options { display: flex; gap: 8px; }
+.crit-option { flex: 1; padding: 10px; border: 1.5px solid var(--cn-border); border-radius: var(--radius-md); text-align: center; cursor: pointer; transition: all 0.2s; }
+.crit-option:hover { border-color: var(--cn-primary-100); }
+.crit-option.selected { border-width: 2px; }
+.crit-option .crit-label { font-size: 12px; font-weight: 600; display: block; margin-top: 4px; }
+.crit-option.low { } .crit-option.low.selected { border-color: var(--cn-good); background: #ecfdf5; }
+.crit-option.medium { } .crit-option.medium.selected { border-color: var(--cn-fair); background: #fffbeb; }
+.crit-option.high { } .crit-option.high.selected { border-color: var(--cn-accent); background: #fff7ed; }
+.crit-option.critical { } .crit-option.critical.selected { border-color: var(--cn-poor); background: #fef2f2; }
+
+/* Specs Key-Value */
+.specs-list { display: flex; flex-direction: column; gap: 8px; }
+.spec-row { display: flex; gap: 8px; align-items: center; }
+.spec-row input { flex: 1; }
+.spec-remove { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--cn-border); background: none; cursor: pointer; font-size: 14px; color: var(--cn-text-muted); display: flex; align-items: center; justify-content: center; }
+.spec-add { font-size: 12px; color: var(--cn-primary); font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; margin-top: 4px; }
+
+/* Group Creation */
+.group-section { background: var(--cn-bg); border-radius: var(--radius-lg); padding: 20px; margin-top: 24px; border: 1px dashed var(--cn-border); }
+.group-section h3 { font-size: 14px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+.group-section p { font-size: 12px; color: var(--cn-text-secondary); margin-bottom: 14px; }
+.group-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.group-chip { padding: 8px 14px; border-radius: var(--radius-md); border: 1px solid var(--cn-border); background: var(--cn-surface); font-size: 12px; font-weight: 500; display: flex; align-items: center; gap: 6px; }
+.group-chip .count { background: var(--cn-primary-50); color: var(--cn-primary); font-weight: 700; font-size: 11px; padding: 1px 7px; border-radius: 8px; }
+
+/* Bulk Import */
+.bulk-zone { border: 2px dashed var(--cn-border); border-radius: var(--radius-lg); padding: 40px; text-align: center; margin-top: 24px; transition: all 0.2s; cursor: pointer; }
+.bulk-zone:hover { border-color: var(--cn-primary); background: var(--cn-primary-50); }
+.bulk-zone .upload-icon { font-size: 32px; margin-bottom: 12px; opacity: 0.7; }
+.bulk-zone h4 { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.bulk-zone p { font-size: 12px; color: var(--cn-text-muted); }
+
+/* Animations */
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+  .content-area { padding: 16px; }
+  .equip-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="phase-badge">P1 — Equipment</div>
+<button class="journey-map-btn" onclick="toggleJourney()">🗺️ Journey Map</button>
+
+<!-- Journey Overlay (same across files) -->
+<div class="journey-overlay" id="journeyOverlay" onclick="toggleJourney()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);z-index:2000;justify-content:center;align-items:center">
+  <div style="background:white;border-radius:20px;padding:32px;max-width:720px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.15)" onclick="event.stopPropagation()">
+    <h3 style="font-size:18px;font-weight:700;margin-bottom:20px">UX Journey Map</h3>
+    <div style="display:flex;flex-wrap:wrap;gap:12px">
+      <a href="01-nomenclature-picker.html" style="flex:1;min-width:160px;padding:14px;border-radius:10px;border:2px solid #e2e8f0;font-size:13px;text-decoration:none;color:#0f172a"><div style="font-size:11px;font-weight:700;color:#1e3a5f;margin-bottom:4px">P0</div><div style="font-weight:600">Nomenclature Picker</div></a>
+      <a href="02-equipment-registry.html" style="flex:1;min-width:160px;padding:14px;border-radius:10px;border:2px solid #1e3a5f;background:#eef4fb;font-size:13px;text-decoration:none;color:#0f172a"><div style="font-size:11px;font-weight:700;color:#1e3a5f;margin-bottom:4px">P1</div><div style="font-weight:600">Equipment Registry</div></a>
+      <a href="03-entity-registry.html" style="flex:1;min-width:160px;padding:14px;border-radius:10px;border:2px solid #e2e8f0;font-size:13px;text-decoration:none;color:#0f172a"><div style="font-size:11px;font-weight:700;color:#1e3a5f;margin-bottom:4px">P2</div><div style="font-weight:600">Entity Registry</div></a>
+      <a href="04-contract-wizard-enhanced.html" style="flex:1;min-width:160px;padding:14px;border-radius:10px;border:2px solid #e2e8f0;font-size:13px;text-decoration:none;color:#0f172a"><div style="font-size:11px;font-weight:700;color:#1e3a5f;margin-bottom:4px">P1+P2</div><div style="font-weight:600">Contract Wizard</div></a>
+      <a href="05-contract-dashboard.html" style="flex:1;min-width:160px;padding:14px;border-radius:10px;border:2px solid #e2e8f0;font-size:13px;text-decoration:none;color:#0f172a"><div style="font-size:11px;font-weight:700;color:#1e3a5f;margin-bottom:4px">P0+P3</div><div style="font-weight:600">Contract Dashboard</div></a>
+      <a href="06-buyer-experience.html" style="flex:1;min-width:160px;padding:14px;border-radius:10px;border:2px solid #e2e8f0;font-size:13px;text-decoration:none;color:#0f172a"><div style="font-size:11px;font-weight:700;color:#1e3a5f;margin-bottom:4px">P2+P4</div><div style="font-weight:600">Buyer Experience</div></a>
+    </div>
+  </div>
+</div>
+
+<div class="app-shell">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h3>Equipment Categories</h3>
+      <input class="sidebar-search" type="text" placeholder="Search categories...">
+    </div>
+    <div class="sidebar-list" id="sidebarList"></div>
+  </div>
+
+  <!-- Main -->
+  <div class="main-content">
+    <div class="page-header">
+      <div class="breadcrumb"><a href="#">Settings</a> <span>›</span> <a href="#">Configure</a> <span>›</span> Resources</div>
+      <h1>🔧 Equipment Registry</h1>
+      <div class="subtitle">Register and manage the equipment you service. This data powers contract creation, scheduling, and evidence tracking.</div>
+    </div>
+
+    <div class="content-area" id="contentArea">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+</div>
+
+<!-- Slide-in Add/Edit Panel -->
+<div class="slide-backdrop" id="slideBackdrop" onclick="closePanel()"></div>
+<div class="slide-panel" id="slidePanel">
+  <div class="panel-header">
+    <h2>🔧 <span id="panelTitle">Add Equipment</span></h2>
+    <button class="panel-close" onclick="closePanel()">&times;</button>
+  </div>
+  <div class="panel-body">
+    <div class="form-section">
+      <h4>Basic Information</h4>
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Equipment Name <span class="required">*</span></label>
+          <input type="text" placeholder="e.g., MRI Scanner" value="MRI Scanner">
+        </div>
+        <div class="form-group">
+          <label>Make / Manufacturer</label>
+          <input type="text" placeholder="e.g., GE Healthcare" value="GE Healthcare">
+        </div>
+        <div class="form-group">
+          <label>Model</label>
+          <input type="text" placeholder="e.g., Signa HDxt" value="Signa HDxt 1.5T">
+        </div>
+        <div class="form-group">
+          <label>Serial Number</label>
+          <input type="text" placeholder="e.g., GE2024MRI001" value="GE2024MRI001">
+        </div>
+        <div class="form-group">
+          <label>Asset Tag</label>
+          <input type="text" placeholder="e.g., AST-MRI-001" value="AST-MRI-001">
+        </div>
+        <div class="form-group">
+          <label>Category</label>
+          <select>
+            <option>Medical Imaging</option>
+            <option>Life Support</option>
+            <option>Sterilization</option>
+            <option>Laboratory</option>
+            <option>HVAC</option>
+            <option>Elevator</option>
+            <option>Power Systems</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Location</label>
+          <input type="text" placeholder="e.g., Radiology Dept, Floor 2" value="Radiology Dept, Floor 2">
+        </div>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <h4>Warranty & Dates</h4>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Purchase Date</label>
+          <input type="date" value="2023-06-15">
+        </div>
+        <div class="form-group">
+          <label>Warranty Expiry</label>
+          <input type="date" value="2026-06-15">
+        </div>
+        <div class="form-group">
+          <label>Last Maintenance</label>
+          <input type="date" value="2026-01-10">
+        </div>
+        <div class="form-group">
+          <label>Next Maintenance</label>
+          <input type="date" value="2026-04-10">
+        </div>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <h4>Condition & Criticality</h4>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Condition</label>
+          <select>
+            <option value="good" style="color:#10b981">🟢 Good</option>
+            <option value="fair" style="color:#f59e0b">🟡 Fair</option>
+            <option value="poor" style="color:#ef4444">🔴 Poor</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Criticality</label>
+          <div class="criticality-options">
+            <div class="crit-option low" onclick="selectCrit(this)"><span>🟢</span><span class="crit-label">Low</span></div>
+            <div class="crit-option medium" onclick="selectCrit(this)"><span>🟡</span><span class="crit-label">Medium</span></div>
+            <div class="crit-option high selected" onclick="selectCrit(this)"><span>🟠</span><span class="crit-label">High</span></div>
+            <div class="crit-option critical" onclick="selectCrit(this)"><span>🔴</span><span class="crit-label">Critical</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <h4>Specifications</h4>
+      <div class="specs-list">
+        <div class="spec-row">
+          <input type="text" placeholder="Key" value="Field Strength" style="flex:0.8">
+          <input type="text" placeholder="Value" value="1.5 Tesla">
+          <button class="spec-remove">&times;</button>
+        </div>
+        <div class="spec-row">
+          <input type="text" placeholder="Key" value="Bore Size" style="flex:0.8">
+          <input type="text" placeholder="Value" value="60 cm">
+          <button class="spec-remove">&times;</button>
+        </div>
+        <div class="spec-row">
+          <input type="text" placeholder="Key" value="Weight" style="flex:0.8">
+          <input type="text" placeholder="Value" value="7,200 kg">
+          <button class="spec-remove">&times;</button>
+        </div>
+      </div>
+      <span class="spec-add">+ Add specification</span>
+    </div>
+
+    <div class="form-section">
+      <h4>Owner / Buyer</h4>
+      <div class="form-group full">
+        <label>Whose equipment is this?</label>
+        <select>
+          <option>-- Search contacts --</option>
+          <option selected>Apollo Hospitals — Dr. Rajesh Kumar</option>
+          <option>Fortis Healthcare — Admin Dept</option>
+          <option>Max Super Specialty — Biomedical Dept</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <h4>Active Contracts</h4>
+      <div style="background: var(--cn-bg); border-radius: var(--radius-md); padding: 14px; display: flex; align-items: center; gap: 12px;">
+        <div style="width: 8px; height: 8px; border-radius: 50%; background: var(--cn-good);"></div>
+        <div style="flex: 1;">
+          <div style="font-size: 13px; font-weight: 600;">AMC — Apollo Hospitals — MRI Maintenance 2026</div>
+          <div style="font-size: 11px; color: var(--cn-text-muted);">Contract #CON-10042 • Active until Dec 2026</div>
+        </div>
+        <span style="font-size: 12px; color: var(--cn-primary); font-weight: 600; cursor: pointer;">View →</span>
+      </div>
+    </div>
+  </div>
+  <div class="panel-footer">
+    <button class="btn-secondary" onclick="closePanel()">Cancel</button>
+    <button class="btn-primary" onclick="closePanel()">Save Equipment</button>
+  </div>
+</div>
+
+<script>
+// Equipment Data
+const categories = [
+  { id: 'medical_imaging', name: 'Medical Imaging', icon: '🔬', count: 8 },
+  { id: 'life_support', name: 'Life Support', icon: '💓', count: 5 },
+  { id: 'sterilization', name: 'Sterilization', icon: '🧪', count: 3 },
+  { id: 'hvac', name: 'HVAC Systems', icon: '❄️', count: 12 },
+  { id: 'elevator', name: 'Elevators & Lifts', icon: '🛗', count: 6 },
+  { id: 'power', name: 'Power Systems', icon: '⚡', count: 4 },
+  { id: 'laboratory', name: 'Laboratory', icon: '🔭', count: 7 },
+];
+
+const equipment = [
+  { id: 1, name: 'MRI Scanner', make: 'GE Healthcare', model: 'Signa HDxt 1.5T', serial: 'GE2024MRI001', location: 'Radiology, Floor 2', condition: 'good', warranty: 'active', warrantyDate: '2026-06-15', warrantyDays: 124, category: 'medical_imaging', contracts: 1 },
+  { id: 2, name: 'MRI Scanner', make: 'Siemens Healthineers', model: 'Magnetom Aera', serial: 'SI2023MRI002', location: 'Radiology, Floor 2', condition: 'fair', warranty: 'expiring', warrantyDate: '2026-04-01', warrantyDays: 49, category: 'medical_imaging', contracts: 1 },
+  { id: 3, name: 'CT Scanner', make: 'Philips', model: 'Ingenuity CT', serial: 'PH2024CT001', location: 'Radiology, Floor 2', condition: 'good', warranty: 'active', warrantyDate: '2027-03-20', warrantyDays: 402, category: 'medical_imaging', contracts: 2 },
+  { id: 4, name: 'X-Ray Machine', make: 'Fujifilm', model: 'FDR D-EVO III', serial: 'FJ2024XR001', location: 'Emergency, Ground Floor', condition: 'good', warranty: 'active', warrantyDate: '2027-01-10', warrantyDays: 333, category: 'medical_imaging', contracts: 1 },
+  { id: 5, name: 'Digital Mammography', make: 'Hologic', model: 'Selenia Dimensions', serial: 'HL2023MM001', location: 'Women\'s Health, Floor 3', condition: 'good', warranty: 'expired', warrantyDate: '2025-12-01', warrantyDays: -72, category: 'medical_imaging', contracts: 0 },
+  { id: 6, name: 'Ultrasound Machine', make: 'GE Healthcare', model: 'LOGIQ E10s', serial: 'GE2024US001', location: 'OPD, Floor 1', condition: 'good', warranty: 'active', warrantyDate: '2027-08-15', warrantyDays: 550, category: 'medical_imaging', contracts: 1 },
+  { id: 7, name: 'C-Arm Fluoroscopy', make: 'Siemens', model: 'Cios Spin', serial: 'SI2024CA001', location: 'OT Complex, Floor 4', condition: 'fair', warranty: 'active', warrantyDate: '2026-11-30', warrantyDays: 292, category: 'medical_imaging', contracts: 1 },
+  { id: 8, name: 'Bone Densitometer', make: 'Hologic', model: 'Horizon DXA', serial: 'HL2024BD001', location: 'Ortho Dept, Floor 3', condition: 'good', warranty: 'active', warrantyDate: '2027-05-20', warrantyDays: 463, category: 'medical_imaging', contracts: 0 },
+];
+
+let selectedCategory = 'medical_imaging';
+let showEmpty = false;
+
+function renderSidebar() {
+  const list = document.getElementById('sidebarList');
+  list.innerHTML = categories.map(c => `
+    <div class="sidebar-item ${c.id === selectedCategory ? 'active' : ''}" onclick="selectCategory('${c.id}')">
+      <div class="cat-icon" style="background: var(--cn-equipment-bg)">${c.icon}</div>
+      <div class="cat-info">
+        <div class="cat-name">${c.name}</div>
+      </div>
+      <span class="count-badge">${c.count}</span>
+    </div>
+  `).join('');
+}
+
+function selectCategory(id) {
+  selectedCategory = id;
+  renderSidebar();
+  renderContent();
+}
+
+function renderContent() {
+  const area = document.getElementById('contentArea');
+
+  if (showEmpty) {
+    renderEmptyState(area);
+    return;
+  }
+
+  const catEquip = equipment.filter(e => e.category === selectedCategory);
+  const cat = categories.find(c => c.id === selectedCategory);
+
+  area.innerHTML = `
+    <div class="content-toolbar">
+      <div class="toolbar-left">
+        <span class="result-count"><strong>${catEquip.length}</strong> equipment items in <strong>${cat?.name || ''}</strong></span>
+      </div>
+      <div class="toolbar-right">
+        <button class="import-btn" onclick="alert('CSV/Excel import dialog would open')">📥 Import</button>
+        <button class="add-btn" onclick="openPanel()">+ Add Equipment</button>
+      </div>
+    </div>
+    <div class="equip-grid">
+      ${catEquip.map(e => `
+        <div class="equip-card" onclick="openPanel()" style="animation: fadeInUp 0.4s ease ${catEquip.indexOf(e) * 0.05}s both">
+          <div class="card-top">
+            <div class="equip-icon">${cat?.icon || '🔧'}</div>
+            <span class="condition-dot ${e.condition}">${e.condition === 'good' ? '🟢 Good' : e.condition === 'fair' ? '🟡 Fair' : '🔴 Poor'}</span>
+          </div>
+          <div class="equip-name">${e.name}</div>
+          <div class="equip-model">${e.make} • ${e.model}</div>
+          <div class="equip-details">
+            <div class="equip-detail"><span class="label">Serial</span><span class="value">${e.serial}</span></div>
+            <div class="equip-detail"><span class="label">Location</span><span class="value">${e.location}</span></div>
+          </div>
+          <span class="warranty-badge ${e.warranty}">
+            ${e.warranty === 'active' ? `🛡️ Warranty: ${e.warrantyDays}d left` : e.warranty === 'expiring' ? `⚠️ Expires in ${e.warrantyDays}d` : `❌ Expired ${Math.abs(e.warrantyDays)}d ago`}
+          </span>
+          ${e.contracts > 0 ? `<div class="contract-link">📄 ${e.contracts} active contract${e.contracts > 1 ? 's' : ''}</div>` : `<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--cn-border-light);font-size:11px;color:var(--cn-fair);font-weight:600">⚠️ No active contract</div>`}
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="group-section">
+      <h3>📦 Equipment Groups</h3>
+      <p>Group related equipment for faster contract creation. Select multiple items and create a named group.</p>
+      <div class="group-chips">
+        <div class="group-chip">Radiology MRI Machines <span class="count">2</span></div>
+        <div class="group-chip">Emergency Imaging <span class="count">3</span></div>
+        <div class="group-chip" style="border-style:dashed;color:var(--cn-primary);cursor:pointer">+ Create Group</div>
+      </div>
+    </div>
+
+    <div class="bulk-zone" onclick="alert('File picker would open for CSV/Excel upload')">
+      <div class="upload-icon">📤</div>
+      <h4>Bulk Import Equipment</h4>
+      <p>Drag & drop a CSV or Excel file, or click to browse. We'll map columns and preview before importing.</p>
+    </div>
+  `;
+}
+
+function renderEmptyState(area) {
+  area.innerHTML = `
+    <div class="empty-state">
+      <div class="illustration">🔬 ❄️ ⚡ 🛗 🧪</div>
+      <h2>Tell us what you service</h2>
+      <p>As a <strong>Healthcare</strong> services provider, you likely work with the following equipment types. Click to add them to your catalog, or add your own.</p>
+      <div class="suggestion-grid" id="suggestionGrid">
+        <div class="suggestion-chip" onclick="addSuggestion(this)"><span class="chip-icon">🔬</span> MRI Scanner</div>
+        <div class="suggestion-chip" onclick="addSuggestion(this)"><span class="chip-icon">🔬</span> CT Scanner</div>
+        <div class="suggestion-chip" onclick="addSuggestion(this)"><span class="chip-icon">💓</span> Defibrillator</div>
+        <div class="suggestion-chip" onclick="addSuggestion(this)"><span class="chip-icon">💨</span> Ventilator</div>
+        <div class="suggestion-chip" onclick="addSuggestion(this)"><span class="chip-icon">📡</span> X-Ray Machine</div>
+        <div class="suggestion-chip" onclick="addSuggestion(this)"><span class="chip-icon">🧪</span> Autoclave</div>
+        <div class="suggestion-chip" onclick="addSuggestion(this)"><span class="chip-icon">📊</span> Patient Monitor</div>
+        <div class="suggestion-chip" onclick="addSuggestion(this)"><span class="chip-icon">🔭</span> Ultrasound</div>
+        <div class="suggestion-chip" onclick="addSuggestion(this)"><span class="chip-icon">❄️</span> Split AC</div>
+        <div class="suggestion-chip" onclick="addSuggestion(this)"><span class="chip-icon">🛗</span> Passenger Lift</div>
+        <div class="suggestion-chip" onclick="addSuggestion(this)"><span class="chip-icon">⚡</span> DG Set</div>
+        <div class="suggestion-chip" onclick="addSuggestion(this)"><span class="chip-icon">🔋</span> UPS System</div>
+      </div>
+      <span class="custom-add-link" onclick="openPanel()">+ Add custom equipment type</span>
+      <div style="margin-top: 32px;">
+        <button class="add-btn" onclick="showEmpty=false; renderContent();" style="margin: 0 auto;">Continue with selected →</button>
+      </div>
+    </div>
+  `;
+}
+
+function addSuggestion(el) {
+  el.classList.toggle('added');
+  if (el.classList.contains('added')) {
+    el.innerHTML = `<span class="chip-icon">✅</span> ${el.textContent.trim()}`;
+  } else {
+    const text = el.textContent.replace('✅ ', '');
+    el.innerHTML = `<span class="chip-icon">${el.querySelector('.chip-icon')?.textContent || '🔧'}</span> ${text}`;
+  }
+}
+
+function openPanel() {
+  document.getElementById('slidePanel').classList.add('open');
+  document.getElementById('slideBackdrop').classList.add('open');
+}
+function closePanel() {
+  document.getElementById('slidePanel').classList.remove('open');
+  document.getElementById('slideBackdrop').classList.remove('open');
+}
+function selectCrit(el) {
+  el.parentElement.querySelectorAll('.crit-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+}
+function toggleJourney() {
+  const o = document.getElementById('journeyOverlay');
+  o.style.display = o.style.display === 'flex' ? 'none' : 'flex';
+}
+
+// Toggle between empty/populated states
+document.addEventListener('keydown', e => {
+  if (e.key === 'e') { showEmpty = !showEmpty; renderContent(); }
+});
+
+renderSidebar();
+renderContent();
+</script>
+</body>
+</html>

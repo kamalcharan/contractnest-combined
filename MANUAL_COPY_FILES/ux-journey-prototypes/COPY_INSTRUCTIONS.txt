@@ -1,0 +1,43 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — UX Journey Prototypes
+═══════════════════════════════════════════════════
+
+Feature: ContractNest UX Journey HTML Prototypes (P0–P4)
+Branch: ux-journey-prototypes
+Submodules Affected: ClaudeDocumentation
+
+═══════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════
+
+All files go into: ClaudeDocumentation/productaudit/
+
+Source → Destination:
+
+1. MANUAL_COPY_FILES\ux-journey-prototypes\ClaudeDocumentation\productaudit\01-nomenclature-picker.html
+   → ClaudeDocumentation\productaudit\01-nomenclature-picker.html
+
+2. MANUAL_COPY_FILES\ux-journey-prototypes\ClaudeDocumentation\productaudit\02-equipment-registry.html
+   → ClaudeDocumentation\productaudit\02-equipment-registry.html
+
+3. MANUAL_COPY_FILES\ux-journey-prototypes\ClaudeDocumentation\productaudit\03-entity-registry.html
+   → ClaudeDocumentation\productaudit\03-entity-registry.html
+
+4. MANUAL_COPY_FILES\ux-journey-prototypes\ClaudeDocumentation\productaudit\04-contract-wizard-enhanced.html
+   → ClaudeDocumentation\productaudit\04-contract-wizard-enhanced.html
+
+5. MANUAL_COPY_FILES\ux-journey-prototypes\ClaudeDocumentation\productaudit\05-contract-dashboard.html
+   → ClaudeDocumentation\productaudit\05-contract-dashboard.html
+
+6. MANUAL_COPY_FILES\ux-journey-prototypes\ClaudeDocumentation\productaudit\06-buyer-experience.html
+   → ClaudeDocumentation\productaudit\06-buyer-experience.html
+
+═══════════════════════════════════════════════════
+NOTES
+═══════════════════════════════════════════════════
+
+- The "productaudit" folder is NEW — it needs to be created inside ClaudeDocumentation
+- All 6 files are self-contained HTML with embedded CSS & JS
+- Only external dependency: Google Fonts CDN (Inter font)
+- Files cross-link to each other via the "Journey Map" button
+- Open any file directly in a browser to view the prototype

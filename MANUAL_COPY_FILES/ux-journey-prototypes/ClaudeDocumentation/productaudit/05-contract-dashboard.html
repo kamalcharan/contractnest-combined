@@ -1,0 +1,1721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ContractNest — Contract Hub / Dashboard [P0 + P3]</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ============================================
+   DESIGN SYSTEM — Shared across all 6 files
+   ============================================ */
+:root {
+  /* Primary */
+  --cn-primary: #1e3a5f;
+  --cn-primary-light: #2d5a8e;
+  --cn-primary-50: #eef4fb;
+  --cn-primary-100: #d4e4f7;
+  /* Accent */
+  --cn-accent: #f97316;
+  --cn-accent-light: #fb923c;
+  --cn-accent-50: #fff7ed;
+  /* Equipment */
+  --cn-equipment: #d97706;
+  --cn-equipment-bg: #fffbeb;
+  --cn-equipment-border: #fde68a;
+  /* Entity */
+  --cn-entity: #059669;
+  --cn-entity-bg: #ecfdf5;
+  --cn-entity-border: #a7f3d0;
+  /* General */
+  --cn-general: #6366f1;
+  --cn-general-bg: #eef2ff;
+  --cn-general-border: #c7d2fe;
+  /* Conditions */
+  --cn-good: #10b981;
+  --cn-fair: #f59e0b;
+  --cn-poor: #ef4444;
+  --cn-critical: #dc2626;
+  /* Neutrals */
+  --cn-bg: #f8fafc;
+  --cn-surface: #ffffff;
+  --cn-border: #e2e8f0;
+  --cn-border-light: #f1f5f9;
+  --cn-text: #0f172a;
+  --cn-text-secondary: #475569;
+  --cn-text-muted: #94a3b8;
+  /* Nomenclature-specific colors */
+  --nom-amc: #3b82f6;
+  --nom-cmc: #8b5cf6;
+  --nom-camc: #7c3aed;
+  --nom-pmc: #06b6d4;
+  --nom-bmc: #f97316;
+  --nom-fmc: #10b981;
+  --nom-om: #14b8a6;
+  --nom-sla: #6366f1;
+  --nom-rate: #8b5cf6;
+  --nom-retainer: #ec4899;
+  --nom-percall: #f59e0b;
+  --nom-warranty: #0ea5e9;
+  --nom-manpower: #22c55e;
+  --nom-turnkey: #a855f7;
+  --nom-bot: #64748b;
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.08), 0 8px 10px -6px rgba(0,0,0,0.04);
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--cn-bg);
+  color: var(--cn-text);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Phase Badge */
+.phase-badge {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  background: linear-gradient(135deg, var(--cn-primary), var(--cn-primary-light));
+  color: white;
+  padding: 8px 18px;
+  border-radius: 30px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.phase-badge::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: #4ade80;
+  border-radius: 50%;
+  animation: pulse-dot 2s infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Journey Map */
+.journey-map-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1000;
+  background: var(--cn-surface);
+  border: 1px solid var(--cn-border);
+  border-radius: var(--radius-lg);
+  padding: 12px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cn-text);
+  cursor: pointer;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+.journey-map-btn:hover {
+  box-shadow: var(--shadow-xl);
+  transform: translateY(-2px);
+}
+.journey-map-btn svg { width: 18px; height: 18px; }
+
+.journey-overlay {
+  position: fixed; inset: 0; z-index: 2000;
+  background: rgba(0,0,0,0.4); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity 0.3s;
+}
+.journey-overlay.active { opacity: 1; pointer-events: all; }
+
+.journey-panel {
+  background: var(--cn-surface); border-radius: var(--radius-xl);
+  padding: 32px 36px; max-width: 720px; width: 90%;
+  box-shadow: var(--shadow-xl);
+}
+.journey-panel h3 {
+  font-size: 16px; font-weight: 700; margin-bottom: 24px;
+  color: var(--cn-text); text-align: center;
+}
+.journey-flow {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+}
+.journey-item {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 16px 12px; border-radius: var(--radius-md);
+  border: 1.5px solid var(--cn-border); text-decoration: none;
+  color: var(--cn-text); transition: all 0.2s; cursor: pointer;
+  text-align: center;
+}
+.journey-item:hover { border-color: var(--cn-primary); background: var(--cn-primary-50); }
+.journey-item.current {
+  border-color: var(--cn-primary); background: var(--cn-primary-50);
+  box-shadow: 0 0 0 3px rgba(30,58,95,0.1);
+}
+.journey-item .phase {
+  font-size: 10px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.8px; color: var(--cn-primary); margin-bottom: 4px;
+}
+.journey-item .name { font-size: 12px; font-weight: 600; }
+
+/* ============================================
+   LAYOUT
+   ============================================ */
+.app-shell { display: flex; min-height: 100vh; }
+
+/* Filter Sidebar */
+.filter-sidebar {
+  width: 260px;
+  min-width: 260px;
+  background: var(--cn-surface);
+  border-right: 1px solid var(--cn-border);
+  display: flex;
+  flex-direction: column;
+  transition: margin-left 0.3s ease, opacity 0.3s ease;
+  overflow-y: auto;
+}
+.filter-sidebar.collapsed {
+  margin-left: -260px;
+  opacity: 0;
+  pointer-events: none;
+}
+.filter-sidebar-header {
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--cn-border-light);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.filter-sidebar-header h3 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--cn-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+.filter-sidebar-close {
+  width: 28px; height: 28px; border-radius: 50%;
+  border: 1px solid var(--cn-border); background: none;
+  cursor: pointer; display: flex; align-items: center;
+  justify-content: center; font-size: 14px;
+  color: var(--cn-text-muted); transition: all 0.2s;
+}
+.filter-sidebar-close:hover { background: var(--cn-bg); color: var(--cn-text); }
+
+.filter-section {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--cn-border-light);
+}
+.filter-section h4 {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--cn-text-secondary);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.filter-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--cn-text);
+  transition: color 0.15s;
+}
+.filter-checkbox:hover { color: var(--cn-primary); }
+.filter-checkbox input[type="checkbox"] {
+  width: 16px; height: 16px; accent-color: var(--cn-primary);
+  cursor: pointer; border-radius: 3px;
+}
+.filter-checkbox .nom-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.filter-checkbox .count {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--cn-text-muted);
+  background: var(--cn-bg);
+  padding: 1px 7px;
+  border-radius: 10px;
+}
+.clear-filters {
+  display: block;
+  padding: 12px 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cn-poor);
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.15s;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+}
+.clear-filters:hover { color: #dc2626; text-decoration: underline; }
+
+/* Main Content */
+.main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+
+/* Page Header */
+.page-header {
+  padding: 24px 32px 0;
+  background: var(--cn-surface);
+  border-bottom: 1px solid var(--cn-border);
+}
+.page-header-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+.page-header h1 {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+  color: var(--cn-text);
+}
+.page-header .subtitle {
+  font-size: 13px;
+  color: var(--cn-text-secondary);
+  margin-top: 4px;
+}
+
+/* Quick Action Buttons */
+.quick-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.quick-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+  color: white;
+}
+.quick-action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+.quick-action-btn.amc { background: var(--nom-amc); }
+.quick-action-btn.fmc { background: var(--nom-fmc); }
+.quick-action-btn.cmc { background: var(--nom-cmc); }
+
+/* Nomenclature Pills */
+.nom-pills-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 32px;
+  background: var(--cn-surface);
+  flex-wrap: wrap;
+}
+.nom-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1.5px solid transparent;
+  user-select: none;
+}
+.nom-pill .pill-count {
+  font-weight: 800;
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.3);
+}
+.nom-pill:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+.nom-pill.active {
+  color: white !important;
+  border-color: transparent !important;
+}
+.nom-pill.active .pill-count {
+  background: rgba(255,255,255,0.3);
+  color: white;
+}
+
+/* Stat Cards */
+.stat-cards-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  padding: 0 32px 20px;
+  background: var(--cn-surface);
+}
+.stat-card {
+  padding: 16px 18px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--cn-border);
+  background: var(--cn-surface);
+  transition: all 0.2s;
+}
+.stat-card:hover {
+  box-shadow: var(--shadow-sm);
+}
+.stat-card.attention {
+  border-color: #fcd34d;
+  background: #fffbeb;
+}
+.stat-card .stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--cn-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.stat-card .stat-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.stat-card .stat-dot.green { background: var(--cn-good); }
+.stat-card .stat-dot.gray { background: var(--cn-text-muted); }
+.stat-card .stat-dot.amber { background: var(--cn-fair); animation: pulse-dot 2s infinite; }
+.stat-card .stat-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--cn-text);
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+}
+.stat-card .stat-icon {
+  display: inline-flex;
+  font-size: 14px;
+  margin-right: 2px;
+  vertical-align: baseline;
+}
+
+/* View Toggle and Toolbar */
+.content-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 32px;
+  border-bottom: 1px solid var(--cn-border);
+  background: var(--cn-surface);
+  gap: 12px;
+}
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.view-toggle {
+  display: flex;
+  border: 1px solid var(--cn-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.view-toggle-btn {
+  padding: 7px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cn-text-secondary);
+  background: var(--cn-surface);
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.view-toggle-btn:not(:last-child) {
+  border-right: 1px solid var(--cn-border);
+}
+.view-toggle-btn.active {
+  background: var(--cn-primary);
+  color: white;
+}
+.view-toggle-btn:hover:not(.active) {
+  background: var(--cn-bg);
+}
+.view-toggle-btn svg { width: 14px; height: 14px; }
+
+.toggle-sidebar-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: var(--cn-surface);
+  border: 1px solid var(--cn-border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--cn-text-secondary);
+  transition: all 0.15s;
+}
+.toggle-sidebar-btn:hover { border-color: var(--cn-primary); color: var(--cn-primary); }
+.toggle-sidebar-btn svg { width: 14px; height: 14px; }
+
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.search-contracts {
+  padding: 7px 14px 7px 34px;
+  border: 1px solid var(--cn-border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-family: inherit;
+  background: var(--cn-bg);
+  width: 220px;
+  transition: all 0.2s;
+}
+.search-contracts:focus { outline: none; border-color: var(--cn-primary); background: white; width: 280px; }
+.search-wrap {
+  position: relative;
+}
+.search-wrap svg {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  color: var(--cn-text-muted);
+}
+
+/* Content Area */
+.content-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 32px;
+}
+
+/* ============================================
+   LIST VIEW — Contract Cards
+   ============================================ */
+.contract-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+.contract-card {
+  background: var(--cn-surface);
+  border: 1px solid var(--cn-border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+  border-left: 4px solid var(--cn-border);
+}
+.contract-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--cn-primary-100);
+}
+.contract-card .card-top-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.nom-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: white;
+}
+.contract-number {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--cn-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-left: auto;
+}
+.status-badge.active { background: #d1fae5; color: var(--cn-good); }
+.status-badge.draft { background: #f1f5f9; color: var(--cn-text-muted); }
+.status-badge.expiring { background: #fef3c7; color: #b45309; }
+.status-badge.pending { background: #e0e7ff; color: var(--cn-general); }
+.status-badge.completed { background: #dbeafe; color: #2563eb; }
+.status-badge .status-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: currentColor;
+}
+
+.contract-card .contract-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--cn-text);
+  margin-bottom: 8px;
+  line-height: 1.35;
+}
+.contract-card .contract-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.contract-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--cn-text-secondary);
+}
+.contract-meta-item svg {
+  width: 13px; height: 13px; color: var(--cn-text-muted); flex-shrink: 0;
+}
+.contract-meta-item .meta-highlight {
+  font-weight: 600;
+  color: var(--cn-text);
+}
+
+.contract-card .contract-value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.contract-value {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--cn-text);
+  letter-spacing: -0.3px;
+}
+.contract-value-detail {
+  font-size: 11px;
+  color: var(--cn-text-muted);
+}
+
+/* Timeline Progress */
+.timeline-bar {
+  margin-top: auto;
+}
+.timeline-track {
+  width: 100%;
+  height: 4px;
+  background: var(--cn-border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+.timeline-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+.timeline-dates {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--cn-text-muted);
+  font-weight: 500;
+}
+
+/* ============================================
+   PIPELINE VIEW — Kanban
+   ============================================ */
+.pipeline-view {
+  display: none;
+}
+.pipeline-view.active { display: block; }
+.list-view.active { display: block; }
+.list-view { display: none; }
+
+.pipeline-container {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+  min-height: calc(100vh - 340px);
+}
+.pipeline-column {
+  background: var(--cn-bg);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--cn-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.pipeline-column.expiring {
+  border-color: #fcd34d;
+}
+.pipeline-col-header {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--cn-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--cn-surface);
+}
+.pipeline-column.expiring .pipeline-col-header {
+  background: #fffbeb;
+}
+.pipeline-col-header .col-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--cn-text);
+}
+.pipeline-col-header .col-count {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 10px;
+  background: var(--cn-bg);
+  color: var(--cn-text-secondary);
+}
+.pipeline-column.expiring .col-count {
+  background: #fef3c7;
+  color: #b45309;
+}
+.pipeline-cards {
+  flex: 1;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+.pipeline-card {
+  background: var(--cn-surface);
+  border: 1px solid var(--cn-border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  cursor: grab;
+  transition: all 0.2s;
+  border-left: 3px solid var(--cn-border);
+}
+.pipeline-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+.pipeline-card .p-nom {
+  display: inline-flex;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 6px;
+}
+.pipeline-card .p-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cn-text);
+  margin-bottom: 4px;
+  line-height: 1.35;
+}
+.pipeline-card .p-company {
+  font-size: 11px;
+  color: var(--cn-text-muted);
+  margin-bottom: 6px;
+}
+.pipeline-card .p-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--cn-text);
+}
+.renew-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 5px 10px;
+  margin-top: 8px;
+  border: 1.5px solid #f59e0b;
+  border-radius: var(--radius-sm);
+  background: #fffbeb;
+  font-size: 11px;
+  font-weight: 600;
+  color: #b45309;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+  width: 100%;
+}
+.renew-btn:hover {
+  background: #fef3c7;
+  border-color: #d97706;
+}
+
+/* ============================================
+   ANALYTICS PANEL
+   ============================================ */
+.analytics-panel {
+  margin-top: 24px;
+  border: 1px solid var(--cn-border);
+  border-radius: var(--radius-lg);
+  background: var(--cn-surface);
+  overflow: hidden;
+}
+.analytics-header {
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: background 0.2s;
+  user-select: none;
+}
+.analytics-header:hover {
+  background: var(--cn-bg);
+}
+.analytics-header h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--cn-text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.analytics-header .toggle-icon {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s ease;
+  color: var(--cn-text-muted);
+}
+.analytics-header .toggle-icon.open {
+  transform: rotate(180deg);
+}
+.analytics-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s ease;
+  padding: 0 20px;
+}
+.analytics-body.open {
+  max-height: 900px;
+  padding: 0 20px 24px;
+}
+.analytics-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+.analytics-section h4 {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--cn-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 14px;
+}
+/* Bar Charts */
+.bar-chart { display: flex; flex-direction: column; gap: 8px; }
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.bar-label {
+  width: 48px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cn-text-secondary);
+  text-align: right;
+  flex-shrink: 0;
+}
+.bar-track {
+  flex: 1;
+  height: 22px;
+  background: var(--cn-bg);
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+.bar-fill {
+  height: 100%;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  padding-left: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  color: white;
+  transition: width 0.6s ease;
+  min-width: fit-content;
+}
+.bar-amount {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--cn-text-secondary);
+  width: 60px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* Progress Rings */
+.rings-row {
+  display: flex;
+  gap: 24px;
+  margin-top: 16px;
+}
+.ring-card {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--cn-border);
+  border-radius: var(--radius-md);
+  background: var(--cn-bg);
+}
+.ring-svg-wrap { flex-shrink: 0; }
+.ring-info h5 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--cn-text);
+  margin-bottom: 2px;
+}
+.ring-info p {
+  font-size: 11px;
+  color: var(--cn-text-muted);
+  line-height: 1.4;
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.contract-card { animation: fadeInUp 0.3s ease both; }
+.contract-card:nth-child(1) { animation-delay: 0.02s; }
+.contract-card:nth-child(2) { animation-delay: 0.04s; }
+.contract-card:nth-child(3) { animation-delay: 0.06s; }
+.contract-card:nth-child(4) { animation-delay: 0.08s; }
+.contract-card:nth-child(5) { animation-delay: 0.10s; }
+.contract-card:nth-child(6) { animation-delay: 0.12s; }
+.contract-card:nth-child(7) { animation-delay: 0.14s; }
+.contract-card:nth-child(8) { animation-delay: 0.16s; }
+
+.pipeline-card { animation: fadeInUp 0.3s ease both; }
+
+/* ============================================
+   NO RESULTS
+   ============================================ */
+.no-results {
+  text-align: center;
+  padding: 60px 24px;
+  grid-column: 1 / -1;
+}
+.no-results .nr-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  filter: grayscale(0.3);
+}
+.no-results h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.no-results p {
+  font-size: 13px;
+  color: var(--cn-text-secondary);
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 1100px) {
+  .contract-grid { grid-template-columns: 1fr; }
+  .pipeline-container { grid-template-columns: repeat(3, 1fr); }
+  .stat-cards-row { grid-template-columns: repeat(2, 1fr); }
+  .analytics-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+  .filter-sidebar { display: none; }
+  .contract-grid { grid-template-columns: 1fr; }
+  .pipeline-container { grid-template-columns: 1fr; overflow-x: auto; }
+  .stat-cards-row { grid-template-columns: 1fr 1fr; }
+  .page-header { padding: 16px 16px 0; }
+  .nom-pills-bar { padding: 12px 16px; }
+  .stat-cards-row { padding: 0 16px 16px; }
+  .content-toolbar { padding: 12px 16px; }
+  .content-area { padding: 16px; }
+  .quick-actions { display: none; }
+  .journey-flow { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<!-- Phase Badge -->
+<div class="phase-badge">P0 + P3 — Dashboard</div>
+
+<!-- Journey Map Button -->
+<button class="journey-map-btn" onclick="toggleJourney()">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+  Journey Map
+</button>
+
+<!-- Journey Overlay -->
+<div class="journey-overlay" id="journeyOverlay" onclick="toggleJourney()">
+  <div class="journey-panel" onclick="event.stopPropagation()">
+    <h3>UX Journey Map — ContractNest Domain Enhancement</h3>
+    <div class="journey-flow">
+      <a class="journey-item" href="01-nomenclature-picker.html">
+        <div class="phase">P0</div>
+        <div class="name">Nomenclature Picker</div>
+      </a>
+      <a class="journey-item" href="02-equipment-registry.html">
+        <div class="phase">P1</div>
+        <div class="name">Equipment Registry</div>
+      </a>
+      <a class="journey-item" href="03-entity-registry.html">
+        <div class="phase">P2</div>
+        <div class="name">Entity Registry</div>
+      </a>
+      <a class="journey-item" href="04-contract-wizard-enhanced.html">
+        <div class="phase">P1 + P2</div>
+        <div class="name">Contract Wizard</div>
+      </a>
+      <a class="journey-item current" href="05-contract-dashboard.html">
+        <div class="phase">P0 + P3</div>
+        <div class="name">Contract Dashboard</div>
+      </a>
+      <a class="journey-item" href="06-buyer-experience.html">
+        <div class="phase">P2 + P4</div>
+        <div class="name">Buyer Experience</div>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- App Shell -->
+<div class="app-shell">
+
+  <!-- Filter Sidebar -->
+  <aside class="filter-sidebar" id="filterSidebar">
+    <div class="filter-sidebar-header">
+      <h3>Filters</h3>
+      <button class="filter-sidebar-close" onclick="toggleSidebar()" title="Close filters">&times;</button>
+    </div>
+
+    <div class="filter-section">
+      <h4>Nomenclature</h4>
+      <label class="filter-checkbox" data-filter="nom" data-value="AMC">
+        <input type="checkbox" onchange="applyFilters()">
+        <span class="nom-dot" style="background: var(--nom-amc)"></span>
+        AMC
+        <span class="count">12</span>
+      </label>
+      <label class="filter-checkbox" data-filter="nom" data-value="CMC">
+        <input type="checkbox" onchange="applyFilters()">
+        <span class="nom-dot" style="background: var(--nom-cmc)"></span>
+        CMC
+        <span class="count">5</span>
+      </label>
+      <label class="filter-checkbox" data-filter="nom" data-value="FMC">
+        <input type="checkbox" onchange="applyFilters()">
+        <span class="nom-dot" style="background: var(--nom-fmc)"></span>
+        FMC
+        <span class="count">4</span>
+      </label>
+      <label class="filter-checkbox" data-filter="nom" data-value="PMC">
+        <input type="checkbox" onchange="applyFilters()">
+        <span class="nom-dot" style="background: var(--nom-pmc)"></span>
+        PMC
+        <span class="count">3</span>
+      </label>
+      <label class="filter-checkbox" data-filter="nom" data-value="SLA">
+        <input type="checkbox" onchange="applyFilters()">
+        <span class="nom-dot" style="background: var(--nom-sla)"></span>
+        SLA
+        <span class="count">2</span>
+      </label>
+      <label class="filter-checkbox" data-filter="nom" data-value="BMC">
+        <input type="checkbox" onchange="applyFilters()">
+        <span class="nom-dot" style="background: var(--nom-bmc)"></span>
+        BMC
+        <span class="count">1</span>
+      </label>
+      <label class="filter-checkbox" data-filter="nom" data-value="Retainer">
+        <input type="checkbox" onchange="applyFilters()">
+        <span class="nom-dot" style="background: var(--nom-retainer)"></span>
+        Retainer
+        <span class="count">1</span>
+      </label>
+    </div>
+
+    <div class="filter-section">
+      <h4>Status</h4>
+      <label class="filter-checkbox" data-filter="status" data-value="Active">
+        <input type="checkbox" onchange="applyFilters()">
+        Active
+        <span class="count">18</span>
+      </label>
+      <label class="filter-checkbox" data-filter="status" data-value="Draft">
+        <input type="checkbox" onchange="applyFilters()">
+        Draft
+        <span class="count">5</span>
+      </label>
+      <label class="filter-checkbox" data-filter="status" data-value="Pending">
+        <input type="checkbox" onchange="applyFilters()">
+        Pending
+        <span class="count">2</span>
+      </label>
+      <label class="filter-checkbox" data-filter="status" data-value="Expiring">
+        <input type="checkbox" onchange="applyFilters()">
+        Expiring Soon
+        <span class="count">3</span>
+      </label>
+      <label class="filter-checkbox" data-filter="status" data-value="Completed">
+        <input type="checkbox" onchange="applyFilters()">
+        Completed
+        <span class="count">6</span>
+      </label>
+    </div>
+
+    <div class="filter-section">
+      <h4>Industry</h4>
+      <label class="filter-checkbox" data-filter="industry" data-value="Healthcare">
+        <input type="checkbox" onchange="applyFilters()">
+        Healthcare
+      </label>
+      <label class="filter-checkbox" data-filter="industry" data-value="Real Estate">
+        <input type="checkbox" onchange="applyFilters()">
+        Real Estate
+      </label>
+      <label class="filter-checkbox" data-filter="industry" data-value="Technology">
+        <input type="checkbox" onchange="applyFilters()">
+        Technology
+      </label>
+      <label class="filter-checkbox" data-filter="industry" data-value="Manufacturing">
+        <input type="checkbox" onchange="applyFilters()">
+        Manufacturing
+      </label>
+    </div>
+
+    <button class="clear-filters" onclick="clearAllFilters()">Clear all filters</button>
+  </aside>
+
+  <!-- Main Content Area -->
+  <div class="main-content">
+
+    <!-- Page Header -->
+    <div class="page-header">
+      <div class="page-header-top">
+        <div>
+          <h1>Contract Hub</h1>
+          <p class="subtitle">28 total contracts across 6 nomenclature types</p>
+        </div>
+        <div class="quick-actions">
+          <button class="quick-action-btn amc" onclick="alert('Create AMC wizard opens...')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            Create AMC
+          </button>
+          <button class="quick-action-btn fmc" onclick="alert('Create FMC wizard opens...')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            Create FMC
+          </button>
+          <button class="quick-action-btn cmc" onclick="alert('Create CMC wizard opens...')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            Create CMC
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Nomenclature Pills -->
+    <div class="nom-pills-bar" id="nomPillsBar"></div>
+
+    <!-- Stat Cards -->
+    <div class="stat-cards-row">
+      <div class="stat-card">
+        <div class="stat-label"><span class="stat-dot green"></span> Active</div>
+        <div class="stat-value">18</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label"><span class="stat-dot gray"></span> Draft</div>
+        <div class="stat-value">5</div>
+      </div>
+      <div class="stat-card attention">
+        <div class="stat-label"><span class="stat-dot amber"></span> Expiring Soon</div>
+        <div class="stat-value">3</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--cn-text-muted)" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          Total Value
+        </div>
+        <div class="stat-value"><span class="stat-icon">&#8377;</span>1.2 Cr</div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="content-toolbar">
+      <div class="toolbar-left">
+        <button class="toggle-sidebar-btn" onclick="toggleSidebar()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h10M4 18h16"/></svg>
+          Filters
+        </button>
+        <div class="view-toggle">
+          <button class="view-toggle-btn active" id="listViewBtn" onclick="switchView('list')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            List View
+          </button>
+          <button class="view-toggle-btn" id="pipelineViewBtn" onclick="switchView('pipeline')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="6" height="18" rx="1"/><rect x="9" y="7" width="6" height="10" rx="1"/><rect x="16" y="5" width="6" height="14" rx="1"/></svg>
+            Pipeline View
+          </button>
+        </div>
+      </div>
+      <div class="toolbar-right">
+        <div class="search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input type="text" class="search-contracts" id="searchInput" placeholder="Search contracts..." oninput="applyFilters()">
+        </div>
+      </div>
+    </div>
+
+    <!-- Scrollable Content -->
+    <div class="content-area">
+
+      <!-- List View -->
+      <div class="list-view active" id="listView">
+        <div class="contract-grid" id="contractGrid"></div>
+      </div>
+
+      <!-- Pipeline View -->
+      <div class="pipeline-view" id="pipelineView">
+        <div class="pipeline-container" id="pipelineContainer"></div>
+      </div>
+
+      <!-- Analytics Panel -->
+      <div class="analytics-panel">
+        <div class="analytics-header" onclick="toggleAnalytics()">
+          <h3>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+            Contract Analytics by Type
+          </h3>
+          <div class="toggle-icon" id="analyticsToggle">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+        <div class="analytics-body" id="analyticsBody">
+          <div class="analytics-grid">
+            <div class="analytics-section">
+              <h4>Contracts by Type</h4>
+              <div class="bar-chart">
+                <div class="bar-row">
+                  <span class="bar-label">AMC</span>
+                  <div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--nom-amc)">12</div></div>
+                </div>
+                <div class="bar-row">
+                  <span class="bar-label">CMC</span>
+                  <div class="bar-track"><div class="bar-fill" style="width:41.6%;background:var(--nom-cmc)">5</div></div>
+                </div>
+                <div class="bar-row">
+                  <span class="bar-label">FMC</span>
+                  <div class="bar-track"><div class="bar-fill" style="width:33.3%;background:var(--nom-fmc)">4</div></div>
+                </div>
+                <div class="bar-row">
+                  <span class="bar-label">PMC</span>
+                  <div class="bar-track"><div class="bar-fill" style="width:25%;background:var(--nom-pmc)">3</div></div>
+                </div>
+                <div class="bar-row">
+                  <span class="bar-label">SLA</span>
+                  <div class="bar-track"><div class="bar-fill" style="width:16.6%;background:var(--nom-sla)">2</div></div>
+                </div>
+                <div class="bar-row">
+                  <span class="bar-label">Others</span>
+                  <div class="bar-track"><div class="bar-fill" style="width:16.6%;background:var(--cn-text-muted)">2</div></div>
+                </div>
+              </div>
+            </div>
+            <div class="analytics-section">
+              <h4>Revenue by Nomenclature</h4>
+              <div class="bar-chart">
+                <div class="bar-row">
+                  <span class="bar-label">AMC</span>
+                  <div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--nom-amc)"></div></div>
+                  <span class="bar-amount">&#8377;45L</span>
+                </div>
+                <div class="bar-row">
+                  <span class="bar-label">FMC</span>
+                  <div class="bar-track"><div class="bar-fill" style="width:53%;background:var(--nom-fmc)"></div></div>
+                  <span class="bar-amount">&#8377;24L</span>
+                </div>
+                <div class="bar-row">
+                  <span class="bar-label">SLA</span>
+                  <div class="bar-track"><div class="bar-fill" style="width:27%;background:var(--nom-sla)"></div></div>
+                  <span class="bar-amount">&#8377;12L</span>
+                </div>
+                <div class="bar-row">
+                  <span class="bar-label">CMC</span>
+                  <div class="bar-track"><div class="bar-fill" style="width:19%;background:var(--nom-cmc)"></div></div>
+                  <span class="bar-amount">&#8377;8.5L</span>
+                </div>
+                <div class="bar-row">
+                  <span class="bar-label">PMC</span>
+                  <div class="bar-track"><div class="bar-fill" style="width:11%;background:var(--nom-pmc)"></div></div>
+                  <span class="bar-amount">&#8377;5L</span>
+                </div>
+                <div class="bar-row">
+                  <span class="bar-label">Others</span>
+                  <div class="bar-track"><div class="bar-fill" style="width:9%;background:var(--cn-text-muted)"></div></div>
+                  <span class="bar-amount">&#8377;4L</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Coverage Rings -->
+          <div class="rings-row">
+            <div class="ring-card">
+              <div class="ring-svg-wrap">
+                <svg width="72" height="72" viewBox="0 0 72 72">
+                  <circle cx="36" cy="36" r="30" fill="none" stroke="#e2e8f0" stroke-width="6"/>
+                  <circle cx="36" cy="36" r="30" fill="none" stroke="var(--cn-good)" stroke-width="6"
+                    stroke-dasharray="150.8 188.5"
+                    stroke-dashoffset="0"
+                    stroke-linecap="round"
+                    transform="rotate(-90 36 36)"/>
+                  <text x="36" y="38" text-anchor="middle" font-size="14" font-weight="800" fill="var(--cn-text)" font-family="Inter, sans-serif">80%</text>
+                </svg>
+              </div>
+              <div class="ring-info">
+                <h5>Equipment Coverage</h5>
+                <p>28 of 35 equipment items covered under active contracts</p>
+              </div>
+            </div>
+            <div class="ring-card">
+              <div class="ring-svg-wrap">
+                <svg width="72" height="72" viewBox="0 0 72 72">
+                  <circle cx="36" cy="36" r="30" fill="none" stroke="#e2e8f0" stroke-width="6"/>
+                  <circle cx="36" cy="36" r="30" fill="none" stroke="#14b8a6" stroke-width="6"
+                    stroke-dasharray="158.3 188.5"
+                    stroke-dashoffset="0"
+                    stroke-linecap="round"
+                    transform="rotate(-90 36 36)"/>
+                  <text x="36" y="38" text-anchor="middle" font-size="14" font-weight="800" fill="var(--cn-text)" font-family="Inter, sans-serif">84%</text>
+                </svg>
+              </div>
+              <div class="ring-info">
+                <h5>Entity Coverage</h5>
+                <p>42,000 of 50,000 sqft managed under active contracts</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================
+// CONTRACT DATA
+// ============================================
+const contracts = [
+  {
+    id: 'CON-10001', nom: 'AMC', name: 'MRI Maintenance', company: 'Apollo Hospitals',
+    contact: 'Dr. Priya Sharma', equipment: '3 MRI Scanners', value: 1062000,
+    valueLabel: '\u20B910,62,000', perUnit: '\u20B93,54,000/scanner', status: 'Active',
+    startDate: '2026-01-01', endDate: '2026-12-31', industry: 'Healthcare', color: '#3b82f6'
+  },
+  {
+    id: 'CON-10002', nom: 'AMC', name: 'HVAC Annual Service', company: 'Prestige Towers',
+    contact: 'Rajesh Menon', equipment: '24 Split ACs', value: 480000,
+    valueLabel: '\u20B94,80,000', perUnit: '\u20B920,000/unit', status: 'Active',
+    startDate: '2026-02-01', endDate: '2027-01-31', industry: 'Real Estate', color: '#3b82f6'
+  },
+  {
+    id: 'CON-10003', nom: 'CMC', name: 'CT Scanner Comprehensive', company: 'Fortis Healthcare',
+    contact: 'Anil Kapoor', equipment: '2 CT Scanners', value: 850000,
+    valueLabel: '\u20B98,50,000', perUnit: '\u20B94,25,000/scanner', status: 'Active',
+    startDate: '2026-03-01', endDate: '2027-02-28', industry: 'Healthcare', color: '#8b5cf6'
+  },
+  {
+    id: 'CON-10004', nom: 'FMC', name: 'Campus Housekeeping', company: 'Infosys SEZ',
+    contact: 'Meena Iyer', equipment: '50,000 sqft', value: 1800000,
+    valueLabel: '\u20B918,00,000', perUnit: '\u20B93.00/sqft/month', status: 'Active',
+    startDate: '2026-01-15', endDate: '2027-01-14', industry: 'Technology', color: '#10b981'
+  },
+  {
+    id: 'CON-10005', nom: 'PMC', name: 'Generator Preventive', company: 'DLF Cyber City',
+    contact: 'Vikram Singh', equipment: '4 DG Sets', value: 240000,
+    valueLabel: '\u20B92,40,000', perUnit: '\u20B960,000/set', status: 'Active',
+    startDate: '2026-04-01', endDate: '2027-03-31', industry: 'Real Estate', color: '#06b6d4'
+  },
+  {
+    id: 'CON-10006', nom: 'FMC', name: 'Garden & Pool Maintenance', company: 'Prestige Lakeside',
+    contact: 'Sunil Reddy', equipment: '2 acres + 1 pool', value: 600000,
+    valueLabel: '\u20B96,00,000', perUnit: '\u20B950,000/month', status: 'Active',
+    startDate: '2026-01-01', endDate: '2026-12-31', industry: 'Real Estate', color: '#10b981'
+  },
+  {
+    id: 'CON-10007', nom: 'AMC', name: 'Elevator Service', company: 'Brigade Gateway',
+    contact: 'Karthik Nair', equipment: '8 Passenger Lifts', value: 720000,
+    valueLabel: '\u20B97,20,000', perUnit: '\u20B990,000/lift', status: 'Expiring',
+    expiryDays: 28,
+    startDate: '2025-04-01', endDate: '2026-03-11', industry: 'Real Estate', color: '#3b82f6'
+  },
+  {
+    id: 'CON-10008', nom: 'SLA', name: 'IT Infrastructure', company: 'TCS Adibatla',
+    contact: 'Deepak Joshi', equipment: '99.9% uptime', value: 1200000,
+    valueLabel: '\u20B912,00,000', perUnit: 'Performance-based', status: 'Draft',
+    startDate: '2026-04-01', endDate: '2027-03-31', industry: 'Technology', color: '#6366f1'
+  }
+];
+
+// Nomenclature pills data
+const nomTypes = [
+  { short: 'AMC', count: 12, color: '#3b82f6' },
+  { short: 'CMC', count: 5, color: '#8b5cf6' },
+  { short: 'FMC', count: 4, color: '#10b981' },
+  { short: 'PMC', count: 3, color: '#06b6d4' },
+  { short: 'SLA', count: 2, color: '#6366f1' },
+  { short: 'Others', count: 2, color: '#94a3b8' }
+];
+
+// Pipeline data
+const pipelineData = {
+  Draft: [
+    { nom: 'SLA', name: 'IT Infrastructure', company: 'TCS Adibatla', value: '\u20B912,00,000', color: '#6366f1' },
+    { nom: 'AMC', name: 'Chiller Maintenance', company: 'Wipro Campus', value: '\u20B95,40,000', color: '#3b82f6' }
+  ],
+  Pending: [
+    { nom: 'CMC', name: 'Dialysis Equipment', company: 'KIMS Hospitals', value: '\u20B96,80,000', color: '#8b5cf6' },
+    { nom: 'FMC', name: 'Warehouse Operations', company: 'Flipkart Hub', value: '\u20B914,00,000', color: '#10b981' }
+  ],
+  Active: [
+    { nom: 'AMC', name: 'MRI Maintenance', company: 'Apollo Hospitals', value: '\u20B910,62,000', color: '#3b82f6' },
+    { nom: 'AMC', name: 'HVAC Annual Service', company: 'Prestige Towers', value: '\u20B94,80,000', color: '#3b82f6' },
+    { nom: 'CMC', name: 'CT Scanner Comprehensive', company: 'Fortis Healthcare', value: '\u20B98,50,000', color: '#8b5cf6' },
+    { nom: 'FMC', name: 'Campus Housekeeping', company: 'Infosys SEZ', value: '\u20B918,00,000', color: '#10b981' },
+    { nom: 'PMC', name: 'Generator Preventive', company: 'DLF Cyber City', value: '\u20B92,40,000', color: '#06b6d4' },
+    { nom: 'FMC', name: 'Garden & Pool', company: 'Prestige Lakeside', value: '\u20B96,00,000', color: '#10b981' },
+    { nom: 'AMC', name: 'UPS Maintenance', company: 'Cyient Technologies', value: '\u20B93,60,000', color: '#3b82f6' },
+    { nom: 'AMC', name: 'Fire Safety Systems', company: 'Salarpuria Sattva', value: '\u20B94,20,000', color: '#3b82f6' },
+    { nom: 'CMC', name: 'Lab Analyzers', company: 'Vijaya Diagnostics', value: '\u20B97,50,000', color: '#8b5cf6' },
+    { nom: 'PMC', name: 'Solar Panel Checks', company: 'My Home Group', value: '\u20B91,80,000', color: '#06b6d4' },
+    { nom: 'AMC', name: 'CCTV Surveillance', company: 'Phoenix Mills', value: '\u20B92,40,000', color: '#3b82f6' },
+    { nom: 'FMC', name: 'Office Maintenance', company: 'WeWork Galaxy', value: '\u20B98,40,000', color: '#10b981' },
+    { nom: 'AMC', name: 'X-Ray Systems', company: 'Yashoda Hospitals', value: '\u20B95,80,000', color: '#3b82f6' },
+    { nom: 'SLA', name: 'Network Uptime', company: 'Tech Mahindra', value: '\u20B99,60,000', color: '#6366f1' },
+    { nom: 'PMC', name: 'Transformer PM', company: 'Lanco Hills', value: '\u20B91,20,000', color: '#06b6d4' }
+  ],
+  'Expiring Soon': [
+    { nom: 'AMC', name: 'Elevator Service', company: 'Brigade Gateway', value: '\u20B97,20,000', color: '#3b82f6', days: 28 },
+    { nom: 'AMC', name: 'Boiler Maintenance', company: 'ITC Grand', value: '\u20B93,60,000', color: '#3b82f6', days: 14 },
+    { nom: 'CMC', name: 'Ventilator Systems', company: 'NIMS Hospital', value: '\u20B911,00,000', color: '#8b5cf6', days: 7 }
+  ],
+  Completed: [
+    { nom: 'AMC', name: 'AC Service 2025', company: 'Lodha Bellissimo', value: '\u20B93,20,000', color: '#3b82f6' },
+    { nom: 'FMC', name: 'Office Cleaning 2025', company: 'Mindspace IT Park', value: '\u20B912,00,000', color: '#10b981' },
+    { nom: 'PMC', name: 'Elevator Checks 2025', company: 'Raheja Mindspace', value: '\u20B91,80,000', color: '#06b6d4' },
+    { nom: 'AMC', name: 'HVAC Service 2025', company: 'Prestige Tech Park', value: '\u20B94,80,000', color: '#3b82f6' },
+    { nom: 'SLA', name: 'Data Center SLA 2025', company: 'NTT Data', value: '\u20B98,00,000', color: '#6366f1' },
+    { nom: 'CMC', name: 'MRI Full Coverage 2025', company: 'Care Hospitals', value: '\u20B99,20,000', color: '#8b5cf6' }
+  ]
+};
+
+// ============================================
+// STATE
+// ============================================
+let activeNomPills = new Set();
+let currentView = 'list';
+
+// ============================================
+// RENDER NOMENCLATURE PILLS
+// ============================================
+function renderNomPills() {
+  const bar = document.getElementById('nomPillsBar');
+  bar.innerHTML = nomTypes.map(n => {
+    const isActive = activeNomPills.has(n.short);
+    const bgColor = isActive ? n.color : n.color + '15';
+    const textColor = isActive ? 'white' : n.color;
+    const borderColor = isActive ? n.color : n.color + '40';
+    return `<div class="nom-pill ${isActive ? 'active' : ''}"
+                onclick="toggleNomPill('${n.short}')"
+                style="background:${bgColor};color:${textColor};border-color:${borderColor}"
+                data-nom="${n.short}">
+      ${n.short}
+      <span class="pill-count" style="${isActive ? '' : 'background:' + n.color + '20;color:' + n.color}">${n.count}</span>
+    </div>`;
+  }).join('');
+}
+
+function toggleNomPill(nom) {
+  if (activeNomPills.has(nom)) {
+    activeNomPills.delete(nom);
+  } else {
+    activeNomPills.add(nom);
+  }
+  // Sync sidebar checkboxes
+  syncSidebarWithPills();
+  renderNomPills();
+  applyFilters();
+}
+
+function syncSidebarWithPills() {
+  document.querySelectorAll('.filter-checkbox[data-filter="nom"]').forEach(label => {
+    const val = label.dataset.value;
+    const cb = label.querySelector('input');
+    if (activeNomPills.has(val)) {
+      cb.checked = true;
+    } else if (val !== 'BMC' && val !== 'Retainer') {
+      cb.checked = false;
+    }
+  });
+}
+
+// ============================================
+// RENDER CONTRACT CARDS (LIST VIEW)
+// ============================================
+function renderContractCards(filtered) {
+  const grid = document.getElementById('contractGrid');
+  if (filtered.length === 0) {
+    grid.innerHTML = `<div class="no-results">
+      <div class="nr-icon">&#128270;</div>
+      <h3>No contracts found</h3>
+      <p>Try adjusting your filters or search query</p>
+    </div>`;
+    return;
+  }
+  grid.innerHTML = filtered.map(c => {
+    const elapsed = getElapsed(c.startDate, c.endDate);
+    const statusClass = c.status === 'Active' ? 'active' : c.status === 'Draft' ? 'draft' : 'expiring';
+    const statusLabel = c.status === 'Expiring' ? `Expiring (${c.expiryDays}d)` : c.status;
+    const timelineColor = c.status === 'Expiring' ? 'var(--cn-fair)' : c.color;
+    return `<div class="contract-card" style="border-left-color:${c.color}">
+      <div class="card-top-row">
+        <span class="nom-badge" style="background:${c.color}">${c.nom}</span>
+        <span class="contract-number">${c.id}</span>
+        <span class="status-badge ${statusClass}">
+          <span class="status-dot"></span>
+          ${statusLabel}
+        </span>
+      </div>
+      <div class="contract-name">${c.name} &mdash; ${c.company} ${c.startDate.substring(0,4)}</div>
+      <div class="contract-meta">
+        <div class="contract-meta-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2z"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          <span class="meta-highlight">${c.company}</span> &middot; ${c.contact}
+        </div>
+        <div class="contract-meta-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+          ${c.equipment}
+        </div>
+      </div>
+      <div class="contract-value-row">
+        <span class="contract-value">${c.valueLabel}</span>
+        <span class="contract-value-detail">${c.perUnit}</span>
+      </div>
+      <div class="timeline-bar">
+        <div class="timeline-track">
+          <div class="timeline-fill" style="width:${elapsed}%;background:${timelineColor}"></div>
+        </div>
+        <div class="timeline-dates">
+          <span>${formatDate(c.startDate)}</span>
+          <span>${formatDate(c.endDate)}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function getElapsed(start, end) {
+  const s = new Date(start).getTime();
+  const e = new Date(end).getTime();
+  const now = new Date('2026-02-11').getTime();
+  if (now <= s) return 0;
+  if (now >= e) return 100;
+  return Math.round(((now - s) / (e - s)) * 100);
+}
+
+function formatDate(dateStr) {
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const d = new Date(dateStr);
+  return months[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+// ============================================
+// RENDER PIPELINE VIEW
+// ============================================
+function renderPipeline() {
+  const container = document.getElementById('pipelineContainer');
+  const columns = ['Draft', 'Pending', 'Active', 'Expiring Soon', 'Completed'];
+  container.innerHTML = columns.map(col => {
+    const cards = pipelineData[col] || [];
+    const isExpiring = col === 'Expiring Soon';
+    return `<div class="pipeline-column ${isExpiring ? 'expiring' : ''}">
+      <div class="pipeline-col-header">
+        <span class="col-title">${col}</span>
+        <span class="col-count">${cards.length}</span>
+      </div>
+      <div class="pipeline-cards">
+        ${cards.map(c => `<div class="pipeline-card" style="border-left-color:${c.color}">
+          <div class="p-nom" style="background:${c.color}">${c.nom}</div>
+          <div class="p-name">${c.name}</div>
+          <div class="p-company">${c.company}</div>
+          <div class="p-value">${c.value}</div>
+          ${isExpiring ? `<button class="renew-btn" onclick="event.stopPropagation();alert('Renewal flow for ${c.name}...')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+            Renew${c.days ? ' (' + c.days + 'd left)' : ''}
+          </button>` : ''}
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ============================================
+// VIEW SWITCHING
+// ============================================
+function switchView(view) {
+  currentView = view;
+  document.getElementById('listViewBtn').classList.toggle('active', view === 'list');
+  document.getElementById('pipelineViewBtn').classList.toggle('active', view === 'pipeline');
+  document.getElementById('listView').classList.toggle('active', view === 'list');
+  document.getElementById('pipelineView').classList.toggle('active', view === 'pipeline');
+}
+
+// ============================================
+// SIDEBAR TOGGLE
+// ============================================
+function toggleSidebar() {
+  document.getElementById('filterSidebar').classList.toggle('collapsed');
+}
+
+// ============================================
+// FILTERING
+// ============================================
+function applyFilters() {
+  const searchQuery = document.getElementById('searchInput').value.toLowerCase().trim();
+
+  // Gather nom filter from pills and sidebar
+  const checkedNoms = new Set(activeNomPills);
+  document.querySelectorAll('.filter-checkbox[data-filter="nom"] input:checked').forEach(cb => {
+    checkedNoms.add(cb.closest('.filter-checkbox').dataset.value);
+  });
+
+  // Gather status filter
+  const checkedStatuses = new Set();
+  document.querySelectorAll('.filter-checkbox[data-filter="status"] input:checked').forEach(cb => {
+    checkedStatuses.add(cb.closest('.filter-checkbox').dataset.value);
+  });
+
+  // Gather industry filter
+  const checkedIndustries = new Set();
+  document.querySelectorAll('.filter-checkbox[data-filter="industry"] input:checked').forEach(cb => {
+    checkedIndustries.add(cb.closest('.filter-checkbox').dataset.value);
+  });
+
+  const filtered = contracts.filter(c => {
+    // Search
+    if (searchQuery) {
+      const haystack = (c.name + ' ' + c.company + ' ' + c.contact + ' ' + c.nom + ' ' + c.id + ' ' + c.equipment + ' ' + c.industry).toLowerCase();
+      if (!haystack.includes(searchQuery)) return false;
+    }
+    // Nom filter
+    if (checkedNoms.size > 0 && !checkedNoms.has(c.nom)) return false;
+    // Status filter
+    if (checkedStatuses.size > 0 && !checkedStatuses.has(c.status)) return false;
+    // Industry filter
+    if (checkedIndustries.size > 0 && !checkedIndustries.has(c.industry)) return false;
+
+    return true;
+  });
+
+  renderContractCards(filtered);
+}
+
+function clearAllFilters() {
+  activeNomPills.clear();
+  document.querySelectorAll('.filter-checkbox input').forEach(cb => cb.checked = false);
+  document.getElementById('searchInput').value = '';
+  renderNomPills();
+  applyFilters();
+}
+
+// ============================================
+// ANALYTICS TOGGLE
+// ============================================
+function toggleAnalytics() {
+  const body = document.getElementById('analyticsBody');
+  const icon = document.getElementById('analyticsToggle');
+  body.classList.toggle('open');
+  icon.classList.toggle('open');
+}
+
+// ============================================
+// JOURNEY MAP
+// ============================================
+function toggleJourney() {
+  document.getElementById('journeyOverlay').classList.toggle('active');
+}
+
+// ============================================
+// INIT
+// ============================================
+renderNomPills();
+renderContractCards(contracts);
+renderPipeline();
+</script>
+
+</body>
+</html>
