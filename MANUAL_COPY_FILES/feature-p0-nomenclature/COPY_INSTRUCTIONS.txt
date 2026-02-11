@@ -1,5 +1,5 @@
 ===============================================================
-P0 NOMENCLATURE — ALL FILES (DB Migrations + API Layer)
+P0 NOMENCLATURE — FULL STACK (DB + API + UI)
 Branch: feature/p0-nomenclature
 Date: 2026-02-11
 ===============================================================
@@ -7,8 +7,13 @@ Date: 2026-02-11
 SUBMODULES AFFECTED:
   - contractnest-edge (database migrations)
   - contractnest-api  (validators + types)
+  - contractnest-ui   (wizard step + hook + review)
 
-FILES:
+===============================================================
+ALL FILES
+===============================================================
+
+DB MIGRATIONS (contractnest-edge):
   1. contractnest-edge/supabase/migrations/contracts/032_nomenclature_seed.sql
      → UP migration: seed m_category_master + m_category_details (21 rows) + ALTER t_contracts
 
@@ -21,11 +26,27 @@ FILES:
   4. contractnest-edge/supabase/migrations/contracts/034_rpc_nomenclature_support.sql
      → NEW: updated create_contract_transaction RPC with nomenclature lookup
 
+API LAYER (contractnest-api):
   5. contractnest-api/src/validators/contractValidators.ts
      → MODIFIED: added nomenclature_id (optional UUID) to create + update validators
 
   6. contractnest-api/src/types/contractTypes.ts
      → MODIFIED: added nomenclature_id to CreateContractRequest + ContractListItem
+
+UI LAYER (contractnest-ui):
+  7. contractnest-ui/src/hooks/queries/useNomenclatureTypes.ts
+     → NEW: TanStack Query hook — fetches nomenclature types from product-masterdata edge function
+
+  8. contractnest-ui/src/components/contracts/ContractWizard/steps/NomenclatureStep.tsx
+     → NEW: Grouped card picker step (4 groups, 21 nomenclature types)
+
+  9. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+     → MODIFIED: Added nomenclatureId/Name to wizard state, inserted 'nomenclature'
+       step into both CONTRACT_STEPS and RFQ_STEPS, added render case, added to
+       mapWizardToRequest() payload
+
+  10. contractnest-ui/src/components/contracts/ContractWizard/steps/ReviewSendStep.tsx
+      → MODIFIED: Added nomenclatureName prop, displays as badge next to status
 
 ===============================================================
 COPY COMMANDS (PowerShell)
@@ -35,6 +56,7 @@ cd "D:\projects\core projects\ContractNest\contractnest-combined"
 
 Copy-Item "MANUAL_COPY_FILES\feature-p0-nomenclature\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
 Copy-Item "MANUAL_COPY_FILES\feature-p0-nomenclature\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\feature-p0-nomenclature\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
 
 Write-Host "All files copied!" -ForegroundColor Green
 
@@ -45,8 +67,8 @@ TESTING: Apply DB Migrations to Supabase (in order)
 PREREQUISITE: 032_nomenclature_seed.sql must be applied first.
 
 Then in Supabase SQL Editor, run IN ORDER:
-  1. Paste 033_nomenclature_denorm_columns.sql → Run
-  2. Paste 034_rpc_nomenclature_support.sql → Run
+  1. Paste 033_nomenclature_denorm_columns.sql -> Run
+  2. Paste 034_rpc_nomenclature_support.sql -> Run
 
 Verify columns:
   SELECT column_name, data_type
@@ -55,76 +77,52 @@ Verify columns:
     AND column_name IN ('nomenclature_id', 'nomenclature_code', 'nomenclature_name');
   -- Expected: 3 rows
 
-Verify RPC works with nomenclature:
-  SELECT create_contract_transaction('{
-    "tenant_id": "<YOUR_TENANT_UUID>",
-    "name": "Test Nomenclature Contract",
-    "record_type": "contract",
-    "contract_type": "client",
-    "nomenclature_id": "<PICK_ANY_NOMENCLATURE_UUID_FROM_032>",
-    "created_by": "<YOUR_USER_UUID>"
-  }'::jsonb);
-  -- Expected: success=true, response includes nomenclature_code + nomenclature_name
-
-Verify backward compat (no nomenclature):
-  SELECT create_contract_transaction('{
-    "tenant_id": "<YOUR_TENANT_UUID>",
-    "name": "Test No Nomenclature",
-    "record_type": "contract",
-    "contract_type": "client",
-    "created_by": "<YOUR_USER_UUID>"
-  }'::jsonb);
-  -- Expected: success=true, nomenclature fields all NULL
-
 ===============================================================
-TESTING: API Layer
+TESTING: UI
 ===============================================================
 
-cd contractnest-api && npm run dev
+cd contractnest-ui && npm run dev
+
+WIZARD FLOW (contract):
+  Path -> Nomenclature (NEW) -> Acceptance -> Counterparty -> Details -> ...
+
+WIZARD FLOW (RFQ):
+  Path -> Nomenclature (NEW) -> Counterparty -> Details -> ...
 
 ===============================================================
 TESTING CHECKLIST
 ===============================================================
+
+DB:
 - [ ] 033 migration applies cleanly (nomenclature_code + nomenclature_name columns appear)
 - [ ] 034 migration applies cleanly (RPC replaced)
-- [ ] Create contract WITH nomenclature_id → response has code + name populated
-- [ ] Create contract WITHOUT nomenclature_id → all 3 fields NULL (backward compat)
-- [ ] Create contract with INVALID nomenclature_id → fields silently NULL (no FK error)
+- [ ] Create contract WITH nomenclature_id -> response has code + name populated
+- [ ] Create contract WITHOUT nomenclature_id -> all 3 fields NULL (backward compat)
+
+API:
 - [ ] API validator accepts nomenclature_id UUID
 - [ ] API validator rejects non-UUID nomenclature_id
+
+UI:
+- [ ] Wizard shows Nomenclature step after Path step
+- [ ] Nomenclature types load (21 items in 4 groups)
+- [ ] Selecting a card highlights it with accent color + checkmark
+- [ ] Clicking selected card deselects it (toggle behavior)
+- [ ] Can skip step (proceed without selecting) — nomenclature is optional
+- [ ] Selected nomenclature shows as badge in Review step
+- [ ] Contract created with correct nomenclature_id in payload
+- [ ] Contract created without nomenclature (skip) works fine
+- [ ] Progress dots updated (11 dots for contracts, 6 for RFQ)
+- [ ] Back/forward navigation through nomenclature step works
 
 ===============================================================
 ROLLBACK (if needed)
 ===============================================================
 
-  DB: Re-apply 016_fix_create_contract_rpc.sql to restore old RPC.
-      Then DROP COLUMN nomenclature_code, nomenclature_name from t_contracts.
-  API: Revert contractValidators.ts and contractTypes.ts from git.
-
-===============================================================
-WHAT'S NEW IN THIS BATCH
-===============================================================
-
-Migration 033 — Denormalized Columns:
-  t_contracts gains:
-    - nomenclature_code TEXT  (e.g. 'cmc', 'amc', 'sla')
-    - nomenclature_name TEXT  (e.g. 'CMC', 'AMC', 'SLA')
-
-Migration 034 — RPC Update:
-  create_contract_transaction now:
-    - Accepts nomenclature_id from payload
-    - Looks up code + name from m_category_details (STEP 3.3)
-    - Inserts all 3 nomenclature columns into t_contracts
-    - Returns nomenclature_id, nomenclature_code, nomenclature_name in response
-    - Logs nomenclature_code in audit history
-    - Silently NULLs invalid nomenclature_id (no FK violation)
-
-API Validators:
-  - createContractValidation: nomenclature_id optional UUID
-  - updateContractValidation: nomenclature_id optional UUID
-
-API Types:
-  - CreateContractRequest: + nomenclature_id?: string
-  - ContractListItem: + nomenclature_id, nomenclature_code, nomenclature_name
+DB: Re-apply 016_fix_create_contract_rpc.sql to restore old RPC.
+    Then DROP COLUMN nomenclature_code, nomenclature_name from t_contracts.
+API: Revert contractValidators.ts and contractTypes.ts from git.
+UI: Delete NomenclatureStep.tsx and useNomenclatureTypes.ts.
+    Revert index.tsx and ReviewSendStep.tsx from git.
 
 ===============================================================
