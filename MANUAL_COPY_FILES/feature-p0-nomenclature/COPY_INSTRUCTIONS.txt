@@ -1,0 +1,111 @@
+===============================================================
+P0 NOMENCLATURE — MIGRATION FILES
+Branch: feature/p0-nomenclature
+Date: 2026-02-11
+===============================================================
+
+SUBMODULES AFFECTED:
+  - contractnest-edge (database migration)
+
+FILES:
+  1. contractnest-edge/supabase/migrations/contracts/032_nomenclature_seed.sql
+     → UP migration: seed m_category_master + m_category_details (21 rows) + ALTER t_contracts
+
+  2. contractnest-edge/supabase/migrations/contracts/032_nomenclature_seed_DOWN.sql
+     → DOWN/rollback migration (manual use only, not auto-applied)
+
+===============================================================
+COPY COMMANDS (PowerShell)
+===============================================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\feature-p0-nomenclature\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+===============================================================
+TESTING: Apply to Supabase
+===============================================================
+
+Option A — Supabase SQL Editor:
+  1. Open Supabase Dashboard → SQL Editor
+  2. Paste the contents of 032_nomenclature_seed.sql
+  3. Run
+  4. Verify with:
+
+     SELECT cd.sub_cat_name, cd.display_name, cd.form_settings->>'group' as grp
+     FROM m_category_details cd
+     JOIN m_category_master cm ON cd.category_id = cm.id
+     WHERE cm.category_name = 'cat_contract_nomenclature'
+     ORDER BY cd.sequence_no;
+
+     Expected: 21 rows (6 equipment + 3 facility + 6 service + 6 flexible)
+
+  5. Verify column:
+
+     SELECT column_name, data_type
+     FROM information_schema.columns
+     WHERE table_name = 't_contracts' AND column_name = 'nomenclature_id';
+
+     Expected: 1 row — nomenclature_id, uuid
+
+Option B — Supabase CLI:
+  cd contractnest-edge
+  supabase db push
+
+===============================================================
+ROLLBACK (if needed)
+===============================================================
+
+  Paste 032_nomenclature_seed_DOWN.sql into Supabase SQL Editor and run.
+  Then rollback code via git tags.
+
+===============================================================
+WHAT'S IN THE MIGRATION
+===============================================================
+
+m_category_master (1 new row):
+  - cat_contract_nomenclature → "Contract Nomenclature"
+
+m_category_details (21 new rows):
+  Equipment Maintenance (6):
+    1. amc  — AMC — Annual Maintenance Contract
+    2. cmc  — CMC — Comprehensive Maintenance Contract
+    3. camc — CAMC — Comprehensive Annual Maintenance Contract
+    4. pmc  — PMC — Preventive Maintenance Contract
+    5. bmc  — BMC — Breakdown Maintenance Contract
+    6. warranty_ext — Warranty Extension — Extended Warranty
+
+  Facility & Property (3):
+    7. fmc      — FMC — Facility Management Contract
+    8. om       — O&M — Operations & Maintenance
+    9. manpower — Manpower — Manpower Supply Contract
+
+  Service Delivery (6):
+    10. service_package      — Service Package
+    11. care_plan            — Care Plan
+    12. subscription_service — Subscription
+    13. consultation         — Consultation
+    14. training_contract    — Training
+    15. project_service      — Project-Based
+
+  Flexible / Hybrid (6):
+    16. sla           — SLA — Service Level Agreement
+    17. rate_contract  — Rate Contract
+    18. retainer       — Retainer
+    19. per_call       — Per-Call / On-Demand
+    20. turnkey        — Turnkey
+    21. bot_boot       — BOT/BOOT — Build-Operate-Transfer
+
+t_contracts:
+  - ADD COLUMN nomenclature_id UUID (nullable FK to m_category_details)
+  - ADD INDEX idx_contracts_nomenclature (tenant_id, nomenclature_id)
+
+Each m_category_details row has rich form_settings JSONB with:
+  short_name, full_name, group, group_label, group_icon,
+  is_equipment_based, is_entity_based, is_service_based,
+  wizard_route, typical_duration, typical_billing,
+  scope_includes, scope_excludes, industries, icon
+
+===============================================================
