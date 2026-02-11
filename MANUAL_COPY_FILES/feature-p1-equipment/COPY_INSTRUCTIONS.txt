@@ -56,6 +56,9 @@ Copy-Item "MANUAL_COPY_FILES\feature-p1-equipment\contractnest-ui\src\hooks\quer
 New-Item -ItemType Directory -Path "contractnest-ui\src\pages\settings\Equipment" -Force
 Copy-Item "MANUAL_COPY_FILES\feature-p1-equipment\contractnest-ui\src\pages\settings\Equipment\*" -Destination "contractnest-ui\src\pages\settings\Equipment\" -Recurse -Force
 
+# Sidebar Menu — FULL REPLACEMENT (adds Equipment Registry under Operations)
+Copy-Item "MANUAL_COPY_FILES\feature-p1-equipment\contractnest-ui\src\utils\constants\industryMenus.ts" -Destination "contractnest-ui\src\utils\constants\" -Force
+
 # App.tsx — FULL REPLACEMENT (adds Equipment route + import)
 Copy-Item "MANUAL_COPY_FILES\feature-p1-equipment\contractnest-ui\src\App.tsx" -Destination "contractnest-ui\src\" -Force
 
