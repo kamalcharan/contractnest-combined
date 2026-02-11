@@ -22,9 +22,9 @@ $submodules = @(
 )
 
 Write-Host ""
-Write-Host "═══════════════════════════════════════════════════" -ForegroundColor Cyan
-Write-Host "  REPO STATUS CHECK — $(Get-Date -Format 'yyyy-MM-dd HH:mm')" -ForegroundColor Cyan
-Write-Host "═══════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "=======================================================" -ForegroundColor Cyan
+Write-Host "  REPO STATUS CHECK - $(Get-Date -Format 'yyyy-MM-dd HH:mm')" -ForegroundColor Cyan
+Write-Host "=======================================================" -ForegroundColor Cyan
 Write-Host ""
 
 # Table header
@@ -60,7 +60,7 @@ foreach ($sub in $submodules) {
 
     if ($status) {
         $changeCount = ($status -split "`n").Count
-        Write-Host "    └─ $changeCount file(s) changed" -ForegroundColor DarkGray
+        Write-Host "    +-- $changeCount file(s) changed" -ForegroundColor DarkGray
     }
 
     Pop-Location
@@ -75,12 +75,13 @@ $parentTag = git tag -l "stable-*" --sort=-creatordate 2>$null | Select-Object -
 if (-not $parentTag) { $parentTag = "(none)" }
 
 Write-Host "  $('-' * 80)" -ForegroundColor DarkGray
+$parentBranchColor = if ($parentBranch -eq "master") { "Green" } else { "Yellow" }
 Write-Host ("  {0,-25} " -f "contractnest-combined") -NoNewline -ForegroundColor Cyan
-Write-Host ("{0,-30} " -f $parentBranch) -NoNewline -ForegroundColor $(if ($parentBranch -eq "master") {"Green"} else {"Yellow"})
+Write-Host ("{0,-30} " -f $parentBranch) -NoNewline -ForegroundColor $parentBranchColor
 Write-Host ("{0,-10} " -f $parentClean) -NoNewline -ForegroundColor $parentCleanColor
 Write-Host ("{0,-15}" -f $parentTag) -ForegroundColor Gray
 
 Write-Host ""
-Write-Host "═══════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "=======================================================" -ForegroundColor Cyan
 Write-Host ""
 Read-Host "Press Enter to exit"

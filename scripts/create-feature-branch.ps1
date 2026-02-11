@@ -25,9 +25,9 @@ $submodules = @(
 )
 
 Write-Host ""
-Write-Host "═══════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "=======================================================" -ForegroundColor Cyan
 Write-Host "  CREATE FEATURE BRANCH: $BranchName" -ForegroundColor Cyan
-Write-Host "═══════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "=======================================================" -ForegroundColor Cyan
 Write-Host ""
 
 # Safety: check all repos are clean
@@ -63,7 +63,7 @@ $errors = @()
 foreach ($sub in $submodules) {
     $subPath = Join-Path $ROOT_DIR $sub.Name
     if (-not (Test-Path $subPath)) {
-        Write-Host "  [SKIP] $($sub.Name) — not found" -ForegroundColor Gray
+        Write-Host "  [SKIP] $($sub.Name) - not found" -ForegroundColor Gray
         continue
     }
 
@@ -78,13 +78,13 @@ foreach ($sub in $submodules) {
     if ($LASTEXITCODE -eq 0) {
         git push -u origin $BranchName 2>$null
         if ($LASTEXITCODE -eq 0) {
-            Write-Host "  [OK] $($sub.Name) → $BranchName (pushed)" -ForegroundColor Green
+            Write-Host "  [OK] $($sub.Name) -> $BranchName (pushed)" -ForegroundColor Green
         } else {
-            Write-Host "  [OK] $($sub.Name) → $BranchName (local only — push manually)" -ForegroundColor Yellow
+            Write-Host "  [OK] $($sub.Name) -> $BranchName (local only - push manually)" -ForegroundColor Yellow
         }
         $created += $sub.Name
     } else {
-        Write-Host "  [ERROR] $($sub.Name) — branch may already exist" -ForegroundColor Red
+        Write-Host "  [ERROR] $($sub.Name) - branch may already exist" -ForegroundColor Red
         # Try switching to existing branch
         git checkout $BranchName 2>$null
         if ($LASTEXITCODE -eq 0) {
@@ -102,15 +102,15 @@ foreach ($sub in $submodules) {
 git checkout -b $BranchName 2>$null
 if ($LASTEXITCODE -eq 0) {
     git push -u origin $BranchName 2>$null
-    Write-Host "  [OK] contractnest-combined → $BranchName" -ForegroundColor Green
+    Write-Host "  [OK] contractnest-combined -> $BranchName" -ForegroundColor Green
     $created += "contractnest-combined"
 } else {
     git checkout $BranchName 2>$null
-    Write-Host "  [OK] contractnest-combined → $BranchName (existing)" -ForegroundColor Yellow
+    Write-Host "  [OK] contractnest-combined -> $BranchName (existing)" -ForegroundColor Yellow
 }
 
 Write-Host ""
-Write-Host "═══════════════════════════════════════════════════" -ForegroundColor Green
+Write-Host "=======================================================" -ForegroundColor Green
 Write-Host "  BRANCH CREATED: $BranchName" -ForegroundColor Green
 Write-Host "  Repos: $($created.Count) ready" -ForegroundColor White
 if ($errors.Count -gt 0) {
@@ -121,7 +121,7 @@ Write-Host "  Next steps:" -ForegroundColor Yellow
 Write-Host "  1. Start Claude Code session" -ForegroundColor White
 Write-Host "  2. Make changes on this branch" -ForegroundColor White
 Write-Host "  3. Test thoroughly" -ForegroundColor White
-Write-Host "  4. Merge: edge → api → ui → docs → parent" -ForegroundColor White
-Write-Host "═══════════════════════════════════════════════════" -ForegroundColor Green
+Write-Host "  4. Merge: edge -> api -> ui -> docs -> parent" -ForegroundColor White
+Write-Host "=======================================================" -ForegroundColor Green
 Write-Host ""
-Read-Host "Press Enter to continue"
+Read-Host "Press Enter to continue" 
