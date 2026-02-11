@@ -34,8 +34,8 @@ Copy-Item "MANUAL_COPY_FILES\feature-p1-equipment\contractnest-api\src\services\
 Copy-Item "MANUAL_COPY_FILES\feature-p1-equipment\contractnest-api\src\controllers\assetRegistryController.ts" -Destination "contractnest-api\src\controllers\" -Force
 Copy-Item "MANUAL_COPY_FILES\feature-p1-equipment\contractnest-api\src\routes\assetRegistryRoutes.ts" -Destination "contractnest-api\src\routes\" -Force
 
-# NOTE: index.ts was modified IN-PLACE by Claude (not in MANUAL_COPY_FILES).
-# The route registration is already added to contractnest-api/src/index.ts.
+# index.ts — FULL REPLACEMENT (includes asset registry route registration + health/root/404 updates)
+Copy-Item "MANUAL_COPY_FILES\feature-p1-equipment\contractnest-api\src\index.ts" -Destination "contractnest-api\src\" -Force
 
 ===============================================================
 STEP 3: Run Migrations (in Supabase SQL Editor — IN ORDER)
