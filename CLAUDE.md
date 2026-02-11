@@ -1,603 +1,334 @@
-# ContractNest - Claude Code Session Instructions
+# CLAUDE.md — ContractNest Domain Enhancement
 
-> **CRITICAL**: Read this entire file at the start of every session. This ensures all submodules are properly initialized and code changes are tracked correctly.
-
----
-
-## 🛑 GOLDEN RULES - READ FIRST
-
-### 1. ANALYSIS FIRST, CODE LATER
-- **NEVER start coding immediately**
-- First: Understand the requirement, analyze existing code, propose approach
-- Wait for explicit confirmation: "Yes, proceed with coding" or "Go ahead"
-- Only then write code
-
-### 2. TWO-PHASE DELIVERY
-| Phase | When | What I Provide |
-|-------|------|----------------|
-| **Phase 1: Local Testing** | After coding | MANUAL_COPY_FILES + Copy commands ONLY |
-| **Phase 2: Merge/Commit** | After user confirms "tested & working" | Full commit/merge commands |
-
-**❌ NEVER include merge/commit commands in Phase 1**
-**✅ ALWAYS wait for user confirmation before providing Phase 2**
-
-### 3. NO UNSOLICITED REFACTORING
-- **NEVER refactor existing code** unless explicitly asked
-- If refactoring seems beneficial, ASK first: "I noticed X could be improved. Should I refactor?"
-- Focus only on the requested feature/fix
-
-### 4. PRODUCTION-READY CODE STANDARDS
-ALL code must include these 5 elements:
-
-| # | Requirement | Description |
-|---|-------------|-------------|
-| 1 | **Transaction Management** | Database operations wrapped in transactions, rollback on failure |
-| 2 | **Race Condition Handling** | Proper locking, optimistic concurrency, debouncing where needed |
-| 3 | **Error Handling** | Try-catch blocks, proper error propagation, user-friendly messages |
-| 4 | **Toasts** | Success/error/warning notifications using EXISTING toast components |
-| 5 | **Loaders** | Loading states for async operations using EXISTING loader components |
-
-⚠️ **Before implementing toasts/loaders**: Check if components exist. If not, ASK:
-> "I don't see an existing toast/loader component. Should I create one or is there an existing one I should use?"
+> **Read this file FIRST before doing anything. Then read the handover documents referenced below.**
 
 ---
 
+## WHO YOU'RE WORKING WITH
+
+Charan Kamal Bommakanti — Founder & CEO of Vikuna Technologies. 24+ years IT experience. He designed this architecture himself and knows every table, every route, every edge function. Don't explain his own system back to him. Don't suggest "improvements" to patterns he deliberately chose. If something looks odd, ASK why before changing it — there's usually a reason.
+
+He thinks in systems, not features. He cares about architectural consistency more than shipping speed. He will reject clean code that breaks his established patterns.
+
 ---
 
-## 🔍 Task Workflow: Analysis Before Code
+## THE PROJECT
 
-### When User Requests a Feature/Fix:
+ContractNest — multi-tenant SaaS for service contract lifecycle management.
 
+**Stack**: React 18 + TypeScript + Vite (UI) | Node.js + Express (API) | Supabase PostgreSQL + Deno Edge Functions (Edge) | Docker deployment on Railway
+
+**Repo structure** (git submodules under `contractnest-combined`):
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  STEP 1: UNDERSTAND                                         │
-│  - What exactly is being requested?                         │
-│  - What's the expected behavior?                            │
-│  - What are the edge cases?                                 │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│  STEP 2: ANALYZE EXISTING CODE                              │
-│  - Check relevant files in affected submodules              │
-│  - Identify existing patterns (toast, loader, error         │
-│    handling components)                                     │
-│  - Note any dependencies                                    │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│  STEP 3: PROPOSE APPROACH                                   │
-│  - Files to be modified/created                             │
-│  - Technical approach                                       │
-│  - Components to be reused                                  │
-│  - Any questions or clarifications needed                   │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│  STEP 4: WAIT FOR CONFIRMATION                              │
-│  ⏸️ "Does this approach look good? Should I proceed?"       │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-              User confirms: "Yes, proceed"
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│  STEP 5: CODE                                               │
-│  - Implement with production standards                      │
-│  - Provide PHASE 1 output (copy commands only)              │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-              User confirms: "Tested, working"
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│  STEP 6: PROVIDE PHASE 2                                    │
-│  - Commit/merge commands                                    │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Questions I Should Ask Before Coding:
-
-1. **Missing Components**: "I don't see an existing [toast/loader/modal] component. Which one should I use?"
-2. **Unclear Requirements**: "Should this [feature] also handle [edge case]?"
-3. **Multiple Approaches**: "I can implement this using [A] or [B]. Which do you prefer?"
-4. **Potential Impact**: "This change might affect [other feature]. Should I check that too?"
-
----
-
-## 📁 Project Structure
-
-```
-D:\projects\core projects\ContractNest\contractnest-combined\
-├── contractnest-api/          # Backend API (Node.js/Express) - branch: main
-├── contractnest-ui/           # Frontend UI (React/TypeScript) - branch: main
-├── contractnest-edge/         # Edge Functions/Serverless - branch: main
-├── ClaudeDocumentation/       # Documentation - branch: master
-├── ContractNest-Mobile/       # Mobile App (React Native) - branch: main
-├── FamilyKnows/               # Separate Product (Expo + React Website) - branch: main
-│   ├── app/                   # Expo mobile app
-│   └── website/               # React/TypeScript website
-├── MANUAL_COPY_FILES/         # Claude's output folder for code changes
-└── CLAUDE.md                  # THIS FILE
+contractnest-combined/          ← parent repo (master branch)
+├── contractnest-ui/            ← React frontend (main branch)
+├── contractnest-api/           ← Node.js backend (main branch)
+├── contractnest-edge/          ← Supabase migrations + edge functions (main branch)
+├── ClaudeDocumentation/        ← Docs + handover files (master branch)
+├── ContractNest-Mobile/        ← React Native app (main branch)
+└── FamilyKnows/                ← Separate product (main branch)
 ```
 
 ---
 
-## 🚨 MANDATORY: Session Initialization
+## MANDATORY READING (before writing any code)
 
-**EVERY SESSION MUST START WITH THESE COMMANDS:**
+Read these files IN ORDER before starting work:
 
-```bash
-# Navigate to parent repo
-cd "D:\projects\core projects\ContractNest\contractnest-combined"
+1. `ClaudeDocumentation/contractnest-handover.md` — Full context: what ContractNest is, what the domain audit found, all architecture decisions, implementation phases P0-P4, current wizard flow, key files
+2. `ClaudeDocumentation/contractnest-handover-addendum.md` — Critical fix: service-based contract segment (wellness, consulting, training), 21 nomenclature types (not 15), 4-group picker, updated wizard routing
+3. `ClaudeDocumentation/contractnest-git-workflow.md` — Branch strategy, merge order, rollback plan, testing checklists
 
-# Ensure all submodules are initialized and updated
-git submodule update --init --recursive
+**After reading these**, confirm to the user:
+- Which phase you're working on (P0, P1, or P2)
+- What branch name you expect to be on
+- What files you plan to create/modify
+- What you will NOT touch
 
-# Verify ALL 6 submodules are present and accessible
-ls -la contractnest-api/
-ls -la contractnest-ui/
-ls -la contractnest-edge/
-ls -la ClaudeDocumentation/
-ls -la ContractNest-Mobile/
-ls -la FamilyKnows/
+---
 
-# Check submodule status
-git submodule status
+## CURRENT PHASE
+
+**Ask the user which phase to work on.** Never assume. Never mix phases.
+
+| Phase | Branch | Scope |
+|-------|--------|-------|
+| P0 | feature/p0-nomenclature | Nomenclature seed + t_contracts column + wizard picker + badges |
+| P1 | feature/p1-equipment | Equipment tables + junction + resource settings + wizard step |
+| P2 | feature/p2-entities | Entity tables + hierarchy + entity picker + wizard step |
+
+---
+
+## ARCHITECTURE PATTERNS YOU MUST FOLLOW
+
+### 1. Database Conventions
+
+```sql
+-- Master/global tables: prefix m_
+-- Example: m_category_master, m_catalog_resource_types, m_catalog_industries
+
+-- Tenant/transactional tables: prefix t_
+-- Example: t_contracts, t_equipment, t_contact_addresses
+
+-- Catalog studio tables: prefix cat_
+-- Example: cat_blocks, cat_templates, cat_asset_types
+
+-- ALL tables must have:
+id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+tenant_id UUID NOT NULL REFERENCES t_tenants(id),
+created_at TIMESTAMPTZ DEFAULT now(),
+updated_at TIMESTAMPTZ DEFAULT now(),
+created_by UUID REFERENCES auth.users(id),
+updated_by UUID REFERENCES auth.users(id),
+is_active BOOLEAN DEFAULT true
+
+-- Exception: m_ (master) tables don't have tenant_id
+-- Exception: m_ tables use is_active BOOLEAN DEFAULT true for soft delete
+
+-- JSONB for flexible metadata, dedicated columns for queryable fields
+-- Use form_settings JSONB on m_category_details for metadata (established pattern)
+
+-- RLS: ALWAYS add row-level security policies for t_ tables
+-- Pattern: tenant_id = auth.jwt()->>'tenant_id'
 ```
 
-**Expected Output from `git submodule status`:**
+### 2. LOV (List of Values) Pattern
+
+ContractNest uses `m_category_master` + `m_category_details` as a generic configurable enum system. This is used for billing models, plan features, event statuses, tax categories, AND NOW nomenclature.
+
 ```
- [commit-hash] contractnest-api (heads/main)
- [commit-hash] contractnest-ui (heads/main)
- [commit-hash] contractnest-edge (heads/main)
- [commit-hash] ClaudeDocumentation (heads/master)
- [commit-hash] ContractNest-Mobile (heads/main)
- [commit-hash] FamilyKnows (heads/main)
+m_category_master → defines a category GROUP (e.g., 'cat_contract_nomenclature')
+m_category_details → defines individual VALUES within that group (e.g., 'AMC', 'CMC', 'FMC')
+  - sub_cat_name: machine-readable code
+  - display_name: human-readable label
+  - description: explanation text
+  - hexcolor: badge color
+  - icon_name: Lucide icon name
+  - form_settings: JSONB metadata (flexible per category)
+  - sequence_no: display order
+  - tags: JSONB for additional categorization
 ```
 
-⚠️ **If any submodule shows as empty or missing, run:**
-```bash
-git submodule update --init --recursive --force
+**DO NOT create new standalone enum/lookup tables when m_category_details can hold the data.** Ask first.
+
+### 3. Catalog Resource Pattern
+
+```
+m_catalog_resource_types → global resource type definitions (equipment, team_staff, consumable, etc.)
+m_catalog_resource_templates → industry × resource type templates (CURRENTLY EMPTY — needs seeding)
+m_catalog_industries → global industry list
+m_catalog_categories → global service category list
+m_catalog_category_industry_map → industry ↔ category many-to-many
+t_category_resources_master → tenant's actual resource instances
+```
+
+**DO NOT bypass this hierarchy.** New equipment/entity data should flow through this pattern where possible.
+
+### 4. UI Component Patterns
+
+```typescript
+// All pages use the existing layout system:
+// - AppLayout with sidebar navigation
+// - PageHeader component for title + actions
+// - Card-based content sections
+// - Slide-in panels (not modals) for detail views
+// - FlyBy menu for block type selection in wizard
+
+// Theme system: 11 themes, CSS variables, no hardcoded colors
+// Use: var(--primary), var(--accent), var(--surface), etc.
+
+// Icons: Lucide React exclusively (import { IconName } from 'lucide-react')
+
+// State management: React Query (TanStack Query) for server state
+// Pattern: useQuery + useMutation hooks in src/hooks/queries/
+
+// Form handling: React Hook Form + Zod validation
+// Pattern: useForm + zodResolver in form components
+
+// Toast notifications: existing toast system (not alert/confirm dialogs)
+```
+
+### 5. API Route Pattern
+
+```typescript
+// Routes: src/routes/{entity}.routes.ts
+// Controllers: src/controllers/{entity}Controller.ts
+// Services: src/services/{entity}Service.ts
+// Types: src/types/{entity}.ts
+// Validators: src/validators/{entity}Validators.ts
+
+// All routes use:
+// - authenticateToken middleware
+// - validateRequest middleware with Zod schemas
+// - Consistent error response format: { success: false, error: { message, code } }
+// - Consistent success format: { success: true, data: {...} }
+```
+
+### 6. Edge Function Pattern
+
+```typescript
+// Deno runtime, TypeScript
+// Located in: contractnest-edge/supabase/functions/{function-name}/index.ts
+// Use Supabase client from: @supabase/supabase-js
+// CORS headers required on every response
+// JWT verification for authenticated endpoints
+```
+
+### 7. Migration File Naming
+
+```
+contractnest-edge/supabase/migrations/
+  contracts/
+    001_initial_schema.sql
+    002_contract_blocks.sql
+    ...
+    0XX_{descriptive_name}.sql   ← increment from highest existing number
+
+// EVERY UP migration MUST have a corresponding DOWN migration:
+    0XX_{descriptive_name}.sql        ← the actual migration
+    0XX_{descriptive_name}_DOWN.sql   ← rollback script (kept in repo, never auto-applied)
 ```
 
 ---
 
-## 📋 Submodule Quick Reference
+## CODE QUALITY RULES
 
-| Submodule | Purpose | Branch | Tech Stack |
-|-----------|---------|--------|------------|
-| `contractnest-api` | Backend API | `main` | Node.js, Express, TypeScript |
-| `contractnest-ui` | Frontend Web App | `main` | React, TypeScript, Vite |
-| `contractnest-edge` | Edge/Serverless Functions | `main` | Cloudflare Workers / Edge |
-| `ClaudeDocumentation` | Project Documentation | `master` | Markdown |
-| `ContractNest-Mobile` | Mobile Application | `main` | React Native |
-| `FamilyKnows` | Separate SaaS Product | `main` | Expo (app/) + React (website/) |
+1. **TypeScript strict mode** — no `any` types, no `@ts-ignore`, no `as unknown as X` casts
+2. **No console.log in production code** — use the existing logger service
+3. **No inline styles** — use Tailwind classes or CSS variables from theme system
+4. **No new dependencies** without asking — check if existing packages cover the need
+5. **Indian locale context** — use ₹ (INR), Indian number formatting (1,50,000 not 150,000), Indian company/hospital names in seed data and examples
+6. **Responsive** — all new UI must work on desktop AND tablet minimum
+7. **Accessibility** — proper aria labels, keyboard navigation, focus management in wizards
 
 ---
 
-## 🔴 CRITICAL: Code Output Rules
+## OUTPUT FORMAT
 
-### I CANNOT push to GitHub directly due to authentication limitations.
+When you finish work, ALWAYS produce:
 
-### Instead, I MUST follow this exact structure:
-
+### 1. MANUAL_COPY_FILES/ folder
+Place ALL created/modified files here with their relative paths preserved:
 ```
 MANUAL_COPY_FILES/
-└── [feature-branch-name]/
-    ├── contractnest-api/
-    │   └── [files mirroring exact repo structure]
-    ├── contractnest-ui/
-    │   └── [files mirroring exact repo structure]
-    ├── contractnest-edge/
-    │   └── [files mirroring exact repo structure]
-    ├── ClaudeDocumentation/
-    │   └── [files]
-    ├── ContractNest-Mobile/
-    │   └── [files]
-    ├── FamilyKnows/
-    │   ├── app/
-    │   │   └── [Expo app files]
-    │   └── website/
-    │       └── [React website files]
-    └── COPY_INSTRUCTIONS.txt
+├── contractnest-edge/
+│   └── supabase/migrations/contracts/0XX_nomenclature.sql
+│   └── supabase/migrations/contracts/0XX_nomenclature_DOWN.sql
+├── contractnest-api/
+│   └── src/types/nomenclature.ts
+├── contractnest-ui/
+│   └── src/components/contracts/NomenclaturePicker/index.tsx
+│   └── src/components/contracts/NomenclaturePicker/NomenclatureCard.tsx
+└── ClaudeDocumentation/
+    └── p0-implementation-notes.md
 ```
 
-### ❌ NEVER DO:
-- Place files randomly in MANUAL_COPY_FILES/ root
-- Mix files from different feature branches
-- Forget to create COPY_INSTRUCTIONS.txt
-- Use incorrect folder names
+### 2. COPY_INSTRUCTIONS.txt
+Exact copy commands for PowerShell:
+```
+Copy-Item "MANUAL_COPY_FILES\contractnest-edge\supabase\migrations\contracts\0XX_nomenclature.sql" -Destination "contractnest-edge\supabase\migrations\contracts\" -Force
+```
 
-### ✅ ALWAYS DO:
-- Create feature branch folder first
-- Mirror exact submodule folder structure inside
-- Include complete file paths in COPY_INSTRUCTIONS.txt
-- Specify which submodules were modified
+### 3. Changes Summary (the standard format from Charan's workflow document)
+
+### 4. DOWN migration
+For every SQL migration, provide the rollback SQL in a separate _DOWN.sql file.
+
+### 5. Testing checklist
+Specific things to verify before merging.
 
 ---
 
-## 📤 Required Output Format After Making Changes
+## WHAT NOT TO DO
 
-### PHASE 1: LOCAL TESTING (Provide immediately after coding)
+1. **Don't refactor existing working code** unless explicitly asked. Adding nomenclature should not require rewriting the contract wizard. ADD to it, don't REWRITE it.
 
-```
-═══════════════════════════════════════════════════
-📦 CHANGES SUMMARY
-═══════════════════════════════════════════════════
-Branch: [feature-branch-name]
-Files Changed:
-  - [submodule]/[path/to/file] - [purpose]
-  - [submodule]/[path/to/file] - [purpose]
+2. **Don't create standalone tables** when existing LOV/catalog patterns can hold the data. The nomenclature taxonomy goes in m_category_details, not in a new m_contract_nomenclature table.
 
-Submodules Affected: [list affected submodules]
+3. **Don't mix phases.** If you're doing P0, don't create equipment tables "while we're at it." Each phase is a separate, testable, rollback-safe unit.
 
-Production Checklist:
-  ✅ Transaction Management: [Yes/No - where applied]
-  ✅ Race Condition Handling: [Yes/No - where applied]
-  ✅ Error Handling: [Yes/No - where applied]
-  ✅ Toasts: [Yes/No - component used]
-  ✅ Loaders: [Yes/No - component used]
+4. **Don't over-engineer.** Charan has a clear architecture. Follow it. A simple ALTER TABLE + INSERT is better than a complex migration framework. A simple card component is better than an abstract configurable widget system.
 
-═══════════════════════════════════════════════════
-💻 PHASE 1: COPY FILES FOR LOCAL TESTING
-═══════════════════════════════════════════════════
+5. **Don't assume context from previous sessions.** Read the handover docs every time. Memory across sessions is not guaranteed.
 
-STEP 1: Navigate to Project
-─────────────────────────────────
-cd "D:\projects\core projects\ContractNest\contractnest-combined"
+6. **Don't create files outside the submodule directories.** Everything goes into contractnest-ui/, contractnest-api/, contractnest-edge/, or ClaudeDocumentation/. Nothing at the parent repo level except submodule references.
 
-STEP 2: Copy Files from MANUAL_COPY_FILES
-─────────────────────────────────
-Copy-Item "MANUAL_COPY_FILES\[feature-branch-name]\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
-Copy-Item "MANUAL_COPY_FILES\[feature-branch-name]\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
-# ... etc for each affected submodule
+7. **Don't use Lorem Ipsum or generic placeholder data.** Use real Indian context: Apollo Hospital, Fortis Healthcare, Godrej Properties, Tata Motors, ₹1,50,000, Dr. Rajesh Kumar, MRI Scanner GE Signa HDxt.
 
-Write-Host "✅ All files copied!" -ForegroundColor Green
+8. **Don't add new npm dependencies without asking.** The project has specific package choices. Check if lucide-react, react-hook-form, @tanstack/react-query, zod, date-fns already cover what you need.
 
-STEP 3: Start Dev Server & Test
-─────────────────────────────────
-# ContractNest UI
-cd contractnest-ui && npm run dev
+9. **Don't modify .env files or deployment configs.** Those are managed separately.
 
-# API (if modified)
-cd ../contractnest-api && npm run dev
-
-# Hard refresh browser: Ctrl+F5
-
-═══════════════════════════════════════════════════
-🧪 TESTING CHECKLIST
-═══════════════════════════════════════════════════
-- [ ] [Test item 1]
-- [ ] [Test item 2]
-- [ ] [Test item 3]
-
-═══════════════════════════════════════════════════
-⏸️ WAITING FOR CONFIRMATION
-═══════════════════════════════════════════════════
-Test locally and confirm:
-  → "Tested, working - proceed with merge"
-  → "Issue found: [describe problem]"
-═══════════════════════════════════════════════════
-```
+10. **Don't touch the theming system, auth system, or tenant management.** These are stable and outside scope.
 
 ---
 
-### PHASE 2: COMMIT & MERGE (Provide ONLY after user confirms testing passed)
+## BEFORE YOU START CODING — CONFIRM THESE
+
+Tell the user:
 
 ```
-═══════════════════════════════════════════════════
-🚀 PHASE 2: COMMIT & MERGE TO MAIN
-═══════════════════════════════════════════════════
+I've read the handover documents. Here's my understanding:
 
-STEP 1: Commit UI Changes (if applicable)
-─────────────────────────────────
-cd contractnest-ui
-git status
-git add .
-git commit -m "feat: [descriptive message]"
-git push origin main
-cd ..
+PHASE: [P0/P1/P2]
+BRANCH: [feature/p0-nomenclature etc.]
+WHAT I'LL CREATE:
+  - [list new files]
+WHAT I'LL MODIFY:
+  - [list existing files with what changes]
+WHAT I WON'T TOUCH:
+  - [list explicitly]
+MIGRATION:
+  - UP: [filename]
+  - DOWN: [filename]
 
-STEP 2: Commit API Changes (if applicable)
-─────────────────────────────────
-cd contractnest-api
-git status
-git add .
-git commit -m "feat: [descriptive message]"
-git push origin main
-cd ..
-
-STEP 3: Commit Edge Changes (if applicable)
-─────────────────────────────────
-cd contractnest-edge
-git status
-git add .
-git commit -m "feat: [descriptive message]"
-git push origin main
-cd ..
-
-STEP 4: Commit FamilyKnows Changes (if applicable)
-─────────────────────────────────
-cd FamilyKnows
-git status
-git add .
-git commit -m "feat: [descriptive message]"
-git push origin main
-cd ..
-
-STEP 5: Commit Mobile Changes (if applicable)
-─────────────────────────────────
-cd ContractNest-Mobile
-git status
-git add .
-git commit -m "feat: [descriptive message]"
-git push origin main
-cd ..
-
-STEP 6: Commit Documentation Changes (if applicable)
-─────────────────────────────────
-cd ClaudeDocumentation
-git status
-git add .
-git commit -m "docs: [descriptive message]"
-git push origin master
-cd ..
-
-STEP 7: Update Parent Repo Submodule References
-─────────────────────────────────
-cd "D:\projects\core projects\ContractNest\contractnest-combined"
-git add contractnest-ui contractnest-api contractnest-edge ClaudeDocumentation ContractNest-Mobile FamilyKnows
-git commit -m "chore: update submodules - [feature description]"
-git push origin master
-
-STEP 8: Verify Clean State
-─────────────────────────────────
-git status
-git submodule status
-# Should show: "nothing to commit, working tree clean"
-
-Write-Host "✅ All changes committed and merged!" -ForegroundColor Green
-═══════════════════════════════════════════════════
+Should I proceed?
 ```
+
+Wait for confirmation before writing code.
 
 ---
 
-## 🔄 Pull Everything Script (Fresh Start)
+## QUICK REFERENCE: EXISTING TABLE COUNTS
 
-```powershell
-cd "D:\projects\core projects\ContractNest\contractnest-combined"
+- 62+ tables across public schema
+- 52+ frontend pages/routes
+- 150+ API endpoints
+- 40+ edge functions
+- 11 theme variants
+- Migration files numbered 001-030+ in contracts/ subfolder
 
-# Pull parent repo
-git checkout master
-git pull origin master
-
-# Initialize and update ALL submodules
-git submodule update --init --recursive --remote
-
-# Explicitly pull each submodule to correct branch
-cd contractnest-api
-git checkout main
-git pull origin main
-cd ..
-
-cd contractnest-ui
-git checkout main
-git pull origin main
-cd ..
-
-cd contractnest-edge
-git checkout main
-git pull origin main
-cd ..
-
-cd ClaudeDocumentation
-git checkout master
-git pull origin master
-cd ..
-
-cd ContractNest-Mobile
-git checkout main
-git pull origin main
-cd ..
-
-cd FamilyKnows
-git checkout main
-git pull origin main
-cd ..
-
-cd "D:\projects\core projects\ContractNest\contractnest-combined"
-Write-Host "✅ All repos pulled and synced!" -ForegroundColor Green
-```
-
----
-
-## 📤 Push Everything Script
-
-```powershell
-cd "D:\projects\core projects\ContractNest\contractnest-combined"
-
-# Push API
-cd contractnest-api
-git checkout main
-git pull origin main
-git add .
-git commit -m "Update API" --allow-empty
-git push origin main
-cd ..
-
-# Push UI
-cd contractnest-ui
-git checkout main
-git pull origin main
-git add .
-git commit -m "Update UI" --allow-empty
-git push origin main
-cd ..
-
-# Push Edge
-cd contractnest-edge
-git checkout main
-git pull origin main
-git add .
-git commit -m "Update Edge" --allow-empty
-git push origin main
-cd ..
-
-# Push ClaudeDocumentation
-cd ClaudeDocumentation
-git checkout master
-git pull origin master
-git add .
-git commit -m "Update Documentation" --allow-empty
-git push origin master
-cd ..
-
-# Push ContractNest-Mobile
-cd ContractNest-Mobile
-git checkout main
-git pull origin main
-git add .
-git commit -m "Update Mobile" --allow-empty
-git push origin main
-cd ..
-
-# Push FamilyKnows
-cd FamilyKnows
-git checkout main
-git pull origin main
-git add .
-git commit -m "Update FamilyKnows" --allow-empty
-git push origin main
-cd ..
-
-# Update parent repo
-git checkout master
-git pull origin master
-git add .
-git commit -m "Update submodule references" --allow-empty
-git push origin master
-
-Write-Host "✅ Everything pushed to GitHub!" -ForegroundColor Green
-```
-
----
-
-## 🛠️ Troubleshooting
-
-### Submodule Not Initialized
+Check the highest existing migration number before creating new ones:
 ```bash
-git submodule update --init --recursive --force
-```
-
-### Detached HEAD in Submodule
-```bash
-cd [submodule-name]
-git checkout main  # or master for ClaudeDocumentation
-git pull origin main
-cd ..
-```
-
-### Submodule Conflicts During Merge
-```bash
-cd [conflicted-submodule]
-git checkout main
-git pull origin main
-cd ..
-git add [conflicted-submodule]
-git commit -m "Resolve submodule conflict"
-```
-
-### Reset Submodule to Remote State
-```bash
-cd [submodule-name]
-git fetch origin
-git reset --hard origin/main  # or origin/master
-cd ..
+ls contractnest-edge/supabase/migrations/contracts/ | sort | tail -5
 ```
 
 ---
 
-## 📌 Commit Message Conventions
+## QUICK REFERENCE: KEY DIRECTORIES
 
-Use these prefixes for clear commit history:
-
-| Prefix | Usage |
-|--------|-------|
-| `feat:` | New feature |
-| `fix:` | Bug fix |
-| `docs:` | Documentation changes |
-| `style:` | Formatting, no code change |
-| `refactor:` | Code restructuring |
-| `test:` | Adding tests |
-| `chore:` | Maintenance tasks |
-
-**Examples:**
-- `feat: add NAV tracking dashboard`
-- `fix: resolve TypeScript compilation errors`
-- `docs: update API endpoint documentation`
-- `chore: update submodules with auth fixes`
-
----
-
-## ⚠️ Session Reminders
-
-1. **ALWAYS initialize all submodules at session start**
-2. **ALWAYS use feature-branch folders in MANUAL_COPY_FILES**
-3. **ALWAYS provide COPY_INSTRUCTIONS.txt**
-4. **ALWAYS specify affected submodules**
-5. **NEVER place files randomly**
-6. **NEVER forget to update parent repo references**
-7. **NEVER provide merge commands until user confirms testing passed**
-8. **NEVER start coding without explicit confirmation**
-9. **NEVER refactor existing code unless explicitly asked**
-
----
-
-## 📊 Session & Token Management
-
-### Token Visibility Limitation
-⚠️ **I cannot directly see remaining tokens in the claude.ai interface.**
-
-### Workarounds for Session Management:
-
-**Option 1: Ask me after each task**
-> "How much of the conversation have we used? Should we start a new session?"
-
-I can estimate based on:
-- Number of messages exchanged
-- Size of code files generated
-- Complexity of the conversation
-
-**Option 2: Watch for these warning signs**
-- My responses start getting truncated
-- I begin forgetting earlier context
-- I ask about things we already discussed
-
-**Option 3: Proactive session breaks**
-After completing 3-4 major tasks, consider starting a fresh session to ensure full context capacity.
-
-**Recommended Prompt at Task End:**
-> "Task complete. Give me a session health check - should we continue or start fresh?"
-
-I'll respond with my assessment based on conversation length and complexity.
-
----
-
-## 📞 Quick Commands Reference
-
-```bash
-# Check all submodule status
-git submodule status
-
-# See what's changed in all submodules
-git submodule foreach 'git status'
-
-# Pull latest in all submodules
-git submodule foreach 'git pull origin $(git rev-parse --abbrev-ref HEAD)'
-
-# Check current branch in each submodule
-git submodule foreach 'echo "$(basename $(pwd)): $(git branch --show-current)"'
 ```
+contractnest-ui/src/
+├── components/contracts/ContractWizard/   ← wizard orchestrator + steps
+├── pages/contracts/                       ← contract CRUD pages
+├── pages/settings/resources/              ← resource management (equipment goes here)
+├── pages/catalog-studio/                  ← catalog studio UI
+├── types/service-contracts/               ← contract type definitions
+├── hooks/queries/                         ← React Query hooks
+├── services/                              ← API service calls
+├── utils/constants/                       ← constants, industry configs
+└── utils/helpers/                         ← utility functions
 
----
+contractnest-api/src/
+├── routes/                                ← Express route definitions
+├── controllers/                           ← Request handlers
+├── services/                              ← Business logic
+├── types/                                 ← TypeScript type definitions
+├── validators/                            ← Zod validation schemas
+└── middleware/                            ← Auth, rate limiting, etc.
 
-**Last Updated**: January 2025
-**Maintained By**: Charan Kamal Bommakanti - Vikuna Technologies
+contractnest-edge/supabase/
+├── migrations/contracts/                  ← SQL migration files
+├── functions/                             ← Deno edge functions
+└── seed/                                  ← Seed data files
+``` 
