@@ -1,0 +1,1962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ContractNest — Service Package Builder [P0 + Existing]</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ============================================
+   DESIGN SYSTEM — Shared across all 7 files
+   ============================================ */
+:root {
+  /* Primary */
+  --cn-primary: #1e3a5f;
+  --cn-primary-light: #2d5a8e;
+  --cn-primary-50: #eef4fb;
+  --cn-primary-100: #d4e4f7;
+  /* Service accent */
+  --cn-service: #ec4899;
+  --cn-service-bg: #fdf2f8;
+  --cn-service-border: #fbcfe8;
+  /* Care Plan accent */
+  --cn-careplan: #f43f5e;
+  /* Equipment / Entity (for nomenclature reference) */
+  --cn-equipment: #d97706;
+  --cn-equipment-bg: #fffbeb;
+  --cn-entity: #059669;
+  --cn-entity-bg: #ecfdf5;
+  /* Conditions */
+  --cn-good: #10b981;
+  --cn-fair: #f59e0b;
+  --cn-poor: #ef4444;
+  /* Neutrals */
+  --cn-bg: #f8fafc;
+  --cn-surface: #ffffff;
+  --cn-border: #e2e8f0;
+  --cn-border-light: #f1f5f9;
+  --cn-text: #0f172a;
+  --cn-text-secondary: #475569;
+  --cn-text-muted: #94a3b8;
+  /* Nomenclature-specific */
+  --nom-amc: #3b82f6;
+  --nom-cmc: #8b5cf6;
+  --nom-fmc: #10b981;
+  --nom-sla: #6366f1;
+  /* Deliverable colors */
+  --del-gynec: #ec4899;
+  --del-diet: #10b981;
+  --del-nutrition: #8b5cf6;
+  --del-yoga: #06b6d4;
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.08), 0 8px 10px -6px rgba(0,0,0,0.04);
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--cn-bg);
+  color: var(--cn-text);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Phase Badge */
+.phase-badge {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  background: linear-gradient(135deg, #ec4899, #f43f5e);
+  color: white;
+  padding: 8px 18px;
+  border-radius: 30px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.phase-badge::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: #fecdd3;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* Journey Map */
+.journey-btn {
+  position: fixed;
+  bottom: 84px;
+  right: 24px;
+  z-index: 1000;
+  background: var(--cn-surface);
+  border: 1px solid var(--cn-border);
+  border-radius: var(--radius-lg);
+  padding: 12px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cn-text);
+  cursor: pointer;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all .2s;
+  font-family: inherit;
+}
+.journey-btn:hover { box-shadow: var(--shadow-xl); transform: translateY(-2px); }
+.journey-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.5);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  justify-content: center;
+  align-items: center;
+}
+.journey-overlay.active { display: flex; }
+.journey-panel {
+  background: white;
+  border-radius: var(--radius-xl);
+  padding: 32px;
+  max-width: 780px;
+  width: 90%;
+  animation: fadeScaleIn .25s ease;
+}
+@keyframes fadeScaleIn { from { opacity:0; transform:scale(.96) } to { opacity:1; transform:scale(1) } }
+.journey-panel h3 { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
+.journey-flow { display: flex; flex-wrap: wrap; gap: 12px; }
+.journey-item {
+  flex: 1;
+  min-width: 160px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--cn-border);
+  font-size: 13px;
+  text-decoration: none;
+  color: var(--cn-text);
+  transition: all .2s;
+}
+.journey-item:hover { border-color: var(--cn-primary); background: var(--cn-primary-50); }
+.journey-item.current { border-color: var(--cn-service); background: var(--cn-service-bg); }
+.journey-item .jp { font-size: 11px; font-weight: 700; color: var(--cn-primary); margin-bottom: 4px; }
+.journey-item.current .jp { color: var(--cn-service); }
+.journey-item .jn { font-weight: 600; }
+
+/* ============================================
+   SPLIT SCREEN LAYOUT
+   ============================================ */
+.split-container {
+  display: flex;
+  min-height: 100vh;
+  padding-bottom: 72px;
+}
+.left-panel {
+  width: 60%;
+  padding: 32px 28px 100px 28px;
+  overflow-y: auto;
+  max-height: 100vh;
+  position: sticky;
+  top: 0;
+}
+.right-panel {
+  width: 40%;
+  background: linear-gradient(180deg, #fdf2f8 0%, #f8fafc 60%);
+  border-left: 1px solid var(--cn-border);
+  padding: 32px 24px 100px 24px;
+  overflow-y: auto;
+  max-height: 100vh;
+  position: sticky;
+  top: 0;
+}
+
+/* LEFT PANEL — Header */
+.builder-header {
+  margin-bottom: 28px;
+}
+.builder-header h1 {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -.5px;
+  color: var(--cn-text);
+  margin-bottom: 4px;
+}
+.builder-header p {
+  font-size: 13px;
+  color: var(--cn-text-secondary);
+}
+
+/* ============================================
+   VERTICAL STEPPER
+   ============================================ */
+.stepper {
+  position: relative;
+}
+.step {
+  position: relative;
+  padding-left: 48px;
+  padding-bottom: 8px;
+  min-height: 60px;
+}
+.step:last-child { padding-bottom: 0; }
+.step::before {
+  content: '';
+  position: absolute;
+  left: 17px;
+  top: 36px;
+  bottom: 0;
+  width: 2px;
+  background: var(--cn-border);
+}
+.step:last-child::before { display: none; }
+
+.step-indicator {
+  position: absolute;
+  left: 0;
+  top: 4px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  transition: all .3s;
+  cursor: pointer;
+}
+.step.completed .step-indicator {
+  background: var(--cn-good);
+  color: white;
+}
+.step.active .step-indicator {
+  background: linear-gradient(135deg, #ec4899, #f43f5e);
+  color: white;
+  box-shadow: 0 0 0 4px rgba(236,72,153,.15);
+}
+.step.pending .step-indicator {
+  background: var(--cn-bg);
+  border: 2px solid var(--cn-border);
+  color: var(--cn-text-muted);
+}
+
+.step-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+  cursor: pointer;
+}
+.step-header h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--cn-text);
+}
+.step.pending .step-header h3 { color: var(--cn-text-muted); }
+.step-header .step-status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 20px;
+}
+.step.completed .step-status { background: #d1fae5; color: var(--cn-good); }
+.step.active .step-status { background: var(--cn-service-bg); color: var(--cn-service); }
+.step.pending .step-status { background: var(--cn-bg); color: var(--cn-text-muted); }
+
+.step-content {
+  overflow: hidden;
+  transition: max-height .4s ease, opacity .3s ease;
+}
+.step.collapsed .step-content {
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+.step:not(.collapsed) .step-content {
+  max-height: 3000px;
+  opacity: 1;
+}
+
+/* Compact cards for completed steps */
+.compact-card {
+  background: var(--cn-surface);
+  border: 1px solid var(--cn-border);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  margin-top: 8px;
+  font-size: 13px;
+}
+.compact-card .cc-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.compact-card .cc-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--cn-text-muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.compact-card .cc-value {
+  font-weight: 600;
+  color: var(--cn-text);
+}
+.compact-card .cc-sub {
+  font-size: 12px;
+  color: var(--cn-text-secondary);
+  margin-top: 4px;
+}
+.compact-card .cc-link {
+  font-size: 12px;
+  color: var(--cn-service);
+  text-decoration: none;
+  cursor: pointer;
+  font-weight: 600;
+  margin-left: auto;
+}
+.compact-card .cc-link:hover { text-decoration: underline; }
+.type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--cn-service-bg);
+  color: var(--cn-service);
+  border: 1px solid var(--cn-service-border);
+}
+
+/* ============================================
+   DELIVERABLES SECTION (Step 4)
+   ============================================ */
+.deliverables-header {
+  margin-top: 10px;
+  margin-bottom: 6px;
+}
+.deliverables-header h4 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--cn-text);
+  margin-bottom: 2px;
+}
+.deliverables-header p {
+  font-size: 12px;
+  color: var(--cn-text-secondary);
+}
+
+.deliverable-card {
+  background: var(--cn-surface);
+  border: 1px solid var(--cn-border);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  margin-top: 12px;
+  position: relative;
+  transition: all .2s;
+  border-left: 4px solid var(--cn-border);
+}
+.deliverable-card:hover { box-shadow: var(--shadow-md); }
+.deliverable-card.del-gynec { border-left-color: var(--del-gynec); }
+.deliverable-card.del-diet { border-left-color: var(--del-diet); }
+.deliverable-card.del-nutrition { border-left-color: var(--del-nutrition); }
+.deliverable-card.del-yoga { border-left-color: var(--del-yoga); }
+
+.del-top-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.del-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.del-gynec .del-icon { background: #fdf2f8; }
+.del-diet .del-icon { background: #ecfdf5; }
+.del-nutrition .del-icon { background: #f5f3ff; }
+.del-yoga .del-icon { background: #ecfeff; }
+
+.del-service-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--cn-text);
+}
+.del-remove {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--cn-border);
+  background: var(--cn-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  color: var(--cn-text-muted);
+  cursor: pointer;
+  transition: all .2s;
+  flex-shrink: 0;
+}
+.del-remove:hover { background: #fef2f2; border-color: var(--cn-poor); color: var(--cn-poor); }
+
+.del-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.del-form-group label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--cn-text-muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 4px;
+}
+.del-form-group input,
+.del-form-group select {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--cn-border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--cn-text);
+  background: white;
+  transition: all .2s;
+}
+.del-form-group input:focus,
+.del-form-group select:focus {
+  outline: none;
+  border-color: var(--cn-service);
+  box-shadow: 0 0 0 3px rgba(236,72,153,.08);
+}
+.del-form-group input[type="number"] {
+  -moz-appearance: textfield;
+}
+.del-form-group input[type="number"]::-webkit-inner-spin-button {
+  opacity: 1;
+}
+
+.del-calc-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-top: 10px;
+  border-top: 1px solid var(--cn-border-light);
+  flex-wrap: wrap;
+}
+.del-calc-item {
+  font-size: 12px;
+  color: var(--cn-text-secondary);
+}
+.del-calc-item strong {
+  font-weight: 700;
+  color: var(--cn-text);
+}
+.del-practitioner {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--cn-text-secondary);
+}
+.del-practitioner select {
+  padding: 4px 8px;
+  border: 1px solid var(--cn-border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-family: inherit;
+  color: var(--cn-text);
+  background: white;
+}
+.del-practitioner select:focus {
+  outline: none;
+  border-color: var(--cn-service);
+}
+
+.add-deliverable-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px;
+  margin-top: 14px;
+  border: 2px dashed var(--cn-service-border);
+  border-radius: var(--radius-md);
+  background: var(--cn-service-bg);
+  color: var(--cn-service);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .2s;
+}
+.add-deliverable-btn:hover { border-color: var(--cn-service); background: #fce7f3; }
+
+/* Summary strip */
+.summary-strip {
+  margin-top: 18px;
+  background: linear-gradient(135deg, #fdf2f8, #fce7f3);
+  border: 1px solid var(--cn-service-border);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.summary-strip .ss-item {
+  font-size: 13px;
+  color: var(--cn-text-secondary);
+}
+.summary-strip .ss-item strong {
+  font-weight: 800;
+  color: var(--cn-text);
+}
+.summary-strip .ss-value {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--cn-service);
+  letter-spacing: -.5px;
+}
+
+/* ============================================
+   STEP 5 — Billing
+   ============================================ */
+.billing-options {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.billing-option {
+  flex: 1;
+  min-width: 120px;
+  padding: 14px 16px;
+  background: var(--cn-surface);
+  border: 2px solid var(--cn-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all .2s;
+  text-align: center;
+}
+.billing-option:hover { border-color: var(--cn-service-border); }
+.billing-option.selected { border-color: var(--cn-service); background: var(--cn-service-bg); }
+.billing-option .bo-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--cn-text);
+  margin-bottom: 2px;
+}
+.billing-option .bo-detail {
+  font-size: 11px;
+  color: var(--cn-text-muted);
+}
+.billing-option.selected .bo-name { color: var(--cn-service); }
+
+.billing-option .radio-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--cn-border);
+  margin: 0 auto 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .2s;
+}
+.billing-option.selected .radio-dot {
+  border-color: var(--cn-service);
+  background: var(--cn-service);
+}
+.billing-option.selected .radio-dot::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background: white;
+  border-radius: 50%;
+}
+
+.gst-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 14px 18px;
+  background: var(--cn-surface);
+  border: 1px solid var(--cn-border);
+  border-radius: var(--radius-md);
+}
+.gst-toggle label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cn-text);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.gst-toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--cn-service);
+  cursor: pointer;
+}
+.gst-breakdown {
+  font-size: 13px;
+  color: var(--cn-text-secondary);
+  margin-left: auto;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.gst-breakdown .total {
+  color: var(--cn-service);
+  font-weight: 800;
+  font-size: 15px;
+}
+
+.billing-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 18px;
+}
+.btn-send {
+  flex: 1;
+  padding: 14px 28px;
+  background: linear-gradient(135deg, #ec4899, #f43f5e);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .2s;
+}
+.btn-send:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(236,72,153,.3); }
+.btn-draft {
+  padding: 14px 28px;
+  background: var(--cn-surface);
+  border: 1px solid var(--cn-border);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--cn-text-secondary);
+  transition: all .2s;
+}
+.btn-draft:hover { border-color: var(--cn-service); color: var(--cn-service); }
+
+/* ============================================
+   RIGHT PANEL — Patient Preview
+   ============================================ */
+.preview-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--cn-text-muted);
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  margin-bottom: 6px;
+}
+.preview-subtitle {
+  font-size: 12px;
+  color: var(--cn-text-secondary);
+  margin-bottom: 20px;
+}
+
+.preview-card {
+  background: var(--cn-surface);
+  border: 1px solid var(--cn-border);
+  border-radius: var(--radius-xl);
+  padding: 28px 24px;
+  box-shadow: var(--shadow-lg);
+  max-width: 380px;
+  margin: 0 auto;
+  transition: all .3s;
+}
+.preview-card:hover { box-shadow: var(--shadow-xl); }
+
+.preview-logo {
+  text-align: center;
+  margin-bottom: 20px;
+}
+.preview-logo .brand {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--cn-primary);
+  letter-spacing: -.3px;
+}
+.preview-logo .clinic {
+  font-size: 12px;
+  color: var(--cn-text-secondary);
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.preview-plan-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--cn-service-bg);
+  border: 1px solid var(--cn-service-border);
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+  text-align: center;
+}
+.preview-plan-badge .ppb-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cn-service);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.preview-plan-badge .ppb-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--cn-text);
+}
+
+.preview-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.preview-meta-item .pm-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--cn-text-muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 2px;
+}
+.preview-meta-item .pm-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cn-text);
+}
+.preview-meta-item .pm-value.big {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--cn-service);
+}
+
+/* Preview Schedule Table */
+.preview-schedule {
+  margin-bottom: 20px;
+}
+.preview-schedule h5 {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cn-text-muted);
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  margin-bottom: 8px;
+}
+.preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.preview-table th {
+  text-align: left;
+  padding: 7px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--cn-text-muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  border-bottom: 1px solid var(--cn-border);
+  background: var(--cn-bg);
+}
+.preview-table th:last-child,
+.preview-table td:last-child { text-align: right; }
+.preview-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--cn-border-light);
+  color: var(--cn-text-secondary);
+}
+.preview-table .svc-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--cn-text);
+}
+.preview-table .svc-icon {
+  font-size: 14px;
+}
+.preview-table tfoot td {
+  font-weight: 800;
+  color: var(--cn-text);
+  border-top: 2px solid var(--cn-border);
+  border-bottom: none;
+  padding-top: 10px;
+}
+
+/* Calendar Preview */
+.calendar-preview {
+  margin-bottom: 20px;
+}
+.calendar-preview h5 {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cn-text-muted);
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  margin-bottom: 10px;
+}
+.calendar-month {
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  background: var(--cn-bg);
+  border-radius: var(--radius-sm);
+}
+.calendar-month .cm-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cn-text);
+  margin-bottom: 6px;
+}
+.calendar-dots {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.calendar-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  transition: transform .2s;
+}
+.calendar-dot:hover { transform: scale(1.3); }
+.calendar-dot.gynec { background: var(--del-gynec); }
+.calendar-dot.diet { background: var(--del-diet); }
+.calendar-dot.nutrition { background: var(--del-nutrition); }
+.calendar-dot.yoga { background: var(--del-yoga); }
+
+/* Progress tracker */
+.progress-preview {
+  margin-bottom: 20px;
+}
+.progress-preview h5 {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cn-text-muted);
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  margin-bottom: 8px;
+}
+.progress-bar-wrap {
+  width: 100%;
+  height: 10px;
+  background: var(--cn-border-light);
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #ec4899, #f43f5e);
+  transition: width .6s ease;
+  width: 0%;
+}
+.progress-text {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--cn-text-muted);
+}
+.progress-message {
+  font-size: 12px;
+  color: var(--cn-text-secondary);
+  margin-top: 6px;
+  font-style: italic;
+}
+
+.preview-accept-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  border: none;
+  background: var(--cn-border);
+  color: var(--cn-text-muted);
+  cursor: default;
+  margin-top: 8px;
+}
+
+/* ============================================
+   BOTTOM BAR
+   ============================================ */
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 900;
+  background: var(--cn-surface);
+  border-top: 1px solid var(--cn-border);
+  padding: 14px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-shadow: 0 -4px 12px rgba(0,0,0,.06);
+}
+.bottom-bar-left {
+  font-size: 13px;
+  color: var(--cn-text-secondary);
+  font-weight: 500;
+}
+.bottom-bar-left strong {
+  font-weight: 700;
+  color: var(--cn-text);
+}
+.bottom-bar-right {
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.bottom-bar .btn-send-sm {
+  padding: 10px 24px;
+  background: linear-gradient(135deg, #ec4899, #f43f5e);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .2s;
+}
+.bottom-bar .btn-send-sm:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(236,72,153,.3); }
+.bottom-bar .btn-draft-sm {
+  padding: 10px 24px;
+  background: var(--cn-surface);
+  border: 1px solid var(--cn-border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--cn-text-secondary);
+  transition: all .2s;
+}
+.bottom-bar .btn-draft-sm:hover { border-color: var(--cn-service); color: var(--cn-service); }
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 768px) {
+  .split-container {
+    flex-direction: column;
+  }
+  .left-panel,
+  .right-panel {
+    width: 100%;
+    max-height: none;
+    position: static;
+  }
+  .right-panel {
+    border-left: none;
+    border-top: 1px solid var(--cn-border);
+  }
+  .del-form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .del-calc-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .del-practitioner {
+    margin-left: 0;
+    margin-top: 4px;
+  }
+  .bottom-bar {
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 16px;
+  }
+  .bottom-bar-right {
+    width: 100%;
+  }
+  .bottom-bar .btn-send-sm,
+  .bottom-bar .btn-draft-sm {
+    flex: 1;
+  }
+  .billing-options {
+    flex-direction: column;
+  }
+  .summary-strip {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .gst-toggle {
+    flex-wrap: wrap;
+  }
+  .gst-breakdown {
+    margin-left: 0;
+    margin-top: 6px;
+  }
+  .preview-card {
+    max-width: 100%;
+  }
+  .journey-flow {
+    flex-direction: column;
+  }
+  .phase-badge {
+    font-size: 11px;
+    padding: 6px 12px;
+    top: 12px;
+    right: 12px;
+  }
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.animate-in { animation: fadeIn .4s ease forwards; }
+.animate-slide { animation: slideInRight .4s ease forwards; }
+
+/* Flash highlight for preview updates */
+@keyframes highlightFlash {
+  0% { background-color: rgba(236,72,153,.12); }
+  100% { background-color: transparent; }
+}
+.flash { animation: highlightFlash .6s ease; }
+</style>
+</head>
+<body>
+
+<!-- Phase Badge -->
+<div class="phase-badge">P0 + Existing — Service</div>
+
+<!-- Journey Map Button -->
+<button class="journey-btn" onclick="toggleJourney()">&#x1f5fa;&#xfe0f; Journey Map</button>
+<div class="journey-overlay" id="journeyOverlay" onclick="toggleJourney()">
+  <div class="journey-panel" onclick="event.stopPropagation()">
+    <h3>UX Journey Map</h3>
+    <div class="journey-flow">
+      <a class="journey-item" href="01-nomenclature-picker.html"><div class="jp">P0</div><div class="jn">Nomenclature Picker</div></a>
+      <a class="journey-item" href="02-equipment-registry.html"><div class="jp">P1</div><div class="jn">Equipment Registry</div></a>
+      <a class="journey-item" href="03-entity-registry.html"><div class="jp">P2</div><div class="jn">Entity Registry</div></a>
+      <a class="journey-item" href="04-contract-wizard-enhanced.html"><div class="jp">P1+P2</div><div class="jn">Contract Wizard</div></a>
+      <a class="journey-item" href="05-contract-dashboard.html"><div class="jp">P0+P3</div><div class="jn">Contract Dashboard</div></a>
+      <a class="journey-item" href="06-buyer-experience.html"><div class="jp">P2+P4</div><div class="jn">Buyer Experience</div></a>
+      <a class="journey-item current" href="07-service-package-builder.html"><div class="jp">P0+Existing</div><div class="jn">Service Package Builder</div></a>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SPLIT SCREEN LAYOUT                            -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="split-container">
+
+  <!-- ════════════════════════════════════════════ -->
+  <!-- LEFT PANEL — Practitioner Flow              -->
+  <!-- ════════════════════════════════════════════ -->
+  <div class="left-panel">
+    <div class="builder-header">
+      <h1>Service Package Builder</h1>
+      <p>Create a Care Plan contract for your patient with deliverables, sessions, and billing.</p>
+    </div>
+
+    <div class="stepper">
+
+      <!-- ── Step 1: Choose Contract Type ── -->
+      <div class="step completed collapsed" data-step="1" onclick="toggleStep(1)">
+        <div class="step-indicator"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8.5L6.5 12L13 4" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="step-header">
+          <h3>Choose Contract Type</h3>
+          <span class="step-status">Completed</span>
+        </div>
+        <div class="step-content">
+          <div class="compact-card">
+            <div class="cc-row" style="margin-bottom:8px">
+              <span class="type-badge">&#x1f49c; Care Plan</span>
+              <a class="cc-link">Change type</a>
+            </div>
+            <div class="cc-sub">Healthcare/wellness outcome-oriented contract with sessions, assessments, and deliverables. No equipment or property involved — purely service-based.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Step 2: Patient Details ── -->
+      <div class="step completed collapsed" data-step="2" onclick="toggleStep(2)">
+        <div class="step-indicator"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8.5L6.5 12L13 4" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="step-header">
+          <h3>Patient Details</h3>
+          <span class="step-status">Completed</span>
+        </div>
+        <div class="step-content">
+          <div class="compact-card">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+              <div style="width:40px;height:40px;border-radius:50%;background:var(--cn-service-bg);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">&#x1f469;</div>
+              <div>
+                <div class="cc-value" style="font-size:14px">Mrs. Priya Sharma</div>
+                <div class="cc-sub" style="margin-top:2px">+91 98765 43210 &nbsp;|&nbsp; priya.sharma@email.com</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;padding-top:8px;border-top:1px solid var(--cn-border-light)">
+              <div class="cc-sub"><strong style="color:var(--cn-text)">Age:</strong> 28</div>
+              <div class="cc-sub"><strong style="color:var(--cn-text)">Condition:</strong> PCOD</div>
+              <div class="cc-sub"><strong style="color:var(--cn-text)">Referred by:</strong> Dr. Meena (Gynecologist)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Step 3: Plan Details ── -->
+      <div class="step completed collapsed" data-step="3" onclick="toggleStep(3)">
+        <div class="step-indicator"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8.5L6.5 12L13 4" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="step-header">
+          <h3>Plan Details</h3>
+          <span class="step-status">Completed</span>
+        </div>
+        <div class="step-content">
+          <div class="compact-card">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div>
+                <div class="cc-label">Plan Name</div>
+                <div class="cc-value">PCOD Balance Program</div>
+              </div>
+              <div>
+                <div class="cc-label">Contract #</div>
+                <div class="cc-value">CP-10001</div>
+              </div>
+              <div>
+                <div class="cc-label">Duration</div>
+                <div class="cc-value">3 months</div>
+              </div>
+              <div>
+                <div class="cc-label">Period</div>
+                <div class="cc-value">Feb 1 — Apr 30, 2026</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Step 4: Define Deliverables (ACTIVE) ── -->
+      <div class="step active" data-step="4">
+        <div class="step-indicator">4</div>
+        <div class="step-header" onclick="toggleStep(4)">
+          <h3>Define Deliverables</h3>
+          <span class="step-status">In Progress</span>
+        </div>
+        <div class="step-content">
+          <div class="deliverables-header">
+            <h4>What does this plan include?</h4>
+            <p>Add each service type with quantity per cycle</p>
+          </div>
+
+          <div id="deliverablesContainer">
+            <!-- Deliverable 1: Gynecologist Consultation -->
+            <div class="deliverable-card del-gynec" data-del-index="0">
+              <div class="del-top-row">
+                <div class="del-icon">&#x1f469;&#x200d;&#x2695;&#xfe0f;</div>
+                <div class="del-service-name">Gynecologist Consultation</div>
+                <button class="del-remove" onclick="removeDeliverable(this)" title="Remove">&times;</button>
+              </div>
+              <div class="del-form-grid">
+                <div class="del-form-group">
+                  <label>Service</label>
+                  <select class="del-service" onchange="syncPreview()">
+                    <option selected>Gynecologist Consultation</option>
+                    <option>General Consultation</option>
+                    <option>Specialist Visit</option>
+                    <option>Follow-up Check</option>
+                  </select>
+                </div>
+                <div class="del-form-group">
+                  <label>Qty / Cycle</label>
+                  <input type="number" class="del-qty" value="4" min="1" max="30" onchange="recalcRow(this)" oninput="recalcRow(this)">
+                </div>
+                <div class="del-form-group">
+                  <label>Cycle</label>
+                  <select class="del-cycle" onchange="recalcRow(this)">
+                    <option selected>per month</option>
+                    <option>per week</option>
+                    <option>per quarter</option>
+                    <option>one-time</option>
+                  </select>
+                </div>
+                <div class="del-form-group">
+                  <label>Unit Price (&#x20b9;)</label>
+                  <input type="number" class="del-price" value="800" min="0" step="50" onchange="recalcRow(this)" oninput="recalcRow(this)">
+                </div>
+              </div>
+              <div class="del-calc-row">
+                <div class="del-calc-item">Duration: <strong>3 months</strong></div>
+                <div class="del-calc-item">Total: <strong class="del-total-sessions">12</strong> sessions</div>
+                <div class="del-calc-item">Subtotal: <strong class="del-subtotal">&#x20b9;9,600</strong></div>
+                <div class="del-practitioner">
+                  <span>Practitioner:</span>
+                  <select>
+                    <option selected>Dr. Anitha</option>
+                    <option>Dr. Meena</option>
+                    <option>Dr. Sridevi</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Deliverable 2: Diet Chart -->
+            <div class="deliverable-card del-diet" data-del-index="1">
+              <div class="del-top-row">
+                <div class="del-icon">&#x1f4cb;</div>
+                <div class="del-service-name">Diet Chart</div>
+                <button class="del-remove" onclick="removeDeliverable(this)" title="Remove">&times;</button>
+              </div>
+              <div class="del-form-grid">
+                <div class="del-form-group">
+                  <label>Service</label>
+                  <select class="del-service" onchange="syncPreview()">
+                    <option selected>Diet Chart</option>
+                    <option>Meal Plan</option>
+                    <option>Calorie Tracker</option>
+                  </select>
+                </div>
+                <div class="del-form-group">
+                  <label>Qty / Cycle</label>
+                  <input type="number" class="del-qty" value="2" min="1" max="30" onchange="recalcRow(this)" oninput="recalcRow(this)">
+                </div>
+                <div class="del-form-group">
+                  <label>Cycle</label>
+                  <select class="del-cycle" onchange="recalcRow(this)">
+                    <option selected>per month</option>
+                    <option>per week</option>
+                    <option>per quarter</option>
+                    <option>one-time</option>
+                  </select>
+                </div>
+                <div class="del-form-group">
+                  <label>Unit Price (&#x20b9;)</label>
+                  <input type="number" class="del-price" value="500" min="0" step="50" onchange="recalcRow(this)" oninput="recalcRow(this)">
+                </div>
+              </div>
+              <div class="del-calc-row">
+                <div class="del-calc-item">Duration: <strong>3 months</strong></div>
+                <div class="del-calc-item">Total: <strong class="del-total-sessions">6</strong> charts</div>
+                <div class="del-calc-item">Subtotal: <strong class="del-subtotal">&#x20b9;3,000</strong></div>
+                <div class="del-practitioner">
+                  <span>Practitioner:</span>
+                  <select>
+                    <option selected>Nutritionist Kavitha</option>
+                    <option>Nutritionist Renu</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Deliverable 3: Nutrition Consultation -->
+            <div class="deliverable-card del-nutrition" data-del-index="2">
+              <div class="del-top-row">
+                <div class="del-icon">&#x1f957;</div>
+                <div class="del-service-name">Nutrition Consultation</div>
+                <button class="del-remove" onclick="removeDeliverable(this)" title="Remove">&times;</button>
+              </div>
+              <div class="del-form-grid">
+                <div class="del-form-group">
+                  <label>Service</label>
+                  <select class="del-service" onchange="syncPreview()">
+                    <option selected>Nutrition Consultation</option>
+                    <option>Nutrition Assessment</option>
+                    <option>Supplement Review</option>
+                  </select>
+                </div>
+                <div class="del-form-group">
+                  <label>Qty / Cycle</label>
+                  <input type="number" class="del-qty" value="1" min="1" max="30" onchange="recalcRow(this)" oninput="recalcRow(this)">
+                </div>
+                <div class="del-form-group">
+                  <label>Cycle</label>
+                  <select class="del-cycle" onchange="recalcRow(this)">
+                    <option selected>per month</option>
+                    <option>per week</option>
+                    <option>per quarter</option>
+                    <option>one-time</option>
+                  </select>
+                </div>
+                <div class="del-form-group">
+                  <label>Unit Price (&#x20b9;)</label>
+                  <input type="number" class="del-price" value="800" min="0" step="50" onchange="recalcRow(this)" oninput="recalcRow(this)">
+                </div>
+              </div>
+              <div class="del-calc-row">
+                <div class="del-calc-item">Duration: <strong>3 months</strong></div>
+                <div class="del-calc-item">Total: <strong class="del-total-sessions">3</strong> sessions</div>
+                <div class="del-calc-item">Subtotal: <strong class="del-subtotal">&#x20b9;2,400</strong></div>
+                <div class="del-practitioner">
+                  <span>Practitioner:</span>
+                  <select>
+                    <option selected>Nutritionist Kavitha</option>
+                    <option>Nutritionist Renu</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- Deliverable 4: Yoga Session -->
+            <div class="deliverable-card del-yoga" data-del-index="3">
+              <div class="del-top-row">
+                <div class="del-icon">&#x1f9d8;</div>
+                <div class="del-service-name">Yoga Session</div>
+                <button class="del-remove" onclick="removeDeliverable(this)" title="Remove">&times;</button>
+              </div>
+              <div class="del-form-grid">
+                <div class="del-form-group">
+                  <label>Service</label>
+                  <select class="del-service" onchange="syncPreview()">
+                    <option selected>Yoga Session</option>
+                    <option>Pranayama Session</option>
+                    <option>Meditation Class</option>
+                  </select>
+                </div>
+                <div class="del-form-group">
+                  <label>Qty / Cycle</label>
+                  <input type="number" class="del-qty" value="4" min="1" max="30" onchange="recalcRow(this)" oninput="recalcRow(this)">
+                </div>
+                <div class="del-form-group">
+                  <label>Cycle</label>
+                  <select class="del-cycle" onchange="recalcRow(this)">
+                    <option selected>per month</option>
+                    <option>per week</option>
+                    <option>per quarter</option>
+                    <option>one-time</option>
+                  </select>
+                </div>
+                <div class="del-form-group">
+                  <label>Unit Price (&#x20b9;)</label>
+                  <input type="number" class="del-price" value="400" min="0" step="50" onchange="recalcRow(this)" oninput="recalcRow(this)">
+                </div>
+              </div>
+              <div class="del-calc-row">
+                <div class="del-calc-item">Duration: <strong>3 months</strong></div>
+                <div class="del-calc-item">Total: <strong class="del-total-sessions">12</strong> sessions</div>
+                <div class="del-calc-item">Subtotal: <strong class="del-subtotal">&#x20b9;4,800</strong></div>
+                <div class="del-practitioner">
+                  <span>Practitioner:</span>
+                  <select>
+                    <option selected>Yoga Instructor Deepa</option>
+                    <option>Yoga Instructor Lakshmi</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Add Deliverable -->
+          <button class="add-deliverable-btn" onclick="addDeliverable()">+ Add Deliverable</button>
+
+          <!-- Summary Strip -->
+          <div class="summary-strip">
+            <div class="ss-item"><strong id="summaryTotalDel">33</strong> total deliverables across <strong id="summaryServiceTypes">4</strong> service types</div>
+            <div>
+              <div class="ss-item" style="text-align:right">Contract Value</div>
+              <div class="ss-value" id="summaryGrandTotal">&#x20b9;19,800</div>
+              <div class="ss-item" style="text-align:right;font-size:11px">Per month: <strong id="summaryPerMonth">&#x20b9;6,600</strong></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Step 5: Billing & Send ── -->
+      <div class="step pending collapsed" data-step="5">
+        <div class="step-indicator">5</div>
+        <div class="step-header" onclick="toggleStep(5)">
+          <h3>Billing & Send</h3>
+          <span class="step-status">Next</span>
+        </div>
+        <div class="step-content">
+          <div style="margin-top:8px">
+            <div style="font-size:12px;font-weight:700;color:var(--cn-text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Payment Schedule</div>
+            <div class="billing-options">
+              <div class="billing-option" onclick="selectBilling('prepaid', this)">
+                <div class="radio-dot"></div>
+                <div class="bo-name">Prepaid</div>
+                <div class="bo-detail">100% advance payment</div>
+              </div>
+              <div class="billing-option selected" onclick="selectBilling('monthly', this)">
+                <div class="radio-dot"></div>
+                <div class="bo-name">Monthly</div>
+                <div class="bo-detail" id="billingMonthlyDetail">&#x20b9;6,600 / month</div>
+              </div>
+              <div class="billing-option" onclick="selectBilling('custom', this)">
+                <div class="radio-dot"></div>
+                <div class="bo-name">Custom Split</div>
+                <div class="bo-detail">Define your own schedule</div>
+              </div>
+            </div>
+
+            <div class="gst-toggle">
+              <label>
+                <input type="checkbox" id="gstCheckbox" onchange="toggleGST()">
+                Add 18% GST
+              </label>
+              <div class="gst-breakdown" id="gstBreakdown" style="display:none">
+                <span id="gstBase">&#x20b9;19,800</span> + <span id="gstAmount">&#x20b9;3,564</span> = <span class="total" id="gstTotal">&#x20b9;23,364</span>
+              </div>
+            </div>
+
+            <div class="billing-actions">
+              <button class="btn-send" onclick="showSendConfirmation()">Send to Patient</button>
+              <button class="btn-draft">Save as Draft</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- end .stepper -->
+  </div><!-- end .left-panel -->
+
+  <!-- ════════════════════════════════════════════ -->
+  <!-- RIGHT PANEL — Patient Preview               -->
+  <!-- ════════════════════════════════════════════ -->
+  <div class="right-panel">
+    <div class="preview-label">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3C4.5 3 1.7 5.5 1 8c.7 2.5 3.5 5 7 5s6.3-2.5 7-5c-.7-2.5-3.5-5-7-5z" stroke="#94a3b8" stroke-width="1.5" fill="none"/><circle cx="8" cy="8" r="2.5" stroke="#94a3b8" stroke-width="1.5" fill="none"/></svg>
+      Patient Preview
+    </div>
+    <div class="preview-subtitle">This is what <strong>Mrs. Priya Sharma</strong> will see</div>
+
+    <div class="preview-card">
+      <!-- Logo + Clinic -->
+      <div class="preview-logo">
+        <div class="brand">ContractNest</div>
+        <div class="clinic">Dr. Anitha Wellness Center, Hyderabad</div>
+      </div>
+
+      <!-- Plan Badge -->
+      <div class="preview-plan-badge">
+        <div>
+          <div class="ppb-label">Care Plan</div>
+          <div class="ppb-name" id="previewPlanName">PCOD Balance Program</div>
+        </div>
+      </div>
+
+      <!-- Meta -->
+      <div class="preview-meta">
+        <div class="preview-meta-item">
+          <div class="pm-label">Duration</div>
+          <div class="pm-value">Feb 1 — Apr 30, 2026</div>
+        </div>
+        <div class="preview-meta-item">
+          <div class="pm-label">Value</div>
+          <div class="pm-value big" id="previewValue">&#x20b9;19,800</div>
+        </div>
+      </div>
+
+      <!-- Schedule Table -->
+      <div class="preview-schedule">
+        <h5>Deliverable Schedule</h5>
+        <table class="preview-table">
+          <thead>
+            <tr><th>Service</th><th>Monthly</th><th>Total</th></tr>
+          </thead>
+          <tbody id="previewTableBody">
+            <tr>
+              <td><span class="svc-name"><span class="svc-icon">&#x1f469;&#x200d;&#x2695;&#xfe0f;</span> Gynec Consultation</span></td>
+              <td>4</td>
+              <td>12</td>
+            </tr>
+            <tr>
+              <td><span class="svc-name"><span class="svc-icon">&#x1f4cb;</span> Diet Chart</span></td>
+              <td>2</td>
+              <td>6</td>
+            </tr>
+            <tr>
+              <td><span class="svc-name"><span class="svc-icon">&#x1f957;</span> Nutrition Consultation</span></td>
+              <td>1</td>
+              <td>3</td>
+            </tr>
+            <tr>
+              <td><span class="svc-name"><span class="svc-icon">&#x1f9d8;</span> Yoga Session</span></td>
+              <td>4</td>
+              <td>12</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td><strong>Total</strong></td>
+              <td><strong id="previewMonthlyTotal">11</strong></td>
+              <td><strong id="previewGrandTotal">33</strong></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <!-- Calendar Preview -->
+      <div class="calendar-preview">
+        <h5>Monthly Calendar</h5>
+        <div id="calendarPreview">
+          <div class="calendar-month">
+            <div class="cm-label">Feb 2026</div>
+            <div class="calendar-dots" id="calFeb"></div>
+          </div>
+          <div class="calendar-month">
+            <div class="cm-label">Mar 2026</div>
+            <div class="calendar-dots" id="calMar"></div>
+          </div>
+          <div class="calendar-month">
+            <div class="cm-label">Apr 2026</div>
+            <div class="calendar-dots" id="calApr"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Progress Tracker -->
+      <div class="progress-preview">
+        <h5>Your Progress</h5>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill" id="previewProgressBar" style="width:0%"></div>
+        </div>
+        <div class="progress-text">
+          <span id="previewProgressText">0 of 33 completed</span>
+          <span>0%</span>
+        </div>
+        <div class="progress-message">Your wellness journey starts Feb 1, 2026</div>
+      </div>
+
+      <!-- Accept Button (preview/muted) -->
+      <button class="preview-accept-btn">Accept Plan</button>
+    </div>
+  </div><!-- end .right-panel -->
+
+</div><!-- end .split-container -->
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- BOTTOM BAR                                     -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="bottom-bar">
+  <div class="bottom-bar-left">
+    <strong>PCOD Balance Program</strong> — <span id="bottomDelCount">33</span> deliverables — <strong id="bottomValue">&#x20b9;19,800</strong>
+  </div>
+  <div class="bottom-bar-right">
+    <button class="btn-draft-sm">Save Draft</button>
+    <button class="btn-send-sm" onclick="showSendConfirmation()">Send to Mrs. Priya Sharma</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SEND CONFIRMATION OVERLAY                      -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="journey-overlay" id="sendOverlay" onclick="closeSendConfirmation()">
+  <div class="journey-panel" onclick="event.stopPropagation()" style="max-width:440px;text-align:center">
+    <div style="font-size:48px;margin-bottom:12px">&#x2709;&#xfe0f;</div>
+    <h3 style="margin-bottom:8px">Send Care Plan?</h3>
+    <p style="font-size:13px;color:var(--cn-text-secondary);margin-bottom:20px">
+      This will send the <strong>PCOD Balance Program</strong> to <strong>Mrs. Priya Sharma</strong> at priya.sharma@email.com and +91 98765 43210.
+    </p>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button class="btn-draft" onclick="closeSendConfirmation()">Cancel</button>
+      <button class="btn-send" onclick="confirmSend()" style="flex:none">Yes, Send Plan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SENT SUCCESS OVERLAY                           -->
+<!-- ═══════════════════════════════════════════════ -->
+<div class="journey-overlay" id="sentOverlay" onclick="closeSentOverlay()">
+  <div class="journey-panel" onclick="event.stopPropagation()" style="max-width:440px;text-align:center">
+    <div style="width:64px;height:64px;border-radius:50%;background:#d1fae5;display:inline-flex;align-items:center;justify-content:center;font-size:32px;margin-bottom:16px">&#x2705;</div>
+    <h3 style="margin-bottom:8px;color:var(--cn-good)">Care Plan Sent!</h3>
+    <p style="font-size:13px;color:var(--cn-text-secondary);margin-bottom:6px">
+      PCOD Balance Program has been sent to Mrs. Priya Sharma.
+    </p>
+    <p style="font-size:12px;color:var(--cn-text-muted);margin-bottom:20px">
+      She will receive a notification via email and SMS with a link to review and accept the plan.
+    </p>
+    <button class="btn-send" onclick="closeSentOverlay()" style="background:linear-gradient(135deg,var(--cn-good),#059669)">Done</button>
+  </div>
+</div>
+
+<script>
+/* ============================================
+   DATA MODEL
+   ============================================ */
+const DURATION_MONTHS = 3;
+const DEL_CONFIGS = [
+  { icon: '\u{1F469}\u{200D}\u{2695}\u{FE0F}', name: 'Gynec Consultation', shortName: 'Gynec Consultation', cssClass: 'del-gynec', dotClass: 'gynec', unit: 'sessions' },
+  { icon: '\u{1F4CB}', name: 'Diet Chart', shortName: 'Diet Chart', cssClass: 'del-diet', dotClass: 'diet', unit: 'charts' },
+  { icon: '\u{1F957}', name: 'Nutrition Consultation', shortName: 'Nutrition Consultation', cssClass: 'del-nutrition', dotClass: 'nutrition', unit: 'sessions' },
+  { icon: '\u{1F9D8}', name: 'Yoga Session', shortName: 'Yoga Session', cssClass: 'del-yoga', dotClass: 'yoga', unit: 'sessions' },
+];
+
+const EXTRA_SERVICES = [
+  { icon: '\u{1F489}', name: 'Blood Test Follow-up', cssClass: 'del-gynec', dotClass: 'gynec', unit: 'tests' },
+  { icon: '\u{1F3CB}\u{FE0F}', name: 'Physiotherapy Session', cssClass: 'del-yoga', dotClass: 'yoga', unit: 'sessions' },
+  { icon: '\u{1F9D1}\u{200D}\u{2695}\u{FE0F}', name: 'Mental Wellness Check', cssClass: 'del-nutrition', dotClass: 'nutrition', unit: 'sessions' },
+  { icon: '\u{1F4CA}', name: 'Progress Assessment', cssClass: 'del-diet', dotClass: 'diet', unit: 'assessments' },
+];
+let extraIndex = 0;
+
+/* ============================================
+   JOURNEY MAP
+   ============================================ */
+function toggleJourney() {
+  document.getElementById('journeyOverlay').classList.toggle('active');
+}
+
+/* ============================================
+   STEP NAVIGATION
+   ============================================ */
+function toggleStep(stepNum) {
+  const steps = document.querySelectorAll('.step');
+  steps.forEach(s => {
+    const sn = parseInt(s.dataset.step);
+    if (sn === stepNum) {
+      s.classList.toggle('collapsed');
+    }
+  });
+}
+
+/* ============================================
+   DELIVERABLE CALCULATIONS
+   ============================================ */
+function getMultiplier(cycleValue) {
+  switch (cycleValue) {
+    case 'per month': return DURATION_MONTHS;
+    case 'per week': return DURATION_MONTHS * 4;
+    case 'per quarter': return 1;
+    case 'one-time': return 1;
+    default: return DURATION_MONTHS;
+  }
+}
+
+function recalcRow(el) {
+  const card = el.closest('.deliverable-card');
+  const qty = parseInt(card.querySelector('.del-qty').value) || 0;
+  const cycle = card.querySelector('.del-cycle').value;
+  const price = parseFloat(card.querySelector('.del-price').value) || 0;
+  const multiplier = getMultiplier(cycle);
+  const totalSessions = qty * multiplier;
+  const subtotal = totalSessions * price;
+
+  card.querySelector('.del-total-sessions').textContent = totalSessions;
+  card.querySelector('.del-subtotal').textContent = '\u20B9' + subtotal.toLocaleString('en-IN');
+
+  recalcGrandTotal();
+  syncPreview();
+}
+
+function recalcGrandTotal() {
+  const cards = document.querySelectorAll('.deliverable-card');
+  let totalDel = 0;
+  let totalValue = 0;
+  let serviceCount = cards.length;
+
+  cards.forEach(card => {
+    const qty = parseInt(card.querySelector('.del-qty').value) || 0;
+    const cycle = card.querySelector('.del-cycle').value;
+    const price = parseFloat(card.querySelector('.del-price').value) || 0;
+    const multiplier = getMultiplier(cycle);
+    const sessions = qty * multiplier;
+    totalDel += sessions;
+    totalValue += sessions * price;
+  });
+
+  const perMonth = DURATION_MONTHS > 0 ? Math.round(totalValue / DURATION_MONTHS) : 0;
+
+  // Update summary strip
+  document.getElementById('summaryTotalDel').textContent = totalDel;
+  document.getElementById('summaryServiceTypes').textContent = serviceCount;
+  document.getElementById('summaryGrandTotal').textContent = '\u20B9' + totalValue.toLocaleString('en-IN');
+  document.getElementById('summaryPerMonth').textContent = '\u20B9' + perMonth.toLocaleString('en-IN');
+
+  // Update bottom bar
+  document.getElementById('bottomDelCount').textContent = totalDel;
+  document.getElementById('bottomValue').textContent = '\u20B9' + totalValue.toLocaleString('en-IN');
+
+  // Update billing monthly detail
+  document.getElementById('billingMonthlyDetail').textContent = '\u20B9' + perMonth.toLocaleString('en-IN') + ' / month';
+
+  // Update GST if checked
+  updateGSTDisplay(totalValue);
+
+  // Update preview value
+  document.getElementById('previewValue').textContent = '\u20B9' + totalValue.toLocaleString('en-IN');
+
+  // Update preview progress
+  document.getElementById('previewProgressText').textContent = '0 of ' + totalDel + ' completed';
+  document.getElementById('previewGrandTotal').textContent = totalDel;
+
+  return { totalDel, totalValue, serviceCount, perMonth };
+}
+
+function updateGSTDisplay(baseValue) {
+  const gstChecked = document.getElementById('gstCheckbox').checked;
+  const gstAmt = Math.round(baseValue * 0.18);
+  const total = baseValue + gstAmt;
+  document.getElementById('gstBase').textContent = '\u20B9' + baseValue.toLocaleString('en-IN');
+  document.getElementById('gstAmount').textContent = '\u20B9' + gstAmt.toLocaleString('en-IN');
+  document.getElementById('gstTotal').textContent = '\u20B9' + total.toLocaleString('en-IN');
+}
+
+function toggleGST() {
+  const gstBreakdown = document.getElementById('gstBreakdown');
+  const checked = document.getElementById('gstCheckbox').checked;
+  gstBreakdown.style.display = checked ? 'block' : 'none';
+  recalcGrandTotal();
+}
+
+/* ============================================
+   REMOVE DELIVERABLE
+   ============================================ */
+function removeDeliverable(btn) {
+  const card = btn.closest('.deliverable-card');
+  card.style.transition = 'all .3s ease';
+  card.style.opacity = '0';
+  card.style.transform = 'translateX(-20px)';
+  card.style.maxHeight = card.offsetHeight + 'px';
+  setTimeout(() => {
+    card.style.maxHeight = '0';
+    card.style.padding = '0';
+    card.style.margin = '0';
+    card.style.border = 'none';
+  }, 200);
+  setTimeout(() => {
+    card.remove();
+    recalcGrandTotal();
+    syncPreview();
+  }, 500);
+}
+
+/* ============================================
+   ADD DELIVERABLE
+   ============================================ */
+function addDeliverable() {
+  const svc = EXTRA_SERVICES[extraIndex % EXTRA_SERVICES.length];
+  extraIndex++;
+
+  const container = document.getElementById('deliverablesContainer');
+  const card = document.createElement('div');
+  card.className = 'deliverable-card ' + svc.cssClass;
+  card.style.opacity = '0';
+  card.style.transform = 'translateY(10px)';
+  card.innerHTML = `
+    <div class="del-top-row">
+      <div class="del-icon">${svc.icon}</div>
+      <div class="del-service-name">${svc.name}</div>
+      <button class="del-remove" onclick="removeDeliverable(this)" title="Remove">&times;</button>
+    </div>
+    <div class="del-form-grid">
+      <div class="del-form-group">
+        <label>Service</label>
+        <input type="text" class="del-service" value="${svc.name}" onchange="syncPreview()">
+      </div>
+      <div class="del-form-group">
+        <label>Qty / Cycle</label>
+        <input type="number" class="del-qty" value="1" min="1" max="30" onchange="recalcRow(this)" oninput="recalcRow(this)">
+      </div>
+      <div class="del-form-group">
+        <label>Cycle</label>
+        <select class="del-cycle" onchange="recalcRow(this)">
+          <option selected>per month</option>
+          <option>per week</option>
+          <option>per quarter</option>
+          <option>one-time</option>
+        </select>
+      </div>
+      <div class="del-form-group">
+        <label>Unit Price (\u20B9)</label>
+        <input type="number" class="del-price" value="500" min="0" step="50" onchange="recalcRow(this)" oninput="recalcRow(this)">
+      </div>
+    </div>
+    <div class="del-calc-row">
+      <div class="del-calc-item">Duration: <strong>3 months</strong></div>
+      <div class="del-calc-item">Total: <strong class="del-total-sessions">3</strong> ${svc.unit}</div>
+      <div class="del-calc-item">Subtotal: <strong class="del-subtotal">\u20B91,500</strong></div>
+      <div class="del-practitioner">
+        <span>Practitioner:</span>
+        <select>
+          <option>Dr. Anitha</option>
+          <option>Nutritionist Kavitha</option>
+          <option>Yoga Instructor Deepa</option>
+        </select>
+      </div>
+    </div>
+  `;
+  container.appendChild(card);
+
+  // Animate in
+  requestAnimationFrame(() => {
+    card.style.transition = 'all .3s ease';
+    card.style.opacity = '1';
+    card.style.transform = 'translateY(0)';
+  });
+
+  recalcGrandTotal();
+  syncPreview();
+
+  // Scroll card into view
+  setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+}
+
+/* ============================================
+   SYNC PREVIEW (Right Panel)
+   ============================================ */
+function syncPreview() {
+  const cards = document.querySelectorAll('.deliverable-card');
+  const tableBody = document.getElementById('previewTableBody');
+  let monthlyTotal = 0;
+  let grandTotal = 0;
+  let dotsData = [];
+
+  // Build table rows and gather data
+  let rowsHTML = '';
+  cards.forEach((card, idx) => {
+    const icon = card.querySelector('.del-icon').textContent.trim();
+    const nameEl = card.querySelector('.del-service');
+    const name = nameEl ? (nameEl.value || nameEl.options?.[nameEl.selectedIndex]?.text || nameEl.textContent) : '';
+    const qty = parseInt(card.querySelector('.del-qty').value) || 0;
+    const cycle = card.querySelector('.del-cycle').value;
+    const multiplier = getMultiplier(cycle);
+    const total = qty * multiplier;
+    const monthly = cycle === 'per month' ? qty : (cycle === 'per week' ? qty * 4 : (cycle === 'per quarter' ? Math.round(qty / 3) : Math.round(total / 3)));
+
+    monthlyTotal += monthly;
+    grandTotal += total;
+
+    // Determine dot class from card class
+    let dotClass = 'gynec';
+    if (card.classList.contains('del-diet')) dotClass = 'diet';
+    else if (card.classList.contains('del-nutrition')) dotClass = 'nutrition';
+    else if (card.classList.contains('del-yoga')) dotClass = 'yoga';
+
+    for (let i = 0; i < monthly; i++) {
+      dotsData.push(dotClass);
+    }
+
+    // Shorten name for preview
+    let displayName = name.length > 22 ? name.substring(0, 20) + '...' : name;
+
+    rowsHTML += `<tr>
+      <td><span class="svc-name"><span class="svc-icon">${icon}</span> ${displayName}</span></td>
+      <td>${monthly}</td>
+      <td>${total}</td>
+    </tr>`;
+  });
+
+  tableBody.innerHTML = rowsHTML;
+  document.getElementById('previewMonthlyTotal').textContent = monthlyTotal;
+  document.getElementById('previewGrandTotal').textContent = grandTotal;
+  document.getElementById('previewProgressText').textContent = '0 of ' + grandTotal + ' completed';
+
+  // Calendar dots
+  const months = ['calFeb', 'calMar', 'calApr'];
+  months.forEach(mId => {
+    const container = document.getElementById(mId);
+    let dotsHTML = '';
+    dotsData.forEach(dc => {
+      dotsHTML += `<div class="calendar-dot ${dc}"></div>`;
+    });
+    container.innerHTML = dotsHTML;
+  });
+
+  // Flash effect on preview card
+  const previewCard = document.querySelector('.preview-card');
+  previewCard.classList.remove('flash');
+  void previewCard.offsetWidth; // reflow trigger
+  previewCard.classList.add('flash');
+}
+
+/* ============================================
+   BILLING SELECTION
+   ============================================ */
+function selectBilling(type, el) {
+  document.querySelectorAll('.billing-option').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+/* ============================================
+   SEND CONFIRMATION
+   ============================================ */
+function showSendConfirmation() {
+  document.getElementById('sendOverlay').classList.add('active');
+}
+function closeSendConfirmation() {
+  document.getElementById('sendOverlay').classList.remove('active');
+}
+function confirmSend() {
+  closeSendConfirmation();
+  setTimeout(() => {
+    document.getElementById('sentOverlay').classList.add('active');
+  }, 300);
+}
+function closeSentOverlay() {
+  document.getElementById('sentOverlay').classList.remove('active');
+}
+
+/* ============================================
+   INITIALIZATION
+   ============================================ */
+document.addEventListener('DOMContentLoaded', function() {
+  // Expand completed steps briefly to show content, then auto-collapse is already set via class
+  syncPreview();
+  recalcGrandTotal();
+
+  // Auto-expand step 1 after a moment for a nice reveal
+  setTimeout(() => {
+    const step1 = document.querySelector('.step[data-step="1"]');
+    step1.classList.remove('collapsed');
+    setTimeout(() => step1.classList.add('collapsed'), 1800);
+  }, 500);
+});
+</script>
+
+</body>
+</html>

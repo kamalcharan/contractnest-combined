@@ -1,0 +1,36 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — Service Delivery Addendum
+═══════════════════════════════════════════════════
+Branch: service-delivery-addendum
+Date: 2026-02-11
+
+FILES INCLUDED (3 of 4 — File 04 pending):
+──────────────────────────────────────────
+
+1. ClaudeDocumentation/productaudit/01-nomenclature-picker.html
+   → UPDATED: Expanded from 15 to 21 nomenclature types
+   → Added 4th group: "Service Delivery Contracts" (6 new types)
+   → New types: Service Package, Care Plan, Subscription, Consultation, Training, Project-Based
+   → New industry filters: Wellness, Consulting, Education
+
+2. ClaudeDocumentation/productaudit/06-buyer-experience.html
+   → UPDATED: Added 6th tab "Wellness Plan" for service-delivery buyer view
+   → Tab 3 (Portfolio) updated with Active Service Plans section
+   → PCOD Balance Program demo: 33 sessions, ₹19,800, Dr. Anitha Wellness Center
+
+3. ClaudeDocumentation/productaudit/07-service-package-builder.html
+   → NEW FILE: Dedicated wellness practitioner flow
+   → Split-screen: Practitioner creation (left) / Patient preview (right)
+   → 5-step vertical stepper with deliverable builder
+   → Demo: PCOD Balance Program for Mrs. Priya Sharma
+
+NOT INCLUDED:
+──────────────────────────────────────────
+4. ClaudeDocumentation/productaudit/04-contract-wizard-enhanced.html
+   → PENDING: Service-based routing with Deliverable Builder step
+
+SUBMODULES AFFECTED:
+──────────────────────────────────────────
+- ClaudeDocumentation (branch: master)
+
+NO CHANGES to: contractnest-api, contractnest-ui, contractnest-edge, ContractNest-Mobile, FamilyKnows

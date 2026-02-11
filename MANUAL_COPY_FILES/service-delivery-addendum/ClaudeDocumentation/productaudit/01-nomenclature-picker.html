@@ -1,0 +1,1515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ContractNest — Nomenclature Picker [P0]</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ============================================
+   DESIGN SYSTEM — Shared across all 6 files
+   ============================================ */
+:root {
+  /* Primary */
+  --cn-primary: #1e3a5f;
+  --cn-primary-light: #2d5a8e;
+  --cn-primary-50: #eef4fb;
+  --cn-primary-100: #d4e4f7;
+  /* Accent */
+  --cn-accent: #f97316;
+  --cn-accent-light: #fb923c;
+  --cn-accent-50: #fff7ed;
+  /* Equipment */
+  --cn-equipment: #d97706;
+  --cn-equipment-bg: #fffbeb;
+  --cn-equipment-border: #fde68a;
+  /* Entity */
+  --cn-entity: #059669;
+  --cn-entity-bg: #ecfdf5;
+  --cn-entity-border: #a7f3d0;
+  /* Service Delivery */
+  --cn-service: #ec4899;
+  --cn-service-bg: #fdf2f8;
+  --cn-service-border: #fbcfe8;
+  /* General */
+  --cn-general: #6366f1;
+  --cn-general-bg: #eef2ff;
+  --cn-general-border: #c7d2fe;
+  /* Conditions */
+  --cn-good: #10b981;
+  --cn-fair: #f59e0b;
+  --cn-poor: #ef4444;
+  --cn-critical: #dc2626;
+  /* Neutrals */
+  --cn-bg: #f8fafc;
+  --cn-surface: #ffffff;
+  --cn-border: #e2e8f0;
+  --cn-border-light: #f1f5f9;
+  --cn-text: #0f172a;
+  --cn-text-secondary: #475569;
+  --cn-text-muted: #94a3b8;
+  /* Nomenclature-specific colors */
+  --nom-amc: #3b82f6;
+  --nom-cmc: #8b5cf6;
+  --nom-camc: #7c3aed;
+  --nom-pmc: #06b6d4;
+  --nom-bmc: #f97316;
+  --nom-fmc: #10b981;
+  --nom-om: #14b8a6;
+  --nom-sla: #6366f1;
+  --nom-rate: #8b5cf6;
+  --nom-retainer: #ec4899;
+  --nom-percall: #f59e0b;
+  --nom-warranty: #0ea5e9;
+  --nom-manpower: #22c55e;
+  --nom-turnkey: #a855f7;
+  --nom-bot: #64748b;
+  --nom-service-pkg: #ec4899;
+  --nom-care-plan: #f43f5e;
+  --nom-subscription: #8b5cf6;
+  --nom-consultation: #6366f1;
+  --nom-training: #0ea5e9;
+  --nom-project: #a855f7;
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.08), 0 8px 10px -6px rgba(0,0,0,0.04);
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--cn-bg);
+  color: var(--cn-text);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Phase Badge */
+.phase-badge {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+  background: linear-gradient(135deg, var(--cn-primary), var(--cn-primary-light));
+  color: white;
+  padding: 8px 18px;
+  border-radius: 30px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.phase-badge::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  background: #4ade80;
+  border-radius: 50%;
+  animation: pulse-dot 2s infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Journey Map */
+.journey-map-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1000;
+  background: var(--cn-surface);
+  border: 1px solid var(--cn-border);
+  border-radius: var(--radius-lg);
+  padding: 12px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--cn-text);
+  cursor: pointer;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+.journey-map-btn:hover {
+  box-shadow: var(--shadow-xl);
+  transform: translateY(-2px);
+}
+.journey-map-btn svg {
+  width: 16px;
+  height: 16px;
+}
+.journey-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  justify-content: center;
+  align-items: center;
+}
+.journey-overlay.active { display: flex; }
+.journey-panel {
+  background: var(--cn-surface);
+  border-radius: var(--radius-xl);
+  padding: 32px;
+  max-width: 720px;
+  width: 90%;
+  box-shadow: var(--shadow-xl);
+}
+.journey-panel h3 {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+.journey-flow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.journey-item {
+  flex: 1;
+  min-width: 180px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--cn-border);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  color: var(--cn-text);
+}
+.journey-item:hover { border-color: var(--cn-primary); background: var(--cn-primary-50); }
+.journey-item.current { border-color: var(--cn-primary); background: var(--cn-primary-50); }
+.journey-item .phase { font-size: 11px; font-weight: 700; color: var(--cn-primary); margin-bottom: 4px; }
+.journey-item .name { font-weight: 600; }
+
+/* Main Layout */
+.wizard-shell {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 24px;
+  min-height: 100vh;
+}
+
+/* Wizard Header */
+.wizard-header {
+  text-align: center;
+  margin-bottom: 36px;
+  animation: fadeInUp 0.5s ease;
+}
+.wizard-header .step-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cn-primary);
+  background: var(--cn-primary-50);
+  padding: 6px 14px;
+  border-radius: 20px;
+  margin-bottom: 16px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.wizard-header h1 {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--cn-text);
+  margin-bottom: 8px;
+  letter-spacing: -0.5px;
+}
+.wizard-header p {
+  font-size: 15px;
+  color: var(--cn-text-secondary);
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+/* Industry Suggestion Banner */
+.suggestion-banner {
+  background: linear-gradient(135deg, var(--cn-primary-50), #e0ecfb);
+  border: 1px solid var(--cn-primary-100);
+  border-radius: var(--radius-lg);
+  padding: 16px 24px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  animation: fadeInUp 0.5s ease 0.1s both;
+}
+.suggestion-banner .icon {
+  width: 40px;
+  height: 40px;
+  background: white;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+  box-shadow: var(--shadow-sm);
+}
+.suggestion-banner .text {
+  flex: 1;
+}
+.suggestion-banner .text strong {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--cn-primary);
+}
+.suggestion-banner .text p {
+  font-size: 13px;
+  color: var(--cn-text-secondary);
+  margin-top: 2px;
+}
+.suggestion-banner .recommended-tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.suggested-tag {
+  background: white;
+  border: 1px solid var(--cn-primary-100);
+  color: var(--cn-primary);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+/* Search & Filters */
+.search-filters {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  align-items: center;
+  animation: fadeInUp 0.5s ease 0.2s both;
+}
+.search-box {
+  flex: 1;
+  position: relative;
+}
+.search-box input {
+  width: 100%;
+  padding: 12px 16px 12px 44px;
+  border: 1px solid var(--cn-border);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-family: inherit;
+  background: var(--cn-surface);
+  transition: all 0.2s;
+  color: var(--cn-text);
+}
+.search-box input:focus {
+  outline: none;
+  border-color: var(--cn-primary);
+  box-shadow: 0 0 0 3px rgba(30,58,95,0.1);
+}
+.search-box input::placeholder { color: var(--cn-text-muted); }
+.search-box .search-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--cn-text-muted);
+  width: 18px;
+  height: 18px;
+}
+
+.industry-filters {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.industry-chip {
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid var(--cn-border);
+  background: var(--cn-surface);
+  color: var(--cn-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.industry-chip:hover {
+  border-color: var(--cn-primary);
+  color: var(--cn-primary);
+}
+.industry-chip.active {
+  background: var(--cn-primary);
+  color: white;
+  border-color: var(--cn-primary);
+}
+
+/* Category Section */
+.category-section {
+  margin-bottom: 32px;
+  animation: fadeInUp 0.5s ease both;
+}
+.category-section:nth-child(1) { animation-delay: 0.15s; }
+.category-section:nth-child(2) { animation-delay: 0.25s; }
+.category-section:nth-child(3) { animation-delay: 0.35s; }
+.category-section:nth-child(4) { animation-delay: 0.45s; }
+.category-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding-left: 4px;
+}
+.category-label .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.category-label .dot.equipment { background: var(--cn-equipment); }
+.category-label .dot.entity { background: var(--cn-entity); }
+.category-label .dot.service { background: var(--cn-service); }
+.category-label .dot.general { background: var(--cn-general); }
+.category-label span {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--cn-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+/* Card Grid */
+.nom-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+/* Nomenclature Card */
+.nom-card {
+  background: var(--cn-surface);
+  border: 1.5px solid var(--cn-border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+.nom-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--card-accent, var(--cn-border));
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+.nom-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--card-accent, var(--cn-primary));
+}
+.nom-card:hover::before { opacity: 1; }
+.nom-card.recommended {
+  border-color: var(--card-accent, var(--cn-primary));
+  box-shadow: 0 0 0 1px var(--card-accent, var(--cn-primary));
+}
+.nom-card.recommended::before { opacity: 1; }
+.nom-card.recommended .rec-star {
+  display: flex;
+}
+.nom-card.dimmed {
+  opacity: 0.45;
+  transform: scale(0.97);
+}
+.nom-card.dimmed:hover {
+  opacity: 0.8;
+  transform: scale(1);
+}
+.nom-card.selected {
+  border-color: var(--card-accent, var(--cn-primary));
+  box-shadow: 0 0 0 2px var(--card-accent, var(--cn-primary)), var(--shadow-lg);
+  transform: translateY(-2px);
+}
+.nom-card.selected::before { opacity: 1; height: 4px; }
+.nom-card.hidden { display: none; }
+
+.rec-star {
+  display: none;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 22px;
+  height: 22px;
+  background: var(--card-accent, var(--cn-primary));
+  border-radius: 50%;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 11px;
+}
+
+.nom-card .icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  margin-bottom: 14px;
+  transition: transform 0.3s;
+}
+.nom-card:hover .icon-wrap { transform: scale(1.1); }
+
+.nom-card .short-name {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--cn-text);
+  letter-spacing: -0.3px;
+  margin-bottom: 2px;
+}
+.nom-card .full-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--cn-text-secondary);
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+.nom-card .description {
+  font-size: 12px;
+  color: var(--cn-text-muted);
+  line-height: 1.5;
+  margin-bottom: 12px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.nom-card .meta-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.nom-card .type-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 10px;
+  letter-spacing: 0.3px;
+}
+.type-badge.equipment {
+  background: var(--cn-equipment-bg);
+  color: var(--cn-equipment);
+  border: 1px solid var(--cn-equipment-border);
+}
+.type-badge.entity {
+  background: var(--cn-entity-bg);
+  color: var(--cn-entity);
+  border: 1px solid var(--cn-entity-border);
+}
+.type-badge.service {
+  background: var(--cn-service-bg);
+  color: var(--cn-service);
+  border: 1px solid var(--cn-service-border);
+}
+.type-badge.general {
+  background: var(--cn-general-bg);
+  color: var(--cn-general);
+  border: 1px solid var(--cn-general-border);
+}
+.nom-card .industry-tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.industry-micro {
+  font-size: 10px;
+  color: var(--cn-text-muted);
+  background: var(--cn-border-light);
+  padding: 2px 7px;
+  border-radius: 8px;
+}
+
+/* Detail Expansion Panel */
+.detail-panel {
+  display: none;
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 460px;
+  max-width: 90vw;
+  background: var(--cn-surface);
+  box-shadow: -10px 0 40px rgba(0,0,0,0.12);
+  z-index: 500;
+  overflow-y: auto;
+  transform: translateX(100%);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.detail-panel.open {
+  display: block;
+  transform: translateX(0);
+}
+.detail-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.2);
+  backdrop-filter: blur(2px);
+  z-index: 499;
+}
+.detail-backdrop.open { display: block; }
+
+.detail-header {
+  padding: 28px 28px 0;
+  position: relative;
+}
+.detail-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--cn-border);
+  background: var(--cn-surface);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cn-text-secondary);
+  font-size: 18px;
+  transition: all 0.2s;
+}
+.detail-close:hover {
+  background: var(--cn-bg);
+  color: var(--cn-text);
+}
+.detail-header .icon-large {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  margin-bottom: 16px;
+}
+.detail-header .short-name {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+.detail-header .full-name {
+  font-size: 16px;
+  color: var(--cn-text-secondary);
+  margin-top: 4px;
+}
+
+.detail-body {
+  padding: 24px 28px 100px;
+}
+.detail-section {
+  margin-bottom: 24px;
+}
+.detail-section h4 {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cn-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 10px;
+}
+.detail-section .desc {
+  font-size: 14px;
+  color: var(--cn-text-secondary);
+  line-height: 1.7;
+}
+.scope-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.scope-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--cn-text-secondary);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--cn-bg);
+}
+.scope-list li .check {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+.scope-list li .check.included { background: #d1fae5; color: var(--cn-good); }
+.scope-list li .check.excluded { background: #fee2e2; color: var(--cn-poor); }
+
+.detail-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.meta-card {
+  background: var(--cn-bg);
+  border-radius: var(--radius-md);
+  padding: 14px;
+}
+.meta-card .label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--cn-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+.meta-card .value {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--cn-text);
+}
+
+.best-for {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.best-for-tag {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: 16px;
+  background: var(--cn-primary-50);
+  color: var(--cn-primary);
+  border: 1px solid var(--cn-primary-100);
+}
+
+.select-btn {
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  width: 460px;
+  max-width: 90vw;
+  padding: 20px 28px;
+  background: var(--cn-surface);
+  border-top: 1px solid var(--cn-border);
+  z-index: 501;
+  display: none;
+}
+.select-btn.open { display: block; }
+.select-btn button {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, var(--cn-primary), var(--cn-primary-light));
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.3px;
+}
+.select-btn button:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Selection Confirmation */
+.selection-strip {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--cn-surface);
+  border-top: 1px solid var(--cn-border);
+  padding: 16px 24px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  z-index: 400;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
+  animation: slideUp 0.3s ease;
+}
+.selection-strip.visible { display: flex; }
+.selection-strip .info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+}
+.selection-strip .info .sel-badge {
+  padding: 4px 12px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 13px;
+  color: white;
+}
+.selection-strip .info .sel-text {
+  color: var(--cn-text-secondary);
+}
+.selection-strip .info .sel-text strong {
+  color: var(--cn-text);
+}
+.selection-strip .meta-pills {
+  display: flex;
+  gap: 8px;
+}
+.meta-pill {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: var(--cn-bg);
+  color: var(--cn-text-secondary);
+  border: 1px solid var(--cn-border);
+}
+.selection-strip .edit-btn {
+  background: none;
+  border: 1px solid var(--cn-border);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--cn-text-secondary);
+  font-family: inherit;
+  transition: all 0.2s;
+}
+.selection-strip .edit-btn:hover {
+  border-color: var(--cn-primary);
+  color: var(--cn-primary);
+}
+.selection-strip .proceed-btn {
+  background: linear-gradient(135deg, var(--cn-primary), var(--cn-primary-light));
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 10px 28px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+  letter-spacing: 0.3px;
+}
+.selection-strip .proceed-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .wizard-shell { padding: 24px 16px; }
+  .wizard-header h1 { font-size: 22px; }
+  .search-filters { flex-direction: column; }
+  .industry-filters { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 4px; }
+  .nom-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+  .nom-card { padding: 16px; }
+  .suggestion-banner { flex-direction: column; text-align: center; }
+  .detail-panel { width: 100vw; max-width: 100vw; }
+  .select-btn { width: 100vw; max-width: 100vw; }
+  .selection-strip { flex-direction: column; gap: 12px; padding: 16px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Phase Badge -->
+<div class="phase-badge">P0 — Nomenclature</div>
+
+<!-- Journey Map Button -->
+<button class="journey-map-btn" onclick="toggleJourney()">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l5.447 2.724A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7"/></svg>
+  Journey Map
+</button>
+
+<!-- Journey Overlay -->
+<div class="journey-overlay" id="journeyOverlay" onclick="toggleJourney()">
+  <div class="journey-panel" onclick="event.stopPropagation()">
+    <h3>UX Journey Map — ContractNest Domain Enhancement</h3>
+    <div class="journey-flow">
+      <a class="journey-item current" href="01-nomenclature-picker.html">
+        <div class="phase">P0</div>
+        <div class="name">Nomenclature Picker</div>
+      </a>
+      <a class="journey-item" href="02-equipment-registry.html">
+        <div class="phase">P1</div>
+        <div class="name">Equipment Registry</div>
+      </a>
+      <a class="journey-item" href="03-entity-registry.html">
+        <div class="phase">P2</div>
+        <div class="name">Entity Registry</div>
+      </a>
+      <a class="journey-item" href="04-contract-wizard-enhanced.html">
+        <div class="phase">P1 + P2</div>
+        <div class="name">Contract Wizard</div>
+      </a>
+      <a class="journey-item" href="05-contract-dashboard.html">
+        <div class="phase">P0 + P3</div>
+        <div class="name">Contract Dashboard</div>
+      </a>
+      <a class="journey-item" href="06-buyer-experience.html">
+        <div class="phase">P2 + P4</div>
+        <div class="name">Buyer Experience</div>
+      </a>
+      <a class="journey-item" href="07-service-package-builder.html">
+        <div class="phase">P0 + Existing</div>
+        <div class="name">Service Package Builder</div>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- Main Content -->
+<div class="wizard-shell">
+
+  <!-- Header -->
+  <div class="wizard-header">
+    <div class="step-label">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      Step 1 of 8 — Contract Type
+    </div>
+    <h1>What kind of contract are you creating?</h1>
+    <p>Choose the nomenclature that best describes your service agreement. This helps auto-configure billing, scheduling, and compliance.</p>
+  </div>
+
+  <!-- Smart Suggestion Banner -->
+  <div class="suggestion-banner" id="suggestionBanner">
+    <div class="icon">🏥</div>
+    <div class="text">
+      <strong>Recommended for Healthcare</strong>
+      <p>Based on your industry profile, these contract types are most common:</p>
+    </div>
+    <div class="recommended-tags">
+      <span class="suggested-tag">AMC</span>
+      <span class="suggested-tag">CMC</span>
+      <span class="suggested-tag">PMC</span>
+    </div>
+  </div>
+
+  <!-- Search & Filters -->
+  <div class="search-filters">
+    <div class="search-box">
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <input type="text" id="searchInput" placeholder="Search by name, abbreviation, or description..." oninput="filterCards()">
+    </div>
+    <div class="industry-filters" id="industryFilters">
+      <button class="industry-chip active" onclick="setIndustry('all', this)">All</button>
+      <button class="industry-chip" onclick="setIndustry('healthcare', this)">Healthcare</button>
+      <button class="industry-chip" onclick="setIndustry('manufacturing', this)">Manufacturing</button>
+      <button class="industry-chip" onclick="setIndustry('real_estate', this)">Real Estate</button>
+      <button class="industry-chip" onclick="setIndustry('technology', this)">Technology</button>
+      <button class="industry-chip" onclick="setIndustry('infrastructure', this)">Infrastructure</button>
+      <button class="industry-chip" onclick="setIndustry('wellness', this)">Wellness</button>
+      <button class="industry-chip" onclick="setIndustry('consulting', this)">Consulting</button>
+      <button class="industry-chip" onclick="setIndustry('education', this)">Education</button>
+    </div>
+  </div>
+
+  <!-- Card Sections -->
+  <div id="cardContainer">
+    <!-- Equipment Contracts -->
+    <div class="category-section" id="section-equipment">
+      <div class="category-label">
+        <div class="dot equipment"></div>
+        <span>Equipment Contracts</span>
+      </div>
+      <div class="nom-grid" id="grid-equipment"></div>
+    </div>
+
+    <!-- Facility & Property Contracts -->
+    <div class="category-section" id="section-entity">
+      <div class="category-label">
+        <div class="dot entity"></div>
+        <span>Facility & Property Contracts</span>
+      </div>
+      <div class="nom-grid" id="grid-entity"></div>
+    </div>
+
+    <!-- Service Delivery Contracts -->
+    <div class="category-section" id="section-service">
+      <div class="category-label">
+        <div class="dot service"></div>
+        <span>Service Delivery Contracts</span>
+      </div>
+      <div class="nom-grid" id="grid-service"></div>
+    </div>
+
+    <!-- General Contracts -->
+    <div class="category-section" id="section-general">
+      <div class="category-label">
+        <div class="dot general"></div>
+        <span>General Contracts</span>
+      </div>
+      <div class="nom-grid" id="grid-general"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Detail Slide-in Panel -->
+<div class="detail-backdrop" id="detailBackdrop" onclick="closeDetail()"></div>
+<div class="detail-panel" id="detailPanel">
+  <div class="detail-header">
+    <button class="detail-close" onclick="closeDetail()">&times;</button>
+    <div class="icon-large" id="detailIcon"></div>
+    <div class="short-name" id="detailShort"></div>
+    <div class="full-name" id="detailFull"></div>
+  </div>
+  <div class="detail-body">
+    <div class="detail-section">
+      <h4>Description</h4>
+      <p class="desc" id="detailDesc"></p>
+    </div>
+    <div class="detail-section">
+      <h4>What's Included</h4>
+      <ul class="scope-list" id="detailIncludes"></ul>
+    </div>
+    <div class="detail-section">
+      <h4>What's Excluded</h4>
+      <ul class="scope-list" id="detailExcludes"></ul>
+    </div>
+    <div class="detail-section">
+      <h4>Typical Parameters</h4>
+      <div class="detail-meta" id="detailMeta"></div>
+    </div>
+    <div class="detail-section">
+      <h4>Best For Industries</h4>
+      <div class="best-for" id="detailBestFor"></div>
+    </div>
+  </div>
+</div>
+<div class="select-btn" id="selectBtn">
+  <button onclick="selectNomenclature()">Select This Contract Type</button>
+</div>
+
+<!-- Selection Confirmation Strip -->
+<div class="selection-strip" id="selectionStrip">
+  <div class="info">
+    <div class="sel-badge" id="selBadge"></div>
+    <div class="sel-text">
+      You selected: <strong id="selName"></strong>
+    </div>
+  </div>
+  <div class="meta-pills" id="selPills"></div>
+  <button class="edit-btn" onclick="clearSelection()">Change</button>
+  <button class="proceed-btn" onclick="alert('Next: Counterparty Selection →')">Continue →</button>
+</div>
+
+<script>
+// ============================================
+// NOMENCLATURE DATA — All 21 types
+// ============================================
+const nomenclature = [
+  {
+    id: 'amc', short: 'AMC', full: 'Annual Maintenance Contract', color: '#3b82f6',
+    group: 'equipment', icon: '🔧',
+    description: 'Yearly contract with scheduled preventive visits. Labor included, parts may or may not be included.',
+    longDescription: 'The most common service contract type in India. Covers regular scheduled maintenance visits throughout the year. The service provider sends technicians at agreed intervals to inspect, clean, calibrate, and maintain equipment. Labor charges are always included in the contract value. Parts/spares may be included (making it closer to CMC) or charged extra — this should be explicitly stated.',
+    includes: ['Scheduled preventive visits', 'Labor charges', 'Diagnostics & inspection', 'Lubrication & cleaning', 'Basic consumables'],
+    excludes: ['Spare parts (unless specified)', 'Damage from misuse', 'Third-party modifications', 'Cosmetic repairs'],
+    duration: '12 months', billing: 'Quarterly', industries: ['healthcare', 'manufacturing', 'real_estate', 'technology'],
+    isEquipment: true, isEntity: false, isService: false
+  },
+  {
+    id: 'cmc', short: 'CMC', full: 'Comprehensive Maintenance Contract', color: '#8b5cf6',
+    group: 'equipment', icon: '🛡️',
+    description: 'Everything included — labor + parts + consumables. Zero extra cost to buyer.',
+    longDescription: 'The premium tier of maintenance contracts. The service provider assumes full responsibility for keeping equipment operational. All costs — labor, parts, consumables, emergency visits — are covered under the contract value. The buyer pays nothing extra, making budgeting predictable. Common for critical equipment where downtime is expensive.',
+    includes: ['All preventive visits', 'All spare parts', 'All consumables', 'Emergency breakdown support', 'Labor charges', 'Calibration'],
+    excludes: ['Physical damage by user', 'Acts of God', 'Unauthorized modifications'],
+    duration: '12 months', billing: 'Quarterly', industries: ['healthcare', 'manufacturing', 'technology'],
+    isEquipment: true, isEntity: false, isService: false
+  },
+  {
+    id: 'camc', short: 'CAMC', full: 'Comprehensive Annual Maintenance Contract', color: '#7c3aed',
+    group: 'equipment', icon: '🏛️',
+    description: 'Same as CMC but specifically annual. Common in government/PSU procurement.',
+    longDescription: 'Functionally identical to CMC but uses the specific "Comprehensive Annual" terminology required by government and PSU tender processes. This nomenclature is essential for public sector contracts where the exact term must match procurement guidelines.',
+    includes: ['All preventive visits', 'All spare parts', 'All consumables', 'Breakdown coverage', 'Annual calibration'],
+    excludes: ['Physical damage', 'Unauthorized access', 'Force majeure'],
+    duration: '12 months', billing: 'Annually', industries: ['healthcare', 'manufacturing', 'government'],
+    isEquipment: true, isEntity: false, isService: false
+  },
+  {
+    id: 'pmc', short: 'PMC', full: 'Preventive Maintenance Contract', color: '#06b6d4',
+    group: 'equipment', icon: '🔍',
+    description: 'Only scheduled preventive checks. No breakdown coverage.',
+    longDescription: 'A lightweight maintenance contract focused exclusively on prevention. The service provider visits at scheduled intervals to inspect, test, and maintain equipment — but is NOT obligated to respond to breakdowns between visits. Breakdown calls are billed separately. Ideal for non-critical equipment or when the buyer has in-house repair capability.',
+    includes: ['Scheduled preventive visits', 'Inspection reports', 'Lubrication & cleaning', 'Calibration checks'],
+    excludes: ['Breakdown/emergency visits', 'Spare parts', 'Consumables', 'On-call support'],
+    duration: '12 months', billing: 'Quarterly', industries: ['manufacturing', 'healthcare', 'technology'],
+    isEquipment: true, isEntity: false, isService: false
+  },
+  {
+    id: 'bmc', short: 'BMC', full: 'Breakdown Maintenance Contract', color: '#f97316',
+    group: 'equipment', icon: '⚡',
+    description: 'On-call repair only. No scheduled visits. Pay per incident.',
+    longDescription: 'The opposite of PMC — no scheduled visits, only emergency response. The service provider guarantees availability and response time when equipment breaks down. Useful when equipment is stable and rarely fails, but you need guaranteed support when it does. Often includes SLA for response time.',
+    includes: ['Guaranteed availability', 'Emergency response within SLA', 'Diagnosis', 'Labor for repair'],
+    excludes: ['Scheduled preventive visits', 'Parts (charged extra)', 'Routine maintenance'],
+    duration: 'Ongoing', billing: 'Per incident', industries: ['manufacturing', 'real_estate', 'infrastructure'],
+    isEquipment: true, isEntity: false, isService: false
+  },
+  {
+    id: 'warranty_ext', short: 'Warranty Ext', full: 'Extended Warranty', color: '#0ea5e9',
+    group: 'equipment', icon: '📋',
+    description: 'Post-OEM-warranty coverage, usually equipment-specific.',
+    longDescription: 'Extends manufacturer warranty coverage after the OEM warranty period expires. Typically covers the same terms as the original warranty — parts + labor for manufacturing defects and normal wear. Often offered by OEM-authorized service providers. Equipment-specific, usually one contract per equipment item.',
+    includes: ['Parts replacement (manufacturing defect)', 'Labor charges', 'On-site service', 'Annual inspection'],
+    excludes: ['User damage', 'Cosmetic issues', 'Accessories', 'Software issues'],
+    duration: '12 months', billing: 'Annually', industries: ['healthcare', 'manufacturing', 'technology'],
+    isEquipment: true, isEntity: false, isService: false
+  },
+  {
+    id: 'fmc', short: 'FMC', full: 'Facility Management Contract', color: '#10b981',
+    group: 'entity', icon: '🏢',
+    description: 'Holistic facility operations — cleaning + security + maintenance + utilities.',
+    longDescription: 'A comprehensive contract covering the entire operation of a physical facility. Includes housekeeping, security, electrical/plumbing maintenance, garden upkeep, waste management, and sometimes cafeteria management. Priced by area or headcount. The service provider essentially takes over day-to-day facility operations.',
+    includes: ['Housekeeping & cleaning', 'Security services', 'Electrical & plumbing maintenance', 'Garden & landscaping', 'Waste management', 'Pest control'],
+    excludes: ['Capital equipment purchases', 'Major renovations', 'Structural repairs'],
+    duration: '12 months', billing: 'Monthly', industries: ['real_estate', 'hospitality', 'corporate'],
+    isEquipment: false, isEntity: true, isService: false
+  },
+  {
+    id: 'om', short: 'O&M', full: 'Operations & Maintenance', color: '#14b8a6',
+    group: 'entity', icon: '⚙️',
+    description: 'Full operational responsibility. Common in infrastructure and utilities.',
+    longDescription: 'The service provider takes complete operational responsibility for a facility or system. Goes beyond maintenance — includes running day-to-day operations, monitoring performance, managing staff, maintaining regulatory compliance, and reporting. Common for power plants, water treatment facilities, data centers, and large industrial complexes.',
+    includes: ['Full operations management', 'Preventive & corrective maintenance', 'Staff management', 'Regulatory compliance', 'Performance reporting', 'Spare parts management'],
+    excludes: ['Capital expenditure', 'Major overhauls', 'Design modifications'],
+    duration: '36 months', billing: 'Monthly', industries: ['infrastructure', 'utilities', 'energy', 'manufacturing'],
+    isEquipment: true, isEntity: true, isService: false
+  },
+  {
+    id: 'manpower', short: 'Manpower', full: 'Manpower Supply Contract', color: '#22c55e',
+    group: 'entity', icon: '👷',
+    description: 'Staffing/labor supply — guards, housekeeping staff, technicians.',
+    longDescription: 'The service provider supplies trained personnel to work at the buyer\'s premises. Common for security guards, housekeeping staff, pantry boys, drivers, and semi-skilled technicians. The contract defines headcount, shift patterns, replacement policy, and per-person rates. The service provider handles payroll, compliance, and substitution.',
+    includes: ['Trained personnel supply', 'Attendance tracking', 'Replacement guarantee', 'Payroll management', 'Statutory compliance (PF, ESI)'],
+    excludes: ['Equipment/tools (buyer provides)', 'Specialized certifications', 'Performance guarantees'],
+    duration: '12 months', billing: 'Monthly', industries: ['real_estate', 'hospitality', 'manufacturing', 'corporate'],
+    isEquipment: false, isEntity: true, isService: false
+  },
+  {
+    id: 'service_package', short: 'Service Package', full: 'Service Package Agreement', color: '#ec4899',
+    group: 'service', icon: '📦',
+    description: 'Bundled deliverables/sessions over a fixed period. Defined quantity of each service type.',
+    longDescription: 'A bundled contract where the buyer gets a defined quantity of specific services over a fixed period. Common in wellness, healthcare, beauty, and fitness industries. Example: "Pregnancy Care Package — 4 Gynec + 6 Diet Charts + 20 Yoga Sessions over 3 months." Each deliverable has a fixed count, scheduled across the contract duration. Ideal when the outcome requires multiple types of services working together.',
+    includes: ['Defined sessions per service', 'Fixed deliverable count', 'Scheduled appointments', 'Multi-practitioner coordination', 'Progress tracking'],
+    excludes: ['Unlimited access', 'On-demand requests outside package', 'Equipment servicing'],
+    duration: '1-12 months', billing: 'Prepaid or Monthly', industries: ['wellness', 'healthcare', 'beauty', 'fitness', 'nutrition'],
+    isEquipment: false, isEntity: false, isService: true
+  },
+  {
+    id: 'care_plan', short: 'Care Plan', full: 'Care Plan Agreement', color: '#f43f5e',
+    group: 'service', icon: '💗',
+    description: 'Outcome-oriented healthcare/wellness protocol with sessions, assessments, and monitoring.',
+    longDescription: 'A healthcare or wellness contract designed around patient outcomes. Includes a protocol of sessions (consultations, therapy, yoga), assessments (blood work, body composition), and deliverables (diet charts, progress reports). The care plan defines the treatment journey from start to finish. Common for PCOD management, diabetes care, post-partum recovery, physiotherapy programs, and mental health protocols.',
+    includes: ['Protocol sessions', 'Periodic assessments', 'Monitoring & tracking', 'Diet/nutrition charts', 'Therapy sessions', 'Progress reports'],
+    excludes: ['Equipment servicing', 'Pharmacy/medicines', 'Emergency procedures'],
+    duration: '1-12 months', billing: 'Monthly or Prepaid', industries: ['healthcare', 'wellness', 'mental_health', 'elder_care', 'rehabilitation'],
+    isEquipment: false, isEntity: false, isService: true
+  },
+  {
+    id: 'subscription_service', short: 'Subscription', full: 'Subscription Service Agreement', color: '#8b5cf6',
+    group: 'service', icon: '🔄',
+    description: 'Recurring access to a defined scope of services. May include usage limits.',
+    longDescription: 'A recurring access contract where the buyer gets ongoing access to a defined scope of services. May include usage limits (e.g., "4 content updates per month") or be unlimited within scope ("unlimited helpdesk tickets"). Renewals are automatic or prompted. Common in IT support, marketing services, creative services, and SaaS-adjacent professional services.',
+    includes: ['Recurring access', 'Support tickets', 'Periodic reviews', 'Updates & patches', 'Reporting'],
+    excludes: ['One-time projects', 'Capital purchases', 'Custom development beyond scope'],
+    duration: 'Ongoing or 12 months', billing: 'Monthly or Annual', industries: ['technology', 'consulting', 'creative', 'marketing', 'media'],
+    isEquipment: false, isEntity: false, isService: true
+  },
+  {
+    id: 'consultation', short: 'Consultation', full: 'Consultation Agreement', color: '#6366f1',
+    group: 'service', icon: '💬',
+    description: 'Time-banked or session-based professional advisory. Hours/month or sessions/quarter.',
+    longDescription: 'A professional advisory contract where the service provider offers expertise on a time-banked or session-based model. Typically structured as "X hours per month" or "Y sessions per quarter." The consultant provides strategic advice, reviews, and recommendations — but does NOT typically execute or implement. Common for legal, financial, management, and technology advisory.',
+    includes: ['Advisory hours', 'Reviews & recommendations', 'Reports', 'Email/phone support', 'Quarterly audits'],
+    excludes: ['Implementation/execution', 'Hands-on work', 'Deliverable production'],
+    duration: '6-12 months', billing: 'Monthly retainer', industries: ['legal', 'finance', 'management', 'technology', 'healthcare'],
+    isEquipment: false, isEntity: false, isService: true
+  },
+  {
+    id: 'training_contract', short: 'Training', full: 'Training & Development Contract', color: '#0ea5e9',
+    group: 'service', icon: '🎓',
+    description: 'Structured learning program — workshops, assessments, coaching, certification.',
+    longDescription: 'A structured educational or professional development contract. Includes a defined curriculum with workshops, live sessions, assessments, coaching, and certification. Common for corporate leadership programs, technical bootcamps, compliance training, and healthcare education. Deliverables are fixed (8 workshops, 4 coaching sessions, 2 assessments) with clear milestones.',
+    includes: ['Workshops/live sessions', 'Assessments (pre + post)', 'Coaching sessions', 'Materials & courseware', 'Certification'],
+    excludes: ['Ongoing support post-program', 'Custom content beyond scope', 'Travel expenses'],
+    duration: '1-6 months', billing: 'Milestone or 50/50', industries: ['education', 'corporate', 'technology', 'healthcare', 'manufacturing'],
+    isEquipment: false, isEntity: false, isService: true
+  },
+  {
+    id: 'project_service', short: 'Project-Based', full: 'Project-Based Service Agreement', color: '#a855f7',
+    group: 'service', icon: '🎯',
+    description: 'One-time deliverable with milestones. May transition to AMC/Subscription after delivery.',
+    longDescription: 'A one-time project delivery contract with defined milestones and a clear handover point. The service provider delivers a specific outcome (a website, an interior design, a marketing campaign) within a defined timeline. Billing is milestone-based. After project completion, the relationship often transitions into a Subscription or AMC contract for ongoing maintenance.',
+    includes: ['Design/planning', 'Development/execution', 'Testing/QA', 'Handover', 'Documentation', 'Defect warranty period'],
+    excludes: ['Ongoing maintenance (separate contract)', 'Scope changes (require change order)'],
+    duration: 'Project-based', billing: 'Milestone', industries: ['technology', 'construction', 'creative', 'marketing', 'consulting'],
+    isEquipment: false, isEntity: false, isService: true
+  },
+  {
+    id: 'sla', short: 'SLA', full: 'Service Level Agreement', color: '#6366f1',
+    group: 'general', icon: '📊',
+    description: 'Performance-bound contract with penalties for non-compliance.',
+    longDescription: 'A contract that defines specific, measurable performance targets (uptime, response time, resolution time) with financial penalties for non-compliance. The SLA metrics become the basis for billing adjustments — miss targets and you pay less (or get credits). Common in IT, telecom, and critical infrastructure.',
+    includes: ['Defined KPIs & metrics', 'Response time guarantees', 'Resolution time guarantees', 'Uptime commitments', 'Penalty/credit mechanism', 'Monthly reporting'],
+    excludes: ['Force majeure events', 'Buyer-caused outages', 'Third-party dependencies'],
+    duration: '12 months', billing: 'Monthly', industries: ['technology', 'telecom', 'healthcare', 'infrastructure'],
+    isEquipment: true, isEntity: false, isService: false
+  },
+  {
+    id: 'rate_contract', short: 'Rate Contract', full: 'Rate Contract', color: '#8b5cf6',
+    group: 'general', icon: '📑',
+    description: 'Pre-negotiated rates, pay only for actual usage/quantity consumed.',
+    longDescription: 'A framework agreement that locks in rates for specific services or materials without committing to a fixed quantity. The buyer calls off services as needed and pays based on actual consumption at the pre-agreed rates. Common in government procurement, construction, and maintenance where demand is variable.',
+    includes: ['Pre-negotiated rates', 'On-demand availability', 'Rate lock for contract period', 'Flexible quantities'],
+    excludes: ['Minimum commitment', 'Fixed billing', 'Guaranteed availability'],
+    duration: '12 months', billing: 'Per usage', industries: ['manufacturing', 'construction', 'government', 'infrastructure'],
+    isEquipment: false, isEntity: false, isService: false
+  },
+  {
+    id: 'retainer', short: 'Retainer', full: 'Retainer Agreement', color: '#ec4899',
+    group: 'general', icon: '🤝',
+    description: 'Fixed monthly/quarterly fee for guaranteed availability.',
+    longDescription: 'A fixed periodic fee that guarantees the service provider\'s availability and priority access. The provider reserves capacity for the client and responds with priority when needed. Common for legal, consulting, specialized technical support, and advisory services where access matters more than specific deliverables.',
+    includes: ['Guaranteed availability', 'Priority response', 'Fixed periodic fee', 'Dedicated resource allocation'],
+    excludes: ['Unlimited usage', 'Project deliverables', 'Physical materials'],
+    duration: '12 months', billing: 'Monthly', industries: ['professional', 'technology', 'legal', 'consulting'],
+    isEquipment: false, isEntity: false, isService: false
+  },
+  {
+    id: 'per_call', short: 'Per-Call', full: 'Per-Call / On-Demand Service', color: '#f59e0b',
+    group: 'general', icon: '📞',
+    description: 'No commitment. Pay per service visit. Common for plumbing, electrical.',
+    longDescription: 'Zero commitment from either side. The buyer requests service when needed, the provider quotes/accepts, and billing is per-visit. No guaranteed availability, no locked rates. Ideal for infrequent, unpredictable needs like plumbing, electrical, pest control in residential settings.',
+    includes: ['Pay-per-visit', 'No minimum commitment', 'Flexible scheduling'],
+    excludes: ['Rate guarantees', 'Priority response', 'Scheduled visits', 'Parts coverage'],
+    duration: 'Ongoing', billing: 'Per visit', industries: ['real_estate', 'residential', 'commercial'],
+    isEquipment: false, isEntity: false, isService: false
+  },
+  {
+    id: 'turnkey', short: 'Turnkey', full: 'Turnkey Contract', color: '#a855f7',
+    group: 'general', icon: '🔑',
+    description: 'End-to-end project delivery, then transitions to AMC/O&M.',
+    longDescription: 'A complete project delivery contract — design, procurement, installation, testing, commissioning, and handover. The service provider delivers a fully functional system or facility "turn the key and it works." Often transitions into an AMC or O&M contract post-handover. Common in construction, infrastructure, and technology deployments.',
+    includes: ['Design & engineering', 'Procurement', 'Installation', 'Testing & commissioning', 'Handover', 'Defect liability period'],
+    excludes: ['Long-term maintenance (separate contract)', 'Operational costs post-handover'],
+    duration: 'Project-based', billing: 'Milestone', industries: ['construction', 'infrastructure', 'technology', 'energy'],
+    isEquipment: true, isEntity: true, isService: false
+  },
+  {
+    id: 'bot_boot', short: 'BOT/BOOT', full: 'Build-Operate-Transfer', color: '#64748b',
+    group: 'general', icon: '🏗️',
+    description: 'Long-term operational contracts with eventual asset handover.',
+    longDescription: 'A long-term contract model where the service provider builds an asset, operates it for an extended period (earning revenue), and eventually transfers ownership to the buyer. The "Build-Own-Operate-Transfer" variant includes ownership during the operational phase. Common for large infrastructure projects — toll roads, power plants, water treatment.',
+    includes: ['Construction/build phase', 'Full operations for contract period', 'Revenue sharing model', 'Asset transfer at end', 'Performance guarantees'],
+    excludes: ['Buyer operational involvement during contract', 'Early termination (complex)'],
+    duration: '60+ months', billing: 'Monthly', industries: ['infrastructure', 'utilities', 'energy', 'transportation'],
+    isEquipment: true, isEntity: true, isService: false
+  }
+];
+
+let selectedId = null;
+let activeIndustry = 'all';
+let openDetailId = null;
+
+// ============================================
+// RENDER CARDS
+// ============================================
+function renderCards() {
+  const groups = { equipment: [], entity: [], service: [], general: [] };
+  nomenclature.forEach(n => groups[n.group].push(n));
+
+  Object.entries(groups).forEach(([group, items]) => {
+    const grid = document.getElementById(`grid-${group}`);
+    grid.innerHTML = items.map(n => `
+      <div class="nom-card ${selectedId === n.id ? 'selected' : ''}"
+           id="card-${n.id}"
+           style="--card-accent: ${n.color}"
+           data-id="${n.id}"
+           data-group="${n.group}"
+           data-industries="${n.industries.join(',')}"
+           data-search="${n.short} ${n.full} ${n.description} ${n.industries.join(' ')}".toLowerCase()
+           onclick="openDetail('${n.id}')">
+        <div class="rec-star">★</div>
+        <div class="icon-wrap" style="background: ${n.color}15">${n.icon}</div>
+        <div class="short-name" style="color: ${n.color}">${n.short}</div>
+        <div class="full-name">${n.full}</div>
+        <div class="description">${n.description}</div>
+        <div class="meta-row">
+          <span class="type-badge ${n.isEquipment && n.isEntity ? 'general' : n.isEquipment ? 'equipment' : n.isEntity ? 'entity' : n.isService ? 'service' : 'general'}">
+            ${n.isEquipment && n.isEntity ? '🔧🏢 Both' : n.isEquipment ? '🔧 Equipment' : n.isEntity ? '🏢 Entity' : n.isService ? '💼 Service' : '🔀 Flexible'}
+          </span>
+        </div>
+        <div class="industry-tags">
+          ${n.industries.slice(0, 3).map(i => `<span class="industry-micro">${capitalize(i.replace('_', ' '))}</span>`).join('')}
+          ${n.industries.length > 3 ? `<span class="industry-micro">+${n.industries.length - 3}</span>` : ''}
+        </div>
+      </div>
+    `).join('');
+  });
+
+  applyFilters();
+}
+
+function capitalize(str) {
+  return str.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+// ============================================
+// FILTERING
+// ============================================
+function setIndustry(industry, btn) {
+  activeIndustry = industry;
+  document.querySelectorAll('.industry-chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+
+  // Update suggestion banner
+  const banner = document.getElementById('suggestionBanner');
+  if (industry === 'all') {
+    banner.querySelector('.icon').textContent = '🏥';
+    banner.querySelector('strong').textContent = 'Recommended for Healthcare';
+    banner.querySelector('.recommended-tags').innerHTML = '<span class="suggested-tag">AMC</span><span class="suggested-tag">CMC</span><span class="suggested-tag">PMC</span>';
+  } else {
+    const industryIcons = { healthcare: '🏥', manufacturing: '🏭', real_estate: '🏢', technology: '💻', infrastructure: '🏗️', wellness: '🧘', consulting: '💼', education: '🎓' };
+    const industryRecs = {
+      healthcare: ['AMC', 'CMC', 'PMC', 'Care Plan'],
+      manufacturing: ['AMC', 'PMC', 'BMC', 'Rate Contract'],
+      real_estate: ['FMC', 'AMC', 'Manpower'],
+      technology: ['SLA', 'Subscription', 'Retainer', 'Project-Based'],
+      infrastructure: ['O&M', 'BOT/BOOT', 'Turnkey'],
+      wellness: ['Service Package', 'Care Plan', 'Subscription'],
+      consulting: ['Consultation', 'Retainer', 'Project-Based'],
+      education: ['Training', 'Project-Based', 'Subscription']
+    };
+    banner.querySelector('.icon').textContent = industryIcons[industry] || '🏢';
+    banner.querySelector('strong').textContent = `Recommended for ${capitalize(industry.replace('_', ' '))}`;
+    banner.querySelector('.recommended-tags').innerHTML = (industryRecs[industry] || []).map(t => `<span class="suggested-tag">${t}</span>`).join('');
+  }
+
+  applyFilters();
+}
+
+function filterCards() {
+  applyFilters();
+}
+
+function applyFilters() {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const cards = document.querySelectorAll('.nom-card');
+  const recommended = getRecommendedIds();
+
+  cards.forEach(card => {
+    const id = card.dataset.id;
+    const searchData = card.dataset.search;
+    const industries = card.dataset.industries.split(',');
+
+    // Search filter
+    const matchesSearch = !search || searchData.includes(search);
+
+    if (!matchesSearch) {
+      card.classList.add('hidden');
+      return;
+    }
+    card.classList.remove('hidden');
+
+    // Industry dimming
+    if (activeIndustry !== 'all') {
+      if (industries.includes(activeIndustry)) {
+        card.classList.remove('dimmed');
+        if (recommended.includes(id)) {
+          card.classList.add('recommended');
+        } else {
+          card.classList.remove('recommended');
+        }
+      } else {
+        card.classList.add('dimmed');
+        card.classList.remove('recommended');
+      }
+    } else {
+      card.classList.remove('dimmed');
+      card.classList.remove('recommended');
+    }
+  });
+}
+
+function getRecommendedIds() {
+  const recs = {
+    healthcare: ['amc', 'cmc', 'pmc', 'care_plan'],
+    manufacturing: ['amc', 'pmc', 'bmc'],
+    real_estate: ['fmc', 'amc', 'manpower'],
+    technology: ['sla', 'subscription_service', 'retainer', 'project_service'],
+    infrastructure: ['om', 'bot_boot', 'turnkey'],
+    wellness: ['service_package', 'care_plan', 'subscription_service'],
+    consulting: ['consultation', 'retainer', 'project_service'],
+    education: ['training_contract', 'project_service', 'subscription_service']
+  };
+  return recs[activeIndustry] || [];
+}
+
+// ============================================
+// DETAIL PANEL
+// ============================================
+function openDetail(id) {
+  const n = nomenclature.find(x => x.id === id);
+  if (!n) return;
+  openDetailId = id;
+
+  const panel = document.getElementById('detailPanel');
+  const backdrop = document.getElementById('detailBackdrop');
+  const selectBtnDiv = document.getElementById('selectBtn');
+
+  // Fill content
+  document.getElementById('detailIcon').style.background = `${n.color}15`;
+  document.getElementById('detailIcon').textContent = n.icon;
+  document.getElementById('detailShort').textContent = n.short;
+  document.getElementById('detailShort').style.color = n.color;
+  document.getElementById('detailFull').textContent = n.full;
+  document.getElementById('detailDesc').textContent = n.longDescription;
+
+  document.getElementById('detailIncludes').innerHTML = n.includes.map(i =>
+    `<li><span class="check included">✓</span>${i}</li>`
+  ).join('');
+
+  document.getElementById('detailExcludes').innerHTML = n.excludes.map(e =>
+    `<li><span class="check excluded">✗</span>${e}</li>`
+  ).join('');
+
+  document.getElementById('detailMeta').innerHTML = `
+    <div class="meta-card">
+      <div class="label">Typical Duration</div>
+      <div class="value">${n.duration}</div>
+    </div>
+    <div class="meta-card">
+      <div class="label">Typical Billing</div>
+      <div class="value">${n.billing}</div>
+    </div>
+    <div class="meta-card">
+      <div class="label">Equipment-Based</div>
+      <div class="value">${n.isEquipment ? '✅ Yes' : '—  No'}</div>
+    </div>
+    <div class="meta-card">
+      <div class="label">Entity-Based</div>
+      <div class="value">${n.isEntity ? '✅ Yes' : '—  No'}</div>
+    </div>
+    <div class="meta-card">
+      <div class="label">Service-Based</div>
+      <div class="value">${n.isService ? '✅ Yes' : '—  No'}</div>
+    </div>
+    <div class="meta-card">
+      <div class="label">Wizard Route</div>
+      <div class="value">${n.isEquipment ? 'Equipment Picker' : n.isEntity ? 'Entity Picker' : n.isService ? 'Deliverable Builder' : 'Flexible'}</div>
+    </div>
+  `;
+
+  document.getElementById('detailBestFor').innerHTML = n.industries.map(i =>
+    `<span class="best-for-tag">${capitalize(i.replace('_', ' '))}</span>`
+  ).join('');
+
+  // Show panel
+  requestAnimationFrame(() => {
+    backdrop.classList.add('open');
+    panel.classList.add('open');
+    selectBtnDiv.classList.add('open');
+  });
+}
+
+function closeDetail() {
+  document.getElementById('detailPanel').classList.remove('open');
+  document.getElementById('detailBackdrop').classList.remove('open');
+  document.getElementById('selectBtn').classList.remove('open');
+  openDetailId = null;
+}
+
+// ============================================
+// SELECTION
+// ============================================
+function selectNomenclature() {
+  const n = nomenclature.find(x => x.id === openDetailId);
+  if (!n) return;
+
+  selectedId = n.id;
+  closeDetail();
+
+  // Update card visuals
+  document.querySelectorAll('.nom-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById(`card-${n.id}`).classList.add('selected');
+
+  // Show selection strip
+  const strip = document.getElementById('selectionStrip');
+  document.getElementById('selBadge').textContent = n.short;
+  document.getElementById('selBadge').style.background = n.color;
+  document.getElementById('selName').textContent = n.full;
+  document.getElementById('selPills').innerHTML = `
+    <span class="meta-pill">${n.isEquipment ? '🔧 Equipment-based' : n.isEntity ? '🏢 Entity-based' : n.isService ? '💼 Service-based' : '🔀 Flexible'}</span>
+    <span class="meta-pill">${n.billing} billing</span>
+    <span class="meta-pill">${n.duration}</span>
+  `;
+  strip.classList.add('visible');
+}
+
+function clearSelection() {
+  selectedId = null;
+  document.querySelectorAll('.nom-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('selectionStrip').classList.remove('visible');
+}
+
+// ============================================
+// JOURNEY MAP
+// ============================================
+function toggleJourney() {
+  document.getElementById('journeyOverlay').classList.toggle('active');
+}
+
+// ============================================
+// INIT
+// ============================================
+renderCards();
+</script>
+
+</body>
+</html>
