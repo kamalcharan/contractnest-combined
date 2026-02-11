@@ -1,6 +1,6 @@
 // src/components/contracts/ContractWizard/steps/NomenclatureStep.tsx
 // Step 2: Choose contract nomenclature (AMC, CMC, SLA, etc.)
-// Grouped card picker — follows AcceptanceMethodStep pattern
+// Grouped card picker — uses existing useGlobalMasterData hook
 
 import React, { useMemo } from 'react';
 import {
@@ -35,17 +35,24 @@ import {
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
-  useNomenclatureTypes,
-  findNomenclatureById,
-  type NomenclatureGroup,
-  type NomenclatureType,
-} from '@/hooks/queries/useNomenclatureTypes';
+  useGlobalMasterData,
+  type CategoryDetail,
+} from '@/hooks/queries/useProductMasterdata';
 
 // ─── Props ──────────────────────────────────────────────────────────
 
 interface NomenclatureStepProps {
   selectedId: string | null;
   onSelect: (id: string | null, displayName: string | null) => void;
+}
+
+// ─── Local types for grouped display ────────────────────────────────
+
+interface NomenclatureGroup {
+  group: string;
+  label: string;
+  icon: string;
+  items: CategoryDetail[];
 }
 
 // ─── Icon map (matches form_settings.group_icon and form_settings.icon) ─
@@ -79,6 +86,37 @@ const ICON_MAP: Record<string, LucideIcon> = {
 
 const getIcon = (name: string): LucideIcon => ICON_MAP[name] || FileText;
 
+// ─── Grouping helper ────────────────────────────────────────────────
+
+const GROUP_ORDER = ['equipment_maintenance', 'facility_property', 'service_delivery', 'flexible_hybrid'];
+
+const groupItems = (items: CategoryDetail[]): NomenclatureGroup[] => {
+  const groupMap: Record<string, NomenclatureGroup> = {};
+
+  items.forEach((item) => {
+    const fs = item.form_settings as any;
+    const groupKey = fs?.group || 'other';
+    if (!groupMap[groupKey]) {
+      groupMap[groupKey] = {
+        group: groupKey,
+        label: fs?.group_label || groupKey,
+        icon: fs?.group_icon || 'FileText',
+        items: [],
+      };
+    }
+    groupMap[groupKey].items.push(item);
+  });
+
+  return GROUP_ORDER
+    .filter((key) => groupMap[key])
+    .map((key) => groupMap[key])
+    .concat(
+      Object.entries(groupMap)
+        .filter(([key]) => !GROUP_ORDER.includes(key))
+        .map(([, group]) => group)
+    );
+};
+
 // ─── Component ──────────────────────────────────────────────────────
 
 const NomenclatureStep: React.FC<NomenclatureStepProps> = ({
@@ -88,12 +126,16 @@ const NomenclatureStep: React.FC<NomenclatureStepProps> = ({
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
 
-  const { data: groups, isLoading, error } = useNomenclatureTypes();
+  // Use the existing global master data hook
+  const { data: response, isLoading, error } = useGlobalMasterData('cat_contract_nomenclature', true);
+
+  const items = response?.data || [];
+  const groups = useMemo(() => groupItems(items), [items]);
 
   // Find current selection for info panel
   const selectedItem = useMemo(
-    () => findNomenclatureById(groups || [], selectedId),
-    [groups, selectedId]
+    () => items.find((item) => item.id === selectedId),
+    [items, selectedId]
   );
 
   // ─── Loading state ─────────────────────────────────────────────
@@ -168,7 +210,7 @@ const NomenclatureStep: React.FC<NomenclatureStepProps> = ({
 
         {/* Groups */}
         <div className="space-y-8">
-          {groups.map((group: NomenclatureGroup) => {
+          {groups.map((group) => {
             const GroupIcon = getIcon(group.icon);
 
             return (
@@ -204,10 +246,11 @@ const NomenclatureStep: React.FC<NomenclatureStepProps> = ({
 
                 {/* Cards Grid */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {group.items.map((item: NomenclatureType) => {
+                  {group.items.map((item) => {
                     const isSelected = selectedId === item.id;
-                    const ItemIcon = getIcon(item.form_settings?.icon || '');
-                    const accent = item.hexcolor || colors.brand.primary;
+                    const fs = item.form_settings as any;
+                    const ItemIcon = getIcon(fs?.icon || '');
+                    const accent = (item as any).hexcolor || colors.brand.primary;
 
                     return (
                       <button
@@ -215,7 +258,7 @@ const NomenclatureStep: React.FC<NomenclatureStepProps> = ({
                         onClick={() =>
                           onSelect(
                             isSelected ? null : item.id,
-                            isSelected ? null : item.form_settings?.short_name || item.display_name
+                            isSelected ? null : fs?.short_name || item.display_name || item.detail_name
                           )
                         }
                         className="relative flex flex-col p-4 rounded-xl border-2 text-left transition-all duration-200 hover:shadow-md group"
@@ -270,7 +313,7 @@ const NomenclatureStep: React.FC<NomenclatureStepProps> = ({
                               : colors.utility.primaryText,
                           }}
                         >
-                          {item.form_settings?.short_name || item.display_name}
+                          {fs?.short_name || item.display_name || item.detail_name}
                         </span>
 
                         {/* Full name */}
@@ -278,7 +321,7 @@ const NomenclatureStep: React.FC<NomenclatureStepProps> = ({
                           className="text-[11px] leading-tight"
                           style={{ color: colors.utility.secondaryText }}
                         >
-                          {item.form_settings?.full_name || item.description}
+                          {fs?.full_name || item.description}
                         </span>
                       </button>
                     );
@@ -290,88 +333,90 @@ const NomenclatureStep: React.FC<NomenclatureStepProps> = ({
         </div>
 
         {/* Selected info panel */}
-        {selectedItem && (
-          <div
-            className="mt-8 p-5 rounded-xl border flex items-start gap-4"
-            style={{
-              backgroundColor: colors.utility.secondaryBackground,
-              borderColor: `${selectedItem.hexcolor || colors.brand.primary}25`,
-            }}
-          >
+        {selectedItem && (() => {
+          const fs = selectedItem.form_settings as any;
+          const accent = (selectedItem as any).hexcolor || colors.brand.primary;
+
+          return (
             <div
-              className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+              className="mt-8 p-5 rounded-xl border flex items-start gap-4"
               style={{
-                backgroundColor: `${selectedItem.hexcolor || colors.brand.primary}15`,
+                backgroundColor: colors.utility.secondaryBackground,
+                borderColor: `${accent}25`,
               }}
             >
-              {React.createElement(
-                getIcon(selectedItem.form_settings?.icon || ''),
-                {
-                  className: 'w-5 h-5',
-                  style: { color: selectedItem.hexcolor || colors.brand.primary },
-                }
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <h4
-                className="font-semibold mb-1"
-                style={{ color: colors.utility.primaryText }}
+              <div
+                className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: `${accent}15` }}
               >
-                {selectedItem.form_settings?.short_name} —{' '}
-                {selectedItem.form_settings?.full_name}
-              </h4>
-              <p
-                className="text-xs mb-3"
-                style={{ color: colors.utility.secondaryText }}
-              >
-                {selectedItem.description}
-              </p>
+                {React.createElement(
+                  getIcon(fs?.icon || ''),
+                  {
+                    className: 'w-5 h-5',
+                    style: { color: accent },
+                  }
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4
+                  className="font-semibold mb-1"
+                  style={{ color: colors.utility.primaryText }}
+                >
+                  {fs?.short_name || selectedItem.display_name} —{' '}
+                  {fs?.full_name || selectedItem.detail_name}
+                </h4>
+                <p
+                  className="text-xs mb-3"
+                  style={{ color: colors.utility.secondaryText }}
+                >
+                  {selectedItem.description}
+                </p>
 
-              {/* Scope tags */}
-              {selectedItem.form_settings?.scope_includes?.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {selectedItem.form_settings.scope_includes.map((scope, idx) => (
-                    <span
-                      key={idx}
-                      className="text-[10px] px-2 py-0.5 rounded-full"
-                      style={{
-                        backgroundColor: `${selectedItem.hexcolor || colors.brand.primary}10`,
-                        color: selectedItem.hexcolor || colors.brand.primary,
-                      }}
-                    >
-                      {scope}
-                    </span>
-                  ))}
-                </div>
-              )}
+                {/* Scope tags */}
+                {fs?.scope_includes?.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {fs.scope_includes.map((scope: string, idx: number) => (
+                      <span
+                        key={idx}
+                        className="text-[10px] px-2 py-0.5 rounded-full"
+                        style={{
+                          backgroundColor: `${accent}10`,
+                          color: accent,
+                        }}
+                      >
+                        {scope}
+                      </span>
+                    ))}
+                  </div>
+                )}
 
-              {/* Meta: typical duration + billing */}
-              {(selectedItem.form_settings?.typical_duration ||
-                selectedItem.form_settings?.typical_billing) && (
-                <div className="flex gap-4 mt-3">
-                  {selectedItem.form_settings?.typical_duration && (
-                    <span
-                      className="text-[10px] flex items-center gap-1"
-                      style={{ color: colors.utility.secondaryText }}
-                    >
-                      <Clock className="w-3 h-3" />
-                      {selectedItem.form_settings.typical_duration}
-                    </span>
-                  )}
-                  {selectedItem.form_settings?.typical_billing && (
-                    <span
-                      className="text-[10px] flex items-center gap-1"
-                      style={{ color: colors.utility.secondaryText }}
-                    >
-                      <Calculator className="w-3 h-3" />
-                      {selectedItem.form_settings.typical_billing}
-                    </span>
-                  )}
-                </div>
-              )}
+                {/* Meta: typical duration + billing */}
+                {(fs?.typical_duration || fs?.typical_billing) && (
+                  <div className="flex gap-4 mt-3">
+                    {fs?.typical_duration && (
+                      <span
+                        className="text-[10px] flex items-center gap-1"
+                        style={{ color: colors.utility.secondaryText }}
+                      >
+                        <Clock className="w-3 h-3" />
+                        {fs.typical_duration}
+                      </span>
+                    )}
+                    {fs?.typical_billing && (
+                      <span
+                        className="text-[10px] flex items-center gap-1"
+                        style={{ color: colors.utility.secondaryText }}
+                      >
+                        <Calculator className="w-3 h-3" />
+                        {fs.typical_billing}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Helper text */}
         <p
