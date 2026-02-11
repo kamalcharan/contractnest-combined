@@ -1,0 +1,39 @@
+============================================================
+COPY INSTRUCTIONS - VaNi Opportunity Audit Report
+============================================================
+Branch: vani-opportunity-audit
+Date: 2026-02-11
+Submodules Affected: ClaudeDocumentation
+
+============================================================
+FILES TO COPY:
+============================================================
+
+1. VANI_OPPORTUNITY_AUDIT.md
+   FROM: MANUAL_COPY_FILES\vani-opportunity-audit\ClaudeDocumentation\VANI_OPPORTUNITY_AUDIT.md
+   TO:   ClaudeDocumentation\VANI_OPPORTUNITY_AUDIT.md
+   PURPOSE: Comprehensive VaNi AI opportunity audit covering all ContractNest surfaces
+
+============================================================
+COPY COMMANDS (PowerShell):
+============================================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\vani-opportunity-audit\ClaudeDocumentation\VANI_OPPORTUNITY_AUDIT.md" -Destination "ClaudeDocumentation\VANI_OPPORTUNITY_AUDIT.md" -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+============================================================
+COMMIT COMMANDS:
+============================================================
+
+cd ClaudeDocumentation
+git add VANI_OPPORTUNITY_AUDIT.md
+git commit -m "docs: add VaNi opportunity audit - full codebase analysis"
+git push origin master
+cd ..
+
+# Update parent repo
+git add ClaudeDocumentation
+git commit -m "docs: add VaNi opportunity audit report"
+git push origin master
