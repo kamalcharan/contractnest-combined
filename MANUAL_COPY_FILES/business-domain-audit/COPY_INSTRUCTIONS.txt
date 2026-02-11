@@ -1,0 +1,29 @@
+================================================================
+BUSINESS DOMAIN AUDIT - COPY INSTRUCTIONS
+================================================================
+
+Branch: business-domain-audit
+Date: 2026-02-11
+
+Files Created:
+  - ClaudeDocumentation/CONTRACTNEST_FULL_AUDIT.md
+    Full business domain audit covering:
+    - Database schema (62 tables, all columns, relationships, RLS)
+    - API routes (38 route groups, 150+ endpoints)
+    - Edge Functions (40+)
+    - Frontend pages (52+), components (34+ dirs), hooks (60+)
+    - Gap analysis & recommendations
+
+Submodules Affected: ClaudeDocumentation
+
+================================================================
+COPY COMMAND (PowerShell)
+================================================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\business-domain-audit\ClaudeDocumentation\*" -Destination "ClaudeDocumentation\" -Recurse -Force
+
+Write-Host "Done - audit document copied!" -ForegroundColor Green
+
+================================================================
