@@ -1,0 +1,80 @@
+===============================================================
+P1: Equipment & Entity Foundation — COPY INSTRUCTIONS
+Branch: feature/p1-equipment
+===============================================================
+
+AFFECTED SUBMODULES:
+  1. contractnest-edge (migrations + edge function)
+  2. contractnest-api  (routes, controller, service, types, validators, index.ts)
+
+===============================================================
+STEP 1: Copy Edge Files
+===============================================================
+
+# Migrations (run in Supabase SQL Editor in ORDER)
+Copy-Item "MANUAL_COPY_FILES\feature-p1-equipment\contractnest-edge\supabase\migrations\contracts\035_seed_resource_templates.sql" -Destination "contractnest-edge\supabase\migrations\contracts\" -Force
+Copy-Item "MANUAL_COPY_FILES\feature-p1-equipment\contractnest-edge\supabase\migrations\contracts\035_seed_resource_templates_DOWN.sql" -Destination "contractnest-edge\supabase\migrations\contracts\" -Force
+Copy-Item "MANUAL_COPY_FILES\feature-p1-equipment\contractnest-edge\supabase\migrations\contracts\036_cat_asset_types_lov.sql" -Destination "contractnest-edge\supabase\migrations\contracts\" -Force
+Copy-Item "MANUAL_COPY_FILES\feature-p1-equipment\contractnest-edge\supabase\migrations\contracts\036_cat_asset_types_lov_DOWN.sql" -Destination "contractnest-edge\supabase\migrations\contracts\" -Force
+Copy-Item "MANUAL_COPY_FILES\feature-p1-equipment\contractnest-edge\supabase\migrations\contracts\037_asset_registry_tables.sql" -Destination "contractnest-edge\supabase\migrations\contracts\" -Force
+Copy-Item "MANUAL_COPY_FILES\feature-p1-equipment\contractnest-edge\supabase\migrations\contracts\037_asset_registry_tables_DOWN.sql" -Destination "contractnest-edge\supabase\migrations\contracts\" -Force
+Copy-Item "MANUAL_COPY_FILES\feature-p1-equipment\contractnest-edge\supabase\migrations\contracts\038_asset_id_on_tickets.sql" -Destination "contractnest-edge\supabase\migrations\contracts\" -Force
+Copy-Item "MANUAL_COPY_FILES\feature-p1-equipment\contractnest-edge\supabase\migrations\contracts\038_asset_id_on_tickets_DOWN.sql" -Destination "contractnest-edge\supabase\migrations\contracts\" -Force
+
+# Edge Function
+Copy-Item "MANUAL_COPY_FILES\feature-p1-equipment\contractnest-edge\supabase\functions\asset-registry\*" -Destination "contractnest-edge\supabase\functions\asset-registry\" -Recurse -Force
+
+===============================================================
+STEP 2: Copy API Files
+===============================================================
+
+Copy-Item "MANUAL_COPY_FILES\feature-p1-equipment\contractnest-api\src\types\assetRegistryTypes.ts" -Destination "contractnest-api\src\types\" -Force
+Copy-Item "MANUAL_COPY_FILES\feature-p1-equipment\contractnest-api\src\validators\assetRegistryValidators.ts" -Destination "contractnest-api\src\validators\" -Force
+Copy-Item "MANUAL_COPY_FILES\feature-p1-equipment\contractnest-api\src\services\assetRegistryService.ts" -Destination "contractnest-api\src\services\" -Force
+Copy-Item "MANUAL_COPY_FILES\feature-p1-equipment\contractnest-api\src\controllers\assetRegistryController.ts" -Destination "contractnest-api\src\controllers\" -Force
+Copy-Item "MANUAL_COPY_FILES\feature-p1-equipment\contractnest-api\src\routes\assetRegistryRoutes.ts" -Destination "contractnest-api\src\routes\" -Force
+
+# NOTE: index.ts was modified IN-PLACE by Claude (not in MANUAL_COPY_FILES).
+# The route registration is already added to contractnest-api/src/index.ts.
+
+===============================================================
+STEP 3: Run Migrations (in Supabase SQL Editor — IN ORDER)
+===============================================================
+
+1. 035_seed_resource_templates.sql     — seed equipment/entity templates
+2. 036_cat_asset_types_lov.sql         — cat_asset_types LOV (pricing variants)
+3. 037_asset_registry_tables.sql       — CREATE t_tenant_asset_registry + t_contract_assets + ALTER t_contracts
+4. 038_asset_id_on_tickets.sql         — ADD asset_id to t_service_tickets + t_service_evidence
+
+===============================================================
+STEP 4: Deploy Edge Function
+===============================================================
+
+cd contractnest-edge
+supabase functions deploy asset-registry
+
+===============================================================
+STEP 5: Restart API
+===============================================================
+
+cd contractnest-api
+npm run dev
+
+===============================================================
+API ENDPOINTS AVAILABLE AFTER DEPLOYMENT
+===============================================================
+
+Assets CRUD:
+  GET    /api/asset-registry                              — List/filter assets
+  GET    /api/asset-registry?id={uuid}                    — Get single asset
+  POST   /api/asset-registry                              — Create asset
+  PATCH  /api/asset-registry?id={uuid}                    — Update asset
+  DELETE /api/asset-registry?id={uuid}                    — Soft-delete asset
+
+Hierarchy:
+  GET    /api/asset-registry/children?parent_asset_id={uuid}  — Get child assets
+
+Contract ↔ Asset linking:
+  GET    /api/asset-registry/contract-assets?contract_id={uuid}              — Get contract's assets
+  POST   /api/asset-registry/contract-assets                                  — Link assets to contract
+  DELETE /api/asset-registry/contract-assets?contract_id={uuid}&asset_id={uuid} — Unlink asset
