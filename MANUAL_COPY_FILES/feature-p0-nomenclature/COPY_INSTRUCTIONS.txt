@@ -1,11 +1,12 @@
 ===============================================================
-P0 NOMENCLATURE — MIGRATION FILES
+P0 NOMENCLATURE — ALL FILES (DB Migrations + API Layer)
 Branch: feature/p0-nomenclature
 Date: 2026-02-11
 ===============================================================
 
 SUBMODULES AFFECTED:
-  - contractnest-edge (database migration)
+  - contractnest-edge (database migrations)
+  - contractnest-api  (validators + types)
 
 FILES:
   1. contractnest-edge/supabase/migrations/contracts/032_nomenclature_seed.sql
@@ -14,6 +15,18 @@ FILES:
   2. contractnest-edge/supabase/migrations/contracts/032_nomenclature_seed_DOWN.sql
      → DOWN/rollback migration (manual use only, not auto-applied)
 
+  3. contractnest-edge/supabase/migrations/contracts/033_nomenclature_denorm_columns.sql
+     → NEW: adds nomenclature_code + nomenclature_name columns to t_contracts
+
+  4. contractnest-edge/supabase/migrations/contracts/034_rpc_nomenclature_support.sql
+     → NEW: updated create_contract_transaction RPC with nomenclature lookup
+
+  5. contractnest-api/src/validators/contractValidators.ts
+     → MODIFIED: added nomenclature_id (optional UUID) to create + update validators
+
+  6. contractnest-api/src/types/contractTypes.ts
+     → MODIFIED: added nomenclature_id to CreateContractRequest + ContractListItem
+
 ===============================================================
 COPY COMMANDS (PowerShell)
 ===============================================================
@@ -21,91 +34,97 @@ COPY COMMANDS (PowerShell)
 cd "D:\projects\core projects\ContractNest\contractnest-combined"
 
 Copy-Item "MANUAL_COPY_FILES\feature-p0-nomenclature\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\feature-p0-nomenclature\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
 
-Write-Host "Files copied!" -ForegroundColor Green
+Write-Host "All files copied!" -ForegroundColor Green
 
 ===============================================================
-TESTING: Apply to Supabase
+TESTING: Apply DB Migrations to Supabase (in order)
 ===============================================================
 
-Option A — Supabase SQL Editor:
-  1. Open Supabase Dashboard → SQL Editor
-  2. Paste the contents of 032_nomenclature_seed.sql
-  3. Run
-  4. Verify with:
+PREREQUISITE: 032_nomenclature_seed.sql must be applied first.
 
-     SELECT cd.sub_cat_name, cd.display_name, cd.form_settings->>'group' as grp
-     FROM m_category_details cd
-     JOIN m_category_master cm ON cd.category_id = cm.id
-     WHERE cm.category_name = 'cat_contract_nomenclature'
-     ORDER BY cd.sequence_no;
+Then in Supabase SQL Editor, run IN ORDER:
+  1. Paste 033_nomenclature_denorm_columns.sql → Run
+  2. Paste 034_rpc_nomenclature_support.sql → Run
 
-     Expected: 21 rows (6 equipment + 3 facility + 6 service + 6 flexible)
+Verify columns:
+  SELECT column_name, data_type
+  FROM information_schema.columns
+  WHERE table_name = 't_contracts'
+    AND column_name IN ('nomenclature_id', 'nomenclature_code', 'nomenclature_name');
+  -- Expected: 3 rows
 
-  5. Verify column:
+Verify RPC works with nomenclature:
+  SELECT create_contract_transaction('{
+    "tenant_id": "<YOUR_TENANT_UUID>",
+    "name": "Test Nomenclature Contract",
+    "record_type": "contract",
+    "contract_type": "client",
+    "nomenclature_id": "<PICK_ANY_NOMENCLATURE_UUID_FROM_032>",
+    "created_by": "<YOUR_USER_UUID>"
+  }'::jsonb);
+  -- Expected: success=true, response includes nomenclature_code + nomenclature_name
 
-     SELECT column_name, data_type
-     FROM information_schema.columns
-     WHERE table_name = 't_contracts' AND column_name = 'nomenclature_id';
+Verify backward compat (no nomenclature):
+  SELECT create_contract_transaction('{
+    "tenant_id": "<YOUR_TENANT_UUID>",
+    "name": "Test No Nomenclature",
+    "record_type": "contract",
+    "contract_type": "client",
+    "created_by": "<YOUR_USER_UUID>"
+  }'::jsonb);
+  -- Expected: success=true, nomenclature fields all NULL
 
-     Expected: 1 row — nomenclature_id, uuid
+===============================================================
+TESTING: API Layer
+===============================================================
 
-Option B — Supabase CLI:
-  cd contractnest-edge
-  supabase db push
+cd contractnest-api && npm run dev
+
+===============================================================
+TESTING CHECKLIST
+===============================================================
+- [ ] 033 migration applies cleanly (nomenclature_code + nomenclature_name columns appear)
+- [ ] 034 migration applies cleanly (RPC replaced)
+- [ ] Create contract WITH nomenclature_id → response has code + name populated
+- [ ] Create contract WITHOUT nomenclature_id → all 3 fields NULL (backward compat)
+- [ ] Create contract with INVALID nomenclature_id → fields silently NULL (no FK error)
+- [ ] API validator accepts nomenclature_id UUID
+- [ ] API validator rejects non-UUID nomenclature_id
 
 ===============================================================
 ROLLBACK (if needed)
 ===============================================================
 
-  Paste 032_nomenclature_seed_DOWN.sql into Supabase SQL Editor and run.
-  Then rollback code via git tags.
+  DB: Re-apply 016_fix_create_contract_rpc.sql to restore old RPC.
+      Then DROP COLUMN nomenclature_code, nomenclature_name from t_contracts.
+  API: Revert contractValidators.ts and contractTypes.ts from git.
 
 ===============================================================
-WHAT'S IN THE MIGRATION
+WHAT'S NEW IN THIS BATCH
 ===============================================================
 
-m_category_master (1 new row):
-  - cat_contract_nomenclature → "Contract Nomenclature"
+Migration 033 — Denormalized Columns:
+  t_contracts gains:
+    - nomenclature_code TEXT  (e.g. 'cmc', 'amc', 'sla')
+    - nomenclature_name TEXT  (e.g. 'CMC', 'AMC', 'SLA')
 
-m_category_details (21 new rows):
-  Equipment Maintenance (6):
-    1. amc  — AMC — Annual Maintenance Contract
-    2. cmc  — CMC — Comprehensive Maintenance Contract
-    3. camc — CAMC — Comprehensive Annual Maintenance Contract
-    4. pmc  — PMC — Preventive Maintenance Contract
-    5. bmc  — BMC — Breakdown Maintenance Contract
-    6. warranty_ext — Warranty Extension — Extended Warranty
+Migration 034 — RPC Update:
+  create_contract_transaction now:
+    - Accepts nomenclature_id from payload
+    - Looks up code + name from m_category_details (STEP 3.3)
+    - Inserts all 3 nomenclature columns into t_contracts
+    - Returns nomenclature_id, nomenclature_code, nomenclature_name in response
+    - Logs nomenclature_code in audit history
+    - Silently NULLs invalid nomenclature_id (no FK violation)
 
-  Facility & Property (3):
-    7. fmc      — FMC — Facility Management Contract
-    8. om       — O&M — Operations & Maintenance
-    9. manpower — Manpower — Manpower Supply Contract
+API Validators:
+  - createContractValidation: nomenclature_id optional UUID
+  - updateContractValidation: nomenclature_id optional UUID
 
-  Service Delivery (6):
-    10. service_package      — Service Package
-    11. care_plan            — Care Plan
-    12. subscription_service — Subscription
-    13. consultation         — Consultation
-    14. training_contract    — Training
-    15. project_service      — Project-Based
-
-  Flexible / Hybrid (6):
-    16. sla           — SLA — Service Level Agreement
-    17. rate_contract  — Rate Contract
-    18. retainer       — Retainer
-    19. per_call       — Per-Call / On-Demand
-    20. turnkey        — Turnkey
-    21. bot_boot       — BOT/BOOT — Build-Operate-Transfer
-
-t_contracts:
-  - ADD COLUMN nomenclature_id UUID (nullable FK to m_category_details)
-  - ADD INDEX idx_contracts_nomenclature (tenant_id, nomenclature_id)
-
-Each m_category_details row has rich form_settings JSONB with:
-  short_name, full_name, group, group_label, group_icon,
-  is_equipment_based, is_entity_based, is_service_based,
-  wizard_route, typical_duration, typical_billing,
-  scope_includes, scope_excludes, industries, icon
+API Types:
+  - CreateContractRequest: + nomenclature_id?: string
+  - ContractListItem: + nomenclature_id, nomenclature_code, nomenclature_name
 
 ===============================================================
