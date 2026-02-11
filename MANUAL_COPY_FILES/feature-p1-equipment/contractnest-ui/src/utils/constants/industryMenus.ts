@@ -39,7 +39,7 @@ export const defaultMenuItems: MenuItem[] = [
     submenuItems: [
       { id: 'ops-cockpit', label: 'Ops Cockpit', icon: 'Gauge', path: '/ops/cockpit' },
       { id: 'entities', label: 'Contacts', icon: 'Building2', path: '/contacts' },
-      { id: 'equipment-registry', label: 'Equipment Registry', icon: 'Wrench', path: '/settings/configure/equipment' },
+      { id: 'equipment-registry', label: 'Equipment Registry', icon: 'Wrench', path: '/equipment-registry' },
       { id: 'ops-activity', label: 'Activity Feed', icon: 'Activity', path: '/ops/activity' }
       // HIDDEN: Reports - commented out
       // { id: 'ops-reports', label: 'Reports', icon: 'BarChart2', path: '/ops/reports' }
