@@ -1,0 +1,30 @@
+═══════════════════════════════════════════════════
+INDUSTRY HIERARCHY — Option A (extend getIndustries)
+═══════════════════════════════════════════════════
+
+Branch: industry-hierarchy-option-a
+Submodules Affected: contractnest-edge, contractnest-api, contractnest-ui
+
+Files Changed:
+  - contractnest-edge/supabase/functions/product-masterdata/index.ts — added level/parent_id filters
+  - contractnest-api/src/services/productMasterdataService.ts — extended Industry interface + getIndustries params
+  - contractnest-api/src/controllers/productMasterdataController.ts — extract & pass level/parent_id from request
+  - contractnest-ui/src/services/serviceURLs.ts — extended IndustryFilters + Industry types
+  - contractnest-ui/src/components/tenantprofile/IndustrySelector.tsx — full rewrite for two-step drill-down
+
+═══════════════════════════════════════════════════
+COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Edge function
+Copy-Item "MANUAL_COPY_FILES\industry-hierarchy-option-a\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+# API service + controller
+Copy-Item "MANUAL_COPY_FILES\industry-hierarchy-option-a\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+
+# UI component + types
+Copy-Item "MANUAL_COPY_FILES\industry-hierarchy-option-a\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
