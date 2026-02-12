@@ -4,7 +4,7 @@ import * as LucideIcons from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useIndustries } from '@/hooks/queries/useProductMasterdata';
 import { cn } from '@/lib/utils';
-import { Search, RefreshCw, AlertCircle, ArrowLeft, ChevronRight } from 'lucide-react';
+import { Search, RefreshCw, AlertCircle, ArrowLeft, ChevronRight, Info } from 'lucide-react';
 import type { Industry } from '@/services/serviceURLs';
 
 interface IndustrySelectorProps {
@@ -85,6 +85,9 @@ const IndustrySelector: React.FC<IndustrySelectorProps> = ({
   const showingSubSegments = selectedParentId !== null;
   const currentList = showingSubSegments ? subSegments : parentIndustries;
   const selectedParent = parentIndustries.find((p) => p.id === selectedParentId);
+
+  // Detect legacy selection: value is a parent ID, user needs to pick a sub-segment
+  const needsSubSegmentUpdate = showingSubSegments && value === selectedParentId && !subSegmentsLoading;
 
   // Filter based on search term
   const filteredList = currentList.filter((item) =>
@@ -187,6 +190,22 @@ const IndustrySelector: React.FC<IndustrySelectorProps> = ({
           >
             {selectedParent?.name} — Select a sub-segment
           </span>
+        </div>
+      )}
+
+      {/* Prompt to update selection when existing value is a parent */}
+      {needsSubSegmentUpdate && (
+        <div
+          className="flex items-start space-x-3 p-3 rounded-lg border"
+          style={{
+            backgroundColor: colors.brand.primary + '08',
+            borderColor: colors.brand.primary + '30'
+          }}
+        >
+          <Info size={18} className="mt-0.5 flex-shrink-0" style={{ color: colors.brand.primary }} />
+          <p className="text-sm" style={{ color: colors.utility.primaryText }}>
+            Your industry now has sub-segments. Please select one below to update your profile.
+          </p>
         </div>
       )}
 
