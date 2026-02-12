@@ -184,8 +184,43 @@ const IndustrySelector: React.FC<IndustrySelectorProps> = ({
     );
   }
 
+  // Find the currently selected industry in the full list
+  const selectedIndustry = value ? allIndustries.find((i) => i.id === value) : null;
+
   return (
     <div className="space-y-6">
+      {/* Always show current selection at the top */}
+      {value && !isLoading && (
+        <div
+          className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm border"
+          style={
+            selectedIndustry
+              ? {
+                  backgroundColor: colors.brand.primary + '10',
+                  borderColor: colors.brand.primary + '30',
+                  color: colors.brand.primary
+                }
+              : {
+                  backgroundColor: '#F59E0B' + '10',
+                  borderColor: '#F59E0B' + '30',
+                  color: '#F59E0B'
+                }
+          }
+        >
+          {selectedIndustry ? (
+            <>
+              <LucideIcons.CheckCircle size={16} />
+              <span>Selected: <strong>{selectedIndustry.name}</strong></span>
+            </>
+          ) : (
+            <>
+              <AlertCircle size={16} />
+              <span>Previously saved industry not found in catalog. Please select a new one.</span>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Back button + breadcrumb when showing sub-segments */}
       {showingSubSegments && (
         <div className="flex items-center space-x-2">
@@ -225,26 +260,6 @@ const IndustrySelector: React.FC<IndustrySelectorProps> = ({
           </p>
         </div>
       )}
-
-      {/* Current selection indicator */}
-      {value && showingSubSegments && (() => {
-        const selectedIndustry = allIndustries.find((i) => i.id === value);
-        if (selectedIndustry && value !== selectedParentId) {
-          return (
-            <div
-              className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm"
-              style={{
-                backgroundColor: colors.brand.primary + '10',
-                color: colors.brand.primary
-              }}
-            >
-              <LucideIcons.CheckCircle size={16} />
-              <span>Currently selected: <strong>{selectedIndustry.name}</strong></span>
-            </div>
-          );
-        }
-        return null;
-      })()}
 
       {/* Search input */}
       <div className="relative">
