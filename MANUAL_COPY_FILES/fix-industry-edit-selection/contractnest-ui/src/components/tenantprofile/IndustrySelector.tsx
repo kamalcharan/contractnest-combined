@@ -30,7 +30,7 @@ const IndustrySelector: React.FC<IndustrySelectorProps> = ({
     isLoading,
     error,
     refetch
-  } = useIndustries({ limit: 200 });
+  } = useIndustries();
   const allIndustries = industriesResponse?.data || [];
 
   // Derive hierarchy client-side
