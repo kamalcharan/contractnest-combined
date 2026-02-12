@@ -1,0 +1,29 @@
+═══════════════════════════════════════════════════
+FIX: Industry Edit Mode - Show Previously Selected Industry
+═══════════════════════════════════════════════════
+
+Branch: fix-industry-edit-selection
+Date: 2026-02-12
+
+PROBLEM:
+When editing a business profile, the previously selected industry was not visible.
+The "Currently selected" badge only showed inside sub-segment drill-down mode.
+In flat mode (no hierarchy data in DB), there was zero visual feedback for the saved selection.
+
+FIX:
+- Added an always-visible "Selected: [Industry Name]" badge at the top of IndustrySelector
+- Shows in ALL modes (flat + hierarchy)
+- Shows amber warning if saved industry_id doesn't match any industry in catalog
+- Shows nothing if industry_id is empty (new profile)
+
+═══════════════════════════════════════════════════
+FILES TO COPY:
+═══════════════════════════════════════════════════
+
+1. contractnest-ui/src/components/tenantprofile/IndustrySelector.tsx
+   FROM: MANUAL_COPY_FILES\fix-industry-edit-selection\contractnest-ui\src\components\tenantprofile\IndustrySelector.tsx
+   TO:   contractnest-ui\src\components\tenantprofile\IndustrySelector.tsx
+
+═══════════════════════════════════════════════════
+SUBMODULES AFFECTED: contractnest-ui
+═══════════════════════════════════════════════════
