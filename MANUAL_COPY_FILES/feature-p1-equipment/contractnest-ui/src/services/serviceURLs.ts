@@ -289,7 +289,11 @@ export const API_ENDPOINTS = {
     
     // Resource types
     RESOURCE_TYPES: '/api/resources/resource-types',
-    
+
+    // Resource types filtered by parent (e.g. equipment subcategories)
+    RESOURCE_TYPES_BY_PARENT: (parentTypeId: string) =>
+      `/api/resources/resource-types?parentTypeId=${encodeURIComponent(parentTypeId)}`,
+
     // Utility endpoints
     HEALTH: '/api/resources/health',
     SIGNING_STATUS: '/api/resources/signing-status',

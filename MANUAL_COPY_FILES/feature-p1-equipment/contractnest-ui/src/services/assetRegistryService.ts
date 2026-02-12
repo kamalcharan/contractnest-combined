@@ -8,9 +8,23 @@ import type {
   AssetRegistryFilters,
   AssetFormData,
   AssetListResponse,
+  EquipmentCategory,
 } from '@/types/assetRegistry';
 
 class AssetRegistryService {
+
+  // ── Equipment Categories (from DB) ──────────────────────────────────
+
+  async getEquipmentCategories(): Promise<EquipmentCategory[]> {
+    try {
+      const url = API_ENDPOINTS.RESOURCES.RESOURCE_TYPES_BY_PARENT('equipment');
+      const response = await api.get(url);
+      const data = response.data?.data || response.data;
+      return Array.isArray(data) ? data : [];
+    } catch (error: any) {
+      throw this.handleError(error, 'Failed to load equipment categories');
+    }
+  }
 
   // ── List Assets (with filters) ────────────────────────────────────
 

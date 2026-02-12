@@ -1,6 +1,23 @@
 // src/types/assetRegistry.ts
 // UI-layer domain types for Equipment Registry (aligned with API assetRegistryTypes)
 
+// ── Equipment Category (from m_catalog_resource_types) ────────────────
+
+export interface EquipmentCategory {
+  id: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  pricing_model: string;
+  requires_human_assignment: boolean;
+  has_capacity_limits: boolean;
+  is_active: boolean;
+  sort_order: number;
+  parent_type_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // ── Domain Objects ────────────────────────────────────────────────────
 
 export interface TenantAsset {

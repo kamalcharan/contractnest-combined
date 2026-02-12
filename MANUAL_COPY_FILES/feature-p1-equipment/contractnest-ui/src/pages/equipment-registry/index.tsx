@@ -4,7 +4,11 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Plus, Search, X, Download } from 'lucide-react';
+import {
+  Plus, Search, X, Download, Package,
+  Scan, HeartPulse, FlaskConical, Thermometer, ArrowUpDown,
+  Zap, Microscope, Flame, Wifi, Wrench,
+} from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/Button';
@@ -15,29 +19,32 @@ import { cn } from '@/lib/utils';
 import { analyticsService } from '@/services/analytics.service';
 
 // Hooks
-import { useAssetRegistryManager, useCreateAsset, useUpdateAsset, useDeleteAsset } from '@/hooks/queries/useAssetRegistry';
+import {
+  useAssetRegistryManager,
+  useCreateAsset,
+  useUpdateAsset,
+  useDeleteAsset,
+  useEquipmentCategories,
+} from '@/hooks/queries/useAssetRegistry';
 
 // Types
-import type { TenantAsset, AssetRegistryFilters, AssetFormData } from '@/types/assetRegistry';
+import type { TenantAsset, AssetRegistryFilters, AssetFormData, EquipmentCategory } from '@/types/assetRegistry';
 
 // Components
 import EquipmentCard from './EquipmentCard';
 import EquipmentFormDialog from './EquipmentFormDialog';
 import EquipmentEmptyState from './EmptyState';
 
-// Sidebar categories — hardcoded for now, will later come from resource types
-const EQUIPMENT_CATEGORIES = [
-  { id: 'medical_imaging', name: 'Medical Imaging', icon: '🔬' },
-  { id: 'life_support', name: 'Life Support', icon: '💓' },
-  { id: 'sterilization', name: 'Sterilization', icon: '🧪' },
-  { id: 'hvac', name: 'HVAC Systems', icon: '❄️' },
-  { id: 'elevator', name: 'Elevators & Lifts', icon: '🛗' },
-  { id: 'power', name: 'Power Systems', icon: '⚡' },
-  { id: 'laboratory', name: 'Laboratory', icon: '🔭' },
-  { id: 'fire_safety', name: 'Fire Safety', icon: '🧯' },
-  { id: 'it_network', name: 'IT & Network', icon: '💻' },
-  { id: 'plumbing', name: 'Plumbing', icon: '🔧' },
-];
+// ── Lucide icon mapping for DB-stored icon names ──────────────────────
+const ICON_MAP: Record<string, React.ComponentType<any>> = {
+  Scan, HeartPulse, FlaskConical, Thermometer, ArrowUpDown,
+  Zap, Microscope, Flame, Wifi, Wrench, Package,
+};
+
+function CategoryIcon({ name, className, size = 16 }: { name: string | null; className?: string; size?: number }) {
+  const Icon = (name && ICON_MAP[name]) || Package;
+  return <Icon className={className} size={size} />;
+}
 
 const EquipmentPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -45,16 +52,29 @@ const EquipmentPage: React.FC = () => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
 
-  // ── Local State ─────────────────────────────────────────────────
+  // ── Equipment Categories (from DB) ────────────────────────────────
+  const {
+    data: categories = [],
+    isLoading: categoriesLoading,
+    isError: categoriesError,
+  } = useEquipmentCategories();
 
+  // ── Local State ─────────────────────────────────────────────────
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>(
-    searchParams.get('category') || EQUIPMENT_CATEGORIES[0].id
+    searchParams.get('category') || ''
   );
   const [sidebarSearch, setSidebarSearch] = useState('');
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingAsset, setEditingAsset] = useState<TenantAsset | null>(null);
+
+  // Auto-select first category once loaded (if none selected from URL)
+  useEffect(() => {
+    if (categories.length > 0 && !selectedCategoryId) {
+      setSelectedCategoryId(categories[0].id);
+    }
+  }, [categories, selectedCategoryId]);
 
   // ── Data: Assets (filtered) ─────────────────────────────────────
 
@@ -100,14 +120,14 @@ const EquipmentPage: React.FC = () => {
   // ── Filtered sidebar categories ─────────────────────────────────
 
   const filteredCategories = useMemo(() => {
-    if (!sidebarSearch.trim()) return EQUIPMENT_CATEGORIES;
+    if (!sidebarSearch.trim()) return categories;
     const q = sidebarSearch.toLowerCase();
-    return EQUIPMENT_CATEGORIES.filter((c) => c.name.toLowerCase().includes(q));
-  }, [sidebarSearch]);
+    return categories.filter((c) => c.name.toLowerCase().includes(q));
+  }, [sidebarSearch, categories]);
 
   // ── Selected category info ──────────────────────────────────────
 
-  const selectedCategory = EQUIPMENT_CATEGORIES.find((c) => c.id === selectedCategoryId);
+  const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
 
   // ── Handlers ────────────────────────────────────────────────────
 
@@ -187,7 +207,7 @@ const EquipmentPage: React.FC = () => {
           style={{ color: colors.utility.secondaryText }}
         >
           <span>Operations</span>
-          <span>›</span>
+          <span>&rsaquo;</span>
           <span style={{ color: colors.utility.primaryText, fontWeight: 600 }}>Equipment Registry</span>
         </div>
         <h1
@@ -202,7 +222,7 @@ const EquipmentPage: React.FC = () => {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* ── Left Sidebar: Categories (mockup style) ──────────────── */}
+        {/* ── Left Sidebar: Categories ──────────────────────────────── */}
         <div
           className="w-[280px] min-w-[280px] border-r flex flex-col overflow-hidden"
           style={{
@@ -236,42 +256,54 @@ const EquipmentPage: React.FC = () => {
 
           {/* Category List */}
           <div className="flex-1 overflow-y-auto p-2">
-            {filteredCategories.map((cat) => {
-              const isActive = selectedCategoryId === cat.id;
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => handleCategorySelect(cat.id)}
-                  className={cn(
-                    'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg mb-0.5 transition-all text-left',
-                    isActive ? '' : 'hover:opacity-80'
-                  )}
-                  style={{
-                    backgroundColor: isActive ? (colors.brand.primary + '12') : 'transparent',
-                  }}
-                >
-                  <div
-                    className="w-8 h-8 rounded-md flex items-center justify-center text-base flex-shrink-0"
-                    style={{ backgroundColor: '#fffbeb' }}
-                  >
-                    {cat.icon}
-                  </div>
-                  <span
-                    className="text-sm font-semibold truncate flex-1"
-                    style={{
-                      color: isActive ? colors.brand.primary : colors.utility.primaryText,
-                    }}
-                  >
-                    {cat.name}
-                  </span>
-                </button>
-              );
-            })}
-
-            {filteredCategories.length === 0 && (
-              <div className="p-4 text-center text-xs" style={{ color: colors.utility.secondaryText }}>
-                No matching categories
+            {categoriesLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <VaNiLoader size="xs" message="Loading categories..." />
               </div>
+            ) : categoriesError || categories.length === 0 ? (
+              <div className="p-4 text-center text-xs" style={{ color: colors.utility.secondaryText }}>
+                {categoriesError ? 'Failed to load categories' : 'No equipment categories configured'}
+              </div>
+            ) : (
+              <>
+                {filteredCategories.map((cat) => {
+                  const isActive = selectedCategoryId === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => handleCategorySelect(cat.id)}
+                      className={cn(
+                        'w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg mb-0.5 transition-all text-left',
+                        isActive ? '' : 'hover:opacity-80'
+                      )}
+                      style={{
+                        backgroundColor: isActive ? (colors.brand.primary + '12') : 'transparent',
+                      }}
+                    >
+                      <div
+                        className="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0"
+                        style={{ backgroundColor: '#fffbeb' }}
+                      >
+                        <CategoryIcon name={cat.icon} size={16} />
+                      </div>
+                      <span
+                        className="text-sm font-semibold truncate flex-1"
+                        style={{
+                          color: isActive ? colors.brand.primary : colors.utility.primaryText,
+                        }}
+                      >
+                        {cat.name}
+                      </span>
+                    </button>
+                  );
+                })}
+
+                {filteredCategories.length === 0 && (
+                  <div className="p-4 text-center text-xs" style={{ color: colors.utility.secondaryText }}>
+                    No matching categories
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -338,7 +370,7 @@ const EquipmentPage: React.FC = () => {
               {/* Add Button */}
               <Button
                 onClick={handleCreateNew}
-                disabled={isMutating}
+                disabled={isMutating || !selectedCategoryId}
                 size="sm"
                 className="text-sm transition-colors hover:opacity-90"
                 style={{
@@ -380,7 +412,7 @@ const EquipmentPage: React.FC = () => {
               }}
             >
               <p className="text-sm mb-3" style={{ color: colors.utility.secondaryText }}>
-                No equipment matching "{searchQuery}"
+                No equipment matching &ldquo;{searchQuery}&rdquo;
               </p>
               <Button
                 variant="outline"

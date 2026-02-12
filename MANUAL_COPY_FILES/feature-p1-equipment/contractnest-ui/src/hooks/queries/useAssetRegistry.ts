@@ -11,6 +11,7 @@ import type {
   AssetRegistryFilters,
   AssetFormData,
   AssetListResponse,
+  EquipmentCategory,
 } from '@/types/assetRegistry';
 
 // ════════════════════════════════════════════════════════════════════
@@ -24,6 +25,7 @@ export const assetRegistryKeys = {
   details: () => [...assetRegistryKeys.all, 'detail'] as const,
   detail: (id: string) => [...assetRegistryKeys.details(), id] as const,
   children: (parentId: string) => [...assetRegistryKeys.all, 'children', parentId] as const,
+  equipmentCategories: () => [...assetRegistryKeys.all, 'equipment-categories'] as const,
 };
 
 // ════════════════════════════════════════════════════════════════════
@@ -79,6 +81,25 @@ export const useAssetChildren = (parentAssetId: string, options?: { enabled?: bo
     enabled: !!currentTenant?.id && !!parentAssetId && (options?.enabled !== false),
     staleTime: 3 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
+  });
+};
+
+/**
+ * Fetch equipment categories (resource types where parent_type_id = 'equipment')
+ * Long staleTime because categories rarely change.
+ */
+export const useEquipmentCategories = () => {
+  const { currentTenant } = useAuth();
+
+  return useQuery<EquipmentCategory[]>({
+    queryKey: assetRegistryKeys.equipmentCategories(),
+    queryFn: () => assetRegistryService.getEquipmentCategories(),
+    enabled: !!currentTenant?.id,
+    staleTime: 10 * 60 * 1000,    // 10 minutes
+    gcTime: 30 * 60 * 1000,       // 30 minutes
+    refetchOnWindowFocus: false,
+    retry: 2,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
   });
 };
 
