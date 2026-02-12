@@ -258,7 +258,7 @@ const EquipmentPage: React.FC = () => {
           <div className="flex-1 overflow-y-auto p-2">
             {categoriesLoading ? (
               <div className="flex items-center justify-center py-8">
-                <VaNiLoader size="xs" message="Loading categories..." />
+                <VaNiLoader size="sm" message="Loading categories..." />
               </div>
             ) : categoriesError || categories.length === 0 ? (
               <div className="p-4 text-center text-xs" style={{ color: colors.utility.secondaryText }}>
