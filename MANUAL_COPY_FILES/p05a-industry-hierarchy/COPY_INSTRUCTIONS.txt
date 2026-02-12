@@ -1,33 +1,40 @@
 ═══════════════════════════════════════════════════
-P0.5a INDUSTRY HIERARCHY MIGRATIONS
+P0.5a INDUSTRY HIERARCHY MIGRATIONS (v2 — IDEMPOTENT)
 ═══════════════════════════════════════════════════
 
-Branch: feature/p0.5-tenant-profile
+All 3 migrations are now IDEMPOTENT — safe to run even if
+parent_id or other columns were partially applied from a previous session.
+
+Branch: claude/init-contractnest-repos-bzPCl
 Submodules Affected: contractnest-edge
 
 FILES TO COPY:
 ──────────────
-1. MANUAL_COPY_FILES/p05a-industry-hierarchy/contractnest-edge/supabase/migrations/p05a-industry-hierarchy/001_alter_industries_add_hierarchy.sql
-   → contractnest-edge/supabase/migrations/p05a-industry-hierarchy/001_alter_industries_add_hierarchy.sql
-   Purpose: ALTER m_catalog_industries — adds parent_id, level, segment_type columns + FK + indexes
+1. 001_alter_industries_add_hierarchy.sql
+   → contractnest-edge/supabase/migrations/p05a-industry-hierarchy/
+   Purpose: ALTER m_catalog_industries — adds parent_id, level, segment_type
+   IDEMPOTENT: Uses DO $$ IF NOT EXISTS for each column, FK, and index
 
-2. MANUAL_COPY_FILES/p05a-industry-hierarchy/contractnest-edge/supabase/migrations/p05a-industry-hierarchy/002_create_tenant_industry_segments.sql
-   → contractnest-edge/supabase/migrations/p05a-industry-hierarchy/002_create_tenant_industry_segments.sql
-   Purpose: CREATE t_tenant_industry_segments table + RLS policies (5 policies) + indexes + grants
+2. 002_create_tenant_industry_segments.sql
+   → contractnest-edge/supabase/migrations/p05a-industry-hierarchy/
+   Purpose: CREATE t_tenant_industry_segments + RLS policies
+   IDEMPOTENT: Uses CREATE TABLE IF NOT EXISTS, DROP POLICY IF EXISTS + CREATE
 
-3. MANUAL_COPY_FILES/p05a-industry-hierarchy/contractnest-edge/supabase/migrations/p05a-industry-hierarchy/003_seed_industry_hierarchy.sql
-   → contractnest-edge/supabase/migrations/p05a-industry-hierarchy/003_seed_industry_hierarchy.sql
-   Purpose: Seed 6 new parent industries + 47 sub-segments across 20 parent categories
+3. 003_seed_industry_hierarchy.sql
+   → contractnest-edge/supabase/migrations/p05a-industry-hierarchy/
+   Purpose: Seed 6 new parent industries + 47 sub-segments
+   IDEMPOTENT: Uses ON CONFLICT (id) DO NOTHING for all inserts
 
 RUN ORDER IN SUPABASE SQL EDITOR:
 ──────────────────────────────────
-1. Run 001 first (schema changes)
+1. Run 001 first (will skip parent_id if it already exists, add level + segment_type)
 2. Run 002 second (new table + RLS)
-3. Run 003 last (seed data — depends on 001 columns existing)
+3. Run 003 last (seed data — safe to rerun)
 
 VERIFICATION QUERIES:
 ─────────────────────
 SELECT COUNT(*) FROM m_catalog_industries WHERE level = 0;  -- Expect: 21
 SELECT COUNT(*) FROM m_catalog_industries WHERE level = 1;  -- Expect: 47
 SELECT parent_id, COUNT(*) FROM m_catalog_industries WHERE level = 1 GROUP BY parent_id ORDER BY parent_id;
-\d t_tenant_industry_segments  -- Should show table with RLS enabled
+SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 't_tenant_industry_segments');
+SELECT policyname FROM pg_policies WHERE tablename = 't_tenant_industry_segments';
