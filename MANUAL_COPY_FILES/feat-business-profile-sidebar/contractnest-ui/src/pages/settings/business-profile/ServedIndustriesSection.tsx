@@ -130,11 +130,16 @@ const AddIndustriesModal: React.FC<AddIndustriesModalProps> = ({
 
   const handleAdd = async () => {
     if (selectedIds.size === 0) return;
-    await onAdd(Array.from(selectedIds));
-    setSelectedIds(new Set());
-    setSearchTerm('');
-    setDrillParentId(null);
-    onClose();
+    try {
+      await onAdd(Array.from(selectedIds));
+      setSelectedIds(new Set());
+      setSearchTerm('');
+      setDrillParentId(null);
+      onClose();
+    } catch {
+      // Error toast is shown by the mutation's onError handler.
+      // Keep modal open so user can retry.
+    }
   };
 
   const handleClose = () => {
