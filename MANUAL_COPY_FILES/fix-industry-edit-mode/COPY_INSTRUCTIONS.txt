@@ -1,0 +1,44 @@
+===============================================================
+FIX: Industry Edit Mode - Selection Not Showing
+Branch: fix-industry-edit-mode
+Date: 2026-02-13
+===============================================================
+
+SUBMODULES AFFECTED:
+  1. contractnest-ui
+
+===============================================================
+FILE 1: IndustrySelector Component
+===============================================================
+SOURCE: MANUAL_COPY_FILES\fix-industry-edit-mode\contractnest-ui\src\components\tenantprofile\IndustrySelector.tsx
+TARGET: contractnest-ui\src\components\tenantprofile\IndustrySelector.tsx
+
+CHANGES:
+  - Removed limit: 200 from useIndustries() call (uses default 100)
+  - Replaced initialResolveDone flag with lastResolvedValue tracking
+    so the component re-resolves when value changes (fixes race condition
+    where profile fetch completes after industries load)
+
+===============================================================
+FILE 2: useTenantProfile Hook
+===============================================================
+SOURCE: MANUAL_COPY_FILES\fix-industry-edit-mode\contractnest-ui\src\hooks\useTenantProfile.ts
+TARGET: contractnest-ui\src\hooks\useTenantProfile.ts
+
+CHANGES:
+  - When profile data exists (edit mode), auto-advance wizard step
+    to 'organization-details' (if both business_type and industry are set)
+    or 'industry' (if only business_type is set)
+  - This means in edit mode the user lands on the correct step with
+    all previously saved data visible
+
+===============================================================
+COPY COMMANDS (PowerShell):
+===============================================================
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\fix-industry-edit-mode\contractnest-ui\src\components\tenantprofile\IndustrySelector.tsx" -Destination "contractnest-ui\src\components\tenantprofile\IndustrySelector.tsx" -Force
+
+Copy-Item "MANUAL_COPY_FILES\fix-industry-edit-mode\contractnest-ui\src\hooks\useTenantProfile.ts" -Destination "contractnest-ui\src\hooks\useTenantProfile.ts" -Force
+
+Write-Host "All 2 files copied!" -ForegroundColor Green
