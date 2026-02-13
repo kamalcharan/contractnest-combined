@@ -1,0 +1,60 @@
+===============================================================
+FIX: Industries 400 Bad Request + Slow Page Loading
+Branch: fix-industries-400-and-slow-loading
+Date: 2026-02-13
+===============================================================
+
+SUBMODULES AFFECTED:
+  1. contractnest-api
+  2. contractnest-edge
+  3. contractnest-ui
+
+===============================================================
+FILE 1: Backend Validator (contractnest-api)
+===============================================================
+SOURCE: MANUAL_COPY_FILES\fix-industries-400-and-slow-loading\contractnest-api\src\validators\productMasterdataValidators.ts
+TARGET: contractnest-api\src\validators\productMasterdataValidators.ts
+
+CHANGE: Removed hard 400 rejection for limit > 100. Now allows any limit
+through validation; parsePaginationParams() clamps it to 100.
+This prevents 400 errors from stale frontend caches sending limit=200.
+
+===============================================================
+FILE 2: Edge Function (contractnest-edge)
+===============================================================
+SOURCE: MANUAL_COPY_FILES\fix-industries-400-and-slow-loading\contractnest-edge\supabase\functions\product-masterdata\index.ts
+TARGET: contractnest-edge\supabase\functions\product-masterdata\index.ts
+
+CHANGES:
+  - getIndustries: Changed select('*') to select only needed columns
+    (id, name, description, icon, sort_order, is_active, level, parent_id,
+     segment_type, hexcolor, created_at, updated_at)
+    Excludes heavy JSON fields: common_pricing_rules, compliance_requirements
+  - getIndustries: Replaced verbose console.log (dumped entire dataset) with compact one-liner
+  - getAllCategories: Replaced verbose console.log with compact one-liner
+  - getIndustryCategoriesFiltered: Replaced verbose console.log with compact one-liner
+
+===============================================================
+FILE 3: Frontend Hooks (contractnest-ui)
+===============================================================
+SOURCE: MANUAL_COPY_FILES\fix-industries-400-and-slow-loading\contractnest-ui\src\hooks\queries\useProductMasterdata.ts
+TARGET: contractnest-ui\src\hooks\queries\useProductMasterdata.ts
+
+CHANGES:
+  - useIndustries: Default limit changed from 50 to 100 (backend max)
+    Reason: 68 industries exist (21 parents + 47 sub-segments), limit=50 missed 18
+  - useAllCategories: Default limit changed from 50 to 100 (backend max)
+    Same reason: ensures all categories load in a single API call
+
+===============================================================
+COPY COMMANDS (PowerShell):
+===============================================================
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\fix-industries-400-and-slow-loading\contractnest-api\src\validators\productMasterdataValidators.ts" -Destination "contractnest-api\src\validators\productMasterdataValidators.ts" -Force
+
+Copy-Item "MANUAL_COPY_FILES\fix-industries-400-and-slow-loading\contractnest-edge\supabase\functions\product-masterdata\index.ts" -Destination "contractnest-edge\supabase\functions\product-masterdata\index.ts" -Force
+
+Copy-Item "MANUAL_COPY_FILES\fix-industries-400-and-slow-loading\contractnest-ui\src\hooks\queries\useProductMasterdata.ts" -Destination "contractnest-ui\src\hooks\queries\useProductMasterdata.ts" -Force
+
+Write-Host "All 3 files copied!" -ForegroundColor Green
