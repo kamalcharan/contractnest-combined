@@ -1,0 +1,73 @@
+═══════════════════════════════════════════════════════════════════
+P1: CLIENT ASSET REGISTRY — COPY INSTRUCTIONS
+═══════════════════════════════════════════════════════════════════
+
+Feature Branch: p1-client-asset-registry
+Submodules Affected: contractnest-edge, contractnest-api, contractnest-ui
+Old Files to DELETE Before Copying: See STEP 0 below
+
+═══════════════════════════════════════════════════════════════════
+STEP 0: DELETE OLD (DISCARDED) FILES FIRST
+═══════════════════════════════════════════════════════════════════
+
+Delete these OLD asset-registry files (replaced by client-asset-registry):
+
+  contractnest-edge:
+    DELETE FOLDER: supabase\functions\asset-registry\  (entire folder)
+
+  contractnest-api:
+    DELETE: src\routes\assetRegistryRoutes.ts
+    DELETE: src\controllers\assetRegistryController.ts
+    DELETE: src\services\assetRegistryService.ts
+    DELETE: src\types\assetRegistryTypes.ts
+    DELETE: src\validators\assetRegistryValidators.ts
+
+═══════════════════════════════════════════════════════════════════
+STEP 1: COPY EDGE FILES (contractnest-edge)
+═══════════════════════════════════════════════════════════════════
+
+  Source → Destination:
+
+  contractnest-edge\supabase\migrations\contracts\037_asset_registry_tables.sql
+    → contractnest-edge\supabase\migrations\contracts\037_asset_registry_tables.sql (OVERWRITE)
+
+  contractnest-edge\supabase\migrations\contracts\037_asset_registry_tables_DOWN.sql
+    → contractnest-edge\supabase\migrations\contracts\037_asset_registry_tables_DOWN.sql (OVERWRITE)
+
+  contractnest-edge\supabase\migrations\contracts\038_asset_id_on_tickets.sql
+    → contractnest-edge\supabase\migrations\contracts\038_asset_id_on_tickets.sql (OVERWRITE)
+
+  contractnest-edge\supabase\migrations\contracts\038_asset_id_on_tickets_DOWN.sql
+    → contractnest-edge\supabase\migrations\contracts\038_asset_id_on_tickets_DOWN.sql (OVERWRITE)
+
+  contractnest-edge\supabase\functions\client-asset-registry\index.ts
+    → contractnest-edge\supabase\functions\client-asset-registry\index.ts (NEW)
+
+═══════════════════════════════════════════════════════════════════
+STEP 2: COPY API FILES (contractnest-api)
+═══════════════════════════════════════════════════════════════════
+
+  contractnest-api\src\types\clientAssetRegistryTypes.ts               (NEW)
+  contractnest-api\src\validators\clientAssetRegistryValidators.ts     (NEW)
+  contractnest-api\src\services\clientAssetRegistryService.ts          (NEW)
+  contractnest-api\src\controllers\clientAssetRegistryController.ts    (NEW)
+  contractnest-api\src\routes\clientAssetRegistryRoutes.ts             (NEW)
+  contractnest-api\src\index.ts                                        (OVERWRITE — route registration updated)
+
+═══════════════════════════════════════════════════════════════════
+STEP 3: COPY UI FILES (contractnest-ui)
+═══════════════════════════════════════════════════════════════════
+
+  contractnest-ui\src\types\clientAssetRegistry.ts                     (NEW)
+  contractnest-ui\src\services\clientAssetRegistryService.ts           (NEW)
+  contractnest-ui\src\services\serviceURLs.ts                          (OVERWRITE — CLIENT_ASSET_REGISTRY endpoints added)
+  contractnest-ui\src\hooks\queries\useClientAssetRegistry.ts          (NEW)
+  contractnest-ui\src\components\assets\ClientAssetCard.tsx            (NEW)
+  contractnest-ui\src\components\assets\ClientAssetFormDialog.tsx      (NEW)
+  contractnest-ui\src\components\contracts\ContractWizard\index.tsx    (OVERWRITE — AssetSelectionStep added)
+  contractnest-ui\src\components\contracts\ContractWizard\steps\AssetSelectionStep.tsx  (NEW)
+  contractnest-ui\src\pages\contacts\view.tsx                          (OVERWRITE — Assets column added)
+
+═══════════════════════════════════════════════════════════════════
+SUMMARY: 4 OVERWRITE + 14 NEW + 6 DELETE = 24 file operations
+═══════════════════════════════════════════════════════════════════

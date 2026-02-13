@@ -1,0 +1,1132 @@
+// src/pages/contacts/view.tsx - Contact 360° Command Center
+// THREE COLUMN LAYOUT: Contracts | Events | Financials
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import {
+  ArrowLeft,
+  Edit,
+  User,
+  FileText,
+  Building2,
+  AlertCircle,
+  Plus,
+  Archive,
+  Calendar,
+  DollarSign,
+  Loader2,
+  Zap,
+  ShoppingCart,
+  Package,
+  Handshake,
+  Wrench,
+  Search,
+  X,
+} from 'lucide-react';
+import { useTheme } from '../../contexts/ThemeContext';
+import { useToast } from '@/components/ui/use-toast';
+import { analyticsService } from '@/services/analytics.service';
+
+// API Hooks
+import { useContact, useUpdateContactStatus, useSendInvitation } from '../../hooks/useContacts';
+import { useContactCockpit } from '@/hooks/queries/useContactCockpit';
+
+// Components
+import ConfirmationDialog from '@/components/ui/ConfirmationDialog';
+import ContactHeaderCard from '../../components/contacts/view/cards/ContactHeaderCard';
+import { ActionIsland, ProfileDrawer } from '@/components/contacts/cockpit';
+
+// Contract Components - REUSABLE from ContractsHub
+import PipelineBar from '@/components/contracts/PipelineBar';
+import ContractCard from '@/components/contracts/ContractCard';
+
+// Asset Components
+import ClientAssetCard from '@/components/assets/ClientAssetCard';
+import ClientAssetFormDialog from '@/components/assets/ClientAssetFormDialog';
+import { useClientAssetRegistryManager, useCreateClientAsset, useUpdateClientAsset, useDeleteClientAsset } from '@/hooks/queries/useClientAssetRegistry';
+import type { ClientAsset, ClientAssetFormData } from '@/types/clientAssetRegistry';
+
+// Types - V2
+import type { ContractSummaryItem, ContactRole, UrgencyLevel } from '@/types/contactCockpit';
+
+// Constants
+import { USER_STATUS_MESSAGES, BUSINESS_RULES } from '@/utils/constants/contacts';
+
+// Types
+interface ContactChannel {
+  id: string;
+  channel_type: string;
+  value: string;
+  country_code?: string;
+  is_primary: boolean;
+  is_verified: boolean;
+}
+
+interface Classification {
+  id: string;
+  classification_value: string;
+  classification_label: string;
+}
+
+interface Contact {
+  id: string;
+  type: 'individual' | 'corporate';
+  status: 'active' | 'inactive' | 'archived';
+  name?: string;
+  salutation?: string;
+  company_name?: string;
+  classifications: Classification[];
+  tags: any[];
+  compliance_numbers: any[];
+  contact_channels: ContactChannel[];
+  addresses: any[];
+  contact_persons: any[];
+  notes?: string;
+  user_account_status?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Event type from cockpit data
+interface CockpitEvent {
+  id: string;
+  contract_id: string;
+  contract_number: string;
+  contract_name: string;
+  event_type: string;
+  block_name?: string;
+  scheduled_date: string;
+  status: string;
+  amount?: number;
+  currency?: string;
+  days_overdue?: number;
+  days_until?: number;
+  is_today?: boolean;
+  sequence_number?: number;
+  total_occurrences?: number;
+}
+
+const ContactViewPage: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { isDarkMode, currentTheme } = useTheme();
+  const { toast } = useToast();
+  const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
+
+  // State
+  const [showArchiveDialog, setShowArchiveDialog] = useState(false);
+  const [isProfileDrawerOpen, setIsProfileDrawerOpen] = useState(false);
+  const [daysAhead, setDaysAhead] = useState(7);
+  const [contractStatusFilter, setContractStatusFilter] = useState<string | null>(null);
+  const [contractRoleFilter, setContractRoleFilter] = useState<string | null>(null);
+
+  // Assets state
+  const [assetSearch, setAssetSearch] = useState('');
+  const [isAssetCreateOpen, setIsAssetCreateOpen] = useState(false);
+  const [isAssetEditOpen, setIsAssetEditOpen] = useState(false);
+  const [editingAsset, setEditingAsset] = useState<ClientAsset | null>(null);
+
+  // API
+  const { data: contact, loading, error, refetch } = useContact(id || '');
+  const updateStatusHook = useUpdateContactStatus();
+  const sendInvitationHook = useSendInvitation();
+  const { data: cockpitData, isLoading: cockpitLoading } = useContactCockpit(id || '', { daysAhead });
+
+  // Client Assets
+  const {
+    assets: clientAssets,
+    isLoading: assetsLoading,
+    isMutating: assetsMutating,
+  } = useClientAssetRegistryManager({ contact_id: id || '' });
+  const createAssetMutation = useCreateClientAsset();
+  const updateAssetMutation = useUpdateClientAsset();
+  const deleteAssetMutation = useDeleteClientAsset();
+
+  const filteredAssets = assetSearch.trim()
+    ? clientAssets.filter(a => a.name.toLowerCase().includes(assetSearch.toLowerCase()))
+    : clientAssets;
+
+  // Classifications for contract creation
+  const classifications = contact?.classifications?.map(c =>
+    typeof c === 'string' ? c : c.classification_value
+  ) || [];
+
+  // Track page view
+  useEffect(() => {
+    if (id) {
+      analyticsService.trackPageView('contact-360', `Contact 360: ${id}`);
+    }
+  }, [id]);
+
+  // Handle errors
+  useEffect(() => {
+    if (error) {
+      toast({ variant: "destructive", title: "Error loading contact", description: error });
+    }
+  }, [error, toast]);
+
+  // Get display name
+  const getContactDisplayName = (): string => {
+    if (!contact) return '';
+    if (contact.type === 'corporate') return contact.company_name || 'Unnamed Company';
+    const salutation = contact.salutation ? `${contact.salutation}. ` : '';
+    return `${salutation}${contact.name || ''}`.trim() || 'Unnamed Contact';
+  };
+
+  // Get primary channel
+  const getPrimaryChannel = (type: string): ContactChannel | null => {
+    if (!contact?.contact_channels) return null;
+    return contact.contact_channels.find(ch => ch.channel_type === type && ch.is_primary) ||
+           contact.contact_channels.find(ch => ch.channel_type === type) || null;
+  };
+
+  // Format currency
+  const formatCurrency = (value: number, currency = 'INR'): string => {
+    if (value >= 10000000) return `₹${(value / 10000000).toFixed(1)}Cr`;
+    if (value >= 100000) return `₹${(value / 100000).toFixed(1)}L`;
+    if (value >= 1000) return `₹${(value / 1000).toFixed(1)}K`;
+    return `₹${value.toLocaleString()}`;
+  };
+
+  // Handle status update
+  const handleStatusUpdate = async (newStatus: 'active' | 'inactive' | 'archived') => {
+    if (!contact) return;
+    try {
+      await updateStatusHook.mutate(contact.id, newStatus);
+      refetch();
+    } catch (err) {
+      console.error('Failed to update status:', err);
+    }
+  };
+
+  // Get contracts from cockpit data (V2: typed with ContractSummaryItem)
+  const contracts: ContractSummaryItem[] = cockpitData?.contracts?.contracts || [];
+  const contractsByStatus = cockpitData?.contracts?.by_status || {};
+  const contractsByRole = cockpitData?.contracts?.by_role || {};
+
+  // Filter contracts based on selected status AND role
+  const filteredContracts = contracts.filter(c => {
+    if (contractStatusFilter && c.status !== contractStatusFilter) return false;
+    if (contractRoleFilter && c.contact_role !== contractRoleFilter) return false;
+    return true;
+  });
+
+  // Urgency config
+  const URGENCY_CONFIG: Record<string, { label: string; color: string }> = {
+    critical: { label: 'Critical', color: '#ef4444' },
+    high: { label: 'High', color: '#f59e0b' },
+    medium: { label: 'Medium', color: '#3b82f6' },
+    low: { label: 'Low', color: '#22c55e' },
+  };
+  const urgencyLevel = cockpitData?.urgency_level || 'low';
+  const urgencyConfig = URGENCY_CONFIG[urgencyLevel];
+
+  // Role filter config for pills
+  const ROLE_FILTER_CONFIG = [
+    { key: 'as_client', label: 'Client', icon: ShoppingCart, color: '#10B981' },
+    { key: 'as_vendor', label: 'Vendor', icon: Package, color: '#3B82F6' },
+    { key: 'as_partner', label: 'Partner', icon: Handshake, color: '#8B5CF6' },
+  ];
+
+  // Get events from cockpit data
+  const overdueEvents: CockpitEvent[] = cockpitData?.overdue_events || [];
+  const upcomingEvents: CockpitEvent[] = cockpitData?.upcoming_events || [];
+  const todayEvents = upcomingEvents.filter(e => e.is_today);
+  const futureEvents = upcomingEvents.filter(e => !e.is_today);
+
+  // Get invoices from cockpit data
+  const invoices = cockpitData?.invoices || [];
+
+  // Loading State
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen" style={{ backgroundColor: colors.utility.primaryBackground }}>
+        <Loader2 className="h-8 w-8 animate-spin" style={{ color: colors.brand.primary }} />
+      </div>
+    );
+  }
+
+  // Error State
+  if (error && !contact) {
+    return (
+      <div className="p-6 min-h-screen" style={{ backgroundColor: colors.utility.primaryBackground }}>
+        <div className="text-center py-12">
+          <AlertCircle className="h-16 w-16 mx-auto mb-4" style={{ color: colors.semantic.error }} />
+          <h3 className="text-lg font-medium mb-2" style={{ color: colors.utility.primaryText }}>Failed to load contact</h3>
+          <p className="mb-6" style={{ color: colors.utility.secondaryText }}>{error}</p>
+          <button onClick={refetch} className="px-4 py-2 rounded-md mr-3" style={{ backgroundColor: colors.brand.primary, color: '#fff' }}>
+            Try Again
+          </button>
+          <button onClick={() => navigate('/contacts')} className="px-4 py-2 rounded-md border" style={{ borderColor: colors.utility.primaryText + '40', color: colors.utility.primaryText }}>
+            Back to Contacts
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Not Found State
+  if (!loading && !contact) {
+    return (
+      <div className="p-6 min-h-screen" style={{ backgroundColor: colors.utility.primaryBackground }}>
+        <div className="text-center py-12">
+          <User className="h-16 w-16 mx-auto mb-4" style={{ color: colors.utility.secondaryText }} />
+          <h3 className="text-lg font-medium mb-2" style={{ color: colors.utility.primaryText }}>Contact not found</h3>
+          <button onClick={() => navigate('/contacts')} className="px-4 py-2 rounded-md" style={{ backgroundColor: colors.brand.primary, color: '#fff' }}>
+            Back to Contacts
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!contact) return null;
+
+  const userStatusInfo = contact.user_account_status ?
+    USER_STATUS_MESSAGES[contact.user_account_status as keyof typeof USER_STATUS_MESSAGES] : null;
+  const primaryEmail = getPrimaryChannel('email');
+  const primaryPhone = getPrimaryChannel('mobile');
+
+  return (
+    <div className="flex flex-col h-screen overflow-hidden" style={{ backgroundColor: colors.utility.primaryBackground }}>
+
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* HERO HEADER */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      <header
+        className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b"
+        style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: colors.utility.primaryText + '15' }}
+      >
+        {/* Left: Back + Contact Info */}
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => navigate('/contacts')}
+            className="p-2 rounded-xl border transition-colors hover:opacity-80"
+            style={{ backgroundColor: colors.utility.primaryBackground, borderColor: colors.utility.primaryText + '15' }}
+          >
+            <ArrowLeft className="h-5 w-5" style={{ color: colors.utility.secondaryText }} />
+          </button>
+
+          <div className="flex items-center gap-4">
+            {/* Avatar */}
+            <div
+              className="w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-lg"
+              style={{ background: `linear-gradient(135deg, ${colors.brand.primary} 0%, ${colors.brand.secondary} 100%)`, color: '#fff' }}
+            >
+              {contact.type === 'corporate'
+                ? (contact.company_name?.substring(0, 2).toUpperCase() || 'CO')
+                : (contact.name?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || 'UN')}
+            </div>
+
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-bold" style={{ color: colors.utility.primaryText }}>{getContactDisplayName()}</h1>
+                {contact.type === 'corporate' ? (
+                  <Building2 className="h-4 w-4" style={{ color: colors.brand.primary }} />
+                ) : (
+                  <User className="h-4 w-4" style={{ color: colors.brand.primary }} />
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-sm" style={{ color: colors.utility.secondaryText }}>
+                {primaryEmail && <span>{primaryEmail.value}</span>}
+                <span
+                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-bold uppercase"
+                  style={{
+                    backgroundColor: contact.status === 'active' ? '#22c55e20' : contact.status === 'inactive' ? '#f59e0b20' : '#ef444420',
+                    color: contact.status === 'active' ? '#22c55e' : contact.status === 'inactive' ? '#f59e0b' : '#ef4444'
+                  }}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: 'currentColor' }} />
+                  {contact.status}
+                </span>
+                {/* Classification Badges */}
+                {classifications.map(cls => {
+                  const clsConfig: Record<string, { label: string; color: string }> = {
+                    client: { label: 'Client', color: '#10B981' },
+                    vendor: { label: 'Vendor', color: '#3B82F6' },
+                    partner: { label: 'Partner', color: '#8B5CF6' },
+                  };
+                  const cfg = clsConfig[cls];
+                  if (!cfg) return null;
+                  return (
+                    <span
+                      key={cls}
+                      className="px-2 py-0.5 rounded-full text-xs font-semibold"
+                      style={{ backgroundColor: cfg.color + '15', color: cfg.color }}
+                    >
+                      {cfg.label}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Stats + Edit */}
+        <div className="flex items-center gap-8">
+          {/* LTV */}
+          <div className="text-right">
+            <div className="text-2xl font-bold" style={{ color: '#22c55e' }}>
+              {cockpitLoading ? '...' : formatCurrency(cockpitData?.ltv || 0)}
+            </div>
+            <div className="text-xs font-bold uppercase tracking-wider" style={{ color: colors.utility.secondaryText }}>
+              Lifetime Value
+            </div>
+          </div>
+
+          {/* Outstanding */}
+          <div className="text-right">
+            <div className="text-2xl font-bold" style={{ color: '#f59e0b' }}>
+              {cockpitLoading ? '...' : formatCurrency(cockpitData?.outstanding || 0)}
+            </div>
+            <div className="text-xs font-bold uppercase tracking-wider" style={{ color: colors.utility.secondaryText }}>
+              Outstanding
+            </div>
+          </div>
+
+          {/* Health Score */}
+          <div className="text-right">
+            <div className="text-2xl font-bold" style={{ color: '#3b82f6' }}>
+              {cockpitLoading ? '...' : `${cockpitData?.health_score || 0}%`}
+            </div>
+            <div className="text-xs font-bold uppercase tracking-wider" style={{ color: colors.utility.secondaryText }}>
+              Health Score
+            </div>
+          </div>
+
+          {/* Urgency Indicator */}
+          {!cockpitLoading && cockpitData?.urgency_score !== undefined && cockpitData.urgency_score > 0 && (
+            <div className="text-right">
+              <div className="flex items-center gap-1.5 justify-end">
+                <Zap className="h-5 w-5" style={{ color: urgencyConfig.color }} />
+                <span className="text-2xl font-bold" style={{ color: urgencyConfig.color }}>
+                  {cockpitData.urgency_score}
+                </span>
+              </div>
+              <div className="text-xs font-bold uppercase tracking-wider" style={{ color: urgencyConfig.color }}>
+                {urgencyConfig.label}
+              </div>
+            </div>
+          )}
+
+          {/* Edit Button */}
+          <button
+            onClick={() => navigate(`/contacts/${contact.id}/edit`)}
+            className="px-4 py-2 rounded-lg flex items-center gap-2 transition-colors hover:opacity-80"
+            style={{ backgroundColor: colors.utility.primaryBackground, border: `1px solid ${colors.utility.primaryText}20`, color: colors.utility.primaryText }}
+          >
+            <Edit className="h-4 w-4" />
+            Edit
+          </button>
+        </div>
+      </header>
+
+      {/* Status Warnings */}
+      {contact.status === 'inactive' && (
+        <div className="px-6 py-3 border-b" style={{ backgroundColor: '#f59e0b15', borderColor: '#f59e0b40' }}>
+          <div className="flex items-center gap-2 text-sm" style={{ color: '#f59e0b' }}>
+            <AlertCircle className="h-4 w-4" />
+            <span className="font-medium">Contact is Inactive</span>
+            <span>• {BUSINESS_RULES.INACTIVE_CONTACT_RESTRICTIONS.join(' • ')}</span>
+          </div>
+        </div>
+      )}
+
+      {contact.status === 'archived' && (
+        <div className="px-6 py-3 border-b" style={{ backgroundColor: colors.utility.secondaryText + '15', borderColor: colors.utility.secondaryText + '40' }}>
+          <div className="flex items-center gap-2 text-sm" style={{ color: colors.utility.secondaryText }}>
+            <Archive className="h-4 w-4" />
+            <span className="font-medium">Contact is Archived</span>
+            <span>• {BUSINESS_RULES.ARCHIVED_CONTACT_RESTRICTIONS.join(' • ')}</span>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* INSIGHTS BANNER */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {!cockpitLoading && cockpitData && (overdueEvents.length > 0 || todayEvents.length > 0) && (
+        <div
+          className="flex-shrink-0 flex items-center gap-4 px-6 py-2.5 border-b"
+          style={{
+            backgroundColor: urgencyConfig.color + '08',
+            borderColor: urgencyConfig.color + '20'
+          }}
+        >
+          <div className="flex items-center gap-2">
+            <Zap className="h-4 w-4" style={{ color: urgencyConfig.color }} />
+            <span className="text-sm font-semibold" style={{ color: urgencyConfig.color }}>
+              {urgencyConfig.label} Priority
+            </span>
+          </div>
+          <div className="flex items-center gap-3 text-xs" style={{ color: colors.utility.secondaryText }}>
+            {overdueEvents.length > 0 && (
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#ef4444' }} />
+                <span className="font-semibold" style={{ color: '#ef4444' }}>{overdueEvents.length} overdue</span>
+              </span>
+            )}
+            {todayEvents.length > 0 && (
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#f59e0b' }} />
+                <span className="font-semibold" style={{ color: '#f59e0b' }}>{todayEvents.length} today</span>
+              </span>
+            )}
+            {futureEvents.length > 0 && (
+              <span className="flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#22c55e' }} />
+                <span>{futureEvents.length} upcoming</span>
+              </span>
+            )}
+          </div>
+          <div className="ml-auto flex items-center gap-3">
+            {cockpitData.payment_pattern && cockpitData.payment_pattern.collection_rate > 0 && (
+              <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                Collection: <span className="font-semibold" style={{ color: '#22c55e' }}>{cockpitData.payment_pattern.collection_rate}%</span>
+              </span>
+            )}
+            {cockpitData.payment_pattern && cockpitData.payment_pattern.on_time_rate > 0 && (
+              <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                On-time: <span className="font-semibold" style={{ color: '#3b82f6' }}>{cockpitData.payment_pattern.on_time_rate}%</span>
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* FOUR COLUMN LAYOUT */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      <div className="flex-1 grid grid-cols-4 overflow-hidden">
+
+        {/* ─────────────────────────────────────────────────────────────────── */}
+        {/* COLUMN 1: CONTRACTS - Using Reusable Components */}
+        {/* ─────────────────────────────────────────────────────────────────── */}
+        <div className="flex flex-col border-r overflow-hidden" style={{ borderColor: colors.utility.primaryText + '10' }}>
+          {/* Column Header */}
+          <div
+            className="flex-shrink-0 flex items-center justify-between px-5 py-4 border-b"
+            style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: colors.utility.primaryText + '10' }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#22c55e20' }}>
+                <FileText className="h-4 w-4" style={{ color: '#22c55e' }} />
+              </div>
+              <h2 className="text-sm font-bold uppercase tracking-wide" style={{ color: colors.utility.secondaryText }}>
+                Contracts
+              </h2>
+              <span className="px-2 py-0.5 rounded-full text-xs" style={{ backgroundColor: colors.utility.primaryBackground, color: colors.utility.secondaryText }}>
+                {contracts.length}
+              </span>
+            </div>
+            <button
+              onClick={() => navigate(`/contracts/create?contactId=${contact.id}`)}
+              className="text-sm font-semibold flex items-center gap-1"
+              style={{ color: '#3b82f6' }}
+            >
+              <Plus className="h-4 w-4" /> New
+            </button>
+          </div>
+
+          {/* Role Filter Pills */}
+          <div className="flex-shrink-0 px-4 pt-3 pb-1 flex gap-2 flex-wrap" style={{ backgroundColor: colors.utility.primaryBackground }}>
+            <button
+              onClick={() => setContractRoleFilter(null)}
+              className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all"
+              style={{
+                border: `1px solid ${contractRoleFilter === null ? colors.brand.primary : colors.utility.primaryText + '20'}`,
+                backgroundColor: contractRoleFilter === null ? colors.brand.primary + '15' : 'transparent',
+                color: contractRoleFilter === null ? colors.brand.primary : colors.utility.secondaryText,
+              }}
+            >
+              All {contracts.length}
+            </button>
+            {ROLE_FILTER_CONFIG.map(rf => {
+              const count = contractsByRole[rf.key] || 0;
+              if (count === 0) return null;
+              const isActive = contractRoleFilter === rf.key;
+              const Icon = rf.icon;
+              return (
+                <button
+                  key={rf.key}
+                  onClick={() => setContractRoleFilter(isActive ? null : rf.key)}
+                  className="px-3 py-1.5 rounded-full text-xs font-semibold transition-all flex items-center gap-1.5"
+                  style={{
+                    border: `1px solid ${isActive ? rf.color : colors.utility.primaryText + '20'}`,
+                    backgroundColor: isActive ? rf.color + '15' : 'transparent',
+                    color: isActive ? rf.color : colors.utility.secondaryText,
+                  }}
+                >
+                  <Icon className="h-3 w-3" />
+                  {rf.label} {count}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Status Filters - Using PipelineBar Component */}
+          <div className="flex-shrink-0 px-4 py-2" style={{ backgroundColor: colors.utility.primaryBackground }}>
+            <PipelineBar
+              statusCounts={contractsByStatus}
+              activeStatus={contractStatusFilter}
+              onStatusClick={setContractStatusFilter}
+              colors={colors}
+              compact={true}
+            />
+          </div>
+
+          {/* Contract Cards - Using ContractCard Component */}
+          <div className="flex-1 overflow-y-auto px-4 py-2">
+            {cockpitLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="h-32 rounded-xl animate-pulse" style={{ backgroundColor: colors.utility.secondaryText + '20' }} />
+                ))}
+              </div>
+            ) : filteredContracts.length === 0 ? (
+              <div className="text-center py-12">
+                <FileText className="h-12 w-12 mx-auto mb-3 opacity-30" style={{ color: colors.utility.secondaryText }} />
+                <p className="text-sm" style={{ color: colors.utility.secondaryText }}>
+                  {contractStatusFilter ? `No ${contractStatusFilter} contracts` : 'No contracts found'}
+                </p>
+                <button
+                  onClick={() => navigate(`/contracts/create?contactId=${contact.id}`)}
+                  className="mt-4 px-4 py-2 rounded-lg text-sm font-semibold"
+                  style={{ backgroundColor: colors.brand.primary, color: '#fff' }}
+                >
+                  Create Contract
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredContracts.map(c => (
+                  <ContractCard
+                    key={c.id}
+                    contract={{
+                      id: c.id,
+                      name: c.name,
+                      contract_number: c.contract_number,
+                      status: c.status,
+                      contract_type: c.contract_type,
+                      grand_total: c.grand_total,
+                      currency: c.currency,
+                      duration_value: c.duration_value,
+                      duration_unit: c.duration_unit,
+                      contact_role: c.contact_role,
+                      global_access_id: c.global_access_id,
+                      cnak_status: c.cnak_status,
+                    }}
+                    colors={colors}
+                    variant="compact"
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ─────────────────────────────────────────────────────────────────── */}
+        {/* COLUMN 2: CLIENT ASSETS */}
+        {/* ─────────────────────────────────────────────────────────────────── */}
+        <div className="flex flex-col border-r overflow-hidden" style={{ borderColor: colors.utility.primaryText + '10' }}>
+          {/* Column Header */}
+          <div
+            className="flex-shrink-0 flex items-center justify-between px-5 py-4 border-b"
+            style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: colors.utility.primaryText + '10' }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#f59e0b20' }}>
+                <Wrench className="h-4 w-4" style={{ color: '#f59e0b' }} />
+              </div>
+              <h2 className="text-sm font-bold uppercase tracking-wide" style={{ color: colors.utility.secondaryText }}>
+                Assets
+              </h2>
+              <span className="px-2 py-0.5 rounded-full text-xs" style={{ backgroundColor: colors.utility.primaryBackground, color: colors.utility.secondaryText }}>
+                {clientAssets.length}
+              </span>
+            </div>
+            <button
+              onClick={() => setIsAssetCreateOpen(true)}
+              className="text-sm font-semibold flex items-center gap-1"
+              style={{ color: '#f59e0b' }}
+            >
+              <Plus className="h-4 w-4" /> Add
+            </button>
+          </div>
+
+          {/* Search */}
+          <div className="flex-shrink-0 px-4 pt-3 pb-2" style={{ backgroundColor: colors.utility.primaryBackground }}>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: colors.utility.secondaryText }} />
+              <input
+                placeholder="Search assets..."
+                value={assetSearch}
+                onChange={(e) => setAssetSearch(e.target.value)}
+                className="w-full pl-8 pr-8 py-2 rounded-lg border text-xs"
+                style={{
+                  borderColor: colors.utility.primaryText + '15',
+                  backgroundColor: colors.utility.secondaryBackground,
+                  color: colors.utility.primaryText,
+                }}
+              />
+              {assetSearch && (
+                <button onClick={() => setAssetSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <X className="h-3 w-3" style={{ color: colors.utility.secondaryText }} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Asset List */}
+          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+            {assetsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-5 w-5 animate-spin" style={{ color: colors.brand.primary }} />
+              </div>
+            ) : filteredAssets.length > 0 ? (
+              filteredAssets.map((asset) => (
+                <ClientAssetCard
+                  key={asset.id}
+                  asset={asset}
+                  onEdit={(a) => { setEditingAsset(a); setIsAssetEditOpen(true); }}
+                  onDelete={async (a) => {
+                    if (window.confirm(`Remove "${a.name}"?`)) {
+                      try { await deleteAssetMutation.mutateAsync(a.id); } catch {}
+                    }
+                  }}
+                  disabled={assetsMutating}
+                />
+              ))
+            ) : (
+              <div className="text-center py-12">
+                <Wrench className="h-10 w-10 mx-auto mb-3" style={{ color: colors.utility.secondaryText + '40' }} />
+                <p className="text-xs mb-3" style={{ color: colors.utility.secondaryText }}>
+                  {assetSearch ? `No assets matching "${assetSearch}"` : 'No assets registered for this contact'}
+                </p>
+                {!assetSearch && (
+                  <button
+                    onClick={() => setIsAssetCreateOpen(true)}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg"
+                    style={{ backgroundColor: '#f59e0b15', color: '#f59e0b' }}
+                  >
+                    <Plus className="h-3 w-3 inline mr-1" />
+                    Add First Asset
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ─────────────────────────────────────────────────────────────────── */}
+        {/* COLUMN 3: EVENTS TIMELINE */}
+        {/* ─────────────────────────────────────────────────────────────────── */}
+        <div className="flex flex-col border-r overflow-hidden" style={{ borderColor: colors.utility.primaryText + '10' }}>
+          {/* Column Header */}
+          <div
+            className="flex-shrink-0 flex items-center justify-between px-5 py-4 border-b"
+            style={{ backgroundColor: colors.utility.primaryBackground, borderColor: colors.utility.primaryText + '10' }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#3b82f620' }}>
+                <Calendar className="h-4 w-4" style={{ color: '#3b82f6' }} />
+              </div>
+              <h2 className="text-sm font-bold uppercase tracking-wide" style={{ color: colors.utility.secondaryText }}>
+                Events Timeline
+              </h2>
+            </div>
+            {/* Date Range Selector */}
+            <div className="flex gap-1 p-1 rounded-lg" style={{ backgroundColor: colors.utility.secondaryBackground }}>
+              {[7, 14, 30].map(days => (
+                <button
+                  key={days}
+                  onClick={() => setDaysAhead(days)}
+                  className="px-3 py-1 rounded-md text-xs font-semibold transition-colors"
+                  style={{
+                    backgroundColor: daysAhead === days ? colors.utility.primaryBackground : 'transparent',
+                    color: daysAhead === days ? colors.utility.primaryText : colors.utility.secondaryText
+                  }}
+                >
+                  {days}D
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Events List */}
+          <div className="flex-1 overflow-y-auto px-4 py-4">
+            {cockpitLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="h-20 rounded-xl animate-pulse" style={{ backgroundColor: colors.utility.secondaryText + '20' }} />
+                ))}
+              </div>
+            ) : (
+              <>
+                {/* OVERDUE BUCKET */}
+                {overdueEvents.length > 0 && (
+                  <div className="mb-6">
+                    <div className="flex items-center gap-2 mb-3 px-1">
+                      <span className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ backgroundColor: '#ef4444', boxShadow: '0 0 12px #ef4444' }} />
+                      <span className="text-xs font-bold uppercase tracking-wide" style={{ color: '#ef4444' }}>Overdue</span>
+                      <span className="text-xs ml-auto" style={{ color: colors.utility.secondaryText }}>{overdueEvents.length} events</span>
+                    </div>
+                    <div className="space-y-2">
+                      {overdueEvents.map(event => (
+                        <div
+                          key={event.id}
+                          className="p-3 rounded-xl border-l-3 flex items-start gap-3"
+                          style={{ backgroundColor: '#ef444415', borderLeftWidth: '3px', borderLeftColor: '#ef4444' }}
+                        >
+                          <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: event.event_type === 'billing' ? '#3b82f620' : '#a855f720' }}>
+                            {event.event_type === 'billing' ? '💳' : '🔧'}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>{event.block_name || event.event_type}</div>
+                            <div className="text-xs" style={{ color: colors.utility.secondaryText }}>{event.contract_name}</div>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <div className="text-xs font-semibold" style={{ color: '#ef4444' }}>{event.days_overdue}d ago</div>
+                            {event.amount && <div className="text-sm font-bold" style={{ color: colors.utility.primaryText }}>{formatCurrency(event.amount)}</div>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* TODAY BUCKET */}
+                {todayEvents.length > 0 && (
+                  <div className="mb-6">
+                    <div className="flex items-center gap-2 mb-3 px-1">
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#f59e0b', boxShadow: '0 0 8px #f59e0b' }} />
+                      <span className="text-xs font-bold uppercase tracking-wide" style={{ color: '#f59e0b' }}>Today</span>
+                      <span className="text-xs ml-auto" style={{ color: colors.utility.secondaryText }}>{todayEvents.length} events</span>
+                    </div>
+                    <div className="space-y-2">
+                      {todayEvents.map(event => (
+                        <div
+                          key={event.id}
+                          className="p-3 rounded-xl border-l-3 flex items-start gap-3"
+                          style={{ backgroundColor: '#f59e0b15', borderLeftWidth: '3px', borderLeftColor: '#f59e0b' }}
+                        >
+                          <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: event.event_type === 'billing' ? '#3b82f620' : '#a855f720' }}>
+                            {event.event_type === 'billing' ? '💳' : '🔧'}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>{event.block_name || event.event_type}</div>
+                            <div className="text-xs" style={{ color: colors.utility.secondaryText }}>{event.contract_name}</div>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <div className="text-xs font-semibold" style={{ color: '#f59e0b' }}>Today</div>
+                            {event.amount && <div className="text-sm font-bold" style={{ color: colors.utility.primaryText }}>{formatCurrency(event.amount)}</div>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* UPCOMING BUCKET */}
+                {futureEvents.length > 0 && (
+                  <div className="mb-6">
+                    <div className="flex items-center gap-2 mb-3 px-1">
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#22c55e' }} />
+                      <span className="text-xs font-bold uppercase tracking-wide" style={{ color: '#22c55e' }}>Upcoming ({daysAhead} days)</span>
+                      <span className="text-xs ml-auto" style={{ color: colors.utility.secondaryText }}>{futureEvents.length} events</span>
+                    </div>
+                    <div className="space-y-2">
+                      {futureEvents.map(event => (
+                        <div
+                          key={event.id}
+                          className="p-3 rounded-xl border flex items-start gap-3"
+                          style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: colors.utility.primaryText + '10' }}
+                        >
+                          <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: event.event_type === 'billing' ? '#3b82f620' : '#a855f720' }}>
+                            {event.event_type === 'billing' ? '💳' : '🔧'}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>{event.block_name || event.event_type}</div>
+                            <div className="text-xs" style={{ color: colors.utility.secondaryText }}>{event.contract_name}</div>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <div className="text-xs font-semibold" style={{ color: colors.utility.primaryText }}>
+                              {new Date(event.scheduled_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            </div>
+                            {event.amount && <div className="text-sm font-bold" style={{ color: colors.utility.primaryText }}>{formatCurrency(event.amount)}</div>}
+                            {event.sequence_number && (
+                              <div className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                                {event.sequence_number}/{event.total_occurrences}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Empty State */}
+                {overdueEvents.length === 0 && todayEvents.length === 0 && futureEvents.length === 0 && (
+                  <div className="text-center py-12">
+                    <Calendar className="h-12 w-12 mx-auto mb-3 opacity-30" style={{ color: colors.utility.secondaryText }} />
+                    <p className="text-sm" style={{ color: colors.utility.secondaryText }}>No events in the next {daysAhead} days</p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* ─────────────────────────────────────────────────────────────────── */}
+        {/* COLUMN 3: FINANCIALS */}
+        {/* ─────────────────────────────────────────────────────────────────── */}
+        <div className="flex flex-col overflow-hidden">
+          {/* Column Header */}
+          <div
+            className="flex-shrink-0 flex items-center justify-between px-5 py-4 border-b"
+            style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: colors.utility.primaryText + '10' }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#06b6d420' }}>
+                <DollarSign className="h-4 w-4" style={{ color: '#06b6d4' }} />
+              </div>
+              <h2 className="text-sm font-bold uppercase tracking-wide" style={{ color: colors.utility.secondaryText }}>
+                Financials
+              </h2>
+            </div>
+            <button className="text-sm font-semibold" style={{ color: '#3b82f6' }}>
+              Export ↓
+            </button>
+          </div>
+
+          {/* Financials Content */}
+          <div className="flex-1 overflow-y-auto px-4 py-4">
+            {/* Summary Card */}
+            <div className="p-5 rounded-2xl border mb-5" style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: colors.utility.primaryText + '10' }}>
+              <div className="flex items-center justify-between mb-4">
+                <span className="px-3 py-1 rounded text-xs font-bold uppercase" style={{ backgroundColor: '#22c55e20', color: '#22c55e' }}>
+                  Accounts Receivable
+                </span>
+                <button className="text-xs font-semibold" style={{ color: '#3b82f6' }}>Record Payment</button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="p-4 rounded-xl" style={{ backgroundColor: '#22c55e15' }}>
+                  <div className="text-xl font-bold" style={{ color: '#22c55e' }}>
+                    {formatCurrency((cockpitData?.ltv || 0) - (cockpitData?.outstanding || 0))}
+                  </div>
+                  <div className="text-xs" style={{ color: colors.utility.secondaryText }}>Collected</div>
+                </div>
+                <div className="p-4 rounded-xl" style={{ backgroundColor: '#f59e0b15' }}>
+                  <div className="text-xl font-bold" style={{ color: '#f59e0b' }}>
+                    {formatCurrency(cockpitData?.outstanding || 0)}
+                  </div>
+                  <div className="text-xs" style={{ color: colors.utility.secondaryText }}>Outstanding</div>
+                </div>
+              </div>
+
+              {/* Collection Progress - using payment_pattern */}
+              <div>
+                <div className="flex justify-between text-xs mb-2">
+                  <span style={{ color: colors.utility.secondaryText }}>Collection Rate</span>
+                  <span className="font-bold" style={{ color: '#22c55e' }}>
+                    {cockpitData?.payment_pattern?.collection_rate || 0}%
+                  </span>
+                </div>
+                <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: colors.utility.primaryText + '15' }}>
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${cockpitData?.payment_pattern?.collection_rate || 0}%`,
+                      background: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)'
+                    }}
+                  />
+                </div>
+                <div className="flex justify-between text-xs mt-3">
+                  <span style={{ color: colors.utility.secondaryText }}>On-time Payment</span>
+                  <span className="font-bold" style={{ color: '#3b82f6' }}>
+                    {cockpitData?.payment_pattern?.on_time_rate || 0}%
+                  </span>
+                </div>
+                <div className="h-2 rounded-full overflow-hidden mt-1" style={{ backgroundColor: colors.utility.primaryText + '15' }}>
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{
+                      width: `${cockpitData?.payment_pattern?.on_time_rate || 0}%`,
+                      background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)'
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Invoice List */}
+            <div className="text-xs font-bold uppercase tracking-wide mb-3 px-1" style={{ color: colors.utility.secondaryText }}>
+              Invoices ({invoices.length})
+            </div>
+
+            {cockpitLoading ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="h-24 rounded-xl animate-pulse" style={{ backgroundColor: colors.utility.secondaryText + '20' }} />
+                ))}
+              </div>
+            ) : invoices.length === 0 ? (
+              <div className="text-center py-8 rounded-xl border" style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: colors.utility.primaryText + '10' }}>
+                <DollarSign className="h-10 w-10 mx-auto mb-2 opacity-30" style={{ color: colors.utility.secondaryText }} />
+                <p className="text-sm" style={{ color: colors.utility.secondaryText }}>No invoices yet</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {invoices.map(inv => {
+                  const INVOICE_STATUS: Record<string, { label: string; color: string }> = {
+                    paid: { label: 'Paid', color: '#22c55e' },
+                    partially_paid: { label: 'Partial', color: '#f59e0b' },
+                    unpaid: { label: 'Unpaid', color: '#ef4444' },
+                    overdue: { label: 'Overdue', color: '#ef4444' },
+                    cancelled: { label: 'Cancelled', color: '#6b7280' },
+                  };
+                  const invStatus = INVOICE_STATUS[inv.status] || { label: inv.status, color: '#6b7280' };
+                  const paidPercent = inv.total_amount > 0 ? Math.round((inv.amount_paid / inv.total_amount) * 100) : 0;
+
+                  return (
+                    <div
+                      key={inv.id}
+                      className="p-3 rounded-xl border cursor-pointer transition-all hover:shadow-sm"
+                      style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: colors.utility.primaryText + '10' }}
+                      onClick={() => navigate(`/contracts/${inv.contract_id}`)}
+                    >
+                      {/* Row 1: Invoice # + Status */}
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-xs font-mono font-semibold" style={{ color: colors.utility.primaryText }}>
+                          {inv.invoice_number}
+                        </span>
+                        <span
+                          className="px-2 py-0.5 rounded text-xs font-bold uppercase"
+                          style={{ backgroundColor: invStatus.color + '15', color: invStatus.color }}
+                        >
+                          {invStatus.label}
+                        </span>
+                      </div>
+
+                      {/* Row 2: Contract name + Payment mode */}
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs truncate" style={{ color: colors.utility.secondaryText }}>
+                          {inv.contract_name} ({inv.contract_number})
+                        </span>
+                        <span className="text-xs uppercase ml-2 flex-shrink-0" style={{ color: colors.utility.secondaryText }}>
+                          {inv.payment_mode}
+                        </span>
+                      </div>
+
+                      {/* Row 3: Progress bar + amounts */}
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1">
+                          <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: colors.utility.primaryText + '10' }}>
+                            <div
+                              className="h-full rounded-full"
+                              style={{ width: `${paidPercent}%`, backgroundColor: invStatus.color }}
+                            />
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 text-xs flex-shrink-0">
+                          <span className="font-semibold" style={{ color: invStatus.color }}>
+                            {formatCurrency(inv.balance)}
+                          </span>
+                          <span style={{ color: colors.utility.secondaryText }}>
+                            / {formatCurrency(inv.total_amount)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Row 4: Due date + paid % */}
+                      <div className="flex items-center justify-between mt-1.5">
+                        <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                          Due: {new Date(inv.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </span>
+                        {paidPercent > 0 && paidPercent < 100 && (
+                          <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                            {paidPercent}% paid
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* ASSET DIALOGS */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      <ClientAssetFormDialog
+        isOpen={isAssetCreateOpen}
+        onClose={() => setIsAssetCreateOpen(false)}
+        mode="create"
+        contactId={contact.id}
+        onSubmit={async (data) => {
+          await createAssetMutation.mutateAsync(data);
+          setIsAssetCreateOpen(false);
+        }}
+        isSubmitting={createAssetMutation.isPending}
+      />
+      <ClientAssetFormDialog
+        isOpen={isAssetEditOpen}
+        onClose={() => { setIsAssetEditOpen(false); setEditingAsset(null); }}
+        mode="edit"
+        contactId={contact.id}
+        asset={editingAsset || undefined}
+        onSubmit={async (data) => {
+          if (editingAsset) {
+            await updateAssetMutation.mutateAsync({ id: editingAsset.id, data });
+            setIsAssetEditOpen(false);
+            setEditingAsset(null);
+          }
+        }}
+        isSubmitting={updateAssetMutation.isPending}
+      />
+
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* ACTION ISLAND */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      <ActionIsland
+        contactId={contact.id}
+        contactName={getContactDisplayName()}
+        classifications={classifications}
+        contactStatus={contact.status}
+        primaryEmail={primaryEmail?.value}
+        primaryPhone={primaryPhone?.value}
+        phoneCountryCode={primaryPhone?.country_code}
+        onProfileClick={() => setIsProfileDrawerOpen(true)}
+      />
+
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* PROFILE DRAWER */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      <ProfileDrawer
+        isOpen={isProfileDrawerOpen}
+        onClose={() => setIsProfileDrawerOpen(false)}
+        contact={contact}
+        onRefresh={refetch}
+      />
+
+      {/* Archive Dialog */}
+      <ConfirmationDialog
+        isOpen={showArchiveDialog}
+        onClose={() => setShowArchiveDialog(false)}
+        onConfirm={() => { handleStatusUpdate('archived'); setShowArchiveDialog(false); }}
+        title="Archive Contact"
+        description="Are you sure you want to archive this contact?"
+        confirmText="Archive"
+        type="danger"
+        icon={<Archive className="h-6 w-6" />}
+      />
+    </div>
+  );
+};
+
+export default ContactViewPage;
