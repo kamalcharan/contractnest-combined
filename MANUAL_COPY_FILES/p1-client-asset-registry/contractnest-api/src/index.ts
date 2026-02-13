@@ -912,7 +912,7 @@ app.get('/health', async (req, res) => {
       contractEvents: contractEventRoutes ? 'loaded' : 'not_loaded',
       eventStatusConfig: eventStatusConfigRoutes ? 'loaded' : 'not_loaded',
       productConfig: 'loaded',
-      assetRegistry: assetRegistryRoutes ? 'loaded' : 'not_loaded'
+      clientAssetRegistry: clientAssetRegistryRoutes ? 'loaded' : 'not_loaded'
     },
     features: {
       resources_api: true,
@@ -932,7 +932,7 @@ app.get('/health', async (req, res) => {
       contract_events: contractEventRoutes !== null,
       event_status_config: eventStatusConfigRoutes !== null,
       product_config: true,
-      asset_registry: assetRegistryRoutes !== null
+      client_asset_registry: clientAssetRegistryRoutes !== null
     }
   };
 
@@ -1096,7 +1096,7 @@ app.get('/', (req, res) => {
       contractEvents: contractEventRoutes ? 'available' : 'not_available',
       eventStatusConfig: eventStatusConfigRoutes ? 'available' : 'not_available',
       productConfig: 'available',
-      assetRegistry: assetRegistryRoutes ? 'available' : 'not_available'
+      clientAssetRegistry: clientAssetRegistryRoutes ? 'available' : 'not_available'
     },
     endpoints: {
       rest_api: '/api/*',
