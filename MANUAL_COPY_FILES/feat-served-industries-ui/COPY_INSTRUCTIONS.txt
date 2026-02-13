@@ -1,0 +1,75 @@
+===============================================================
+FEATURE: Served Industries UI
+BRANCH: feat/served-industries-ui
+DATE: 2025-02-13
+===============================================================
+
+SUBMODULES AFFECTED:
+  - contractnest-ui (3 files: 2 new + 1 modified)
+
+===============================================================
+FILES LIST
+===============================================================
+
+contractnest-ui/
+  src/hooks/queries/useServedIndustries.ts                          [NEW]
+  src/pages/settings/served-industries/index.tsx                    [NEW]
+  src/App.tsx                                                       [MODIFIED]
+
+===============================================================
+COPY COMMANDS (PowerShell)
+===============================================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\feat-served-industries-ui\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "All UI files copied!" -ForegroundColor Green
+
+===============================================================
+WHAT WAS CHANGED
+===============================================================
+
+1. HOOK: useServedIndustries.ts (NEW)
+   - TanStack Query hooks following useAssetRegistry pattern
+   - useServedIndustries() — fetch list (GET)
+   - useAddServedIndustries() — bulk add (POST)
+   - useRemoveServedIndustry() — remove one (DELETE)
+   - useUnlockPreview() — template counts per industry (GET)
+   - useServedIndustriesManager() — combined manager hook
+   - Uses vaniToast for success/error, captureException for Sentry
+   - Proper query key invalidation on mutations
+
+2. PAGE: served-industries/index.tsx (NEW)
+   - Full page at /settings/served-industries
+   - Shows served industries as cards with hover-reveal remove (X) button
+   - "Add Industries" button opens modal
+   - AddIndustriesModal: grid of selectable industries with search
+   - Already-served industries shown as disabled ("Added" badge)
+   - Multi-select then bulk add
+   - Empty state with call-to-action
+   - Loading state with VaNiLoader
+   - Error state with retry button
+   - Dark mode support via useTheme
+   - Analytics page tracking
+
+3. ROUTE: App.tsx (MODIFIED)
+   - Added import for ServedIndustriesPage
+   - Added <Route path="served-industries" element={<ServedIndustriesPage />} />
+   - Placed under /settings alongside business-profile routes
+
+===============================================================
+ROUTE
+===============================================================
+
+Access the page at: /settings/served-industries
+
+===============================================================
+PRODUCTION CHECKLIST
+===============================================================
+
+  Transaction Management: N/A (handled by backend edge function)
+  Race Condition Handling: TanStack Query invalidation on mutations
+  Error Handling: try-catch in all queryFn/mutationFn, Sentry capture
+  Toasts: vaniToast.success/error for all operations
+  Loaders: VaNiLoader for page loading, spinner on buttons during mutations
