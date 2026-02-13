@@ -42,6 +42,7 @@ const AddIndustriesModal: React.FC<AddIndustriesModalProps> = ({
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [drillParentId, setDrillParentId] = useState<string | null>(null);
 
   const {
     data: industriesResponse,
@@ -51,30 +52,36 @@ const AddIndustriesModal: React.FC<AddIndustriesModalProps> = ({
   } = useIndustries();
   const allIndustries = industriesResponse?.data || [];
 
-  // Show only leaf-level industries (or all if flat hierarchy)
-  const selectableIndustries = useMemo(() => {
-    const hasHierarchy = allIndustries.some((i) => i.level !== undefined && i.level !== null);
-    if (!hasHierarchy) return allIndustries;
-    const parentIds = new Set(allIndustries.filter((i) => i.parent_id).map((i) => i.parent_id!));
-    return allIndustries.filter(
-      (i) => (i.level && i.level > 0) || !parentIds.has(i.id)
-    );
-  }, [allIndustries]);
+  // Derive hierarchy
+  const hasHierarchy = useMemo(
+    () => allIndustries.some((i) => i.level !== undefined && i.level !== null),
+    [allIndustries]
+  );
 
-  const filteredIndustries = useMemo(() => {
-    if (!searchTerm.trim()) return selectableIndustries;
+  const parentIndustries = useMemo(
+    () => hasHierarchy ? allIndustries.filter((i) => i.level === 0) : allIndustries,
+    [allIndustries, hasHierarchy]
+  );
+
+  const getSubSegments = (parentId: string) =>
+    allIndustries.filter((i) => i.parent_id === parentId);
+
+  // Current view: parents or sub-segments of drilled parent
+  const showingSubSegments = hasHierarchy && drillParentId !== null;
+  const subSegments = drillParentId ? getSubSegments(drillParentId) : [];
+  const currentList = showingSubSegments ? subSegments : parentIndustries;
+  const drillParent = parentIndustries.find((p) => p.id === drillParentId);
+
+  // Filter by search
+  const filteredList = useMemo(() => {
+    if (!searchTerm.trim()) return currentList;
     const lower = searchTerm.toLowerCase();
-    return selectableIndustries.filter(
+    return currentList.filter(
       (i) =>
         i.name.toLowerCase().includes(lower) ||
         (i.description && i.description.toLowerCase().includes(lower))
     );
-  }, [selectableIndustries, searchTerm]);
-
-  const getParentName = (parentId: string | null | undefined) => {
-    if (!parentId) return null;
-    return allIndustries.find((i) => i.id === parentId)?.name || null;
-  };
+  }, [currentList, searchTerm]);
 
   const getIconComponent = (iconName: string | undefined) => {
     if (!iconName) return LucideIcons.Circle;
@@ -90,17 +97,50 @@ const AddIndustriesModal: React.FC<AddIndustriesModalProps> = ({
     });
   };
 
+  const handleCardClick = (industry: typeof allIndustries[0]) => {
+    const isAlreadyServed = alreadyServedIds.has(industry.id);
+    if (isAlreadyServed) return;
+
+    // If viewing parents and this parent has children → drill in
+    if (hasHierarchy && !showingSubSegments) {
+      const children = getSubSegments(industry.id);
+      if (children.length > 0) {
+        setDrillParentId(industry.id);
+        setSearchTerm('');
+        return;
+      }
+    }
+
+    // Otherwise toggle selection (works for parents without children AND sub-segments)
+    toggleSelection(industry.id);
+  };
+
+  const handleSelectParent = (e: React.MouseEvent, parentId: string) => {
+    // Stop the click from triggering drill-in
+    e.stopPropagation();
+    if (!alreadyServedIds.has(parentId)) {
+      toggleSelection(parentId);
+    }
+  };
+
+  const handleBack = () => {
+    setDrillParentId(null);
+    setSearchTerm('');
+  };
+
   const handleAdd = async () => {
     if (selectedIds.size === 0) return;
     await onAdd(Array.from(selectedIds));
     setSelectedIds(new Set());
     setSearchTerm('');
+    setDrillParentId(null);
     onClose();
   };
 
   const handleClose = () => {
     setSelectedIds(new Set());
     setSearchTerm('');
+    setDrillParentId(null);
     onClose();
   };
 
@@ -124,7 +164,7 @@ const AddIndustriesModal: React.FC<AddIndustriesModalProps> = ({
               Add Industries You Serve
             </h2>
             <p className="text-sm mt-0.5" style={{ color: colors.utility.secondaryText }}>
-              Select the industries your business operates in
+              Select segments or sub-segments your business operates in
             </p>
           </div>
           <button
@@ -136,7 +176,26 @@ const AddIndustriesModal: React.FC<AddIndustriesModalProps> = ({
           </button>
         </div>
 
-        {/* Search */}
+        {/* Back button + breadcrumb when drilled into sub-segments */}
+        {showingSubSegments && (
+          <div
+            className="flex items-center space-x-2 px-6 pt-4"
+          >
+            <button
+              onClick={handleBack}
+              className="inline-flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors hover:opacity-80"
+              style={{ backgroundColor: colors.brand.primary + '10', color: colors.brand.primary }}
+            >
+              <LucideIcons.ArrowLeft size={16} className="mr-1" />
+              Back
+            </button>
+            <span className="text-sm" style={{ color: colors.utility.secondaryText }}>
+              {drillParent?.name} — Select sub-segments
+            </span>
+          </div>
+        )}
+
+        {/* Search + selection count */}
         <div className="px-6 pt-4">
           <div className="relative">
             <div
@@ -147,7 +206,7 @@ const AddIndustriesModal: React.FC<AddIndustriesModalProps> = ({
             </div>
             <input
               type="search"
-              placeholder="Search industries..."
+              placeholder={showingSubSegments ? 'Search sub-segments...' : 'Search industries...'}
               className="pl-10 w-full p-2.5 border rounded-md focus:outline-none focus:ring-2 transition-colors"
               style={{
                 borderColor: colors.utility.secondaryText + '40',
@@ -186,45 +245,51 @@ const AddIndustriesModal: React.FC<AddIndustriesModalProps> = ({
                 Retry
               </button>
             </div>
-          ) : filteredIndustries.length === 0 ? (
+          ) : filteredList.length === 0 ? (
             <div
               className="text-center p-6 border border-dashed rounded-lg"
               style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: colors.utility.secondaryText + '30' }}
             >
-              <p style={{ color: colors.utility.secondaryText }}>No industries match your search.</p>
+              <p style={{ color: colors.utility.secondaryText }}>
+                {showingSubSegments ? 'No sub-segments found.' : 'No industries match your search.'}
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {filteredIndustries.map((industry) => {
+              {filteredList.map((industry) => {
                 const isAlreadyServed = alreadyServedIds.has(industry.id);
                 const isSelected = selectedIds.has(industry.id);
                 const IconComp = getIconComponent(industry.icon);
-                const parentName = getParentName(industry.parent_id);
+                const isParentCard = hasHierarchy && !showingSubSegments;
+                const hasChildren = isParentCard && getSubSegments(industry.id).length > 0;
 
                 return (
                   <div
                     key={industry.id}
                     className={cn(
                       'border rounded-lg p-3 cursor-pointer transition-all relative',
-                      isAlreadyServed && 'opacity-50 cursor-not-allowed'
+                      isAlreadyServed && !hasChildren && 'opacity-50 cursor-not-allowed'
                     )}
                     style={{
                       backgroundColor: colors.utility.secondaryBackground,
                       borderColor: isSelected
                         ? colors.brand.primary
-                        : isAlreadyServed
+                        : isAlreadyServed && !hasChildren
                         ? colors.utility.secondaryText + '15'
                         : colors.utility.secondaryText + '20',
                       borderWidth: isSelected ? '2px' : '1px',
                     }}
-                    onClick={() => { if (!isAlreadyServed) toggleSelection(industry.id); }}
+                    onClick={() => handleCardClick(industry)}
                     onMouseEnter={(e) => {
-                      if (!isAlreadyServed && !isSelected) e.currentTarget.style.borderColor = colors.brand.primary + '60';
+                      if (!(isAlreadyServed && !hasChildren) && !isSelected)
+                        e.currentTarget.style.borderColor = colors.brand.primary + '60';
                     }}
                     onMouseLeave={(e) => {
-                      if (!isAlreadyServed && !isSelected) e.currentTarget.style.borderColor = colors.utility.secondaryText + '20';
+                      if (!(isAlreadyServed && !hasChildren) && !isSelected)
+                        e.currentTarget.style.borderColor = colors.utility.secondaryText + '20';
                     }}
                   >
+                    {/* Checkmark for selected */}
                     {isSelected && (
                       <div
                         className="absolute top-3 right-3 h-5 w-5 rounded-full flex items-center justify-center text-white"
@@ -235,7 +300,9 @@ const AddIndustriesModal: React.FC<AddIndustriesModalProps> = ({
                         </svg>
                       </div>
                     )}
-                    {isAlreadyServed && (
+
+                    {/* "Added" badge for already-served (no children) */}
+                    {isAlreadyServed && !hasChildren && !isSelected && (
                       <div
                         className="absolute top-3 right-3 text-xs px-2 py-0.5 rounded-full"
                         style={{ backgroundColor: colors.utility.secondaryText + '20', color: colors.utility.secondaryText }}
@@ -243,6 +310,14 @@ const AddIndustriesModal: React.FC<AddIndustriesModalProps> = ({
                         Added
                       </div>
                     )}
+
+                    {/* Chevron for parents with children (drill-in indicator) */}
+                    {hasChildren && !isSelected && (
+                      <div className="absolute top-3 right-3" style={{ color: colors.utility.secondaryText }}>
+                        <LucideIcons.ChevronRight size={18} />
+                      </div>
+                    )}
+
                     <div className="flex items-center space-x-3 pr-14">
                       <div
                         className="p-1.5 rounded-full flex-shrink-0"
@@ -250,20 +325,41 @@ const AddIndustriesModal: React.FC<AddIndustriesModalProps> = ({
                       >
                         <IconComp size={20} style={{ color: isSelected ? colors.brand.primary : colors.utility.secondaryText }} />
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <div
                           className="font-medium text-sm truncate"
                           style={{ color: isSelected ? colors.brand.primary : colors.utility.primaryText }}
                         >
                           {industry.name}
                         </div>
-                        {parentName && (
-                          <div className="text-xs truncate" style={{ color: colors.utility.secondaryText }}>
-                            {parentName}
+                        {industry.description && (
+                          <div className="text-xs truncate mt-0.5" style={{ color: colors.utility.secondaryText }}>
+                            {industry.description}
                           </div>
                         )}
                       </div>
                     </div>
+
+                    {/* For parent cards with children: show a small "Select segment" button */}
+                    {hasChildren && (
+                      <div className="mt-2 ml-9">
+                        <button
+                          onClick={(e) => handleSelectParent(e, industry.id)}
+                          disabled={isAlreadyServed}
+                          className={cn(
+                            "text-xs px-2 py-1 rounded border transition-colors hover:opacity-80",
+                            isAlreadyServed && "opacity-50 cursor-not-allowed"
+                          )}
+                          style={{
+                            borderColor: isSelected ? colors.brand.primary : colors.utility.secondaryText + '30',
+                            color: isSelected ? colors.brand.primary : colors.utility.secondaryText,
+                            backgroundColor: isSelected ? colors.brand.primary + '08' : 'transparent'
+                          }}
+                        >
+                          {isAlreadyServed ? 'Already added' : isSelected ? 'Selected as segment' : 'Select entire segment'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
