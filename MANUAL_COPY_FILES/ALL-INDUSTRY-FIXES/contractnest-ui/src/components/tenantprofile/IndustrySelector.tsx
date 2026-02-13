@@ -54,34 +54,37 @@ const IndustrySelector: React.FC<IndustrySelectorProps> = ({
 
   // Resolve saved value to its parent (for sub-segment values)
   // Runs on mount AND whenever `value` changes (handles async profile fetch)
+  // Also handles legacy slugs by using the resolved selectedIndustry
   useEffect(() => {
     if (!value || allIndustries.length === 0) return;
 
+    // Use the effective ID (could be resolved from legacy slug)
+    const effectiveId = selectedIndustry?.id || value;
+
     // Skip if we already resolved this exact value
-    if (value === lastResolvedValue) return;
+    if (effectiveId === lastResolvedValue) return;
 
     if (!hasHierarchy) {
-      // Flat mode — nothing to resolve
-      setLastResolvedValue(value);
+      setLastResolvedValue(effectiveId);
       return;
     }
 
-    // Check if the saved value is a parent
-    const isParent = parentIndustries.find((p) => p.id === value);
+    // Check if the effective ID is a parent
+    const isParent = parentIndustries.find((p) => p.id === effectiveId);
     if (isParent) {
-      setSelectedParentId(value);
-      setLastResolvedValue(value);
+      setSelectedParentId(effectiveId);
+      setLastResolvedValue(effectiveId);
       return;
     }
 
-    // Saved value is a sub-segment — find its parent
-    const savedIndustry = allIndustries.find((i) => i.id === value);
-    if (savedIndustry?.parent_id) {
-      setSelectedParentId(savedIndustry.parent_id);
+    // It's a sub-segment — find its parent
+    const industry = allIndustries.find((i) => i.id === effectiveId);
+    if (industry?.parent_id) {
+      setSelectedParentId(industry.parent_id);
     }
 
-    setLastResolvedValue(value);
-  }, [value, allIndustries, hasHierarchy, parentIndustries, lastResolvedValue]);
+    setLastResolvedValue(effectiveId);
+  }, [value, selectedIndustry, allIndustries, hasHierarchy, parentIndustries, lastResolvedValue]);
 
   // Get icon component from name
   const getIconComponent = (iconName: string | undefined, isSelected: boolean) => {
@@ -101,8 +104,9 @@ const IndustrySelector: React.FC<IndustrySelectorProps> = ({
   const selectedParent = parentIndustries.find((p) => p.id === selectedParentId);
 
   // Detect legacy selection: value is a parent ID, user needs to pick a sub-segment
+  const effectiveValue = selectedIndustry?.id || value;
   const needsSubSegmentUpdate =
-    showingSubSegments && value === selectedParentId && subSegments.length > 0;
+    showingSubSegments && effectiveValue === selectedParentId && subSegments.length > 0;
 
   // Filter based on search term
   const filteredList = currentList.filter(
@@ -191,7 +195,35 @@ const IndustrySelector: React.FC<IndustrySelectorProps> = ({
   }
 
   // Find the currently selected industry in the full list
-  const selectedIndustry = value ? allIndustries.find((i) => i.id === value) : null;
+  // First try exact match, then fallback to legacy slug match
+  // (e.g. "technology_general" → "technology", "healthcare_general" → "healthcare")
+  const selectedIndustry = useMemo(() => {
+    if (!value || allIndustries.length === 0) return null;
+
+    // Exact match
+    const exact = allIndustries.find((i) => i.id === value);
+    if (exact) return exact;
+
+    // Legacy slug match: strip common suffixes like _general, _other, _default
+    const baseSlug = value.replace(/_(general|other|default)$/, '');
+    if (baseSlug !== value) {
+      const byBase = allIndustries.find((i) => i.id === baseSlug);
+      if (byBase) return byBase;
+    }
+
+    // Try: catalog ID is a prefix of saved value (e.g. "technology" matches "technology_general")
+    const byPrefix = allIndustries.find((i) => value.startsWith(i.id + '_'));
+    return byPrefix || null;
+  }, [value, allIndustries]);
+
+  // Auto-update legacy industry_id to the matched catalog ID
+  // so the DB gets corrected on next save
+  useEffect(() => {
+    if (!value || !selectedIndustry || selectedIndustry.id === value) return;
+    // The selected industry was found via fallback — update the form value
+    // to the correct catalog ID so it saves correctly
+    onChange(selectedIndustry.id);
+  }, [value, selectedIndustry, onChange]);
 
   return (
     <div className="space-y-6">
@@ -294,7 +326,7 @@ const IndustrySelector: React.FC<IndustrySelectorProps> = ({
       {/* Industry / Sub-segment grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredList.map((industry) => {
-          const isSelected = value === industry.id;
+          const isSelected = value === industry.id || selectedIndustry?.id === industry.id;
           const isParentCard = hasHierarchy && !showingSubSegments;
           const hasChildren = isParentCard && getSubSegments(industry.id).length > 0;
 
