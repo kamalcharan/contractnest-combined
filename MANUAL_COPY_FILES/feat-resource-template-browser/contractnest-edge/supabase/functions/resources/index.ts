@@ -1106,8 +1106,7 @@ async function handleGetResourceTemplates(supabase: any, tenantId: string, searc
     const { data: servedIndustries, error: siError } = await supabase
       .from('t_tenant_served_industries')
       .select('industry_id')
-      .eq('tenant_id', tenantId)
-      .eq('is_active', true);
+      .eq('tenant_id', tenantId);
 
     if (siError) {
       console.error('Error fetching served industries:', siError);
