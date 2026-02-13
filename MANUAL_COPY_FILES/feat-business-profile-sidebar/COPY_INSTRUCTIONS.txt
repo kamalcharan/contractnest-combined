@@ -1,0 +1,74 @@
+===============================================================
+FEATURE: Business Profile with Sidebar Nav + Served Industries
+BRANCH: feat/business-profile-sidebar
+DATE: 2025-02-13
+===============================================================
+
+SUBMODULES AFFECTED:
+  - contractnest-ui (4 files: 2 new + 2 modified)
+
+===============================================================
+FILES LIST
+===============================================================
+
+contractnest-ui/
+  src/pages/settings/business-profile/index.tsx                    [MODIFIED - rewritten with sidebar]
+  src/pages/settings/business-profile/ServedIndustriesSection.tsx  [NEW]
+  src/hooks/queries/useServedIndustries.ts                         [NEW]
+  src/App.tsx                                                      [MODIFIED - removed standalone route]
+
+===============================================================
+COPY COMMANDS (PowerShell)
+===============================================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\feat-business-profile-sidebar\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+===============================================================
+WHAT WAS CHANGED
+===============================================================
+
+1. BUSINESS PROFILE PAGE (index.tsx) — REWRITTEN
+   - Added sidebar navigation (same pattern as User Profile page)
+   - Three sidebar sections:
+     * Overview (Building icon) — all existing profile content
+     * Served Industries (Factory icon) — new served industries UI
+     * Close Account (AlertTriangle icon) — danger zone
+   - Layout: header top bar + left sidebar (lg:w-64) + right content (flex-1, max-w-4xl)
+   - Sidebar highlights active section with brand primary color
+   - Close Account sidebar item uses red styling when active
+   - All existing content preserved exactly in Overview section
+
+2. SERVED INDUSTRIES SECTION (ServedIndustriesSection.tsx) — NEW
+   - Self-contained component used inside Business Profile sidebar
+   - Shows served industries as cards with hover-reveal remove (X) button
+   - "Add Industries" button opens modal with industry grid
+   - AddIndustriesModal: search, multi-select, already-served disabled
+   - Empty state, loading state, error state with retry
+   - Uses vaniToast for feedback, VaNiLoader for loading
+   - Dark mode support via useTheme
+
+3. HOOK (useServedIndustries.ts) — NEW
+   - TanStack Query hooks following useAssetRegistry pattern
+   - useServedIndustries() — GET list
+   - useAddServedIndustries() — POST bulk add
+   - useRemoveServedIndustry() — DELETE one
+   - useUnlockPreview() — GET unlock preview
+   - useServedIndustriesManager() — combined manager
+
+4. APP.TSX — MODIFIED
+   - Removed standalone ServedIndustriesPage import
+   - Removed /settings/served-industries route
+   - (Served Industries now lives inside Business Profile sidebar)
+
+===============================================================
+ROUTE
+===============================================================
+
+/settings/business-profile — Business Profile with sidebar nav
+  Sidebar: Overview | Served Industries | Close Account
+
+No new route needed — everything is within the existing business-profile page.
