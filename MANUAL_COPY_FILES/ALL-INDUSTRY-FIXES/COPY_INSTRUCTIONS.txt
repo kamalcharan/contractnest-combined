@@ -1,0 +1,47 @@
+===============================================================
+ALL INDUSTRY FIXES - CONSOLIDATED (Copy ALL 5 files)
+Date: 2026-02-13
+===============================================================
+
+This folder contains ALL fixes for industries in ONE place.
+You do NOT need to copy from any other folder.
+
+SUBMODULES AFFECTED:
+  1. contractnest-ui  (3 files)
+  2. contractnest-api  (1 file)
+  3. contractnest-edge (1 file)
+
+===============================================================
+WHAT THESE FIX:
+===============================================================
+  1. 400 Bad Request on industries API (backend validator + edge function)
+  2. Industry not showing as selected in Edit mode (race condition fix)
+  3. Edit mode wizard always starting at Step 1 (now auto-advances)
+  4. Slow loading from fetching unnecessary heavy JSON columns
+
+===============================================================
+COPY COMMANDS (PowerShell) - Run ALL of these:
+===============================================================
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Frontend fixes (3 files)
+Copy-Item "MANUAL_COPY_FILES\ALL-INDUSTRY-FIXES\contractnest-ui\src\components\tenantprofile\IndustrySelector.tsx" -Destination "contractnest-ui\src\components\tenantprofile\IndustrySelector.tsx" -Force
+
+Copy-Item "MANUAL_COPY_FILES\ALL-INDUSTRY-FIXES\contractnest-ui\src\hooks\queries\useProductMasterdata.ts" -Destination "contractnest-ui\src\hooks\queries\useProductMasterdata.ts" -Force
+
+Copy-Item "MANUAL_COPY_FILES\ALL-INDUSTRY-FIXES\contractnest-ui\src\hooks\useTenantProfile.ts" -Destination "contractnest-ui\src\hooks\useTenantProfile.ts" -Force
+
+# Backend validator fix (1 file)
+Copy-Item "MANUAL_COPY_FILES\ALL-INDUSTRY-FIXES\contractnest-api\src\validators\productMasterdataValidators.ts" -Destination "contractnest-api\src\validators\productMasterdataValidators.ts" -Force
+
+# Edge function fix (1 file)
+Copy-Item "MANUAL_COPY_FILES\ALL-INDUSTRY-FIXES\contractnest-edge\supabase\functions\product-masterdata\index.ts" -Destination "contractnest-edge\supabase\functions\product-masterdata\index.ts" -Force
+
+Write-Host "All 5 files copied!" -ForegroundColor Green
+
+===============================================================
+IMPORTANT: Backend + Edge need DEPLOYMENT too
+===============================================================
+The API validator and edge function changes only take effect
+after redeploying those services. If you run them locally,
+restart them after copying.
