@@ -1,0 +1,103 @@
+===============================================================
+FEATURE: Served Industries (t_tenant_served_industries)
+BRANCH: feat/served-industries
+DATE: 2025-02-13
+===============================================================
+
+SUBMODULES AFFECTED:
+  - contractnest-api (5 files: 1 new + 4 modified)
+  - contractnest-edge (1 file modified)
+  - contractnest-ui (1 file modified)
+
+===============================================================
+FILES LIST
+===============================================================
+
+contractnest-api/
+  src/migrations/002_create_t_tenant_served_industries.sql  [NEW]
+  src/types/tenantProfile.ts                                [MODIFIED]
+  src/services/tenantProfileService.ts                      [MODIFIED]
+  src/controllers/tenantProfileController.ts                [MODIFIED]
+  src/routes/tenantProfileRoutes.ts                         [MODIFIED]
+
+contractnest-edge/
+  supabase/functions/tenant-profile/index.ts                [MODIFIED]
+
+contractnest-ui/
+  src/services/serviceURLs.ts                               [MODIFIED]
+
+===============================================================
+COPY COMMANDS (PowerShell)
+===============================================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# API files
+Copy-Item "MANUAL_COPY_FILES\feat-served-industries\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+
+# Edge function
+Copy-Item "MANUAL_COPY_FILES\feat-served-industries\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+# UI service URLs
+Copy-Item "MANUAL_COPY_FILES\feat-served-industries\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+===============================================================
+DB MIGRATION
+===============================================================
+
+Run the migration SQL in your Supabase dashboard:
+  File: contractnest-api/src/migrations/002_create_t_tenant_served_industries.sql
+
+This creates:
+  - t_tenant_served_industries table
+  - Indexes on tenant_id and industry_id
+  - RLS policies for tenant-scoped access
+  - Grants for authenticated and service_role
+
+===============================================================
+WHAT WAS CHANGED
+===============================================================
+
+1. DB MIGRATION (002_create_t_tenant_served_industries.sql)
+   - New junction table: tenant_id + industry_id
+   - Unique constraint prevents duplicate entries
+   - FK cascade to t_tenants and m_catalog_industries
+   - RLS: tenant members can read/insert/delete own rows
+
+2. EDGE FUNCTION (tenant-profile/index.ts)
+   Added 4 new handlers:
+   - GET /served-industries — list with industry join
+   - POST /served-industries — bulk add via upsert
+   - DELETE /served-industries?industry_id=X — remove one
+   - GET /served-industries/unlock-preview — template counts
+
+3. API TYPES (tenantProfile.ts)
+   Added interfaces: ServedIndustry, ServedIndustriesResponse,
+   AddServedIndustriesRequest/Response, RemoveServedIndustryResponse,
+   UnlockPreviewByIndustry, UnlockPreviewByResourceType, UnlockPreviewResponse
+
+4. API SERVICE (tenantProfileService.ts)
+   Added 4 methods + 2 response interfaces:
+   - getServedIndustries()
+   - addServedIndustries()
+   - removeServedIndustry()
+   - getUnlockPreview()
+
+5. API CONTROLLER (tenantProfileController.ts)
+   Added 4 handlers with validation + error handling + Sentry:
+   - getServedIndustries
+   - addServedIndustries
+   - removeServedIndustry
+   - getUnlockPreview
+
+6. API ROUTES (tenantProfileRoutes.ts)
+   Added 4 routes (no index.ts change needed — same router):
+   - GET /api/tenant-profile/served-industries
+   - POST /api/tenant-profile/served-industries
+   - DELETE /api/tenant-profile/served-industries/:industryId
+   - GET /api/tenant-profile/served-industries/unlock-preview
+
+7. UI SERVICE URLs (serviceURLs.ts)
+   Added TENANTS.SERVED_INDUSTRIES with LIST, ADD, REMOVE, UNLOCK_PREVIEW
