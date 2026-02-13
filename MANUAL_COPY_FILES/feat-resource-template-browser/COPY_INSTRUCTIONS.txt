@@ -1,0 +1,49 @@
+═══════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS — feat-resource-template-browser
+═══════════════════════════════════════════════════════════════
+
+Feature: Resource Template Browser
+Description: Browse & add equipment/entity templates from served industries
+Date: 2026-02-13
+
+═══════════════════════════════════════════════════════════════
+SUBMODULES AFFECTED:
+═══════════════════════════════════════════════════════════════
+1. contractnest-edge  (1 file modified)
+2. contractnest-api   (3 files modified)
+3. contractnest-ui    (4 files — 3 modified, 1 new)
+
+═══════════════════════════════════════════════════════════════
+FILES — contractnest-edge
+═══════════════════════════════════════════════════════════════
+[MODIFIED] supabase/functions/resources/index.ts
+  → Added handleGetResourceTemplates() function
+  → New route: GET /resource-templates?search=&limit=25&offset=0&resource_type_id=equipment|asset
+
+═══════════════════════════════════════════════════════════════
+FILES — contractnest-api
+═══════════════════════════════════════════════════════════════
+[MODIFIED] src/controllers/resourcesController.ts
+  → Added getResourceTemplates() controller method + exported binding
+
+[MODIFIED] src/routes/resourcesRoutes.ts
+  → Added GET /api/resources/resource-templates route with swagger docs
+
+[MODIFIED] src/services/resourcesService.ts
+  → Added getResourceTemplates() service method proxying to edge function
+
+═══════════════════════════════════════════════════════════════
+FILES — contractnest-ui
+═══════════════════════════════════════════════════════════════
+[MODIFIED] src/pages/settings/Resources/index.tsx
+  → Completely rebuilt as template browser with tabs, search, cards, pagination
+
+[MODIFIED] src/services/resourcesService.ts
+  → Added ResourceTemplate type, ResourceTemplatesResponse type
+  → Added getResourceTemplates() service method
+
+[MODIFIED] src/services/serviceURLs.ts
+  → Added RESOURCE_TEMPLATES and RESOURCE_TEMPLATES_WITH_FILTERS endpoints
+
+[NEW FILE] src/hooks/queries/useResourceTemplates.ts
+  → TanStack Query hook: useResourceTemplates + useResourceTemplatesBrowser
