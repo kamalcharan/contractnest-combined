@@ -580,7 +580,9 @@ const TemplateCard: React.FC<TemplateCardProps> = ({
   const emoji = isEquipment ? '🔧' : '🏢';
   const typeLabel = isEquipment ? 'Equipment' : 'Entity';
   const typeColor = isEquipment ? '#3b82f6' : '#8b5cf6';
-  const isBusy = isAdding || isRemoving;
+
+  // DEBUG: remove after confirming fix
+  console.log(`[TemplateCard] ${template.name} | isAdding=${isAdding} | isRemoving=${isRemoving} | isSelected=${isSelected} | savedResourceId=${savedResourceId}`);
 
   const makeExamples = template.make_examples || [];
   const lifespan = template.typical_lifespan_years;
@@ -687,9 +689,10 @@ const TemplateCard: React.FC<TemplateCardProps> = ({
                 Added
               </div>
               <button
-                onClick={() => onRemove(template)}
-                disabled={isBusy}
-                className="flex items-center justify-center w-8 h-8 rounded-md transition-all hover:opacity-80"
+                onClick={() => {
+                  if (!isRemoving) onRemove(template);
+                }}
+                className="flex items-center justify-center w-8 h-8 rounded-md transition-all hover:opacity-80 cursor-pointer"
                 style={{
                   backgroundColor: colors.semantic.error + '10',
                   color: colors.semantic.error,
@@ -704,25 +707,25 @@ const TemplateCard: React.FC<TemplateCardProps> = ({
               </button>
             </div>
           ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onAdd(template)}
-              disabled={isBusy}
-              className="w-full text-xs font-semibold transition-all hover:opacity-90"
+            <button
+              onClick={() => {
+                console.log(`[Add clicked] ${template.name} | isAdding=${isAdding}`);
+                if (!isAdding) onAdd(template);
+              }}
+              className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold py-2 px-3 rounded-md border transition-all cursor-pointer hover:opacity-80"
               style={{
-                borderColor: colors.brand.primary + '40',
-                backgroundColor: 'transparent',
+                borderColor: colors.brand.primary,
+                backgroundColor: colors.brand.primary + '10',
                 color: colors.brand.primary,
               }}
             >
               {isAdding ? (
-                <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
-                <Plus className="h-3.5 w-3.5 mr-1" />
+                <Plus className="h-3.5 w-3.5" />
               )}
               Add to Resources
-            </Button>
+            </button>
           )}
         </div>
       </div>
