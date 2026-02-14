@@ -219,7 +219,7 @@ const EquipmentFormDialog: React.FC<EquipmentFormDialogProps> = ({
               value={formData.owner_contact_id}
               onChange={(contactId) => updateField('owner_contact_id', contactId)}
               placeholder="Search client by name, email, or company..."
-              classifications={['buyer']}
+              classifications={['client']}
             />
           </div>
 
