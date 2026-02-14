@@ -1,0 +1,62 @@
+═══════════════════════════════════════════════════════════════
+RESOURCES UX REDESIGN - Copy Instructions
+═══════════════════════════════════════════════════════════════
+Feature Branch: feat-resources-ux-redesign
+Date: 2026-02-14
+
+SUBMODULES AFFECTED:
+  1. contractnest-ui (Frontend)
+  2. contractnest-api (Backend API)
+  3. contractnest-edge (Edge Functions)
+
+═══════════════════════════════════════════════════════════════
+FILES TO COPY:
+═══════════════════════════════════════════════════════════════
+
+UI (contractnest-ui):
+  1. src/pages/settings/Resources/index.tsx
+     → FULL REWRITE: Glass morphism cards, grid layout, pagination,
+       VaNiLoader, vaniToast, type-colored badges, show-deleted toggle,
+       icon mapping, fixed tab classification
+
+  2. src/hooks/queries/useResources.ts
+     → UPDATED: Added include_deleted filter support in ResourceFilters
+       and query param builder
+
+API (contractnest-api):
+  3. src/routes/resourcesRoutes.ts
+     → UPDATED: Added include_deleted query param validation in middleware
+
+  4. src/controllers/resourcesController.ts
+     → UPDATED: Extracts include_deleted from query, passes to service
+
+  5. src/services/resourcesService.ts
+     → UPDATED: getResourcesByType() and getAllResources() accept
+       includeDeleted param, append to Edge function URL
+
+EDGE (contractnest-edge):
+  6. supabase/functions/resources/index.ts
+     → UPDATED: handleGetResources() reads include_deleted param,
+       handleGetAllResources() and handleGetResourcesByType() skip
+       is_active filter when include_deleted=true, skip cache for
+       deleted queries
+
+═══════════════════════════════════════════════════════════════
+COPY COMMANDS (PowerShell):
+═══════════════════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# UI files
+Copy-Item "MANUAL_COPY_FILES\feat-resources-ux-redesign\contractnest-ui\src\pages\settings\Resources\index.tsx" -Destination "contractnest-ui\src\pages\settings\Resources\index.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\feat-resources-ux-redesign\contractnest-ui\src\hooks\queries\useResources.ts" -Destination "contractnest-ui\src\hooks\queries\useResources.ts" -Force
+
+# API files
+Copy-Item "MANUAL_COPY_FILES\feat-resources-ux-redesign\contractnest-api\src\routes\resourcesRoutes.ts" -Destination "contractnest-api\src\routes\resourcesRoutes.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\feat-resources-ux-redesign\contractnest-api\src\controllers\resourcesController.ts" -Destination "contractnest-api\src\controllers\resourcesController.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\feat-resources-ux-redesign\contractnest-api\src\services\resourcesService.ts" -Destination "contractnest-api\src\services\resourcesService.ts" -Force
+
+# Edge files
+Copy-Item "MANUAL_COPY_FILES\feat-resources-ux-redesign\contractnest-edge\supabase\functions\resources\index.ts" -Destination "contractnest-edge\supabase\functions\resources\index.ts" -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
