@@ -1,0 +1,17 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS - feat-resources-page-rewrite
+═══════════════════════════════════════════════════
+
+Feature: Rewrite /settings/configure/resources page
+- Template-based selection saves to t_category_resources_master (correct table)
+- Previously wrote to t_client_asset_registry (wrong table)
+
+Submodules Modified: contractnest-ui
+
+Files:
+1. contractnest-ui/src/pages/settings/Resources/index.tsx
+   → Rewritten resources page with Equipment/Entity tabs,
+     industry-grouped template cards, add/remove to t_category_resources_master
+
+No changes to: contractnest-api, contractnest-edge, database, migrations
+All existing hooks/services/edge functions reused as-is.
