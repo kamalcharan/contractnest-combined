@@ -449,11 +449,22 @@ const ResourcesPage: React.FC = () => {
                                   </button>
                                 </div>
                               ) : (
-                                <button onClick={() => handleAdd(t)}
-                                  className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold py-2 px-3 rounded-md border cursor-pointer hover:opacity-80"
-                                  style={{ borderColor: colors.brand.primary, backgroundColor: colors.brand.primary + '10', color: colors.brand.primary }}>
-                                  {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                                  Add to Resources
+                                <button
+                                  onClick={() => {
+                                    console.log('[BUTTON CLICKED] Adding:', t.name);
+                                    handleAdd(t);
+                                  }}
+                                  disabled={false}
+                                  className="w-full flex items-center justify-center gap-1.5 text-sm font-bold py-2.5 px-3 rounded-md cursor-pointer transition-all hover:shadow-md active:scale-95"
+                                  style={{
+                                    backgroundColor: colors.brand.primary,
+                                    color: '#FFFFFF',
+                                    border: 'none',
+                                    opacity: 1,
+                                    pointerEvents: 'auto',
+                                  }}>
+                                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                                  + Add to Resources
                                 </button>
                               )}
                             </div>
