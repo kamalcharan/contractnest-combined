@@ -479,7 +479,7 @@ const ResourcesPage: React.FC = () => {
                         onAdd={handleAddTemplate}
                         onRemove={handleRemoveTemplate}
                         isAdding={addingTemplateId === template.id}
-                        isRemoving={removingResourceId === getSavedResourceId(template)}
+                        isRemoving={removingResourceId !== null && removingResourceId === getSavedResourceId(template)}
                         colors={colors}
                       />
                     ))}
