@@ -1,35 +1,24 @@
-═══════════════════════════════════════════════════════════════
-COPY INSTRUCTIONS — feat-equipment-registry
-═══════════════════════════════════════════════════════════════
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — Equipment Registry
+═══════════════════════════════════════════════════
 
-Feature: Equipment Registry — ContactPicker, sidebar restriction, settings menu entry
-Submodules Affected: contractnest-ui
+Submodules Affected: contractnest-ui ONLY
 
-FILES TO COPY:
+FILES (4 total):
 ──────────────
-1. NEW: ContactPicker component (async search combobox)
-   FROM: MANUAL_COPY_FILES/feat-equipment-registry/contractnest-ui/src/components/common/ContactPicker.tsx
-   TO:   contractnest-ui/src/components/common/ContactPicker.tsx
 
-2. MODIFIED: EquipmentFormDialog — added Owner/Buyer section with ContactPicker
-   FROM: MANUAL_COPY_FILES/feat-equipment-registry/contractnest-ui/src/pages/settings/Equipment/EquipmentFormDialog.tsx
-   TO:   contractnest-ui/src/pages/settings/Equipment/EquipmentFormDialog.tsx
+1. NEW — ContactPicker component (async contact search combobox)
+   FROM: MANUAL_COPY_FILES\feat-equipment-registry\contractnest-ui\src\components\common\ContactPicker.tsx
+   TO:   contractnest-ui\src\components\common\ContactPicker.tsx
 
-3. MODIFIED: Equipment page — sidebar now restricted to tenant's saved Resources (equipment types only)
-   FROM: MANUAL_COPY_FILES/feat-equipment-registry/contractnest-ui/src/pages/settings/Equipment/index.tsx
-   TO:   contractnest-ui/src/pages/settings/Equipment/index.tsx
+2. MODIFIED — Equipment form dialog (Owner/Buyer section added)
+   FROM: MANUAL_COPY_FILES\feat-equipment-registry\contractnest-ui\src\pages\equipment-registry\EquipmentFormDialog.tsx
+   TO:   contractnest-ui\src\pages\equipment-registry\EquipmentFormDialog.tsx
 
-4. MODIFIED: Settings menu — added Equipment Registry entry under Team group
-   FROM: MANUAL_COPY_FILES/feat-equipment-registry/contractnest-ui/src/utils/constants/settingsMenus.ts
-   TO:   contractnest-ui/src/utils/constants/settingsMenus.ts
+3. MODIFIED — serviceURLs.ts (added RESOURCE_TYPES_BY_PARENT)
+   FROM: MANUAL_COPY_FILES\feat-equipment-registry\contractnest-ui\src\services\serviceURLs.ts
+   TO:   contractnest-ui\src\services\serviceURLs.ts
 
-5. MODIFIED: App.tsx — added /settings/configure/equipment route
-   FROM: MANUAL_COPY_FILES/feat-equipment-registry/contractnest-ui/src/App.tsx
-   TO:   contractnest-ui/src/App.tsx
-
-WHAT CHANGED:
-  - ContactPicker: async search combobox using contactService.listContacts()
-  - EquipmentFormDialog: new "Owner / Buyer" section with ContactPicker (classifications: ['buyer'])
-  - Equipment sidebar: uses useResources() instead of useResourceTypes(), filtered to equipment/asset/consumable
-  - Settings menu: new "Equipment Registry" card under Team group
-  - App.tsx: new route /settings/configure/equipment → SettingsEquipmentPage
+4. MODIFIED — assetRegistryService.ts (fixed getEquipmentCategories to use existing endpoint)
+   FROM: MANUAL_COPY_FILES\feat-equipment-registry\contractnest-ui\src\services\assetRegistryService.ts
+   TO:   contractnest-ui\src\services\assetRegistryService.ts
