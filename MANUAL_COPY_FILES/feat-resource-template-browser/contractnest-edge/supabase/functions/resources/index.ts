@@ -1128,8 +1128,22 @@ async function handleGetResourceTemplates(supabase: any, tenantId: string, searc
       );
     }
 
-    const industryIds = servedIndustries.map((si: any) => si.industry_id);
-    console.log(`[ResourceTemplates] Served industries: ${industryIds.join(', ')}`);
+    const rawIndustryIds = servedIndustries.map((si: any) => si.industry_id);
+
+    // Step 1b: Resolve parent industry IDs — templates are seeded under parent IDs
+    // (e.g. "healthcare") but tenants save subsegment IDs (e.g. "dental_clinics")
+    const { data: industryDetails } = await supabase
+      .from('m_catalog_industries')
+      .select('id, parent_id')
+      .in('id', rawIndustryIds);
+
+    const parentIds = (industryDetails || [])
+      .map((ind: any) => ind.parent_id)
+      .filter((pid: string | null) => pid !== null && pid !== undefined);
+
+    // Combine both subsegment IDs and their parent IDs for matching
+    const industryIds = [...new Set([...rawIndustryIds, ...parentIds])];
+    console.log(`[ResourceTemplates] Served industries (with parents): ${industryIds.join(', ')}`);
 
     // Step 2: Count total matching templates (for pagination)
     let countQuery = supabase
