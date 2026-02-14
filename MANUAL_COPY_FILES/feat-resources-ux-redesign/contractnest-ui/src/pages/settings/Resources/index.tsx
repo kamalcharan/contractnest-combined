@@ -92,6 +92,9 @@ const ResourcesPage: React.FC = () => {
     refetch: refetchSaved,
   } = useResources(showDeleted ? { include_deleted: true } : {});
 
+  // Always fetch active resources for name cross-reference (used in browse catalog)
+  const { data: activeResourcesForLookup } = useResources({});
+
   const templateFilters: ResourceTemplateFilters = { limit: 100 };
   const {
     templates,
@@ -108,6 +111,12 @@ const ResourcesPage: React.FC = () => {
   const savedList = useMemo(() => (savedResources || []), [savedResources]);
   const activeOnly = useMemo(() => savedList.filter(r => r.is_active !== false), [savedList]);
   const deletedOnly = useMemo(() => savedList.filter(r => r.is_active === false), [savedList]);
+
+  // Set of existing resource names (lowercase) for duplicate detection in browse view
+  const savedResourceNames = useMemo(() => {
+    const all = activeResourcesForLookup || [];
+    return new Set(all.map(r => r.name?.toLowerCase().trim()).filter(Boolean));
+  }, [activeResourcesForLookup]);
 
   const displayedSaved = useMemo(() => {
     const base = showDeleted ? deletedOnly : activeOnly;
@@ -190,7 +199,8 @@ const ResourcesPage: React.FC = () => {
   };
 
   const resetPage = () => setCurrentPage(1);
-  const isTemplateAdded = (t: typeof templates[0]) => t.already_added || localSaved.has(t.id);
+  const isTemplateAdded = (t: typeof templates[0]) =>
+    t.already_added || localSaved.has(t.id) || savedResourceNames.has(t.name?.toLowerCase().trim());
   const isLoading = view === 'my-resources' ? loadingSaved : loadingTemplates;
   const isError = view === 'my-resources' ? errorSaved : errorTemplates;
   const errorMsg = view === 'my-resources' ? savedError?.message : templatesError?.message;
