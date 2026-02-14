@@ -124,6 +124,9 @@ const ResourcesPage: React.FC = () => {
 
   const isLoading = isLoadingTemplates || isLoadingResources;
 
+  // DEBUG: trace template loading state
+  console.log('[ResourcesPage] templates:', templates.length, '| isLoadingTemplates:', isLoadingTemplates, '| isTemplatesError:', isTemplatesError, '| servedIndustries:', servedIndustries, '| savedResources:', savedResources?.length, '| error:', templatesError);
+
   // Build lookup: template name + resource_type_id → saved resource id
   const savedResourceLookup = useMemo(() => {
     const lookup = new Map<string, string>();
