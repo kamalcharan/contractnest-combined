@@ -4,6 +4,14 @@ import {
   ArrowLeft, Plus, Check, Trash2, Search, PackagePlus, X,
   Wrench, Building, Package, ChevronLeft, ChevronRight,
   Eye, EyeOff, ShieldAlert, Info, Headset,
+  ChevronDown, ChevronUp,
+  // Sub-category icons
+  ScanLine, HeartPulse, Activity,
+  Hospital, ArrowUpDown, Wind, Flame, Zap, Droplets,
+  Shield, Home, Store, Factory, Cpu, Cog,
+  Network, Thermometer, Car, Gauge,
+  Server, MonitorSpeaker, Dumbbell, Sparkles,
+  Waves, type LucideIcon,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useResourceTemplatesBrowser, ResourceTemplateFilters } from '@/hooks/queries/useResourceTemplates';
@@ -55,6 +63,50 @@ const countByTab = <T extends { resource_type_id: string }>(items: T[]) => ({
 const formatIndustryId = (id: string): string => {
   if (!id) return '';
   return id.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+};
+
+// ─── Sub-category icon + color config ────────────────────────
+const SUB_CATEGORY_CONFIG: Record<string, { icon: LucideIcon; color: string }> = {
+  // Healthcare — Equipment
+  'Diagnostic Imaging':     { icon: ScanLine,     color: '#6366F1' },
+  'Life Support':           { icon: HeartPulse,   color: '#EF4444' },
+  'Patient Monitoring':     { icon: Activity,     color: '#10B981' },
+  // Healthcare — Assets
+  'Clinical Facilities':    { icon: Hospital,     color: '#8B5CF6' },
+  // Facility Mgmt — Equipment
+  'Vertical Transport':     { icon: ArrowUpDown,  color: '#6366F1' },
+  'HVAC Systems':           { icon: Wind,         color: '#0EA5E9' },
+  'Fire & Safety':          { icon: Flame,        color: '#F97316' },
+  'Power & Electrical':     { icon: Zap,          color: '#EAB308' },
+  'Water Treatment':        { icon: Droplets,     color: '#06B6D4' },
+  'Security & Surveillance':{ icon: Shield,       color: '#64748B' },
+  // Facility Mgmt — Assets
+  'Residential Properties': { icon: Home,         color: '#10B981' },
+  'Commercial Properties':  { icon: Store,        color: '#3B82F6' },
+  'Industrial Properties':  { icon: Factory,      color: '#78716C' },
+  // Manufacturing
+  'CNC & Machining':        { icon: Cog,          color: '#6366F1' },
+  'Pneumatics & Hydraulics':{ icon: Gauge,        color: '#0EA5E9' },
+  'Moulding & Forming':     { icon: Cpu,          color: '#8B5CF6' },
+  'Material Handling':      { icon: Package,      color: '#F59E0B' },
+  'Thermal Systems':        { icon: Thermometer,  color: '#EF4444' },
+  // Automotive
+  'Workshop Equipment':     { icon: Car,          color: '#3B82F6' },
+  'Diagnostic Tools':       { icon: Gauge,        color: '#10B981' },
+  // Technology
+  'Server & Compute':       { icon: Server,       color: '#6366F1' },
+  'Networking':             { icon: Network,      color: '#0EA5E9' },
+  'Power & Cooling':        { icon: Zap,          color: '#EAB308' },
+  'Data Facilities':        { icon: MonitorSpeaker, color: '#8B5CF6' },
+  // Wellness
+  'Fitness Equipment':      { icon: Dumbbell,     color: '#10B981' },
+  'Spa & Relaxation':       { icon: Sparkles,     color: '#EC4899' },
+  'Wellness Facilities':    { icon: Waves,        color: '#06B6D4' },
+};
+
+const getSubCategoryConfig = (subCat: string | null | undefined) => {
+  if (!subCat) return null;
+  return SUB_CATEGORY_CONFIG[subCat] || { icon: Package, color: '#6B7280' };
 };
 
 // ─── Pagination helper ──────────────────────────────────────
@@ -137,7 +189,32 @@ const ResourcesPage: React.FC = () => {
     [templates, localSaved],
   );
 
-  // ── Pagination ──
+  // ── Grouped templates for browse view ──
+  const groupedTemplates = useMemo(() => {
+    if (view !== 'browse-catalog') return [];
+    const groups: { subCategory: string; items: typeof filteredTemplates }[] = [];
+    const map = new Map<string, typeof filteredTemplates>();
+    for (const t of filteredTemplates) {
+      const key = (t as any).sub_category || 'Other';
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(t);
+    }
+    for (const [subCategory, items] of map) {
+      groups.push({ subCategory, items });
+    }
+    return groups;
+  }, [view, filteredTemplates]);
+
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const toggleGroup = (group: string) => {
+    setCollapsedGroups(prev => {
+      const next = new Set(prev);
+      next.has(group) ? next.delete(group) : next.add(group);
+      return next;
+    });
+  };
+
+  // ── Pagination (my-resources only; browse uses grouped view) ──
   const currentItems = view === 'my-resources' ? displayedSaved : filteredTemplates;
   const { paged, totalPages } = paginate(currentItems, currentPage);
   const startItem = currentItems.length === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1;
@@ -351,7 +428,9 @@ const ResourcesPage: React.FC = () => {
             )}
           </div>
           <span style={{ fontSize: 12, color: colors.utility.secondaryText, whiteSpace: 'nowrap' }}>
-            {currentItems.length > 0 ? `Showing ${startItem}-${endItem} of ${currentItems.length}` : ''}
+            {view === 'browse-catalog'
+              ? filteredTemplates.length > 0 ? `${filteredTemplates.length} resources in ${groupedTemplates.length} categories` : ''
+              : currentItems.length > 0 ? `Showing ${startItem}-${endItem} of ${currentItems.length}` : ''}
           </span>
         </div>
       </div>
@@ -415,22 +494,203 @@ const ResourcesPage: React.FC = () => {
             </>
           )}
         </div>
+      ) : view === 'browse-catalog' ? (
+        /* ═══ GROUPED BROWSE CATALOG ═══ */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {groupedTemplates.map(({ subCategory, items }) => {
+            const isCollapsed = collapsedGroups.has(subCategory);
+            const subCatCfg = getSubCategoryConfig(subCategory === 'Other' ? null : subCategory);
+            const SubCatIcon = subCatCfg?.icon || Package;
+            const subCatColor = subCatCfg?.color || '#6B7280';
+            const addedInGroup = items.filter(t => isTemplateAdded(t)).length;
+
+            return (
+              <div key={subCategory}>
+                {/* ── Group Header ── */}
+                <button
+                  onClick={() => toggleGroup(subCategory)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+                    padding: '10px 14px', marginBottom: isCollapsed ? 0 : 12,
+                    borderRadius: 10, border: `1px solid ${subCatColor}25`,
+                    backgroundColor: subCatColor + '08',
+                    cursor: 'pointer', transition: 'all 0.15s',
+                  }}
+                >
+                  <div style={{
+                    width: 32, height: 32, borderRadius: 8,
+                    backgroundColor: subCatColor + '18',
+                    border: `1px solid ${subCatColor}30`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0,
+                  }}>
+                    <SubCatIcon size={16} style={{ color: subCatColor }} />
+                  </div>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: colors.utility.primaryText, flex: 1, textAlign: 'left' }}>
+                    {subCategory}
+                  </span>
+                  <span style={{
+                    fontSize: 11, fontWeight: 600, color: colors.utility.secondaryText,
+                    padding: '2px 8px', borderRadius: 10,
+                    backgroundColor: colors.utility.primaryText + '08',
+                  }}>
+                    {addedInGroup}/{items.length} added
+                  </span>
+                  {isCollapsed ? <ChevronDown size={16} style={{ color: colors.utility.secondaryText }} /> : <ChevronUp size={16} style={{ color: colors.utility.secondaryText }} />}
+                </button>
+
+                {/* ── Group Grid ── */}
+                {!isCollapsed && (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+                    gap: 16,
+                  }}>
+                    {items.map((item: any) => {
+                      const typeCfg = getTypeConfig(item.resource_type_id);
+                      const TypeIcon = typeCfg.icon;
+                      const added = isTemplateAdded(item);
+                      const isSaving = savingId === item.id;
+                      const itemSubCatCfg = getSubCategoryConfig(item.sub_category);
+
+                      return (
+                        <div
+                          key={item.id}
+                          style={{
+                            ...glassCard,
+                            position: 'relative',
+                            overflow: 'hidden',
+                          }}
+                          onMouseEnter={e => {
+                            (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 30px -5px rgba(0,0,0,0.12)';
+                            (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)';
+                          }}
+                          onMouseLeave={e => {
+                            (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 20px -5px rgba(0,0,0,0.05)';
+                            (e.currentTarget as HTMLElement).style.transform = 'translateY(0)';
+                          }}
+                        >
+                          {/* Card Header */}
+                          <div style={{ padding: '16px 16px 0', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                            <div style={{
+                              width: 42, height: 42, borderRadius: 10,
+                              backgroundColor: typeCfg.color + '18',
+                              border: `1px solid ${typeCfg.color}30`,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              flexShrink: 0,
+                            }}>
+                              <TypeIcon size={20} style={{ color: typeCfg.color }} />
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                <strong style={{
+                                  fontSize: 14, color: colors.utility.primaryText,
+                                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                                  maxWidth: 180,
+                                }}>
+                                  {item.name}
+                                </strong>
+                                <span style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                                  padding: '2px 8px', borderRadius: 12,
+                                  fontSize: 10, fontWeight: 700, letterSpacing: 0.3,
+                                  backgroundColor: typeCfg.color + '18',
+                                  color: typeCfg.color,
+                                  border: `1px solid ${typeCfg.color}30`,
+                                }}>
+                                  {typeCfg.label}
+                                </span>
+                              </div>
+                              {/* Sub-category badge on card */}
+                              {itemSubCatCfg && item.sub_category && (
+                                <div style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                                  marginTop: 4, padding: '1px 7px', borderRadius: 10,
+                                  fontSize: 10, fontWeight: 600,
+                                  backgroundColor: itemSubCatCfg.color + '10',
+                                  color: itemSubCatCfg.color,
+                                }}>
+                                  {React.createElement(itemSubCatCfg.icon, { size: 10 })}
+                                  {item.sub_category}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Card Body */}
+                          <div style={{ padding: '10px 16px', flex: 1 }}>
+                            {item.description ? (
+                              <p style={{
+                                fontSize: 12, color: colors.utility.secondaryText, margin: 0,
+                                display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                                overflow: 'hidden', lineHeight: '1.5',
+                              }}>
+                                {item.description}
+                              </p>
+                            ) : (
+                              <p style={{ fontSize: 12, color: colors.utility.secondaryText + '60', margin: 0, fontStyle: 'italic' }}>
+                                No description
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Card Footer */}
+                          <div style={{
+                            padding: '12px 16px',
+                            borderTop: `1px solid ${colors.utility.primaryText}08`,
+                            display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8,
+                          }}>
+                            {added ? (
+                              <span style={{
+                                display: 'flex', alignItems: 'center', gap: 5,
+                                fontSize: 12, fontWeight: 600,
+                                color: colors.semantic?.success || '#16a34a',
+                                padding: '5px 14px', borderRadius: 8,
+                                backgroundColor: (colors.semantic?.success || '#16a34a') + '12',
+                              }}>
+                                <Check size={14} /> Added
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => handleSave(item)}
+                                disabled={isSaving}
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: 5,
+                                  padding: '5px 14px', borderRadius: 8, border: 'none',
+                                  fontSize: 12, fontWeight: 600,
+                                  cursor: isSaving ? 'not-allowed' : 'pointer',
+                                  backgroundColor: colors.brand.primary, color: '#FFFFFF',
+                                  opacity: isSaving ? 0.7 : 1, transition: 'all 0.15s',
+                                }}
+                                onMouseEnter={e => { if (!isSaving) (e.target as HTMLElement).style.transform = 'scale(1.05)'; }}
+                                onMouseLeave={e => { (e.target as HTMLElement).style.transform = 'scale(1)'; }}
+                              >
+                                {isSaving ? 'Adding...' : <><Plus size={13} /> Add</>}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       ) : (
-        /* ═══ GRID ═══ */
+        /* ═══ MY RESOURCES — FLAT GRID ═══ */
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
           gap: 16,
         }}>
           {paged.map((item: any) => {
-            const isMyView = view === 'my-resources';
-            const isDeleted = isMyView && item.is_active === false;
+            const isDeleted = item.is_active === false;
             const typeCfg = getTypeConfig(item.resource_type_id);
             const TypeIcon = typeCfg.icon;
             const isConfirming = confirmDeleteId === item.id;
             const isDeleting = deletingId === item.id;
-            const added = !isMyView && isTemplateAdded(item);
-            const isSaving = savingId === item.id;
 
             return (
               <div
@@ -467,7 +727,6 @@ const ResourcesPage: React.FC = () => {
 
                 {/* Card Header */}
                 <div style={{ padding: '16px 16px 0', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                  {/* Icon circle */}
                   <div style={{
                     width: 42, height: 42, borderRadius: 10,
                     backgroundColor: typeCfg.color + '18',
@@ -497,16 +756,6 @@ const ResourcesPage: React.FC = () => {
                       }}>
                         {typeCfg.label}
                       </span>
-                      {!isMyView && item.industry_id && (
-                        <span style={{
-                          padding: '2px 8px', borderRadius: 12,
-                          fontSize: 10, fontWeight: 600,
-                          backgroundColor: colors.utility.primaryText + '08',
-                          color: colors.utility.secondaryText,
-                        }}>
-                          {formatIndustryId(item.industry_id)}
-                        </span>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -534,95 +783,60 @@ const ResourcesPage: React.FC = () => {
                   borderTop: `1px solid ${colors.utility.primaryText}08`,
                   display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8,
                 }}>
-                  {isMyView ? (
-                    isDeleted ? (
-                      /* Deleted item — contact admin */
-                      <div style={{
-                        display: 'flex', alignItems: 'center', gap: 6,
-                        fontSize: 11, color: colors.utility.secondaryText,
-                      }}>
-                        <ShieldAlert size={13} />
-                        <span>Contact admin to restore</span>
-                      </div>
-                    ) : isConfirming ? (
-                      /* Delete confirmation */
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <span style={{ fontSize: 12, color: colors.semantic?.error || '#EF4444', fontWeight: 600 }}>Remove?</span>
-                        <button
-                          onClick={() => handleDelete(item.id, item.display_name || item.name)}
-                          disabled={isDeleting}
-                          style={{
-                            padding: '5px 14px', borderRadius: 8, border: 'none',
-                            fontSize: 12, fontWeight: 600, cursor: isDeleting ? 'not-allowed' : 'pointer',
-                            backgroundColor: colors.semantic?.error || '#EF4444', color: '#FFF',
-                            opacity: isDeleting ? 0.7 : 1, display: 'flex', alignItems: 'center', gap: 4,
-                            transition: 'all 0.15s',
-                          }}
-                        >
-                          {isDeleting ? 'Removing...' : 'Yes, Remove'}
-                        </button>
-                        <button
-                          onClick={() => setConfirmDeleteId(null)}
-                          style={{
-                            padding: '5px 14px', borderRadius: 8,
-                            border: `1px solid ${colors.utility.primaryText}20`,
-                            backgroundColor: 'transparent', fontSize: 12, fontWeight: 600,
-                            cursor: 'pointer', color: colors.utility.primaryText,
-                          }}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
-                      /* Normal — delete button */
+                  {isDeleted ? (
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      fontSize: 11, color: colors.utility.secondaryText,
+                    }}>
+                      <ShieldAlert size={13} />
+                      <span>Contact admin to restore</span>
+                    </div>
+                  ) : isConfirming ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 12, color: colors.semantic?.error || '#EF4444', fontWeight: 600 }}>Remove?</span>
                       <button
-                        onClick={() => setConfirmDeleteId(item.id)}
+                        onClick={() => handleDelete(item.id, item.display_name || item.name)}
+                        disabled={isDeleting}
                         style={{
-                          display: 'flex', alignItems: 'center', gap: 5,
-                          padding: '5px 12px', borderRadius: 8,
-                          border: `1px solid ${colors.utility.primaryText}15`,
-                          backgroundColor: 'transparent',
-                          color: colors.utility.secondaryText,
-                          cursor: 'pointer', fontSize: 12, fontWeight: 500,
+                          padding: '5px 14px', borderRadius: 8, border: 'none',
+                          fontSize: 12, fontWeight: 600, cursor: isDeleting ? 'not-allowed' : 'pointer',
+                          backgroundColor: colors.semantic?.error || '#EF4444', color: '#FFF',
+                          opacity: isDeleting ? 0.7 : 1, display: 'flex', alignItems: 'center', gap: 4,
                           transition: 'all 0.15s',
                         }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = (colors.semantic?.error || '#EF4444') + '60'; (e.currentTarget as HTMLElement).style.color = colors.semantic?.error || '#EF4444'; }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = colors.utility.primaryText + '15'; (e.currentTarget as HTMLElement).style.color = colors.utility.secondaryText; }}
-                        title="Remove resource"
                       >
-                        <Trash2 size={13} /> Remove
+                        {isDeleting ? 'Removing...' : 'Yes, Remove'}
                       </button>
-                    )
-                  ) : (
-                    /* Browse catalog — Add/Added */
-                    added ? (
-                      <span style={{
-                        display: 'flex', alignItems: 'center', gap: 5,
-                        fontSize: 12, fontWeight: 600,
-                        color: colors.semantic?.success || '#16a34a',
-                        padding: '5px 14px', borderRadius: 8,
-                        backgroundColor: (colors.semantic?.success || '#16a34a') + '12',
-                      }}>
-                        <Check size={14} /> Added
-                      </span>
-                    ) : (
                       <button
-                        onClick={() => handleSave(item)}
-                        disabled={isSaving}
+                        onClick={() => setConfirmDeleteId(null)}
                         style={{
-                          display: 'flex', alignItems: 'center', gap: 5,
-                          padding: '5px 14px', borderRadius: 8, border: 'none',
-                          fontSize: 12, fontWeight: 600,
-                          cursor: isSaving ? 'not-allowed' : 'pointer',
-                          backgroundColor: colors.brand.primary, color: '#FFFFFF',
-                          opacity: isSaving ? 0.7 : 1, transition: 'all 0.15s',
+                          padding: '5px 14px', borderRadius: 8,
+                          border: `1px solid ${colors.utility.primaryText}20`,
+                          backgroundColor: 'transparent', fontSize: 12, fontWeight: 600,
+                          cursor: 'pointer', color: colors.utility.primaryText,
                         }}
-                        onMouseEnter={e => { if (!isSaving) (e.target as HTMLElement).style.transform = 'scale(1.05)'; }}
-                        onMouseLeave={e => { (e.target as HTMLElement).style.transform = 'scale(1)'; }}
                       >
-                        {isSaving ? 'Adding...' : <><Plus size={13} /> Add</>}
+                        Cancel
                       </button>
-                    )
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmDeleteId(item.id)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 5,
+                        padding: '5px 12px', borderRadius: 8,
+                        border: `1px solid ${colors.utility.primaryText}15`,
+                        backgroundColor: 'transparent',
+                        color: colors.utility.secondaryText,
+                        cursor: 'pointer', fontSize: 12, fontWeight: 500,
+                        transition: 'all 0.15s',
+                      }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = (colors.semantic?.error || '#EF4444') + '60'; (e.currentTarget as HTMLElement).style.color = colors.semantic?.error || '#EF4444'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = colors.utility.primaryText + '15'; (e.currentTarget as HTMLElement).style.color = colors.utility.secondaryText; }}
+                      title="Remove resource"
+                    >
+                      <Trash2 size={13} /> Remove
+                    </button>
                   )}
                 </div>
               </div>
@@ -647,8 +861,8 @@ const ResourcesPage: React.FC = () => {
         </div>
       )}
 
-      {/* ═══ PAGINATION ═══ */}
-      {!isLoading && !isError && currentItems.length > ITEMS_PER_PAGE && (
+      {/* ═══ PAGINATION (my-resources only) ═══ */}
+      {view === 'my-resources' && !isLoading && !isError && currentItems.length > ITEMS_PER_PAGE && (
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           marginTop: 24, flexWrap: 'wrap', gap: 12,

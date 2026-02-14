@@ -1193,7 +1193,7 @@ async function handleGetResourceTemplates(supabase: any, tenantId: string, searc
     // Step 3: Fetch paginated templates
     let templatesQuery = supabase
       .from('m_catalog_resource_templates')
-      .select('id, industry_id, resource_type_id, name, description, default_attributes, pricing_guidance, popularity_score, is_recommended, sort_order')
+      .select('id, industry_id, resource_type_id, name, description, default_attributes, pricing_guidance, popularity_score, is_recommended, sort_order, sub_category')
       .in('industry_id', industryIds)
       .in('resource_type_id', resourceTypeFilter ? [resourceTypeFilter] : ['equipment', 'asset'])
       .eq('is_active', true)
@@ -1233,6 +1233,7 @@ async function handleGetResourceTemplates(supabase: any, tenantId: string, searc
     const enrichedTemplates = (templates || []).map((t: any) => ({
       ...t,
       already_added: addedTemplateIds.includes(t.id),
+      sub_category: t.sub_category || null,
       // Parse JSON attributes for UI convenience
       make_examples: t.default_attributes?.make_examples || [],
       maintenance_schedule: t.default_attributes?.maintenance_schedule || null,
