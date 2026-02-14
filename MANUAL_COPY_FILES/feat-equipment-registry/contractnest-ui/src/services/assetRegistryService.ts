@@ -132,16 +132,16 @@ class AssetRegistryService {
   private transformForAPI(formData: Partial<AssetFormData>): Record<string, any> {
     const payload: Record<string, any> = { ...formData };
 
-    // Convert empty strings to null for optional fields
-    const nullableFields = [
+    // Remove empty optional fields entirely (express-validator rejects null)
+    const optionalFields = [
       'code', 'description', 'location', 'make', 'model',
       'serial_number', 'purchase_date', 'warranty_expiry',
       'last_service_date', 'owner_contact_id', 'asset_type_id',
       'parent_asset_id',
     ];
-    for (const field of nullableFields) {
-      if (payload[field] === '' || payload[field] === undefined) {
-        payload[field] = null;
+    for (const field of optionalFields) {
+      if (payload[field] === '' || payload[field] === undefined || payload[field] === null) {
+        delete payload[field];
       }
     }
 
