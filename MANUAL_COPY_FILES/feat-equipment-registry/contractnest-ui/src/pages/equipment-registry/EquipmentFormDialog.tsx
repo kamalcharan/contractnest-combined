@@ -1,5 +1,5 @@
-// src/pages/settings/Equipment/EquipmentFormDialog.tsx
-// Dialog for creating / editing an equipment asset
+// src/pages/equipment-registry/EquipmentFormDialog.tsx
+// Right-side drawer for creating / editing an equipment asset
 
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Trash2 } from 'lucide-react';
@@ -8,14 +8,6 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import ContactPicker from '@/components/common/ContactPicker';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
@@ -65,7 +57,7 @@ const EquipmentFormDialog: React.FC<EquipmentFormDialogProps> = ({
   const [specRows, setSpecRows] = useState<Array<{ key: string; value: string }>>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Initialise form when dialog opens
+  // Initialise form when drawer opens
   useEffect(() => {
     if (!isOpen) return;
 
@@ -93,7 +85,6 @@ const EquipmentFormDialog: React.FC<EquipmentFormDialogProps> = ({
         specifications: asset.specifications || {},
         tags: asset.tags || [],
       });
-      // Convert spec object to rows
       const specs = asset.specifications || {};
       setSpecRows(Object.entries(specs).map(([key, value]) => ({ key, value: String(value) })));
     } else {
@@ -107,7 +98,6 @@ const EquipmentFormDialog: React.FC<EquipmentFormDialogProps> = ({
 
   const updateField = (field: keyof AssetFormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
-    // Clear error for this field
     if (errors[field]) {
       setErrors((prev) => {
         const next = { ...prev };
@@ -143,19 +133,16 @@ const EquipmentFormDialog: React.FC<EquipmentFormDialogProps> = ({
 
   const handleSubmit = async () => {
     if (!validate()) return;
-
-    // Build specifications from rows
     const specifications: Record<string, string> = {};
     for (const row of specRows) {
       if (row.key.trim() && row.value.trim()) {
         specifications[row.key.trim()] = row.value.trim();
       }
     }
-
     await onSubmit({ ...formData, specifications });
   };
 
-  // ── Render ──────────────────────────────────────────────────────
+  // ── Styles ──────────────────────────────────────────────────────
 
   const sectionHeaderStyle = {
     fontSize: '11px',
@@ -168,28 +155,75 @@ const EquipmentFormDialog: React.FC<EquipmentFormDialogProps> = ({
     borderBottom: `1px solid ${colors.utility.primaryText}10`,
   };
 
+  if (!isOpen) return null;
+
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent
-        className="max-w-2xl max-h-[90vh] overflow-y-auto"
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-40 transition-opacity"
+        style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+        onClick={onClose}
+      />
+
+      {/* Drawer — slides in from right */}
+      <div
+        className="fixed top-0 right-0 bottom-0 z-50 w-full md:w-[560px] lg:w-[620px] shadow-2xl border-l flex flex-col animate-slide-in-right"
         style={{
-          backgroundColor: colors.utility.secondaryBackground,
-          borderColor: colors.utility.primaryText + '20',
+          backgroundColor: colors.utility.primaryBackground,
+          borderColor: `${colors.utility.primaryText}15`,
         }}
       >
-        <DialogHeader>
-          <DialogTitle style={{ color: colors.utility.primaryText }}>
-            {mode === 'create' ? 'Add Equipment' : `Edit: ${asset?.name || ''}`}
-          </DialogTitle>
-          <DialogDescription style={{ color: colors.utility.secondaryText }}>
-            {mode === 'create'
-              ? 'Register new equipment in your asset registry.'
-              : 'Update the equipment details below.'}
-          </DialogDescription>
-        </DialogHeader>
+        {/* ── Drawer Header ──────────────────────────────────────── */}
+        <div
+          className="flex items-center justify-between px-6 py-4 border-b flex-shrink-0"
+          style={{ borderColor: `${colors.utility.primaryText}12` }}
+        >
+          <div>
+            <h2 className="text-lg font-bold" style={{ color: colors.utility.primaryText }}>
+              {mode === 'create' ? 'Add Equipment' : `Edit: ${asset?.name || ''}`}
+            </h2>
+            <p className="text-xs mt-0.5" style={{ color: colors.utility.secondaryText }}>
+              {mode === 'create'
+                ? 'Register new equipment in your asset registry.'
+                : 'Update the equipment details below.'}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-lg transition-colors hover:opacity-70"
+            style={{ color: colors.utility.secondaryText }}
+          >
+            <X size={18} />
+          </button>
+        </div>
 
-        <div className="space-y-6 py-4">
-          {/* ── Basic Information ────────────────────────────────── */}
+        {/* ── Scrollable Form Body ───────────────────────────────── */}
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+
+          {/* ── Owner / Buyer (prominent, at the top) ──────────── */}
+          <div
+            className="rounded-lg p-4 border"
+            style={{
+              backgroundColor: `${colors.brand.primary}06`,
+              borderColor: `${colors.brand.primary}20`,
+            }}
+          >
+            <h4 style={{ ...sectionHeaderStyle, color: colors.brand.primary, borderBottom: 'none', paddingBottom: 0, marginBottom: '8px' }}>
+              Client / Owner
+            </h4>
+            <p className="text-xs mb-3" style={{ color: colors.utility.secondaryText }}>
+              Whose equipment is this? Select the client who owns this equipment.
+            </p>
+            <ContactPicker
+              value={formData.owner_contact_id}
+              onChange={(contactId) => updateField('owner_contact_id', contactId)}
+              placeholder="Search client by name, email, or company..."
+              classifications={['buyer']}
+            />
+          </div>
+
+          {/* ── Basic Information ─────────────────────────────────── */}
           <div>
             <h4 style={sectionHeaderStyle}>Basic Information</h4>
             <div className="grid grid-cols-2 gap-3">
@@ -303,20 +337,6 @@ const EquipmentFormDialog: React.FC<EquipmentFormDialogProps> = ({
             </div>
           </div>
 
-          {/* ── Owner / Buyer ─────────────────────────────────────── */}
-          <div>
-            <h4 style={sectionHeaderStyle}>Owner / Buyer</h4>
-            <p className="text-xs mb-3" style={{ color: colors.utility.secondaryText }}>
-              Whose equipment is this? Select the client who owns this equipment.
-            </p>
-            <ContactPicker
-              value={formData.owner_contact_id}
-              onChange={(contactId) => updateField('owner_contact_id', contactId)}
-              placeholder="Search client by name, email, or company..."
-              classifications={['buyer']}
-            />
-          </div>
-
           {/* ── Warranty & Dates ─────────────────────────────────── */}
           <div>
             <h4 style={sectionHeaderStyle}>Warranty & Dates</h4>
@@ -427,7 +447,7 @@ const EquipmentFormDialog: React.FC<EquipmentFormDialogProps> = ({
               </div>
             </div>
 
-            {/* Criticality Selector (visual chips like mockup) */}
+            {/* Criticality Selector (visual chips) */}
             <div className="mt-3">
               <Label style={{ color: colors.utility.primaryText }}>Criticality</Label>
               <div className="flex gap-2 mt-2">
@@ -509,7 +529,11 @@ const EquipmentFormDialog: React.FC<EquipmentFormDialogProps> = ({
           </div>
         </div>
 
-        <DialogFooter>
+        {/* ── Sticky Footer ──────────────────────────────────────── */}
+        <div
+          className="flex items-center justify-end gap-3 px-6 py-4 border-t flex-shrink-0"
+          style={{ borderColor: `${colors.utility.primaryText}12` }}
+        >
           <Button
             variant="outline"
             onClick={onClose}
@@ -536,9 +560,20 @@ const EquipmentFormDialog: React.FC<EquipmentFormDialogProps> = ({
                 ? 'Save Equipment'
                 : 'Update Equipment'}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+      </div>
+
+      {/* Slide-in animation */}
+      <style>{`
+        @keyframes slideInRight {
+          from { transform: translateX(100%); }
+          to { transform: translateX(0); }
+        }
+        .animate-slide-in-right {
+          animation: slideInRight 0.25s ease-out forwards;
+        }
+      `}</style>
+    </>
   );
 };
 

@@ -24,8 +24,8 @@ class AssetRegistryService {
       const data = response.data?.data || response.data;
       if (!Array.isArray(data)) return [];
 
-      // Keep only equipment-class types: id matches equipment/asset/consumable
-      const EQUIPMENT_IDS = ['equipment', 'asset', 'consumable'];
+      // Keep only equipment + asset types (not consumables, not team_staff, not partner)
+      const EQUIPMENT_IDS = ['equipment', 'asset'];
       return data.filter((t: any) =>
         EQUIPMENT_IDS.includes((t.id || '').toLowerCase()) ||
         EQUIPMENT_IDS.includes((t.parent_type_id || '').toLowerCase())
