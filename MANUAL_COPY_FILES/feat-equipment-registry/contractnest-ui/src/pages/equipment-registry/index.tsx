@@ -25,10 +25,10 @@ import {
   useUpdateAsset,
   useDeleteAsset,
 } from '@/hooks/queries/useAssetRegistry';
-import { useResourceTypes } from '@/hooks/queries/useResources';
+import { useResources } from '@/hooks/queries/useResources';
 
 // Types
-import type { TenantAsset, AssetRegistryFilters, AssetFormData, EquipmentCategory } from '@/types/assetRegistry';
+import type { TenantAsset, AssetRegistryFilters, AssetFormData } from '@/types/assetRegistry';
 
 // Components
 import EquipmentCard from './EquipmentCard';
@@ -52,29 +52,25 @@ const EquipmentPage: React.FC = () => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
 
-  // ── Equipment Categories — from tenant's configured resource types ──
-  // Connects Step 2-3 (Resources setup) → Step 5-6 (Equipment Registry)
+  // ── Equipment Categories — tenant's resources from Step 2-3 ────────
   const EQUIPMENT_TYPE_IDS = ['equipment', 'asset'];
   const {
-    data: allResourceTypes = [],
+    data: allResources = [],
     isLoading: categoriesLoading,
     isError: categoriesError,
-  } = useResourceTypes();
+  } = useResources();
 
-  const categories: EquipmentCategory[] = useMemo(() => {
-    return (allResourceTypes as any[])
-      .filter((t) =>
-        EQUIPMENT_TYPE_IDS.includes((t.id || '').toLowerCase()) ||
-        EQUIPMENT_TYPE_IDS.includes((t.parent_type_id || '').toLowerCase())
+  const categories = useMemo(() => {
+    return allResources
+      .filter((r) =>
+        EQUIPMENT_TYPE_IDS.includes((r.resource_type_id || '').toLowerCase()) && r.is_active
       )
-      .map((t) => ({
-        id: t.id,
-        name: t.name,
-        description: t.description || '',
-        icon: t.icon || null,
-        parent_type_id: t.parent_type_id || null,
+      .map((r) => ({
+        id: r.id,
+        name: r.display_name || r.name,
+        icon: null as string | null,
       }));
-  }, [allResourceTypes]);
+  }, [allResources]);
 
   // ── Local State ─────────────────────────────────────────────────
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>(
@@ -459,6 +455,7 @@ const EquipmentPage: React.FC = () => {
         onClose={() => setIsCreateOpen(false)}
         mode="create"
         resourceTypeId={selectedCategoryId}
+        categories={categories}
         onSubmit={handleCreateSubmit}
         isSubmitting={createMutation.isPending}
       />
@@ -471,6 +468,7 @@ const EquipmentPage: React.FC = () => {
         }}
         mode="edit"
         asset={editingAsset || undefined}
+        categories={categories}
         onSubmit={handleEditSubmit}
         isSubmitting={updateMutation.isPending}
       />

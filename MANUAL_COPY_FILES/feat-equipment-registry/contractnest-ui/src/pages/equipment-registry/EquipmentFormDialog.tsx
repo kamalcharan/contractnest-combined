@@ -35,6 +35,7 @@ interface EquipmentFormDialogProps {
   mode: 'create' | 'edit';
   asset?: TenantAsset;
   resourceTypeId?: string;
+  categories?: Array<{ id: string; name: string }>;
   onSubmit: (data: AssetFormData) => Promise<void>;
   isSubmitting?: boolean;
 }
@@ -45,6 +46,7 @@ const EquipmentFormDialog: React.FC<EquipmentFormDialogProps> = ({
   mode,
   asset,
   resourceTypeId,
+  categories = [],
   onSubmit,
   isSubmitting = false,
 }) => {
@@ -201,7 +203,7 @@ const EquipmentFormDialog: React.FC<EquipmentFormDialogProps> = ({
         {/* ── Scrollable Form Body ───────────────────────────────── */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
 
-          {/* ── Owner / Buyer (prominent, at the top) ──────────── */}
+          {/* ── Equipment Type (from sidebar / tenant resources) ── */}
           <div
             className="rounded-lg p-4 border"
             style={{
@@ -210,10 +212,46 @@ const EquipmentFormDialog: React.FC<EquipmentFormDialogProps> = ({
             }}
           >
             <h4 style={{ ...sectionHeaderStyle, color: colors.brand.primary, borderBottom: 'none', paddingBottom: 0, marginBottom: '8px' }}>
+              Equipment Type <span className="text-red-500">*</span>
+            </h4>
+            <p className="text-xs mb-3" style={{ color: colors.utility.secondaryText }}>
+              Which equipment are you registering?
+            </p>
+            {categories.length > 0 ? (
+              <Select
+                value={formData.resource_type_id}
+                onValueChange={(v) => updateField('resource_type_id', v)}
+              >
+                <SelectTrigger
+                  style={{
+                    borderColor: errors.resource_type_id ? '#ef4444' : colors.utility.primaryText + '20',
+                    backgroundColor: colors.utility.primaryBackground,
+                    color: colors.utility.primaryText,
+                  }}
+                >
+                  <SelectValue placeholder="Select equipment type..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <p className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                No equipment configured. Add equipment in Settings &rarr; Resources first.
+              </p>
+            )}
+            {errors.resource_type_id && <p className="text-xs text-red-500 mt-1">{errors.resource_type_id}</p>}
+
+            {/* Client / Owner */}
+            <h4 style={{ ...sectionHeaderStyle, color: colors.brand.primary, borderBottom: 'none', paddingBottom: 0, marginBottom: '8px', marginTop: '16px' }}>
               Client / Owner
             </h4>
             <p className="text-xs mb-3" style={{ color: colors.utility.secondaryText }}>
-              Whose equipment is this? Select the client who owns this equipment.
+              Whose equipment is this?
             </p>
             <ContactPicker
               value={formData.owner_contact_id}
