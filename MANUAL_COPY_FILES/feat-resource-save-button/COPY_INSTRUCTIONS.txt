@@ -1,8 +1,8 @@
 ═══════════════════════════════════════════════════════════════
-COPY INSTRUCTIONS — feat-resource-save-button
+COPY INSTRUCTIONS — feat-resource-save-button (v2 — Full UX)
 ═══════════════════════════════════════════════════════════════
 
-Feature: Add Save/Add button on resource template cards
+Feature: Two-mode Resources page with Add/Remove + Search + Tabs
 Submodules Affected: contractnest-ui
 
 FILES TO COPY:
@@ -13,11 +13,16 @@ FILES TO COPY:
 
 NO OTHER FILES CHANGED.
 
-EXISTING HOOKS/SERVICES USED (already in your codebase — no changes needed):
-  - src/hooks/queries/useResources.ts        → useCreateResource mutation
-  - src/hooks/queries/useResourceTemplates.ts → useResourceTemplatesBrowser query
-  - src/services/resourcesService.ts          → API calls
-  - react-hot-toast                           → toast notifications
+EXISTING HOOKS/SERVICES USED (already in your codebase):
+  - src/hooks/queries/useResources.ts        → useResources, useCreateResource, useDeleteResource
+  - src/hooks/queries/useResourceTemplates.ts → useResourceTemplatesBrowser
+  - react-hot-toast                           → toast notifications (built into hooks)
 
-FLOW:
-  UI (useCreateResource) → API POST /api/resources → Edge handleCreateResource → t_category_resources_master
+WHAT'S NEW:
+  - Two view modes: "My Resources" (default) and "Browse Catalog"
+  - Search bar with clear button on both views
+  - Tabs with counts: All (24) | Equipment (18) | Entities (6)
+  - Add from catalog via existing createResource CRUD
+  - Remove from My Resources with inline Yes/No confirmation
+  - Empty states for both views with CTAs
+  - Type badges on cards (equipment, asset, etc.)
