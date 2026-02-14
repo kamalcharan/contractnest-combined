@@ -1,11 +1,11 @@
 // src/components/common/ContactPicker.tsx
 // Async-search combobox for selecting a contact (Owner / Buyer)
+// Uses the same useContactList / useContact hooks as the Contract Wizard Step 3
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Search, X, User, Building2, Loader2, ChevronsUpDown } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
-import { contactService } from '@/services/contactService';
-import type { Contact } from '@/types/contact';
+import { useContactList, useContact, type Contact } from '@/hooks/useContacts';
 
 interface ContactPickerProps {
   value: string | undefined;            // contact ID
@@ -17,7 +17,7 @@ interface ContactPickerProps {
   classifications?: string[];
 }
 
-const DEBOUNCE_MS = 350;
+const DEBOUNCE_MS = 300;
 
 const ContactPicker: React.FC<ContactPickerProps> = ({
   value,
@@ -32,54 +32,38 @@ const ContactPicker: React.FC<ContactPickerProps> = ({
 
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<Contact[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
 
-  // ── Load selected contact on mount (if value provided) ──
+  // ── Debounce search input ──
   useEffect(() => {
-    if (!value) {
-      setSelectedContact(null);
-      return;
-    }
-    // Fetch the contact by ID to show its name
-    contactService.getContact(value)
-      .then((contact) => setSelectedContact(contact))
-      .catch(() => setSelectedContact(null));
-  }, [value]);
-
-  // ── Search contacts ──
-  const searchContacts = useCallback(async (searchQuery: string) => {
-    setIsLoading(true);
-    try {
-      const response = await contactService.listContacts({
-        search: searchQuery || undefined,
-        status: 'active',
-        classifications: classifications,
-        limit: 20,
-      });
-      setResults(response.data || []);
-    } catch {
-      setResults([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [classifications]);
-
-  // ── Debounced search on query change ──
-  useEffect(() => {
-    if (!isOpen) return;
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
     debounceTimer.current = setTimeout(() => {
-      searchContacts(query);
-    }, query ? DEBOUNCE_MS : 0);
+      setDebouncedSearch(query);
+    }, DEBOUNCE_MS);
     return () => {
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
     };
-  }, [query, isOpen, searchContacts]);
+  }, [query]);
+
+  // ── Fetch contacts list via useContactList (same as wizard) ──
+  const contactListFilters = useMemo(() => ({
+    page: 1,
+    limit: 20,
+    search: debouncedSearch || undefined,
+    classifications: classifications || [],
+    status: 'active' as const,
+    sort_by: 'created_at',
+    sort_order: 'desc' as const,
+    enabled: isOpen,   // only fetch when dropdown is open
+  }), [debouncedSearch, classifications, isOpen]);
+
+  const { data: contacts, loading: listLoading } = useContactList(contactListFilters);
+
+  // ── Fetch selected contact by ID via useContact (same as wizard) ──
+  const { data: selectedContactData } = useContact(value || '');
 
   // ── Close on outside click ──
   useEffect(() => {
@@ -94,7 +78,6 @@ const ContactPicker: React.FC<ContactPickerProps> = ({
 
   // ── Handlers ──
   const handleSelect = (contact: Contact) => {
-    setSelectedContact(contact);
     onChange(contact.id);
     setIsOpen(false);
     setQuery('');
@@ -102,7 +85,6 @@ const ContactPicker: React.FC<ContactPickerProps> = ({
 
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setSelectedContact(null);
     onChange(undefined);
     setQuery('');
   };
@@ -123,7 +105,7 @@ const ContactPicker: React.FC<ContactPickerProps> = ({
     const parts: string[] = [];
     if (contact.company_name && contact.name) parts.push(contact.name);
     if (contact.designation) parts.push(contact.designation);
-    const email = contact.contact_channels?.find(c => c.channel_type === 'email')?.value;
+    const email = contact.contact_channels?.find((c: any) => c.channel_type === 'email')?.value;
     if (email) parts.push(email);
     return parts.join(' · ');
   };
@@ -138,7 +120,7 @@ const ContactPicker: React.FC<ContactPickerProps> = ({
     borderRadius: 6,
     border: `1px solid ${colors.utility.primaryText}20`,
     backgroundColor: colors.utility.primaryBackground,
-    color: selectedContact ? colors.utility.primaryText : colors.utility.secondaryText,
+    color: selectedContactData ? colors.utility.primaryText : colors.utility.secondaryText,
     fontSize: 13,
     cursor: disabled ? 'not-allowed' : 'pointer',
     opacity: disabled ? 0.6 : 1,
@@ -171,14 +153,14 @@ const ContactPicker: React.FC<ContactPickerProps> = ({
       {/* Trigger */}
       <div style={triggerStyle} onClick={handleOpen}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
-          {selectedContact ? (
+          {selectedContactData ? (
             <>
-              {selectedContact.type === 'corporate'
+              {selectedContactData.type === 'corporate'
                 ? <Building2 size={14} style={{ flexShrink: 0, color: colors.brand.primary }} />
                 : <User size={14} style={{ flexShrink: 0, color: colors.brand.primary }} />
               }
               <span style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {getDisplayName(selectedContact)}
+                {getDisplayName(selectedContactData)}
               </span>
             </>
           ) : (
@@ -186,7 +168,7 @@ const ContactPicker: React.FC<ContactPickerProps> = ({
           )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-          {selectedContact && (
+          {selectedContactData && (
             <button
               onClick={handleClear}
               style={{ background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: colors.utility.secondaryText, display: 'flex' }}
@@ -221,18 +203,18 @@ const ContactPicker: React.FC<ContactPickerProps> = ({
                   width: '100%',
                 }}
               />
-              {isLoading && <Loader2 size={14} className="animate-spin" style={{ color: colors.utility.secondaryText, flexShrink: 0 }} />}
+              {listLoading && <Loader2 size={14} className="animate-spin" style={{ color: colors.utility.secondaryText, flexShrink: 0 }} />}
             </div>
           </div>
 
           {/* Results */}
           <div style={{ maxHeight: 240, overflowY: 'auto' }}>
-            {results.length === 0 && !isLoading && (
+            {contacts.length === 0 && !listLoading && (
               <div style={{ padding: '20px 12px', textAlign: 'center', fontSize: 13, color: colors.utility.secondaryText }}>
                 {query ? 'No contacts found' : 'Type to search contacts'}
               </div>
             )}
-            {results.map((contact) => {
+            {contacts.map((contact: Contact) => {
               const isSelected = value === contact.id;
               return (
                 <div
