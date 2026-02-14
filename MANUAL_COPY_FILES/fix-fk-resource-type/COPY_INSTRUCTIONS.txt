@@ -1,0 +1,22 @@
+FIX: resource_type_id FK constraint violation on t_client_asset_registry
+=====================================================================
+
+ROOT CAUSE:
+  resource_type_id in t_client_asset_registry has FK to m_catalog_resource_types(id)
+  which stores VARCHAR(50) strings like 'equipment', 'asset'.
+  The form was sending the tenant resource UUID (from t_catalog_resources) instead.
+
+FIX:
+  - resource_type_id = master catalog type string ('equipment'/'asset') -> satisfies FK
+  - asset_type_id = tenant resource UUID -> used for sidebar filtering (no FK constraint)
+
+SUBMODULES AFFECTED: contractnest-ui, contractnest-edge, contractnest-api
+
+FILES CHANGED (7 total):
+  contractnest-ui/src/pages/equipment-registry/EquipmentFormDialog.tsx  (form now sets correct fields)
+  contractnest-ui/src/pages/equipment-registry/index.tsx                (filter uses asset_type_id)
+  contractnest-ui/src/types/assetRegistry.ts                            (added asset_type_id to filters)
+  contractnest-ui/src/services/serviceURLs.ts                           (added asset_type_id to URL builder)
+  contractnest-edge/supabase/functions/client-asset-registry/index.ts   (handleGet supports asset_type_id filter)
+  contractnest-api/src/controllers/clientAssetRegistryController.ts     (passes asset_type_id param)
+  contractnest-api/src/services/clientAssetRegistryService.ts           (added asset_type_id to params type)
