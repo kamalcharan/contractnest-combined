@@ -1,0 +1,23 @@
+═══════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS — feat-resource-save-button
+═══════════════════════════════════════════════════════════════
+
+Feature: Add Save/Add button on resource template cards
+Submodules Affected: contractnest-ui
+
+FILES TO COPY:
+──────────────
+1. contractnest-ui/src/pages/settings/Resources/index.tsx
+   FROM: MANUAL_COPY_FILES/feat-resource-save-button/contractnest-ui/src/pages/settings/Resources/index.tsx
+   TO:   contractnest-ui/src/pages/settings/Resources/index.tsx
+
+NO OTHER FILES CHANGED.
+
+EXISTING HOOKS/SERVICES USED (already in your codebase — no changes needed):
+  - src/hooks/queries/useResources.ts        → useCreateResource mutation
+  - src/hooks/queries/useResourceTemplates.ts → useResourceTemplatesBrowser query
+  - src/services/resourcesService.ts          → API calls
+  - react-hot-toast                           → toast notifications
+
+FLOW:
+  UI (useCreateResource) → API POST /api/resources → Edge handleCreateResource → t_category_resources_master
