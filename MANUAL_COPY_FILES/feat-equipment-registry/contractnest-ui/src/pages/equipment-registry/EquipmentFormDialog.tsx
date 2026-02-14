@@ -128,7 +128,8 @@ const EquipmentFormDialog: React.FC<EquipmentFormDialogProps> = ({
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
     if (!formData.name.trim()) errs.name = 'Name is required';
-    if (!formData.resource_type_id) errs.resource_type_id = 'Resource type is required';
+    if (!formData.resource_type_id) errs.resource_type_id = 'Equipment type is required';
+    if (!formData.owner_contact_id) errs.owner_contact_id = 'Client / Owner is required';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -259,6 +260,7 @@ const EquipmentFormDialog: React.FC<EquipmentFormDialogProps> = ({
               placeholder="Search client by name, email, or company..."
               classifications={['client']}
             />
+            {errors.owner_contact_id && <p className="text-xs text-red-500 mt-1">{errors.owner_contact_id}</p>}
           </div>
 
           {/* ── Basic Information ─────────────────────────────────── */}

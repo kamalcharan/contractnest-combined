@@ -39,7 +39,7 @@ class AssetRegistryService {
 
   async listAssets(filters: AssetRegistryFilters = {}): Promise<AssetListResponse> {
     try {
-      const url = API_ENDPOINTS.ASSET_REGISTRY.LIST_WITH_FILTERS(filters);
+      const url = API_ENDPOINTS.CLIENT_ASSET_REGISTRY.LIST_WITH_FILTERS(filters);
       const response = await api.get(url);
       const data = response.data?.data || response.data;
 
@@ -66,7 +66,7 @@ class AssetRegistryService {
 
   async getAsset(id: string): Promise<TenantAsset> {
     try {
-      const url = API_ENDPOINTS.ASSET_REGISTRY.GET(id);
+      const url = API_ENDPOINTS.CLIENT_ASSET_REGISTRY.GET(id);
       const response = await api.get(url);
       return response.data?.data || response.data;
     } catch (error: any) {
@@ -79,7 +79,7 @@ class AssetRegistryService {
   async createAsset(formData: AssetFormData): Promise<TenantAsset> {
     try {
       const payload = this.transformForAPI(formData);
-      const response = await api.post(API_ENDPOINTS.ASSET_REGISTRY.CREATE, payload, {
+      const response = await api.post(API_ENDPOINTS.CLIENT_ASSET_REGISTRY.CREATE, payload, {
         headers: {
           'x-idempotency-key': `create-asset-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         },
@@ -95,7 +95,7 @@ class AssetRegistryService {
   async updateAsset(id: string, formData: Partial<AssetFormData>): Promise<TenantAsset> {
     try {
       const payload = this.transformForAPI(formData);
-      const url = API_ENDPOINTS.ASSET_REGISTRY.UPDATE(id);
+      const url = API_ENDPOINTS.CLIENT_ASSET_REGISTRY.UPDATE(id);
       const response = await api.patch(url, payload);
       return response.data?.data || response.data;
     } catch (error: any) {
@@ -107,7 +107,7 @@ class AssetRegistryService {
 
   async deleteAsset(id: string): Promise<void> {
     try {
-      const url = API_ENDPOINTS.ASSET_REGISTRY.DELETE(id);
+      const url = API_ENDPOINTS.CLIENT_ASSET_REGISTRY.DELETE(id);
       await api.delete(url);
     } catch (error: any) {
       throw this.handleError(error, 'Failed to delete asset');
@@ -118,7 +118,7 @@ class AssetRegistryService {
 
   async getChildren(parentAssetId: string): Promise<TenantAsset[]> {
     try {
-      const url = API_ENDPOINTS.ASSET_REGISTRY.CHILDREN(parentAssetId);
+      const url = API_ENDPOINTS.CLIENT_ASSET_REGISTRY.CHILDREN(parentAssetId);
       const response = await api.get(url);
       const data = response.data?.data || response.data;
       return Array.isArray(data) ? data : [];
