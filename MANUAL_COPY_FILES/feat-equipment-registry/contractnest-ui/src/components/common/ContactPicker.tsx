@@ -49,6 +49,7 @@ const ContactPicker: React.FC<ContactPickerProps> = ({
   }, [query]);
 
   // ── Fetch contacts list via useContactList (same as wizard) ──
+  // Same filter approach as BuyerSelectionStep in the Contract Wizard
   const contactListFilters = useMemo(() => ({
     page: 1,
     limit: 20,
@@ -57,8 +58,7 @@ const ContactPicker: React.FC<ContactPickerProps> = ({
     status: 'active' as const,
     sort_by: 'created_at',
     sort_order: 'desc' as const,
-    enabled: isOpen,   // only fetch when dropdown is open
-  }), [debouncedSearch, classifications, isOpen]);
+  }), [debouncedSearch, classifications]);
 
   const { data: contacts, loading: listLoading } = useContactList(contactListFilters);
 
