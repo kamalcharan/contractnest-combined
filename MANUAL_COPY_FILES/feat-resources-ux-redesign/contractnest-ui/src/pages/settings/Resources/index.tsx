@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Plus, Check, Trash2, Search, PackagePlus, X,
   Wrench, Building, Package, ChevronLeft, ChevronRight,
-  Eye, EyeOff, ShieldAlert,
+  Eye, EyeOff, ShieldAlert, Info, Headset,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useResourceTemplatesBrowser, ResourceTemplateFilters } from '@/hooks/queries/useResourceTemplates';
@@ -50,6 +50,12 @@ const countByTab = <T extends { resource_type_id: string }>(items: T[]) => ({
   Equipment: items.filter(i => isEquipmentType(i.resource_type_id || '')).length,
   Entities: items.filter(i => isEntityType(i.resource_type_id || '')).length,
 });
+
+// ─── Industry display helper ─────────────────────────────────
+const formatIndustryId = (id: string): string => {
+  if (!id) return '';
+  return id.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+};
 
 // ─── Pagination helper ──────────────────────────────────────
 const paginate = <T,>(items: T[], page: number): { paged: T[]; totalPages: number } => {
@@ -104,16 +110,16 @@ const ResourcesPage: React.FC = () => {
   const deletedOnly = useMemo(() => savedList.filter(r => r.is_active === false), [savedList]);
 
   const displayedSaved = useMemo(() => {
-    const base = showDeleted ? savedList : activeOnly;
+    const base = showDeleted ? deletedOnly : activeOnly;
     return filterBySearch(filterByTab(base, activeTab), search);
-  }, [savedList, activeOnly, showDeleted, activeTab, search]);
+  }, [deletedOnly, activeOnly, showDeleted, activeTab, search]);
 
   const filteredTemplates = useMemo(
     () => filterBySearch(filterByTab(templates, activeTab), search),
     [templates, activeTab, search],
   );
 
-  const savedCounts = useMemo(() => countByTab(showDeleted ? savedList : activeOnly), [savedList, activeOnly, showDeleted]);
+  const savedCounts = useMemo(() => countByTab(showDeleted ? deletedOnly : activeOnly), [deletedOnly, activeOnly, showDeleted]);
   const templateCounts = useMemo(() => countByTab(templates), [templates]);
   const counts = view === 'my-resources' ? savedCounts : templateCounts;
 
@@ -145,8 +151,15 @@ const ResourcesPage: React.FC = () => {
       invalidateTemplates();
       refetchSaved();
       vaniToast.success(`"${template.name}" added`, { message: 'Resource added to your catalog', duration: 3000 });
-    } catch {
-      vaniToast.error('Failed to add resource', { message: 'Please try again', duration: 4000 });
+    } catch (err: any) {
+      const msg = err?.message || '';
+      if (msg.toLowerCase().includes('already exists')) {
+        setLocalSaved(prev => new Set(prev).add(template.id));
+        invalidateTemplates();
+        vaniToast.info(`"${template.name}" already added`, { message: 'This resource is already in your catalog', duration: 3000 });
+      } else {
+        vaniToast.error('Failed to add resource', { message: 'Please try again', duration: 4000 });
+      }
     } finally {
       setSavingId(null);
     }
@@ -474,6 +487,16 @@ const ResourcesPage: React.FC = () => {
                       }}>
                         {typeCfg.label}
                       </span>
+                      {!isMyView && item.industry_id && (
+                        <span style={{
+                          padding: '2px 8px', borderRadius: 12,
+                          fontSize: 10, fontWeight: 600,
+                          backgroundColor: colors.utility.primaryText + '08',
+                          color: colors.utility.secondaryText,
+                        }}>
+                          {formatIndustryId(item.industry_id)}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -595,6 +618,22 @@ const ResourcesPage: React.FC = () => {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ═══ CONTACT SUPPORT INFO ═══ */}
+      {!isLoading && !isError && view === 'browse-catalog' && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          marginTop: 20, padding: '12px 16px', borderRadius: 10,
+          backgroundColor: (colors.brand.primary || '#3B82F6') + '08',
+          border: `1px solid ${(colors.brand.primary || '#3B82F6')}20`,
+        }}>
+          <Headset size={16} style={{ color: colors.brand.primary, flexShrink: 0 }} />
+          <span style={{ fontSize: 12, color: colors.utility.secondaryText, lineHeight: '1.5' }}>
+            Don't see what you need? Not all equipment and entities may be listed here.{' '}
+            <strong style={{ color: colors.utility.primaryText }}>Contact support</strong> to request additional resources for your catalog.
+          </span>
         </div>
       )}
 
