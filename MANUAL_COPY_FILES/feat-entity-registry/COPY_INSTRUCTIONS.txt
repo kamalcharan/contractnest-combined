@@ -1,0 +1,9 @@
+Feature: Entity Registry — split equipment and entity views
+Submodules Affected: contractnest-ui
+
+Files:
+  contractnest-ui/src/App.tsx                                    — Added /entity-registry route
+  contractnest-ui/src/utils/constants/industryMenus.ts           — Added Entity Registry menu item
+  contractnest-ui/src/pages/equipment-registry/index.tsx         — Parameterized with registryMode prop (equipment only)
+  contractnest-ui/src/pages/equipment-registry/EmptyState.tsx    — Support entity mode labels
+  contractnest-ui/src/pages/entity-registry/index.tsx            — NEW: Entity Registry page wrapper
