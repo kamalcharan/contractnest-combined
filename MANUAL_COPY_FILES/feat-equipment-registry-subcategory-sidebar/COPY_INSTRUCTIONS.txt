@@ -1,0 +1,35 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — Equipment Registry Sub-Category Sidebar
+═══════════════════════════════════════════════════
+
+Feature Branch: feat-equipment-registry-subcategory-sidebar
+Submodules Affected: contractnest-ui
+
+═══════════════════════════════════════════════════
+FILES TO COPY (6 files)
+═══════════════════════════════════════════════════
+
+1. NEW FILE — Shared sub-category config (icons + colors)
+   FROM: MANUAL_COPY_FILES\feat-equipment-registry-subcategory-sidebar\contractnest-ui\src\constants\subCategoryConfig.ts
+   TO:   contractnest-ui\src\constants\subCategoryConfig.ts
+   NOTE: Create the "constants" folder if it doesn't exist
+
+2. MODIFIED — Resource interface (added sub_category field)
+   FROM: MANUAL_COPY_FILES\feat-equipment-registry-subcategory-sidebar\contractnest-ui\src\hooks\queries\useResources.ts
+   TO:   contractnest-ui\src\hooks\queries\useResources.ts
+
+3. MODIFIED — Equipment Registry main page (sidebar rework)
+   FROM: MANUAL_COPY_FILES\feat-equipment-registry-subcategory-sidebar\contractnest-ui\src\pages\equipment-registry\index.tsx
+   TO:   contractnest-ui\src\pages\equipment-registry\index.tsx
+
+4. MODIFIED — Equipment Registry empty state (context-aware)
+   FROM: MANUAL_COPY_FILES\feat-equipment-registry-subcategory-sidebar\contractnest-ui\src\pages\equipment-registry\EmptyState.tsx
+   TO:   contractnest-ui\src\pages\equipment-registry\EmptyState.tsx
+
+5. MODIFIED — Equipment form dialog (grouped dropdown)
+   FROM: MANUAL_COPY_FILES\feat-equipment-registry-subcategory-sidebar\contractnest-ui\src\pages\equipment-registry\EquipmentFormDialog.tsx
+   TO:   contractnest-ui\src\pages\equipment-registry\EquipmentFormDialog.tsx
+
+6. MODIFIED — Resources settings page (imports from shared config)
+   FROM: MANUAL_COPY_FILES\feat-equipment-registry-subcategory-sidebar\contractnest-ui\src\pages\settings\Resources\index.tsx
+   TO:   contractnest-ui\src\pages\settings\Resources\index.tsx
