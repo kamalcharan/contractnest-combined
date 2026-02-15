@@ -26,7 +26,7 @@ import { ConfigurableBlock } from '@/components/catalog-studio';
 import { useVaNiToast } from '@/components/common/toast/VaNiToast';
 import { categoryHasPricing } from '@/utils/catalog-studio/categories';
 import { computeContractEvents, type ContractEvent } from '@/utils/service-contracts/contractEvents';
-import { useNomenclatureTypes, findNomenclatureById } from '@/hooks/queries/useNomenclatureTypes';
+import { useGlobalMasterData } from '@/hooks/queries/useProductMasterdata';
 
 // Keep ContractRole type export for backwards compatibility
 export type ContractRole = 'client' | 'vendor' | null;
@@ -389,8 +389,8 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
   // Gateway status for pre-payment dialog (online option)
   const { hasActiveGateway: wizardHasGateway, providerDisplayName: wizardGatewayName } = useGatewayStatus();
 
-  // Nomenclature types for conditional step routing
-  const { data: nomenclatureGroups } = useNomenclatureTypes();
+  // Nomenclature types for conditional step routing (shares cache with NomenclatureStep)
+  const { data: nomenclatureResponse } = useGlobalMasterData('cat_contract_nomenclature', true);
 
   // Current step state
   const [currentStep, setCurrentStep] = useState(0);
@@ -466,16 +466,13 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
   const isRfqMode = wizardState.wizardMode === 'rfq';
 
   // Resolve selected nomenclature's form_settings for conditional step routing
-  const selectedNomenclature = useMemo(() => {
-    if (!nomenclatureGroups || !wizardState.nomenclatureId) return undefined;
-    return findNomenclatureById(nomenclatureGroups, wizardState.nomenclatureId);
-  }, [nomenclatureGroups, wizardState.nomenclatureId]);
-
   const nomenclatureRequiresAssets = useMemo(() => {
-    if (!selectedNomenclature?.form_settings) return false;
-    const fs = selectedNomenclature.form_settings;
-    return fs.is_equipment_based || fs.is_entity_based;
-  }, [selectedNomenclature]);
+    if (!nomenclatureResponse?.data || !wizardState.nomenclatureId) return false;
+    const item = nomenclatureResponse.data.find((d: any) => d.id === wizardState.nomenclatureId);
+    if (!item) return false;
+    const fs = (item as any).form_settings;
+    return fs?.is_equipment_based || fs?.is_entity_based || false;
+  }, [nomenclatureResponse, wizardState.nomenclatureId]);
 
   // Dynamic step array: RFQ uses fixed steps; contracts filter assetSelection based on nomenclature
   const activeSteps = useMemo(() => {
@@ -933,15 +930,16 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
       updateWizardState('nomenclatureName', displayName);
       // When nomenclature changes, check if new type still requires assets
       // If not, clear any previously selected assets to avoid stale state
-      if (id && nomenclatureGroups) {
-        const nType = findNomenclatureById(nomenclatureGroups, id);
-        const needsAssets = nType?.form_settings?.is_equipment_based || nType?.form_settings?.is_entity_based;
+      if (id && nomenclatureResponse?.data) {
+        const item = nomenclatureResponse.data.find((d: any) => d.id === id);
+        const fs = (item as any)?.form_settings;
+        const needsAssets = fs?.is_equipment_based || fs?.is_entity_based;
         if (!needsAssets && wizardState.selectedAssetIds.length > 0) {
           updateWizardState('selectedAssetIds', []);
         }
       }
     },
-    [updateWizardState, nomenclatureGroups, wizardState.selectedAssetIds]
+    [updateWizardState, nomenclatureResponse, wizardState.selectedAssetIds]
   );
 
   // Acceptance method selection handler
