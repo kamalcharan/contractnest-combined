@@ -1,8 +1,9 @@
 // src/pages/equipment-registry/EquipmentFormDialog.tsx
 // Right-side drawer for creating / editing an equipment asset
+// Two-level selection: Category (sub_category) → Equipment Type (resource)
 
-import React, { useState, useEffect } from 'react';
-import { X, Plus, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { X, Plus, Trash2, Package } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/input';
@@ -11,12 +12,11 @@ import ContactPicker from '@/components/common/ContactPicker';
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { getSubCategoryConfig } from '@/constants/subCategoryConfig';
 import type {
   TenantAsset,
   AssetFormData,
@@ -36,6 +36,7 @@ interface EquipmentFormDialogProps {
   onClose: () => void;
   mode: 'create' | 'edit';
   asset?: TenantAsset;
+  defaultSubCategory?: string | null;
   resourceTypeId?: string;
   categories?: Array<{ id: string; name: string; sub_category?: string | null }>;
   onSubmit: (data: AssetFormData) => Promise<void>;
@@ -47,6 +48,7 @@ const EquipmentFormDialog: React.FC<EquipmentFormDialogProps> = ({
   onClose,
   mode,
   asset,
+  defaultSubCategory,
   resourceTypeId,
   categories = [],
   onSubmit,
@@ -58,8 +60,40 @@ const EquipmentFormDialog: React.FC<EquipmentFormDialogProps> = ({
   // ── Form State ──────────────────────────────────────────────────
 
   const [formData, setFormData] = useState<AssetFormData>(DEFAULT_FORM_DATA);
+  const [selectedFormSubCategory, setSelectedFormSubCategory] = useState<string>('');
   const [specRows, setSpecRows] = useState<Array<{ key: string; value: string }>>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // ── Derived: distinct sub_categories from all categories ────────
+  const distinctSubCategories = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of categories) {
+      set.add(c.sub_category || 'Other');
+    }
+    const sorted = [...set].sort((a, b) => {
+      if (a === 'Other') return 1;
+      if (b === 'Other') return -1;
+      return a.localeCompare(b);
+    });
+    return sorted;
+  }, [categories]);
+
+  // ── Derived: equipment types filtered by selected sub_category ──
+  const filteredEquipmentTypes = useMemo(() => {
+    if (!selectedFormSubCategory) return [];
+    return categories.filter(
+      (c) => (c.sub_category || 'Other') === selectedFormSubCategory
+    );
+  }, [categories, selectedFormSubCategory]);
+
+  // ── Lookup: resource_id → sub_category ──────────────────────────
+  const resourceIdToSubCategory = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of categories) {
+      map.set(c.id, c.sub_category || 'Other');
+    }
+    return map;
+  }, [categories]);
 
   // Initialise form when drawer opens
   useEffect(() => {
@@ -89,14 +123,30 @@ const EquipmentFormDialog: React.FC<EquipmentFormDialogProps> = ({
         specifications: asset.specifications || {},
         tags: asset.tags || [],
       });
+      // Derive sub_category from the asset's resource_type_id
+      const subCat = resourceIdToSubCategory.get(asset.resource_type_id) || '';
+      setSelectedFormSubCategory(subCat);
       const specs = asset.specifications || {};
       setSpecRows(Object.entries(specs).map(([key, value]) => ({ key, value: String(value) })));
     } else {
       setFormData({ ...DEFAULT_FORM_DATA, resource_type_id: resourceTypeId || '' });
+      // Pre-select sub_category from sidebar selection
+      setSelectedFormSubCategory(defaultSubCategory || '');
       setSpecRows([]);
     }
     setErrors({});
-  }, [isOpen, mode, asset, resourceTypeId]);
+  }, [isOpen, mode, asset, resourceTypeId, defaultSubCategory, resourceIdToSubCategory]);
+
+  // Auto-select equipment type if only 1 in the selected sub_category
+  useEffect(() => {
+    if (mode === 'edit') return; // Don't auto-select when editing
+    if (filteredEquipmentTypes.length === 1 && !formData.resource_type_id) {
+      setFormData((prev) => ({
+        ...prev,
+        resource_type_id: filteredEquipmentTypes[0].id,
+      }));
+    }
+  }, [filteredEquipmentTypes, mode, formData.resource_type_id]);
 
   // ── Handlers ────────────────────────────────────────────────────
 
@@ -106,6 +156,19 @@ const EquipmentFormDialog: React.FC<EquipmentFormDialogProps> = ({
       setErrors((prev) => {
         const next = { ...prev };
         delete next[field];
+        return next;
+      });
+    }
+  };
+
+  const handleSubCategoryChange = (subCat: string) => {
+    setSelectedFormSubCategory(subCat);
+    // Reset equipment type when category changes
+    updateField('resource_type_id', '');
+    if (errors.sub_category) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next.sub_category;
         return next;
       });
     }
@@ -129,8 +192,9 @@ const EquipmentFormDialog: React.FC<EquipmentFormDialogProps> = ({
 
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
-    if (!formData.name.trim()) errs.name = 'Name is required';
+    if (!selectedFormSubCategory) errs.sub_category = 'Category is required';
     if (!formData.resource_type_id) errs.resource_type_id = 'Equipment type is required';
+    if (!formData.name.trim()) errs.name = 'Name is required';
     if (!formData.owner_contact_id) errs.owner_contact_id = 'Client / Owner is required';
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -161,6 +225,11 @@ const EquipmentFormDialog: React.FC<EquipmentFormDialogProps> = ({
   };
 
   if (!isOpen) return null;
+
+  // Get config for selected sub_category (for visual feedback)
+  const selectedSubCatConfig = getSubCategoryConfig(selectedFormSubCategory);
+  const SubCatIcon = selectedSubCatConfig?.icon || Package;
+  const subCatColor = selectedSubCatConfig?.color || '#6B7280';
 
   return (
     <>
@@ -206,80 +275,98 @@ const EquipmentFormDialog: React.FC<EquipmentFormDialogProps> = ({
         {/* ── Scrollable Form Body ───────────────────────────────── */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
 
-          {/* ── Equipment Type (from sidebar / tenant resources) ── */}
+          {/* ── Step 1: Category (sub_category) ────────────────── */}
           <div
             className="rounded-lg p-4 border"
             style={{
-              backgroundColor: `${colors.brand.primary}06`,
-              borderColor: `${colors.brand.primary}20`,
+              backgroundColor: `${subCatColor}06`,
+              borderColor: `${subCatColor}20`,
             }}
           >
-            <h4 style={{ ...sectionHeaderStyle, color: colors.brand.primary, borderBottom: 'none', paddingBottom: 0, marginBottom: '8px' }}>
-              Equipment Type <span className="text-red-500">*</span>
+            <h4 style={{ ...sectionHeaderStyle, color: subCatColor, borderBottom: 'none', paddingBottom: 0, marginBottom: '8px' }}>
+              Category <span className="text-red-500">*</span>
             </h4>
             <p className="text-xs mb-3" style={{ color: colors.utility.secondaryText }}>
-              Which equipment are you registering?
+              What category does this equipment belong to?
             </p>
-            {categories.length > 0 ? (
+            {distinctSubCategories.length > 0 ? (
               <Select
-                value={formData.resource_type_id}
-                onValueChange={(v) => updateField('resource_type_id', v)}
+                value={selectedFormSubCategory}
+                onValueChange={handleSubCategoryChange}
               >
                 <SelectTrigger
                   style={{
-                    borderColor: errors.resource_type_id ? '#ef4444' : colors.utility.primaryText + '20',
+                    borderColor: errors.sub_category ? '#ef4444' : colors.utility.primaryText + '20',
                     backgroundColor: colors.utility.primaryBackground,
                     color: colors.utility.primaryText,
                   }}
                 >
-                  <SelectValue placeholder="Select equipment type..." />
+                  <SelectValue placeholder="Select category..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {(() => {
-                    // Group by sub_category when multiple are present
-                    const subCats = new Set(categories.map((c) => c.sub_category || 'Other'));
-                    if (subCats.size <= 1) {
-                      // Single group — flat list
-                      return categories.map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>
-                          {cat.name}
-                        </SelectItem>
-                      ));
-                    }
-                    // Multiple groups — group by sub_category
-                    const grouped = new Map<string, typeof categories>();
-                    for (const cat of categories) {
-                      const key = cat.sub_category || 'Other';
-                      if (!grouped.has(key)) grouped.set(key, []);
-                      grouped.get(key)!.push(cat);
-                    }
-                    return [...grouped.entries()].map(([group, items]) => (
-                      <SelectGroup key={group}>
-                        <SelectLabel
-                          className="text-[10px] font-bold uppercase tracking-wider px-2 pt-2 pb-1"
-                          style={{ color: colors.utility.secondaryText }}
-                        >
-                          {group}
-                        </SelectLabel>
-                        {items.map((cat) => (
-                          <SelectItem key={cat.id} value={cat.id}>
-                            {cat.name}
-                          </SelectItem>
-                        ))}
-                      </SelectGroup>
-                    ));
-                  })()}
+                  {distinctSubCategories.map((subCat) => {
+                    const cfg = getSubCategoryConfig(subCat);
+                    const Icon = cfg?.icon || Package;
+                    return (
+                      <SelectItem key={subCat} value={subCat}>
+                        <span className="flex items-center gap-2">
+                          <Icon size={14} style={{ color: cfg?.color || '#6B7280' }} />
+                          {subCat}
+                        </span>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             ) : (
               <p className="text-xs" style={{ color: colors.utility.secondaryText }}>
-                No equipment configured. Add equipment in Settings &rarr; Resources first.
+                No categories configured. Add equipment in Settings &rarr; Resources first.
               </p>
             )}
-            {errors.resource_type_id && <p className="text-xs text-red-500 mt-1">{errors.resource_type_id}</p>}
+            {errors.sub_category && <p className="text-xs text-red-500 mt-1">{errors.sub_category}</p>}
+
+            {/* ── Step 2: Equipment Type (resource within category) ── */}
+            {selectedFormSubCategory && (
+              <div className="mt-4">
+                <h4 style={{ ...sectionHeaderStyle, color: subCatColor, borderBottom: 'none', paddingBottom: 0, marginBottom: '8px' }}>
+                  Equipment Type <span className="text-red-500">*</span>
+                </h4>
+                <p className="text-xs mb-3" style={{ color: colors.utility.secondaryText }}>
+                  Which specific equipment in {selectedFormSubCategory}?
+                </p>
+                {filteredEquipmentTypes.length > 0 ? (
+                  <Select
+                    value={formData.resource_type_id}
+                    onValueChange={(v) => updateField('resource_type_id', v)}
+                  >
+                    <SelectTrigger
+                      style={{
+                        borderColor: errors.resource_type_id ? '#ef4444' : colors.utility.primaryText + '20',
+                        backgroundColor: colors.utility.primaryBackground,
+                        color: colors.utility.primaryText,
+                      }}
+                    >
+                      <SelectValue placeholder="Select equipment type..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {filteredEquipmentTypes.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                    No equipment types in this category.
+                  </p>
+                )}
+                {errors.resource_type_id && <p className="text-xs text-red-500 mt-1">{errors.resource_type_id}</p>}
+              </div>
+            )}
 
             {/* Client / Owner */}
-            <h4 style={{ ...sectionHeaderStyle, color: colors.brand.primary, borderBottom: 'none', paddingBottom: 0, marginBottom: '8px', marginTop: '16px' }}>
+            <h4 style={{ ...sectionHeaderStyle, color: subCatColor, borderBottom: 'none', paddingBottom: 0, marginBottom: '8px', marginTop: '16px' }}>
               Client / Owner
             </h4>
             <p className="text-xs mb-3" style={{ color: colors.utility.secondaryText }}>

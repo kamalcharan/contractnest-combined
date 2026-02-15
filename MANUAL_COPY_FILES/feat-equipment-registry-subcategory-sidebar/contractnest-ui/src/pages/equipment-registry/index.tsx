@@ -187,22 +187,14 @@ const EquipmentPage: React.FC = () => {
     return subCategories.filter((sc) => sc.toLowerCase().includes(q));
   }, [sidebarSearch, subCategories]);
 
-  // ── Form categories (resources in selected sub_category) ────────
-  const formCategories = useMemo(() => {
-    const resources = selectedSubCategory
-      ? resourcesBySubCategory.get(selectedSubCategory) || []
-      : equipmentResources;
-
-    return resources.map((r) => ({
+  // ── All categories for form dialog (always pass full list) ───────
+  const allFormCategories = useMemo(() => {
+    return equipmentResources.map((r) => ({
       id: r.id,
       name: r.display_name || r.name,
       sub_category: r.sub_category || null,
     }));
-  }, [selectedSubCategory, resourcesBySubCategory, equipmentResources]);
-
-  // Auto-select resource type if only one in the sub_category
-  const defaultResourceTypeId =
-    formCategories.length === 1 ? formCategories[0].id : '';
+  }, [equipmentResources]);
 
   // ── Handlers ────────────────────────────────────────────────────
 
@@ -630,8 +622,8 @@ const EquipmentPage: React.FC = () => {
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
         mode="create"
-        resourceTypeId={defaultResourceTypeId}
-        categories={formCategories}
+        defaultSubCategory={selectedSubCategory}
+        categories={allFormCategories}
         onSubmit={handleCreateSubmit}
         isSubmitting={createMutation.isPending}
       />
@@ -644,7 +636,7 @@ const EquipmentPage: React.FC = () => {
         }}
         mode="edit"
         asset={editingAsset || undefined}
-        categories={formCategories}
+        categories={allFormCategories}
         onSubmit={handleEditSubmit}
         isSubmitting={updateMutation.isPending}
       />
