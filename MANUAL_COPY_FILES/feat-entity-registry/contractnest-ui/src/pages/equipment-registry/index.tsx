@@ -179,13 +179,13 @@ const EquipmentPage: React.FC<EquipmentPageProps> = ({ registryMode = 'equipment
   const displayAssets = useMemo(() => {
     let filtered = isError ? [] : assets;
 
-    // Filter by sub_category
+    // Filter by sub_category (asset_type_id holds the specific resource UUID)
     if (selectedSubCategory) {
       const resourceIdsInSubCat = new Set(
         (resourcesBySubCategory.get(selectedSubCategory) || []).map((r) => r.id)
       );
       filtered = filtered.filter((a) =>
-        resourceIdsInSubCat.has(a.resource_type_id)
+        resourceIdsInSubCat.has(a.asset_type_id || '')
       );
     }
 
@@ -212,7 +212,7 @@ const EquipmentPage: React.FC<EquipmentPageProps> = ({ registryMode = 'equipment
 
     for (const asset of allAssets) {
       const subCat =
-        resourceIdToSubCategory.get(asset.resource_type_id) || 'Other';
+        resourceIdToSubCategory.get(asset.asset_type_id || '') || 'Other';
       counts[subCat] = (counts[subCat] || 0) + 1;
     }
 
@@ -234,6 +234,7 @@ const EquipmentPage: React.FC<EquipmentPageProps> = ({ registryMode = 'equipment
       id: r.id,
       name: r.display_name || r.name,
       sub_category: r.sub_category || null,
+      resource_type_id: r.resource_type_id,
     }));
   }, [equipmentResources]);
 
