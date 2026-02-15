@@ -204,7 +204,6 @@ const NomenclatureStep: React.FC<NomenclatureStepProps> = ({
             style={{ color: colors.utility.secondaryText }}
           >
             Select the nomenclature that best describes this contract.
-            This is optional — you can skip and assign it later.
           </p>
         </div>
 
@@ -420,12 +419,14 @@ const NomenclatureStep: React.FC<NomenclatureStepProps> = ({
         })()}
 
         {/* Helper text */}
-        <p
-          className="text-center text-xs mt-6"
-          style={{ color: colors.utility.secondaryText }}
-        >
-          This is optional — click the selected card again to deselect, or just proceed to the next step
-        </p>
+        {!selectedItem && (
+          <p
+            className="text-center text-xs mt-6"
+            style={{ color: colors.semantic.warning }}
+          >
+            Please select a contract type to continue
+          </p>
+        )}
       </div>
     </div>
   );

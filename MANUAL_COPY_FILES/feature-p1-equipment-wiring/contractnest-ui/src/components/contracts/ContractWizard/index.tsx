@@ -502,7 +502,7 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
       case 'path':
         return wizardState.path !== null;
       case 'nomenclature':
-        return true; // Optional step — can always proceed
+        return wizardState.nomenclatureId !== null;
       case 'counterparty':
         return isRfqMode
           ? wizardState.vendorIds.length > 0
