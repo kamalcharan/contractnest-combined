@@ -1,0 +1,25 @@
+Feature: Persist sub_category grouping across all layers
+Branch: feat-sub-category-persistence
+
+Files Changed:
+  1. contractnest-edge/supabase/functions/resources/index.ts
+     - Added sub_category to handleCreateResource dbRecord
+     - Added sub_category to handleUpdateResource
+     - Added sub_category to transformResourceForFrontend
+
+  2. contractnest-api/src/types/resourcesTypes.ts
+     - Added sub_category to Resource, CreateResourceRequest, UpdateResourceRequest
+
+  3. contractnest-ui/src/types/resources.ts
+     - Added sub_category to Resource, CreateResourceFormData, UpdateResourceFormData
+
+  4. contractnest-ui/src/pages/settings/Resources/index.tsx
+     - handleSave now passes sub_category from template
+     - My Resources view now uses grouped layout by sub_category
+     - Removed flat pagination, replaced with collapsible grouped view
+
+Submodules Affected: contractnest-edge, contractnest-api, contractnest-ui
+
+Prerequisites:
+  - ALTER TABLE t_category_resources_master ADD COLUMN IF NOT EXISTS sub_category varchar(100);
+  - (Already run by user)
