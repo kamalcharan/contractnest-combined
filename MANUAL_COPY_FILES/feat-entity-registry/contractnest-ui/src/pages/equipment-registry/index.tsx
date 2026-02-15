@@ -175,9 +175,19 @@ const EquipmentPage: React.FC<EquipmentPageProps> = ({ registryMode = 'equipment
     }
   }, [selectedSubCategory, searchQuery, setSearchParams, searchParams]);
 
+  // ── Assets scoped to this registry mode ─────────────────────────
+  const modeAssets = useMemo(() => {
+    if (isError) return [];
+    // Only keep assets whose resource_type_id matches the current mode
+    // (e.g. 'equipment' for Equipment Registry, 'asset' for Entity Registry)
+    return assets.filter((a) =>
+      modeConfig.typeIds.includes((a.resource_type_id || '').toLowerCase())
+    );
+  }, [assets, isError, modeConfig.typeIds]);
+
   // ── Client-side filtered assets ─────────────────────────────────
   const displayAssets = useMemo(() => {
-    let filtered = isError ? [] : assets;
+    let filtered = modeAssets;
 
     // Filter by sub_category (asset_type_id holds the specific resource UUID)
     if (selectedSubCategory) {
@@ -203,23 +213,22 @@ const EquipmentPage: React.FC<EquipmentPageProps> = ({ registryMode = 'equipment
     }
 
     return filtered;
-  }, [assets, isError, selectedSubCategory, resourcesBySubCategory, searchQuery]);
+  }, [modeAssets, selectedSubCategory, resourcesBySubCategory, searchQuery]);
 
   // ── Sub-category asset counts (for sidebar badges) ──────────────
   const subCategoryAssetCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    const allAssets = isError ? [] : assets;
 
-    for (const asset of allAssets) {
+    for (const asset of modeAssets) {
       const subCat =
         resourceIdToSubCategory.get(asset.asset_type_id || '') || 'Other';
       counts[subCat] = (counts[subCat] || 0) + 1;
     }
 
     return counts;
-  }, [assets, isError, resourceIdToSubCategory]);
+  }, [modeAssets, resourceIdToSubCategory]);
 
-  const totalAssetCount = isError ? 0 : assets.length;
+  const totalAssetCount = modeAssets.length;
 
   // ── Filtered sidebar sub-categories ─────────────────────────────
   const filteredSubCategories = useMemo(() => {
