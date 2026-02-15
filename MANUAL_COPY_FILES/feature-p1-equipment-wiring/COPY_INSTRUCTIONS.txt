@@ -1,5 +1,5 @@
-P1+ EQUIPMENT WIRING — Steps 1 & 2
-=====================================
+P1+ EQUIPMENT WIRING — Steps 1 & 2 (v2 fix)
+=============================================
 Branch: feature/p1-equipment
 Date: 2026-02-15
 
@@ -10,7 +10,10 @@ Step 1: EquipmentCard extended with selectable + readOnly modes
 Step 2: ContractWizard — asset step moved to position 6 (after Details),
         conditionally shown based on nomenclature is_equipment_based/is_entity_based flags
 
-FILES MODIFIED (2 files, both in contractnest-ui)
+FIX: NomenclatureStep now passes form_settings directly to wizard handler
+     (eliminates separate data lookup that caused ID mismatch)
+
+FILES MODIFIED (3 files, all in contractnest-ui)
 =================================================
 
 1. contractnest-ui/src/pages/equipment-registry/EquipmentCard.tsx
@@ -20,14 +23,19 @@ FILES MODIFIED (2 files, both in contractnest-ui)
    - ReadOnly mode: no hover effects, no actions, display only
 
 2. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
-   - Imported useNomenclatureTypes and findNomenclatureById hooks
+   - Added nomenclatureRequiresAssets boolean to ContractWizardState
    - Renamed CONTRACT_STEPS to CONTRACT_STEPS_ALL (static full list)
    - Moved assetSelection from position 8 (after billingView) to position 5 (after details)
-   - Added useMemo-based dynamic step filtering: asset step only shown when nomenclature is_equipment_based or is_entity_based
+   - Dynamic step filtering: asset step only shown when nomenclatureRequiresAssets is true
    - Added safeCurrentStep clamp for edge case when step array shrinks mid-wizard
    - Updated all currentStep references to use safeCurrentStep
+   - Handler receives form_settings from NomenclatureStep, sets flag directly
    - Nomenclature change handler clears selectedAssetIds when switching to non-asset nomenclature
    - Added 'assetSelection' case to canGoNext (always true — optional step)
+
+3. contractnest-ui/src/components/contracts/ContractWizard/steps/NomenclatureStep.tsx
+   - Updated onSelect callback to pass form_settings as third argument
+   - Updated props interface to include formSettings parameter
 
 COPY COMMANDS (PowerShell)
 ==========================
@@ -37,5 +45,7 @@ cd "D:\projects\core projects\ContractNest\contractnest-combined"
 Copy-Item "MANUAL_COPY_FILES\feature-p1-equipment-wiring\contractnest-ui\src\pages\equipment-registry\EquipmentCard.tsx" -Destination "contractnest-ui\src\pages\equipment-registry\EquipmentCard.tsx" -Force
 
 Copy-Item "MANUAL_COPY_FILES\feature-p1-equipment-wiring\contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Force
+
+Copy-Item "MANUAL_COPY_FILES\feature-p1-equipment-wiring\contractnest-ui\src\components\contracts\ContractWizard\steps\NomenclatureStep.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\NomenclatureStep.tsx" -Force
 
 Write-Host "All files copied!" -ForegroundColor Green

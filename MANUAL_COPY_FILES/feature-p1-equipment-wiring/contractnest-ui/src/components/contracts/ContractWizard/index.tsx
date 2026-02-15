@@ -26,7 +26,6 @@ import { ConfigurableBlock } from '@/components/catalog-studio';
 import { useVaNiToast } from '@/components/common/toast/VaNiToast';
 import { categoryHasPricing } from '@/utils/catalog-studio/categories';
 import { computeContractEvents, type ContractEvent } from '@/utils/service-contracts/contractEvents';
-import { useGlobalMasterData } from '@/hooks/queries/useProductMasterdata';
 
 // Keep ContractRole type export for backwards compatibility
 export type ContractRole = 'client' | 'vendor' | null;
@@ -81,6 +80,7 @@ export interface ContractWizardState {
   emiMonths: number;
   perBlockPaymentType: Record<string, 'prepaid' | 'postpaid'>;
   // Asset Selection
+  nomenclatureRequiresAssets: boolean;
   selectedAssetIds: string[];
   // Evidence Policy
   evidencePolicyType: EvidencePolicyType;
@@ -365,6 +365,7 @@ const createInitialWizardState = (): ContractWizardState => ({
   emiMonths: 6,
   perBlockPaymentType: {},
   // Asset Selection
+  nomenclatureRequiresAssets: false,
   selectedAssetIds: [],
   // Evidence Policy
   evidencePolicyType: 'none',
@@ -388,9 +389,6 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
 
   // Gateway status for pre-payment dialog (online option)
   const { hasActiveGateway: wizardHasGateway, providerDisplayName: wizardGatewayName } = useGatewayStatus();
-
-  // Nomenclature types for conditional step routing (shares cache with NomenclatureStep)
-  const { data: nomenclatureResponse } = useGlobalMasterData('cat_contract_nomenclature', true);
 
   // Current step state
   const [currentStep, setCurrentStep] = useState(0);
@@ -465,25 +463,16 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
   // Determine if RFQ mode is active
   const isRfqMode = wizardState.wizardMode === 'rfq';
 
-  // Resolve selected nomenclature's form_settings for conditional step routing
-  const nomenclatureRequiresAssets = useMemo(() => {
-    if (!nomenclatureResponse?.data || !wizardState.nomenclatureId) return false;
-    const item = nomenclatureResponse.data.find((d: any) => d.id === wizardState.nomenclatureId);
-    if (!item) return false;
-    const fs = (item as any).form_settings;
-    return fs?.is_equipment_based || fs?.is_entity_based || false;
-  }, [nomenclatureResponse, wizardState.nomenclatureId]);
-
   // Dynamic step array: RFQ uses fixed steps; contracts filter assetSelection based on nomenclature
   const activeSteps = useMemo(() => {
     if (isRfqMode) return RFQ_STEPS;
     // If nomenclature requires assets (equipment/entity-based), include the asset step
     // If no nomenclature selected yet or service-only, skip asset step
     return CONTRACT_STEPS_ALL.filter(step => {
-      if (step.id === 'assetSelection') return nomenclatureRequiresAssets;
+      if (step.id === 'assetSelection') return wizardState.nomenclatureRequiresAssets;
       return true;
     });
-  }, [isRfqMode, nomenclatureRequiresAssets]);
+  }, [isRfqMode, wizardState.nomenclatureRequiresAssets]);
 
   const totalSteps = activeSteps.length;
   const stepLabels = activeSteps.map(s => s.label);
@@ -923,23 +912,20 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
     [updateWizardState]
   );
 
-  // Nomenclature selection handler — clear asset selections if switching to non-asset nomenclature
+  // Nomenclature selection handler — receives form_settings directly from NomenclatureStep
   const handleNomenclatureSelect = useCallback(
-    (id: string | null, displayName: string | null) => {
+    (id: string | null, displayName: string | null, formSettings?: any) => {
       updateWizardState('nomenclatureId', id);
       updateWizardState('nomenclatureName', displayName);
-      // When nomenclature changes, check if new type still requires assets
-      // If not, clear any previously selected assets to avoid stale state
-      if (id && nomenclatureResponse?.data) {
-        const item = nomenclatureResponse.data.find((d: any) => d.id === id);
-        const fs = (item as any)?.form_settings;
-        const needsAssets = fs?.is_equipment_based || fs?.is_entity_based;
-        if (!needsAssets && wizardState.selectedAssetIds.length > 0) {
-          updateWizardState('selectedAssetIds', []);
-        }
+      // Determine if this nomenclature requires asset selection
+      const needsAssets = !!(formSettings?.is_equipment_based || formSettings?.is_entity_based);
+      updateWizardState('nomenclatureRequiresAssets', needsAssets);
+      // Clear selected assets when switching to non-asset nomenclature
+      if (!needsAssets && wizardState.selectedAssetIds.length > 0) {
+        updateWizardState('selectedAssetIds', []);
       }
     },
-    [updateWizardState, nomenclatureResponse, wizardState.selectedAssetIds]
+    [updateWizardState, wizardState.selectedAssetIds]
   );
 
   // Acceptance method selection handler
