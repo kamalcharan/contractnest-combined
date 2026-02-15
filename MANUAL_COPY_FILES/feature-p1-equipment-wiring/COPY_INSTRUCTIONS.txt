@@ -1,51 +1,60 @@
-P1+ EQUIPMENT WIRING — Steps 1 & 2 (v2 fix)
-=============================================
+P1+ EQUIPMENT WIRING — Steps 1 & 2 (v3 — backend fix)
+======================================================
 Branch: feature/p1-equipment
 Date: 2026-02-15
 
-CHANGES SUMMARY
-===============
+ROOT CAUSE FIX
+==============
+The backend API's transformMasterData() in productMasterdataService.ts was
+stripping form_settings from all responses. This meant:
+  - Nomenclature cards were never grouped (all in "other" group)
+  - is_equipment_based flag was always undefined
+  - Asset selection step could never appear
 
-Step 1: EquipmentCard extended with selectable + readOnly modes
-Step 2: ContractWizard — asset step moved to position 6 (after Details),
-        conditionally shown based on nomenclature is_equipment_based/is_entity_based flags
+Fix: Added "form_settings: item.form_settings" to transformMasterData()
 
-FIX: NomenclatureStep now passes form_settings directly to wizard handler
-     (eliminates separate data lookup that caused ID mismatch)
+SUBMODULES AFFECTED
+===================
+1. contractnest-api  (1 file — the root cause fix)
+2. contractnest-ui   (3 files — wizard + nomenclature + equipment card)
 
-FILES MODIFIED (3 files, all in contractnest-ui)
-=================================================
+FILES MODIFIED (4 files total)
+==============================
 
-1. contractnest-ui/src/pages/equipment-registry/EquipmentCard.tsx
-   - Added 3-mode support: 'edit' (default, unchanged), 'selectable' (wizard picker), 'readOnly' (contract detail)
+--- contractnest-api (1 file) ---
+
+1. contractnest-api/src/services/productMasterdataService.ts
+   - Added form_settings to transformMasterData() output
+   - This is the ROOT CAUSE fix — without this, form_settings is stripped from API responses
+
+--- contractnest-ui (3 files) ---
+
+2. contractnest-ui/src/pages/equipment-registry/EquipmentCard.tsx
+   - Added 3-mode support: 'edit' (default), 'selectable' (wizard), 'readOnly' (detail)
    - Accepts both TenantAsset and ClientAsset types
-   - Selectable mode: shows checkbox, highlights border on select, hides edit/delete actions
-   - ReadOnly mode: no hover effects, no actions, display only
 
-2. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+3. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
    - Added nomenclatureRequiresAssets boolean to ContractWizardState
-   - Renamed CONTRACT_STEPS to CONTRACT_STEPS_ALL (static full list)
-   - Moved assetSelection from position 8 (after billingView) to position 5 (after details)
-   - Dynamic step filtering: asset step only shown when nomenclatureRequiresAssets is true
-   - Added safeCurrentStep clamp for edge case when step array shrinks mid-wizard
-   - Updated all currentStep references to use safeCurrentStep
-   - Handler receives form_settings from NomenclatureStep, sets flag directly
-   - Nomenclature change handler clears selectedAssetIds when switching to non-asset nomenclature
-   - Added 'assetSelection' case to canGoNext (always true — optional step)
+   - Renamed CONTRACT_STEPS to CONTRACT_STEPS_ALL
+   - Asset step conditionally shown based on nomenclature type
+   - Handler receives form_settings from NomenclatureStep
 
-3. contractnest-ui/src/components/contracts/ContractWizard/steps/NomenclatureStep.tsx
+4. contractnest-ui/src/components/contracts/ContractWizard/steps/NomenclatureStep.tsx
    - Updated onSelect callback to pass form_settings as third argument
-   - Updated props interface to include formSettings parameter
 
 COPY COMMANDS (PowerShell)
 ==========================
 
 cd "D:\projects\core projects\ContractNest\contractnest-combined"
 
+# API fix (ROOT CAUSE)
+Copy-Item "MANUAL_COPY_FILES\feature-p1-equipment-wiring\contractnest-api\src\services\productMasterdataService.ts" -Destination "contractnest-api\src\services\productMasterdataService.ts" -Force
+
+# UI changes
 Copy-Item "MANUAL_COPY_FILES\feature-p1-equipment-wiring\contractnest-ui\src\pages\equipment-registry\EquipmentCard.tsx" -Destination "contractnest-ui\src\pages\equipment-registry\EquipmentCard.tsx" -Force
 
 Copy-Item "MANUAL_COPY_FILES\feature-p1-equipment-wiring\contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Force
 
 Copy-Item "MANUAL_COPY_FILES\feature-p1-equipment-wiring\contractnest-ui\src\components\contracts\ContractWizard\steps\NomenclatureStep.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\NomenclatureStep.tsx" -Force
 
-Write-Host "All files copied!" -ForegroundColor Green
+Write-Host "All 4 files copied!" -ForegroundColor Green
