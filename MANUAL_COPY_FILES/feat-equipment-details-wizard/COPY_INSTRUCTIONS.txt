@@ -1,0 +1,32 @@
+═══════════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS — feat-equipment-details-wizard
+═══════════════════════════════════════════════════════════════════
+Feature: Equipment Details Denormalization on Contracts
+Date:    2026-02-16
+═══════════════════════════════════════════════════════════════════
+
+SUBMODULES AFFECTED:
+  1. contractnest-edge  (1 new file — migration)
+  2. contractnest-api   (1 modified file — types)
+  3. contractnest-ui    (3 files — 1 new component, 2 modified)
+
+═══════════════════════════════════════════════════════════════════
+FILES CHANGED:
+═══════════════════════════════════════════════════════════════════
+
+[NEW]      contractnest-edge/supabase/migrations/contracts/040_equipment_details_on_contracts.sql
+           → Adds equipment_details JSONB column to t_contracts
+
+[MODIFIED] contractnest-api/src/types/contractTypes.ts
+           → Added ContractEquipmentDetail interface + equipment_details on Create/Update DTOs
+
+[MODIFIED] contractnest-ui/src/types/contracts.ts
+           → Added ContractEquipmentDetail interface + equipment_details on Contract/Request types
+
+[NEW]      contractnest-ui/src/components/contracts/ContractWizard/steps/EquipmentStep.tsx
+           → New wizard step component with drawer pattern (831 lines)
+
+[MODIFIED] contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+           → Wired EquipmentStep into wizard state, steps array, render switch, and API mapping
+
+═══════════════════════════════════════════════════════════════════
