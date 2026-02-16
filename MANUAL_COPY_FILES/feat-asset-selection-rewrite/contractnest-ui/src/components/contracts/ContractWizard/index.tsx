@@ -21,7 +21,7 @@ import BillingViewStep from './steps/BillingViewStep';
 import ReviewSendStep from './steps/ReviewSendStep';
 import EventsPreviewStep from './steps/EventsPreviewStep';
 import EvidencePolicyStep, { type EvidencePolicyType, type SelectedForm } from './steps/EvidencePolicyStep';
-import AssetSelectionStep, { type EquipmentDetailItem } from './steps/AssetSelectionStep';
+import AssetSelectionStep, { type EquipmentDetailItem, type CoverageTypeItem } from './steps/AssetSelectionStep';
 import { ConfigurableBlock } from '@/components/catalog-studio';
 import { useVaNiToast } from '@/components/common/toast/VaNiToast';
 import { categoryHasPricing } from '@/utils/catalog-studio/categories';
@@ -83,6 +83,7 @@ export interface ContractWizardState {
   // Asset Selection
   equipmentDetails: EquipmentDetailItem[];
   allowBuyerToAdd: boolean;
+  coverageTypes: CoverageTypeItem[];
   // Evidence Policy
   evidencePolicyType: EvidencePolicyType;
   evidenceSelectedForms: SelectedForm[];
@@ -325,6 +326,7 @@ function mapWizardToRequest(
     // Equipment / Entity details (JSONB — matches t_contracts.equipment_details)
     equipment_details: state.equipmentDetails.length > 0 ? state.equipmentDetails : undefined,
     allow_buyer_to_add_equipment: state.allowBuyerToAdd || undefined,
+    coverage_types: state.coverageTypes.length > 0 ? state.coverageTypes : undefined,
   };
 }
 
@@ -372,6 +374,7 @@ const createInitialWizardState = (): ContractWizardState => ({
   // Asset Selection
   equipmentDetails: [],
   allowBuyerToAdd: false,
+  coverageTypes: [],
   // Evidence Policy
   evidencePolicyType: 'none',
   evidenceSelectedForms: [],
@@ -510,6 +513,9 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
         return wizardState.selectedBlocks.length > 0;
       case 'billingView':
         return true;
+      case 'assetSelection':
+        // Coverage types are mandatory — user must pick at least one type
+        return wizardState.coverageTypes.length > 0;
       case 'evidencePolicy':
         return true; // Evidence policy always has a default (none)
       case 'events':
@@ -1140,6 +1146,7 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
         return (
           <AssetSelectionStep
             contactId={wizardState.buyerId || ''}
+            buyerName={wizardState.buyerName}
             nomenclatureGroup={wizardState.nomenclatureGroup}
             equipmentDetails={wizardState.equipmentDetails}
             onEquipmentDetailsChange={(items) =>
@@ -1148,6 +1155,10 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
             allowBuyerToAdd={wizardState.allowBuyerToAdd}
             onAllowBuyerToAddChange={(allow) =>
               updateWizardState('allowBuyerToAdd', allow)
+            }
+            coverageTypes={wizardState.coverageTypes}
+            onCoverageTypesChange={(types) =>
+              updateWizardState('coverageTypes', types)
             }
           />
         );
