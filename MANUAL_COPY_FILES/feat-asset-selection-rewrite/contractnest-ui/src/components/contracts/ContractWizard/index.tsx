@@ -113,10 +113,10 @@ const CONTRACT_STEPS: StepConfig[] = [
   { id: 'acceptance', label: 'Acceptance', heading: { title: 'How should this contract be accepted?', subtitle: 'Choose how your buyer will confirm acceptance' } },
   { id: 'counterparty', label: 'Counterparty', heading: { title: '', subtitle: '' } }, // Dynamic based on contractType
   { id: 'details', label: 'Details', heading: { title: 'Contract Details', subtitle: 'Define the basic information for your contract' } },
+  { id: 'assetSelection', label: 'Assets', heading: { title: 'Select Client Assets', subtitle: 'Choose which of your client\'s assets this contract covers' } },
   { id: 'billingCycle', label: 'Billing Cycle', heading: { title: 'Billing Cycle', subtitle: 'How should services be billed?' } },
   { id: 'blocks', label: 'Add Blocks', heading: { title: 'Add Service Blocks', subtitle: 'Select services and configure them for your contract' } },
   { id: 'billingView', label: 'Billing View', heading: { title: 'Billing View', subtitle: 'Review line items, pricing and apply tax' } },
-  { id: 'assetSelection', label: 'Assets', heading: { title: 'Select Client Assets', subtitle: 'Choose which of your client\'s assets this contract covers' } },
   { id: 'evidencePolicy', label: 'Evidence Policy', heading: { title: 'Evidence Policy', subtitle: 'Choose how evidence is captured during service execution' } },
   { id: 'events', label: 'Events Preview', heading: { title: 'Events Preview', subtitle: 'Review service delivery and billing schedule' } },
   { id: 'review', label: 'Review & Send', heading: { title: 'Review & Send', subtitle: 'Review your contract before sending' } },
