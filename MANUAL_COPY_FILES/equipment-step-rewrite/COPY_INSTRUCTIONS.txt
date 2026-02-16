@@ -1,0 +1,48 @@
+═══════════════════════════════════════════════════
+EQUIPMENT STEP REWRITE - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════
+Branch: equipment-step-rewrite
+Date: 2026-02-16
+Submodules Affected: contractnest-ui
+
+═══════════════════════════════════════════════════
+FILES CHANGED
+═══════════════════════════════════════════════════
+
+1. contractnest-ui/src/components/contracts/ContractWizard/steps/EquipmentStep.tsx
+   - FULL REWRITE (774 lines)
+   - Replaces old custom cards + custom drawer with:
+     * Registry-style cards with multi-select checkboxes
+     * Reuses EquipmentFormDialog from /equipment-registry for "+ Add Equipment"
+     * Removes unnecessary Equipment/Entity resource_type dropdown
+     * Uses registry two-level Category -> Equipment Type flow
+     * Adds "Let Buyer Add" placeholder entries (added_by_role: 'buyer')
+     * Search and "Select All" support
+
+2. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+   - MINOR EDIT (2 props added to EquipmentStep rendering)
+   - Added contractType and buyerId props at the EquipmentStep case (~line 1145)
+
+═══════════════════════════════════════════════════
+COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\equipment-step-rewrite\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Navigate to Contract Wizard -> Equipment step (step 10)
+- [ ] Verify equipment cards display from asset registry with checkboxes
+- [ ] Verify multi-select works (click cards to toggle selection)
+- [ ] Verify "Select All" button works
+- [ ] Verify search filters equipment cards
+- [ ] Verify "+ Add Equipment" opens the registry EquipmentFormDialog drawer
+- [ ] Verify adding equipment via drawer creates in registry AND auto-selects
+- [ ] Verify "Let Buyer Add" creates placeholder entries
+- [ ] Verify no Equipment/Entity dropdown is shown
+- [ ] Verify category sidebar filtering works
