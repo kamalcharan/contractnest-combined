@@ -1,0 +1,44 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — feat-equipment-details-api-integration
+═══════════════════════════════════════════════════
+
+Feature: Wire equipment_details (migration 040) into contract API RPCs + validators + types
+
+Submodules Affected:
+  - contractnest-api  (validators, types)
+  - contractnest-edge (migration 041 — RPC updates)
+
+Files Changed:
+  1. contractnest-api/src/types/contractTypes.ts
+     → Added equipment_details to ContractDetail response interface
+
+  2. contractnest-api/src/validators/contractValidators.ts
+     → Added equipment_details array validation to create + update validators
+
+  3. contractnest-edge/supabase/migrations/contracts/041_rpc_equipment_details_support.sql
+     → Updated create_contract_transaction: INSERT includes equipment_details
+     → Updated update_contract_transaction: UPDATE SET includes equipment_details
+     → Updated get_contract_by_id: response returns equipment_details
+
+═══════════════════════════════════════════════════
+COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Copy API files
+Copy-Item "MANUAL_COPY_FILES\feat-equipment-details-api-integration\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+
+# Copy Edge files
+Copy-Item "MANUAL_COPY_FILES\feat-equipment-details-api-integration\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+POST-COPY: Run migration 041 in Supabase
+═══════════════════════════════════════════════════
+
+Apply the SQL migration in Supabase Dashboard → SQL Editor:
+  File: contractnest-edge/supabase/migrations/contracts/041_rpc_equipment_details_support.sql
+
+This CREATE OR REPLACE updates all 3 RPCs in-place. Safe to run — no data loss.
