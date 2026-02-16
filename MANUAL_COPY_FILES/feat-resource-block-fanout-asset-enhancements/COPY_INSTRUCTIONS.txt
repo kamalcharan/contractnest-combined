@@ -1,0 +1,83 @@
+═══════════════════════════════════════════════════
+FEATURE: Resource-Based Block Fan-Out + Asset Selection Enhancements
+BRANCH: feat-resource-block-fanout-asset-enhancements
+═══════════════════════════════════════════════════
+
+Submodules Affected: contractnest-ui
+
+Files Changed:
+  1. contractnest-ui/src/components/catalog-studio/BlockLibraryMini.tsx
+     - Fan-out resource-based blocks into individual entries per resource option
+     - Search includes resource tag names
+
+  2. contractnest-ui/src/components/catalog-studio/BlockCardSelectable.tsx
+     - Resource tag badge (e.g., [MRI], [CT Scan]) next to block name
+
+  3. contractnest-ui/src/components/catalog-studio/BlockCardConfigurable.tsx
+     - Added resourceId, resourceName, originalBlockId to ConfigurableBlock interface
+     - Resource tag badge in collapsed header of added blocks
+
+  4. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+     - mapWizardToRequest uses originalBlockId as source_block_id for resource blocks
+     - Sends resourceId/resourceName in custom_fields
+
+  5. contractnest-ui/src/components/contracts/ContractWizard/steps/ServiceBlocksStep.tsx
+     - Passes resource metadata when adding fanned-out blocks
+
+  6. contractnest-ui/src/components/contracts/ContractWizard/steps/AssetSelectionStep.tsx
+     - NEW: "Add Equipment" button — opens ClientAssetFormDialog, auto-selects created asset
+     - NEW: "Let Buyer Add" panel — pick equipment type, creates placeholder "TBD — [Type]"
+     - NEW: "Buyer to fill" badge on placeholder assets in the list
+
+═══════════════════════════════════════════════════
+PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files from MANUAL_COPY_FILES
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\feat-resource-block-fanout-asset-enhancements\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+STEP 3: Start Dev Server & Test
+─────────────────────────────────
+cd contractnest-ui && npm run dev
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+
+Block Library Fan-Out:
+- [ ] Create a catalog block with pricing_mode = resource_based and 2+ resource options
+- [ ] Open Contract Wizard > Service Blocks step
+- [ ] Verify resource-based block appears as N entries (one per resource option)
+- [ ] Each entry shows block name + resource tag badge (e.g., "Calibration [MRI]")
+- [ ] Each entry shows the correct resource-specific price
+- [ ] Independent blocks still appear as single entries
+- [ ] FlyBy blocks unchanged
+- [ ] Search by resource name (e.g., "MRI") finds the right entries
+- [ ] Adding a fanned-out block stores resourceId/resourceName
+- [ ] Same catalog block can be added for different resources
+- [ ] API payload uses originalBlockId as source_block_id (not composite ID)
+
+Asset Selection Enhancements:
+- [ ] "Add Equipment" button opens ClientAssetFormDialog
+- [ ] Creating an asset auto-selects it in the list
+- [ ] "Let Buyer Add" toggles inline panel with equipment type dropdown
+- [ ] Selecting type + clicking "Add Placeholder" creates "TBD — [Type]" asset
+- [ ] Placeholder assets show "Buyer to fill" badge in amber
+- [ ] Placeholder asset is auto-selected after creation
+- [ ] Empty state shows both "Add Equipment" and "Let Buyer Add" buttons
+
+═══════════════════════════════════════════════════
+WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  -> "Tested, working - proceed with merge"
+  -> "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
