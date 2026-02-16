@@ -1112,6 +1112,7 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
               name: wizardState.buyerName,
             } : undefined}
             rfqMode={isRfqMode}
+            coverageTypes={wizardState.coverageTypes}
           />
         );
       }
