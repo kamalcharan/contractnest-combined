@@ -402,6 +402,25 @@ const AssetSelectionStep: React.FC<AssetSelectionStepProps> = ({
   const totalCoverageCount = coverageTypes.length;
   const hasCoverage = totalCoverageCount > 0;
 
+  // ── Glassmorphic style (matches /contacts pattern) ─────────────────
+  const glassStyle: React.CSSProperties = {
+    background: isDarkMode ? 'rgba(30, 41, 59, 0.8)' : 'rgba(255, 255, 255, 0.8)',
+    backdropFilter: 'blur(10px)',
+    WebkitBackdropFilter: 'blur(10px)',
+    borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.5)',
+    boxShadow: '0 4px 20px -5px rgba(0,0,0,0.1)',
+  };
+
+  const glassCardStyle = (hasAccent: boolean, accentColor: string): React.CSSProperties => ({
+    ...glassStyle,
+    borderColor: hasAccent
+      ? (isDarkMode ? accentColor + '40' : accentColor + '30')
+      : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.5)'),
+    boxShadow: hasAccent
+      ? `0 4px 20px -5px ${accentColor}15`
+      : '0 4px 20px -5px rgba(0,0,0,0.1)',
+  });
+
   return (
     <div className="flex flex-col h-full overflow-y-auto">
 
@@ -455,11 +474,8 @@ const AssetSelectionStep: React.FC<AssetSelectionStepProps> = ({
               return (
                 <div
                   key={subCat}
-                  className="rounded-xl border overflow-hidden transition-all"
-                  style={{
-                    borderColor: selectedInCat > 0 ? iconColor + '35' : colors.utility.primaryText + '12',
-                    backgroundColor: selectedInCat > 0 ? iconColor + '04' : 'transparent',
-                  }}
+                  className="rounded-2xl border overflow-hidden transition-all shadow-sm"
+                  style={glassCardStyle(selectedInCat > 0, iconColor)}
                 >
                   {/* Card header — clickable */}
                   <button
@@ -563,6 +579,7 @@ const AssetSelectionStep: React.FC<AssetSelectionStepProps> = ({
                 colors={colors}
                 accentColor={colors.brand.primary}
                 badge={equipmentDetails.length > 0 ? `${equipmentDetails.length} selected` : undefined}
+                isDarkMode={isDarkMode}
               />
 
               {/* Option 2: Add new equipment */}
@@ -574,6 +591,7 @@ const AssetSelectionStep: React.FC<AssetSelectionStepProps> = ({
                 onClick={() => setIsDrawerOpen(true)}
                 colors={colors}
                 accentColor="#8B5CF6"
+                isDarkMode={isDarkMode}
               />
 
               {/* Option 3: Let buyer add */}
@@ -586,6 +604,7 @@ const AssetSelectionStep: React.FC<AssetSelectionStepProps> = ({
                 colors={colors}
                 accentColor="#0EA5E9"
                 badge={allowBuyerToAdd ? 'Active' : undefined}
+                isDarkMode={isDarkMode}
               />
 
               {/* Option 4: Attach later */}
@@ -597,6 +616,7 @@ const AssetSelectionStep: React.FC<AssetSelectionStepProps> = ({
                 onClick={() => handleAttachmentModeChange(attachmentMode === 'later' ? null : 'later')}
                 colors={colors}
                 accentColor="#6B7280"
+                isDarkMode={isDarkMode}
               />
             </div>
 
@@ -605,11 +625,8 @@ const AssetSelectionStep: React.FC<AssetSelectionStepProps> = ({
             {/* MODE: Buyer will add — info card */}
             {attachmentMode === 'buyer' && (
               <div
-                className="rounded-xl border p-4 mb-4"
-                style={{
-                  borderColor: '#0EA5E9' + '25',
-                  backgroundColor: '#0EA5E9' + '04',
-                }}
+                className="rounded-2xl border p-4 mb-4 shadow-sm"
+                style={glassCardStyle(true, '#0EA5E9')}
               >
                 <div className="flex items-start gap-3">
                   <div
@@ -644,11 +661,8 @@ const AssetSelectionStep: React.FC<AssetSelectionStepProps> = ({
             {/* MODE: Attach later — info card */}
             {attachmentMode === 'later' && (
               <div
-                className="rounded-xl border p-4 mb-4"
-                style={{
-                  borderColor: '#6B7280' + '25',
-                  backgroundColor: '#6B7280' + '04',
-                }}
+                className="rounded-2xl border p-4 mb-4 shadow-sm"
+                style={glassCardStyle(true, '#6B7280')}
               >
                 <div className="flex items-start gap-3">
                   <div
@@ -682,8 +696,8 @@ const AssetSelectionStep: React.FC<AssetSelectionStepProps> = ({
             {/* MODE: Select existing — sidebar + grid */}
             {attachmentMode === 'existing' && (
               <div
-                className="rounded-xl border overflow-hidden"
-                style={{ borderColor: colors.utility.primaryText + '12', minHeight: 360 }}
+                className="rounded-2xl border overflow-hidden shadow-sm"
+                style={{ ...glassStyle, minHeight: 360 }}
               >
                 <div className="flex" style={{ height: 400 }}>
                   {/* Sidebar */}
@@ -875,19 +889,27 @@ interface OptionCardProps {
   colors: any;
   accentColor: string;
   badge?: string;
+  isDarkMode?: boolean;
 }
 
 const OptionCard: React.FC<OptionCardProps> = ({
-  icon, title, description, isSelected, onClick, colors, accentColor, badge,
+  icon, title, description, isSelected, onClick, colors, accentColor, badge, isDarkMode = false,
 }) => (
   <button
     type="button"
     onClick={onClick}
-    className="flex items-start gap-3 p-3.5 rounded-xl border text-left transition-all hover:shadow-sm"
+    className="flex items-start gap-3 p-3.5 rounded-2xl border text-left transition-all hover:shadow-lg shadow-sm"
     style={{
-      borderColor: isSelected ? accentColor + '50' : colors.utility.primaryText + '12',
-      backgroundColor: isSelected ? accentColor + '06' : 'transparent',
-    }}
+      background: isDarkMode ? 'rgba(30, 41, 59, 0.8)' : 'rgba(255, 255, 255, 0.8)',
+      backdropFilter: 'blur(10px)',
+      WebkitBackdropFilter: 'blur(10px)',
+      borderColor: isSelected
+        ? (isDarkMode ? accentColor + '50' : accentColor + '40')
+        : (isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.5)'),
+      boxShadow: isSelected
+        ? `0 4px 20px -5px ${accentColor}20`
+        : '0 4px 20px -5px rgba(0,0,0,0.08)',
+    } as React.CSSProperties}
   >
     <div
       className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
