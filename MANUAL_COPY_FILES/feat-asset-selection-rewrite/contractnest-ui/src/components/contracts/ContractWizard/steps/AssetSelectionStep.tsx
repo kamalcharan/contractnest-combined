@@ -1,9 +1,14 @@
 // src/components/contracts/ContractWizard/steps/AssetSelectionStep.tsx
-// Equipment / Entity selection for the Contract Wizard
-// Reuses EquipmentCard (selectable mode) + EquipmentFormDialog (drawer) from /equipment-registry
+// Equipment / Entity selection for the Contract Wizard — Guided Coverage-First UX
+// Phase 1: "What does this contract cover?" — pick coverage types (mandatory)
+// Phase 2: "Attach specific equipment" — optional, 4 choices
 
 import React, { useState, useMemo, useCallback } from 'react';
-import { Plus, Search, X, Layers, Package, UserPlus, ShieldCheck, Trash2, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import {
+  Plus, Search, X, Layers, Package, UserPlus,
+  Trash2, CheckCircle2, ChevronDown, ChevronRight,
+  Clock, ListChecks, PackagePlus,
+} from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/Button';
@@ -63,9 +68,9 @@ export interface CoverageTypeItem {
 // ── Props ────────────────────────────────────────────────────────────
 
 interface AssetSelectionStepProps {
-  contactId: string;                                        // buyer's contact_id
-  buyerName: string;                                        // buyer display name
-  nomenclatureGroup: string | null;                         // e.g. 'equipment_maintenance' | 'facility_property'
+  contactId: string;
+  buyerName: string;
+  nomenclatureGroup: string | null;
   equipmentDetails: EquipmentDetailItem[];
   onEquipmentDetailsChange: (items: EquipmentDetailItem[]) => void;
   allowBuyerToAdd: boolean;
@@ -82,6 +87,9 @@ const NOMENCLATURE_TO_RESOURCE: Record<string, { resourceType: 'equipment' | 'en
 };
 
 const DEFAULT_RESOURCE_CONFIG = { resourceType: 'equipment' as const, typeIds: ['equipment'], label: 'Equipment', addLabel: 'Add Equipment' };
+
+// Attachment mode
+type AttachmentMode = 'existing' | 'buyer' | 'later' | null;
 
 // ── Component ────────────────────────────────────────────────────────
 
@@ -113,7 +121,6 @@ const AssetSelectionStep: React.FC<AssetSelectionStepProps> = ({
 
   const allClientAssets: ClientAsset[] = useMemo(() => {
     const raw = assetsResponse?.data || [];
-    // Filter by resource_type matching nomenclature
     return raw.filter((a) =>
       config.typeIds.includes((a.resource_type_id || '').toLowerCase())
     );
@@ -160,50 +167,47 @@ const AssetSelectionStep: React.FC<AssetSelectionStepProps> = ({
   }, [filteredResources]);
 
   // ── Local state ────────────────────────────────────────────────────
-  const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(null);
+  const [expandedSubCategory, setExpandedSubCategory] = useState<string | null>(null);
+  const [attachmentMode, setAttachmentMode] = useState<AttachmentMode>(
+    // Auto-detect initial mode from existing state
+    allowBuyerToAdd ? 'buyer' : (equipmentDetails.length > 0 ? 'existing' : null)
+  );
   const [searchQuery, setSearchQuery] = useState('');
-  const [sidebarSearch, setSidebarSearch] = useState('');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-
-  // Coverage type add form state
-  const [coverageSubCat, setCoverageSubCat] = useState<string>('');
-  const [coverageResourceId, setCoverageResourceId] = useState<string>('');
+  const [gridFilterSubCat, setGridFilterSubCat] = useState<string | null>(null);
 
   // Create mutation
   const createMutation = useCreateClientAsset();
 
-  // ── Selected IDs set (for quick lookup) ────────────────────────────
+  // ── Derived lookups ────────────────────────────────────────────────
   const selectedRegistryIds = useMemo(() => {
     return new Set(equipmentDetails.map((d) => d.asset_registry_id).filter(Boolean) as string[]);
   }, [equipmentDetails]);
 
-  // ── Coverage types derived from selected assets ────────────────────
-  // Track which resource_ids are already covered (from assets + manual)
   const coveredResourceIds = useMemo(() => {
     return new Set(coverageTypes.map((c) => c.resource_id));
   }, [coverageTypes]);
 
-  // Resources available for coverage add (filtered by selected sub_cat)
-  const coverageFilteredResources = useMemo(() => {
-    if (!coverageSubCat) return [];
-    return (resourcesBySubCategory.get(coverageSubCat) || []).filter(
-      (r) => !coveredResourceIds.has(r.id)
-    );
-  }, [coverageSubCat, resourcesBySubCategory, coveredResourceIds]);
+  // Coverage counts per sub-category
+  const coverageCountBySubCat = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const ct of coverageTypes) {
+      counts[ct.sub_category] = (counts[ct.sub_category] || 0) + 1;
+    }
+    return counts;
+  }, [coverageTypes]);
 
   // ── Filtered assets for grid ───────────────────────────────────────
   const displayAssets = useMemo(() => {
     let filtered = allClientAssets;
 
-    // Filter by sub_category
-    if (selectedSubCategory) {
+    if (gridFilterSubCat) {
       const resourceIdsInSubCat = new Set(
-        (resourcesBySubCategory.get(selectedSubCategory) || []).map((r) => r.id)
+        (resourcesBySubCategory.get(gridFilterSubCat) || []).map((r) => r.id)
       );
       filtered = filtered.filter((a) => resourceIdsInSubCat.has(a.asset_type_id || ''));
     }
 
-    // Filter by search
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(
@@ -217,9 +221,9 @@ const AssetSelectionStep: React.FC<AssetSelectionStepProps> = ({
     }
 
     return filtered;
-  }, [allClientAssets, selectedSubCategory, resourcesBySubCategory, searchQuery]);
+  }, [allClientAssets, gridFilterSubCat, resourcesBySubCategory, searchQuery]);
 
-  // ── Sub-category asset counts ──────────────────────────────────────
+  // Sub-category asset counts (for grid sidebar)
   const subCategoryAssetCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const asset of allClientAssets) {
@@ -229,19 +233,31 @@ const AssetSelectionStep: React.FC<AssetSelectionStepProps> = ({
     return counts;
   }, [allClientAssets, resourceIdToSubCategory]);
 
-  // Filtered sidebar
-  const filteredSubCategories = useMemo(() => {
-    if (!sidebarSearch.trim()) return subCategories;
-    const q = sidebarSearch.toLowerCase();
-    return subCategories.filter((sc) => sc.toLowerCase().includes(q));
-  }, [sidebarSearch, subCategories]);
+  // ── Coverage type toggle ───────────────────────────────────────────
+  const toggleCoverageType = useCallback(
+    (resource: Resource) => {
+      const subCat = resource.sub_category || 'Other';
+      if (coveredResourceIds.has(resource.id)) {
+        // Remove
+        onCoverageTypesChange(coverageTypes.filter((c) => c.resource_id !== resource.id));
+      } else {
+        // Add
+        const newCoverage: CoverageTypeItem = {
+          id: crypto.randomUUID(),
+          sub_category: subCat,
+          resource_id: resource.id,
+          resource_name: resource.display_name || resource.name,
+        };
+        onCoverageTypesChange([...coverageTypes, newCoverage]);
+      }
+    },
+    [coveredResourceIds, coverageTypes, onCoverageTypesChange]
+  );
 
   // ── Build EquipmentDetailItem from ClientAsset ─────────────────────
   const buildDetailFromAsset = useCallback(
     (asset: ClientAsset): EquipmentDetailItem => {
-      // Resolve category_name from resource_id
       const matchedResource = filteredResources.find((r) => r.id === asset.asset_type_id);
-
       return {
         id: crypto.randomUUID(),
         asset_registry_id: asset.id,
@@ -270,19 +286,17 @@ const AssetSelectionStep: React.FC<AssetSelectionStepProps> = ({
     [filteredResources, currentTenant?.id, config.resourceType]
   );
 
-  // ── Toggle selection ───────────────────────────────────────────────
+  // ── Toggle equipment selection ─────────────────────────────────────
   const handleToggle = useCallback(
     (asset: ClientAsset | any) => {
       const clientAsset = asset as ClientAsset;
       const isCurrentlySelected = selectedRegistryIds.has(clientAsset.id);
 
       if (isCurrentlySelected) {
-        // Remove
         onEquipmentDetailsChange(
           equipmentDetails.filter((d) => d.asset_registry_id !== clientAsset.id)
         );
       } else {
-        // Add to equipment details
         const detail = buildDetailFromAsset(clientAsset);
         onEquipmentDetailsChange([...equipmentDetails, detail]);
 
@@ -309,7 +323,6 @@ const AssetSelectionStep: React.FC<AssetSelectionStepProps> = ({
   const handleCreateSubmit = useCallback(
     async (data: AssetFormData) => {
       try {
-        // Force owner_contact_id to the buyer
         const payload = {
           ...data,
           owner_contact_id: contactId,
@@ -324,7 +337,6 @@ const AssetSelectionStep: React.FC<AssetSelectionStepProps> = ({
 
         const created = await createMutation.mutateAsync(payload as any);
 
-        // Add to equipmentDetails
         const matchedResource = filteredResources.find((r) => r.id === data.asset_type_id);
         const detail: EquipmentDetailItem = {
           id: crypto.randomUUID(),
@@ -353,7 +365,7 @@ const AssetSelectionStep: React.FC<AssetSelectionStepProps> = ({
 
         onEquipmentDetailsChange([...equipmentDetails, detail]);
 
-        // Auto-add to coverage types if not already there
+        // Auto-add to coverage types
         if (data.asset_type_id && !coveredResourceIds.has(data.asset_type_id) && matchedResource) {
           const subCat = matchedResource.sub_category || 'Other';
           const newCoverage: CoverageTypeItem = {
@@ -366,6 +378,8 @@ const AssetSelectionStep: React.FC<AssetSelectionStepProps> = ({
         }
 
         setIsDrawerOpen(false);
+        // Auto-switch to existing mode after creating
+        setAttachmentMode('existing');
       } catch {
         // Toast handled by mutation hook
       }
@@ -373,521 +387,472 @@ const AssetSelectionStep: React.FC<AssetSelectionStepProps> = ({
     [contactId, config, createMutation, filteredResources, currentTenant?.id, equipmentDetails, onEquipmentDetailsChange, coveredResourceIds, coverageTypes, onCoverageTypesChange]
   );
 
-  // ── Add coverage type manually ─────────────────────────────────────
-  const handleAddCoverageType = useCallback(() => {
-    if (!coverageSubCat || !coverageResourceId) return;
-    const resource = filteredResources.find((r) => r.id === coverageResourceId);
-    if (!resource) return;
-
-    const newCoverage: CoverageTypeItem = {
-      id: crypto.randomUUID(),
-      sub_category: coverageSubCat,
-      resource_id: resource.id,
-      resource_name: resource.display_name || resource.name,
-    };
-    onCoverageTypesChange([...coverageTypes, newCoverage]);
-    setCoverageResourceId('');
-    // Keep sub_category selected for easy batch adding
-  }, [coverageSubCat, coverageResourceId, filteredResources, coverageTypes, onCoverageTypesChange]);
-
-  const handleRemoveCoverageType = useCallback(
-    (id: string) => {
-      onCoverageTypesChange(coverageTypes.filter((c) => c.id !== id));
-    },
-    [coverageTypes, onCoverageTypesChange]
-  );
+  // ── Attachment mode handlers ───────────────────────────────────────
+  const handleAttachmentModeChange = useCallback((mode: AttachmentMode) => {
+    setAttachmentMode(mode);
+    if (mode === 'buyer') {
+      onAllowBuyerToAddChange(true);
+    } else if (attachmentMode === 'buyer' && mode !== 'buyer') {
+      onAllowBuyerToAddChange(false);
+    }
+  }, [attachmentMode, onAllowBuyerToAddChange]);
 
   // ── Render ─────────────────────────────────────────────────────────
 
-  const totalAssetCount = allClientAssets.length;
-  const selectedCount = equipmentDetails.length;
+  const totalCoverageCount = coverageTypes.length;
+  const hasCoverage = totalCoverageCount > 0;
 
   return (
-    <div className="flex flex-col h-full overflow-hidden" style={{ minHeight: 480 }}>
+    <div className="flex flex-col h-full overflow-y-auto">
 
-      {/* ── SECTION 1: Mandatory Coverage Types ───────────────────── */}
-      <div
-        className="px-6 py-4 border-b"
-        style={{ borderColor: colors.utility.primaryText + '12' }}
-      >
-        <div className="flex items-center gap-2 mb-3">
-          <div
-            className="w-6 h-6 rounded-md flex items-center justify-center"
-            style={{ backgroundColor: coverageTypes.length > 0 ? '#10b98112' : '#f59e0b12' }}
-          >
-            {coverageTypes.length > 0
-              ? <CheckCircle2 size={14} style={{ color: '#10b981' }} />
-              : <AlertTriangle size={14} style={{ color: '#f59e0b' }} />
-            }
-          </div>
-          <h3 className="text-sm font-bold" style={{ color: colors.utility.primaryText }}>
-            Coverage Types
-            <span className="text-red-500 ml-1">*</span>
-          </h3>
-          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full ml-auto" style={{
-            backgroundColor: coverageTypes.length > 0 ? '#10b98112' : '#f59e0b12',
-            color: coverageTypes.length > 0 ? '#10b981' : '#f59e0b',
-          }}>
-            {coverageTypes.length > 0 ? `${coverageTypes.length} type${coverageTypes.length > 1 ? 's' : ''} selected` : 'Required'}
-          </span>
+      {/* ═══════════════════════════════════════════════════════════════
+          PHASE 1: "What does this contract cover?"
+          ═══════════════════════════════════════════════════════════════ */}
+      <div className="px-6 pt-5 pb-4">
+        <div className="flex items-center gap-3 mb-1">
+          <h2 className="text-base font-bold" style={{ color: colors.utility.primaryText }}>
+            What does this contract cover?
+          </h2>
+          {hasCoverage && (
+            <span
+              className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: '#10b98115', color: '#10b981' }}
+            >
+              {totalCoverageCount} type{totalCoverageCount > 1 ? 's' : ''} selected
+            </span>
+          )}
         </div>
-        <p className="text-xs mb-3" style={{ color: colors.utility.secondaryText }}>
-          Define the {config.label.toLowerCase()} types this contract will cover. Specific {config.label.toLowerCase()} can be attached later, but coverage types are required.
+        <p className="text-xs mb-5" style={{ color: colors.utility.secondaryText }}>
+          Select the {config.label.toLowerCase()} types this contract will service. Specific {config.label.toLowerCase()} can be attached later.
         </p>
 
-        {/* Coverage type chips */}
-        {coverageTypes.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-3">
-            {coverageTypes.map((ct) => {
-              const scConfig = getSubCategoryConfig(ct.sub_category);
-              const chipColor = scConfig?.color || colors.brand.primary;
+        {/* Loading state */}
+        {categoriesLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <VaNiLoader size="sm" message="Loading categories..." />
+          </div>
+        ) : subCategories.length === 0 ? (
+          <div
+            className="rounded-lg border p-6 text-center"
+            style={{ borderColor: colors.utility.primaryText + '15', backgroundColor: colors.utility.secondaryBackground }}
+          >
+            <p className="text-sm" style={{ color: colors.utility.secondaryText }}>
+              No {config.label.toLowerCase()} categories configured. Add them in Settings &rarr; Resources.
+            </p>
+          </div>
+        ) : (
+          /* Sub-category cards grid */
+          <div className="space-y-2">
+            {subCategories.map((subCat) => {
+              const scConfig = getSubCategoryConfig(subCat);
+              const SubCatIcon = scConfig?.icon || Package;
+              const iconColor = scConfig?.color || '#6B7280';
+              const isExpanded = expandedSubCategory === subCat;
+              const resourcesInCat = resourcesBySubCategory.get(subCat) || [];
+              const selectedInCat = coverageCountBySubCat[subCat] || 0;
+              const totalInCat = resourcesInCat.length;
+
               return (
                 <div
-                  key={ct.id}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border"
+                  key={subCat}
+                  className="rounded-xl border overflow-hidden transition-all"
                   style={{
-                    borderColor: chipColor + '30',
-                    backgroundColor: chipColor + '08',
-                    color: chipColor,
+                    borderColor: selectedInCat > 0 ? iconColor + '35' : colors.utility.primaryText + '12',
+                    backgroundColor: selectedInCat > 0 ? iconColor + '04' : 'transparent',
                   }}
                 >
-                  <span>{ct.sub_category}</span>
-                  <span style={{ opacity: 0.4 }}>&rsaquo;</span>
-                  <span style={{ color: colors.utility.primaryText }}>{ct.resource_name}</span>
+                  {/* Card header — clickable */}
                   <button
                     type="button"
-                    onClick={() => handleRemoveCoverageType(ct.id)}
-                    className="ml-1 p-0.5 rounded-full transition-colors hover:opacity-70"
-                    style={{ color: chipColor }}
+                    onClick={() => setExpandedSubCategory(isExpanded ? null : subCat)}
+                    className="w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors hover:opacity-90"
                   >
-                    <X size={12} />
+                    <div
+                      className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: iconColor + '15' }}
+                    >
+                      <SubCatIcon size={18} style={{ color: iconColor }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-sm font-semibold block" style={{ color: colors.utility.primaryText }}>
+                        {subCat}
+                      </span>
+                      <span className="text-[11px]" style={{ color: colors.utility.secondaryText }}>
+                        {totalInCat} type{totalInCat > 1 ? 's' : ''} available
+                      </span>
+                    </div>
+                    {selectedInCat > 0 && (
+                      <span
+                        className="text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1"
+                        style={{ backgroundColor: iconColor + '15', color: iconColor }}
+                      >
+                        <CheckCircle2 size={11} />
+                        {selectedInCat}
+                      </span>
+                    )}
+                    {isExpanded
+                      ? <ChevronDown size={16} style={{ color: colors.utility.secondaryText }} />
+                      : <ChevronRight size={16} style={{ color: colors.utility.secondaryText }} />
+                    }
                   </button>
+
+                  {/* Expanded: equipment type chips */}
+                  {isExpanded && (
+                    <div
+                      className="px-4 pb-4 pt-1 border-t"
+                      style={{ borderColor: colors.utility.primaryText + '08' }}
+                    >
+                      <p className="text-[11px] mb-3" style={{ color: colors.utility.secondaryText }}>
+                        Select the types you&apos;ll service under {subCat}:
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {resourcesInCat.map((resource) => {
+                          const isSelected = coveredResourceIds.has(resource.id);
+                          return (
+                            <button
+                              key={resource.id}
+                              type="button"
+                              onClick={() => toggleCoverageType(resource)}
+                              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all border"
+                              style={{
+                                borderColor: isSelected ? iconColor + '50' : colors.utility.primaryText + '15',
+                                backgroundColor: isSelected ? iconColor + '12' : 'transparent',
+                                color: isSelected ? iconColor : colors.utility.secondaryText,
+                              }}
+                            >
+                              {isSelected && <CheckCircle2 size={13} />}
+                              {resource.display_name || resource.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
         )}
-
-        {/* Add coverage type inline form */}
-        <div className="flex items-end gap-2">
-          <div className="flex-1 min-w-0">
-            <label className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: colors.utility.secondaryText }}>
-              Category
-            </label>
-            <select
-              value={coverageSubCat}
-              onChange={(e) => { setCoverageSubCat(e.target.value); setCoverageResourceId(''); }}
-              className="w-full rounded-md border px-2.5 py-2 text-xs"
-              style={{
-                borderColor: colors.utility.primaryText + '20',
-                backgroundColor: colors.utility.primaryBackground,
-                color: colors.utility.primaryText,
-              }}
-            >
-              <option value="">Select category...</option>
-              {subCategories.map((sc) => (
-                <option key={sc} value={sc}>{sc}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex-1 min-w-0">
-            <label className="text-[10px] font-semibold uppercase tracking-wider mb-1 block" style={{ color: colors.utility.secondaryText }}>
-              {config.label} Type
-            </label>
-            <select
-              value={coverageResourceId}
-              onChange={(e) => setCoverageResourceId(e.target.value)}
-              disabled={!coverageSubCat}
-              className="w-full rounded-md border px-2.5 py-2 text-xs disabled:opacity-50"
-              style={{
-                borderColor: colors.utility.primaryText + '20',
-                backgroundColor: colors.utility.primaryBackground,
-                color: colors.utility.primaryText,
-              }}
-            >
-              <option value="">Select type...</option>
-              {coverageFilteredResources.map((r) => (
-                <option key={r.id} value={r.id}>{r.display_name || r.name}</option>
-              ))}
-            </select>
-          </div>
-          <Button
-            onClick={handleAddCoverageType}
-            disabled={!coverageSubCat || !coverageResourceId}
-            size="sm"
-            className="text-xs transition-colors hover:opacity-90 flex-shrink-0"
-            style={{
-              background: (!coverageSubCat || !coverageResourceId)
-                ? colors.utility.primaryText + '15'
-                : `linear-gradient(135deg, ${colors.brand.primary}, ${colors.brand.secondary || colors.brand.primary})`,
-              color: (!coverageSubCat || !coverageResourceId) ? colors.utility.secondaryText : '#FFFFFF',
-            }}
-          >
-            <Plus className="mr-1 h-3.5 w-3.5" />
-            Add
-          </Button>
-        </div>
       </div>
 
-      {/* ── "Let Buyer Add" info card (when toggled on) ───────────── */}
-      {allowBuyerToAdd && (
-        <div
-          className="mx-6 mt-4 rounded-xl border p-4"
-          style={{
-            borderColor: colors.brand.primary + '25',
-            backgroundColor: colors.brand.primary + '04',
-          }}
-        >
-          <div className="flex items-start gap-3">
-            <div
-              className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-              style={{ backgroundColor: colors.brand.primary + '12' }}
-            >
-              <UserPlus size={20} style={{ color: colors.brand.primary }} />
+      {/* ═══════════════════════════════════════════════════════════════
+          PHASE 2: "Attach specific equipment" — only shows after types picked
+          ═══════════════════════════════════════════════════════════════ */}
+      {hasCoverage && (
+        <div className="px-6 pb-5">
+          <div
+            className="border-t pt-5 mt-1"
+            style={{ borderColor: colors.utility.primaryText + '10' }}
+          >
+            <h2 className="text-base font-bold mb-1" style={{ color: colors.utility.primaryText }}>
+              Attach specific {config.label.toLowerCase()}?
+            </h2>
+            <p className="text-xs mb-4" style={{ color: colors.utility.secondaryText }}>
+              Coverage types are captured. Now choose how to handle specific {config.label.toLowerCase()} details.
+            </p>
+
+            {/* Option cards — 2x2 grid */}
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              {/* Option 1: Select from existing */}
+              <OptionCard
+                icon={<ListChecks size={20} />}
+                title="Select Existing"
+                description={`Pick from ${allClientAssets.length} registered ${config.label.toLowerCase()}`}
+                isSelected={attachmentMode === 'existing'}
+                onClick={() => handleAttachmentModeChange('existing')}
+                colors={colors}
+                accentColor={colors.brand.primary}
+                badge={equipmentDetails.length > 0 ? `${equipmentDetails.length} selected` : undefined}
+              />
+
+              {/* Option 2: Add new equipment */}
+              <OptionCard
+                icon={<PackagePlus size={20} />}
+                title={config.addLabel}
+                description={`Register and attach new ${config.label.toLowerCase()}`}
+                isSelected={false}
+                onClick={() => setIsDrawerOpen(true)}
+                colors={colors}
+                accentColor="#8B5CF6"
+              />
+
+              {/* Option 3: Let buyer add */}
+              <OptionCard
+                icon={<UserPlus size={20} />}
+                title="Buyer Will Add"
+                description="Buyer adds after CNAK claim or review"
+                isSelected={attachmentMode === 'buyer'}
+                onClick={() => handleAttachmentModeChange(attachmentMode === 'buyer' ? null : 'buyer')}
+                colors={colors}
+                accentColor="#0EA5E9"
+                badge={allowBuyerToAdd ? 'Active' : undefined}
+              />
+
+              {/* Option 4: Attach later */}
+              <OptionCard
+                icon={<Clock size={20} />}
+                title="Attach Later"
+                description="Skip for now, add details after creation"
+                isSelected={attachmentMode === 'later'}
+                onClick={() => handleAttachmentModeChange(attachmentMode === 'later' ? null : 'later')}
+                colors={colors}
+                accentColor="#6B7280"
+              />
             </div>
-            <div className="flex-1 min-w-0">
-              <h4 className="text-sm font-bold mb-1" style={{ color: colors.utility.primaryText }}>
-                Buyer Will Add {config.label}
-              </h4>
-              <p className="text-xs leading-relaxed" style={{ color: colors.utility.secondaryText }}>
-                {buyerName || 'The buyer'} will be able to add their {config.label.toLowerCase()} once the CNAK (Contract Acknowledgement) is claimed, or during the contract review stage. They can attach specific {config.label.toLowerCase()} details at that time.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => onAllowBuyerToAddChange(false)}
-              className="p-1.5 rounded-lg transition-colors hover:opacity-70 flex-shrink-0"
-              style={{ color: colors.utility.secondaryText }}
-              title="Remove this option"
-            >
-              <Trash2 size={16} />
-            </button>
+
+            {/* ── Expanded content based on selected mode ──────────── */}
+
+            {/* MODE: Buyer will add — info card */}
+            {attachmentMode === 'buyer' && (
+              <div
+                className="rounded-xl border p-4 mb-4"
+                style={{
+                  borderColor: '#0EA5E9' + '25',
+                  backgroundColor: '#0EA5E9' + '04',
+                }}
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ backgroundColor: '#0EA5E9' + '12' }}
+                  >
+                    <UserPlus size={20} style={{ color: '#0EA5E9' }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-sm font-bold mb-1" style={{ color: colors.utility.primaryText }}>
+                      Buyer Will Add {config.label}
+                    </h4>
+                    <p className="text-xs leading-relaxed" style={{ color: colors.utility.secondaryText }}>
+                      <strong>{buyerName || 'The buyer'}</strong> will be able to add their {config.label.toLowerCase()} once
+                      the CNAK (Contract Acknowledgement) is claimed, or during the contract review stage.
+                      They can attach specific {config.label.toLowerCase()} details at that time.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleAttachmentModeChange(null)}
+                    className="p-1.5 rounded-lg transition-colors hover:opacity-70 flex-shrink-0"
+                    style={{ color: colors.utility.secondaryText }}
+                    title="Remove this option"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* MODE: Attach later — info card */}
+            {attachmentMode === 'later' && (
+              <div
+                className="rounded-xl border p-4 mb-4"
+                style={{
+                  borderColor: '#6B7280' + '25',
+                  backgroundColor: '#6B7280' + '04',
+                }}
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                    style={{ backgroundColor: '#6B7280' + '12' }}
+                  >
+                    <Clock size={20} style={{ color: '#6B7280' }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-sm font-bold mb-1" style={{ color: colors.utility.primaryText }}>
+                      Attach {config.label} Later
+                    </h4>
+                    <p className="text-xs leading-relaxed" style={{ color: colors.utility.secondaryText }}>
+                      Coverage types have been captured. You can attach specific {config.label.toLowerCase()} details
+                      after the contract is created — either from the contract detail page or during the review stage.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleAttachmentModeChange(null)}
+                    className="p-1.5 rounded-lg transition-colors hover:opacity-70 flex-shrink-0"
+                    style={{ color: colors.utility.secondaryText }}
+                    title="Dismiss"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* MODE: Select existing — sidebar + grid */}
+            {attachmentMode === 'existing' && (
+              <div
+                className="rounded-xl border overflow-hidden"
+                style={{ borderColor: colors.utility.primaryText + '12', minHeight: 360 }}
+              >
+                <div className="flex" style={{ height: 400 }}>
+                  {/* Sidebar */}
+                  <div
+                    className="w-[200px] min-w-[200px] border-r flex flex-col overflow-hidden"
+                    style={{
+                      backgroundColor: colors.utility.secondaryBackground,
+                      borderColor: colors.utility.primaryText + '10',
+                    }}
+                  >
+                    <div className="flex-1 overflow-y-auto p-2">
+                      {/* All items */}
+                      <button
+                        onClick={() => setGridFilterSubCat(null)}
+                        className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg mb-0.5 transition-all text-left"
+                        style={{
+                          backgroundColor: gridFilterSubCat === null ? colors.brand.primary + '12' : 'transparent',
+                        }}
+                      >
+                        <Layers size={13} style={{
+                          color: gridFilterSubCat === null ? colors.brand.primary : colors.utility.secondaryText,
+                        }} />
+                        <span
+                          className="text-xs font-semibold truncate flex-1"
+                          style={{
+                            color: gridFilterSubCat === null ? colors.brand.primary : colors.utility.primaryText,
+                          }}
+                        >
+                          All
+                        </span>
+                        <span className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
+                          {allClientAssets.length}
+                        </span>
+                      </button>
+
+                      {subCategories.map((subCat) => {
+                        const isActive = gridFilterSubCat === subCat;
+                        const scConfig = getSubCategoryConfig(subCat);
+                        const SubCatIcon = scConfig?.icon || Package;
+                        const iconColor = scConfig?.color || '#6B7280';
+                        const count = subCategoryAssetCounts[subCat] || 0;
+                        if (count === 0) return null;
+
+                        return (
+                          <button
+                            key={subCat}
+                            onClick={() => setGridFilterSubCat(subCat)}
+                            className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg mb-0.5 transition-all text-left"
+                            style={{
+                              backgroundColor: isActive ? colors.brand.primary + '12' : 'transparent',
+                            }}
+                          >
+                            <SubCatIcon size={13} style={{ color: isActive ? colors.brand.primary : iconColor }} />
+                            <span
+                              className="text-xs font-semibold truncate flex-1"
+                              style={{ color: isActive ? colors.brand.primary : colors.utility.primaryText }}
+                            >
+                              {subCat}
+                            </span>
+                            <span className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
+                              {count}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Grid area */}
+                  <div className="flex-1 overflow-y-auto px-4 py-3">
+                    {/* Search + count */}
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="relative flex-1 max-w-xs">
+                        <Search
+                          className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5"
+                          style={{ color: colors.utility.secondaryText }}
+                        />
+                        <Input
+                          placeholder={`Search...`}
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="pl-8 pr-8 text-xs h-8"
+                          style={{
+                            borderColor: colors.utility.primaryText + '20',
+                            backgroundColor: colors.utility.primaryBackground,
+                            color: colors.utility.primaryText,
+                          }}
+                        />
+                        {searchQuery && (
+                          <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                            <X className="h-3 w-3" style={{ color: colors.utility.secondaryText }} />
+                          </button>
+                        )}
+                      </div>
+                      <span className="text-[11px] ml-auto" style={{ color: colors.utility.secondaryText }}>
+                        <strong>{equipmentDetails.length}</strong> selected of <strong>{displayAssets.length}</strong>
+                      </span>
+                    </div>
+
+                    {/* Asset grid */}
+                    {assetsLoading ? (
+                      <div className="flex items-center justify-center py-12">
+                        <VaNiLoader size="sm" message="Loading..." />
+                      </div>
+                    ) : displayAssets.length > 0 ? (
+                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                        {displayAssets.map((asset) => (
+                          <EquipmentCard
+                            key={asset.id}
+                            asset={asset}
+                            selectable
+                            isSelected={selectedRegistryIds.has(asset.id)}
+                            onToggle={handleToggle}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12">
+                        <Package size={28} style={{ color: colors.utility.secondaryText, opacity: 0.4, margin: '0 auto 8px' }} />
+                        <p className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                          {searchQuery
+                            ? `No ${config.label.toLowerCase()} matching "${searchQuery}"`
+                            : `No ${config.label.toLowerCase()} registered for this client`
+                          }
+                        </p>
+                        {!searchQuery && (
+                          <Button
+                            onClick={() => setIsDrawerOpen(true)}
+                            size="sm"
+                            className="mt-3 text-xs"
+                            style={{
+                              background: `linear-gradient(135deg, ${colors.brand.primary}, ${colors.brand.secondary || colors.brand.primary})`,
+                              color: '#FFFFFF',
+                            }}
+                          >
+                            <Plus className="mr-1 h-3.5 w-3.5" />
+                            {config.addLabel}
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* ── Toolbar ───────────────────────────────────────────────── */}
-      <div
-        className="flex items-center justify-between px-6 py-3 border-b flex-wrap gap-3"
-        style={{ borderColor: colors.utility.primaryText + '12' }}
-      >
-        <div className="flex items-center gap-3">
-          <span className="text-sm" style={{ color: colors.utility.secondaryText }}>
-            <strong style={{ color: colors.utility.primaryText, fontWeight: 700 }}>
-              {selectedCount}
-            </strong>
-            {' '}selected
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Let Buyer Add toggle (only show button when NOT already active) */}
-          {!allowBuyerToAdd && (
-            <button
-              type="button"
-              onClick={() => onAllowBuyerToAddChange(true)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all border"
-              style={{
-                borderColor: colors.utility.primaryText + '20',
-                backgroundColor: 'transparent',
-                color: colors.utility.secondaryText,
-              }}
-            >
-              <UserPlus size={14} />
-              Let Buyer Add {config.label}
-            </button>
-          )}
-
-          {/* Add Equipment button */}
-          <Button
-            onClick={() => setIsDrawerOpen(true)}
-            size="sm"
-            className="text-sm transition-colors hover:opacity-90"
-            style={{
-              background: `linear-gradient(135deg, ${colors.brand.primary}, ${colors.brand.secondary || colors.brand.primary})`,
-              color: '#FFFFFF',
-            }}
-          >
-            <Plus className="mr-1.5 h-4 w-4" />
-            {config.addLabel}
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex flex-1 overflow-hidden">
-        {/* ── Left Sidebar: Sub-Category Navigation ─────────────── */}
-        <div
-          className="w-[240px] min-w-[240px] border-r flex flex-col overflow-hidden"
-          style={{
-            backgroundColor: colors.utility.secondaryBackground,
-            borderColor: colors.utility.primaryText + '15',
-          }}
-        >
-          {/* Sidebar Header */}
+      {/* Empty state when no coverage yet — gentle prompt */}
+      {!hasCoverage && !categoriesLoading && subCategories.length > 0 && (
+        <div className="px-6 pb-6">
           <div
-            className="px-4 pt-4 pb-3 border-b"
-            style={{ borderColor: colors.utility.primaryText + '10' }}
+            className="rounded-lg border-2 border-dashed p-5 text-center"
+            style={{ borderColor: '#f59e0b40' }}
           >
-            <h3
-              className="text-[10px] font-bold uppercase tracking-widest mb-2"
-              style={{ color: colors.utility.secondaryText }}
-            >
-              {config.label} Categories
-            </h3>
-            <Input
-              placeholder="Search categories..."
-              value={sidebarSearch}
-              onChange={(e) => setSidebarSearch(e.target.value)}
-              className="text-xs"
-              style={{
-                borderColor: colors.utility.primaryText + '20',
-                backgroundColor: colors.utility.primaryBackground,
-                color: colors.utility.primaryText,
-              }}
-            />
-          </div>
-
-          {/* Category List */}
-          <div className="flex-1 overflow-y-auto p-2">
-            {categoriesLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <VaNiLoader size="sm" message="Loading..." />
-              </div>
-            ) : (
-              <>
-                {/* All items */}
-                {!sidebarSearch.trim() && (
-                  <button
-                    onClick={() => setSelectedSubCategory(null)}
-                    className={cn(
-                      'w-full flex items-center gap-2 px-3 py-2 rounded-lg mb-0.5 transition-all text-left'
-                    )}
-                    style={{
-                      backgroundColor: selectedSubCategory === null ? colors.brand.primary + '12' : 'transparent',
-                    }}
-                  >
-                    <div
-                      className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0"
-                      style={{
-                        backgroundColor: selectedSubCategory === null
-                          ? colors.brand.primary + '18'
-                          : colors.utility.primaryText + '08',
-                      }}
-                    >
-                      <Layers
-                        size={14}
-                        style={{
-                          color: selectedSubCategory === null
-                            ? colors.brand.primary
-                            : colors.utility.secondaryText,
-                        }}
-                      />
-                    </div>
-                    <span
-                      className="text-xs font-semibold truncate flex-1"
-                      style={{
-                        color: selectedSubCategory === null
-                          ? colors.brand.primary
-                          : colors.utility.primaryText,
-                      }}
-                    >
-                      All {config.label}
-                    </span>
-                    <span
-                      className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
-                      style={{
-                        backgroundColor: colors.utility.primaryText + '08',
-                        color: colors.utility.secondaryText,
-                      }}
-                    >
-                      {totalAssetCount}
-                    </span>
-                  </button>
-                )}
-
-                {/* Sub-category items */}
-                {filteredSubCategories.map((subCat) => {
-                  const isActive = selectedSubCategory === subCat;
-                  const scConfig = getSubCategoryConfig(subCat);
-                  const SubCatIcon = scConfig?.icon || Package;
-                  const iconColor = scConfig?.color || '#6B7280';
-                  const count = subCategoryAssetCounts[subCat] || 0;
-
-                  return (
-                    <button
-                      key={subCat}
-                      onClick={() => setSelectedSubCategory(subCat)}
-                      className={cn(
-                        'w-full flex items-center gap-2 px-3 py-2 rounded-lg mb-0.5 transition-all text-left'
-                      )}
-                      style={{
-                        backgroundColor: isActive ? colors.brand.primary + '12' : 'transparent',
-                      }}
-                    >
-                      <div
-                        className="w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0"
-                        style={{ backgroundColor: iconColor + '15' }}
-                      >
-                        <SubCatIcon size={14} style={{ color: iconColor }} />
-                      </div>
-                      <span
-                        className="text-xs font-semibold truncate flex-1"
-                        style={{
-                          color: isActive ? colors.brand.primary : colors.utility.primaryText,
-                        }}
-                      >
-                        {subCat}
-                      </span>
-                      {count > 0 && (
-                        <span
-                          className="text-[10px] font-medium px-1.5 py-0.5 rounded-full"
-                          style={{ backgroundColor: iconColor + '12', color: iconColor }}
-                        >
-                          {count}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-
-                {filteredSubCategories.length === 0 && subCategories.length > 0 && (
-                  <div className="p-3 text-center text-xs" style={{ color: colors.utility.secondaryText }}>
-                    No matching categories
-                  </div>
-                )}
-                {subCategories.length === 0 && !categoriesLoading && (
-                  <div className="p-3 text-center text-xs" style={{ color: colors.utility.secondaryText }}>
-                    No categories configured
-                  </div>
-                )}
-              </>
-            )}
+            <p className="text-xs font-medium" style={{ color: '#f59e0b' }}>
+              Select at least one {config.label.toLowerCase()} type above to continue
+            </p>
           </div>
         </div>
-
-        {/* ── Main Content: Search + Grid ──────────────────────── */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
-          {/* Search bar */}
-          <div className="flex items-center gap-3 mb-4">
-            <div className="relative flex-1 max-w-sm">
-              <Search
-                className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5"
-                style={{ color: colors.utility.secondaryText }}
-              />
-              <Input
-                placeholder={`Search ${config.label.toLowerCase()}...`}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-9 text-sm"
-                style={{
-                  borderColor: colors.utility.primaryText + '20',
-                  backgroundColor: colors.utility.primaryBackground,
-                  color: colors.utility.primaryText,
-                }}
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2"
-                >
-                  <X className="h-3.5 w-3.5" style={{ color: colors.utility.secondaryText }} />
-                </button>
-              )}
-            </div>
-            <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
-              <strong style={{ color: colors.utility.primaryText }}>{displayAssets.length}</strong> items
-              {selectedSubCategory && (
-                <> in <strong style={{ color: colors.utility.primaryText }}>{selectedSubCategory}</strong></>
-              )}
-            </span>
-          </div>
-
-          {/* Grid */}
-          {assetsLoading ? (
-            <div className="flex items-center justify-center py-16">
-              <VaNiLoader size="sm" message={`Loading ${config.label.toLowerCase()}...`} />
-            </div>
-          ) : !contactId ? (
-            <div className="text-center py-16">
-              <p className="text-sm" style={{ color: colors.utility.secondaryText }}>
-                Select a counterparty first to see their {config.label.toLowerCase()}.
-              </p>
-            </div>
-          ) : displayAssets.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-              {displayAssets.map((asset) => (
-                <EquipmentCard
-                  key={asset.id}
-                  asset={asset}
-                  selectable
-                  isSelected={selectedRegistryIds.has(asset.id)}
-                  onToggle={handleToggle}
-                />
-              ))}
-            </div>
-          ) : searchQuery ? (
-            <div
-              className="rounded-lg border p-12 text-center"
-              style={{
-                backgroundColor: colors.utility.secondaryBackground,
-                borderColor: colors.utility.primaryText + '15',
-              }}
-            >
-              <p className="text-sm mb-3" style={{ color: colors.utility.secondaryText }}>
-                No {config.label.toLowerCase()} matching &ldquo;{searchQuery}&rdquo;
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSearchQuery('')}
-                style={{
-                  borderColor: colors.utility.primaryText + '20',
-                  color: colors.utility.primaryText,
-                }}
-              >
-                Clear Search
-              </Button>
-            </div>
-          ) : (
-            /* Empty state — no assets registered for this client */
-            <div className="text-center py-16 px-6">
-              <div className="flex justify-center mb-6">
-                <div
-                  className="w-20 h-20 rounded-2xl flex items-center justify-center"
-                  style={{ backgroundColor: colors.brand.primary + '12' }}
-                >
-                  <Package size={36} style={{ color: colors.brand.primary, opacity: 0.7 }} />
-                </div>
-              </div>
-              <h2 className="text-xl font-bold mb-2" style={{ color: colors.utility.primaryText }}>
-                No {config.label.toLowerCase()} registered for this client
-              </h2>
-              <p className="text-sm max-w-md mx-auto mb-7 leading-relaxed" style={{ color: colors.utility.secondaryText }}>
-                Add {config.label.toLowerCase()} to track what this contract covers, or let the buyer add their own.
-                You can still proceed as long as coverage types are defined above.
-              </p>
-              <Button
-                onClick={() => setIsDrawerOpen(true)}
-                className="transition-colors hover:opacity-90"
-                style={{
-                  background: `linear-gradient(to right, ${colors.brand.primary}, ${colors.brand.secondary || colors.brand.primary})`,
-                  color: '#FFFFFF',
-                }}
-              >
-                <Plus className="mr-1.5 h-4 w-4" />
-                {config.addLabel}
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
+      )}
 
       {/* ── EquipmentFormDialog Drawer ──────────────────────────── */}
       <EquipmentFormDialog
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
         mode="create"
-        defaultSubCategory={selectedSubCategory}
+        defaultSubCategory={gridFilterSubCat}
         resourceTypeId={config.typeIds[0]}
         categories={allFormCategories}
         onSubmit={handleCreateSubmit}
@@ -898,5 +863,60 @@ const AssetSelectionStep: React.FC<AssetSelectionStepProps> = ({
     </div>
   );
 };
+
+// ── Option Card sub-component ────────────────────────────────────────
+
+interface OptionCardProps {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  isSelected: boolean;
+  onClick: () => void;
+  colors: any;
+  accentColor: string;
+  badge?: string;
+}
+
+const OptionCard: React.FC<OptionCardProps> = ({
+  icon, title, description, isSelected, onClick, colors, accentColor, badge,
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="flex items-start gap-3 p-3.5 rounded-xl border text-left transition-all hover:shadow-sm"
+    style={{
+      borderColor: isSelected ? accentColor + '50' : colors.utility.primaryText + '12',
+      backgroundColor: isSelected ? accentColor + '06' : 'transparent',
+    }}
+  >
+    <div
+      className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+      style={{
+        backgroundColor: accentColor + '12',
+        color: accentColor,
+      }}
+    >
+      {icon}
+    </div>
+    <div className="flex-1 min-w-0">
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-bold" style={{ color: colors.utility.primaryText }}>
+          {title}
+        </span>
+        {badge && (
+          <span
+            className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+            style={{ backgroundColor: accentColor + '15', color: accentColor }}
+          >
+            {badge}
+          </span>
+        )}
+      </div>
+      <p className="text-[11px] mt-0.5 leading-snug" style={{ color: colors.utility.secondaryText }}>
+        {description}
+      </p>
+    </div>
+  </button>
+);
 
 export default AssetSelectionStep;
