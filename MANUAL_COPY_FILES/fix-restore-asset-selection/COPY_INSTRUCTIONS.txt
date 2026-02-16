@@ -1,0 +1,36 @@
+FIX: Restore Asset Selection Step (Add Equipment + Let Buyer Add) + Move After Counterparty
+==========================================================================================
+
+FILES CHANGED (2 files, contractnest-ui only):
+
+1. contractnest-ui/src/components/contracts/ContractWizard/steps/AssetSelectionStep.tsx
+   - RESTORED to df30544 version (410 lines)
+   - Has: "Add Equipment" button, "Let Buyer Add" panel, "Buyer to fill" badge
+
+2. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+   - ONLY CHANGE: moved assetSelection from position 10 to position 5 (after counterparty)
+   - All other code in this 2000+ line file is UNTOUCHED
+
+NEW WIZARD STEP ORDER:
+  1. path
+  2. nomenclature
+  3. acceptance
+  4. counterparty
+  5. assetSelection  <-- MOVED HERE (was position 10)
+  6. details
+  7. billingCycle
+  8. blocks
+  9. billingView
+  10. equipmentDetails
+  11. evidencePolicy
+  12. events
+  13. review
+
+FILES NOT TOUCHED:
+  - EquipmentStep.tsx (intact)
+  - types/contracts.ts (intact)
+  - NomenclatureStep.tsx (intact)
+  - ServiceBlocksStep.tsx (intact)
+  - BillingViewStep.tsx (intact)
+  - All equipment-registry pages (intact)
+  - All settings/Equipment pages (intact)
