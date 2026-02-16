@@ -1219,6 +1219,8 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
             rfqMode={isRfqMode}
             vendorNames={wizardState.vendorNames}
             nomenclatureName={wizardState.nomenclatureName}
+            equipmentDetails={wizardState.equipmentDetails}
+            coverageTypes={wizardState.coverageTypes}
           />
         );
       default:
