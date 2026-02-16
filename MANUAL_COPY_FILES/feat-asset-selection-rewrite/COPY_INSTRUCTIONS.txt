@@ -1,0 +1,22 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — feat-asset-selection-rewrite
+═══════════════════════════════════════════════════
+
+Branch: feat-asset-selection-rewrite
+Submodules Affected: contractnest-ui ONLY
+
+Files to copy (4 total):
+──────────────────────────
+
+1. contractnest-ui/src/pages/equipment-registry/EquipmentCard.tsx
+   → EquipmentCard with selectable mode (checkbox, highlight, onToggle)
+
+2. contractnest-ui/src/components/contracts/ContractWizard/steps/AssetSelectionStep.tsx
+   → Full rewrite: sidebar + grid + drawer + "Let Buyer Add" toggle
+
+3. contractnest-ui/src/components/contracts/ContractWizard/steps/NomenclatureStep.tsx
+   → Passes nomenclature group (3rd arg) to wizard via onSelect
+
+4. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+   → State: equipmentDetails[] + allowBuyerToAdd + nomenclatureGroup
+   → Payload: equipment_details + allow_buyer_to_add_equipment in mapWizardToRequest
