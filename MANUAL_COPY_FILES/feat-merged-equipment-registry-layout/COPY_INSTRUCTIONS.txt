@@ -1,0 +1,94 @@
+MERGED: Equipment Registry Layout + Resource Block Fan-Out + Asset Enhancements
+================================================================================
+Branch: feature/merged-equipment-registry
+Date: 2026-02-16
+
+WHAT THIS INCLUDES
+==================
+This is a MERGED build combining:
+  1. Stage 1/2: Equipment Registry layout (sidebar + EquipmentCard grid in wizard)
+  2. Resource-based block fan-out (Calibration [MRI], Calibration [CT Scan])
+  3. Asset selection enhancements (Add Equipment + Let Buyer Add)
+  4. Nomenclature mandatory + dynamic asset step (only shown for equipment/entity types)
+
+SUBMODULES AFFECTED
+===================
+1. contractnest-ui (8 files)
+
+FILES MODIFIED (8 files total)
+==============================
+
+--- contractnest-ui (8 files) ---
+
+1. contractnest-ui/src/pages/equipment-registry/EquipmentCard.tsx
+   - 3-mode support: edit (default), selectable (wizard), readOnly (detail)
+   - Accepts both TenantAsset and ClientAsset
+   - "Buyer to fill" amber badge for placeholder assets
+
+2. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+   - Added nomenclatureRequiresAssets to wizard state
+   - CONTRACT_STEPS renamed to CONTRACT_STEPS_ALL
+   - Asset step order: after Details, before Billing Cycle
+   - Dynamic step filtering: asset step only shown when nomenclature is equipment/entity-based
+   - safeCurrentStep clamping when step array changes
+   - Nomenclature now mandatory (canGoNext checks nomenclatureId !== null)
+   - handleNomenclatureSelect receives formSettings, sets nomenclatureRequiresAssets
+   - Preserved: originalBlockId fix for resource-based blocks in mapWizardToRequest
+
+3. contractnest-ui/src/components/contracts/ContractWizard/steps/NomenclatureStep.tsx
+   - onSelect passes formSettings as 3rd argument
+   - Removed "optional" text
+   - Shows "Please select a contract type to continue" warning when nothing selected
+
+4. contractnest-ui/src/components/contracts/ContractWizard/steps/AssetSelectionStep.tsx
+   - MERGED: Equipment Registry layout (sidebar + EquipmentCard grid) + Add Equipment + Let Buyer Add
+   - Left sidebar with sub-category navigation (useResources + getSubCategoryConfig)
+   - Grid of EquipmentCard in selectable mode
+   - "Add Equipment" button opens ClientAssetFormDialog, auto-selects
+   - "Let Buyer Add" panel creates "TBD — [Type]" placeholder with buyer_to_fill flag
+   - Search, Select All/Deselect All, sub-category counts
+
+5. contractnest-ui/src/components/contracts/ContractWizard/steps/ServiceBlocksStep.tsx
+   - Passes resourceId, resourceName, originalBlockId from fanned-out blocks
+
+6. contractnest-ui/src/components/catalog-studio/BlockLibraryMini.tsx
+   - Fan-out logic: resource_based blocks → N entries per resource option
+   - Search includes resourceTag matching
+
+7. contractnest-ui/src/components/catalog-studio/BlockCardSelectable.tsx
+   - Resource tag badge next to block name
+
+8. contractnest-ui/src/components/catalog-studio/BlockCardConfigurable.tsx
+   - Extended ConfigurableBlock interface with resourceId, resourceName, originalBlockId
+   - Resource tag badge in collapsed header
+
+COPY COMMANDS (PowerShell)
+==========================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# EquipmentCard (3-mode + buyer-to-fill)
+Copy-Item "MANUAL_COPY_FILES\feat-merged-equipment-registry-layout\contractnest-ui\src\pages\equipment-registry\EquipmentCard.tsx" -Destination "contractnest-ui\src\pages\equipment-registry\EquipmentCard.tsx" -Force
+
+# Contract Wizard main (dynamic steps + nomenclatureRequiresAssets)
+Copy-Item "MANUAL_COPY_FILES\feat-merged-equipment-registry-layout\contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Force
+
+# Nomenclature Step (mandatory + formSettings)
+Copy-Item "MANUAL_COPY_FILES\feat-merged-equipment-registry-layout\contractnest-ui\src\components\contracts\ContractWizard\steps\NomenclatureStep.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\NomenclatureStep.tsx" -Force
+
+# Asset Selection Step (MERGED: sidebar + grid + Add Equipment + Let Buyer Add)
+Copy-Item "MANUAL_COPY_FILES\feat-merged-equipment-registry-layout\contractnest-ui\src\components\contracts\ContractWizard\steps\AssetSelectionStep.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\AssetSelectionStep.tsx" -Force
+
+# Service Blocks Step (resource metadata)
+Copy-Item "MANUAL_COPY_FILES\feat-merged-equipment-registry-layout\contractnest-ui\src\components\contracts\ContractWizard\steps\ServiceBlocksStep.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\ServiceBlocksStep.tsx" -Force
+
+# Block Library Mini (fan-out)
+Copy-Item "MANUAL_COPY_FILES\feat-merged-equipment-registry-layout\contractnest-ui\src\components\catalog-studio\BlockLibraryMini.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockLibraryMini.tsx" -Force
+
+# Block Card Selectable (resource tag)
+Copy-Item "MANUAL_COPY_FILES\feat-merged-equipment-registry-layout\contractnest-ui\src\components\catalog-studio\BlockCardSelectable.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockCardSelectable.tsx" -Force
+
+# Block Card Configurable (interface + tag)
+Copy-Item "MANUAL_COPY_FILES\feat-merged-equipment-registry-layout\contractnest-ui\src\components\catalog-studio\BlockCardConfigurable.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockCardConfigurable.tsx" -Force
+
+Write-Host "All 8 files copied!" -ForegroundColor Green
