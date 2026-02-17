@@ -1,0 +1,16 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS - feat-beta-access-gate
+═══════════════════════════════════════════════════
+
+Feature: Beta Access Gate on Signup Page
+Branch: feat/beta-access-gate
+
+Submodules Affected: contractnest-ui
+
+Files:
+  1. contractnest-ui/src/pages/auth/RegisterPage.tsx
+     - Added beta secret key gate before signup form
+     - Key: bharathavarsha (case-insensitive)
+     - Contact info: connect@vikuna.io / +91 99497 01175
+
+═══════════════════════════════════════════════════
