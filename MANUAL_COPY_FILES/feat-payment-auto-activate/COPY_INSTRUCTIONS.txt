@@ -1,0 +1,26 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — feat-payment-auto-activate
+═══════════════════════════════════════════════════
+
+Branch: feat/payment-auto-activate
+Date: 2026-02-17
+
+Submodules Affected:
+  1. contractnest-edge
+  2. contractnest-ui
+
+Files to Copy:
+─────────────────────────────────────────────────────
+
+1. contractnest-edge/supabase/migrations/contracts/007_invoice_payment_rpc.sql
+   → Purpose: Auto-activate contract (pending_acceptance → active) when all invoices are paid
+   → Change: Added STEP 4.5 to record_invoice_payment — checks if all invoices paid,
+     then calls update_contract_status() to transition contract to active.
+     Return object now includes contract_activated flag.
+
+2. contractnest-ui/src/components/contracts/OperationsTab.tsx
+   → Purpose: Status-aware empty state on Ops Overview tab
+   → Change: Pre-active contracts show "Contract Not Yet Active" with current status label.
+     Active contracts with no events show distinct "No Operations Yet" message.
+
+═══════════════════════════════════════════════════
