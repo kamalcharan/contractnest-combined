@@ -1,0 +1,24 @@
+═══════════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS — Menu cleanup: hide Activity Feed, Contract Preview, Invite Sellers
+═══════════════════════════════════════════════════════════════════
+Submodule Affected: contractnest-ui
+
+═══════════════════════════════════════════════════════════════════
+FILE TO COPY (1 file)
+═══════════════════════════════════════════════════════════════════
+
+1. MODIFIED — industryMenus.ts
+   FROM: MANUAL_COPY_FILES\menu-cleanup\contractnest-ui\src\utils\constants\industryMenus.ts
+   TO:   contractnest-ui\src\utils\constants\industryMenus.ts
+
+═══════════════════════════════════════════════════════════════════
+CHANGES
+═══════════════════════════════════════════════════════════════════
+
+Operations menu:
+  - HIDDEN: Activity Feed (commented out)
+
+Contracts menu:
+  - DELETED: Contract Preview (commented out)
+  - HIDDEN: Invite Sellers (commented out)
+═══════════════════════════════════════════════════════════════════
