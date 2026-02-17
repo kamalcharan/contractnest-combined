@@ -1,0 +1,51 @@
+═══════════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS — Onboarding Premium UX + Industries You Serve
+═══════════════════════════════════════════════════════════════════
+Branch: onboarding-premium-ux
+Submodule Affected: contractnest-ui
+
+═══════════════════════════════════════════════════════════════════
+FILES TO COPY (5 files)
+═══════════════════════════════════════════════════════════════════
+
+1. MODIFIED — OnboardingLayout.tsx (full rewrite)
+   FROM: MANUAL_COPY_FILES\onboarding-premium-ux\contractnest-ui\src\components\onboarding\OnboardingLayout.tsx
+   TO:   contractnest-ui\src\components\onboarding\OnboardingLayout.tsx
+
+2. NEW — ServedIndustriesStep.tsx
+   FROM: MANUAL_COPY_FILES\onboarding-premium-ux\contractnest-ui\src\pages\onboarding\steps\ServedIndustriesStep.tsx
+   TO:   contractnest-ui\src\pages\onboarding\steps\ServedIndustriesStep.tsx
+
+3. MODIFIED — onboardingTypes.ts
+   FROM: MANUAL_COPY_FILES\onboarding-premium-ux\contractnest-ui\src\types\onboardingTypes.ts
+   TO:   contractnest-ui\src\types\onboardingTypes.ts
+
+4. MODIFIED — onboarding.service.ts
+   FROM: MANUAL_COPY_FILES\onboarding-premium-ux\contractnest-ui\src\services\onboarding.service.ts
+   TO:   contractnest-ui\src\services\onboarding.service.ts
+
+5. MODIFIED — App.tsx (new import + route)
+   FROM: MANUAL_COPY_FILES\onboarding-premium-ux\contractnest-ui\src\App.tsx
+   TO:   contractnest-ui\src\App.tsx
+
+═══════════════════════════════════════════════════════════════════
+FILES TO DELETE (2 orphan files — never imported anywhere)
+═══════════════════════════════════════════════════════════════════
+
+1. DELETE: contractnest-ui\src\components\onboarding\ProgressBar.tsx
+2. DELETE: contractnest-ui\src\components\onboarding\NavigationFooter.tsx
+
+═══════════════════════════════════════════════════════════════════
+CHANGES OVERVIEW
+═══════════════════════════════════════════════════════════════════
+
+• OnboardingLayout.tsx — Full rewrite: removed sidebar layout, added
+  glassmorphic header with progress dots, FloatingActionIsland bottom nav
+• ServedIndustriesStep.tsx — NEW step: multi-select industry cards with
+  parent→child drill-in, uses existing useServedIndustriesManager hook
+• onboardingTypes.ts — Added served-industries as step 7, bumped sequences
+  (11 total steps now)
+• onboarding.service.ts — Added 'served-industries' to UI-only steps
+• App.tsx — Added import and <Route path="served-industries">
+
+═══════════════════════════════════════════════════════════════════
