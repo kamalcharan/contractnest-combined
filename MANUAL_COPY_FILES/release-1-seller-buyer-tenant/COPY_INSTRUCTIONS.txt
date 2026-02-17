@@ -1,0 +1,32 @@
+═══════════════════════════════════════════════════════════════
+RELEASE 1: seller_id + buyer_tenant_id columns for dual-persona
+═══════════════════════════════════════════════════════════════
+
+Branch: release-1-seller-buyer-tenant
+Date: 2026-02-17
+
+Submodules Affected:
+  1. contractnest-edge  (NEW migration file)
+  2. contractnest-ui    (MODIFIED types file)
+
+═══════════════════════════════════════════════════════════════
+FILES TO COPY:
+═══════════════════════════════════════════════════════════════
+
+FILE 1 (NEW):
+  Source: MANUAL_COPY_FILES\release-1-seller-buyer-tenant\contractnest-edge\supabase\migrations\contracts\042_seller_buyer_tenant_columns.sql
+  Dest:   contractnest-edge\supabase\migrations\contracts\042_seller_buyer_tenant_columns.sql
+  Purpose: Adds seller_id (NOT NULL) and buyer_tenant_id (NULL) columns to t_contracts.
+           Updates create_contract_transaction, get_contracts_list, and get_contract_by_id RPCs.
+
+FILE 2 (MODIFIED):
+  Source: MANUAL_COPY_FILES\release-1-seller-buyer-tenant\contractnest-ui\src\types\contracts.ts
+  Dest:   contractnest-ui\src\types\contracts.ts
+  Purpose: Adds seller_id and buyer_tenant_id fields to the Contract TypeScript interface.
+
+═══════════════════════════════════════════════════════════════
+MIGRATION NOTES:
+═══════════════════════════════════════════════════════════════
+- Run 042_seller_buyer_tenant_columns.sql in Supabase SQL Editor
+- This migration backfills seller_id = tenant_id for all existing rows
+- buyer_tenant_id stays NULL until a buyer claims via CNAK
