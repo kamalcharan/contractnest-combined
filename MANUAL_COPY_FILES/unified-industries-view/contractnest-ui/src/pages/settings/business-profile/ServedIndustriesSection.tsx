@@ -884,9 +884,11 @@ const ServedIndustriesSection: React.FC<ServedIndustriesSectionProps> = ({
   };
 
   // Find parent name for a served industry card
-  const getParentName = (industry: ServedIndustry['industry']): string | null => {
-    if (!industry?.parent_id) return null;
-    const parent = allIndustries.find((i) => i.id === industry.parent_id);
+  // Looks up the industry in the full catalog (since the API join may not include parent_id)
+  const getParentName = (industryId: string): string | null => {
+    const catalogEntry = allIndustries.find((i) => i.id === industryId);
+    if (!catalogEntry?.parent_id) return null;
+    const parent = allIndustries.find((i) => i.id === catalogEntry.parent_id);
     return parent?.name || null;
   };
 
@@ -1080,9 +1082,11 @@ const ServedIndustriesSection: React.FC<ServedIndustriesSectionProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {servedIndustries.map((si: ServedIndustry) => {
                 const industry = si.industry;
-                const IconComp = getIconComponent(industry?.icon);
+                // Look up full catalog entry to get icon + parent_id (join may not include these)
+                const catalogEntry = allIndustries.find((i) => i.id === si.industry_id);
+                const IconComp = getIconComponent(catalogEntry?.icon || industry?.icon);
                 const isBeingRemoved = removingId === si.industry_id;
-                const parentName = getParentName(industry);
+                const parentName = getParentName(si.industry_id);
 
                 return (
                   <div
@@ -1119,13 +1123,13 @@ const ServedIndustriesSection: React.FC<ServedIndustriesSectionProps> = ({
                       <div className="min-w-0">
                         <h3 className="font-medium truncate" style={{ color: colors.utility.primaryText }}>
                           {parentName
-                            ? <>{parentName} <span style={{ color: colors.utility.secondaryText }}>&gt;</span> {industry?.name}</>
-                            : (industry?.name || 'Unknown Industry')
+                            ? <>{parentName} <span style={{ color: colors.utility.secondaryText }}>&gt;</span> {catalogEntry?.name || industry?.name}</>
+                            : (catalogEntry?.name || industry?.name || 'Unknown Industry')
                           }
                         </h3>
-                        {industry?.description && (
+                        {(catalogEntry?.description || industry?.description) && (
                           <p className="text-sm mt-1 line-clamp-2" style={{ color: colors.utility.secondaryText }}>
-                            {industry.description}
+                            {catalogEntry?.description || industry?.description}
                           </p>
                         )}
                       </div>
