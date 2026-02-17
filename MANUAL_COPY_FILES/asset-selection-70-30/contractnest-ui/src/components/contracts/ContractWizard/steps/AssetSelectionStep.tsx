@@ -605,11 +605,12 @@ const AssetSelectionStep: React.FC<AssetSelectionStepProps> = ({
                   Choose how to handle specific {config.label.toLowerCase()} details
                 </p>
 
-                {/* ── Option pills — horizontal strip ──────────────── */}
-                <div className="flex flex-wrap gap-2 mb-4">
-                  <OptionPill
-                    icon={<ListChecks size={14} />}
+                {/* ── Option cards — 2x2 grid ──────────────────────── */}
+                <div className="grid grid-cols-2 gap-2.5 mb-4">
+                  <OptionCard
+                    icon={<ListChecks size={16} />}
                     label="Select Existing"
+                    hint={`Pick from ${allClientAssets.length} registered`}
                     isSelected={attachmentMode === 'existing'}
                     onClick={() => handleAttachmentModeChange('existing')}
                     accentColor={colors.brand.primary}
@@ -617,27 +618,30 @@ const AssetSelectionStep: React.FC<AssetSelectionStepProps> = ({
                     isDarkMode={isDarkMode}
                     badge={equipmentDetails.length > 0 ? `${equipmentDetails.length}` : undefined}
                   />
-                  <OptionPill
-                    icon={<PackagePlus size={14} />}
+                  <OptionCard
+                    icon={<PackagePlus size={16} />}
                     label={config.addLabel}
+                    hint={`Register new ${config.label.toLowerCase()}`}
                     isSelected={false}
                     onClick={() => setIsDrawerOpen(true)}
                     accentColor="#8B5CF6"
                     colors={colors}
                     isDarkMode={isDarkMode}
                   />
-                  <OptionPill
-                    icon={<UserPlus size={14} />}
+                  <OptionCard
+                    icon={<UserPlus size={16} />}
                     label="Buyer Will Add"
+                    hint="After CNAK claim or review"
                     isSelected={attachmentMode === 'buyer'}
                     onClick={() => handleAttachmentModeChange(attachmentMode === 'buyer' ? null : 'buyer')}
                     accentColor="#0EA5E9"
                     colors={colors}
                     isDarkMode={isDarkMode}
                   />
-                  <OptionPill
-                    icon={<Clock size={14} />}
+                  <OptionCard
+                    icon={<Clock size={16} />}
                     label="Attach Later"
+                    hint="Add details after creation"
                     isSelected={attachmentMode === 'later'}
                     onClick={() => handleAttachmentModeChange(attachmentMode === 'later' ? null : 'later')}
                     accentColor="#6B7280"
@@ -1218,11 +1222,12 @@ const AssetSelectionStep: React.FC<AssetSelectionStepProps> = ({
   );
 };
 
-// ── Option Pill sub-component ─────────────────────────────────────────
+// ── Option Card sub-component — elevated mini-card ────────────────────
 
-interface OptionPillProps {
+interface OptionCardProps {
   icon: React.ReactNode;
   label: string;
+  hint: string;
   isSelected: boolean;
   onClick: () => void;
   accentColor: string;
@@ -1231,35 +1236,61 @@ interface OptionPillProps {
   badge?: string;
 }
 
-const OptionPill: React.FC<OptionPillProps> = ({
-  icon, label, isSelected, onClick, accentColor, colors, isDarkMode = false, badge,
+const OptionCard: React.FC<OptionCardProps> = ({
+  icon, label, hint, isSelected, onClick, accentColor, colors, isDarkMode = false, badge,
 }) => (
   <button
     type="button"
     onClick={onClick}
-    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-semibold transition-all border"
+    className="flex items-center gap-2.5 p-2.5 rounded-xl border text-left transition-all"
     style={{
+      background: isDarkMode
+        ? isSelected
+          ? `linear-gradient(135deg, ${accentColor}15 0%, rgba(30,41,59,0.9) 100%)`
+          : 'rgba(30, 41, 59, 0.8)'
+        : isSelected
+          ? `linear-gradient(135deg, ${accentColor}08 0%, rgba(255,255,255,0.98) 100%)`
+          : 'rgba(255, 255, 255, 0.95)',
+      backdropFilter: 'blur(12px)',
+      WebkitBackdropFilter: 'blur(12px)',
       borderColor: isSelected
-        ? (isDarkMode ? accentColor + '50' : accentColor + '40')
-        : (isDarkMode ? `${colors.utility.primaryText}15` : '#E5E7EB'),
-      backgroundColor: isSelected
-        ? (isDarkMode ? accentColor + '15' : accentColor + '08')
-        : 'transparent',
-      color: isSelected ? accentColor : colors.utility.secondaryText,
-    }}
+        ? (isDarkMode ? accentColor + '50' : accentColor + '35')
+        : (isDarkMode ? 'rgba(255,255,255,0.08)' : '#E5E7EB'),
+      boxShadow: isSelected
+        ? `0 4px 14px -3px ${accentColor}20`
+        : '0 2px 6px -1px rgba(0,0,0,0.06)',
+    } as React.CSSProperties}
   >
-    <span style={{ color: isSelected ? accentColor : colors.utility.secondaryText }}>
+    <div
+      className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+      style={{
+        backgroundColor: isSelected ? accentColor + '18' : accentColor + '10',
+        color: accentColor,
+      }}
+    >
       {icon}
-    </span>
-    {label}
-    {badge && (
-      <span
-        className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-        style={{ backgroundColor: accentColor + '15', color: accentColor }}
-      >
-        {badge}
-      </span>
-    )}
+    </div>
+    <div className="flex-1 min-w-0">
+      <div className="flex items-center gap-1.5">
+        <span
+          className="text-[11px] font-bold truncate"
+          style={{ color: isSelected ? accentColor : colors.utility.primaryText }}
+        >
+          {label}
+        </span>
+        {badge && (
+          <span
+            className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
+            style={{ backgroundColor: accentColor + '18', color: accentColor }}
+          >
+            {badge}
+          </span>
+        )}
+      </div>
+      <p className="text-[10px] leading-snug truncate" style={{ color: colors.utility.secondaryText }}>
+        {hint}
+      </p>
+    </div>
   </button>
 );
 
