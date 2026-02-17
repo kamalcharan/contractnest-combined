@@ -1,0 +1,27 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — feat: VaNi Landing Page + Menu Highlight
+═══════════════════════════════════════════════════
+
+Branch: feat-vani-landing-page
+Submodules Affected: contractnest-ui
+
+FILES TO COPY:
+──────────────
+
+1. contractnest-ui/src/App.tsx
+   Purpose: Added VaNiLandingPage import + /vani/landing route + changed /vani index redirect
+   Copy To: contractnest-ui/src/App.tsx
+
+2. contractnest-ui/src/components/layout/Sidebar.tsx
+   Purpose: Added VaNiNavItem with purple gradient highlight, sparkle icon, AI badge. Removed old VaNi AI card.
+   Copy To: contractnest-ui/src/components/layout/Sidebar.tsx
+
+3. contractnest-ui/src/utils/constants/industryMenus.ts
+   Purpose: Removed all VaNi submenus. VaNi is now single item with Sparkles icon pointing to /vani/landing
+   Copy To: contractnest-ui/src/utils/constants/industryMenus.ts
+
+4. contractnest-ui/src/vani/pages/VaNiLandingPage.tsx  [NEW FILE]
+   Purpose: Full VaNi landing page with Coming Soon CTA (no data capture)
+   Copy To: contractnest-ui/src/vani/pages/VaNiLandingPage.tsx
+
+═══════════════════════════════════════════════════
