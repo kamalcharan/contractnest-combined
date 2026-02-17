@@ -22,9 +22,14 @@ Files Changed:
    → EDIT: Buyer's "My Services" tab now uses SellerTasksTab with role="buyer"
      instead of OperationsTab + sidebar grid.
 
+4. contractnest-ui/src/components/contracts/EventCard.tsx
+   → FIX: White-on-white card visibility. Added visible boxShadow, increased
+     border opacity (20→30), white bg in light mode vs secondaryBackground.
+
 Copy Commands (PowerShell):
 ─────────────────────────────────────────────────
 
 Copy-Item "MANUAL_COPY_FILES\feat-timeline-eventcard-dashboard\contractnest-ui\src\components\contracts\SellerTasksTab.tsx" -Destination "contractnest-ui\src\components\contracts\SellerTasksTab.tsx" -Force
 Copy-Item "MANUAL_COPY_FILES\feat-timeline-eventcard-dashboard\contractnest-ui\src\components\contracts\DualTrackPreview.tsx" -Destination "contractnest-ui\src\components\contracts\DualTrackPreview.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\feat-timeline-eventcard-dashboard\contractnest-ui\src\components\contracts\EventCard.tsx" -Destination "contractnest-ui\src\components\contracts\EventCard.tsx" -Force
 Copy-Item "MANUAL_COPY_FILES\feat-timeline-eventcard-dashboard\contractnest-ui\src\pages\contracts\detail\index.tsx" -Destination "contractnest-ui\src\pages\contracts\detail\index.tsx" -Force
