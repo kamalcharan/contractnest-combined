@@ -1,0 +1,33 @@
+═══════════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS — Remove /settings/configure/equipment route
+═══════════════════════════════════════════════════════════════════
+Submodule Affected: contractnest-ui
+
+═══════════════════════════════════════════════════════════════════
+FILES TO COPY (2 files)
+═══════════════════════════════════════════════════════════════════
+
+1. MODIFIED — App.tsx (removed import + route)
+   FROM: MANUAL_COPY_FILES\remove-settings-equipment\contractnest-ui\src\App.tsx
+   TO:   contractnest-ui\src\App.tsx
+
+2. MODIFIED — settingsMenus.ts (removed equipment-registry menu item)
+   FROM: MANUAL_COPY_FILES\remove-settings-equipment\contractnest-ui\src\utils\constants\settingsMenus.ts
+   TO:   contractnest-ui\src\utils\constants\settingsMenus.ts
+
+═══════════════════════════════════════════════════════════════════
+DIRECTORY TO DELETE
+═══════════════════════════════════════════════════════════════════
+
+DELETE: contractnest-ui\src\pages\settings\Equipment\  (entire folder)
+  - EmptyState.tsx
+  - EquipmentCard.tsx
+  - EquipmentFormDialog.tsx
+  - index.tsx
+
+═══════════════════════════════════════════════════════════════════
+REASON: This route is redundant — /equipment-registry and
+/entity-registry under Operations already provide the same
+functionality. No navigate() calls or <Link> elements pointed
+to /settings/configure/equipment.
+═══════════════════════════════════════════════════════════════════
