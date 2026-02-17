@@ -1,0 +1,35 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS: feat-reset-all-data-update
+═══════════════════════════════════════════════════
+
+Submodules Affected: contractnest-edge
+
+Files Changed:
+  - contractnest-edge/supabase/migrations/admin-tenant-management/002_admin_tenant_actions_rpcs.sql
+    Updated admin_reset_all_data RPC: added 13 new table deletes
+    Updated get_tenant_data_summary RPC: added 5 new categories (Service Tickets, Assets, Groups, Audit, expanded Catalog)
+
+New tables added to Reset All Data (in FK-safe delete order):
+  1.  t_group_activity_logs
+  2.  t_group_memberships
+  3.  t_audit_log
+  4.  t_audit_logs
+  5.  t_service_evidence
+  6.  t_service_tickets
+  7.  t_contract_assets
+  8.  t_client_asset_registry
+  9.  t_catalog_service_resources
+  10. t_catalog_resource_pricing
+  11. t_tenant_industry_segments
+  12. t_tenant_served_industries
+  13. t_catalog_industries
+
+Copy Command (PowerShell):
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\feat-reset-all-data-update\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Write-Host "All files copied!" -ForegroundColor Green
+
+NOTE: After copying, run the updated SQL migration against your Supabase database
+to replace the existing RPC functions.
+═══════════════════════════════════════════════════
