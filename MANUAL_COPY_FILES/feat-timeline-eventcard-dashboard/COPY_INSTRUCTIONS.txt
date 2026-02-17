@@ -1,0 +1,30 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — feat-timeline-eventcard-dashboard
+═══════════════════════════════════════════════════
+
+Feature: Replace contract dashboard timeline cards with EventCard design
+         (center-line vertical timeline matching EventsPreviewStep)
+Submodules Affected: contractnest-ui
+
+Files Changed:
+─────────────────────────────────────────────────
+
+1. contractnest-ui/src/components/contracts/SellerTasksTab.tsx
+   → FULL REWRITE: Center-line vertical timeline with EventCard, date nodes,
+     service (left) / billing (right) columns, DB-driven status transitions,
+     Start Service + Generate Invoice / Make Payment actions. role prop for seller/buyer.
+
+2. contractnest-ui/src/components/contracts/DualTrackPreview.tsx
+   → REWRITE: Replaced inline-styled TimelineNode with EventCard compact variant.
+     Removed hardcoded STATUS_STYLES/STATUS_LABELS. Uses EventCard for consistent design.
+
+3. contractnest-ui/src/pages/contracts/detail/index.tsx
+   → EDIT: Buyer's "My Services" tab now uses SellerTasksTab with role="buyer"
+     instead of OperationsTab + sidebar grid.
+
+Copy Commands (PowerShell):
+─────────────────────────────────────────────────
+
+Copy-Item "MANUAL_COPY_FILES\feat-timeline-eventcard-dashboard\contractnest-ui\src\components\contracts\SellerTasksTab.tsx" -Destination "contractnest-ui\src\components\contracts\SellerTasksTab.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\feat-timeline-eventcard-dashboard\contractnest-ui\src\components\contracts\DualTrackPreview.tsx" -Destination "contractnest-ui\src\components\contracts\DualTrackPreview.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\feat-timeline-eventcard-dashboard\contractnest-ui\src\pages\contracts\detail\index.tsx" -Destination "contractnest-ui\src\pages\contracts\detail\index.tsx" -Force
