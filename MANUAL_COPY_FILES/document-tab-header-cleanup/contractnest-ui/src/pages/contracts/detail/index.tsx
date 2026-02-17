@@ -1703,7 +1703,7 @@ const ContractDetailPage: React.FC = () => {
       case 'document':
         return (
           <div className="-mx-6 -mt-4">
-            <ReviewSendStep {...mapContractToReviewProps(contract)} />
+            <ReviewSendStep {...mapContractToReviewProps(contract)} forcedViewMode={showBuyerView ? 'client' : 'self'} />
           </div>
         );
       case 'audit':

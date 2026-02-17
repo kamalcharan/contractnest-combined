@@ -10,6 +10,12 @@ Files Changed:
     - Added 'document' tab to SELLER_TAB_DEFINITIONS
     - Removed 'View PDF' button from header
     - Removed 'Send Update' button from seller header
+    - Pass forcedViewMode to ReviewSendStep (self for seller, client for buyer)
+
+  - contractnest-ui/src/components/contracts/ContractWizard/steps/ReviewSendStep.tsx
+    - Added forcedViewMode prop to lock view and hide Self/Client toggle
+    - When set, shows a static badge instead of the toggle
+    - Wizard still shows the toggle (no forcedViewMode passed)
 
 ═══════════════════════════════════════════════════
 COPY COMMAND (PowerShell)
