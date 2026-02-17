@@ -820,55 +820,82 @@ const AssetSelectionStep: React.FC<AssetSelectionStepProps> = ({
         className="w-[30%] min-w-[240px] max-w-[320px] border-l overflow-y-auto"
         style={{
           borderColor: isDarkMode ? `${colors.utility.primaryText}10` : '#E5E7EB',
-          backgroundColor: isDarkMode ? `${colors.utility.secondaryBackground}` : '#F9FAFB',
+          backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#F3F4F6',
         }}
       >
         <div className="p-4 sticky top-0">
-          {/* Panel header */}
-          <div className="flex items-center gap-2 mb-4">
-            <div
-              className="w-6 h-6 rounded-lg flex items-center justify-center"
-              style={{
-                backgroundColor: stepStatus === 'complete'
-                  ? '#10b98115'
+          {/* ── Status header card — glassmorphic ─────────────────── */}
+          <div
+            className="rounded-xl border p-3 mb-4"
+            style={{
+              background: isDarkMode
+                ? stepStatus === 'complete'
+                  ? 'linear-gradient(135deg, rgba(16,185,129,0.15) 0%, rgba(16,185,129,0.06) 100%)'
                   : stepStatus === 'coverage_only'
-                  ? `${colors.brand.primary}12`
-                  : `${colors.utility.primaryText}08`,
-              }}
-            >
-              {stepStatus === 'complete'
-                ? <CheckCircle2 size={13} style={{ color: '#10b981' }} />
+                  ? `linear-gradient(135deg, ${colors.brand.primary}20 0%, ${colors.brand.primary}08 100%)`
+                  : 'rgba(30, 41, 59, 0.8)'
+                : stepStatus === 'complete'
+                  ? 'linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(255,255,255,0.9) 100%)'
+                  : stepStatus === 'coverage_only'
+                  ? `linear-gradient(135deg, ${colors.brand.primary}10 0%, rgba(255,255,255,0.9) 100%)`
+                  : 'rgba(255, 255, 255, 0.9)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              borderColor: stepStatus === 'complete'
+                ? (isDarkMode ? '#10b98140' : '#10b98130')
                 : stepStatus === 'coverage_only'
-                ? <Shield size={13} style={{ color: colors.brand.primary }} />
-                : <AlertCircle size={13} style={{ color: colors.utility.secondaryText }} />
-              }
-            </div>
-            <div>
-              <h3
-                className="text-xs font-bold"
+                ? (isDarkMode ? `${colors.brand.primary}40` : `${colors.brand.primary}25`)
+                : (isDarkMode ? 'rgba(255,255,255,0.1)' : '#E5E7EB'),
+              boxShadow: stepStatus !== 'empty'
+                ? '0 4px 16px -4px rgba(0,0,0,0.08)'
+                : '0 1px 3px rgba(0,0,0,0.04)',
+            }}
+          >
+            <div className="flex items-center gap-2.5">
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center"
                 style={{
-                  color: stepStatus === 'complete'
-                    ? '#10b981'
+                  backgroundColor: stepStatus === 'complete'
+                    ? '#10b98118'
                     : stepStatus === 'coverage_only'
-                    ? colors.brand.primary
-                    : colors.utility.secondaryText,
+                    ? `${colors.brand.primary}15`
+                    : `${colors.utility.primaryText}08`,
                 }}
               >
                 {stepStatus === 'complete'
-                  ? 'Step Complete'
+                  ? <CheckCircle2 size={16} style={{ color: '#10b981' }} />
                   : stepStatus === 'coverage_only'
-                  ? 'Coverage Selected'
-                  : 'Pending Selection'
+                  ? <Shield size={16} style={{ color: colors.brand.primary }} />
+                  : <AlertCircle size={16} style={{ color: colors.utility.secondaryText }} />
                 }
-              </h3>
-              <p className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
-                {stepStatus === 'complete'
-                  ? 'Ready to proceed'
-                  : stepStatus === 'coverage_only'
-                  ? 'Choose equipment option'
-                  : 'Select coverage types'
-                }
-              </p>
+              </div>
+              <div>
+                <h3
+                  className="text-xs font-bold"
+                  style={{
+                    color: stepStatus === 'complete'
+                      ? '#10b981'
+                      : stepStatus === 'coverage_only'
+                      ? colors.brand.primary
+                      : colors.utility.secondaryText,
+                  }}
+                >
+                  {stepStatus === 'complete'
+                    ? 'Step Complete'
+                    : stepStatus === 'coverage_only'
+                    ? 'Coverage Selected'
+                    : 'Pending Selection'
+                  }
+                </h3>
+                <p className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
+                  {stepStatus === 'complete'
+                    ? 'Ready to proceed'
+                    : stepStatus === 'coverage_only'
+                    ? 'Choose equipment option'
+                    : 'Select coverage types'
+                  }
+                </p>
+              </div>
             </div>
           </div>
 
@@ -881,7 +908,7 @@ const AssetSelectionStep: React.FC<AssetSelectionStepProps> = ({
                 </span>
                 <span
                   className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                  style={{ backgroundColor: '#10b98115', color: '#10b981' }}
+                  style={{ backgroundColor: '#10b98118', color: '#10b981' }}
                 >
                   {totalCoverageCount} type{totalCoverageCount > 1 ? 's' : ''}
                 </span>
@@ -895,26 +922,44 @@ const AssetSelectionStep: React.FC<AssetSelectionStepProps> = ({
                   return (
                     <div
                       key={subCat}
-                      className="rounded-lg p-2.5 border"
+                      className="rounded-xl border overflow-hidden"
                       style={{
-                        backgroundColor: isDarkMode ? `${iconColor}08` : `${iconColor}06`,
-                        borderColor: isDarkMode ? `${iconColor}20` : `${iconColor}15`,
+                        background: isDarkMode
+                          ? `linear-gradient(135deg, ${iconColor}12 0%, rgba(30,41,59,0.8) 100%)`
+                          : `linear-gradient(135deg, ${iconColor}08 0%, rgba(255,255,255,0.95) 100%)`,
+                        backdropFilter: 'blur(12px)',
+                        WebkitBackdropFilter: 'blur(12px)',
+                        borderColor: isDarkMode ? `${iconColor}35` : `${iconColor}25`,
+                        boxShadow: `0 2px 8px -2px ${iconColor}15`,
                       }}
                     >
-                      <div className="flex items-center gap-1.5 mb-1.5">
+                      {/* Colored header bar */}
+                      <div
+                        className="flex items-center gap-1.5 px-2.5 py-1.5"
+                        style={{
+                          backgroundColor: isDarkMode ? `${iconColor}15` : `${iconColor}10`,
+                          borderBottom: `1px solid ${isDarkMode ? `${iconColor}20` : `${iconColor}12`}`,
+                        }}
+                      >
                         <SubCatIcon size={11} style={{ color: iconColor }} />
                         <span className="text-[10px] font-bold" style={{ color: iconColor }}>
                           {subCat}
                         </span>
+                        <span
+                          className="text-[9px] font-bold px-1 py-0.5 rounded ml-auto"
+                          style={{ backgroundColor: isDarkMode ? `${iconColor}20` : `${iconColor}12`, color: iconColor }}
+                        >
+                          {items.length}
+                        </span>
                       </div>
-                      <div className="flex flex-wrap gap-1">
+                      <div className="flex flex-wrap gap-1 p-2.5">
                         {items.map((ct) => (
                           <span
                             key={ct.id}
                             className="text-[10px] px-1.5 py-0.5 rounded-md font-medium"
                             style={{
-                              backgroundColor: isDarkMode ? `${iconColor}15` : `${iconColor}10`,
-                              color: isDarkMode ? `${iconColor}` : iconColor,
+                              backgroundColor: isDarkMode ? `${iconColor}18` : `${iconColor}12`,
+                              color: iconColor,
                             }}
                           >
                             {ct.resource_name}
@@ -929,8 +974,11 @@ const AssetSelectionStep: React.FC<AssetSelectionStepProps> = ({
           ) : (
             /* Empty coverage placeholder */
             <div
-              className="rounded-lg border-2 border-dashed p-4 text-center mb-4"
-              style={{ borderColor: `${colors.utility.primaryText}15` }}
+              className="rounded-xl border-2 border-dashed p-4 text-center mb-4"
+              style={{
+                borderColor: `${colors.utility.primaryText}15`,
+                backgroundColor: isDarkMode ? 'rgba(30,41,59,0.5)' : 'rgba(255,255,255,0.6)',
+              }}
             >
               <Shield size={20} style={{ color: colors.utility.secondaryText, opacity: 0.3, margin: '0 auto 6px' }} />
               <p className="text-[10px] font-medium" style={{ color: colors.utility.secondaryText }}>
@@ -954,8 +1002,11 @@ const AssetSelectionStep: React.FC<AssetSelectionStepProps> = ({
               {/* No mode selected yet */}
               {!attachmentMode && (
                 <div
-                  className="rounded-lg border-2 border-dashed p-3 text-center"
-                  style={{ borderColor: `${colors.utility.primaryText}12` }}
+                  className="rounded-xl border-2 border-dashed p-3 text-center"
+                  style={{
+                    borderColor: `${colors.utility.primaryText}15`,
+                    backgroundColor: isDarkMode ? 'rgba(30,41,59,0.5)' : 'rgba(255,255,255,0.6)',
+                  }}
                 >
                   <Package size={18} style={{ color: colors.utility.secondaryText, opacity: 0.3, margin: '0 auto 4px' }} />
                   <p className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
@@ -967,94 +1018,123 @@ const AssetSelectionStep: React.FC<AssetSelectionStepProps> = ({
               {/* Mode: existing — show selected equipment */}
               {attachmentMode === 'existing' && (
                 <div
-                  className="rounded-lg border p-3"
+                  className="rounded-xl border overflow-hidden"
                   style={{
-                    backgroundColor: isDarkMode ? `${colors.brand.primary}08` : `${colors.brand.primary}04`,
-                    borderColor: `${colors.brand.primary}20`,
+                    background: isDarkMode
+                      ? `linear-gradient(135deg, ${colors.brand.primary}12 0%, rgba(30,41,59,0.8) 100%)`
+                      : `linear-gradient(135deg, ${colors.brand.primary}06 0%, rgba(255,255,255,0.95) 100%)`,
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    borderColor: isDarkMode ? `${colors.brand.primary}35` : `${colors.brand.primary}25`,
+                    boxShadow: `0 4px 12px -3px ${colors.brand.primary}12`,
                   }}
                 >
-                  <div className="flex items-center gap-1.5 mb-2">
+                  <div
+                    className="flex items-center gap-1.5 px-3 py-2"
+                    style={{
+                      backgroundColor: isDarkMode ? `${colors.brand.primary}15` : `${colors.brand.primary}08`,
+                      borderBottom: `1px solid ${isDarkMode ? `${colors.brand.primary}20` : `${colors.brand.primary}12`}`,
+                    }}
+                  >
                     <ListChecks size={12} style={{ color: colors.brand.primary }} />
                     <span className="text-[10px] font-bold" style={{ color: colors.brand.primary }}>
                       From Registry
                     </span>
                     {equipmentDetails.length > 0 && (
                       <span
-                        className="text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-auto"
+                        className="text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-auto"
                         style={{ backgroundColor: `${colors.brand.primary}15`, color: colors.brand.primary }}
                       >
                         {equipmentDetails.length}
                       </span>
                     )}
                   </div>
-                  {equipmentDetails.length > 0 ? (
-                    <div className="space-y-1">
-                      {equipmentDetails.slice(0, 5).map((d) => (
-                        <div
-                          key={d.id}
-                          className="flex items-center gap-1.5 text-[10px] py-1 px-2 rounded-md"
-                          style={{
-                            backgroundColor: isDarkMode ? `${colors.utility.primaryText}08` : '#FFFFFF',
-                            color: colors.utility.primaryText,
-                          }}
-                        >
-                          <CheckCircle2 size={10} style={{ color: '#10b981' }} className="flex-shrink-0" />
-                          <span className="truncate font-medium">{d.item_name}</span>
-                        </div>
-                      ))}
-                      {equipmentDetails.length > 5 && (
-                        <p className="text-[10px] text-center pt-0.5" style={{ color: colors.utility.secondaryText }}>
-                          +{equipmentDetails.length - 5} more
-                        </p>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
-                      Select items from the grid
-                    </p>
-                  )}
+                  <div className="p-2.5">
+                    {equipmentDetails.length > 0 ? (
+                      <div className="space-y-1">
+                        {equipmentDetails.slice(0, 5).map((d) => (
+                          <div
+                            key={d.id}
+                            className="flex items-center gap-1.5 text-[10px] py-1.5 px-2 rounded-lg"
+                            style={{
+                              backgroundColor: isDarkMode ? `${colors.utility.primaryText}08` : '#FFFFFF',
+                              border: `1px solid ${isDarkMode ? `${colors.utility.primaryText}10` : '#E5E7EB'}`,
+                              color: colors.utility.primaryText,
+                            }}
+                          >
+                            <CheckCircle2 size={10} style={{ color: '#10b981' }} className="flex-shrink-0" />
+                            <span className="truncate font-medium">{d.item_name}</span>
+                          </div>
+                        ))}
+                        {equipmentDetails.length > 5 && (
+                          <p className="text-[10px] text-center pt-0.5" style={{ color: colors.utility.secondaryText }}>
+                            +{equipmentDetails.length - 5} more
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-center py-2" style={{ color: colors.utility.secondaryText }}>
+                        Select items from the grid
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
 
               {/* Mode: buyer will add */}
               {attachmentMode === 'buyer' && (
                 <div
-                  className="rounded-lg border p-3"
+                  className="rounded-xl border overflow-hidden"
                   style={{
-                    backgroundColor: isDarkMode ? '#0EA5E908' : '#0EA5E906',
-                    borderColor: '#0EA5E925',
+                    background: isDarkMode
+                      ? 'linear-gradient(135deg, rgba(14,165,233,0.12) 0%, rgba(30,41,59,0.8) 100%)'
+                      : 'linear-gradient(135deg, rgba(14,165,233,0.06) 0%, rgba(255,255,255,0.95) 100%)',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    borderColor: isDarkMode ? '#0EA5E940' : '#0EA5E930',
+                    boxShadow: '0 4px 12px -3px rgba(14,165,233,0.12)',
                   }}
                 >
-                  <div className="flex items-center gap-1.5 mb-2">
+                  <div
+                    className="flex items-center gap-1.5 px-3 py-2"
+                    style={{
+                      backgroundColor: isDarkMode ? 'rgba(14,165,233,0.15)' : 'rgba(14,165,233,0.08)',
+                      borderBottom: `1px solid ${isDarkMode ? 'rgba(14,165,233,0.2)' : 'rgba(14,165,233,0.12)'}`,
+                    }}
+                  >
                     <UserPlus size={12} style={{ color: '#0EA5E9' }} />
                     <span className="text-[10px] font-bold" style={{ color: '#0EA5E9' }}>
                       Buyer Will Add
                     </span>
                   </div>
-                  <p className="text-[10px] leading-relaxed mb-2" style={{ color: colors.utility.secondaryText }}>
-                    <strong style={{ color: colors.utility.primaryText }}>{buyerName || 'The buyer'}</strong> can add {config.label.toLowerCase()} during review or after claiming CNAK.
-                  </p>
-                  {/* Show covered categories */}
-                  <div className="flex flex-wrap gap-1">
-                    {[...coverageBySubCat.keys()].map((subCat) => {
-                      const scConfig = getSubCategoryConfig(subCat);
-                      const iconColor = scConfig?.color || '#6B7280';
-                      return (
-                        <span
-                          key={subCat}
-                          className="text-[9px] px-1.5 py-0.5 rounded-md font-medium"
-                          style={{ backgroundColor: `${iconColor}12`, color: iconColor }}
-                        >
-                          {subCat}
-                        </span>
-                      );
-                    })}
-                  </div>
-                  <div className="flex items-center gap-1 mt-2 pt-2 border-t" style={{ borderColor: `${colors.utility.primaryText}08` }}>
-                    <ArrowRight size={10} style={{ color: '#0EA5E9' }} />
-                    <span className="text-[9px] font-medium" style={{ color: '#0EA5E9' }}>
-                      Buyer can add at any time
-                    </span>
+                  <div className="p-3">
+                    <p className="text-[10px] leading-relaxed mb-2" style={{ color: colors.utility.secondaryText }}>
+                      <strong style={{ color: colors.utility.primaryText }}>{buyerName || 'The buyer'}</strong> can add {config.label.toLowerCase()} during review or after claiming CNAK.
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {[...coverageBySubCat.keys()].map((subCat) => {
+                        const scConfig = getSubCategoryConfig(subCat);
+                        const iconClr = scConfig?.color || '#6B7280';
+                        return (
+                          <span
+                            key={subCat}
+                            className="text-[9px] px-1.5 py-0.5 rounded-md font-medium"
+                            style={{ backgroundColor: `${iconClr}15`, color: iconClr }}
+                          >
+                            {subCat}
+                          </span>
+                        );
+                      })}
+                    </div>
+                    <div
+                      className="flex items-center gap-1 mt-2.5 pt-2 border-t"
+                      style={{ borderColor: isDarkMode ? 'rgba(14,165,233,0.15)' : 'rgba(14,165,233,0.1)' }}
+                    >
+                      <ArrowRight size={10} style={{ color: '#0EA5E9' }} />
+                      <span className="text-[9px] font-medium" style={{ color: '#0EA5E9' }}>
+                        Buyer can add at any time
+                      </span>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1062,42 +1142,57 @@ const AssetSelectionStep: React.FC<AssetSelectionStepProps> = ({
               {/* Mode: attach later */}
               {attachmentMode === 'later' && (
                 <div
-                  className="rounded-lg border p-3"
+                  className="rounded-xl border overflow-hidden"
                   style={{
-                    backgroundColor: isDarkMode ? '#F59E0B08' : '#F59E0B06',
-                    borderColor: '#F59E0B25',
+                    background: isDarkMode
+                      ? 'linear-gradient(135deg, rgba(245,158,11,0.12) 0%, rgba(30,41,59,0.8) 100%)'
+                      : 'linear-gradient(135deg, rgba(245,158,11,0.06) 0%, rgba(255,255,255,0.95) 100%)',
+                    backdropFilter: 'blur(12px)',
+                    WebkitBackdropFilter: 'blur(12px)',
+                    borderColor: isDarkMode ? '#F59E0B40' : '#F59E0B30',
+                    boxShadow: '0 4px 12px -3px rgba(245,158,11,0.12)',
                   }}
                 >
-                  <div className="flex items-center gap-1.5 mb-2">
+                  <div
+                    className="flex items-center gap-1.5 px-3 py-2"
+                    style={{
+                      backgroundColor: isDarkMode ? 'rgba(245,158,11,0.15)' : 'rgba(245,158,11,0.08)',
+                      borderBottom: `1px solid ${isDarkMode ? 'rgba(245,158,11,0.2)' : 'rgba(245,158,11,0.12)'}`,
+                    }}
+                  >
                     <Clock size={12} style={{ color: '#F59E0B' }} />
                     <span className="text-[10px] font-bold" style={{ color: '#F59E0B' }}>
                       Attach Later
                     </span>
                   </div>
-                  <p className="text-[10px] leading-relaxed mb-2" style={{ color: colors.utility.secondaryText }}>
-                    {config.label} categories are captured. Specific details can be added any time after contract creation.
-                  </p>
-                  {/* Show covered categories */}
-                  <div className="flex flex-wrap gap-1">
-                    {[...coverageBySubCat.keys()].map((subCat) => {
-                      const scConfig = getSubCategoryConfig(subCat);
-                      const iconColor = scConfig?.color || '#6B7280';
-                      return (
-                        <span
-                          key={subCat}
-                          className="text-[9px] px-1.5 py-0.5 rounded-md font-medium"
-                          style={{ backgroundColor: `${iconColor}12`, color: iconColor }}
-                        >
-                          {subCat}
-                        </span>
-                      );
-                    })}
-                  </div>
-                  <div className="flex items-center gap-1 mt-2 pt-2 border-t" style={{ borderColor: `${colors.utility.primaryText}08` }}>
-                    <ArrowRight size={10} style={{ color: '#F59E0B' }} />
-                    <span className="text-[9px] font-medium" style={{ color: '#F59E0B' }}>
-                      Add from contract detail page
-                    </span>
+                  <div className="p-3">
+                    <p className="text-[10px] leading-relaxed mb-2" style={{ color: colors.utility.secondaryText }}>
+                      {config.label} categories are captured. Specific details can be added any time after contract creation.
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {[...coverageBySubCat.keys()].map((subCat) => {
+                        const scConfig = getSubCategoryConfig(subCat);
+                        const iconClr = scConfig?.color || '#6B7280';
+                        return (
+                          <span
+                            key={subCat}
+                            className="text-[9px] px-1.5 py-0.5 rounded-md font-medium"
+                            style={{ backgroundColor: `${iconClr}15`, color: iconClr }}
+                          >
+                            {subCat}
+                          </span>
+                        );
+                      })}
+                    </div>
+                    <div
+                      className="flex items-center gap-1 mt-2.5 pt-2 border-t"
+                      style={{ borderColor: isDarkMode ? 'rgba(245,158,11,0.15)' : 'rgba(245,158,11,0.1)' }}
+                    >
+                      <ArrowRight size={10} style={{ color: '#F59E0B' }} />
+                      <span className="text-[9px] font-medium" style={{ color: '#F59E0B' }}>
+                        Add from contract detail page
+                      </span>
+                    </div>
                   </div>
                 </div>
               )}
