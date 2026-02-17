@@ -26,7 +26,7 @@ const BusinessProfilePage = () => {
   }, []);
 
   // Use the tenant profile hook
-  const { loading, profile } = useTenantProfile();
+  const { loading, profile, fetchProfile } = useTenantProfile();
 
   // Fetch industries from API
   const { data: industriesResponse } = useIndustries();
@@ -520,7 +520,7 @@ const BusinessProfilePage = () => {
 
               {/* ═══ INDUSTRIES SECTION (unified: your industry + served) ═══ */}
               {activeSection === 'industries' && (
-                <ServedIndustriesSection profileIndustryId={profile?.industry_id} />
+                <ServedIndustriesSection profileIndustryId={profile?.industry_id} onIndustryChanged={fetchProfile} />
               )}
 
               {/* ═══ DANGER ZONE / CLOSE ACCOUNT SECTION ═══ */}
