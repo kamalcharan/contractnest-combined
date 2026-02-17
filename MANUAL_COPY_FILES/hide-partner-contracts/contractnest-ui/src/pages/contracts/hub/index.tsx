@@ -366,7 +366,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({ typeFilter, colors, onCreateCli
     all: 'contracts',
     client: 'client contracts',
     vendor: 'vendor contracts',
-    partner: 'partner contracts', // hidden from UI but kept for type safety
+    partner: 'partner contracts',
   };
 
   const createOptions: Array<{ label: string; type: ContractType; icon: React.ElementType; color: string }> = [
