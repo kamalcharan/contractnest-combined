@@ -1,0 +1,56 @@
+═══════════════════════════════════════════════════════════════
+RELEASE 2: UI Infrastructure — Role Hook + Health Engine + Components
+═══════════════════════════════════════════════════════════════
+
+BRANCH: claude/init-contractnest-repos-xfRdA
+DATE: 2026-02-17
+SUBMODULES AFFECTED: contractnest-ui ONLY
+
+═══════════════════════════════════════════════════════════════
+FILES TO COPY (9 files — 7 NEW, 2 MODIFIED)
+═══════════════════════════════════════════════════════════════
+
+NEW FILES:
+──────────
+1. contractnest-ui/src/hooks/useContractRole.ts
+   → Role hook: determines seller/buyer/viewer role + permissions
+
+2. contractnest-ui/src/hooks/useContractHealth.ts
+   → Health engine: 4-pillar scoring (Completeness, Financial, Delivery, Compliance)
+
+3. contractnest-ui/src/components/contracts/HealthRing.tsx
+   → Animated SVG donut ring showing overall health score
+
+4. contractnest-ui/src/components/contracts/PillarBar.tsx
+   → Individual pillar progress bar with issue count
+
+5. contractnest-ui/src/components/contracts/ContractHealthCard.tsx
+   → Composite card: HealthRing + PillarBars, role-aware labels
+
+6. contractnest-ui/src/components/contracts/RoleBadge.tsx
+   → Inline badge showing current tenant's role (Seller/Buyer/Viewer)
+
+7. contractnest-ui/src/constants/contractTabs.ts
+   → SELLER_TABS (6 tabs) + BUYER_TABS (4 tabs) + getTabsForRole() helper
+
+MODIFIED FILES:
+───────────────
+8. contractnest-ui/src/components/contracts/HealthBadge.tsx
+   → Updated to use new pillar-based useContractHealth API
+
+9. contractnest-ui/src/pages/contracts/detail/index.tsx
+   → Added 3 imports + 2 hook calls + ContractHealthCard in ops sidebar
+
+═══════════════════════════════════════════════════════════════
+COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════════════════
+
+Copy-Item "MANUAL_COPY_FILES\release-2-ui-infrastructure\contractnest-ui\src\hooks\useContractRole.ts" -Destination "contractnest-ui\src\hooks\useContractRole.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\release-2-ui-infrastructure\contractnest-ui\src\hooks\useContractHealth.ts" -Destination "contractnest-ui\src\hooks\useContractHealth.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\release-2-ui-infrastructure\contractnest-ui\src\components\contracts\HealthRing.tsx" -Destination "contractnest-ui\src\components\contracts\HealthRing.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\release-2-ui-infrastructure\contractnest-ui\src\components\contracts\PillarBar.tsx" -Destination "contractnest-ui\src\components\contracts\PillarBar.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\release-2-ui-infrastructure\contractnest-ui\src\components\contracts\ContractHealthCard.tsx" -Destination "contractnest-ui\src\components\contracts\ContractHealthCard.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\release-2-ui-infrastructure\contractnest-ui\src\components\contracts\HealthBadge.tsx" -Destination "contractnest-ui\src\components\contracts\HealthBadge.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\release-2-ui-infrastructure\contractnest-ui\src\components\contracts\RoleBadge.tsx" -Destination "contractnest-ui\src\components\contracts\RoleBadge.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\release-2-ui-infrastructure\contractnest-ui\src\constants\contractTabs.ts" -Destination "contractnest-ui\src\constants\contractTabs.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\release-2-ui-infrastructure\contractnest-ui\src\pages\contracts\detail\index.tsx" -Destination "contractnest-ui\src\pages\contracts\detail\index.tsx" -Force

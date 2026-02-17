@@ -1,0 +1,24 @@
+═══════════════════════════════════════════════════
+ RELEASE 3: Seller View Restructure
+═══════════════════════════════════════════════════
+
+Files Changed (5 files, 1 submodule):
+
+  NEW — contractnest-ui/src/components/contracts/SellerOverview.tsx
+  NEW — contractnest-ui/src/components/contracts/NeedsAttentionPanel.tsx
+  NEW — contractnest-ui/src/components/contracts/DualTrackPreview.tsx
+  NEW — contractnest-ui/src/components/contracts/SellerTasksTab.tsx
+  MODIFIED — contractnest-ui/src/pages/contracts/detail/index.tsx
+
+Submodules Affected: contractnest-ui only
+
+What Changed:
+  3.1  — Seller gets 4 tabs (Overview, Tasks, Financials, Audit) vs Buyer's 6 tabs
+  3.2  — SellerOverview: HealthCard (left) + NeedsAttention (right) + DualTrack (bottom)
+  3.3  — DualTrackPreview: service events left, billing events right, top 3 each
+  3.4  — SellerTasksTab: block-grouped dual-column timeline with Execute/Invoice actions
+  3.5  — Financials tab kept as-is for both roles
+  3.6  — Audit tab unchanged
+  3.7  — Communication tab not shown to seller (only in buyer tabs)
+  3.9  — Seller header: View PDF + Send Update + Add Task
+  3.10 — Seller summary bar: Value, Collected, Balance, Blocks, Duration, Health

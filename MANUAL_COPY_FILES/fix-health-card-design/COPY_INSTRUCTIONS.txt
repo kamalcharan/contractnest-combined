@@ -1,0 +1,15 @@
+═══════════════════════════════════════════════════
+ FIX: Health Card Design — Match Reference Layout
+═══════════════════════════════════════════════════
+
+Files Changed (3 files, 1 submodule):
+  contractnest-ui/src/components/contracts/HealthRing.tsx
+  contractnest-ui/src/components/contracts/PillarBar.tsx
+  contractnest-ui/src/components/contracts/ContractHealthCard.tsx
+
+Submodules Affected: contractnest-ui only
+
+What Changed:
+  - HealthRing: score + "HEALTH" label, setTimeout animation, dark track
+  - PillarBar: emoji icon + 90px label + 6px bar + mono score (horizontal row)
+  - ContractHealthCard: horizontal flex (ring left, pillars right), emoji title, no header/footer
