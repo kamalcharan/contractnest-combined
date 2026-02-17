@@ -1,0 +1,54 @@
+═══════════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS — AssetSelectionStep 70/30 Layout Redesign
+═══════════════════════════════════════════════════════════════════
+Submodule Affected: contractnest-ui
+
+═══════════════════════════════════════════════════════════════════
+FILES TO COPY (1 file)
+═══════════════════════════════════════════════════════════════════
+
+1. MODIFIED — AssetSelectionStep.tsx (full layout restructure)
+   FROM: MANUAL_COPY_FILES\asset-selection-70-30\contractnest-ui\src\components\contracts\ContractWizard\steps\AssetSelectionStep.tsx
+   TO:   contractnest-ui\src\components\contracts\ContractWizard\steps\AssetSelectionStep.tsx
+
+═══════════════════════════════════════════════════════════════════
+CHANGES
+═══════════════════════════════════════════════════════════════════
+
+LAYOUT:
+  - Converted from single-column scroll to 70/30 two-column flex layout
+  - Left column (flex-1): main content with independent scroll
+  - Right column (30%, sticky): live status panel
+
+PHASE 1 (Coverage Types) — Compact:
+  - Sub-category cards: reduced from rounded-2xl + p-3.5 to rounded-xl + py-2.5
+  - Icons: 7x7 (was 9x9), font: 12px (was 14px)
+  - Removed glassmorphic shadow from cards (simpler borders)
+  - Chip buttons: reduced from py-2 to py-1.5 with 11px font
+
+PHASE 2 (Attach Equipment) — Compact:
+  - Replaced 2x2 OptionCard grid with horizontal OptionPill strip
+  - OptionPill = icon + label inline, no description, much smaller footprint
+  - Removed inline "Buyer Will Add" / "Attach Later" info cards
+    (these are now shown in the right status panel)
+  - Equipment grid sidebar: 180px (was 200px), smaller fonts
+
+RIGHT STATUS PANEL (NEW):
+  - Header: shows overall step status (Pending / Coverage Selected / Complete)
+  - Coverage section: sub-category cards with resource chips
+  - Equipment section: context-aware based on attachment mode:
+    * No mode: dashed placeholder "Choose how to attach"
+    * Select Existing: mini list of selected equipment (up to 5)
+    * Buyer Will Add: sky-blue card with buyer name, covered categories,
+      "Buyer can add at any time" footer
+    * Attach Later: amber card with covered categories,
+      "Add from contract detail page" footer
+
+REMOVED:
+  - Trash2 icon import (no longer needed)
+  - OptionCard sub-component (replaced by OptionPill)
+  - Inline info cards for buyer/later modes
+
+ADDED ICONS:
+  - Shield, AlertCircle, CircleDot, ArrowRight
+═══════════════════════════════════════════════════════════════════
