@@ -1,0 +1,20 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS - Document Tab + Header Cleanup
+═══════════════════════════════════════════════════
+
+Branch: document-tab-header-cleanup
+Submodules Affected: contractnest-ui
+
+Files Changed:
+  - contractnest-ui/src/pages/contracts/detail/index.tsx
+    - Added 'document' tab to SELLER_TAB_DEFINITIONS
+    - Removed 'View PDF' button from header
+    - Removed 'Send Update' button from seller header
+
+═══════════════════════════════════════════════════
+COPY COMMAND (PowerShell)
+═══════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\document-tab-header-cleanup\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Write-Host "All files copied!" -ForegroundColor Green
