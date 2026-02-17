@@ -10,7 +10,7 @@
 SELECT
     id AS contract_id,
     tenant_id,
-    title,
+    name,
     status,
     record_type,
     jsonb_array_length(computed_events) AS pending_event_count,
@@ -37,7 +37,7 @@ DECLARE
     v_fail   INT := 0;
 BEGIN
     FOR v_rec IN
-        SELECT id, tenant_id, title,
+        SELECT id, tenant_id, name,
                jsonb_array_length(computed_events) AS event_count
         FROM t_contracts
         WHERE status = 'active'
@@ -53,15 +53,15 @@ BEGIN
             IF (v_result->>'success')::BOOLEAN THEN
                 v_ok := v_ok + 1;
                 RAISE NOTICE 'OK  [%] % — % events processed',
-                    v_rec.id, v_rec.title, v_rec.event_count;
+                    v_rec.id, v_rec.name, v_rec.event_count;
             ELSE
                 v_fail := v_fail + 1;
                 RAISE NOTICE 'FAIL [%] % — %',
-                    v_rec.id, v_rec.title, v_result->>'error';
+                    v_rec.id, v_rec.name, v_result->>'error';
             END IF;
         EXCEPTION WHEN OTHERS THEN
             v_fail := v_fail + 1;
-            RAISE NOTICE 'ERROR [%] % — %', v_rec.id, v_rec.title, SQLERRM;
+            RAISE NOTICE 'ERROR [%] % — %', v_rec.id, v_rec.name, SQLERRM;
         END;
     END LOOP;
 
@@ -78,7 +78,7 @@ $$;
 SELECT
     id AS contract_id,
     tenant_id,
-    title,
+    name,
     status,
     CASE
         WHEN computed_events IS NULL THEN 'PROCESSED (computed_events cleared)'
