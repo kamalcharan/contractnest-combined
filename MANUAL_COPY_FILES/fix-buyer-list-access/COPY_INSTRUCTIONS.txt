@@ -1,0 +1,62 @@
+═══════════════════════════════════════════════════
+HOTFIX: Buyer Cannot See Contracts List or Dashboard Stats
+═══════════════════════════════════════════════════
+
+Branch: fix-buyer-list-access
+Date: 2026-02-17
+Submodules Affected: contractnest-edge (database migration only)
+Priority: CRITICAL — blocks all buyer functionality
+
+═══════════════════════════════════════════════════
+ROOT CAUSE
+═══════════════════════════════════════════════════
+
+Both `get_contracts_list` and `get_contract_stats` RPC functions only filter
+by `WHERE c.tenant_id = p_tenant_id`. A buyer has a DIFFERENT tenant_id
+than the seller who created the contracts. Result: buyer sees ZERO contracts
+and ZERO stats.
+
+The `get_contract_by_id` function already handles this correctly (since
+migration 031) by falling back to `t_contract_access`. The list and stats
+functions were never updated.
+
+═══════════════════════════════════════════════════
+THE FIX
+═══════════════════════════════════════════════════
+
+Migration 043 replaces both functions with dual-access WHERE clauses:
+
+  WHERE c.is_live = ... AND c.is_active = true
+    AND (
+        c.tenant_id = p_tenant_id                         -- owner/seller
+        OR EXISTS (
+            SELECT 1 FROM t_contract_access ca
+            WHERE ca.contract_id = c.id
+              AND ca.accessor_tenant_id = p_tenant_id     -- buyer/vendor/partner
+              AND ca.is_active = true
+              AND (ca.expires_at IS NULL OR ca.expires_at > NOW())
+        )
+    )
+
+═══════════════════════════════════════════════════
+HOW TO APPLY
+═══════════════════════════════════════════════════
+
+Option A — Run directly in Supabase SQL Editor:
+  1. Open Supabase Dashboard → SQL Editor
+  2. Paste the contents of 043_fix_buyer_list_and_stats_access.sql
+  3. Run
+
+Option B — Copy to edge migrations and deploy:
+  Copy-Item "MANUAL_COPY_FILES\fix-buyer-list-access\contractnest-edge\supabase\migrations\contracts\043_fix_buyer_list_and_stats_access.sql" -Destination "contractnest-edge\supabase\migrations\contracts\" -Force
+
+═══════════════════════════════════════════════════
+VERIFICATION
+═══════════════════════════════════════════════════
+
+After applying:
+  1. Log in as buyer
+  2. Navigate to /contracts — should see claimed contracts
+  3. Pipeline bar should show correct status counts
+  4. Type filter (Client/Vendor) should work
+  5. Dashboard stats should reflect buyer's contracts
