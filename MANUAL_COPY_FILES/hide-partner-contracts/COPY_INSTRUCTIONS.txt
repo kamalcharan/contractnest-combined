@@ -1,0 +1,34 @@
+═══════════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS — Hide Partner Contracts from Contracts Hub
+═══════════════════════════════════════════════════════════════════
+Submodule Affected: contractnest-ui
+
+═══════════════════════════════════════════════════════════════════
+FILES TO COPY (1 file)
+═══════════════════════════════════════════════════════════════════
+
+1. MODIFIED — hub/index.tsx (hide Partner from sidebar + create menus)
+   FROM: MANUAL_COPY_FILES\hide-partner-contracts\contractnest-ui\src\pages\contracts\hub\index.tsx
+   TO:   contractnest-ui\src\pages\contracts\hub\index.tsx
+
+═══════════════════════════════════════════════════════════════════
+CHANGES
+═══════════════════════════════════════════════════════════════════
+
+REMOVED from TypeRail sidebar "Filter by Type":
+  - Partner filter item (Handshake icon, partner count)
+
+REMOVED from TypeRail "Quick Create":
+  - "Partner Contract" create button
+
+REMOVED from EmptyState dropdown:
+  - "Partner Contract" create option
+
+REMOVED from main page header dropdown:
+  - "Partner Contract" create option
+
+NOTE: The 'partner' key is kept in EmptyState labels Record
+for TypeScript type safety (ContractTypeFilter includes 'partner').
+The Handshake icon import is kept because it's still used in
+CLASSIFICATION_ICON_MAP for contract list card badges.
+═══════════════════════════════════════════════════════════════════
