@@ -1,0 +1,45 @@
+═══════════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS — Add Service Cycle to FlyBy Blocks
+═══════════════════════════════════════════════════════════════════
+Submodule Affected: contractnest-ui
+
+═══════════════════════════════════════════════════════════════════
+FILES TO COPY (3 files)
+═══════════════════════════════════════════════════════════════════
+
+1. MODIFIED — FlyByBlockCard.tsx (added service cycle UI + validation)
+   FROM: MANUAL_COPY_FILES\flyby-service-cycle\contractnest-ui\src\components\catalog-studio\FlyByBlockCard.tsx
+   TO:   contractnest-ui\src\components\catalog-studio\FlyByBlockCard.tsx
+
+2. MODIFIED — ServiceBlocksStep.tsx (pass contractDurationDays to FlyByBlockCard)
+   FROM: MANUAL_COPY_FILES\flyby-service-cycle\contractnest-ui\src\components\contracts\ContractWizard\steps\ServiceBlocksStep.tsx
+   TO:   contractnest-ui\src\components\contracts\ContractWizard\steps\ServiceBlocksStep.tsx
+
+3. MODIFIED — ContractWizard/index.tsx (add service_cycle_days + custom_cycle_days to API payload)
+   FROM: MANUAL_COPY_FILES\flyby-service-cycle\contractnest-ui\src\components\contracts\ContractWizard\index.tsx
+   TO:   contractnest-ui\src\components\contracts\ContractWizard\index.tsx
+
+═══════════════════════════════════════════════════════════════════
+CHANGES
+═══════════════════════════════════════════════════════════════════
+
+FlyByBlockCard.tsx:
+  - Added Repeat + AlertTriangle icon imports
+  - Added contractDurationDays prop to interface
+  - Updated handleUnlimitedToggle to clear serviceCycleDays when going unlimited
+  - Added handleServiceCycleDaysChange callback
+  - Added hasServiceCycle flag (service/spare, not unlimited, not hidePricing)
+  - Added serviceCycleSpanDays + serviceCycleExceedsDuration validation
+  - Added full Service Cycle UI card (between Quantity and Price sections):
+    • "Every N days from start of contract" input
+    • Summary text (e.g. "Day 1 to Day 60")
+    • Duration exceed warning (red)
+
+ServiceBlocksStep.tsx:
+  - Pass contractDurationDays={contractDuration ? contractDuration * 30 : undefined}
+    to <FlyByBlockCard> (was already passed to <BlockCardConfigurable>)
+
+ContractWizard/index.tsx:
+  - Added custom_cycle_days and service_cycle_days to API block payload
+    (were previously missing for ALL block types, not just flyby)
+═══════════════════════════════════════════════════════════════════
