@@ -1,0 +1,60 @@
+═══════════════════════════════════════════════════
+RELEASE 4: BUYER VIEW + DOCUMENT TAB + POLISH
+═══════════════════════════════════════════════════
+
+Branch: release-4-buyer-view
+Date: 2026-02-17
+Submodules Affected: contractnest-ui
+
+═══════════════════════════════════════════════════
+FILES CHANGED
+═══════════════════════════════════════════════════
+
+NEW FILES (6):
+  contractnest-ui/src/components/contracts/BuyerOverview.tsx
+  contractnest-ui/src/components/contracts/WhatsHappeningPanel.tsx
+  contractnest-ui/src/components/contracts/QuickActionsGrid.tsx
+  contractnest-ui/src/components/contracts/BuyerTimelineNode.tsx
+  contractnest-ui/src/components/contracts/BuyerPaymentsView.tsx
+  contractnest-ui/src/components/contracts/ServiceRequestsPlaceholder.tsx
+
+MODIFIED FILES (2):
+  contractnest-ui/src/components/contracts/EvidenceTab.tsx
+    — Added optional `role` prop (ContractRole)
+    — Buyer view: hides assignee, uses buyer-friendly labels
+  contractnest-ui/src/pages/contracts/detail/index.tsx
+    — New buyer tab definitions (Overview, My Services, Payments, Proof of Work, Requests, Document)
+    — Buyer summary bar (Contract Value, Paid, Remaining, Progress, Services, Health)
+    — Buyer header actions (View Contract, Message Seller, Accept, Pay)
+    — Edge cases: draft → seller view, cancelled/expired → read-only banner
+    — Wired BuyerOverview, BuyerPaymentsView, ServiceRequestsPlaceholder
+
+═══════════════════════════════════════════════════
+PREREQUISITES (must be applied first)
+═══════════════════════════════════════════════════
+  release-1-seller-buyer-tenant (types + migration)
+  release-2-ui-infrastructure (hooks, constants, components)
+  fix-health-card-design (health card patches)
+  release-3-seller-view (seller components + detail page)
+
+═══════════════════════════════════════════════════
+COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Step 1: Copy NEW buyer components
+Copy-Item "MANUAL_COPY_FILES\release-4-buyer-view\contractnest-ui\src\components\contracts\BuyerOverview.tsx" -Destination "contractnest-ui\src\components\contracts\BuyerOverview.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\release-4-buyer-view\contractnest-ui\src\components\contracts\WhatsHappeningPanel.tsx" -Destination "contractnest-ui\src\components\contracts\WhatsHappeningPanel.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\release-4-buyer-view\contractnest-ui\src\components\contracts\QuickActionsGrid.tsx" -Destination "contractnest-ui\src\components\contracts\QuickActionsGrid.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\release-4-buyer-view\contractnest-ui\src\components\contracts\BuyerTimelineNode.tsx" -Destination "contractnest-ui\src\components\contracts\BuyerTimelineNode.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\release-4-buyer-view\contractnest-ui\src\components\contracts\BuyerPaymentsView.tsx" -Destination "contractnest-ui\src\components\contracts\BuyerPaymentsView.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\release-4-buyer-view\contractnest-ui\src\components\contracts\ServiceRequestsPlaceholder.tsx" -Destination "contractnest-ui\src\components\contracts\ServiceRequestsPlaceholder.tsx" -Force
+
+# Step 2: Copy MODIFIED EvidenceTab (with role prop)
+Copy-Item "MANUAL_COPY_FILES\release-4-buyer-view\contractnest-ui\src\components\contracts\EvidenceTab.tsx" -Destination "contractnest-ui\src\components\contracts\EvidenceTab.tsx" -Force
+
+# Step 3: Copy MODIFIED detail page (buyer paths + edge cases)
+Copy-Item "MANUAL_COPY_FILES\release-4-buyer-view\contractnest-ui\src\pages\contracts\detail\index.tsx" -Destination "contractnest-ui\src\pages\contracts\detail\index.tsx" -Force
+
+Write-Host "All 8 files copied!" -ForegroundColor Green
