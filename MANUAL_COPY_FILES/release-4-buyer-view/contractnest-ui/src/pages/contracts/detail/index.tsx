@@ -43,10 +43,18 @@ import {
   Inbox,
   TrendingUp,
 } from 'lucide-react';
-import { useContract } from '@/hooks/queries/useContractQueries';
+import { useContract, useContractOperations } from '@/hooks/queries/useContractQueries';
 import { useContractInvoices } from '@/hooks/queries/useInvoiceQueries';
-import type { ContractDetail } from '@/types/contracts';
-import { CONTRACT_STATUS_COLORS } from '@/types/contracts';
+import type { ContractDetail, ContractStatus } from '@/types/contracts';
+import { CONTRACT_STATUS_COLORS, CONTRACT_STATUS_FLOW, RFQ_STATUS_FLOW } from '@/types/contracts';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 import { VaNiLoader } from '@/components/common/loaders/UnifiedLoader';
 import {
   CONTACT_CLASSIFICATION_CONFIG,
@@ -1183,6 +1191,10 @@ const ContractDetailPage: React.FC = () => {
   const { hasActiveGateway } = useGatewayStatus();
   const { addToast } = useVaNiToast();
 
+  // ─── Contract operations (status change) ───
+  const { updateStatus, isChangingStatus } = useContractOperations();
+  const [statusConfirm, setStatusConfirm] = useState<{ open: boolean; target: ContractStatus | null }>({ open: false, target: null });
+
   // ─── Dual-persona role + health ───
   const { role, isSeller, isBuyer, permissions } = useContractRole(contract ?? null);
 
@@ -1208,6 +1220,24 @@ const ContractDetailPage: React.FC = () => {
     contract: contract ?? null,
     invoiceSummary: pageSummary ?? null,
   });
+
+  // ─── Status change logic (seller only) ───
+  const isRfq = contract?.record_type === 'rfq';
+  const statusFlow = isRfq ? RFQ_STATUS_FLOW : CONTRACT_STATUS_FLOW;
+  const availableTransitions: ContractStatus[] = contract
+    ? (statusFlow[contract.status] || [])
+    : [];
+  const canChangeStatus = isSeller && permissions.canChangeStatus && availableTransitions.length > 0;
+
+  const handleStatusChange = async (newStatus: ContractStatus) => {
+    if (!contract?.id) return;
+    try {
+      await updateStatus({ contractId: contract.id, statusData: { status: newStatus } });
+      setStatusConfirm({ open: false, target: null });
+    } catch {
+      setStatusConfirm({ open: false, target: null });
+    }
+  };
 
   // ─── Razorpay Checkout (for terminal mode from RecordPaymentDialog) ───
   const { openCheckout, isVerifying } = useRazorpayCheckout({
@@ -1746,19 +1776,62 @@ const ContractDetailPage: React.FC = () => {
                     {contract.contract_number}
                   </span>
                   <span style={{ color: colors.utility.secondaryText }}>&middot;</span>
-                  <span
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.65rem] font-semibold"
-                    style={{
-                      backgroundColor: statusColor + '18',
-                      color: statusColor,
-                    }}
-                  >
+                  {canChangeStatus ? (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.65rem] font-semibold cursor-pointer transition-opacity hover:opacity-80"
+                          style={{
+                            backgroundColor: statusColor + '18',
+                            color: statusColor,
+                          }}
+                          disabled={isChangingStatus}
+                        >
+                          <span
+                            className="w-1.5 h-1.5 rounded-full"
+                            style={{ backgroundColor: statusColor }}
+                          />
+                          {isChangingStatus ? 'Updating...' : statusConfig.label}
+                          <ChevronDown className="h-3 w-3 ml-0.5" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="min-w-[180px]">
+                        <DropdownMenuLabel className="text-xs">Change Status</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {availableTransitions.map((targetStatus) => {
+                          const targetConfig = CONTRACT_STATUS_COLORS[targetStatus] || CONTRACT_STATUS_COLORS.draft;
+                          const targetColor = getSemanticColor(targetConfig.bg, colors);
+                          return (
+                            <DropdownMenuItem
+                              key={targetStatus}
+                              className="cursor-pointer text-xs gap-2"
+                              onClick={() => setStatusConfirm({ open: true, target: targetStatus })}
+                            >
+                              <span
+                                className="w-2 h-2 rounded-full flex-shrink-0"
+                                style={{ backgroundColor: targetColor }}
+                              />
+                              {targetConfig.label}
+                            </DropdownMenuItem>
+                          );
+                        })}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : (
                     <span
-                      className="w-1.5 h-1.5 rounded-full"
-                      style={{ backgroundColor: statusColor }}
-                    />
-                    {statusConfig.label}
-                  </span>
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.65rem] font-semibold"
+                      style={{
+                        backgroundColor: statusColor + '18',
+                        color: statusColor,
+                      }}
+                    >
+                      <span
+                        className="w-1.5 h-1.5 rounded-full"
+                        style={{ backgroundColor: statusColor }}
+                      />
+                      {statusConfig.label}
+                    </span>
+                  )}
                   <span style={{ color: colors.utility.secondaryText }}>&middot;</span>
                   <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
                     Created {formatDate(contract.created_at)}
@@ -1955,6 +2028,68 @@ const ContractDetailPage: React.FC = () => {
           setIsPaymentDialogOpen(false);
         }}
       />
+
+      {/* ═══════ STATUS CHANGE CONFIRMATION DIALOG ═══════ */}
+      {statusConfirm.open && statusConfirm.target && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setStatusConfirm({ open: false, target: null })}
+          />
+          <div
+            className="relative z-10 rounded-xl p-6 shadow-xl max-w-sm w-full mx-4"
+            style={{ backgroundColor: colors.utility.secondaryBackground }}
+          >
+            <h3
+              className="text-base font-semibold mb-2"
+              style={{ color: colors.utility.primaryText }}
+            >
+              Confirm Status Change
+            </h3>
+            <p className="text-sm mb-5" style={{ color: colors.utility.secondaryText }}>
+              Change status from{' '}
+              <span className="font-semibold" style={{ color: statusColor }}>
+                {statusConfig.label}
+              </span>
+              {' '}to{' '}
+              <span
+                className="font-semibold"
+                style={{
+                  color: getSemanticColor(
+                    (CONTRACT_STATUS_COLORS[statusConfirm.target] || CONTRACT_STATUS_COLORS.draft).bg,
+                    colors
+                  ),
+                }}
+              >
+                {(CONTRACT_STATUS_COLORS[statusConfirm.target] || CONTRACT_STATUS_COLORS.draft).label}
+              </span>
+              ?
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                className="px-4 py-1.5 rounded-lg border text-sm font-medium"
+                style={{
+                  borderColor: colors.utility.primaryText + '20',
+                  color: colors.utility.secondaryText,
+                }}
+                onClick={() => setStatusConfirm({ open: false, target: null })}
+                disabled={isChangingStatus}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-1.5 rounded-lg text-sm font-semibold text-white flex items-center gap-1.5"
+                style={{ backgroundColor: colors.brand.primary }}
+                onClick={() => handleStatusChange(statusConfirm.target!)}
+                disabled={isChangingStatus}
+              >
+                {isChangingStatus && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                {isChangingStatus ? 'Updating...' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
