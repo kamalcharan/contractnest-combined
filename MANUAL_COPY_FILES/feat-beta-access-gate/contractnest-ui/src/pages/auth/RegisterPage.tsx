@@ -446,7 +446,8 @@ const RegisterPage: React.FC = () => {
                 <div className="space-y-2">
                   {[
                     'AI-powered contract creation & analysis',
-                    'Smart templates with clause intelligence',
+                    'Buyer → Seller coordination with AR/AP',
+                    'Automated compliance & risk detection',
                     'Real-time collaboration & e-signatures'
                   ].map((item, i) => (
                     <div key={i} className="flex items-center gap-2">
