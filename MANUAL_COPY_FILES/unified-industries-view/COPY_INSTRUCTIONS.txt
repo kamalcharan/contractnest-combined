@@ -1,0 +1,48 @@
+═══════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS — Unified Industries View
+Branch: unified-industries-view
+Date: 2026-02-17
+═══════════════════════════════════════════════════════════════
+
+SUBMODULES AFFECTED: contractnest-ui
+
+FILES TO COPY (3 files):
+─────────────────────────────────────────────────────────────
+
+1. contractnest-ui/src/hooks/queries/useServedIndustries.ts
+   → Purpose: Added input validation, optimistic cache updates,
+     rollback on error, double-click guards via useRef
+
+2. contractnest-ui/src/pages/settings/business-profile/ServedIndustriesSection.tsx
+   → Purpose: Unified Industries view — "Your Industry" (profile)
+     + "Industries You Serve" (served list) in a single section
+
+3. contractnest-ui/src/pages/settings/business-profile/index.tsx
+   → Purpose: Renamed sidebar tab to "Industries", passed profileIndustryId
+     prop, made overview industry name clickable
+
+═══════════════════════════════════════════════════════════════
+WHAT CHANGED (DETAILS)
+═══════════════════════════════════════════════════════════════
+
+useServedIndustries.ts:
+  - validateIndustryIds(): dedup, empty-check, max 20 limit
+  - validateSingleIndustryId(): for remove ops
+  - Optimistic cache updates on add (appends placeholders) & remove (filters out)
+  - Rollback to previous cache on mutation error
+  - mutationKey on both mutations for TanStack dedup
+  - Double-click guards: addInflightRef + removeInflightRef in manager hook
+  - Exposed removingIndustryId for UI spinner targeting
+
+ServedIndustriesSection.tsx:
+  - Now accepts profileIndustryId prop
+  - YOUR INDUSTRY section at top: icon, parent > child breadcrumb, "Change" button
+  - INDUSTRIES YOU SERVE section below: same grid, corrected copy
+  - Served industry cards show parent name above industry name
+  - Modal subtitle: "Select industries your clients or customers come from"
+  - removingId guard prevents concurrent removes
+
+index.tsx:
+  - Sidebar: "Served Industries" → "Industries" (id: industries)
+  - Passes profileIndustryId={profile?.industry_id} to ServedIndustriesSection
+  - Overview card: industry name is clickable link → Industries tab
