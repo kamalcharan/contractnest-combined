@@ -1,5 +1,5 @@
 ═══════════════════════════════════════════════════
- CYCLE 4 v2: List Layout + By Client Fix + 6 Statuses
+ CYCLE 4 v2: List Layout + By Client Fix + 6 Statuses + Buyer Visibility Fix
 ═══════════════════════════════════════════════════
 
 Branch: cycle4v2-list-layout-grouping-fix
@@ -11,6 +11,15 @@ ROOT CAUSE (By Client broken):
   to fail silently. Fix: removed p_group_by from RPC call, implemented grouping
   in JavaScript within the edge function.
 
+ROOT CAUSE (Buyer can't see claimed contracts in Expense/Vendor view):
+  When a seller creates a contract, it has contract_type='client'. When a buyer
+  claims it via CNAK, the claim sets accessor_tenant_id on t_contract_access.
+  The RPC visibility check (tenant_id OR accessor_tenant_id) is correct, BUT
+  the contract_type filter (AND contract_type='vendor') excludes claimed
+  contracts because they have contract_type='client' (seller's perspective).
+  Fix: In expense mode, fetch WITHOUT contract_type filter from RPC, then
+  filter in JS to keep own vendor contracts + claimed contracts from other tenants.
+
 Files Changed:
 
   contractnest-edge/supabase/functions/contracts/index.ts
@@ -19,6 +28,11 @@ Files Changed:
     → When group_by=buyer: fetches all contracts (limit 500), groups by buyer,
       calculates group_totals (count, value, collected, avg_health, overdue)
     → Returns { groups: [...], total_count, pagination } matching UI expectations
+    → NEW: Expense mode perspective-aware filtering:
+      - Fetches without contract_type filter (passes null to RPC)
+      - Filters in JS: keeps own vendor contracts + claimed contracts
+      - Re-paginates in JS after filtering
+      - Works with both flat and grouped views
 
   contractnest-ui/src/components/contracts/list/ContractPortfolioRow.tsx
     → Changed from grid card to horizontal list row
@@ -31,11 +45,15 @@ Files Changed:
     → Only 6 statuses: Draft, In Review, Pending, Active, Completed, Expired
     → Active is the DEFAULT selected status
     → Pipeline bar with big count numbers + colored bar segments (not pill buttons)
-    → Removed PortfolioSummaryStrip (replaced by pipeline bar)
+    → PortfolioSummaryStrip restored with perspective-specific computed stats
     → Grouped view: single-column list rows under each group header
+    → ViewModeToggle label: "By Client" in revenue, "By Vendor" in expense
 
   contractnest-ui/src/components/contracts/list/ClientGroupHeader.tsx
     → Same as before (improved expand/collapse from earlier)
+
+  contractnest-ui/src/components/contracts/list/ViewModeToggle.tsx
+    → Added groupLabel prop for dynamic "By Client" / "By Vendor" label
 
 COPY COMMANDS:
 ─────────────────────────────────

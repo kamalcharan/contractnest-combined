@@ -252,17 +252,29 @@ async function handleList(
 ): Promise<Response> {
   // Extract group_by BEFORE calling RPC (RPC doesn't support p_group_by)
   const groupBy = searchParams.get('group_by') || null;
+  const requestedContractType = searchParams.get('contract_type') || null;
 
-  // When grouping, fetch a larger page so we can group all contracts properly
+  // ── Perspective-aware fetching for expense mode ──
+  // When contract_type='vendor' (expense mode), claimed contracts have
+  // contract_type='client' (seller's perspective) but should appear in the
+  // buyer's expense view. Solution: fetch without contract_type filter,
+  // then filter in JS to keep own vendor contracts + claimed contracts.
+  const isExpenseMode = requestedContractType === 'vendor';
+  const rpcContractType = isExpenseMode ? null : requestedContractType;
+
+  // When grouping or doing perspective filtering, fetch a larger page
+  // so we can process all contracts properly in JavaScript
   const requestedPerPage = Math.min(parseInt(searchParams.get('per_page') || searchParams.get('limit') || '20', 10), 100);
-  const perPage = groupBy ? 500 : requestedPerPage;
-  const page = groupBy ? 1 : parseInt(searchParams.get('page') || '1', 10);
+  const requestedPage = parseInt(searchParams.get('page') || '1', 10);
+  const needsJsProcessing = !!groupBy || isExpenseMode;
+  const perPage = needsJsProcessing ? 500 : requestedPerPage;
+  const page = needsJsProcessing ? 1 : requestedPage;
 
   const { data, error } = await supabase.rpc('get_contracts_list', {
     p_tenant_id: tenantId,
     p_is_live: isLive,
     p_record_type: searchParams.get('record_type') || null,
-    p_contract_type: searchParams.get('contract_type') || null,
+    p_contract_type: rpcContractType,
     p_status: searchParams.get('status') || null,
     p_search: searchParams.get('search')?.trim() || null,
     p_page: page,
@@ -274,6 +286,40 @@ async function handleList(
   if (error) {
     console.error('RPC get_contracts_list error:', error);
     return jsonResponse({ success: false, error: error.message, code: 'RPC_ERROR' }, 500);
+  }
+
+  // ── Expense mode: perspective-aware filtering ──
+  // The RPC returned all visible contracts (no contract_type filter).
+  // Keep: own vendor contracts (tenant_id = me, type = 'vendor')
+  //     + claimed contracts from other tenants (tenant_id != me)
+  if (isExpenseMode && data?.success && Array.isArray(data.data)) {
+    data.data = data.data.filter((c: any) => {
+      if (c.tenant_id === tenantId) {
+        // Own contract — only keep if it's a vendor contract
+        return c.contract_type === 'vendor';
+      }
+      // Claimed contract (visible via accessor_tenant_id) — show in expense view
+      return true;
+    });
+
+    // Update pagination counts after filtering
+    const totalFiltered = data.data.length;
+
+    if (!groupBy) {
+      // Re-paginate for flat view
+      const totalPages = Math.ceil(totalFiltered / requestedPerPage) || 1;
+      const offset = (requestedPage - 1) * requestedPerPage;
+      data.data = data.data.slice(offset, offset + requestedPerPage);
+      data.pagination = {
+        page: requestedPage,
+        per_page: requestedPerPage,
+        total: totalFiltered,
+        total_pages: totalPages,
+      };
+    } else {
+      // Update total for grouped view (grouping handles its own structure)
+      if (data.pagination) data.pagination.total = totalFiltered;
+    }
   }
 
   // If grouping requested, group the flat results by buyer in JavaScript
