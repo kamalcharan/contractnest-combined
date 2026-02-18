@@ -1,0 +1,26 @@
+================================================================
+P1 GAPS CLOSED: Buyer RLS + Cancel/Bad Debt Invoice (Full Stack)
+Branch: fix-buyer-rls-cancel-bad-debt
+================================================================
+
+SUBMODULES AFFECTED: contractnest-edge, contractnest-ui, contractnest-api, ClaudeDocumentation
+
+FILES CHANGED:
+  1. contractnest-edge/supabase/migrations/contracts/045_buyer_rls_and_invoice_cancel_writeoff.sql  [NEW]
+  2. contractnest-edge/supabase/functions/contracts/index.ts  [MODIFIED]
+  3. contractnest-ui/src/types/contracts.ts  [MODIFIED]
+  4. contractnest-ui/src/services/serviceURLs.ts  [MODIFIED]
+  5. contractnest-ui/src/hooks/queries/useInvoiceQueries.ts  [MODIFIED]
+  6. contractnest-ui/src/pages/contracts/detail/index.tsx  [MODIFIED]
+  7. contractnest-api/src/routes/contractRoutes.ts  [MODIFIED]
+  8. contractnest-api/src/controllers/contractController.ts  [MODIFIED]
+  9. contractnest-api/src/services/contractService.ts  [MODIFIED]
+  10. ClaudeDocumentation/docs/INVOICE_PAYMENT_SCENARIO_RULES.md  [MODIFIED]
+
+================================================================
+WHAT CHANGED:
+  Part 1: Buyer-aware RLS SELECT policies on t_invoices + t_invoice_receipts
+  Part 2: cancel_or_writeoff_invoice RPC (seller-only, 'cancel' or 'bad_debt')
+  Part 3: Full-stack API route + edge handler + UI actions
+  Part 4: InvoiceCard Cancel/Bad Debt buttons with inline confirmation
+================================================================
