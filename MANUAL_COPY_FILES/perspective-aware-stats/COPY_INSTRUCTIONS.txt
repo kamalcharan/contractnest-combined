@@ -1,0 +1,38 @@
+================================================================
+PERSPECTIVE-AWARE STATS + EXPENSE MODE VISIBILITY FIX
+================================================================
+
+Submodules Affected:
+  - contractnest-edge (1 file)
+  - contractnest-ui   (2 files)
+
+Files Changed:
+  - contractnest-edge/supabase/functions/contracts/index.ts
+      -> handleGetStats: perspective-aware stats (accepts contract_type query param)
+      -> handleList: expense mode fix (already present, passes null contract_type)
+
+  - contractnest-ui/src/hooks/queries/useContractQueries.ts
+      -> useContractStats: new optional contractType first param
+
+  - contractnest-ui/src/pages/contracts/hub/index.tsx
+      -> Line 497: useContractStats(perspectiveType) instead of useContractStats()
+
+================================================================
+COPY COMMANDS (PowerShell)
+================================================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\perspective-aware-stats\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\perspective-aware-stats\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+================================================================
+DEPLOY EDGE FUNCTION (required for both fixes to work)
+================================================================
+
+cd contractnest-edge
+supabase functions deploy contracts
+
+================================================================
