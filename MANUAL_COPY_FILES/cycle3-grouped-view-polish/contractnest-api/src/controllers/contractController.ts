@@ -49,7 +49,7 @@ class ContractController {
         page: parseInt(req.query.page as string || '1', 10),
         per_page: Math.min(parseInt(req.query.per_page as string || req.query.limit as string || '20', 10), 100),
         sort_by: req.query.sort_by as string || 'created_at',
-        sort_order: req.query.sort_order as string || 'desc',
+        sort_order: req.query.sort_order as string || req.query.sort_direction as string || 'desc',
         group_by: req.query.group_by as string || undefined,
       };
 
