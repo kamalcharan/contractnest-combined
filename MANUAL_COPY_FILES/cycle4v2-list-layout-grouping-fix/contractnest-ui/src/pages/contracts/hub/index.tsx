@@ -470,21 +470,16 @@ const ContractsHubPage: React.FC = () => {
   const sortOrder = sortBy === 'health_score' || sortBy === 'completion' ? 'asc' : 'desc';
 
   // ── Build API filters ──
-  // Revenue mode: filter contract_type='client' (contracts I created for my clients)
-  // Expense mode: DON'T filter by contract_type — claimed contracts keep the
-  //   seller's original type ('client'), so filtering by 'vendor' excludes them.
-  //   The RPC already returns claimed contracts via t_contract_access grants.
+  // Revenue mode: contract_type='client' (I sell to clients)
+  // Expense mode: contract_type='vendor' (I buy from vendors)
   const filters: ContractListFilters = useMemo(() => {
     const f: ContractListFilters = {
       limit: ITEMS_PER_PAGE,
       page: currentPage,
+      contract_type: (activePerspective === 'revenue' ? 'client' : 'vendor') as any,
       sort_by: sortBy as any,
       sort_direction: sortOrder,
     };
-    if (activePerspective === 'revenue') {
-      f.contract_type = 'client' as any;
-    }
-    // expense mode: no contract_type filter — shows claimed contracts
     if (activeStatus) f.status = activeStatus as any;
     if (searchQuery.trim()) f.search = searchQuery.trim();
     return f;
