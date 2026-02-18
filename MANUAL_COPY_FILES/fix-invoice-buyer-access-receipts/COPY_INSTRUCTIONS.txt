@@ -1,0 +1,22 @@
+================================================================
+FIX: Invoice Buyer Access + Receipt Details + Financials Tab UI
+Branch: fix-invoice-buyer-access-receipts
+================================================================
+
+FILES CHANGED:
+  1. contractnest-edge/supabase/migrations/contracts/044_fix_invoice_buyer_access_and_receipts.sql  [NEW]
+  2. contractnest-ui/src/hooks/queries/useInvoiceQueries.ts  [MODIFIED]
+  3. contractnest-ui/src/pages/contracts/detail/index.tsx  [MODIFIED]
+  4. contractnest-ui/src/types/contracts.ts  [MODIFIED]
+
+SUBMODULES AFFECTED: contractnest-edge, contractnest-ui
+
+================================================================
+WHAT CHANGED:
+  - Migration 044: get_contract_invoices + record_invoice_payment now use
+    t_contract_access so buyers can view invoices and record payments
+  - get_contract_invoices embeds full receipts[] array per invoice
+  - InvoiceCard component with expandable receipt breakdown
+  - Cancelled invoice status badge
+  - Invoice type: receipts[] field, InvoiceSummary: cancelled_count
+================================================================
