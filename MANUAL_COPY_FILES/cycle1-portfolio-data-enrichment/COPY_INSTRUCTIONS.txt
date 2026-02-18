@@ -1,0 +1,75 @@
+═══════════════════════════════════════════════════════════════
+CYCLE 1: PORTFOLIO DATA ENRICHMENT
+═══════════════════════════════════════════════════════════════
+Date: 2026-02-18
+Purpose: Extend contract list & stats APIs with per-row
+         event/invoice summaries, health scores, and
+         portfolio-level aggregates.
+
+Submodules Affected: contractnest-edge, contractnest-api, contractnest-ui
+
+═══════════════════════════════════════════════════════════════
+FILES & DESTINATIONS
+═══════════════════════════════════════════════════════════════
+
+1. [NEW] SQL Migration — Portfolio list enrichment
+   FROM: contractnest-edge/supabase/migrations/contracts/047_portfolio_list_enrichment.sql
+   TO:   contractnest-edge/supabase/migrations/contracts/047_portfolio_list_enrichment.sql
+   ACTION: New file — copy directly
+
+2. [MODIFIED] Edge Function — contracts handler (handleList)
+   FROM: contractnest-edge/supabase/functions/contracts/index.ts
+   TO:   contractnest-edge/supabase/functions/contracts/index.ts
+   CHANGE: Added p_group_by param passthrough in handleList()
+
+3. [MODIFIED] API Controller — contractController.ts
+   FROM: contractnest-api/src/controllers/contractController.ts
+   TO:   contractnest-api/src/controllers/contractController.ts
+   CHANGE: Added group_by to listContracts filters;
+           Added portfolio data passthrough in getContractStats
+
+4. [MODIFIED] API Service — contractService.ts
+   FROM: contractnest-api/src/services/contractService.ts
+   TO:   contractnest-api/src/services/contractService.ts
+   CHANGE: Added group_by to ContractListFilters interface
+
+5. [MODIFIED] UI Types — contracts.ts
+   FROM: contractnest-ui/src/types/contracts.ts
+   TO:   contractnest-ui/src/types/contracts.ts
+   CHANGE: Added portfolio fields to Contract interface;
+           Added ContractPortfolioStats interface;
+           Added portfolio? to ContractStatsResponse;
+           Added health_score/completion/group_by to ContractListFilters
+
+6. [MODIFIED] UI Service URLs — serviceURLs.ts
+   FROM: contractnest-ui/src/services/serviceURLs.ts
+   TO:   contractnest-ui/src/services/serviceURLs.ts
+   CHANGE: Added health_score/completion to ContractCrudFilters sort_by;
+           Added group_by to ContractCrudFilters;
+           Added group_by to LIST_WITH_FILTERS URL builder
+
+═══════════════════════════════════════════════════════════════
+WHAT CHANGED IN DETAIL
+═══════════════════════════════════════════════════════════════
+
+RPC: get_contracts_list (REPLACED via CREATE OR REPLACE)
+  - New params: p_group_by (reserved for Cycle 3)
+  - New columns per row: events_total, events_completed, events_overdue,
+    total_invoiced, total_collected, outstanding, health_score, completion_pct
+  - New sort options: 'health_score', 'completion'
+  - Uses LEFT JOIN LATERAL on t_contract_events and t_invoices
+  - Health formula: (completed/total*100) - (overdue*10), same as cockpit
+
+RPC: get_contract_stats (REPLACED via CREATE OR REPLACE)
+  - New 'portfolio' block in response: total_overdue_events,
+    total_invoiced, total_collected, outstanding, avg_health_score,
+    needs_attention_count
+  - All existing fields unchanged
+
+═══════════════════════════════════════════════════════════════
+BACKWARD COMPATIBILITY
+═══════════════════════════════════════════════════════════════
+- All new fields are additive (no existing fields removed)
+- New Contract fields are optional (existing UI ignores them)
+- get_contracts_list has new p_group_by param with DEFAULT NULL
+- Existing UI continues to work unchanged until Cycle 2
