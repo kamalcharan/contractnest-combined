@@ -31,6 +31,7 @@ import type { ContractType } from '@/components/contracts/ContractWizard';
 
 // Portfolio list components
 import ContractPortfolioRow from '@/components/contracts/list/ContractPortfolioRow';
+import PortfolioSummaryStrip from '@/components/contracts/list/PortfolioSummaryStrip';
 import PortfolioSortSelect from '@/components/contracts/list/PortfolioSortSelect';
 import type { PortfolioSortOption } from '@/components/contracts/list/PortfolioSortSelect';
 
@@ -469,18 +470,25 @@ const ContractsHubPage: React.FC = () => {
   const sortOrder = sortBy === 'health_score' || sortBy === 'completion' ? 'asc' : 'desc';
 
   // ── Build API filters ──
+  // Revenue mode: filter contract_type='client' (contracts I created for my clients)
+  // Expense mode: DON'T filter by contract_type — claimed contracts keep the
+  //   seller's original type ('client'), so filtering by 'vendor' excludes them.
+  //   The RPC already returns claimed contracts via t_contract_access grants.
   const filters: ContractListFilters = useMemo(() => {
     const f: ContractListFilters = {
       limit: ITEMS_PER_PAGE,
       page: currentPage,
-      contract_type: perspectiveType as any,
       sort_by: sortBy as any,
       sort_direction: sortOrder,
     };
+    if (activePerspective === 'revenue') {
+      f.contract_type = 'client' as any;
+    }
+    // expense mode: no contract_type filter — shows claimed contracts
     if (activeStatus) f.status = activeStatus as any;
     if (searchQuery.trim()) f.search = searchQuery.trim();
     return f;
-  }, [perspectiveType, activeStatus, searchQuery, sortBy, sortOrder, currentPage]);
+  }, [activePerspective, activeStatus, searchQuery, sortBy, sortOrder, currentPage]);
 
   // ── Data hooks ──
   const { data: contractsData, isLoading: isLoadingFlat, isError: isErrorFlat, refetch: refetchFlat } = useContracts(
@@ -506,6 +514,34 @@ const ContractsHubPage: React.FC = () => {
   // ── Pagination info ──
   const pageInfo = viewMode === 'flat' ? contractsData?.page_info : groupedData?.page_info;
   const totalPages = pageInfo?.total_pages || Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
+
+  // ── Compute perspective-specific portfolio stats from loaded contracts ──
+  const visibleContracts = viewMode === 'flat'
+    ? contracts
+    : groups.flatMap((g: ContractGroup) => g.contracts);
+
+  const computedPortfolio = useMemo(() => {
+    const list = visibleContracts;
+    const totalVal = list.reduce((s: number, c: Contract) => s + (c.grand_total || c.total_value || 0), 0);
+    const collected = list.reduce((s: number, c: Contract) => s + (c.total_collected || 0), 0);
+    const healthSum = list.reduce((s: number, c: Contract) => s + (c.health_score ?? 100), 0);
+    const overdue = list.reduce((s: number, c: Contract) => s + (c.events_overdue || 0), 0);
+    const attention = list.filter((c: Contract) =>
+      (c.events_overdue || 0) > 0 || ((c.health_score ?? 100) > 0 && (c.health_score ?? 100) < 50)
+    ).length;
+
+    return {
+      totalValue: totalVal,
+      stats: {
+        total_collected: collected,
+        outstanding: totalVal - collected,
+        avg_health_score: list.length > 0 ? Math.round(healthSum / list.length) : 0,
+        needs_attention_count: attention,
+        total_overdue_events: overdue,
+        total_invoiced: 0,
+      },
+    };
+  }, [visibleContracts]);
 
   // ── Status counts from stats ──
   const statusCounts: Record<string, number> = statsData?.by_status || {};
@@ -686,6 +722,13 @@ const ContractsHubPage: React.FC = () => {
           </div>
         </div>
 
+        {/* ═══ SUMMARY STRIP (computed from loaded contracts per perspective) ═══ */}
+        <PortfolioSummaryStrip
+          stats={computedPortfolio.stats}
+          totalValue={computedPortfolio.totalValue}
+          colors={colors}
+        />
+
         {/* ═══ PIPELINE BAR (6 statuses with counts + colored bar) ═══ */}
         <StatusPipelineBar
           stages={pipelineStages}
@@ -704,7 +747,12 @@ const ContractsHubPage: React.FC = () => {
             gap: 8,
           }}
         >
-          <ViewModeToggle value={viewMode} onChange={setViewMode} colors={colors} />
+          <ViewModeToggle
+            value={viewMode}
+            onChange={setViewMode}
+            groupLabel={activePerspective === 'revenue' ? 'By Client' : 'By Vendor'}
+            colors={colors}
+          />
           <PortfolioSortSelect value={sortBy} onChange={setSortBy} colors={colors} />
         </div>
 
