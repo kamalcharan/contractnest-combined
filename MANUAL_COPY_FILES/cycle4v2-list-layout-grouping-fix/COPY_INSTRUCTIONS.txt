@@ -1,0 +1,47 @@
+═══════════════════════════════════════════════════
+ CYCLE 4 v2: List Layout + By Client Fix + 6 Statuses
+═══════════════════════════════════════════════════
+
+Branch: cycle4v2-list-layout-grouping-fix
+Submodules Affected: contractnest-ui, contractnest-edge
+
+ROOT CAUSE (By Client broken):
+  The database RPC `get_contracts_list` does NOT have a `p_group_by` parameter.
+  The edge function was passing `p_group_by: 'buyer'` which caused the RPC call
+  to fail silently. Fix: removed p_group_by from RPC call, implemented grouping
+  in JavaScript within the edge function.
+
+Files Changed:
+
+  contractnest-edge/supabase/functions/contracts/index.ts
+    → handleList: Removed p_group_by from RPC call (RPC doesn't support it)
+    → Added groupContractsByBuyer() helper that groups flat results in JS
+    → When group_by=buyer: fetches all contracts (limit 500), groups by buyer,
+      calculates group_totals (count, value, collected, avg_health, overdue)
+    → Returns { groups: [...], total_count, pagination } matching UI expectations
+
+  contractnest-ui/src/components/contracts/list/ContractPortfolioRow.tsx
+    → Changed from grid card to horizontal list row
+    → Layout: [Avatar] [Title+CN#] [Status badge] [Client] [Type] [Value] [Overdue] [Eye]
+    → Red left border only for risk (no bg change)
+    → Colored circle avatar with consistent hash-based colors
+
+  contractnest-ui/src/pages/contracts/hub/index.tsx
+    → Single-column list layout (not 3-column grid)
+    → Only 6 statuses: Draft, In Review, Pending, Active, Completed, Expired
+    → Active is the DEFAULT selected status
+    → Pipeline bar with big count numbers + colored bar segments (not pill buttons)
+    → Removed PortfolioSummaryStrip (replaced by pipeline bar)
+    → Grouped view: single-column list rows under each group header
+
+  contractnest-ui/src/components/contracts/list/ClientGroupHeader.tsx
+    → Same as before (improved expand/collapse from earlier)
+
+COPY COMMANDS:
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\cycle4v2-list-layout-grouping-fix\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\cycle4v2-list-layout-grouping-fix\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
