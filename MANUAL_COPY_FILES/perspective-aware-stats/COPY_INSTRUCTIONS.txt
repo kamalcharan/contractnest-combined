@@ -2,20 +2,34 @@
 PERSPECTIVE-AWARE STATS + EXPENSE MODE VISIBILITY FIX
 ================================================================
 
+ROOT CAUSE: The API controller (contractnest-api) was dropping
+the contract_type query parameter when forwarding stats requests
+to the edge function. Pipeline bar always showed ALL contracts
+regardless of Revenue/Expense perspective.
+
 Submodules Affected:
-  - contractnest-edge (1 file)
-  - contractnest-ui   (2 files)
+  - contractnest-api   (2 files) ← THE ACTUAL FIX
+  - contractnest-edge  (1 file)
+  - contractnest-ui    (2 files)
 
 Files Changed:
-  - contractnest-edge/supabase/functions/contracts/index.ts
-      -> handleGetStats: perspective-aware stats (accepts contract_type query param)
-      -> handleList: expense mode fix (already present, passes null contract_type)
 
-  - contractnest-ui/src/hooks/queries/useContractQueries.ts
-      -> useContractStats: new optional contractType first param
+  contractnest-api/src/controllers/contractController.ts
+    -> getContractStats: now extracts contract_type from req.query
+       and passes it to service layer
 
-  - contractnest-ui/src/pages/contracts/hub/index.tsx
-      -> Line 497: useContractStats(perspectiveType) instead of useContractStats()
+  contractnest-api/src/services/contractService.ts
+    -> getContractStats: now accepts optional contractType param
+       and appends ?contract_type= to edge function URL
+
+  contractnest-edge/supabase/functions/contracts/index.ts
+    -> handleGetStats: perspective-aware stats (accepts contract_type query param)
+
+  contractnest-ui/src/hooks/queries/useContractQueries.ts
+    -> useContractStats: optional contractType first param
+
+  contractnest-ui/src/pages/contracts/hub/index.tsx
+    -> useContractStats(perspectiveType) passes perspective to stats
 
 ================================================================
 COPY COMMANDS (PowerShell)
@@ -23,16 +37,23 @@ COPY COMMANDS (PowerShell)
 
 cd "D:\projects\core projects\ContractNest\contractnest-combined"
 
+Copy-Item "MANUAL_COPY_FILES\perspective-aware-stats\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
 Copy-Item "MANUAL_COPY_FILES\perspective-aware-stats\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
 Copy-Item "MANUAL_COPY_FILES\perspective-aware-stats\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
 
 Write-Host "All files copied!" -ForegroundColor Green
 
 ================================================================
-DEPLOY EDGE FUNCTION (required for both fixes to work)
+DEPLOY (required)
 ================================================================
 
-cd contractnest-edge
-supabase functions deploy contracts
+1. Restart API server (contractnest-api was changed)
+   cd contractnest-api && npm run dev
+
+2. Deploy edge function
+   cd contractnest-edge && supabase functions deploy contracts
+
+3. Start UI dev server
+   cd contractnest-ui && npm run dev
 
 ================================================================
