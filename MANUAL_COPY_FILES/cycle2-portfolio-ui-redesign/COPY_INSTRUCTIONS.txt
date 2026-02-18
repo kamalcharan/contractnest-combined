@@ -1,0 +1,76 @@
+═══════════════════════════════════════════════════════════════
+CYCLE 2: PORTFOLIO UI REDESIGN — Flat List with Enriched Rows
+═══════════════════════════════════════════════════════════════
+Date: 2026-02-18
+Depends on: Cycle 1 (047_portfolio_list_enrichment.sql applied)
+Purpose: Replace TypeRail sidebar layout with PerspectiveSwitcher,
+         summary strip, segmented pipeline, enriched rows.
+
+Submodules Affected: contractnest-ui ONLY
+
+═══════════════════════════════════════════════════════════════
+FILES & DESTINATIONS
+═══════════════════════════════════════════════════════════════
+
+1. [NEW] MiniHealthRing component
+   FROM: contractnest-ui/src/components/contracts/list/MiniHealthRing.tsx
+   TO:   contractnest-ui/src/components/contracts/list/MiniHealthRing.tsx
+
+2. [NEW] ProgressMini component
+   FROM: contractnest-ui/src/components/contracts/list/ProgressMini.tsx
+   TO:   contractnest-ui/src/components/contracts/list/ProgressMini.tsx
+
+3. [NEW] PortfolioSummaryStrip component
+   FROM: contractnest-ui/src/components/contracts/list/PortfolioSummaryStrip.tsx
+   TO:   contractnest-ui/src/components/contracts/list/PortfolioSummaryStrip.tsx
+
+4. [NEW] PortfolioSortSelect component
+   FROM: contractnest-ui/src/components/contracts/list/PortfolioSortSelect.tsx
+   TO:   contractnest-ui/src/components/contracts/list/PortfolioSortSelect.tsx
+
+5. [NEW] ContractPortfolioRow component
+   FROM: contractnest-ui/src/components/contracts/list/ContractPortfolioRow.tsx
+   TO:   contractnest-ui/src/components/contracts/list/ContractPortfolioRow.tsx
+
+6. [REWRITTEN] ContractsHubPage (main page)
+   FROM: contractnest-ui/src/pages/contracts/hub/index.tsx
+   TO:   contractnest-ui/src/pages/contracts/hub/index.tsx
+   CHANGE: Complete rewrite — removed TypeRail, old ContractsList,
+           old PipelineBar, classification helpers.
+           Added PerspectiveSwitcher, PipelineSegment, ListHeader,
+           EmptyState, FooterSummary inline. Imports new components.
+
+═══════════════════════════════════════════════════════════════
+WHAT WAS REMOVED (Orphaned Code)
+═══════════════════════════════════════════════════════════════
+
+From the old hub/index.tsx (1058 lines → 693 lines):
+  - TypeRail component (lines 68-239) — replaced by PerspectiveSwitcher
+  - PipelineBar component (lines 241-337) — replaced by PipelineSegment
+  - Old ContractsList component (lines 531-705) — replaced by ContractPortfolioRow
+  - CLASSIFICATION_ICON_MAP + helpers (lines 44-62) — no longer needed
+  - PIPELINE_STAGES constant (line 252) — replaced by dynamic pipelineStages
+  - getSemanticColor helper (line 261) — moved into ContractPortfolioRow
+
+═══════════════════════════════════════════════════════════════
+WHAT WAS REUSED (Unchanged)
+═══════════════════════════════════════════════════════════════
+
+  - useContracts() hook — unchanged, receives enriched data from Cycle 1
+  - useContractStats() hook — unchanged, receives portfolio block
+  - ContractWizard modal — same integration, same props
+  - VaNiLoader — same loading state
+  - prefetchContacts — same prefetch on mount
+  - URL search params sync — same useSearchParams pattern
+  - useTheme() + colors — all components use existing theme system
+  - CONTRACT_STATUS_COLORS — reused in ContractPortfolioRow
+
+═══════════════════════════════════════════════════════════════
+NEW IMPORTS REQUIRED BY HUB PAGE
+═══════════════════════════════════════════════════════════════
+
+  - useTenantContext from '@/contexts/TenantContext' (for perspective default)
+  - ArrowRightLeft from 'lucide-react' (for flip button)
+  - ContractPortfolioRow from '@/components/contracts/list/ContractPortfolioRow'
+  - PortfolioSummaryStrip from '@/components/contracts/list/PortfolioSummaryStrip'
+  - PortfolioSortSelect from '@/components/contracts/list/PortfolioSortSelect'
