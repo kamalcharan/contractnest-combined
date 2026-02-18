@@ -1,0 +1,40 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS: fix-payment-gateway-type-and-invoice-audit
+═══════════════════════════════════════════════════
+
+Branch: fix-payment-gateway-type-and-invoice-audit
+Submodules Affected: contractnest-edge
+
+Files:
+  - contractnest-edge/supabase/migrations/contracts/047_fix_payment_gateway_type_and_invoice_audit.sql
+    Purpose: Fix payment gateway text=uuid type mismatch + add invoice audit logging
+
+═══════════════════════════════════════════════════
+STEP 1: Navigate to Project
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+═══════════════════════════════════════════════════
+STEP 2: Copy Files
+═══════════════════════════════════════════════════
+Copy-Item "MANUAL_COPY_FILES\fix-payment-gateway-type-and-invoice-audit\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+STEP 3: Apply Migration to Supabase
+═══════════════════════════════════════════════════
+Run the SQL in Supabase SQL Editor:
+  contractnest-edge/supabase/migrations/contracts/047_fix_payment_gateway_type_and_invoice_audit.sql
+
+═══════════════════════════════════════════════════
+WHAT THIS FIXES
+═══════════════════════════════════════════════════
+1. Payment Gateway 400 error (text=uuid type mismatch)
+   - get_tenant_gateway_credentials now accepts TEXT param, casts to UUID internally
+
+2. Missing Invoice Audit Log
+   - generate_contract_invoices now inserts into t_audit_log after invoice creation
+
+3. Missing Contract Activation/Rejection Audit Log
+   - respond_to_contract now logs activation and rejection in t_audit_log
