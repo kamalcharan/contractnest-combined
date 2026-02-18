@@ -1,0 +1,16 @@
+================================================================
+FIX: Invoice Generation on Buyer Acceptance + Bad Debt Handling
+Branch: fix-invoice-generation-buyer-acceptance
+================================================================
+
+FILES CHANGED:
+  1. contractnest-edge/supabase/migrations/contracts/046_fix_respond_invoice_generation.sql  [NEW]
+     - Fixes respond_to_contract() to generate invoices on buyer acceptance
+     - Fixes record_invoice_payment() to reject payments on bad_debt invoices
+     - Backfills invoices for existing active contracts with zero invoices
+
+  2. contractnest-ui/src/pages/contracts/detail/index.tsx  [MODIFIED]
+     - Adds 'bad_debt' case to getInvoiceStatusStyle() (line ~392)
+
+SUBMODULES AFFECTED: contractnest-edge, contractnest-ui
+================================================================
