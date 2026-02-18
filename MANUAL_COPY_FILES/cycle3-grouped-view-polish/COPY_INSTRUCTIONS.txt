@@ -1,0 +1,158 @@
+═══════════════════════════════════════════════════════════════
+CYCLE 3: SERVER-SIDE GROUPING + POLISH — Grouped Portfolio View
+═══════════════════════════════════════════════════════════════
+Date: 2026-02-18
+Depends on: Cycle 1 (047_portfolio_list_enrichment.sql applied)
+           Cycle 2 (UI redesign — all 5 new components + hub rewrite)
+Purpose: Add flat/grouped toggle, server-side buyer grouping,
+         collapsible client group headers with per-group aggregates.
+
+Submodules Affected: contractnest-edge, contractnest-ui, contractnest-api
+
+═══════════════════════════════════════════════════════════════
+FILES & DESTINATIONS
+═══════════════════════════════════════════════════════════════
+
+1. [NEW] Migration: Grouped branch in get_contracts_list RPC
+   FROM: contractnest-edge/supabase/migrations/contracts/048_portfolio_grouped_view.sql
+   TO:   contractnest-edge/supabase/migrations/contracts/048_portfolio_grouped_view.sql
+   CHANGE: Replaces get_contracts_list RPC to add grouped branch.
+           When p_group_by='buyer': returns { groups: [...], pagination, filters }
+           Each group: buyer_name, buyer_company, buyer_id, contracts[], group_totals
+           Groups sorted by worst avg_health first.
+           Flat mode branch is identical to Cycle 1.
+
+2. [MODIFIED] UI Types — ContractGroupedResponse + ContractGroup
+   FROM: contractnest-ui/src/types/contracts.ts
+   TO:   contractnest-ui/src/types/contracts.ts
+   CHANGE: Added 3 new interfaces after ContractListResponse:
+           ContractGroupTotals, ContractGroup, ContractGroupedResponse
+
+3. [NEW] ViewModeToggle component
+   FROM: contractnest-ui/src/components/contracts/list/ViewModeToggle.tsx
+   TO:   contractnest-ui/src/components/contracts/list/ViewModeToggle.tsx
+   CHANGE: Toggle between flat (List icon) and grouped (LayoutGrid icon) views.
+           Exports ViewMode type.
+
+4. [NEW] ClientGroupHeader component
+   FROM: contractnest-ui/src/components/contracts/list/ClientGroupHeader.tsx
+   TO:   contractnest-ui/src/components/contracts/list/ClientGroupHeader.tsx
+   CHANGE: Collapsible header for each buyer group.
+           Shows initials avatar, client name, contract count,
+           avg health, total value, collected, overdue badge.
+
+5. [MODIFIED] useContractQueries hook — useGroupedContracts
+   FROM: contractnest-ui/src/hooks/queries/useContractQueries.ts
+   TO:   contractnest-ui/src/hooks/queries/useContractQueries.ts
+   CHANGE: Added 'grouped' key to contractKeys factory.
+           Added useGroupedContracts hook that forces group_by='buyer'
+           and returns ContractGroupedResponse.
+
+6. [MODIFIED] ContractsHubPage — flat/grouped toggle
+   FROM: contractnest-ui/src/pages/contracts/hub/index.tsx
+   TO:   contractnest-ui/src/pages/contracts/hub/index.tsx
+   CHANGE: Added viewMode state (flat/grouped), expandedClients Set,
+           ViewModeToggle in controls bar, conditional data fetching
+           (useContracts for flat, useGroupedContracts for grouped),
+           grouped rendering with ClientGroupHeader + nested rows.
+
+7. [MODIFIED] Contract Controller — grouped response passthrough
+   FROM: contractnest-api/src/controllers/contractController.ts
+   TO:   contractnest-api/src/controllers/contractController.ts
+   CHANGE: listContracts now detects grouped response (result.groups)
+           and passes through groups + contracts with title mapping.
+
+═══════════════════════════════════════════════════════════════
+WHAT WAS ADDED (New Code)
+═══════════════════════════════════════════════════════════════
+
+  - ViewModeToggle component — inline toggle button (List / By Client)
+  - ClientGroupHeader component — collapsible group header row
+  - useGroupedContracts hook — TanStack Query hook for grouped API
+  - ContractGroup, ContractGroupTotals, ContractGroupedResponse types
+  - viewMode state + expandedClients state in hub page
+  - Grouped branch in RPC (048 migration)
+  - Grouped branch in API controller
+
+═══════════════════════════════════════════════════════════════
+WHAT WAS MODIFIED (Existing Code)
+═══════════════════════════════════════════════════════════════
+
+  - contracts.ts types — added 3 interfaces
+  - useContractQueries.ts — added 'grouped' query key + useGroupedContracts
+  - ContractsHubPage — imports, state, data hooks, render logic
+  - contractController.ts — listContracts grouped branch
+
+═══════════════════════════════════════════════════════════════
+WHAT WAS REUSED (Unchanged)
+═══════════════════════════════════════════════════════════════
+
+  - All Cycle 2 components: ContractPortfolioRow, MiniHealthRing,
+    ProgressMini, PortfolioSummaryStrip, PortfolioSortSelect
+  - PerspectiveSwitcher, PipelineSegment, EmptyState, FooterSummary
+  - useContracts() hook — unchanged, still used for flat mode
+  - useContractStats() hook — unchanged
+  - ContractWizard — same integration
+  - VaNiLoader — same loading state
+  - Theme system — all new components use existing theme tokens
+
+═══════════════════════════════════════════════════════════════
+COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Apply SQL Migration (run in Supabase dashboard or CLI)
+─────────────────────────────────
+# Copy the migration file
+Copy-Item "MANUAL_COPY_FILES\cycle3-grouped-view-polish\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+STEP 3: Copy API Changes
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\cycle3-grouped-view-polish\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+
+STEP 4: Copy UI Changes
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\cycle3-grouped-view-polish\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "All Cycle 3 files copied!" -ForegroundColor Green
+
+STEP 5: Start Dev Servers & Test
+─────────────────────────────────
+# ContractNest UI
+cd contractnest-ui && npm run dev
+
+# API (if modified)
+cd ../contractnest-api && npm run dev
+
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════
+
+- [ ] Navigate to /contracts — page loads in flat mode (default)
+- [ ] Click "By Client" toggle — switches to grouped view
+- [ ] Groups show client name, contract count, avg health, value, collected
+- [ ] Groups with overdue tasks show red overdue badge
+- [ ] Click group header to collapse/expand — rows hide/show
+- [ ] Click "List" toggle — switches back to flat view
+- [ ] Sort dropdown works in both modes (health, value, recent, completion)
+- [ ] Pipeline status filter works in both modes
+- [ ] Search filter works in both modes
+- [ ] Perspective flip (Revenue/Expense) works in both modes
+- [ ] Summary strip shows correct portfolio aggregates
+- [ ] Footer shows correct "Showing X of Y" in both modes
+- [ ] Click contract row in grouped mode — navigates to /contracts/:id
+- [ ] Empty state shows when no contracts match filters
+- [ ] Loading state shows skeleton while data fetches
+
+═══════════════════════════════════════════════════════════════
+WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════════════════
+Test locally and confirm:
+  -> "Tested, working - proceed with merge"
+  -> "Issue found: [describe problem]"
+═══════════════════════════════════════════════════════════════
