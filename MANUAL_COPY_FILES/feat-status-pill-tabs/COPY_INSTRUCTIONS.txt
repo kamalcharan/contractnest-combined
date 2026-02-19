@@ -1,0 +1,31 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS - feat-status-pill-tabs
+═══════════════════════════════════════════════════
+
+Feature: Convert status filters from card-style to pill tabs
+Date: 2026-02-19
+
+CHANGE:
+StatusPipelineBar in contracts hub now uses compact pill tabs instead
+of card-style layout. This visually separates interactive status filters
+from the read-only stats cards (PortfolioSummaryStrip) above.
+
+- "All" pill with total count badge
+- Per-status pills with count badges (hidden if 0)
+- Active pill: colored border + tinted background + filled count badge
+- Inactive pills: ghost/outline style
+- Pipeline bar reduced from 6px to 4px (less dominant)
+- Full theme support (uses colors.brand, colors.semantic, colors.utility)
+
+FILES CHANGED:
+─────────────────────────────────────────────────
+1. contractnest-ui/src/pages/contracts/hub/index.tsx
+   - Replaced StatusPipelineBar status counts row with pill tabs
+
+SUBMODULES AFFECTED:
+─────────────────────────────────────────────────
+- contractnest-ui
+
+COPY COMMAND:
+─────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\feat-status-pill-tabs\contractnest-ui\src\pages\contracts\hub\index.tsx" -Destination "contractnest-ui\src\pages\contracts\hub\index.tsx" -Force
