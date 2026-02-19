@@ -1,0 +1,51 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — Entity Registry → Facility Registry Rename
+═══════════════════════════════════════════════════
+
+Branch: feat-entity-to-facility-rename
+Submodules Affected: contractnest-ui ONLY
+
+Files Changed (6):
+  1. contractnest-ui/src/App.tsx — route path /entity-registry → /facility-registry + comments
+  2. contractnest-ui/src/utils/constants/industryMenus.ts — sidebar menu label + path
+  3. contractnest-ui/src/pages/entity-registry/index.tsx — comment update
+  4. contractnest-ui/src/pages/equipment-registry/index.tsx — MODE_CONFIG entity → facility labels
+  5. contractnest-ui/src/pages/equipment-registry/EmptyState.tsx — empty state text + button
+  6. contractnest-ui/src/pages/settings/Resources/index.tsx — tabs, TYPE_CONFIG, helper fn, subtitle, empty/support text
+
+═══════════════════════════════════════════════════
+STEP 1: Navigate to Project
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+═══════════════════════════════════════════════════
+STEP 2: Copy Files
+═══════════════════════════════════════════════════
+Copy-Item "MANUAL_COPY_FILES\feat-entity-to-facility-rename\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "✅ All files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+STEP 3: Start Dev Server & Test
+═══════════════════════════════════════════════════
+cd contractnest-ui && npm run dev
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Sidebar: Operations > shows "Facility Registry" (not "Entity Registry")
+- [ ] Click "Facility Registry" → navigates to /facility-registry
+- [ ] Page title says "Facility Registry"
+- [ ] Breadcrumb says "Facility Registry"
+- [ ] Sidebar says "Facility Categories"
+- [ ] "All Facilities" label on left panel
+- [ ] Search placeholder: "Search facilities..."
+- [ ] "+ Add Facility" button text
+- [ ] Empty state shows "No facilities registered yet" / "Add Facility"
+- [ ] Settings > Configure > Resources page:
+  - [ ] Tab shows "Facilities" (not "Entities")
+  - [ ] Type badge on asset cards shows "Facility"
+  - [ ] Subtitle: "Equipment & facilities you service"
+  - [ ] Empty state: "Browse the catalog to add equipment and facilities"
+  - [ ] Support text: "Not all equipment and facilities may be listed here"
