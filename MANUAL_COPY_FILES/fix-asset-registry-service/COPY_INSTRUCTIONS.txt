@@ -1,0 +1,28 @@
+========================================================
+FIX: Restore clientAssetRegistryService.ts (backend)
+BRANCH: fix-asset-registry-service
+DATE: 2026-02-19
+========================================================
+
+PROBLEM:
+  Commit 976bdeb ("chore: update contractnest-api") accidentally overwrote the
+  backend service with frontend UI service code. This broke:
+    1. Named export → changed to default export (controller import fails)
+    2. Method signatures → removed authToken/tenantId params (controller calls mismatch)
+    3. HTTP client → changed from axios+Edge URL to frontend api client
+  Result: route fails to load at startup → 404 for all /api/client-asset-registry requests.
+
+FIX:
+  Restored original working code from commit 04eaa7b ("P1: client asset registry API").
+
+SUBMODULES AFFECTED:
+  - contractnest-api
+
+FILES TO COPY:
+========================================================
+
+1. contractnest-api/src/services/clientAssetRegistryService.ts
+   SOURCE: MANUAL_COPY_FILES\fix-asset-registry-service\contractnest-api\src\services\clientAssetRegistryService.ts
+   DEST:   contractnest-api\src\services\clientAssetRegistryService.ts
+   PURPOSE: Restore original backend service that calls Edge Function via axios
+            with proper authToken/tenantId params and named export.
