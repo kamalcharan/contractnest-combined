@@ -1,0 +1,29 @@
+Fix: Skip "Select Client Assets" step for service delivery contracts
+=====================================================================
+
+PROBLEM:
+When selecting a "Service Delivery" nomenclature in the contract wizard,
+the "Select Client Assets" step still appears even though service contracts
+don't involve equipment or facilities.
+
+FIX:
+1. NomenclatureStep.tsx — passes form_settings to the wizard via onSelect callback
+2. ContractWizard/index.tsx — uses form_settings.is_equipment_based / is_entity_based
+   flags to determine if asset step should be shown. Falls back to group name check.
+
+FILES TO COPY:
+---------------------------------------------------------------------------
+Source: MANUAL_COPY_FILES/fix-wizard-asset-step/contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+Target: contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+
+Source: MANUAL_COPY_FILES/fix-wizard-asset-step/contractnest-ui/src/components/contracts/ContractWizard/steps/NomenclatureStep.tsx
+Target: contractnest-ui/src/components/contracts/ContractWizard/steps/NomenclatureStep.tsx
+
+SUBMODULES AFFECTED: contractnest-ui
+
+DEBUG:
+After applying, open browser DevTools console and select a nomenclature.
+You should see logs like:
+  [Wizard] Nomenclature selected: { id: "...", group: "service_delivery", formSettings: {...}, is_equipment_based: false, is_entity_based: false }
+  [Wizard] requiresAssets = false
+  [Wizard] activeSteps: FILTERED (no assets) [...]
