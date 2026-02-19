@@ -2,14 +2,22 @@
 COPY INSTRUCTIONS - fix-buyer-contract-visibility
 ═══════════════════════════════════════════════════
 
-Feature: Fix buyer/accessor contract visibility in vendor view
+Feature: Fix buyer/accessor contract visibility + perspective mapping
 Date: 2026-02-19
 
-ROOT CAUSE:
-Migration 048 (grouped view) replaced get_contracts_list but lost the
-buyer access check from migration 043. The WHERE clause only checked
-c.tenant_id = p_tenant_id (owner), missing the OR EXISTS fallback
-to t_contract_access for claimed contracts.
+ROOT CAUSE (two issues):
+1. Migration 048 lost the buyer access check from 043 (OR EXISTS t_contract_access)
+2. Edge function had no perspective mapping — claimed contracts kept the
+   seller's contract_type ('client') instead of flipping to buyer's
+   perspective ('vendor' = expense).
+
+FIX:
+- SQL: Restored OR EXISTS buyer access check in WHERE clause
+- Edge function: Added perspective mapping for accessor contracts:
+  * Seller's 'client' (revenue) → Buyer sees 'vendor' (expense)
+  * Seller's 'vendor' (expense) → Buyer sees 'client' (revenue)
+- Always fetch without contract_type SQL filter; map then filter in JS
+- Grouping stays in JS (p_group_by=null to RPC)
 
 FILES CHANGED:
 ─────────────────────────────────────────────────
@@ -18,7 +26,9 @@ FILES CHANGED:
    - Drops both 10-param and 11-param overloads to avoid PostgREST ambiguity
 
 2. contractnest-edge/supabase/functions/contracts/index.ts
-   - Added p_group_by param to RPC call for correct function resolution
+   - Added perspective mapping: flip contract_type for accessor contracts
+   - Generalized contract_type filtering (works for both vendor AND client views)
+   - Always passes p_contract_type=null to RPC, filters in JS after mapping
 
 SUBMODULES AFFECTED:
 ─────────────────────────────────────────────────
