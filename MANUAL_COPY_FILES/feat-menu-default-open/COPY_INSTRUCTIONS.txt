@@ -1,0 +1,20 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS - feat-menu-default-open
+═══════════════════════════════════════════════════
+
+Feature: All sidebar menu items open by default
+Date: 2026-02-19
+
+FILES CHANGED:
+─────────────────────────────────────────────────
+1. contractnest-ui/src/components/layout/Sidebar.tsx
+   - Changed line 18: defaultOpen fallback from `false` to `true`
+   - Logic: `item.defaultOpen !== false` (open unless explicitly set to false)
+
+SUBMODULES AFFECTED:
+─────────────────────────────────────────────────
+- contractnest-ui
+
+COPY COMMAND:
+─────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\feat-menu-default-open\contractnest-ui\src\components\layout\Sidebar.tsx" -Destination "contractnest-ui\src\components\layout\Sidebar.tsx" -Force
