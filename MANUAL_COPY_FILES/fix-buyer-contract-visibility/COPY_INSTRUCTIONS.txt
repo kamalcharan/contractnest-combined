@@ -1,0 +1,35 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS - fix-buyer-contract-visibility
+═══════════════════════════════════════════════════
+
+Feature: Fix buyer/accessor contract visibility in vendor view
+Date: 2026-02-19
+
+ROOT CAUSE:
+Migration 048 (grouped view) replaced get_contracts_list but lost the
+buyer access check from migration 043. The WHERE clause only checked
+c.tenant_id = p_tenant_id (owner), missing the OR EXISTS fallback
+to t_contract_access for claimed contracts.
+
+FILES CHANGED:
+─────────────────────────────────────────────────
+1. contractnest-edge/supabase/migrations/contracts/048_portfolio_grouped_view.sql
+   - Restored OR EXISTS (t_contract_access) in WHERE clause
+   - Drops both 10-param and 11-param overloads to avoid PostgREST ambiguity
+
+2. contractnest-edge/supabase/functions/contracts/index.ts
+   - Added p_group_by param to RPC call for correct function resolution
+
+SUBMODULES AFFECTED:
+─────────────────────────────────────────────────
+- contractnest-edge
+
+DEPLOYMENT:
+─────────────────────────────────────────────────
+1. Run the SQL from 048_portfolio_grouped_view.sql in Supabase SQL Editor
+2. Deploy the edge function: supabase functions deploy contracts
+
+COPY COMMANDS:
+─────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\fix-buyer-contract-visibility\contractnest-edge\supabase\migrations\contracts\048_portfolio_grouped_view.sql" -Destination "contractnest-edge\supabase\migrations\contracts\048_portfolio_grouped_view.sql" -Force
+Copy-Item "MANUAL_COPY_FILES\fix-buyer-contract-visibility\contractnest-edge\supabase\functions\contracts\index.ts" -Destination "contractnest-edge\supabase\functions\contracts\index.ts" -Force
