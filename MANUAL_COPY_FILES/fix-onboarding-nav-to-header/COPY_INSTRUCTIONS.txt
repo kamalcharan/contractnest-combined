@@ -1,0 +1,26 @@
+Fix: Move onboarding navigation from floating bottom island into header bar
+=========================================================================
+
+PROBLEM:
+- Floating bottom island overlapped with step form action buttons
+- Some steps showed BOTH the island Continue AND their own button
+- Users confused by inconsistent navigation (Continue appears/disappears)
+
+SOLUTION:
+- Moved Back, Continue, Skip buttons into the existing header (right side)
+- Removed the entire floating bottom island
+- Reduced bottom padding from pb-24 to pb-6 (no more island to avoid)
+- Form step buttons now have full space at the bottom — no overlap
+
+HEADER LAYOUT (before):
+  [CN badge + title]    [progress dots]    [3/11] [X close]
+
+HEADER LAYOUT (after):
+  [CN badge + title]    [progress dots]    [Skip?] [< Back] [Continue >] | [3/11] [X]
+
+FILES TO COPY:
+---------------------------------------------------------------------------
+Source: MANUAL_COPY_FILES/fix-onboarding-nav-to-header/contractnest-ui/src/components/onboarding/OnboardingLayout.tsx
+Target: contractnest-ui/src/components/onboarding/OnboardingLayout.tsx
+
+SUBMODULES AFFECTED: contractnest-ui
