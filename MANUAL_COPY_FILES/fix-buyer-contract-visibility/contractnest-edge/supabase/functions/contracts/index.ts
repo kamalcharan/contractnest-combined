@@ -446,24 +446,20 @@ async function handleGetStats(
   }
 
   // ── Perspective filter requested ──
-  // For expense mode (vendor): claimed contracts have contract_type='client'
-  // (seller's perspective), so we must fetch ALL contracts (no type filter)
-  // and JS-filter to own vendor + claimed.
-  // For revenue mode (client): pass contract_type directly to RPC.
-  const isExpenseMode = contractType === 'vendor';
-  const rpcContractType = isExpenseMode ? null : contractType;
-
+  // Always fetch without contract_type filter so we can do perspective
+  // mapping for accessor (claimed) contracts, then filter by type.
   const { data: listResult, error } = await supabase.rpc('get_contracts_list', {
     p_tenant_id: tenantId,
     p_is_live: isLive,
     p_record_type: null,
-    p_contract_type: rpcContractType,
+    p_contract_type: null,  // Always null — filter after perspective mapping
     p_status: null,
     p_search: null,
     p_page: 1,
     p_per_page: 500,
     p_sort_by: 'created_at',
     p_sort_order: 'desc',
+    p_group_by: null,
   });
 
   if (error) {
@@ -473,13 +469,19 @@ async function handleGetStats(
 
   let contracts = listResult?.data || [];
 
-  // For expense mode, filter to own vendor + claimed contracts
-  if (isExpenseMode) {
-    contracts = contracts.filter((c: any) => {
-      if (c.tenant_id === tenantId) return c.contract_type === 'vendor';
-      return true; // Claimed from other tenant
-    });
-  }
+  // Perspective mapping: flip contract_type for accessor (claimed) contracts
+  contracts = contracts.map((c: any) => {
+    if (c.tenant_id !== tenantId) {
+      const mappedType = c.contract_type === 'client' ? 'vendor'
+                       : c.contract_type === 'vendor' ? 'client'
+                       : c.contract_type;
+      return { ...c, contract_type: mappedType };
+    }
+    return c;
+  });
+
+  // Filter by requested contract_type (after perspective mapping)
+  contracts = contracts.filter((c: any) => c.contract_type === contractType);
 
   // Compute aggregated stats
   const by_status: Record<string, number> = {};
