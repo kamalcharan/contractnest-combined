@@ -1,0 +1,32 @@
+========================================================
+FEATURE: Skip Asset Selection Step for Non-Asset Nomenclature Groups
+BRANCH: skip-asset-step-non-asset-nomenclature
+DATE: 2026-02-19
+========================================================
+
+SUBMODULES AFFECTED:
+  - contractnest-ui
+
+FILES TO COPY:
+========================================================
+
+1. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+   SOURCE: MANUAL_COPY_FILES\skip-asset-step-non-asset-nomenclature\contractnest-ui\src\components\contracts\ContractWizard\index.tsx
+   DEST:   contractnest-ui\src\components\contracts\ContractWizard\index.tsx
+   PURPOSE: Skip asset selection step (Step 6) when nomenclature group is
+            service_delivery, flexible_hybrid, or any group without a resource
+            mapping. Clears stale asset state on nomenclature change. Hides
+            the step dot and adjusts FloatingActionIsland progress accordingly.
+
+========================================================
+WHAT CHANGED (SUMMARY):
+========================================================
+
+1. Added module-level constant ASSET_STEP_GROUPS (Set of 'equipment_maintenance', 'facility_property')
+2. Added shouldSkipAssetStep derived boolean inside ContractWizard component
+3. handleNext: skips past assetSelection index when shouldSkipAssetStep is true
+4. handleBack: skips past assetSelection index when going backwards
+5. handleNomenclatureSelect: clears equipmentDetails, coverageTypes, allowBuyerToAdd
+   when user picks a non-asset nomenclature group
+6. Header progress dots: hides the asset step dot when skipped
+7. FloatingActionIsland: receives adjusted currentStep, totalSteps, stepLabels
