@@ -1,0 +1,26 @@
+Fix: 404 error navigating from "Select Your Industry" to branding step
+=======================================================================
+
+ROOT CAUSE:
+1. The "served-industries" route (step 7) was MISSING from App.tsx routes
+   - The component (ServedIndustriesStep.tsx) existed
+   - The step definition existed in onboardingTypes.ts
+   - But no <Route> was defined and no import existed in App.tsx
+   - After completing business-branding (step 6), navigation tried
+     /onboarding/served-industries → 404
+
+2. Two routes used absolute paths inside a nested <Route path="/onboarding">:
+   - /onboarding/theme-selection (should be: theme-selection)
+   - /onboarding/business-basic (should be: business-basic)
+
+FIX:
+- Added import for ServedIndustriesStep
+- Added <Route path="served-industries" element={<ServedIndustriesStep />} />
+- Changed absolute paths to relative for theme-selection and business-basic
+
+FILES TO COPY:
+---------------------------------------------------------------------------
+Source: MANUAL_COPY_FILES/fix-onboarding-404/contractnest-ui/src/App.tsx
+Target: contractnest-ui/src/App.tsx
+
+SUBMODULES AFFECTED: contractnest-ui
