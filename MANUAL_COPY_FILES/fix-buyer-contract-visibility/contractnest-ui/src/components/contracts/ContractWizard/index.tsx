@@ -1,6 +1,6 @@
 // src/components/contracts/ContractWizard/index.tsx
 // Contract Wizard - Main component with Floating Action Island
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { X, CheckCircle2, ArrowRight, Loader2, Copy, Check, Key, Mail, CreditCard, PenTool, Zap, Receipt, Building2, WifiOff, Globe, Monitor } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useContractOperations } from '@/hooks/queries/useContractQueries';
