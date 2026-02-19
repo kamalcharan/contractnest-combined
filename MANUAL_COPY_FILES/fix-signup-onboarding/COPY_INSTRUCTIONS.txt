@@ -1,0 +1,28 @@
+Fix: Signup → Onboarding redirect + Continue button visibility
+================================================================
+
+ISSUE 1: Signup goes to dashboard instead of onboarding
+ROOT CAUSE: RegisterPage.tsx has a useEffect that fires when isAuthenticated
+changes to true. It overrides AuthContext's navigate('/onboarding') with
+navigate('/dashboard').
+FIX: Skip the redirect when 'is_new_signup' flag is set in sessionStorage.
+
+ISSUE 2: Login goes to onboarding after re-login
+STATUS: This is CORRECT behavior. Login checks onboarding status, finds it
+incomplete, redirects to onboarding. No fix needed.
+
+ISSUE 3: Continue button not visible on "Define Your Business Role" step
+ROOT CAUSE: After selecting a business type, content expands (info panel +
+Continue button appear). The Continue button is pushed below the visible
+viewport in the nested scroll area. User doesn't know to scroll.
+FIX: Auto-scroll to Continue button when it appears after selection.
+
+FILES TO COPY:
+---------------------------------------------------------------------------
+Source: MANUAL_COPY_FILES/fix-signup-onboarding/contractnest-ui/src/pages/auth/RegisterPage.tsx
+Target: contractnest-ui/src/pages/auth/RegisterPage.tsx
+
+Source: MANUAL_COPY_FILES/fix-signup-onboarding/contractnest-ui/src/pages/onboarding/steps/BusinessBasicStep.tsx
+Target: contractnest-ui/src/pages/onboarding/steps/BusinessBasicStep.tsx
+
+SUBMODULES AFFECTED: contractnest-ui
