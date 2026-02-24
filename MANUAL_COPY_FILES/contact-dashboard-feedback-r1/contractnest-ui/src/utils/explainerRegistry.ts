@@ -140,8 +140,9 @@ export const EXPLAINER_REGISTRY: Record<ExplainerTab, ExplainerSection[]> = {
           what: 'Contract portfolio health — ratio of active contracts and overall volume.',
           formula: '(Active Contracts ÷ Total Contracts × 70) + (Volume Bonus, max 30)',
           interpret: (v, d) => {
-            const total = d?.contracts?.total || 0;
-            const active = (d?.contracts?.by_status?.['active'] || 0) + (d?.contracts?.by_status?.['in_progress'] || 0);
+            const byStatus = d?.contracts?.by_status || {};
+            const total = Object.values(byStatus).reduce((s: number, c) => s + (c as number), 0);
+            const active = (byStatus['active'] || 0) + (byStatus['in_progress'] || 0);
             return `${active} of ${total} contracts are active. ${pctInterpret(v,
               'Low — few active contracts relative to total. Consider renewals or new engagements.',
               'Moderate — a fair proportion of contracts are active.',
@@ -150,8 +151,8 @@ export const EXPLAINER_REGISTRY: Record<ExplainerTab, ExplainerSection[]> = {
           },
           improve: 'Renew expiring contracts. Convert pending acceptances into active contracts.',
           getValue: (d) => {
-            const total = d.contracts?.total || 0;
             const byStatus = d.contracts?.by_status || {};
+            const total = Object.values(byStatus).reduce((s: number, c) => s + (c as number), 0);
             const active = (byStatus['active'] || 0) + (byStatus['in_progress'] || 0);
             if (total === 0) return 0;
             const ratioScore = (active / total) * 70;
@@ -246,7 +247,10 @@ export const EXPLAINER_REGISTRY: Record<ExplainerTab, ExplainerSection[]> = {
             return 'No active pipeline. Consider creating new contracts.';
           },
           improve: 'Click pipeline segments to filter. Move drafts to review and pending to active.',
-          getValue: (d) => d.contracts?.total || 0,
+          getValue: (d) => {
+            const byStatus = d.contracts?.by_status || {};
+            return Object.values(byStatus).reduce((s: number, c) => s + (c as number), 0);
+          },
         },
       ],
     },
