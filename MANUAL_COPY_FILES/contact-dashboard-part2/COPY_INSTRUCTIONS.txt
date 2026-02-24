@@ -1,0 +1,53 @@
+═══════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS - Contact Dashboard Part 2
+Feature: Contracts Tab + Assets Tab (fully functional)
+═══════════════════════════════════════════════════════════════
+
+SUBMODULES AFFECTED: contractnest-ui
+
+═══════════════════════════════════════════════════════════════
+FILES TO COPY (3 files total)
+═══════════════════════════════════════════════════════════════
+
+--- NEW FILES (2) ---
+
+1. ContractsTab.tsx (PipelineBar + role filter pills + 2-col ContractCard grid)
+   FROM: MANUAL_COPY_FILES\contact-dashboard-part2\contractnest-ui\src\components\contacts\dashboard\ContractsTab.tsx
+   TO:   contractnest-ui\src\components\contacts\dashboard\ContractsTab.tsx
+
+2. AssetsTab.tsx (Search + grid/list toggle + create/edit/delete + ClientAssetCard)
+   FROM: MANUAL_COPY_FILES\contact-dashboard-part2\contractnest-ui\src\components\contacts\dashboard\AssetsTab.tsx
+   TO:   contractnest-ui\src\components\contacts\dashboard\AssetsTab.tsx
+
+--- MODIFIED FILES (1) ---
+
+3. view.tsx (Imports ContractsTab + AssetsTab, replaces placeholders)
+   FROM: MANUAL_COPY_FILES\contact-dashboard-part2\contractnest-ui\src\pages\contacts\view.tsx
+   TO:   contractnest-ui\src\pages\contacts\view.tsx
+
+═══════════════════════════════════════════════════════════════
+WHAT CHANGED
+═══════════════════════════════════════════════════════════════
+
+CONTRACTS TAB (new - fully functional):
+  - Role filter pills (All / Client / Vendor / Partner) with counts
+  - PipelineBar status filter (Draft / In Review / Pending / Active / Completed / Expired)
+  - "Clear filters" when active + filter count indicator
+  - 2-column grid of ContractCard components (reused from contracts hub)
+  - New Contract button navigates to /contracts/create?contactId=
+  - Empty state with CTA
+
+ASSETS TAB (new - fully functional):
+  - Search bar with clear button
+  - Quick stats (total, active, under repair)
+  - Grid/List view toggle
+  - Add Asset button
+  - 3-column grid of ClientAssetCard (reused existing)
+  - Edit/Delete via ClientAssetFormDialog (reused existing)
+  - Create dialog via ClientAssetFormDialog (reused existing)
+  - Empty state with CTA
+
+VIEW.TSX:
+  - Added imports for ContractsTab + AssetsTab
+  - Replaced placeholder divs with real components
+  - Financials + Timeline still placeholders (Part 3)
