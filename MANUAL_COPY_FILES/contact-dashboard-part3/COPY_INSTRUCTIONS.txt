@@ -1,0 +1,56 @@
+═══════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS - Contact Dashboard Part 3
+Feature: Financials Tab + Timeline Tab (fully functional)
+═══════════════════════════════════════════════════════════════
+
+SUBMODULES AFFECTED: contractnest-ui
+
+═══════════════════════════════════════════════════════════════
+FILES TO COPY (3 files total)
+═══════════════════════════════════════════════════════════════
+
+--- NEW FILES (2) ---
+
+1. FinancialsTab.tsx (Summary cards + aging bar + receivable/payable split + invoice table)
+   FROM: MANUAL_COPY_FILES\contact-dashboard-part3\contractnest-ui\src\components\contacts\dashboard\FinancialsTab.tsx
+   TO:   contractnest-ui\src\components\contacts\dashboard\FinancialsTab.tsx
+
+2. TimelineTab.tsx (Summary cards + type/status filters + chronological vertical timeline)
+   FROM: MANUAL_COPY_FILES\contact-dashboard-part3\contractnest-ui\src\components\contacts\dashboard\TimelineTab.tsx
+   TO:   contractnest-ui\src\components\contacts\dashboard\TimelineTab.tsx
+
+--- MODIFIED FILES (1) ---
+
+3. view.tsx (Imports FinancialsTab + TimelineTab, replaces last 2 placeholders)
+   FROM: MANUAL_COPY_FILES\contact-dashboard-part3\contractnest-ui\src\pages\contacts\view.tsx
+   TO:   contractnest-ui\src\pages\contacts\view.tsx
+
+═══════════════════════════════════════════════════════════════
+WHAT CHANGED
+═══════════════════════════════════════════════════════════════
+
+FINANCIALS TAB:
+  - 4 summary cards: LTV, Outstanding, Collection Rate, On-time Rate
+  - Aging breakdown bar (Current / 1-30d / 31-60d / 61-90d / 90+d) with stacked color bar
+  - Revenue split card: Receivable vs Payable with Net calculation
+  - Full invoice table with:
+    - Status filter pills (All / Overdue / Unpaid / Partial / Paid)
+    - Type toggle (All / In / Out)
+    - Columns: Invoice #, Contract, Type, Status, Amount, Paid, Balance, Due Date
+    - Click row → navigates to contract detail
+    - Overdue dates shown in red with warning icon
+
+TIMELINE TAB:
+  - 4 clickable summary cards: Overdue / Today / Upcoming / Completed
+  - Clicking a card toggles that filter
+  - Type filter pills: All Types / Service / Billing
+  - Days-ahead selector: 7d / 14d / 30d (drives the cockpit API's daysAhead param)
+  - Vertical chronological timeline grouped by date
+  - Each event shows: type icon, block name, sequence #, contract info, assignee, amount, timing badge
+  - Click event → navigates to contract detail
+  - Overdue events highlighted in red background
+
+VIEW.TSX:
+  - Added imports for FinancialsTab + TimelineTab
+  - Replaced both Part 3 placeholder divs with real components
+  - ALL 5 TABS NOW FULLY FUNCTIONAL (Overview, Contracts, Assets, Financials, Timeline)
