@@ -1,0 +1,70 @@
+═══════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS - Contact Dashboard Feedback Round 1
+Features: Explainer Drawer + NeedsAttention fix + Timeline EventCard reuse + Contract count fix
+═══════════════════════════════════════════════════════════════
+
+SUBMODULES AFFECTED: contractnest-ui
+
+═══════════════════════════════════════════════════════════════
+FILES TO COPY (5 files total)
+═══════════════════════════════════════════════════════════════
+
+--- NEW FILES (2) ---
+
+1. explainerRegistry.ts (Central metric definitions for all 5 tabs)
+   FROM: MANUAL_COPY_FILES\contact-dashboard-feedback-r1\contractnest-ui\src\utils\explainerRegistry.ts
+   TO:   contractnest-ui\src\utils\explainerRegistry.ts
+
+2. ExplainerDrawer.tsx (Reusable right-side drawer — page-level metric explainer)
+   FROM: MANUAL_COPY_FILES\contact-dashboard-feedback-r1\contractnest-ui\src\components\common\ExplainerDrawer.tsx
+   TO:   contractnest-ui\src\components\common\ExplainerDrawer.tsx
+
+--- MODIFIED FILES (3) ---
+
+3. view.tsx (Added "Explain" button in tab bar + ExplainerDrawer + contract count fix)
+   FROM: MANUAL_COPY_FILES\contact-dashboard-feedback-r1\contractnest-ui\src\pages\contacts\view.tsx
+   TO:   contractnest-ui\src\pages\contacts\view.tsx
+
+4. NeedsAttentionCard.tsx (Added event type icon + contract number badge per item)
+   FROM: MANUAL_COPY_FILES\contact-dashboard-feedback-r1\contractnest-ui\src\components\contacts\dashboard\NeedsAttentionCard.tsx
+   TO:   contractnest-ui\src\components\contacts\dashboard\NeedsAttentionCard.tsx
+
+5. TimelineTab.tsx (Refactored to reuse EventCard compact variant from contracts hub)
+   FROM: MANUAL_COPY_FILES\contact-dashboard-feedback-r1\contractnest-ui\src\components\contacts\dashboard\TimelineTab.tsx
+   TO:   contractnest-ui\src\components\contacts\dashboard\TimelineTab.tsx
+
+═══════════════════════════════════════════════════════════════
+WHAT CHANGED
+═══════════════════════════════════════════════════════════════
+
+EXPLAINER FEATURE (new):
+  - explainerRegistry.ts: Central config with metric definitions for all 5 tabs
+    - Each entry: title, what it measures, formula, dynamic interpretation, how to improve
+    - Overview: health_score, 4 pillars (revenue, delivery, engagement, growth), LTV, outstanding
+    - Contracts: total count, role breakdown, pipeline stages
+    - Assets: registry overview, criticality levels
+    - Financials: collection rate, on-time rate, aging buckets, receivable/payable
+    - Timeline: overdue events, upcoming events, service vs billing
+  - ExplainerDrawer.tsx: Right-side drawer component
+    - "Explain" button in tab bar opens it, scoped to active tab
+    - Shows sections with ExplainerCards per metric
+    - Each card: title + current value badge (color-coded) + what/formula/interpretation/improve
+    - Backdrop click closes, smooth slide transition
+    - Designed for product-wide reuse via registry pattern
+
+CONTRACT COUNT FIX:
+  - Header now derives contract count from sum of by_status values
+  - Fixes mismatch where header showed 1 but tab showed 9
+
+NEEDS ATTENTION FIX:
+  - Each item now shows event type icon (Wrench for service, DollarSign for billing, Receipt for invoice)
+  - Contract number badge displayed next to event name
+  - Makes it clear which contract/item type each event belongs to
+
+TIMELINE REUSE:
+  - Replaced custom inline event cards with EventCard compact variant
+  - Same component used in contract detail page, ops cockpit, etc.
+  - Maps cockpit event data to ContractEvent shape via toContractEvent adapter
+  - hideActions=true (read-only), onViewContract navigates to contract detail
+  - Added OVERDUE date badge next to date headers
+  - Auto-fill grid layout (same as contract detail page)
