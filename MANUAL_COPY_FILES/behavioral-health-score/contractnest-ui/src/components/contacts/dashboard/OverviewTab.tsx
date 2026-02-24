@@ -8,7 +8,6 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { HealthRing } from '@/components/contracts/HealthRing';
 import ContactCockpitStatsBar from '@/components/contacts/cockpit/ContactCockpitStatsBar';
 import NeedsAttentionCard from './NeedsAttentionCard';
 import QuickFinancials from './QuickFinancials';
@@ -56,27 +55,8 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
   return (
     <div className="p-6 space-y-6 max-w-6xl mx-auto">
 
-      {/* Row 1: Health Ring + Cockpit Stats */}
-      <div className="flex gap-6 items-start">
-        {/* Health Ring */}
-        <div
-          className="flex-shrink-0 p-5 rounded-2xl border flex flex-col items-center"
-          style={{
-            backgroundColor: colors.utility.secondaryBackground,
-            borderColor: colors.utility.primaryText + '10',
-          }}
-        >
-          <HealthRing score={cockpitData.health_score || 0} size={100} strokeWidth={8} />
-          <div className="mt-2 text-xs font-semibold" style={{ color: colors.utility.secondaryText }}>
-            Overall Health
-          </div>
-        </div>
-
-        {/* Cockpit Stats Bar */}
-        <div className="flex-1">
-          <ContactCockpitStatsBar data={cockpitData} isLoading={false} />
-        </div>
-      </div>
+      {/* Row 1: Cockpit Stats (full width 4x2 grid) */}
+      <ContactCockpitStatsBar data={cockpitData} isLoading={false} />
 
       {/* Row 2: Needs Attention + Quick Financials */}
       <div className="grid grid-cols-2 gap-6">

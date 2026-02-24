@@ -447,11 +447,12 @@ BEGIN
     -- ═══════════════════════════════════════════
 
     -- 9a: Revenue behavior (billing events due by now, multi-role)
+    --   Billing terminal statuses: paid, waived (NOT 'completed')
     SELECT
-        COUNT(*) FILTER (WHERE ce.status != 'cancelled'),
-        COUNT(*) FILTER (WHERE ce.status = 'completed'),
-        COALESCE(SUM(ce.amount) FILTER (WHERE ce.status != 'cancelled'), 0),
-        COALESCE(SUM(ce.amount) FILTER (WHERE ce.status = 'completed'), 0)
+        COUNT(*) FILTER (WHERE ce.status NOT IN ('cancelled', 'waived')),
+        COUNT(*) FILTER (WHERE ce.status IN ('paid', 'waived')),
+        COALESCE(SUM(ce.amount) FILTER (WHERE ce.status NOT IN ('cancelled', 'waived')), 0),
+        COALESCE(SUM(ce.amount) FILTER (WHERE ce.status IN ('paid', 'waived')), 0)
     INTO v_billing_due_count, v_billing_met_count, v_billing_due_amount, v_billing_collected
     FROM t_contract_events ce
     JOIN t_contracts c ON ce.contract_id = c.id
@@ -474,10 +475,11 @@ BEGIN
         v_revenue_score := NULL; -- No billing due yet
     END IF;
 
-    -- 9b: Delivery behavior (service events due by now, multi-role)
+    -- 9b: Delivery behavior (service + spare_part events due by now, multi-role)
+    --   Service terminal: completed | Spare_part terminal: installed
     SELECT
         COUNT(*) FILTER (WHERE ce.status != 'cancelled'),
-        COUNT(*) FILTER (WHERE ce.status = 'completed')
+        COUNT(*) FILTER (WHERE ce.status IN ('completed', 'installed'))
     INTO v_service_due_count, v_service_met_count
     FROM t_contract_events ce
     JOIN t_contracts c ON ce.contract_id = c.id
@@ -488,7 +490,7 @@ BEGIN
       AND ce.tenant_id = p_tenant_id
       AND ce.is_live = p_is_live
       AND ce.is_active = true
-      AND ce.event_type = 'service'
+      AND ce.event_type IN ('service', 'spare_part')
       AND ce.scheduled_date < NOW();
 
     IF v_service_due_count > 0 THEN
