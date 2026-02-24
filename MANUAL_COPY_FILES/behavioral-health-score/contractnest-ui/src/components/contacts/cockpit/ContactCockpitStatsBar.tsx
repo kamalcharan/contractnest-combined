@@ -103,8 +103,8 @@ const LoadingSkeleton: React.FC = () => {
   const skeletonBg = isDarkMode ? 'bg-gray-700' : 'bg-gray-200';
 
   return (
-    <div className="grid grid-cols-4 gap-3">
-      {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+    <div className="grid grid-cols-3 gap-3">
+      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((i) => (
         <div
           key={i}
           className={`rounded-xl p-3.5 border animate-pulse ${
@@ -142,12 +142,14 @@ const ContactCockpitStatsBar: React.FC<ContactCockpitStatsBarProps> = ({
 
   if (!data) {
     return (
-      <div className={`grid grid-cols-4 gap-3 ${className}`}>
+      <div className={`grid grid-cols-3 gap-3 ${className}`}>
         {[
-          { label: 'Lifetime Value', value: '₹0' },
-          { label: 'Outstanding', value: '₹0' },
+          { label: 'Health Score', value: '--%' },
           { label: 'Revenue Score', value: '--%' },
           { label: 'Delivery Score', value: '--%' },
+          { label: 'Lifetime Value', value: '₹0' },
+          { label: 'Outstanding', value: '₹0' },
+          { label: 'Contracts', value: '0' },
         ].map((stat, idx) => (
           <div
             key={idx}
@@ -199,8 +201,40 @@ const ContactCockpitStatsBar: React.FC<ContactCockpitStatsBarProps> = ({
 
   return (
     <div className={className}>
-      <div className="grid grid-cols-4 gap-3">
-        {/* Row 1 */}
+      <div className="grid grid-cols-3 gap-3">
+        {/* Row 1: Scores */}
+
+        {/* Health Score */}
+        <StatCard
+          label="Health Score"
+          value={`${data.health_score}%`}
+          subValue={healthInfo.label}
+          icon={<Heart className="h-4 w-4" style={{ color: healthInfo.color }} />}
+          color={healthInfo.color}
+          bgColor={healthInfo.bgColor}
+        />
+
+        {/* Revenue Score */}
+        <StatCard
+          label="Revenue Score"
+          value={`${data.revenue_score ?? 100}%`}
+          subValue={revenueInfo.label}
+          icon={<DollarSign className="h-4 w-4" style={{ color: revenueInfo.color }} />}
+          color={revenueInfo.color}
+          bgColor={revenueInfo.bgColor}
+        />
+
+        {/* Delivery Score */}
+        <StatCard
+          label="Delivery Score"
+          value={`${data.delivery_score ?? 100}%`}
+          subValue={deliveryInfo.label}
+          icon={<Truck className="h-4 w-4" style={{ color: deliveryInfo.color }} />}
+          color={deliveryInfo.color}
+          bgColor={deliveryInfo.bgColor}
+        />
+
+        {/* Row 2: Financials */}
 
         {/* LTV */}
         <StatCard
@@ -227,28 +261,6 @@ const ContactCockpitStatsBar: React.FC<ContactCockpitStatsBarProps> = ({
           highlightColor="#F59E0B"
         />
 
-        {/* Revenue Score */}
-        <StatCard
-          label="Revenue Score"
-          value={`${data.revenue_score ?? 100}%`}
-          subValue={revenueInfo.label}
-          icon={<DollarSign className="h-4 w-4" style={{ color: revenueInfo.color }} />}
-          color={revenueInfo.color}
-          bgColor={revenueInfo.bgColor}
-        />
-
-        {/* Delivery Score */}
-        <StatCard
-          label="Delivery Score"
-          value={`${data.delivery_score ?? 100}%`}
-          subValue={deliveryInfo.label}
-          icon={<Truck className="h-4 w-4" style={{ color: deliveryInfo.color }} />}
-          color={deliveryInfo.color}
-          bgColor={deliveryInfo.bgColor}
-        />
-
-        {/* Row 2 */}
-
         {/* Contracts */}
         <StatCard
           label="Contracts"
@@ -258,6 +270,8 @@ const ContactCockpitStatsBar: React.FC<ContactCockpitStatsBarProps> = ({
           color="#059669"
           bgColor={isDarkMode ? 'rgba(5, 150, 105, 0.2)' : 'rgba(5, 150, 105, 0.1)'}
         />
+
+        {/* Row 3: Activity */}
 
         {/* Events */}
         <StatCard
