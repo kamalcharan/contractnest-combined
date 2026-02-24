@@ -7,12 +7,21 @@ Submodules Affected: contractnest-edge, contractnest-ui
 
 Files Changed:
   - contractnest-edge/supabase/migrations/contracts/015_contact_cockpit_summary_rpc.sql
-      → Behavioral health/revenue/delivery scores, outstanding from billing events
+      → Behavioral health/revenue/delivery scores (v1)
+  - contractnest-edge/supabase/migrations/contracts/016_contact_cockpit_summary_v2.sql
+      → Behavioral health/revenue/delivery scores (v2 - THE LIVE ONE)
   - contractnest-ui/src/components/contacts/dashboard/OverviewTab.tsx
       → Replace HealthPillars + Quick Stats with ContactCockpitStatsBar
   - contractnest-ui/src/types/contactCockpit.ts
       → Add revenue_score and delivery_score fields
+  - contractnest-ui/src/pages/contacts/view.tsx
+      → Strip all stats from sticky header (now only in overview tab)
 
 Files DELETED:
   - contractnest-ui/src/components/contacts/dashboard/HealthPillars.tsx
       → Orphaned component, no remaining references
+
+DEPLOY ORDER:
+  1. Copy UI files + delete HealthPillars.tsx
+  2. Deploy 016 SQL to Supabase (this is the live function)
+  3. Restart dev server
