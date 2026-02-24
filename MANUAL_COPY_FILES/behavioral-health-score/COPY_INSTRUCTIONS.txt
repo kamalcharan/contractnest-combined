@@ -1,0 +1,18 @@
+═══════════════════════════════════════════════════
+BEHAVIORAL HEALTH SCORE + CLEANUP
+═══════════════════════════════════════════════════
+
+Branch: behavioral-health-score
+Submodules Affected: contractnest-edge, contractnest-ui
+
+Files Changed:
+  - contractnest-edge/supabase/migrations/contracts/015_contact_cockpit_summary_rpc.sql
+      → Behavioral health/revenue/delivery scores, outstanding from billing events
+  - contractnest-ui/src/components/contacts/dashboard/OverviewTab.tsx
+      → Replace HealthPillars + Quick Stats with ContactCockpitStatsBar
+  - contractnest-ui/src/types/contactCockpit.ts
+      → Add revenue_score and delivery_score fields
+
+Files DELETED:
+  - contractnest-ui/src/components/contacts/dashboard/HealthPillars.tsx
+      → Orphaned component, no remaining references
