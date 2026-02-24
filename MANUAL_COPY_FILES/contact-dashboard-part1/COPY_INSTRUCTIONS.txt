@@ -1,0 +1,67 @@
+═══════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS - Contact Dashboard Part 1
+Feature: Header + Tab Shell + Overview Tab
+═══════════════════════════════════════════════════════════════
+
+SUBMODULES AFFECTED: contractnest-ui
+
+═══════════════════════════════════════════════════════════════
+FILES TO COPY (5 files total)
+═══════════════════════════════════════════════════════════════
+
+--- NEW FILES (4) ---
+
+1. HealthPillars.tsx (4-bar pillar breakdown: Revenue/Delivery/Engagement/Growth)
+   FROM: MANUAL_COPY_FILES\contact-dashboard-part1\contractnest-ui\src\components\contacts\dashboard\HealthPillars.tsx
+   TO:   contractnest-ui\src\components\contacts\dashboard\HealthPillars.tsx
+
+2. NeedsAttentionCard.tsx (Surfaces overdue events, today events, overdue invoices)
+   FROM: MANUAL_COPY_FILES\contact-dashboard-part1\contractnest-ui\src\components\contacts\dashboard\NeedsAttentionCard.tsx
+   TO:   contractnest-ui\src\components\contacts\dashboard\NeedsAttentionCard.tsx
+
+3. QuickFinancials.tsx (Collected vs Outstanding + rate bars)
+   FROM: MANUAL_COPY_FILES\contact-dashboard-part1\contractnest-ui\src\components\contacts\dashboard\QuickFinancials.tsx
+   TO:   contractnest-ui\src\components\contacts\dashboard\QuickFinancials.tsx
+
+4. OverviewTab.tsx (Composes: HealthRing + Pillars + NeedsAttention + Financials + Activity)
+   FROM: MANUAL_COPY_FILES\contact-dashboard-part1\contractnest-ui\src\components\contacts\dashboard\OverviewTab.tsx
+   TO:   contractnest-ui\src\components\contacts\dashboard\OverviewTab.tsx
+
+--- MODIFIED FILES (1) ---
+
+5. view.tsx (Rewritten: 1133-line monolith -> 370-line tabbed shell)
+   FROM: MANUAL_COPY_FILES\contact-dashboard-part1\contractnest-ui\src\pages\contacts\view.tsx
+   TO:   contractnest-ui\src\pages\contacts\view.tsx
+
+═══════════════════════════════════════════════════════════════
+WHAT CHANGED
+═══════════════════════════════════════════════════════════════
+
+HEADER (preserved + enhanced):
+  - All 7 stats: LTV, Outstanding, Health Score, Urgency, Collection Rate, On-time Rate, Contracts Count
+  - Edit button now opens ProfileDrawer in-page (instead of navigating to /contacts/:id/edit)
+  - Back button, avatar, name, email, status badge, classification badges all preserved
+
+TAB BAR (new):
+  - 5 tabs: Overview | Contracts | Assets | Financials | Timeline
+  - Active tab indicator (brand primary color underline)
+  - Icons on each tab
+
+OVERVIEW TAB (new - fully functional):
+  - HealthRing (reuses existing component)
+  - HealthPillars (4 client-side computed pillars)
+  - Quick stat cards (Contracts, Events, Invoices) - clicking switches tab
+  - NeedsAttentionCard (overdue events, today events, overdue invoices)
+  - QuickFinancials (collected vs outstanding, collection rate, on-time rate)
+  - Recent Activity (merged overdue + upcoming events)
+
+PLACEHOLDER TABS (for Parts 2 & 3):
+  - Contracts, Assets, Financials, Timeline show icon + real data counts
+
+PRESERVED:
+  - ActionIsland (bottom bar)
+  - ProfileDrawer
+  - ConfirmationDialog (archive)
+  - Status warnings (inactive/archived)
+  - Loading/Error/Not-found states
+  - All existing hooks and data fetching
