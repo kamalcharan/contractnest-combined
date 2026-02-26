@@ -1,0 +1,24 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS - Hide Contacts Menu
+═══════════════════════════════════════════════════
+
+Feature: Hide 'Contacts' from sidebar navigation (main menu + all submenus)
+Branch: hide-contacts-menu
+Submodules Affected: contractnest-ui
+
+FILES TO COPY:
+─────────────────────────────────────────────────────
+1. contractnest-ui/src/utils/constants/industryMenus.ts
+   Source: MANUAL_COPY_FILES/hide-contacts-menu/contractnest-ui/src/utils/constants/industryMenus.ts
+   Destination: contractnest-ui/src/utils/constants/industryMenus.ts
+
+CHANGES MADE:
+─────────────────────────────────────────────────────
+1. Commented out "Contacts" submenu item (id: entities) under Operations menu
+2. Commented out contacts-related industry override entries for:
+   - healthcare (contacts, contacts-buyers, contacts-partners, contacts-service-providers)
+   - financial_services (contacts, contacts-buyers, contacts-partners, contacts-service-providers)
+   - education (contacts, contacts-buyers, contacts-partners, contacts-service-providers)
+   - construction (contacts, contacts-buyers, contacts-partners, contacts-service-providers)
+
+NOTE: Routes in App.tsx are NOT modified - /contacts URLs still work via direct access.
