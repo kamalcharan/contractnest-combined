@@ -38,8 +38,7 @@ export const defaultMenuItems: MenuItem[] = [
     hasSubmenu: true,
     submenuItems: [
       { id: 'ops-cockpit', label: 'Ops Cockpit', icon: 'Gauge', path: '/ops/cockpit' },
-      // HIDDEN: Contacts - hidden from menu, routes still accessible
-      // { id: 'entities', label: 'Contacts', icon: 'Building2', path: '/contacts' },
+      { id: 'entities', label: 'Contacts', icon: 'Building2', path: '/contacts' },
       { id: 'equipment-registry', label: 'Equipment Registry', icon: 'Wrench', path: '/equipment-registry' },
       { id: 'facility-registry', label: 'Facility Registry', icon: 'Landmark', path: '/facility-registry' }
       // HIDDEN: Activity Feed, Reports - commented out
