@@ -1,0 +1,46 @@
+═══════════════════════════════════════════════════
+UNIFIED RELATIONSHIPS VIEW — COPY INSTRUCTIONS
+═══════════════════════════════════════════════════
+Feature: Merged Contacts + Contracts into unified Relationships list
+Branch: feat/unified-relationships-view
+Submodule Affected: contractnest-ui ONLY
+Date: 2026-02-26
+
+═══════════════════════════════════════════════════
+FILES TO COPY (9 files total)
+═══════════════════════════════════════════════════
+
+NEW FILES (6):
+  1. contractnest-ui/src/types/relationships.ts
+     → Relationship, RelationshipContractSummary, filter/sort/portfolio types
+
+  2. contractnest-ui/src/hooks/queries/useRelationshipQueries.ts
+     → useRelationships(), useRelationshipContracts(), useRelationshipPortfolio() hooks
+
+  3. contractnest-ui/src/components/contracts/list/RelationshipRow.tsx
+     → Parent row: contact avatar, name, classifications, contract count, value, health, expand chevron
+
+  4. contractnest-ui/src/components/contracts/list/ContractSubRow.tsx
+     → Child row: contract title, CN#, status pill, type badge, value, navigate arrow
+
+  5. contractnest-ui/src/components/contracts/list/RelationshipSummaryStrip.tsx
+     → Top metrics strip: Relationships, Contracts, Portfolio Value, Collected, Outstanding, Health
+
+  6. contractnest-ui/src/components/contracts/list/RelationshipSortSelect.tsx
+     → Sort dropdown: by Name, Contracts, Value, Health, Created
+
+MODIFIED FILES (3):
+  7. contractnest-ui/src/pages/contracts/hub/index.tsx
+     → REWRITTEN: Now shows unified Relationships view instead of flat contract list
+
+  8. contractnest-ui/src/utils/constants/industryMenus.ts
+     → MODIFIED: Removed Contacts from Operations submenu, renamed submenu to "Relationships"
+
+  9. contractnest-ui/src/App.tsx
+     → MODIFIED: /contacts list route redirects to /contracts, removed unused ContactsPage import
+
+═══════════════════════════════════════════════════
+IMPORTANT: NO BACKEND CHANGES
+═══════════════════════════════════════════════════
+This is a FRONTEND-ONLY change. The API, Edge, Database are untouched.
+The unified view fetches from existing /api/contacts and /api/contracts endpoints.
