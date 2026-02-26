@@ -1,0 +1,82 @@
+═══════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS - Contact Dashboard + Unified Relationships
+═══════════════════════════════════════════════════════════════
+Date: 2026-02-26
+Branch: claude/contact-dashboard-part1
+Submodules Affected: contractnest-ui ONLY
+
+This bundle contains ALL changes across 10 commits:
+  1. Contact Dashboard Part 1 - Header + Tab Shell + Overview Tab
+  2. Contact Dashboard Part 2 - Contracts Tab + Assets Tab
+  3. Contact Dashboard Part 3 - Financials Tab + Timeline Tab
+  4. Explainer Drawer + feedback fixes
+  5. Contract count fix (by_status sum)
+  6. Health pillars replaced with cockpit stats bar
+  7. Redundant stats stripped from header
+  8. Stats bar expanded to 8-card grid
+  9. Health Score added back to stats bar
+  10. Unified Relationships view (Contacts + Contracts merged)
+
+═══════════════════════════════════════════════════════════════
+FILES (22 total) - All inside contractnest-ui/
+═══════════════════════════════════════════════════════════════
+
+MODIFIED FILES:
+  src/App.tsx
+    → Route changes: /contacts redirects to /contracts, /contacts/:id loads ContactViewPage
+
+NEW FILES - Contact Dashboard:
+  src/pages/contacts/view.tsx
+    → Contact Dashboard page (cockpit view with tabs)
+  src/components/contacts/cockpit/ContactCockpitPanel.tsx
+    → Main cockpit panel with header + tab navigation
+  src/components/contacts/cockpit/ContactCockpitStatsBar.tsx
+    → Stats bar showing 8 metrics in 3x3 grid
+  src/components/contacts/dashboard/OverviewTab.tsx
+    → Overview tab with summary cards
+  src/components/contacts/dashboard/ContractsTab.tsx
+    → Contracts tab listing contact's contracts
+  src/components/contacts/dashboard/AssetsTab.tsx
+    → Assets tab listing contact's assets
+  src/components/contacts/dashboard/FinancialsTab.tsx
+    → Financials tab with revenue/payment data
+  src/components/contacts/dashboard/TimelineTab.tsx
+    → Timeline tab showing activity history
+  src/components/contacts/dashboard/NeedsAttentionCard.tsx
+    → Attention items card component
+  src/components/contacts/dashboard/QuickFinancials.tsx
+    → Quick financials summary component
+  src/types/contactCockpit.ts
+    → TypeScript types for contact cockpit data
+
+NEW FILES - Unified Relationships View:
+  src/pages/contracts/hub/index.tsx
+    → Unified Relationships list (contacts as parent rows, contracts nested)
+  src/components/contracts/list/RelationshipRow.tsx
+    → Contact row component with expand/collapse for contracts
+  src/components/contracts/list/ContractSubRow.tsx
+    → Contract sub-row shown under parent contact
+  src/components/contracts/list/RelationshipSortSelect.tsx
+    → Sort dropdown for relationships list
+  src/components/contracts/list/RelationshipSummaryStrip.tsx
+    → Summary strip showing totals at top of list
+  src/hooks/queries/useRelationshipQueries.ts
+    → React Query hooks for fetching relationship data
+  src/types/relationships.ts
+    → TypeScript types for relationship data
+
+NEW/MODIFIED FILES - Utilities:
+  src/components/common/ExplainerDrawer.tsx
+    → Explainer drawer component for contextual help
+  src/utils/constants/industryMenus.ts
+    → Industry menu constants
+  src/utils/explainerRegistry.ts
+    → Registry for explainer drawer content
+
+═══════════════════════════════════════════════════════════════
+COPY COMMAND (PowerShell - run from contractnest-combined root)
+═══════════════════════════════════════════════════════════════
+
+Copy-Item "MANUAL_COPY_FILES\contact-dashboard-unified\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+═══════════════════════════════════════════════════════════════
