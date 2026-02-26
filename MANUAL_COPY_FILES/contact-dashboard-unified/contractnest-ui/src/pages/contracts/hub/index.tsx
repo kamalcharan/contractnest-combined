@@ -18,6 +18,8 @@ import {
   ChevronRight,
   ArrowRightLeft,
   Users,
+  ChevronDown as ChevronDownIcon,
+  UserPlus,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useContractStats, contractKeys } from '@/hooks/queries/useContractQueries';
@@ -568,10 +570,15 @@ const ContractsHubPage: React.FC = () => {
   const [activeStatus, setActiveStatus] = useState<string | null>(
     searchParams.get('status') || null
   );
+  const [contactStatusFilter, setContactStatusFilter] = useState<'active' | 'inactive' | 'archived' | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<RelationshipSortOption>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [currentPage, setCurrentPage] = useState(1);
+
+  // ── Split "New" dropdown state ──
+  const [showNewDropdown, setShowNewDropdown] = useState(false);
+  const newDropdownRef = useRef<HTMLDivElement>(null);
 
   // ── Expand state for relationship rows ──
   const [expandedContacts, setExpandedContacts] = useState<Set<string>>(new Set());
@@ -589,6 +596,19 @@ const ContractsHubPage: React.FC = () => {
   const [showWizard, setShowWizard] = useState(false);
   const [wizardContractType, setWizardContractType] = useState<ContractType>('client');
 
+  // ── Close dropdown on outside click ──
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (newDropdownRef.current && !newDropdownRef.current.contains(e.target as Node)) {
+        setShowNewDropdown(false);
+      }
+    };
+    if (showNewDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showNewDropdown]);
+
   // ── Reset page when filters change ──
   const prevPerspective = useRef(activePerspective);
   useEffect(() => {
@@ -599,18 +619,19 @@ const ContractsHubPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: contractKeys.stats() });
       queryClient.invalidateQueries({ queryKey: relationshipKeys.all });
     }
-  }, [activePerspective, activeStatus, searchQuery, sortBy]);
+  }, [activePerspective, activeStatus, contactStatusFilter, searchQuery, sortBy]);
 
   // ── Build unified filters ──
   const relationshipFilters = useMemo(() => ({
     perspective: activePerspective,
     status: activeStatus as any,
+    contactStatus: contactStatusFilter || undefined,
     search: searchQuery.trim() || undefined,
     sortBy,
     sortDirection,
     page: currentPage,
     limit: ITEMS_PER_PAGE,
-  }), [activePerspective, activeStatus, searchQuery, sortBy, sortDirection, currentPage]);
+  }), [activePerspective, activeStatus, contactStatusFilter, searchQuery, sortBy, sortDirection, currentPage]);
 
   // ── Data hooks ──
   const {
@@ -754,6 +775,39 @@ const ContractsHubPage: React.FC = () => {
           </div>
 
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {/* Contact status pills */}
+            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+              {([
+                { key: null, label: 'All' },
+                { key: 'active', label: 'Active' },
+                { key: 'inactive', label: 'Inactive' },
+              ] as const).map(({ key, label }) => {
+                const isActive = contactStatusFilter === key;
+                return (
+                  <button
+                    key={label}
+                    onClick={() => setContactStatusFilter(key)}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: 20,
+                      border: isActive
+                        ? `1.5px solid ${colors.brand.primary}`
+                        : `1px solid ${colors.utility.primaryText}15`,
+                      background: isActive ? colors.brand.primary + '12' : 'transparent',
+                      color: isActive ? colors.brand.primary : colors.utility.secondaryText,
+                      fontSize: 11,
+                      fontWeight: isActive ? 700 : 500,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                      lineHeight: 1,
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+
             {/* Search */}
             <div
               style={{
@@ -801,26 +855,113 @@ const ContractsHubPage: React.FC = () => {
               <RefreshCw size={14} />
             </button>
 
-            {/* Create button */}
-            <button
-              onClick={handleCreateClick}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '8px 18px',
-                borderRadius: 10,
-                border: 'none',
-                background: colors.brand.primary,
-                color: '#fff',
-                fontSize: 13,
-                fontWeight: 700,
-                cursor: 'pointer',
-              }}
-            >
-              <Plus size={14} />
-              New Contract
-            </button>
+            {/* Split "New" dropdown */}
+            <div ref={newDropdownRef} style={{ position: 'relative' }}>
+              <button
+                onClick={() => setShowNewDropdown((prev) => !prev)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '8px 14px 8px 18px',
+                  borderRadius: 10,
+                  border: 'none',
+                  background: colors.brand.primary,
+                  color: '#fff',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                <Plus size={14} />
+                New
+                <ChevronDownIcon
+                  size={14}
+                  style={{
+                    transition: 'transform 0.2s',
+                    transform: showNewDropdown ? 'rotate(180deg)' : 'rotate(0deg)',
+                  }}
+                />
+              </button>
+
+              {showNewDropdown && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: 0,
+                    marginTop: 6,
+                    minWidth: 190,
+                    borderRadius: 10,
+                    border: `1px solid ${colors.utility.primaryText}15`,
+                    background: isDarkMode ? colors.utility.secondaryBackground : '#fff',
+                    boxShadow: '0 8px 24px -4px rgba(0,0,0,0.15)',
+                    overflow: 'hidden',
+                    zIndex: 50,
+                  }}
+                >
+                  <button
+                    onClick={() => {
+                      setShowNewDropdown(false);
+                      handleCreateClick();
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      width: '100%',
+                      padding: '12px 16px',
+                      border: 'none',
+                      background: 'transparent',
+                      color: colors.utility.primaryText,
+                      fontSize: 13,
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      transition: 'background 0.1s',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = colors.brand.primary + '0A';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                    }}
+                  >
+                    <FileText size={15} style={{ color: colors.brand.primary }} />
+                    New Contract
+                  </button>
+                  <div style={{ height: 1, background: colors.utility.primaryText + '10' }} />
+                  <button
+                    onClick={() => {
+                      setShowNewDropdown(false);
+                      navigate('/contacts/create');
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      width: '100%',
+                      padding: '12px 16px',
+                      border: 'none',
+                      background: 'transparent',
+                      color: colors.utility.primaryText,
+                      fontSize: 13,
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      transition: 'background 0.1s',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = colors.brand.primary + '0A';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                    }}
+                  >
+                    <UserPlus size={15} style={{ color: colors.semantic.success }} />
+                    New Contact
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
