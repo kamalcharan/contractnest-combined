@@ -1,0 +1,11 @@
+Feature: Add CNAK ID with copy to contract header + Remove Blocks from summary bar
+Branch: feat-cnak-header-remove-blocks
+Date: 2026-02-26
+
+Submodules Affected: contractnest-ui
+
+Files Changed:
+  - contractnest-ui/src/pages/contracts/detail/index.tsx
+
+Copy Command (PowerShell):
+  Copy-Item "MANUAL_COPY_FILES\feat-cnak-header-remove-blocks\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
