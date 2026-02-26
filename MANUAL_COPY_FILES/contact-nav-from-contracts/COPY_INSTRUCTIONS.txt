@@ -1,0 +1,24 @@
+Feature: Contact Navigation from Contracts Hub
+================================================
+
+Files Changed (3 files, all in contractnest-ui):
+  1. src/components/contracts/list/ClientGroupHeader.tsx
+     - Added buyerId + onViewContact props
+     - Added ExternalLink arrow button (navigates to /contacts/:id)
+
+  2. src/components/contracts/list/ContractPortfolioRow.tsx
+     - Added onContactClick prop
+     - Made client name section clickable (navigates to /contacts/:id)
+
+  3. src/pages/contracts/hub/index.tsx
+     - Added handleContactClick() function
+     - Passes buyerId + onViewContact to ClientGroupHeader
+     - Passes onContactClick to ContractPortfolioRow (both views)
+
+Copy Commands (PowerShell):
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\contact-nav-from-contracts\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Done! 3 files copied." -ForegroundColor Green
