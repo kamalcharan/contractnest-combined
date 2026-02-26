@@ -1,9 +1,8 @@
 // src/pages/contracts/hub/index.tsx
-// ContractsHub — Unified Relationships view.
-// Contacts are parent rows ("Relationships"), contracts nest underneath.
-// Click parent row → expand contracts, click arrow → Contact Dashboard.
-// Click contract sub-row → Contract Detail page.
-// Keeps: Perspective switcher, Pipeline bar, Search, Pagination, ContractWizard.
+// ContractsHub — Portfolio list view with pipeline bar, status filters,
+// sort controls, flat/grouped toggle, and pagination.
+// Cycle 4 v2: Single-column list rows (not grid), 6 statuses, Active default,
+// pipeline bar with counts + colored segments. Fixed By Client grouping.
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -17,33 +16,42 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowRightLeft,
-  Users,
   ChevronDown as ChevronDownIcon,
   UserPlus,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useContractStats, contractKeys } from '@/hooks/queries/useContractQueries';
+import { useContracts, useGroupedContracts, useContractStats, contractKeys } from '@/hooks/queries/useContractQueries';
 import { useAuth } from '@/context/AuthContext';
 import { prefetchContacts } from '@/hooks/useContacts';
-import type { Contract } from '@/types/contracts';
-import type { RelationshipSortOption, RelationshipPerspective } from '@/types/relationships';
+import type {
+  ContractListFilters,
+  Contract,
+  ContractGroup,
+} from '@/types/contracts';
 import { VaNiLoader } from '@/components/common/loaders/UnifiedLoader';
 import ContractWizard from '@/components/contracts/ContractWizard';
 import type { ContractType } from '@/components/contracts/ContractWizard';
 
-// Unified Relationships components
-import RelationshipRow from '@/components/contracts/list/RelationshipRow';
-import ContractSubRow from '@/components/contracts/list/ContractSubRow';
-import RelationshipSummaryStrip from '@/components/contracts/list/RelationshipSummaryStrip';
-import RelationshipSortSelect from '@/components/contracts/list/RelationshipSortSelect';
-import { useRelationships, useRelationshipContracts, useRelationshipPortfolio, relationshipKeys } from '@/hooks/queries/useRelationshipQueries';
+// Portfolio list components
+import ContractPortfolioRow from '@/components/contracts/list/ContractPortfolioRow';
+import PortfolioSummaryStrip from '@/components/contracts/list/PortfolioSummaryStrip';
+import PortfolioSortSelect from '@/components/contracts/list/PortfolioSortSelect';
+import type { PortfolioSortOption } from '@/components/contracts/list/PortfolioSortSelect';
+
+// Grouped view components
+import ViewModeToggle from '@/components/contracts/list/ViewModeToggle';
+import type { ViewMode } from '@/components/contracts/list/ViewModeToggle';
+import ClientGroupHeader from '@/components/contracts/list/ClientGroupHeader';
+
+// Quick Add Contact Drawer (same as contacts page)
+import QuickAddContactDrawer from '@/components/contacts/QuickAddContactDrawer';
 
 
 // ═══════════════════════════════════════════════════
 // PERSPECTIVE SWITCHER (Revenue/Expense)
 // ═══════════════════════════════════════════════════
 
-type Perspective = RelationshipPerspective;
+type Perspective = 'revenue' | 'expense';
 
 interface PerspectiveSwitcherProps {
   active: Perspective;
@@ -96,6 +104,7 @@ const PerspectiveSwitcher: React.FC<PerspectiveSwitcherProps> = ({
 
 // ═══════════════════════════════════════════════════
 // STATUS PIPELINE BAR (6 statuses with counts + colored bar)
+// Draft | In Review | Pending | Active | Completed | Expired
 // ═══════════════════════════════════════════════════
 
 interface StatusStage {
@@ -274,7 +283,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({ perspective, colors, onCreateTy
           marginBottom: 20,
         }}
       >
-        <Users size={32} style={{ color: colors.brand.primary, opacity: 0.6 }} />
+        <FileText size={32} style={{ color: colors.brand.primary, opacity: 0.6 }} />
       </div>
       <h3
         style={{
@@ -284,7 +293,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({ perspective, colors, onCreateTy
           marginBottom: 8,
         }}
       >
-        No {label} relationships yet
+        No {label} contracts yet
       </h3>
       <p
         style={{
@@ -295,8 +304,8 @@ const EmptyState: React.FC<EmptyStateProps> = ({ perspective, colors, onCreateTy
           marginBottom: 24,
         }}
       >
-        Create your first {label} contract to start managing relationships,
-        tracking agreements, and keeping everything organized.
+        Create your first {label} contract to start managing agreements,
+        tracking health, and keeping everything organized.
       </p>
       <button
         onClick={() => onCreateType(label as ContractType)}
@@ -333,7 +342,6 @@ interface PaginationProps {
   itemsPerPage: number;
   onPageChange: (page: number) => void;
   colors: any;
-  label?: string;
 }
 
 const Pagination: React.FC<PaginationProps> = ({
@@ -343,7 +351,6 @@ const Pagination: React.FC<PaginationProps> = ({
   itemsPerPage,
   onPageChange,
   colors,
-  label = 'relationships',
 }) => {
   if (totalPages <= 1) return null;
 
@@ -373,7 +380,7 @@ const Pagination: React.FC<PaginationProps> = ({
       }}
     >
       <span style={{ fontSize: 13, color: colors.utility.secondaryText }}>
-        Showing {startItem} to {endItem} of {totalItems} {label}
+        Showing {startItem} to {endItem} of {totalItems} contracts
       </span>
       <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
         <button
@@ -436,100 +443,7 @@ const Pagination: React.FC<PaginationProps> = ({
 
 
 // ═══════════════════════════════════════════════════
-// EXPANDED CONTRACTS SECTION (lazy-loaded sub-rows)
-// ═══════════════════════════════════════════════════
-
-interface ExpandedContractsSectionProps {
-  contactId: string;
-  perspective: Perspective;
-  onNavigateContract: (contractId: string) => void;
-  colors: any;
-  isDarkMode: boolean;
-}
-
-const ExpandedContractsSection: React.FC<ExpandedContractsSectionProps> = ({
-  contactId,
-  perspective,
-  onNavigateContract,
-  colors,
-  isDarkMode,
-}) => {
-  const { data: contracts, isLoading } = useRelationshipContracts(contactId, perspective, {
-    enabled: true,
-  });
-
-  if (isLoading) {
-    return (
-      <div
-        style={{
-          padding: '12px 20px 12px 76px',
-          background: isDarkMode ? 'rgba(30, 41, 59, 0.3)' : 'rgba(248, 250, 252, 0.6)',
-          borderRadius: '0 0 12px 12px',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div
-            style={{
-              width: 14,
-              height: 14,
-              borderRadius: '50%',
-              border: `2px solid ${colors.brand.primary}40`,
-              borderTopColor: colors.brand.primary,
-              animation: 'spin 0.8s linear infinite',
-            }}
-          />
-          <span style={{ fontSize: 12, color: colors.utility.secondaryText }}>
-            Loading contracts...
-          </span>
-        </div>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
-    );
-  }
-
-  if (!contracts || contracts.length === 0) {
-    return (
-      <div
-        style={{
-          padding: '16px 20px 16px 76px',
-          background: isDarkMode ? 'rgba(30, 41, 59, 0.3)' : 'rgba(248, 250, 252, 0.6)',
-          borderRadius: '0 0 12px 12px',
-          fontSize: 12,
-          color: colors.utility.secondaryText,
-          fontStyle: 'italic',
-        }}
-      >
-        No contracts found for this relationship.
-      </div>
-    );
-  }
-
-  return (
-    <div
-      style={{
-        borderRadius: '0 0 12px 12px',
-        overflow: 'hidden',
-        border: `1px solid ${isDarkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}`,
-        borderTop: 'none',
-      }}
-    >
-      {contracts.map((c: Contract, idx: number) => (
-        <ContractSubRow
-          key={c.id}
-          contract={c}
-          isLast={idx === contracts.length - 1}
-          onNavigateContract={onNavigateContract}
-          colors={colors}
-          isDarkMode={isDarkMode}
-        />
-      ))}
-    </div>
-  );
-};
-
-
-// ═══════════════════════════════════════════════════
-// MAIN HUB PAGE — UNIFIED RELATIONSHIPS VIEW
+// MAIN HUB PAGE
 // ═══════════════════════════════════════════════════
 
 const ITEMS_PER_PAGE = 25;
@@ -566,28 +480,23 @@ const ContractsHubPage: React.FC = () => {
   const activePerspective: Perspective = perspective || 'revenue';
   const perspectiveType = activePerspective === 'revenue' ? 'client' : 'vendor';
 
-  // ── Filter state ──
+  // ── Filter state — Active is the default status ──
   const [activeStatus, setActiveStatus] = useState<string | null>(
-    searchParams.get('status') || null
+    searchParams.get('status') || 'active'
   );
-  const [contactStatusFilter, setContactStatusFilter] = useState<'active' | 'inactive' | 'archived' | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<RelationshipSortOption>('name');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [sortBy, setSortBy] = useState<PortfolioSortOption>('health_score');
   const [currentPage, setCurrentPage] = useState(1);
 
-  // ── Split "New" dropdown state ──
-  const [showNewDropdown, setShowNewDropdown] = useState(false);
-  const newDropdownRef = useRef<HTMLDivElement>(null);
+  // ── View mode state (flat vs grouped) ──
+  const [viewMode, setViewMode] = useState<ViewMode>('flat');
+  const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
 
-  // ── Expand state for relationship rows ──
-  const [expandedContacts, setExpandedContacts] = useState<Set<string>>(new Set());
-
-  const toggleContactExpand = (contactId: string) => {
-    setExpandedContacts((prev) => {
+  const toggleClientExpand = (key: string) => {
+    setExpandedClients((prev) => {
       const next = new Set(prev);
-      if (next.has(contactId)) next.delete(contactId);
-      else next.add(contactId);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
   };
@@ -596,7 +505,11 @@ const ContractsHubPage: React.FC = () => {
   const [showWizard, setShowWizard] = useState(false);
   const [wizardContractType, setWizardContractType] = useState<ContractType>('client');
 
-  // ── Close dropdown on outside click ──
+  // ── Split "New" dropdown + Quick Add Contact drawer ──
+  const [showNewDropdown, setShowNewDropdown] = useState(false);
+  const newDropdownRef = useRef<HTMLDivElement>(null);
+  const [isQuickAddContactOpen, setIsQuickAddContactOpen] = useState(false);
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (newDropdownRef.current && !newDropdownRef.current.contains(e.target as Node)) {
@@ -609,52 +522,92 @@ const ContractsHubPage: React.FC = () => {
     }
   }, [showNewDropdown]);
 
-  // ── Reset page when filters change ──
+  // ── Reset page + invalidate stats when perspective changes ──
   const prevPerspective = useRef(activePerspective);
   useEffect(() => {
     setCurrentPage(1);
-    setExpandedContacts(new Set());
     if (prevPerspective.current !== activePerspective) {
       prevPerspective.current = activePerspective;
       queryClient.invalidateQueries({ queryKey: contractKeys.stats() });
-      queryClient.invalidateQueries({ queryKey: relationshipKeys.all });
     }
-  }, [activePerspective, activeStatus, contactStatusFilter, searchQuery, sortBy]);
+  }, [activePerspective, activeStatus, searchQuery, sortBy, viewMode]);
 
-  // ── Build unified filters ──
-  const relationshipFilters = useMemo(() => ({
-    perspective: activePerspective,
-    status: activeStatus as any,
-    contactStatus: contactStatusFilter || undefined,
-    search: searchQuery.trim() || undefined,
-    sortBy,
-    sortDirection,
-    page: currentPage,
-    limit: ITEMS_PER_PAGE,
-  }), [activePerspective, activeStatus, contactStatusFilter, searchQuery, sortBy, sortDirection, currentPage]);
+  // ── Derive sort direction ──
+  const sortOrder = sortBy === 'health_score' || sortBy === 'completion' ? 'asc' : 'desc';
+
+  // ── Build API filters ──
+  // Revenue mode: contract_type='client' (I sell to clients)
+  // Expense mode: contract_type='vendor' (I buy from vendors)
+  const filters: ContractListFilters = useMemo(() => {
+    const f: ContractListFilters = {
+      limit: ITEMS_PER_PAGE,
+      page: currentPage,
+      contract_type: (activePerspective === 'revenue' ? 'client' : 'vendor') as any,
+      sort_by: sortBy as any,
+      sort_direction: sortOrder,
+    };
+    if (activeStatus) f.status = activeStatus as any;
+    if (searchQuery.trim()) f.search = searchQuery.trim();
+    return f;
+  }, [activePerspective, activeStatus, searchQuery, sortBy, sortOrder, currentPage]);
 
   // ── Data hooks ──
-  const {
-    data: relationshipsData,
-    isLoading,
-    isError,
-    refetch,
-  } = useRelationships(relationshipFilters);
-
-  const {
-    data: portfolioSummary,
-    isLoading: isPortfolioLoading,
-  } = useRelationshipPortfolio(activePerspective);
-
+  const { data: contractsData, isLoading: isLoadingFlat, isError: isErrorFlat, refetch: refetchFlat } = useContracts(
+    filters,
+    { enabled: viewMode === 'flat' }
+  );
+  const { data: groupedData, isLoading: isLoadingGrouped, isError: isErrorGrouped, refetch: refetchGrouped } = useGroupedContracts(
+    filters,
+    { enabled: viewMode === 'grouped' }
+  );
   const { data: statsData } = useContractStats(perspectiveType);
 
-  const relationships = relationshipsData?.relationships || [];
-  const totalCount = relationshipsData?.totalCount || 0;
-  const totalPages = relationshipsData?.totalPages || 1;
+  const isLoading = viewMode === 'flat' ? isLoadingFlat : isLoadingGrouped;
+  const isError = viewMode === 'flat' ? isErrorFlat : isErrorGrouped;
+  const refetch = viewMode === 'flat' ? refetchFlat : refetchGrouped;
 
-  // ── Status counts from stats (for pipeline bar) ──
+  const contracts = contractsData?.items || [];
+  const groups = groupedData?.groups || [];
+  const totalCount = viewMode === 'flat'
+    ? (contractsData?.total_count || 0)
+    : (groupedData?.total_count || 0);
+
+  // ── Pagination info ──
+  const pageInfo = viewMode === 'flat' ? contractsData?.page_info : groupedData?.page_info;
+  const totalPages = pageInfo?.total_pages || Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
+
+  // ── Compute perspective-specific portfolio stats from loaded contracts ──
+  const visibleContracts = viewMode === 'flat'
+    ? contracts
+    : groups.flatMap((g: ContractGroup) => g.contracts);
+
+  const computedPortfolio = useMemo(() => {
+    const list = visibleContracts;
+    const totalVal = list.reduce((s: number, c: Contract) => s + (c.grand_total || c.total_value || 0), 0);
+    const collected = list.reduce((s: number, c: Contract) => s + (c.total_collected || 0), 0);
+    const healthSum = list.reduce((s: number, c: Contract) => s + (c.health_score ?? 100), 0);
+    const overdue = list.reduce((s: number, c: Contract) => s + (c.events_overdue || 0), 0);
+    const attention = list.filter((c: Contract) =>
+      (c.events_overdue || 0) > 0 || ((c.health_score ?? 100) > 0 && (c.health_score ?? 100) < 50)
+    ).length;
+
+    return {
+      totalValue: totalVal,
+      stats: {
+        total_collected: collected,
+        outstanding: totalVal - collected,
+        avg_health_score: list.length > 0 ? Math.round(healthSum / list.length) : 0,
+        needs_attention_count: attention,
+        total_overdue_events: overdue,
+        total_invoiced: 0,
+      },
+    };
+  }, [visibleContracts]);
+
+  // ── Status counts from stats ──
   const statusCounts: Record<string, number> = statsData?.by_status || {};
 
+  // ── Pipeline stages: exactly 6 statuses ──
   const pipelineStages: StatusStage[] = useMemo(() => [
     { key: 'draft', label: 'Draft', count: statusCounts['draft'] || 0, color: colors.utility.secondaryText },
     { key: 'pending_review', label: 'In Review', count: statusCounts['pending_review'] || 0, color: colors.brand.secondary || colors.brand.primary },
@@ -683,36 +636,21 @@ const ContractsHubPage: React.FC = () => {
     openWizard(perspectiveType as ContractType);
   };
 
-  // ── Navigation handlers ──
-  const handleNavigateContact = (contactId: string) => {
-    navigate(`/contacts/${contactId}`);
+  const handleRowClick = (id: string) => {
+    navigate(`/contracts/${id}`);
   };
 
-  const handleNavigateContract = (contractId: string) => {
-    navigate(`/contracts/${contractId}`);
-  };
+  // ── Expand all groups by default when switching to grouped mode ──
+  useEffect(() => {
+    if (viewMode === 'grouped' && groups.length > 0 && expandedClients.size === 0) {
+      setExpandedClients(new Set(groups.map((g) => g.buyer_id || g.buyer_company)));
+    }
+  }, [viewMode, groups.length]);
 
   // ── Show states ──
-  const hasData = relationships.length > 0;
-  const showEmptyState = !isLoading && !hasData;
-
-  // ── Debounce search ──
-  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
-  const [debouncedSearch, setDebouncedSearch] = useState('');
-
-  const handleSearchChange = (value: string) => {
-    setSearchQuery(value);
-    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
-    searchTimeoutRef.current = setTimeout(() => {
-      setDebouncedSearch(value);
-    }, 300);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
-    };
-  }, []);
+  const hasData = viewMode === 'flat' ? contracts.length > 0 : groups.length > 0;
+  const hasLoadedData = viewMode === 'flat' ? !!contractsData : !!groupedData;
+  const showEmptyState = (!isLoading && !hasData) || (isError && !hasLoadedData);
 
   // ── Render ──
   return (
@@ -739,7 +677,7 @@ const ContractsHubPage: React.FC = () => {
                   margin: 0,
                 }}
               >
-                Relationships
+                All Contracts
               </h1>
               <span
                 style={{
@@ -749,7 +687,7 @@ const ContractsHubPage: React.FC = () => {
                   fontWeight: 500,
                 }}
               >
-                {totalCount} relationship{totalCount !== 1 ? 's' : ''}
+                {totalCount} contract{totalCount !== 1 ? 's' : ''}
               </span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
@@ -775,39 +713,6 @@ const ContractsHubPage: React.FC = () => {
           </div>
 
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            {/* Contact status pills */}
-            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-              {([
-                { key: null, label: 'All' },
-                { key: 'active', label: 'Active' },
-                { key: 'inactive', label: 'Inactive' },
-              ] as const).map(({ key, label }) => {
-                const isActive = contactStatusFilter === key;
-                return (
-                  <button
-                    key={label}
-                    onClick={() => setContactStatusFilter(key)}
-                    style={{
-                      padding: '5px 12px',
-                      borderRadius: 20,
-                      border: isActive
-                        ? `1.5px solid ${colors.brand.primary}`
-                        : `1px solid ${colors.utility.primaryText}15`,
-                      background: isActive ? colors.brand.primary + '12' : 'transparent',
-                      color: isActive ? colors.brand.primary : colors.utility.secondaryText,
-                      fontSize: 11,
-                      fontWeight: isActive ? 700 : 500,
-                      cursor: 'pointer',
-                      transition: 'all 0.15s',
-                      lineHeight: 1,
-                    }}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-
             {/* Search */}
             <div
               style={{
@@ -824,8 +729,8 @@ const ContractsHubPage: React.FC = () => {
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                placeholder="Search relationships..."
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search contracts..."
                 style={{
                   border: 'none',
                   outline: 'none',
@@ -855,7 +760,7 @@ const ContractsHubPage: React.FC = () => {
               <RefreshCw size={14} />
             </button>
 
-            {/* Split "New" dropdown */}
+            {/* Split "New" dropdown — New Contract + New Contact */}
             <div ref={newDropdownRef} style={{ position: 'relative' }}>
               <button
                 onClick={() => setShowNewDropdown((prev) => !prev)}
@@ -933,7 +838,7 @@ const ContractsHubPage: React.FC = () => {
                   <button
                     onClick={() => {
                       setShowNewDropdown(false);
-                      navigate('/contacts/create');
+                      setIsQuickAddContactOpen(true);
                     }}
                     style={{
                       display: 'flex',
@@ -965,14 +870,14 @@ const ContractsHubPage: React.FC = () => {
           </div>
         </div>
 
-        {/* ═══ SUMMARY STRIP ═══ */}
-        <RelationshipSummaryStrip
-          summary={portfolioSummary}
-          isLoading={isPortfolioLoading}
+        {/* ═══ SUMMARY STRIP (computed from loaded contracts per perspective) ═══ */}
+        <PortfolioSummaryStrip
+          stats={computedPortfolio.stats}
+          totalValue={computedPortfolio.totalValue}
           colors={colors}
         />
 
-        {/* ═══ PIPELINE BAR ═══ */}
+        {/* ═══ PIPELINE BAR (6 statuses with counts + colored bar) ═══ */}
         <StatusPipelineBar
           stages={pipelineStages}
           activeStatus={activeStatus}
@@ -980,7 +885,7 @@ const ContractsHubPage: React.FC = () => {
           colors={colors}
         />
 
-        {/* ═══ CONTROLS: Sort ═══ */}
+        {/* ═══ CONTROLS: View mode + Sort ═══ */}
         <div
           style={{
             display: 'flex',
@@ -990,17 +895,17 @@ const ContractsHubPage: React.FC = () => {
             gap: 8,
           }}
         >
-          <RelationshipSortSelect
-            value={sortBy}
-            direction={sortDirection}
-            onChange={(s, d) => { setSortBy(s); setSortDirection(d); }}
+          <ViewModeToggle
+            value={viewMode}
+            onChange={setViewMode}
+            groupLabel={activePerspective === 'revenue' ? 'By Client' : 'By Vendor'}
             colors={colors}
-            isDarkMode={isDarkMode}
           />
+          <PortfolioSortSelect value={sortBy} onChange={setSortBy} colors={colors} />
         </div>
 
-        {/* ═══ RELATIONSHIP LIST ═══ */}
-        {isLoading ? (
+        {/* ═══ CONTRACT LIST / GROUPED CONTENT ═══ */}
+        {isLoading && !hasLoadedData ? (
           <div
             style={{
               background: colors.utility.secondaryBackground,
@@ -1011,7 +916,7 @@ const ContractsHubPage: React.FC = () => {
           >
             <VaNiLoader
               size="md"
-              message={`Loading ${perspectiveType} relationships...`}
+              message={`Loading ${perspectiveType} contracts...`}
               showSkeleton={true}
               skeletonVariant="list"
               skeletonCount={8}
@@ -1032,34 +937,51 @@ const ContractsHubPage: React.FC = () => {
               onCreateType={openWizard}
             />
           </div>
-        ) : (
+        ) : viewMode === 'grouped' ? (
+          /* ═══ GROUPED VIEW ═══ */
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {relationships.map((r) => {
-              const contactId = r.contact.id;
-              const isExpanded = expandedContacts.has(contactId);
-
+            {groups.map((group: ContractGroup) => {
+              const groupKey = group.buyer_id || group.buyer_company;
+              const isExpanded = expandedClients.has(groupKey);
               return (
-                <div key={contactId}>
-                  <RelationshipRow
-                    relationship={r}
+                <div key={groupKey}>
+                  <ClientGroupHeader
+                    buyerName={group.buyer_name}
+                    buyerCompany={group.buyer_company}
+                    totals={group.group_totals}
                     isExpanded={isExpanded}
-                    onToggleExpand={() => toggleContactExpand(contactId)}
-                    onNavigateContact={handleNavigateContact}
+                    onToggle={() => toggleClientExpand(groupKey)}
                     colors={colors}
-                    isDarkMode={isDarkMode}
                   />
                   {isExpanded && (
-                    <ExpandedContractsSection
-                      contactId={contactId}
-                      perspective={activePerspective}
-                      onNavigateContract={handleNavigateContract}
-                      colors={colors}
-                      isDarkMode={isDarkMode}
-                    />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingLeft: 36, paddingTop: 6, paddingBottom: 8 }}>
+                      {group.contracts.map((c: Contract) => (
+                        <ContractPortfolioRow
+                          key={c.id}
+                          contract={c}
+                          colors={colors}
+                          isDarkMode={isDarkMode}
+                          onRowClick={handleRowClick}
+                        />
+                      ))}
+                    </div>
                   )}
                 </div>
               );
             })}
+          </div>
+        ) : (
+          /* ═══ FLAT VIEW — Single Column List ═══ */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {contracts.map((c: Contract) => (
+              <ContractPortfolioRow
+                key={c.id}
+                contract={c}
+                colors={colors}
+                isDarkMode={isDarkMode}
+                onRowClick={handleRowClick}
+              />
+            ))}
           </div>
         )}
 
@@ -1072,7 +994,6 @@ const ContractsHubPage: React.FC = () => {
             itemsPerPage={ITEMS_PER_PAGE}
             onPageChange={setCurrentPage}
             colors={colors}
-            label="relationships"
           />
         )}
       </div>
@@ -1084,6 +1005,17 @@ const ContractsHubPage: React.FC = () => {
         contractType={wizardContractType}
         onComplete={() => {
           setShowWizard(false);
+          refetch();
+        }}
+      />
+
+      {/* Quick Add Contact Drawer */}
+      <QuickAddContactDrawer
+        isOpen={isQuickAddContactOpen}
+        onClose={() => setIsQuickAddContactOpen(false)}
+        onSuccess={(contactId: string) => {
+          setIsQuickAddContactOpen(false);
+          // Refresh data to show new contact in grouped view
           refetch();
         }}
       />
