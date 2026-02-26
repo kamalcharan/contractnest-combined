@@ -1,0 +1,38 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS - Hide Dashboard + Redirect to /ops/cockpit
+═══════════════════════════════════════════════════
+
+Feature: Hide Dashboard menu, redirect all login/signup flows to /ops/cockpit
+Submodules Affected: contractnest-ui
+
+FILES TO COPY (19 files):
+─────────────────────────────────────────────────────
+1.  contractnest-ui/src/utils/constants/industryMenus.ts       — Dashboard menu hidden
+2.  contractnest-ui/src/context/AuthContext.tsx                 — Login/register redirects
+3.  contractnest-ui/src/pages/auth/GoogleCallbackPage.tsx       — Google OAuth redirects
+4.  contractnest-ui/src/pages/auth/LoginPage.tsx                — Already-authenticated redirect
+5.  contractnest-ui/src/pages/auth/RegisterPage.tsx             — Already-authenticated redirect
+6.  contractnest-ui/src/pages/auth/SelectTenantPage.tsx         — Tenant selection redirect
+7.  contractnest-ui/src/pages/auth/CreateTenantPage.tsx         — Tenant creation redirect
+8.  contractnest-ui/src/pages/auth/ForgotPasswordPage.tsx       — Already-authenticated redirect
+9.  contractnest-ui/src/contexts/OnboardingContext.ts           — Onboarding complete redirects
+10. contractnest-ui/src/components/onboarding/OnboardingLayout.tsx — Onboarding layout redirects
+11. contractnest-ui/src/pages/onboarding/steps/CompleteStep.tsx — Onboarding final step redirect
+12. contractnest-ui/src/pages/onboarding/OnboardingPendingPage.tsx — Pending page redirect
+13. contractnest-ui/src/pages/misc/UnauthorizedPage.tsx         — Go home redirect
+14. contractnest-ui/src/pages/misc/NotFoundPage.tsx             — Go home redirect
+15. contractnest-ui/src/pages/misc/ErrorPage.tsx                — Go home redirect
+16. contractnest-ui/src/pages/welcome/index.tsx                 — Go to dashboard redirect
+17. contractnest-ui/src/components/layout/TenantSwitcher.tsx    — Tenant switch redirect
+18. contractnest-ui/src/hooks/queries/useOnboarding.ts          — Onboarding hook redirects
+19. contractnest-ui/src/App.tsx                                 — SmartHomePage root redirect
+
+CHANGES SUMMARY:
+─────────────────────────────────────────────────────
+1. Dashboard menu item commented out in sidebar navigation
+2. All navigate('/dashboard') → navigate('/ops/cockpit')
+3. All Navigate to="/dashboard" → Navigate to="/ops/cockpit"
+4. All window.location.href = '/dashboard' → window.location.href = '/ops/cockpit'
+5. Backup files (AuthContextbak.tsx, App2.tsx) left unchanged
+
+NOTE: The /dashboard route in App.tsx still exists and works via direct URL access.
