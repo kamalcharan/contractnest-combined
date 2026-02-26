@@ -44,11 +44,11 @@ const emptyContractSummary = (): RelationshipContractSummary => ({
 
 /** Determine classification filter from perspective */
 const classificationFromPerspective = (perspective: 'revenue' | 'expense'): string[] => {
-  // Revenue = clients we sell to → "buyer" classification on contact
-  // Expense = vendors we buy from → "vendor" / "seller" classification on contact
+  // Revenue = clients who buy from us → "client" classification on contact
+  // Expense = vendors who supply to us → "vendor" classification on contact
   return perspective === 'revenue'
-    ? ['buyer']
-    : ['vendor', 'seller'];
+    ? ['client']
+    : ['vendor'];
 };
 
 /** Contract type filter from perspective (for contracts API) */
