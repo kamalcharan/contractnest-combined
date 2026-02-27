@@ -1,0 +1,46 @@
+═══════════════════════════════════════════════════
+FEATURE: Manual Contract Status Change Dropdown
+═══════════════════════════════════════════════════
+
+Files Changed:
+  - contractnest-ui/src/pages/contracts/detail/index.tsx — Status change dropdown + confirmation dialog
+
+Submodules Affected: contractnest-ui
+
+═══════════════════════════════════════════════════
+STEP 1: Resolve Git Conflicts
+═══════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Abort the failed merge
+git merge --abort
+
+═══════════════════════════════════════════════════
+STEP 2: Copy the Modified File
+═══════════════════════════════════════════════════
+
+Copy-Item "MANUAL_COPY_FILES\feat-status-change-dropdown\contractnest-ui\src\pages\contracts\detail\index.tsx" -Destination "contractnest-ui\src\pages\contracts\detail\index.tsx" -Force
+
+Write-Host "File copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+STEP 3: One-Time Migration (Supabase SQL Editor)
+═══════════════════════════════════════════════════
+
+Open Supabase SQL Editor and run the SQL from:
+  MANUAL_COPY_FILES\feat-status-change-dropdown\ONE_TIME_MIGRATION_process_pending_events.sql
+
+Run Step 1 (SELECT) first to preview affected contracts.
+Then run Step 2 (DO block) to process events.
+Then run Step 3 (SELECT) to verify everything is clean.
+
+═══════════════════════════════════════════════════
+STEP 4: Test Locally
+═══════════════════════════════════════════════════
+
+cd contractnest-ui && npm run dev
+
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════
