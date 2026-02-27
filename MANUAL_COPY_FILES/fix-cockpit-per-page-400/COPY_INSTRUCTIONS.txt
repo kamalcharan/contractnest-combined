@@ -1,0 +1,24 @@
+═══════════════════════════════════════════════════
+FIX: Cockpit per_page 400 Bad Request Error
+═══════════════════════════════════════════════════
+
+PROBLEM:
+  The Ops Cockpit page requests contract-events with per_page: 200,
+  but the backend validator (contractEventValidators.ts) enforces max: 100.
+  This causes a 400 Bad Request error on every cockpit page load.
+
+FIX:
+  Changed per_page: 200 -> per_page: 100 in cockpit/index.tsx (line 1136)
+
+═══════════════════════════════════════════════════
+FILES TO COPY:
+═══════════════════════════════════════════════════
+
+Source -> Destination
+─────────────────────────────────────
+MANUAL_COPY_FILES\fix-cockpit-per-page-400\contractnest-ui\src\pages\ops\cockpit\index.tsx
+  -> contractnest-ui\src\pages\ops\cockpit\index.tsx
+
+═══════════════════════════════════════════════════
+SUBMODULES AFFECTED: contractnest-ui
+═══════════════════════════════════════════════════
