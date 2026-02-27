@@ -1,0 +1,64 @@
+========================================
+COPY INSTRUCTIONS: feat-optional-password-reset
+Make password reset email optional in Add Tenant drawer
+========================================
+
+MODIFIED FILES (3 files across 2 submodules):
+----------------------------------------------
+
+1. contractnest-ui/src/types/tenantManagement.ts
+   - Added send_password_reset?: boolean to CreateTenantRequest
+
+2. contractnest-ui/src/components/subscription/modals/AddTenantDrawer.tsx
+   - Added "Send password reset email to owner" checkbox (default: checked)
+   - Info banner changes color/text based on toggle state
+
+3. contractnest-edge/supabase/functions/admin-tenant-management/handlers/createTenant.ts
+   - Added send_password_reset?: boolean to CreateTenantData interface
+   - Password reset email only sent when send_password_reset !== false (backward compatible)
+
+SUBMODULES AFFECTED:
+  - contractnest-ui
+  - contractnest-edge
+
+========================================
+POWERSHELL COPY COMMANDS:
+========================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Copy UI files
+Copy-Item "MANUAL_COPY_FILES\feat-optional-password-reset\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+# Copy Edge files
+Copy-Item "MANUAL_COPY_FILES\feat-optional-password-reset\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+========================================
+EDGE FUNCTIONS TO REDEPLOY:
+========================================
+  - admin-tenant-management
+
+========================================
+COMMIT MESSAGES (after testing):
+========================================
+
+# contractnest-ui
+cd contractnest-ui
+git add src/types/tenantManagement.ts src/components/subscription/modals/AddTenantDrawer.tsx
+git commit -m "feat: make password reset email optional in Add Tenant drawer"
+git push origin main
+cd ..
+
+# contractnest-edge
+cd contractnest-edge
+git add supabase/functions/admin-tenant-management/handlers/createTenant.ts
+git commit -m "feat: make password reset email optional in createTenant handler"
+git push origin main
+cd ..
+
+# Parent repo
+git add contractnest-ui contractnest-edge
+git commit -m "chore: update submodules - optional password reset in Add Tenant"
+git push origin master
