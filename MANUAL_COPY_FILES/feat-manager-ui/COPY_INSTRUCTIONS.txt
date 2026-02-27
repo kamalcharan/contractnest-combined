@@ -1,0 +1,50 @@
+============================================================
+COPY INSTRUCTIONS - feat-manager-ui
+============================================================
+Feature: Manager assignment UI on contacts (create, edit, view)
+Date: 2026-02-27
+============================================================
+
+SUBMODULES AFFECTED:
+  1. contractnest-ui  (3 files modified)
+
+============================================================
+FILES TO COPY:
+============================================================
+
+1. MODIFIED - ProfileDrawer (contact edit drawer with manager modal)
+   Source:      MANUAL_COPY_FILES/feat-manager-ui/contractnest-ui/src/components/contacts/cockpit/ProfileDrawer.tsx
+   Destination: contractnest-ui/src/components/contacts/cockpit/ProfileDrawer.tsx
+   Changes:
+     - Added 'manager' to ModalType union
+     - Added useContactsForResourceDropdown hook for team member dropdown
+     - Added manager_id/manager_name to Contact interface
+     - Added manager case to openModal, getModalTitle, renderModalContent, transformFormDataForAPI
+     - Added "Account Manager" ViewCard with edit button + display
+
+2. MODIFIED - Contact Create/Edit Page (advanced form with manager picker)
+   Source:      MANUAL_COPY_FILES/feat-manager-ui/contractnest-ui/src/pages/contacts/create.tsx
+   Destination: contractnest-ui/src/pages/contacts/create.tsx
+   Changes:
+     - Added manager_id/manager_name to ContactFormData interface
+     - Added useContactsForResourceDropdown hook
+     - Added Shield icon import
+     - Added "Account Manager" section with team member dropdown before Notes
+     - Added manager_id/manager_name to edit mode population from existingContact
+
+3. MODIFIED - Contact View Page (header shows manager badge)
+   Source:      MANUAL_COPY_FILES/feat-manager-ui/contractnest-ui/src/pages/contacts/view.tsx
+   Destination: contractnest-ui/src/pages/contacts/view.tsx
+   Changes:
+     - Added Shield icon import
+     - Added manager_id/manager_name to local Contact interface
+     - Added manager badge (Shield icon + name) in header next to classifications
+
+============================================================
+PREREQUISITES:
+============================================================
+  - Migration 045_add_manager_to_contacts.sql must be run in Supabase SQL Editor
+  - RPC file 045_update_contact_rpcs_with_manager.sql must be run in Supabase SQL Editor
+  - Edge contactService.ts must be deployed (from previous feat-manager-on-contacts)
+
+============================================================
