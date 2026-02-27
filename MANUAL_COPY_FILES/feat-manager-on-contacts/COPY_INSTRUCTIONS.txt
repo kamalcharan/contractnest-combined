@@ -26,33 +26,19 @@ FILES TO COPY:
    Destination: contractnest-ui/src/services/contactService.ts
 
 ============================================================
-MANUAL SQL STEPS (run in Supabase SQL Editor):
+SUPABASE SQL EDITOR STEPS:
 ============================================================
 
 STEP A: Run migration 045 in Supabase SQL Editor
-   - Open 045_add_manager_to_contacts.sql
+   - Open 045_add_manager_to_contacts.sql (from contractnest-edge/supabase/migrations/contracts/)
    - Execute the ALTER TABLE + CREATE INDEX statements
 
-STEP B: Update RPCs in Supabase SQL Editor
-   These RPCs live directly in Supabase (not in repo), so you need
-   to manually add manager_id/manager_name handling:
-
-   B1. In update_contact_idempotent_v2 - inside the UPDATE t_contacts SET block, add:
-       manager_id   = CASE WHEN p_contact_data ? 'manager_id'
-                           THEN (p_contact_data->>'manager_id')::UUID
-                           ELSE manager_id END,
-       manager_name = CASE WHEN p_contact_data ? 'manager_name'
-                           THEN p_contact_data->>'manager_name'
-                           ELSE manager_name END,
-
-   B2. In create_contact_idempotent_v2 - inside the INSERT INTO t_contacts block, add:
-       Column: manager_id    Value: (p_contact_data->>'manager_id')::UUID
-       Column: manager_name  Value: p_contact_data->>'manager_name'
-
-   B3. In get_contact_full_v2 - inside the SELECT / JSON build, add:
-       c.manager_id, c.manager_name
-
-   B4. In list_contacts_with_channels_v2 - inside the SELECT / JSON build, add:
-       c.manager_id, c.manager_name
+STEP B: Run full RPC replacements in Supabase SQL Editor
+   - Open 045_update_contact_rpcs_with_manager.sql (from MANUAL_COPY_FILES/feat-manager-on-contacts/)
+   - Execute the ENTIRE file — it contains CREATE OR REPLACE for all 4 RPCs:
+     1. update_contact_idempotent_v2  — manager in UPDATE SET block
+     2. create_contact_idempotent_v2  — manager in INSERT block
+     3. get_contact_full_v2           — manager in jsonb_build_object
+     4. list_contacts_with_channels_v2 — manager in jsonb_build_object
 
 ============================================================
