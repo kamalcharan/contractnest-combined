@@ -1,0 +1,78 @@
+========================================
+FEATURE: Admin Create Tenant Account
+BRANCH: feat-admin-create-tenant
+DATE: 2026-02-27
+========================================
+
+SUBMODULES AFFECTED:
+  - contractnest-edge (2 modified, 1 new)
+  - contractnest-api (2 modified)
+  - contractnest-ui (5 modified, 1 new)
+
+========================================
+FILE LIST & COPY TARGETS
+========================================
+
+--- contractnest-edge ---
+
+1. [NEW] handlers/createTenant.ts
+   FROM: MANUAL_COPY_FILES\feat-admin-create-tenant\contractnest-edge\supabase\functions\admin-tenant-management\handlers\createTenant.ts
+   TO:   contractnest-edge\supabase\functions\admin-tenant-management\handlers\createTenant.ts
+   PURPOSE: Core edge handler - creates auth user, tenant, profile, roles, sends password reset email
+
+2. [MODIFIED] admin-tenant-management/index.ts
+   FROM: MANUAL_COPY_FILES\feat-admin-create-tenant\contractnest-edge\supabase\functions\admin-tenant-management\index.ts
+   TO:   contractnest-edge\supabase\functions\admin-tenant-management\index.ts
+   PURPOSE: Added POST /create-tenant route + import for new handler
+
+3. [MODIFIED] auth/handlers/registration.ts
+   FROM: MANUAL_COPY_FILES\feat-admin-create-tenant\contractnest-edge\supabase\functions\auth\handlers\registration.ts
+   TO:   contractnest-edge\supabase\functions\auth\handlers\registration.ts
+   PURPOSE: Added ACCOUNT_ALREADY_EXISTS error code + pre-check for duplicate email before createUser
+
+--- contractnest-api ---
+
+4. [MODIFIED] routes/adminTenantRoutes.ts
+   FROM: MANUAL_COPY_FILES\feat-admin-create-tenant\contractnest-api\src\routes\adminTenantRoutes.ts
+   TO:   contractnest-api\src\routes\adminTenantRoutes.ts
+   PURPOSE: Added POST /api/admin/tenants/create route
+
+5. [MODIFIED] services/adminTenantService.ts
+   FROM: MANUAL_COPY_FILES\feat-admin-create-tenant\contractnest-api\src\services\adminTenantService.ts
+   TO:   contractnest-api\src\services\adminTenantService.ts
+   PURPOSE: Added createTenant() method that proxies to edge function
+
+--- contractnest-ui ---
+
+6. [MODIFIED] services/serviceURLs.ts
+   FROM: MANUAL_COPY_FILES\feat-admin-create-tenant\contractnest-ui\src\services\serviceURLs.ts
+   TO:   contractnest-ui\src\services\serviceURLs.ts
+   PURPOSE: Added CREATE endpoint to TENANT_MANAGEMENT
+
+7. [MODIFIED] types/tenantManagement.ts
+   FROM: MANUAL_COPY_FILES\feat-admin-create-tenant\contractnest-ui\src\types\tenantManagement.ts
+   TO:   contractnest-ui\src\types\tenantManagement.ts
+   PURPOSE: Added CreateTenantRequest and CreateTenantResponse types
+
+8. [NEW] components/subscription/modals/AddTenantDrawer.tsx
+   FROM: MANUAL_COPY_FILES\feat-admin-create-tenant\contractnest-ui\src\components\subscription\modals\AddTenantDrawer.tsx
+   TO:   contractnest-ui\src\components\subscription\modals\AddTenantDrawer.tsx
+   PURPOSE: Right-side drawer form for admin to create a new tenant account
+
+9. [MODIFIED] pages/admin/subscription-management/index.tsx
+   FROM: MANUAL_COPY_FILES\feat-admin-create-tenant\contractnest-ui\src\pages\admin\subscription-management\index.tsx
+   TO:   contractnest-ui\src\pages\admin\subscription-management\index.tsx
+   PURPOSE: Added "+ Add Tenant" button, wired AddTenantDrawer, handleCreateTenant logic
+
+10. [MODIFIED] pages/auth/RegisterPage.tsx
+    FROM: MANUAL_COPY_FILES\feat-admin-create-tenant\contractnest-ui\src\pages\auth\RegisterPage.tsx
+    TO:   contractnest-ui\src\pages\auth\RegisterPage.tsx
+    PURPOSE: Added inline alert for "Account Already Exists" with Sign In + Contact Admin buttons
+
+========================================
+NOTES
+========================================
+- Password is NEVER shared. User receives Supabase password reset email and sets their own.
+- Admin creates tenant from /admin/subscription-management page via "+ Add Tenant" button.
+- When someone tries to sign up with an existing email, they now see an inline alert (not just a toast).
+- Cleanup: If auth user creation succeeds but tenant creation fails, the auth user is deleted (rollback).
