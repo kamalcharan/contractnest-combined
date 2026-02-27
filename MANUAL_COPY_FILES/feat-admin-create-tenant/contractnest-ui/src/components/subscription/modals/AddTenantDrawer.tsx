@@ -45,7 +45,8 @@ export const AddTenantDrawer: React.FC<AddTenantDrawerProps> = ({
     email: '',
     mobile_number: '',
     country_code: 'IN',
-    is_test: false
+    is_test: false,
+    send_password_reset: true
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -84,7 +85,8 @@ export const AddTenantDrawer: React.FC<AddTenantDrawerProps> = ({
         email: '',
         mobile_number: '',
         country_code: 'IN',
-        is_test: false
+        is_test: false,
+        send_password_reset: true
       });
       setErrors({});
       setPhoneError(null);
@@ -495,20 +497,42 @@ export const AddTenantDrawer: React.FC<AddTenantDrawerProps> = ({
                 Mark as Test Account
               </span>
             </label>
+            <label className="flex items-center gap-3 cursor-pointer mt-3">
+              <input
+                type="checkbox"
+                checked={formData.send_password_reset !== false}
+                onChange={(e) => handleChange('send_password_reset', e.target.checked)}
+                className="w-4 h-4 rounded border transition-colors"
+                style={{ accentColor: colors.brand.primary }}
+                disabled={isSubmitting}
+              />
+              <span className="text-sm" style={{ color: colors.utility.primaryText }}>
+                Send password reset email to owner
+              </span>
+            </label>
           </div>
 
           {/* Info Banner */}
           <div
             className="flex items-start gap-3 p-3.5 rounded-xl"
             style={{
-              background: `${colors.brand.primary}10`,
-              border: `1px solid ${colors.brand.primary}20`
+              background: formData.send_password_reset !== false
+                ? `${colors.brand.primary}10`
+                : `${colors.semantic.warning || '#f59e0b'}10`,
+              border: `1px solid ${formData.send_password_reset !== false
+                ? `${colors.brand.primary}20`
+                : `${colors.semantic.warning || '#f59e0b'}20`}`
             }}
           >
-            <Info size={16} className="mt-0.5 flex-shrink-0" style={{ color: colors.brand.primary }} />
+            <Info
+              size={16}
+              className="mt-0.5 flex-shrink-0"
+              style={{ color: formData.send_password_reset !== false ? colors.brand.primary : (colors.semantic.warning || '#f59e0b') }}
+            />
             <p className="text-xs leading-relaxed" style={{ color: colors.utility.secondaryText }}>
-              A password reset email will be sent to the owner automatically.
-              They will set their own password — no password is shared.
+              {formData.send_password_reset !== false
+                ? 'A password reset email will be sent to the owner automatically. They will set their own password — no password is shared.'
+                : 'No email will be sent to the owner. You will need to manually trigger a password reset later from the tenant details.'}
             </p>
           </div>
 

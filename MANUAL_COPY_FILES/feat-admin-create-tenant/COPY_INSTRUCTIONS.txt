@@ -2,6 +2,7 @@
 FEATURE: Admin Create Tenant Account
 BRANCH: feat-admin-create-tenant
 DATE: 2026-02-27
+LAST UPDATED: 2026-02-27 (optional password reset email)
 ========================================
 
 SUBMODULES AFFECTED:
@@ -18,7 +19,7 @@ FILE LIST & COPY TARGETS
 1. [NEW] handlers/createTenant.ts
    FROM: MANUAL_COPY_FILES\feat-admin-create-tenant\contractnest-edge\supabase\functions\admin-tenant-management\handlers\createTenant.ts
    TO:   contractnest-edge\supabase\functions\admin-tenant-management\handlers\createTenant.ts
-   PURPOSE: Core edge handler - creates auth user, tenant, profile, roles, sends password reset email
+   PURPOSE: Core edge handler - creates auth user, tenant, profile, roles; optionally sends password reset email
 
 2. [MODIFIED] admin-tenant-management/index.ts
    FROM: MANUAL_COPY_FILES\feat-admin-create-tenant\contractnest-edge\supabase\functions\admin-tenant-management\index.ts
@@ -52,12 +53,12 @@ FILE LIST & COPY TARGETS
 7. [MODIFIED] types/tenantManagement.ts
    FROM: MANUAL_COPY_FILES\feat-admin-create-tenant\contractnest-ui\src\types\tenantManagement.ts
    TO:   contractnest-ui\src\types\tenantManagement.ts
-   PURPOSE: Added CreateTenantRequest and CreateTenantResponse types
+   PURPOSE: Added CreateTenantRequest (with send_password_reset) and CreateTenantResponse types
 
 8. [NEW] components/subscription/modals/AddTenantDrawer.tsx
    FROM: MANUAL_COPY_FILES\feat-admin-create-tenant\contractnest-ui\src\components\subscription\modals\AddTenantDrawer.tsx
    TO:   contractnest-ui\src\components\subscription\modals\AddTenantDrawer.tsx
-   PURPOSE: Right-side drawer form for admin to create a new tenant account
+   PURPOSE: Right-side drawer form for admin to create a new tenant account (with optional password reset toggle)
 
 9. [MODIFIED] pages/admin/subscription-management/index.tsx
    FROM: MANUAL_COPY_FILES\feat-admin-create-tenant\contractnest-ui\src\pages\admin\subscription-management\index.tsx
@@ -70,8 +71,34 @@ FILE LIST & COPY TARGETS
     PURPOSE: Added inline alert for "Account Already Exists" with Sign In + Contact Admin buttons
 
 ========================================
+POWERSHELL COPY COMMANDS
+========================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Copy Edge files
+Copy-Item "MANUAL_COPY_FILES\feat-admin-create-tenant\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+# Copy API files
+Copy-Item "MANUAL_COPY_FILES\feat-admin-create-tenant\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+
+# Copy UI files
+Copy-Item "MANUAL_COPY_FILES\feat-admin-create-tenant\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+========================================
+EDGE FUNCTIONS TO DEPLOY
+========================================
+  - admin-tenant-management
+  - auth
+
+========================================
 NOTES
 ========================================
+- Password reset email is NOW OPTIONAL (checkbox in Add Tenant drawer, default: checked).
+- When unchecked, no email is sent. Admin can trigger reset later from tenant details.
+- Info banner dynamically changes color/text based on toggle state.
 - Password is NEVER shared. User receives Supabase password reset email and sets their own.
 - Admin creates tenant from /admin/subscription-management page via "+ Add Tenant" button.
 - When someone tries to sign up with an existing email, they now see an inline alert (not just a toast).

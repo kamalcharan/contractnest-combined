@@ -11,6 +11,7 @@ interface CreateTenantData {
   phone_code?: string;
   tenant_type?: 'buyer' | 'seller' | 'mixed';
   is_test?: boolean;
+  send_password_reset?: boolean;
 }
 
 // Generate a workspace code from a name
@@ -160,7 +161,7 @@ async function createDefaultRolesForTenant(supabase: any, tenantId: string, user
 }
 
 export async function handleCreateTenant(supabase: any, data: CreateTenantData) {
-  const { workspace_name, first_name, last_name, email, mobile_number, country_code, phone_code, tenant_type, is_test } = data;
+  const { workspace_name, first_name, last_name, email, mobile_number, country_code, phone_code, tenant_type, is_test, send_password_reset } = data;
 
   // Validate required fields
   if (!workspace_name || !first_name || !last_name || !email) {
@@ -325,16 +326,24 @@ export async function handleCreateTenant(supabase: any, data: CreateTenantData) 
     // 10. Create default roles and assign Admin to owner
     await createDefaultRolesForTenant(supabase, tenant.id, userTenant.id);
 
-    // 11. Send password reset email so user can set their own password
-    console.log('[createTenant] Sending password reset email to:', normalizedEmail);
-    const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://app.contractnest.com';
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
-      redirectTo: `${frontendUrl}/auth/reset-password`
-    });
+    // 11. Optionally send password reset email so user can set their own password
+    let resetError: any = null;
+    const shouldSendReset = send_password_reset !== false; // defaults to true
 
-    if (resetError) {
-      console.error('[createTenant] Password reset email error:', resetError.message);
-      // Non-fatal: account is created, admin can trigger reset later
+    if (shouldSendReset) {
+      console.log('[createTenant] Sending password reset email to:', normalizedEmail);
+      const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://app.contractnest.com';
+      const result = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+        redirectTo: `${frontendUrl}/auth/reset-password`
+      });
+      resetError = result.error;
+
+      if (resetError) {
+        console.error('[createTenant] Password reset email error:', resetError.message);
+        // Non-fatal: account is created, admin can trigger reset later
+      }
+    } else {
+      console.log('[createTenant] Password reset email skipped (admin opted out)');
     }
 
     console.log('[createTenant] Tenant account created successfully');
@@ -356,7 +365,7 @@ export async function handleCreateTenant(supabase: any, data: CreateTenantData) 
           last_name: last_name,
           user_code: userCode
         },
-        password_reset_sent: !resetError
+        password_reset_sent: shouldSendReset && !resetError
       },
       status: 201
     };

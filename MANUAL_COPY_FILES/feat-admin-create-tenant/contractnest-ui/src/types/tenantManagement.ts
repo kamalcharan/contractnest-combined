@@ -150,6 +150,7 @@ export interface CreateTenantRequest {
   phone_code?: string;
   tenant_type?: TenantType;
   is_test?: boolean;
+  send_password_reset?: boolean;
 }
 
 export interface CreateTenantResponse {
