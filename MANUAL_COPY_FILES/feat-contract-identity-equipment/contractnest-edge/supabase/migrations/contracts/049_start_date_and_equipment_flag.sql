@@ -1,12 +1,11 @@
 -- ═══════════════════════════════════════════════════════════════════
 -- 049_start_date_and_equipment_flag.sql
 -- Adds start_date and allow_buyer_to_add_equipment to t_contracts.
--- Updates create, update, and get_contract_by_id RPCs.
--- Backfills start_date from created_at for existing rows.
+-- Updates get_contract_by_id RPC (Part C appended) to return new fields.
 --
 -- Dependencies:
---   041_rpc_equipment_details_support.sql (latest RPCs)
---   048_portfolio_grouped_view.sql (latest migration)
+--   042_seller_buyer_tenant_columns.sql (latest get_contract_by_id)
+--   048_portfolio_grouped_view.sql (latest migration number)
 -- ═══════════════════════════════════════════════════════════════════
 
 
@@ -29,13 +28,10 @@ COMMENT ON COLUMN t_contracts.allow_buyer_to_add_equipment IS 'When true, buyer 
 
 
 -- ─────────────────────────────────────────────────────────────
--- 2. UPDATE get_contract_by_id — add nomenclature + start_date
---    + allow_buyer_to_add_equipment to response Part B
+-- 2. UPDATE get_contract_by_id
+--    Exact copy of 042's version + Part C with new fields.
+--    All blocks/vendors/attachments/history queries preserved.
 -- ─────────────────────────────────────────────────────────────
-
--- We need to replace the entire function to add fields to the response.
--- The function is defined in 041_rpc_equipment_details_support.sql.
--- We only modify the RETURN section (Part B) to include the new fields.
 
 CREATE OR REPLACE FUNCTION get_contract_by_id(
     p_contract_id UUID,
@@ -55,56 +51,83 @@ DECLARE
     v_access_role TEXT;
 BEGIN
     -- ═══════════════════════════════════════════
-    -- STEP 1: Fetch contract record
+    -- STEP 0: Input validation
     -- ═══════════════════════════════════════════
-    SELECT * INTO v_contract
-    FROM t_contracts
-    WHERE id = p_contract_id
-      AND is_active = true;
-
-    IF v_contract IS NULL THEN
+    IF p_contract_id IS NULL THEN
         RETURN jsonb_build_object(
             'success', false,
-            'error', 'Contract not found or has been deleted',
-            'error_code', 'NOT_FOUND'
+            'error', 'contract_id is required'
+        );
+    END IF;
+
+    IF p_tenant_id IS NULL THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'tenant_id is required'
         );
     END IF;
 
     -- ═══════════════════════════════════════════
-    -- STEP 2: Determine access role
+    -- STEP 1: Fetch contract -- owner OR accessor
+    -- First try: requesting tenant is the owner
+    -- Second try: requesting tenant has active access grant
     -- ═══════════════════════════════════════════
-    IF v_contract.tenant_id = p_tenant_id THEN
-        v_access_role := 'owner';
-    ELSE
-        -- Check if this tenant has been granted access
-        SELECT 'accessor' INTO v_access_role
-        FROM t_contract_access
-        WHERE contract_id = p_contract_id
-          AND tenant_id = p_tenant_id
-          AND is_active = true
+    SELECT * INTO v_contract
+    FROM t_contracts
+    WHERE id = p_contract_id
+      AND tenant_id = p_tenant_id
+      AND is_active = true;
+
+    IF v_contract IS NULL THEN
+        -- Check if requesting tenant has an active access grant (buyer/vendor/partner)
+        SELECT ca.accessor_role INTO v_access_role
+        FROM t_contract_access ca
+        WHERE ca.contract_id = p_contract_id
+          AND ca.accessor_tenant_id = p_tenant_id
+          AND ca.is_active = true
+          AND (ca.expires_at IS NULL OR ca.expires_at > NOW())
         LIMIT 1;
 
-        IF v_access_role IS NULL THEN
-            RETURN jsonb_build_object(
-                'success', false,
-                'error', 'Access denied',
-                'error_code', 'ACCESS_DENIED'
-            );
+        IF v_access_role IS NOT NULL THEN
+            -- Accessor has a valid grant -- fetch the contract using the contract's own tenant
+            SELECT * INTO v_contract
+            FROM t_contracts
+            WHERE id = p_contract_id
+              AND is_active = true;
         END IF;
     END IF;
 
+    IF v_contract IS NULL THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'Contract not found',
+            'contract_id', p_contract_id
+        );
+    END IF;
+
     -- ═══════════════════════════════════════════
-    -- STEP 3: Fetch blocks with content snapshot
+    -- STEP 2: Fetch blocks (ordered by position)
     -- ═══════════════════════════════════════════
     SELECT COALESCE(
         jsonb_agg(
             jsonb_build_object(
                 'id', cb.id,
-                'block_id', cb.block_id,
-                'sort_order', cb.sort_order,
-                'content_snapshot', cb.content_snapshot
+                'position', cb.position,
+                'source_type', cb.source_type,
+                'source_block_id', cb.source_block_id,
+                'block_name', cb.block_name,
+                'block_description', cb.block_description,
+                'category_id', cb.category_id,
+                'category_name', cb.category_name,
+                'unit_price', cb.unit_price,
+                'quantity', cb.quantity,
+                'billing_cycle', cb.billing_cycle,
+                'total_price', cb.total_price,
+                'flyby_type', cb.flyby_type,
+                'custom_fields', cb.custom_fields,
+                'created_at', cb.created_at
             )
-            ORDER BY cb.sort_order
+            ORDER BY cb.position ASC
         ),
         '[]'::JSONB
     )
@@ -113,7 +136,7 @@ BEGIN
     WHERE cb.contract_id = p_contract_id;
 
     -- ═══════════════════════════════════════════
-    -- STEP 4: Fetch vendors
+    -- STEP 3: Fetch vendors (RFQ only)
     -- ═══════════════════════════════════════════
     SELECT COALESCE(
         jsonb_agg(
@@ -121,9 +144,14 @@ BEGIN
                 'id', cv.id,
                 'vendor_id', cv.vendor_id,
                 'vendor_name', cv.vendor_name,
-                'role', cv.role
+                'vendor_company', cv.vendor_company,
+                'vendor_email', cv.vendor_email,
+                'response_status', cv.response_status,
+                'responded_at', cv.responded_at,
+                'quoted_amount', cv.quoted_amount,
+                'quote_notes', cv.quote_notes,
+                'created_at', cv.created_at
             )
-            ORDER BY cv.created_at
         ),
         '[]'::JSONB
     )
@@ -132,20 +160,24 @@ BEGIN
     WHERE cv.contract_id = p_contract_id;
 
     -- ═══════════════════════════════════════════
-    -- STEP 5: Fetch attachments
+    -- STEP 4: Fetch attachments
     -- ═══════════════════════════════════════════
     SELECT COALESCE(
         jsonb_agg(
             jsonb_build_object(
                 'id', ca.id,
+                'block_id', ca.block_id,
                 'file_name', ca.file_name,
-                'file_type', ca.file_type,
+                'file_path', ca.file_path,
                 'file_size', ca.file_size,
-                'storage_path', ca.storage_path,
+                'file_type', ca.file_type,
+                'mime_type', ca.mime_type,
+                'download_url', ca.download_url,
+                'file_category', ca.file_category,
+                'metadata', ca.metadata,
                 'uploaded_by', ca.uploaded_by,
                 'created_at', ca.created_at
             )
-            ORDER BY ca.created_at DESC
         ),
         '[]'::JSONB
     )
@@ -154,7 +186,7 @@ BEGIN
     WHERE ca.contract_id = p_contract_id;
 
     -- ═══════════════════════════════════════════
-    -- STEP 5b: Fetch recent history (last 20)
+    -- STEP 5: Fetch recent history (last 20 entries)
     -- ═══════════════════════════════════════════
     SELECT COALESCE(
         jsonb_agg(
@@ -163,8 +195,10 @@ BEGIN
                 'action', ch.action,
                 'from_status', ch.from_status,
                 'to_status', ch.to_status,
-                'changed_by', ch.changed_by,
                 'changes', ch.changes,
+                'performed_by_type', ch.performed_by_type,
+                'performed_by_name', ch.performed_by_name,
+                'note', ch.note,
                 'created_at', ch.created_at
             )
             ORDER BY ch.created_at DESC
@@ -182,18 +216,21 @@ BEGIN
 
     -- ═══════════════════════════════════════════
     -- STEP 6: Return full contract with embedded data
-    -- NOTE: Split into two jsonb_build_object calls merged
+    -- NOTE: Split into jsonb_build_object calls merged
     --       with || to stay under the 100-argument PG limit.
-    -- UPDATED: Added nomenclature_id/name/code, start_date,
-    --          allow_buyer_to_add_equipment
+    -- Based on: 042_seller_buyer_tenant_columns.sql
+    -- Added: start_date, allow_buyer_to_add_equipment,
+    --        nomenclature_id/code/name (Part C)
     -- ═══════════════════════════════════════════
     RETURN jsonb_build_object(
         'success', true,
         'data', (
-            -- Part A: core fields + counterparty + terms (26 pairs = 52 args)
+            -- Part A: core fields + counterparty + terms (28 pairs = 56 args)
             jsonb_build_object(
                 'id', v_contract.id,
                 'tenant_id', v_contract.tenant_id,
+                'seller_id', v_contract.seller_id,
+                'buyer_tenant_id', v_contract.buyer_tenant_id,
                 'contract_number', v_contract.contract_number,
                 'rfq_number', v_contract.rfq_number,
                 'record_type', v_contract.record_type,
@@ -220,7 +257,7 @@ BEGIN
                 'billing_cycle_type', v_contract.billing_cycle_type
             )
             ||
-            -- Part B: financials + evidence + dates + audit + relations + equipment + NEW fields
+            -- Part B: financials + evidence + dates + audit + relations + equipment (30 pairs = 60 args)
             jsonb_build_object(
                 'payment_mode', v_contract.payment_mode,
                 'emi_months', v_contract.emi_months,
@@ -258,9 +295,7 @@ BEGIN
                 'nomenclature_code', v_contract.nomenclature_code,
                 'nomenclature_name', v_contract.nomenclature_name,
                 'start_date', v_contract.start_date,
-                'allow_buyer_to_add_equipment', v_contract.allow_buyer_to_add_equipment,
-                'seller_id', v_contract.seller_id,
-                'buyer_tenant_id', v_contract.buyer_tenant_id
+                'allow_buyer_to_add_equipment', v_contract.allow_buyer_to_add_equipment
             )
         ),
         'retrieved_at', NOW()
