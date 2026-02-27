@@ -1,0 +1,46 @@
+═══════════════════════════════════════════════════
+Feature: Contract Identity Tags + Equipment Tab + Timeline
+Branch: feat-contract-identity-equipment
+═══════════════════════════════════════════════════
+
+SUBMODULES AFFECTED:
+  - contractnest-edge (1 migration)
+  - contractnest-ui (7 files modified/created)
+
+FILES:
+  contractnest-edge/supabase/migrations/contracts/049_start_date_and_equipment_flag.sql
+    → NEW: Adds start_date + allow_buyer_to_add_equipment columns, updates get_contract_by_id RPC
+
+  contractnest-ui/src/types/contracts.ts
+    → MODIFIED: Added nomenclature_id/name/code, start_date, allow_buyer_to_add_equipment to Contract interface
+
+  contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+    → MODIFIED: Added start_date to create payload (line ~296)
+    → NOTE: Only 1 line changed — copy full file or manually add: start_date: state.startDate.toISOString(),
+
+  contractnest-ui/src/components/contracts/ContractHealthCard.tsx
+    → MODIFIED: Added timeline progress bar (start → end → prolongation) below health pillars
+
+  contractnest-ui/src/components/contracts/EquipmentTab.tsx
+    → NEW: Equipment/Facility details tab component
+
+  contractnest-ui/src/components/contracts/SellerOverview.tsx
+    → MODIFIED: Pass contract prop to ContractHealthCard
+
+  contractnest-ui/src/components/contracts/BuyerOverview.tsx
+    → MODIFIED: Pass contract prop to ContractHealthCard
+
+  contractnest-ui/src/hooks/useNeedsAttention.ts
+    → MODIFIED: Added equipment alerts (buyer adding / equipment pending) to active contract evaluator
+
+  contractnest-ui/src/pages/contracts/detail/index.tsx
+    → MODIFIED: Header tags (CNAK/nomenclature/acceptance), Equipment tab, contract prop to health card
+
+COPY COMMANDS:
+  cd "D:\projects\core projects\ContractNest\contractnest-combined"
+  Copy-Item "MANUAL_COPY_FILES\feat-contract-identity-equipment\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\feat-contract-identity-equipment\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+DB MIGRATION:
+  Run 049_start_date_and_equipment_flag.sql on your Supabase instance
+  (adds columns + updates get_contract_by_id RPC)
