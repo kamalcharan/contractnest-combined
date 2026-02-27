@@ -1,0 +1,80 @@
+═══════════════════════════════════════════════════
+📦 SMART LAYER — NEEDS ATTENTION ENHANCEMENT
+═══════════════════════════════════════════════════
+Branch: feat-smart-layer-needs-attention
+Date: 2026-02-27
+
+═══════════════════════════════════════════════════
+📋 CHANGES SUMMARY
+═══════════════════════════════════════════════════
+Files Changed:
+  - contractnest-ui/src/hooks/useNeedsAttention.ts                  [NEW]  — Smart layer engine hook
+  - contractnest-ui/src/components/contracts/NeedsAttentionPanel.tsx [MODIFIED] — Seller smart layer (replaces static alerts)
+  - contractnest-ui/src/components/contracts/WhatsHappeningPanel.tsx [MODIFIED] — Buyer smart layer (adds pending_acceptance flow)
+  - contractnest-ui/src/components/contracts/SellerOverview.tsx      [MODIFIED] — Passes contract + action callbacks
+  - contractnest-ui/src/components/contracts/BuyerOverview.tsx       [MODIFIED] — Passes contract + payment callback
+  - contractnest-ui/src/pages/contracts/detail/index.tsx             [MODIFIED] — Wires contract object + actions to overview
+
+Submodules Affected: contractnest-ui
+
+Production Checklist:
+  ✅ Transaction Management: N/A (read-only UI — no DB writes in this change)
+  ✅ Race Condition Handling: Yes — useMemo prevents re-eval, polling interval for payment requests
+  ✅ Error Handling: Yes — null checks on all data sources, graceful empty states
+  ✅ Toasts: N/A (actions delegate to existing RecordPaymentDialog which has toasts)
+  ✅ Loaders: Yes — isLoading state from hook, loading indicator in panel
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files from MANUAL_COPY_FILES
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\feat-smart-layer-needs-attention\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "✅ All files copied!" -ForegroundColor Green
+
+STEP 3: Start Dev Server & Test
+─────────────────────────────────
+cd contractnest-ui && npm run dev
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+
+SELLER SIDE:
+- [ ] Open a contract with status="pending_acceptance" + acceptance_method="manual"
+      → Smart layer should show: Invoice step, Collect Payment step, Tasks Locked step
+- [ ] If invoice exists but unpaid → "Collect Payment" card with Send Invoice + Record Payment buttons
+- [ ] If invoice is fully paid but contract still pending → "Activating Contract" message
+- [ ] Click "Send Invoice" → Opens RecordPaymentDialog
+- [ ] Click "Record Payment" → Opens RecordPaymentDialog
+- [ ] If payment was previously sent, aging shows "Sent via Email · 3d ago"
+- [ ] Open active contract → Shows existing alerts (overdue, unassigned, low collection)
+- [ ] Open active contract with no issues → Shows "All caught up!"
+- [ ] Open contract with acceptance_method="digital_signature" → Shows "Awaiting Buyer Signature" with aging
+
+BUYER SIDE:
+- [ ] Open same pending_acceptance+manual contract as buyer
+      → Should show "Payment Required" with Pay Now button
+      → Should show "Services & Deliverables" locked with task count
+- [ ] Click "Pay Now" → Opens payment dialog
+- [ ] Open active contract as buyer → Shows activity timeline (existing behavior preserved)
+
+REGRESSION:
+- [ ] Active contracts: SellerOverview still shows Health Card + NeedsAttention + DualTrackPreview
+- [ ] Draft contracts: No smart layer (empty/minimal state)
+- [ ] BuyerOverview: QuickActionsGrid still renders below
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
