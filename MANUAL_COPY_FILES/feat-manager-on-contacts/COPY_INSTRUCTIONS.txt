@@ -1,0 +1,58 @@
+============================================================
+COPY INSTRUCTIONS - feat-manager-on-contacts
+============================================================
+Feature: Add manager_id / manager_name support to contacts
+Date: 2026-02-27
+============================================================
+
+SUBMODULES AFFECTED:
+  1. contractnest-edge  (migration + edge function)
+  2. contractnest-ui    (frontend service transform)
+
+============================================================
+FILES TO COPY:
+============================================================
+
+1. NEW FILE - SQL Migration (contractnest-edge)
+   Source:      MANUAL_COPY_FILES/feat-manager-on-contacts/contractnest-edge/supabase/migrations/contracts/045_add_manager_to_contacts.sql
+   Destination: contractnest-edge/supabase/migrations/contracts/045_add_manager_to_contacts.sql
+
+2. MODIFIED FILE - Edge Contact Service (contractnest-edge)
+   Source:      MANUAL_COPY_FILES/feat-manager-on-contacts/contractnest-edge/supabase/functions/_shared/contacts/contactService.ts
+   Destination: contractnest-edge/supabase/functions/_shared/contacts/contactService.ts
+
+3. MODIFIED FILE - Frontend Contact Service (contractnest-ui)
+   Source:      MANUAL_COPY_FILES/feat-manager-on-contacts/contractnest-ui/src/services/contactService.ts
+   Destination: contractnest-ui/src/services/contactService.ts
+
+============================================================
+MANUAL SQL STEPS (run in Supabase SQL Editor):
+============================================================
+
+STEP A: Run migration 045 in Supabase SQL Editor
+   - Open 045_add_manager_to_contacts.sql
+   - Execute the ALTER TABLE + CREATE INDEX statements
+
+STEP B: Update RPCs in Supabase SQL Editor
+   These RPCs live directly in Supabase (not in repo), so you need
+   to manually add manager_id/manager_name handling:
+
+   B1. In update_contact_idempotent_v2 - inside the UPDATE t_contacts SET block, add:
+       manager_id   = CASE WHEN p_contact_data ? 'manager_id'
+                           THEN (p_contact_data->>'manager_id')::UUID
+                           ELSE manager_id END,
+       manager_name = CASE WHEN p_contact_data ? 'manager_name'
+                           THEN p_contact_data->>'manager_name'
+                           ELSE manager_name END,
+
+   B2. In create_contact_idempotent_v2 - inside the INSERT INTO t_contacts block, add:
+       Column: manager_id    Value: (p_contact_data->>'manager_id')::UUID
+       Column: manager_name  Value: p_contact_data->>'manager_name'
+
+   B3. In get_contact_full_v2 - inside the SELECT / JSON build, add:
+       c.manager_id, c.manager_name
+
+   B4. In list_contacts_with_channels_v2 - inside the SELECT / JSON build, add:
+       c.manager_id, c.manager_name
+
+============================================================
