@@ -25,6 +25,7 @@ export interface NeedsAttentionPanelProps {
   onAssignTeam?: () => void;
   onReviewTasks?: () => void;
   onFollowUp?: () => void;
+  onViewFullTimeline?: () => void;
 }
 
 // =================================================================
@@ -210,6 +211,7 @@ export const NeedsAttentionPanel: React.FC<NeedsAttentionPanelProps> = ({
   onAssignTeam,
   onReviewTasks,
   onFollowUp,
+  onViewFullTimeline,
 }) => {
   const { now, locked, completed, isLoading } = useNeedsAttention(contract, 'seller');
 
@@ -235,6 +237,7 @@ export const NeedsAttentionPanel: React.FC<NeedsAttentionPanelProps> = ({
         onAssignTeam?.();
         break;
       case 'review_tasks':
+      case 'view_tasks':
         onReviewTasks?.();
         break;
       case 'follow_up':

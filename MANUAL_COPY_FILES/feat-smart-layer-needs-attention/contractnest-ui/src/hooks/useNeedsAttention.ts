@@ -19,7 +19,7 @@ export type StepPriority = 'critical' | 'high' | 'medium' | 'info';
 
 export interface SmartAction {
   type: 'send_invoice' | 'record_payment' | 'resend' | 'pay_now' | 'resend_signoff'
-    | 'assign_team' | 'review_tasks' | 'follow_up' | 'view_tasks';
+    | 'assign_team' | 'review_tasks' | 'follow_up' | 'view_tasks' | 'view_timeline';
   label: string;
   channel?: 'email' | 'whatsapp';
 }
@@ -391,15 +391,59 @@ function evaluateActiveContract(
     });
   }
 
-  // If nothing needs attention
-  if (now.length === 0) {
+  // 5. Upcoming events summary (always show for active — replaces DualTrackPreview)
+  const upcoming = events.filter(
+    (e: any) => e.status !== 'completed' && e.status !== 'cancelled' && e.status !== 'overdue',
+  );
+  const completedEvents = events.filter((e: any) => e.status === 'completed');
+  const serviceEvents = events.filter((e: any) => e.event_type === 'service' || e.event_type === 'spare_part');
+  const billingEvents = events.filter((e: any) => e.event_type === 'billing');
+
+  if (events.length > 0) {
+    // Service track summary
+    const serviceCompleted = serviceEvents.filter((e: any) => e.status === 'completed').length;
+    if (serviceEvents.length > 0) {
+      completed.push({
+        id: 'service_track',
+        state: 'info' as StepState,
+        priority: 'info',
+        icon: '\uD83D\uDD27',
+        title: 'Service Track',
+        description: `${serviceCompleted}/${serviceEvents.length} completed`,
+        actions: serviceEvents.length > 0 ? [{ type: 'view_tasks' as const, label: 'View Tasks' }] : [],
+        aging: null,
+        sortOrder: 10,
+      });
+    }
+
+    // Billing track summary
+    const billingCompleted = billingEvents.filter((e: any) => e.status === 'completed').length;
+    if (billingEvents.length > 0) {
+      completed.push({
+        id: 'billing_track',
+        state: 'info' as StepState,
+        priority: 'info',
+        icon: '\uD83D\uDCB0',
+        title: 'Financial Track',
+        description: summary
+          ? `${Math.round(summary.collection_percentage)}% collected \u00B7 ${billingCompleted}/${billingEvents.length} billing events`
+          : `${billingCompleted}/${billingEvents.length} completed`,
+        actions: [],
+        aging: null,
+        sortOrder: 11,
+      });
+    }
+  }
+
+  // If no alerts AND no events at all
+  if (now.length === 0 && events.length === 0) {
     completed.push({
-      id: 'all_good',
+      id: 'no_events',
       state: 'done',
       priority: 'info',
-      icon: '\u2728',
-      title: 'All caught up!',
-      description: 'No urgent actions needed right now.',
+      icon: '\uD83D\uDCCB',
+      title: 'No Tasks Yet',
+      description: 'Events will appear once tasks are created for this contract.',
       actions: [],
       aging: null,
       sortOrder: 0,
