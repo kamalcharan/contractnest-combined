@@ -1,0 +1,48 @@
+================================================================
+COPY INSTRUCTIONS — skill-update-normalized-templates
+================================================================
+Date: 2026-02-28
+Submodules Affected: ClaudeDocumentation
+
+PURPOSE:
+  Update MDA skill files to reflect the resource template normalization
+  (scope column, junction table, v_resource_templates_by_industry view).
+  These changes match the handover from the normalization session.
+
+FILES TO COPY:
+================================================================
+
+1. ClaudeDocumentation/AgentSkills/SKILL (1).md
+   FROM: MANUAL_COPY_FILES\skill-update-normalized-templates\ClaudeDocumentation\AgentSkills\SKILL (1).md
+   TO:   ClaudeDocumentation\AgentSkills\SKILL (1).md
+
+2. ClaudeDocumentation/AgentSkills/schema-reference.md
+   FROM: MANUAL_COPY_FILES\skill-update-normalized-templates\ClaudeDocumentation\AgentSkills\schema-reference.md
+   TO:   ClaudeDocumentation\AgentSkills\schema-reference.md
+
+3. ClaudeDocumentation/AgentSkills/api-spec.md
+   FROM: MANUAL_COPY_FILES\skill-update-normalized-templates\ClaudeDocumentation\AgentSkills\api-spec.md
+   TO:   ClaudeDocumentation\AgentSkills\api-spec.md
+
+================================================================
+WHAT CHANGED IN EACH FILE:
+================================================================
+
+SKILL (1).md:
+  - "Industry Mapping" section: references v_resource_templates_by_industry view
+  - Mentions scope column, junction table
+  - Layer 2 resource source: m_catalog_resource_templates -> view
+
+schema-reference.md:
+  - m_catalog_resource_templates: 63 rows -> 239 rows
+  - Added scope column (varchar(20), CHECK constraint)
+  - industry_id is now NULLABLE
+  - NEW TABLE: m_catalog_resource_template_industries (296 rows)
+  - NEW VIEW: v_resource_templates_by_industry (with usage + columns)
+  - Updated Relationships diagram for normalized architecture
+
+api-spec.md:
+  - Template 6 REWRITTEN: uses v_resource_templates_by_industry with DISTINCT ON
+  - NEW Template 9: two-step pattern for adding master templates + junction rows
+
+================================================================
