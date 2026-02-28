@@ -1199,7 +1199,7 @@ async function handleGetResourceTemplates(supabase: any, tenantId: string, searc
     // Step 3: Fetch paginated templates from the canonical view
     let templatesQuery = supabase
       .from('v_resource_templates_by_industry')
-      .select('id, linked_industry_id, resource_type_id, name, description, default_attributes, pricing_guidance, popularity_score, is_recommended, sort_order, sub_category, relevance_score, scope')
+      .select('id, linked_industry_id, resource_type_id, name, description, default_attributes, pricing_guidance, popularity_score, is_recommended, sub_category, relevance_score, scope, is_primary')
       .in('linked_industry_id', industryIds)
       .in('resource_type_id', resourceTypeFilter ? [resourceTypeFilter] : ['equipment', 'asset'])
       .eq('is_active', true)
