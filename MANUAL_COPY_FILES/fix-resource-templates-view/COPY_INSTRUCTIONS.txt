@@ -1,0 +1,44 @@
+================================================================
+COPY INSTRUCTIONS — fix-resource-templates-view
+================================================================
+Date: 2026-02-28
+Submodules Affected: contractnest-edge
+
+PURPOSE:
+  Fix handleGetResourceTemplates() in the resources edge function to use
+  v_resource_templates_by_industry view instead of querying
+  m_catalog_resource_templates directly. This fixes the /settings/configure/resources
+  page missing all 19 universal items and 6 cross-industry items.
+
+FILES TO COPY:
+================================================================
+
+1. contractnest-edge/supabase/functions/resources/index.ts
+   FROM: MANUAL_COPY_FILES\fix-resource-templates-view\contractnest-edge\supabase\functions\resources\index.ts
+   TO:   contractnest-edge\supabase\functions\resources\index.ts
+
+================================================================
+WHAT CHANGED:
+================================================================
+
+handleGetResourceTemplates() function (lines ~1177-1258):
+
+1. COUNT QUERY (Step 2):
+   - Table: m_catalog_resource_templates → v_resource_templates_by_industry
+   - Filter: .in('industry_id', ...) → .in('linked_industry_id', ...)
+
+2. FETCH QUERY (Step 3):
+   - Table: m_catalog_resource_templates → v_resource_templates_by_industry
+   - Select: added linked_industry_id, relevance_score, scope columns
+   - Filter: .in('industry_id', ...) → .in('linked_industry_id', ...)
+   - Order: relevance_score DESC, popularity_score DESC (was: popularity_score DESC, sort_order ASC)
+
+3. DEDUPLICATION (New Step 3b):
+   - Cross-industry templates may appear for multiple matching industries
+   - Deduplicates by template id using a Set before enrichment
+
+4. ENRICHMENT (Step 5):
+   - Remaps linked_industry_id → industry_id for frontend compatibility
+   - Uses uniqueTemplates (deduplicated) instead of raw templates array
+
+================================================================
