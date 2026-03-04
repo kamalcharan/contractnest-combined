@@ -1,0 +1,32 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS - feat-enrich-equipment-card
+═══════════════════════════════════════════════════
+
+Branch: feat/enrich-equipment-card
+Submodules Affected: contractnest-ui
+
+Files Changed:
+  - contractnest-ui/src/pages/equipment-registry/EquipmentCard.tsx
+    → Enriched card with Status badge, Client Name, Code, Criticality
+  - contractnest-ui/src/pages/equipment-registry/index.tsx
+    → Added contact list fetch + lookup map for client name resolution
+
+═══════════════════════════════════════════════════
+COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\feat-enrich-equipment-card\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+TEST
+═══════════════════════════════════════════════════
+
+cd contractnest-ui && npm run dev
+
+- Open Equipment Registry page
+- Verify cards now show: Status badge, Client Name, Code, Criticality
+- Check that wizard asset selection still works (no clientName shown there, which is expected)
