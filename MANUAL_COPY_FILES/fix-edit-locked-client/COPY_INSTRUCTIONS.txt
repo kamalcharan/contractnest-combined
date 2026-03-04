@@ -1,0 +1,26 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — fix-edit-locked-client
+═══════════════════════════════════════════════════
+
+Branch: fix-edit-locked-client
+Submodules Affected: contractnest-ui
+
+Files Changed:
+  1. contractnest-ui/src/pages/equipment-registry/EquipmentFormDialog.tsx
+     — Lock Client/Owner field in edit mode with skeleton loader + Lock icon
+
+Copy Command (PowerShell):
+─────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\fix-edit-locked-client\contractnest-ui\src\pages\equipment-registry\EquipmentFormDialog.tsx" -Destination "contractnest-ui\src\pages\equipment-registry\EquipmentFormDialog.tsx" -Force
+Write-Host "✅ File copied!" -ForegroundColor Green
+
+What Changed:
+─────────────────────────────────────────────────
+- In edit mode, the Client/Owner field is now READ-ONLY (locked)
+- Shows a skeleton/shimmer loader while the contact name resolves (~1-3 sec)
+- Once loaded, displays the client name with an avatar initial + Lock icon
+- Tooltip on hover: "Client name cannot be edited"
+- X (close) button z-index and stopPropagation fix for reliable closing
+- All other fields remain fully editable in edit mode
+- Create mode and wizard (lockedContactId) mode are unchanged
