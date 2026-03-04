@@ -1,0 +1,37 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS - fix-facility-drawer-header
+═══════════════════════════════════════════════════
+
+Branch: fix/facility-drawer-header
+Submodules Affected: contractnest-ui
+
+Bug: The Add/Edit drawer always showed "Add Equipment" even on the
+     Facility Registry page. Now it correctly shows "Add Facility" /
+     "Edit: <name>" with facility-specific wording.
+
+Files Changed:
+  - contractnest-ui/src/pages/equipment-registry/EquipmentFormDialog.tsx
+    → Added registryMode prop; header/subtitle now say "Facility" or "Equipment"
+  - contractnest-ui/src/pages/equipment-registry/index.tsx
+    → Passes registryMode to both create and edit EquipmentFormDialog instances
+
+═══════════════════════════════════════════════════
+COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\fix-facility-drawer-header\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+TEST
+═══════════════════════════════════════════════════
+
+cd contractnest-ui && npm run dev
+
+- [ ] Go to Equipment Registry → click Add → header should say "Add Equipment"
+- [ ] Go to Facility Registry → click Add → header should say "Add Facility"
+- [ ] Edit an existing facility → header should say "Edit: <facility name>"
+- [ ] Subtitle text should match (e.g. "Register new facility in your asset registry.")
