@@ -1,0 +1,44 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS - fix-block-image-upload
+═══════════════════════════════════════════════════
+
+Branch: fix/block-image-upload
+Submodules Affected: contractnest-ui
+
+Bug: Image selected in the Block wizard Add/Edit form (BasicInfoStep)
+     was never uploaded — the File object was silently discarded on save.
+
+Fix: Before creating/updating the block, the save handler now:
+  1. Checks if storage is configured. If NOT → shows error toast and aborts.
+  2. If configured → uploads the File via useStorageManagement.uploadFile()
+     to the 'block_images' category.
+  3. Gets back the download_url and injects it as image_url so the
+     adapter includes it in the API payload.
+
+Files Changed:
+  - contractnest-ui/src/pages/catalog-studio/blocks/new.tsx
+    → Upload image before block creation
+  - contractnest-ui/src/pages/catalog-studio/blocks/[id]/edit.tsx
+    → Upload image before block update
+
+═══════════════════════════════════════════════════
+COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\fix-block-image-upload\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+TEST
+═══════════════════════════════════════════════════
+
+cd contractnest-ui && npm run dev
+
+- [ ] Go to /catalog-studio/blocks/new → select image → save → image should persist
+- [ ] Edit existing block → change image → save → new image should persist
+- [ ] If storage is NOT configured → select image → save → should see error toast:
+      "Storage is not configured. Please set up storage in Settings → Storage before uploading images."
+- [ ] Block save WITHOUT image should still work as before
