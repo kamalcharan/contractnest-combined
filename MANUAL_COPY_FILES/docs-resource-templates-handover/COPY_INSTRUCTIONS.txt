@@ -1,0 +1,16 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — docs-resource-templates-handover
+═══════════════════════════════════════════════════
+
+Submodules Affected: ClaudeDocumentation
+
+Files to Copy:
+─────────────────────────────────────────────────
+1. ClaudeDocumentation/ProductAudit/Resource-Templates.md
+   → NEW FILE: Resource Templates handover document
+   → Contains: Full context of the 503 fix, DB normalization,
+     edge function changes, seed scripts, and resume instructions
+
+Copy Command (PowerShell):
+─────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\docs-resource-templates-handover\ClaudeDocumentation\ProductAudit\Resource-Templates.md" -Destination "ClaudeDocumentation\ProductAudit\Resource-Templates.md" -Force
