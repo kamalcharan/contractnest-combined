@@ -252,7 +252,13 @@ export class ContactValidationService {
       tenant_id: 'dummy', // Skip tenant validation for updates
     };
 
+    console.log('[ContactValidation] Merged data type:', mergedData.type, 'name:', mergedData.name?.substring(0, 20), 'classifications:', JSON.stringify(mergedData.classifications), 'channels count:', mergedData.contact_channels?.length);
+
     const createValidation = await this.validateCreateRequest(mergedData);
+
+    if (createValidation.errors.length > 0) {
+      console.error('[ContactValidation] Raw create errors:', JSON.stringify(createValidation.errors));
+    }
 
     // Filter out tenant and type errors for updates
     const filteredErrors = createValidation.errors.filter(error =>
