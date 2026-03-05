@@ -21,7 +21,22 @@ FILES TO COPY:
      - Removed always-sending is_live=true (edge function defaults to true)
      - Added detailed error logging to diagnose edge function failures
 
-3. contractnest-edge/supabase/migrations/contracts/050_coverage_types_and_rpc_fix.sql
+3. contractnest-api/src/validators/clientAssetRegistryValidators.ts
+   → Copy to: contractnest-api/src/validators/clientAssetRegistryValidators.ts
+   Purpose: Fix .optional() to use { values: 'null' } for ALL nullable fields
+     - createAssetValidation: asset_type_id, parent_asset_id, template_id,
+       industry_id, code, status, condition, criticality, serial_number,
+       purchase_date, warranty_expiry, area_sqft, capacity, specifications,
+       tags, is_live
+     - updateAssetValidation: name, status, condition, criticality,
+       owner_contact_id, is_active
+     - linkContractAssetsValidation: coverage_type, service_terms, is_live
+     - ROOT CAUSE of POST /api/client-asset-registry returning 400:
+       transformForAPI converts empty/undefined fields to null, but
+       .optional() only skips undefined (not null), so validators like
+       .isUUID() reject null values
+
+4. contractnest-edge/supabase/migrations/contracts/050_coverage_types_and_rpc_fix.sql
    → Copy to: contractnest-edge/supabase/migrations/contracts/050_coverage_types_and_rpc_fix.sql
    Purpose: NEW migration file that:
      a) Adds coverage_types JSONB column to t_contracts
@@ -35,7 +50,7 @@ FILES TO COPY:
 WHAT WAS BROKEN:
 ═══════════════════════════════════════════════════
 
-Bug 1: API validator rejected null values for condition/criticality
+Bug 1: API validator rejected null values for condition/criticality in contractValidators
   - express-validator .optional() only skips undefined, NOT null
   - When assets had no condition or criticality, they sent null
   - Validation failed → 400 error → contract creation aborted
@@ -57,6 +72,12 @@ Bug 5: GET /api/client-asset-registry returning 400 from wizard step 5
   - Also was always sending is_live=true as a boolean param
   - Fixed by only passing defined, truthy params to the service layer
   - Added diagnostic logging for future edge function errors
+
+Bug 6: POST /api/client-asset-registry returning 400 from wizard step 5
+  - clientAssetRegistryValidators.ts had the SAME .optional() bug
+  - transformForAPI in clientAssetRegistryService converts empty/undefined to null
+  - .optional() only skips undefined, so null values hit .isUUID()/.isISO8601() etc.
+  - All nullable fields now use .optional({ values: 'null' })
 
 ═══════════════════════════════════════════════════
 POST-COPY: Run migration 050 in Supabase
