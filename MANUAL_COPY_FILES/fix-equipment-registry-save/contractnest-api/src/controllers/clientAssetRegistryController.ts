@@ -16,13 +16,17 @@ function extractContext(req: Request): { authHeader: string; tenantId: string } 
 function handleValidationErrors(req: Request, res: Response): boolean {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
+    const fields = errors.array().reduce((acc: Record<string, string>, e: any) => {
+      acc[e.path || e.param] = e.msg;
+      return acc;
+    }, {});
+    console.error(`[ClientAssetRegistry] Validation failed for ${req.method} ${req.originalUrl}:`, JSON.stringify(fields));
+    console.error(`[ClientAssetRegistry] Request body keys:`, Object.keys(req.body || {}));
+    console.error(`[ClientAssetRegistry] Null-valued body fields:`, Object.entries(req.body || {}).filter(([, v]) => v === null).map(([k]) => k));
     res.status(400).json({
       error: 'Validation failed',
       code: 'VALIDATION_ERROR',
-      fields: errors.array().reduce((acc: Record<string, string>, e: any) => {
-        acc[e.path || e.param] = e.msg;
-        return acc;
-      }, {})
+      fields
     });
     return true;
   }
