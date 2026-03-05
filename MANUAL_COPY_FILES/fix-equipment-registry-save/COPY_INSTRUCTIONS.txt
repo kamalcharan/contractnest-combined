@@ -14,7 +14,14 @@ FILES TO COPY:
    Purpose: Fix .optional() to use { values: 'null' } so null condition/criticality
             values in equipment_details don't fail validation
 
-2. contractnest-edge/supabase/migrations/contracts/050_coverage_types_and_rpc_fix.sql
+2. contractnest-api/src/controllers/clientAssetRegistryController.ts
+   → Copy to: contractnest-api/src/controllers/clientAssetRegistryController.ts
+   Purpose: Fix GET /api/client-asset-registry returning 400
+     - Controller now only passes DEFINED params to edge function (no undefined values)
+     - Removed always-sending is_live=true (edge function defaults to true)
+     - Added detailed error logging to diagnose edge function failures
+
+3. contractnest-edge/supabase/migrations/contracts/050_coverage_types_and_rpc_fix.sql
    → Copy to: contractnest-edge/supabase/migrations/contracts/050_coverage_types_and_rpc_fix.sql
    Purpose: NEW migration file that:
      a) Adds coverage_types JSONB column to t_contracts
@@ -44,6 +51,13 @@ Bug 3: update_contract_transaction RPC also missing the same 3 columns
 Bug 4: get_contract_by_id RPC didn't return coverage_types
   - Even if saved, coverage data would not appear when loading contract details
 
+Bug 5: GET /api/client-asset-registry returning 400 from wizard step 5
+  - Controller was passing undefined params (id, resource_type_id, status, offset)
+    to the edge function, which could cause serialization issues
+  - Also was always sending is_live=true as a boolean param
+  - Fixed by only passing defined, truthy params to the service layer
+  - Added diagnostic logging for future edge function errors
+
 ═══════════════════════════════════════════════════
 POST-COPY: Run migration 050 in Supabase
 ═══════════════════════════════════════════════════
@@ -52,3 +66,18 @@ After copying the files and pushing to Supabase, run the migration:
 
 This can be run via Supabase Dashboard → SQL Editor, or via CLI:
   supabase db push
+
+═══════════════════════════════════════════════════
+DEBUGGING: If 400 persists after this fix
+═══════════════════════════════════════════════════
+Check the Express API console for new log output:
+  "Error in clientAssetRegistryController.listAssets: { status: ..., data: ..., ... }"
+
+The error response will show:
+  - If status=400 + data.code='MISSING_TENANT' → x-tenant-id not forwarded to edge function
+  - If status=400 + data.code='INVALID_PRODUCT' → x-product header has wrong value
+  - If status=500 + data.code='LIST_ASSETS_ERROR' → Supabase query failing (table may not exist)
+
+Also verify:
+  1. Edge function client-asset-registry is deployed in Supabase
+  2. Migration 037_asset_registry_tables.sql has been run (creates t_client_asset_registry)
