@@ -1,0 +1,54 @@
+═══════════════════════════════════════════════════
+FIX: Equipment/Facility Registry Data Not Saving from Contract Wizard Step 5
+═══════════════════════════════════════════════════
+
+SUBMODULES AFFECTED:
+  - contractnest-api
+  - contractnest-edge
+
+FILES TO COPY:
+═══════════════════════════════════════════════════
+
+1. contractnest-api/src/validators/contractValidators.ts
+   → Copy to: contractnest-api/src/validators/contractValidators.ts
+   Purpose: Fix .optional() to use { values: 'null' } so null condition/criticality
+            values in equipment_details don't fail validation
+
+2. contractnest-edge/supabase/migrations/contracts/050_coverage_types_and_rpc_fix.sql
+   → Copy to: contractnest-edge/supabase/migrations/contracts/050_coverage_types_and_rpc_fix.sql
+   Purpose: NEW migration file that:
+     a) Adds coverage_types JSONB column to t_contracts
+     b) Updates create_contract_transaction RPC to include start_date,
+        allow_buyer_to_add_equipment, and coverage_types in INSERT
+     c) Updates update_contract_transaction RPC to include start_date,
+        allow_buyer_to_add_equipment, and coverage_types in UPDATE
+     d) Updates get_contract_by_id RPC to return coverage_types in response
+
+═══════════════════════════════════════════════════
+WHAT WAS BROKEN:
+═══════════════════════════════════════════════════
+
+Bug 1: API validator rejected null values for condition/criticality
+  - express-validator .optional() only skips undefined, NOT null
+  - When assets had no condition or criticality, they sent null
+  - Validation failed → 400 error → contract creation aborted
+
+Bug 2: create_contract_transaction RPC missing 3 columns
+  - start_date was never inserted (fell back to DB default)
+  - allow_buyer_to_add_equipment was never inserted (always false)
+  - coverage_types had no DB column at all (silently lost)
+
+Bug 3: update_contract_transaction RPC also missing the same 3 columns
+  - Editing a contract would lose start_date, equipment flag, and coverage data
+
+Bug 4: get_contract_by_id RPC didn't return coverage_types
+  - Even if saved, coverage data would not appear when loading contract details
+
+═══════════════════════════════════════════════════
+POST-COPY: Run migration 050 in Supabase
+═══════════════════════════════════════════════════
+After copying the files and pushing to Supabase, run the migration:
+  050_coverage_types_and_rpc_fix.sql
+
+This can be run via Supabase Dashboard → SQL Editor, or via CLI:
+  supabase db push
