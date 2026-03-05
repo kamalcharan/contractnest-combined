@@ -1,0 +1,89 @@
+===================================================
+FIX: Contact Update Not Persisting - Diagnostic Logging
+===================================================
+
+SUBMODULES AFFECTED:
+  - contractnest-edge
+
+FILES TO COPY:
+===================================================
+
+1. contractnest-edge/supabase/functions/_shared/contacts/contactService.ts
+   Purpose: Added comprehensive diagnostic logging to updateContact():
+     - Logs normalized channels being sent to RPC
+     - Logs full RPC result (success, was_duplicate, error)
+     - After RPC succeeds, queries t_contact_channels to VERIFY
+       the channels were actually written to the database
+     - This will reveal if: channels are null, RPC returns duplicate,
+       or channels don't persist despite RPC success
+
+2. contractnest-edge/supabase/functions/_shared/contacts/contactValidation.ts
+   Purpose: Rewritten validateUpdateRequest() for partial updates
+     - Only validates fields present in the update payload
+     - Uses proven .select('id, status') query (no extra columns)
+     - Properly validates contact_channels if present
+
+3. contractnest-edge/supabase/functions/contacts/index.ts
+   Purpose: Added diagnostic logging for validation failures
+
+===================================================
+WHAT TO LOOK FOR IN EDGE FUNCTION LOGS:
+===================================================
+
+After deploying and retrying the WhatsApp number edit, check logs for:
+
+1. "=== DEBUG updateContact ===" section:
+   - contact_channels should NOT be null/undefined
+   - contact_channels count should be > 0
+
+2. "=== DEBUG RPC params ===" section:
+   - normalizedChannels should have the updated WhatsApp number
+   - normalizedChannels is null should be FALSE
+
+3. "=== DEBUG RPC result ===" section:
+   - rpcResult should show { success: true, was_duplicate: false }
+   - If was_duplicate is TRUE, the idempotency system is blocking the update!
+
+4. "=== DEBUG Channel Verification ===" section:
+   - Shows what's ACTUALLY in t_contact_channels after the RPC
+   - Compare the value field with what was sent
+
+===================================================
+ALSO RUN THIS SQL IN SUPABASE SQL EDITOR:
+===================================================
+
+-- 1. Verify the RPC function exists with correct signature
+SELECT proname, pronargs, proargtypes::regtype[]
+FROM pg_proc
+WHERE proname = 'update_contact_idempotent_v2';
+-- Should show EXACTLY ONE row with 6 args starting with uuid
+
+-- 2. Check for stale idempotency entries that might block updates
+SELECT * FROM api_idempotency
+WHERE resource_type = 'contact_update'
+  AND resource_id = 'a2f3aa89-fdad-421a-a1ca-d513a69bc8fd'
+ORDER BY created_at DESC
+LIMIT 10;
+-- If there are entries here, each one represents a past update attempt
+
+-- 3. Check current channels for this contact
+SELECT * FROM t_contact_channels
+WHERE contact_id = 'a2f3aa89-fdad-421a-a1ca-d513a69bc8fd';
+-- Shows the current WhatsApp number stored in DB
+
+===================================================
+DEBUGGING: If was_duplicate = TRUE
+===================================================
+This means the idempotency system thinks this update was already processed.
+The fix would be to clear stale entries:
+
+DELETE FROM api_idempotency
+WHERE resource_type = 'contact_update'
+  AND resource_id = 'a2f3aa89-fdad-421a-a1ca-d513a69bc8fd';
+
+Then retry the update.
+
+===================================================
+POST-COPY: Deploy edge function
+===================================================
+Deploy the contacts edge function with the updated files.
