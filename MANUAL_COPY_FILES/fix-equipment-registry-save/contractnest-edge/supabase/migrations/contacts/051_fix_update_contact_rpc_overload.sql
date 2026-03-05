@@ -1,15 +1,16 @@
--- Fix: Drop duplicate update_contact_idempotent_v2 with UUID idempotency key
--- There are two overloaded versions:
---   1. update_contact_idempotent_v2(p_idempotency_key TEXT, ...)
---   2. update_contact_idempotent_v2(p_idempotency_key UUID, ...)
--- PostgreSQL error PGRST203: "Could not choose the best candidate function"
--- when a UUID-format string is passed (ambiguous between text and uuid).
+-- Fix: Resolve update_contact_idempotent_v2 function overload conflict
 --
--- The edge function's contactService generates idempotency keys via
--- crypto.randomUUID() which returns a string — so keep the TEXT version.
+-- Problem: Two overloaded versions exist (one with p_idempotency_key TEXT, one UUID).
+-- PostgreSQL PGRST203: "Could not choose the best candidate function"
+--
+-- The api_idempotency.key column is UUID type, so the function parameter must also be UUID.
+-- The edge function passes crypto.randomUUID() which is a valid UUID string —
+-- Supabase PostgREST auto-casts it to UUID when there's no ambiguity.
+--
+-- Fix: Drop the TEXT version (wrong type), keep/recreate the UUID version.
 
--- Drop the UUID-parameter version specifically
-DROP FUNCTION IF EXISTS update_contact_idempotent_v2(uuid, uuid, jsonb, jsonb, jsonb, jsonb);
+-- Drop the TEXT version that was incorrectly created
+DROP FUNCTION IF EXISTS update_contact_idempotent_v2(text, uuid, jsonb, jsonb, jsonb, jsonb);
 
--- Also fix the same issue for create_contact_idempotent_v2 if it exists
-DROP FUNCTION IF EXISTS create_contact_idempotent_v2(uuid, uuid, text, jsonb, jsonb, jsonb, jsonb, boolean);
+-- Also drop any TEXT version of create_contact_idempotent_v2
+DROP FUNCTION IF EXISTS create_contact_idempotent_v2(text, uuid, text, jsonb, jsonb, jsonb, jsonb, boolean);
