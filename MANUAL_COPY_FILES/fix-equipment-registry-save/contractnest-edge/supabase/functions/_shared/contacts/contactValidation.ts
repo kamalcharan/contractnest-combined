@@ -225,11 +225,10 @@ export class ContactValidationService {
   async validateUpdateRequest(contactId: string, data: any): Promise<ValidationResult> {
     const errors: string[] = [];
 
-    // Check if contact exists — fetch core fields for merging with partial updates
-    // Note: contact_channels and addresses are in separate tables, not on t_contacts
+    // Check if contact exists (use only proven columns: id, status)
     const { data: existingContact, error } = await this.supabase
       .from('t_contacts')
-      .select('id, status, type, name, company_name, classifications')
+      .select('id, status')
       .eq('id', contactId)
       .single();
 
@@ -244,37 +243,80 @@ export class ContactValidationService {
       return { isValid: false, errors };
     }
 
-    // Merge existing contact data with update data — existing serves as defaults
-    // This ensures required fields (name, type, classifications) are always
-    // present even when the UI sends a partial update (e.g., only channels)
-    const mergedData: any = {
-      ...existingContact,
-      ...data,
-      tenant_id: 'dummy', // Skip tenant validation for updates
-    };
+    // ── Partial update validation ─────────────────────────────────
+    // Only validate fields that are actually present in the update data.
+    // Do NOT reuse validateCreateRequest — it checks required fields
+    // that won't be in a partial update (name, classifications, channels).
 
-    // contact_channels live in a separate table, not on t_contacts.
-    // If the update doesn't include them, provide a dummy valid channel
-    // so the create-time required-channel check doesn't fail.
-    if (!data.contact_channels) {
-      mergedData.contact_channels = [{ channel_type: 'mobile', value: '+10000000000', is_primary: true }];
+    // Validate status if provided
+    if (data.status && !CONTACT_STATUS.includes(data.status)) {
+      errors.push(`Status must be one of: ${CONTACT_STATUS.join(', ')}`);
     }
 
-    console.log('[ContactValidation] Merged data type:', mergedData.type, 'name:', mergedData.name?.substring(0, 20), 'classifications:', JSON.stringify(mergedData.classifications), 'channels count:', mergedData.contact_channels?.length);
-
-    const createValidation = await this.validateCreateRequest(mergedData);
-
-    if (createValidation.errors.length > 0) {
-      console.error('[ContactValidation] Raw create errors:', JSON.stringify(createValidation.errors));
+    // Validate type if provided
+    if (data.type && !CONTACT_TYPES.includes(data.type)) {
+      errors.push(`Contact type must be one of: ${CONTACT_TYPES.join(', ')}`);
     }
 
-    // Filter out tenant and type errors for updates
-    const filteredErrors = createValidation.errors.filter(error =>
-      !error.includes('Tenant ID is required') &&
-      !error.includes('Contact type must be one of')
-    );
+    // Validate name if provided
+    if (data.name !== undefined) {
+      if (!data.name || data.name.trim().length < VALIDATION_RULES.NAME_MIN_LENGTH) {
+        errors.push(`Name must be at least ${VALIDATION_RULES.NAME_MIN_LENGTH} characters`);
+      }
+      if (data.name && data.name.length > VALIDATION_RULES.NAME_MAX_LENGTH) {
+        errors.push(`Name must not exceed ${VALIDATION_RULES.NAME_MAX_LENGTH} characters`);
+      }
+    }
 
-    errors.push(...filteredErrors);
+    // Validate company_name if provided
+    if (data.company_name !== undefined) {
+      if (!data.company_name || data.company_name.trim().length < VALIDATION_RULES.NAME_MIN_LENGTH) {
+        errors.push(`Company name must be at least ${VALIDATION_RULES.NAME_MIN_LENGTH} characters`);
+      }
+      if (data.company_name && data.company_name.length > VALIDATION_RULES.NAME_MAX_LENGTH) {
+        errors.push(`Company name must not exceed ${VALIDATION_RULES.NAME_MAX_LENGTH} characters`);
+      }
+    }
+
+    // Validate classifications if provided
+    if (data.classifications) {
+      if (!Array.isArray(data.classifications) || data.classifications.length === 0) {
+        errors.push('At least one classification is required');
+      } else {
+        const invalidClassifications = data.classifications.filter(
+          (c: string) => !CONTACT_CLASSIFICATIONS.includes(c)
+        );
+        if (invalidClassifications.length > 0) {
+          errors.push(`Invalid classifications: ${invalidClassifications.join(', ')}`);
+        }
+      }
+    }
+
+    // Validate contact channels if provided
+    if (data.contact_channels) {
+      if (!Array.isArray(data.contact_channels) || data.contact_channels.length === 0) {
+        errors.push('At least one contact channel is required');
+      } else {
+        const channelErrors = this.validateContactChannels(data.contact_channels);
+        errors.push(...channelErrors);
+      }
+    }
+
+    // Validate addresses if provided
+    if (data.addresses && Array.isArray(data.addresses)) {
+      const addressErrors = this.validateAddresses(data.addresses);
+      errors.push(...addressErrors);
+    }
+
+    // Validate notes if provided
+    if (data.notes !== undefined && data.notes && data.notes.length > VALIDATION_RULES.NOTES_MAX_LENGTH) {
+      errors.push(`Notes must not exceed ${VALIDATION_RULES.NOTES_MAX_LENGTH} characters`);
+    }
+
+    // Validate tags if provided
+    if (data.tags && Array.isArray(data.tags) && data.tags.length > 10) {
+      errors.push('Maximum 10 tags allowed');
+    }
 
     return {
       isValid: errors.length === 0,
