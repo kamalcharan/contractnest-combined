@@ -1,0 +1,35 @@
+═══════════════════════════════════════════════════
+FIX: WhatsApp/SMS country code hardcoded to '91'
+═══════════════════════════════════════════════════
+
+Bug: formatMobile() in whatsapp.ts and sms.ts always used MSG91_COUNTRY_CODE
+(default '91'), ignoring the per-contact country_code from t_contact_channels.
+Numbers for non-Indian contacts were prefixed with '91' -> sent to wrong number.
+
+Submodules Affected: contractnest-edge
+
+Files Changed (4):
+─────────────────────────────────
+1. contractnest-edge/supabase/functions/contracts/index.ts
+   - Declared recipientCountryCode variable
+   - Captured mobileChannel.country_code from DB lookup (was discarded)
+   - Passed it through to sendContractSignoffNotification
+
+2. contractnest-edge/supabase/functions/jtd-worker/index.ts
+   - Passes recipient_data.country_code to handleWhatsApp() and handleSMS()
+
+3. contractnest-edge/supabase/functions/jtd-worker/handlers/whatsapp.ts
+   - Added countryCode? to WhatsAppRequest interface
+   - formatMobile() now accepts countryCode param, falls back to MSG91_COUNTRY_CODE
+
+4. contractnest-edge/supabase/functions/jtd-worker/handlers/sms.ts
+   - Added countryCode? to SMSRequest interface
+   - formatMobile() now accepts countryCode param, falls back to MSG91_COUNTRY_CODE
+   - SMS payload 'country' field also uses per-recipient code
+
+Copy Commands (from contractnest-combined root):
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\fix-whatsapp-country-code\contractnest-edge\supabase\functions\contracts\index.ts" -Destination "contractnest-edge\supabase\functions\contracts\index.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\fix-whatsapp-country-code\contractnest-edge\supabase\functions\jtd-worker\index.ts" -Destination "contractnest-edge\supabase\functions\jtd-worker\index.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\fix-whatsapp-country-code\contractnest-edge\supabase\functions\jtd-worker\handlers\whatsapp.ts" -Destination "contractnest-edge\supabase\functions\jtd-worker\handlers\whatsapp.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\fix-whatsapp-country-code\contractnest-edge\supabase\functions\jtd-worker\handlers\sms.ts" -Destination "contractnest-edge\supabase\functions\jtd-worker\handlers\sms.ts" -Force
