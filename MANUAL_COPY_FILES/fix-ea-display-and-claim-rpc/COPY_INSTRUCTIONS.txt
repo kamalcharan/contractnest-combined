@@ -1,0 +1,31 @@
+═══════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS: fix-ea-display-and-claim-rpc
+═══════════════════════════════════════════════════════════════
+
+SUBMODULES AFFECTED:
+  1. contractnest-ui
+  2. contractnest-edge
+
+FILES TO COPY:
+───────────────────────────────────────────────────────────────
+
+1. contractnest-ui/src/components/contracts/ContractWizard/steps/ReviewSendStep.tsx
+   PURPOSE: Hide per-unit price (/ea) line when quantity = 1
+   CHANGE: Lines 1345-1347 — wrapped in conditional {(block.unlimited || block.quantity > 1) && (...)}
+
+2. contractnest-edge/supabase/migrations/contracts/051_claim_contract_by_cnak_rpc.sql
+   PURPOSE: NEW FILE — RPC for claiming contracts via CNAK code
+   INCLUDES:
+     - ALTER TABLE to add claimed_at/claimed_by columns to t_contract_access
+     - CREATE OR REPLACE FUNCTION claim_contract_by_cnak()
+     - Supports both manual-accept AND auto-accept contracts
+     - Auto-creates seller as corporate contact in buyer workspace
+
+NOTE ON MIGRATION 051:
+  This is a NEW SQL migration file. Run it in Supabase SQL Editor or
+  apply via migration tool. It will:
+    a) Add claimed_at (TIMESTAMPTZ) and claimed_by (UUID) columns to t_contract_access
+    b) Create the claim_contract_by_cnak() RPC function
+    c) Grant EXECUTE to authenticated role
+
+═══════════════════════════════════════════════════════════════
