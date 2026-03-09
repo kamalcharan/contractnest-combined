@@ -1,0 +1,18 @@
+═══════════════════════════════════════════════════════════
+THE PROBLEM V3 (VIKUNA BLACK) - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════════════
+
+Feature: TheProblemV3 - Chaos vs ContractNest split + industry scenario tabs
+Submodules Affected: contractnest-ui
+Depends On: vikuna-black-theme + hero-v3 (must be applied first)
+
+FILES TO COPY:
+═══════════════════════════════════════════════════════════
+
+1. NEW FILE - TheProblemV3 Component:
+   FROM: MANUAL_COPY_FILES/problem-v3/contractnest-ui/src/components/landing/TheProblemV3.tsx
+   TO:   contractnest-ui/src/components/landing/TheProblemV3.tsx
+
+2. MODIFIED - LandingPage (swapped TheProblem → TheProblemV3):
+   FROM: MANUAL_COPY_FILES/problem-v3/contractnest-ui/src/pages/public/LandingPage.tsx
+   TO:   contractnest-ui/src/pages/public/LandingPage.tsx
