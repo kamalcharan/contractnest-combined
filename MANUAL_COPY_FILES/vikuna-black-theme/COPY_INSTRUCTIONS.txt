@@ -1,0 +1,49 @@
+═══════════════════════════════════════════════════════════
+VIKUNA-BLACK THEME - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════════════
+
+Feature: New "Vikuna Black" theme added to ContractNest
+Submodules Affected: contractnest-ui
+
+FILES TO COPY:
+═══════════════════════════════════════════════════════════
+
+1. NEW FILE - Theme Definition:
+   FROM: MANUAL_COPY_FILES/vikuna-black-theme/contractnest-ui/src/config/theme/themes/vikunaBlack.ts
+   TO:   contractnest-ui/src/config/theme/themes/vikunaBlack.ts
+
+2. MODIFIED - Theme Context (import + registration + legacy class):
+   FROM: MANUAL_COPY_FILES/vikuna-black-theme/contractnest-ui/src/contexts/ThemeContext.tsx
+   TO:   contractnest-ui/src/contexts/ThemeContext.tsx
+
+3. MODIFIED - Theme Config Index (import + registry):
+   FROM: MANUAL_COPY_FILES/vikuna-black-theme/contractnest-ui/src/config/theme/index.ts
+   TO:   contractnest-ui/src/config/theme/index.ts
+
+4. MODIFIED - Theme Utils (import + registry):
+   FROM: MANUAL_COPY_FILES/vikuna-black-theme/contractnest-ui/src/utils/theme.ts
+   TO:   contractnest-ui/src/utils/theme.ts
+
+═══════════════════════════════════════════════════════════
+WHAT CHANGED:
+═══════════════════════════════════════════════════════════
+
+vikunaBlack.ts (NEW):
+  - Theme id: 'vikuna-black'
+  - Theme name: 'Vikuna Black'
+  - Light mode: Warm professional palette (amber primary, near-black secondary)
+  - Dark mode: HTML reference colors (#0D0F14 bg, #F5A623 amber, #13161D surface, etc.)
+
+ThemeContext.tsx:
+  - Added import for VikunaBlackTheme
+  - Added to themes object: [VikunaBlackTheme.id]: VikunaBlackTheme
+  - Added 'theme-vikuna-black' to classList.remove() cleanup list
+  - Added 'vikuna-black': 'theme-vikuna-black' to legacy theme map
+
+config/theme/index.ts:
+  - Added import for VikunaBlackTheme
+  - Added 'VikunaBlackTheme': VikunaBlackTheme to THEME_REGISTRY
+
+utils/theme.ts:
+  - Added import for VikunaBlackTheme
+  - Added [VikunaBlackTheme.id]: VikunaBlackTheme to themes object
