@@ -142,16 +142,34 @@ const HeroV3: React.FC<HeroV3Props> = ({
           </span>
         </h1>
 
-        {/* Subtitle */}
+        {/* Context line */}
         <p
           style={{
             marginTop: 28,
+            maxWidth: 560,
+            fontSize: '1.05rem',
+            fontWeight: 300,
+            lineHeight: 1.7,
+            color: colors.utility.secondaryText,
+            animation: 'heroV3FadeUp 0.7s ease forwards 0.3s',
+            opacity: 0,
+          }}
+        >
+          AMCs. Vendor agreements. Maintenance contracts. Health packages. Whatever you call them
+          — if it involves recurring services, SLAs, and payments, that's what ContractNest
+          manages.
+        </p>
+
+        {/* Subtitle */}
+        <p
+          style={{
+            marginTop: 20,
             maxWidth: 560,
             fontSize: '1.1rem',
             fontWeight: 300,
             lineHeight: 1.7,
             color: colors.utility.secondaryText,
-            animation: 'heroV3FadeUp 0.7s ease forwards 0.35s',
+            animation: 'heroV3FadeUp 0.7s ease forwards 0.4s',
             opacity: 0,
           }}
         >
@@ -176,7 +194,7 @@ const HeroV3: React.FC<HeroV3Props> = ({
             borderRadius: 10,
             overflow: 'hidden',
             maxWidth: 580,
-            animation: 'heroV3FadeUp 0.7s ease forwards 0.45s',
+            animation: 'heroV3FadeUp 0.7s ease forwards 0.5s',
             opacity: 0,
           }}
         >
@@ -243,7 +261,7 @@ const HeroV3: React.FC<HeroV3Props> = ({
             display: 'flex',
             flexDirection: 'column',
             gap: 10,
-            animation: 'heroV3FadeUp 0.7s ease forwards 0.55s',
+            animation: 'heroV3FadeUp 0.7s ease forwards 0.6s',
             opacity: 0,
           }}
         >
@@ -334,7 +352,7 @@ const HeroV3: React.FC<HeroV3Props> = ({
             marginTop: 60,
             paddingTop: 36,
             borderTop: '1px solid rgba(255,255,255,0.07)',
-            animation: 'heroV3FadeUp 0.7s ease forwards 0.7s',
+            animation: 'heroV3FadeUp 0.7s ease forwards 0.75s',
             opacity: 0,
           }}
         >
