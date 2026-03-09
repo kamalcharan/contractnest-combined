@@ -1,0 +1,38 @@
+═══════════════════════════════════════════════════════════
+HERO V3 (VIKUNA BLACK) - COPY INSTRUCTIONS
+═══════════════════════════════════════════════════════════
+
+Feature: HeroV3 component using Vikuna Black theme for landing page
+Submodules Affected: contractnest-ui
+Depends On: vikuna-black-theme (must be applied first)
+
+FILES TO COPY:
+═══════════════════════════════════════════════════════════
+
+1. NEW FILE - HeroV3 Component:
+   FROM: MANUAL_COPY_FILES/hero-v3/contractnest-ui/src/components/landing/HeroV3.tsx
+   TO:   contractnest-ui/src/components/landing/HeroV3.tsx
+
+2. MODIFIED - LandingPage (swapped LandingHero → HeroV3):
+   FROM: MANUAL_COPY_FILES/hero-v3/contractnest-ui/src/pages/public/LandingPage.tsx
+   TO:   contractnest-ui/src/pages/public/LandingPage.tsx
+
+═══════════════════════════════════════════════════════════
+WHAT CHANGED:
+═══════════════════════════════════════════════════════════
+
+HeroV3.tsx (NEW):
+  - Imports VikunaBlackTheme directly (always dark mode for landing)
+  - Hero headline: "YOUR CONTRACTS / RUN YOUR BUSINESS. / UNTIL THEY DON'T."
+  - Proof strip: Revenue Side (green) + Cost Side (amber)
+  - Email CTA: "Get Early Access" with success state
+  - Stats row: 4 market stats with Bebas Neue typography
+  - Industry ticker: auto-scrolling horizontal list
+  - Fonts: Bebas Neue, DM Sans, DM Mono (loaded via @import)
+  - All animations: fadeUp + scroll ticker
+
+LandingPage.tsx:
+  - Added import for HeroV3
+  - Replaced <LandingHero> with <HeroV3>
+  - Props: onPlaygroundClick, onGetEarlyAccess, signupUrl
+  - Old LandingHero import kept (not removed, just unused)
