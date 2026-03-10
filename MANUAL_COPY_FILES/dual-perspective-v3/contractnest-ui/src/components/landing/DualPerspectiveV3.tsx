@@ -325,7 +325,7 @@ const DualPerspectiveV3: React.FC<{ className?: string }> = ({ className = '' })
           {/* Bridge */}
           <Bridge
             leftType="amc" leftLabel="🔧 AMC Company Sees"
-            leftQ='"Yashoda renewal in 47 days — what\'s the right price?"'
+            leftQ={'"Yashoda renewal in 47 days — what\'s the right price?"'}
             leftA='Service teams see <hl>visit history, SLA performance, asset additions</hl> — everything needed to price a competitive renewal proposal in minutes, not days.'
             rightType="hospital" rightLabel="🏥 Hospital Receives"
             rightQ='"Our MRI contract renewal just arrived — is the SLA stronger?"'
