@@ -1,0 +1,80 @@
+===============================================
+FEATURE: ownership_type (client/self) for Equipment Registry
+BRANCH: feat-ownership-type
+DATE: 2026-03-11
+===============================================
+
+SUBMODULES AFFECTED:
+  - contractnest-edge (1 file)
+  - contractnest-api  (2 files)
+  - contractnest-ui   (5 files)
+
+PRE-REQUISITE (DB MIGRATION - already done):
+  ALTER TABLE t_client_asset_registry
+  ADD COLUMN ownership_type TEXT NOT NULL DEFAULT 'client'
+  CHECK (ownership_type IN ('client', 'self'));
+
+===============================================
+FILES CHANGED:
+===============================================
+
+contractnest-edge/supabase/functions/client-asset-registry/index.ts
+  → ownership_type filter in GET, conditional owner_contact_id in POST, allowed in PATCH
+
+contractnest-api/src/controllers/clientAssetRegistryController.ts
+  → Passes ownership_type query param to edge function
+
+contractnest-api/src/validators/clientAssetRegistryValidators.ts
+  → ownership_type validation in create + update, owner_contact_id now optional
+
+contractnest-ui/src/types/assetRegistry.ts
+  → AssetOwnershipType type, added to TenantAsset, AssetFormData, AssetRegistryFilters, DEFAULT_FORM_DATA
+
+contractnest-ui/src/services/serviceURLs.ts
+  → ownership_type added to LIST_WITH_FILTERS query params
+
+contractnest-ui/src/pages/equipment-registry/index.tsx
+  → Auto-sets ownership_type filter (revenue=client, expense=self), passes defaultOwnershipType to form
+
+contractnest-ui/src/pages/equipment-registry/EquipmentFormDialog.tsx
+  → Self/Client toggle replacing old fixed "Client / Owner" section
+
+contractnest-ui/src/pages/equipment-registry/EquipmentCard.tsx
+  → Shows "Self (My Equipment)" label for self-owned assets
+
+===============================================
+COPY COMMANDS (PowerShell):
+===============================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Edge Function
+Copy-Item "MANUAL_COPY_FILES\feat-ownership-type\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+# API
+Copy-Item "MANUAL_COPY_FILES\feat-ownership-type\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+
+# UI
+Copy-Item "MANUAL_COPY_FILES\feat-ownership-type\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+===============================================
+DEPLOY EDGE FUNCTION (if testing against Supabase):
+===============================================
+
+cd contractnest-edge
+npx supabase functions deploy client-asset-registry
+cd ..
+
+===============================================
+START DEV SERVERS:
+===============================================
+
+# API
+cd contractnest-api && npm run dev
+
+# UI (separate terminal)
+cd contractnest-ui && npm run dev
+
+# Hard refresh browser: Ctrl+F5
