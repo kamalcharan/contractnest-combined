@@ -1,0 +1,24 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — Fix Equipment Name Validation (Special Characters)
+═══════════════════════════════════════════════════
+Feature Branch: fix-equipment-name-validation
+Date: 2026-03-11
+
+FILES TO COPY:
+─────────────────────────────────
+1. contractnest-api/src/types/resourcesTypes.ts
+   → Expanded name regex to allow / , # + ' " : @
+
+2. contractnest-api/src/validators/resourceValidator.ts
+   → Updated error message to list allowed punctuation
+
+SUBMODULES AFFECTED:
+─────────────────────────────────
+- contractnest-api
+
+COPY COMMANDS (PowerShell):
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\fix-equipment-name-validation\contractnest-api\src\types\resourcesTypes.ts" -Destination "contractnest-api\src\types\resourcesTypes.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\fix-equipment-name-validation\contractnest-api\src\validators\resourceValidator.ts" -Destination "contractnest-api\src\validators\resourceValidator.ts" -Force
+
+═══════════════════════════════════════════════════
