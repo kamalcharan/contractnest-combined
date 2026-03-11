@@ -1,0 +1,20 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — V3 Pricing Section
+═══════════════════════════════════════════════════
+Feature Branch: v3-pricing-section
+Date: 2026-03-11
+
+FILES TO COPY:
+─────────────────────────────────
+1. contractnest-ui/src/components/landing/LandingPricing.tsx
+   → Full rewrite: V3 dark theme, credit-based pricing, VaNi callout
+
+SUBMODULES AFFECTED:
+─────────────────────────────────
+- contractnest-ui
+
+COPY COMMAND (PowerShell):
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\v3-pricing-section\contractnest-ui\src\components\landing\LandingPricing.tsx" -Destination "contractnest-ui\src\components\landing\LandingPricing.tsx" -Force
+
+═══════════════════════════════════════════════════
