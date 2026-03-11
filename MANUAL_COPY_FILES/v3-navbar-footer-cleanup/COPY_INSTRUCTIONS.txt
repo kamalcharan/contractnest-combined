@@ -1,0 +1,28 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — V3 Navbar + Footer + Hide DualPersonaTimeline
+═══════════════════════════════════════════════════
+Feature Branch: v3-navbar-footer-cleanup
+Date: 2026-03-11
+
+FILES TO COPY:
+─────────────────────────────────
+1. contractnest-ui/src/components/landing/LandingNavigation.tsx
+   → Full rewrite: V3 dark glass navbar with amber accents, Bebas Neue branding
+
+2. contractnest-ui/src/components/landing/LandingFooter.tsx
+   → Full rewrite: V3 dark theme footer with link columns, newsletter, contact, social icons
+
+3. contractnest-ui/src/pages/public/LandingPage.tsx
+   → Hidden "How Both Sides Win" (DualPersonaTimeline) section
+
+SUBMODULES AFFECTED:
+─────────────────────────────────
+- contractnest-ui
+
+COPY COMMANDS (PowerShell):
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\v3-navbar-footer-cleanup\contractnest-ui\src\components\landing\LandingNavigation.tsx" -Destination "contractnest-ui\src\components\landing\LandingNavigation.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\v3-navbar-footer-cleanup\contractnest-ui\src\components\landing\LandingFooter.tsx" -Destination "contractnest-ui\src\components\landing\LandingFooter.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\v3-navbar-footer-cleanup\contractnest-ui\src\pages\public\LandingPage.tsx" -Destination "contractnest-ui\src\pages\public\LandingPage.tsx" -Force
+
+═══════════════════════════════════════════════════
