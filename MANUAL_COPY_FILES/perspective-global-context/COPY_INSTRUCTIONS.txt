@@ -8,35 +8,39 @@ Feature: Move Revenue/Expense perspective toggle from local page
 Submodules Affected: contractnest-ui
 
 ================================================================
-FILES TO COPY (7 files)
+FILES TO COPY (8 files)
 ================================================================
 
-1. src/context/AuthContext.tsx
+1. src/App.tsx
+   - Added TenantProvider to component tree (wraps MasterDataProvider)
+   - Required for initializePerspective() to run on profile load
+
+2. src/context/AuthContext.tsx
    - Added: Perspective type export, perspective state,
      togglePerspective(), setPerspectiveDirectly(),
      initializePerspective(), modal state
    - Reset perspective on tenant switch
 
-2. src/components/PerspectiveSwitchModal.tsx  [NEW FILE]
+3. src/components/PerspectiveSwitchModal.tsx  [NEW FILE]
    - Confirmation dialog for perspective switch
    - Matches EnvironmentSwitchModal pattern
 
-3. src/components/layout/Header.tsx
+4. src/components/layout/Header.tsx
    - Added Revenue/Expense toggle button (next to Live/Test)
    - Renders PerspectiveSwitchModal
 
-4. src/contexts/TenantContext.tsx
+5. src/contexts/TenantContext.tsx
    - Calls initializePerspective() when profile loads
 
-5. src/pages/contracts/hub/index.tsx
+6. src/pages/contracts/hub/index.tsx
    - Removed local perspective useState
    - Now reads from useAuth().perspective
 
-6. src/pages/ops/cockpit/index.tsx
+7. src/pages/ops/cockpit/index.tsx
    - Removed local perspective useState
    - Now reads from useAuth().perspective
 
-7. src/pages/equipment-registry/index.tsx
+8. src/pages/equipment-registry/index.tsx
    - Now reads perspective from AuthContext
    - Title/description changes per perspective
 
@@ -51,10 +55,17 @@ Copy-Item "MANUAL_COPY_FILES\perspective-global-context\contractnest-ui\*" -Dest
 Write-Host "All files copied!" -ForegroundColor Green
 
 ================================================================
-TEST AFTER COPYING
+IMPORTANT: After copying, RESTART the dev server completely.
+Do NOT rely on hot module reload for AuthContext changes.
 ================================================================
 
-cd contractnest-ui && npm run dev
+cd contractnest-ui
+# Stop any running dev server first (Ctrl+C)
+npm run dev
+
+================================================================
+TEST AFTER COPYING
+================================================================
 
 1. [ ] Navbar shows Revenue/Expense toggle button
 2. [ ] Clicking toggle shows confirmation modal
