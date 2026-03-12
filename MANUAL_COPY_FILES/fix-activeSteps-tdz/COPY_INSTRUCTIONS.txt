@@ -1,0 +1,24 @@
+═══════════════════════════════════════════════════
+FIX: activeSteps temporal dead zone error in ContractWizard
+═══════════════════════════════════════════════════
+
+Bug: ReferenceError: Cannot access 'activeSteps' before initialization
+     at ContractWizard (index.tsx:519)
+
+Root Cause: The save-as-draft feature added code at line 519 that uses
+            `activeSteps`, but it was declared with `const` at line 622.
+            JavaScript `const` declarations are not hoisted, causing a
+            temporal dead zone (TDZ) error.
+
+Fix: Moved `isRfqMode` and `activeSteps` declarations from line 618-622
+     to line 517 (just after the resetWizard callback), before their
+     first usage.
+
+═══════════════════════════════════════════════════
+FILES TO COPY:
+═══════════════════════════════════════════════════
+
+1. MANUAL_COPY_FILES\fix-activeSteps-tdz\contractnest-ui\src\components\contracts\ContractWizard\index.tsx
+   → contractnest-ui\src\components\contracts\ContractWizard\index.tsx
+
+Submodules Affected: contractnest-ui
