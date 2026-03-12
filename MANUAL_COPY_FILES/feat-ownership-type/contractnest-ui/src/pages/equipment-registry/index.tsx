@@ -24,7 +24,8 @@
     useUpdateAsset,
     useDeleteAsset,
   } from '@/hooks/queries/useAssetRegistry';
-  import { useResources, type Resource } from '@/hooks/queries/useResources';
+  import { useResources } from '@/hooks/queries/useResources';
+  import { useResourceTemplatesBrowser, type ResourceTemplateFilters } from '@/hooks/queries/useResourceTemplates';
   import { useContactList } from '@/hooks/useContacts';
 
   // Types
@@ -94,25 +95,65 @@
     const modeConfig = getModeConfig(registryMode, perspective);
 
     // ── Resources (filtered by registry mode) ─────────────────────────
+    // Revenue: tenant's configured resources only
+    // Expense: full master catalog (resource templates)
+    const isExpense = perspective === 'expense';
+
     const {
       data: allResources = [],
-      isLoading: categoriesLoading,
-      isError: categoriesError,
+      isLoading: savedResourcesLoading,
+      isError: savedResourcesError,
     } = useResources();
 
-    // Filter to only the resource types for this registry mode
-    const equipmentResources = useMemo(() => {
-      return allResources.filter(
-        (r) =>
-          modeConfig.typeIds.includes((r.resource_type_id || '').toLowerCase()) &&
-          r.is_active
-      );
-    }, [allResources, modeConfig.typeIds]);
+    const templateFilters: ResourceTemplateFilters = useMemo(
+      () => ({ limit: 500, resource_type_id: modeConfig.typeIds[0] }),
+      [modeConfig.typeIds]
+    );
+    const {
+      templates,
+      isLoading: templatesLoading,
+      isError: templatesError,
+    } = useResourceTemplatesBrowser(templateFilters);
+
+    const categoriesLoading = isExpense ? templatesLoading : savedResourcesLoading;
+    const categoriesError = isExpense ? templatesError : savedResourcesError;
+
+    // Normalise both data sources into a common shape
+    type NormalisedResource = { id: string; name: string; resource_type_id: string; sub_category: string | null; is_active: boolean };
+
+    const equipmentResources: NormalisedResource[] = useMemo(() => {
+      if (isExpense) {
+        // Master catalog templates — filter by mode typeIds
+        return templates
+          .filter((t) => modeConfig.typeIds.includes((t.resource_type_id || '').toLowerCase()))
+          .map((t) => ({
+            id: t.id,
+            name: t.name,
+            resource_type_id: t.resource_type_id,
+            sub_category: t.sub_category || null,
+            is_active: true,
+          }));
+      }
+      // Revenue — tenant's saved resources
+      return allResources
+        .filter(
+          (r) =>
+            modeConfig.typeIds.includes((r.resource_type_id || '').toLowerCase()) &&
+            r.is_active
+        )
+        .map((r) => ({
+          id: r.id,
+          name: r.display_name || r.name,
+          resource_type_id: r.resource_type_id,
+          sub_category: r.sub_category || null,
+          is_active: r.is_active,
+        }));
+    }, [isExpense, templates, allResources, modeConfig.typeIds]);
 
     // ── Sub-category grouping ───────────────────────────────────────
     const { subCategories, resourcesBySubCategory, resourceIdToSubCategory } =
       useMemo(() => {
-        const bySubCat = new Map<string, Resource[]>();
+        const bySubCat = new Map<string, NormalisedResource[]>();
         const idToSubCat = new Map<string, string>();
 
         for (const r of equipmentResources) {
@@ -269,7 +310,7 @@
     const allFormCategories = useMemo(() => {
       return equipmentResources.map((r) => ({
         id: r.id,
-        name: r.display_name || r.name,
+        name: r.name,
         sub_category: r.sub_category || null,
         resource_type_id: r.resource_type_id,
       }));
