@@ -1,22 +1,20 @@
 ═══════════════════════════════════════════════════
-FIX: Draft contracts being auto-activated + 502 errors
+FIX: Draft contracts - auto-activation + click resume + 502 errors
 ═══════════════════════════════════════════════════
 
-Bug 1: Draft contracts created mid-wizard show as "Active"
-Root Cause: saveDraftToApi used mapWizardToRequest() which includes
-            acceptance_method: 'auto'. The DB RPC function checks
-            "IF acceptance_method = 'auto' THEN status := 'active'"
-            so drafts were immediately activated on creation.
-Fix: saveDraftToApi now sends a minimal payload WITHOUT acceptance_method
-     so the RPC defaults to draft status.
+Bug 1: Draft contracts auto-activated on creation
+Fix: saveDraftToApi sends minimal payload without acceptance_method
 
-Bug 2: 502 Bad Gateway spam on PUT /api/contracts/<id>
-Root Cause: Once a contract became active, the wizard's auto-save kept
-            trying to PUT-update it, but the edge function rejects edits
-            on non-draft contracts.
-Fix: saveDraftToApi catches "not in draft status" errors and clears
-     draftId to stop retrying. handleResumeDraft also guards against
-     resuming non-draft contracts.
+Bug 2: Clicking draft row navigated to dashboard instead of resuming wizard
+Fix: handleRowClick checks status === 'draft' (not metadata.wizard_state
+     since the list API does not return metadata)
+
+Bug 3: Resume button not showing for drafts
+Fix: ContractPortfolioRow checks c.status === 'draft' only (removed
+     c.metadata?.wizard_state check since list API doesn't include metadata)
+
+Bug 4: 502 spam from auto-saving active contracts
+Fix: saveDraftToApi catches "not in draft" errors and clears draftId
 
 ═══════════════════════════════════════════════════
 FILES TO COPY:
@@ -27,5 +25,8 @@ FILES TO COPY:
 
 2. MANUAL_COPY_FILES\fix-draft-502\contractnest-ui\src\pages\contracts\hub\index.tsx
    → contractnest-ui\src\pages\contracts\hub\index.tsx
+
+3. MANUAL_COPY_FILES\fix-draft-502\contractnest-ui\src\components\contracts\list\ContractPortfolioRow.tsx
+   → contractnest-ui\src\components\contracts\list\ContractPortfolioRow.tsx
 
 Submodules Affected: contractnest-ui
