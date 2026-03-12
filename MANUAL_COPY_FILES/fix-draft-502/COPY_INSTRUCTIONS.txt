@@ -1,20 +1,22 @@
 ═══════════════════════════════════════════════════
-FIX: 502 Bad Gateway when wizard auto-saves active contracts
+FIX: Draft contracts being auto-activated + 502 errors
 ═══════════════════════════════════════════════════
 
-Bug: PUT /api/contracts/<id> returns 502 repeatedly with
-     "Contract can only be edited in draft status"
+Bug 1: Draft contracts created mid-wizard show as "Active"
+Root Cause: saveDraftToApi used mapWizardToRequest() which includes
+            acceptance_method: 'auto'. The DB RPC function checks
+            "IF acceptance_method = 'auto' THEN status := 'active'"
+            so drafts were immediately activated on creation.
+Fix: saveDraftToApi now sends a minimal payload WITHOUT acceptance_method
+     so the RPC defaults to draft status.
 
-Root Cause: The wizard's auto-save (saveDraftToApi) fires on every
-            "Continue" click past the details step. Once a contract
-            is activated/sent, the edge function rejects the PUT,
-            but the wizard keeps retrying on every step navigation.
-
-Fix:
-1. saveDraftToApi now catches the "draft status" error and clears
-   draftId so future auto-saves stop hitting the API.
-2. handleResumeDraft now checks contract.status === 'draft' before
-   opening the wizard in resume mode (safety net).
+Bug 2: 502 Bad Gateway spam on PUT /api/contracts/<id>
+Root Cause: Once a contract became active, the wizard's auto-save kept
+            trying to PUT-update it, but the edge function rejects edits
+            on non-draft contracts.
+Fix: saveDraftToApi catches "not in draft status" errors and clears
+     draftId to stop retrying. handleResumeDraft also guards against
+     resuming non-draft contracts.
 
 ═══════════════════════════════════════════════════
 FILES TO COPY:

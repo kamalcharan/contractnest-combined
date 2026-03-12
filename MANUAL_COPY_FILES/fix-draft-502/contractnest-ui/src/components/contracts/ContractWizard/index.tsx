@@ -559,21 +559,30 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
         });
         setDraftVersion((result as any)?.version || draftVersion + 1);
       } else {
-        // Create new draft — minimal payload
-        const request = mapWizardToRequest(wizardState, contractType);
-        request.metadata = metadata;
-        // Override title if empty
-        if (!request.title && !request.name) {
-          request.title = 'Untitled Draft';
-          request.name = 'Untitled Draft';
-        }
-        const result = await createContract(request as CreateContractRequest);
+        // Create new draft — truly minimal payload to avoid auto-accept.
+        // Do NOT use mapWizardToRequest here: it includes acceptance_method
+        // which causes the DB RPC to set status = 'active' immediately.
+        const draftRequest: Record<string, any> = {
+          record_type: wizardState.wizardMode === 'rfq' ? 'rfq' : 'contract',
+          name: wizardState.contractName || 'Untitled Draft',
+          title: wizardState.contractName || 'Untitled Draft',
+          description: wizardState.description || undefined,
+          contact_classification: contractType,
+          buyer_id: wizardState.buyerId || undefined,
+          contact_id: wizardState.buyerId || undefined,
+          start_date: wizardState.startDate.toISOString(),
+          duration_value: wizardState.durationValue,
+          duration_unit: wizardState.durationUnit,
+          metadata,
+          // NOTE: acceptance_method is intentionally omitted so the
+          // RPC function defaults to draft status.
+        };
+        const result = await createContract(draftRequest as CreateContractRequest);
         const created = result as Record<string, any>;
         if (created?.id) {
           setDraftId(created.id);
           setDraftVersion(created.version || 1);
         }
-        // NOTE: Do NOT transition status — contract stays as 'draft'
       }
       return true;
     } catch (err: any) {
