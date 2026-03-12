@@ -1,25 +1,26 @@
 ═══════════════════════════════════════════════════
-FIX: Draft contracts - auto-activation + click resume + 502 errors
+FIX: Complete draft save & resume feature
 ═══════════════════════════════════════════════════
 
-Bug 1: Draft contracts auto-activated on creation
-Fix: saveDraftToApi sends minimal payload without acceptance_method
+WHAT THIS FIXES:
+1. Draft contracts auto-activated on creation (acceptance_method sent)
+2. 502 errors from auto-saving active contracts
+3. Draft row click goes to dashboard instead of resuming wizard
+4. Resume button not showing for drafts (metadata check removed)
+5. Wizard starts from step 1 instead of saved step (race condition)
+6. [NEW] metadata column missing from t_contracts table — wizard state
+   was never actually persisted to the database
 
-Bug 2: Clicking draft row navigated to dashboard instead of resuming wizard
-Fix: handleRowClick checks status === 'draft' (not metadata.wizard_state
-     since the list API does not return metadata)
-
-Bug 3: Resume button not showing for drafts
-Fix: ContractPortfolioRow checks c.status === 'draft' only (removed
-     c.metadata?.wizard_state check since list API doesn't include metadata)
-
-Bug 4: 502 spam from auto-saving active contracts
-Fix: saveDraftToApi catches "not in draft" errors and clears draftId
+MIGRATION REQUIRED:
+   052_add_metadata_column.sql must be run on Supabase.
+   It adds the metadata JSONB column and updates all 3 RPC functions
+   (create, update, get_by_id) to store and return metadata.
 
 ═══════════════════════════════════════════════════
 FILES TO COPY:
 ═══════════════════════════════════════════════════
 
+UI FILES:
 1. MANUAL_COPY_FILES\fix-draft-502\contractnest-ui\src\components\contracts\ContractWizard\index.tsx
    → contractnest-ui\src\components\contracts\ContractWizard\index.tsx
 
@@ -29,4 +30,8 @@ FILES TO COPY:
 3. MANUAL_COPY_FILES\fix-draft-502\contractnest-ui\src\components\contracts\list\ContractPortfolioRow.tsx
    → contractnest-ui\src\components\contracts\list\ContractPortfolioRow.tsx
 
-Submodules Affected: contractnest-ui
+EDGE/MIGRATION FILE:
+4. MANUAL_COPY_FILES\fix-draft-502\contractnest-edge\supabase\migrations\contracts\052_add_metadata_column.sql
+   → contractnest-edge\supabase\migrations\contracts\052_add_metadata_column.sql
+
+Submodules Affected: contractnest-ui, contractnest-edge
