@@ -26,6 +26,14 @@ interface BucketData {
   color: string;
 }
 
+interface VaniAlert {
+  icon: string;
+  type: string;
+  typeColor: string;
+  message: string;
+  time: string;
+}
+
 interface PerspectiveData {
   toggleLabel: string;
   toggleSublabel: string;
@@ -37,6 +45,7 @@ interface PerspectiveData {
   serviceEvents: ServiceEvent[];
   serviceEventsTotal: number;
   ctaButtons: { primary: string; secondary: string };
+  vaniAlerts: VaniAlert[];
 }
 
 const revenueData: PerspectiveData = {
@@ -52,12 +61,18 @@ const revenueData: PerspectiveData = {
     { label: 'THIS WEEK', count: 3, serviceCount: 3, billingAmount: '$ 78,000', color: '#06B6D4' },
   ],
   serviceEvents: [
-    { name: 'Apollo Hospital', detail: 'MRI Calibration', date: 'Due: 15 Mar', amount: '₹21,000', status: 'On Track', statusColor: '#10B981' },
-    { name: 'Prestige Tech Park', detail: 'HVAC Q1', date: 'Due: 12 Mar', amount: '₹18,500', status: 'Pending', statusColor: '#F59E0B' },
-    { name: 'Indiabulls Centre', detail: 'Elevator Q4', date: 'Due: 8 Mar', amount: '₹8,500', status: 'Overdue', statusColor: '#EF4444' },
+    { name: 'Sunrise Medical Center', detail: 'MRI Calibration', date: 'Due: 15 Mar', amount: '₹21,000', status: 'On Track', statusColor: '#10B981' },
+    { name: 'Pinnacle Tower', detail: 'HVAC Q1 Service', date: 'Due: 12 Mar', amount: '₹18,500', status: 'Pending', statusColor: '#F59E0B' },
+    { name: 'Metro Heights', detail: 'Elevator AMC Q4', date: 'Due: 8 Mar', amount: '₹8,500', status: 'Overdue', statusColor: '#EF4444' },
   ],
   serviceEventsTotal: 6,
   ctaButtons: { primary: '+ New Contract', secondary: '+ Add Client' },
+  vaniAlerts: [
+    { icon: '🚨', type: 'SLA Breach', typeColor: '#EF4444', message: 'Sunrise Medical — MRI response SLA missed by 4hrs', time: '12 min ago' },
+    { icon: '🔔', type: 'Renewal', typeColor: '#F59E0B', message: 'Metro Heights elevator AMC expires in 18 days', time: '1 hr ago' },
+    { icon: '💰', type: 'Payment', typeColor: '#3B82F6', message: 'Pinnacle Tower — ₹18,500 invoice overdue by 5 days', time: '2 hrs ago' },
+    { icon: '✅', type: 'Compliance', typeColor: '#10B981', message: 'All Q1 fire safety certs verified for 3 sites', time: '3 hrs ago' },
+  ],
 };
 
 const expenseData: PerspectiveData = {
@@ -73,22 +88,19 @@ const expenseData: PerspectiveData = {
     { label: 'THIS WEEK', count: 5, serviceCount: 4, billingAmount: '$ 1,15,000', color: '#06B6D4' },
   ],
   serviceEvents: [
-    { name: 'MedTech Solutions', detail: 'CT Scanner AMC', date: 'Due: 14 Mar', amount: '₹35,000', status: 'Pending', statusColor: '#F59E0B' },
-    { name: 'CoolAir Systems', detail: 'AHU Servicing', date: 'Due: 10 Mar', amount: '₹22,000', status: 'Overdue', statusColor: '#EF4444' },
-    { name: 'SecureGuard Inc.', detail: 'Security Patrol Q1', date: 'Due: 16 Mar', amount: '₹14,500', status: 'On Track', statusColor: '#10B981' },
+    { name: 'NovaDiag Systems', detail: 'CT Scanner AMC', date: 'Due: 14 Mar', amount: '₹35,000', status: 'Pending', statusColor: '#F59E0B' },
+    { name: 'ArcticBreeze HVAC', detail: 'AHU Servicing', date: 'Due: 10 Mar', amount: '₹22,000', status: 'Overdue', statusColor: '#EF4444' },
+    { name: 'ShieldForce Security', detail: 'Patrol Contract Q1', date: 'Due: 16 Mar', amount: '₹14,500', status: 'On Track', statusColor: '#10B981' },
   ],
   serviceEventsTotal: 8,
   ctaButtons: { primary: '+ Vendor Contract', secondary: '+ Add Vendor' },
+  vaniAlerts: [
+    { icon: '🚨', type: 'SLA Breach', typeColor: '#EF4444', message: 'ArcticBreeze — AHU maintenance SLA missed by 2 days', time: '8 min ago' },
+    { icon: '💰', type: 'Payment', typeColor: '#3B82F6', message: 'NovaDiag — ₹35,000 invoice pending approval since 5 Mar', time: '45 min ago' },
+    { icon: '🔔', type: 'Renewal', typeColor: '#F59E0B', message: 'ShieldForce patrol contract up for renewal in 22 days', time: '1 hr ago' },
+    { icon: '📋', type: 'Recommendation', typeColor: '#8B5CF6', message: 'Bundle AHU + Chiller AMC for 12% cost savings', time: '3 hrs ago' },
+  ],
 };
-
-// ─── VaNi Capabilities (shown in sidebar) ────────────────────────
-
-const vaniCapabilities = [
-  { icon: '⚡', label: 'SLA Breach Alerts' },
-  { icon: '🔔', label: 'Renewal Reminders' },
-  { icon: '💳', label: 'Payment Nudges' },
-  { icon: '🛡️', label: 'Compliance Flags' },
-];
 
 // ─── Sidebar Icons ───────────────────────────────────────────────
 
@@ -223,7 +235,7 @@ const CockpitPreviewMock: React.FC = () => {
         </div>
 
         {/* App content area */}
-        <div style={{ display: 'flex', minHeight: 420 }}>
+        <div style={{ display: 'flex', minHeight: 460 }}>
           {/* Left sidebar */}
           <div
             style={{
@@ -235,6 +247,7 @@ const CockpitPreviewMock: React.FC = () => {
               alignItems: 'center',
               padding: '12px 0',
               gap: 4,
+              flexShrink: 0,
             }}
           >
             <div
@@ -265,471 +278,434 @@ const CockpitPreviewMock: React.FC = () => {
           </div>
 
           {/* Main content */}
-          <div style={{ flex: 1, padding: '14px 16px', overflow: 'hidden' }}>
-            {/* Top bar: user info */}
+          <div style={{ flex: 1, padding: '0', overflow: 'hidden', minWidth: 0 }}>
+
+            {/* ═══ Top Navbar — Revenue/Expense toggle lives here ═══ */}
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                marginBottom: 14,
+                padding: '8px 16px',
+                borderBottom: `1px solid ${cardBorder}`,
+                background: '#13151B',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div
-                  style={{
-                    width: 26,
-                    height: 26,
-                    borderRadius: 7,
-                    background: '#6366F1',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '0.55rem',
-                    fontWeight: 700,
-                    color: '#fff',
-                  }}
-                >
-                  🏥
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: primaryText }}>
-                    vikuna <span style={{ color: colors.brand.primary, fontSize: '0.6rem' }}>★</span>
-                  </div>
-                  <div style={{ fontSize: '0.55rem', color: mutedText }}>vi4203</div>
-                </div>
+              {/* Left: perspective toggle */}
+              <div
+                style={{
+                  display: 'inline-flex',
+                  borderRadius: 8,
+                  padding: 2,
+                  background: 'rgba(255,255,255,0.06)',
+                  gap: 2,
+                }}
+              >
+                {(['revenue', 'expense'] as const).map((p) => {
+                  const isActive = perspective === p;
+                  const label = p === 'revenue' ? 'Revenue · Clients' : 'Expense · Vendors';
+                  return (
+                    <button
+                      key={p}
+                      onClick={() => handleToggle(p)}
+                      style={{
+                        padding: '5px 12px',
+                        borderRadius: 6,
+                        border: 'none',
+                        fontSize: '0.6rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.25s ease',
+                        color: isActive ? '#fff' : mutedText,
+                        background: isActive ? colors.brand.primary : 'transparent',
+                        boxShadow: isActive ? `0 2px 8px ${colors.brand.primary}40` : 'none',
+                        fontFamily: "'DM Sans', sans-serif",
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
               </div>
+
+              {/* Right: Live badge + notifications */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: '0.58rem', color: mutedText }}>System Admin</span>
                 <span
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 4,
-                    padding: '2px 8px',
+                    padding: '3px 9px',
                     borderRadius: 999,
                     border: '1px solid #10B98140',
                     fontSize: '0.55rem',
                     color: '#10B981',
                   }}
                 >
-                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#10B981' }} />
+                  <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#10B981', animation: 'cockpitMockPulse 2s ease infinite' }} />
                   Live
                 </span>
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 3,
-                    fontSize: '0.55rem',
-                    color: mutedText,
-                  }}
-                >
-                  🔔 2
-                </span>
+                <span style={{ fontSize: '0.55rem', color: mutedText }}>🔔 2</span>
               </div>
             </div>
 
-            {/* Page header + perspective switcher */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                justifyContent: 'space-between',
-                marginBottom: 14,
-                flexWrap: 'wrap',
-                gap: 8,
-              }}
-            >
-              <div>
-                <h3 style={{ fontSize: '0.82rem', fontWeight: 800, color: primaryText, margin: 0, lineHeight: 1.2 }}>
-                  Operations Cockpit
-                </h3>
-                <p
-                  style={{
-                    fontSize: '0.58rem',
-                    color: mutedText,
-                    margin: '2px 0 0',
-                    transition: 'opacity 0.2s',
-                    opacity: isAnimating ? 0 : 1,
-                  }}
-                >
-                  {data.subtitle}
-                </p>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                {/* Perspective toggle */}
-                <div
-                  style={{
-                    display: 'inline-flex',
-                    borderRadius: 8,
-                    padding: 2,
-                    background: 'rgba(255,255,255,0.06)',
-                    gap: 2,
-                  }}
-                >
-                  {(['revenue', 'expense'] as const).map((p) => {
-                    const isActive = perspective === p;
-                    const label = p === 'revenue' ? 'Revenue · Clients' : 'Expense · Vendors';
-                    return (
-                      <button
-                        key={p}
-                        onClick={() => handleToggle(p)}
-                        style={{
-                          padding: '4px 10px',
-                          borderRadius: 6,
-                          border: 'none',
-                          fontSize: '0.58rem',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          transition: 'all 0.25s ease',
-                          color: isActive ? '#fff' : mutedText,
-                          background: isActive ? colors.brand.primary : 'transparent',
-                          boxShadow: isActive ? `0 2px 8px ${colors.brand.primary}40` : 'none',
-                          fontFamily: "'DM Sans', sans-serif",
-                        }}
-                      >
-                        {label}
-                      </button>
-                    );
-                  })}
+            {/* ═══ Page content area ═══ */}
+            <div style={{ padding: '14px 16px' }}>
+              {/* Page header + CTA buttons */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'space-between',
+                  marginBottom: 14,
+                  gap: 8,
+                }}
+              >
+                <div>
+                  <h3 style={{ fontSize: '0.82rem', fontWeight: 800, color: primaryText, margin: 0, lineHeight: 1.2 }}>
+                    Operations Cockpit
+                  </h3>
+                  <p
+                    style={{
+                      fontSize: '0.58rem',
+                      color: mutedText,
+                      margin: '2px 0 0',
+                      transition: 'opacity 0.2s',
+                      opacity: isAnimating ? 0 : 1,
+                    }}
+                  >
+                    {data.subtitle}
+                  </p>
                 </div>
 
-                {/* CTA buttons */}
-                <button
+                <div
                   style={{
-                    padding: '4px 8px',
-                    borderRadius: 6,
-                    border: 'none',
-                    fontSize: '0.54rem',
-                    fontWeight: 600,
-                    background: colors.brand.primary + '1A',
-                    color: colors.brand.primary,
-                    cursor: 'default',
-                    fontFamily: "'DM Sans', sans-serif",
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
                     transition: 'opacity 0.2s',
                     opacity: isAnimating ? 0 : 1,
                   }}
                 >
-                  {data.ctaButtons.primary}
-                </button>
-                <button
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: 999,
-                    border: 'none',
-                    fontSize: '0.54rem',
-                    fontWeight: 600,
-                    background: colors.brand.primary,
-                    color: '#0D0F14',
-                    cursor: 'default',
-                    fontFamily: "'DM Sans', sans-serif",
-                    transition: 'opacity 0.2s',
-                    opacity: isAnimating ? 0 : 1,
-                  }}
-                >
-                  {data.ctaButtons.secondary}
-                </button>
-              </div>
-            </div>
-
-            {/* Animated content wrapper */}
-            <div
-              style={{
-                transition: 'opacity 0.2s ease, transform 0.2s ease',
-                opacity: isAnimating ? 0 : 1,
-                transform: isAnimating ? 'translateY(6px)' : 'translateY(0)',
-              }}
-            >
-              {/* Stat cards row */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
-                {[
-                  { label: 'Pending Acceptance', value: data.pendingAcceptance, color: '#F59E0B', icon: '✉' },
-                  { label: 'Drafts', value: data.drafts, color: '#6B7280', icon: '📝' },
-                  { label: 'Overdue Events', value: data.overdueEvents, color: data.overdueEvents > 0 ? '#EF4444' : '#6B7280', icon: '⚠' },
-                ].map((card) => (
-                  <div
-                    key={card.label}
+                  <button
                     style={{
-                      padding: '10px 12px',
+                      padding: '4px 8px',
+                      borderRadius: 6,
+                      border: 'none',
+                      fontSize: '0.54rem',
+                      fontWeight: 600,
+                      background: colors.brand.primary + '1A',
+                      color: colors.brand.primary,
+                      cursor: 'default',
+                      fontFamily: "'DM Sans', sans-serif",
+                    }}
+                  >
+                    {data.ctaButtons.primary}
+                  </button>
+                  <button
+                    style={{
+                      padding: '4px 10px',
+                      borderRadius: 999,
+                      border: 'none',
+                      fontSize: '0.54rem',
+                      fontWeight: 600,
+                      background: colors.brand.primary,
+                      color: '#0D0F14',
+                      cursor: 'default',
+                      fontFamily: "'DM Sans', sans-serif",
+                    }}
+                  >
+                    {data.ctaButtons.secondary}
+                  </button>
+                </div>
+              </div>
+
+              {/* Animated content wrapper */}
+              <div
+                style={{
+                  transition: 'opacity 0.2s ease, transform 0.2s ease',
+                  opacity: isAnimating ? 0 : 1,
+                  transform: isAnimating ? 'translateY(6px)' : 'translateY(0)',
+                }}
+              >
+                {/* Stat cards row */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
+                  {[
+                    { label: 'Pending Acceptance', value: data.pendingAcceptance, color: '#F59E0B', icon: '✉' },
+                    { label: 'Drafts', value: data.drafts, color: '#6B7280', icon: '📝' },
+                    { label: 'Overdue Events', value: data.overdueEvents, color: data.overdueEvents > 0 ? '#EF4444' : '#6B7280', icon: '⚠' },
+                  ].map((card) => (
+                    <div
+                      key={card.label}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: 10,
+                        border: `1px solid ${cardBorder}`,
+                        background: cardBg,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: '0.54rem', color: mutedText, marginBottom: 2 }}>{card.label}</div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 800, color: card.color }}>{card.value}</div>
+                      </div>
+                      <div
+                        style={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: 8,
+                          background: card.color + '15',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '0.7rem',
+                        }}
+                      >
+                        {card.icon}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Main grid: Event Schedule + Service Events + VaNi */}
+                <div style={{ display: 'grid', gridTemplateColumns: '0.9fr 1.8fr 1.1fr', gap: 8 }}>
+                  {/* Event Schedule */}
+                  <div
+                    style={{
+                      padding: '10px',
+                      borderRadius: 10,
+                      border: `1px solid ${cardBorder}`,
+                      background: cardBg,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 8 }}>
+                      <span style={{ fontSize: '0.6rem' }}>🕐</span>
+                      <span
+                        style={{
+                          fontSize: '0.56rem',
+                          fontWeight: 800,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.08em',
+                          color: mutedText,
+                        }}
+                      >
+                        Event Schedule
+                      </span>
+                      <span
+                        style={{
+                          marginLeft: 'auto',
+                          fontSize: '0.5rem',
+                          fontWeight: 700,
+                          padding: '1px 5px',
+                          borderRadius: 4,
+                          background: 'rgba(255,255,255,0.06)',
+                          color: mutedText,
+                        }}
+                      >
+                        0{data.buckets.reduce((s, b) => s + b.count, 0)}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      {data.buckets.map((bucket) => (
+                        <div
+                          key={bucket.label}
+                          style={{
+                            padding: '8px 9px',
+                            borderRadius: 8,
+                            border: `1px solid ${cardBorder}`,
+                            background: '#0F1117',
+                            borderLeft: bucket.label === 'OVERDUE' ? `2.5px solid ${bucket.color}` : undefined,
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontSize: '0.52rem',
+                              fontWeight: 800,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.06em',
+                              color: bucket.color,
+                              marginBottom: 3,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4,
+                            }}
+                          >
+                            <span
+                              style={{
+                                width: 5,
+                                height: 5,
+                                borderRadius: '50%',
+                                background: bucket.color,
+                              }}
+                            />
+                            {bucket.label}
+                          </div>
+                          <div style={{ fontSize: '0.52rem', color: mutedText, display: 'flex', gap: 6 }}>
+                            <span>🔧 {bucket.serviceCount}</span>
+                            <span>· {bucket.billingAmount}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Service Events */}
+                  <div
+                    style={{
+                      padding: '10px',
+                      borderRadius: 10,
+                      border: `1px solid ${cardBorder}`,
+                      background: cardBg,
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 8 }}>
+                      <span style={{ fontSize: '0.6rem' }}>📅</span>
+                      <span
+                        style={{
+                          fontSize: '0.56rem',
+                          fontWeight: 800,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.08em',
+                          color: mutedText,
+                        }}
+                      >
+                        Service Events
+                      </span>
+                      <span
+                        style={{
+                          marginLeft: 'auto',
+                          fontSize: '0.5rem',
+                          fontWeight: 700,
+                          padding: '1px 5px',
+                          borderRadius: 4,
+                          background: colors.brand.primary + '15',
+                          color: colors.brand.primary,
+                        }}
+                      >
+                        0{data.serviceEventsTotal}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {data.serviceEvents.map((event, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            padding: '8px 10px',
+                            borderRadius: 8,
+                            border: `1px solid ${cardBorder}`,
+                            background: '#0F1117',
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              marginBottom: 3,
+                            }}
+                          >
+                            <div style={{ fontSize: '0.6rem', fontWeight: 700, color: primaryText, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: 6 }}>
+                              {event.name} —{' '}
+                              <span style={{ fontWeight: 400, color: mutedText }}>{event.detail}</span>
+                            </div>
+                            <span
+                              style={{
+                                fontSize: '0.48rem',
+                                fontWeight: 700,
+                                padding: '2px 7px',
+                                borderRadius: 4,
+                                background: event.statusColor + '18',
+                                color: event.statusColor,
+                                border: `1px solid ${event.statusColor}30`,
+                                whiteSpace: 'nowrap',
+                                flexShrink: 0,
+                              }}
+                            >
+                              {event.status}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '0.5rem', color: mutedText }}>
+                            {event.date} · <span style={{ color: colors.brand.primary }}>{event.amount}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* VaNi sidebar — with live dummy alerts */}
+                  <div
+                    style={{
+                      padding: '10px',
                       borderRadius: 10,
                       border: `1px solid ${cardBorder}`,
                       background: cardBg,
                       display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
+                      flexDirection: 'column',
                     }}
                   >
-                    <div>
-                      <div style={{ fontSize: '0.54rem', color: mutedText, marginBottom: 2 }}>{card.label}</div>
-                      <div style={{ fontSize: '1.1rem', fontWeight: 800, color: card.color }}>{card.value}</div>
-                    </div>
-                    <div
-                      style={{
-                        width: 28,
-                        height: 28,
-                        borderRadius: 8,
-                        background: card.color + '15',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '0.7rem',
-                      }}
-                    >
-                      {card.icon}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Main grid: Event Schedule + Service Events + VaNi */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr 1fr', gap: 8 }}>
-                {/* Event Schedule */}
-                <div
-                  style={{
-                    padding: '10px',
-                    borderRadius: 10,
-                    border: `1px solid ${cardBorder}`,
-                    background: cardBg,
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 8 }}>
-                    <span style={{ fontSize: '0.6rem' }}>🕐</span>
-                    <span
-                      style={{
-                        fontSize: '0.56rem',
-                        fontWeight: 800,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.08em',
-                        color: mutedText,
-                      }}
-                    >
-                      Event Schedule
-                    </span>
-                    <span
-                      style={{
-                        marginLeft: 'auto',
-                        fontSize: '0.5rem',
-                        fontWeight: 700,
-                        padding: '1px 5px',
-                        borderRadius: 4,
-                        background: 'rgba(255,255,255,0.06)',
-                        color: mutedText,
-                      }}
-                    >
-                      0{data.buckets.reduce((s, b) => s + b.count, 0)}
-                    </span>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                    {data.buckets.map((bucket) => (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 8 }}>
                       <div
-                        key={bucket.label}
                         style={{
-                          padding: '8px 9px',
-                          borderRadius: 8,
-                          border: `1px solid ${cardBorder}`,
-                          background: '#0F1117',
-                          borderLeft: bucket.label === 'OVERDUE' ? `2.5px solid ${bucket.color}` : undefined,
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontSize: '0.52rem',
-                            fontWeight: 800,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.06em',
-                            color: bucket.color,
-                            marginBottom: 3,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 4,
-                          }}
-                        >
-                          <span
-                            style={{
-                              width: 5,
-                              height: 5,
-                              borderRadius: '50%',
-                              background: bucket.color,
-                            }}
-                          />
-                          {bucket.label}
-                        </div>
-                        <div style={{ fontSize: '0.52rem', color: mutedText, display: 'flex', gap: 6 }}>
-                          <span>🔧 {bucket.serviceCount}</span>
-                          <span>· {bucket.billingAmount}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Service Events */}
-                <div
-                  style={{
-                    padding: '10px',
-                    borderRadius: 10,
-                    border: `1px solid ${cardBorder}`,
-                    background: cardBg,
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 8 }}>
-                    <span style={{ fontSize: '0.6rem' }}>📅</span>
-                    <span
-                      style={{
-                        fontSize: '0.56rem',
-                        fontWeight: 800,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.08em',
-                        color: mutedText,
-                      }}
-                    >
-                      Service Events
-                    </span>
-                    <span
-                      style={{
-                        marginLeft: 'auto',
-                        fontSize: '0.5rem',
-                        fontWeight: 700,
-                        padding: '1px 5px',
-                        borderRadius: 4,
-                        background: colors.brand.primary + '15',
-                        color: colors.brand.primary,
-                      }}
-                    >
-                      0{data.serviceEventsTotal}
-                    </span>
-                  </div>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {data.serviceEvents.map((event, i) => (
-                      <div
-                        key={i}
-                        style={{
-                          padding: '8px 10px',
-                          borderRadius: 8,
-                          border: `1px solid ${cardBorder}`,
-                          background: '#0F1117',
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            marginBottom: 3,
-                          }}
-                        >
-                          <div style={{ fontSize: '0.6rem', fontWeight: 700, color: primaryText }}>
-                            {event.name} —{' '}
-                            <span style={{ fontWeight: 400, color: mutedText }}>{event.detail}</span>
-                          </div>
-                          <span
-                            style={{
-                              fontSize: '0.48rem',
-                              fontWeight: 700,
-                              padding: '2px 7px',
-                              borderRadius: 4,
-                              background: event.statusColor + '18',
-                              color: event.statusColor,
-                              border: `1px solid ${event.statusColor}30`,
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
-                            {event.status}
-                          </span>
-                        </div>
-                        <div style={{ fontSize: '0.5rem', color: mutedText }}>
-                          {event.date} · <span style={{ color: colors.brand.primary }}>{event.amount}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* VaNi sidebar */}
-                <div
-                  style={{
-                    padding: '10px',
-                    borderRadius: 10,
-                    border: `1px solid ${cardBorder}`,
-                    background: cardBg,
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 8 }}>
-                    <div
-                      style={{
-                        width: 22,
-                        height: 22,
-                        borderRadius: 6,
-                        background: '#8B5CF620',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '0.55rem',
-                      }}
-                    >
-                      ✦
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '0.58rem', fontWeight: 700, color: primaryText }}>VaNi</div>
-                      <div style={{ fontSize: '0.46rem', color: mutedText }}>AI Operations Assistant</div>
-                    </div>
-                  </div>
-
-                  {/* Coming soon placeholder */}
-                  <div
-                    style={{
-                      textAlign: 'center',
-                      padding: '14px 6px',
-                      borderRadius: 8,
-                      background: 'rgba(255,255,255,0.03)',
-                      marginBottom: 8,
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: 30,
-                        height: 30,
-                        borderRadius: 10,
-                        background: '#8B5CF615',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        margin: '0 auto 6px',
-                        fontSize: '0.8rem',
-                      }}
-                    >
-                      ✦
-                    </div>
-                    <div style={{ fontSize: '0.58rem', fontWeight: 700, color: primaryText }}>Coming Soon</div>
-                    <div style={{ fontSize: '0.46rem', color: mutedText, marginTop: 2, lineHeight: 1.4 }}>
-                      VaNi will proactively surface alerts and recommendations here
-                    </div>
-                  </div>
-
-                  {/* Capability list */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    {vaniCapabilities.map((cap) => (
-                      <div
-                        key={cap.label}
-                        style={{
+                          width: 22,
+                          height: 22,
+                          borderRadius: 6,
+                          background: '#8B5CF620',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 6,
-                          padding: '5px 7px',
-                          borderRadius: 6,
-                          background: 'rgba(255,255,255,0.03)',
+                          justifyContent: 'center',
+                          fontSize: '0.55rem',
                         }}
                       >
-                        <span style={{ fontSize: '0.52rem', opacity: 0.7 }}>{cap.icon}</span>
-                        <span style={{ fontSize: '0.52rem', fontWeight: 500, color: primaryText }}>
-                          {cap.label}
-                        </span>
+                        ✦
                       </div>
-                    ))}
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '0.58rem', fontWeight: 700, color: primaryText }}>VaNi</div>
+                        <div style={{ fontSize: '0.46rem', color: mutedText }}>AI Operations Assistant</div>
+                      </div>
+                      <span
+                        style={{
+                          fontSize: '0.44rem',
+                          fontWeight: 700,
+                          padding: '2px 6px',
+                          borderRadius: 4,
+                          background: '#8B5CF615',
+                          color: '#8B5CF6',
+                        }}
+                      >
+                        {data.vaniAlerts.length} alerts
+                      </span>
+                    </div>
+
+                    {/* Alert feed */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+                      {data.vaniAlerts.map((alert, i) => (
+                        <div
+                          key={i}
+                          style={{
+                            padding: '6px 8px',
+                            borderRadius: 7,
+                            background: '#0F1117',
+                            border: `1px solid ${cardBorder}`,
+                            borderLeft: `2px solid ${alert.typeColor}`,
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+                            <span style={{ fontSize: '0.48rem' }}>{alert.icon}</span>
+                            <span style={{ fontSize: '0.46rem', fontWeight: 700, color: alert.typeColor, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                              {alert.type}
+                            </span>
+                            <span style={{ marginLeft: 'auto', fontSize: '0.42rem', color: mutedText }}>{alert.time}</span>
+                          </div>
+                          <div style={{ fontSize: '0.48rem', color: primaryText, lineHeight: 1.35, opacity: 0.85 }}>
+                            {alert.message}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -800,9 +776,9 @@ const CockpitPreviewMock: React.FC = () => {
             <span style={{ fontSize: '0.85rem', color: '#8B5CF6' }}>✦</span>
             <div style={{ textAlign: 'left' }}>
               <div style={{ fontSize: '0.68rem', fontWeight: 700, color: primaryText }}>
-                VaNi — Coming Soon
+                VaNi — AI Ops Assistant
               </div>
-              <div style={{ fontSize: '0.5rem', color: mutedText }}>AI ops assistant</div>
+              <div style={{ fontSize: '0.5rem', color: mutedText }}>4 active alerts</div>
             </div>
           </button>
         </div>
