@@ -16,15 +16,16 @@ FILES TO COPY:
    FROM: MANUAL_COPY_FILES\hero-cockpit-preview\contractnest-ui\src\components\landing\HeroV3.tsx
    TO:   contractnest-ui\src\components\landing\HeroV3.tsx
 
+3. [MODIFIED] LandingPage.tsx
+   FROM: MANUAL_COPY_FILES\hero-cockpit-preview\contractnest-ui\src\pages\public\LandingPage.tsx
+   TO:   contractnest-ui\src\pages\public\LandingPage.tsx
+
 WHAT CHANGED:
 ──────────────
-- HeroV3.tsx: Restructured from single-column to two-column grid layout.
-  Left column: headline, copy, email CTA. Right column: CockpitPreviewMock.
-  Updated stats to 45→80%, 600+, 400+, 2hrs. Added responsive breakpoints.
+- CockpitPreviewMock.tsx: Light theme interior for contrast against dark hero.
+  Fictional company names, VaNi live alert feed, Revenue/Expense toggle in navbar.
 
-- CockpitPreviewMock.tsx: NEW component. Static mockup of the real OpsCockpit
-  page with hospital-themed demo data. Includes browser chrome frame, sidebar,
-  user header, perspective switcher, stat cards, event schedule, service events,
-  VaNi sidebar, and animated Revenue/Expense flip button.
+- HeroV3.tsx: Two-column grid (0.85fr/1.15fr) at 1320px maxWidth. Google Fonts
+  loaded via <link> tag. 40px margin-bottom for section gap.
 
-NO OTHER FILES MODIFIED.
+- LandingPage.tsx: Wrapper background forced to #0D0F14 (dark) to match V3 sections.

@@ -67,6 +67,8 @@ const HeroV3: React.FC<HeroV3Props> = ({
         color: colors.utility.primaryText,
         position: 'relative',
         overflow: 'hidden',
+        paddingBottom: 0,
+        marginBottom: 40,
       }}
     >
       {/* Noise texture overlay */}
@@ -86,12 +88,12 @@ const HeroV3: React.FC<HeroV3Props> = ({
         style={{
           position: 'relative',
           zIndex: 2,
-          padding: '80px 56px 64px',
-          maxWidth: 1200,
+          padding: '80px 40px 64px',
+          maxWidth: 1320,
           margin: '0 auto',
           display: 'grid',
-          gridTemplateColumns: '1fr 1.15fr',
-          gap: 40,
+          gridTemplateColumns: '0.85fr 1.15fr',
+          gap: 36,
           alignItems: 'start',
         }}
         className="hero-v3-grid"
@@ -307,9 +309,9 @@ const HeroV3: React.FC<HeroV3Props> = ({
         style={{
           position: 'relative',
           zIndex: 2,
-          maxWidth: 1200,
+          maxWidth: 1320,
           margin: '0 auto',
-          padding: '0 56px',
+          padding: '0 40px',
         }}
       >
         <div
