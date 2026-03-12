@@ -436,7 +436,7 @@ const ContractsHubPage: React.FC = () => {
 
   // ── Draft resume state ──
   const [resumeDraftId, setResumeDraftId] = useState<string | null>(null);
-  const { data: resumeDraftData } = useContract(resumeDraftId);
+  const { data: resumeDraftData, isLoading: isLoadingDraft } = useContract(resumeDraftId);
 
   // ── Reset page + invalidate stats when perspective changes ──
   const prevPerspective = useRef(activePerspective);
@@ -568,16 +568,17 @@ const ContractsHubPage: React.FC = () => {
     const savedType = contract?.metadata?.wizard_contract_type;
     const fallbackType = contract?.contact_classification || perspectiveType;
     setWizardContractType((savedType || fallbackType) as ContractType);
+    // Set the draft ID — this triggers useContract to fetch full data.
+    // The wizard will be opened by the useEffect below once data arrives.
     setResumeDraftId(contractId);
-    setShowWizard(true);
   };
 
-  // Open wizard with draft data once fetched
+  // Open wizard with draft data once fetched (wait for data before opening)
   useEffect(() => {
-    if (resumeDraftId && resumeDraftData && showWizard) {
-      // Draft data is loaded, wizard will pick it up from props
+    if (resumeDraftId && resumeDraftData && !isLoadingDraft && !showWizard) {
+      setShowWizard(true);
     }
-  }, [resumeDraftId, resumeDraftData, showWizard]);
+  }, [resumeDraftId, resumeDraftData, isLoadingDraft, showWizard]);
 
   const handleRowClick = (id: string) => {
     // If contract is a draft, resume the wizard instead of navigating to detail page.
