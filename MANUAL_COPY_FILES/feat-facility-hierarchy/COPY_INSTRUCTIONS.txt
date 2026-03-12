@@ -1,0 +1,39 @@
+═══════════════════════════════════════════════════
+FACILITY REGISTRY HIERARCHY — COPY INSTRUCTIONS
+═══════════════════════════════════════════════════
+
+Feature: Facility Registry — Hierarchy Tree with Lazy-Load
+Branch: feat-facility-hierarchy
+Submodules Affected: contractnest-ui
+
+FILES TO COPY:
+─────────────────────────────────
+1. contractnest-ui/src/constants/entityTypeConfig.ts (NEW)
+   - Built-in entity type definitions: Campus, Building, Floor, Room, Zone, etc.
+   - Hierarchy level + parent-child rules
+
+2. contractnest-ui/src/pages/entity-registry/index.tsx (REPLACED)
+   - Was: thin wrapper around EquipmentPage
+   - Now: standalone two-panel layout with hierarchy tree + detail view
+   - Perspective-aware: Revenue = client facilities, Expense = self facilities
+
+3. contractnest-ui/src/pages/entity-registry/components/EntityTree.tsx (NEW)
+   - Left panel: hierarchy tree with search and add button
+
+4. contractnest-ui/src/pages/entity-registry/components/EntityTreeNode.tsx (NEW)
+   - Recursive tree node with lazy-load children on expand
+
+5. contractnest-ui/src/pages/entity-registry/components/EntityBreadcrumb.tsx (NEW)
+   - Breadcrumb trail: Campus > Building > Floor > Room
+
+6. contractnest-ui/src/pages/entity-registry/components/EntityDetailPanel.tsx (NEW)
+   - Right panel: entity details, condition ring, child summary
+
+7. contractnest-ui/src/pages/entity-registry/components/EntityFormDialog.tsx (NEW)
+   - Create/edit drawer with entity type selection, parent picker, entity fields
+
+COPY COMMAND (PowerShell):
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\feat-facility-hierarchy\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Write-Host "Done!" -ForegroundColor Green
