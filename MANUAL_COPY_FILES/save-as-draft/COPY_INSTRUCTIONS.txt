@@ -1,0 +1,50 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — save-as-draft
+═══════════════════════════════════════════════════
+Feature: Save Contract as Draft with Resume from Contract List
+Date: 2026-03-12
+Submodules Affected: contractnest-ui
+
+FILES TO COPY:
+──────────────
+
+1. [MODIFIED] ContractWizard/index.tsx
+   FROM: MANUAL_COPY_FILES\save-as-draft\contractnest-ui\src\components\contracts\ContractWizard\index.tsx
+   TO:   contractnest-ui\src\components\contracts\ContractWizard\index.tsx
+
+2. [MODIFIED] FloatingActionIsland.tsx
+   FROM: MANUAL_COPY_FILES\save-as-draft\contractnest-ui\src\components\contracts\ContractWizard\FloatingActionIsland.tsx
+   TO:   contractnest-ui\src\components\contracts\ContractWizard\FloatingActionIsland.tsx
+
+3. [MODIFIED] ContractPortfolioRow.tsx
+   FROM: MANUAL_COPY_FILES\save-as-draft\contractnest-ui\src\components\contracts\list\ContractPortfolioRow.tsx
+   TO:   contractnest-ui\src\components\contracts\list\ContractPortfolioRow.tsx
+
+4. [MODIFIED] hub/index.tsx
+   FROM: MANUAL_COPY_FILES\save-as-draft\contractnest-ui\src\pages\contracts\hub\index.tsx
+   TO:   contractnest-ui\src\pages\contracts\hub\index.tsx
+
+WHAT CHANGED:
+──────────────
+ContractWizard/index.tsx:
+  - Added draftContractId, draftContractData props for resume
+  - Auto-save on "Continue" from Details step onwards (step 5+)
+  - First save: createContract with wizard_state in metadata JSONB
+  - Subsequent saves: updateContract with updated wizard_state
+  - Final submit: updates existing draft + transitions status (no duplicate creation)
+  - Close confirmation dialog when past step 4: "Save Draft? / Discard / Continue Editing"
+  - Resume: reads metadata.wizard_state + metadata.wizard_step, restores state
+
+FloatingActionIsland.tsx:
+  - Added isSavingDraft prop
+  - Shows spinner + "Saving..." in status pill during draft save
+
+ContractPortfolioRow.tsx:
+  - Added onResumeDraft prop
+  - Shows "Resume" button (Play icon) for draft contracts with wizard_state in metadata
+
+hub/index.tsx:
+  - Added resumeDraftId state + useContract(resumeDraftId) for fetching full detail
+  - handleResumeDraft: finds contract, determines type, opens wizard with draft data
+  - Passes draftContractId + draftContractData to ContractWizard
+  - Passes onResumeDraft to all ContractPortfolioRow instances
