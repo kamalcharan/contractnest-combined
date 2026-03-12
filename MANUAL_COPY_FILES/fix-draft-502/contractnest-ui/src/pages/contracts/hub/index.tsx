@@ -580,6 +580,13 @@ const ContractsHubPage: React.FC = () => {
   }, [resumeDraftId, resumeDraftData, showWizard]);
 
   const handleRowClick = (id: string) => {
+    // If contract is a draft with saved wizard state, resume the wizard instead
+    const contract = contracts.find((c) => c.id === id)
+      || groups.flatMap((g: ContractGroup) => g.contracts).find((c: Contract) => c.id === id);
+    if (contract?.status === 'draft' && contract?.metadata?.wizard_state) {
+      handleResumeDraft(id);
+      return;
+    }
     navigate(`/contracts/${id}`);
   };
 
