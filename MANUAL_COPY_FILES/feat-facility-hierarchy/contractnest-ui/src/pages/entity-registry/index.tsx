@@ -69,10 +69,13 @@ const EntityRegistryPage: React.FC = () => {
     return map;
   }, [contactsList]);
 
-  // ── Filter to entity-type assets only ──
+  // ── Filter to entity-type assets only + enforce ownership_type client-side ──
   const allEntities = useMemo(
-    () => assets.filter((a) => (a.resource_type_id || '').toLowerCase() === 'asset'),
-    [assets]
+    () => assets.filter((a) =>
+      (a.resource_type_id || '').toLowerCase() === 'asset' &&
+      (a.ownership_type || '') === ownershipType
+    ),
+    [assets, ownershipType]
   );
 
   // ── Root entities (no parent) for the tree ──
@@ -99,6 +102,11 @@ const EntityRegistryPage: React.FC = () => {
   const [addChildParent, setAddChildParent] = useState<TenantAsset | null>(null);
 
   const selectedEntity = selectedId ? entityMap.get(selectedId) || null : null;
+
+  // ── Reset selection when perspective changes ──
+  useEffect(() => {
+    setSelectedId(null);
+  }, [ownershipType]);
 
   // ── Analytics ──
   useEffect(() => {
