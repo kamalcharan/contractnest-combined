@@ -1,0 +1,30 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — hero-cockpit-preview
+═══════════════════════════════════════════════════
+Feature: Live Operations Cockpit Preview in Hero Section
+Date: 2026-03-12
+Submodules Affected: contractnest-ui
+
+FILES TO COPY:
+──────────────
+
+1. [NEW] CockpitPreviewMock.tsx
+   FROM: MANUAL_COPY_FILES\hero-cockpit-preview\contractnest-ui\src\components\landing\CockpitPreviewMock.tsx
+   TO:   contractnest-ui\src\components\landing\CockpitPreviewMock.tsx
+
+2. [MODIFIED] HeroV3.tsx
+   FROM: MANUAL_COPY_FILES\hero-cockpit-preview\contractnest-ui\src\components\landing\HeroV3.tsx
+   TO:   contractnest-ui\src\components\landing\HeroV3.tsx
+
+WHAT CHANGED:
+──────────────
+- HeroV3.tsx: Restructured from single-column to two-column grid layout.
+  Left column: headline, copy, email CTA. Right column: CockpitPreviewMock.
+  Updated stats to 45→80%, 600+, 400+, 2hrs. Added responsive breakpoints.
+
+- CockpitPreviewMock.tsx: NEW component. Static mockup of the real OpsCockpit
+  page with hospital-themed demo data. Includes browser chrome frame, sidebar,
+  user header, perspective switcher, stat cards, event schedule, service events,
+  VaNi sidebar, and animated Revenue/Expense flip button.
+
+NO OTHER FILES MODIFIED.
