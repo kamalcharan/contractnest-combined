@@ -208,12 +208,12 @@ const EntityFormDialog: React.FC<EntityFormDialogProps> = ({
 
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
-    if (!selectedEntityType) errs.entity_type = 'Entity type is required';
+    if (!selectedEntityType) errs.entity_type = 'Facility type is required';
     if (!formData.name.trim()) errs.name = 'Name is required';
     // Parent required for non-root types
     const config = getEntityTypeConfig(selectedEntityType);
     if (config && config.allowedParentTypes.length > 0 && !formData.parent_asset_id) {
-      errs.parent_asset_id = 'Parent entity is required';
+      errs.parent_asset_id = 'Parent facility is required';
     }
     // Owner required for client ownership
     if (formData.ownership_type === 'client' && !formData.owner_contact_id) {
@@ -277,14 +277,14 @@ const EntityFormDialog: React.FC<EntityFormDialogProps> = ({
         >
           <div>
             <h2 className="text-lg font-bold" style={{ color: colors.utility.primaryText }}>
-              {mode === 'create' ? 'Add Entity' : `Edit: ${asset?.name || ''}`}
+              {mode === 'create' ? 'Add Facility' : `Edit: ${asset?.name || ''}`}
             </h2>
             <p className="text-xs mt-0.5" style={{ color: colors.utility.secondaryText }}>
               {mode === 'create'
                 ? defaultParent
                   ? `Adding child to ${defaultParent.name}`
-                  : 'Register a new facility entity.'
-                : 'Update the entity details below.'}
+                  : 'Register a new facility in your hierarchy.'
+                : 'Update the facility details below.'}
             </p>
           </div>
           <button
@@ -308,10 +308,10 @@ const EntityFormDialog: React.FC<EntityFormDialogProps> = ({
             }}
           >
             <h4 style={{ ...sectionHeaderStyle, color: iconColor, borderBottom: 'none', paddingBottom: 0, marginBottom: '8px' }}>
-              Entity Type <span className="text-red-500">*</span>
+              Facility Type <span className="text-red-500">*</span>
             </h4>
             <p className="text-xs mb-3" style={{ color: colors.utility.secondaryText }}>
-              What type of facility entity is this?
+              What type of facility is this?
             </p>
 
             {availableEntityTypes.length > 0 ? (
@@ -356,7 +356,7 @@ const EntityFormDialog: React.FC<EntityFormDialogProps> = ({
               </div>
             ) : (
               <p className="text-xs" style={{ color: colors.utility.secondaryText }}>
-                No valid entity types for this parent.
+                No valid facility types for this parent.
               </p>
             )}
             {errors.entity_type && <p className="text-xs text-red-500 mt-2">{errors.entity_type}</p>}
@@ -365,7 +365,7 @@ const EntityFormDialog: React.FC<EntityFormDialogProps> = ({
             {selectedEntityType && entityTypeConfig && entityTypeConfig.allowedParentTypes.length > 0 && (
               <div className="mt-4">
                 <h4 style={{ ...sectionHeaderStyle, color: iconColor, borderBottom: 'none', paddingBottom: 0, marginBottom: '8px' }}>
-                  Parent Entity <span className="text-red-500">*</span>
+                  Parent Facility <span className="text-red-500">*</span>
                 </h4>
                 <p className="text-xs mb-3" style={{ color: colors.utility.secondaryText }}>
                   Which {entityTypeConfig.allowedParentTypes.map(t => {
@@ -432,7 +432,7 @@ const EntityFormDialog: React.FC<EntityFormDialogProps> = ({
                   </Select>
                 ) : (
                   <p className="text-xs" style={{ color: colors.utility.secondaryText }}>
-                    No valid parent entities found. Create a {entityTypeConfig.allowedParentTypes.join(' or ')} first.
+                    No valid parent facilities found. Create a {entityTypeConfig.allowedParentTypes.join(' or ')} first.
                   </p>
                 )}
                 {errors.parent_asset_id && <p className="text-xs text-red-500 mt-1">{errors.parent_asset_id}</p>}
@@ -446,7 +446,7 @@ const EntityFormDialog: React.FC<EntityFormDialogProps> = ({
                   Client / Owner
                 </h4>
                 <p className="text-xs mb-3" style={{ color: colors.utility.secondaryText }}>
-                  Which client does this facility belong to?
+                  Which client owns this facility?
                 </p>
                 {mode === 'edit' && formData.owner_contact_id ? (
                   <div
@@ -498,7 +498,7 @@ const EntityFormDialog: React.FC<EntityFormDialogProps> = ({
                 <Input
                   value={formData.name}
                   onChange={(e) => updateField('name', e.target.value)}
-                  placeholder={entityTypeConfig ? `e.g., ${entityTypeConfig.label} A` : 'Entity name'}
+                  placeholder={entityTypeConfig ? `e.g., ${entityTypeConfig.label} A` : 'Facility name'}
                   className="mt-1"
                   style={{
                     borderColor: errors.name ? '#ef4444' : colors.utility.primaryText + '20',
@@ -770,8 +770,8 @@ const EntityFormDialog: React.FC<EntityFormDialogProps> = ({
             {isSubmitting
               ? 'Saving...'
               : mode === 'create'
-                ? 'Create Entity'
-                : 'Update Entity'}
+                ? 'Create Facility'
+                : 'Update Facility'}
           </Button>
         </div>
       </div>

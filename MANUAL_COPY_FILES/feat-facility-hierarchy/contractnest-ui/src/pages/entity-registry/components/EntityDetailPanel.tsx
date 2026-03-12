@@ -71,10 +71,10 @@ const EntityDetailPanel: React.FC<EntityDetailPanelProps> = ({
             </div>
           </div>
           <p className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
-            Select an entity
+            Select a facility
           </p>
           <p className="text-xs mt-1" style={{ color: colors.utility.secondaryText }}>
-            Click on an item in the tree to view its details.
+            Click on a facility in the tree to view its details.
           </p>
         </div>
       </div>
@@ -142,7 +142,7 @@ const EntityDetailPanel: React.FC<EntityDetailPanelProps> = ({
                 className="text-[10px] font-bold uppercase tracking-wide"
                 style={{ color: iconColor }}
               >
-                {entityType?.label || 'Entity'}
+                {entityType?.label || 'Facility'}
               </span>
             </div>
             <h1
@@ -345,7 +345,7 @@ const EntityDetailPanel: React.FC<EntityDetailPanelProps> = ({
                 className="text-[11px] font-bold uppercase tracking-widest"
                 style={{ color: colors.utility.secondaryText }}
               >
-                Child Entities
+                Child Facilities
                 {!childrenLoading && (
                   <span className="ml-2 text-[10px] font-medium normal-case">
                     ({activeChildren.length})
@@ -358,7 +358,7 @@ const EntityDetailPanel: React.FC<EntityDetailPanelProps> = ({
                   className="text-xs font-semibold flex items-center gap-1 transition-colors hover:underline"
                   style={{ color: '#059669' }}
                 >
-                  + Add Child
+                  + Add Child Facility
                 </button>
               )}
             </div>
@@ -374,7 +374,7 @@ const EntityDetailPanel: React.FC<EntityDetailPanelProps> = ({
               >
                 <AlertCircle size={18} className="mx-auto mb-2" style={{ color: colors.utility.secondaryText, opacity: 0.5 }} />
                 <p className="text-xs" style={{ color: colors.utility.secondaryText }}>
-                  No child entities.
+                  No child facilities.
                   {validChildTypes.length > 0 && (
                     <> Add a {validChildTypes.map(t => t.label.toLowerCase()).join(' or ')}.</>
                   )}

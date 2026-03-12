@@ -86,7 +86,7 @@ const EntityTree: React.FC<EntityTreeProps> = ({
           }}
         >
           <Plus size={14} />
-          Add Entity
+          Add Facility
         </button>
         <div className="relative flex-1">
           <Search
@@ -142,7 +142,7 @@ const EntityTree: React.FC<EntityTreeProps> = ({
               className="text-xs font-semibold mb-1"
               style={{ color: colors.utility.primaryText }}
             >
-              {searchQuery ? 'No matching entities' : 'No facilities yet'}
+              {searchQuery ? 'No matching facilities' : 'No facilities yet'}
             </p>
             <p
               className="text-[11px] mb-3"
@@ -158,7 +158,7 @@ const EntityTree: React.FC<EntityTreeProps> = ({
                 className="text-xs font-semibold transition-colors hover:underline"
                 style={{ color: '#059669' }}
               >
-                + Add Entity
+                + Add Facility
               </button>
             )}
           </div>
@@ -184,7 +184,7 @@ const EntityTree: React.FC<EntityTreeProps> = ({
             color: colors.utility.secondaryText,
           }}
         >
-          {rootEntities.length} root {rootEntities.length === 1 ? 'entity' : 'entities'}
+          {rootEntities.length} root {rootEntities.length === 1 ? 'facility' : 'facilities'}
         </div>
       )}
     </div>

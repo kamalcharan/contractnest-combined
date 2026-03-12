@@ -153,7 +153,7 @@ const EntityTreeNode: React.FC<EntityTreeNodeProps> = ({
               className="py-1.5 text-[11px]"
               style={{ paddingLeft: `${paddingLeft + 24}px`, color: colors.utility.secondaryText }}
             >
-              No child entities
+              No child facilities
             </div>
           ) : (
             children
