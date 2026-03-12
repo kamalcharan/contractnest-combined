@@ -65,9 +65,9 @@ const EntityDetailPanel: React.FC<EntityDetailPanelProps> = ({
           <div className="flex justify-center mb-4">
             <div
               className="w-16 h-16 rounded-2xl flex items-center justify-center"
-              style={{ backgroundColor: '#059669' + '10' }}
+              style={{ backgroundColor: colors.brand.primary + '10' }}
             >
-              <Landmark size={28} style={{ color: '#059669', opacity: 0.5 }} />
+              <Landmark size={28} style={{ color: colors.brand.primary, opacity: 0.5 }} />
             </div>
           </div>
           <p className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
@@ -83,7 +83,7 @@ const EntityDetailPanel: React.FC<EntityDetailPanelProps> = ({
 
   const entityType = getEntityTypeConfig(entity.specifications?.[ENTITY_TYPE_SPEC_KEY]);
   const EntityIcon = entityType?.icon || Landmark;
-  const iconColor = entityType?.color || '#059669';
+  const iconColor = entityType?.color || colors.brand.primary;
   const conditionCfg = CONDITION_CONFIG[entity.condition] || CONDITION_CONFIG.good;
   const statusCfg = STATUS_CONFIG[entity.status] || STATUS_CONFIG.active;
   const criticalityCfg = CRITICALITY_CONFIG[entity.criticality] || CRITICALITY_CONFIG.medium;
@@ -356,7 +356,7 @@ const EntityDetailPanel: React.FC<EntityDetailPanelProps> = ({
                 <button
                   onClick={() => onAddChild(entity)}
                   className="text-xs font-semibold flex items-center gap-1 transition-colors hover:underline"
-                  style={{ color: '#059669' }}
+                  style={{ color: colors.brand.primary }}
                 >
                   + Add Child Facility
                 </button>

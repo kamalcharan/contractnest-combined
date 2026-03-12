@@ -251,7 +251,7 @@ const EntityFormDialog: React.FC<EntityFormDialogProps> = ({
 
   if (!isOpen) return null;
 
-  const iconColor = entityTypeConfig?.color || '#059669';
+  const iconColor = entityTypeConfig?.color || colors.brand.primary;
 
   return (
     <>
@@ -763,7 +763,7 @@ const EntityFormDialog: React.FC<EntityFormDialogProps> = ({
             disabled={isSubmitting}
             className="transition-colors hover:opacity-90"
             style={{
-              background: `linear-gradient(135deg, #059669, #047857)`,
+              background: `linear-gradient(135deg, ${colors.brand.primary}, ${colors.brand.secondary || colors.brand.primary})`,
               color: '#FFFFFF',
             }}
           >

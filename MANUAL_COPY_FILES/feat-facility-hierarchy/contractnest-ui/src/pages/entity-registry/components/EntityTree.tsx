@@ -81,7 +81,7 @@ const EntityTree: React.FC<EntityTreeProps> = ({
           onClick={onAddEntity}
           className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all hover:opacity-90"
           style={{
-            background: 'linear-gradient(135deg, #059669, #047857)',
+            background: `linear-gradient(135deg, ${colors.brand.primary}, ${colors.brand.secondary || colors.brand.primary})`,
             color: '#FFFFFF',
           }}
         >
@@ -133,9 +133,9 @@ const EntityTree: React.FC<EntityTreeProps> = ({
             <div className="flex justify-center mb-3">
               <div
                 className="w-12 h-12 rounded-xl flex items-center justify-center"
-                style={{ backgroundColor: '#059669' + '12' }}
+                style={{ backgroundColor: colors.brand.primary + '12' }}
               >
-                <Landmark size={22} style={{ color: '#059669', opacity: 0.6 }} />
+                <Landmark size={22} style={{ color: colors.brand.primary, opacity: 0.6 }} />
               </div>
             </div>
             <p
@@ -156,7 +156,7 @@ const EntityTree: React.FC<EntityTreeProps> = ({
               <button
                 onClick={onAddEntity}
                 className="text-xs font-semibold transition-colors hover:underline"
-                style={{ color: '#059669' }}
+                style={{ color: colors.brand.primary }}
               >
                 + Add Facility
               </button>
