@@ -1,0 +1,29 @@
+═══════════════════════════════════════════════════
+FIX: 502 Bad Gateway when wizard auto-saves active contracts
+═══════════════════════════════════════════════════
+
+Bug: PUT /api/contracts/<id> returns 502 repeatedly with
+     "Contract can only be edited in draft status"
+
+Root Cause: The wizard's auto-save (saveDraftToApi) fires on every
+            "Continue" click past the details step. Once a contract
+            is activated/sent, the edge function rejects the PUT,
+            but the wizard keeps retrying on every step navigation.
+
+Fix:
+1. saveDraftToApi now catches the "draft status" error and clears
+   draftId so future auto-saves stop hitting the API.
+2. handleResumeDraft now checks contract.status === 'draft' before
+   opening the wizard in resume mode (safety net).
+
+═══════════════════════════════════════════════════
+FILES TO COPY:
+═══════════════════════════════════════════════════
+
+1. MANUAL_COPY_FILES\fix-draft-502\contractnest-ui\src\components\contracts\ContractWizard\index.tsx
+   → contractnest-ui\src\components\contracts\ContractWizard\index.tsx
+
+2. MANUAL_COPY_FILES\fix-draft-502\contractnest-ui\src\pages\contracts\hub\index.tsx
+   → contractnest-ui\src\pages\contracts\hub\index.tsx
+
+Submodules Affected: contractnest-ui
