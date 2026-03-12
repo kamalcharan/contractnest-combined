@@ -1,0 +1,25 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — fix-contact-refresh
+═══════════════════════════════════════════════════
+Feature: Refresh contact list after adding new client/vendor in Contract Wizard
+Date: 2026-03-12
+Submodules Affected: contractnest-ui
+
+FILES TO COPY:
+──────────────
+
+1. [MODIFIED] BuyerSelectionStep.tsx
+   FROM: MANUAL_COPY_FILES\fix-contact-refresh\contractnest-ui\src\components\contracts\ContractWizard\steps\BuyerSelectionStep.tsx
+   TO:   contractnest-ui\src\components\contracts\ContractWizard\steps\BuyerSelectionStep.tsx
+
+WHAT CHANGED:
+──────────────
+- Line 204: Destructured `hardRefresh` from useContactList hook
+- Lines 333-341: handleQuickAddSuccess now calls refreshContactList() to
+  invalidate cache and refetch the contact list immediately after creation.
+  Toast message updated to "New contact added and visible in the list below."
+
+ROOT CAUSE: After creating a new contact via QuickAddContactDrawer, the
+handleQuickAddSuccess callback only closed the drawer and showed a toast.
+It never refetched the contact list, so the new contact was invisible until
+cache expired (5 min) or user manually refreshed the page.
