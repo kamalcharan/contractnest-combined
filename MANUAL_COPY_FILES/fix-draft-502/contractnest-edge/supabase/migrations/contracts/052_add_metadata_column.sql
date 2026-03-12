@@ -848,7 +848,11 @@ COMMENT ON FUNCTION update_contract_transaction IS 'Updates a contract with opti
 
 -- ═══════════════════════════════════════════════════════════════════
 -- 4. UPDATE get_contract_by_id to return metadata
+--    Drop the legacy 2-param overload from migration 002 first,
+--    so CREATE OR REPLACE can work unambiguously on the 4-param version.
 -- ═══════════════════════════════════════════════════════════════════
+
+DROP FUNCTION IF EXISTS get_contract_by_id(UUID, UUID);
 
 CREATE OR REPLACE FUNCTION get_contract_by_id(
     p_contract_id UUID,
