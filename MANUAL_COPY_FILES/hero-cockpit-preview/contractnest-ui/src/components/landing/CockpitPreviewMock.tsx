@@ -1,11 +1,27 @@
 // src/components/landing/CockpitPreviewMock.tsx
 // Static mockup of OpsCockpit for the landing page hero section
+// Light theme interior for contrast against dark hero background
 // Shows hospital-themed demo data with Revenue/Expense toggle animation
 
 import React, { useState, useEffect } from 'react';
 import { VikunaBlackTheme } from '../../config/theme/themes/vikunaBlack';
 
-const colors = VikunaBlackTheme.darkMode.colors;
+const darkColors = VikunaBlackTheme.darkMode.colors;
+const lightColors = VikunaBlackTheme.colors;
+
+// ─── Light theme palette for the app interior ────────────────────
+
+const lt = {
+  bg: '#FAFAF8',
+  surface: '#FFFFFF',
+  surfaceAlt: '#F5F4F1',
+  border: '#E5E4E0',
+  borderLight: '#EEEDE9',
+  text: '#1A1D26',
+  textSecondary: '#6B7280',
+  brand: '#D4911E',
+  brandBg: '#FEF7EC',
+};
 
 // ─── Demo Data ───────────────────────────────────────────────────
 
@@ -102,11 +118,10 @@ const expenseData: PerspectiveData = {
   ],
 };
 
-// ─── Sidebar Icons ───────────────────────────────────────────────
+// ─── Sidebar Icons (dark sidebar) ────────────────────────────────
 
-const SidebarIcon: React.FC<{ children: React.ReactNode; color?: string; active?: boolean }> = ({
+const SidebarIcon: React.FC<{ children: React.ReactNode; active?: boolean }> = ({
   children,
-  color = colors.utility.secondaryText,
   active,
 }) => (
   <div
@@ -118,8 +133,8 @@ const SidebarIcon: React.FC<{ children: React.ReactNode; color?: string; active?
       alignItems: 'center',
       justifyContent: 'center',
       fontSize: 14,
-      color: active ? colors.brand.primary : color,
-      background: active ? colors.brand.primary + '18' : 'transparent',
+      color: active ? darkColors.brand.primary : darkColors.utility.secondaryText,
+      background: active ? darkColors.brand.primary + '18' : 'transparent',
       cursor: 'default',
     }}
   >
@@ -136,7 +151,6 @@ const CockpitPreviewMock: React.FC = () => {
 
   const data = perspective === 'revenue' ? revenueData : expenseData;
 
-  // Pulse animation for the flip button to attract attention
   useEffect(() => {
     const interval = setInterval(() => {
       setPulseFlip((p) => !p);
@@ -153,11 +167,6 @@ const CockpitPreviewMock: React.FC = () => {
     }, 200);
   };
 
-  const cardBg = '#1A1D26';
-  const cardBorder = 'rgba(255,255,255,0.08)';
-  const mutedText = colors.utility.secondaryText;
-  const primaryText = colors.utility.primaryText;
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%' }}>
       {/* ═══ "LIVE" badge ═══ */}
@@ -169,13 +178,13 @@ const CockpitPreviewMock: React.FC = () => {
             gap: 8,
             padding: '6px 18px',
             borderRadius: 999,
-            border: `1px solid ${cardBorder}`,
-            background: cardBg,
+            border: '1px solid rgba(255,255,255,0.08)',
+            background: '#1A1D26',
             fontFamily: "'DM Mono', monospace",
             fontSize: '0.62rem',
             letterSpacing: '0.14em',
             textTransform: 'uppercase',
-            color: mutedText,
+            color: darkColors.utility.secondaryText,
           }}
         >
           <span
@@ -195,21 +204,21 @@ const CockpitPreviewMock: React.FC = () => {
       <div
         style={{
           borderRadius: 14,
-          border: `1px solid ${cardBorder}`,
+          border: '1px solid rgba(255,255,255,0.1)',
           overflow: 'hidden',
-          background: '#0F1117',
+          background: lt.bg,
           boxShadow: '0 25px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05)',
         }}
       >
-        {/* Browser chrome bar */}
+        {/* Browser chrome bar — stays dark */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: 8,
             padding: '10px 14px',
-            background: '#16181F',
-            borderBottom: `1px solid ${cardBorder}`,
+            background: '#2A2D35',
+            borderBottom: '1px solid #3A3D45',
           }}
         >
           <div style={{ display: 'flex', gap: 6 }}>
@@ -223,10 +232,10 @@ const CockpitPreviewMock: React.FC = () => {
               marginLeft: 8,
               padding: '5px 14px',
               borderRadius: 6,
-              background: 'rgba(255,255,255,0.06)',
+              background: 'rgba(255,255,255,0.08)',
               fontFamily: "'DM Sans', sans-serif",
               fontSize: '0.68rem',
-              color: mutedText,
+              color: '#9CA3AF',
               letterSpacing: '0.01em',
             }}
           >
@@ -236,12 +245,12 @@ const CockpitPreviewMock: React.FC = () => {
 
         {/* App content area */}
         <div style={{ display: 'flex', minHeight: 460 }}>
-          {/* Left sidebar */}
+          {/* Left sidebar — stays dark */}
           <div
             style={{
               width: 46,
-              background: '#13151B',
-              borderRight: `1px solid ${cardBorder}`,
+              background: '#1E2028',
+              borderRight: '1px solid #2E3038',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -255,13 +264,13 @@ const CockpitPreviewMock: React.FC = () => {
                 width: 28,
                 height: 28,
                 borderRadius: 7,
-                background: colors.brand.primary,
+                background: lt.brand,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: '0.55rem',
                 fontWeight: 800,
-                color: '#0D0F14',
+                color: '#fff',
                 marginBottom: 12,
                 fontFamily: "'DM Sans', sans-serif",
               }}
@@ -277,18 +286,18 @@ const CockpitPreviewMock: React.FC = () => {
             <SidebarIcon>⚙</SidebarIcon>
           </div>
 
-          {/* Main content */}
-          <div style={{ flex: 1, padding: '0', overflow: 'hidden', minWidth: 0 }}>
+          {/* Main content — LIGHT THEME */}
+          <div style={{ flex: 1, padding: '0', overflow: 'hidden', minWidth: 0, background: lt.bg }}>
 
-            {/* ═══ Top Navbar — Revenue/Expense toggle lives here ═══ */}
+            {/* ═══ Top Navbar — Revenue/Expense toggle ═══ */}
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 padding: '8px 16px',
-                borderBottom: `1px solid ${cardBorder}`,
-                background: '#13151B',
+                borderBottom: `1px solid ${lt.border}`,
+                background: lt.surface,
               }}
             >
               {/* Left: perspective toggle */}
@@ -297,8 +306,9 @@ const CockpitPreviewMock: React.FC = () => {
                   display: 'inline-flex',
                   borderRadius: 8,
                   padding: 2,
-                  background: 'rgba(255,255,255,0.06)',
+                  background: lt.surfaceAlt,
                   gap: 2,
+                  border: `1px solid ${lt.borderLight}`,
                 }}
               >
                 {(['revenue', 'expense'] as const).map((p) => {
@@ -316,9 +326,9 @@ const CockpitPreviewMock: React.FC = () => {
                         fontWeight: 600,
                         cursor: 'pointer',
                         transition: 'all 0.25s ease',
-                        color: isActive ? '#fff' : mutedText,
-                        background: isActive ? colors.brand.primary : 'transparent',
-                        boxShadow: isActive ? `0 2px 8px ${colors.brand.primary}40` : 'none',
+                        color: isActive ? '#fff' : lt.textSecondary,
+                        background: isActive ? lt.brand : 'transparent',
+                        boxShadow: isActive ? `0 2px 8px ${lt.brand}40` : 'none',
                         fontFamily: "'DM Sans', sans-serif",
                       }}
                     >
@@ -337,15 +347,16 @@ const CockpitPreviewMock: React.FC = () => {
                     gap: 4,
                     padding: '3px 9px',
                     borderRadius: 999,
-                    border: '1px solid #10B98140',
+                    border: '1px solid #10B98130',
+                    background: '#10B98108',
                     fontSize: '0.55rem',
-                    color: '#10B981',
+                    color: '#059669',
                   }}
                 >
                   <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#10B981', animation: 'cockpitMockPulse 2s ease infinite' }} />
                   Live
                 </span>
-                <span style={{ fontSize: '0.55rem', color: mutedText }}>🔔 2</span>
+                <span style={{ fontSize: '0.55rem', color: lt.textSecondary }}>🔔 2</span>
               </div>
             </div>
 
@@ -362,13 +373,13 @@ const CockpitPreviewMock: React.FC = () => {
                 }}
               >
                 <div>
-                  <h3 style={{ fontSize: '0.82rem', fontWeight: 800, color: primaryText, margin: 0, lineHeight: 1.2 }}>
+                  <h3 style={{ fontSize: '0.82rem', fontWeight: 800, color: lt.text, margin: 0, lineHeight: 1.2 }}>
                     Operations Cockpit
                   </h3>
                   <p
                     style={{
                       fontSize: '0.58rem',
-                      color: mutedText,
+                      color: lt.textSecondary,
                       margin: '2px 0 0',
                       transition: 'opacity 0.2s',
                       opacity: isAnimating ? 0 : 1,
@@ -391,11 +402,11 @@ const CockpitPreviewMock: React.FC = () => {
                     style={{
                       padding: '4px 8px',
                       borderRadius: 6,
-                      border: 'none',
+                      border: `1px solid ${lt.brand}30`,
                       fontSize: '0.54rem',
                       fontWeight: 600,
-                      background: colors.brand.primary + '1A',
-                      color: colors.brand.primary,
+                      background: lt.brandBg,
+                      color: lt.brand,
                       cursor: 'default',
                       fontFamily: "'DM Sans', sans-serif",
                     }}
@@ -409,8 +420,8 @@ const CockpitPreviewMock: React.FC = () => {
                       border: 'none',
                       fontSize: '0.54rem',
                       fontWeight: 600,
-                      background: colors.brand.primary,
-                      color: '#0D0F14',
+                      background: lt.brand,
+                      color: '#fff',
                       cursor: 'default',
                       fontFamily: "'DM Sans', sans-serif",
                     }}
@@ -440,15 +451,16 @@ const CockpitPreviewMock: React.FC = () => {
                       style={{
                         padding: '10px 12px',
                         borderRadius: 10,
-                        border: `1px solid ${cardBorder}`,
-                        background: cardBg,
+                        border: `1px solid ${lt.border}`,
+                        background: lt.surface,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
                       }}
                     >
                       <div>
-                        <div style={{ fontSize: '0.54rem', color: mutedText, marginBottom: 2 }}>{card.label}</div>
+                        <div style={{ fontSize: '0.54rem', color: lt.textSecondary, marginBottom: 2 }}>{card.label}</div>
                         <div style={{ fontSize: '1.1rem', fontWeight: 800, color: card.color }}>{card.value}</div>
                       </div>
                       <div
@@ -456,7 +468,7 @@ const CockpitPreviewMock: React.FC = () => {
                           width: 28,
                           height: 28,
                           borderRadius: 8,
-                          background: card.color + '15',
+                          background: card.color + '12',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -476,8 +488,9 @@ const CockpitPreviewMock: React.FC = () => {
                     style={{
                       padding: '10px',
                       borderRadius: 10,
-                      border: `1px solid ${cardBorder}`,
-                      background: cardBg,
+                      border: `1px solid ${lt.border}`,
+                      background: lt.surface,
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 8 }}>
@@ -488,7 +501,7 @@ const CockpitPreviewMock: React.FC = () => {
                           fontWeight: 800,
                           textTransform: 'uppercase',
                           letterSpacing: '0.08em',
-                          color: mutedText,
+                          color: lt.textSecondary,
                         }}
                       >
                         Event Schedule
@@ -500,8 +513,9 @@ const CockpitPreviewMock: React.FC = () => {
                           fontWeight: 700,
                           padding: '1px 5px',
                           borderRadius: 4,
-                          background: 'rgba(255,255,255,0.06)',
-                          color: mutedText,
+                          background: lt.surfaceAlt,
+                          color: lt.textSecondary,
+                          border: `1px solid ${lt.borderLight}`,
                         }}
                       >
                         0{data.buckets.reduce((s, b) => s + b.count, 0)}
@@ -515,8 +529,8 @@ const CockpitPreviewMock: React.FC = () => {
                           style={{
                             padding: '8px 9px',
                             borderRadius: 8,
-                            border: `1px solid ${cardBorder}`,
-                            background: '#0F1117',
+                            border: `1px solid ${lt.borderLight}`,
+                            background: lt.surfaceAlt,
                             borderLeft: bucket.label === 'OVERDUE' ? `2.5px solid ${bucket.color}` : undefined,
                           }}
                         >
@@ -543,7 +557,7 @@ const CockpitPreviewMock: React.FC = () => {
                             />
                             {bucket.label}
                           </div>
-                          <div style={{ fontSize: '0.52rem', color: mutedText, display: 'flex', gap: 6 }}>
+                          <div style={{ fontSize: '0.52rem', color: lt.textSecondary, display: 'flex', gap: 6 }}>
                             <span>🔧 {bucket.serviceCount}</span>
                             <span>· {bucket.billingAmount}</span>
                           </div>
@@ -557,8 +571,9 @@ const CockpitPreviewMock: React.FC = () => {
                     style={{
                       padding: '10px',
                       borderRadius: 10,
-                      border: `1px solid ${cardBorder}`,
-                      background: cardBg,
+                      border: `1px solid ${lt.border}`,
+                      background: lt.surface,
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 8 }}>
@@ -569,7 +584,7 @@ const CockpitPreviewMock: React.FC = () => {
                           fontWeight: 800,
                           textTransform: 'uppercase',
                           letterSpacing: '0.08em',
-                          color: mutedText,
+                          color: lt.textSecondary,
                         }}
                       >
                         Service Events
@@ -581,8 +596,9 @@ const CockpitPreviewMock: React.FC = () => {
                           fontWeight: 700,
                           padding: '1px 5px',
                           borderRadius: 4,
-                          background: colors.brand.primary + '15',
-                          color: colors.brand.primary,
+                          background: lt.brandBg,
+                          color: lt.brand,
+                          border: `1px solid ${lt.brand}20`,
                         }}
                       >
                         0{data.serviceEventsTotal}
@@ -596,8 +612,8 @@ const CockpitPreviewMock: React.FC = () => {
                           style={{
                             padding: '8px 10px',
                             borderRadius: 8,
-                            border: `1px solid ${cardBorder}`,
-                            background: '#0F1117',
+                            border: `1px solid ${lt.borderLight}`,
+                            background: lt.surfaceAlt,
                           }}
                         >
                           <div
@@ -608,9 +624,9 @@ const CockpitPreviewMock: React.FC = () => {
                               marginBottom: 3,
                             }}
                           >
-                            <div style={{ fontSize: '0.6rem', fontWeight: 700, color: primaryText, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: 6 }}>
+                            <div style={{ fontSize: '0.6rem', fontWeight: 700, color: lt.text, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: 6 }}>
                               {event.name} —{' '}
-                              <span style={{ fontWeight: 400, color: mutedText }}>{event.detail}</span>
+                              <span style={{ fontWeight: 400, color: lt.textSecondary }}>{event.detail}</span>
                             </div>
                             <span
                               style={{
@@ -618,9 +634,9 @@ const CockpitPreviewMock: React.FC = () => {
                                 fontWeight: 700,
                                 padding: '2px 7px',
                                 borderRadius: 4,
-                                background: event.statusColor + '18',
+                                background: event.statusColor + '12',
                                 color: event.statusColor,
-                                border: `1px solid ${event.statusColor}30`,
+                                border: `1px solid ${event.statusColor}25`,
                                 whiteSpace: 'nowrap',
                                 flexShrink: 0,
                               }}
@@ -628,8 +644,8 @@ const CockpitPreviewMock: React.FC = () => {
                               {event.status}
                             </span>
                           </div>
-                          <div style={{ fontSize: '0.5rem', color: mutedText }}>
-                            {event.date} · <span style={{ color: colors.brand.primary }}>{event.amount}</span>
+                          <div style={{ fontSize: '0.5rem', color: lt.textSecondary }}>
+                            {event.date} · <span style={{ color: lt.brand, fontWeight: 600 }}>{event.amount}</span>
                           </div>
                         </div>
                       ))}
@@ -641,10 +657,11 @@ const CockpitPreviewMock: React.FC = () => {
                     style={{
                       padding: '10px',
                       borderRadius: 10,
-                      border: `1px solid ${cardBorder}`,
-                      background: cardBg,
+                      border: `1px solid ${lt.border}`,
+                      background: lt.surface,
                       display: 'flex',
                       flexDirection: 'column',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 8 }}>
@@ -653,7 +670,7 @@ const CockpitPreviewMock: React.FC = () => {
                           width: 22,
                           height: 22,
                           borderRadius: 6,
-                          background: '#8B5CF620',
+                          background: '#8B5CF610',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -663,8 +680,8 @@ const CockpitPreviewMock: React.FC = () => {
                         ✦
                       </div>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '0.58rem', fontWeight: 700, color: primaryText }}>VaNi</div>
-                        <div style={{ fontSize: '0.46rem', color: mutedText }}>AI Operations Assistant</div>
+                        <div style={{ fontSize: '0.58rem', fontWeight: 700, color: lt.text }}>VaNi</div>
+                        <div style={{ fontSize: '0.46rem', color: lt.textSecondary }}>AI Operations Assistant</div>
                       </div>
                       <span
                         style={{
@@ -672,8 +689,9 @@ const CockpitPreviewMock: React.FC = () => {
                           fontWeight: 700,
                           padding: '2px 6px',
                           borderRadius: 4,
-                          background: '#8B5CF615',
+                          background: '#8B5CF610',
                           color: '#8B5CF6',
+                          border: '1px solid #8B5CF620',
                         }}
                       >
                         {data.vaniAlerts.length} alerts
@@ -688,8 +706,8 @@ const CockpitPreviewMock: React.FC = () => {
                           style={{
                             padding: '6px 8px',
                             borderRadius: 7,
-                            background: '#0F1117',
-                            border: `1px solid ${cardBorder}`,
+                            background: lt.surfaceAlt,
+                            border: `1px solid ${lt.borderLight}`,
                             borderLeft: `2px solid ${alert.typeColor}`,
                           }}
                         >
@@ -698,9 +716,9 @@ const CockpitPreviewMock: React.FC = () => {
                             <span style={{ fontSize: '0.46rem', fontWeight: 700, color: alert.typeColor, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                               {alert.type}
                             </span>
-                            <span style={{ marginLeft: 'auto', fontSize: '0.42rem', color: mutedText }}>{alert.time}</span>
+                            <span style={{ marginLeft: 'auto', fontSize: '0.42rem', color: lt.textSecondary }}>{alert.time}</span>
                           </div>
-                          <div style={{ fontSize: '0.48rem', color: primaryText, lineHeight: 1.35, opacity: 0.85 }}>
+                          <div style={{ fontSize: '0.48rem', color: lt.text, lineHeight: 1.35, opacity: 0.8 }}>
                             {alert.message}
                           </div>
                         </div>
@@ -713,12 +731,12 @@ const CockpitPreviewMock: React.FC = () => {
           </div>
         </div>
 
-        {/* Bottom action bar */}
+        {/* Bottom action bar — dark to frame the light content */}
         <div
           style={{
             display: 'flex',
-            borderTop: `1px solid ${cardBorder}`,
-            background: '#13151B',
+            borderTop: `1px solid ${lt.border}`,
+            background: lt.surface,
           }}
         >
           <button
@@ -731,13 +749,13 @@ const CockpitPreviewMock: React.FC = () => {
               gap: 8,
               padding: '10px 0',
               border: 'none',
-              borderRight: `1px solid ${cardBorder}`,
+              borderRight: `1px solid ${lt.border}`,
               background: 'transparent',
               cursor: 'pointer',
               fontFamily: "'DM Sans', sans-serif",
               transition: 'background 0.2s',
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
+            onMouseEnter={(e) => (e.currentTarget.style.background = lt.surfaceAlt)}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
           >
             <span
@@ -746,16 +764,16 @@ const CockpitPreviewMock: React.FC = () => {
                 transition: 'transform 0.4s ease',
                 transform: pulseFlip ? 'rotate(0deg)' : 'rotate(180deg)',
                 display: 'inline-block',
-                color: colors.brand.primary,
+                color: lt.brand,
               }}
             >
               ⇄
             </span>
             <div style={{ textAlign: 'left' }}>
-              <div style={{ fontSize: '0.68rem', fontWeight: 700, color: primaryText }}>
+              <div style={{ fontSize: '0.68rem', fontWeight: 700, color: lt.text }}>
                 Revenue ↔ Expense
               </div>
-              <div style={{ fontSize: '0.5rem', color: mutedText }}>Flip between both sides</div>
+              <div style={{ fontSize: '0.5rem', color: lt.textSecondary }}>Flip between both sides</div>
             </div>
           </button>
 
@@ -775,10 +793,10 @@ const CockpitPreviewMock: React.FC = () => {
           >
             <span style={{ fontSize: '0.85rem', color: '#8B5CF6' }}>✦</span>
             <div style={{ textAlign: 'left' }}>
-              <div style={{ fontSize: '0.68rem', fontWeight: 700, color: primaryText }}>
+              <div style={{ fontSize: '0.68rem', fontWeight: 700, color: lt.text }}>
                 VaNi — AI Ops Assistant
               </div>
-              <div style={{ fontSize: '0.5rem', color: mutedText }}>4 active alerts</div>
+              <div style={{ fontSize: '0.5rem', color: lt.textSecondary }}>4 active alerts</div>
             </div>
           </button>
         </div>

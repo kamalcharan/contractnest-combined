@@ -1,5 +1,5 @@
 // src/components/landing/HeroV3.tsx - Vikuna Black themed hero with live cockpit preview
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { VikunaBlackTheme } from '../../config/theme/themes/vikunaBlack';
 import CockpitPreviewMock from './CockpitPreviewMock';
 
@@ -35,6 +35,18 @@ const HeroV3: React.FC<HeroV3Props> = ({
 }) => {
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
+
+  // Inject Google Fonts via <link> instead of @import (which breaks CSS parsing in <style> tags)
+  useEffect(() => {
+    const fontId = 'hero-v3-google-fonts';
+    if (!document.getElementById(fontId)) {
+      const link = document.createElement('link');
+      link.id = fontId;
+      link.rel = 'stylesheet';
+      link.href = 'https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap';
+      document.head.appendChild(link);
+    }
+  }, []);
 
   const handleJoin = () => {
     if (!email) return;
@@ -75,11 +87,11 @@ const HeroV3: React.FC<HeroV3Props> = ({
           position: 'relative',
           zIndex: 2,
           padding: '80px 56px 64px',
-          maxWidth: 1360,
+          maxWidth: 1200,
           margin: '0 auto',
           display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: 48,
+          gridTemplateColumns: '1fr 1.15fr',
+          gap: 40,
           alignItems: 'start',
         }}
         className="hero-v3-grid"
@@ -295,7 +307,7 @@ const HeroV3: React.FC<HeroV3Props> = ({
         style={{
           position: 'relative',
           zIndex: 2,
-          maxWidth: 1360,
+          maxWidth: 1200,
           margin: '0 auto',
           padding: '0 56px',
         }}
@@ -410,8 +422,6 @@ const HeroV3: React.FC<HeroV3Props> = ({
 
       {/* Keyframe animations */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
-
         @keyframes heroV3FadeUp {
           from { opacity: 0; transform: translateY(18px); }
           to   { opacity: 1; transform: translateY(0); }
