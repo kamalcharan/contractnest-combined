@@ -156,7 +156,7 @@ BEGIN
     -- ═══════════════════════════════════════════
     -- STEP 3: Generate CNAK (global access key)
     -- ═══════════════════════════════════════════
-    v_access_secret := encode(gen_random_bytes(16), 'hex');
+    v_access_secret := md5(random()::text || clock_timestamp()::text);
 
     FOR i IN 1..10 LOOP
         v_cnak := upper(substr(md5(random()::text || clock_timestamp()::text), 1, 4))
