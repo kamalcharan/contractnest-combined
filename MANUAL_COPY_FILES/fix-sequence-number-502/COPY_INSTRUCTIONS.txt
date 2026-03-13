@@ -1,0 +1,31 @@
+═══════════════════════════════════════════════════
+FIX: 502 Bad Gateway - generate_next_number does not exist
+═══════════════════════════════════════════════════
+
+ROOT CAUSE:
+  Migration 052 replaced create_contract_transaction but called
+  generate_next_number(uuid, varchar) which DOES NOT EXIST.
+  The original migration 002 correctly used get_next_formatted_sequence().
+
+FIX APPLIED:
+  Replaced the non-existent generate_next_number() call with the
+  working get_next_formatted_sequence() logic from migration 002.
+
+FILES CHANGED:
+  1. contractnest-edge/supabase/migrations/contracts/052_add_metadata_column.sql
+     - Lines 120-128: Replaced generate_next_number() with get_next_formatted_sequence()
+
+COPY COMMAND:
+  Copy-Item "MANUAL_COPY_FILES\fix-sequence-number-502\contractnest-edge\supabase\migrations\contracts\052_add_metadata_column.sql" -Destination "contractnest-edge\supabase\migrations\contracts\052_add_metadata_column.sql" -Force
+
+IMPORTANT - SUPABASE SQL EDITOR:
+  Since this is a migration file that defines PostgreSQL functions,
+  you MUST run the updated SQL in the Supabase SQL Editor to apply
+  the fix to the live database. The migration file alone won't
+  auto-apply - you need to execute it.
+
+  Specifically, run the create_contract_transaction function block
+  (lines 32-484) in the Supabase SQL Editor.
+
+SUBMODULES AFFECTED:
+  - contractnest-edge
