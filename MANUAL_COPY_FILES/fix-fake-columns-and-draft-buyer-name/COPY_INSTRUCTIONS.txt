@@ -1,0 +1,42 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — fix-fake-columns-and-draft-buyer-name
+═══════════════════════════════════════════════════
+
+Branch: fix-fake-columns-and-draft-buyer-name
+
+Submodules Affected:
+  - contractnest-edge
+  - contractnest-ui
+
+Files Changed:
+───────────────
+
+1. contractnest-edge/supabase/migrations/contracts/050_coverage_types_and_rpc_fix.sql
+   → Removed custom_cycle_days/service_cycle_days from INSERT, VALUES, and SELECT in get_contract_by_id
+
+2. contractnest-edge/supabase/migrations/contracts/052_add_metadata_column.sql
+   → Removed custom_cycle_days/service_cycle_days from INSERT, VALUES, and SELECT in get_contract_by_id
+
+3. contractnest-edge/supabase/migrations/contracts/053_fix_cnak_draft_workflow.sql
+   → Removed custom_cycle_days/service_cycle_days from INSERT and VALUES in create_contract_transaction
+
+4. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+   → Added buyer_name to draft save payload (fixes missing contact name in list)
+   → Removed custom_cycle_days/service_cycle_days from block payload builder
+
+═══════════════════════════════════════════════════
+SUPABASE SQL (RUN MANUALLY IN SQL EDITOR)
+═══════════════════════════════════════════════════
+
+IMPORTANT: After copying files, you MUST re-apply the get_contract_by_id
+function to your live Supabase database. Run the updated CREATE OR REPLACE
+FUNCTION get_contract_by_id(...) section from 052_add_metadata_column.sql
+(lines 855–1147) in the Supabase SQL Editor.
+
+Also run this to drop the columns if they were ever added:
+
+ALTER TABLE t_contract_blocks
+  DROP COLUMN IF EXISTS custom_cycle_days,
+  DROP COLUMN IF EXISTS service_cycle_days;
+
+═══════════════════════════════════════════════════
