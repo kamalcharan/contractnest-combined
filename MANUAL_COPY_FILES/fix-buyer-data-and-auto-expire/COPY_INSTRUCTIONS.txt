@@ -4,7 +4,7 @@ DATE: 2026-03-14
 ================================================================
 
 SUBMODULES AFFECTED:
-  - contractnest-ui (2 files)
+  - contractnest-ui (3 files)
   - contractnest-edge (1 file - new migration)
 
 ================================================================
@@ -27,6 +27,12 @@ FILES:
    - Trigger to auto-compute dates on INSERT/UPDATE
    - auto_expire_contracts() RPC for nightly job
    - pg_cron job at 11:59 PM IST daily
+
+4. contractnest-ui/src/components/contracts/list/ContractPortfolioRow.tsx
+   - Constrained title column maxWidth to 280px (prevents misalignment)
+   - Replaced clickable contact name with plain text
+   - Replaced single Eye button with two icons: FileText (contract view) + User (contact view)
+   - Contact view icon only shows when buyer_id exists
 
 ================================================================
 NO DB MIGRATION NEEDED FOR FIX 1:
