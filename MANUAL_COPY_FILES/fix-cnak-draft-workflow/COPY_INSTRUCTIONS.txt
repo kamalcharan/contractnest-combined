@@ -1,0 +1,46 @@
+═══════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS - fix-cnak-draft-workflow
+═══════════════════════════════════════════════════════════════
+
+Feature: Fix CNAK format (VARCHAR overflow) and skip CNAK for drafts
+Date: 2026-03-14
+Submodules Affected: contractnest-edge
+
+═══════════════════════════════════════════════════════════════
+FILES TO COPY:
+═══════════════════════════════════════════════════════════════
+
+1. contractnest-edge/supabase/migrations/contracts/053_fix_cnak_draft_workflow.sql
+   -> Copy to: contractnest-edge\supabase\migrations\contracts\053_fix_cnak_draft_workflow.sql
+   Purpose: NEW FILE - Migration that fixes two RPCs:
+     a) create_contract_transaction: reverts CNAK format to CNAK-XXXXXX,
+        skips CNAK generation for drafts
+     b) update_contract_status: generates CNAK when transitioning
+        from draft to non-draft status
+
+═══════════════════════════════════════════════════════════════
+WHAT THIS FIX DOES:
+═══════════════════════════════════════════════════════════════
+
+Root Cause: Migration 050 changed CNAK format from 'CNAK-' + 6 hex chars
+(11 chars total) to XXXX-XXXX-XXXX (14 chars total), which exceeds the
+VARCHAR(12) column limit on t_contracts.global_access_id.
+
+Fix 1 (create_contract_transaction):
+  - Reverts CNAK format back to CNAK-XXXXXX (11 chars, fits VARCHAR(12))
+  - For drafts: sets v_cnak = NULL, skips t_contract_access INSERT
+  - For non-drafts (auto-accept): generates CNAK as before
+
+Fix 2 (update_contract_status):
+  - New STEP 2.5: when transitioning FROM draft to non-draft (except cancelled)
+    AND global_access_id IS NULL, generates CNAK-XXXXXX and creates
+    t_contract_access row
+  - All existing behavior preserved for non-draft transitions
+
+═══════════════════════════════════════════════════════════════
+DEPLOYMENT NOTE:
+═══════════════════════════════════════════════════════════════
+
+After copying the file, you must ALSO run the SQL in Supabase SQL Editor.
+The migration uses CREATE OR REPLACE FUNCTION so it updates both RPCs
+in-place with no schema changes needed.
