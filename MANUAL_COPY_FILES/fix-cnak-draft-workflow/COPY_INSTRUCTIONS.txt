@@ -1,8 +1,8 @@
 ═══════════════════════════════════════════════════════════════
-COPY INSTRUCTIONS - fix-cnak-draft-workflow
+COPY INSTRUCTIONS - fix-cnak-draft-workflow (v2 - CORRECTED)
 ═══════════════════════════════════════════════════════════════
 
-Feature: Fix CNAK format (VARCHAR overflow) and skip CNAK for drafts
+Feature: Fix CNAK format, skip CNAK for drafts, fix seller_id + contract_access columns
 Date: 2026-03-14
 Submodules Affected: contractnest-edge
 
@@ -14,33 +14,39 @@ FILES TO COPY:
    -> Copy to: contractnest-edge\supabase\migrations\contracts\053_fix_cnak_draft_workflow.sql
    Purpose: NEW FILE - Migration that fixes two RPCs:
      a) create_contract_transaction: reverts CNAK format to CNAK-XXXXXX,
-        skips CNAK generation for drafts
+        skips CNAK generation for drafts, adds missing seller_id,
+        uses correct t_contract_access column names
      b) update_contract_status: generates CNAK when transitioning
-        from draft to non-draft status
+        from draft to non-draft status, uses correct column names
 
 ═══════════════════════════════════════════════════════════════
 WHAT THIS FIX DOES:
 ═══════════════════════════════════════════════════════════════
 
-Root Cause: Migration 050 changed CNAK format from 'CNAK-' + 6 hex chars
-(11 chars total) to XXXX-XXXX-XXXX (14 chars total), which exceeds the
-VARCHAR(12) column limit on t_contracts.global_access_id.
+Issues fixed (verified against live DB schema):
 
-Fix 1 (create_contract_transaction):
-  - Reverts CNAK format back to CNAK-XXXXXX (11 chars, fits VARCHAR(12))
-  - For drafts: sets v_cnak = NULL, skips t_contract_access INSERT
-  - For non-drafts (auto-accept): generates CNAK as before
+1. CNAK format: Reverted from XXXX-XXXX-XXXX (14 chars, broken)
+   to CNAK-XXXXXX (11 chars, fits VARCHAR(12))
 
-Fix 2 (update_contract_status):
-  - New STEP 2.5: when transitioning FROM draft to non-draft (except cancelled)
-    AND global_access_id IS NULL, generates CNAK-XXXXXX and creates
-    t_contract_access row
-  - All existing behavior preserved for non-draft transitions
+2. seller_id: Added to INSERT (= v_tenant_id) and response.
+   Column is NOT NULL on live table, was missing from RPC.
+
+3. t_contract_access column names: Fixed to match live table:
+   - access_key      -> global_access_id
+   - access_secret   -> secret_code
+   - owner_tenant_id -> creator_tenant_id
+
+4. Drafts: CNAK + contract_access skipped for draft status.
+   Generated on draft-to-non-draft transition instead.
 
 ═══════════════════════════════════════════════════════════════
-DEPLOYMENT NOTE:
+DEPLOYMENT STEPS:
 ═══════════════════════════════════════════════════════════════
 
-After copying the file, you must ALSO run the SQL in Supabase SQL Editor.
-The migration uses CREATE OR REPLACE FUNCTION so it updates both RPCs
-in-place with no schema changes needed.
+STEP 1: Run this ALTER TABLE first (coverage_types column was missing):
+
+  ALTER TABLE t_contracts
+    ADD COLUMN IF NOT EXISTS coverage_types JSONB DEFAULT '[]'::JSONB;
+
+STEP 2: Then run the full 053_fix_cnak_draft_workflow.sql in Supabase SQL Editor.
+  Uses CREATE OR REPLACE FUNCTION — updates both RPCs in-place.

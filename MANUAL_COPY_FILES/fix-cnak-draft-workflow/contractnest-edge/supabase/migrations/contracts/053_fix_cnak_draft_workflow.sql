@@ -176,6 +176,7 @@ BEGIN
     -- ═══════════════════════════════════════════
     INSERT INTO t_contracts (
         tenant_id,
+        seller_id,
         contract_number,
         rfq_number,
         record_type,
@@ -225,6 +226,7 @@ BEGIN
     )
     VALUES (
         v_tenant_id,
+        v_tenant_id,                -- seller_id = creator tenant
         v_contract_number,
         v_rfq_number,
         v_record_type,
@@ -358,41 +360,37 @@ BEGIN
     --   Drafts skip this — CNAK is NULL, so no access row needed.
     --   Access row is created when contract transitions out of draft.
     -- ═══════════════════════════════════════════
-    IF v_cnak IS NOT NULL THEN
-        IF EXISTS (
-            SELECT 1 FROM information_schema.tables
-            WHERE table_name = 't_contract_access' AND table_schema = 'public'
-        ) THEN
-            INSERT INTO t_contract_access (
-                contract_id,
-                access_key,
-                access_secret,
-                owner_tenant_id,
-                accessor_tenant_id,
-                accessor_role,
-                accessor_contact_id,
-                accessor_email,
-                accessor_name,
-                status,
-                is_active,
-                created_by
-            )
-            VALUES (
-                v_contract_id,
-                v_cnak,
-                v_access_secret,
-                v_tenant_id,
-                v_tenant_id,
-                NULL,
-                COALESCE(v_contract_type, 'client'),
-                (p_payload->>'buyer_id')::UUID,
-                p_payload->>'buyer_email',
-                p_payload->>'buyer_name',
-                'pending',
-                true,
-                v_created_by
-            );
-        END IF;
+    IF v_cnak IS NOT NULL AND (p_payload->>'buyer_id') IS NOT NULL THEN
+        INSERT INTO t_contract_access (
+            contract_id,
+            global_access_id,
+            secret_code,
+            tenant_id,
+            creator_tenant_id,
+            accessor_tenant_id,
+            accessor_role,
+            accessor_contact_id,
+            accessor_email,
+            accessor_name,
+            status,
+            is_active,
+            created_by
+        )
+        VALUES (
+            v_contract_id,
+            v_cnak,
+            v_access_secret,
+            v_tenant_id,
+            v_tenant_id,
+            NULL,
+            COALESCE(v_contract_type, 'client'),
+            (p_payload->>'buyer_id')::UUID,
+            p_payload->>'buyer_email',
+            p_payload->>'buyer_name',
+            'pending',
+            true,
+            v_created_by
+        );
     END IF;
 
     -- ═══════════════════════════════════════════
@@ -427,6 +425,8 @@ BEGIN
             'data', jsonb_build_object(
                 'id', v_contract.id,
                 'tenant_id', v_contract.tenant_id,
+                'seller_id', v_contract.seller_id,
+                'buyer_tenant_id', v_contract.buyer_tenant_id,
                 'contract_number', v_contract.contract_number,
                 'rfq_number', v_contract.rfq_number,
                 'record_type', v_contract.record_type,
@@ -654,15 +654,13 @@ BEGIN
           AND tenant_id = p_tenant_id;
 
         -- Create contract_access row
-        IF EXISTS (
-            SELECT 1 FROM information_schema.tables
-            WHERE table_name = 't_contract_access' AND table_schema = 'public'
-        ) THEN
+        IF v_current.buyer_id IS NOT NULL THEN
             INSERT INTO t_contract_access (
                 contract_id,
-                access_key,
-                access_secret,
-                owner_tenant_id,
+                global_access_id,
+                secret_code,
+                tenant_id,
+                creator_tenant_id,
                 accessor_tenant_id,
                 accessor_role,
                 accessor_contact_id,
