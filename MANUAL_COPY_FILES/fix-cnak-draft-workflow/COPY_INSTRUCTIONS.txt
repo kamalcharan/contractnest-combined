@@ -1,10 +1,11 @@
 ═══════════════════════════════════════════════════════════════
-COPY INSTRUCTIONS - fix-cnak-draft-workflow (v2 - CORRECTED)
+COPY INSTRUCTIONS - fix-cnak-draft-workflow (v3 - with UI changes)
 ═══════════════════════════════════════════════════════════════
 
-Feature: Fix CNAK format, skip CNAK for drafts, fix seller_id + contract_access columns
+Feature: Fix CNAK format + seller_id + contract_access columns +
+         Replace draft save toast with island bar auto-save indicator
 Date: 2026-03-14
-Submodules Affected: contractnest-edge
+Submodules Affected: contractnest-edge, contractnest-ui
 
 ═══════════════════════════════════════════════════════════════
 FILES TO COPY:
@@ -12,18 +13,21 @@ FILES TO COPY:
 
 1. contractnest-edge/supabase/migrations/contracts/053_fix_cnak_draft_workflow.sql
    -> Copy to: contractnest-edge\supabase\migrations\contracts\053_fix_cnak_draft_workflow.sql
-   Purpose: NEW FILE - Migration that fixes two RPCs:
-     a) create_contract_transaction: reverts CNAK format to CNAK-XXXXXX,
-        skips CNAK generation for drafts, adds missing seller_id,
-        uses correct t_contract_access column names
-     b) update_contract_status: generates CNAK when transitioning
-        from draft to non-draft status, uses correct column names
+   Purpose: Migration that fixes create_contract_transaction + update_contract_status RPCs
+
+2. contractnest-ui/src/components/contracts/ContractWizard/FloatingActionIsland.tsx
+   -> Copy to: contractnest-ui\src\components\contracts\ContractWizard\FloatingActionIsland.tsx
+   Purpose: MODIFIED - Added 3-state auto-save indicator (saving/saved/failed) with tooltip
+
+3. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+   -> Copy to: contractnest-ui\src\components\contracts\ContractWizard\index.tsx
+   Purpose: MODIFIED - Await draft save before navigating, replace toast with status indicator
 
 ═══════════════════════════════════════════════════════════════
 WHAT THIS FIX DOES:
 ═══════════════════════════════════════════════════════════════
 
-Issues fixed (verified against live DB schema):
+BACKEND (053 migration):
 
 1. CNAK format: Reverted from XXXX-XXXX-XXXX (14 chars, broken)
    to CNAK-XXXXXX (11 chars, fits VARCHAR(12))
@@ -39,6 +43,19 @@ Issues fixed (verified against live DB schema):
 4. Drafts: CNAK + contract_access skipped for draft status.
    Generated on draft-to-non-draft transition instead.
 
+FRONTEND (UI):
+
+5. Removed error toast on draft save failure.
+   Replaced with subtle auto-save indicator in the island bar:
+   - Saving:  spinner + "Auto-saving draft..." tooltip
+   - Saved:   green check + dot, "Draft saved" tooltip (auto-clears after 3s)
+   - Failed:  red alert + dot, "Draft save failed — will retry on next step" (clears after 5s)
+
+6. "Continue" button now awaits draft save before navigating.
+   This prevents save errors from appearing on the NEXT page.
+   The button shows "Saving..." with a spinner while waiting.
+   Navigation always proceeds (save failure does NOT block).
+
 ═══════════════════════════════════════════════════════════════
 DEPLOYMENT STEPS:
 ═══════════════════════════════════════════════════════════════
@@ -48,5 +65,7 @@ STEP 1: Run this ALTER TABLE first (coverage_types column was missing):
   ALTER TABLE t_contracts
     ADD COLUMN IF NOT EXISTS coverage_types JSONB DEFAULT '[]'::JSONB;
 
-STEP 2: Then run the full 053_fix_cnak_draft_workflow.sql in Supabase SQL Editor.
+STEP 2: Run the full 053_fix_cnak_draft_workflow.sql in Supabase SQL Editor.
   Uses CREATE OR REPLACE FUNCTION — updates both RPCs in-place.
+
+STEP 3: Copy UI files and restart dev server.
