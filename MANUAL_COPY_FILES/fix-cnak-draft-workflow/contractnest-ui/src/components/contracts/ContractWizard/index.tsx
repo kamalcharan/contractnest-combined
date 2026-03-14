@@ -431,7 +431,7 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
 
   // API mutation
-  const { createContract, updateContract, updateStatus, sendNotification, isCreating, isUpdating } = useContractOperations();
+  const { createContract, updateContract, updateStatus, sendNotification, isCreating, isUpdating, setSilentMode } = useContractOperations();
   const { addToast } = useVaNiToast();
 
   // Gateway status for pre-payment dialog (online option)
@@ -542,6 +542,7 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
   const saveDraftToApi = useCallback(async (stepIndex: number): Promise<boolean> => {
     setIsSavingDraft(true);
     setDraftSaveStatus('saving');
+    setSilentMode(true);
     try {
       const metadata = {
         wizard_state: serializeWizardState(wizardState),
@@ -605,9 +606,10 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
       setTimeout(() => setDraftSaveStatus('idle'), 5000);
       return false;
     } finally {
+      setSilentMode(false);
       setIsSavingDraft(false);
     }
-  }, [wizardState, contractType, draftId, draftVersion, createContract, updateContract]);
+  }, [wizardState, contractType, draftId, draftVersion, createContract, updateContract, setSilentMode]);
 
   // Close with save — used by confirmation dialog
   const handleCloseWithSave = useCallback(async () => {
