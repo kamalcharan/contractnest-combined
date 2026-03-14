@@ -335,7 +335,8 @@ export const useContractOperations = () => {
           variant: 'destructive',
           title: status === 409 ? 'Version Conflict' : 'Update Failed',
           description: errorMessage,
-      });
+        });
+      }
     },
   });
 
