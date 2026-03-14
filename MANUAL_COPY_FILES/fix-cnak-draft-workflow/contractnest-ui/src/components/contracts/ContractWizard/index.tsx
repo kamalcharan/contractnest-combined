@@ -860,6 +860,20 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
       }
       const contractId = contractResult?.id;
       if (!contractId) throw new Error('Contract created but no ID returned');
+
+      // Step 1b: If contract is still a draft (updated from draft), transition to active
+      if (contractResult?.status === 'draft') {
+        setProcessingStep('Activating contract...');
+        try {
+          await updateStatus({
+            contractId,
+            statusData: { status: 'active' },
+          });
+          contractResult.status = 'active';
+        } catch {
+          console.warn('Contract created but draft→active transition failed');
+        }
+      }
       setCreatedContractData(contractResult);
 
       // Step 2: Fetch the auto-generated invoice
@@ -920,7 +934,7 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
       setIsProcessingPayment(false);
       setProcessingStep('');
     }
-  }, [wizardState, contractType, createContract, paymentAmount, paymentMethod, paymentDate, paymentReference, paymentNotes, paymentEmiSequence, addToast]);
+  }, [wizardState, contractType, createContract, updateContract, updateStatus, draftId, draftVersion, paymentAmount, paymentMethod, paymentDate, paymentReference, paymentNotes, paymentEmiSequence, addToast]);
 
   // Create contract WITHOUT payment (skip payment, auto-accept flow)
   const handleCreateSkipPayment = useCallback(async () => {
@@ -941,6 +955,21 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
       } else {
         result = (await createContract(request as CreateContractRequest)) as Record<string, any>;
       }
+
+      // If contract is still a draft (updated from draft), transition to active
+      if (result?.id && result?.status === 'draft') {
+        setProcessingStep('Activating contract...');
+        try {
+          await updateStatus({
+            contractId: result.id,
+            statusData: { status: 'active' },
+          });
+          result.status = 'active';
+        } catch {
+          console.warn('Contract created but draft→active transition failed');
+        }
+      }
+
       setCreatedContractData(result);
       setCnakCopied(false);
       setIsContractSent(true);
@@ -950,7 +979,7 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
       setIsProcessingPayment(false);
       setProcessingStep('');
     }
-  }, [wizardState, contractType, createContract, updateContract, draftId, draftVersion]);
+  }, [wizardState, contractType, createContract, updateContract, updateStatus, draftId, draftVersion]);
 
   // Create contract + initiate online Razorpay payment (auto-accept flow)
   const handleCreateWithOnlinePayment = useCallback(async () => {
@@ -973,6 +1002,20 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
       }
       const contractId = contractResult?.id;
       if (!contractId) throw new Error('Contract created but no ID returned');
+
+      // Step 1b: If contract is still a draft (updated from draft), transition to active
+      if (contractResult?.status === 'draft') {
+        setProcessingStep('Activating contract...');
+        try {
+          await updateStatus({
+            contractId,
+            statusData: { status: 'active' },
+          });
+          contractResult.status = 'active';
+        } catch {
+          console.warn('Contract created but draft→active transition failed');
+        }
+      }
       setCreatedContractData(contractResult);
 
       // Step 2: Fetch the auto-generated invoice
@@ -1077,7 +1120,7 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
       setIsProcessingPayment(false);
       setProcessingStep('');
     }
-  }, [wizardState, contractType, createContract, paymentAmount, addToast]);
+  }, [wizardState, contractType, createContract, updateContract, updateStatus, draftId, draftVersion, paymentAmount, addToast]);
 
   const handleBack = useCallback(() => {
     if (showTemplateSelection) {

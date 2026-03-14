@@ -586,6 +586,8 @@ BEGIN
             -- Forward flow
             WHEN v_current.status = 'draft'              AND p_new_status = 'pending_review'      THEN true
             WHEN v_current.status = 'draft'              AND p_new_status = 'pending_acceptance'  THEN true -- wizard send (skip review)
+            WHEN v_current.status = 'draft'              AND p_new_status = 'active'
+                 AND v_current.acceptance_method = 'auto'                                         THEN true -- auto-accept draft finalization
             WHEN v_current.status = 'pending_review'     AND p_new_status = 'pending_acceptance'  THEN true
             WHEN v_current.status = 'pending_acceptance' AND p_new_status = 'active'              THEN true
             WHEN v_current.status = 'active'             AND p_new_status = 'completed'           THEN true

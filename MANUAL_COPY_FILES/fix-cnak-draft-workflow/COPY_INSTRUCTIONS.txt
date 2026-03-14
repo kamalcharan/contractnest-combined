@@ -1,71 +1,60 @@
 ═══════════════════════════════════════════════════════════════
-COPY INSTRUCTIONS - fix-cnak-draft-workflow (v3 - with UI changes)
+COPY INSTRUCTIONS - fix-cnak-draft-workflow (v4 - COMPLETE)
 ═══════════════════════════════════════════════════════════════
 
-Feature: Fix CNAK format + seller_id + contract_access columns +
-         Replace draft save toast with island bar auto-save indicator
+Feature: Fix CNAK format + draft resume + draft→active transition +
+         auto-save indicator in island bar + suppress draft toasts
 Date: 2026-03-14
 Submodules Affected: contractnest-edge, contractnest-ui
 
 ═══════════════════════════════════════════════════════════════
-FILES TO COPY:
+FILES TO COPY (4 files):
 ═══════════════════════════════════════════════════════════════
 
 1. contractnest-edge/supabase/migrations/contracts/053_fix_cnak_draft_workflow.sql
-   -> Copy to: contractnest-edge\supabase\migrations\contracts\053_fix_cnak_draft_workflow.sql
-   Purpose: Migration that fixes create_contract_transaction + update_contract_status RPCs
+   -> contractnest-edge\supabase\migrations\contracts\053_fix_cnak_draft_workflow.sql
+   Purpose: RPC fixes (CNAK, seller_id, contract_access columns, draft→active transition)
 
-2. contractnest-ui/src/components/contracts/ContractWizard/FloatingActionIsland.tsx
-   -> Copy to: contractnest-ui\src\components\contracts\ContractWizard\FloatingActionIsland.tsx
-   Purpose: MODIFIED - Added 3-state auto-save indicator (saving/saved/failed) with tooltip
+2. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+   -> contractnest-ui\src\components\contracts\ContractWizard\index.tsx
+   Purpose: Draft status transitions on finalization, await save before navigate, silent mode
 
-3. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
-   -> Copy to: contractnest-ui\src\components\contracts\ContractWizard\index.tsx
-   Purpose: MODIFIED - Await draft save before navigating, replace toast with status indicator
+3. contractnest-ui/src/components/contracts/ContractWizard/FloatingActionIsland.tsx
+   -> contractnest-ui\src\components\contracts\ContractWizard\FloatingActionIsland.tsx
+   Purpose: 3-state auto-save indicator (saving/saved/failed) with tooltip
+
+4. contractnest-ui/src/hooks/queries/useContractQueries.ts
+   -> contractnest-ui\src\hooks\queries\useContractQueries.ts
+   Purpose: silentMode ref to suppress toasts during draft auto-saves
 
 ═══════════════════════════════════════════════════════════════
 WHAT THIS FIX DOES:
 ═══════════════════════════════════════════════════════════════
 
 BACKEND (053 migration):
+1. CNAK format: CNAK-XXXXXX (fits VARCHAR(12))
+2. seller_id: Added to INSERT (NOT NULL column was missing)
+3. t_contract_access columns: Fixed to match live table
+4. Drafts: CNAK + contract_access skipped for draft status
+5. NEW: draft→active transition allowed for auto-accept contracts
 
-1. CNAK format: Reverted from XXXX-XXXX-XXXX (14 chars, broken)
-   to CNAK-XXXXXX (11 chars, fits VARCHAR(12))
-
-2. seller_id: Added to INSERT (= v_tenant_id) and response.
-   Column is NOT NULL on live table, was missing from RPC.
-
-3. t_contract_access column names: Fixed to match live table:
-   - access_key      -> global_access_id
-   - access_secret   -> secret_code
-   - owner_tenant_id -> creator_tenant_id
-
-4. Drafts: CNAK + contract_access skipped for draft status.
-   Generated on draft-to-non-draft transition instead.
-
-FRONTEND (UI):
-
-5. Removed error toast on draft save failure.
-   Replaced with subtle auto-save indicator in the island bar:
-   - Saving:  spinner + "Auto-saving draft..." tooltip
-   - Saved:   green check + dot, "Draft saved" tooltip (auto-clears after 3s)
-   - Failed:  red alert + dot, "Draft save failed — will retry on next step" (clears after 5s)
-
-6. "Continue" button now awaits draft save before navigating.
-   This prevents save errors from appearing on the NEXT page.
-   The button shows "Saving..." with a spinner while waiting.
-   Navigation always proceeds (save failure does NOT block).
+FRONTEND (wizard):
+6. Auto-save indicator: spinner/green check/red dot in island bar
+7. Silent mode: draft saves no longer trigger success/error toasts
+8. Await save: Continue button waits for save before navigating
+9. FIX: Auto-accept draft finalization now transitions draft→active
+   (was staying as 'draft' — showed in both active AND draft lists)
+10. All 3 auto-accept handlers fixed: handleCreateWithPayment,
+    handleCreateSkipPayment, handleCreateWithOnlinePayment
 
 ═══════════════════════════════════════════════════════════════
-DEPLOYMENT STEPS:
+DEPLOYMENT:
 ═══════════════════════════════════════════════════════════════
 
-STEP 1: Run this ALTER TABLE first (coverage_types column was missing):
-
+STEP 1: ALTER TABLE (if not already done):
   ALTER TABLE t_contracts
     ADD COLUMN IF NOT EXISTS coverage_types JSONB DEFAULT '[]'::JSONB;
 
-STEP 2: Run the full 053_fix_cnak_draft_workflow.sql in Supabase SQL Editor.
-  Uses CREATE OR REPLACE FUNCTION — updates both RPCs in-place.
+STEP 2: Run 053_fix_cnak_draft_workflow.sql in Supabase SQL Editor.
 
 STEP 3: Copy UI files and restart dev server.
