@@ -1,0 +1,36 @@
+================================================================
+BRANCH: fix-buyer-data-and-auto-expire
+DATE: 2026-03-14
+================================================================
+
+SUBMODULES AFFECTED:
+  - contractnest-ui (2 files)
+  - contractnest-edge (1 file - new migration)
+
+================================================================
+FILES:
+================================================================
+
+1. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+   - Fixed handleBuyerSelect to accept all 5 params (was dropping contactPersonId, contactPersonName, useCompanyContact)
+   - Added buyerContactPersonId, buyerContactPersonName, useCompanyContact to WizardState
+   - Updated mapWizardToRequest to send buyer_contact_person_id + buyer_contact_person_name
+   - Updated BuyerSelectionStep props to pass person selection state back
+
+2. contractnest-ui/src/types/contracts.ts
+   - Added buyer_contact_person_id and buyer_contact_person_name to CreateContractRequest interface
+
+3. contractnest-edge/supabase/migrations/contracts/054_end_date_prolongation_auto_expire.sql
+   - NEW FILE: Migration adding end_date, prolongation columns, auto-expire cron
+   - Adds end_date, prolongation_value, prolongation_unit, prolongation_date to t_contracts
+   - Backfills end_date for existing contracts
+   - Trigger to auto-compute dates on INSERT/UPDATE
+   - auto_expire_contracts() RPC for nightly job
+   - pg_cron job at 11:59 PM IST daily
+
+================================================================
+NO DB MIGRATION NEEDED FOR FIX 1:
+  The RPC create_contract_transaction() already accepts
+  buyer_contact_person_id and buyer_contact_person_name.
+  Only the UI was dropping the data.
+================================================================
