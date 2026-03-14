@@ -1,0 +1,46 @@
+===============================================================
+FIX: Perspective-Aware Labels in Contract Hub
+Branch: fix-perspective-labels
+Date: 2026-03-14
+===============================================================
+
+SUMMARY:
+  In Expense mode (vendor perspective), the contract hub now shows:
+    - "Paid" instead of "Collected" in summary cards & group headers
+    - "Payable" instead of "Outstanding" in summary cards
+  Revenue mode (client perspective) remains unchanged.
+
+SUBMODULES AFFECTED: contractnest-ui
+
+FILES CHANGED (3 files):
+  1. contractnest-ui/src/components/contracts/list/PortfolioSummaryStrip.tsx
+     - Added `perspective` prop ('revenue' | 'expense')
+     - "Collected" label -> "Paid" when expense
+     - "Outstanding" label -> "Payable" when expense
+
+  2. contractnest-ui/src/components/contracts/list/ClientGroupHeader.tsx
+     - Added `perspective` prop ('revenue' | 'expense')
+     - "Collected" label -> "Paid" when expense
+
+  3. contractnest-ui/src/pages/contracts/hub/index.tsx
+     - Passes `perspective={activePerspective}` to PortfolioSummaryStrip
+     - Passes `perspective={activePerspective}` to ClientGroupHeader
+
+===============================================================
+COPY COMMANDS (PowerShell):
+===============================================================
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\fix-perspective-labels\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Done! All 3 files copied." -ForegroundColor Green
+
+===============================================================
+VERIFY: No files overwritten from other features
+===============================================================
+These 3 files are ONLY in this feature folder.
+They do NOT conflict with any files in the root MANUAL_COPY_FILES/contractnest-ui/ folder
+(which contains ServiceConfigStep.tsx, AuthContext.tsx, etc. — completely different files).
+
+===============================================================
