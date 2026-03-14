@@ -681,6 +681,13 @@ BEGIN
         -- Metadata (wizard draft state)
         metadata           = CASE WHEN p_payload ? 'metadata' THEN p_payload->'metadata' ELSE v_current.metadata END,
 
+        -- Computed events (event preview from wizard — processed on activation)
+        computed_events    = CASE WHEN p_payload ? 'computed_events' THEN p_payload->'computed_events' ELSE v_current.computed_events END,
+
+        -- Evidence
+        evidence_policy_type    = CASE WHEN p_payload ? 'evidence_policy_type' THEN p_payload->>'evidence_policy_type' ELSE v_current.evidence_policy_type END,
+        evidence_selected_forms = CASE WHEN p_payload ? 'evidence_selected_forms' THEN p_payload->'evidence_selected_forms' ELSE v_current.evidence_selected_forms END,
+
         -- Version + Audit
         version    = v_current.version + 1,
         updated_by = v_updated_by
