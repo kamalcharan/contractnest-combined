@@ -1,0 +1,38 @@
+═══════════════════════════════════════════════════
+FIX: Contract Creation - generate_next_number does not exist (error 42883)
+═══════════════════════════════════════════════════
+
+Root Cause:
+───────────
+Migrations 050 and 052 replaced create_contract_transaction with a version
+that calls generate_next_number() — a function that was NEVER defined.
+Migration 053 fixed this by using get_next_formatted_sequence(), but it
+appears 053 was not applied to the database.
+
+Files to copy:
+──────────────
+
+1. contractnest-edge/supabase/migrations/contracts/050_coverage_types_and_rpc_fix.sql
+   FROM: MANUAL_COPY_FILES\fix-contract-creation\contractnest-edge\supabase\migrations\contracts\050_coverage_types_and_rpc_fix.sql
+   TO:   contractnest-edge\supabase\migrations\contracts\050_coverage_types_and_rpc_fix.sql
+   PURPOSE: Replace generate_next_number with get_next_formatted_sequence
+
+2. contractnest-edge/supabase/migrations/contracts/052_add_metadata_column.sql
+   FROM: MANUAL_COPY_FILES\fix-contract-creation\contractnest-edge\supabase\migrations\contracts\052_add_metadata_column.sql
+   TO:   contractnest-edge\supabase\migrations\contracts\052_add_metadata_column.sql
+   PURPOSE: Replace generate_next_number with get_next_formatted_sequence
+
+3. contractnest-edge/supabase/migrations/contracts/053_fix_cnak_draft_workflow.sql
+   FROM: MANUAL_COPY_FILES\fix-contract-creation\contractnest-edge\supabase\migrations\contracts\053_fix_cnak_draft_workflow.sql
+   TO:   contractnest-edge\supabase\migrations\contracts\053_fix_cnak_draft_workflow.sql
+   PURPOSE: Already correct — included so you can re-run it to fix the DB function
+
+Submodules Affected:
+────────────────────
+- contractnest-edge (migration SQL files)
+
+IMMEDIATE DB FIX:
+─────────────────
+Run migration 053_fix_cnak_draft_workflow.sql in Supabase Dashboard > SQL Editor.
+This will CREATE OR REPLACE the create_contract_transaction function with the
+correct get_next_formatted_sequence calls.
