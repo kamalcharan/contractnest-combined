@@ -1,0 +1,30 @@
+═══════════════════════════════════════════════════
+FIX: Resource Creation Duplicate Key Constraint Error
+═══════════════════════════════════════════════════
+
+Files to copy:
+──────────────
+
+1. contractnest-api/src/controllers/resourcesController.ts
+   FROM: MANUAL_COPY_FILES\fix-resource-duplicate-key\contractnest-api\src\controllers\resourcesController.ts
+   TO:   contractnest-api\src\controllers\resourcesController.ts
+   PURPOSE: Remove extractEdgeData wrapper on boolean checkResourceNameExists return.
+            extractEdgeData was converting boolean false to [], causing duplicate name
+            validation to always pass.
+
+2. supabase/migrations/20260315_fix_resource_unique_constraint.sql
+   FROM: MANUAL_COPY_FILES\fix-resource-duplicate-key\supabase\migrations\20260315_fix_resource_unique_constraint.sql
+   TO:   supabase\migrations\20260315_fix_resource_unique_constraint.sql
+   PURPOSE: Replace absolute unique constraint with partial unique index
+            (WHERE is_live = true AND is_active = true) so soft-deleted resource
+            names can be reused.
+
+Submodules Affected:
+────────────────────
+- contractnest-api (controller fix)
+- parent repo / supabase (DB migration)
+
+DB Migration Required:
+──────────────────────
+Run the SQL in 20260315_fix_resource_unique_constraint.sql against your Supabase database
+via Dashboard > SQL Editor or supabase db push.
