@@ -2,9 +2,8 @@
 -- This allows soft-deleted (is_live=false) or inactive (is_active=false) resource names to be reused
 -- while still enforcing uniqueness among active, live resources.
 
--- Drop the existing constraint that blocks ALL duplicate names (including deleted ones)
-ALTER TABLE public.t_category_resources_master
-  DROP CONSTRAINT IF EXISTS t_category_resources_master_tenant_id_idx;
+-- Drop the existing unique index that blocks ALL duplicate names (including deleted ones)
+DROP INDEX IF EXISTS public.t_category_resources_master_tenant_id_idx;
 
 -- Create a partial unique index that only enforces uniqueness on active, live records
 CREATE UNIQUE INDEX t_category_resources_master_tenant_id_idx
