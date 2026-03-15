@@ -1,7 +1,7 @@
 # Global Template Designer — Plan of Action (POA)
 
 **Session:** GlobalTemplates
-**Date:** 2026-03-15
+**Date:** 2026-03-15 (Updated)
 **PRD Reference:** `ClaudeDocumentation/globaltemplates/GlobalTemplates PRD.pdf`
 **Submodules Affected:** `contractnest-api`, `contractnest-ui`, `contractnest-edge`
 
@@ -42,7 +42,26 @@ Per PRD — 4 phases, but since **Section 12 requires approval before execution*
 
 ---
 
+## Step 0: Table Rename (COMPLETED)
+
+> **Status: Files ready in `MANUAL_COPY_FILES/GlobalTemplates/`**
+
+Renamed `cat_blocks` → `m_cat_blocks` and `cat_templates` → `m_cat_templates` to align with master data naming convention (`m_` prefix).
+
+| # | File | Change |
+|---|------|--------|
+| 1 | `contractnest-edge/supabase/migrations/global-templates/000_rename_cat_tables.sql` | NEW — ALTER TABLE RENAME + verification |
+| 2 | `contractnest-edge/supabase/functions/cat-blocks/index.ts` | MODIFIED — 8x `.from('cat_blocks')` → `.from('m_cat_blocks')` |
+| 3 | `contractnest-edge/supabase/functions/cat-templates/index.ts` | MODIFIED — 11x `.from('cat_templates')` → `.from('m_cat_templates')` |
+| 4 | `contractnest-ui/src/hooks/queries/useCatBlocks.ts` | MODIFIED — 1x parseResponse context string |
+
+**Deployment order:** Migration FIRST → Edge functions SECOND → UI LAST
+
+---
+
 ## Phase 1: Foundation (DB + Coverage APIs + UI Shell)
+
+> **All table references below use the NEW names: `m_cat_blocks`, `m_cat_templates`**
 
 ### 1.1 Database Migrations (PROPOSAL — Needs Approval)
 
@@ -50,12 +69,12 @@ Per PRD — 4 phases, but since **Section 12 requires approval before execution*
 
 | # | Migration | Table/Object | What It Does |
 |---|-----------|-------------|--------------|
-| 1 | `001_alter_cat_templates.sql` | `cat_templates` | Add columns: `scope`, `resource_template_id`, `nomenclature_id`, `nomenclature_code`, `supported_currencies`, `description` (text), `tags`, `complexity`, `est_duration_minutes`, `times_used`, `avg_rating`, `is_featured`, `created_by_agent`, `agent_metadata` |
-| 2 | `002_alter_cat_blocks.sql` | `cat_blocks` | Add columns: `scope`, `source_global_block_id` |
-| 3 | `003_alter_form_templates.sql` | `form_templates` | Add columns: `source_template_id`, `resource_template_id`, `created_by_agent`, `agent_metadata` |
-| 4 | `004_create_coverage_view.sql` | `m_global_template_coverage` | Create materialized view + refresh function joining `m_catalog_resource_templates` ↔ `cat_templates` ↔ `form_templates` ↔ `m_catalog_industries` |
+| 1 | `001_alter_m_cat_templates.sql` | `m_cat_templates` | Add columns: `scope`, `resource_template_id`, `nomenclature_id`, `nomenclature_code`, `supported_currencies`, `description` (text), `tags`, `complexity`, `est_duration_minutes`, `times_used`, `avg_rating`, `is_featured`, `created_by_agent`, `agent_metadata` |
+| 2 | `002_alter_m_cat_blocks.sql` | `m_cat_blocks` | Add columns: `scope`, `source_global_block_id` |
+| 3 | `003_alter_form_templates.sql` | `m_form_templates` | Add columns: `source_template_id`, `resource_template_id`, `created_by_agent`, `agent_metadata` |
+| 4 | `004_create_coverage_view.sql` | `m_global_template_coverage` | Create materialized view + refresh function joining `m_catalog_resource_templates` ↔ `m_cat_templates` ↔ `m_form_templates` ↔ `m_catalog_industries` |
 | 5 | `005_create_clone_log.sql` | `m_template_clone_log` | Audit trail table for global→tenant transitions |
-| 6 | `006_create_indexes.sql` | Indexes | `idx_cat_templates_scope`, `idx_cat_templates_resource`, `idx_cat_blocks_scope`, `idx_gtc_resource_industry` |
+| 6 | `006_create_indexes.sql` | Indexes | `idx_m_cat_templates_scope`, `idx_m_cat_templates_resource`, `idx_m_cat_blocks_scope`, `idx_gtc_resource_industry` |
 
 **Files created in:** `contractnest-edge/supabase/migrations/global-templates/`
 
@@ -65,7 +84,7 @@ Per PRD — 4 phases, but since **Section 12 requires approval before execution*
 |---|--------|----------|---------|--------|
 | 1 | GET | `/api/admin/template-coverage` | Industry-wise resource template coverage stats | `m_global_template_coverage` |
 | 2 | GET | `/api/admin/template-coverage/:industryId` | Resources for an industry with template/gap status | `m_global_template_coverage` filtered |
-| 3 | GET | `/api/admin/template-coverage/:industryId/:resourceTemplateId` | Full resource detail + all templates + all SmartForms | Join `m_catalog_resource_templates` + `cat_templates` + `form_templates` |
+| 3 | GET | `/api/admin/template-coverage/:industryId/:resourceTemplateId` | Full resource detail + all templates + all SmartForms | Join `m_catalog_resource_templates` + `m_cat_templates` + `m_form_templates` |
 | 4 | POST | `/api/admin/template-coverage/refresh` | Trigger `REFRESH MATERIALIZED VIEW` | Admin only |
 
 **Files to create:**
@@ -137,7 +156,7 @@ src/pages/service-contracts/templates/admin/global-designer/
 | # | Method | Endpoint | Purpose |
 |---|--------|----------|---------|
 | 1 | POST | `/api/admin/templates/generate` | Generate template (preview, not saved). Body: `TemplateGenerationRequest` → Returns: `GeneratedTemplate` |
-| 2 | POST | `/api/admin/templates/generate/save` | Save generated template. Body: `{ generatedTemplate, modifications? }` → Creates `cat_templates` + `cat_blocks` + `form_templates` |
+| 2 | POST | `/api/admin/templates/generate/save` | Save generated template. Body: `{ generatedTemplate, modifications? }` → Creates `m_cat_templates` + `m_cat_blocks` + `m_form_templates` |
 | 3 | POST | `/api/admin/templates/generate/regenerate` | Regenerate with feedback. Body: `{ resourceTemplateId, nomenclatureCode, feedback }` |
 | 4 | POST | `/api/admin/smartform/generate` | Generate SmartForm only. Body: `{ resourceTemplateId, timing, context }` |
 | 5 | POST | `/api/admin/smartform/generate/save` | Save generated SmartForm |
@@ -170,8 +189,8 @@ Complete View 4 (`AIAgentPanel.tsx`):
 | 1 | Validate tenant has required industry setup (`t_tenant_served_industries`) |
 | 2 | BEGIN TRANSACTION |
 | 3 | Seed missing `t_category_details` for tenant (block_type_id, pricing_mode_id, price_type_id) |
-| 4 | Clone `cat_blocks` → tenant `cat_blocks` (new UUIDs, `tenant_id` set, `source_global_block_id` for reference) |
-| 5 | Create tenant `cat_templates` (new UUID, `scope='tenant'`, `is_system=false`, blocks array with new IDs) |
+| 4 | Clone `m_cat_blocks` → tenant `m_cat_blocks` (new UUIDs, `tenant_id` set, `source_global_block_id` for reference) |
+| 5 | Create tenant `m_cat_templates` (new UUID, `scope='tenant'`, `is_system=false`, blocks array with new IDs) |
 | 6 | Link SmartForms via `form_template_mappings` (reference global forms, NOT clone them) |
 | 7 | Seed resource in `t_category_resources_master` if missing |
 | 8 | Log to `m_template_clone_log` |
@@ -220,6 +239,9 @@ Modify existing `GlobalTemplatesPage` (`global-templates.tsx`):
 ## Implementation Order (Recommended)
 
 ```
+Step 0 (Prerequisite — DONE):
+  └── Table rename: cat_blocks → m_cat_blocks, cat_templates → m_cat_templates
+
 Sprint 1 (Phase 1):
   ├── Step 1: DB migrations (REVIEW FIRST) ──────────────── needs approval
   ├── Step 2: Coverage API endpoints ────────────────────── contractnest-api
@@ -266,8 +288,8 @@ Sprint 4 (Phase 4):
 |-----------|----------|----------------|
 | `contractnest-api` | ~12 | ~2 |
 | `contractnest-ui` | ~15 | ~3 |
-| `contractnest-edge` | ~7 | ~0 |
-| **Total** | **~34** | **~5** |
+| `contractnest-edge` | ~7 | ~3 (Step 0 rename) |
+| **Total** | **~34** | **~8** |
 
 ---
 

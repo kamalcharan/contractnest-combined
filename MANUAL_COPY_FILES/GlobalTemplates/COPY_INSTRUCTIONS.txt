@@ -1,0 +1,41 @@
+═══════════════════════════════════════════════════
+GLOBAL TEMPLATES - STEP 0: TABLE RENAME
+═══════════════════════════════════════════════════
+Branch: GlobalTemplates
+Date: 2026-03-15
+
+Purpose: Rename cat_blocks → m_cat_blocks, cat_templates → m_cat_templates
+         to align with master data naming convention (m_ prefix)
+
+═══════════════════════════════════════════════════
+FILES CHANGED
+═══════════════════════════════════════════════════
+
+NEW FILES:
+  1. contractnest-edge/supabase/migrations/global-templates/000_rename_cat_tables.sql
+     → SQL migration to rename both tables
+
+MODIFIED FILES:
+  2. contractnest-edge/supabase/functions/cat-blocks/index.ts
+     → Changed all .from('cat_blocks') → .from('m_cat_blocks') (8 occurrences)
+
+  3. contractnest-edge/supabase/functions/cat-templates/index.ts
+     → Changed all .from('cat_templates') → .from('m_cat_templates') (11 occurrences)
+
+  4. contractnest-ui/src/hooks/queries/useCatBlocks.ts
+     → Changed parseResponse context string from 'cat_blocks' to 'm_cat_blocks' (1 occurrence)
+
+═══════════════════════════════════════════════════
+SUBMODULES AFFECTED
+═══════════════════════════════════════════════════
+  - contractnest-edge (migration + 2 edge functions)
+  - contractnest-ui (1 hook file)
+
+═══════════════════════════════════════════════════
+DEPLOYMENT ORDER (CRITICAL)
+═══════════════════════════════════════════════════
+  1. Run the SQL migration FIRST (rename tables in database)
+  2. Deploy updated edge functions SECOND (they now reference m_cat_blocks/m_cat_templates)
+  3. Deploy updated UI LAST
+
+  ⚠️ If you deploy edge functions BEFORE running migration, all queries will fail!
