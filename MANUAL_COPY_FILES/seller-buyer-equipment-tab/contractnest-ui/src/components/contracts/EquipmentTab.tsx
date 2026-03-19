@@ -1,43 +1,28 @@
 // src/components/contracts/EquipmentTab.tsx
 // Equipment & Facility details tab for contract detail page
-// Shows cards for each equipment/entity item from equipment_details JSONB
-// Both seller and buyer can add/remove their own equipment
+// Both seller and buyer can add/remove equipment using the same
+// EquipmentCard (selectable) + EquipmentFormDialog from equipment-registry
 
 import React, { useState, useMemo, useCallback } from 'react';
-import {
-  Wrench, Building2, MapPin, Shield, AlertTriangle, Calendar, Hash,
-  Plus, X, Check, Search, Package, Loader2,
-} from 'lucide-react';
+import { Wrench, Plus, X, Search, Package, Check } from 'lucide-react';
 import type { ContractEquipmentDetail } from '@/types/contracts';
 import { useAuth } from '@/context/AuthContext';
-import { useAssetRegistryManager } from '@/hooks/queries/useAssetRegistry';
+import {
+  useAssetRegistryManager,
+  useCreateAsset,
+} from '@/hooks/queries/useAssetRegistry';
+import { useResources, type Resource } from '@/hooks/queries/useResources';
 import {
   useBuyerAddEquipment,
   useBuyerRemoveEquipment,
   useSellerAddEquipment,
   useSellerRemoveEquipment,
 } from '@/hooks/queries/useContractQueries';
-import type { TenantAsset, AssetRegistryFilters } from '@/types/assetRegistry';
-import { CONDITION_CONFIG as ASSET_CONDITION_CONFIG } from '@/types/assetRegistry';
+import type { TenantAsset, AssetFormData, AssetRegistryFilters } from '@/types/assetRegistry';
+import { CONDITION_CONFIG, getWarrantyStatus } from '@/types/assetRegistry';
+import EquipmentCard from '@/pages/equipment-registry/EquipmentCard';
+import EquipmentFormDialog from '@/pages/equipment-registry/EquipmentFormDialog';
 import { VaNiLoader } from '@/components/common/loaders/UnifiedLoader';
-
-// =================================================================
-// CONSTANTS
-// =================================================================
-
-const CONDITION_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  good:     { label: 'Good',     color: '#16a34a', bg: '#f0fdf4' },
-  fair:     { label: 'Fair',     color: '#d97706', bg: '#fffbeb' },
-  poor:     { label: 'Poor',     color: '#ea580c', bg: '#fff7ed' },
-  critical: { label: 'Critical', color: '#dc2626', bg: '#fef2f2' },
-};
-
-const CRITICALITY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  low:      { label: 'Low',      color: '#6b7280', bg: '#f9fafb' },
-  medium:   { label: 'Medium',   color: '#d97706', bg: '#fffbeb' },
-  high:     { label: 'High',     color: '#ea580c', bg: '#fff7ed' },
-  critical: { label: 'Critical', color: '#dc2626', bg: '#fef2f2' },
-};
 
 // =================================================================
 // PROPS
@@ -59,7 +44,13 @@ function generateId(): string {
   return crypto.randomUUID?.() ?? `eq-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-function assetToEquipmentItem(asset: TenantAsset, tenantId: string, role: 'seller' | 'buyer'): ContractEquipmentDetail {
+/** Convert a TenantAsset from registry into a ContractEquipmentDetail */
+function assetToDetail(
+  asset: TenantAsset,
+  tenantId: string,
+  role: 'seller' | 'buyer',
+  resourceIdToSubCategory: Map<string, string>,
+): ContractEquipmentDetail {
   return {
     id: generateId(),
     asset_registry_id: asset.id,
@@ -67,7 +58,7 @@ function assetToEquipmentItem(asset: TenantAsset, tenantId: string, role: 'selle
     added_by_role: role,
     resource_type: (asset.resource_type_id || '').toLowerCase() === 'asset' ? 'entity' : 'equipment',
     category_id: asset.asset_type_id || null,
-    category_name: asset.description || 'Equipment',
+    category_name: resourceIdToSubCategory.get(asset.asset_type_id || '') || 'Other',
     item_name: asset.name,
     quantity: 1,
     make: asset.make,
@@ -86,259 +77,99 @@ function assetToEquipmentItem(asset: TenantAsset, tenantId: string, role: 'selle
 }
 
 // =================================================================
-// SINGLE EQUIPMENT CARD
+// MAIN COMPONENT
 // =================================================================
 
-const EquipmentCard: React.FC<{
-  item: ContractEquipmentDetail;
-  colors: any;
-  canRemove?: boolean;
-  onRemove?: () => void;
-  isRemoving?: boolean;
-}> = ({ item, colors, canRemove, onRemove, isRemoving }) => {
-  const isEntity = item.resource_type === 'entity';
-  const Icon = isEntity ? Building2 : Wrench;
-  const condition = item.condition ? CONDITION_CONFIG[item.condition] : null;
-  const criticality = item.criticality ? CRITICALITY_CONFIG[item.criticality] : null;
-
-  const fmtDate = (d?: string | null) => {
-    if (!d) return null;
-    return new Date(d).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
-  };
-
-  return (
-    <div
-      className="rounded-xl border overflow-hidden"
-      style={{
-        backgroundColor: colors.utility.secondaryBackground,
-        borderColor: colors.utility.primaryText + '12',
-      }}
-    >
-      {/* Header */}
-      <div
-        className="px-5 py-3.5 flex items-center justify-between"
-        style={{ borderBottom: `1px solid ${colors.utility.primaryText}08` }}
-      >
-        <div className="flex items-center gap-3">
-          <div
-            className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{ backgroundColor: colors.brand.primary + '12' }}
-          >
-            <Icon className="h-4 w-4" style={{ color: colors.brand.primary }} />
-          </div>
-          <div>
-            <div className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
-              {item.item_name}
-            </div>
-            <div className="text-xs" style={{ color: colors.utility.secondaryText }}>
-              {item.category_name}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* Qty badge */}
-          <span
-            className="text-xs font-semibold px-2 py-0.5 rounded-full"
-            style={{ backgroundColor: colors.utility.primaryText + '08', color: colors.utility.secondaryText }}
-          >
-            Qty: {item.quantity}
-          </span>
-          {/* Remove button */}
-          {canRemove && (
-            <button
-              onClick={onRemove}
-              disabled={isRemoving}
-              className="p-1 rounded-md hover:opacity-70 transition-opacity disabled:opacity-40"
-              style={{ color: '#ef4444' }}
-              title="Remove from contract"
-            >
-              {isRemoving ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Details grid */}
-      <div className="px-5 py-4">
-        <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-          {condition && (
-            <div>
-              <div className="text-[0.65rem] uppercase tracking-wide mb-1" style={{ color: colors.utility.secondaryText }}>
-                Condition
-              </div>
-              <span
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold"
-                style={{ backgroundColor: condition.bg, color: condition.color }}
-              >
-                <Shield className="h-3 w-3" />
-                {condition.label}
-              </span>
-            </div>
-          )}
-
-          {criticality && (
-            <div>
-              <div className="text-[0.65rem] uppercase tracking-wide mb-1" style={{ color: colors.utility.secondaryText }}>
-                Criticality
-              </div>
-              <span
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold"
-                style={{ backgroundColor: criticality.bg, color: criticality.color }}
-              >
-                <AlertTriangle className="h-3 w-3" />
-                {criticality.label}
-              </span>
-            </div>
-          )}
-
-          {(item.make || item.model) && (
-            <div>
-              <div className="text-[0.65rem] uppercase tracking-wide mb-1" style={{ color: colors.utility.secondaryText }}>
-                Make / Model
-              </div>
-              <div className="text-xs font-medium" style={{ color: colors.utility.primaryText }}>
-                {[item.make, item.model].filter(Boolean).join(' / ') || '\u2014'}
-              </div>
-            </div>
-          )}
-
-          {item.serial_number && (
-            <div>
-              <div className="text-[0.65rem] uppercase tracking-wide mb-1" style={{ color: colors.utility.secondaryText }}>
-                Serial Number
-              </div>
-              <div className="text-xs font-mono font-medium flex items-center gap-1" style={{ color: colors.utility.primaryText }}>
-                <Hash className="h-3 w-3" style={{ color: colors.utility.secondaryText }} />
-                {item.serial_number}
-              </div>
-            </div>
-          )}
-
-          {item.location && (
-            <div>
-              <div className="text-[0.65rem] uppercase tracking-wide mb-1" style={{ color: colors.utility.secondaryText }}>
-                Location
-              </div>
-              <div className="text-xs font-medium flex items-center gap-1" style={{ color: colors.utility.primaryText }}>
-                <MapPin className="h-3 w-3" style={{ color: colors.utility.secondaryText }} />
-                {item.location}
-              </div>
-            </div>
-          )}
-
-          {item.purchase_date && (
-            <div>
-              <div className="text-[0.65rem] uppercase tracking-wide mb-1" style={{ color: colors.utility.secondaryText }}>
-                Purchase Date
-              </div>
-              <div className="text-xs font-medium flex items-center gap-1" style={{ color: colors.utility.primaryText }}>
-                <Calendar className="h-3 w-3" style={{ color: colors.utility.secondaryText }} />
-                {fmtDate(item.purchase_date)}
-              </div>
-            </div>
-          )}
-
-          {item.warranty_expiry && (
-            <div>
-              <div className="text-[0.65rem] uppercase tracking-wide mb-1" style={{ color: colors.utility.secondaryText }}>
-                Warranty Expiry
-              </div>
-              <div className="text-xs font-medium" style={{ color: colors.utility.primaryText }}>
-                {fmtDate(item.warranty_expiry)}
-              </div>
-            </div>
-          )}
-
-          {item.area_sqft != null && item.area_sqft > 0 && (
-            <div>
-              <div className="text-[0.65rem] uppercase tracking-wide mb-1" style={{ color: colors.utility.secondaryText }}>
-                Area
-              </div>
-              <div className="text-xs font-medium" style={{ color: colors.utility.primaryText }}>
-                {item.area_sqft.toLocaleString()} sq ft
-              </div>
-            </div>
-          )}
-
-          {item.capacity != null && item.capacity > 0 && (
-            <div>
-              <div className="text-[0.65rem] uppercase tracking-wide mb-1" style={{ color: colors.utility.secondaryText }}>
-                Capacity
-              </div>
-              <div className="text-xs font-medium" style={{ color: colors.utility.primaryText }}>
-                {item.capacity.toLocaleString()}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {item.notes && (
-          <div className="mt-3 pt-3" style={{ borderTop: `1px solid ${colors.utility.primaryText}08` }}>
-            <div className="text-[0.65rem] uppercase tracking-wide mb-1" style={{ color: colors.utility.secondaryText }}>
-              Notes
-            </div>
-            <div className="text-xs" style={{ color: colors.utility.primaryText }}>
-              {item.notes}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Footer — who added */}
-      <div
-        className="px-5 py-2 text-[0.6rem]"
-        style={{
-          backgroundColor: colors.utility.primaryText + '04',
-          color: colors.utility.secondaryText,
-          borderTop: `1px solid ${colors.utility.primaryText}06`,
-        }}
-      >
-        Added by {item.added_by_role === 'buyer' ? 'Buyer' : 'Seller'}
-      </div>
-    </div>
-  );
-};
-
-// =================================================================
-// ASSET PICKER (shared by both seller and buyer)
-// =================================================================
-
-const AssetPicker: React.FC<{
-  contractId: string;
-  existingAssetIds: Set<string>;
-  colors: any;
-  role: 'seller' | 'buyer';
-  ownershipType: 'self' | 'client';
-  contactId?: string | null;
-  onClose: () => void;
-}> = ({ contractId, existingAssetIds, colors, role, ownershipType, contactId, onClose }) => {
+const EquipmentTab: React.FC<EquipmentTabProps> = ({
+  equipmentDetails,
+  allowBuyerToAdd,
+  colors,
+  isBuyer = false,
+  contractId,
+}) => {
   const { currentTenant } = useAuth();
   const tenantId = currentTenant?.id || '';
+  const isSeller = !isBuyer;
+  const role: 'seller' | 'buyer' = isBuyer ? 'buyer' : 'seller';
 
+  // ── State ──────────────────────────────────────────────────────
+
+  const [showPicker, setShowPicker] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isAddFormOpen, setIsAddFormOpen] = useState(false);
 
-  // Fetch equipment based on ownership type
+  // ── Mutations ──────────────────────────────────────────────────
+
+  const sellerAddMutation = useSellerAddEquipment();
+  const sellerRemoveMutation = useSellerRemoveEquipment();
+  const buyerAddMutation = useBuyerAddEquipment();
+  const buyerRemoveMutation = useBuyerRemoveEquipment();
+
+  const addMutation = isBuyer ? buyerAddMutation : sellerAddMutation;
+  const removeMutation = isBuyer ? buyerRemoveMutation : sellerRemoveMutation;
+
+  // ── Registry data (only loaded when picker is open) ────────────
+
   const filters: AssetRegistryFilters = useMemo(() => ({
     limit: 500,
     offset: 0,
-    ownership_type: ownershipType,
-    ...(contactId ? { contact_id: contactId } : {}),
-  }), [ownershipType, contactId]);
+    ownership_type: 'self' as const,
+  }), []);
 
-  const { assets, isLoading } = useAssetRegistryManager(filters);
+  const { assets, isLoading: assetsLoading } = useAssetRegistryManager(
+    showPicker ? filters : { limit: 0, offset: 0 }
+  );
 
-  const sellerAddMutation = useSellerAddEquipment();
-  const buyerAddMutation = useBuyerAddEquipment();
-  const addMutation = role === 'seller' ? sellerAddMutation : buyerAddMutation;
+  const createMutation = useCreateAsset();
 
-  // Filter display assets
+  const { data: allResources = [], isLoading: resourcesLoading } = useResources();
+
+  // Build lookup maps for resources
+  const { resourceIdToSubCategory, allFormCategories } = useMemo(() => {
+    const idToSubCat = new Map<string, string>();
+    const eqResources: Resource[] = [];
+
+    for (const r of allResources) {
+      if (r.is_active && ['equipment', 'asset'].includes((r.resource_type_id || '').toLowerCase())) {
+        eqResources.push(r);
+        idToSubCat.set(r.id, r.sub_category || 'Other');
+      }
+    }
+
+    const formCats = eqResources.map((r) => ({
+      id: r.id,
+      name: r.display_name || r.name,
+      sub_category: r.sub_category || null,
+      resource_type_id: r.resource_type_id,
+    }));
+
+    return { resourceIdToSubCategory: idToSubCat, allFormCategories: formCats };
+  }, [allResources]);
+
+  // ── Derived data ──────────────────────────────────────────────
+
+  const hasEquipment = equipmentDetails.length > 0;
+  const equipmentCount = equipmentDetails.filter(e => e.resource_type === 'equipment').length;
+  const entityCount = equipmentDetails.filter(e => e.resource_type === 'entity').length;
+
+  // Track which asset_registry_ids are already in the contract
+  const existingAssetIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const d of equipmentDetails) {
+      if (d.asset_registry_id) set.add(d.asset_registry_id);
+    }
+    return set;
+  }, [equipmentDetails]);
+
+  const canAdd = contractId && (isSeller || (isBuyer && allowBuyerToAdd));
+
+  // Filter registry assets for picker
   const displayAssets = useMemo(() => {
+    if (!showPicker) return [];
     let filtered = assets.filter(
       (a) =>
         ['equipment', 'asset'].includes((a.resource_type_id || '').toLowerCase()) &&
-        a.is_active &&
-        !existingAssetIds.has(a.id)
+        a.is_active
     );
 
     if (searchQuery.trim()) {
@@ -354,196 +185,63 @@ const AssetPicker: React.FC<{
     }
 
     return filtered;
-  }, [assets, searchQuery, existingAssetIds]);
+  }, [assets, searchQuery, showPicker]);
 
-  const handleAdd = useCallback(async (asset: TenantAsset) => {
-    const item = assetToEquipmentItem(asset, tenantId, role);
-    try {
-      await addMutation.mutateAsync({ contractId, equipmentItem: item });
-    } catch {
-      // Error toast handled by mutation hook
-    }
-  }, [contractId, tenantId, role, addMutation]);
+  // ── Handlers ──────────────────────────────────────────────────
 
-  const title = role === 'seller' ? 'Add Equipment' : 'Add Your Equipment';
-  const searchPlaceholder = role === 'seller' ? 'Search equipment...' : 'Search your equipment...';
-
-  return (
-    <div
-      className="rounded-xl border overflow-hidden"
-      style={{
-        backgroundColor: colors.utility.secondaryBackground,
-        borderColor: colors.brand.primary + '30',
-      }}
-    >
-      {/* Header */}
-      <div
-        className="px-5 py-3.5 flex items-center justify-between"
-        style={{
-          backgroundColor: colors.brand.primary + '08',
-          borderBottom: `1px solid ${colors.brand.primary}20`,
-        }}
-      >
-        <div className="flex items-center gap-2">
-          <Plus className="h-4 w-4" style={{ color: colors.brand.primary }} />
-          <span className="text-sm font-bold" style={{ color: colors.utility.primaryText }}>
-            {title}
-          </span>
-        </div>
-        <button
-          onClick={onClose}
-          className="p-1 rounded-md hover:opacity-70"
-          style={{ color: colors.utility.secondaryText }}
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-
-      {/* Search */}
-      <div className="px-5 py-3">
-        <div className="relative">
-          <Search
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5"
-            style={{ color: colors.utility.secondaryText }}
-          />
-          <input
-            placeholder={searchPlaceholder}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-8 pr-3 py-2 rounded-lg border text-xs"
-            style={{
-              borderColor: colors.utility.primaryText + '20',
-              backgroundColor: colors.utility.primaryBackground,
-              color: colors.utility.primaryText,
-            }}
-          />
-        </div>
-      </div>
-
-      {/* Asset list */}
-      <div className="px-5 pb-4 max-h-[40vh] overflow-y-auto space-y-2">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-8">
-            <VaNiLoader size="sm" message="Loading equipment..." />
-          </div>
-        ) : displayAssets.length === 0 ? (
-          <div className="text-center py-8">
-            <Package
-              className="h-10 w-10 mx-auto mb-2"
-              style={{ color: colors.utility.secondaryText + '40' }}
-            />
-            <p className="text-xs" style={{ color: colors.utility.secondaryText }}>
-              {searchQuery
-                ? `No equipment matching "${searchQuery}"`
-                : existingAssetIds.size > 0
-                  ? 'All equipment has already been added'
-                  : 'No equipment in registry yet'}
-            </p>
-          </div>
-        ) : (
-          displayAssets.map((asset) => {
-            const condCfg = ASSET_CONDITION_CONFIG[asset.condition] || ASSET_CONDITION_CONFIG.good;
-            return (
-              <div
-                key={asset.id}
-                className="flex items-center gap-3 p-3 rounded-lg border transition-all hover:shadow-sm"
-                style={{
-                  backgroundColor: colors.utility.primaryBackground,
-                  borderColor: colors.utility.primaryText + '12',
-                }}
-              >
-                <div
-                  className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 text-sm"
-                  style={{ backgroundColor: condCfg.bg }}
-                >
-                  {(asset.resource_type_id || '').toLowerCase() === 'equipment' ? '🔧' : '🏢'}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold truncate" style={{ color: colors.utility.primaryText }}>
-                    {asset.name}
-                  </div>
-                  <div className="text-xs truncate" style={{ color: colors.utility.secondaryText }}>
-                    {[asset.make, asset.model].filter(Boolean).join(' · ') || 'No make/model'}
-                    {asset.serial_number ? ` · SN: ${asset.serial_number}` : ''}
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleAdd(asset)}
-                  disabled={addMutation.isPending}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors hover:opacity-90 disabled:opacity-40 flex-shrink-0"
-                  style={{
-                    backgroundColor: colors.brand.primary,
-                    color: '#fff',
-                  }}
-                >
-                  {addMutation.isPending ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <Plus className="h-3 w-3" />
-                  )}
-                  Add
-                </button>
-              </div>
-            );
-          })
-        )}
-      </div>
-    </div>
-  );
-};
-
-// =================================================================
-// MAIN COMPONENT
-// =================================================================
-
-const EquipmentTab: React.FC<EquipmentTabProps> = ({
-  equipmentDetails,
-  allowBuyerToAdd,
-  colors,
-  isBuyer = false,
-  contractId,
-}) => {
-  const { currentTenant } = useAuth();
-  const tenantId = currentTenant?.id || '';
-  const isSeller = !isBuyer;
-
-  const [showPicker, setShowPicker] = useState(false);
-  const [removingItemId, setRemovingItemId] = useState<string | null>(null);
-
-  const buyerRemoveMutation = useBuyerRemoveEquipment();
-  const sellerRemoveMutation = useSellerRemoveEquipment();
-
-  const hasEquipment = equipmentDetails.length > 0;
-  const equipmentCount = equipmentDetails.filter(e => e.resource_type === 'equipment').length;
-  const entityCount = equipmentDetails.filter(e => e.resource_type === 'entity').length;
-
-  // Track which asset_registry_ids are already in the contract
-  const existingAssetIds = useMemo(() => {
-    const set = new Set<string>();
-    for (const d of equipmentDetails) {
-      if (d.asset_registry_id) set.add(d.asset_registry_id);
-    }
-    return set;
-  }, [equipmentDetails]);
-
-  const canBuyerAdd = isBuyer && allowBuyerToAdd && contractId;
-  const canSellerAdd = isSeller && contractId;
-
-  const handleRemove = useCallback(async (itemId: string) => {
+  const handleToggleAsset = useCallback(async (asset: TenantAsset) => {
     if (!contractId) return;
-    setRemovingItemId(itemId);
-    try {
-      if (isBuyer) {
-        await buyerRemoveMutation.mutateAsync({ contractId, itemId });
-      } else {
-        await sellerRemoveMutation.mutateAsync({ contractId, itemId });
+
+    if (existingAssetIds.has(asset.id)) {
+      // Find the equipment detail with this asset_registry_id and remove it
+      const detail = equipmentDetails.find((d) => d.asset_registry_id === asset.id);
+      if (detail) {
+        try {
+          await removeMutation.mutateAsync({ contractId, itemId: detail.id });
+        } catch {
+          // Error toast handled by mutation hook
+        }
       }
+    } else {
+      // Add the asset
+      const item = assetToDetail(asset, tenantId, role, resourceIdToSubCategory);
+      try {
+        await addMutation.mutateAsync({ contractId, equipmentItem: item });
+      } catch {
+        // Error toast handled by mutation hook
+      }
+    }
+  }, [contractId, existingAssetIds, equipmentDetails, tenantId, role, resourceIdToSubCategory, addMutation, removeMutation]);
+
+  const handleRemoveCard = useCallback(async (itemId: string) => {
+    if (!contractId) return;
+    try {
+      await removeMutation.mutateAsync({ contractId, itemId });
     } catch {
       // Error toast handled by mutation hook
-    } finally {
-      setRemovingItemId(null);
     }
-  }, [contractId, isBuyer, buyerRemoveMutation, sellerRemoveMutation]);
+  }, [contractId, removeMutation]);
+
+  // "+ Add Equipment" — create in registry via form dialog and auto-add to contract
+  const handleCreateSubmit = useCallback(
+    async (data: AssetFormData) => {
+      if (!contractId) return;
+      try {
+        const created = await createMutation.mutateAsync(data);
+        // Auto-add the newly created asset to the contract
+        const item = assetToDetail(created, tenantId, role, resourceIdToSubCategory);
+        await addMutation.mutateAsync({ contractId, equipmentItem: item });
+        setIsAddFormOpen(false);
+      } catch {
+        /* toast handled by hooks */
+      }
+    },
+    [createMutation, tenantId, role, resourceIdToSubCategory, contractId, addMutation]
+  );
+
+  const isLoading = assetsLoading || resourcesLoading;
+
+  // ── Render ────────────────────────────────────────────────────
 
   return (
     <div className="space-y-5">
@@ -581,7 +279,7 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {!isBuyer && allowBuyerToAdd && (
+          {isSeller && allowBuyerToAdd && (
             <span
               className="text-xs px-2.5 py-1 rounded-full font-medium"
               style={{ backgroundColor: '#f59e0b18', color: '#d97706', border: '1px solid #f59e0b30' }}
@@ -589,8 +287,7 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
               Buyer can add
             </span>
           )}
-          {/* Seller add button */}
-          {canSellerAdd && (
+          {canAdd && (
             <button
               onClick={() => setShowPicker(!showPicker)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors hover:opacity-90"
@@ -608,31 +305,7 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
               ) : (
                 <>
                   <Plus className="h-3.5 w-3.5" />
-                  Add Equipment
-                </>
-              )}
-            </button>
-          )}
-          {/* Buyer add button */}
-          {canBuyerAdd && (
-            <button
-              onClick={() => setShowPicker(!showPicker)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors hover:opacity-90"
-              style={{
-                backgroundColor: showPicker ? colors.utility.secondaryBackground : colors.brand.primary,
-                color: showPicker ? colors.utility.primaryText : '#fff',
-                border: showPicker ? `1px solid ${colors.utility.primaryText}20` : 'none',
-              }}
-            >
-              {showPicker ? (
-                <>
-                  <X className="h-3.5 w-3.5" />
-                  Close
-                </>
-              ) : (
-                <>
-                  <Plus className="h-3.5 w-3.5" />
-                  Add My Equipment
+                  {isBuyer ? 'Add My Equipment' : 'Add Equipment'}
                 </>
               )}
             </button>
@@ -640,43 +313,234 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
         </div>
       </div>
 
-      {/* Asset picker (shared component for both roles) */}
-      {showPicker && contractId && canSellerAdd && (
-        <AssetPicker
-          contractId={contractId}
-          existingAssetIds={existingAssetIds}
-          colors={colors}
-          role="seller"
-          ownershipType="self"
-          onClose={() => setShowPicker(false)}
-        />
-      )}
-      {showPicker && contractId && canBuyerAdd && (
-        <AssetPicker
-          contractId={contractId}
-          existingAssetIds={existingAssetIds}
-          colors={colors}
-          role="buyer"
-          ownershipType="self"
-          onClose={() => setShowPicker(false)}
-        />
+      {/* ── Equipment Picker (registry-based, reuses EquipmentCard) ── */}
+      {showPicker && contractId && canAdd && (
+        <div
+          className="rounded-xl border overflow-hidden"
+          style={{
+            backgroundColor: colors.utility.secondaryBackground,
+            borderColor: colors.brand.primary + '30',
+          }}
+        >
+          {/* Picker header */}
+          <div
+            className="px-5 py-3.5 flex items-center justify-between"
+            style={{
+              backgroundColor: colors.brand.primary + '08',
+              borderBottom: `1px solid ${colors.brand.primary}20`,
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-bold" style={{ color: colors.utility.primaryText }}>
+                Select from Registry
+              </span>
+              {displayAssets.length > 0 && (
+                <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                  {existingAssetIds.size} of {displayAssets.length} added
+                </span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* + Add Equipment (opens form dialog) */}
+              <button
+                onClick={() => setIsAddFormOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors hover:opacity-90"
+                style={{ backgroundColor: colors.brand.primary, color: '#fff' }}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add Equipment
+              </button>
+
+              {/* Search */}
+              <div className="relative">
+                <Search
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5"
+                  style={{ color: colors.utility.secondaryText }}
+                />
+                <input
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-8 pr-7 py-1.5 w-44 rounded-lg border text-xs"
+                  style={{
+                    borderColor: colors.utility.primaryText + '20',
+                    backgroundColor: colors.utility.primaryBackground,
+                    color: colors.utility.primaryText,
+                  }}
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2"
+                  >
+                    <X className="h-3 w-3" style={{ color: colors.utility.secondaryText }} />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Picker body — equipment card grid */}
+          <div className="px-5 py-4">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <VaNiLoader size="sm" message="Loading equipment..." />
+              </div>
+            ) : displayAssets.length === 0 ? (
+              <div className="text-center py-12">
+                <Package
+                  className="h-12 w-12 mx-auto mb-3"
+                  style={{ color: colors.utility.secondaryText + '40' }}
+                />
+                <p className="text-sm mb-1" style={{ color: colors.utility.secondaryText }}>
+                  {searchQuery
+                    ? `No equipment matching "${searchQuery}"`
+                    : 'No equipment in registry yet'}
+                </p>
+                <p className="text-xs" style={{ color: colors.utility.secondaryText + '80' }}>
+                  {searchQuery
+                    ? 'Try a different search term'
+                    : 'Click "+ Add Equipment" to register equipment first.'}
+                </p>
+              </div>
+            ) : (
+              <div
+                className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 max-h-[50vh] overflow-y-auto pr-1"
+              >
+                {displayAssets.map((asset) => (
+                  <EquipmentCard
+                    key={asset.id}
+                    asset={asset}
+                    selectable
+                    isSelected={existingAssetIds.has(asset.id)}
+                    onToggle={() => handleToggleAsset(asset)}
+                    disabled={addMutation.isPending || removeMutation.isPending}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
-      {/* Equipment cards */}
+      {/* Equipment cards — currently attached to contract */}
       {hasEquipment ? (
         <div className="grid gap-4" style={{ gridTemplateColumns: equipmentDetails.length === 1 ? '1fr' : 'repeat(auto-fill, minmax(380px, 1fr))' }}>
           {equipmentDetails.map((item) => {
             const isOwnItem = item.added_by_tenant_id === tenantId;
             const canRemove = isOwnItem && !!contractId;
+
             return (
-              <EquipmentCard
+              <div
                 key={item.id}
-                item={item}
-                colors={colors}
-                canRemove={canRemove}
-                onRemove={() => handleRemove(item.id)}
-                isRemoving={removingItemId === item.id}
-              />
+                className="rounded-xl border overflow-hidden"
+                style={{
+                  backgroundColor: colors.utility.secondaryBackground,
+                  borderColor: colors.utility.primaryText + '12',
+                }}
+              >
+                {/* Card header */}
+                <div
+                  className="px-5 py-3.5 flex items-center justify-between"
+                  style={{ borderBottom: `1px solid ${colors.utility.primaryText}08` }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: colors.brand.primary + '12' }}
+                    >
+                      <Wrench className="h-4 w-4" style={{ color: colors.brand.primary }} />
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
+                        {item.item_name}
+                      </div>
+                      <div className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                        {item.category_name}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                      style={{ backgroundColor: colors.utility.primaryText + '08', color: colors.utility.secondaryText }}
+                    >
+                      Qty: {item.quantity}
+                    </span>
+                    {canRemove && (
+                      <button
+                        onClick={() => handleRemoveCard(item.id)}
+                        disabled={removeMutation.isPending}
+                        className="p-1 rounded-md hover:opacity-70 transition-opacity disabled:opacity-40"
+                        style={{ color: '#ef4444' }}
+                        title="Remove from contract"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Card details */}
+                <div className="px-5 py-4">
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                    {(item.make || item.model) && (
+                      <div>
+                        <div className="text-[0.65rem] uppercase tracking-wide mb-1" style={{ color: colors.utility.secondaryText }}>
+                          Make / Model
+                        </div>
+                        <div className="text-xs font-medium" style={{ color: colors.utility.primaryText }}>
+                          {[item.make, item.model].filter(Boolean).join(' / ') || '\u2014'}
+                        </div>
+                      </div>
+                    )}
+                    {item.serial_number && (
+                      <div>
+                        <div className="text-[0.65rem] uppercase tracking-wide mb-1" style={{ color: colors.utility.secondaryText }}>
+                          Serial Number
+                        </div>
+                        <div className="text-xs font-mono font-medium" style={{ color: colors.utility.primaryText }}>
+                          {item.serial_number}
+                        </div>
+                      </div>
+                    )}
+                    {item.location && (
+                      <div>
+                        <div className="text-[0.65rem] uppercase tracking-wide mb-1" style={{ color: colors.utility.secondaryText }}>
+                          Location
+                        </div>
+                        <div className="text-xs font-medium" style={{ color: colors.utility.primaryText }}>
+                          {item.location}
+                        </div>
+                      </div>
+                    )}
+                    {item.condition && (
+                      <div>
+                        <div className="text-[0.65rem] uppercase tracking-wide mb-1" style={{ color: colors.utility.secondaryText }}>
+                          Condition
+                        </div>
+                        <div className="text-xs font-medium capitalize" style={{ color: colors.utility.primaryText }}>
+                          {item.condition}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div
+                  className="px-5 py-2 text-[0.6rem]"
+                  style={{
+                    backgroundColor: colors.utility.primaryText + '04',
+                    color: colors.utility.secondaryText,
+                    borderTop: `1px solid ${colors.utility.primaryText}06`,
+                  }}
+                >
+                  Added by {item.added_by_role === 'buyer' ? 'Buyer' : 'Seller'}
+                </div>
+              </div>
             );
           })}
         </div>
@@ -698,14 +562,25 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
             No Equipment Attached
           </h3>
           <p className="text-xs max-w-xs" style={{ color: colors.utility.secondaryText }}>
-            {(canBuyerAdd || canSellerAdd)
+            {canAdd
               ? 'Add equipment to this contract using the button above.'
-              : isBuyer && allowBuyerToAdd === false
+              : isBuyer
                 ? 'Equipment additions are not enabled for this contract.'
-                : 'Equipment can be added using the button above.'}
+                : 'No equipment has been added to this contract yet.'}
           </p>
         </div>
       )}
+
+      {/* ── EquipmentFormDialog (reused from equipment-registry) ── */}
+      <EquipmentFormDialog
+        isOpen={isAddFormOpen}
+        onClose={() => setIsAddFormOpen(false)}
+        mode="create"
+        categories={allFormCategories}
+        onSubmit={handleCreateSubmit}
+        isSubmitting={createMutation.isPending}
+        defaultOwnershipType="self"
+      />
     </div>
   );
 };
