@@ -1738,7 +1738,7 @@ const ContractDetailPage: React.FC = () => {
             colors={colors}
             isBuyer={isBuyer}
             contractId={contract.id}
-            buyerId={contract.buyer_id || contract.contact_id}
+            buyerId={contract.buyer_contact_person_id || contract.contact_id}
           />
         );
 
