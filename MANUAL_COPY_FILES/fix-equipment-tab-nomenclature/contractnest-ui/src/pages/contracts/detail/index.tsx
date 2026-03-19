@@ -1758,18 +1758,29 @@ const ContractDetailPage: React.FC = () => {
           buyer_id: contract.buyer_id,
           resolved_buyerId: contract.buyer_contact_person_id || contract.contact_id || contract.buyer_id,
         });
-        // Derive equipment tab mode from nomenclature form_settings
+        // Derive equipment tab mode from actual asset data on the contract
+        // First try nomenclature form_settings, then fall back to data-driven detection
         let equipTabMode: EquipmentTabMode = 'equipment';
         if (contract.nomenclature_id && nomenclatureItems.length > 0) {
           const nType = nomenclatureItems.find((item: any) => item.id === contract.nomenclature_id);
           if (nType?.form_settings) {
-            const fs = nType.form_settings as any;
+            const fs = typeof nType.form_settings === 'string' ? JSON.parse(nType.form_settings) : nType.form_settings;
             const isEq = fs.is_equipment_based;
             const isEn = fs.is_entity_based;
             if (isEq && isEn) equipTabMode = 'both';
             else if (isEn) equipTabMode = 'facility';
-            // else default 'equipment'
           }
+        }
+        // Fallback: detect from actual equipment_details data
+        if (equipTabMode === 'equipment' && contract.equipment_details?.length) {
+          const hasEntity = contract.equipment_details.some((e: any) =>
+            (e.resource_type_id || '').toLowerCase() === 'asset' || e.resource_type === 'entity'
+          );
+          const hasEquip = contract.equipment_details.some((e: any) =>
+            (e.resource_type_id || '').toLowerCase() === 'equipment' || e.resource_type === 'equipment'
+          );
+          if (hasEntity && hasEquip) equipTabMode = 'both';
+          else if (hasEntity) equipTabMode = 'facility';
         }
         return (
           <EquipmentTab
@@ -2041,17 +2052,29 @@ const ContractDetailPage: React.FC = () => {
   };
 
   // ─── Which tab definitions to use ───
-  // Derive equipment tab label from nomenclature
+  // Derive equipment tab label from nomenclature + fallback to data
   const equipmentTabLabel = (() => {
+    // First try nomenclature form_settings
     if (contract?.nomenclature_id && nomenclatureItems.length > 0) {
       const nType = nomenclatureItems.find((item: any) => item.id === contract.nomenclature_id);
       if (nType?.form_settings) {
-        const fs = nType.form_settings as any;
+        const fs = typeof nType.form_settings === 'string' ? JSON.parse(nType.form_settings) : nType.form_settings;
         const isEq = fs.is_equipment_based;
         const isEn = fs.is_entity_based;
         if (isEq && isEn) return 'Equipment & Facility';
         if (isEn) return 'Facility';
       }
+    }
+    // Fallback: detect from actual equipment_details data
+    if (contract?.equipment_details?.length) {
+      const hasEntity = contract.equipment_details.some((e: any) =>
+        (e.resource_type_id || '').toLowerCase() === 'asset' || e.resource_type === 'entity'
+      );
+      const hasEquip = contract.equipment_details.some((e: any) =>
+        (e.resource_type_id || '').toLowerCase() === 'equipment' || e.resource_type === 'equipment'
+      );
+      if (hasEntity && hasEquip) return 'Equipment & Facility';
+      if (hasEntity) return 'Facility';
     }
     return 'Equipment';
   })();
