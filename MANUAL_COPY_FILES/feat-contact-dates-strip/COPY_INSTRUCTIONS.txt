@@ -1,0 +1,19 @@
+═══════════════════════════════════════════════════
+FEATURE: Contact Details & Key Dates Strip on Contract Detail Page
+BRANCH: feat-contact-dates-strip
+DATE: 2026-03-19
+═══════════════════════════════════════════════════
+
+SUBMODULES AFFECTED:
+  - contractnest-ui
+
+FILES CHANGED:
+  1. contractnest-ui/src/pages/contracts/detail/index.tsx
+     → Added contact & dates info strip between header and summary bar
+     → Reuses ContactHeaderCard (compact variant) for contact display
+     → Computes end date and prolongation date from contract fields
+     → Shows "Client Details" for revenue / "Vendor Details" for expense
+
+COPY FROM → TO:
+  MANUAL_COPY_FILES/feat-contact-dates-strip/contractnest-ui/src/pages/contracts/detail/index.tsx
+  →  contractnest-ui/src/pages/contracts/detail/index.tsx
