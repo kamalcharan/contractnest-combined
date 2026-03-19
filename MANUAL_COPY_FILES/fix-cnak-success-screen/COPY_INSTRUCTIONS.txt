@@ -1,0 +1,37 @@
+═══════════════════════════════════════════════════
+FIX: CNAK not showing on contract success screen (draft flow)
+═══════════════════════════════════════════════════
+
+PROBLEM:
+When a contract is created from a draft (draft → active or draft → pending_acceptance),
+the CNAK is generated in the DB but NOT returned to the frontend. The success screen
+shows no CNAK info because contractResult.global_access_id is still null.
+
+ROOT CAUSE:
+update_contract_status RPC generates CNAK during draft transitions but does not
+include global_access_id in its response JSON. The frontend never picks it up.
+
+FIX (2 parts):
+1. SQL: Add global_access_id to update_contract_status response
+2. UI: Read global_access_id from updateStatus response and set it on contractResult
+
+═══════════════════════════════════════════════════
+FILES TO COPY:
+═══════════════════════════════════════════════════
+
+1. contractnest-edge/supabase/migrations/contracts/058_fix_cnak_in_status_response.sql
+   FROM: MANUAL_COPY_FILES\fix-cnak-success-screen\contractnest-edge\supabase\migrations\contracts\058_fix_cnak_in_status_response.sql
+   TO:   contractnest-edge\supabase\migrations\contracts\058_fix_cnak_in_status_response.sql
+
+2. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+   FROM: MANUAL_COPY_FILES\fix-cnak-success-screen\contractnest-ui\src\components\contracts\ContractWizard\index.tsx
+   TO:   contractnest-ui\src\components\contracts\ContractWizard\index.tsx
+
+═══════════════════════════════════════════════════
+SUBMODULES AFFECTED: contractnest-edge, contractnest-ui
+═══════════════════════════════════════════════════
+
+DEPLOYMENT ORDER:
+1. Run the SQL migration FIRST (058_fix_cnak_in_status_response.sql)
+2. Then deploy the UI changes
+═══════════════════════════════════════════════════
