@@ -1,0 +1,39 @@
+═══════════════════════════════════════════════════
+FIX: Buyer Cannot View Contract (502 "Contract not found")
+═══════════════════════════════════════════════════
+
+ISSUE:
+  Migration 052 rewrote get_contract_by_id RPC but dropped the buyer
+  access fallback from migration 031. Buyers who claimed a contract via
+  CNAK get "Contract not found" because the RPC only checks tenant_id
+  (which is the seller's), not the buyer's accessor grant or buyer_tenant_id.
+
+FIX:
+  Restores 3-path access check in get_contract_by_id:
+    Path A: Owner (tenant_id match — seller)
+    Path B: Accessor grant (t_contract_access.accessor_tenant_id — claimed buyer)
+    Path C: Direct buyer_tenant_id match on t_contracts
+
+  NO table/column changes. Same function signature. CREATE OR REPLACE.
+
+═══════════════════════════════════════════════════
+FILES TO COPY
+═══════════════════════════════════════════════════
+
+1. contractnest-edge/supabase/migrations/contracts/055_fix_get_contract_buyer_access_regression.sql
+   → Copy to: contractnest-edge\supabase\migrations\contracts\055_fix_get_contract_buyer_access_regression.sql
+
+═══════════════════════════════════════════════════
+SUBMODULES AFFECTED
+═══════════════════════════════════════════════════
+- contractnest-edge (migration file only)
+
+═══════════════════════════════════════════════════
+SUPABASE SQL EDITOR
+═══════════════════════════════════════════════════
+After copying the file, also run the ENTIRE contents of
+055_fix_get_contract_buyer_access_regression.sql
+in Supabase SQL Editor to apply the fix immediately.
+
+The file is a CREATE OR REPLACE FUNCTION — safe to run, replaces
+the existing function in-place with the same 4-param signature.
