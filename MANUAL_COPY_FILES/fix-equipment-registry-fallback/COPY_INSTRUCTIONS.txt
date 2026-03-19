@@ -1,0 +1,25 @@
+═══════════════════════════════════════════════════
+FIX: Equipment Registry fallback to tenant's own industry
+═══════════════════════════════════════════════════
+
+PROBLEM:
+Equipment Registry (resource-templates endpoint) returns empty when
+t_tenant_served_industries has no rows, even though the tenant has
+industry_id set in t_tenant_profiles (e.g. "general_practice").
+
+FIX:
+When t_tenant_served_industries is empty, fall back to
+t_tenant_profiles.industry_id for the current tenant.
+No new tables, no new columns, no refactoring.
+
+═══════════════════════════════════════════════════
+FILES TO COPY:
+═══════════════════════════════════════════════════
+
+1. contractnest-edge/supabase/functions/resources/index.ts
+   FROM: MANUAL_COPY_FILES\fix-equipment-registry-fallback\contractnest-edge\supabase\functions\resources\index.ts
+   TO:   contractnest-edge\supabase\functions\resources\index.ts
+
+═══════════════════════════════════════════════════
+SUBMODULES AFFECTED: contractnest-edge
+═══════════════════════════════════════════════════
