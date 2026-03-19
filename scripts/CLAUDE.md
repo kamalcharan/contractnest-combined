@@ -46,13 +46,25 @@
   - Review related files for the full picture
 - **Never rely on memory or assumptions about file contents.**
 
-### Rule 5: PRODUCTION SAFETY
+### Rule 5: ZERO HALLUCINATION — IF YOU HAVEN'T SEEN IT, DON'T USE IT
+- **NEVER reference a column, table, function, RPC, component, prop, variable, import, or file path unless you have VERIFIED it exists by reading the actual code/schema.**
+- If you are not 100% sure something exists: **STOP and verify with subagents, or ASK.**
+- Do NOT:
+  - Use column names you "think" exist — READ the table schema first
+  - Import components you "think" are available — READ the codebase first
+  - Call functions with parameters you "think" they accept — READ the function signature first
+  - Reference file paths you "think" are correct — LIST the directory first
+  - Assume API response shapes — READ the API code or types first
+- **When in doubt, say "I need to verify X before proceeding" — do NOT guess.**
+- This rule exists because hallucinated code has caused production 502 errors multiple times.
+
+### Rule 6: PRODUCTION SAFETY
 - Every SQL migration must use `IF EXISTS`, `IF NOT EXISTS`, etc.
 - Never drop data or columns without explicit instruction.
 - Always consider: What happens to existing data? What happens to active users?
 - Test your logic mentally before presenting the plan.
 
-### Rule 6: PRODUCTION-READY CODE STANDARDS
+### Rule 7: PRODUCTION-READY CODE STANDARDS
 ALL code must include where applicable:
 
 | # | Requirement | Description |
@@ -66,7 +78,7 @@ ALL code must include where applicable:
 ⚠️ Before implementing toasts/loaders: Check if components exist. If not, ASK:
 > "I don't see an existing toast/loader component. Should I create one or is there an existing one I should use?"
 
-### Rule 7: FILE DELIVERY — NO MANUAL_COPY_FILES
+### Rule 8: FILE DELIVERY — NO MANUAL_COPY_FILES
 - **NEVER create MANUAL_COPY_FILES/ folders or commit files to branches.**
 - **ALWAYS paste complete file contents directly in the chat response.**
 - This is the ONLY delivery method that works. See "FILE DELIVERY" section below for details.
@@ -380,6 +392,7 @@ git submodule status
 
 ## ⛔ COMMON MISTAKES — DO NOT REPEAT
 
+- **HALLUCINATING code: using columns, functions, imports, props that don't actually exist**
 - **Using MANUAL_COPY_FILES/ for file delivery — IT DOES NOT WORK, NEVER HAS, NEVER WILL**
 - Referencing DB columns in SQL that don't exist in the schema (causes 502)
 - Creating new DB objects (tables, columns, RPCs) without approval
