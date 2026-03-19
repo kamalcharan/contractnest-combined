@@ -1,0 +1,37 @@
+═══════════════════════════════════════════════════════════════
+FIX: Self-Owned Assets (Expense Mode) — Nullable owner_contact_id
+═══════════════════════════════════════════════════════════════
+
+PROBLEM:
+  Creating assets in Expense mode fails with:
+  "owner_contact_id is required — every asset must belong to a client"
+
+  Root causes:
+  1. DB column owner_contact_id is NOT NULL (no ownership_type column exists)
+  2. Deployed edge function has old validation requiring owner_contact_id for ALL assets
+  3. Local edge function already has correct ownership_type-aware logic
+
+CHANGES:
+  1. NEW: contractnest-edge/supabase/migrations/contracts/055_asset_registry_nullable_owner.sql
+     - Adds ownership_type column (VARCHAR(10), default 'client') if not exists
+     - Drops NOT NULL constraint on owner_contact_id
+     - Adds CHECK constraint: client assets MUST still have owner_contact_id
+     - Adds index on (tenant_id, ownership_type)
+
+  2. REDEPLOY: contractnest-edge/supabase/functions/client-asset-registry/index.ts
+     - No code changes needed — local version is already correct
+     - Just needs redeployment to replace old deployed version
+
+COPY PATHS:
+  FROM → TO
+  ────────────────────────────────────────────────────────────
+  MANUAL_COPY_FILES/fix-self-owned-asset-null-owner/contractnest-edge/supabase/migrations/contracts/055_asset_registry_nullable_owner.sql
+    → contractnest-edge/supabase/migrations/contracts/055_asset_registry_nullable_owner.sql
+
+  MANUAL_COPY_FILES/fix-self-owned-asset-null-owner/contractnest-edge/supabase/functions/client-asset-registry/index.ts
+    → contractnest-edge/supabase/functions/client-asset-registry/index.ts
+    (same file — included for completeness so you redeploy it)
+
+DEPLOYMENT ORDER:
+  1. Run migration 055 in Supabase SQL editor FIRST
+  2. Then redeploy the client-asset-registry edge function
