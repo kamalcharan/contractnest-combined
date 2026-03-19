@@ -1,0 +1,29 @@
+FIX: Equipment tab showing "Equipment" instead of "Facility" for facility contracts
+================================================================================
+
+ROOT CAUSE:
+The contract detail page used `useNomenclatureTypes` hook which made a raw fetch()
+call to `/api/functions/product-masterdata` — a path that doesn't exist on the
+Express API server. This silently failed, so nomenclature data was never loaded,
+and the tab always defaulted to "Equipment".
+
+FIX:
+Replaced `useNomenclatureTypes` with `useGlobalMasterData('cat_contract_nomenclature')`
+— the exact same hook the contract wizard already uses successfully. This uses the
+correct API path `/api/product-masterdata/global` through the axios `api` instance.
+
+SUBMODULES AFFECTED:
+- contractnest-ui
+
+FILES TO COPY:
+================================================================================
+
+1. contractnest-ui/src/pages/contracts/detail/index.tsx
+   Source: MANUAL_COPY_FILES/fix-equipment-tab-nomenclature/contractnest-ui/src/pages/contracts/detail/index.tsx
+   Destination: contractnest-ui/src/pages/contracts/detail/index.tsx
+
+CHANGES MADE:
+- Line 86: Replaced import of useNomenclatureTypes with useGlobalMasterData
+- Line 1550: Replaced useNomenclatureTypes() hook call with useGlobalMasterData('cat_contract_nomenclature', true)
+- Line 1748: Replaced findNomenclatureById() with nomenclatureItems.find()
+- Line 2030: Replaced findNomenclatureById() with nomenclatureItems.find()
