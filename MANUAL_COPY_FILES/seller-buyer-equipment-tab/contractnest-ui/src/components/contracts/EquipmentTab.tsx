@@ -151,6 +151,8 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
   const [showPicker, setShowPicker] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddFormOpen, setIsAddFormOpen] = useState(false);
+  /** Track which asset ID is currently being added/removed */
+  const [mutatingAssetId, setMutatingAssetId] = useState<string | null>(null);
 
   // ── Mutations ──────────────────────────────────────────────────
 
@@ -285,25 +287,24 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
 
   const handleToggleAsset = useCallback(async (asset: TenantAsset) => {
     if (!contractId) return;
+    setMutatingAssetId(asset.id);
 
-    if (existingAssetIds.has(asset.id)) {
-      // Find the equipment detail with this asset_registry_id and remove it
-      const detail = equipmentDetails.find((d) => d.asset_registry_id === asset.id);
-      if (detail) {
-        try {
+    try {
+      if (existingAssetIds.has(asset.id)) {
+        // Find the equipment detail with this asset_registry_id and remove it
+        const detail = equipmentDetails.find((d) => d.asset_registry_id === asset.id);
+        if (detail) {
           await removeMutation.mutateAsync({ contractId, itemId: detail.id });
-        } catch {
-          // Error toast handled by mutation hook
         }
-      }
-    } else {
-      // Add the asset
-      const item = assetToDetail(asset, tenantId, role, resourceIdToSubCategory);
-      try {
+      } else {
+        // Add the asset
+        const item = assetToDetail(asset, tenantId, role, resourceIdToSubCategory);
         await addMutation.mutateAsync({ contractId, equipmentItem: item });
-      } catch {
-        // Error toast handled by mutation hook
       }
+    } catch {
+      // Error toast handled by mutation hook
+    } finally {
+      setMutatingAssetId(null);
     }
   }, [contractId, existingAssetIds, equipmentDetails, tenantId, role, resourceIdToSubCategory, addMutation, removeMutation]);
 
@@ -510,7 +511,8 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
                     selectable
                     isSelected={existingAssetIds.has(asset.id)}
                     onToggle={() => handleToggleAsset(asset)}
-                    disabled={addMutation.isPending || removeMutation.isPending}
+                    disabled={!!mutatingAssetId && mutatingAssetId !== asset.id}
+                    isMutating={mutatingAssetId === asset.id}
                   />
                 ))}
               </div>
