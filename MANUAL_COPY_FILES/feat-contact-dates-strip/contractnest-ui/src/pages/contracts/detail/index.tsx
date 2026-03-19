@@ -1706,6 +1706,9 @@ const ContractDetailPage: React.FC = () => {
   const isVendorContract = classType === 'vendor';
   const contactLabel = isVendorContract ? 'Vendor Details' : 'Client Details';
   const contactObject = buildBuyerContactObject(contract);
+  // On expense (buyer) view, buyer_name is the current user — not the vendor.
+  // The DB doesn't store seller_name, so we skip contact display on expense side.
+  const showContactInStrip = !showBuyerView && !!(contactObject.name || contactObject.company_name);
 
   // Compute end date and prolongation date
   const addDuration = (start: Date, value: number, unit: string): Date => {
@@ -2373,7 +2376,7 @@ const ContractDetailPage: React.FC = () => {
       )}
 
       {/* ═══════ CONTACT & DATES STRIP ═══════ */}
-      {(contactObject.name || contactObject.company_name || contractStartDate) && (
+      {(showContactInStrip || contractStartDate) && (
         <div
           className="border-b px-6 py-2 flex items-center gap-3 flex-wrap"
           style={{
@@ -2381,8 +2384,8 @@ const ContractDetailPage: React.FC = () => {
             borderColor: colors.utility.primaryText + '10',
           }}
         >
-          {/* Contact label + inline details */}
-          {(contactObject.name || contactObject.company_name) && (
+          {/* Contact label + inline details (revenue/seller view only) */}
+          {showContactInStrip && (
             <>
               <span
                 className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[0.65rem] font-bold uppercase tracking-wider"
@@ -2412,7 +2415,7 @@ const ContractDetailPage: React.FC = () => {
           )}
 
           {/* Separator between contact and dates */}
-          {(contactObject.name || contactObject.company_name) && contractStartDate && (
+          {showContactInStrip && contractStartDate && (
             <div className="w-px h-4 mx-1" style={{ backgroundColor: colors.utility.primaryText + '20' }} />
           )}
 
