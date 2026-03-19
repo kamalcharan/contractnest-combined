@@ -3,8 +3,8 @@
 // Both seller and buyer can add/remove equipment using the same
 // EquipmentCard (selectable) + EquipmentFormDialog from equipment-registry
 
-import React, { useState, useMemo, useCallback } from 'react';
-import { Wrench, Plus, X, Search, Package, Check } from 'lucide-react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import { Wrench, Plus, X, Search, Package } from 'lucide-react';
 import type { ContractEquipmentDetail } from '@/types/contracts';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -19,8 +19,7 @@ import {
   useSellerRemoveEquipment,
 } from '@/hooks/queries/useContractQueries';
 import type { TenantAsset, AssetFormData, AssetRegistryFilters } from '@/types/assetRegistry';
-import { CONDITION_CONFIG, getWarrantyStatus } from '@/types/assetRegistry';
-import EquipmentCard from '@/pages/equipment-registry/EquipmentCard';
+import EquipmentCard, { type CardAsset } from '@/pages/equipment-registry/EquipmentCard';
 import EquipmentFormDialog from '@/pages/equipment-registry/EquipmentFormDialog';
 import { VaNiLoader } from '@/components/common/loaders/UnifiedLoader';
 
@@ -78,6 +77,46 @@ function assetToDetail(
   };
 }
 
+/** Convert a ContractEquipmentDetail into a CardAsset so EquipmentCard can render it */
+function detailToCardAsset(detail: ContractEquipmentDetail): CardAsset {
+  return {
+    id: detail.asset_registry_id || detail.id,
+    tenant_id: detail.added_by_tenant_id || '',
+    resource_type_id: detail.resource_type === 'entity' ? 'asset' : 'equipment',
+    asset_type_id: detail.category_id || null,
+    parent_asset_id: null,
+    template_id: null,
+    industry_id: null,
+    name: detail.item_name,
+    code: null,
+    description: detail.notes || null,
+    status: 'active' as const,
+    condition: (detail.condition || 'good') as any,
+    criticality: (detail.criticality || 'low') as any,
+    ownership_type: 'client' as any,
+    owner_contact_id: null,
+    location: detail.location || null,
+    make: detail.make || null,
+    model: detail.model || null,
+    serial_number: detail.serial_number || null,
+    purchase_date: detail.purchase_date || null,
+    warranty_expiry: detail.warranty_expiry || null,
+    last_service_date: null,
+    area_sqft: detail.area_sqft || null,
+    dimensions: detail.dimensions || null,
+    capacity: detail.capacity || null,
+    specifications: detail.specifications || {},
+    tags: [],
+    image_url: null,
+    is_active: true,
+    is_live: true,
+    created_at: '',
+    updated_at: '',
+    created_by: null,
+    updated_by: null,
+  } as CardAsset;
+}
+
 // =================================================================
 // MAIN COMPONENT
 // =================================================================
@@ -94,6 +133,17 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
   const tenantId = currentTenant?.id || '';
   const isSeller = !isBuyer;
   const role: 'seller' | 'buyer' = isBuyer ? 'buyer' : 'seller';
+
+  // ── DEBUG: log buyerId so we can verify the filter value ──────
+  useEffect(() => {
+    console.log('[EquipmentTab] Filter debug:', {
+      buyerId,
+      isBuyer,
+      isSeller,
+      contractId,
+      willFilterByContact: isSeller && !!buyerId,
+    });
+  }, [buyerId, isBuyer, isSeller, contractId]);
 
   // ── State ──────────────────────────────────────────────────────
 
@@ -121,17 +171,31 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
       return { limit: 500, offset: 0, ownership_type: 'self' as const };
     }
     // Revenue side — seller picks from equipment registered under the buyer/client contact
-    return {
+    const f: AssetRegistryFilters = {
       limit: 500,
       offset: 0,
       ownership_type: 'client' as const,
       contact_id: buyerId || undefined,
     };
+    console.log('[EquipmentTab] Registry filters:', f);
+    return f;
   }, [isBuyer, buyerId]);
 
   const { assets, isLoading: assetsLoading } = useAssetRegistryManager(
     showPicker ? filters : { limit: 0, offset: 0 }
   );
+
+  // ── DEBUG: log assets returned from registry ──────────────────
+  useEffect(() => {
+    if (showPicker && !assetsLoading) {
+      console.log('[EquipmentTab] Registry returned', assets.length, 'assets:', assets.map(a => ({
+        id: a.id,
+        name: a.name,
+        owner_contact_id: a.owner_contact_id,
+        ownership_type: a.ownership_type,
+      })));
+    }
+  }, [showPicker, assetsLoading, assets]);
 
   const createMutation = useCreateAsset();
 
@@ -226,10 +290,10 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
     }
   }, [contractId, existingAssetIds, equipmentDetails, tenantId, role, resourceIdToSubCategory, addMutation, removeMutation]);
 
-  const handleRemoveCard = useCallback(async (itemId: string) => {
+  const handleRemoveCard = useCallback(async (detail: ContractEquipmentDetail) => {
     if (!contractId) return;
     try {
-      await removeMutation.mutateAsync({ contractId, itemId });
+      await removeMutation.mutateAsync({ contractId, itemId: detail.id });
     } catch {
       // Error toast handled by mutation hook
     }
@@ -437,123 +501,22 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
         </div>
       )}
 
-      {/* Equipment cards — currently attached to contract */}
+      {/* ── Attached equipment — reuses EquipmentCard from registry ── */}
       {hasEquipment ? (
         <div className="grid gap-4" style={{ gridTemplateColumns: equipmentDetails.length === 1 ? '1fr' : 'repeat(auto-fill, minmax(380px, 1fr))' }}>
           {equipmentDetails.map((item) => {
             const isOwnItem = item.added_by_tenant_id === tenantId;
             const canRemove = isOwnItem && !!contractId;
+            const cardAsset = detailToCardAsset(item);
 
             return (
-              <div
+              <EquipmentCard
                 key={item.id}
-                className="rounded-xl border overflow-hidden"
-                style={{
-                  backgroundColor: colors.utility.secondaryBackground,
-                  borderColor: colors.utility.primaryText + '12',
-                }}
-              >
-                {/* Card header */}
-                <div
-                  className="px-5 py-3.5 flex items-center justify-between"
-                  style={{ borderBottom: `1px solid ${colors.utility.primaryText}08` }}
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: colors.brand.primary + '12' }}
-                    >
-                      <Wrench className="h-4 w-4" style={{ color: colors.brand.primary }} />
-                    </div>
-                    <div>
-                      <div className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
-                        {item.item_name}
-                      </div>
-                      <div className="text-xs" style={{ color: colors.utility.secondaryText }}>
-                        {item.category_name}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                      style={{ backgroundColor: colors.utility.primaryText + '08', color: colors.utility.secondaryText }}
-                    >
-                      Qty: {item.quantity}
-                    </span>
-                    {canRemove && (
-                      <button
-                        onClick={() => handleRemoveCard(item.id)}
-                        disabled={removeMutation.isPending}
-                        className="p-1 rounded-md hover:opacity-70 transition-opacity disabled:opacity-40"
-                        style={{ color: '#ef4444' }}
-                        title="Remove from contract"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Card details */}
-                <div className="px-5 py-4">
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                    {(item.make || item.model) && (
-                      <div>
-                        <div className="text-[0.65rem] uppercase tracking-wide mb-1" style={{ color: colors.utility.secondaryText }}>
-                          Make / Model
-                        </div>
-                        <div className="text-xs font-medium" style={{ color: colors.utility.primaryText }}>
-                          {[item.make, item.model].filter(Boolean).join(' / ') || '\u2014'}
-                        </div>
-                      </div>
-                    )}
-                    {item.serial_number && (
-                      <div>
-                        <div className="text-[0.65rem] uppercase tracking-wide mb-1" style={{ color: colors.utility.secondaryText }}>
-                          Serial Number
-                        </div>
-                        <div className="text-xs font-mono font-medium" style={{ color: colors.utility.primaryText }}>
-                          {item.serial_number}
-                        </div>
-                      </div>
-                    )}
-                    {item.location && (
-                      <div>
-                        <div className="text-[0.65rem] uppercase tracking-wide mb-1" style={{ color: colors.utility.secondaryText }}>
-                          Location
-                        </div>
-                        <div className="text-xs font-medium" style={{ color: colors.utility.primaryText }}>
-                          {item.location}
-                        </div>
-                      </div>
-                    )}
-                    {item.condition && (
-                      <div>
-                        <div className="text-[0.65rem] uppercase tracking-wide mb-1" style={{ color: colors.utility.secondaryText }}>
-                          Condition
-                        </div>
-                        <div className="text-xs font-medium capitalize" style={{ color: colors.utility.primaryText }}>
-                          {item.condition}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Footer */}
-                <div
-                  className="px-5 py-2 text-[0.6rem]"
-                  style={{
-                    backgroundColor: colors.utility.primaryText + '04',
-                    color: colors.utility.secondaryText,
-                    borderTop: `1px solid ${colors.utility.primaryText}06`,
-                  }}
-                >
-                  Added by {item.added_by_role === 'buyer' ? 'Buyer' : 'Seller'}
-                </div>
-              </div>
+                asset={cardAsset}
+                onDelete={canRemove ? () => handleRemoveCard(item) : undefined}
+                onEdit={undefined}
+                disabled={removeMutation.isPending}
+              />
             );
           })}
         </div>
