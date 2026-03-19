@@ -2375,84 +2375,90 @@ const ContractDetailPage: React.FC = () => {
       {/* ═══════ CONTACT & DATES STRIP ═══════ */}
       {(contactObject.name || contactObject.company_name || contractStartDate) && (
         <div
-          className="border-b px-6 py-3 flex items-center gap-6"
+          className="border-b px-6 py-2 flex items-center gap-3 flex-wrap"
           style={{
             backgroundColor: colors.utility.secondaryBackground,
             borderColor: colors.utility.primaryText + '10',
           }}
         >
-          {/* Left: Contact details via ContactHeaderCard compact */}
+          {/* Contact label + inline details */}
           {(contactObject.name || contactObject.company_name) && (
-            <div className="flex items-center gap-3 flex-1 min-w-0">
+            <>
               <span
-                className="text-[0.65rem] font-bold uppercase tracking-wider whitespace-nowrap px-2 py-0.5 rounded"
+                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[0.65rem] font-bold uppercase tracking-wider"
                 style={{
                   color: isVendorContract ? colors.semantic.warning : colors.brand.primary,
                   backgroundColor: (isVendorContract ? colors.semantic.warning : colors.brand.primary) + '12',
+                  border: `1px solid ${(isVendorContract ? colors.semantic.warning : colors.brand.primary)}25`,
                 }}
               >
+                <Users className="h-3 w-3" />
                 {contactLabel}
               </span>
-              <div className="flex-1 min-w-0">
-                <ContactHeaderCard
-                  contact={contactObject}
-                  variant="compact"
-                />
-              </div>
-            </div>
+              <span className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
+                {contactObject.company_name || contactObject.name}
+              </span>
+              {contactObject.company_name && contactObject.name && (
+                <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                  ({contactObject.name})
+                </span>
+              )}
+              {(contactObject.contact_channels?.length ?? 0) > 0 && (
+                <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                  {contactObject.contact_channels!.map(ch => ch.value).join(' · ')}
+                </span>
+              )}
+            </>
           )}
 
-          {/* Right: Key dates */}
+          {/* Separator between contact and dates */}
+          {(contactObject.name || contactObject.company_name) && contractStartDate && (
+            <div className="w-px h-4 mx-1" style={{ backgroundColor: colors.utility.primaryText + '20' }} />
+          )}
+
+          {/* Dates as inline tags */}
           {contractStartDate && (
-            <div className="flex items-center gap-4 flex-shrink-0">
-              {/* Separator */}
-              {(contactObject.name || contactObject.company_name) && (
-                <div className="w-px h-8" style={{ backgroundColor: colors.utility.primaryText + '15' }} />
-              )}
+            <>
+              <span
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.65rem] font-semibold"
+                style={{
+                  backgroundColor: colors.semantic.success + '12',
+                  color: colors.semantic.success,
+                  border: `1px solid ${colors.semantic.success}25`,
+                }}
+              >
+                <Calendar className="h-3 w-3" />
+                Start: {formatDate(contract.start_date)}
+              </span>
 
-              {/* Start date */}
-              <div className="flex items-center gap-1.5">
-                <Calendar className="h-3.5 w-3.5" style={{ color: colors.semantic.success }} />
-                <div>
-                  <div className="text-[0.6rem] font-semibold uppercase tracking-wider" style={{ color: colors.utility.secondaryText }}>
-                    Start
-                  </div>
-                  <div className="text-xs font-semibold" style={{ color: colors.utility.primaryText }}>
-                    {formatDate(contract.start_date)}
-                  </div>
-                </div>
-              </div>
-
-              {/* End date */}
               {contractEndDate && (
-                <div className="flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5" style={{ color: colors.semantic.error }} />
-                  <div>
-                    <div className="text-[0.6rem] font-semibold uppercase tracking-wider" style={{ color: colors.utility.secondaryText }}>
-                      End
-                    </div>
-                    <div className="text-xs font-semibold" style={{ color: colors.utility.primaryText }}>
-                      {contractEndDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </div>
-                  </div>
-                </div>
+                <span
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.65rem] font-semibold"
+                  style={{
+                    backgroundColor: colors.semantic.error + '12',
+                    color: colors.semantic.error,
+                    border: `1px solid ${colors.semantic.error}25`,
+                  }}
+                >
+                  <Clock className="h-3 w-3" />
+                  End: {contractEndDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
               )}
 
-              {/* Prolongation date */}
               {contractProlongationDate && (
-                <div className="flex items-center gap-1.5">
-                  <Activity className="h-3.5 w-3.5" style={{ color: colors.semantic.warning }} />
-                  <div>
-                    <div className="text-[0.6rem] font-semibold uppercase tracking-wider" style={{ color: colors.utility.secondaryText }}>
-                      Prolongation
-                    </div>
-                    <div className="text-xs font-semibold" style={{ color: colors.utility.primaryText }}>
-                      {contractProlongationDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                    </div>
-                  </div>
-                </div>
+                <span
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[0.65rem] font-semibold"
+                  style={{
+                    backgroundColor: colors.semantic.warning + '12',
+                    color: colors.semantic.warning,
+                    border: `1px solid ${colors.semantic.warning}25`,
+                  }}
+                >
+                  <Activity className="h-3 w-3" />
+                  Prolongation: {contractProlongationDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
               )}
-            </div>
+            </>
           )}
         </div>
       )}
