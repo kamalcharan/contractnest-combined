@@ -1736,7 +1736,8 @@ const ContractDetailPage: React.FC = () => {
           buyer_contact_person_id: contract.buyer_contact_person_id,
           contact_id: contract.contact_id,
           buyer_name: contract.buyer_name,
-          resolved_buyerId: contract.buyer_contact_person_id || contract.contact_id,
+          buyer_id: contract.buyer_id,
+          resolved_buyerId: contract.buyer_contact_person_id || contract.contact_id || contract.buyer_id,
         });
         return (
           <EquipmentTab
@@ -1745,7 +1746,7 @@ const ContractDetailPage: React.FC = () => {
             colors={colors}
             isBuyer={isBuyer}
             contractId={contract.id}
-            buyerId={contract.buyer_contact_person_id || contract.contact_id}
+            buyerId={contract.buyer_contact_person_id || contract.contact_id || contract.buyer_id}
           />
         );
 

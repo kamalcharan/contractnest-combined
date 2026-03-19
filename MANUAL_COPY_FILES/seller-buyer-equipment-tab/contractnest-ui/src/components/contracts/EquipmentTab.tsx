@@ -252,6 +252,7 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
   const canAdd = contractId && (isSeller || (isBuyer && allowBuyerToAdd));
 
   // Filter registry assets for picker — Equipment tab only shows equipment, not facilities
+  // For seller view, also filter by buyer contact so only this contract's client equipment shows
   const displayAssets = useMemo(() => {
     if (!showPicker) return [];
     let filtered = assets.filter(
@@ -259,6 +260,11 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
         (a.resource_type_id || '').toLowerCase() === 'equipment' &&
         a.is_active
     );
+
+    // Seller view: filter by buyer contact (client-side safety net in case API didn't filter)
+    if (isSeller && buyerId) {
+      filtered = filtered.filter((a) => a.owner_contact_id === buyerId);
+    }
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -273,7 +279,7 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
     }
 
     return filtered;
-  }, [assets, searchQuery, showPicker]);
+  }, [assets, searchQuery, showPicker, isSeller, buyerId]);
 
   // ── Handlers ──────────────────────────────────────────────────
 
