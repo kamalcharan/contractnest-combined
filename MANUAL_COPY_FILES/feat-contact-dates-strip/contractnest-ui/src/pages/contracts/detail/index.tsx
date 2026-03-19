@@ -1704,11 +1704,19 @@ const ContractDetailPage: React.FC = () => {
 
   // ─── Contact & Date strip data ───
   const isVendorContract = classType === 'vendor';
-  const contactLabel = isVendorContract ? 'Vendor Details' : 'Client Details';
-  const contactObject = buildBuyerContactObject(contract);
-  // On expense (buyer) view, buyer_name is the current user — not the vendor.
-  // The DB doesn't store seller_name, so we skip contact display on expense side.
-  const showContactInStrip = !showBuyerView && !!(contactObject.name || contactObject.company_name);
+  // Revenue (seller) view: show buyer as "Client Details"
+  // Expense (buyer) view: show seller as "Vendor Details" (from RPC seller_name/seller_company)
+  const contactLabel = showBuyerView ? 'Vendor Details' : 'Client Details';
+  const stripContactName = showBuyerView
+    ? ((contract as any).seller_company || (contract as any).seller_name || null)
+    : (contract.buyer_company || contract.buyer_name || null);
+  const stripContactPerson = showBuyerView
+    ? ((contract as any).seller_name && (contract as any).seller_company ? (contract as any).seller_name : null)
+    : (contract.buyer_name && contract.buyer_company ? contract.buyer_name : null);
+  const stripChannels = showBuyerView
+    ? [] // Seller contact channels not returned by RPC
+    : [contract.buyer_email, contract.buyer_phone].filter(Boolean) as string[];
+  const showContactInStrip = !!stripContactName;
 
   // Compute end date and prolongation date
   const addDuration = (start: Date, value: number, unit: string): Date => {
@@ -2384,31 +2392,31 @@ const ContractDetailPage: React.FC = () => {
             borderColor: colors.utility.primaryText + '10',
           }}
         >
-          {/* Contact label + inline details (revenue/seller view only) */}
+          {/* Contact label + inline details */}
           {showContactInStrip && (
             <>
               <span
                 className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[0.65rem] font-bold uppercase tracking-wider"
                 style={{
-                  color: isVendorContract ? colors.semantic.warning : colors.brand.primary,
-                  backgroundColor: (isVendorContract ? colors.semantic.warning : colors.brand.primary) + '12',
-                  border: `1px solid ${(isVendorContract ? colors.semantic.warning : colors.brand.primary)}25`,
+                  color: showBuyerView ? colors.semantic.warning : colors.brand.primary,
+                  backgroundColor: (showBuyerView ? colors.semantic.warning : colors.brand.primary) + '12',
+                  border: `1px solid ${(showBuyerView ? colors.semantic.warning : colors.brand.primary)}25`,
                 }}
               >
                 <Users className="h-3 w-3" />
                 {contactLabel}
               </span>
               <span className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
-                {contactObject.company_name || contactObject.name}
+                {stripContactName}
               </span>
-              {contactObject.company_name && contactObject.name && (
+              {stripContactPerson && (
                 <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
-                  ({contactObject.name})
+                  ({stripContactPerson})
                 </span>
               )}
-              {(contactObject.contact_channels?.length ?? 0) > 0 && (
+              {stripChannels.length > 0 && (
                 <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
-                  {contactObject.contact_channels!.map(ch => ch.value).join(' · ')}
+                  {stripChannels.join(' · ')}
                 </span>
               )}
             </>
