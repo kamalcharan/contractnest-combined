@@ -83,7 +83,7 @@ import SellerTasksTab from '@/components/contracts/SellerTasksTab';
 import BuyerOverview from '@/components/contracts/BuyerOverview';
 import EquipmentTab from '@/components/contracts/EquipmentTab';
 import type { EquipmentTabMode } from '@/components/contracts/EquipmentTab';
-import { useNomenclatureTypes, findNomenclatureById } from '@/hooks/queries/useNomenclatureTypes';
+import { useGlobalMasterData } from '@/hooks/queries/useProductMasterdata';
 import { ACCEPTANCE_METHOD_HEX_COLORS } from '@/utils/constants/contracts';
 import BuyerPaymentsView from '@/components/contracts/BuyerPaymentsView';
 import ServiceRequestsPlaceholder from '@/components/contracts/ServiceRequestsPlaceholder';
@@ -1547,7 +1547,8 @@ const ContractDetailPage: React.FC = () => {
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
 
   const { data: contract, isLoading, error } = useContract(id || null);
-  const { data: nomenclatureGroups } = useNomenclatureTypes();
+  const { data: nomenclatureResponse } = useGlobalMasterData('cat_contract_nomenclature', true);
+  const nomenclatureItems = nomenclatureResponse?.data || [];
   const { data: invoiceData } = useContractInvoices(id || undefined, { enabled: !!id });
   const pageSummary = invoiceData?.summary;
   const pageInvoices = invoiceData?.invoices || [];
@@ -1744,11 +1745,12 @@ const ContractDetailPage: React.FC = () => {
         });
         // Derive equipment tab mode from nomenclature form_settings
         let equipTabMode: EquipmentTabMode = 'equipment';
-        if (contract.nomenclature_id && nomenclatureGroups) {
-          const nType = findNomenclatureById(nomenclatureGroups, contract.nomenclature_id);
+        if (contract.nomenclature_id && nomenclatureItems.length > 0) {
+          const nType = nomenclatureItems.find((item: any) => item.id === contract.nomenclature_id);
           if (nType?.form_settings) {
-            const isEq = nType.form_settings.is_equipment_based;
-            const isEn = nType.form_settings.is_entity_based;
+            const fs = nType.form_settings as any;
+            const isEq = fs.is_equipment_based;
+            const isEn = fs.is_entity_based;
             if (isEq && isEn) equipTabMode = 'both';
             else if (isEn) equipTabMode = 'facility';
             // else default 'equipment'
@@ -2026,11 +2028,12 @@ const ContractDetailPage: React.FC = () => {
   // ─── Which tab definitions to use ───
   // Derive equipment tab label from nomenclature
   const equipmentTabLabel = (() => {
-    if (contract?.nomenclature_id && nomenclatureGroups) {
-      const nType = findNomenclatureById(nomenclatureGroups, contract.nomenclature_id);
+    if (contract?.nomenclature_id && nomenclatureItems.length > 0) {
+      const nType = nomenclatureItems.find((item: any) => item.id === contract.nomenclature_id);
       if (nType?.form_settings) {
-        const isEq = nType.form_settings.is_equipment_based;
-        const isEn = nType.form_settings.is_entity_based;
+        const fs = nType.form_settings as any;
+        const isEq = fs.is_equipment_based;
+        const isEn = fs.is_entity_based;
         if (isEq && isEn) return 'Equipment & Facility';
         if (isEn) return 'Facility';
       }
