@@ -1547,8 +1547,23 @@ const ContractDetailPage: React.FC = () => {
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
 
   const { data: contract, isLoading, error } = useContract(id || null);
-  const { data: nomenclatureResponse } = useGlobalMasterData('cat_contract_nomenclature', true);
+  const { data: nomenclatureResponse, isLoading: nomenclatureLoading, error: nomenclatureError } = useGlobalMasterData('cat_contract_nomenclature', true);
   const nomenclatureItems = nomenclatureResponse?.data || [];
+
+  // DEBUG: Remove after fixing equipment/facility tab issue
+  useEffect(() => {
+    console.log('[NomenclatureDebug] nomenclatureResponse:', nomenclatureResponse);
+    console.log('[NomenclatureDebug] nomenclatureItems count:', nomenclatureItems.length);
+    console.log('[NomenclatureDebug] nomenclatureLoading:', nomenclatureLoading);
+    console.log('[NomenclatureDebug] nomenclatureError:', nomenclatureError);
+    if (contract) {
+      console.log('[NomenclatureDebug] contract.nomenclature_id:', contract.nomenclature_id);
+      const matched = nomenclatureItems.find((item: any) => item.id === contract.nomenclature_id);
+      console.log('[NomenclatureDebug] matched item:', matched);
+      console.log('[NomenclatureDebug] form_settings:', matched?.form_settings);
+      console.log('[NomenclatureDebug] form_settings type:', typeof matched?.form_settings);
+    }
+  }, [nomenclatureResponse, nomenclatureItems, nomenclatureLoading, nomenclatureError, contract]);
   const { data: invoiceData } = useContractInvoices(id || undefined, { enabled: !!id });
   const pageSummary = invoiceData?.summary;
   const pageInvoices = invoiceData?.invoices || [];
