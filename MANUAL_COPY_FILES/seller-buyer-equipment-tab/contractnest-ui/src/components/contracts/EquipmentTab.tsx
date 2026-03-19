@@ -1,7 +1,7 @@
 // src/components/contracts/EquipmentTab.tsx
 // Equipment & Facility details tab for contract detail page
 // Shows cards for each equipment/entity item from equipment_details JSONB
-// Buyer can add their own equipment (from self-owned registry) and remove their own items
+// Both seller and buyer can add/remove their own equipment
 
 import React, { useState, useMemo, useCallback } from 'react';
 import {
@@ -11,7 +11,12 @@ import {
 import type { ContractEquipmentDetail } from '@/types/contracts';
 import { useAuth } from '@/context/AuthContext';
 import { useAssetRegistryManager } from '@/hooks/queries/useAssetRegistry';
-import { useBuyerAddEquipment, useBuyerRemoveEquipment } from '@/hooks/queries/useContractQueries';
+import {
+  useBuyerAddEquipment,
+  useBuyerRemoveEquipment,
+  useSellerAddEquipment,
+  useSellerRemoveEquipment,
+} from '@/hooks/queries/useContractQueries';
 import type { TenantAsset, AssetRegistryFilters } from '@/types/assetRegistry';
 import { CONDITION_CONFIG as ASSET_CONDITION_CONFIG } from '@/types/assetRegistry';
 import { VaNiLoader } from '@/components/common/loaders/UnifiedLoader';
@@ -54,12 +59,12 @@ function generateId(): string {
   return crypto.randomUUID?.() ?? `eq-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-function assetToEquipmentItem(asset: TenantAsset, tenantId: string): ContractEquipmentDetail {
+function assetToEquipmentItem(asset: TenantAsset, tenantId: string, role: 'seller' | 'buyer'): ContractEquipmentDetail {
   return {
     id: generateId(),
     asset_registry_id: asset.id,
     added_by_tenant_id: tenantId,
-    added_by_role: 'buyer',
+    added_by_role: role,
     resource_type: (asset.resource_type_id || '').toLowerCase() === 'asset' ? 'entity' : 'equipment',
     category_id: asset.asset_type_id || null,
     category_name: asset.description || 'Equipment',
@@ -139,7 +144,7 @@ const EquipmentCard: React.FC<{
           >
             Qty: {item.quantity}
           </span>
-          {/* Remove button (buyer can only remove their own) */}
+          {/* Remove button */}
           {canRemove && (
             <button
               onClick={onRemove}
@@ -296,30 +301,36 @@ const EquipmentCard: React.FC<{
 };
 
 // =================================================================
-// BUYER ASSET PICKER (inline panel)
+// ASSET PICKER (shared by both seller and buyer)
 // =================================================================
 
-const BuyerAssetPicker: React.FC<{
+const AssetPicker: React.FC<{
   contractId: string;
   existingAssetIds: Set<string>;
   colors: any;
+  role: 'seller' | 'buyer';
+  ownershipType: 'self' | 'client';
+  contactId?: string | null;
   onClose: () => void;
-}> = ({ contractId, existingAssetIds, colors, onClose }) => {
+}> = ({ contractId, existingAssetIds, colors, role, ownershipType, contactId, onClose }) => {
   const { currentTenant } = useAuth();
   const tenantId = currentTenant?.id || '';
 
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Fetch buyer's self-owned equipment
+  // Fetch equipment based on ownership type
   const filters: AssetRegistryFilters = useMemo(() => ({
     limit: 500,
     offset: 0,
-    ownership_type: 'self' as const,
-  }), []);
+    ownership_type: ownershipType,
+    ...(contactId ? { contact_id: contactId } : {}),
+  }), [ownershipType, contactId]);
 
   const { assets, isLoading } = useAssetRegistryManager(filters);
 
-  const addMutation = useBuyerAddEquipment();
+  const sellerAddMutation = useSellerAddEquipment();
+  const buyerAddMutation = useBuyerAddEquipment();
+  const addMutation = role === 'seller' ? sellerAddMutation : buyerAddMutation;
 
   // Filter display assets
   const displayAssets = useMemo(() => {
@@ -346,13 +357,16 @@ const BuyerAssetPicker: React.FC<{
   }, [assets, searchQuery, existingAssetIds]);
 
   const handleAdd = useCallback(async (asset: TenantAsset) => {
-    const item = assetToEquipmentItem(asset, tenantId);
+    const item = assetToEquipmentItem(asset, tenantId, role);
     try {
       await addMutation.mutateAsync({ contractId, equipmentItem: item });
     } catch {
       // Error toast handled by mutation hook
     }
-  }, [contractId, tenantId, addMutation]);
+  }, [contractId, tenantId, role, addMutation]);
+
+  const title = role === 'seller' ? 'Add Equipment' : 'Add Your Equipment';
+  const searchPlaceholder = role === 'seller' ? 'Search equipment...' : 'Search your equipment...';
 
   return (
     <div
@@ -373,7 +387,7 @@ const BuyerAssetPicker: React.FC<{
         <div className="flex items-center gap-2">
           <Plus className="h-4 w-4" style={{ color: colors.brand.primary }} />
           <span className="text-sm font-bold" style={{ color: colors.utility.primaryText }}>
-            Add Your Equipment
+            {title}
           </span>
         </div>
         <button
@@ -393,7 +407,7 @@ const BuyerAssetPicker: React.FC<{
             style={{ color: colors.utility.secondaryText }}
           />
           <input
-            placeholder="Search your equipment..."
+            placeholder={searchPlaceholder}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-8 pr-3 py-2 rounded-lg border text-xs"
@@ -410,7 +424,7 @@ const BuyerAssetPicker: React.FC<{
       <div className="px-5 pb-4 max-h-[40vh] overflow-y-auto space-y-2">
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
-            <VaNiLoader size="sm" message="Loading your equipment..." />
+            <VaNiLoader size="sm" message="Loading equipment..." />
           </div>
         ) : displayAssets.length === 0 ? (
           <div className="text-center py-8">
@@ -422,8 +436,8 @@ const BuyerAssetPicker: React.FC<{
               {searchQuery
                 ? `No equipment matching "${searchQuery}"`
                 : existingAssetIds.size > 0
-                  ? 'All your equipment has already been added'
-                  : 'No equipment in your registry yet'}
+                  ? 'All equipment has already been added'
+                  : 'No equipment in registry yet'}
             </p>
           </div>
         ) : (
@@ -491,11 +505,13 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
 }) => {
   const { currentTenant } = useAuth();
   const tenantId = currentTenant?.id || '';
+  const isSeller = !isBuyer;
 
   const [showPicker, setShowPicker] = useState(false);
   const [removingItemId, setRemovingItemId] = useState<string | null>(null);
 
-  const removeMutation = useBuyerRemoveEquipment();
+  const buyerRemoveMutation = useBuyerRemoveEquipment();
+  const sellerRemoveMutation = useSellerRemoveEquipment();
 
   const hasEquipment = equipmentDetails.length > 0;
   const equipmentCount = equipmentDetails.filter(e => e.resource_type === 'equipment').length;
@@ -511,18 +527,23 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
   }, [equipmentDetails]);
 
   const canBuyerAdd = isBuyer && allowBuyerToAdd && contractId;
+  const canSellerAdd = isSeller && contractId;
 
   const handleRemove = useCallback(async (itemId: string) => {
     if (!contractId) return;
     setRemovingItemId(itemId);
     try {
-      await removeMutation.mutateAsync({ contractId, itemId });
+      if (isBuyer) {
+        await buyerRemoveMutation.mutateAsync({ contractId, itemId });
+      } else {
+        await sellerRemoveMutation.mutateAsync({ contractId, itemId });
+      }
     } catch {
       // Error toast handled by mutation hook
     } finally {
       setRemovingItemId(null);
     }
-  }, [contractId, removeMutation]);
+  }, [contractId, isBuyer, buyerRemoveMutation, sellerRemoveMutation]);
 
   return (
     <div className="space-y-5">
@@ -568,6 +589,31 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
               Buyer can add
             </span>
           )}
+          {/* Seller add button */}
+          {canSellerAdd && (
+            <button
+              onClick={() => setShowPicker(!showPicker)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors hover:opacity-90"
+              style={{
+                backgroundColor: showPicker ? colors.utility.secondaryBackground : colors.brand.primary,
+                color: showPicker ? colors.utility.primaryText : '#fff',
+                border: showPicker ? `1px solid ${colors.utility.primaryText}20` : 'none',
+              }}
+            >
+              {showPicker ? (
+                <>
+                  <X className="h-3.5 w-3.5" />
+                  Close
+                </>
+              ) : (
+                <>
+                  <Plus className="h-3.5 w-3.5" />
+                  Add Equipment
+                </>
+              )}
+            </button>
+          )}
+          {/* Buyer add button */}
           {canBuyerAdd && (
             <button
               onClick={() => setShowPicker(!showPicker)}
@@ -594,12 +640,24 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
         </div>
       </div>
 
-      {/* Buyer asset picker */}
-      {showPicker && contractId && (
-        <BuyerAssetPicker
+      {/* Asset picker (shared component for both roles) */}
+      {showPicker && contractId && canSellerAdd && (
+        <AssetPicker
           contractId={contractId}
           existingAssetIds={existingAssetIds}
           colors={colors}
+          role="seller"
+          ownershipType="self"
+          onClose={() => setShowPicker(false)}
+        />
+      )}
+      {showPicker && contractId && canBuyerAdd && (
+        <AssetPicker
+          contractId={contractId}
+          existingAssetIds={existingAssetIds}
+          colors={colors}
+          role="buyer"
+          ownershipType="self"
           onClose={() => setShowPicker(false)}
         />
       )}
@@ -608,13 +666,14 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
       {hasEquipment ? (
         <div className="grid gap-4" style={{ gridTemplateColumns: equipmentDetails.length === 1 ? '1fr' : 'repeat(auto-fill, minmax(380px, 1fr))' }}>
           {equipmentDetails.map((item) => {
-            const isBuyerItem = item.added_by_role === 'buyer' && item.added_by_tenant_id === tenantId;
+            const isOwnItem = item.added_by_tenant_id === tenantId;
+            const canRemove = isOwnItem && !!contractId;
             return (
               <EquipmentCard
                 key={item.id}
                 item={item}
                 colors={colors}
-                canRemove={isBuyer && isBuyerItem && !!contractId}
+                canRemove={canRemove}
                 onRemove={() => handleRemove(item.id)}
                 isRemoving={removingItemId === item.id}
               />
@@ -639,11 +698,11 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
             No Equipment Attached
           </h3>
           <p className="text-xs max-w-xs" style={{ color: colors.utility.secondaryText }}>
-            {canBuyerAdd
-              ? 'Add your equipment to this contract using the button above.'
-              : allowBuyerToAdd
-                ? 'The buyer has been invited to add their equipment to this contract.'
-                : 'Equipment can be added during contract editing.'}
+            {(canBuyerAdd || canSellerAdd)
+              ? 'Add equipment to this contract using the button above.'
+              : isBuyer && allowBuyerToAdd === false
+                ? 'Equipment additions are not enabled for this contract.'
+                : 'Equipment can be added using the button above.'}
           </p>
         </div>
       )}

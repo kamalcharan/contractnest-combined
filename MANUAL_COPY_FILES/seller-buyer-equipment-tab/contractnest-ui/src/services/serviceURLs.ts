@@ -950,6 +950,8 @@ export const API_ENDPOINTS = {
     NOTIFY: (id: string) => `/api/contracts/${id}/notify`,
     BUYER_ADD_EQUIPMENT: (id: string) => `/api/contracts/${id}/buyer-equipment`,
     BUYER_REMOVE_EQUIPMENT: (id: string) => `/api/contracts/${id}/buyer-equipment`,
+    SELLER_ADD_EQUIPMENT: (id: string) => `/api/contracts/${id}/seller-equipment`,
+    SELLER_REMOVE_EQUIPMENT: (id: string) => `/api/contracts/${id}/seller-equipment`,
 
     // Dashboard stats
     STATS: '/api/contracts/stats',

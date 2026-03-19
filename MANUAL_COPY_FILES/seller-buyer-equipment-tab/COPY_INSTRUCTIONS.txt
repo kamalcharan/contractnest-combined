@@ -1,0 +1,86 @@
+===============================================================
+SELLER + BUYER EQUIPMENT TAB — Full-Stack Implementation
+===============================================================
+
+Feature: Both seller and buyer can add/remove equipment from
+         the contract detail page. Previously only the wizard
+         (creation time) supported equipment addition.
+
+Changes:
+  - Seller gets "Add Equipment" button on detail page
+  - Seller can remove their own equipment from detail page
+  - Buyer gets "Add My Equipment" button (when allowed)
+  - Buyer can remove their own equipment
+  - Unified AssetPicker component for both roles
+  - New seller_add/remove RPCs (migration 057)
+
+Submodules Affected: contractnest-ui, contractnest-api, contractnest-edge
+
+===============================================================
+FILES TO COPY (12 files)
+===============================================================
+
+── contractnest-ui (6 files) ──────────────────────────────────
+
+1. src/types/assetRegistry.ts
+   → Added contact_id to AssetRegistryFilters
+
+2. src/components/contracts/EquipmentTab.tsx
+   → Rewritten: unified AssetPicker + seller add/remove + buyer add/remove
+
+3. src/components/contracts/ContractWizard/steps/EquipmentStep.tsx
+   → Seller filter: ownership_type:'client' + contact_id from buyerId
+
+4. src/hooks/queries/useContractQueries.ts
+   → Added useSellerAddEquipment, useSellerRemoveEquipment,
+     useBuyerAddEquipment, useBuyerRemoveEquipment hooks
+
+5. src/pages/contracts/detail/index.tsx
+   → Equipment tab in both SELLER_TAB_DEFINITIONS and BUYER_TAB_DEFINITIONS
+   → Passes isBuyer + contractId props to EquipmentTab
+
+6. src/services/serviceURLs.ts
+   → Added SELLER_ADD_EQUIPMENT, SELLER_REMOVE_EQUIPMENT,
+     BUYER_ADD_EQUIPMENT, BUYER_REMOVE_EQUIPMENT URL helpers
+
+── contractnest-api (3 files) ─────────────────────────────────
+
+7. src/controllers/contractController.ts
+   → Added sellerAddEquipment, sellerRemoveEquipment,
+     buyerAddEquipment, buyerRemoveEquipment controller methods
+
+8. src/routes/contractRoutes.ts
+   → Added POST/DELETE /:id/seller-equipment routes
+   → Added POST/DELETE /:id/buyer-equipment routes
+
+9. src/services/contractService.ts
+   → Added sellerAddEquipment, sellerRemoveEquipment,
+     buyerAddEquipment, buyerRemoveEquipment service methods
+
+── contractnest-edge (3 files) ────────────────────────────────
+
+10. supabase/functions/contracts/index.ts
+    → Added handleSellerAddEquipment, handleSellerRemoveEquipment
+    → Added handleBuyerAddEquipment, handleBuyerRemoveEquipment
+    → isSellerEquipmentRequest + isBuyerEquipmentRequest routing
+
+11. supabase/migrations/contracts/056_buyer_equipment_rpcs.sql
+    → buyer_add_equipment_to_contract RPC
+    → buyer_remove_equipment_from_contract RPC
+
+12. supabase/migrations/contracts/057_seller_equipment_rpcs.sql [NEW]
+    → seller_add_equipment_to_contract RPC
+    → seller_remove_equipment_from_contract RPC
+    → Security: validates seller_id matches tenant
+
+===============================================================
+DB MIGRATION REQUIRED
+===============================================================
+
+Run BOTH migrations on Supabase SQL Editor BEFORE testing:
+  1. 056_buyer_equipment_rpcs.sql
+  2. 057_seller_equipment_rpcs.sql
+
+These create 4 RPC functions — no table changes needed.
+
+===============================================================

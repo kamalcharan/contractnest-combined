@@ -562,3 +562,73 @@ export const useBuyerRemoveEquipment = () => {
     },
   });
 };
+
+// ═══════════════════════════════════════════════════════════════════
+// SELLER EQUIPMENT HOOKS
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Mutation: seller adds equipment to contract from detail page
+ */
+export const useSellerAddEquipment = () => {
+  const queryClient = useQueryClient();
+  const { currentTenant } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ contractId, equipmentItem }: { contractId: string; equipmentItem: any }) => {
+      const response = await api.post(
+        API_ENDPOINTS.CONTRACTS.SELLER_ADD_EQUIPMENT(contractId),
+        { equipment_item: equipmentItem }
+      );
+      return response.data;
+    },
+    onSuccess: (result, { contractId }) => {
+      queryClient.invalidateQueries({ queryKey: contractKeys.detail(contractId) });
+      vaniToast.success('Equipment Added', {
+        message: 'Equipment has been added to this contract.',
+        duration: 4000,
+      });
+    },
+    onError: (error: any) => {
+      const msg = error.response?.data?.error || error.message || 'Failed to add equipment';
+      captureException(error, {
+        tags: { component: 'useSellerAddEquipment' },
+        extra: { tenantId: currentTenant?.id },
+      });
+      vaniToast.error('Add Failed', { message: msg, duration: 5000 });
+    },
+  });
+};
+
+/**
+ * Mutation: seller removes their own equipment from contract
+ */
+export const useSellerRemoveEquipment = () => {
+  const queryClient = useQueryClient();
+  const { currentTenant } = useAuth();
+
+  return useMutation({
+    mutationFn: async ({ contractId, itemId }: { contractId: string; itemId: string }) => {
+      const response = await api.delete(
+        API_ENDPOINTS.CONTRACTS.SELLER_REMOVE_EQUIPMENT(contractId),
+        { data: { item_id: itemId } }
+      );
+      return response.data;
+    },
+    onSuccess: (result, { contractId }) => {
+      queryClient.invalidateQueries({ queryKey: contractKeys.detail(contractId) });
+      vaniToast.success('Equipment Removed', {
+        message: 'Equipment has been removed from this contract.',
+        duration: 4000,
+      });
+    },
+    onError: (error: any) => {
+      const msg = error.response?.data?.error || error.message || 'Failed to remove equipment';
+      captureException(error, {
+        tags: { component: 'useSellerRemoveEquipment' },
+        extra: { tenantId: currentTenant?.id },
+      });
+      vaniToast.error('Remove Failed', { message: msg, duration: 5000 });
+    },
+  });
+};
