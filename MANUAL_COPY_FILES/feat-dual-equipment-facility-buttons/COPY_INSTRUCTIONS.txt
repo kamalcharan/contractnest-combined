@@ -1,0 +1,18 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS - Dual Equipment / Facility Buttons
+═══════════════════════════════════════════════════
+
+Feature: Show two separate "Add Equipment" and "Add Facility" buttons
+         when nomenclature covers both equipment and facility types.
+
+Submodules Affected: contractnest-ui
+
+Files to Copy:
+──────────────
+1. contractnest-ui/src/components/contracts/EquipmentTab.tsx
+   → Copy to: contractnest-ui\src\components\contracts\EquipmentTab.tsx
+
+2. contractnest-ui/src/pages/contracts/detail/index.tsx
+   → Copy to: contractnest-ui\src\pages\contracts\detail\index.tsx
+
+═══════════════════════════════════════════════════
