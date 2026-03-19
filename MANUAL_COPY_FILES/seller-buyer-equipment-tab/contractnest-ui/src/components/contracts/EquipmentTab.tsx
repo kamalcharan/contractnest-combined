@@ -22,6 +22,7 @@ import type { TenantAsset, AssetFormData, AssetRegistryFilters } from '@/types/a
 import EquipmentCard, { type CardAsset } from '@/pages/equipment-registry/EquipmentCard';
 import EquipmentFormDialog from '@/pages/equipment-registry/EquipmentFormDialog';
 import { VaNiLoader } from '@/components/common/loaders/UnifiedLoader';
+import { useContactList } from '@/hooks/useContacts';
 
 // =================================================================
 // PROPS
@@ -160,6 +161,16 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
 
   const addMutation = isBuyer ? buyerAddMutation : sellerAddMutation;
   const removeMutation = isBuyer ? buyerRemoveMutation : sellerRemoveMutation;
+
+  // ── Contacts (resolve owner_contact_id → display name, same as equipment-registry) ──
+  const { data: contactsList = [] } = useContactList({ page: 1, limit: 500, status: 'active' });
+  const contactNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of contactsList) {
+      map.set(c.id, c.displayName || c.company_name || c.name || 'Unknown');
+    }
+    return map;
+  }, [contactsList]);
 
   // ── Registry data (only loaded when picker is open) ────────────
   // Revenue side (seller): show client-owned equipment filtered by buyer contact
@@ -489,6 +500,7 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
                   <EquipmentCard
                     key={asset.id}
                     asset={asset}
+                    clientName={asset.owner_contact_id ? contactNameMap.get(asset.owner_contact_id) : undefined}
                     selectable
                     isSelected={existingAssetIds.has(asset.id)}
                     onToggle={() => handleToggleAsset(asset)}
@@ -508,11 +520,15 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
             const isOwnItem = item.added_by_tenant_id === tenantId;
             const canRemove = isOwnItem && !!contractId;
             const cardAsset = detailToCardAsset(item);
+            // Resolve client name: use asset_registry_id to find in registry,
+            // or fall back to the buyer contact on this contract
+            const clientName = buyerId ? contactNameMap.get(buyerId) : undefined;
 
             return (
               <EquipmentCard
                 key={item.id}
                 asset={cardAsset}
+                clientName={clientName}
                 onDelete={canRemove ? () => handleRemoveCard(item) : undefined}
                 onEdit={undefined}
                 disabled={removeMutation.isPending}
