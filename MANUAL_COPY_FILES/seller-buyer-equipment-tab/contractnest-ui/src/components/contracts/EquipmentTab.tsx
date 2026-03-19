@@ -34,6 +34,8 @@ interface EquipmentTabProps {
   colors: any;
   isBuyer?: boolean;
   contractId?: string;
+  /** The buyer/contact on this contract — used to filter registry on Revenue side */
+  buyerId?: string;
 }
 
 // =================================================================
@@ -86,6 +88,7 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
   colors,
   isBuyer = false,
   contractId,
+  buyerId,
 }) => {
   const { currentTenant } = useAuth();
   const tenantId = currentTenant?.id || '';
@@ -109,12 +112,22 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
   const removeMutation = isBuyer ? buyerRemoveMutation : sellerRemoveMutation;
 
   // ── Registry data (only loaded when picker is open) ────────────
+  // Revenue side (seller): show client-owned equipment filtered by buyer contact
+  // Expense side (buyer): show self-owned equipment (no contact filter)
 
-  const filters: AssetRegistryFilters = useMemo(() => ({
-    limit: 500,
-    offset: 0,
-    ownership_type: 'self' as const,
-  }), []);
+  const filters: AssetRegistryFilters = useMemo(() => {
+    if (isBuyer) {
+      // Expense side — buyer adds from their own (self) equipment
+      return { limit: 500, offset: 0, ownership_type: 'self' as const };
+    }
+    // Revenue side — seller picks from equipment registered under the buyer/client contact
+    return {
+      limit: 500,
+      offset: 0,
+      ownership_type: 'client' as const,
+      contact_id: buyerId || undefined,
+    };
+  }, [isBuyer, buyerId]);
 
   const { assets, isLoading: assetsLoading } = useAssetRegistryManager(
     showPicker ? filters : { limit: 0, offset: 0 }
@@ -579,7 +592,8 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
         categories={allFormCategories}
         onSubmit={handleCreateSubmit}
         isSubmitting={createMutation.isPending}
-        defaultOwnershipType="self"
+        defaultOwnershipType={isBuyer ? 'self' : 'client'}
+        lockedContactId={isBuyer ? undefined : buyerId}
       />
     </div>
   );
