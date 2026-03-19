@@ -1,0 +1,65 @@
+═══════════════════════════════════════════════════════════════════
+BUYER EQUIPMENT TAB — Full-Stack Implementation
+═══════════════════════════════════════════════════════════════════
+
+Feature: Buyer can see Equipment tab, add their own equipment
+         from self-owned registry, and remove their own items.
+         Seller-side: EquipmentStep now filters by client ownership.
+
+Submodules Affected: contractnest-ui, contractnest-api, contractnest-edge
+
+═══════════════════════════════════════════════════════════════════
+FILES TO COPY (11 files)
+═══════════════════════════════════════════════════════════════════
+
+── contractnest-ui (6 files) ──────────────────────────────────────
+
+1. src/types/assetRegistry.ts
+   → Added contact_id to AssetRegistryFilters interface
+
+2. src/components/contracts/EquipmentTab.tsx
+   → Full rewrite: buyer asset picker + remove button + BuyerAssetPicker component
+
+3. src/components/contracts/ContractWizard/steps/EquipmentStep.tsx
+   → Seller filter: ownership_type:'client' + contact_id from buyerId
+
+4. src/hooks/queries/useContractQueries.ts
+   → Added useBuyerAddEquipment + useBuyerRemoveEquipment mutation hooks
+
+5. src/pages/contracts/detail/index.tsx
+   → Added 'equipment' to BUYER_TAB_DEFINITIONS + pass isBuyer/contractId props
+
+6. src/services/serviceURLs.ts
+   → Added BUYER_ADD_EQUIPMENT + BUYER_REMOVE_EQUIPMENT URL helpers
+
+── contractnest-api (3 files) ─────────────────────────────────────
+
+7. src/controllers/contractController.ts
+   → Added buyerAddEquipment + buyerRemoveEquipment controller methods
+
+8. src/routes/contractRoutes.ts
+   → Added POST/DELETE /:id/buyer-equipment routes
+
+9. src/services/contractService.ts
+   → Added buyerAddEquipment + buyerRemoveEquipment service methods
+
+── contractnest-edge (2 files) ────────────────────────────────────
+
+10. supabase/functions/contracts/index.ts
+    → Added handleBuyerAddEquipment + handleBuyerRemoveEquipment handlers
+    → Added isBuyerEquipmentRequest routing flag
+
+11. supabase/migrations/contracts/056_buyer_equipment_rpcs.sql  [NEW FILE]
+    → buyer_add_equipment_to_contract RPC
+    → buyer_remove_equipment_from_contract RPC
+    → Security: validates buyer_tenant_id, allow_buyer_to_add_equipment flag
+    → Buyer can only remove items with matching added_by_tenant_id
+
+═══════════════════════════════════════════════════════════════════
+DB MIGRATION REQUIRED
+═══════════════════════════════════════════════════════════════════
+
+Run 056_buyer_equipment_rpcs.sql on Supabase SQL Editor BEFORE testing.
+This creates two new RPC functions — no table changes needed.
+
+═══════════════════════════════════════════════════════════════════
