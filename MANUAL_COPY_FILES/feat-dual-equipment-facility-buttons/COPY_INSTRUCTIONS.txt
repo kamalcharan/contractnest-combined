@@ -1,9 +1,14 @@
 ═══════════════════════════════════════════════════
-COPY INSTRUCTIONS - Dual Equipment / Facility Buttons
+COPY INSTRUCTIONS - Dual Equipment / Facility Buttons + URL Fix
 ═══════════════════════════════════════════════════
 
 Feature: Show two separate "Add Equipment" and "Add Facility" buttons
          when nomenclature covers both equipment and facility types.
+
+Bug Fix: useNomenclatureTypes was calling a non-existent API route
+         (/api/functions/product-masterdata). Fixed to use the correct
+         route (/api/product-masterdata/global). This was causing the
+         Equipment tab to always show "Equipment" even for facility contracts.
 
 Submodules Affected: contractnest-ui
 
@@ -14,5 +19,8 @@ Files to Copy:
 
 2. contractnest-ui/src/pages/contracts/detail/index.tsx
    → Copy to: contractnest-ui\src\pages\contracts\detail\index.tsx
+
+3. contractnest-ui/src/hooks/queries/useNomenclatureTypes.ts
+   → Copy to: contractnest-ui\src\hooks\queries\useNomenclatureTypes.ts
 
 ═══════════════════════════════════════════════════
