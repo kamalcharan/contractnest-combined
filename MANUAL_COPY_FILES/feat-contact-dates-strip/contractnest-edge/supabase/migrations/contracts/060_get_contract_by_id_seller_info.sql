@@ -1,28 +1,23 @@
 -- ═══════════════════════════════════════════════════════════════
--- Migration 060: get_contract_by_id — return seller contact info
+-- Migration 060: get_contract_by_id(UUID, UUID) — add seller info
 -- ═══════════════════════════════════════════════════════════════
--- Problem:  On expense (buyer) view, the contract detail page has
---           no seller/vendor name to display. The contract only
---           stores buyer_name/buyer_company (the buyer's own info).
---           The seller's name exists in t_contacts (created during
---           CNAK claim) but is not returned in the contract response.
+-- Problem:  The edge function calls the 2-param overload of
+--           get_contract_by_id. On expense (buyer) view, there's
+--           no seller/vendor name in the response.
 --
--- Fix:     When the requesting tenant is a buyer (accessor), look up
---           the seller's contact in the buyer's workspace and return
---           seller_name, seller_company, seller_contact_id in the
---           response alongside existing fields.
+-- Fix:     Update the 2-param overload to:
+--          1. Track whether access is via buyer (accessor) path
+--          2. Look up seller contact in buyer's workspace
+--          3. Return seller_name, seller_company, seller_contact_id
 --
--- Safety:  - CREATE OR REPLACE (no downtime)
---          - Adds 3 new fields to response (non-breaking addition)
---          - Existing clients ignore unknown fields
---          - No schema changes
+-- Safety:  CREATE OR REPLACE on exact (UUID, UUID) signature
+--          Adds 3 new nullable fields — non-breaking for clients
+--          No schema changes, no downtime
 -- ═══════════════════════════════════════════════════════════════
 
 CREATE OR REPLACE FUNCTION get_contract_by_id(
     p_contract_id UUID,
-    p_tenant_id UUID DEFAULT NULL,
-    p_access_key VARCHAR DEFAULT NULL,
-    p_access_secret VARCHAR DEFAULT NULL
+    p_tenant_id UUID
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -35,69 +30,44 @@ DECLARE
     v_vendors JSONB;
     v_attachments JSONB;
     v_history JSONB;
-    v_evidence_forms JSONB;
-    v_result JSONB;
-    v_tenant_id UUID;
-    v_is_buyer_access BOOLEAN := false;
-    v_access_record RECORD;
     v_access_role TEXT;
+    v_is_buyer_access BOOLEAN := false;
     -- Seller contact info (new in 060)
     v_seller_name TEXT;
     v_seller_company TEXT;
     v_seller_contact_id UUID;
 BEGIN
     -- ═══════════════════════════════════════════
-    -- STEP 1: Determine access method
+    -- STEP 0: Input validation
     -- ═══════════════════════════════════════════
-    IF p_access_key IS NOT NULL AND p_access_secret IS NOT NULL THEN
-        -- CNAK-based access (buyer/external via link)
-        SELECT ca.*, c.tenant_id AS contract_tenant_id
-        INTO v_access_record
-        FROM t_contract_access ca
-        JOIN t_contracts c ON c.id = ca.contract_id
-        WHERE ca.contract_id = p_contract_id
-          AND ca.access_key = p_access_key
-          AND ca.access_secret = p_access_secret
-          AND ca.is_active = true;
-
-        IF v_access_record IS NULL THEN
-            RETURN jsonb_build_object(
-                'success', false,
-                'error', 'Invalid access credentials'
-            );
-        END IF;
-
-        v_tenant_id := v_access_record.contract_tenant_id;
-        v_is_buyer_access := true;
-
-    ELSIF p_tenant_id IS NOT NULL THEN
-        -- Direct tenant access — could be seller OR buyer
-        v_tenant_id := p_tenant_id;
-    ELSE
+    IF p_contract_id IS NULL THEN
         RETURN jsonb_build_object(
             'success', false,
-            'error', 'Either tenant_id or access credentials required'
+            'error', 'contract_id is required'
+        );
+    END IF;
+
+    IF p_tenant_id IS NULL THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'tenant_id is required'
         );
     END IF;
 
     -- ═══════════════════════════════════════════
-    -- STEP 2: Fetch contract
-    --   Path A: requesting tenant is the owner (seller)
-    --   Path B: requesting tenant has an active access grant (buyer who claimed)
-    --   Path C: requesting tenant matches buyer_tenant_id on the contract
+    -- STEP 1: Fetch contract -- owner OR accessor
+    -- First try: requesting tenant is the owner
+    -- Second try: requesting tenant has active access grant
+    -- Third try: requesting tenant matches buyer_tenant_id
     -- ═══════════════════════════════════════════
-
-    -- Path A: Owner (seller) — tenant_id matches directly
     SELECT * INTO v_contract
     FROM t_contracts
     WHERE id = p_contract_id
-      AND tenant_id = v_tenant_id
+      AND tenant_id = p_tenant_id
       AND is_active = true;
 
-    -- Path B & C: Only needed when Path A fails AND we're using tenant_id (not CNAK)
-    IF v_contract IS NULL AND NOT v_is_buyer_access THEN
-
-        -- Path B: Check t_contract_access for active accessor grant
+    IF v_contract IS NULL THEN
+        -- Check if requesting tenant has an active access grant (buyer/vendor/partner)
         SELECT ca.accessor_role INTO v_access_role
         FROM t_contract_access ca
         WHERE ca.contract_id = p_contract_id
@@ -107,7 +77,7 @@ BEGIN
         LIMIT 1;
 
         IF v_access_role IS NOT NULL THEN
-            -- Buyer has a valid access grant — fetch using contract's own data
+            -- Accessor has a valid grant -- fetch the contract using the contract's own tenant
             SELECT * INTO v_contract
             FROM t_contracts
             WHERE id = p_contract_id
@@ -139,11 +109,11 @@ BEGIN
     END IF;
 
     -- ═══════════════════════════════════════════
-    -- STEP 2b (NEW - 060): Look up seller contact in buyer's workspace
+    -- STEP 1b (NEW - 060): Look up seller contact in buyer's workspace
     -- Only when the requesting tenant is a buyer, find the seller's
     -- contact record (created during CNAK claim) to get seller name.
     -- ═══════════════════════════════════════════
-    IF v_is_buyer_access AND p_tenant_id IS NOT NULL THEN
+    IF v_is_buyer_access THEN
         SELECT c.id, c.name, c.company_name
         INTO v_seller_contact_id, v_seller_name, v_seller_company
         FROM t_contacts c
@@ -154,139 +124,124 @@ BEGIN
     END IF;
 
     -- ═══════════════════════════════════════════
-    -- STEP 3: Fetch related blocks
+    -- STEP 2: Fetch blocks (ordered by position)
     -- ═══════════════════════════════════════════
-    SELECT COALESCE(jsonb_agg(
-        jsonb_build_object(
-            'id', b.id,
-            'position', b.position,
-            'source_type', b.source_type,
-            'source_block_id', b.source_block_id,
-            'block_name', b.block_name,
-            'block_description', b.block_description,
-            'category_id', b.category_id,
-            'category_name', b.category_name,
-            'unit_price', b.unit_price,
-            'quantity', b.quantity,
-            'billing_cycle', b.billing_cycle,
-            'total_price', b.total_price,
-            'flyby_type', b.flyby_type,
-            'custom_fields', COALESCE(b.custom_fields, '{}'::JSONB)
-        ) ORDER BY b.position
-    ), '[]'::JSONB)
+    SELECT COALESCE(
+        jsonb_agg(
+            jsonb_build_object(
+                'id', cb.id,
+                'position', cb.position,
+                'source_type', cb.source_type,
+                'source_block_id', cb.source_block_id,
+                'block_name', cb.block_name,
+                'block_description', cb.block_description,
+                'category_id', cb.category_id,
+                'category_name', cb.category_name,
+                'unit_price', cb.unit_price,
+                'quantity', cb.quantity,
+                'billing_cycle', cb.billing_cycle,
+                'total_price', cb.total_price,
+                'flyby_type', cb.flyby_type,
+                'custom_fields', cb.custom_fields,
+                'created_at', cb.created_at
+            )
+            ORDER BY cb.position ASC
+        ),
+        '[]'::JSONB
+    )
     INTO v_blocks
-    FROM t_contract_blocks b
-    WHERE b.contract_id = p_contract_id;
+    FROM t_contract_blocks cb
+    WHERE cb.contract_id = p_contract_id;
 
     -- ═══════════════════════════════════════════
-    -- STEP 4: Fetch related vendors
+    -- STEP 3: Fetch vendors (RFQ only)
     -- ═══════════════════════════════════════════
-    SELECT COALESCE(jsonb_agg(
-        jsonb_build_object(
-            'id', v.id,
-            'vendor_id', v.vendor_id,
-            'vendor_name', v.vendor_name,
-            'vendor_company', v.vendor_company,
-            'vendor_email', v.vendor_email,
-            'response_status', v.response_status,
-            'responded_at', v.responded_at,
-            'quoted_amount', v.quoted_amount,
-            'quote_notes', v.quote_notes,
-            'created_at', v.created_at
-        )
-    ), '[]'::JSONB)
+    SELECT COALESCE(
+        jsonb_agg(
+            jsonb_build_object(
+                'id', cv.id,
+                'vendor_id', cv.vendor_id,
+                'vendor_name', cv.vendor_name,
+                'vendor_company', cv.vendor_company,
+                'vendor_email', cv.vendor_email,
+                'response_status', cv.response_status,
+                'responded_at', cv.responded_at,
+                'quoted_amount', cv.quoted_amount,
+                'quote_notes', cv.quote_notes,
+                'created_at', cv.created_at
+            )
+        ),
+        '[]'::JSONB
+    )
     INTO v_vendors
-    FROM t_contract_vendors v
-    WHERE v.contract_id = p_contract_id;
+    FROM t_contract_vendors cv
+    WHERE cv.contract_id = p_contract_id;
 
     -- ═══════════════════════════════════════════
-    -- STEP 5: Fetch attachments (if table exists)
+    -- STEP 4: Fetch attachments
     -- ═══════════════════════════════════════════
-    v_attachments := '[]'::JSONB;
-    IF EXISTS (
-        SELECT 1 FROM information_schema.tables
-        WHERE table_name = 't_contract_attachments' AND table_schema = 'public'
-    ) THEN
-        EXECUTE format(
-            'SELECT COALESCE(jsonb_agg(
-                jsonb_build_object(
-                    ''id'', a.id,
-                    ''block_id'', a.block_id,
-                    ''file_name'', a.file_name,
-                    ''file_path'', a.file_path,
-                    ''file_size'', a.file_size,
-                    ''file_type'', a.file_type,
-                    ''mime_type'', a.mime_type,
-                    ''download_url'', a.download_url,
-                    ''file_category'', a.file_category,
-                    ''metadata'', a.metadata,
-                    ''uploaded_by'', a.uploaded_by,
-                    ''created_at'', a.created_at
-                )
-            ), ''[]''::JSONB)
-            FROM t_contract_attachments a
-            WHERE a.contract_id = %L', p_contract_id
-        ) INTO v_attachments;
-    END IF;
+    SELECT COALESCE(
+        jsonb_agg(
+            jsonb_build_object(
+                'id', ca.id,
+                'block_id', ca.block_id,
+                'file_name', ca.file_name,
+                'file_path', ca.file_path,
+                'file_size', ca.file_size,
+                'file_type', ca.file_type,
+                'mime_type', ca.mime_type,
+                'download_url', ca.download_url,
+                'file_category', ca.file_category,
+                'metadata', ca.metadata,
+                'uploaded_by', ca.uploaded_by,
+                'created_at', ca.created_at
+            )
+        ),
+        '[]'::JSONB
+    )
+    INTO v_attachments
+    FROM t_contract_attachments ca
+    WHERE ca.contract_id = p_contract_id;
 
     -- ═══════════════════════════════════════════
-    -- STEP 6: Fetch history (last 50 entries)
+    -- STEP 5: Fetch recent history (last 20 entries)
     -- ═══════════════════════════════════════════
-    SELECT COALESCE(jsonb_agg(
-        jsonb_build_object(
-            'id', h.id,
-            'action', h.action,
-            'from_status', h.from_status,
-            'to_status', h.to_status,
-            'changes', COALESCE(h.changes, '{}'::JSONB),
-            'performed_by_type', h.performed_by_type,
-            'performed_by_id', h.performed_by_id,
-            'performed_by_name', h.performed_by_name,
-            'note', h.note,
-            'created_at', h.created_at
-        ) ORDER BY h.created_at DESC
-    ), '[]'::JSONB)
+    SELECT COALESCE(
+        jsonb_agg(
+            jsonb_build_object(
+                'id', ch.id,
+                'action', ch.action,
+                'from_status', ch.from_status,
+                'to_status', ch.to_status,
+                'changes', ch.changes,
+                'performed_by_type', ch.performed_by_type,
+                'performed_by_name', ch.performed_by_name,
+                'note', ch.note,
+                'created_at', ch.created_at
+            )
+            ORDER BY ch.created_at DESC
+        ),
+        '[]'::JSONB
+    )
     INTO v_history
     FROM (
-        SELECT * FROM t_contract_history
+        SELECT *
+        FROM t_contract_history
         WHERE contract_id = p_contract_id
         ORDER BY created_at DESC
-        LIMIT 50
-    ) h;
+        LIMIT 20
+    ) ch;
 
     -- ═══════════════════════════════════════════
-    -- STEP 7: Fetch evidence forms (if table exists)
-    -- ═══════════════════════════════════════════
-    v_evidence_forms := '[]'::JSONB;
-    IF EXISTS (
-        SELECT 1 FROM information_schema.tables
-        WHERE table_name = 't_contract_evidence_forms' AND table_schema = 'public'
-    ) THEN
-        EXECUTE format(
-            'SELECT COALESCE(jsonb_agg(
-                jsonb_build_object(
-                    ''id'', ef.id,
-                    ''form_template_id'', ef.form_template_id,
-                    ''name'', ef.name,
-                    ''version'', ef.version,
-                    ''category'', ef.category,
-                    ''sort_order'', ef.sort_order
-                ) ORDER BY ef.sort_order
-            ), ''[]''::JSONB)
-            FROM t_contract_evidence_forms ef
-            WHERE ef.contract_id = %L', p_contract_id
-        ) INTO v_evidence_forms;
-    END IF;
-
-    -- ═══════════════════════════════════════════
-    -- STEP 8: Build full response
+    -- STEP 6: Return full contract with embedded data
     -- NOTE: Split into jsonb_build_object calls merged with ||
-    --       to stay under PostgreSQL's 100-argument limit.
+    --       to stay under the 100-argument PG limit.
+    -- Updated (060): Added seller_name, seller_company, seller_contact_id
     -- ═══════════════════════════════════════════
-    v_result := jsonb_build_object(
+    RETURN jsonb_build_object(
         'success', true,
         'data', (
-            -- Part A: core + counterparty + terms (25 pairs = 50 args)
+            -- Part A: core fields + counterparty + terms (28 pairs = 56 args)
             jsonb_build_object(
                 'id', v_contract.id,
                 'tenant_id', v_contract.tenant_id,
@@ -310,76 +265,66 @@ BEGIN
                 'buyer_contact_person_name', v_contract.buyer_contact_person_name,
                 'global_access_id', v_contract.global_access_id,
                 'acceptance_method', v_contract.acceptance_method,
-                'start_date', v_contract.start_date,
                 'duration_value', v_contract.duration_value,
-                'duration_unit', v_contract.duration_unit
-            )
-            ||
-            -- Part B: billing + financials + evidence + nomenclature + equipment + metadata + relations + audit (30 pairs = 60 args)
-            jsonb_build_object(
+                'duration_unit', v_contract.duration_unit,
                 'grace_period_value', v_contract.grace_period_value,
                 'grace_period_unit', v_contract.grace_period_unit,
                 'currency', v_contract.currency,
-                'billing_cycle_type', v_contract.billing_cycle_type,
+                'billing_cycle_type', v_contract.billing_cycle_type
+            )
+            ||
+            -- Part B: financials + dates + audit + relations (28 pairs = 56 args)
+            jsonb_build_object(
                 'payment_mode', v_contract.payment_mode,
                 'emi_months', v_contract.emi_months,
                 'per_block_payment_type', v_contract.per_block_payment_type,
                 'total_value', v_contract.total_value,
                 'tax_total', v_contract.tax_total,
                 'grand_total', v_contract.grand_total,
-                'selected_tax_rate_ids', COALESCE(v_contract.selected_tax_rate_ids, '[]'::JSONB),
+                'selected_tax_rate_ids', v_contract.selected_tax_rate_ids,
                 'tax_breakdown', COALESCE(v_contract.tax_breakdown, '[]'::JSONB),
-                'computed_events', v_contract.computed_events,
                 'evidence_policy_type', COALESCE(v_contract.evidence_policy_type, 'none'),
                 'evidence_selected_forms', COALESCE(v_contract.evidence_selected_forms, '[]'::JSONB),
-                'nomenclature_id', v_contract.nomenclature_id,
-                'nomenclature_code', v_contract.nomenclature_code,
-                'nomenclature_name', v_contract.nomenclature_name,
                 'equipment_details', COALESCE(v_contract.equipment_details, '[]'::JSONB),
-                'allow_buyer_to_add_equipment', v_contract.allow_buyer_to_add_equipment,
-                'coverage_types', COALESCE(v_contract.coverage_types, '[]'::JSONB),
-                'metadata', COALESCE(v_contract.metadata, '{}'::JSONB),
-                'blocks', v_blocks,
-                'vendors', v_vendors,
-                'attachments', v_attachments,
-                'history', v_history,
-                'evidence_forms', v_evidence_forms,
-                'blocks_count', jsonb_array_length(v_blocks),
-                'vendors_count', jsonb_array_length(v_vendors),
-                'attachments_count', jsonb_array_length(v_attachments)
-            )
-            ||
-            -- Part C: version + audit + seller info (13 pairs = 26 args)
-            jsonb_build_object(
+                'sent_at', v_contract.sent_at,
+                'accepted_at', v_contract.accepted_at,
+                'completed_at', v_contract.completed_at,
                 'version', v_contract.version,
                 'is_live', v_contract.is_live,
                 'created_by', v_contract.created_by,
                 'updated_by', v_contract.updated_by,
                 'created_at', v_contract.created_at,
                 'updated_at', v_contract.updated_at,
-                'sent_at', v_contract.sent_at,
-                'accepted_at', v_contract.accepted_at,
-                'completed_at', v_contract.completed_at,
-                'access_role', CASE WHEN v_is_buyer_access THEN 'buyer' ELSE 'owner' END,
+                'blocks', v_blocks,
+                'vendors', v_vendors,
+                'attachments', v_attachments,
+                'history', v_history,
+                'blocks_count', jsonb_array_length(v_blocks),
+                'vendors_count', jsonb_array_length(v_vendors),
+                'attachments_count', jsonb_array_length(v_attachments),
+                'access_role', COALESCE(v_access_role, 'owner')
+            )
+            ||
+            -- Part C (NEW - 060): seller contact info (3 pairs = 6 args)
+            jsonb_build_object(
                 'seller_name', v_seller_name,
                 'seller_company', v_seller_company,
                 'seller_contact_id', v_seller_contact_id
             )
         ),
-        'is_buyer_access', v_is_buyer_access
+        'retrieved_at', NOW()
     );
-
-    RETURN v_result;
 
 EXCEPTION WHEN OTHERS THEN
     RETURN jsonb_build_object(
         'success', false,
-        'error', SQLERRM,
+        'error', 'Failed to fetch contract',
+        'details', SQLERRM,
         'error_code', SQLSTATE
     );
 END;
 $$;
 
--- Grants (match existing)
-GRANT EXECUTE ON FUNCTION get_contract_by_id(UUID, UUID, VARCHAR, VARCHAR) TO authenticated;
-GRANT EXECUTE ON FUNCTION get_contract_by_id(UUID, UUID, VARCHAR, VARCHAR) TO service_role;
+-- Grants (match existing for 2-param version)
+GRANT EXECUTE ON FUNCTION get_contract_by_id(UUID, UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_contract_by_id(UUID, UUID) TO service_role;
