@@ -1,19 +1,34 @@
 ═══════════════════════════════════════════════════
-FEATURE: Contact Details & Key Dates Strip on Contract Detail Page
+FEATURE: Contact Details & Key Dates Strip + Vendor Classification Fix
 BRANCH: feat-contact-dates-strip
 DATE: 2026-03-19
 ═══════════════════════════════════════════════════
 
 SUBMODULES AFFECTED:
   - contractnest-ui
+  - contractnest-edge
 
 FILES CHANGED:
   1. contractnest-ui/src/pages/contracts/detail/index.tsx
-     → Added contact & dates info strip between header and summary bar
-     → Reuses ContactHeaderCard (compact variant) for contact display
-     → Computes end date and prolongation date from contract fields
-     → Shows "Client Details" for revenue / "Vendor Details" for expense
+     -> Added contact & dates info strip between header and summary bar
+     -> Shows "Client Details" for revenue / dates-only for expense
+     -> Computes end date and prolongation date from contract fields
 
-COPY FROM → TO:
+  2. contractnest-edge/supabase/migrations/contracts/059_claim_rpc_add_vendor_classification.sql
+     -> Re-creates claim_contract_by_cnak RPC with vendor classification
+     -> New contacts created via CNAK claim now get classifications = [{"classification_value":"vendor","classification_label":"Vendor"}]
+     -> Backfills existing claimed contacts missing classification
+
+COPY FROM -> TO:
   MANUAL_COPY_FILES/feat-contact-dates-strip/contractnest-ui/src/pages/contracts/detail/index.tsx
-  →  contractnest-ui/src/pages/contracts/detail/index.tsx
+  ->  contractnest-ui/src/pages/contracts/detail/index.tsx
+
+  MANUAL_COPY_FILES/feat-contact-dates-strip/contractnest-edge/supabase/migrations/contracts/059_claim_rpc_add_vendor_classification.sql
+  ->  contractnest-edge/supabase/migrations/contracts/059_claim_rpc_add_vendor_classification.sql
+
+SQL MIGRATION NOTE:
+  Migration 059 must be run against Supabase. It is safe for production:
+  - Uses CREATE OR REPLACE (no downtime, atomic replacement)
+  - Backfill UPDATE only targets rows WHERE source = 'cnak_claim' AND classifications IS NULL or empty
+  - Does NOT alter table schema (no ADD/DROP COLUMN)
+  - Idempotent: safe to run multiple times
