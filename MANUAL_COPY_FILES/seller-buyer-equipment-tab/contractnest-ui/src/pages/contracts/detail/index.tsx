@@ -1731,6 +1731,13 @@ const ContractDetailPage: React.FC = () => {
           />
         );
       case 'equipment':
+        console.log('[ContractDetail→Equipment] contact fields:', {
+          buyer_id: contract.buyer_id,
+          buyer_contact_person_id: contract.buyer_contact_person_id,
+          contact_id: contract.contact_id,
+          buyer_name: contract.buyer_name,
+          resolved_buyerId: contract.buyer_contact_person_id || contract.contact_id,
+        });
         return (
           <EquipmentTab
             equipmentDetails={contract.equipment_details || []}

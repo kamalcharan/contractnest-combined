@@ -251,12 +251,12 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
 
   const canAdd = contractId && (isSeller || (isBuyer && allowBuyerToAdd));
 
-  // Filter registry assets for picker
+  // Filter registry assets for picker — Equipment tab only shows equipment, not facilities
   const displayAssets = useMemo(() => {
     if (!showPicker) return [];
     let filtered = assets.filter(
       (a) =>
-        ['equipment', 'asset'].includes((a.resource_type_id || '').toLowerCase()) &&
+        (a.resource_type_id || '').toLowerCase() === 'equipment' &&
         a.is_active
     );
 
