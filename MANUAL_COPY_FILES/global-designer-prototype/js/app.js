@@ -37,6 +37,8 @@ const App = {
             }
 
             Coverage.render();
+        } else if (view === 'agent') {
+            AIAgent.show();
         }
     },
 
