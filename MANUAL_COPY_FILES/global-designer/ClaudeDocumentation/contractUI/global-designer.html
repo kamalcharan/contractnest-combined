@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Global Template Designer — ContractNest</title>
+  <link rel="stylesheet" href="global-designer-styles.css">
+  <style>
+    /* Google Fonts fallback — Inter via system fonts */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+  </style>
+</head>
+<body>
+
+<div class="designer-app">
+
+  <!-- ═══════════════ TOP BAR ═══════════════ -->
+  <header class="top-bar">
+    <div class="top-bar__left">
+      <div class="top-bar__logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+        </svg>
+        ContractNest
+      </div>
+      <div class="top-bar__divider"></div>
+      <span class="top-bar__title">Global Template Designer</span>
+      <span class="top-bar__badge">Admin</span>
+    </div>
+
+    <div class="top-bar__center">
+      <!-- Industry Selector -->
+      <div class="industry-selector">
+        <div class="industry-selector__trigger" id="industryTrigger" onclick="toggleIndustryDropdown()">
+          <span>🏥</span> Healthcare
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="industry-dropdown" id="industryDropdown"></div>
+      </div>
+
+      <button class="btn" onclick="openCommandPalette()" title="Command palette (/)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"/></svg>
+        <span>/</span>
+      </button>
+    </div>
+
+    <div class="top-bar__right">
+      <button class="btn" id="analyticsToggleBtn" onclick="toggleAnalytics()" title="Toggle analytics overlay">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+        Analytics
+      </button>
+      <button class="btn" onclick="showToast('Undo action', 'info')" title="Undo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+      </button>
+      <button class="btn" onclick="showToast('Redo action', 'info')" title="Redo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      </button>
+      <div class="top-bar__divider"></div>
+      <button class="btn btn--primary" onclick="showToast('Template published!', 'success')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>
+        Publish
+      </button>
+    </div>
+  </header>
+
+  <!-- ═══════════════ BLOCK LIBRARY (Left) ═══════════════ -->
+  <aside class="block-library">
+    <div class="block-library__header">
+      <div class="block-library__search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" placeholder="Search blocks..." oninput="handleSearch(this.value)">
+      </div>
+    </div>
+    <div class="block-library__list" id="blockList">
+      <!-- Rendered by JS -->
+    </div>
+  </aside>
+
+  <!-- ═══════════════ SPATIAL CANVAS (Center) ═══════════════ -->
+  <main class="canvas-area">
+    <div class="canvas-grid"></div>
+    <div class="canvas-viewport" id="canvasViewport">
+      <div class="canvas-content" id="canvasContent">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+
+    <!-- Analytics Overlay -->
+    <div class="analytics-overlay" id="analyticsOverlay"></div>
+
+    <!-- Zoom Controls -->
+    <div class="canvas-controls">
+      <button class="btn btn--icon" onclick="zoomOut()" title="Zoom out">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <span class="canvas-controls__level" id="zoomLevel">100%</span>
+      <button class="btn btn--icon" onclick="zoomIn()" title="Zoom in">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <div class="top-bar__divider" style="height:20px; margin: 0 4px;"></div>
+      <button class="btn btn--icon" onclick="resetZoom()" title="Reset zoom">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3.5 21L14.5 3"/><path d="M20.5 21L9.5 3"/></svg>
+      </button>
+    </div>
+  </main>
+
+  <!-- ═══════════════ BUYER PREVIEW (Right) ═══════════════ -->
+  <aside class="buyer-preview">
+    <div class="buyer-preview__header">
+      <div class="buyer-preview__title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+        Live Buyer Preview
+      </div>
+      <span class="buyer-preview__badge">LIVE</span>
+    </div>
+    <div class="buyer-preview__frame">
+      <div class="phone-frame">
+        <div class="phone-frame__notch">
+          <div class="phone-frame__notch-pill"></div>
+        </div>
+        <div class="phone-frame__status">
+          <span>9:41</span>
+          <span>⚡ 87%</span>
+        </div>
+        <div class="phone-frame__content" id="phoneContent">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═══════════════ VERSION TIMELINE (Bottom) ═══════════════ -->
+  <footer class="version-timeline">
+    <span class="version-timeline__label">VERSION HISTORY</span>
+    <div class="version-timeline__track">
+      <div class="version-timeline__fill"></div>
+      <div class="version-timeline__dots" id="versionDots">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+    <div class="version-timeline__info" id="versionInfo">
+      <!-- Rendered by JS -->
+    </div>
+  </footer>
+
+</div>
+
+<!-- ═══════════════ COMMAND PALETTE OVERLAY ═══════════════ -->
+<div class="command-palette-overlay" id="commandPaletteOverlay">
+  <div class="command-palette">
+    <div class="command-palette__input-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input class="command-palette__input" type="text" placeholder="Type a command..." oninput="renderCommandPalette(this.value)">
+      <span class="command-palette__hint">ESC</span>
+    </div>
+    <div class="command-palette__list" id="commandList">
+      <!-- Rendered by JS -->
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Application Logic -->
+<script src="global-designer-app.js"></script>
+
+</body>
+</html>

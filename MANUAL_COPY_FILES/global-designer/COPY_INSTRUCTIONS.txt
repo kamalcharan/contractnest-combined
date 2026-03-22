@@ -1,0 +1,31 @@
+═══════════════════════════════════════════════════
+GLOBAL TEMPLATE DESIGNER - HTML PROTOTYPE
+═══════════════════════════════════════════════════
+
+Files to copy:
+─────────────────────────────────
+
+1. global-designer.html → ClaudeDocumentation/contractUI/global-designer.html
+   (Main HTML prototype — entry point)
+
+2. global-designer-styles.css → ClaudeDocumentation/contractUI/global-designer-styles.css
+   (Dark glass aesthetic, spatial canvas, all component styles)
+
+3. global-designer-app.js → ClaudeDocumentation/contractUI/global-designer-app.js
+   (Application logic — healthcare blocks, canvas, preview, commands)
+
+Submodules Affected: ClaudeDocumentation
+
+HOW TO TEST:
+─────────────────────────────────
+Open global-designer.html in any browser. All 3 files must be in the same folder.
+
+KEY INTERACTIONS:
+- Press "/" anywhere to open the Command Palette
+- Click blocks in the left library to add them to the canvas
+- Click canvas blocks to select them, press Delete to remove
+- Click "Analytics" button in top bar to toggle heatmap overlay
+- Ctrl+Scroll on canvas to zoom, Alt+Drag to pan
+- Click version dots in the bottom timeline
+- Click industry selector to switch presets
+- Ctrl+S to save (simulated)
