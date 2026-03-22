@@ -248,6 +248,65 @@ const Data = {
         { code: 'ON_DEMAND', name: 'On-Demand Service', description: 'Pay-per-use service with no subscription' }
     ],
 
+    // ═══════════ BLOCK TYPES (for template builder) ═══════════
+    blockTypes: [
+        { id: 'scope_of_work', name: 'Scope of Work', icon: '\uD83D\uDCCB', description: 'Define services included/excluded', required: true, defaultFields: ['service_description', 'inclusions', 'exclusions', 'frequency'] },
+        { id: 'pricing', name: 'Pricing & Payment', icon: '\uD83D\uDCB0', description: 'Cost structure, rates, payment terms', required: true, defaultFields: ['base_rate', 'rate_type', 'payment_schedule', 'tax_details'] },
+        { id: 'sla', name: 'Service Level Agreement', icon: '\u23F1\uFE0F', description: 'Response times, uptime, penalties', required: false, defaultFields: ['response_time', 'resolution_time', 'uptime_guarantee', 'penalty_clause'] },
+        { id: 'duration', name: 'Contract Duration', icon: '\uD83D\uDCC5', description: 'Start/end dates, renewal, termination', required: true, defaultFields: ['start_date', 'end_date', 'auto_renewal', 'notice_period'] },
+        { id: 'resources', name: 'Resource Allocation', icon: '\uD83D\uDC65', description: 'Team members, equipment, consumables assigned', required: false, defaultFields: ['resource_list', 'quantity', 'availability', 'backup_resources'] },
+        { id: 'escalation', name: 'Escalation Matrix', icon: '\uD83D\uDCE2', description: 'Contact hierarchy for issue resolution', required: false, defaultFields: ['level_1_contact', 'level_2_contact', 'level_3_contact', 'escalation_timeline'] },
+        { id: 'compliance', name: 'Compliance & Certifications', icon: '\uD83D\uDEE1\uFE0F', description: 'Regulatory requirements, certifications', required: false, defaultFields: ['applicable_standards', 'certifications_required', 'audit_schedule'] },
+        { id: 'terms', name: 'Terms & Conditions', icon: '\uD83D\uDCC4', description: 'Legal clauses, liability, indemnity', required: true, defaultFields: ['liability_cap', 'indemnity_clause', 'force_majeure', 'governing_law'] },
+        { id: 'reporting', name: 'Reporting & Reviews', icon: '\uD83D\uDCCA', description: 'Periodic reports, review meetings', required: false, defaultFields: ['report_frequency', 'report_format', 'review_meeting_schedule'] },
+        { id: 'custom', name: 'Custom Block', icon: '\u2699\uFE0F', description: 'User-defined content block', required: false, defaultFields: ['custom_content'] }
+    ],
+
+    // ═══════════ SAMPLE BLOCK DATA (for existing templates) ═══════════
+    // Maps template ID -> array of blocks with field values
+    templateBlocks: {
+        'tpl-g-001': [ // Medical Doctor AMC
+            { blockType: 'scope_of_work', order: 1, fields: { service_description: 'Preventive and corrective maintenance for medical practitioners', inclusions: 'Regular check-ups, On-call availability, Emergency consultations', exclusions: 'Surgical procedures, Specialist referrals', frequency: 'Monthly' } },
+            { blockType: 'pricing', order: 2, fields: { base_rate: '{{resource.pricing.suggested}}', rate_type: 'Hourly', payment_schedule: 'Monthly', tax_details: 'GST @18%' } },
+            { blockType: 'duration', order: 3, fields: { start_date: '{{contract.start_date}}', end_date: '{{contract.end_date}}', auto_renewal: 'Yes, 30 days notice', notice_period: '30 days' } },
+            { blockType: 'sla', order: 4, fields: { response_time: '30 minutes (critical), 2 hours (normal)', resolution_time: '4 hours (critical), 24 hours (normal)', uptime_guarantee: '99.5%', penalty_clause: '5% deduction per SLA breach' } },
+            { blockType: 'resources', order: 5, fields: { resource_list: '{{resource.name}}', quantity: '{{contract.quantity}}', availability: '24x7', backup_resources: '1 backup per 5 primary' } },
+            { blockType: 'compliance', order: 6, fields: { applicable_standards: 'NABH, HIPAA', certifications_required: 'Medical License, Board Certification', audit_schedule: 'Quarterly' } },
+            { blockType: 'terms', order: 7, fields: { liability_cap: '2x Annual Contract Value', indemnity_clause: 'Mutual indemnification', force_majeure: 'Standard', governing_law: 'Indian Contract Act' } }
+        ],
+        'tpl-g-004': [ // Manufacturing Equipment AMC
+            { blockType: 'scope_of_work', order: 1, fields: { service_description: 'Preventive maintenance for CNC, lathe, and milling equipment', inclusions: 'Scheduled servicing, Calibration, Wear parts replacement', exclusions: 'Major overhaul, Accident damage, Operator error', frequency: 'Quarterly' } },
+            { blockType: 'pricing', order: 2, fields: { base_rate: '{{resource.pricing.suggested}}', rate_type: 'Per Visit + Parts at actuals', payment_schedule: 'Quarterly advance', tax_details: 'GST @18%' } },
+            { blockType: 'duration', order: 3, fields: { start_date: '{{contract.start_date}}', end_date: '{{contract.end_date}}', auto_renewal: 'Yes, 60 days notice', notice_period: '60 days' } },
+            { blockType: 'sla', order: 4, fields: { response_time: '2 hours (breakdown), 48 hours (scheduled)', resolution_time: '8 hours (critical), 5 days (non-critical)', uptime_guarantee: '95%', penalty_clause: '2% per day downtime beyond SLA' } },
+            { blockType: 'resources', order: 5, fields: { resource_list: 'Production Engineer, QC Specialist', quantity: 'As per equipment count', availability: 'Mon-Sat 8am-6pm', backup_resources: 'On-call weekend support' } },
+            { blockType: 'escalation', order: 6, fields: { level_1_contact: 'Site Technician', level_2_contact: 'Regional Service Manager', level_3_contact: 'National Head - Service', escalation_timeline: 'L1: 0-2h, L2: 2-4h, L3: 4-8h' } },
+            { blockType: 'compliance', order: 7, fields: { applicable_standards: 'ISO 9001:2015, ISO 14001', certifications_required: 'OEM Certification', audit_schedule: 'Bi-annual' } },
+            { blockType: 'reporting', order: 8, fields: { report_frequency: 'Monthly', report_format: 'PDF + Dashboard', review_meeting_schedule: 'Quarterly' } },
+            { blockType: 'terms', order: 9, fields: { liability_cap: '1x Annual Contract Value', indemnity_clause: 'Service provider indemnifies client', force_majeure: 'Extended (pandemic, supply chain)', governing_law: 'Indian Contract Act' } }
+        ]
+    },
+
+    // ═══════════ SMARTFORM FIELD TYPES ═══════════
+    smartFormFieldTypes: [
+        { id: 'text', name: 'Text', icon: 'T' },
+        { id: 'number', name: 'Number', icon: '#' },
+        { id: 'date', name: 'Date', icon: '\uD83D\uDCC5' },
+        { id: 'select', name: 'Dropdown', icon: '\u25BC' },
+        { id: 'multi_select', name: 'Multi-Select', icon: '\u2610' },
+        { id: 'currency', name: 'Currency', icon: '$' },
+        { id: 'percentage', name: 'Percentage', icon: '%' },
+        { id: 'template_var', name: 'Template Variable', icon: '{ }' }
+    ],
+
+    // Helper: get blocks for a template
+    getTemplateBlocks(templateId) {
+        return (this.templateBlocks[templateId] || []).map(b => ({
+            ...b,
+            type: this.blockTypes.find(bt => bt.id === b.blockType)
+        }));
+    },
+
     // ═══════════ COMPUTED HELPERS ═══════════
     getIndustryResources(industryId) {
         return this.resourceTemplates.filter(r => r.industry_id === industryId);

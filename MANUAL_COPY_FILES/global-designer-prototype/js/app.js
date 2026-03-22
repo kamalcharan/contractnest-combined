@@ -45,6 +45,11 @@ const App = {
         ResourceList.show(industryId);
     },
 
+    openTemplateBuilder(resourceId, templateId) {
+        this.currentView = 'templateBuilder';
+        TemplateBuilder.show(resourceId, templateId);
+    },
+
     toggleTheme() {
         this.theme = this.theme === 'dark' ? 'light' : 'dark';
         document.documentElement.setAttribute('data-theme', this.theme);

@@ -245,16 +245,22 @@ const ResourceList = {
         if (templates.length === 0) {
             panel.appendChild(Utils.el('div', { className: 'rc-no-templates' }, [
                 Utils.el('div', { className: 'rc-no-templates-icon', textContent: '\u2717' }),
-                Utils.el('div', {}, [
+                Utils.el('div', { style: { flex: '1' } }, [
                     Utils.el('div', {
                         textContent: 'No global templates for this resource',
                         style: { fontWeight: 'var(--weight-semibold)', marginBottom: '2px' }
                     }),
                     Utils.el('div', {
-                        textContent: `Consider creating AMC, CMC, or Breakdown templates for "${res.name}"`,
+                        textContent: `Create an AMC, CMC, or Breakdown template for "${res.name}"`,
                         style: { fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }
                     })
-                ])
+                ]),
+                Utils.el('button', {
+                    className: 'btn btn-primary',
+                    style: { fontSize: 'var(--text-xs)', flexShrink: '0' },
+                    textContent: '+ Create Template',
+                    onClick: () => App.openTemplateBuilder(res.id, null)
+                })
             ]));
             return panel;
         }
@@ -279,9 +285,13 @@ const ResourceList = {
             Utils.el('span', { textContent: 'Used', style: { textAlign: 'center' } })
         ]));
 
-        // Rows
+        // Rows (clickable to open builder)
         templates.forEach(tpl => {
-            panel.appendChild(Utils.el('div', { className: 'rc-template-row' }, [
+            panel.appendChild(Utils.el('div', {
+                className: 'rc-template-row',
+                style: { cursor: 'pointer' },
+                onClick: () => App.openTemplateBuilder(res.id, tpl.id)
+            }, [
                 Utils.el('span', { className: 'rc-tpl-name', textContent: tpl.name }),
                 Utils.el('span', { className: 'rc-tpl-nomenclature', textContent: tpl.nomenclature }),
                 Utils.el('span', { className: 'rc-tpl-blocks', textContent: `${tpl.blocks} blocks` }),
@@ -289,6 +299,16 @@ const ResourceList = {
                 Utils.el('span', { className: 'rc-tpl-used', textContent: `${tpl.timesUsed}x` })
             ]));
         });
+
+        // "Create new template" button at bottom of panel
+        panel.appendChild(Utils.el('div', { style: { marginTop: 'var(--space-3)', paddingTop: 'var(--space-3)', borderTop: '1px solid var(--border-subtle)' } }, [
+            Utils.el('button', {
+                className: 'btn btn-secondary',
+                style: { fontSize: 'var(--text-xs)', width: '100%', justifyContent: 'center' },
+                textContent: '+ New Template for ' + res.name,
+                onClick: () => App.openTemplateBuilder(res.id, null)
+            })
+        ]));
 
         return panel;
     },
