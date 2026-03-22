@@ -1,0 +1,22 @@
+GLOBAL TEMPLATE DESIGNER — TASK 1: COVERAGE DASHBOARD
+═══════════════════════════════════════════════════════
+
+DESTINATION: ClaudeDocumentation/globaltemplates/global-designer-prototype/
+
+FILES (10 total):
+  index.html          → Main entry (open in browser)
+  css/variables.css   → Design tokens (dark/light themes)
+  css/base.css        → Reset
+  css/layout.css      → Shell (sidebar, topbar)
+  css/animations.css  → Keyframes
+  css/coverage.css    → View 1: Coverage dashboard
+  js/utils.js         → Helpers
+  js/data.js          → Real m_catalog data (15 industries, 21 resources, 8 templates)
+  js/coverage.js      → Coverage dashboard logic
+  js/app.js           → Router + init
+
+HOW TO VIEW:
+  Open index.html in browser. No build step needed.
+
+COPY COMMAND:
+  Copy-Item "MANUAL_COPY_FILES\global-designer-prototype\*" -Destination "ClaudeDocumentation\globaltemplates\global-designer-prototype\" -Recurse -Force

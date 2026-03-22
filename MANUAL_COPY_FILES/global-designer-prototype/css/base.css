@@ -1,0 +1,17 @@
+/* ═══════════════════════════════════════════════════
+   BASE — Reset, scrollbar, utilities
+   ═══════════════════════════════════════════════════ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+body{font-family:var(--font-sans);font-size:var(--text-base);color:var(--text-primary);background:var(--bg-base);line-height:1.5;overflow:hidden;min-height:100vh}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border-default);border-radius:var(--radius-full)}
+::-webkit-scrollbar-thumb:hover{background:var(--border-strong)}
+::selection{background:var(--accent-soft);color:var(--accent)}
+a{color:var(--accent);text-decoration:none}
+button{font-family:inherit;font-size:inherit;border:none;background:none;cursor:pointer;color:inherit}
+input,textarea,select{font-family:inherit;font-size:inherit;color:inherit;border:none;background:none;outline:none}
+img,svg{display:block;max-width:100%}
+.mono{font-family:var(--font-mono)}
+.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
