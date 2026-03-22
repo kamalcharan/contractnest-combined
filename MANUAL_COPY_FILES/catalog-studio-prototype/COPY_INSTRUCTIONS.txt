@@ -1,0 +1,36 @@
+═══════════════════════════════════════════════════════
+CATALOG STUDIO - COMPOSITION CANVAS PROTOTYPE
+═══════════════════════════════════════════════════════
+
+DESTINATION: ClaudeDocumentation/globaltemplates/catalog-studio-prototype/
+
+FILES (18 total):
+─────────────────────────────────
+index.html              → Main entry point (open in browser)
+css/variables.css       → Design tokens (colors, spacing, typography)
+css/base.css            → Reset, scrollbar, selection
+css/layout.css          → App shell (sidebar, topbar, content)
+css/animations.css      → All keyframes and transitions
+css/constellation.css   → Spatial block universe view
+css/block-cards.css     → DNA-style block cards
+css/composer.css        → Template sequencer/timeline
+css/wizard.css          → Block creation wizard
+css/preview.css         → Contract preview panel
+js/utils.js             → DOM helpers, formatters
+js/data.js              → Dummy blocks/templates data
+js/constellation.js     → Canvas rendering, zoom/pan
+js/block-cards.js       → Card rendering, DNA fingerprints
+js/composer.js          → Drag-drop template builder
+js/wizard.js            → Multi-step wizard engine
+js/preview.js           → Contract document renderer
+js/app.js               → Router, state, initialization
+
+HOW TO VIEW:
+─────────────────────────────────
+Open index.html directly in a browser (Chrome/Edge recommended).
+No build step, no npm install, no server needed.
+Pure HTML + CSS + vanilla JS.
+
+COPY COMMAND (PowerShell):
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\catalog-studio-prototype\*" -Destination "ClaudeDocumentation\globaltemplates\catalog-studio-prototype\" -Recurse -Force

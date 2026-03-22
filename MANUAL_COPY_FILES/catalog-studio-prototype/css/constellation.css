@@ -1,0 +1,290 @@
+/* ═══════════════════════════════════════════════════
+   CONSTELLATION — Spatial block universe view
+   ═══════════════════════════════════════════════════ */
+
+.constellation-view {
+    background: var(--constellation-bg);
+    position: relative;
+    overflow: hidden;
+    cursor: grab;
+}
+
+.constellation-view:active {
+    cursor: grabbing;
+}
+
+/* ── Canvas (connection lines + particles) ── */
+#constellationCanvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
+/* ── Cluster Container ── */
+.constellation-clusters {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    transition: transform var(--duration-slow) var(--ease-out);
+}
+
+/* ── Category Cluster (Nebula) ── */
+.cluster {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    cursor: pointer;
+    transition: all var(--duration-normal) var(--ease-out);
+    z-index: 3;
+}
+
+.cluster:hover {
+    transform: scale(1.08);
+    z-index: 10;
+}
+
+.cluster-core {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: all var(--duration-normal) var(--ease-out);
+}
+
+.cluster-core::before {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--cluster-color-alpha) 0%, transparent 70%);
+    animation: nebulaPulse 4s ease-in-out infinite;
+    --nebula-color-alpha: var(--cluster-glow);
+    --nebula-color-alpha-dim: var(--cluster-glow-dim);
+}
+
+.cluster-core::after {
+    content: '';
+    position: absolute;
+    inset: -20px;
+    border-radius: 50%;
+    border: 1px dashed var(--cluster-border);
+    opacity: 0.3;
+    animation: spin 30s linear infinite;
+}
+
+.cluster-icon {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    z-index: 2;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+}
+
+.cluster-label {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--text-secondary);
+    text-align: center;
+    transition: color var(--duration-fast);
+    text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+}
+
+.cluster:hover .cluster-label {
+    color: var(--text-primary);
+}
+
+.cluster-count {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    background: var(--bg-overlay);
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--border-subtle);
+}
+
+/* ── Orbiting Block Dots ── */
+.orbit-dot {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--dot-color);
+    box-shadow: 0 0 8px var(--dot-color);
+    animation: orbitFloat var(--orbit-duration, 12s) linear infinite;
+    --orbit-radius: var(--orbit-r, 50px);
+    opacity: 0.7;
+}
+
+.orbit-dot:hover {
+    opacity: 1;
+    transform: scale(1.5);
+}
+
+/* ── Expanded Cluster (zoomed in) ── */
+.cluster.expanded {
+    z-index: 20;
+}
+
+.cluster.expanded .cluster-core {
+    width: 100px;
+    height: 100px;
+}
+
+.cluster-expanded-blocks {
+    display: none;
+    position: absolute;
+    top: 120px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 400px;
+    max-height: 320px;
+    overflow-y: auto;
+    background: var(--bg-overlay);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl);
+    padding: var(--space-4);
+    box-shadow: var(--shadow-xl);
+    backdrop-filter: blur(20px);
+}
+
+.cluster.expanded .cluster-expanded-blocks {
+    display: block;
+    animation: fadeInUp var(--duration-normal) var(--ease-spring);
+}
+
+.cluster-block-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background var(--duration-fast);
+}
+
+.cluster-block-item:hover {
+    background: var(--bg-hover);
+}
+
+.cluster-block-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--text-lg);
+    flex-shrink: 0;
+}
+
+.cluster-block-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.cluster-block-name {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--text-primary);
+}
+
+.cluster-block-price {
+    font-size: var(--text-xs);
+    color: var(--text-tertiary);
+    font-family: var(--font-mono);
+}
+
+/* ── Controls ── */
+.constellation-controls {
+    position: absolute;
+    bottom: var(--space-6);
+    right: var(--space-6);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    z-index: 10;
+}
+
+.ctrl-btn {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-overlay);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    transition: all var(--duration-fast);
+    backdrop-filter: blur(8px);
+}
+
+.ctrl-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+    border-color: var(--border-strong);
+}
+
+/* ── Tooltip ── */
+.constellation-tooltip {
+    position: absolute;
+    z-index: 30;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    padding: var(--space-3) var(--space-4);
+    box-shadow: var(--shadow-lg);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--duration-fast);
+    font-size: var(--text-sm);
+    max-width: 240px;
+    backdrop-filter: blur(12px);
+}
+
+.constellation-tooltip.visible {
+    opacity: 1;
+}
+
+/* ── Background Stars ── */
+.constellation-view::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+        radial-gradient(1px 1px at 10% 20%, var(--constellation-particle) 50%, transparent 50%),
+        radial-gradient(1px 1px at 30% 60%, var(--constellation-particle) 50%, transparent 50%),
+        radial-gradient(1.5px 1.5px at 50% 10%, var(--constellation-particle) 50%, transparent 50%),
+        radial-gradient(1px 1px at 70% 40%, var(--constellation-particle) 50%, transparent 50%),
+        radial-gradient(1px 1px at 90% 80%, var(--constellation-particle) 50%, transparent 50%),
+        radial-gradient(1.5px 1.5px at 15% 85%, var(--constellation-particle) 50%, transparent 50%),
+        radial-gradient(1px 1px at 45% 55%, var(--constellation-particle) 50%, transparent 50%),
+        radial-gradient(1px 1px at 80% 15%, var(--constellation-particle) 50%, transparent 50%);
+    z-index: 0;
+    animation: starTwinkle 6s ease-in-out infinite;
+}
+
+/* ── Category-specific cluster colors ── */
+.cluster[data-type="service"]   { --cluster-color: var(--cat-service);   --cluster-glow: rgba(124,58,237,0.25);  --cluster-glow-dim: rgba(124,58,237,0.08);  --cluster-border: rgba(124,58,237,0.3);  }
+.cluster[data-type="spare"]     { --cluster-color: var(--cat-spare);     --cluster-glow: rgba(8,145,178,0.25);   --cluster-glow-dim: rgba(8,145,178,0.08);   --cluster-border: rgba(8,145,178,0.3);   }
+.cluster[data-type="billing"]   { --cluster-color: var(--cat-billing);   --cluster-glow: rgba(5,150,105,0.25);   --cluster-glow-dim: rgba(5,150,105,0.08);   --cluster-border: rgba(5,150,105,0.3);   }
+.cluster[data-type="text"]      { --cluster-color: var(--cat-text);      --cluster-glow: rgba(100,116,139,0.25); --cluster-glow-dim: rgba(100,116,139,0.08); --cluster-border: rgba(100,116,139,0.3); }
+.cluster[data-type="video"]     { --cluster-color: var(--cat-video);     --cluster-glow: rgba(220,38,38,0.25);   --cluster-glow-dim: rgba(220,38,38,0.08);   --cluster-border: rgba(220,38,38,0.3);   }
+.cluster[data-type="image"]     { --cluster-color: var(--cat-image);     --cluster-glow: rgba(234,88,12,0.25);   --cluster-glow-dim: rgba(234,88,12,0.08);   --cluster-border: rgba(234,88,12,0.3);   }
+.cluster[data-type="checklist"] { --cluster-color: var(--cat-checklist); --cluster-glow: rgba(2,132,199,0.25);   --cluster-glow-dim: rgba(2,132,199,0.08);   --cluster-border: rgba(2,132,199,0.3);   }
+.cluster[data-type="document"]  { --cluster-color: var(--cat-document);  --cluster-glow: rgba(202,138,4,0.25);   --cluster-glow-dim: rgba(202,138,4,0.08);   --cluster-border: rgba(202,138,4,0.3);   }
+
+.cluster .cluster-core {
+    background: radial-gradient(circle at 40% 40%, var(--cluster-color), color-mix(in srgb, var(--cluster-color) 60%, black));
+}
