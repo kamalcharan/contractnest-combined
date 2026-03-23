@@ -104,7 +104,7 @@ export const catTemplateKeys = {
  * Hook to fetch tenant templates
  */
 export const useCatTemplates = (filters?: CatTemplateFilters) => {
-  const { currentTenant, isAdmin } = useAuth();
+  const { currentTenant } = useAuth();
 
   return useQuery({
     queryKey: catTemplateKeys.list(filters || {}),
@@ -115,11 +115,7 @@ export const useCatTemplates = (filters?: CatTemplateFilters) => {
 
       const url = API_ENDPOINTS.CATALOG_STUDIO.TEMPLATES.LIST_WITH_FILTERS(filters || {});
 
-      const response = await api.get(url, {
-        headers: {
-          'x-is-admin': String(isAdmin || false),
-        },
-      });
+      const response = await api.get(url);
 
       return response.data;
     },
@@ -133,7 +129,7 @@ export const useCatTemplates = (filters?: CatTemplateFilters) => {
  * Hook to fetch a single template by ID
  */
 export const useCatTemplate = (templateId: string | undefined) => {
-  const { currentTenant, isAdmin } = useAuth();
+  const { currentTenant } = useAuth();
 
   return useQuery({
     queryKey: catTemplateKeys.detail(templateId || ''),
@@ -144,11 +140,7 @@ export const useCatTemplate = (templateId: string | undefined) => {
 
       const url = API_ENDPOINTS.CATALOG_STUDIO.TEMPLATES.GET(templateId);
 
-      const response = await api.get(url, {
-        headers: {
-          'x-is-admin': String(isAdmin || false),
-        },
-      });
+      const response = await api.get(url);
 
       return response.data;
     },
@@ -166,7 +158,7 @@ export const useCatTemplate = (templateId: string | undefined) => {
  * Hook to fetch system templates (global templates)
  */
 export const useCatSystemTemplates = (filters?: CatTemplateFilters) => {
-  const { currentTenant, isAdmin } = useAuth();
+  const { currentTenant } = useAuth();
 
   return useQuery({
     queryKey: catTemplateKeys.systemList(filters || {}),
@@ -177,11 +169,7 @@ export const useCatSystemTemplates = (filters?: CatTemplateFilters) => {
 
       const url = API_ENDPOINTS.CATALOG_STUDIO.TEMPLATES.SYSTEM_WITH_FILTERS(filters || {});
 
-      const response = await api.get(url, {
-        headers: {
-          'x-is-admin': String(isAdmin || false),
-        },
-      });
+      const response = await api.get(url);
 
       return response.data;
     },
@@ -199,7 +187,7 @@ export const useCatSystemTemplates = (filters?: CatTemplateFilters) => {
  * Hook to fetch public templates (from other tenants)
  */
 export const useCatPublicTemplates = (filters?: CatTemplateFilters) => {
-  const { currentTenant, isAdmin } = useAuth();
+  const { currentTenant } = useAuth();
 
   return useQuery({
     queryKey: catTemplateKeys.publicList(filters || {}),
@@ -210,11 +198,7 @@ export const useCatPublicTemplates = (filters?: CatTemplateFilters) => {
 
       const url = API_ENDPOINTS.CATALOG_STUDIO.TEMPLATES.PUBLIC_WITH_FILTERS(filters || {});
 
-      const response = await api.get(url, {
-        headers: {
-          'x-is-admin': String(isAdmin || false),
-        },
-      });
+      const response = await api.get(url);
 
       return response.data;
     },

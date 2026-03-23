@@ -64,7 +64,7 @@ export const templateCoverageKeys = {
  * Used by the Global Templates admin page.
  */
 export const useTemplateCoverage = () => {
-  const { currentTenant, isAdmin } = useAuth();
+  const { currentTenant } = useAuth();
 
   return useQuery({
     queryKey: templateCoverageKeys.summary(),
@@ -75,11 +75,7 @@ export const useTemplateCoverage = () => {
 
       const url = API_ENDPOINTS.CATALOG_STUDIO.TEMPLATES.COVERAGE;
 
-      const response = await api.get<CoverageApiResponse>(url, {
-        headers: {
-          'x-is-admin': String(isAdmin || false),
-        },
-      });
+      const response = await api.get<CoverageApiResponse>(url);
 
       if (!response.data.success || !response.data.data) {
         throw new Error(response.data.error?.message || 'Failed to fetch template coverage');
