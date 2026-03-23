@@ -1,0 +1,54 @@
+═══════════════════════════════════════════════════════════════
+FIX: API ↔ cat-templates Edge Function Integration
+═══════════════════════════════════════════════════════════════
+Submodule Affected: contractnest-api
+Date: 2026-03-23
+═══════════════════════════════════════════════════════════════
+
+FILES TO COPY (3 files — all EXISTING files, modified):
+─────────────────────────────────────────────────────────────
+
+1. contractnest-api/src/types/catalogStudioTypes.ts
+   → Expanded CatTemplate to match all 25+ DB columns
+   → Added idempotencyKey to RequestContext
+   → Aligned TemplateQueryParams with edge filters (category, is_system, industry)
+   → Expanded Create/Update/Copy request types
+
+2. contractnest-api/src/services/catTemplatesService.ts
+   → CRITICAL FIX: copy URL path — was ?action=copy, now /copy?id=
+   → Added missing headers: x-environment, x-user-id, x-idempotency-key
+   → Updated buildQueryString to match edge filters
+
+3. contractnest-api/src/controllers/catalogStudioController.ts
+   → Extract idempotencyKey from req.context or headers
+   → Pass idempotencyKey through to service
+   → Updated parseTemplateQueryParams for new filter params
+
+ALSO REMOVED:
+─────────────────────────────────────────────────────────────
+
+4. contractnest-edge/supabase/migrations/templates/002_create_contract_from_template_rpc.sql
+   → DELETED (redundant — UI handles template→contract via existing contract creation)
+   → Also remove from Supabase DB if already deployed:
+     DROP FUNCTION IF EXISTS create_contract_from_template(uuid, uuid, jsonb);
+
+═══════════════════════════════════════════════════════════════
+BUGS FIXED:
+─────────────────────────────────────────────────────────────
+
+1. CRITICAL: Copy endpoint was broken — API sent ?action=copy (query param)
+   but edge expects /copy path segment. Copy was creating blank templates.
+
+2. HIGH: x-environment header was never sent — test-mode templates
+   were created as live.
+
+3. MEDIUM: x-idempotency-key header never forwarded — duplicate creates
+   possible on retries.
+
+4. MEDIUM: x-user-id header never forwarded — created_by not tracked.
+
+5. LOW: Query filters misaligned — category/is_system/industry not passed.
+
+6. LOW: TypeScript types incomplete — CatTemplate missing 13+ fields.
+
+═══════════════════════════════════════════════════════════════
