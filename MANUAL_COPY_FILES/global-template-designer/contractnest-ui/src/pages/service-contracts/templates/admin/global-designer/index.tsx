@@ -1,8 +1,10 @@
 // src/pages/service-contracts/templates/admin/global-designer/index.tsx
-// Global Template Designer Wizard — 6-step wizard for admin template creation
+// Global Template Designer Wizard — 7-step wizard for admin template creation
 // Step 1: Nomenclature (reused from contract wizard)
-// Step 2: Contract Details (reused from contract wizard)
-// Steps 3-6: Block Assembly, Billing, Policies, Review
+// Step 2: Template Details (adapted from ContractDetailsStep — no Status)
+// Step 3: Block Assembly
+// Step 4: Equipment / Facility Names (driven by nomenclature group)
+// Steps 5-7: Billing, Policies, Review
 
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -29,13 +31,14 @@ import {
   type GlobalDesignerWizardState,
 } from './types';
 
-// Step components — Steps 1 & 2 reused from contract wizard
+// Step 1: Nomenclature — reused from contract wizard
 import NomenclatureStep from '@/components/contracts/ContractWizard/steps/NomenclatureStep';
-import ContractDetailsStep from '@/components/contracts/ContractWizard/steps/ContractDetailsStep';
 import type { ContractDetailsData } from '@/components/contracts/ContractWizard/steps/ContractDetailsStep';
 
-// Step components — Steps 3-6 (global designer specific)
+// Steps 2-7: Global designer specific
+import TemplateDetailsStep from './steps/TemplateDetailsStep';
 import BlockAssemblyStep from './steps/BlockAssemblyStep';
+import AssetNamesStep from './steps/AssetNamesStep';
 import BillingDefaultsStep from './steps/BillingDefaultsStep';
 import PoliciesStep from './steps/PoliciesStep';
 import ReviewPublishStep from './steps/ReviewPublishStep';
@@ -114,15 +117,17 @@ const GlobalDesignerPage: React.FC = () => {
     switch (currentStep) {
       case 0: // Nomenclature — optional (can skip)
         return true;
-      case 1: // Contract Details — name required
+      case 1: // Template Details — name required
         return wizardState.contractDetails.contractName.trim().length >= 3;
       case 2: // Blocks — always valid (can be 0 blocks for draft)
         return true;
-      case 3: // Billing — optional
+      case 3: // Asset Names — optional
         return true;
-      case 4: // Policies — optional
+      case 4: // Billing — optional
         return true;
-      case 5: // Review — ready to save
+      case 5: // Policies — optional
+        return true;
+      case 6: // Review — ready to save
         return true;
       default:
         return true;
@@ -190,6 +195,10 @@ const GlobalDesignerPage: React.FC = () => {
         durationUnit: wizardState.contractDetails.durationUnit,
         gracePeriodValue: wizardState.contractDetails.gracePeriodValue,
         gracePeriodUnit: wizardState.contractDetails.gracePeriodUnit,
+
+        // Asset Names
+        selectedAssetTypeIds: wizardState.selectedAssetTypeIds,
+        selectedAssetTypeNames: wizardState.selectedAssetTypeNames,
 
         // Blocks
         blocks: templateBuilder.template.blocks.map((b) => ({
@@ -269,22 +278,22 @@ const GlobalDesignerPage: React.FC = () => {
             onSelect={handleNomenclatureSelect}
           />
         );
-      case 1: // Contract Details — reused from contract wizard
+      case 1: // Template Details — adapted from ContractDetailsStep (no Status)
         return (
-          <ContractDetailsStep
+          <TemplateDetailsStep
             data={wizardState.contractDetails}
             onChange={handleContractDetailsChange}
-            title="Template Details"
-            subtitle="Define the basic information for your global template"
           />
         );
-      case 2:
+      case 2: // Block Assembly
         return <BlockAssemblyStep templateBuilder={templateBuilder} />;
-      case 3:
+      case 3: // Equipment / Facility Names — driven by nomenclature group
+        return <AssetNamesStep state={wizardState} onUpdate={updateWizardState} />;
+      case 4: // Billing Defaults
         return <BillingDefaultsStep state={wizardState} onUpdate={updateWizardState} />;
-      case 4:
+      case 5: // Policies & Compliance
         return <PoliciesStep state={wizardState} onUpdate={updateWizardState} />;
-      case 5:
+      case 6: // Review & Publish
         return <ReviewPublishStep state={wizardState} onUpdate={updateWizardState} templateBuilder={templateBuilder} />;
       default:
         return null;

@@ -6,7 +6,7 @@ import React from 'react';
 import {
   FileText,
   ClipboardList,
-  LayoutGrid,
+  Wrench,
   CreditCard,
   Shield,
   Check,
@@ -14,8 +14,6 @@ import {
   Globe,
   Star,
   Eye,
-  Calendar,
-  Clock,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import type { GlobalDesignerWizardState } from '../types';
@@ -192,16 +190,28 @@ const ReviewPublishStep: React.FC<ReviewPublishStepProps> = ({ state, onUpdate, 
 
           <SummarySection
             icon={ClipboardList}
-            title="Contract Details"
+            title="Template Details"
             colors={colors}
             items={[
               { label: 'Name', value: cd.contractName || '—' },
-              { label: 'Status', value: cd.status || 'draft' },
               { label: 'Currency', value: cd.currency || 'Not set' },
               { label: 'Duration', value: durationDisplay },
               { label: 'Grace period', value: graceDisplay },
             ]}
           />
+
+          {state.selectedAssetTypeNames.length > 0 && (
+            <SummarySection
+              icon={Wrench}
+              title="Equipment / Facility"
+              colors={colors}
+              items={[
+                { label: 'Type', value: state.nomenclatureGroup?.replace(/_/g, ' ') || 'Mixed' },
+                { label: 'Selected', value: `${state.selectedAssetTypeNames.length} type${state.selectedAssetTypeNames.length !== 1 ? 's' : ''}` },
+                { label: 'Names', value: state.selectedAssetTypeNames.join(', ') },
+              ]}
+            />
+          )}
 
           <SummarySection
             icon={CreditCard}

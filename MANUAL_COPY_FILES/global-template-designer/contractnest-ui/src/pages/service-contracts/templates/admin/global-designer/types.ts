@@ -14,24 +14,28 @@ export interface GlobalDesignerWizardState {
   nomenclatureDisplayName: string | null; // Display name (e.g., "AMC")
   nomenclatureGroup: string | null;       // Group key (equipment_maintenance, facility_property, etc.)
 
-  // Step 2: Contract Details (reuses ContractDetailsStep from contract wizard)
+  // Step 2: Template Details (ContractDetailsStep layout minus Status card)
   contractDetails: ContractDetailsData;
 
   // Step 3: Block Assembly — managed by useTemplateBuilder hook (external)
 
-  // Step 4: Billing & Payment Defaults
+  // Step 4: Equipment / Facility Names (driven by nomenclature group)
+  selectedAssetTypeIds: string[];        // Resource type IDs selected
+  selectedAssetTypeNames: string[];      // Resource type names for display
+
+  // Step 5: Billing & Payment Defaults
   defaultBillingCycleType: BillingCycleType;
   defaultPaymentMode: 'prepaid' | 'emi' | 'defined' | null;
   defaultPaymentTermsDays: number;     // Net 30, 60, etc.
   defaultTaxApproach: 'inclusive' | 'exclusive';
 
-  // Step 5: Policies & Compliance
+  // Step 6: Policies & Compliance
   defaultEvidencePolicy: EvidencePolicyType;
   defaultEvidenceForms: SelectedForm[];
   defaultAcceptanceMethod: AcceptanceMethod;
   complianceTags: string[];            // HIPAA, ISO 9001, etc.
 
-  // Step 6: Publish
+  // Step 7: Publish
   publishStatus: 'draft' | 'active' | 'featured';
 }
 
@@ -59,7 +63,7 @@ export const WIZARD_STEPS: WizardStep[] = [
   {
     id: 1,
     key: 'details',
-    title: 'Contract Details',
+    title: 'Template Details',
     subtitle: 'Name, description, duration & timeline',
     icon: 'ClipboardList',
     isOptional: false,
@@ -74,6 +78,15 @@ export const WIZARD_STEPS: WizardStep[] = [
   },
   {
     id: 3,
+    key: 'assets',
+    title: 'Equipment / Facility',
+    subtitle: 'Select covered asset type names',
+    icon: 'Wrench',
+    isOptional: true,
+    isConditional: true,
+  },
+  {
+    id: 4,
     key: 'billing',
     title: 'Billing Defaults',
     subtitle: 'Payment & billing configuration',
@@ -81,7 +94,7 @@ export const WIZARD_STEPS: WizardStep[] = [
     isOptional: true,
   },
   {
-    id: 4,
+    id: 5,
     key: 'policies',
     title: 'Policies & Compliance',
     subtitle: 'Evidence, acceptance & compliance',
@@ -89,7 +102,7 @@ export const WIZARD_STEPS: WizardStep[] = [
     isOptional: true,
   },
   {
-    id: 5,
+    id: 6,
     key: 'review',
     title: 'Review & Publish',
     subtitle: 'Summary and publish settings',
@@ -119,19 +132,23 @@ export const INITIAL_WIZARD_STATE: GlobalDesignerWizardState = {
     gracePeriodUnit: 'days',
   },
 
-  // Step 4: Billing
+  // Step 4: Asset Names
+  selectedAssetTypeIds: [],
+  selectedAssetTypeNames: [],
+
+  // Step 5: Billing
   defaultBillingCycleType: null,
   defaultPaymentMode: null,
   defaultPaymentTermsDays: 30,
   defaultTaxApproach: 'exclusive',
 
-  // Step 5: Policies
+  // Step 6: Policies
   defaultEvidencePolicy: 'none',
   defaultEvidenceForms: [],
   defaultAcceptanceMethod: null,
   complianceTags: [],
 
-  // Step 6: Publish
+  // Step 7: Publish
   publishStatus: 'draft',
 };
 
