@@ -1,0 +1,69 @@
+═══════════════════════════════════════════════════
+GLOBAL TEMPLATE DESIGNER WIZARD — COPY INSTRUCTIONS
+═══════════════════════════════════════════════════
+
+Feature: 6-Step Wizard-Style Global Template Designer
+Submodule Affected: contractnest-ui ONLY
+Branch: global-template-designer
+
+═══════════════════════════════════════════════════
+FILES TO COPY (10 total)
+═══════════════════════════════════════════════════
+
+--- MODIFIED FILES (2) ---
+
+1. contractnest-ui/src/App.tsx
+   → Added GlobalDesignerPage import and route
+
+2. contractnest-ui/src/pages/service-contracts/templates/admin/global-templates.tsx
+   → Added "Create Template" button with Plus icon
+
+--- NEW FILES (8) ---
+
+3. contractnest-ui/src/pages/service-contracts/templates/admin/global-designer/types.ts
+   → Wizard state interface, step definitions, constants
+
+4. contractnest-ui/src/pages/service-contracts/templates/admin/global-designer/index.tsx
+   → Main wizard container with stepper, navigation, save handler
+
+5. contractnest-ui/src/pages/service-contracts/templates/admin/global-designer/steps/TemplateIdentityStep.tsx
+   → Step 1: Name, description, industries, nomenclature, contract type, complexity, tags
+
+6. contractnest-ui/src/pages/service-contracts/templates/admin/global-designer/steps/EquipmentDefaultsStep.tsx
+   → Step 2: Equipment/entity toggle, coverage types, buyer permission
+
+7. contractnest-ui/src/pages/service-contracts/templates/admin/global-designer/steps/BlockAssemblyStep.tsx
+   → Step 3: Wraps existing BlockLibrary + TemplateCanvas + BlockConfigPanel
+
+8. contractnest-ui/src/pages/service-contracts/templates/admin/global-designer/steps/BillingDefaultsStep.tsx
+   → Step 4: Billing cycle, payment mode, payment terms, tax approach
+
+9. contractnest-ui/src/pages/service-contracts/templates/admin/global-designer/steps/PoliciesStep.tsx
+   → Step 5: Acceptance method, evidence policy, compliance tags
+
+10. contractnest-ui/src/pages/service-contracts/templates/admin/global-designer/steps/ReviewPublishStep.tsx
+    → Step 6: Summary grid, template preview card, publish status
+
+═══════════════════════════════════════════════════
+REUSED PATTERNS (~70% reuse from contract wizard)
+═══════════════════════════════════════════════════
+
+- NomenclatureStep → grouped card picker with useGlobalMasterData
+- AcceptanceMethodStep → 3 card selection with features list
+- BillingCycleStep → unified/mixed visual picker
+- EvidencePolicyStep → 3-option card layout
+- BlockLibrary, TemplateCanvas, BlockConfigPanel → wrapped in Step 3
+- useTemplateBuilder hook → manages block state in Step 3
+- useBlocks hook → fetches block hierarchy
+- useResourceTypes hook → fetches equipment/entity types
+- Theme system → all steps use useTheme() for dark mode
+
+═══════════════════════════════════════════════════
+ENTRY POINT
+═══════════════════════════════════════════════════
+
+Global Templates Gallery page
+  → "Create Template" gradient button (top-right header)
+  → Navigates to /service-contracts/templates/admin/global-designer
+  → 6-step wizard flow
+  → Save → back to gallery
