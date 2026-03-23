@@ -1,0 +1,27 @@
+═══════════════════════════════════════════════════════════════
+PARTS 2+3: TanStack Query Hooks + Global Templates Page Wiring
+═══════════════════════════════════════════════════════════════
+
+FILES TO COPY (3 files, 1 submodule):
+
+1. contractnest-ui\src\hooks\queries\useTemplateCoverage.ts  [NEW FILE]
+   -> TanStack Query hook for GET /templates/coverage endpoint
+   -> Returns: summary stats, per-industry counts, uncovered list
+
+2. contractnest-ui\src\hooks\queries\useCatTemplates.ts  [MODIFIED]
+   -> Extended CatTemplate interface with: industry_tags, tags, is_active,
+      display_name, category, cover_image, currency, tax_rate, etc.
+   -> Added coverage key to catTemplateKeys
+
+3. contractnest-ui\src\pages\service-contracts\templates\admin\global-templates.tsx  [MODIFIED]
+   -> Replaced mock useTemplates hook with real useCatSystemTemplates + useTemplateCoverage
+   -> Added mapCatTemplateToTemplate() mapper for TemplateCard compatibility
+   -> Industry cards now from coverage API (21 real industries from DB)
+   -> Stats header shows: totalTemplates, industries covered, coverage %, categories
+   -> Empty states work with real data
+   -> Loading skeleton for industry cards while coverage loads
+   -> Industries with no templates render at 60% opacity
+
+SUBMODULES AFFECTED: contractnest-ui only
+
+DEPENDS ON: Part 1 (backend coverage endpoint) must be deployed first
