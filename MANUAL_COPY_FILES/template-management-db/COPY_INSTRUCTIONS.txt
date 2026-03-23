@@ -1,0 +1,57 @@
+═══════════════════════════════════════════════════════════════
+TEMPLATE MANAGEMENT — DB LAYER (Migration Files)
+═══════════════════════════════════════════════════════════════
+Feature: Template Management RPC Functions
+Submodule Affected: contractnest-edge
+Date: 2026-03-23
+═══════════════════════════════════════════════════════════════
+
+FILES TO COPY (3 files):
+─────────────────────────────────────────────────────────────
+
+1. contractnest-edge/supabase/migrations/templates/001_template_crud_rpc_functions.sql
+   → 5 CRUD RPC functions: get_templates_list, get_template_by_id,
+     create_template_transaction, update_template_transaction, delete_template_soft
+
+2. contractnest-edge/supabase/migrations/templates/002_create_contract_from_template_rpc.sql
+   → 1 RPC: create_contract_from_template
+     Fetches template → transforms blocks → delegates to existing create_contract_transaction()
+
+3. contractnest-edge/supabase/migrations/templates/003_copy_template_rpc.sql
+   → 1 RPC: copy_template_to_tenant
+     Copies system/public template into tenant space with lineage tracking (copied_from_id)
+
+═══════════════════════════════════════════════════════════════
+DESTINATION PATHS (from contractnest-combined root):
+─────────────────────────────────────────────────────────────
+
+contractnest-edge\supabase\migrations\templates\001_template_crud_rpc_functions.sql
+contractnest-edge\supabase\migrations\templates\002_create_contract_from_template_rpc.sql
+contractnest-edge\supabase\migrations\templates\003_copy_template_rpc.sql
+
+═══════════════════════════════════════════════════════════════
+IMPORTANT NOTES:
+─────────────────────────────────────────────────────────────
+
+- These are NEW files only — no existing files modified
+- The "templates" folder under migrations/ is NEW — create it if it doesn't exist
+- Table m_cat_templates already exists (from catalog-studio + global-templates migrations)
+- These migrations only ADD RPC functions — zero schema changes
+- Zero impact on existing contract functionality
+- All functions use SECURITY DEFINER + SET search_path = public
+- All write functions include idempotency key support
+- update_template_transaction includes optimistic concurrency (version check)
+
+═══════════════════════════════════════════════════════════════
+SQL EXECUTION ORDER (in Supabase SQL Editor):
+─────────────────────────────────────────────────────────────
+
+Run in this exact order:
+  1. 001_template_crud_rpc_functions.sql
+  2. 002_create_contract_from_template_rpc.sql
+  3. 003_copy_template_rpc.sql
+
+Each file is independent but 002 depends on 001's functions being available
+for future use, and 002 depends on create_contract_transaction() which
+already exists in contracts/002_contract_rpc_functions.sql.
+═══════════════════════════════════════════════════════════════
