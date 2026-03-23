@@ -1,0 +1,27 @@
+═══════════════════════════════════════════════════════════════
+PART 1: Backend Template Coverage Endpoint
+═══════════════════════════════════════════════════════════════
+
+FILES TO COPY (6 files across 3 submodules):
+
+1. contractnest-edge\supabase\functions\cat-templates\index.ts
+   -> Edge function: Added GET /coverage handler (handleGetCoverage)
+
+2. contractnest-api\src\types\catalogStudioTypes.ts
+   -> Added: IndustryCoverage, TemplateCoverageSummary, TemplateCoverageResponse interfaces
+
+3. contractnest-api\src\services\catTemplatesService.ts
+   -> Added: getCoverage() method + TemplateCoverageResponse import
+
+4. contractnest-api\src\controllers\catalogStudioController.ts
+   -> Added: getTemplateCoverage handler
+
+5. contractnest-api\src\routes\catalogStudioRoutes.ts
+   -> Added: GET /templates/coverage route (placed BEFORE /templates/:id)
+
+6. contractnest-ui\src\services\serviceURLs.ts
+   -> Added: COVERAGE URL endpoint
+   -> Extended: CatTemplateFilters with industry + category fields
+   -> Updated: LIST_WITH_FILTERS and SYSTEM_WITH_FILTERS to pass industry/category
+
+SUBMODULES AFFECTED: contractnest-edge, contractnest-api, contractnest-ui
