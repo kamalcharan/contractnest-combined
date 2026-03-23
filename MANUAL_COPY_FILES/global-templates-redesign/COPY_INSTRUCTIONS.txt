@@ -1,0 +1,46 @@
+═══════════════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS — Global Templates Page Redesign
+═══════════════════════════════════════════════════════════════════════
+
+Branch: global-templates-redesign
+Submodules Affected: contractnest-ui
+
+FILES TO COPY (3 files):
+─────────────────────────────────────────────────────────────────────
+
+1. MODIFIED — Global Templates Page (full rewrite)
+   FROM: MANUAL_COPY_FILES\global-templates-redesign\contractnest-ui\src\pages\service-contracts\templates\admin\global-templates.tsx
+   TO:   contractnest-ui\src\pages\service-contracts\templates\admin\global-templates.tsx
+
+2. MODIFIED — useTemplateCoverage Hook (extended types)
+   FROM: MANUAL_COPY_FILES\global-templates-redesign\contractnest-ui\src\hooks\queries\useTemplateCoverage.ts
+   TO:   contractnest-ui\src\hooks\queries\useTemplateCoverage.ts
+
+3. NEW FILE — Global Template Data Constants
+   FROM: MANUAL_COPY_FILES\global-templates-redesign\contractnest-ui\src\utils\constants\globalTemplateData.ts
+   TO:   contractnest-ui\src\utils\constants\globalTemplateData.ts
+
+═══════════════════════════════════════════════════════════════════════
+WHAT CHANGED:
+═══════════════════════════════════════════════════════════════════════
+
+global-templates.tsx — Full page redesign:
+  - 5 stat cards at top (Industries, Resource Templates, Published, Gaps, Coverage)
+  - Left sidebar with Industries list (from DB), Categories (per industry), Resource Types
+  - AI Agent button at bottom of sidebar
+  - Search bar + sort + grid/list toggle in content area
+  - Active filter chips with remove buttons
+  - TemplateCard grid/list (existing component, unchanged)
+
+useTemplateCoverage.ts — Extended TemplateCoverageSummary type:
+  - Added: totalResources, industriesWithResources, publishedTemplates
+  - Added: draftTemplates, totalGaps, totalSmartForms, avgCoverage (all optional)
+
+globalTemplateData.ts — NEW constants file:
+  - INDUSTRY_EMOJI_MAP (fallback emojis when API returns Lucide names)
+  - resolveIndustryIcon() helper
+  - RESOURCE_TYPES (5 global types)
+  - INDUSTRY_CATEGORIES (mock data for 15 industries, 385 categories total)
+  - Helper functions: getCategoriesForIndustry(), getCategoryCount(), getTotalCategories()
+
+═══════════════════════════════════════════════════════════════════════
