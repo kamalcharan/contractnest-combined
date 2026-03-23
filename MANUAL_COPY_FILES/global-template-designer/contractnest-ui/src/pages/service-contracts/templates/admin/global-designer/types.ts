@@ -14,10 +14,11 @@ export interface GlobalDesignerWizardState {
   nomenclatureDisplayName: string | null; // Display name (e.g., "AMC")
   nomenclatureGroup: string | null;       // Group key (equipment_maintenance, facility_property, etc.)
 
-  // Step 2: Template Details (ContractDetailsStep layout minus Status card)
+  // Step 2: Template Details (adapted from ContractDetailsStep — no Status)
   contractDetails: ContractDetailsData;
+  targetIndustries: string[];              // Admin targets multiple industries
 
-  // Step 3: Block Assembly — managed by useTemplateBuilder hook (external)
+  // Step 3: Service Blocks — uses ServiceBlocksStep from contract wizard (catalog-driven)
 
   // Step 4: Equipment / Facility Names (driven by nomenclature group)
   selectedAssetTypeIds: string[];        // Resource type IDs selected
@@ -71,9 +72,9 @@ export const WIZARD_STEPS: WizardStep[] = [
   {
     id: 2,
     key: 'blocks',
-    title: 'Block Assembly',
-    subtitle: 'Drag & drop template blocks',
-    icon: 'LayoutGrid',
+    title: 'Service Blocks',
+    subtitle: 'Add blocks from service catalog',
+    icon: 'ShoppingCart',
     isOptional: false,
   },
   {
@@ -119,7 +120,8 @@ export const INITIAL_WIZARD_STATE: GlobalDesignerWizardState = {
   nomenclatureDisplayName: null,
   nomenclatureGroup: null,
 
-  // Step 2: Contract Details
+  // Step 2: Template Details
+  targetIndustries: [],
   contractDetails: {
     contractName: '',
     status: 'draft',

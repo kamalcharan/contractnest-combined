@@ -18,15 +18,15 @@ import {
 import { useTheme } from '@/contexts/ThemeContext';
 import type { GlobalDesignerWizardState } from '../types';
 import { COMPLIANCE_TAG_OPTIONS } from '../types';
-import useTemplateBuilder from '@/hooks/service-contracts/templates/useTemplateBuilder';
 import { getDurationLabel } from '@/utils/constants/contracts';
+import { industries as INDUSTRIES_LIST } from '@/utils/constants/industries';
 
 // ─── Props ──────────────────────────────────────────────────────────
 
 interface ReviewPublishStepProps {
   state: GlobalDesignerWizardState;
   onUpdate: (updates: Partial<GlobalDesignerWizardState>) => void;
-  templateBuilder: ReturnType<typeof useTemplateBuilder>;
+  blockCount: number;
 }
 
 // ─── Summary Section ────────────────────────────────────────────────
@@ -76,17 +76,20 @@ const SummarySection: React.FC<SummarySectionProps> = ({ icon: Icon, title, item
 
 // ─── Component ──────────────────────────────────────────────────────
 
-const ReviewPublishStep: React.FC<ReviewPublishStepProps> = ({ state, onUpdate, templateBuilder }) => {
+const ReviewPublishStep: React.FC<ReviewPublishStepProps> = ({ state, onUpdate, blockCount }) => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
 
-  const { template } = templateBuilder;
-  const blockCount = template.blocks.length;
   const cd = state.contractDetails;
 
   // Resolve compliance tag labels
   const complianceLabels = state.complianceTags
     .map((id) => COMPLIANCE_TAG_OPTIONS.find((t) => t.id === id)?.label || id)
+    .join(', ');
+
+  // Resolve industry names
+  const industryNames = state.targetIndustries
+    .map((id) => INDUSTRIES_LIST.find((i) => i.id === id)?.name || id)
     .join(', ');
 
   // Duration display
@@ -194,6 +197,7 @@ const ReviewPublishStep: React.FC<ReviewPublishStepProps> = ({ state, onUpdate, 
             colors={colors}
             items={[
               { label: 'Name', value: cd.contractName || '—' },
+              { label: 'Industries', value: industryNames || 'All industries' },
               { label: 'Currency', value: cd.currency || 'Not set' },
               { label: 'Duration', value: durationDisplay },
               { label: 'Grace period', value: graceDisplay },
