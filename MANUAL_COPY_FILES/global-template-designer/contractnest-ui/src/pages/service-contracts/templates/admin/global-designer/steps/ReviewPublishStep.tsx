@@ -1,26 +1,27 @@
 // src/pages/service-contracts/templates/admin/global-designer/steps/ReviewPublishStep.tsx
 // Step 6: Summary, template preview card, publish settings
+// Updated to reflect nomenclature + contract details state structure
 
 import React from 'react';
 import {
   FileText,
-  Wrench,
-  Building2,
+  ClipboardList,
   LayoutGrid,
   CreditCard,
   Shield,
-  Rocket,
   Check,
   AlertCircle,
   Globe,
   Star,
   Eye,
+  Calendar,
+  Clock,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
-import { industries } from '@/utils/constants/industries';
 import type { GlobalDesignerWizardState } from '../types';
 import { COMPLIANCE_TAG_OPTIONS } from '../types';
 import useTemplateBuilder from '@/hooks/service-contracts/templates/useTemplateBuilder';
+import { getDurationLabel } from '@/utils/constants/contracts';
 
 // ─── Props ──────────────────────────────────────────────────────────
 
@@ -83,22 +84,26 @@ const ReviewPublishStep: React.FC<ReviewPublishStepProps> = ({ state, onUpdate, 
 
   const { template } = templateBuilder;
   const blockCount = template.blocks.length;
-
-  // Resolve industry names
-  const industryNames = state.targetIndustries
-    .map((id) => industries.find((i) => i.id === id)?.name || id)
-    .join(', ');
+  const cd = state.contractDetails;
 
   // Resolve compliance tag labels
   const complianceLabels = state.complianceTags
     .map((id) => COMPLIANCE_TAG_OPTIONS.find((t) => t.id === id)?.label || id)
     .join(', ');
 
+  // Duration display
+  const durationDisplay = cd.durationValue > 0
+    ? getDurationLabel(cd.durationValue, cd.durationUnit)
+    : 'Not set';
+
+  const graceDisplay = cd.gracePeriodValue > 0
+    ? getDurationLabel(cd.gracePeriodValue, cd.gracePeriodUnit)
+    : 'None';
+
   // Validation checks
   const issues: string[] = [];
-  if (!state.templateName.trim()) issues.push('Template name is required');
-  if (!state.templateDescription.trim()) issues.push('Template description is required');
-  if (blockCount === 0) issues.push('At least one block must be added');
+  if (!cd.contractName.trim()) issues.push('Contract/template name is required');
+  if (blockCount === 0) issues.push('At least one block should be added (can save as draft)');
 
   const isReady = issues.length === 0;
 
@@ -137,23 +142,23 @@ const ReviewPublishStep: React.FC<ReviewPublishStepProps> = ({ state, onUpdate, 
               </div>
               <div>
                 <h3 className="text-base font-bold" style={{ color: colors.utility.primaryText }}>
-                  {state.templateName || 'Untitled Template'}
+                  {cd.contractName || 'Untitled Template'}
                 </h3>
                 <p className="text-xs" style={{ color: colors.utility.secondaryText }}>
-                  Global Template — {state.contractType === 'service' ? 'Service Contract' : 'Partnership Agreement'}
+                  Global Template
+                  {state.nomenclatureDisplayName && ` — ${state.nomenclatureDisplayName}`}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span
-                className="text-[10px] px-2.5 py-1 rounded-full font-semibold uppercase tracking-wider"
-                style={{
-                  backgroundColor: state.complexity === 'simple' ? '#10B98120' : state.complexity === 'complex' ? '#EF444420' : '#F59E0B20',
-                  color: state.complexity === 'simple' ? '#10B981' : state.complexity === 'complex' ? '#EF4444' : '#F59E0B',
-                }}
-              >
-                {state.complexity}
-              </span>
+              {state.nomenclatureGroup && (
+                <span
+                  className="text-[10px] px-2.5 py-1 rounded-full font-semibold"
+                  style={{ backgroundColor: `${colors.brand.primary}12`, color: colors.brand.primary }}
+                >
+                  {state.nomenclatureGroup.replace(/_/g, ' ')}
+                </span>
+              )}
               <span
                 className="text-[10px] px-2.5 py-1 rounded-full font-semibold"
                 style={{ backgroundColor: `${colors.brand.primary}12`, color: colors.brand.primary }}
@@ -162,24 +167,13 @@ const ReviewPublishStep: React.FC<ReviewPublishStepProps> = ({ state, onUpdate, 
               </span>
             </div>
           </div>
-          {state.templateDescription && (
+          {cd.description && (
             <div className="px-6 py-3" style={{ backgroundColor: colors.utility.secondaryBackground }}>
-              <p className="text-xs leading-relaxed" style={{ color: colors.utility.secondaryText }}>
-                {state.templateDescription}
-              </p>
-            </div>
-          )}
-          {state.tags.length > 0 && (
-            <div className="px-6 py-2 flex flex-wrap gap-1.5" style={{ backgroundColor: colors.utility.secondaryBackground }}>
-              {state.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="text-[10px] px-2 py-0.5 rounded-full"
-                  style={{ backgroundColor: `${colors.utility.primaryText}06`, color: colors.utility.secondaryText }}
-                >
-                  {tag}
-                </span>
-              ))}
+              <p
+                className="text-xs leading-relaxed"
+                style={{ color: colors.utility.secondaryText }}
+                dangerouslySetInnerHTML={{ __html: cd.description }}
+              />
             </div>
           )}
         </div>
@@ -188,25 +182,24 @@ const ReviewPublishStep: React.FC<ReviewPublishStepProps> = ({ state, onUpdate, 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <SummarySection
             icon={FileText}
-            title="Identity"
+            title="Nomenclature"
             colors={colors}
             items={[
-              { label: 'Name', value: state.templateName || '—' },
-              { label: 'Industries', value: industryNames || 'All industries' },
-              { label: 'Nomenclatures', value: state.nomenclatureNames.join(', ') || 'Any type' },
-              { label: 'Duration', value: state.estimatedDuration },
+              { label: 'Contract type', value: state.nomenclatureDisplayName || 'Not selected (any type)' },
+              { label: 'Group', value: state.nomenclatureGroup?.replace(/_/g, ' ') || 'Not set' },
             ]}
           />
 
           <SummarySection
-            icon={state.isEquipmentBased ? Wrench : Building2}
-            title="Equipment & Coverage"
+            icon={ClipboardList}
+            title="Contract Details"
             colors={colors}
             items={[
-              { label: 'Equipment-based', value: state.isEquipmentBased ? 'Yes' : 'No' },
-              { label: 'Entity-based', value: state.isEntityBased ? 'Yes' : 'No' },
-              { label: 'Coverage types', value: state.defaultCoverageNames.join(', ') || 'None' },
-              { label: 'Buyer can add', value: state.allowBuyerEquipment ? 'Yes' : 'No' },
+              { label: 'Name', value: cd.contractName || '—' },
+              { label: 'Status', value: cd.status || 'draft' },
+              { label: 'Currency', value: cd.currency || 'Not set' },
+              { label: 'Duration', value: durationDisplay },
+              { label: 'Grace period', value: graceDisplay },
             ]}
           />
 

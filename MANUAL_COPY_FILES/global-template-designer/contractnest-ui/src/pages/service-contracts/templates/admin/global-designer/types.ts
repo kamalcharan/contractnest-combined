@@ -4,27 +4,18 @@
 import type { AcceptanceMethod } from '@/components/contracts/ContractWizard/steps/AcceptanceMethodStep';
 import type { BillingCycleType } from '@/components/contracts/ContractWizard/steps/BillingCycleStep';
 import type { EvidencePolicyType, SelectedForm } from '@/components/contracts/ContractWizard/steps/EvidencePolicyStep';
+import type { ContractDetailsData } from '@/components/contracts/ContractWizard/steps/ContractDetailsStep';
 
 // ─── Wizard State ───────────────────────────────────────────────────
 
 export interface GlobalDesignerWizardState {
-  // Step 1: Template Identity
-  templateName: string;
-  templateDescription: string;
-  targetIndustries: string[];          // Multi-select — admin targets multiple industries
-  nomenclatureIds: string[];           // Compatible nomenclature types (AMC, CMC, SLA, etc.)
-  nomenclatureNames: string[];         // Display names for selected nomenclatures
-  contractType: 'service' | 'partnership';
-  complexity: 'simple' | 'medium' | 'complex';
-  tags: string[];
-  estimatedDuration: string;           // e.g., "12 months"
+  // Step 1: Nomenclature (reuses NomenclatureStep from contract wizard)
+  nomenclatureId: string | null;          // Selected nomenclature ID
+  nomenclatureDisplayName: string | null; // Display name (e.g., "AMC")
+  nomenclatureGroup: string | null;       // Group key (equipment_maintenance, facility_property, etc.)
 
-  // Step 2: Equipment & Coverage Defaults
-  isEquipmentBased: boolean;
-  isEntityBased: boolean;
-  defaultCoverageTypes: string[];      // Resource type IDs
-  defaultCoverageNames: string[];      // Resource type display names
-  allowBuyerEquipment: boolean;        // Default: allow buyer to add equipment
+  // Step 2: Contract Details (reuses ContractDetailsStep from contract wizard)
+  contractDetails: ContractDetailsData;
 
   // Step 3: Block Assembly — managed by useTemplateBuilder hook (external)
 
@@ -53,25 +44,25 @@ export interface WizardStep {
   subtitle: string;
   icon: string;                        // Lucide icon name
   isOptional: boolean;
-  isConditional?: boolean;             // e.g., Equipment step only if equipment-based
+  isConditional?: boolean;
 }
 
 export const WIZARD_STEPS: WizardStep[] = [
   {
     id: 0,
-    key: 'identity',
-    title: 'Template Identity',
-    subtitle: 'Name, industries & contract type',
+    key: 'nomenclature',
+    title: 'Contract Type',
+    subtitle: 'Select nomenclature (AMC, CMC, SLA, etc.)',
     icon: 'FileText',
-    isOptional: false,
+    isOptional: true,
   },
   {
     id: 1,
-    key: 'equipment',
-    title: 'Equipment & Coverage',
-    subtitle: 'Default equipment & coverage settings',
-    icon: 'Wrench',
-    isOptional: true,
+    key: 'details',
+    title: 'Contract Details',
+    subtitle: 'Name, description, duration & timeline',
+    icon: 'ClipboardList',
+    isOptional: false,
   },
   {
     id: 2,
@@ -110,39 +101,43 @@ export const WIZARD_STEPS: WizardStep[] = [
 // ─── Default State ──────────────────────────────────────────────────
 
 export const INITIAL_WIZARD_STATE: GlobalDesignerWizardState = {
-  // Step 1
-  templateName: '',
-  templateDescription: '',
-  targetIndustries: [],
-  nomenclatureIds: [],
-  nomenclatureNames: [],
-  contractType: 'service',
-  complexity: 'medium',
-  tags: [],
-  estimatedDuration: '12 months',
+  // Step 1: Nomenclature
+  nomenclatureId: null,
+  nomenclatureDisplayName: null,
+  nomenclatureGroup: null,
 
-  // Step 2
-  isEquipmentBased: false,
-  isEntityBased: false,
-  defaultCoverageTypes: [],
-  defaultCoverageNames: [],
-  allowBuyerEquipment: true,
+  // Step 2: Contract Details
+  contractDetails: {
+    contractName: '',
+    status: 'draft',
+    currency: '',
+    description: '',
+    startDate: new Date(),
+    durationValue: 12,
+    durationUnit: 'months',
+    gracePeriodValue: 0,
+    gracePeriodUnit: 'days',
+  },
 
-  // Step 4
+  // Step 4: Billing
   defaultBillingCycleType: null,
   defaultPaymentMode: null,
   defaultPaymentTermsDays: 30,
   defaultTaxApproach: 'exclusive',
 
-  // Step 5
+  // Step 5: Policies
   defaultEvidencePolicy: 'none',
   defaultEvidenceForms: [],
   defaultAcceptanceMethod: null,
   complianceTags: [],
 
-  // Step 6
+  // Step 6: Publish
   publishStatus: 'draft',
 };
+
+// ─── Nomenclature group constants (determines equipment vs facility) ─
+
+export const ASSET_STEP_GROUPS = new Set(['equipment_maintenance', 'facility_property']);
 
 // ─── Common Compliance Tags ─────────────────────────────────────────
 

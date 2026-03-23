@@ -1,6 +1,8 @@
 // src/pages/service-contracts/templates/admin/global-designer/index.tsx
 // Global Template Designer Wizard — 6-step wizard for admin template creation
-// Wraps existing block designer with context steps (industry, equipment, billing, policies)
+// Step 1: Nomenclature (reused from contract wizard)
+// Step 2: Contract Details (reused from contract wizard)
+// Steps 3-6: Block Assembly, Billing, Policies, Review
 
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -12,7 +14,6 @@ import {
   Save,
   Loader2,
   Shield,
-  AlertCircle,
   type LucideIcon,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -26,12 +27,14 @@ import {
   WIZARD_STEPS,
   INITIAL_WIZARD_STATE,
   type GlobalDesignerWizardState,
-  type WizardStep,
 } from './types';
 
-// Step components
-import TemplateIdentityStep from './steps/TemplateIdentityStep';
-import EquipmentDefaultsStep from './steps/EquipmentDefaultsStep';
+// Step components — Steps 1 & 2 reused from contract wizard
+import NomenclatureStep from '@/components/contracts/ContractWizard/steps/NomenclatureStep';
+import ContractDetailsStep from '@/components/contracts/ContractWizard/steps/ContractDetailsStep';
+import type { ContractDetailsData } from '@/components/contracts/ContractWizard/steps/ContractDetailsStep';
+
+// Step components — Steps 3-6 (global designer specific)
 import BlockAssemblyStep from './steps/BlockAssemblyStep';
 import BillingDefaultsStep from './steps/BillingDefaultsStep';
 import PoliciesStep from './steps/PoliciesStep';
@@ -69,12 +72,36 @@ const GlobalDesignerPage: React.FC = () => {
   const updateWizardState = useCallback((updates: Partial<GlobalDesignerWizardState>) => {
     setWizardState((prev) => ({ ...prev, ...updates }));
 
-    // Sync template name to builder if changed in Step 1
-    if (updates.templateName !== undefined) {
-      templateBuilder.updateTemplate({ templateName: updates.templateName });
+    // Sync template name to builder if contract details changed
+    if (updates.contractDetails?.contractName !== undefined) {
+      templateBuilder.updateTemplate({ templateName: updates.contractDetails.contractName });
     }
-    if (updates.contractType !== undefined) {
-      templateBuilder.updateTemplate({ contractType: updates.contractType });
+  }, [templateBuilder]);
+
+  // ─── Nomenclature handler (Step 1) ────────────────────────────
+  const handleNomenclatureSelect = useCallback((
+    id: string | null,
+    displayName: string | null,
+    group?: string | null
+  ) => {
+    setWizardState((prev) => ({
+      ...prev,
+      nomenclatureId: id,
+      nomenclatureDisplayName: displayName,
+      nomenclatureGroup: group ?? null,
+    }));
+  }, []);
+
+  // ─── Contract details handler (Step 2) ────────────────────────
+  const handleContractDetailsChange = useCallback((updates: Partial<ContractDetailsData>) => {
+    setWizardState((prev) => ({
+      ...prev,
+      contractDetails: { ...prev.contractDetails, ...updates },
+    }));
+
+    // Sync template name to builder
+    if (updates.contractName !== undefined) {
+      templateBuilder.updateTemplate({ templateName: updates.contractName });
     }
   }, [templateBuilder]);
 
@@ -85,11 +112,11 @@ const GlobalDesignerPage: React.FC = () => {
 
   const canProceed = (): boolean => {
     switch (currentStep) {
-      case 0: // Identity — name + description required
-        return wizardState.templateName.trim().length >= 3 && wizardState.templateDescription.trim().length > 0;
-      case 1: // Equipment — always optional
+      case 0: // Nomenclature — optional (can skip)
         return true;
-      case 2: // Blocks — at least something is fine (can be 0 for draft)
+      case 1: // Contract Details — name required
+        return wizardState.contractDetails.contractName.trim().length >= 3;
+      case 2: // Blocks — always valid (can be 0 blocks for draft)
         return true;
       case 3: // Billing — optional
         return true;
@@ -120,7 +147,6 @@ const GlobalDesignerPage: React.FC = () => {
   };
 
   const goToStep = (stepIndex: number) => {
-    // Allow going back to any previous step, or forward if current validates
     if (stepIndex <= currentStep || canProceed()) {
       setCurrentStep(stepIndex);
     }
@@ -132,44 +158,38 @@ const GlobalDesignerPage: React.FC = () => {
       setIsSaving(true);
 
       // Validate minimum requirements
-      if (!wizardState.templateName.trim()) {
-        toast({ variant: 'destructive', title: 'Validation Error', description: 'Template name is required' });
-        setCurrentStep(0);
-        return;
-      }
-      if (!wizardState.templateDescription.trim()) {
-        toast({ variant: 'destructive', title: 'Validation Error', description: 'Template description is required' });
-        setCurrentStep(0);
+      if (!wizardState.contractDetails.contractName.trim()) {
+        toast({ variant: 'destructive', title: 'Validation Error', description: 'Contract/template name is required' });
+        setCurrentStep(1); // Go to Contract Details step
         return;
       }
 
       toast({ title: 'Saving Template', description: 'Please wait while we save your template...' });
 
       analyticsService.trackEvent('global_designer_save_attempted', {
-        templateName: wizardState.templateName,
+        templateName: wizardState.contractDetails.contractName,
         blockCount: templateBuilder.template.blocks.length,
-        industries: wizardState.targetIndustries,
-        nomenclatures: wizardState.nomenclatureIds,
+        nomenclatureId: wizardState.nomenclatureId,
+        nomenclatureGroup: wizardState.nomenclatureGroup,
         publishStatus: wizardState.publishStatus,
       });
 
       // TODO: Wire to actual API mutation (useSaveTemplate)
       const payload = {
-        // Identity
-        name: wizardState.templateName,
-        description: wizardState.templateDescription,
-        targetIndustries: wizardState.targetIndustries,
-        nomenclatureIds: wizardState.nomenclatureIds,
-        contractType: wizardState.contractType,
-        complexity: wizardState.complexity,
-        tags: wizardState.tags,
-        estimatedDuration: wizardState.estimatedDuration,
+        // Nomenclature
+        nomenclatureId: wizardState.nomenclatureId,
+        nomenclatureGroup: wizardState.nomenclatureGroup,
 
-        // Equipment
-        isEquipmentBased: wizardState.isEquipmentBased,
-        isEntityBased: wizardState.isEntityBased,
-        defaultCoverageTypes: wizardState.defaultCoverageTypes,
-        allowBuyerEquipment: wizardState.allowBuyerEquipment,
+        // Contract Details
+        name: wizardState.contractDetails.contractName,
+        description: wizardState.contractDetails.description,
+        status: wizardState.contractDetails.status,
+        currency: wizardState.contractDetails.currency,
+        startDate: wizardState.contractDetails.startDate,
+        durationValue: wizardState.contractDetails.durationValue,
+        durationUnit: wizardState.contractDetails.durationUnit,
+        gracePeriodValue: wizardState.contractDetails.gracePeriodValue,
+        gracePeriodUnit: wizardState.contractDetails.gracePeriodUnit,
 
         // Blocks
         blocks: templateBuilder.template.blocks.map((b) => ({
@@ -193,7 +213,7 @@ const GlobalDesignerPage: React.FC = () => {
         complianceTags: wizardState.complianceTags,
 
         // Publish
-        status: wizardState.publishStatus,
+        publishStatus: wizardState.publishStatus,
         globalTemplate: true,
       };
 
@@ -204,11 +224,11 @@ const GlobalDesignerPage: React.FC = () => {
 
       toast({
         title: 'Template Saved',
-        description: `"${wizardState.templateName}" has been ${wizardState.publishStatus === 'draft' ? 'saved as draft' : 'published'} successfully.`,
+        description: `"${wizardState.contractDetails.contractName}" has been ${wizardState.publishStatus === 'draft' ? 'saved as draft' : 'published'} successfully.`,
       });
 
       analyticsService.trackEvent('global_designer_save_completed', {
-        templateName: wizardState.templateName,
+        templateName: wizardState.contractDetails.contractName,
         publishStatus: wizardState.publishStatus,
       });
 
@@ -226,7 +246,9 @@ const GlobalDesignerPage: React.FC = () => {
 
   // ─── Exit handler ──────────────────────────────────────────────
   const handleExit = () => {
-    const hasChanges = wizardState.templateName.trim() || templateBuilder.template.blocks.length > 0;
+    const hasChanges = wizardState.contractDetails.contractName.trim() ||
+      wizardState.nomenclatureId ||
+      templateBuilder.template.blocks.length > 0;
     if (hasChanges) {
       const confirmed = window.confirm('You have unsaved changes. Are you sure you want to leave?');
       if (!confirmed) return;
@@ -234,13 +256,28 @@ const GlobalDesignerPage: React.FC = () => {
     navigate('/service-contracts/templates/admin/global-templates');
   };
 
+  // ─── Display name for header ─────────────────────────────────
+  const displayName = wizardState.contractDetails.contractName || 'New Global Template';
+
   // ─── Render current step ───────────────────────────────────────
   const renderStep = () => {
     switch (currentStep) {
-      case 0:
-        return <TemplateIdentityStep state={wizardState} onUpdate={updateWizardState} />;
-      case 1:
-        return <EquipmentDefaultsStep state={wizardState} onUpdate={updateWizardState} />;
+      case 0: // Nomenclature — reused from contract wizard
+        return (
+          <NomenclatureStep
+            selectedId={wizardState.nomenclatureId}
+            onSelect={handleNomenclatureSelect}
+          />
+        );
+      case 1: // Contract Details — reused from contract wizard
+        return (
+          <ContractDetailsStep
+            data={wizardState.contractDetails}
+            onChange={handleContractDetailsChange}
+            title="Template Details"
+            subtitle="Define the basic information for your global template"
+          />
+        );
       case 2:
         return <BlockAssemblyStep templateBuilder={templateBuilder} />;
       case 3:
@@ -281,8 +318,16 @@ const GlobalDesignerPage: React.FC = () => {
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4" style={{ color: colors.brand.primary }} />
             <span className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
-              {wizardState.templateName || 'New Global Template'}
+              {displayName}
             </span>
+            {wizardState.nomenclatureDisplayName && (
+              <span
+                className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                style={{ backgroundColor: `${colors.brand.primary}12`, color: colors.brand.primary }}
+              >
+                {wizardState.nomenclatureDisplayName}
+              </span>
+            )}
             <span
               className="text-[10px] px-2 py-0.5 rounded-full font-medium"
               style={{ backgroundColor: `${colors.brand.primary}12`, color: colors.brand.primary }}
