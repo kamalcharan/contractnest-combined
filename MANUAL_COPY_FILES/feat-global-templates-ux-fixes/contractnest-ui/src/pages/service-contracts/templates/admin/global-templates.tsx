@@ -1,6 +1,6 @@
 // src/pages/service-contracts/templates/admin/global-templates.tsx
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import * as LucideIcons from 'lucide-react';
 import {
@@ -17,7 +17,6 @@ import {
   Building2,
   Bot,
   ChevronRight,
-  ChevronDown,
   BarChart3,
   Package,
   FileText,
@@ -180,7 +179,6 @@ const TemplateGalleryPage: React.FC = () => {
   const [selectedResourceType, setSelectedResourceType] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedNomenclature, setSelectedNomenclature] = useState<string>('all');
-  const [expandedNomenclatureGroup, setExpandedNomenclatureGroup] = useState<string | null>(null);
 
   // ── Hooks ──────────────────────────────────────────────────────
   const { selectedTemplate, selectTemplate, clearSelection } = useTemplateSelection();
@@ -242,6 +240,14 @@ const TemplateGalleryPage: React.FC = () => {
 
   const stats = coverage?.summary ?? null;
   const industries: IndustryCoverage[] = coverage?.industries || [];
+
+  // Flat list of all nomenclature items across groups (for horizontal pills)
+  const allNomenclatureItems = useMemo(() => {
+    if (!nomenclatureGroups) return [];
+    return nomenclatureGroups.flatMap((group) =>
+      group.items.map((item) => ({ ...item, groupLabel: group.label }))
+    );
+  }, [nomenclatureGroups]);
 
   // Categories for selected industry (mock data until API)
   const currentCategories = useMemo(
@@ -601,84 +607,6 @@ const TemplateGalleryPage: React.FC = () => {
             {/* Divider */}
             <div className="border-t mx-3" style={{ borderColor }} />
 
-            {/* Nomenclature Types */}
-            <div className="p-3">
-              <div
-                className="text-[10px] font-semibold uppercase tracking-wider mb-2 px-2"
-                style={{ color: colors.utility.secondaryText }}
-              >
-                Nomenclature
-              </div>
-              <div className="space-y-0.5">
-                <button
-                  onClick={() => setSelectedNomenclature('all')}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-left text-xs transition-all"
-                  style={{
-                    backgroundColor: selectedNomenclature === 'all' ? activeBg : 'transparent',
-                    color: selectedNomenclature === 'all' ? activeColor : colors.utility.secondaryText,
-                  }}
-                >
-                  <FileText size={14} />
-                  All Types
-                </button>
-                {nomenclatureLoading ? (
-                  [...Array(3)].map((_, i) => (
-                    <div key={i} className="animate-pulse flex items-center gap-2 px-3 py-1.5">
-                      <div className="w-4 h-4 rounded" style={{ backgroundColor: borderColor }} />
-                      <div className="h-3 rounded flex-1" style={{ backgroundColor: borderColor }} />
-                    </div>
-                  ))
-                ) : (
-                  <div className="max-h-[240px] overflow-y-auto space-y-0.5 pr-1">
-                    {(nomenclatureGroups || []).map((group) => {
-                      const isGroupExpanded = expandedNomenclatureGroup === group.group;
-                      return (
-                        <div key={group.group}>
-                          <button
-                            onClick={() => setExpandedNomenclatureGroup(isGroupExpanded ? null : group.group)}
-                            className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-left text-xs transition-all font-medium"
-                            style={{ color: colors.utility.secondaryText }}
-                          >
-                            {getLucideIcon(group.icon, 14, colors.utility.secondaryText)}
-                            <span className="flex-1 truncate">{group.label}</span>
-                            <ChevronDown
-                              size={12}
-                              className="transition-transform"
-                              style={{ transform: isGroupExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
-                            />
-                          </button>
-                          {isGroupExpanded && group.items.map((item) => {
-                            const isActive = selectedNomenclature === item.id;
-                            return (
-                              <button
-                                key={item.id}
-                                onClick={() => setSelectedNomenclature(item.id)}
-                                className="w-full flex items-center gap-2 pl-7 pr-3 py-1 rounded-lg text-left text-xs transition-all"
-                                style={{
-                                  backgroundColor: isActive ? activeBg : 'transparent',
-                                  color: isActive ? activeColor : colors.utility.secondaryText,
-                                }}
-                              >
-                                <span
-                                  className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                                  style={{ backgroundColor: item.hexcolor || colors.utility.secondaryText }}
-                                />
-                                <span className="truncate">{item.form_settings?.short_name || item.display_name}</span>
-                                <span className="text-[10px] opacity-60 truncate ml-auto">{item.display_name}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Divider */}
-            <div className="border-t mx-3" style={{ borderColor }} />
-
             {/* Resource Types (from DB) */}
             <div className="p-3">
               <div
@@ -830,6 +758,95 @@ const TemplateGalleryPage: React.FC = () => {
                   </span>
                 </div>
               </div>
+
+              {/* Nomenclature Filter Pills */}
+              {(nomenclatureLoading || allNomenclatureItems.length > 0) && (
+                <div className="mt-3 pt-3 border-t" style={{ borderColor }}>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span
+                      className="text-[10px] font-semibold uppercase tracking-wider mr-1 flex-shrink-0"
+                      style={{ color: colors.utility.secondaryText }}
+                    >
+                      Nomenclature:
+                    </span>
+                    {nomenclatureLoading ? (
+                      [...Array(6)].map((_, i) => (
+                        <div
+                          key={i}
+                          className="animate-pulse h-6 rounded-full"
+                          style={{ width: 48 + Math.random() * 24, backgroundColor: borderColor }}
+                        />
+                      ))
+                    ) : (
+                      <>
+                        {/* All pill */}
+                        <button
+                          onClick={() => setSelectedNomenclature('all')}
+                          className="px-2.5 py-1 rounded-full text-xs font-medium transition-all border"
+                          style={{
+                            backgroundColor: selectedNomenclature === 'all'
+                              ? colors.brand.primary + '15'
+                              : 'transparent',
+                            color: selectedNomenclature === 'all'
+                              ? colors.brand.primary
+                              : colors.utility.secondaryText,
+                            borderColor: selectedNomenclature === 'all'
+                              ? colors.brand.primary + '30'
+                              : colors.utility.secondaryText + '20',
+                          }}
+                        >
+                          All
+                        </button>
+                        {/* Group labels + items */}
+                        {(nomenclatureGroups || []).map((group, gIdx) => (
+                          <React.Fragment key={group.group}>
+                            {/* Group separator (subtle pipe) */}
+                            {gIdx > 0 && (
+                              <span
+                                className="text-xs mx-0.5 select-none"
+                                style={{ color: colors.utility.secondaryText + '30' }}
+                              >
+                                |
+                              </span>
+                            )}
+                            {/* Group label */}
+                            <span
+                              className="text-[9px] uppercase tracking-wider font-medium mr-0.5 flex-shrink-0"
+                              style={{ color: colors.utility.secondaryText + '80' }}
+                            >
+                              {group.label.replace(/\s*(Maintenance|Property|Delivery|Hybrid)\s*/i, '').trim() || group.label}:
+                            </span>
+                            {/* Items in this group */}
+                            {group.items.map((item) => {
+                              const isActive = selectedNomenclature === item.id;
+                              const pillColor = item.hexcolor || colors.brand.primary;
+                              return (
+                                <button
+                                  key={item.id}
+                                  onClick={() => setSelectedNomenclature(isActive ? 'all' : item.id)}
+                                  title={`${item.form_settings?.full_name || item.display_name}${item.form_settings?.typical_duration ? ' - ' + item.form_settings.typical_duration : ''}`}
+                                  className="px-2.5 py-1 rounded-full text-xs font-medium transition-all border flex items-center gap-1.5"
+                                  style={{
+                                    backgroundColor: isActive ? pillColor + '18' : 'transparent',
+                                    color: isActive ? pillColor : colors.utility.secondaryText,
+                                    borderColor: isActive ? pillColor + '40' : colors.utility.secondaryText + '20',
+                                  }}
+                                >
+                                  <span
+                                    className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                                    style={{ backgroundColor: pillColor }}
+                                  />
+                                  {item.form_settings?.short_name || item.display_name}
+                                </button>
+                              );
+                            })}
+                          </React.Fragment>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Active filters display */}
               {(selectedIndustry !== 'all' || selectedResourceType !== 'all' || selectedCategory !== 'all' || selectedNomenclature !== 'all') && (

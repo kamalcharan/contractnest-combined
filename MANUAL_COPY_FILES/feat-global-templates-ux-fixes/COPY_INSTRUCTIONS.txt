@@ -10,7 +10,7 @@ Files to Copy:
 ──────────────
 1. contractnest-ui/src/pages/service-contracts/templates/admin/global-templates.tsx
    → Copy to: contractnest-ui/src/pages/service-contracts/templates/admin/global-templates.tsx
-   → Purpose: Replace emoji icons with Lucide, DB resource types, add nomenclature filter
+   → Purpose: Lucide icons, DB resource types, nomenclature horizontal pills
 
 Changes Summary:
 ──────────────
@@ -23,21 +23,12 @@ Changes Summary:
    - Shows loading skeleton while fetching
    - Only shows active resource types
 
-3. NOMENCLATURE: Added new filter section in sidebar
+3. NOMENCLATURE: Moved from sidebar accordion to HORIZONTAL COLORED PILLS
+   - Sits in the search/controls bar area, between search row and active filters
    - Uses useNomenclatureTypes() hook (cat_contract_nomenclature master data)
-   - Grouped accordion: Equipment Maintenance, Facility Property, Service Delivery, Flexible Hybrid
-   - Each item shows colored dot, short code (AMC, CMC), and full name
-   - Collapsible groups via ChevronDown toggle
-   - Filter chip in active filters bar
-
-New Imports Added:
-──────────────
-- import * as LucideIcons from 'lucide-react'
-- import { useResourceTypes, ResourceType as DBResourceType } from '@/hooks/queries/useResources'
-- import { useNomenclatureTypes, NomenclatureGroup } from '@/hooks/queries/useNomenclatureTypes'
-- ChevronDown, Circle, Package from lucide-react (named imports)
-
-Removed Imports:
-──────────────
-- RESOURCE_TYPES from globalTemplateData
-- resolveIndustryIcon from globalTemplateData
+   - All items shown flat as colored pills (no expand/collapse needed)
+   - Grouped visually with subtle labels: Equipment: [AMC] [CAMC] [TEC] | Facility: [FMC] [CMC] | etc.
+   - Each pill: colored dot (hexcolor from DB) + short_name (AMC, CMC)
+   - Hover tooltip shows full_name + typical_duration
+   - Click to select, click again to deselect (toggles back to "All")
+   - Loading skeleton pills while data fetches
