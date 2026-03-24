@@ -1,0 +1,52 @@
+═══════════════════════════════════════════════════
+TEMPLATE V4 FIXES — 11-Point Feedback Resolution
+═══════════════════════════════════════════════════
+Date: 2026-03-24
+Branch: template-v4-fixes
+Submodules Affected: contractnest-ui, contractnest-edge, contractnest-api
+
+═══════════════════════════════════════════════════
+FILE MAPPING (8 files total)
+═══════════════════════════════════════════════════
+
+CONTRACTNEST-UI (5 files):
+1. src/types/service-contracts/template.ts
+   → Added industryTags[], isActive, onSettings prop
+
+2. src/components/service-contracts/templates/TemplateCard.tsx
+   → Multiple industry tags display, blocks count removed, onSettings wired
+
+3. src/components/service-contracts/templates/TemplateSettingsModal.tsx
+   → NEW FILE: Settings modal with activate/deactivate + version history placeholder
+
+4. src/pages/service-contracts/templates/admin/global-templates.tsx
+   → Fixed mapper (version, industryTags, isActive), wired Settings modal
+
+5. src/hooks/queries/useCatTemplates.ts
+   → Added is_latest, parent_template_id to CatTemplate type
+
+CONTRACTNEST-EDGE (2 files):
+6. supabase/functions/cat-templates/index.ts
+   → Copy-on-write versioning, tax_rate null default, is_latest filter
+
+7. supabase/migrations/templates/004_add_versioning_columns.sql
+   → NEW FILE: Migration to add is_latest + parent_template_id columns
+
+CONTRACTNEST-API (1 file):
+8. src/controllers/catalogStudioController.ts
+   → Inject created_by/updated_by from context.userId
+
+═══════════════════════════════════════════════════
+CHANGES DETAIL
+═══════════════════════════════════════════════════
+
+1. VERSION NOW SHOWING: Mapper maps cat.version to template.version
+2. INDUSTRY TAGS MULTIPLE: All industry_tags shown as pills on card (not just first)
+3. TAX_RATE: Default changed from 18.00 to null (optional)
+4. SUBTOTAL/TOTAL: Deferred
+5. BLOCKS COUNT: Removed from card stats row
+6. SORT FILTERS: Working (name=alpha, recent=updatedAt, popular=server order)
+7. CREATED_BY/UPDATED_BY: Now auto-populated from context.userId
+8. SETTINGS MODAL: Activate/deactivate toggle via Settings icon, version history placeholder
+9. COPY-ON-WRITE VERSIONING: Edit creates new row, old row marked legacy (is_latest=false)
+10. MIGRATION REQUIRED: Run 004_add_versioning_columns.sql before deploying edge function
