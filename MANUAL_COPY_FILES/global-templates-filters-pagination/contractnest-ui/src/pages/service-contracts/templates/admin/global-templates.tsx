@@ -97,7 +97,7 @@ function mapCatTemplateToTemplate(cat: CatTemplate): Template {
 
 type ViewType = 'grid' | 'list';
 type SortOption = 'popular' | 'name' | 'recent';
-type StatusFilter = 'all' | 'active' | 'inactive';
+type StatusFilter = 'active' | 'inactive';
 
 // =================================================================
 // STAT CARD COMPONENT
@@ -182,7 +182,7 @@ const TemplateGalleryPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
   const [viewType, setViewType] = useState<ViewType>('grid');
   const [sortBy, setSortBy] = useState<SortOption>('popular');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('active');
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 24;
   const [showHelp, setShowHelp] = useState(false);
@@ -206,9 +206,7 @@ const TemplateGalleryPage: React.FC = () => {
     if (searchTerm.trim()) f.search = searchTerm.trim();
     if (selectedIndustry !== 'all') f.industry = selectedIndustry;
     if (selectedCategory !== 'all') f.category = selectedCategory;
-    if (statusFilter === 'active') f.is_active = true;
-    else if (statusFilter === 'inactive') f.is_active = false;
-    else f.is_active = 'all';
+    f.is_active = statusFilter === 'active';
     return f;
   }, [searchTerm, selectedIndustry, selectedCategory, statusFilter, currentPage]);
 
@@ -815,30 +813,35 @@ const TemplateGalleryPage: React.FC = () => {
                     <option value="recent">Recently Updated</option>
                   </select>
 
-                  {/* Status filter pills */}
-                  <div
-                    className="flex rounded-lg p-0.5"
-                    style={{ backgroundColor: colors.utility.secondaryText + '10' }}
+                  {/* Active / Inactive switch */}
+                  <button
+                    onClick={() => { setStatusFilter(statusFilter === 'active' ? 'inactive' : 'active'); setCurrentPage(1); }}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all"
+                    style={{
+                      borderColor: colors.utility.secondaryText + '30',
+                      backgroundColor: colors.utility.primaryBackground,
+                      color: colors.utility.primaryText,
+                    }}
                   >
-                    {([
-                      { key: 'all' as StatusFilter, label: 'All', icon: null },
-                      { key: 'active' as StatusFilter, label: 'Active', icon: <Eye className="h-3 w-3" /> },
-                      { key: 'inactive' as StatusFilter, label: 'Inactive', icon: <EyeOff className="h-3 w-3" /> },
-                    ]).map((opt) => (
-                      <button
-                        key={opt.key}
-                        onClick={() => { setStatusFilter(opt.key); setCurrentPage(1); }}
-                        className="px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1"
+                    {/* Track */}
+                    <div
+                      className="relative w-8 h-[18px] rounded-full transition-colors"
+                      style={{
+                        backgroundColor: statusFilter === 'active' ? '#10B981' : '#EF4444',
+                      }}
+                    >
+                      {/* Thumb */}
+                      <div
+                        className="absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white shadow-sm transition-all"
                         style={{
-                          backgroundColor: statusFilter === opt.key ? colors.utility.primaryBackground : 'transparent',
-                          color: statusFilter === opt.key ? colors.utility.primaryText : colors.utility.secondaryText,
+                          left: statusFilter === 'active' ? 'calc(100% - 16px)' : '2px',
                         }}
-                      >
-                        {opt.icon}
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
+                      />
+                    </div>
+                    <span className="text-xs font-medium" style={{ color: statusFilter === 'active' ? '#10B981' : '#EF4444' }}>
+                      {statusFilter === 'active' ? 'Active' : 'Inactive'}
+                    </span>
+                  </button>
 
                   <div
                     className="flex rounded-lg p-0.5"
@@ -962,7 +965,7 @@ const TemplateGalleryPage: React.FC = () => {
               )}
 
               {/* Active filters display */}
-              {(selectedIndustry !== 'all' || selectedResourceType !== 'all' || selectedCategory !== 'all' || selectedNomenclature !== 'all' || statusFilter !== 'all') && (
+              {(selectedIndustry !== 'all' || selectedResourceType !== 'all' || selectedCategory !== 'all' || selectedNomenclature !== 'all' || statusFilter === 'inactive') && (
                 <div
                   className="flex items-center gap-2 flex-wrap mt-3 pt-3 border-t"
                   style={{ borderColor }}
@@ -970,18 +973,18 @@ const TemplateGalleryPage: React.FC = () => {
                   <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
                     Active filters:
                   </span>
-                  {statusFilter !== 'all' && (
+                  {statusFilter === 'inactive' && (
                     <span
                       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border"
                       style={{
-                        backgroundColor: (statusFilter === 'active' ? '#10B981' : '#EF4444') + '15',
-                        color: statusFilter === 'active' ? '#10B981' : '#EF4444',
-                        borderColor: (statusFilter === 'active' ? '#10B981' : '#EF4444') + '30',
+                        backgroundColor: '#EF444415',
+                        color: '#EF4444',
+                        borderColor: '#EF444430',
                       }}
                     >
-                      {statusFilter === 'active' ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
-                      {statusFilter === 'active' ? 'Active' : 'Inactive'}
-                      <button onClick={() => setStatusFilter('all')}>
+                      <EyeOff className="h-3 w-3" />
+                      Inactive
+                      <button onClick={() => { setStatusFilter('active'); setCurrentPage(1); }}>
                         <X className="h-3 w-3" />
                       </button>
                     </span>
@@ -1055,7 +1058,7 @@ const TemplateGalleryPage: React.FC = () => {
                       handleIndustrySelect('all');
                       setSelectedResourceType('all');
                       setSelectedNomenclature('all');
-                      setStatusFilter('all');
+                      setStatusFilter('active');
                       setCurrentPage(1);
                     }}
                     className="text-xs hover:opacity-80"
@@ -1116,12 +1119,12 @@ const TemplateGalleryPage: React.FC = () => {
                         : 'No global templates are currently available.'
                       }
                     </p>
-                    {(selectedIndustry !== 'all' || searchTerm || statusFilter !== 'all') && (
+                    {(selectedIndustry !== 'all' || searchTerm || statusFilter === 'inactive') && (
                       <button
                         onClick={() => {
                           setSearchTerm('');
                           handleIndustrySelect('all');
-                          setStatusFilter('all');
+                          setStatusFilter('active');
                           setCurrentPage(1);
                         }}
                         className="text-sm hover:opacity-80"
