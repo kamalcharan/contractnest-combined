@@ -1,0 +1,43 @@
+═══════════════════════════════════════════════════
+CARD REDESIGN V2 — Full Actions + Industry + Equipment/Facility + Tenant Background
+═══════════════════════════════════════════════════
+
+Branch: card-redesign-v2
+Date: 2026-03-24
+Submodules Affected: contractnest-ui
+
+═══════════════════════════════════════════════════
+FILE MAPPING
+═══════════════════════════════════════════════════
+
+1. card-redesign-v2/contractnest-ui/src/components/service-contracts/templates/TemplateCard.tsx
+   → contractnest-ui/src/components/service-contracts/templates/TemplateCard.tsx
+
+2. card-redesign-v2/contractnest-ui/src/types/service-contracts/template.ts
+   → contractnest-ui/src/types/service-contracts/template.ts
+
+═══════════════════════════════════════════════════
+COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════
+
+Copy-Item "MANUAL_COPY_FILES\card-redesign-v2\contractnest-ui\src\components\service-contracts\templates\TemplateCard.tsx" -Destination "contractnest-ui\src\components\service-contracts\templates\TemplateCard.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\card-redesign-v2\contractnest-ui\src\types\service-contracts\template.ts" -Destination "contractnest-ui\src\types\service-contracts\template.ts" -Force
+
+═══════════════════════════════════════════════════
+WHAT CHANGED
+═══════════════════════════════════════════════════
+
+TEMPLATE TYPE (template.ts):
+  - Added isEquipmentBased?: boolean
+  - Added isFacilityBased?: boolean
+
+TEMPLATE CARD (TemplateCard.tsx):
+  1. BACKGROUND: secondaryBackground card bg + tenantPrimary gradient header (matching catalog-studio)
+  2. INDUSTRY: Shows industry icon (mapped from industries.ts) + industry name pill in header
+  3. EQUIPMENT/FACILITY: Badges with tooltips (Wrench icon for equipment, Building2 for facility)
+  4. 5 ACTION ICONS WITH TOOLTIPS: Preview (Eye), Duplicate (Copy), Edit (Edit), Smart Form (FileText), Settings (Settings)
+  5. CTA BUTTON: "Use Template" / "Create Contract" / "Selected" based on context
+  6. 3-DOT OVERFLOW: Duplicate + Delete (admin only)
+  7. TAGS: Shows up to 3 tags as pills
+  8. POPULAR BADGE: TrendingUp icon when isPopular is true
+  9. TENANT BRANDING: Uses useTenantProfile() for primary_color, withOpacity helper
