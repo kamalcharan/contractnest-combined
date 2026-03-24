@@ -1,0 +1,43 @@
+═══════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS — feat-global-designer-edit-mode
+═══════════════════════════════════════════════════════════════
+
+Feature: Add edit mode to Global Template Designer
+Branch: feat/global-designer-edit-mode
+Submodules Affected: contractnest-ui ONLY
+
+═══════════════════════════════════════════════════════════════
+FILES TO COPY (4 files)
+═══════════════════════════════════════════════════════════════
+
+1. contractnest-ui/src/types/service-contracts/template.ts
+   → Added onEdit callback to TemplateCardProps interface
+
+2. contractnest-ui/src/components/service-contracts/templates/TemplateCard.tsx
+   → Wired edit action to call onEdit callback (replaced TODO stub)
+
+3. contractnest-ui/src/pages/service-contracts/templates/admin/global-designer/index.tsx
+   → Full edit mode: reads ?templateId= from URL, fetches template via useCatTemplate,
+     populates all 8 wizard steps, uses useUpdateCatTemplate on save,
+     shows loading spinner while fetching, displays "Editing" badge + "Update Template" button
+
+4. contractnest-ui/src/pages/service-contracts/templates/admin/global-templates.tsx
+   → Changed card context from marketplace/user to management/admin with canEdit: true
+   → Added handleTemplateEdit handler navigating to global-designer?templateId=<id>
+   → Passed onEdit prop to TemplateCard
+
+═══════════════════════════════════════════════════════════════
+POWERSHELL COPY COMMANDS
+═══════════════════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\feat-global-designer-edit-mode\contractnest-ui\src\types\service-contracts\template.ts" -Destination "contractnest-ui\src\types\service-contracts\template.ts" -Force
+
+Copy-Item "MANUAL_COPY_FILES\feat-global-designer-edit-mode\contractnest-ui\src\components\service-contracts\templates\TemplateCard.tsx" -Destination "contractnest-ui\src\components\service-contracts\templates\TemplateCard.tsx" -Force
+
+Copy-Item "MANUAL_COPY_FILES\feat-global-designer-edit-mode\contractnest-ui\src\pages\service-contracts\templates\admin\global-designer\index.tsx" -Destination "contractnest-ui\src\pages\service-contracts\templates\admin\global-designer\index.tsx" -Force
+
+Copy-Item "MANUAL_COPY_FILES\feat-global-designer-edit-mode\contractnest-ui\src\pages\service-contracts\templates\admin\global-templates.tsx" -Destination "contractnest-ui\src\pages\service-contracts\templates\admin\global-templates.tsx" -Force
+
+Write-Host "✅ All 4 files copied!" -ForegroundColor Green
