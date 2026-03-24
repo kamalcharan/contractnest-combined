@@ -19,6 +19,10 @@ import type { DraftSaveStatus } from '@/components/contracts/ContractWizard/Floa
 // ConfigurableBlock type for service blocks
 import type { ConfigurableBlock } from '@/components/catalog-studio';
 
+// CRUD mutation hook
+import { useCreateCatTemplate } from '@/hooks/mutations/useCatTemplatesMutations';
+import type { CreateTemplateData } from '@/hooks/mutations/useCatTemplatesMutations';
+
 // Wizard types & steps
 import {
   WIZARD_STEPS,
@@ -48,6 +52,9 @@ const GlobalDesignerPage: React.FC = () => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
   const { toast } = useToast();
+
+  // CRUD mutation
+  const createTemplateMutation = useCreateCatTemplate();
 
   // Wizard state
   const [currentStep, setCurrentStep] = useState(0);
@@ -132,7 +139,7 @@ const GlobalDesignerPage: React.FC = () => {
     }
   };
 
-  // ─── Save handler ──────────────────────────────────────────────
+  // ─── Save handler (CRUD-wired via useCreateCatTemplate) ─────
   const handleSave = async () => {
     try {
       setIsSaving(true);
@@ -143,8 +150,6 @@ const GlobalDesignerPage: React.FC = () => {
         return;
       }
 
-      toast({ title: 'Saving Template', description: 'Please wait while we save your template...' });
-
       analyticsService.trackEvent('global_designer_save_attempted', {
         templateName: wizardState.contractDetails.contractName,
         blockCount: selectedBlocks.length,
@@ -153,41 +158,37 @@ const GlobalDesignerPage: React.FC = () => {
         publishStatus: wizardState.publishStatus,
       });
 
-      // TODO: Wire to actual API mutation
-      const payload = {
+      // Map selectedBlocks → TemplateBlock[] for m_cat_templates.blocks column
+      const templateBlocks = selectedBlocks.map((b, index) => ({
+        block_id: b.id,
+        order: index + 1,
+        config_overrides: {
+          quantity: b.quantity,
+          billingCycle: b.billingCycle,
+          unitPrice: b.unitPrice,
+          isUnlimited: b.isUnlimited,
+        },
+      }));
+
+      // Build settings JSONB (all wizard fields that don't have a dedicated column)
+      const templateSettings: Record<string, any> = {
         // Nomenclature
         nomenclatureId: wizardState.nomenclatureId,
         nomenclatureGroup: wizardState.nomenclatureGroup,
+        nomenclatureDisplayName: wizardState.nomenclatureDisplayName,
 
-        // Template Details
-        name: wizardState.contractDetails.contractName,
-        description: wizardState.contractDetails.description,
-        currency: wizardState.contractDetails.currency,
+        // Duration & timeline
         startDate: wizardState.contractDetails.startDate,
         durationValue: wizardState.contractDetails.durationValue,
         durationUnit: wizardState.contractDetails.durationUnit,
         gracePeriodValue: wizardState.contractDetails.gracePeriodValue,
         gracePeriodUnit: wizardState.contractDetails.gracePeriodUnit,
 
-        // Industries
-        targetIndustries: wizardState.targetIndustries,
-
-        // Equipment / Facility Names
+        // Equipment / Facility selections
         selectedAssetTypeIds: wizardState.selectedAssetTypeIds,
         selectedAssetTypeNames: wizardState.selectedAssetTypeNames,
 
-        // Service Blocks (from catalog)
-        blocks: selectedBlocks.map((b) => ({
-          id: b.id,
-          name: b.name,
-          category_id: b.category_id,
-          quantity: b.quantity,
-          billingCycle: b.billingCycle,
-          unitPrice: b.unitPrice,
-          isUnlimited: b.isUnlimited,
-        })),
-
-        // Billing
+        // Billing defaults
         defaultBillingCycleType: wizardState.defaultBillingCycleType,
         defaultPaymentMode: wizardState.defaultPaymentMode,
         defaultPaymentTermsDays: wizardState.defaultPaymentTermsDays,
@@ -195,27 +196,41 @@ const GlobalDesignerPage: React.FC = () => {
 
         // Policies
         defaultEvidencePolicy: wizardState.defaultEvidencePolicy,
+        defaultEvidenceForms: wizardState.defaultEvidenceForms,
         defaultAcceptanceMethod: wizardState.defaultAcceptanceMethod,
         complianceTags: wizardState.complianceTags,
-
-        // Publish
-        publishStatus: wizardState.publishStatus,
-        globalTemplate: true,
       };
 
-      console.log('Saving global template:', payload);
+      // Resolve publish status
+      const isPublic = wizardState.publishStatus === 'active' || wizardState.publishStatus === 'featured';
 
-      // Simulate save delay
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      // Build CreateTemplateData payload (maps to m_cat_templates columns)
+      const payload: CreateTemplateData = {
+        name: wizardState.contractDetails.contractName,
+        display_name: wizardState.contractDetails.contractName,
+        description: wizardState.contractDetails.description || undefined,
+        blocks: templateBlocks,
+        currency: wizardState.contractDetails.currency || 'INR',
+        is_system: true,           // Global admin template
+        is_public: isPublic,
+        industry_tags: wizardState.targetIndustries,
+        category: wizardState.nomenclatureGroup || undefined,
+        tags: [
+          wizardState.nomenclatureDisplayName,
+          wizardState.publishStatus,
+          ...wizardState.complianceTags,
+        ].filter(Boolean) as string[],
+        settings: templateSettings,
+      };
 
-      toast({
-        title: 'Template Saved',
-        description: `"${wizardState.contractDetails.contractName}" has been ${wizardState.publishStatus === 'draft' ? 'saved as draft' : 'published'} successfully.`,
-      });
+      const result = await createTemplateMutation.mutateAsync(payload);
 
       analyticsService.trackEvent('global_designer_save_completed', {
+        templateId: result.data?.id,
         templateName: wizardState.contractDetails.contractName,
         publishStatus: wizardState.publishStatus,
+        blockCount: selectedBlocks.length,
+        industryCount: wizardState.targetIndustries.length,
       });
 
       navigate('/service-contracts/templates/admin/global-templates');
@@ -223,7 +238,7 @@ const GlobalDesignerPage: React.FC = () => {
       captureException(error, {
         tags: { component: 'GlobalDesignerPage', action: 'save_template' },
       });
-      toast({ variant: 'destructive', title: 'Save Failed', description: 'Failed to save template. Please try again.' });
+      // Toast is handled by the mutation hook's onError
     } finally {
       setIsSaving(false);
     }
