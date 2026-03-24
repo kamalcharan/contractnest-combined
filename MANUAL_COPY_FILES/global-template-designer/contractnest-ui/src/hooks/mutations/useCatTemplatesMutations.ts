@@ -78,6 +78,13 @@ export interface MutationResponse<T = any> {
 // =================================================================
 
 /**
+ * Generate a unique idempotency key for safe mutation retries
+ */
+const generateIdempotencyKey = (prefix: string = 'tpl'): string => {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+};
+
+/**
  * Handle mutation errors and show appropriate messages
  */
 const handleMutationError = (error: any, operation: string) => {
@@ -119,8 +126,13 @@ export const useCreateCatTemplate = () => {
 
       const response = await api.post(
         API_ENDPOINTS.CATALOG_STUDIO.TEMPLATES.CREATE,
-        templateData
-        
+        templateData,
+        {
+          headers: {
+            'x-idempotency-key': generateIdempotencyKey('create'),
+            'x-is-admin': String(isAdmin || false),
+          },
+        }
       );
 
       if (!response.data?.success) {
@@ -172,6 +184,7 @@ export const useUpdateCatTemplate = () => {
         data,
         {
           headers: {
+            'x-idempotency-key': generateIdempotencyKey('update'),
             'x-is-admin': String(isAdmin || false),
           },
         }
@@ -227,6 +240,7 @@ export const useDeleteCatTemplate = () => {
         API_ENDPOINTS.CATALOG_STUDIO.TEMPLATES.DELETE(templateId),
         {
           headers: {
+            'x-idempotency-key': generateIdempotencyKey('delete'),
             'x-is-admin': String(isAdmin || false),
           },
         }
@@ -283,6 +297,7 @@ export const useCopyCatTemplate = () => {
         data || {},
         {
           headers: {
+            'x-idempotency-key': generateIdempotencyKey('copy'),
             'x-is-admin': String(isAdmin || false),
           },
         }
