@@ -1,0 +1,34 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS: rename-m-to-t-cat-templates
+═══════════════════════════════════════════════════
+
+Submodules Affected: contractnest-edge, contractnest-ui
+
+FILES TO COPY:
+──────────────
+
+1. contractnest-edge/supabase/functions/cat-templates/index.ts
+   → Edge function: all .from('m_cat_templates') → .from('t_cat_templates') (13 refs)
+
+2. contractnest-edge/supabase/migrations/global-templates/000_rename_cat_tables.sql
+   → Updated to rename cat_templates → t_cat_templates directly (for fresh setups)
+
+3. contractnest-edge/supabase/migrations/templates/001_template_crud_rpc_functions.sql
+   → RPC functions: all m_cat_templates → t_cat_templates (11 refs)
+
+4. contractnest-edge/supabase/migrations/templates/003_copy_template_rpc.sql
+   → Copy RPC: all m_cat_templates → t_cat_templates (5 refs)
+
+5. contractnest-edge/supabase/migrations/templates/004_add_versioning_columns.sql
+   → Versioning migration: all m_cat_templates → t_cat_templates (10 refs)
+
+6. contractnest-edge/supabase/migrations/templates/005_rename_m_cat_templates_to_t.sql
+   → NEW FILE: Migration to rename m_cat_templates → t_cat_templates (for existing DBs)
+
+7. contractnest-ui/src/pages/service-contracts/templates/admin/global-designer/index.tsx
+   → Comment update: m_cat_templates → t_cat_templates (1 ref)
+
+WHAT CHANGED:
+──────────────
+1) Table renamed: m_cat_templates → t_cat_templates (transactional, not master data)
+2) is_system: Already route-driven (no code change needed - global-designer sends is_system:true, other routes don't)
