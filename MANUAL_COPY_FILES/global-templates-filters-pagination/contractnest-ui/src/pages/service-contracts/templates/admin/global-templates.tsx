@@ -34,6 +34,7 @@ import { useToast } from '@/components/ui/use-toast';
 // Components and hooks
 import TemplateCard from '@/components/service-contracts/templates/TemplateCard';
 import TemplateSettingsModal from '@/components/service-contracts/templates/TemplateSettingsModal';
+import UnifiedLoader from '@/components/common/loaders/UnifiedLoader';
 import { useTemplateSelection } from '../../../../hooks/service-contracts/templates/useTemplates.ts';
 import { Template, TemplateCardContext } from '../../../../types/service-contracts/template.ts';
 // Note: TEMPLATE_COMPLEXITY_LABELS, CONTRACT_TYPE_LABELS available from
@@ -370,35 +371,7 @@ const TemplateGalleryPage: React.FC = () => {
     color: colors.utility.primaryText,
   });
 
-  // ── Loading skeleton ───────────────────────────────────────────
-  const LoadingSkeleton = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-      {[...Array(6)].map((_, i) => (
-        <div key={i} className="animate-pulse">
-          <div
-            className="rounded-lg border p-6"
-            style={{
-              backgroundColor: colors.utility.secondaryBackground,
-              borderColor,
-            }}
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-lg" style={{ backgroundColor: borderColor }} />
-              <div className="flex-1">
-                <div className="h-4 rounded mb-2" style={{ backgroundColor: borderColor }} />
-                <div className="h-3 rounded w-2/3" style={{ backgroundColor: borderColor }} />
-              </div>
-            </div>
-            <div className="space-y-2 mb-4">
-              <div className="h-3 rounded" style={{ backgroundColor: borderColor }} />
-              <div className="h-3 rounded w-3/4" style={{ backgroundColor: borderColor }} />
-            </div>
-            <div className="h-10 rounded" style={{ backgroundColor: borderColor }} />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+  // ── Loading state (VaNi) ──────────────────────────────────────
 
   // =================================================================
   // RENDER
@@ -1094,45 +1067,104 @@ const TemplateGalleryPage: React.FC = () => {
             )}
 
             {/* Loading */}
-            {loading && <LoadingSkeleton />}
+            {loading && (
+              <UnifiedLoader.VaNi
+                size="md"
+                message="Loading templates..."
+                showSkeleton
+                skeletonVariant="card"
+                skeletonCount={6}
+              />
+            )}
 
             {/* Template Grid / List */}
             {!loading && !error && (
               <>
                 {isEmpty ? (
-                  <div className="text-center py-16">
-                    <Globe
-                      className="h-16 w-16 mx-auto mb-4"
-                      style={{ color: colors.utility.secondaryText + '40' }}
-                    />
+                  <div
+                    className="flex flex-col items-center justify-center py-20 px-6 rounded-xl border"
+                    style={{
+                      backgroundColor: colors.utility.secondaryBackground,
+                      borderColor: colors.utility.secondaryText + '12',
+                    }}
+                  >
+                    {/* Icon */}
+                    <div
+                      className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6"
+                      style={{ backgroundColor: colors.brand.primary + '10' }}
+                    >
+                      {searchTerm ? (
+                        <Search className="h-10 w-10" style={{ color: colors.brand.primary + '60' }} />
+                      ) : statusFilter === 'inactive' ? (
+                        <EyeOff className="h-10 w-10" style={{ color: colors.utility.secondaryText + '60' }} />
+                      ) : (
+                        <Globe className="h-10 w-10" style={{ color: colors.brand.primary + '60' }} />
+                      )}
+                    </div>
+
+                    {/* Title */}
                     <h3
-                      className="text-lg font-medium mb-2"
+                      className="text-lg font-semibold mb-2"
                       style={{ color: colors.utility.primaryText }}
                     >
-                      No templates found
-                    </h3>
-                    <p className="mb-4 text-sm" style={{ color: colors.utility.secondaryText }}>
                       {searchTerm
-                        ? 'No templates match your search. Try different keywords.'
+                        ? 'No matching templates'
                         : selectedIndustry !== 'all'
-                        ? `No templates available for ${industries.find(i => i.id === selectedIndustry)?.name || 'this industry'} yet.`
-                        : 'No global templates are currently available.'
+                        ? `No templates for ${industries.find(i => i.id === selectedIndustry)?.name || 'this industry'}`
+                        : statusFilter === 'inactive'
+                        ? 'No inactive templates'
+                        : 'No templates yet'
+                      }
+                    </h3>
+
+                    {/* Description */}
+                    <p
+                      className="text-sm text-center max-w-md mb-6"
+                      style={{ color: colors.utility.secondaryText }}
+                    >
+                      {searchTerm
+                        ? `No templates match "${searchTerm}". Try different keywords or clear your search.`
+                        : selectedIndustry !== 'all'
+                        ? `There are no ${statusFilter === 'inactive' ? 'inactive ' : ''}templates available for this industry yet. You can create one using the designer.`
+                        : statusFilter === 'inactive'
+                        ? 'All templates are currently active. Deactivated templates will appear here.'
+                        : 'Get started by creating your first global template using the designer.'
                       }
                     </p>
-                    {(selectedIndustry !== 'all' || searchTerm || statusFilter === 'inactive') && (
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-3">
+                      {(selectedIndustry !== 'all' || searchTerm || statusFilter === 'inactive') && (
+                        <button
+                          onClick={() => {
+                            setSearchTerm('');
+                            handleIndustrySelect('all');
+                            setStatusFilter('active');
+                            setCurrentPage(1);
+                          }}
+                          className="px-4 py-2 text-sm font-medium rounded-lg border transition-all hover:opacity-80"
+                          style={{
+                            borderColor: colors.utility.secondaryText + '30',
+                            color: colors.utility.primaryText,
+                            backgroundColor: colors.utility.primaryBackground,
+                          }}
+                        >
+                          Clear filters
+                        </button>
+                      )}
                       <button
-                        onClick={() => {
-                          setSearchTerm('');
-                          handleIndustrySelect('all');
-                          setStatusFilter('active');
-                          setCurrentPage(1);
+                        onClick={() => navigate('/service-contracts/templates/admin/global-designer')}
+                        className="px-4 py-2 text-sm font-semibold text-white rounded-lg transition-all hover:opacity-90"
+                        style={{
+                          background: `linear-gradient(135deg, ${colors.brand.primary}, ${colors.brand.secondary || colors.brand.primary})`,
                         }}
-                        className="text-sm hover:opacity-80"
-                        style={{ color: colors.brand.primary }}
                       >
-                        Clear all filters
+                        <span className="flex items-center gap-2">
+                          <Plus className="h-4 w-4" />
+                          Create Template
+                        </span>
                       </button>
-                    )}
+                    </div>
                   </div>
                 ) : (
                   <div
