@@ -1,0 +1,47 @@
+═══════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS — feat-template-card-icon-footer
+═══════════════════════════════════════════════════════════════
+
+Feature: Redesign TemplateCard action footer with icon-only
+         buttons + Radix UI Tooltips on hover
+         (Inspired by /catalog-studio/templates-list design)
+
+Submodules Affected: contractnest-ui
+
+───────────────────────────────────────────────────────────────
+FILES TO COPY:
+───────────────────────────────────────────────────────────────
+
+1. TemplateCard.tsx (MODIFIED)
+   FROM: MANUAL_COPY_FILES\feat-template-card-icon-footer\contractnest-ui\src\components\service-contracts\templates\TemplateCard.tsx
+   TO:   contractnest-ui\src\components\service-contracts\templates\TemplateCard.tsx
+
+───────────────────────────────────────────────────────────────
+WHAT CHANGED:
+───────────────────────────────────────────────────────────────
+
+1. Added import for Tooltip, TooltipTrigger, TooltipContent,
+   TooltipProvider from '../../ui/tooltip' (Radix UI)
+
+2. Replaced the action footer (was: all buttons as flex-1 text
+   buttons in a single row — overflowed with 4+ actions)
+
+   NEW DESIGN:
+   ┌─────────────────────────────────────────────┐
+   │  [icon] [icon] [icon]     [ Primary CTA  ]  │
+   │   ↑       ↑       ↑                         │
+   │  tooltip tooltip tooltip                     │
+   │  on hover                                    │
+   └─────────────────────────────────────────────┘
+
+   - Left side:  Secondary actions as icon-only buttons
+                  with Radix Tooltip on hover showing label
+   - Right side: Primary action retains text + icon label
+   - No overflow regardless of action count
+
+───────────────────────────────────────────────────────────────
+DEPENDENCY NOTE:
+───────────────────────────────────────────────────────────────
+Uses existing: contractnest-ui\src\components\ui\tooltip.tsx
+               (Radix @radix-ui/react-tooltip — already installed)
+No new packages needed.
