@@ -1,0 +1,42 @@
+═══════════════════════════════════════════════════
+CARD REDESIGN V3 — Create Contract as icon, remove 3-dot, add version
+═══════════════════════════════════════════════════
+
+Branch: card-redesign-v3
+Date: 2026-03-24
+Submodules Affected: contractnest-ui
+
+═══════════════════════════════════════════════════
+FILE MAPPING
+═══════════════════════════════════════════════════
+
+1. contractnest-ui/src/components/service-contracts/templates/TemplateCard.tsx
+2. contractnest-ui/src/types/service-contracts/template.ts
+
+═══════════════════════════════════════════════════
+COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════
+
+Copy-Item "MANUAL_COPY_FILES\card-redesign-v3\contractnest-ui\src\components\service-contracts\templates\TemplateCard.tsx" -Destination "contractnest-ui\src\components\service-contracts\templates\TemplateCard.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\card-redesign-v3\contractnest-ui\src\types\service-contracts\template.ts" -Destination "contractnest-ui\src\types\service-contracts\template.ts" -Force
+
+═══════════════════════════════════════════════════
+CHANGES FROM V2
+═══════════════════════════════════════════════════
+
+1. CREATE CONTRACT: Changed from text button to icon (FilePlus2) with GREEN accent color
+   - Uses accentColor prop on TooltipIconButton for distinct success/green styling
+   - Hover turns green bg + green border (stands out from other icons)
+
+2. 3-DOT DROPDOWN: Completely removed
+   - No more Duplicate/Delete in overflow menu
+   - Removed useState, useRef, useEffect for dropdown
+   - Removed MoreVertical, Trash2, CheckCircle imports
+
+3. VERSION NUMBER: Added to card
+   - Template type now has version?: string field
+   - Grid view: Shows "v{version}" with Tag icon in stats row (next to rating + usage)
+   - List view: Shows "v{version}" with Tag icon in stats section
+
+4. FOOTER: Now shows 6 centered icon buttons:
+   Preview | Duplicate | Edit | Smart Form | Settings | Create Contract (green)
