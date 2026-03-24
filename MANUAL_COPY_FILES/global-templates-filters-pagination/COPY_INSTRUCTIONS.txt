@@ -1,0 +1,72 @@
+=====================================================================
+COPY INSTRUCTIONS — Global Templates: is_active Filter, Pagination,
+                     Client-side Resource/Nomenclature Filters
+=====================================================================
+
+Branch: global-templates-filters-pagination
+Date: 2026-03-24
+
+SUBMODULES AFFECTED:
+  - contractnest-edge
+  - contractnest-api
+  - contractnest-ui
+
+=====================================================================
+FILES TO COPY (7 files total)
+=====================================================================
+
+--- EDGE (1 file) ---
+FROM: MANUAL_COPY_FILES\global-templates-filters-pagination\contractnest-edge\supabase\functions\cat-templates\index.ts
+TO:   contractnest-edge\supabase\functions\cat-templates\index.ts
+
+--- API (4 files) ---
+FROM: MANUAL_COPY_FILES\global-templates-filters-pagination\contractnest-api\src\types\catalogStudioTypes.ts
+TO:   contractnest-api\src\types\catalogStudioTypes.ts
+
+FROM: MANUAL_COPY_FILES\global-templates-filters-pagination\contractnest-api\src\validators\catalogStudio.validators.ts
+TO:   contractnest-api\src\validators\catalogStudio.validators.ts
+
+FROM: MANUAL_COPY_FILES\global-templates-filters-pagination\contractnest-api\src\controllers\catalogStudioController.ts
+TO:   contractnest-api\src\controllers\catalogStudioController.ts
+
+FROM: MANUAL_COPY_FILES\global-templates-filters-pagination\contractnest-api\src\services\catTemplatesService.ts
+TO:   contractnest-api\src\services\catTemplatesService.ts
+
+--- UI (2 files) ---
+FROM: MANUAL_COPY_FILES\global-templates-filters-pagination\contractnest-ui\src\services\serviceURLs.ts
+TO:   contractnest-ui\src\services\serviceURLs.ts
+
+FROM: MANUAL_COPY_FILES\global-templates-filters-pagination\contractnest-ui\src\pages\service-contracts\templates\admin\global-templates.tsx
+TO:   contractnest-ui\src\pages\service-contracts\templates\admin\global-templates.tsx
+
+=====================================================================
+WHAT CHANGED
+=====================================================================
+
+EDGE — cat-templates/index.ts:
+  - handleGetSystemTemplates(): Removed hardcoded .eq('is_active', true)
+  - Now reads is_active from query params: 'true' (default), 'false', or 'all'
+
+API — catalogStudioTypes.ts:
+  - Added is_active?: boolean | 'all' to TemplateQueryParams interface
+
+API — catalogStudio.validators.ts:
+  - Added is_active validation (true/false/all) to queryTemplatesValidation
+
+API — catalogStudioController.ts:
+  - parseTemplateQueryParams() now parses is_active from request query
+
+API — catTemplatesService.ts:
+  - buildQueryString() now passes is_active param to edge function
+
+UI — serviceURLs.ts:
+  - Added is_active to CatTemplateFilters type
+  - Added is_active to LIST_WITH_FILTERS and SYSTEM_WITH_FILTERS URL builders
+
+UI — global-templates.tsx:
+  - Added Active/Inactive/All status toggle pills
+  - Added pagination controls (prev/next + page number pills, 24 per page)
+  - Resource type filter now works (client-side post-filter on tags)
+  - Nomenclature filter now works (client-side post-filter on tags)
+  - Results count shows "displayed / total" when filters applied
+  - All filters reset page to 1 when changed
