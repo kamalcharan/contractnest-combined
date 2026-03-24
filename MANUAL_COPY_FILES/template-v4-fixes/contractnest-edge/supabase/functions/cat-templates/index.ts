@@ -208,35 +208,45 @@ async function handleGetTemplates(
 ) {
   const pagination = parsePaginationParams(params);
 
-  let query = supabase
-    .from('m_cat_templates')
-    .select('*', { count: 'exact' })
-    .eq('is_active', true)
-    .eq('is_latest', true);
+  // Build base query — try with is_latest first; fallback without if column missing
+  const buildListQuery = (withLatest: boolean) => {
+    let q = supabase
+      .from('m_cat_templates')
+      .select('*', { count: 'exact' })
+      .eq('is_active', true);
 
-  // Visibility filter
-  if (!ctx.isAdmin) {
-    query = query.or(`tenant_id.eq.${ctx.tenantId},and(tenant_id.is.null,is_system.eq.true)`);
-    query = query.or(`is_live.eq.${ctx.isLive},tenant_id.is.null`);
+    if (withLatest) q = q.eq('is_latest', true);
+
+    // Visibility filter
+    if (!ctx.isAdmin) {
+      q = q.or(`tenant_id.eq.${ctx.tenantId},and(tenant_id.is.null,is_system.eq.true)`);
+      q = q.or(`is_live.eq.${ctx.isLive},tenant_id.is.null`);
+    }
+
+    // Filters
+    const category = params.get('category');
+    if (category) q = q.eq('category', category);
+
+    const isSystem = params.get('is_system');
+    if (isSystem !== null) q = q.eq('is_system', isSystem === 'true');
+
+    const search = params.get('search');
+    if (search) q = q.ilike('name', `%${search}%`);
+
+    // Order
+    q = q.order('sequence_no', { ascending: true }).order('name', { ascending: true });
+
+    return applyPagination(q, pagination, MAX_PAGE_SIZE);
+  };
+
+  let result = await buildListQuery(true);
+  // Graceful fallback: if is_latest column doesn't exist yet, retry without it
+  if (result.error && result.error.message?.includes('is_latest')) {
+    console.warn('[cat-templates] is_latest column not found, falling back without version filter');
+    result = await buildListQuery(false);
   }
 
-  // Filters
-  const category = params.get('category');
-  if (category) query = query.eq('category', category);
-
-  const isSystem = params.get('is_system');
-  if (isSystem !== null) query = query.eq('is_system', isSystem === 'true');
-
-  const search = params.get('search');
-  if (search) query = query.ilike('name', `%${search}%`);
-
-  // Order
-  query = query.order('sequence_no', { ascending: true }).order('name', { ascending: true });
-
-  // Apply pagination
-  query = applyPagination(query, pagination, MAX_PAGE_SIZE);
-
-  const { data, error, count } = await query;
+  const { data, error, count } = result;
 
   if (error) {
     console.error('[cat-templates] Query error:', error);
@@ -277,27 +287,36 @@ async function handleGetSystemTemplates(
 ) {
   const pagination = parsePaginationParams(params);
 
-  let query = supabase
-    .from('m_cat_templates')
-    .select('*', { count: 'exact' })
-    .is('tenant_id', null)
-    .eq('is_system', true)
-    .eq('is_active', true)
-    .eq('is_latest', true);
+  const buildSystemQuery = (withLatest: boolean) => {
+    let q = supabase
+      .from('m_cat_templates')
+      .select('*', { count: 'exact' })
+      .is('tenant_id', null)
+      .eq('is_system', true)
+      .eq('is_active', true);
 
-  const category = params.get('category');
-  if (category) query = query.eq('category', category);
+    if (withLatest) q = q.eq('is_latest', true);
 
-  const industryTag = params.get('industry');
-  if (industryTag) query = query.contains('industry_tags', [industryTag]);
+    const category = params.get('category');
+    if (category) q = q.eq('category', category);
 
-  const search = params.get('search');
-  if (search) query = query.ilike('name', `%${search}%`);
+    const industryTag = params.get('industry');
+    if (industryTag) q = q.contains('industry_tags', [industryTag]);
 
-  query = query.order('sequence_no', { ascending: true }).order('name', { ascending: true });
-  query = applyPagination(query, pagination, MAX_PAGE_SIZE);
+    const search = params.get('search');
+    if (search) q = q.ilike('name', `%${search}%`);
 
-  const { data, error, count } = await query;
+    q = q.order('sequence_no', { ascending: true }).order('name', { ascending: true });
+    return applyPagination(q, pagination, MAX_PAGE_SIZE);
+  };
+
+  let result = await buildSystemQuery(true);
+  if (result.error && result.error.message?.includes('is_latest')) {
+    console.warn('[cat-templates] is_latest column not found, falling back without version filter');
+    result = await buildSystemQuery(false);
+  }
+
+  const { data, error, count } = result;
 
   if (error) {
     console.error('[cat-templates] System query error:', error);
@@ -421,23 +440,32 @@ async function handleGetPublicTemplates(
 ) {
   const pagination = parsePaginationParams(params);
 
-  let query = supabase
-    .from('m_cat_templates')
-    .select('*', { count: 'exact' })
-    .eq('is_public', true)
-    .eq('is_active', true)
-    .eq('is_latest', true);
+  const buildPublicQuery = (withLatest: boolean) => {
+    let q = supabase
+      .from('m_cat_templates')
+      .select('*', { count: 'exact' })
+      .eq('is_public', true)
+      .eq('is_active', true);
 
-  const category = params.get('category');
-  if (category) query = query.eq('category', category);
+    if (withLatest) q = q.eq('is_latest', true);
 
-  const search = params.get('search');
-  if (search) query = query.ilike('name', `%${search}%`);
+    const category = params.get('category');
+    if (category) q = q.eq('category', category);
 
-  query = query.order('sequence_no', { ascending: true });
-  query = applyPagination(query, pagination, MAX_PAGE_SIZE);
+    const search = params.get('search');
+    if (search) q = q.ilike('name', `%${search}%`);
 
-  const { data, error, count } = await query;
+    q = q.order('sequence_no', { ascending: true });
+    return applyPagination(q, pagination, MAX_PAGE_SIZE);
+  };
+
+  let result = await buildPublicQuery(true);
+  if (result.error && result.error.message?.includes('is_latest')) {
+    console.warn('[cat-templates] is_latest column not found, falling back without version filter');
+    result = await buildPublicQuery(false);
+  }
+
+  const { data, error, count } = result;
 
   if (error) {
     console.error('[cat-templates] Public query error:', error);
@@ -691,8 +719,28 @@ async function handleCopyTemplate(
 }
 
 // ============================================================================
-// HANDLER: PATCH /cat-templates?id={id} - Copy-on-write versioning
-// Instead of updating in place, mark old row as legacy and insert a new version.
+// Metadata-only fields that should NOT trigger copy-on-write versioning.
+// These are status/admin toggles that update the row in place.
+// ============================================================================
+const METADATA_ONLY_FIELDS = new Set([
+  'is_active', 'is_public', 'is_deletable', 'sequence_no', 'status_id',
+]);
+
+/**
+ * Returns true when the request body touches ONLY metadata fields
+ * (no content changes that warrant a new version).
+ */
+function isMetadataOnlyUpdate(body: any): boolean {
+  const bodyKeys = Object.keys(body).filter(
+    (k) => !['expected_version', 'updated_by', 'skip_versioning'].includes(k)
+  );
+  return bodyKeys.length > 0 && bodyKeys.every((k) => METADATA_ONLY_FIELDS.has(k));
+}
+
+// ============================================================================
+// HANDLER: PATCH /cat-templates?id={id} - Smart update
+// Metadata-only changes (is_active toggle, etc.) → in-place update.
+// Content changes (name, blocks, tags, etc.) → copy-on-write versioning.
 // ============================================================================
 async function handleUpdateTemplate(
   supabase: any,
@@ -720,6 +768,67 @@ async function handleUpdateTemplate(
     return createErrorResponse('Cannot update templates you do not own', 'FORBIDDEN', 403, ctx.operationId);
   }
 
+  // ── Route: metadata-only OR explicit skip_versioning → in-place update ──
+  if (isMetadataOnlyUpdate(body) || body.skip_versioning === true) {
+    return handleInPlaceUpdate(supabase, templateId, existing, body, ctx);
+  }
+
+  // ── Route: content change → copy-on-write versioning ──
+  return handleVersionedUpdate(supabase, templateId, existing, body, ctx);
+}
+
+// ============================================================================
+// In-place update (no versioning) for metadata fields like is_active, etc.
+// ============================================================================
+async function handleInPlaceUpdate(
+  supabase: any,
+  templateId: string,
+  existing: any,
+  body: any,
+  ctx: EdgeContext
+) {
+  const allowedMeta = [
+    'is_active', 'is_public', 'is_deletable', 'sequence_no', 'status_id', 'updated_by',
+  ];
+  if (ctx.isAdmin) allowedMeta.push('is_system');
+
+  const updateData: any = { updated_at: new Date().toISOString() };
+  for (const field of allowedMeta) {
+    if (body[field] !== undefined) {
+      updateData[field] = body[field];
+    }
+  }
+  if (!updateData.updated_by) {
+    updateData.updated_by = existing.updated_by;
+  }
+
+  const { data, error } = await supabase
+    .from('m_cat_templates')
+    .update(updateData)
+    .eq('id', templateId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('[cat-templates] In-place update error:', error);
+    return createErrorResponse(error.message, error.code || 'UPDATE_ERROR', 500, ctx.operationId);
+  }
+
+  console.log(`[cat-templates] In-place updated template: ${templateId} (fields: ${Object.keys(updateData).join(', ')})`);
+
+  return createSuccessResponse({ template: data }, ctx.operationId, ctx.startTime);
+}
+
+// ============================================================================
+// Versioned update (copy-on-write) for content changes
+// ============================================================================
+async function handleVersionedUpdate(
+  supabase: any,
+  templateId: string,
+  existing: any,
+  body: any,
+  ctx: EdgeContext
+) {
   // Optimistic locking check
   if (body.expected_version !== undefined && body.expected_version !== existing.version) {
     return createErrorResponse(
@@ -789,7 +898,7 @@ async function handleUpdateTemplate(
     created_by: existing.created_by,
     updated_by: body.updated_by || existing.updated_by,
     // Versioning fields
-    version: existing.version + 1,
+    version: (existing.version || 1) + 1,
     is_latest: true,
     parent_template_id: parentId,
     // Timestamps

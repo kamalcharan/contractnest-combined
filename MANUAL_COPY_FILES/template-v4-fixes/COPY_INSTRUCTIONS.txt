@@ -1,15 +1,15 @@
 ═══════════════════════════════════════════════════
-TEMPLATE V4 FIXES — 11-Point Feedback Resolution
+TEMPLATE V4 FIXES — 11-Point Feedback Resolution (v2)
 ═══════════════════════════════════════════════════
 Date: 2026-03-24
 Branch: template-v4-fixes
 Submodules Affected: contractnest-ui, contractnest-edge, contractnest-api
 
 ═══════════════════════════════════════════════════
-FILE MAPPING (8 files total)
+FILE MAPPING (9 files total)
 ═══════════════════════════════════════════════════
 
-CONTRACTNEST-UI (5 files):
+CONTRACTNEST-UI (6 files):
 1. src/types/service-contracts/template.ts
    → Added industryTags[], isActive, onSettings prop
 
@@ -25,28 +25,39 @@ CONTRACTNEST-UI (5 files):
 5. src/hooks/queries/useCatTemplates.ts
    → Added is_latest, parent_template_id to CatTemplate type
 
-CONTRACTNEST-EDGE (2 files):
-6. supabase/functions/cat-templates/index.ts
-   → Copy-on-write versioning, tax_rate null default, is_latest filter
+6. src/hooks/mutations/useCatTemplatesMutations.ts  [UPDATED v2]
+   → Fixed cache invalidation: now invalidates ALL template caches (system + list + public + detail)
 
-7. supabase/migrations/templates/004_add_versioning_columns.sql
-   → NEW FILE: Migration to add is_latest + parent_template_id columns
+CONTRACTNEST-EDGE (2 files):
+7. supabase/functions/cat-templates/index.ts  [UPDATED v2]
+   → CRITICAL FIX: is_active toggle now does IN-PLACE update (no versioning)
+   → Content edits still do copy-on-write versioning
+   → Graceful fallback when is_latest column not yet in DB
+   → tax_rate null default
+
+8. supabase/migrations/templates/004_add_versioning_columns.sql
+   → Migration to add is_latest + parent_template_id columns
 
 CONTRACTNEST-API (1 file):
-8. src/controllers/catalogStudioController.ts
+9. src/controllers/catalogStudioController.ts
    → Inject created_by/updated_by from context.userId
 
 ═══════════════════════════════════════════════════
-CHANGES DETAIL
+BUGS FIXED IN v2
 ═══════════════════════════════════════════════════
 
-1. VERSION NOW SHOWING: Mapper maps cat.version to template.version
-2. INDUSTRY TAGS MULTIPLE: All industry_tags shown as pills on card (not just first)
-3. TAX_RATE: Default changed from 18.00 to null (optional)
-4. SUBTOTAL/TOTAL: Deferred
-5. BLOCKS COUNT: Removed from card stats row
-6. SORT FILTERS: Working (name=alpha, recent=updatedAt, popular=server order)
-7. CREATED_BY/UPDATED_BY: Now auto-populated from context.userId
-8. SETTINGS MODAL: Activate/deactivate toggle via Settings icon, version history placeholder
-9. COPY-ON-WRITE VERSIONING: Edit creates new row, old row marked legacy (is_latest=false)
-10. MIGRATION REQUIRED: Run 004_add_versioning_columns.sql before deploying edge function
+BUG 1: Settings modal deactivate was broken
+  CAUSE: PATCH handler used copy-on-write for ALL updates, including is_active toggle.
+         This created a new inactive row AND hid the original (both invisible).
+  FIX: Smart routing — metadata-only updates (is_active, is_public, etc.) now do
+       in-place updates. Only content changes (name, blocks, tags) trigger versioning.
+
+BUG 2: Template list didn't refresh after settings change
+  CAUSE: Update mutation only invalidated catTemplateKeys.lists(), but the global
+         templates page uses useCatSystemTemplates() keyed under catTemplateKeys.system().
+  FIX: Now invalidates catTemplateKeys.all (covers all query types).
+
+BUG 3: Queries failed if migration not yet run
+  CAUSE: All GET handlers had hard .eq('is_latest', true) filter. If the column
+         didn't exist in DB, entire query returned 400 error → zero templates shown.
+  FIX: Try with is_latest first; if column-not-found error, retry without filter.
