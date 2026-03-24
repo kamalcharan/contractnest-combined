@@ -1,0 +1,51 @@
+═══════════════════════════════════════════════════
+CARD REDESIGN - Catalog Studio Style TemplateCard
+═══════════════════════════════════════════════════
+
+Branch: card-redesign
+Date: 2026-03-24
+Submodules Affected: contractnest-ui
+
+═══════════════════════════════════════════════════
+FILE MAPPING
+═══════════════════════════════════════════════════
+
+Source (MANUAL_COPY_FILES):
+  card-redesign/contractnest-ui/src/components/service-contracts/templates/TemplateCard.tsx
+
+Destination (Submodule):
+  contractnest-ui/src/components/service-contracts/templates/TemplateCard.tsx
+
+═══════════════════════════════════════════════════
+COPY COMMAND (PowerShell)
+═══════════════════════════════════════════════════
+
+Copy-Item "MANUAL_COPY_FILES\card-redesign\contractnest-ui\src\components\service-contracts\templates\TemplateCard.tsx" -Destination "contractnest-ui\src\components\service-contracts\templates\TemplateCard.tsx" -Force
+
+═══════════════════════════════════════════════════
+WHAT CHANGED
+═══════════════════════════════════════════════════
+
+Redesigned TemplateCard component to match Catalog Studio templates-list.tsx card UX:
+
+GRID VIEW:
+- Rounded-xl card with hover lift animation (hover:-translate-y-1, hover:shadow-lg)
+- Header section (border-bottom): Lucide LayoutTemplate icon box + Global badge + Status badge
+- Title + 2-line clamped description
+- Contract Type + Complexity inline pill badges
+- Stats: 2-column grid (Usage count + Rating) with subtle background
+- Meta row: Duration + Blocks count
+- Footer (border-top): Full-width primary action button + Preview icon + 3-dot dropdown
+- Dropdown menu: Preview, Duplicate, Edit, Delete (admin only)
+- Theme-aware inline styles (dark/light mode)
+- Selected state: brand-colored ring
+
+LIST/COMPACT VIEW:
+- Horizontal layout with icon, title, badges, stats, actions
+- Same theme-aware styling
+- Inline action button + 3-dot dropdown
+
+BACKWARD COMPATIBLE:
+- Same props interface (TemplateCardProps)
+- Same context system (TemplateCardContext)
+- Works with both global-templates.tsx and service-contracts/templates/index.tsx
