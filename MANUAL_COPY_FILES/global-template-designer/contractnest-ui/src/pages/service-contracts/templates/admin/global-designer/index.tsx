@@ -1,8 +1,8 @@
 // src/pages/service-contracts/templates/admin/global-designer/index.tsx
-// Global Template Designer Wizard — 7-step wizard for admin template creation
+// Global Template Designer Wizard — 8-step wizard for admin template creation
 // Uses FloatingActionIsland navigation (same as contract wizard)
-// Step 1: Nomenclature | Step 2: Template Details | Step 3: Service Blocks (catalog)
-// Step 4: Equipment/Facility Names | Step 5: Billing | Step 6: Policies | Step 7: Review
+// 1: Nomenclature | 2: Template Details | 3: Industries | 4: Equipment/Facility
+// 5: Service Blocks | 6: Billing | 7: Policies | 8: Review
 
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -30,11 +30,12 @@ import {
 import NomenclatureStep from '@/components/contracts/ContractWizard/steps/NomenclatureStep';
 import type { ContractDetailsData } from '@/components/contracts/ContractWizard/steps/ContractDetailsStep';
 
-// Step 3: Service Blocks — reused from contract wizard (catalog-driven)
+// Step 5: Service Blocks — reused from contract wizard (catalog-driven)
 import ServiceBlocksStep from '@/components/contracts/ContractWizard/steps/ServiceBlocksStep';
 
-// Steps 2, 4-7: Global designer specific
+// Steps 2-4, 6-8: Global designer specific
 import TemplateDetailsStep from './steps/TemplateDetailsStep';
+import IndustryStep from './steps/IndustryStep';
 import AssetNamesStep from './steps/AssetNamesStep';
 import BillingDefaultsStep from './steps/BillingDefaultsStep';
 import PoliciesStep from './steps/PoliciesStep';
@@ -95,15 +96,17 @@ const GlobalDesignerPage: React.FC = () => {
         return true;
       case 1: // Template Details — name required
         return wizardState.contractDetails.contractName.trim().length >= 3;
-      case 2: // Service Blocks — always valid
+      case 2: // Industries — at least 1 selected
+        return wizardState.targetIndustries.length > 0;
+      case 3: // Equipment / Facility — optional
         return true;
-      case 3: // Asset Names — optional
+      case 4: // Service Blocks — always valid
         return true;
-      case 4: // Billing — optional
+      case 5: // Billing — optional
         return true;
-      case 5: // Policies — optional
+      case 6: // Policies — optional
         return true;
-      case 6: // Review — ready
+      case 7: // Review — ready
         return true;
       default:
         return true;
@@ -165,7 +168,13 @@ const GlobalDesignerPage: React.FC = () => {
         durationUnit: wizardState.contractDetails.durationUnit,
         gracePeriodValue: wizardState.contractDetails.gracePeriodValue,
         gracePeriodUnit: wizardState.contractDetails.gracePeriodUnit,
+
+        // Industries
         targetIndustries: wizardState.targetIndustries,
+
+        // Equipment / Facility Names
+        selectedAssetTypeIds: wizardState.selectedAssetTypeIds,
+        selectedAssetTypeNames: wizardState.selectedAssetTypeNames,
 
         // Service Blocks (from catalog)
         blocks: selectedBlocks.map((b) => ({
@@ -177,10 +186,6 @@ const GlobalDesignerPage: React.FC = () => {
           unitPrice: b.unitPrice,
           isUnlimited: b.isUnlimited,
         })),
-
-        // Asset Names
-        selectedAssetTypeIds: wizardState.selectedAssetTypeIds,
-        selectedAssetTypeNames: wizardState.selectedAssetTypeNames,
 
         // Billing
         defaultBillingCycleType: wizardState.defaultBillingCycleType,
@@ -228,6 +233,7 @@ const GlobalDesignerPage: React.FC = () => {
   const handleExit = () => {
     const hasChanges = wizardState.contractDetails.contractName.trim() ||
       wizardState.nomenclatureId ||
+      wizardState.targetIndustries.length > 0 ||
       selectedBlocks.length > 0;
     if (hasChanges) {
       const confirmed = window.confirm('You have unsaved changes. Are you sure you want to leave?');
@@ -252,16 +258,23 @@ const GlobalDesignerPage: React.FC = () => {
             onSelect={handleNomenclatureSelect}
           />
         );
-      case 1: // Template Details (no Status, with industries)
+      case 1: // Template Details
         return (
           <TemplateDetailsStep
             data={wizardState.contractDetails}
             onChange={handleContractDetailsChange}
-            targetIndustries={wizardState.targetIndustries}
-            onIndustriesChange={(industries) => updateWizardState({ targetIndustries: industries })}
           />
         );
-      case 2: // Service Blocks — from catalog (same as contract wizard)
+      case 2: // Industries
+        return (
+          <IndustryStep
+            state={wizardState}
+            onUpdate={updateWizardState}
+          />
+        );
+      case 3: // Equipment / Facility Names (filtered by industries + nomenclature)
+        return <AssetNamesStep state={wizardState} onUpdate={updateWizardState} />;
+      case 4: // Service Blocks — from catalog (same as contract wizard)
         return (
           <ServiceBlocksStep
             selectedBlocks={selectedBlocks}
@@ -275,13 +288,11 @@ const GlobalDesignerPage: React.FC = () => {
             coverageTypes={[]}
           />
         );
-      case 3: // Equipment / Facility Names
-        return <AssetNamesStep state={wizardState} onUpdate={updateWizardState} />;
-      case 4: // Billing Defaults
+      case 5: // Billing Defaults
         return <BillingDefaultsStep state={wizardState} onUpdate={updateWizardState} />;
-      case 5: // Policies & Compliance
+      case 6: // Policies & Compliance
         return <PoliciesStep state={wizardState} onUpdate={updateWizardState} />;
-      case 6: // Review & Publish
+      case 7: // Review & Publish
         return (
           <ReviewPublishStep
             state={wizardState}

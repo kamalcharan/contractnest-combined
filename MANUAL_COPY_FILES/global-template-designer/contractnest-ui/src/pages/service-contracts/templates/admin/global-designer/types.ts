@@ -1,5 +1,5 @@
 // src/pages/service-contracts/templates/admin/global-designer/types.ts
-// Types for the Global Template Designer Wizard
+// Types for the Global Template Designer Wizard (8 steps)
 
 import type { AcceptanceMethod } from '@/components/contracts/ContractWizard/steps/AcceptanceMethodStep';
 import type { BillingCycleType } from '@/components/contracts/ContractWizard/steps/BillingCycleStep';
@@ -16,27 +16,29 @@ export interface GlobalDesignerWizardState {
 
   // Step 2: Template Details (adapted from ContractDetailsStep — no Status)
   contractDetails: ContractDetailsData;
-  targetIndustries: string[];              // Admin targets multiple industries
 
-  // Step 3: Service Blocks — uses ServiceBlocksStep from contract wizard (catalog-driven)
+  // Step 3: Industries (admin: any, non-admin: my industry + industries I serve)
+  targetIndustries: string[];             // Selected industry IDs from m_catalog_industries
 
-  // Step 4: Equipment / Facility Names (driven by nomenclature group)
-  selectedAssetTypeIds: string[];        // Resource type IDs selected
-  selectedAssetTypeNames: string[];      // Resource type names for display
+  // Step 4: Equipment / Facility Names (from m_catalog_resource_templates, filtered by industries + nomenclature)
+  selectedAssetTypeIds: string[];        // Resource template IDs selected
+  selectedAssetTypeNames: string[];      // Resource template names for display
 
-  // Step 5: Billing & Payment Defaults
+  // Step 5: Service Blocks — uses ServiceBlocksStep from contract wizard (catalog-driven)
+
+  // Step 6: Billing & Payment Defaults
   defaultBillingCycleType: BillingCycleType;
   defaultPaymentMode: 'prepaid' | 'emi' | 'defined' | null;
   defaultPaymentTermsDays: number;     // Net 30, 60, etc.
   defaultTaxApproach: 'inclusive' | 'exclusive';
 
-  // Step 6: Policies & Compliance
+  // Step 7: Policies & Compliance
   defaultEvidencePolicy: EvidencePolicyType;
   defaultEvidenceForms: SelectedForm[];
   defaultAcceptanceMethod: AcceptanceMethod;
   complianceTags: string[];            // HIPAA, ISO 9001, etc.
 
-  // Step 7: Publish
+  // Step 8: Publish
   publishStatus: 'draft' | 'active' | 'featured';
 }
 
@@ -71,6 +73,23 @@ export const WIZARD_STEPS: WizardStep[] = [
   },
   {
     id: 2,
+    key: 'industries',
+    title: 'Industries',
+    subtitle: 'Select target industries for this template',
+    icon: 'Globe2',
+    isOptional: false,
+  },
+  {
+    id: 3,
+    key: 'assets',
+    title: 'Equipment / Facility',
+    subtitle: 'Select covered equipment or facility names',
+    icon: 'Wrench',
+    isOptional: true,
+    isConditional: true,
+  },
+  {
+    id: 4,
     key: 'blocks',
     title: 'Service Blocks',
     subtitle: 'Add blocks from service catalog',
@@ -78,16 +97,7 @@ export const WIZARD_STEPS: WizardStep[] = [
     isOptional: false,
   },
   {
-    id: 3,
-    key: 'assets',
-    title: 'Equipment / Facility',
-    subtitle: 'Select covered asset type names',
-    icon: 'Wrench',
-    isOptional: true,
-    isConditional: true,
-  },
-  {
-    id: 4,
+    id: 5,
     key: 'billing',
     title: 'Billing Defaults',
     subtitle: 'Payment & billing configuration',
@@ -95,7 +105,7 @@ export const WIZARD_STEPS: WizardStep[] = [
     isOptional: true,
   },
   {
-    id: 5,
+    id: 6,
     key: 'policies',
     title: 'Policies & Compliance',
     subtitle: 'Evidence, acceptance & compliance',
@@ -103,7 +113,7 @@ export const WIZARD_STEPS: WizardStep[] = [
     isOptional: true,
   },
   {
-    id: 6,
+    id: 7,
     key: 'review',
     title: 'Review & Publish',
     subtitle: 'Summary and publish settings',
@@ -121,7 +131,6 @@ export const INITIAL_WIZARD_STATE: GlobalDesignerWizardState = {
   nomenclatureGroup: null,
 
   // Step 2: Template Details
-  targetIndustries: [],
   contractDetails: {
     contractName: '',
     status: 'draft',
@@ -134,29 +143,39 @@ export const INITIAL_WIZARD_STATE: GlobalDesignerWizardState = {
     gracePeriodUnit: 'days',
   },
 
+  // Step 3: Industries
+  targetIndustries: [],
+
   // Step 4: Asset Names
   selectedAssetTypeIds: [],
   selectedAssetTypeNames: [],
 
-  // Step 5: Billing
+  // Step 6: Billing
   defaultBillingCycleType: null,
   defaultPaymentMode: null,
   defaultPaymentTermsDays: 30,
   defaultTaxApproach: 'exclusive',
 
-  // Step 6: Policies
+  // Step 7: Policies
   defaultEvidencePolicy: 'none',
   defaultEvidenceForms: [],
   defaultAcceptanceMethod: null,
   complianceTags: [],
 
-  // Step 7: Publish
+  // Step 8: Publish
   publishStatus: 'draft',
 };
 
 // ─── Nomenclature group constants (determines equipment vs facility) ─
 
 export const ASSET_STEP_GROUPS = new Set(['equipment_maintenance', 'facility_property']);
+
+// ─── Nomenclature → resource_type_id mapping for m_catalog_resource_templates ─
+
+export const NOMENCLATURE_RESOURCE_TYPE_MAP: Record<string, string> = {
+  equipment_maintenance: 'equipment',
+  facility_property: 'asset',        // DB uses 'asset' for facilities
+};
 
 // ─── Common Compliance Tags ─────────────────────────────────────────
 

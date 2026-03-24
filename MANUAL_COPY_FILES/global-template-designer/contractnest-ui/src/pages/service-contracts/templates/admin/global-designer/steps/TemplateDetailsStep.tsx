@@ -11,8 +11,6 @@ import {
   Coins,
   Timer,
   CircleDot,
-  Check,
-  Globe2,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { RichTextEditor } from '@/components/ui/RichTextEditor';
@@ -27,25 +25,17 @@ import {
   getDurationLabel,
 } from '@/utils/constants/contracts';
 import type { ContractDetailsData } from '@/components/contracts/ContractWizard/steps/ContractDetailsStep';
-import { industries } from '@/utils/constants/industries';
 
 // ─── Props ──────────────────────────────────────────────────────────
 
 interface TemplateDetailsStepProps {
   data: ContractDetailsData;
   onChange: (data: Partial<ContractDetailsData>) => void;
-  targetIndustries: string[];
-  onIndustriesChange: (industries: string[]) => void;
 }
 
 // ─── Component ──────────────────────────────────────────────────────
 
-const TemplateDetailsStep: React.FC<TemplateDetailsStepProps> = ({
-  data,
-  onChange,
-  targetIndustries,
-  onIndustriesChange,
-}) => {
+const TemplateDetailsStep: React.FC<TemplateDetailsStepProps> = ({ data, onChange }) => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
 
@@ -252,57 +242,6 @@ const TemplateDetailsStep: React.FC<TemplateDetailsStepProps> = ({
               />
             </div>
 
-            {/* Target Industries Card */}
-            <div
-              className="rounded-2xl border p-5"
-              style={{
-                backgroundColor: colors.utility.secondaryBackground,
-                borderColor: `${colors.utility.primaryText}10`,
-              }}
-            >
-              <label
-                className="flex items-center gap-2 text-sm font-semibold mb-3"
-                style={{ color: colors.utility.primaryText }}
-              >
-                <Globe2 className="w-4 h-4" style={{ color: colors.brand.primary }} />
-                Target Industries
-              </label>
-              <p className="text-xs mb-3" style={{ color: colors.utility.secondaryText }}>
-                Select which industries this template is designed for
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {industries.map((ind) => {
-                  const isSelected = targetIndustries.includes(ind.id);
-                  return (
-                    <button
-                      key={ind.id}
-                      type="button"
-                      onClick={() => {
-                        if (isSelected) {
-                          onIndustriesChange(targetIndustries.filter((id) => id !== ind.id));
-                        } else {
-                          onIndustriesChange([...targetIndustries, ind.id]);
-                        }
-                      }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                      style={{
-                        backgroundColor: isSelected ? `${colors.brand.primary}12` : `${colors.utility.primaryText}06`,
-                        color: isSelected ? colors.brand.primary : colors.utility.primaryText,
-                        border: `1px solid ${isSelected ? colors.brand.primary : `${colors.utility.primaryText}10`}`,
-                      }}
-                    >
-                      {isSelected && <Check className="w-3 h-3" />}
-                      {ind.name}
-                    </button>
-                  );
-                })}
-              </div>
-              {targetIndustries.length > 0 && (
-                <p className="text-[10px] mt-2" style={{ color: colors.utility.secondaryText }}>
-                  {targetIndustries.length} industr{targetIndustries.length !== 1 ? 'ies' : 'y'} selected
-                </p>
-              )}
-            </div>
           </div>
 
           {/* RIGHT COLUMN — Settings Cards (42%) */}

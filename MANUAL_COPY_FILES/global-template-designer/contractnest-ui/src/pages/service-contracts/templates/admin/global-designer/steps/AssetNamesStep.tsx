@@ -1,6 +1,9 @@
 // src/pages/service-contracts/templates/admin/global-designer/steps/AssetNamesStep.tsx
 // Step 4: Equipment / Facility Name Selection
-// Auto-determined by nomenclature group from Step 1 — names only, no details
+// Queries m_catalog_resource_templates filtered by:
+//   - Selected industries from Step 3 (targetIndustries)
+//   - resource_type_id derived from nomenclature group (equipment vs asset)
+// Skipped for service_delivery / flexible_hybrid groups
 
 import React, { useMemo } from 'react';
 import {
@@ -13,9 +16,12 @@ import {
   Search,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useResourceTypes, type ResourceType as DBResourceType } from '@/hooks/queries/useResources';
+import {
+  useResourceTemplatesBrowser,
+  type ResourceTemplateFilters,
+} from '@/hooks/queries/useResourceTemplates';
 import type { GlobalDesignerWizardState } from '../types';
-import { ASSET_STEP_GROUPS } from '../types';
+import { ASSET_STEP_GROUPS, NOMENCLATURE_RESOURCE_TYPE_MAP } from '../types';
 
 // ─── Props ──────────────────────────────────────────────────────────
 
@@ -24,22 +30,19 @@ interface AssetNamesStepProps {
   onUpdate: (updates: Partial<GlobalDesignerWizardState>) => void;
 }
 
-// ─── Nomenclature group → resource category mapping ─────────────────
+// ─── Nomenclature group → UI config ─────────────────────────────────
 
 const GROUP_CONFIG: Record<string, {
-  category: string;
   label: string;
   icon: React.ElementType;
   description: string;
 }> = {
   equipment_maintenance: {
-    category: 'equipment',
     label: 'Equipment Types',
     icon: Wrench,
     description: 'Select which equipment types this template covers. Only names — tenants will add specific details when creating contracts.',
   },
   facility_property: {
-    category: 'entity',
     label: 'Facility / Entity Types',
     icon: Building2,
     description: 'Select which facility or entity types this template covers. Only names — tenants will add specific details when creating contracts.',
@@ -52,46 +55,55 @@ const AssetNamesStep: React.FC<AssetNamesStepProps> = ({ state, onUpdate }) => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
 
-  const { nomenclatureGroup } = state;
+  const { nomenclatureGroup, targetIndustries } = state;
   const config = nomenclatureGroup ? GROUP_CONFIG[nomenclatureGroup] : null;
   const isAssetGroup = nomenclatureGroup ? ASSET_STEP_GROUPS.has(nomenclatureGroup) : false;
 
-  // Fetch resource types
-  const { data: resourceTypes, isLoading } = useResourceTypes();
+  // Derive resource_type_id from nomenclature group
+  const resourceTypeId = nomenclatureGroup
+    ? NOMENCLATURE_RESOURCE_TYPE_MAP[nomenclatureGroup] || 'equipment'
+    : 'equipment';
 
-  // Filter by the appropriate category
-  const filteredTypes = useMemo(() => {
-    if (!config || !resourceTypes) return [];
-    return (resourceTypes as any[]).filter(
-      (rt) => rt.resource_category === config.category && rt.is_active
-    );
-  }, [resourceTypes, config]);
+  // Fetch resource templates filtered by resource_type_id
+  // The API already filters by tenant's served industries server-side
+  const templateFilters: ResourceTemplateFilters = useMemo(
+    () => ({ limit: 500, resource_type_id: resourceTypeId }),
+    [resourceTypeId]
+  );
+  const { templates, isLoading } = useResourceTemplatesBrowser(templateFilters);
+
+  // Further filter by selected industries from Step 3
+  const filteredTemplates = useMemo(() => {
+    if (!templates || templates.length === 0) return [];
+    if (targetIndustries.length === 0) return templates;
+    return templates.filter((t) => targetIndustries.includes(t.industry_id));
+  }, [templates, targetIndustries]);
 
   // Search state
   const [search, setSearch] = React.useState('');
 
-  const displayTypes = useMemo(() => {
-    if (!search.trim()) return filteredTypes;
+  const displayTemplates = useMemo(() => {
+    if (!search.trim()) return filteredTemplates;
     const q = search.toLowerCase();
-    return filteredTypes.filter(
-      (rt) =>
-        rt.name.toLowerCase().includes(q) ||
-        (rt.description && rt.description.toLowerCase().includes(q))
+    return filteredTemplates.filter(
+      (t) =>
+        t.name.toLowerCase().includes(q) ||
+        (t.description && t.description.toLowerCase().includes(q))
     );
-  }, [filteredTypes, search]);
+  }, [filteredTemplates, search]);
 
-  // Toggle a resource type name
-  const toggleType = (rt: DBResourceType) => {
-    const idx = state.selectedAssetTypeIds.indexOf(rt.id);
+  // Toggle a resource template
+  const toggleTemplate = (templateItem: typeof templates[0]) => {
+    const idx = state.selectedAssetTypeIds.indexOf(templateItem.id);
     if (idx > -1) {
       onUpdate({
-        selectedAssetTypeIds: state.selectedAssetTypeIds.filter((id) => id !== rt.id),
+        selectedAssetTypeIds: state.selectedAssetTypeIds.filter((id) => id !== templateItem.id),
         selectedAssetTypeNames: state.selectedAssetTypeNames.filter((_, i) => i !== idx),
       });
     } else {
       onUpdate({
-        selectedAssetTypeIds: [...state.selectedAssetTypeIds, rt.id],
-        selectedAssetTypeNames: [...state.selectedAssetTypeNames, rt.name],
+        selectedAssetTypeIds: [...state.selectedAssetTypeIds, templateItem.id],
+        selectedAssetTypeNames: [...state.selectedAssetTypeNames, templateItem.name],
       });
     }
   };
@@ -99,8 +111,8 @@ const AssetNamesStep: React.FC<AssetNamesStepProps> = ({ state, onUpdate }) => {
   // Select / deselect all
   const selectAll = () => {
     onUpdate({
-      selectedAssetTypeIds: filteredTypes.map((rt) => rt.id),
-      selectedAssetTypeNames: filteredTypes.map((rt) => rt.name),
+      selectedAssetTypeIds: filteredTemplates.map((t) => t.id),
+      selectedAssetTypeNames: filteredTemplates.map((t) => t.name),
     });
   };
   const deselectAll = () => {
@@ -162,6 +174,11 @@ const AssetNamesStep: React.FC<AssetNamesStepProps> = ({ state, onUpdate }) => {
           <p className="text-sm max-w-lg mx-auto" style={{ color: colors.utility.secondaryText }}>
             {config!.description}
           </p>
+          {targetIndustries.length > 0 && (
+            <p className="text-xs mt-2" style={{ color: colors.utility.secondaryText }}>
+              Showing {resourceTypeId === 'equipment' ? 'equipment' : 'facility'} types for {targetIndustries.length} selected industr{targetIndustries.length !== 1 ? 'ies' : 'y'}
+            </p>
+          )}
         </div>
 
         {/* Loading */}
@@ -175,7 +192,7 @@ const AssetNamesStep: React.FC<AssetNamesStepProps> = ({ state, onUpdate }) => {
         )}
 
         {/* Content */}
-        {!isLoading && filteredTypes.length > 0 && (
+        {!isLoading && filteredTemplates.length > 0 && (
           <>
             {/* Toolbar: Search + Select All */}
             <div className="flex items-center justify-between gap-4">
@@ -199,26 +216,26 @@ const AssetNamesStep: React.FC<AssetNamesStepProps> = ({ state, onUpdate }) => {
 
               <div className="flex items-center gap-2">
                 <span className="text-xs font-medium" style={{ color: colors.utility.secondaryText }}>
-                  {selectedCount} of {filteredTypes.length} selected
+                  {selectedCount} of {filteredTemplates.length} selected
                 </span>
                 <button
-                  onClick={selectedCount === filteredTypes.length ? deselectAll : selectAll}
+                  onClick={selectedCount === filteredTemplates.length ? deselectAll : selectAll}
                   className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors hover:opacity-80"
                   style={{ color: colors.brand.primary, backgroundColor: `${colors.brand.primary}08` }}
                 >
-                  {selectedCount === filteredTypes.length ? 'Deselect All' : 'Select All'}
+                  {selectedCount === filteredTemplates.length ? 'Deselect All' : 'Select All'}
                 </button>
               </div>
             </div>
 
-            {/* Card Grid — Names Only */}
+            {/* Card Grid */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-              {displayTypes.map((rt) => {
-                const isSelected = state.selectedAssetTypeIds.includes(rt.id);
+              {displayTemplates.map((t) => {
+                const isSelected = state.selectedAssetTypeIds.includes(t.id);
                 return (
                   <button
-                    key={rt.id}
-                    onClick={() => toggleType(rt)}
+                    key={t.id}
+                    onClick={() => toggleTemplate(t)}
                     className="relative flex flex-col p-4 rounded-xl border-2 text-left transition-all duration-200 hover:shadow-md group"
                     style={{
                       backgroundColor: isSelected
@@ -259,16 +276,29 @@ const AssetNamesStep: React.FC<AssetNamesStepProps> = ({ state, onUpdate }) => {
                       className="text-sm font-semibold mb-0.5"
                       style={{ color: isSelected ? colors.brand.primary : colors.utility.primaryText }}
                     >
-                      {rt.name}
+                      {t.name}
                     </span>
 
-                    {/* Description (short) */}
-                    {rt.description && (
+                    {/* Description */}
+                    {t.description && (
                       <span
                         className="text-[10px] leading-tight line-clamp-2"
                         style={{ color: colors.utility.secondaryText }}
                       >
-                        {rt.description}
+                        {t.description}
+                      </span>
+                    )}
+
+                    {/* Recommended badge */}
+                    {t.is_recommended && (
+                      <span
+                        className="mt-2 text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded"
+                        style={{
+                          backgroundColor: `${colors.semantic.success}12`,
+                          color: colors.semantic.success,
+                        }}
+                      >
+                        Recommended
                       </span>
                     )}
                   </button>
@@ -277,7 +307,7 @@ const AssetNamesStep: React.FC<AssetNamesStepProps> = ({ state, onUpdate }) => {
             </div>
 
             {/* No search results */}
-            {displayTypes.length === 0 && search.trim() && (
+            {displayTemplates.length === 0 && search.trim() && (
               <div className="text-center py-8">
                 <p className="text-sm" style={{ color: colors.utility.secondaryText }}>
                   No {config!.label.toLowerCase()} match "{search}"
@@ -287,12 +317,15 @@ const AssetNamesStep: React.FC<AssetNamesStepProps> = ({ state, onUpdate }) => {
           </>
         )}
 
-        {/* No types available */}
-        {!isLoading && filteredTypes.length === 0 && (
-          <div className="flex items-center gap-3 py-8 justify-center">
-            <AlertCircle className="w-5 h-5" style={{ color: colors.utility.secondaryText }} />
-            <span className="text-sm" style={{ color: colors.utility.secondaryText }}>
-              No {config!.label.toLowerCase()} found in the system. Configure them in Settings → Resources.
+        {/* No templates available */}
+        {!isLoading && filteredTemplates.length === 0 && (
+          <div className="flex flex-col items-center gap-3 py-8">
+            <AlertCircle className="w-6 h-6" style={{ color: colors.utility.secondaryText }} />
+            <span className="text-sm text-center" style={{ color: colors.utility.secondaryText }}>
+              {targetIndustries.length === 0
+                ? 'No industries selected. Go back to Step 3 to select industries first.'
+                : `No ${config!.label.toLowerCase()} found for the selected industries. This is normal if the catalog hasn't been configured yet.`
+              }
             </span>
           </div>
         )}
