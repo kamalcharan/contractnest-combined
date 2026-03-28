@@ -1,0 +1,50 @@
+═══════════════════════════════════════════════════
+FIX: Global Template Designer — Wrong Industries + Empty Equipment
+═══════════════════════════════════════════════════
+
+PROBLEM:
+  - IndustryStep (Step 3) showed ALL 68 industries (parents + subsegments)
+    but equipment in m_catalog_resource_templates is keyed by PARENT industry IDs
+  - Selecting subsegment "Yoga Studios" (id: yoga_studios) returned no equipment
+    because equipment is stored under parent "wellness"
+  - AssetNamesStep (Step 4) used tenant-scoped API which filtered by admin's
+    served industries instead of the selected target industries
+
+FIX:
+  1. IndustryStep: Show only parent industries (level === 0) for admin
+  2. AssetNamesStep: Pass selected industry IDs directly to API (bypass tenant filter)
+  3. API + Edge: Accept industry_ids param to skip tenant served-industries lookup
+
+═══════════════════════════════════════════════════
+FILES TO COPY (7 files across 3 submodules)
+═══════════════════════════════════════════════════
+
+SUBMODULE: contractnest-ui (4 files)
+─────────────────────────────────
+1. src/pages/service-contracts/templates/admin/global-designer/steps/IndustryStep.tsx
+   → Show parent industries only for admin flow
+
+2. src/pages/service-contracts/templates/admin/global-designer/steps/AssetNamesStep.tsx
+   → Pass targetIndustries as industry_ids to API
+
+3. src/services/serviceURLs.ts
+   → Add industry_ids to RESOURCE_TEMPLATES_WITH_FILTERS URL builder
+
+4. src/services/resourcesService.ts
+   → Add industry_ids to getResourceTemplates method signature
+
+5. src/hooks/queries/useResourceTemplates.ts
+   → Add industry_ids to ResourceTemplateFilters type
+
+SUBMODULE: contractnest-api (2 files)
+─────────────────────────────────
+6. src/controllers/resourcesController.ts
+   → Extract industry_ids from query params and pass to service
+
+7. src/services/resourcesService.ts
+   → Forward industry_ids to edge function
+
+SUBMODULE: contractnest-edge (1 file)
+─────────────────────────────────
+8. supabase/functions/resources/index.ts
+   → Accept industry_ids param; when provided, skip tenant lookup and use directly
