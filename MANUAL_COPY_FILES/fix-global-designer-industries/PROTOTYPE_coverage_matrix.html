@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ContractNest — Global Templates Command Center</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f8f8f6;
+  --white: #ffffff;
+  --surface: #fafaf8;
+  --border: #e4e0d8;
+  --border-light: #eeebe5;
+  --text: #1a1a1a;
+  --text-mid: #5c5850;
+  --text-dim: #9a9488;
+  --accent: #2563eb;
+  --accent-light: #eff4ff;
+  --green: #16a34a;
+  --green-bg: #f0fdf4;
+  --amber: #d97706;
+  --amber-bg: #fffbeb;
+  --red: #dc2626;
+  --red-bg: #fef2f2;
+  --purple: #7c3aed;
+  --teal: #0d9488;
+  --radius: 10px;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.04);
+  --shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+  line-height: 1.5; -webkit-font-smoothing: antialiased;
+}
+.mono { font-family: 'IBM Plex Mono', monospace; }
+
+/* ═══ Header ═══ */
+.header {
+  background: var(--white); border-bottom: 1px solid var(--border);
+  padding: 0 32px; height: 56px; display: flex; align-items: center; gap: 16px;
+  position: sticky; top: 0; z-index: 50; box-shadow: var(--shadow-sm);
+}
+.header .brand { font-weight: 800; font-size: 15px; color: var(--accent); letter-spacing: -0.5px; }
+.header .sep { color: var(--border); font-size: 20px; }
+.header .page-title { font-weight: 700; font-size: 14px; color: var(--text); }
+.header .spacer { flex: 1; }
+.btn-create {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 18px; border-radius: 10px; border: none;
+  background: linear-gradient(135deg, var(--accent), #1d4ed8);
+  color: #fff; font-size: 13px; font-weight: 700; cursor: pointer;
+  box-shadow: 0 2px 8px rgba(37,99,235,0.3); transition: all 0.15s;
+}
+.btn-create:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(37,99,235,0.35); }
+
+/* ═══ View Tabs ═══ */
+.view-tabs {
+  display: flex; gap: 2px; padding: 3px;
+  background: var(--border-light); border-radius: 10px;
+  margin-right: 16px;
+}
+.view-tab {
+  padding: 6px 14px; border-radius: 8px; border: none;
+  font-family: inherit; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: all 0.15s;
+  background: transparent; color: var(--text-dim);
+}
+.view-tab.active { background: var(--white); color: var(--text); box-shadow: var(--shadow-sm); }
+
+/* ═══ Main Layout ═══ */
+.main { max-width: 1600px; margin: 0 auto; padding: 24px 32px; }
+
+/* ═══ Stats Strip ═══ */
+.stats-strip {
+  display: flex; gap: 12px; margin-bottom: 24px; overflow-x: auto;
+  padding-bottom: 4px;
+}
+.stat-chip {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 18px; border-radius: 12px; border: 1px solid var(--border-light);
+  background: var(--white); white-space: nowrap; min-width: 0;
+  transition: all 0.15s;
+}
+.stat-chip:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+.stat-icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.stat-value { font-size: 22px; font-weight: 800; line-height: 1; letter-spacing: -0.5px; }
+.stat-label { font-size: 11px; color: var(--text-dim); font-weight: 500; }
+
+/* ═══ Industry Tabs ═══ */
+.industry-bar {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 20px;
+  overflow-x: auto; padding-bottom: 8px;
+}
+.industry-tab {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 16px; border-radius: 20px; border: 1px solid var(--border);
+  background: var(--white); font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all 0.15s; white-space: nowrap;
+  color: var(--text-mid);
+}
+.industry-tab:hover { border-color: var(--accent); color: var(--accent); }
+.industry-tab.active {
+  background: var(--accent); border-color: var(--accent); color: #fff;
+  box-shadow: 0 2px 8px rgba(37,99,235,0.25);
+}
+.industry-tab .count {
+  font-size: 10px; font-weight: 700; padding: 1px 6px;
+  border-radius: 10px; font-family: 'IBM Plex Mono', monospace;
+}
+.industry-tab:not(.active) .count { background: var(--border-light); color: var(--text-dim); }
+.industry-tab.active .count { background: rgba(255,255,255,0.25); color: #fff; }
+
+/* ═══ Matrix Container ═══ */
+.matrix-container {
+  background: var(--white); border: 1px solid var(--border);
+  border-radius: 14px; overflow: hidden; box-shadow: var(--shadow-sm);
+}
+.matrix-header-row {
+  display: flex; align-items: stretch; border-bottom: 2px solid var(--border);
+  background: var(--surface); position: sticky; top: 56px; z-index: 10;
+}
+.matrix-corner {
+  min-width: 240px; max-width: 240px; padding: 12px 16px;
+  display: flex; align-items: center; gap: 8px;
+  border-right: 1px solid var(--border);
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--text-dim);
+}
+.matrix-col-headers {
+  display: flex; flex: 1; overflow-x: auto;
+}
+.matrix-col-header {
+  min-width: 90px; flex: 1; padding: 10px 6px; text-align: center;
+  border-right: 1px solid var(--border-light);
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+}
+.matrix-col-header:last-child { border-right: none; }
+.col-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+}
+.col-name { font-size: 11px; font-weight: 700; color: var(--text); }
+.col-full { font-size: 9px; color: var(--text-dim); line-height: 1.2; }
+
+/* ═══ Matrix Rows ═══ */
+.matrix-row {
+  display: flex; align-items: stretch; border-bottom: 1px solid var(--border-light);
+  transition: background 0.1s;
+}
+.matrix-row:hover { background: #fafaf8; }
+.matrix-row:last-child { border-bottom: none; }
+.matrix-row.sub-header {
+  background: var(--surface);
+}
+.matrix-row-label {
+  min-width: 240px; max-width: 240px; padding: 10px 16px;
+  display: flex; align-items: center; gap: 10px;
+  border-right: 1px solid var(--border); font-size: 13px;
+}
+.matrix-row-label .equip-icon {
+  width: 30px; height: 30px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; flex-shrink: 0;
+}
+.matrix-row-label .equip-name { font-weight: 600; color: var(--text); line-height: 1.2; }
+.matrix-row-label .equip-sub { font-size: 10px; color: var(--text-dim); }
+.sub-header-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1.2px; color: var(--text-dim); padding: 8px 16px;
+  min-width: 240px; max-width: 240px; border-right: 1px solid var(--border);
+  display: flex; align-items: center; gap: 6px;
+}
+
+.matrix-cells { display: flex; flex: 1; }
+.matrix-cell {
+  min-width: 90px; flex: 1; padding: 8px 6px;
+  display: flex; align-items: center; justify-content: center;
+  border-right: 1px solid var(--border-light);
+  cursor: pointer; transition: all 0.15s; position: relative;
+}
+.matrix-cell:last-child { border-right: none; }
+.matrix-cell:hover { transform: scale(1.05); z-index: 2; }
+
+/* Cell states */
+.cell-badge {
+  display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 8px;
+  font-size: 14px; font-weight: 700; transition: all 0.15s;
+}
+.cell-badge.has-template {
+  background: var(--green-bg); border: 1.5px solid #bbf7d0; color: var(--green);
+}
+.cell-badge.has-draft {
+  background: var(--amber-bg); border: 1.5px solid #fde68a; color: var(--amber);
+}
+.cell-badge.missing {
+  background: #f9fafb; border: 1.5px dashed #d1d5db; color: #d1d5db;
+}
+.cell-badge.missing:hover {
+  background: var(--accent-light); border-color: var(--accent); border-style: solid;
+  color: var(--accent); cursor: pointer;
+}
+.cell-badge.not-applicable {
+  background: transparent; border: none; color: #e5e7eb; font-size: 10px;
+}
+.cell-count {
+  font-size: 10px; font-family: 'IBM Plex Mono', monospace;
+  position: absolute; bottom: 2px; right: 8px; color: var(--text-dim);
+}
+
+/* ═══ Legend ═══ */
+.legend {
+  display: flex; align-items: center; gap: 20px; padding: 14px 20px;
+  border-top: 1px solid var(--border); background: var(--surface);
+  font-size: 12px; color: var(--text-dim);
+}
+.legend-item { display: flex; align-items: center; gap: 6px; }
+.legend-dot {
+  width: 12px; height: 12px; border-radius: 4px;
+}
+
+/* ═══ Gallery View (hidden by default) ═══ */
+.gallery-view { display: none; }
+.gallery-view.active { display: block; }
+.matrix-view.active { display: block; }
+.matrix-view { display: none; }
+
+/* ═══ Summary Panel ═══ */
+.summary-bar {
+  display: flex; align-items: center; gap: 16px; margin-bottom: 16px;
+  padding: 12px 18px; background: var(--white); border: 1px solid var(--border-light);
+  border-radius: 12px;
+}
+.summary-bar .label { font-size: 12px; color: var(--text-dim); }
+.summary-bar .value { font-size: 13px; font-weight: 700; color: var(--text); }
+.coverage-bar-wrap { flex: 1; max-width: 200px; }
+.coverage-bar-bg {
+  height: 6px; background: var(--border-light); border-radius: 3px; overflow: hidden;
+}
+.coverage-bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s; }
+
+/* ═══ Tooltip ═══ */
+.tooltip {
+  display: none; position: fixed; z-index: 100;
+  background: var(--text); color: #fff; padding: 10px 14px;
+  border-radius: 10px; font-size: 12px; max-width: 240px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2); pointer-events: none;
+}
+.tooltip.show { display: block; }
+.tooltip .tt-title { font-weight: 700; margin-bottom: 4px; font-size: 13px; }
+.tooltip .tt-sub { color: #a1a1aa; font-size: 11px; }
+.tooltip .tt-action { color: #93c5fd; font-size: 11px; margin-top: 6px; font-weight: 600; }
+
+/* ═══ Scrollbar ═══ */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══ -->
+<div class="header">
+  <span class="brand">ContractNest</span>
+  <span class="sep">|</span>
+  <span class="page-title">Global Templates</span>
+  <div class="spacer"></div>
+  <div class="view-tabs">
+    <button class="view-tab" onclick="switchView('gallery')">Gallery</button>
+    <button class="view-tab active" onclick="switchView('matrix')">Coverage Matrix</button>
+  </div>
+  <button class="btn-create">+ Create Template</button>
+</div>
+
+<!-- ═══ MAIN ═══ -->
+<div class="main">
+
+  <!-- Stats Strip -->
+  <div class="stats-strip">
+    <div class="stat-chip">
+      <div class="stat-icon" style="background:#eff4ff;color:var(--accent)">🏢</div>
+      <div><div class="stat-value" style="color:var(--accent)">27</div><div class="stat-label">Industries</div></div>
+    </div>
+    <div class="stat-chip">
+      <div class="stat-icon" style="background:#f0fdf4;color:var(--green)">🔧</div>
+      <div><div class="stat-value" style="color:var(--green)">121</div><div class="stat-label">Equipment Types</div></div>
+    </div>
+    <div class="stat-chip">
+      <div class="stat-icon" style="background:#f5f3ff;color:var(--purple)">🏗️</div>
+      <div><div class="stat-value" style="color:var(--purple)">54</div><div class="stat-label">Facility Types</div></div>
+    </div>
+    <div class="stat-chip">
+      <div class="stat-icon" style="background:var(--amber-bg);color:var(--amber)">📋</div>
+      <div><div class="stat-value" style="color:var(--amber)">3</div><div class="stat-label">Templates Created</div></div>
+    </div>
+    <div class="stat-chip">
+      <div class="stat-icon" style="background:var(--red-bg);color:var(--red)">⚠️</div>
+      <div><div class="stat-value" style="color:var(--red)">89%</div><div class="stat-label">Coverage Gap</div></div>
+    </div>
+    <div class="stat-chip">
+      <div class="stat-icon" style="background:#f0fdfa;color:var(--teal)">📝</div>
+      <div><div class="stat-value" style="color:var(--teal)">2</div><div class="stat-label">Smart Forms</div></div>
+    </div>
+  </div>
+
+  <!-- Industry Tabs -->
+  <div class="industry-bar" id="industryBar"></div>
+
+  <!-- Summary Bar -->
+  <div class="summary-bar" id="summaryBar">
+    <div><span class="label">Equipment: </span><span class="value" id="sumEquip">9</span></div>
+    <div><span class="label">Templates: </span><span class="value" id="sumTemplates">2 / 54</span></div>
+    <div class="coverage-bar-wrap">
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+        <span style="font-size:11px;color:var(--text-dim)">Coverage</span>
+        <span class="mono" style="font-size:11px;font-weight:600;color:var(--accent)" id="sumPercent">3.7%</span>
+      </div>
+      <div class="coverage-bar-bg"><div class="coverage-bar-fill" id="sumBar" style="width:3.7%;background:var(--red)"></div></div>
+    </div>
+    <div><span class="label">Smart Forms: </span><span class="value" id="sumForms">1</span></div>
+  </div>
+
+  <!-- Matrix View -->
+  <div class="matrix-view active" id="matrixView">
+    <div class="matrix-container" id="matrixContainer"></div>
+  </div>
+
+  <!-- Gallery View (placeholder) -->
+  <div class="gallery-view" id="galleryView">
+    <div style="padding:60px;text-align:center;color:var(--text-dim)">
+      <div style="font-size:48px;margin-bottom:16px">📋</div>
+      <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px">Gallery View</div>
+      <div style="font-size:14px">The existing template card grid would go here — filtered by the selected industry.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Tooltip -->
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// DATA — Real from ContractNest DB
+// ═══════════════════════════════════════════════════════
+
+const NOMENCLATURES = [
+  { id: 'amc', name: 'AMC', full: 'Annual Maintenance', color: '#3B82F6', group: 'equipment' },
+  { id: 'cmc', name: 'CMC', full: 'Comprehensive Maintenance', color: '#8B5CF6', group: 'equipment' },
+  { id: 'camc', name: 'CAMC', full: 'Comprehensive Annual', color: '#7C3AED', group: 'equipment' },
+  { id: 'pmc', name: 'PMC', full: 'Preventive Maintenance', color: '#0EA5E9', group: 'equipment' },
+  { id: 'bmc', name: 'BMC', full: 'Breakdown Maintenance', color: '#F59E0B', group: 'equipment' },
+  { id: 'fmc', name: 'FMC', full: 'Facility Management', color: '#10B981', group: 'facility' },
+];
+
+const INDUSTRIES = {
+  facility_management: {
+    name: 'Facility Management', icon: '🏢', equipCount: 9, facilityCount: 4,
+    equipment: [
+      { cat: 'HVAC Systems', items: ['HVAC System'] },
+      { cat: 'Fire & Safety', items: ['Fire Alarm Panel'] },
+      { cat: 'Power & Electrical', items: ['DG Set (Generator)', 'Transformer', 'UPS System'] },
+      { cat: 'Security', items: ['CCTV & Surveillance'] },
+      { cat: 'Vertical Transport', items: ['Elevator / Lift'] },
+      { cat: 'Water Treatment', items: ['STP / WTP Plant'] },
+    ]
+  },
+  healthcare: {
+    name: 'Healthcare', icon: '🏥', equipCount: 8, facilityCount: 3,
+    equipment: [
+      { cat: 'Diagnostic Imaging', items: ['MRI Scanner', 'CT Scanner', 'X-Ray Machine', 'Ultrasound Machine'] },
+      { cat: 'Life Support', items: ['Ventilator', 'Defibrillator'] },
+      { cat: 'Patient Monitoring', items: ['Patient Monitor'] },
+    ]
+  },
+  manufacturing: {
+    name: 'Manufacturing', icon: '🏭', equipCount: 6, facilityCount: 1,
+    equipment: [
+      { cat: 'CNC & Machining', items: ['CNC Machine'] },
+      { cat: 'Material Handling', items: ['Conveyor System'] },
+      { cat: 'Moulding', items: ['Injection Moulding Machine'] },
+      { cat: 'Pneumatics', items: ['Industrial Compressor'] },
+      { cat: 'Thermal', items: ['Boiler / Steam Generator'] },
+    ]
+  },
+  pharma: {
+    name: 'Pharmaceuticals', icon: '💊', equipCount: 6, facilityCount: 3,
+    equipment: [
+      { cat: 'HVAC', items: ['HVAC-AHU (Pharma Grade)'] },
+      { cat: 'Lab', items: ['HPLC / Gas Chromatograph'] },
+      { cat: 'Manufacturing', items: ['Tablet Press'] },
+      { cat: 'Packaging', items: ['Packaging Machine'] },
+      { cat: 'Sterilization', items: ['Autoclave / Sterilizer'] },
+    ]
+  },
+  wellness: {
+    name: 'Wellness & Fitness', icon: '💪', equipCount: 4, facilityCount: 2,
+    equipment: [
+      { cat: 'Fitness Equipment', items: ['Treadmill (Commercial)', 'Multi-Gym Station'] },
+      { cat: 'Spa & Relaxation', items: ['Spa / Sauna Unit'] },
+    ]
+  },
+  automotive: {
+    name: 'Automotive', icon: '🚗', equipCount: 5, facilityCount: 0,
+    equipment: [
+      { cat: 'Diagnostic Tools', items: ['Wheel Alignment Machine'] },
+      { cat: 'Workshop', items: ['Vehicle Lift / Hoist', 'Tyre Changer', 'Paint Booth'] },
+    ]
+  },
+  technology: {
+    name: 'Technology', icon: '💻', equipCount: 4, facilityCount: 2,
+    equipment: [
+      { cat: 'Networking', items: ['Network Switch'] },
+      { cat: 'Power & Cooling', items: ['Precision AC Unit'] },
+      { cat: 'Server', items: ['Server Rack'] },
+    ]
+  },
+  education: {
+    name: 'Education', icon: '🎓', equipCount: 3, facilityCount: 6,
+    equipment: [
+      { cat: 'AV Equipment', items: ['Projector / Interactive Display'] },
+      { cat: 'Lab', items: ['Lab Equipment (Science)'] },
+      { cat: 'Transport', items: ['School Bus'] },
+    ]
+  },
+};
+
+// Simulate template existence (sparse — most cells empty to show the gap)
+const TEMPLATE_MAP = {
+  'HVAC System_amc': { status: 'published', count: 1 },
+  'HVAC System_cmc': { status: 'draft', count: 1 },
+  'Elevator / Lift_amc': { status: 'published', count: 1 },
+  'MRI Scanner_amc': { status: 'draft', count: 1 },
+  'CNC Machine_amc': { status: 'published', count: 1 },
+};
+
+// ═══════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════
+
+let activeIndustry = 'facility_management';
+
+function renderIndustryTabs() {
+  const bar = document.getElementById('industryBar');
+  bar.innerHTML = Object.entries(INDUSTRIES).map(([id, ind]) => `
+    <button class="industry-tab ${id === activeIndustry ? 'active' : ''}" onclick="selectIndustry('${id}')">
+      <span>${ind.icon}</span>
+      <span>${ind.name}</span>
+      <span class="count">${ind.equipCount}</span>
+    </button>
+  `).join('');
+}
+
+function renderMatrix() {
+  const industry = INDUSTRIES[activeIndustry];
+  const container = document.getElementById('matrixContainer');
+
+  // Column headers (nomenclatures)
+  let html = `
+    <div class="matrix-header-row">
+      <div class="matrix-corner">🔧 Equipment / Asset</div>
+      <div class="matrix-col-headers">
+        ${NOMENCLATURES.map(n => `
+          <div class="matrix-col-header">
+            <span class="col-dot" style="background:${n.color}"></span>
+            <span class="col-name">${n.name}</span>
+            <span class="col-full">${n.full}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+
+  // Equipment rows grouped by sub-category
+  let totalCells = 0, filledCells = 0, draftCells = 0;
+
+  industry.equipment.forEach(group => {
+    // Sub-category header
+    html += `
+      <div class="matrix-row sub-header">
+        <div class="sub-header-label">
+          <span style="width:6px;height:6px;border-radius:50%;background:var(--accent);opacity:0.4"></span>
+          ${group.cat}
+        </div>
+        <div class="matrix-cells">
+          ${NOMENCLATURES.map(() => '<div class="matrix-cell" style="cursor:default"></div>').join('')}
+        </div>
+      </div>
+    `;
+
+    // Equipment items
+    group.items.forEach(equip => {
+      html += `
+        <div class="matrix-row">
+          <div class="matrix-row-label">
+            <div class="equip-icon" style="background:#eff4ff;color:var(--accent)">🔧</div>
+            <div>
+              <div class="equip-name">${equip}</div>
+              <div class="equip-sub">${group.cat}</div>
+            </div>
+          </div>
+          <div class="matrix-cells">
+            ${NOMENCLATURES.map(nom => {
+              const key = `${equip}_${nom.id}`;
+              const tmpl = TEMPLATE_MAP[key];
+              totalCells++;
+
+              if (tmpl && tmpl.status === 'published') {
+                filledCells++;
+                return `
+                  <div class="matrix-cell"
+                    onmouseenter="showTooltip(event, '${equip}', '${nom.name}', 'published', '${nom.full}')"
+                    onmouseleave="hideTooltip()">
+                    <div class="cell-badge has-template">✓</div>
+                  </div>`;
+              } else if (tmpl && tmpl.status === 'draft') {
+                draftCells++;
+                return `
+                  <div class="matrix-cell"
+                    onmouseenter="showTooltip(event, '${equip}', '${nom.name}', 'draft', '${nom.full}')"
+                    onmouseleave="hideTooltip()">
+                    <div class="cell-badge has-draft">◐</div>
+                  </div>`;
+              } else if (nom.group === 'facility' && activeIndustry !== 'facility_management') {
+                return `
+                  <div class="matrix-cell"
+                    onmouseenter="showTooltip(event, '${equip}', '${nom.name}', 'na', '${nom.full}')"
+                    onmouseleave="hideTooltip()">
+                    <div class="cell-badge not-applicable">—</div>
+                  </div>`;
+              } else {
+                return `
+                  <div class="matrix-cell"
+                    onmouseenter="showTooltip(event, '${equip}', '${nom.name}', 'missing', '${nom.full}')"
+                    onmouseleave="hideTooltip()">
+                    <div class="cell-badge missing">+</div>
+                  </div>`;
+              }
+            }).join('')}
+          </div>
+        </div>
+      `;
+    });
+  });
+
+  // Legend
+  html += `
+    <div class="legend">
+      <span style="font-weight:700;margin-right:4px">Legend:</span>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--green-bg);border:1.5px solid #bbf7d0"></div> Published</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--amber-bg);border:1.5px solid #fde68a"></div> Draft</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f9fafb;border:1.5px dashed #d1d5db"></div> Missing — click to create</div>
+      <div class="legend-item"><div class="legend-dot" style="background:transparent;color:#d1d5db;text-align:center;font-size:10px;line-height:12px">—</div> N/A</div>
+      <div style="flex:1"></div>
+      <span class="mono" style="font-size:11px;color:var(--text-dim)">${filledCells} published · ${draftCells} drafts · ${totalCells - filledCells - draftCells} gaps</span>
+    </div>
+  `;
+
+  container.innerHTML = html;
+
+  // Update summary
+  const covered = filledCells + draftCells;
+  const pct = totalCells > 0 ? ((covered / totalCells) * 100).toFixed(1) : 0;
+  document.getElementById('sumEquip').textContent = industry.equipCount;
+  document.getElementById('sumTemplates').textContent = `${covered} / ${totalCells}`;
+  document.getElementById('sumPercent').textContent = pct + '%';
+  document.getElementById('sumForms').textContent = covered > 0 ? '1' : '0';
+  const bar = document.getElementById('sumBar');
+  bar.style.width = pct + '%';
+  bar.style.background = pct > 50 ? 'var(--green)' : pct > 20 ? 'var(--amber)' : 'var(--red)';
+}
+
+function selectIndustry(id) {
+  activeIndustry = id;
+  renderIndustryTabs();
+  renderMatrix();
+}
+
+function switchView(view) {
+  document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('matrixView').classList.toggle('active', view === 'matrix');
+  document.getElementById('galleryView').classList.toggle('active', view === 'gallery');
+}
+
+// ═══ Tooltip ═══
+function showTooltip(e, equip, nom, status, nomFull) {
+  const tt = document.getElementById('tooltip');
+  let html = `<div class="tt-title">${equip} × ${nom}</div>`;
+
+  if (status === 'published') {
+    html += `<div class="tt-sub" style="color:#4ade80">✓ Published template available</div>`;
+    html += `<div class="tt-action">Click to edit or view</div>`;
+  } else if (status === 'draft') {
+    html += `<div class="tt-sub" style="color:#fbbf24">◐ Draft — in progress</div>`;
+    html += `<div class="tt-action">Click to continue editing</div>`;
+  } else if (status === 'na') {
+    html += `<div class="tt-sub">${nomFull} doesn't apply to ${equip}</div>`;
+  } else {
+    html += `<div class="tt-sub">No template exists for ${equip} under ${nomFull} Contract</div>`;
+    html += `<div class="tt-action">Click + to create template</div>`;
+  }
+
+  tt.innerHTML = html;
+  tt.classList.add('show');
+
+  const rect = e.target.getBoundingClientRect();
+  tt.style.left = (rect.left + rect.width / 2 - 120) + 'px';
+  tt.style.top = (rect.top - tt.offsetHeight - 8) + 'px';
+}
+
+function hideTooltip() {
+  document.getElementById('tooltip').classList.remove('show');
+}
+
+// Init
+renderIndustryTabs();
+renderMatrix();
+</script>
+</body>
+</html>
