@@ -1,0 +1,13 @@
+COPY INSTRUCTIONS — Block System Audit
+=======================================
+Branch: claude/init-project-eDrKO
+Date: 2026-03-29
+
+FILES TO COPY:
+─────────────────────────────────
+1. MANUAL_COPY_FILES/block-system-audit/ClaudeDocumentation/block-system-audit.md
+   → ClaudeDocumentation/block-system-audit.md
+
+SUBMODULES AFFECTED:
+─────────────────────────────────
+- ClaudeDocumentation (documentation only — no code changes)
