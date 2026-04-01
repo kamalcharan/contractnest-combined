@@ -12,13 +12,17 @@ const NOMENCLATURES = ['AMC', 'CMC', 'CAMC', 'PMC', 'BMC', 'FMC', 'O&M', 'SLA'];
 interface Props {
   summary: KnowledgeTreeSummary;
   selectedVariantCount: number;
+  partsCount: number;
+  checkpointsCount: number;
+  cyclesCount: number;
+  serviceActivities: string[];
   colors: any;
 }
 
-const RightPanel: React.FC<Props> = ({ summary, selectedVariantCount, colors }) => {
+const RightPanel: React.FC<Props> = ({ summary, selectedVariantCount, partsCount, checkpointsCount, cyclesCount, serviceActivities: liveActivities, colors }) => {
   const s = summary.summary;
   const rt = summary.resource_template;
-  const activeActivities = new Set(s.service_activities || []);
+  const activeActivities = new Set(liveActivities || s.service_activities || []);
 
   const borderColor = colors.utility.secondaryText + '15';
   const cardStyle: React.CSSProperties = {
@@ -53,9 +57,9 @@ const RightPanel: React.FC<Props> = ({ summary, selectedVariantCount, colors }) 
         <h4 style={headStyle}>Knowledge Tree</h4>
         <div style={rowStyle}><span style={labelStyle}>Equipment</span><span style={{ ...valueStyle, color: colors.brand.primary }}>{rt.name}</span></div>
         <div style={rowStyle}><span style={labelStyle}>Variants</span><span style={valueStyle}>{selectedVariantCount}</span></div>
-        <div style={rowStyle}><span style={labelStyle}>Spare Parts</span><span style={valueStyle}>{s.spare_parts_count}</span></div>
-        <div style={rowStyle}><span style={labelStyle}>Checkpoints</span><span style={valueStyle}>{s.checkpoints_count}</span></div>
-        <div style={rowStyle}><span style={labelStyle}>Service Cycles</span><span style={valueStyle}>{s.cycles_count}</span></div>
+        <div style={rowStyle}><span style={labelStyle}>Spare Parts</span><span style={valueStyle}>{partsCount}</span></div>
+        <div style={rowStyle}><span style={labelStyle}>Checkpoints</span><span style={valueStyle}>{checkpointsCount}</span></div>
+        <div style={rowStyle}><span style={labelStyle}>Service Cycles</span><span style={valueStyle}>{cyclesCount}</span></div>
       </div>
 
       {/* Context Applied */}
