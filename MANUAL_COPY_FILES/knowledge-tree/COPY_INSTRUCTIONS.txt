@@ -1,0 +1,6 @@
+FIX: Checkpoint labeled rows + unit dropdown dark mode + service cycles column headers
+Date: 2026-04-01
+Only 2 files changed:
+
+1. contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/components/CheckpointsTab.tsx
+2. contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/components/CyclesTab.tsx
