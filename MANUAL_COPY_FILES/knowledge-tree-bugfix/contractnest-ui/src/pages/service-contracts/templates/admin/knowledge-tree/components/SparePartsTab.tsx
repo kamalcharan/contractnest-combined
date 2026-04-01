@@ -86,15 +86,16 @@ const SparePartsTab: React.FC<Props> = ({ summary, variants, partsByGroup, selec
                             key={variant.id}
                             onClick={() => onToggleMapping(groupName, part.id, variant.id)}
                             style={{
-                              width: '28px', height: '28px', borderRadius: '5px', border: 'none',
+                              width: '28px', height: '28px', borderRadius: '6px',
+                              border: mapped ? `2px solid ${colors.semantic.success}` : `2px solid ${colors.utility.secondaryText}30`,
                               cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              fontSize: '12px', transition: '.15s',
-                              background: mapped ? brandPrimary + '10' : 'transparent',
-                              color: mapped ? brandPrimary : borderColor,
+                              fontSize: '16px', fontWeight: 700, transition: '.15s',
+                              background: mapped ? colors.semantic.success + '15' : 'transparent',
+                              color: mapped ? colors.semantic.success : colors.utility.secondaryText + '40',
                             }}
                             title={`${part.name} → ${variant.name}: ${mapped ? 'ON' : 'OFF'} (click to toggle)`}
                           >
-                            {mapped ? '●' : '○'}
+                            {mapped ? '✓' : ''}
                           </button>
                         );
                       })}
