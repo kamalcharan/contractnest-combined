@@ -80,7 +80,7 @@ const CyclesTab: React.FC<Props> = ({ summary, cycles, onAdd, onRemove, onEditCy
               ) : <span />}
             </div>
           );
-        })
+        })}
         </>
       )}
 
