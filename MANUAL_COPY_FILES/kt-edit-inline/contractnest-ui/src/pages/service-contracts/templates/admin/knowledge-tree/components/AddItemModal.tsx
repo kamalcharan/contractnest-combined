@@ -57,7 +57,7 @@ const AddItemModal: React.FC<Props> = ({ title, fields, onClose, onSave, colors,
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }} />
-      <div style={{ position: 'relative', width: '100%', maxWidth: '480px', background: colors.utility.secondaryBackground, border: `1px solid ${colors.utility.secondaryText}15`, borderRadius: '14px', boxShadow: '0 20px 60px rgba(0,0,0,.12)', animation: 'fadeInUp .25s ease' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: '480px', background: colors.utility.secondaryBackground, border: `1px solid ${colors.utility.secondaryText}15`, borderRadius: '14px', boxShadow: '0 20px 60px rgba(0,0,0,.12)', animation: 'fadeInUp .25s ease' }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: `1px solid ${colors.utility.secondaryText}15` }}>
           <h3 style={{ fontSize: '16px', fontWeight: 700, color: colors.utility.primaryText }}>{title}</h3>

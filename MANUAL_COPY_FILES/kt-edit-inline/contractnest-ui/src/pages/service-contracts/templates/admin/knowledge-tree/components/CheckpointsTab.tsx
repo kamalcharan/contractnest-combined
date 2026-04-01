@@ -82,13 +82,10 @@ const CheckpointsTab: React.FC<Props> = ({ summary, checkpointsBySection, onAddC
 
               {cp.checkpoint_type === 'reading' && (
                 <>
-                  {/* Unit dropdown */}
+                  {/* Unit — read-only after creation (set at creation time only) */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', marginBottom: '6px' }}>
                     <span style={{ fontSize: '12px', fontWeight: 600, color: colors.utility.primaryText }}>Unit:</span>
-                    <select value={cp.unit || ''} onChange={(e) => onEditCheckpoint(sectionName, cp.id, { unit: e.target.value })} style={{ padding: '4px 8px', border: `1px solid ${borderColor}`, borderRadius: '5px', fontFamily: "'IBM Plex Mono', monospace", fontSize: '12px', fontWeight: 600, background: colors.utility.primaryBackground, color: colors.semantic.info || '#2563eb', cursor: 'pointer' }}>
-                      <option value="">Select...</option>
-                      {UNIT_OPTIONS.map((u) => <option key={u} value={u}>{u}</option>)}
-                    </select>
+                    <span style={{ padding: '4px 8px', border: `1px solid ${borderColor}`, borderRadius: '5px', fontFamily: "'IBM Plex Mono', monospace", fontSize: '12px', fontWeight: 700, background: colors.utility.primaryBackground, color: colors.utility.primaryText }}>{cp.unit || '—'}</span>
                   </div>
                   <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', fontSize: '12px' }}>
                     {cp.normal_min != null && cp.normal_max != null && (
