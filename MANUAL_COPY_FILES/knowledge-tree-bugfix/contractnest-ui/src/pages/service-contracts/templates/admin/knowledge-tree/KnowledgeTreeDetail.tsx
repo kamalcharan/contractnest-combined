@@ -6,7 +6,7 @@ import {
   MapPin, CheckCircle2, AlertCircle, Save, History, Loader2,
 } from 'lucide-react';
 import { useTheme } from '../../../../../contexts/ThemeContext';
-import { useToast } from '@/components/ui/use-toast';
+import { vaniToast } from '@/components/common/toast/VaNiToast';
 import { useKnowledgeTreeSummary, useKnowledgeTreeSave, useCreateSnapshot } from '@/hooks/queries/useKnowledgeTree';
 import type { KnowledgeTreeSummary } from './types';
 
@@ -25,7 +25,7 @@ const KnowledgeTreeDetail: React.FC = () => {
   const navigate = useNavigate();
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
-  const { toast } = useToast();
+
 
   const [activeTab, setActiveTab] = useState<DetailTab>('variants');
   const [selectedVariantIds, setSelectedVariantIds] = useState<Set<string>>(new Set());
@@ -104,15 +104,15 @@ const KnowledgeTreeDetail: React.FC = () => {
     };
     setLocalVariants((prev) => [...prev, newVariant]);
     setSelectedVariantIds((prev) => new Set([...prev, newVariant.id]));
-    toast({ title: 'Variant Added', description: `"${data.name}" added to the knowledge tree.` });
-  }, [id, localVariants, markChanged, toast]);
+    vaniToast.success(`Variant "${data.name}" added to the knowledge tree`);
+  }, [id, localVariants, markChanged]);
 
   const removeVariant = useCallback((variantId: string, variantName: string) => {
     markChanged();
     setLocalVariants((prev) => prev.filter((v) => v.id !== variantId));
     setSelectedVariantIds((prev) => { const next = new Set(prev); next.delete(variantId); return next; });
-    toast({ title: 'Variant Removed', description: `"${variantName}" removed from the tree.` });
-  }, [markChanged, toast]);
+    vaniToast.success(`Variant "${variantName}" removed`);
+  }, [markChanged]);
 
   // ── Spare Parts CRUD ──
   const addSparePart = useCallback((group: string, data: Record<string, string>) => {
@@ -129,14 +129,14 @@ const KnowledgeTreeDetail: React.FC = () => {
       variant_applicability: [],
     };
     setLocalParts((prev) => ({ ...prev, [group]: [...(prev[group] || []), newPart] }));
-    toast({ title: 'Spare Part Added', description: `"${data.name}" added to ${group.replace(/_/g, ' ')}.` });
-  }, [id, markChanged, toast]);
+    vaniToast.success(`Part "${data.name}" added to ${group.replace(/_/g, ' ')}`);
+  }, [id, markChanged]);
 
   const removeSparePart = useCallback((group: string, partId: string, partName: string) => {
     markChanged();
     setLocalParts((prev) => ({ ...prev, [group]: (prev[group] || []).filter((p: any) => p.id !== partId) }));
-    toast({ title: 'Spare Part Removed', description: `"${partName}" removed.` });
-  }, [markChanged, toast]);
+    vaniToast.success(`Part "${partName}" removed`);
+  }, [markChanged]);
 
   // Toggle variant mapping for a spare part
   const togglePartVariantMapping = useCallback((group: string, partId: string, variantId: string) => {
@@ -173,8 +173,8 @@ const KnowledgeTreeDetail: React.FC = () => {
       source: 'user_contributed', sort_order: 0, values: [], variant_applicability: [],
     };
     setLocalCheckpoints((prev) => ({ ...prev, [section]: [...(prev[section] || []), newCp] }));
-    toast({ title: 'Checkpoint Added', description: `"${data.name}" (${data.checkpoint_type || 'condition'}) added to ${section}.` });
-  }, [id, markChanged, toast]);
+    vaniToast.success(`Checkpoint "${data.name}" (${data.checkpoint_type || 'condition'}) added to ${section}`);
+  }, [id, markChanged]);
 
   const addCheckpointValue = useCallback((checkpointId: string, sectionName: string, data: Record<string, string>) => {
     markChanged();
@@ -191,8 +191,8 @@ const KnowledgeTreeDetail: React.FC = () => {
       }
       return { ...prev, [sectionName]: section };
     });
-    toast({ title: 'Value Added', description: `"${data.label}" added with ${data.severity} severity.` });
-  }, [markChanged, toast]);
+    vaniToast.success(`Value "${data.label}" added (${data.severity})`);
+  }, [markChanged]);
 
   // ── Cycle CRUD ──
   const addCycle = useCallback((data: Record<string, string>) => {
@@ -204,14 +204,14 @@ const KnowledgeTreeDetail: React.FC = () => {
       source: 'user_contributed', checkpoint_name: data.checkpoint_name || 'Custom Cycle', section_name: data.section_name || '',
     };
     setLocalCycles((prev) => [...prev, newCycle]);
-    toast({ title: 'Cycle Added', description: `"${data.checkpoint_name}" cycle added (${data.frequency_value} ${data.frequency_unit}).` });
-  }, [markChanged, toast]);
+    vaniToast.success(`Cycle "${data.checkpoint_name}" added (${data.frequency_value} ${data.frequency_unit})`);
+  }, [markChanged]);
 
   const removeCycle = useCallback((cycleId: string, cycleName: string) => {
     markChanged();
     setLocalCycles((prev) => prev.filter((c) => c.id !== cycleId));
-    toast({ title: 'Cycle Removed', description: `"${cycleName}" removed.` });
-  }, [markChanged, toast]);
+    vaniToast.success(`Cycle "${cycleName}" removed`);
+  }, [markChanged]);
 
   // ── Save handler (full payload) ──
   const handleSave = useCallback(() => {
@@ -233,12 +233,12 @@ const KnowledgeTreeDetail: React.FC = () => {
       onSuccess: (data) => {
         const inserted = (data as any).inserted || {};
         const summary = Object.entries(inserted).map(([k, v]) => `${v} ${k.replace(/_/g, ' ')}`).join(', ');
-        toast({ title: 'Knowledge Tree Saved', description: `Updated: ${summary || 'all data saved'}.` });
+        vaniToast.success(`Knowledge Tree saved — ${summary || 'all data saved'}`);
         setHasChanges(false);
       },
-      onError: (err) => { toast({ title: 'Save Failed', description: (err as Error).message, variant: 'destructive' }); },
+      onError: (err) => { vaniToast.error(`Save failed: ${(err as Error).message}`); },
     });
-  }, [id, localVariants, localParts, localCheckpoints, localCycles, selectedVariantIds, saveMutation, toast]);
+  }, [id, localVariants, localParts, localCheckpoints, localCycles, selectedVariantIds, saveMutation]);
 
   // ── Expand/collapse ──
   const toggleGroup = useCallback((key: string) => {
