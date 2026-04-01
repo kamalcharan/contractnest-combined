@@ -1,0 +1,37 @@
+═══════════════════════════════════════════════════
+KNOWLEDGE TREE PHASE 1 — Tab Toggle + Coverage Grid
+═══════════════════════════════════════════════════
+Date: 2026-04-01
+Submodules Affected: contractnest-ui
+
+FILES TO COPY:
+═══════════════════════════════════════════════════
+
+1. NEW — Knowledge Tree types
+   FROM: MANUAL_COPY_FILES/knowledge-tree-phase1/contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/types.ts
+   TO:   contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/types.ts
+
+2. NEW — Knowledge Tree card component
+   FROM: MANUAL_COPY_FILES/knowledge-tree-phase1/contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/KnowledgeTreeCard.tsx
+   TO:   contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/KnowledgeTreeCard.tsx
+
+3. NEW — Knowledge Tree TanStack Query hooks
+   FROM: MANUAL_COPY_FILES/knowledge-tree-phase1/contractnest-ui/src/hooks/queries/useKnowledgeTree.ts
+   TO:   contractnest-ui/src/hooks/queries/useKnowledgeTree.ts
+
+4. MODIFIED — Global Templates page (added tab toggle + KT view)
+   FROM: MANUAL_COPY_FILES/knowledge-tree-phase1/contractnest-ui/src/pages/service-contracts/templates/admin/global-templates.tsx
+   TO:   contractnest-ui/src/pages/service-contracts/templates/admin/global-templates.tsx
+
+═══════════════════════════════════════════════════
+WHAT CHANGED IN global-templates.tsx:
+═══════════════════════════════════════════════════
+- Added imports: TreePine, CheckCircle2, ClipboardCheck icons + KT hook + KT card + KT types
+- Added ActiveTab type + activeTab state (synced to URL ?tab= param)
+- Added useKnowledgeTreeCoverage() hook call
+- Added ktStats + ktResourceList derived data
+- Added tab toggle UI in header (Templates | Knowledge Trees)
+- Added KT-specific stat cards (Trees Built, Variants, Parts, Checkpoints, Coverage %)
+- Added KT content area with industry sidebar, search, grid/list view, KnowledgeTreeCard rendering
+- Wrapped existing template stats + content in {activeTab === 'templates' && ...} conditional
+- Header action button swaps between "Create Template" and KT coverage badge based on tab

@@ -1,0 +1,36 @@
+═══════════════════════════════════════════════════
+KNOWLEDGE TREE PHASE 3 — Full Editor UX (prototype-matching)
+═══════════════════════════════════════════════════
+Date: 2026-04-01
+Submodules Affected: contractnest-ui
+
+FILES TO COPY:
+═══════════════════════════════════════════════════
+
+1. REWRITTEN — Knowledge Tree Detail Page (main component)
+   FROM: MANUAL_COPY_FILES/knowledge-tree-phase3/contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/KnowledgeTreeDetail.tsx
+   TO:   contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/KnowledgeTreeDetail.tsx
+
+2. NEW — VaNi Guidance Bubble component
+   TO: contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/components/VaNiBubble.tsx
+
+3. NEW — Right Panel (VaNi Intelligence, KT Stats, Context, Activities, Nomenclatures)
+   TO: contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/components/RightPanel.tsx
+
+4. NEW — Variants Tab (toggle cards, selection counter, add variant)
+   TO: contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/components/VariantsTab.tsx
+
+5. NEW — Spare Parts Tab (variant toggle matrix ●/○, collapsible groups, add part)
+   TO: contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/components/SparePartsTab.tsx
+
+6. NEW — Checkpoints Tab (condition values + severity, editable reading thresholds, add value/checkpoint)
+   TO: contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/components/CheckpointsTab.tsx
+
+7. NEW — Service Cycles Tab (frequency dropdown, varies-by tags, editable alert days, add cycle)
+   TO: contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/components/CyclesTab.tsx
+
+8. NEW — Overlays Tab (context adjustments)
+   TO: contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/components/OverlaysTab.tsx
+
+9. UPDATED — useKnowledgeTree.ts (added save mutation hook)
+   TO: contractnest-ui/src/hooks/queries/useKnowledgeTree.ts
