@@ -5,7 +5,6 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/utils/supabase';
 import type {
   KnowledgeTreeCoverageMap,
-  KnowledgeTreeCoverageItem,
   KnowledgeTreeSummary,
 } from '@/pages/service-contracts/templates/admin/knowledge-tree/types';
 
@@ -59,78 +58,16 @@ async function callKnowledgeTreeEdge<T>(
 }
 
 // ── Hook: Coverage Map ─────────────────────────────────────────────
-// Lightweight query: checks which resource_template_ids have KT data
-// by counting variants, parts, checkpoints from the master tables.
+// Calls GET /knowledge-tree/coverage (uses service_role key, bypasses RLS)
 export const useKnowledgeTreeCoverage = () => {
   return useQuery({
     queryKey: knowledgeTreeKeys.coverage(),
     queryFn: async (): Promise<KnowledgeTreeCoverageMap> => {
-      // Parallel fetch counts from 3 master tables
-      const [variantsRes, partsRes, checkpointsRes] = await Promise.all([
-        supabase
-          .from('m_equipment_variants')
-          .select('resource_template_id')
-          .eq('is_active', true),
-        supabase
-          .from('m_equipment_spare_parts')
-          .select('resource_template_id')
-          .eq('is_active', true),
-        supabase
-          .from('m_equipment_checkpoints')
-          .select('resource_template_id')
-          .eq('is_active', true),
-      ]);
-
-      const coverageMap: KnowledgeTreeCoverageMap = {};
-
-      const countBy = (rows: { resource_template_id: string }[] | null) => {
-        if (!rows) return;
-        for (const row of rows) {
-          const id = row.resource_template_id;
-          if (!coverageMap[id]) {
-            coverageMap[id] = {
-              resource_template_id: id,
-              variants_count: 0,
-              spare_parts_count: 0,
-              checkpoints_count: 0,
-            };
-          }
-        }
-      };
-
-      // Initialize entries
-      countBy(variantsRes.data);
-      countBy(partsRes.data);
-      countBy(checkpointsRes.data);
-
-      // Count variants
-      if (variantsRes.data) {
-        for (const row of variantsRes.data) {
-          if (coverageMap[row.resource_template_id]) {
-            coverageMap[row.resource_template_id].variants_count++;
-          }
-        }
-      }
-
-      // Count spare parts
-      if (partsRes.data) {
-        for (const row of partsRes.data) {
-          if (coverageMap[row.resource_template_id]) {
-            coverageMap[row.resource_template_id].spare_parts_count++;
-          }
-        }
-      }
-
-      // Count checkpoints
-      if (checkpointsRes.data) {
-        for (const row of checkpointsRes.data) {
-          if (coverageMap[row.resource_template_id]) {
-            coverageMap[row.resource_template_id].checkpoints_count++;
-          }
-        }
-      }
-
-      return coverageMap;
+      const response = await callKnowledgeTreeEdge<{
+        count: number;
+        coverage: KnowledgeTreeCoverageMap;
+      }>('coverage');
+      return response.coverage;
     },
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
