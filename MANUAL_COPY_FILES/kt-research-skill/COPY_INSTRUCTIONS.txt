@@ -1,0 +1,34 @@
+KT Research Skill — Copy Instructions
+======================================
+
+Feature: Knowledge Tree Research Skills (Equipment)
+Branch: kt-research-skill
+Submodules Affected: ClaudeDocumentation
+
+Files to Copy:
+--------------
+1. ClaudeDocumentation/KnowledgeTree/kt-research-equipment.md
+   → Equipment KT generation skill (full prompt template with HVAC gold-standard)
+
+2. ClaudeDocumentation/KnowledgeTree/README.md
+   → Index file for KnowledgeTree skills folder
+
+Destination Structure:
+----------------------
+ClaudeDocumentation/
+└── KnowledgeTree/
+    ├── kt-research-equipment.md    ← NEW
+    ├── kt-research-facility.md     ← PLANNED (future)
+    ├── kt-research-staff.md        ← PLANNED (future)
+    └── README.md                   ← NEW
+
+Copy Command (PowerShell):
+--------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Create destination folder
+New-Item -ItemType Directory -Path "ClaudeDocumentation\KnowledgeTree" -Force
+
+# Copy files
+Copy-Item "MANUAL_COPY_FILES\kt-research-skill\ClaudeDocumentation\KnowledgeTree\kt-research-equipment.md" -Destination "ClaudeDocumentation\KnowledgeTree\" -Force
+Copy-Item "MANUAL_COPY_FILES\kt-research-skill\ClaudeDocumentation\KnowledgeTree\README.md" -Destination "ClaudeDocumentation\KnowledgeTree\" -Force
