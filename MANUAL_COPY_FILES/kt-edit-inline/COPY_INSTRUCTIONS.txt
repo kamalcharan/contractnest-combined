@@ -1,0 +1,43 @@
+KT Edit Inline — Copy Instructions
+====================================
+
+Feature: Edit existing Knowledge Tree items inline
+Branch: claude/init-and-ping-fyRhy
+Submodules Affected: contractnest-ui
+
+Files Modified (6):
+-------------------
+1. contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/components/AddItemModal.tsx
+   → Added initialData prop for edit mode (pre-populates fields, changes button to "Save")
+
+2. contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/components/VariantsTab.tsx
+   → Added pencil edit icon on every variant card + edit modal with pre-filled data
+
+3. contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/components/SparePartsTab.tsx
+   → Added pencil edit icon on every part row + edit modal with pre-filled data
+
+4. contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/components/CheckpointsTab.tsx
+   → Added pencil edit icon on every checkpoint + edit modal
+   → Fixed reading inputs: converted from defaultValue (uncontrolled) to value+onChange (controlled)
+   → Unit dropdown, normal range, amber/red thresholds now persist to local state on change
+
+5. contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/components/CyclesTab.tsx
+   → Fixed frequency dropdown: converted from defaultValue to controlled with onChange
+   → Fixed alert days input: converted from defaultValue to controlled with onChange
+   → Added column headers row (Checkpoint / Frequency / Varies By / Alert)
+
+6. contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/KnowledgeTreeDetail.tsx
+   → Added 4 edit callbacks: editVariant, editSparePart, editCheckpoint, editCycle
+   → editCheckpoint handles section moves (if section_name changes, checkpoint moves to new section)
+   → Wired all new props to tab components
+
+Copy Command (PowerShell):
+--------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\kt-edit-inline\contractnest-ui\src\pages\service-contracts\templates\admin\knowledge-tree\KnowledgeTreeDetail.tsx" -Destination "contractnest-ui\src\pages\service-contracts\templates\admin\knowledge-tree\" -Force
+Copy-Item "MANUAL_COPY_FILES\kt-edit-inline\contractnest-ui\src\pages\service-contracts\templates\admin\knowledge-tree\components\AddItemModal.tsx" -Destination "contractnest-ui\src\pages\service-contracts\templates\admin\knowledge-tree\components\" -Force
+Copy-Item "MANUAL_COPY_FILES\kt-edit-inline\contractnest-ui\src\pages\service-contracts\templates\admin\knowledge-tree\components\VariantsTab.tsx" -Destination "contractnest-ui\src\pages\service-contracts\templates\admin\knowledge-tree\components\" -Force
+Copy-Item "MANUAL_COPY_FILES\kt-edit-inline\contractnest-ui\src\pages\service-contracts\templates\admin\knowledge-tree\components\SparePartsTab.tsx" -Destination "contractnest-ui\src\pages\service-contracts\templates\admin\knowledge-tree\components\" -Force
+Copy-Item "MANUAL_COPY_FILES\kt-edit-inline\contractnest-ui\src\pages\service-contracts\templates\admin\knowledge-tree\components\CheckpointsTab.tsx" -Destination "contractnest-ui\src\pages\service-contracts\templates\admin\knowledge-tree\components\" -Force
+Copy-Item "MANUAL_COPY_FILES\kt-edit-inline\contractnest-ui\src\pages\service-contracts\templates\admin\knowledge-tree\components\CyclesTab.tsx" -Destination "contractnest-ui\src\pages\service-contracts\templates\admin\knowledge-tree\components\" -Force
