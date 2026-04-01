@@ -1,7 +1,8 @@
 // VaNi guidance bubble — AI assistant message at top of each tab
+// VaNi brand colors (orange gradient) are intentional — not theme-dependent
 import React from 'react';
 
-const VaNiBubble: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+const VaNiBubble: React.FC<{ children: React.ReactNode; colors: any }> = ({ children, colors }) => (
   <div className="flex gap-3 mb-5" style={{ animation: 'fadeInUp .4s ease' }}>
     <div
       className="w-[34px] h-[34px] rounded-[9px] flex items-center justify-center flex-shrink-0 text-white font-black text-[13px]"
@@ -12,11 +13,11 @@ const VaNiBubble: React.FC<{ children: React.ReactNode }> = ({ children }) => (
     <div
       className="text-[13px] leading-relaxed max-w-[680px] px-[18px] py-[14px]"
       style={{
-        background: '#fff',
-        border: '1px solid #e5e1db',
+        background: colors.utility.secondaryBackground,
+        border: `1px solid ${colors.utility.secondaryText}20`,
         borderRadius: '3px 12px 12px 12px',
         boxShadow: '0 2px 12px rgba(0,0,0,.04), 0 1px 3px rgba(0,0,0,.03)',
-        color: '#4a4540',
+        color: colors.utility.secondaryText,
       }}
     >
       {children}

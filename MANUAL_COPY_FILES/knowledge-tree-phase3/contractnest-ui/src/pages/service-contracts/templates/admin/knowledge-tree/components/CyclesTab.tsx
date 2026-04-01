@@ -13,87 +13,67 @@ interface Props {
 
 const CyclesTab: React.FC<Props> = ({ summary, colors }) => {
   const cycles = summary.cycles;
+  const borderColor = colors.utility.secondaryText + '20';
+  const borderLt = colors.utility.secondaryText + '12';
+  const brandPrimary = colors.brand.primary;
 
   return (
     <div>
-      <VaNiBubble>
-        <p><strong>{cycles.length} service cycles</strong> with frequencies adjusted for <span style={{ color: '#ff6b2b', fontWeight: 600 }}>{summary.resource_template.sub_category}</span> context.</p>
-        <p>Adjust frequencies and alert thresholds as needed. You can <strong>add your own cycles</strong>.</p>
+      <VaNiBubble colors={colors}>
+        <p><strong style={{ color: colors.utility.primaryText }}>{cycles.length} service cycles</strong> with frequencies for <span style={{ color: brandPrimary, fontWeight: 600 }}>{summary.resource_template.sub_category}</span> context.</p>
+        <p>Adjust frequencies and alert thresholds. You can <strong style={{ color: colors.utility.primaryText }}>add your own cycles</strong>.</p>
       </VaNiBubble>
 
       {cycles.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '48px 0', color: '#8a847a', fontSize: '14px' }}>
-          No service cycles defined
-        </div>
+        <div style={{ textAlign: 'center', padding: '48px 0', color: colors.utility.secondaryText, fontSize: '14px' }}>No service cycles defined</div>
       ) : (
         cycles.map((cy) => (
           <div key={cy.id} style={{
-            background: '#fff', border: '1px solid #e5e1db', borderRadius: '10px',
+            background: colors.utility.secondaryBackground, border: `1px solid ${borderColor}`, borderRadius: '10px',
             padding: '12px 18px', marginBottom: '8px',
             display: 'grid', gridTemplateColumns: '1fr 110px 150px 1fr',
-            gap: '14px', alignItems: 'center',
-            boxShadow: '0 2px 12px rgba(0,0,0,.04)',
+            gap: '14px', alignItems: 'center', boxShadow: '0 2px 12px rgba(0,0,0,.04)',
           }}>
-            {/* Checkpoint name */}
             <div>
               <div style={{ fontSize: '13px', fontWeight: 600, color: colors.utility.primaryText }}>{cy.checkpoint_name || 'Unknown'}</div>
-              <div style={{ fontSize: '10px', color: '#8a847a' }}>{cy.section_name}</div>
+              <div style={{ fontSize: '10px', color: colors.utility.secondaryText }}>{cy.section_name}</div>
             </div>
-
-            {/* Frequency dropdown */}
-            <select
-              defaultValue={`${cy.frequency_value} ${cy.frequency_unit}`}
-              style={{
-                width: '100%', padding: '5px 8px', border: '1px solid #e5e1db', borderRadius: '5px',
-                fontFamily: 'inherit', fontSize: '12px', background: '#faf9f7', cursor: 'pointer',
-              }}
-            >
-              <option value={`${cy.frequency_value} ${cy.frequency_unit}`}>
-                {cy.frequency_value} {cy.frequency_unit}
-              </option>
-              {FREQ_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>{opt}</option>
-              ))}
+            <select defaultValue={`${cy.frequency_value} ${cy.frequency_unit}`} style={{
+              width: '100%', padding: '5px 8px', border: `1px solid ${borderColor}`, borderRadius: '5px',
+              fontFamily: 'inherit', fontSize: '12px', background: colors.utility.primaryBackground,
+              color: colors.utility.primaryText, cursor: 'pointer',
+            }}>
+              <option value={`${cy.frequency_value} ${cy.frequency_unit}`}>{cy.frequency_value} {cy.frequency_unit}</option>
+              {FREQ_OPTIONS.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
             </select>
-
-            {/* Varies by tags */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
               {(cy.varies_by || []).map((factor: string, i: number) => (
                 <span key={i} style={{
                   fontSize: '9px', padding: '2px 7px', borderRadius: '3px',
                   fontFamily: "'IBM Plex Mono', monospace",
-                  background: '#faf9f7', border: '1px solid #edeae4', color: '#8a847a',
-                }}>
-                  {factor}
-                </span>
+                  background: colors.utility.primaryBackground, border: `1px solid ${borderLt}`, color: colors.utility.secondaryText,
+                }}>{factor}</span>
               ))}
             </div>
-
-            {/* Alert overdue */}
-            <div style={{ fontSize: '11px', color: '#8a847a', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ fontSize: '11px', color: colors.utility.secondaryText, display: 'flex', alignItems: 'center', gap: '4px' }}>
               {cy.alert_overdue_days ? (
                 <>
-                  <input
-                    defaultValue={cy.alert_overdue_days}
-                    style={{
-                      width: '40px', padding: '2px 5px', border: '1px solid #e5e1db', borderRadius: '3px',
-                      fontFamily: "'IBM Plex Mono', monospace", fontSize: '11px', textAlign: 'center' as const,
-                    }}
-                  />
+                  <input defaultValue={cy.alert_overdue_days} style={{
+                    width: '40px', padding: '2px 5px', border: `1px solid ${borderColor}`, borderRadius: '3px',
+                    fontFamily: "'IBM Plex Mono', monospace", fontSize: '11px', textAlign: 'center' as const,
+                    color: colors.utility.primaryText, background: colors.utility.primaryBackground,
+                  }} />
                   <span>days → alert</span>
                 </>
-              ) : (
-                <span style={{ color: '#bab4a8' }}>—</span>
-              )}
+              ) : <span style={{ color: colors.utility.secondaryText + '60' }}>—</span>}
             </div>
           </div>
         ))
       )}
 
-      {/* Add Cycle */}
-      <button onClick={() => alert('Add service cycle\n\nFields: Checkpoint, Frequency, Varies By, Alert Days')} style={{
-        background: '#fff8f4', color: '#ff6b2b',
-        border: '1px dashed rgba(255,107,43,.2)', fontSize: '12px', padding: '7px 16px',
+      <button style={{
+        background: brandPrimary + '08', color: brandPrimary,
+        border: `1px dashed ${brandPrimary}30`, fontSize: '12px', padding: '7px 16px',
         borderRadius: '8px', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600,
         display: 'inline-flex', alignItems: 'center', gap: '5px', marginTop: '4px',
       }}>
