@@ -1,0 +1,27 @@
+═══════════════════════════════════════════════════
+KNOWLEDGE TREE SNAPSHOTS — Backup/Restore System
+═══════════════════════════════════════════════════
+Date: 2026-04-01
+Submodules Affected: contractnest-ui, contractnest-edge
+Database: m_knowledge_tree_snapshots table created, initial_seed snapshots for HVAC + Ventilator
+
+FILES TO COPY:
+═══════════════════════════════════════════════════
+
+1. MODIFIED — KnowledgeTreeDetail.tsx (added Backup History button + auto-snapshot on first edit)
+   TO: contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/KnowledgeTreeDetail.tsx
+
+2. NEW — BackupHistoryPanel.tsx (slide-in panel with timeline, create/restore)
+   TO: contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/components/BackupHistoryPanel.tsx
+
+3. UPDATED — useKnowledgeTree.ts (added snapshot hooks: list, create, restore)
+   TO: contractnest-ui/src/hooks/queries/useKnowledgeTree.ts
+
+4. UPDATED — knowledge-tree edge function (added snapshot/snapshots/restore endpoints)
+   TO: contractnest-edge/supabase/functions/knowledge-tree/index.ts
+   NOTE: Edge function already deployed via MCP. Copy for reference only.
+
+DATABASE CHANGES (already applied via MCP):
+- m_knowledge_tree_snapshots table with auto-version trigger + initial_seed protection trigger
+- RLS: authenticated SELECT, service_role full access
+- Initial seed snapshots: HVAC v1 + Ventilator v1 (protected from deletion)
