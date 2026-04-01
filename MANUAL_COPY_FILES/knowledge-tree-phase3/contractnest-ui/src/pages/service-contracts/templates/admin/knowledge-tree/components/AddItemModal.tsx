@@ -1,6 +1,7 @@
 // AddItemModal — reusable modal for adding variants, parts, checkpoints, values, cycles
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
+import { RichTextEditor } from '@/components/ui/RichTextEditor';
 
 export interface ModalField {
   key: string;
@@ -90,12 +91,14 @@ const AddItemModal: React.FC<Props> = ({ title, fields, onClose, onSave, colors 
                 {field.label} {field.required && <span style={{ color: colors.semantic.error }}>*</span>}
               </label>
               {field.type === 'textarea' ? (
-                <textarea
-                  rows={3}
-                  placeholder={field.placeholder}
+                <RichTextEditor
                   value={formData[field.key] || ''}
-                  onChange={(e) => handleChange(field.key, e.target.value)}
-                  style={{ ...inputStyle, resize: 'vertical' as const }}
+                  onChange={(val) => handleChange(field.key, val)}
+                  placeholder={field.placeholder || 'Enter text...'}
+                  minHeight={80}
+                  maxHeight={180}
+                  toolbarButtons={['bold', 'italic', 'underline', 'bulletList']}
+                  outputFormat="html"
                 />
               ) : field.type === 'select' ? (
                 <select
