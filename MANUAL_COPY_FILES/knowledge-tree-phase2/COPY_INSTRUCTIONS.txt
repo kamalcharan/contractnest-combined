@@ -1,0 +1,20 @@
+═══════════════════════════════════════════════════
+KNOWLEDGE TREE PHASE 2 — Detail Page (View Tree)
+═══════════════════════════════════════════════════
+Date: 2026-04-01
+Submodules Affected: contractnest-ui
+
+FILES TO COPY:
+═══════════════════════════════════════════════════
+
+1. NEW — Knowledge Tree Detail Page
+   FROM: MANUAL_COPY_FILES/knowledge-tree-phase2/contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/KnowledgeTreeDetail.tsx
+   TO:   contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/KnowledgeTreeDetail.tsx
+
+2. MODIFIED — App.tsx (added route)
+   FROM: MANUAL_COPY_FILES/knowledge-tree-phase2/contractnest-ui/src/App.tsx
+   TO:   contractnest-ui/src/App.tsx
+
+3. MODIFIED — Global Templates (wired View Tree navigation)
+   FROM: MANUAL_COPY_FILES/knowledge-tree-phase2/contractnest-ui/src/pages/service-contracts/templates/admin/global-templates.tsx
+   TO:   contractnest-ui/src/pages/service-contracts/templates/admin/global-templates.tsx
