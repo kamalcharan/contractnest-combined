@@ -1,4 +1,4 @@
-// AddItemModal — reusable modal for adding variants, parts, checkpoints, values, cycles
+// AddItemModal — reusable modal for adding/editing variants, parts, checkpoints, values, cycles
 import React, { useState } from 'react';
 import { X, AlertTriangle } from 'lucide-react';
 
@@ -55,13 +55,18 @@ const AddItemModal: React.FC<Props> = ({ title, fields, onClose, onSave, colors,
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }} />
-      <div onClick={(e) => e.stopPropagation()} style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: '480px', background: colors.utility.secondaryBackground, border: `1px solid ${colors.utility.secondaryText}15`, borderRadius: '14px', boxShadow: '0 20px 60px rgba(0,0,0,.12)', animation: 'fadeInUp .25s ease' }}>
+    <div
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: '100%', maxWidth: '480px', background: colors.utility.secondaryBackground, border: `1px solid ${colors.utility.secondaryText}15`, borderRadius: '14px', boxShadow: '0 20px 60px rgba(0,0,0,.12)', animation: 'fadeInUp .25s ease' }}
+      >
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: `1px solid ${colors.utility.secondaryText}15` }}>
           <h3 style={{ fontSize: '16px', fontWeight: 700, color: colors.utility.primaryText }}>{title}</h3>
-          <button onClick={onClose} style={{ width: '28px', height: '28px', borderRadius: '6px', border: 'none', background: colors.utility.primaryBackground, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.utility.secondaryText }}>
+          <button type="button" onClick={onClose} style={{ width: '28px', height: '28px', borderRadius: '6px', border: 'none', background: colors.utility.primaryBackground, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: colors.utility.secondaryText }}>
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -123,10 +128,10 @@ const AddItemModal: React.FC<Props> = ({ title, fields, onClose, onSave, colors,
 
         {/* Footer */}
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', padding: '16px 20px', borderTop: `1px solid ${colors.utility.secondaryText}15` }}>
-          <button onClick={onClose} style={{ padding: '8px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, background: colors.utility.primaryBackground, color: colors.utility.secondaryText, border: `1px solid ${colors.utility.secondaryText}20`, cursor: 'pointer', fontFamily: 'inherit' }}>
+          <button type="button" onClick={onClose} style={{ padding: '8px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, background: colors.utility.primaryBackground, color: colors.utility.secondaryText, border: `1px solid ${colors.utility.secondaryText}20`, cursor: 'pointer', fontFamily: 'inherit' }}>
             Cancel
           </button>
-          <button onClick={handleSubmit} style={{ padding: '8px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, background: `linear-gradient(135deg, ${brandPrimary}, ${colors.brand.secondary || brandPrimary})`, color: '#fff', border: 'none', cursor: 'pointer', fontFamily: 'inherit', boxShadow: `0 2px 8px ${brandPrimary}40` }}>
+          <button type="button" onClick={handleSubmit} style={{ padding: '8px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, background: `linear-gradient(135deg, ${brandPrimary}, ${colors.brand.secondary || brandPrimary})`, color: '#fff', border: 'none', cursor: 'pointer', fontFamily: 'inherit', boxShadow: `0 2px 8px ${brandPrimary}40` }}>
             {initialData ? 'Save' : 'Add'}
           </button>
         </div>
