@@ -1,0 +1,23 @@
+═══════════════════════════════════════════════════
+R4 C2b: Variant Picker in Resource Dependency Step
+═══════════════════════════════════════════════════
+
+Submodules Affected: contractnest-ui
+Prerequisites: C2a must be applied first (types + adapter)
+
+Files:
+──────
+
+1. [MODIFIED] ResourceDependencyStep.tsx
+   FROM: MANUAL_COPY_FILES\r4-c2b-variant-picker\contractnest-ui\src\components\catalog-studio\BlockWizard\steps\ResourceDependencyStep.tsx
+   TO:   contractnest-ui\src\components\catalog-studio\BlockWizard\steps\ResourceDependencyStep.tsx
+
+   CHANGES:
+   - Added KnowledgeTreeVariantPicker sub-component
+   - Equipment selector: browse m_catalog_resource_templates via useResourceTemplatesBrowser
+   - Variant multi-select: fetch KT variants via useKnowledgeTreeVariants
+   - Stores meta.selectedVariants (SelectedVariant[]) and meta.knowledge_tree_ref
+   - Select All / Deselect All for variants
+   - Search bar for equipment filtering
+   - Summary card shows selected variants
+   - New imports: TreePine, Search, SelectedVariant, useResourceTemplatesBrowser, useKnowledgeTreeVariants
