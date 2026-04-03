@@ -1,0 +1,28 @@
+═══════════════════════════════════════════════════
+R4 C1: Service Catalog Section in Business Profile
+═══════════════════════════════════════════════════
+
+Submodules Affected: contractnest-ui
+
+Files:
+──────
+
+1. [NEW] ServiceCatalogSection.tsx
+   FROM: MANUAL_COPY_FILES\r4-c1-service-catalog\contractnest-ui\src\pages\settings\business-profile\ServiceCatalogSection.tsx
+   TO:   contractnest-ui\src\pages\settings\business-profile\ServiceCatalogSection.tsx
+
+2. [MODIFIED] index.tsx (Business Profile page)
+   FROM: MANUAL_COPY_FILES\r4-c1-service-catalog\contractnest-ui\src\pages\settings\business-profile\index.tsx
+   TO:   contractnest-ui\src\pages\settings\business-profile\index.tsx
+
+Changes in index.tsx:
+  - Added Package icon import from lucide-react
+  - Added ServiceCatalogSection import
+  - Added { id: 'service-catalog', label: 'Service Catalog', icon: Package } to sidebar sections array
+  - Added rendering block for activeSection === 'service-catalog'
+
+No new dependencies required. Uses existing hooks:
+  - useResourceTemplatesBrowser (from @/hooks/queries/useResourceTemplates)
+  - useKnowledgeTreeCoverage (from @/hooks/queries/useKnowledgeTree)
+  - useServedIndustriesManager (from @/hooks/queries/useServedIndustries)
+  - useIndustries (from @/hooks/queries/useProductMasterdata)
