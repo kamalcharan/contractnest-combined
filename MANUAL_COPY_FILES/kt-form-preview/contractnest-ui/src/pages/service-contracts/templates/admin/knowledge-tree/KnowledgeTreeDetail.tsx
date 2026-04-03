@@ -406,7 +406,7 @@ const KnowledgeTreeDetail: React.FC = () => {
           {activeTab === 'checkpoints' && <CheckpointsTab summary={summary} checkpointsBySection={localCheckpoints} onAddCheckpoint={addCheckpoint} onAddValue={addCheckpointValue} onEditCheckpoint={editCheckpoint} colors={colors} />}
           {activeTab === 'cycles' && <CyclesTab summary={summary} cycles={localCycles} onAdd={addCycle} onRemove={removeCycle} onEditCycle={editCycle} colors={colors} />}
           {activeTab === 'overlays' && <OverlaysTab summary={summary} colors={colors} />}
-          {activeTab === 'form-preview' && <FormPreviewTab summary={summary} checkpointsBySection={localCheckpoints} colors={colors} />}
+          {activeTab === 'form-preview' && <FormPreviewTab summary={summary} variants={localVariants} checkpointsBySection={localCheckpoints} partsByGroup={localParts} selectedVariantIds={selectedVariantIds} colors={colors} />}
         </div>
 
         {showBackupPanel && (
