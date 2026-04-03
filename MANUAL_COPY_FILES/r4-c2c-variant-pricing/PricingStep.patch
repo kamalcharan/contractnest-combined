@@ -1,0 +1,16 @@
+This patch applies variant pricing v2 changes to PricingStep.tsx
+
+To apply in contractnest-ui directory:
+  cd contractnest-ui
+  git apply ../MANUAL_COPY_FILES/r4-c2c-variant-pricing/PricingStep.patch
+
+Changes:
+1. Import TreePine icon and SelectedVariant type (already done in v1)
+2. Replace simple variantPrices init with empty object
+3. Add handleApplyToAll callback (copies base price to all variants)
+4. Replace simple variant rows with full variant pricing section:
+   - Shows base price from primary pricing record
+   - "Apply ₹X to All" button
+   - Tax context banner
+   - Per-variant price input with currency symbol
+   - Override highlight on modified variants
