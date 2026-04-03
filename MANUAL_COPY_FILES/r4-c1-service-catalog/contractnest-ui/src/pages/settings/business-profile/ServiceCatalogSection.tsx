@@ -208,33 +208,69 @@ const ServiceCatalogSection: React.FC<ServiceCatalogSectionProps> = ({
   const { data: industriesResponse } = useIndustries();
   const allIndustries = industriesResponse?.data || [];
 
-  // Build list of industry IDs to show
-  const industryIds = useMemo(() => {
-    const ids = new Set<string>();
+  // Build list of industry IDs to show as tabs
+  // Use parent industry IDs (e.g. "healthcare") since resource templates
+  // are stored at the parent level, not sub-segments (e.g. "dental_clinics")
+  const { tabIndustryIds, queryIndustryIds } = useMemo(() => {
+    const tabIds = new Set<string>();
+    const queryIds = new Set<string>();
+
     // Always include the tenant's own industry
-    if (profileIndustryId) ids.add(profileIndustryId);
-    // For sellers: add served industries
-    if (servedIndustries) {
-      servedIndustries.forEach((si) => ids.add(si.industry_id));
+    if (profileIndustryId) {
+      tabIds.add(profileIndustryId);
+      queryIds.add(profileIndustryId);
     }
-    return Array.from(ids);
+
+    // For sellers: add served industries + resolve parents
+    if (servedIndustries) {
+      servedIndustries.forEach((si) => {
+        tabIds.add(si.industry_id);
+        queryIds.add(si.industry_id);
+        // Also add parent industry ID — resource templates are stored at parent level
+        if (si.industry?.parent_id) {
+          queryIds.add(si.industry.parent_id);
+        }
+      });
+    }
+
+    return {
+      tabIndustryIds: Array.from(tabIds),
+      queryIndustryIds: Array.from(queryIds),
+    };
   }, [profileIndustryId, servedIndustries]);
 
   // Set initial active tab
   React.useEffect(() => {
-    if (!activeIndustryId && industryIds.length > 0) {
-      setActiveIndustryId(industryIds[0]);
+    if (!activeIndustryId && tabIndustryIds.length > 0) {
+      setActiveIndustryId(tabIndustryIds[0]);
     }
-  }, [activeIndustryId, industryIds]);
+  }, [activeIndustryId, tabIndustryIds]);
 
-  // Fetch resource templates for the active industry
+  // Resolve query IDs for the active tab (include parent if sub-segment)
+  const activeQueryIds = useMemo(() => {
+    if (!activeIndustryId) return [];
+    const ids = new Set<string>([activeIndustryId]);
+    // Find this industry's parent and add it too
+    const activeIndustry = allIndustries.find((i) => i.id === activeIndustryId);
+    if (activeIndustry?.parent_id) {
+      ids.add(activeIndustry.parent_id);
+    }
+    // Also check served industries for parent_id
+    const served = servedIndustries?.find((si) => si.industry_id === activeIndustryId);
+    if (served?.industry?.parent_id) {
+      ids.add(served.industry.parent_id);
+    }
+    return Array.from(ids);
+  }, [activeIndustryId, allIndustries, servedIndustries]);
+
+  // Fetch resource templates for the active industry (include parent IDs)
   const {
     templates,
     isLoading: templatesLoading,
     isError: templatesError,
     refetch: refetchTemplates,
   } = useResourceTemplatesBrowser({
-    industry_ids: activeIndustryId ? [activeIndustryId] : [],
+    industry_ids: activeQueryIds,
     limit: 100,
   });
 
@@ -278,7 +314,7 @@ const ServiceCatalogSection: React.FC<ServiceCatalogSectionProps> = ({
   };
 
   // No industry configured
-  if (!profileIndustryId && industryIds.length === 0) {
+  if (!profileIndustryId && tabIndustryIds.length === 0) {
     return (
       <div>
         <h2 className="text-xl font-semibold mb-4" style={{ color: colors.utility.primaryText }}>
@@ -338,7 +374,7 @@ const ServiceCatalogSection: React.FC<ServiceCatalogSectionProps> = ({
 
       {/* Industry tabs (for sellers) */}
       <IndustryTabs
-        industryIds={industryIds}
+        industryIds={tabIndustryIds}
         activeId={activeIndustryId}
         onSelect={setActiveIndustryId}
         allIndustries={allIndustries}
