@@ -49,7 +49,8 @@ const getIconForResourceType = (resourceType: ResourceType) => {
 };
 
 // =================================================================
-// KNOWLEDGE TREE VARIANT PICKER — Slide-out Panel
+// KNOWLEDGE TREE VARIANT PICKER — Equipment list inline + Variant slide-out
+// Flow: User sees equipment list → clicks one → slide-out opens with variants
 // =================================================================
 
 interface KTVariantPickerProps {
@@ -102,13 +103,15 @@ const KnowledgeTreeVariantPicker: React.FC<KTVariantPickerProps> = ({
   const selectedVariants = (formData.meta?.selectedVariants as SelectedVariant[]) || [];
   const selectedEquipment = equipmentTemplates.find(t => t.id === selectedEquipmentId);
 
-  const handleEquipmentSelect = (templateId: string) => {
+  // Click equipment → select it AND open variant panel immediately
+  const handleEquipmentClick = (templateId: string) => {
     setSelectedEquipmentId(templateId);
     onChange('meta', {
       ...formData.meta,
       knowledge_tree_ref: { resource_template_id: templateId },
       selectedVariants: [],
     });
+    setIsPanelOpen(true); // Open slide-out immediately
   };
 
   const handleVariantToggle = (variant: any) => {
@@ -130,73 +133,114 @@ const KnowledgeTreeVariantPicker: React.FC<KTVariantPickerProps> = ({
 
   return (
     <>
-      {/* ── Trigger Card ── */}
-      <div
-        className="rounded-xl border p-4 cursor-pointer transition-all hover:shadow-sm"
-        onClick={() => setIsPanelOpen(true)}
-        style={{
-          backgroundColor: selectedEquipment
-            ? colors.brand.primary + '05'
-            : isDarkMode ? colors.utility.secondaryBackground : '#FFFFFF',
-          borderColor: selectedEquipment
-            ? colors.brand.primary + '40'
-            : isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB',
-        }}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div
-              className="w-10 h-10 rounded-lg flex items-center justify-center"
-              style={{
-                backgroundColor: selectedEquipment ? colors.brand.primary + '20' : isDarkMode ? colors.utility.secondaryBackground : '#F3F4F6',
-              }}
-            >
-              <TreePine className="w-5 h-5" style={{ color: selectedEquipment ? colors.brand.primary : colors.utility.secondaryText }} />
-            </div>
-            <div>
-              <h4 className="font-semibold text-sm" style={{ color: colors.utility.primaryText }}>
-                Equipment & Variants
-              </h4>
-              <p className="text-xs" style={{ color: colors.utility.secondaryText }}>
-                {selectedEquipment
-                  ? `${selectedEquipment.name} — ${selectedVariants.length} variant${selectedVariants.length !== 1 ? 's' : ''} selected`
-                  : 'Link this block to equipment from Knowledge Tree'}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {selectedVariants.length > 0 && (
-              <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: colors.brand.primary, color: '#fff' }}>
-                {selectedVariants.length}
-              </span>
-            )}
-            <ChevronDown className="w-5 h-5" style={{ color: colors.utility.secondaryText }} />
-          </div>
+      {/* ── Section Header ── */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <TreePine className="w-4 h-4" style={{ color: colors.brand.primary }} />
+          <label className="text-sm font-medium" style={{ color: colors.utility.primaryText }}>
+            Equipment (Knowledge Tree)
+          </label>
+          {selectedVariants.length > 0 && (
+            <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: colors.brand.primary, color: '#fff' }}>
+              {selectedVariants.length} variant{selectedVariants.length !== 1 ? 's' : ''}
+            </span>
+          )}
         </div>
 
-        {/* Selected variants preview chips */}
-        {selectedVariants.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t" style={{ borderColor: colors.utility.primaryText + '10' }}>
-            {selectedVariants.slice(0, 5).map(v => (
-              <span
-                key={v.variant_id}
-                className="text-[10px] px-2 py-0.5 rounded-full"
-                style={{ backgroundColor: colors.brand.primary + '12', color: colors.brand.primary }}
-              >
-                {v.variant_name}
-              </span>
-            ))}
-            {selectedVariants.length > 5 && (
-              <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ backgroundColor: colors.utility.secondaryBackground, color: colors.utility.secondaryText }}>
-                +{selectedVariants.length - 5} more
-              </span>
+        {/* Search */}
+        <div className="relative mb-3">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: colors.utility.secondaryText }} />
+          <input
+            type="text"
+            placeholder="Search equipment..."
+            value={equipmentSearch}
+            onChange={(e) => setEquipmentSearch(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 rounded-lg border text-sm"
+            style={{
+              backgroundColor: isDarkMode ? colors.utility.secondaryBackground : '#FFFFFF',
+              borderColor: isDarkMode ? colors.utility.secondaryBackground : '#D1D5DB',
+              color: colors.utility.primaryText,
+            }}
+          />
+        </div>
+
+        {/* Equipment List — click opens variant slide-out */}
+        {loadingTemplates ? (
+          <div className="flex items-center justify-center py-6">
+            <Loader2 className="w-5 h-5 animate-spin" style={{ color: colors.brand.primary }} />
+            <span className="ml-2 text-sm" style={{ color: colors.utility.secondaryText }}>Loading equipment...</span>
+          </div>
+        ) : (
+          <div className="space-y-1.5 max-h-64 overflow-y-auto">
+            {filteredEquipment.map((template) => {
+              const isSelected = selectedEquipmentId === template.id;
+              const variantCount = isSelected ? selectedVariants.length : 0;
+              return (
+                <div
+                  key={template.id}
+                  className="p-3 rounded-lg border cursor-pointer transition-all hover:shadow-sm"
+                  onClick={() => handleEquipmentClick(template.id)}
+                  style={{
+                    backgroundColor: isSelected ? colors.brand.primary + '08' : isDarkMode ? colors.utility.secondaryBackground : '#FAFAFA',
+                    borderColor: isSelected ? colors.brand.primary : isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB',
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div
+                        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{
+                          backgroundColor: isSelected ? colors.brand.primary + '20' : isDarkMode ? colors.utility.secondaryBackground : '#F3F4F6',
+                        }}
+                      >
+                        <Wrench className="w-4 h-4" style={{ color: isSelected ? colors.brand.primary : colors.utility.secondaryText }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate" style={{ color: colors.utility.primaryText }}>{template.name}</p>
+                        {template.sub_category && (
+                          <p className="text-xs truncate" style={{ color: colors.utility.secondaryText }}>{template.sub_category}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {isSelected && variantCount > 0 && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: colors.semantic.success + '15', color: colors.semantic.success }}>
+                          {variantCount}v
+                        </span>
+                      )}
+                      <ChevronDown className="w-4 h-4" style={{ color: colors.utility.secondaryText }} />
+                    </div>
+                  </div>
+
+                  {/* Show selected variant chips on the selected equipment */}
+                  {isSelected && selectedVariants.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2 pt-2 border-t" style={{ borderColor: colors.utility.primaryText + '10' }}>
+                      {selectedVariants.slice(0, 4).map(v => (
+                        <span key={v.variant_id} className="text-[10px] px-1.5 py-0.5 rounded" style={{ backgroundColor: colors.brand.primary + '12', color: colors.brand.primary }}>
+                          {v.variant_name}
+                        </span>
+                      ))}
+                      {selectedVariants.length > 4 && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ backgroundColor: colors.utility.secondaryBackground, color: colors.utility.secondaryText }}>
+                          +{selectedVariants.length - 4}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {filteredEquipment.length === 0 && (
+              <p className="text-sm py-4 text-center" style={{ color: colors.utility.secondaryText }}>
+                {equipmentSearch ? 'No equipment matches search' : 'No equipment available'}
+              </p>
             )}
           </div>
         )}
       </div>
 
-      {/* ── Slide-out Panel via Portal (matches QuickAddContactDrawer pattern) ── */}
-      {isPanelOpen && createPortal(
+      {/* ── Variant Slide-out Panel (Portal) ── */}
+      {isPanelOpen && selectedEquipmentId && createPortal(
         <>
           {/* Backdrop */}
           <div
@@ -205,7 +249,7 @@ const KnowledgeTreeVariantPicker: React.FC<KTVariantPickerProps> = ({
             onClick={() => setIsPanelOpen(false)}
           />
 
-          {/* Panel */}
+          {/* Panel — only shows variants for the selected equipment */}
           <div
             className="fixed top-0 right-0 h-full w-[480px] max-w-[90vw] z-50 flex flex-col shadow-2xl transform transition-transform duration-300 ease-out"
             style={{
@@ -213,13 +257,19 @@ const KnowledgeTreeVariantPicker: React.FC<KTVariantPickerProps> = ({
               transform: 'translateX(0)',
             }}
           >
-            {/* Panel Header */}
+            {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: colors.utility.primaryText + '15' }}>
               <div className="flex items-center gap-3">
-                <TreePine className="w-5 h-5" style={{ color: colors.brand.primary }} />
+                <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: colors.brand.primary + '20' }}>
+                  <TreePine className="w-5 h-5" style={{ color: colors.brand.primary }} />
+                </div>
                 <div>
-                  <h3 className="text-base font-semibold" style={{ color: colors.utility.primaryText }}>Equipment & Variants</h3>
-                  <p className="text-xs" style={{ color: colors.utility.secondaryText }}>Select equipment and applicable variants from Knowledge Tree</p>
+                  <h3 className="text-base font-semibold" style={{ color: colors.utility.primaryText }}>
+                    {selectedEquipment?.name || 'Equipment'}
+                  </h3>
+                  <p className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                    Select applicable variants for this service block
+                  </p>
                 </div>
               </div>
               <button
@@ -231,162 +281,87 @@ const KnowledgeTreeVariantPicker: React.FC<KTVariantPickerProps> = ({
               </button>
             </div>
 
-            {/* Panel Body — scrollable */}
-            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
-
-              {/* ── Step 1: Select Equipment ── */}
-              <div>
-                <label className="text-sm font-medium mb-2 block" style={{ color: colors.utility.primaryText }}>
-                  1. Select Equipment
+            {/* Body — variant list */}
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm font-medium" style={{ color: colors.utility.primaryText }}>
+                  Variants
                 </label>
-
-                <div className="relative mb-3">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: colors.utility.secondaryText }} />
-                  <input
-                    type="text"
-                    placeholder="Search equipment..."
-                    value={equipmentSearch}
-                    onChange={(e) => setEquipmentSearch(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 rounded-lg border text-sm"
-                    style={{
-                      backgroundColor: isDarkMode ? colors.utility.secondaryBackground : '#FFFFFF',
-                      borderColor: isDarkMode ? colors.utility.secondaryBackground : '#D1D5DB',
-                      color: colors.utility.primaryText,
-                    }}
-                  />
-                </div>
-
-                {loadingTemplates ? (
-                  <div className="flex items-center justify-center py-6">
-                    <Loader2 className="w-5 h-5 animate-spin" style={{ color: colors.brand.primary }} />
-                    <span className="ml-2 text-sm" style={{ color: colors.utility.secondaryText }}>Loading equipment...</span>
-                  </div>
-                ) : (
-                  <div className="space-y-1.5 max-h-56 overflow-y-auto">
-                    {filteredEquipment.map((template) => {
-                      const isSelected = selectedEquipmentId === template.id;
-                      return (
-                        <div
-                          key={template.id}
-                          className="p-3 rounded-lg border cursor-pointer transition-all"
-                          onClick={() => handleEquipmentSelect(template.id)}
-                          style={{
-                            backgroundColor: isSelected ? colors.brand.primary + '08' : isDarkMode ? colors.utility.secondaryBackground : '#FAFAFA',
-                            borderColor: isSelected ? colors.brand.primary : isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB',
-                          }}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate" style={{ color: colors.utility.primaryText }}>{template.name}</p>
-                              {template.sub_category && (
-                                <p className="text-xs truncate" style={{ color: colors.utility.secondaryText }}>{template.sub_category}</p>
-                              )}
-                            </div>
-                            <div
-                              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ml-2 ${isSelected ? 'border-0' : ''}`}
-                              style={{
-                                backgroundColor: isSelected ? colors.brand.primary : 'transparent',
-                                borderColor: isSelected ? colors.brand.primary : isDarkMode ? colors.utility.secondaryText : '#D1D5DB',
-                              }}
-                            >
-                              {isSelected && <Check className="w-3 h-3 text-white" />}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {filteredEquipment.length === 0 && (
-                      <p className="text-sm py-4 text-center" style={{ color: colors.utility.secondaryText }}>
-                        {equipmentSearch ? 'No equipment matches search' : 'No equipment available'}
-                      </p>
-                    )}
-                  </div>
+                {variants.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleSelectAll}
+                    className="text-xs font-medium px-3 py-1 rounded-md"
+                    style={{ color: colors.brand.primary, backgroundColor: colors.brand.primary + '10' }}
+                  >
+                    {selectedVariants.length === variants.length ? 'Deselect All' : 'Select All'}
+                  </button>
                 )}
               </div>
 
-              {/* ── Step 2: Select Variants ── */}
-              {selectedEquipmentId && (
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-sm font-medium" style={{ color: colors.utility.primaryText }}>
-                      2. Select Applicable Variants
-                    </label>
-                    {variants.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={handleSelectAll}
-                        className="text-xs font-medium px-3 py-1 rounded-md"
-                        style={{ color: colors.brand.primary, backgroundColor: colors.brand.primary + '10' }}
-                      >
-                        {selectedVariants.length === variants.length ? 'Deselect All' : 'Select All'}
-                      </button>
-                    )}
+              {loadingVariants ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-5 h-5 animate-spin" style={{ color: colors.brand.primary }} />
+                  <span className="ml-2 text-sm" style={{ color: colors.utility.secondaryText }}>Loading variants...</span>
+                </div>
+              ) : variants.length === 0 ? (
+                <div
+                  className="flex items-center gap-3 p-4 rounded-lg"
+                  style={{ backgroundColor: colors.semantic.warning + '10', border: `1px solid ${colors.semantic.warning}30` }}
+                >
+                  <AlertCircle className="w-5 h-5 flex-shrink-0" style={{ color: colors.semantic.warning }} />
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: colors.utility.primaryText }}>No variants found</p>
+                    <p className="text-xs mt-1" style={{ color: colors.utility.secondaryText }}>
+                      Add variants for {selectedEquipment?.name} in the Knowledge Tree Builder first.
+                    </p>
                   </div>
-
-                  {loadingVariants ? (
-                    <div className="flex items-center justify-center py-6">
-                      <Loader2 className="w-5 h-5 animate-spin" style={{ color: colors.brand.primary }} />
-                      <span className="ml-2 text-sm" style={{ color: colors.utility.secondaryText }}>Loading variants...</span>
-                    </div>
-                  ) : variants.length === 0 ? (
-                    <div
-                      className="flex items-center gap-2 p-4 rounded-lg"
-                      style={{ backgroundColor: colors.semantic.warning + '10', border: `1px solid ${colors.semantic.warning}30` }}
-                    >
-                      <AlertCircle className="w-4 h-4 flex-shrink-0" style={{ color: colors.semantic.warning }} />
-                      <p className="text-sm" style={{ color: colors.utility.primaryText }}>
-                        No Knowledge Tree data for {selectedEquipment?.name || 'this equipment'}. Add variants in the KT Builder first.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-1.5">
-                      {variants.map((variant: any) => {
-                        const isSelected = isVariantSelected(variant.id);
-                        return (
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {variants.map((variant: any) => {
+                    const isSelected = isVariantSelected(variant.id);
+                    return (
+                      <div
+                        key={variant.id}
+                        className="p-3 rounded-lg border cursor-pointer transition-all"
+                        onClick={() => handleVariantToggle(variant)}
+                        style={{
+                          backgroundColor: isSelected ? colors.brand.primary + '08' : isDarkMode ? colors.utility.secondaryBackground : '#FAFAFA',
+                          borderColor: isSelected ? colors.brand.primary : isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB',
+                        }}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium" style={{ color: colors.utility.primaryText }}>{variant.name}</p>
+                            {variant.capacity_range && (
+                              <p className="text-xs mt-0.5" style={{ color: colors.utility.secondaryText }}>{variant.capacity_range}</p>
+                            )}
+                            {variant.description && (
+                              <p className="text-xs mt-0.5" style={{ color: colors.utility.secondaryText }}>{variant.description}</p>
+                            )}
+                          </div>
                           <div
-                            key={variant.id}
-                            className="p-3 rounded-lg border cursor-pointer transition-all"
-                            onClick={() => handleVariantToggle(variant)}
+                            className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ml-3 ${isSelected ? 'border-0' : ''}`}
                             style={{
-                              backgroundColor: isSelected ? colors.brand.primary + '08' : isDarkMode ? colors.utility.secondaryBackground : '#FAFAFA',
-                              borderColor: isSelected ? colors.brand.primary : isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB',
+                              backgroundColor: isSelected ? colors.brand.primary : 'transparent',
+                              borderColor: isSelected ? colors.brand.primary : isDarkMode ? colors.utility.secondaryText : '#D1D5DB',
                             }}
                           >
-                            <div className="flex items-center justify-between">
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium truncate" style={{ color: colors.utility.primaryText }}>{variant.name}</p>
-                                {variant.capacity_range && (
-                                  <p className="text-xs truncate" style={{ color: colors.utility.secondaryText }}>{variant.capacity_range}</p>
-                                )}
-                                {variant.description && (
-                                  <p className="text-xs truncate mt-0.5" style={{ color: colors.utility.secondaryText }}>{variant.description}</p>
-                                )}
-                              </div>
-                              <div
-                                className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ml-3 ${isSelected ? 'border-0' : ''}`}
-                                style={{
-                                  backgroundColor: isSelected ? colors.brand.primary : 'transparent',
-                                  borderColor: isSelected ? colors.brand.primary : isDarkMode ? colors.utility.secondaryText : '#D1D5DB',
-                                }}
-                              >
-                                {isSelected && <Check className="w-3 h-3 text-white" />}
-                              </div>
-                            </div>
+                            {isSelected && <Check className="w-3 h-3 text-white" />}
                           </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
 
-            {/* Panel Footer */}
+            {/* Footer */}
             <div className="px-6 py-4 border-t flex items-center justify-between" style={{ borderColor: colors.utility.primaryText + '15' }}>
               <div className="text-sm" style={{ color: colors.utility.secondaryText }}>
-                {selectedEquipment
-                  ? `${selectedEquipment.name} · ${selectedVariants.length} variant${selectedVariants.length !== 1 ? 's' : ''}`
-                  : 'No equipment selected'}
+                {selectedVariants.length} of {variants.length} variant{variants.length !== 1 ? 's' : ''} selected
               </div>
               <button
                 onClick={() => setIsPanelOpen(false)}
