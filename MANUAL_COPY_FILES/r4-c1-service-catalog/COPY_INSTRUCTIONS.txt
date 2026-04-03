@@ -15,14 +15,22 @@ Files:
    FROM: MANUAL_COPY_FILES\r4-c1-service-catalog\contractnest-ui\src\pages\settings\business-profile\index.tsx
    TO:   contractnest-ui\src\pages\settings\business-profile\index.tsx
 
+What it does:
+  - Adds "Service Catalog" sidebar tab to Business Profile
+  - Shows All | Equipment | Facilities filter tabs with counts
+  - Type badges on each row (Equipment blue, Facility purple, Consumable yellow)
+  - Stats bar: X equipment, Y facilities, Z with Knowledge Tree, N pending
+  - KT coverage status per item (green check or yellow warning)
+  - "View KT" link navigates to KT Builder detail page
+  - Search bar filters by name, sub_category, description
+  - Info banner about future seeding capability
+
+No new dependencies. Uses existing hooks:
+  - useResourceTemplatesBrowser (from @/hooks/queries/useResourceTemplates)
+  - useKnowledgeTreeCoverage (from @/hooks/queries/useKnowledgeTree)
+
 Changes in index.tsx:
   - Added Package icon import from lucide-react
   - Added ServiceCatalogSection import
-  - Added { id: 'service-catalog', label: 'Service Catalog', icon: Package } to sidebar sections array
+  - Added { id: 'service-catalog', label: 'Service Catalog', icon: Package } to sidebar
   - Added rendering block for activeSection === 'service-catalog'
-
-No new dependencies required. Uses existing hooks:
-  - useResourceTemplatesBrowser (from @/hooks/queries/useResourceTemplates)
-  - useKnowledgeTreeCoverage (from @/hooks/queries/useKnowledgeTree)
-  - useServedIndustriesManager (from @/hooks/queries/useServedIndustries)
-  - useIndustries (from @/hooks/queries/useProductMasterdata)
