@@ -208,69 +208,54 @@ const ServiceCatalogSection: React.FC<ServiceCatalogSectionProps> = ({
   const { data: industriesResponse } = useIndustries();
   const allIndustries = industriesResponse?.data || [];
 
-  // Build list of industry IDs to show as tabs
-  // Use parent industry IDs (e.g. "healthcare") since resource templates
-  // are stored at the parent level, not sub-segments (e.g. "dental_clinics")
-  const { tabIndustryIds, queryIndustryIds } = useMemo(() => {
-    const tabIds = new Set<string>();
-    const queryIds = new Set<string>();
+  // Build list of PARENT industry IDs for tabs.
+  // Resource templates are stored at parent level (e.g. "healthcare"),
+  // NOT sub-segments (e.g. "dental_clinics", "general_practice").
+  // So we resolve every served industry to its parent and deduplicate.
+  const parentIndustryIds = useMemo(() => {
+    const parentIds = new Set<string>();
 
-    // Always include the tenant's own industry
+    // Profile industry — check if it's a parent or sub-segment
     if (profileIndustryId) {
-      tabIds.add(profileIndustryId);
-      queryIds.add(profileIndustryId);
+      const profileInd = allIndustries.find((i) => i.id === profileIndustryId);
+      parentIds.add(profileInd?.parent_id || profileIndustryId);
     }
 
-    // For sellers: add served industries + resolve parents
+    // Served industries — resolve each to parent
     if (servedIndustries) {
       servedIndustries.forEach((si) => {
-        tabIds.add(si.industry_id);
-        queryIds.add(si.industry_id);
-        // Also add parent industry ID — resource templates are stored at parent level
-        if (si.industry?.parent_id) {
-          queryIds.add(si.industry.parent_id);
-        }
+        const parentId = si.industry?.parent_id || si.industry_id;
+        parentIds.add(parentId);
       });
     }
 
-    return {
-      tabIndustryIds: Array.from(tabIds),
-      queryIndustryIds: Array.from(queryIds),
-    };
-  }, [profileIndustryId, servedIndustries]);
+    return Array.from(parentIds);
+  }, [profileIndustryId, servedIndustries, allIndustries]);
 
   // Set initial active tab
   React.useEffect(() => {
-    if (!activeIndustryId && tabIndustryIds.length > 0) {
-      setActiveIndustryId(tabIndustryIds[0]);
+    if (!activeIndustryId && parentIndustryIds.length > 0) {
+      setActiveIndustryId(parentIndustryIds[0]);
     }
-  }, [activeIndustryId, tabIndustryIds]);
+    // If current active tab is a sub-segment, switch to its parent
+    if (activeIndustryId && !parentIndustryIds.includes(activeIndustryId)) {
+      const ind = allIndustries.find((i) => i.id === activeIndustryId);
+      if (ind?.parent_id && parentIndustryIds.includes(ind.parent_id)) {
+        setActiveIndustryId(ind.parent_id);
+      } else if (parentIndustryIds.length > 0) {
+        setActiveIndustryId(parentIndustryIds[0]);
+      }
+    }
+  }, [activeIndustryId, parentIndustryIds, allIndustries]);
 
-  // Resolve query IDs for the active tab (include parent if sub-segment)
-  const activeQueryIds = useMemo(() => {
-    if (!activeIndustryId) return [];
-    const ids = new Set<string>([activeIndustryId]);
-    // Find this industry's parent and add it too
-    const activeIndustry = allIndustries.find((i) => i.id === activeIndustryId);
-    if (activeIndustry?.parent_id) {
-      ids.add(activeIndustry.parent_id);
-    }
-    // Also check served industries for parent_id
-    const served = servedIndustries?.find((si) => si.industry_id === activeIndustryId);
-    if (served?.industry?.parent_id) {
-      ids.add(served.industry.parent_id);
-    }
-    return Array.from(ids);
-  }, [activeIndustryId, allIndustries, servedIndustries]);
-
-  // Fetch resource templates for the active industry (include parent IDs)
+  // Fetch resource templates — query with the active PARENT industry ID
   const {
     templates,
     isLoading: templatesLoading,
     isError: templatesError,
     refetch: refetchTemplates,
   } = useResourceTemplatesBrowser({
-    industry_ids: activeQueryIds,
+    industry_ids: activeIndustryId ? [activeIndustryId] : [],
     limit: 100,
   });
 
@@ -314,7 +299,7 @@ const ServiceCatalogSection: React.FC<ServiceCatalogSectionProps> = ({
   };
 
   // No industry configured
-  if (!profileIndustryId && tabIndustryIds.length === 0) {
+  if (!profileIndustryId && parentIndustryIds.length === 0) {
     return (
       <div>
         <h2 className="text-xl font-semibold mb-4" style={{ color: colors.utility.primaryText }}>
@@ -374,7 +359,7 @@ const ServiceCatalogSection: React.FC<ServiceCatalogSectionProps> = ({
 
       {/* Industry tabs (for sellers) */}
       <IndustryTabs
-        industryIds={tabIndustryIds}
+        industryIds={parentIndustryIds}
         activeId={activeIndustryId}
         onSelect={setActiveIndustryId}
         allIndustries={allIndustries}
