@@ -17,9 +17,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useResourceTemplatesBrowser } from '@/hooks/queries/useResourceTemplates';
 import { useKnowledgeTreeCoverage } from '@/hooks/queries/useKnowledgeTree';
-import {
-  useServedIndustriesManager,
-} from '@/hooks/queries/useServedIndustries';
+// Served industries resolved server-side by resource-templates edge function
 import { useIndustries } from '@/hooks/queries/useProductMasterdata';
 import { VaNiLoader } from '@/components/common/loaders/UnifiedLoader';
 import type { ResourceTemplate } from '@/services/resourcesService';
@@ -147,45 +145,6 @@ const EquipmentRow: React.FC<EquipmentRowProps> = ({ template, coverage, colors,
 };
 
 // ════════════════════════════════════════════════════════════════════
-// INDUSTRY TAB (for sellers with multiple industries)
-// ════════════════════════════════════════════════════════════════════
-
-interface IndustryTabsProps {
-  industryIds: string[];
-  activeId: string;
-  onSelect: (id: string) => void;
-  allIndustries: { id: string; name: string }[];
-  colors: any;
-}
-
-const IndustryTabs: React.FC<IndustryTabsProps> = ({ industryIds, activeId, onSelect, allIndustries, colors }) => {
-  if (industryIds.length <= 1) return null;
-
-  return (
-    <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
-      {industryIds.map((id) => {
-        const industry = allIndustries.find((i) => i.id === id);
-        const isActive = id === activeId;
-        return (
-          <button
-            key={id}
-            onClick={() => onSelect(id)}
-            className="px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition-colors"
-            style={{
-              backgroundColor: isActive ? colors.brand.primary : colors.utility.secondaryBackground,
-              color: isActive ? '#fff' : colors.utility.secondaryText,
-              border: `1px solid ${isActive ? colors.brand.primary : colors.utility.primaryText + '15'}`,
-            }}
-          >
-            {industry?.name || id}
-          </button>
-        );
-      })}
-    </div>
-  );
-};
-
-// ════════════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ════════════════════════════════════════════════════════════════════
 
@@ -199,65 +158,22 @@ const ServiceCatalogSection: React.FC<ServiceCatalogSectionProps> = ({
 
   // Search state
   const [searchTerm, setSearchTerm] = React.useState('');
-  const [activeIndustryId, setActiveIndustryId] = React.useState<string>(profileIndustryId || '');
 
-  // Fetch served industries (for sellers)
-  const { servedIndustries, isLoading: servedLoading } = useServedIndustriesManager();
-
-  // Fetch all industries metadata (for tab labels)
+  // Fetch all industries metadata (for badge labels)
   const { data: industriesResponse } = useIndustries();
   const allIndustries = industriesResponse?.data || [];
 
-  // Build list of PARENT industry IDs for tabs.
-  // Resource templates are stored at parent level (e.g. "healthcare"),
-  // NOT sub-segments (e.g. "dental_clinics", "general_practice").
-  // So we resolve every served industry to its parent and deduplicate.
-  const parentIndustryIds = useMemo(() => {
-    const parentIds = new Set<string>();
-
-    // Profile industry — check if it's a parent or sub-segment
-    if (profileIndustryId) {
-      const profileInd = allIndustries.find((i) => i.id === profileIndustryId);
-      parentIds.add(profileInd?.parent_id || profileIndustryId);
-    }
-
-    // Served industries — resolve each to parent
-    if (servedIndustries) {
-      servedIndustries.forEach((si) => {
-        const parentId = si.industry?.parent_id || si.industry_id;
-        parentIds.add(parentId);
-      });
-    }
-
-    return Array.from(parentIds);
-  }, [profileIndustryId, servedIndustries, allIndustries]);
-
-  // Set initial active tab
-  React.useEffect(() => {
-    if (!activeIndustryId && parentIndustryIds.length > 0) {
-      setActiveIndustryId(parentIndustryIds[0]);
-    }
-    // If current active tab is a sub-segment, switch to its parent
-    if (activeIndustryId && !parentIndustryIds.includes(activeIndustryId)) {
-      const ind = allIndustries.find((i) => i.id === activeIndustryId);
-      if (ind?.parent_id && parentIndustryIds.includes(ind.parent_id)) {
-        setActiveIndustryId(ind.parent_id);
-      } else if (parentIndustryIds.length > 0) {
-        setActiveIndustryId(parentIndustryIds[0]);
-      }
-    }
-  }, [activeIndustryId, parentIndustryIds, allIndustries]);
-
-  // Fetch resource templates — query with the active PARENT industry ID
+  // Fetch resource templates — NO industry_ids override.
+  // The edge function automatically uses the tenant's served industries
+  // and resolves parent IDs (e.g. dental_clinics → healthcare).
+  // This matches how /settings/configure/resources works.
   const {
     templates,
+    servedIndustries: resolvedIndustryIds,
     isLoading: templatesLoading,
     isError: templatesError,
     refetch: refetchTemplates,
-  } = useResourceTemplatesBrowser({
-    industry_ids: activeIndustryId ? [activeIndustryId] : [],
-    limit: 100,
-  });
+  } = useResourceTemplatesBrowser({ limit: 100 });
 
   // Fetch KT coverage map
   const {
@@ -287,7 +203,7 @@ const ServiceCatalogSection: React.FC<ServiceCatalogSectionProps> = ({
     return kt && (kt.variants_count > 0 || kt.checkpoints_count > 0);
   }).length;
 
-  const isLoading = templatesLoading || coverageLoading || servedLoading;
+  const isLoading = templatesLoading || coverageLoading;
 
   const handleRefresh = () => {
     refetchTemplates();
@@ -299,7 +215,7 @@ const ServiceCatalogSection: React.FC<ServiceCatalogSectionProps> = ({
   };
 
   // No industry configured
-  if (!profileIndustryId && parentIndustryIds.length === 0) {
+  if (!profileIndustryId && resolvedIndustryIds.length === 0 && !templatesLoading) {
     return (
       <div>
         <h2 className="text-xl font-semibold mb-4" style={{ color: colors.utility.primaryText }}>
@@ -357,14 +273,27 @@ const ServiceCatalogSection: React.FC<ServiceCatalogSectionProps> = ({
         </button>
       </div>
 
-      {/* Industry tabs (for sellers) */}
-      <IndustryTabs
-        industryIds={parentIndustryIds}
-        activeId={activeIndustryId}
-        onSelect={setActiveIndustryId}
-        allIndustries={allIndustries}
-        colors={colors}
-      />
+      {/* Industry context — show which industries are resolved */}
+      {resolvedIndustryIds.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-4">
+          {resolvedIndustryIds.map((id) => {
+            const industry = allIndustries.find((i) => i.id === id);
+            return (
+              <span
+                key={id}
+                className="px-2.5 py-1 text-xs font-medium rounded-md"
+                style={{
+                  backgroundColor: colors.brand.primary + '10',
+                  color: colors.brand.primary,
+                  border: `1px solid ${colors.brand.primary}20`,
+                }}
+              >
+                {industry?.name || id.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+              </span>
+            );
+          })}
+        </div>
+      )}
 
       {/* Stats bar */}
       <div
