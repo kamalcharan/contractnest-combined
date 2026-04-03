@@ -1,5 +1,5 @@
 ═══════════════════════════════════════════════════
-R4 C2c: Variant Pricing Lines in Pricing Step
+R4 C2c: Variant Pricing Lines in Pricing Step (v2)
 ═══════════════════════════════════════════════════
 
 Submodules Affected: contractnest-ui
@@ -12,12 +12,12 @@ Files:
    FROM: MANUAL_COPY_FILES\r4-c2c-variant-pricing\contractnest-ui\src\components\catalog-studio\BlockWizard\steps\service\PricingStep.tsx
    TO:   contractnest-ui\src\components\catalog-studio\BlockWizard\steps\service\PricingStep.tsx
 
-   CHANGES:
-   - Added TreePine icon and SelectedVariant type imports
-   - Added variantPrices state (Record<variant_id, price>) initialized to 0 per variant
-   - Added handleVariantPriceChange handler
+   CHANGES (v2 — fixed):
+   - Base price set in existing currency pricing card (unchanged)
+   - "Apply ₹X to All" button copies base price to all variants
+   - Per-variant price override rows with currency symbol
+   - Tax context banner shows applied taxes
+   - Override highlight on variant rows with different price from base
    - Syncs variantPrices to formData.meta.variantPrices
-   - New "Variant Pricing" section with per-variant price input rows
-   - Shows variant name, capacity_range, and price input per line
-   - Uses primary currency from pricingRecords[0]
-   - Section only appears when selectedVariants.length > 0
+
+VERIFIED: This file contains "Apply.*to All" pattern
