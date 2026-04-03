@@ -1,0 +1,38 @@
+HOW TO MERGE THE 4 PARTS INTO PricingStep.tsx
+=============================================
+
+Target file: contractnest-ui/src/components/catalog-studio/BlockWizard/steps/service/PricingStep.tsx
+
+STEP 1: Open PowerShell and run:
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Merge all 4 parts into one file:
+
+# Remove the comment lines at top/bottom of each part, then combine:
+Get-Content MANUAL_COPY_FILES\fix-variant-pricing\PricingStep_PART1.tsx | Select-Object -Skip 3 | Select-Object -SkipLast 1 | Set-Content -Path temp_pricing.tsx
+Get-Content MANUAL_COPY_FILES\fix-variant-pricing\PricingStep_PART2.tsx | Select-Object -Skip 2 | Select-Object -SkipLast 1 | Add-Content -Path temp_pricing.tsx
+Get-Content MANUAL_COPY_FILES\fix-variant-pricing\PricingStep_PART3.tsx | Select-Object -Skip 2 | Select-Object -SkipLast 1 | Add-Content -Path temp_pricing.tsx
+Get-Content MANUAL_COPY_FILES\fix-variant-pricing\PricingStep_PART4.tsx | Select-Object -Skip 2 | Add-Content -Path temp_pricing.tsx
+
+STEP 3: Copy to target:
+Copy-Item temp_pricing.tsx -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\service\PricingStep.tsx" -Force
+Remove-Item temp_pricing.tsx
+
+STEP 4: Commit:
+cd contractnest-ui
+git add src/components/catalog-studio/BlockWizard/steps/service/PricingStep.tsx
+git commit -m "feat: variant pricing toggle - Same for All vs Per Variant with full pricing cards"
+git push origin main
+cd ..
+
+STEP 5: Test:
+npm run dev
+# Ctrl+F5 to hard refresh
+
+WHAT CHANGED:
+- Removed old variant pricing (Apply to All + price-only override rows)
+- Added variantPricingMode toggle: Same for All vs Per Variant
+- Per Variant: creates full pricing card per variant with price, tax treatment, tax rates, breakdown
+- Each variant card supports multi-currency (+ Currency button)
+- Toggle appears after Pricing Model selection when variants are selected
