@@ -1,0 +1,27 @@
+KT Form Preview Tab — Copy Instructions
+=========================================
+
+Feature: Auto-composed SmartForm preview from Knowledge Tree checkpoints
+Branch: claude/init-and-ping-fyRhy
+Submodules Affected: contractnest-ui
+
+New Files (2):
+--------------
+1. contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/components/FormPreviewTab.tsx
+   → Form preview with service activity filter, web/mobile toggle, live preview
+
+2. contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/components/useAutoComposeForm.ts
+   → Hook that transforms checkpoints into SmartForm JSON schema
+
+Modified Files (1):
+-------------------
+3. contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/KnowledgeTreeDetail.tsx
+   → Added FormPreviewTab import, 'form-preview' tab type, tab config entry, tab render
+
+Copy Commands (PowerShell):
+---------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\kt-form-preview\contractnest-ui\src\pages\service-contracts\templates\admin\knowledge-tree\components\FormPreviewTab.tsx" -Destination "contractnest-ui\src\pages\service-contracts\templates\admin\knowledge-tree\components\" -Force
+Copy-Item "MANUAL_COPY_FILES\kt-form-preview\contractnest-ui\src\pages\service-contracts\templates\admin\knowledge-tree\components\useAutoComposeForm.ts" -Destination "contractnest-ui\src\pages\service-contracts\templates\admin\knowledge-tree\components\" -Force
+Copy-Item "MANUAL_COPY_FILES\kt-form-preview\contractnest-ui\src\pages\service-contracts\templates\admin\knowledge-tree\KnowledgeTreeDetail.tsx" -Destination "contractnest-ui\src\pages\service-contracts\templates\admin\knowledge-tree\" -Force
