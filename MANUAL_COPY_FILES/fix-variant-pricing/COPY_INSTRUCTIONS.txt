@@ -1,0 +1,16 @@
+═══════════════════════════════════════════════════
+FIX: Variant Pricing useEffect Race Condition
+═══════════════════════════════════════════════════
+
+Submodules Affected: contractnest-ui
+
+Files:
+  1. contractnest-ui/src/components/catalog-studio/BlockWizard/steps/service/PricingStep.tsx
+     → REPLACE entire file
+
+What was fixed:
+  - Two competing useEffects were overwriting each other's changes to formData.meta
+  - selectedVariants (set in ResourceDependencyStep) was being wiped out by stale closures
+  - Merged into a single sync effect with useRef to hold latest meta
+  - Variant pricing section now appears correctly when variants are selected
+  - "Apply to All" and individual per-variant price overrides persist correctly
