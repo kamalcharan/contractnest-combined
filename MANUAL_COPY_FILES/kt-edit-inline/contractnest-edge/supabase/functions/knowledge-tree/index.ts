@@ -316,13 +316,13 @@ async function getSummary(params: URLSearchParams) {
     partIds.length > 0
       ? sb
           .from("m_spare_part_variant_map")
-          .select("spare_part_id, variant_id, is_recommended, notes")
+          .select("id, spare_part_id, variant_id, is_recommended, notes")
           .in("spare_part_id", partIds)
       : Promise.resolve({ data: [], error: null }),
     cpIds.length > 0
       ? sb
           .from("m_checkpoint_variant_map")
-          .select("checkpoint_id, variant_id, override_min, override_max, override_amber, override_red")
+          .select("id, checkpoint_id, variant_id, override_min, override_max, override_amber, override_red")
           .in("checkpoint_id", cpIds)
       : Promise.resolve({ data: [], error: null }),
     cpIds.length > 0
@@ -445,15 +445,9 @@ async function saveKnowledgeTree(body: any, isAdmin: boolean) {
     }
 
     if (spare_part_variant_map?.length) {
-      // Delete existing mappings for these parts, then insert fresh
-      // (upsert on "id" fails when UNIQUE(spare_part_id, variant_id) conflicts)
-      const partIdsInPayload = [...new Set(spare_part_variant_map.map((m: any) => m.spare_part_id))];
-      if (partIdsInPayload.length > 0) {
-        await sb.from("m_spare_part_variant_map").delete().in("spare_part_id", partIdsInPayload);
-      }
       const { data, error } = await sb
         .from("m_spare_part_variant_map")
-        .insert(spare_part_variant_map)
+        .upsert(spare_part_variant_map, { onConflict: "id" })
         .select("id");
       if (error) errors.push(`spare_part_variant_map: ${error.message}`);
       else results.spare_part_variant_map = data.length;
@@ -474,28 +468,18 @@ async function saveKnowledgeTree(body: any, isAdmin: boolean) {
     }
 
     if (checkpoint_values?.length) {
-      // Delete existing values for these checkpoints, then insert fresh
-      const cpIdsInPayload = [...new Set(checkpoint_values.map((cv: any) => cv.checkpoint_id))];
-      if (cpIdsInPayload.length > 0) {
-        await sb.from("m_checkpoint_values").delete().in("checkpoint_id", cpIdsInPayload);
-      }
       const { data, error } = await sb
         .from("m_checkpoint_values")
-        .insert(checkpoint_values)
+        .upsert(checkpoint_values, { onConflict: "id" })
         .select("id");
       if (error) errors.push(`checkpoint_values: ${error.message}`);
       else results.checkpoint_values = data.length;
     }
 
     if (checkpoint_variant_map?.length) {
-      // Delete existing maps for these checkpoints, then insert fresh
-      const cpIdsForMap = [...new Set(checkpoint_variant_map.map((cvm: any) => cvm.checkpoint_id))];
-      if (cpIdsForMap.length > 0) {
-        await sb.from("m_checkpoint_variant_map").delete().in("checkpoint_id", cpIdsForMap);
-      }
       const { data, error } = await sb
         .from("m_checkpoint_variant_map")
-        .insert(checkpoint_variant_map)
+        .upsert(checkpoint_variant_map, { onConflict: "id" })
         .select("id");
       if (error) errors.push(`checkpoint_variant_map: ${error.message}`);
       else results.checkpoint_variant_map = data.length;
