@@ -1,0 +1,46 @@
+═══════════════════════════════════════════════════
+R4 C2a: Edge Function + API Types — KT Linkage Fields
+═══════════════════════════════════════════════════
+
+Submodules Affected: contractnest-edge, contractnest-api, contractnest-ui
+
+MIGRATION (run first if not already done):
+──────────────────────────────────────────
+  migrations\1.6_alter_m_cat_blocks.sql
+  → Run in Supabase SQL Editor
+  → Adds form_template_id (UUID FK → m_form_templates) and knowledge_tree_ref (JSONB) to m_cat_blocks
+
+Files:
+──────
+
+1. [MODIFIED] cat-blocks edge function
+   FROM: MANUAL_COPY_FILES\r4-c2a-edge-types\contractnest-edge\supabase\functions\cat-blocks\index.ts
+   TO:   contractnest-edge\supabase\functions\cat-blocks\index.ts
+   CHANGES:
+     - POST handler: added form_template_id and knowledge_tree_ref to insertData
+     - PATCH handler: added form_template_id and knowledge_tree_ref to allowedFields
+
+2. [MODIFIED] API types
+   FROM: MANUAL_COPY_FILES\r4-c2a-edge-types\contractnest-api\src\types\catalogStudioTypes.ts
+   TO:   contractnest-api\src\types\catalogStudioTypes.ts
+   CHANGES:
+     - Added KnowledgeTreeRef interface
+     - Added form_template_id, knowledge_tree_ref, is_live to CatBlock
+     - Added form_template_id, knowledge_tree_ref, is_live to CreateBlockRequest
+     - Added form_template_id, knowledge_tree_ref, is_live to UpdateBlockRequest
+
+3. [MODIFIED] Frontend types
+   FROM: MANUAL_COPY_FILES\r4-c2a-edge-types\contractnest-ui\src\types\catalogStudio.ts
+   TO:   contractnest-ui\src\types\catalogStudio.ts
+   CHANGES:
+     - Added SelectedVariant interface
+     - Added KnowledgeTreeRef interface
+     - Added form_template_id, knowledge_tree_ref, selectedVariants to BlockMeta
+
+4. [MODIFIED] Frontend adapter
+   FROM: MANUAL_COPY_FILES\r4-c2a-edge-types\contractnest-ui\src\utils\catalog-studio\catBlockAdapter.ts
+   TO:   contractnest-ui\src\utils\catalog-studio\catBlockAdapter.ts
+   CHANGES:
+     - catBlockToBlock: reads form_template_id, knowledge_tree_ref, selectedVariants from DB
+     - blockToCreateData: writes form_template_id, knowledge_tree_ref to create payload
+     - buildServiceConfig: includes selectedVariants in config JSONB
