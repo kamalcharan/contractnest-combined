@@ -3,6 +3,7 @@
 // Uses API data to select actual resources (e.g., Dr. Bhavana, Dr. Hema)
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Users, Package, Wrench, Truck, Building, Monitor, Box, AlertCircle, Check, Info, ChevronDown, ChevronUp, Loader2, TreePine, Search, X } from 'lucide-react';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { Block, SelectedVariant } from '../../../../types/catalogStudio';
@@ -194,19 +195,23 @@ const KnowledgeTreeVariantPicker: React.FC<KTVariantPickerProps> = ({
         )}
       </div>
 
-      {/* ── Slide-out Panel (overlay from right) ── */}
-      {isPanelOpen && (
+      {/* ── Slide-out Panel via Portal (matches QuickAddContactDrawer pattern) ── */}
+      {isPanelOpen && createPortal(
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 z-40 bg-black/30 transition-opacity"
+            className="fixed inset-0 z-40 transition-opacity duration-300"
+            style={{ backgroundColor: 'rgba(0,0,0,0.3)' }}
             onClick={() => setIsPanelOpen(false)}
           />
 
           {/* Panel */}
           <div
-            className="fixed top-0 right-0 z-50 h-full w-[480px] max-w-[90vw] flex flex-col shadow-2xl animate-in slide-in-from-right duration-200"
-            style={{ backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#FFFFFF' }}
+            className="fixed top-0 right-0 h-full w-[480px] max-w-[90vw] z-50 flex flex-col shadow-2xl transform transition-transform duration-300 ease-out"
+            style={{
+              backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#FFFFFF',
+              transform: 'translateX(0)',
+            }}
           >
             {/* Panel Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: colors.utility.primaryText + '15' }}>
@@ -392,7 +397,8 @@ const KnowledgeTreeVariantPicker: React.FC<KTVariantPickerProps> = ({
               </button>
             </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
     </>
   );
