@@ -3,7 +3,7 @@
 // Uses API data to select actual resources (e.g., Dr. Bhavana, Dr. Hema)
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Users, Package, Wrench, Truck, Building, Monitor, Box, AlertCircle, Check, Info, ChevronDown, ChevronUp, Loader2, TreePine, Search } from 'lucide-react';
+import { Users, Package, Wrench, Truck, Building, Monitor, Box, AlertCircle, Check, Info, ChevronDown, ChevronUp, Loader2, TreePine, Search, X } from 'lucide-react';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { Block, SelectedVariant } from '../../../../types/catalogStudio';
 import { useResourceTypes, useResources, ResourceType, Resource } from '../../../../hooks/useResources';
