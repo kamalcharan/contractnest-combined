@@ -144,7 +144,7 @@ const FormPreviewTab: React.FC<Props> = ({ summary, variants, checkpointsBySecti
       }}>
         <FormRenderer
           schema={schema}
-          readOnly={true}
+          readOnly={false}
           onSubmit={() => {}}
         />
       </div>
