@@ -1,6 +1,7 @@
 // src/pages/settings/business-profile/ServiceCatalogSection.tsx
-// R4 C1: Displays equipment/services available for the tenant's industry
+// R4 C1: Displays equipment/services/facilities available for the tenant's industry
 // with Knowledge Tree coverage status. Read-only — seeding comes in C4.
+// Uses same type config pattern as /settings/configure/resources (Resources page).
 
 import React, { useMemo } from 'react';
 import {
@@ -12,16 +13,50 @@ import {
   ExternalLink,
   TreePine,
   Info,
+  Wrench,
+  Building,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useResourceTemplatesBrowser } from '@/hooks/queries/useResourceTemplates';
 import { useKnowledgeTreeCoverage } from '@/hooks/queries/useKnowledgeTree';
-// Served industries resolved server-side by resource-templates edge function
-import { useIndustries } from '@/hooks/queries/useProductMasterdata';
 import { VaNiLoader } from '@/components/common/loaders/UnifiedLoader';
 import type { ResourceTemplate } from '@/services/resourcesService';
 import type { KnowledgeTreeCoverageMap } from '@/pages/service-contracts/templates/admin/knowledge-tree/types';
+
+// ════════════════════════════════════════════════════════════════════
+// TYPE CONFIG — matches Resources page pattern
+// ════════════════════════════════════════════════════════════════════
+
+const TYPE_CONFIG: Record<string, { color: string; label: string; icon: typeof Wrench }> = {
+  equipment:  { color: '#3B82F6', label: 'Equipment',  icon: Wrench },
+  consumable: { color: '#F59E0B', label: 'Consumable', icon: Package },
+  asset:      { color: '#8B5CF6', label: 'Facility',   icon: Building },
+  team_staff: { color: '#10B981', label: 'Staff',      icon: Package },
+};
+
+const getTypeConfig = (typeId: string) =>
+  TYPE_CONFIG[typeId?.toLowerCase()] || { color: '#6B7280', label: typeId || 'Other', icon: Package };
+
+// ════════════════════════════════════════════════════════════════════
+// TABS
+// ════════════════════════════════════════════════════════════════════
+
+type TabId = 'all' | 'equipment' | 'facility';
+
+const TABS: { id: TabId; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'equipment', label: 'Equipment' },
+  { id: 'facility', label: 'Facilities' },
+];
+
+const matchesTab = (resourceTypeId: string, tab: TabId): boolean => {
+  if (tab === 'all') return true;
+  const t = (resourceTypeId || '').toLowerCase();
+  if (tab === 'equipment') return ['equipment', 'consumable'].includes(t);
+  if (tab === 'facility') return t === 'asset';
+  return true;
+};
 
 // ════════════════════════════════════════════════════════════════════
 // PROPS
@@ -29,23 +64,25 @@ import type { KnowledgeTreeCoverageMap } from '@/pages/service-contracts/templat
 
 interface ServiceCatalogSectionProps {
   profileIndustryId?: string | null;
-  businessTypeId?: string | null; // 'buyer' | 'seller'
+  businessTypeId?: string | null;
 }
 
 // ════════════════════════════════════════════════════════════════════
-// EQUIPMENT ROW
+// CATALOG ROW
 // ════════════════════════════════════════════════════════════════════
 
-interface EquipmentRowProps {
+interface CatalogRowProps {
   template: ResourceTemplate;
   coverage: KnowledgeTreeCoverageMap;
   colors: any;
   onViewKT: (id: string) => void;
 }
 
-const EquipmentRow: React.FC<EquipmentRowProps> = ({ template, coverage, colors, onViewKT }) => {
+const CatalogRow: React.FC<CatalogRowProps> = ({ template, coverage, colors, onViewKT }) => {
   const kt = coverage[template.id];
   const hasKT = kt && (kt.variants_count > 0 || kt.checkpoints_count > 0);
+  const typeConfig = getTypeConfig(template.resource_type_id);
+  const TypeIcon = typeConfig.icon;
 
   return (
     <div
@@ -55,23 +92,25 @@ const EquipmentRow: React.FC<EquipmentRowProps> = ({ template, coverage, colors,
         borderColor: colors.utility.primaryText + '12',
       }}
     >
-      {/* Left: Name + meta */}
+      {/* Left: Type icon + Name + meta */}
       <div className="flex items-center gap-3 min-w-0 flex-1">
         <div
           className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{
-            backgroundColor: hasKT ? colors.semantic.success + '15' : colors.semantic.warning + '15',
-          }}
+          style={{ backgroundColor: typeConfig.color + '15' }}
         >
-          {hasKT ? (
-            <CheckCircle2 className="w-4 h-4" style={{ color: colors.semantic.success }} />
-          ) : (
-            <AlertCircle className="w-4 h-4" style={{ color: colors.semantic.warning }} />
-          )}
+          <TypeIcon className="w-4 h-4" style={{ color: typeConfig.color }} />
         </div>
         <div className="min-w-0">
-          <div className="text-sm font-medium truncate" style={{ color: colors.utility.primaryText }}>
-            {template.name}
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium truncate" style={{ color: colors.utility.primaryText }}>
+              {template.name}
+            </span>
+            <span
+              className="text-[10px] px-1.5 py-0.5 rounded font-medium flex-shrink-0"
+              style={{ backgroundColor: typeConfig.color + '12', color: typeConfig.color }}
+            >
+              {typeConfig.label}
+            </span>
           </div>
           {template.sub_category && (
             <div className="text-xs truncate" style={{ color: colors.utility.secondaryText }}>
@@ -81,10 +120,16 @@ const EquipmentRow: React.FC<EquipmentRowProps> = ({ template, coverage, colors,
         </div>
       </div>
 
-      {/* Center: KT stats */}
-      <div className="flex items-center gap-4 px-4">
+      {/* Center: KT status */}
+      <div className="flex items-center gap-3 px-4">
         {hasKT ? (
           <>
+            <div
+              className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: colors.semantic.success + '15' }}
+            >
+              <CheckCircle2 className="w-3 h-3" style={{ color: colors.semantic.success }} />
+            </div>
             <span
               className="text-xs px-2 py-0.5 rounded-full"
               style={{
@@ -93,33 +138,21 @@ const EquipmentRow: React.FC<EquipmentRowProps> = ({ template, coverage, colors,
                 fontFamily: "'IBM Plex Mono', monospace",
               }}
             >
-              {kt.variants_count} variants
-            </span>
-            <span
-              className="text-xs px-2 py-0.5 rounded-full"
-              style={{
-                backgroundColor: (colors.semantic.info || '#2563eb') + '12',
-                color: colors.semantic.info || '#2563eb',
-                fontFamily: "'IBM Plex Mono', monospace",
-              }}
-            >
-              {kt.checkpoints_count} checks
-            </span>
-            <span
-              className="text-xs px-2 py-0.5 rounded-full"
-              style={{
-                backgroundColor: colors.brand.primary + '12',
-                color: colors.brand.primary,
-                fontFamily: "'IBM Plex Mono', monospace",
-              }}
-            >
-              {kt.spare_parts_count} parts
+              {kt.variants_count}v · {kt.checkpoints_count}c · {kt.spare_parts_count}p
             </span>
           </>
         ) : (
-          <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
-            No Knowledge Tree
-          </span>
+          <>
+            <div
+              className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: colors.semantic.warning + '15' }}
+            >
+              <AlertCircle className="w-3 h-3" style={{ color: colors.semantic.warning }} />
+            </div>
+            <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
+              No KT
+            </span>
+          </>
         )}
       </div>
 
@@ -150,18 +183,13 @@ const EquipmentRow: React.FC<EquipmentRowProps> = ({ template, coverage, colors,
 
 const ServiceCatalogSection: React.FC<ServiceCatalogSectionProps> = ({
   profileIndustryId,
-  businessTypeId,
 }) => {
   const navigate = useNavigate();
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
 
-  // Search state
   const [searchTerm, setSearchTerm] = React.useState('');
-
-  // Fetch all industries metadata (for badge labels)
-  const { data: industriesResponse } = useIndustries();
-  const allIndustries = industriesResponse?.data || [];
+  const [activeTab, setActiveTab] = React.useState<TabId>('all');
 
   // Fetch resource templates — NO industry_ids override.
   // The edge function automatically uses the tenant's served industries
@@ -169,7 +197,6 @@ const ServiceCatalogSection: React.FC<ServiceCatalogSectionProps> = ({
   // This matches how /settings/configure/resources works.
   const {
     templates,
-    servedIndustries: resolvedIndustryIds,
     isLoading: templatesLoading,
     isError: templatesError,
     refetch: refetchTemplates,
@@ -184,24 +211,31 @@ const ServiceCatalogSection: React.FC<ServiceCatalogSectionProps> = ({
 
   const coverageMap = coverage || {};
 
-  // Filter templates by search
+  // Filter by tab + search
   const filteredTemplates = useMemo(() => {
-    if (!searchTerm.trim()) return templates;
-    const lower = searchTerm.toLowerCase();
-    return templates.filter(
-      (t) =>
-        t.name.toLowerCase().includes(lower) ||
-        (t.sub_category && t.sub_category.toLowerCase().includes(lower)) ||
-        (t.description && t.description.toLowerCase().includes(lower))
-    );
-  }, [templates, searchTerm]);
+    let result = templates.filter((t) => matchesTab(t.resource_type_id, activeTab));
+    if (searchTerm.trim()) {
+      const lower = searchTerm.toLowerCase();
+      result = result.filter(
+        (t) =>
+          t.name.toLowerCase().includes(lower) ||
+          (t.sub_category && t.sub_category.toLowerCase().includes(lower)) ||
+          (t.description && t.description.toLowerCase().includes(lower))
+      );
+    }
+    return result;
+  }, [templates, activeTab, searchTerm]);
 
-  // Stats
-  const totalEquipment = filteredTemplates.length;
-  const withKT = filteredTemplates.filter((t) => {
-    const kt = coverageMap[t.id];
-    return kt && (kt.variants_count > 0 || kt.checkpoints_count > 0);
-  }).length;
+  // Stats — by type
+  const stats = useMemo(() => {
+    const equipmentCount = templates.filter((t) => ['equipment', 'consumable'].includes((t.resource_type_id || '').toLowerCase())).length;
+    const facilityCount = templates.filter((t) => (t.resource_type_id || '').toLowerCase() === 'asset').length;
+    const withKT = templates.filter((t) => {
+      const kt = coverageMap[t.id];
+      return kt && (kt.variants_count > 0 || kt.checkpoints_count > 0);
+    }).length;
+    return { total: templates.length, equipmentCount, facilityCount, withKT };
+  }, [templates, coverageMap]);
 
   const isLoading = templatesLoading || coverageLoading;
 
@@ -215,7 +249,7 @@ const ServiceCatalogSection: React.FC<ServiceCatalogSectionProps> = ({
   };
 
   // No industry configured
-  if (!profileIndustryId && resolvedIndustryIds.length === 0 && !templatesLoading) {
+  if (!profileIndustryId && templates.length === 0 && !templatesLoading) {
     return (
       <div>
         <h2 className="text-xl font-semibold mb-4" style={{ color: colors.utility.primaryText }}>
@@ -235,13 +269,6 @@ const ServiceCatalogSection: React.FC<ServiceCatalogSectionProps> = ({
           <p className="text-sm mb-4" style={{ color: colors.utility.secondaryText }}>
             Set your industry in the Industries tab to see available equipment and services.
           </p>
-          <button
-            onClick={() => {/* parent handles tab switch via prop if needed */}}
-            className="text-sm font-medium px-4 py-2 rounded-md"
-            style={{ backgroundColor: colors.brand.primary, color: '#fff' }}
-          >
-            Go to Industries
-          </button>
         </div>
       </div>
     );
@@ -250,13 +277,13 @@ const ServiceCatalogSection: React.FC<ServiceCatalogSectionProps> = ({
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-5">
         <div>
           <h2 className="text-xl font-semibold" style={{ color: colors.utility.primaryText }}>
             Service Catalog
           </h2>
           <p className="text-sm mt-1" style={{ color: colors.utility.secondaryText }}>
-            Equipment and services available for your industry. Items with a Knowledge Tree can be auto-seeded into your service blocks.
+            Equipment and facilities for your industry. Items with a Knowledge Tree can be auto-seeded into your service blocks.
           </p>
         </div>
         <button
@@ -273,78 +300,84 @@ const ServiceCatalogSection: React.FC<ServiceCatalogSectionProps> = ({
         </button>
       </div>
 
-      {/* Industry context — show which industries are resolved */}
-      {resolvedIndustryIds.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-4">
-          {resolvedIndustryIds.map((id) => {
-            const industry = allIndustries.find((i) => i.id === id);
-            return (
-              <span
-                key={id}
-                className="px-2.5 py-1 text-xs font-medium rounded-md"
-                style={{
-                  backgroundColor: colors.brand.primary + '10',
-                  color: colors.brand.primary,
-                  border: `1px solid ${colors.brand.primary}20`,
-                }}
-              >
-                {industry?.name || id.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
-              </span>
-            );
-          })}
-        </div>
-      )}
-
       {/* Stats bar */}
       <div
-        className="flex items-center gap-4 p-3 rounded-lg mb-4"
+        className="flex items-center gap-4 p-3 rounded-lg mb-4 flex-wrap"
         style={{
           backgroundColor: colors.brand.primary + '06',
           border: `1px solid ${colors.brand.primary}15`,
         }}
       >
         <div className="flex items-center gap-2">
-          <Package className="w-4 h-4" style={{ color: colors.brand.primary }} />
+          <Wrench className="w-4 h-4" style={{ color: '#3B82F6' }} />
           <span className="text-sm font-medium" style={{ color: colors.utility.primaryText }}>
-            {totalEquipment} equipment types
+            {stats.equipmentCount} equipment
           </span>
         </div>
-        <div
-          className="w-px h-4"
-          style={{ backgroundColor: colors.utility.primaryText + '15' }}
-        />
+        <div className="w-px h-4" style={{ backgroundColor: colors.utility.primaryText + '15' }} />
+        <div className="flex items-center gap-2">
+          <Building className="w-4 h-4" style={{ color: '#8B5CF6' }} />
+          <span className="text-sm font-medium" style={{ color: colors.utility.primaryText }}>
+            {stats.facilityCount} facilities
+          </span>
+        </div>
+        <div className="w-px h-4" style={{ backgroundColor: colors.utility.primaryText + '15' }} />
         <div className="flex items-center gap-2">
           <TreePine className="w-4 h-4" style={{ color: colors.semantic.success }} />
           <span className="text-sm" style={{ color: colors.semantic.success }}>
-            {withKT} with Knowledge Tree
+            {stats.withKT} with Knowledge Tree
           </span>
         </div>
         <div className="flex items-center gap-2">
           <AlertCircle className="w-4 h-4" style={{ color: colors.semantic.warning }} />
           <span className="text-sm" style={{ color: colors.semantic.warning }}>
-            {totalEquipment - withKT} pending
+            {stats.total - stats.withKT} pending
           </span>
         </div>
       </div>
 
-      {/* Search */}
-      <div className="relative mb-4">
-        <Search
-          className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
-          style={{ color: colors.utility.secondaryText }}
-        />
-        <input
-          type="text"
-          placeholder="Search equipment..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-9 pr-4 py-2.5 rounded-lg border text-sm"
-          style={{
-            backgroundColor: colors.utility.primaryBackground,
-            borderColor: colors.utility.primaryText + '15',
-            color: colors.utility.primaryText,
-          }}
-        />
+      {/* Type tabs + Search row */}
+      <div className="flex items-center gap-3 mb-4">
+        {/* Tabs */}
+        <div className="flex gap-1 rounded-lg p-0.5" style={{ backgroundColor: colors.utility.secondaryBackground, border: `1px solid ${colors.utility.primaryText}10` }}>
+          {TABS.map((tab) => {
+            const isActive = activeTab === tab.id;
+            const count = tab.id === 'all' ? stats.total : tab.id === 'equipment' ? stats.equipmentCount : stats.facilityCount;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className="px-3 py-1.5 text-xs font-medium rounded-md transition-colors"
+                style={{
+                  backgroundColor: isActive ? colors.brand.primary : 'transparent',
+                  color: isActive ? '#fff' : colors.utility.secondaryText,
+                }}
+              >
+                {tab.label} ({count})
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Search */}
+        <div className="relative flex-1">
+          <Search
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
+            style={{ color: colors.utility.secondaryText }}
+          />
+          <input
+            type="text"
+            placeholder="Search equipment & facilities..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-9 pr-4 py-2 rounded-lg border text-sm"
+            style={{
+              backgroundColor: colors.utility.primaryBackground,
+              borderColor: colors.utility.primaryText + '15',
+              color: colors.utility.primaryText,
+            }}
+          />
+        </div>
       </div>
 
       {/* Loading */}
@@ -365,12 +398,12 @@ const ServiceCatalogSection: React.FC<ServiceCatalogSectionProps> = ({
         >
           <AlertCircle className="w-8 h-8 mx-auto mb-2" style={{ color: colors.semantic.error }} />
           <p className="text-sm" style={{ color: colors.semantic.error }}>
-            Failed to load equipment catalog. Try refreshing.
+            Failed to load service catalog. Try refreshing.
           </p>
         </div>
       )}
 
-      {/* Equipment list */}
+      {/* Catalog list */}
       {!isLoading && !templatesError && (
         <div className="space-y-2">
           {filteredTemplates.length === 0 ? (
@@ -383,12 +416,12 @@ const ServiceCatalogSection: React.FC<ServiceCatalogSectionProps> = ({
             >
               <Package className="w-8 h-8 mx-auto mb-2" style={{ color: colors.utility.secondaryText }} />
               <p className="text-sm" style={{ color: colors.utility.secondaryText }}>
-                {searchTerm ? 'No equipment matches your search' : 'No equipment found for this industry'}
+                {searchTerm ? 'No items match your search' : 'No items found for this category'}
               </p>
             </div>
           ) : (
             filteredTemplates.map((template) => (
-              <EquipmentRow
+              <CatalogRow
                 key={template.id}
                 template={template}
                 coverage={coverageMap}
@@ -401,7 +434,7 @@ const ServiceCatalogSection: React.FC<ServiceCatalogSectionProps> = ({
       )}
 
       {/* Info banner */}
-      {!isLoading && withKT > 0 && (
+      {!isLoading && stats.withKT > 0 && (
         <div
           className="flex items-start gap-3 mt-4 p-3 rounded-lg"
           style={{
@@ -411,7 +444,7 @@ const ServiceCatalogSection: React.FC<ServiceCatalogSectionProps> = ({
         >
           <Info className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: colors.semantic.info || '#2563eb' }} />
           <p className="text-xs" style={{ color: colors.utility.secondaryText }}>
-            Equipment with a Knowledge Tree can be seeded into your test catalog as service blocks — complete with inspection forms, spare parts checklists, and service cycles. Seeding will be available in the next update.
+            Items with a Knowledge Tree can be seeded into your test catalog as service blocks — complete with inspection forms, spare parts checklists, and service cycles. Seeding will be available in the next update.
           </p>
         </div>
       )}
