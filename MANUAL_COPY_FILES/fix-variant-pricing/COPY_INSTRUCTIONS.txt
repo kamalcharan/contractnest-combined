@@ -1,5 +1,5 @@
 ═══════════════════════════════════════════════════
-FIX: Variant Pricing useEffect Race Condition
+FIX: Variant Pricing — "Same for All" vs "Per Variant" Toggle
 ═══════════════════════════════════════════════════
 
 Submodules Affected: contractnest-ui
@@ -8,9 +8,26 @@ Files:
   1. contractnest-ui/src/components/catalog-studio/BlockWizard/steps/service/PricingStep.tsx
      → REPLACE entire file
 
-What was fixed:
-  - Two competing useEffects were overwriting each other's changes to formData.meta
-  - selectedVariants (set in ResourceDependencyStep) was being wiped out by stale closures
-  - Merged into a single sync effect with useRef to hold latest meta
-  - Variant pricing section now appears correctly when variants are selected
-  - "Apply to All" and individual per-variant price overrides persist correctly
+What Changed:
+  - Removed old variant pricing (Apply to All + price-only override rows)
+  - Added variantPricingMode toggle: "Same for All" vs "Per Variant"
+  - "Same for All": uses existing single pricing card (no change)
+  - "Per Variant": creates a full pricing card PER variant with:
+    * Its own price input
+    * Its own tax treatment (Inclusive/Exclusive)
+    * Its own tax rates (multi-select tags)
+    * Its own price breakdown
+    * Multi-currency support (+ Currency button per variant)
+  - New VariantPricingRecord type
+  - New state: variantPricingRecords, variantPricingMode
+  - New handlers: updateVariantPricingRecord, addTaxToVariantRecord,
+    removeTaxFromVariantRecord, addVariantCurrency, removeVariantCurrencyRecord
+  - Merged useEffect sync to include new variant pricing state
+  - Auto-syncs when variants are added/removed in previous step
+
+Data shape in meta:
+  meta.variantPricingMode = 'all' | 'per_variant'
+  meta.variantPricingRecords = [
+    { variant_id, variant_name, capacity_range, currency, amount,
+      price_type, tax_inclusion, taxes[], is_active }
+  ]

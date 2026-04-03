@@ -1,6 +1,6 @@
 // src/components/catalog-studio/BlockWizard/steps/service/PricingStep.tsx
 // ✅ Phase 8: Multi-currency, multi-tax (tag style), price breakdown
-// Updated UI: Two-column layout, Fixed/Hourly only, hidden discounts
+// Updated: Variant pricing toggle — "Same for All" vs "Per Variant" with full pricing cards
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
@@ -17,6 +17,7 @@ import {
   Info,
   TrendingUp,
   TreePine,
+  Layers,
 } from 'lucide-react';
 import { useTheme } from '../../../../../contexts/ThemeContext';
 import { Block, SelectedVariant } from '../../../../../types/catalogStudio';
@@ -41,6 +42,19 @@ interface PricingRecord {
   tax_inclusion: 'inclusive' | 'exclusive';
   taxes: TaxEntry[];
   billing_cycle?: string;
+  is_active: boolean;
+}
+
+interface VariantPricingRecord {
+  id: string;
+  variant_id: string;
+  variant_name: string;
+  capacity_range?: string | null;
+  currency: string;
+  amount: number;
+  price_type: 'fixed' | 'hourly';
+  tax_inclusion: 'inclusive' | 'exclusive';
+  taxes: TaxEntry[];
   is_active: boolean;
 }
 
@@ -69,6 +83,7 @@ interface PricingStepProps {
 }
 
 type PriceType = 'fixed' | 'hourly' | 'tiered' | 'custom';
+type VariantPricingMode = 'all' | 'per_variant';
 
 // =================================================================
 // COMPONENT
@@ -133,25 +148,108 @@ const PricingStep: React.FC<PricingStepProps> = ({ formData, onChange }) => {
   const [taxDropdownOpen, setTaxDropdownOpen] = useState<string | null>(null);
   const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
 
-  // Variant pricing — per-variant price overrides (from KT)
+  // Variant pricing — "Same for All" vs "Per Variant"
   const selectedVariants = (formData.meta?.selectedVariants as SelectedVariant[]) || [];
-  const [variantPrices, setVariantPrices] = useState<Record<string, number>>(() => {
-    const existing = formData.meta?.variantPrices as Record<string, number>;
-    if (existing) return existing;
-    return {};
+
+  const [variantPricingMode, setVariantPricingMode] = useState<VariantPricingMode>(
+    (formData.meta?.variantPricingMode as VariantPricingMode) || 'all'
+  );
+
+  const [variantPricingRecords, setVariantPricingRecords] = useState<VariantPricingRecord[]>(() => {
+    const existing = formData.meta?.variantPricingRecords as VariantPricingRecord[];
+    if (existing && existing.length > 0) return existing;
+    // Initialize one record per variant with default currency
+    return selectedVariants.map((v) => ({
+      id: `vp-${v.variant_id}`,
+      variant_id: v.variant_id,
+      variant_name: v.variant_name,
+      capacity_range: v.capacity_range,
+      currency: defaultCurrency,
+      amount: 0,
+      price_type: (priceType === 'hourly' ? 'hourly' : 'fixed') as 'fixed' | 'hourly',
+      tax_inclusion: 'exclusive' as const,
+      taxes: [],
+      is_active: true,
+    }));
   });
 
-  const handleVariantPriceChange = useCallback((variantId: string, price: number) => {
-    setVariantPrices(prev => ({ ...prev, [variantId]: price }));
+  // Sync variant pricing records when selectedVariants changes (new variants added/removed)
+  useEffect(() => {
+    if (variantPricingMode !== 'per_variant' || selectedVariants.length === 0) return;
+    setVariantPricingRecords(prev => {
+      const existingIds = new Set(prev.map(r => r.variant_id));
+      const newRecords = [...prev];
+      selectedVariants.forEach(v => {
+        if (!existingIds.has(v.variant_id)) {
+          newRecords.push({
+            id: `vp-${v.variant_id}`,
+            variant_id: v.variant_id,
+            variant_name: v.variant_name,
+            capacity_range: v.capacity_range,
+            currency: defaultCurrency,
+            amount: 0,
+            price_type: (priceType === 'hourly' ? 'hourly' : 'fixed') as 'fixed' | 'hourly',
+            tax_inclusion: 'exclusive',
+            taxes: [],
+            is_active: true,
+          });
+        }
+      });
+      // Remove records for variants that were deselected
+      const selectedIds = new Set(selectedVariants.map(v => v.variant_id));
+      return newRecords.filter(r => selectedIds.has(r.variant_id));
+    });
+  }, [selectedVariants, variantPricingMode]);
+
+  // Variant pricing handlers
+  const updateVariantPricingRecord = useCallback((id: string, field: keyof VariantPricingRecord, value: unknown) => {
+    setVariantPricingRecords(prev => prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)));
   }, []);
 
-  // Apply base price to all variants
-  const handleApplyToAll = useCallback(() => {
-    const basePrice = pricingRecords[0]?.amount || 0;
-    const updated: Record<string, number> = {};
-    selectedVariants.forEach(v => { updated[v.variant_id] = basePrice; });
-    setVariantPrices(updated);
-  }, [pricingRecords, selectedVariants]);
+  const addTaxToVariantRecord = useCallback((recordId: string, taxOption: { value: string; label: string; rate?: number }) => {
+    setVariantPricingRecords(prev => prev.map((r) => {
+      if (r.id !== recordId) return r;
+      if (r.taxes.some(t => t.id === taxOption.value)) return r;
+      return { ...r, taxes: [...r.taxes, { id: taxOption.value, name: taxOption.label, rate: taxOption.rate || 0 }] };
+    }));
+    setTaxDropdownOpen(null);
+  }, []);
+
+  const removeTaxFromVariantRecord = useCallback((recordId: string, taxId: string) => {
+    setVariantPricingRecords(prev => prev.map((r) => {
+      if (r.id !== recordId) return r;
+      return { ...r, taxes: r.taxes.filter(t => t.id !== taxId) };
+    }));
+  }, []);
+
+  const addVariantCurrency = useCallback((variantId: string, currency: string) => {
+    if (variantPricingRecords.some(r => r.variant_id === variantId && r.currency === currency)) return;
+    const existing = variantPricingRecords.find(r => r.variant_id === variantId);
+    if (!existing) return;
+    setVariantPricingRecords(prev => [...prev, {
+      id: `vp-${variantId}-${currency}`,
+      variant_id: variantId,
+      variant_name: existing.variant_name,
+      capacity_range: existing.capacity_range,
+      currency,
+      amount: 0,
+      price_type: existing.price_type,
+      tax_inclusion: 'exclusive',
+      taxes: [],
+      is_active: true,
+    }]);
+  }, [variantPricingRecords]);
+
+  const removeVariantCurrencyRecord = useCallback((id: string, variantId: string) => {
+    const variantRecords = variantPricingRecords.filter(r => r.variant_id === variantId);
+    if (variantRecords.length <= 1) return; // Keep at least one
+    setVariantPricingRecords(prev => prev.filter(r => r.id !== id));
+  }, [variantPricingRecords]);
+
+  const getAvailableCurrenciesForVariant = useCallback((variantId: string) => {
+    const used = variantPricingRecords.filter(r => r.variant_id === variantId).map(r => r.currency);
+    return currencyOptions.filter(c => !used.includes(c.code));
+  }, [variantPricingRecords]);
 
   // Ref to hold latest formData.meta without causing re-renders
   const metaRef = useRef(formData.meta);
@@ -159,7 +257,7 @@ const PricingStep: React.FC<PricingStepProps> = ({ formData, onChange }) => {
     metaRef.current = formData.meta;
   }, [formData.meta]);
 
-  // Single unified sync effect — prevents competing useEffects from overwriting each other
+  // Single unified sync effect
   useEffect(() => {
     const currentMeta = metaRef.current || {};
     const updatedMeta: Record<string, unknown> = {
@@ -167,13 +265,14 @@ const PricingStep: React.FC<PricingStepProps> = ({ formData, onChange }) => {
       pricingRecords,
       priceType,
       pricingTiers: tiers,
-      variantPrices: selectedVariants.length > 0 ? variantPrices : undefined,
+      variantPricingMode: selectedVariants.length > 0 ? variantPricingMode : undefined,
+      variantPricingRecords: selectedVariants.length > 0 && variantPricingMode === 'per_variant' ? variantPricingRecords : undefined,
     };
     if (pricingMode === 'resource_based') {
       updatedMeta.resourcePricingRecords = resourcePricingRecords;
     }
     onChange('meta', updatedMeta);
-  }, [pricingRecords, priceType, tiers, variantPrices, resourcePricingRecords, pricingMode]);
+  }, [pricingRecords, priceType, tiers, variantPricingMode, variantPricingRecords, resourcePricingRecords, pricingMode]);
 
   // =================================================================
   // STYLES - White background for inputs
@@ -761,106 +860,178 @@ const PricingStep: React.FC<PricingStepProps> = ({ formData, onChange }) => {
             </div>
           )}
 
-          {/* VARIANT PRICING — shown when KT variants are selected */}
-          {selectedVariants.length > 0 && (() => {
-            const primaryRecord = pricingRecords[0];
-            const primaryCurrency = primaryRecord?.currency || 'INR';
-            const primarySymbol = currencyOptions.find(c => c.code === primaryCurrency)?.symbol || '₹';
-            const basePrice = primaryRecord?.amount || 0;
-            const taxInfo = primaryRecord?.taxes?.length
-              ? primaryRecord.taxes.map(t => `${t.name} ${t.rate}%`).join(' + ')
-              : null;
-            const taxInclusion = primaryRecord?.tax_inclusion || 'exclusive';
-
-            return (
+          {/* VARIANT PRICING TOGGLE — shown when KT variants are selected */}
+          {selectedVariants.length > 0 && (
+            <>
+              {/* Toggle: Same for All vs Per Variant */}
               <div className="p-4 rounded-xl border" style={cardStyle}>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <TreePine className="w-5 h-5" style={{ color: colors.brand.primary }} />
-                    <div>
-                      <h4 className="font-semibold text-sm" style={{ color: colors.utility.primaryText }}>
-                        Variant Pricing
-                      </h4>
-                      <p className="text-xs mt-0.5" style={{ color: colors.utility.secondaryText }}>
-                        Override price per variant, or apply the base price ({primarySymbol}{basePrice}) to all
-                      </p>
-                    </div>
+                <div className="flex items-center gap-3 mb-3">
+                  <Layers className="w-5 h-5" style={{ color: colors.brand.primary }} />
+                  <div>
+                    <h4 className="font-semibold text-sm" style={{ color: colors.utility.primaryText }}>
+                      Variant Pricing
+                    </h4>
+                    <p className="text-xs mt-0.5" style={{ color: colors.utility.secondaryText }}>
+                      {selectedVariants.length} variant{selectedVariants.length !== 1 ? 's' : ''} selected — choose how to price them
+                    </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleApplyToAll}
-                    className="text-xs font-medium px-3 py-1.5 rounded-lg border transition-colors hover:shadow-sm"
-                    style={{
-                      color: colors.brand.primary,
-                      borderColor: colors.brand.primary,
-                      backgroundColor: colors.brand.primary + '08',
-                    }}
-                  >
-                    Apply {primarySymbol}{basePrice} to All
-                  </button>
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { id: 'all', label: 'Same for All', desc: 'One price applies to every variant' },
+                    { id: 'per_variant', label: 'Per Variant', desc: 'Set price individually for each variant' },
+                  ].map((opt) => (
+                    <div
+                      key={opt.id}
+                      onClick={() => setVariantPricingMode(opt.id as VariantPricingMode)}
+                      className="p-3 border-2 rounded-xl cursor-pointer transition-all hover:shadow-md"
+                      style={{
+                        backgroundColor: variantPricingMode === opt.id ? `${colors.brand.primary}08` : (isDarkMode ? colors.utility.primaryBackground : '#FFFFFF'),
+                        borderColor: variantPricingMode === opt.id ? colors.brand.primary : (isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB'),
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>{opt.label}</div>
+                          <div className="text-xs mt-0.5" style={{ color: colors.utility.secondaryText }}>{opt.desc}</div>
+                        </div>
+                        {variantPricingMode === opt.id && (
+                          <CheckCircle2 className="w-5 h-5 flex-shrink-0" style={{ color: colors.brand.primary }} />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-                {/* Tax context info */}
-                {taxInfo && (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg mb-3" style={{ backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#F0FDF4', border: `1px solid ${colors.semantic.success}20` }}>
-                    <Receipt className="w-3.5 h-3.5" style={{ color: colors.semantic.success }} />
-                    <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
-                      Tax: {taxInfo} ({taxInclusion === 'inclusive' ? 'Inclusive' : 'Exclusive'}) — applied to all variants
-                    </span>
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  {/* Header */}
-                  <div className="flex items-center gap-3 px-3 py-1">
-                    <span className="flex-1 text-xs font-medium" style={{ color: colors.utility.secondaryText }}>Variant</span>
-                    <span className="w-36 text-xs font-medium text-right" style={{ color: colors.utility.secondaryText }}>Price ({primaryCurrency})</span>
-                  </div>
-
-                  {/* Rows */}
+              {/* PER-VARIANT PRICING CARDS — one full card per variant */}
+              {variantPricingMode === 'per_variant' && (
+                <div className="space-y-4">
                   {selectedVariants.map((variant) => {
-                    const variantPrice = variantPrices[variant.variant_id];
-                    const displayPrice = variantPrice !== undefined ? variantPrice : '';
-                    const hasOverride = variantPrice !== undefined && variantPrice !== basePrice && variantPrice > 0;
+                    const records = variantPricingRecords.filter(r => r.variant_id === variant.variant_id);
+                    const availableCurrencies = getAvailableCurrenciesForVariant(variant.variant_id);
 
                     return (
-                      <div
-                        key={variant.variant_id}
-                        className="flex items-center gap-3 p-3 rounded-lg border"
-                        style={{
-                          backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#FAFAFA',
-                          borderColor: hasOverride ? colors.brand.primary + '40' : isDarkMode ? '#374151' : '#E5E7EB',
-                        }}
-                      >
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate" style={{ color: colors.utility.primaryText }}>
-                            {variant.variant_name}
-                          </p>
-                          {variant.capacity_range && (
-                            <p className="text-xs truncate" style={{ color: colors.utility.secondaryText }}>
-                              {variant.capacity_range}
-                            </p>
+                      <div key={variant.variant_id} className="p-5 rounded-xl border" style={cardStyle}>
+                        {/* Variant Header */}
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${colors.brand.primary}15` }}>
+                              <TreePine className="w-5 h-5" style={{ color: colors.brand.primary }} />
+                            </div>
+                            <div>
+                              <h4 className="font-semibold text-sm" style={{ color: colors.utility.primaryText }}>
+                                {variant.variant_name}
+                              </h4>
+                              {variant.capacity_range && (
+                                <p className="text-xs" style={{ color: colors.utility.secondaryText }}>{variant.capacity_range}</p>
+                              )}
+                            </div>
+                          </div>
+                          {availableCurrencies.length > 0 && (
+                            <div className="relative">
+                              <button
+                                type="button"
+                                onClick={() => setEditingRecordId(editingRecordId === variant.variant_id ? null : variant.variant_id)}
+                                className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-xl border-2 font-medium transition-all hover:shadow-sm"
+                                style={{ color: colors.brand.primary, borderColor: colors.brand.primary, backgroundColor: isDarkMode ? colors.utility.secondaryBackground : '#FFFFFF' }}
+                              >
+                                <Plus className="w-3 h-3" /> Currency
+                              </button>
+                              {editingRecordId === variant.variant_id && (
+                                <>
+                                  <div className="fixed inset-0 z-40" onClick={() => setEditingRecordId(null)} />
+                                  <div className="absolute right-0 z-50 mt-1 w-48 max-h-48 overflow-y-auto rounded-xl border shadow-lg" style={{ backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#FFFFFF', borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB' }}>
+                                    {availableCurrencies.map((c) => (
+                                      <button key={c.code} type="button" onClick={() => { addVariantCurrency(variant.variant_id, c.code); setEditingRecordId(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-800 text-sm">
+                                        <span className="font-semibold">{c.symbol}</span><span>{c.code}</span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </>
+                              )}
+                            </div>
                           )}
                         </div>
-                        <div className="w-36 relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold" style={{ color: colors.utility.secondaryText }}>{primarySymbol}</span>
-                          <input
-                            type="number"
-                            min={0}
-                            value={displayPrice}
-                            onChange={(e) => handleVariantPriceChange(variant.variant_id, parseFloat(e.target.value) || 0)}
-                            className="w-full text-right text-sm pl-8 pr-3 py-2.5 border rounded-xl focus:outline-none focus:ring-2"
-                            style={inputStyle}
-                            placeholder={basePrice > 0 ? String(basePrice) : '0.00'}
-                          />
+
+                        {/* Currency records for this variant */}
+                        <div className="space-y-3">
+                          {records.map((record) => {
+                            const currencyInfo = currencyOptions.find(c => c.code === record.currency);
+                            const sym = currencyInfo?.symbol || record.currency;
+
+                            return (
+                              <div key={record.id} className="p-4 rounded-xl border" style={{ backgroundColor: isDarkMode ? colors.utility.primaryBackground : '#FAFAFA', borderColor: isDarkMode ? '#374151' : '#E5E7EB' }}>
+                                <div className="flex items-center justify-between mb-3">
+                                  <div className="flex items-center gap-2">
+                                    <span className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold" style={{ backgroundColor: `${colors.brand.primary}20`, color: colors.brand.primary }}>
+                                      {sym}
+                                    </span>
+                                    <div>
+                                      <span className="text-sm font-medium" style={{ color: colors.utility.primaryText }}>{currencyInfo?.name || record.currency}</span>
+                                      <span className="text-xs ml-1.5" style={{ color: colors.utility.secondaryText }}>{record.currency}</span>
+                                    </div>
+                                  </div>
+                                  {records.length > 1 && (
+                                    <button type="button" onClick={() => removeVariantCurrencyRecord(record.id, record.variant_id)} className="p-1.5 rounded-lg hover:bg-red-50 transition-colors" title="Remove currency">
+                                      <Trash2 className="w-3.5 h-3.5" style={{ color: colors.semantic.error }} />
+                                    </button>
+                                  )}
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="block text-xs font-medium mb-1.5" style={{ color: colors.utility.secondaryText }}>
+                                      {priceType === 'hourly' ? 'Hourly Rate' : 'Price'} <span className="text-red-500">*</span>
+                                    </label>
+                                    <div className="relative">
+                                      <span className="absolute left-3 top-1/2 -translate-y-1/2 font-semibold text-sm" style={{ color: colors.utility.secondaryText }}>{sym}</span>
+                                      <input
+                                        type="number"
+                                        value={record.amount || ''}
+                                        onChange={(e) => updateVariantPricingRecord(record.id, 'amount', parseFloat(e.target.value) || 0)}
+                                        className="w-full pl-10 pr-3 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2"
+                                        style={inputStyle}
+                                        placeholder="0.00"
+                                      />
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-medium mb-1.5" style={{ color: colors.utility.secondaryText }}>Tax Treatment</label>
+                                    <select
+                                      value={record.tax_inclusion}
+                                      onChange={(e) => updateVariantPricingRecord(record.id, 'tax_inclusion', e.target.value)}
+                                      className="w-full px-3 py-2.5 border rounded-xl text-sm"
+                                      style={inputStyle}
+                                    >
+                                      <option value="exclusive">Tax Exclusive</option>
+                                      <option value="inclusive">Tax Inclusive</option>
+                                    </select>
+                                  </div>
+                                </div>
+
+                                <div className="mt-3">
+                                  <TaxTags taxes={record.taxes} onRemove={(taxId) => removeTaxFromVariantRecord(record.id, taxId)} recordId={record.id} onAddTax={addTaxToVariantRecord} availableTaxes={taxRateOptions} />
+                                </div>
+
+                                <PriceBreakdown amount={record.amount} taxes={record.taxes} taxInclusion={record.tax_inclusion} currencySymbol={sym} />
+                              </div>
+                            );
+                          })}
+
+                          {records.length === 0 && (
+                            <div className="p-3 rounded-xl border-2 border-dashed text-center" style={{ borderColor: isDarkMode ? '#374151' : '#E5E7EB' }}>
+                              <p className="text-sm" style={{ color: colors.utility.secondaryText }}>No pricing configured for this variant.</p>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
                   })}
                 </div>
-              </div>
-            );
-          })()}
+              )}
+            </>
+          )}
 
           {/* HIDDEN: Custom Quote Mode */}
           {/*
