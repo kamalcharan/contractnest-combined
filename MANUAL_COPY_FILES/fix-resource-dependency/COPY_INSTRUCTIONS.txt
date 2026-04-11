@@ -1,0 +1,27 @@
+═══════════════════════════════════════════════════
+FIX: Remove Duplicate Equipment List in Resource Dependency Step
+═══════════════════════════════════════════════════
+
+Submodules Affected: contractnest-ui
+
+Files:
+  1. contractnest-ui/src/components/catalog-studio/BlockWizard/steps/ResourceDependencyStep.tsx
+     → REPLACE entire file
+
+What was wrong:
+  - Two duplicate equipment lists were shown: one from resource types API,
+    another from KT templates API
+  - User could click HVAC in first list, then click DG Set in second list
+    creating mismatched data in DB
+
+What's fixed:
+  - Removed inline equipment list from KnowledgeTreeVariantPicker
+  - Picker now only renders the slide-out panel (controlled by parent)
+  - When user clicks an equipment-type resource in the resource types list,
+    the slide-out opens directly with that equipment's variants
+  - Match is done by NAME (case-insensitive) between resource type and
+    KT equipment template - NO hardcoded IDs
+  - Non-equipment resource types (Labor, Team Members) keep the current
+    expand-to-show-individual-resources behavior
+  - Equipment types now show a TreePine icon instead of chevron
+  - Equipment types show "N variants" badge when variants are selected
