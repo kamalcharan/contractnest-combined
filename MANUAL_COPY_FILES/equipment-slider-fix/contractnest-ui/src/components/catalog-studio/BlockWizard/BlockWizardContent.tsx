@@ -141,24 +141,35 @@ const BlockWizardContent: React.FC<BlockWizardContentProps> = ({
         const hasVariants = selectedVariants && selectedVariants.length > 0;
 
         if (hasVariants && variantPricingMode === 'per_variant') {
+          // Per Variant: each variant must have pricing
           const variantPricingRecords = data.meta?.variantPricingRecords as Array<{ amount: number }> | undefined;
-          const hasValidPrice = variantPricingRecords && variantPricingRecords.length > 0 &&
-                          variantPricingRecords.some(r => r.amount > 0);
-          if (!hasValidPrice) {
+          const valid = variantPricingRecords && variantPricingRecords.length > 0 &&
+                        variantPricingRecords.some(r => r.amount > 0);
+          if (!valid) {
             errors.push('Enter price for at least one variant in Variant Pricing');
           }
+        } else if (hasVariants) {
+          // Same for All with variants: base price applies to all variants
+          const pricingRecords = data.meta?.pricingRecords as Array<{ amount: number }> | undefined;
+          const valid = pricingRecords && pricingRecords.length > 0 &&
+                        pricingRecords.some(r => r.amount > 0);
+          if (!valid) {
+            errors.push('Enter a base price — it will apply to all variants');
+          }
         } else if (pricingMode === 'resource_based') {
+          // Resource-based without variants: need resource pricing
           const resourcePricingRecords = data.meta?.resourcePricingRecords as Array<{ pricePerUnit: number }> | undefined;
-          const hasValidPrice = resourcePricingRecords && resourcePricingRecords.length > 0 &&
-                          resourcePricingRecords.some(r => r.pricePerUnit > 0);
-          if (!hasValidPrice) {
+          const valid = resourcePricingRecords && resourcePricingRecords.length > 0 &&
+                        resourcePricingRecords.some(r => r.pricePerUnit > 0);
+          if (!valid) {
             errors.push('Enter price per unit for at least one resource');
           }
         } else {
+          // Independent pricing
           const pricingRecords = data.meta?.pricingRecords as Array<{ amount: number }> | undefined;
-          const hasValidPrice = pricingRecords && pricingRecords.length > 0 &&
-                          pricingRecords.some(r => r.amount > 0);
-          if (!hasValidPrice) {
+          const valid = pricingRecords && pricingRecords.length > 0 &&
+                        pricingRecords.some(r => r.amount > 0);
+          if (!valid) {
             errors.push('Enter a price in Currency-Specific Pricing');
           }
         }
