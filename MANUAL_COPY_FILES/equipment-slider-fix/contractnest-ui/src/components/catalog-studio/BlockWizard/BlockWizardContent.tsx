@@ -139,24 +139,28 @@ const BlockWizardContent: React.FC<BlockWizardContentProps> = ({
         const selectedVariants = data.meta?.selectedVariants as Array<{ variant_id: string }> | undefined;
         const variantPricingMode = data.meta?.variantPricingMode as string | undefined;
         const hasVariants = selectedVariants && selectedVariants.length > 0;
-        let hasValidPrice = false;
 
         if (hasVariants && variantPricingMode === 'per_variant') {
           const variantPricingRecords = data.meta?.variantPricingRecords as Array<{ amount: number }> | undefined;
-          hasValidPrice = variantPricingRecords && variantPricingRecords.length > 0 &&
+          const hasValidPrice = variantPricingRecords && variantPricingRecords.length > 0 &&
                           variantPricingRecords.some(r => r.amount > 0);
+          if (!hasValidPrice) {
+            errors.push('Enter price for at least one variant in Variant Pricing');
+          }
         } else if (pricingMode === 'resource_based') {
           const resourcePricingRecords = data.meta?.resourcePricingRecords as Array<{ pricePerUnit: number }> | undefined;
-          hasValidPrice = resourcePricingRecords && resourcePricingRecords.length > 0 &&
+          const hasValidPrice = resourcePricingRecords && resourcePricingRecords.length > 0 &&
                           resourcePricingRecords.some(r => r.pricePerUnit > 0);
+          if (!hasValidPrice) {
+            errors.push('Enter price per unit for at least one resource');
+          }
         } else {
           const pricingRecords = data.meta?.pricingRecords as Array<{ amount: number }> | undefined;
-          hasValidPrice = pricingRecords && pricingRecords.length > 0 &&
+          const hasValidPrice = pricingRecords && pricingRecords.length > 0 &&
                           pricingRecords.some(r => r.amount > 0);
-        }
-
-        if (!hasValidPrice) {
-          errors.push('Price is required');
+          if (!hasValidPrice) {
+            errors.push('Enter a price in Currency-Specific Pricing');
+          }
         }
       }
       // Step 6 - Business Rules: No mandatory fields
