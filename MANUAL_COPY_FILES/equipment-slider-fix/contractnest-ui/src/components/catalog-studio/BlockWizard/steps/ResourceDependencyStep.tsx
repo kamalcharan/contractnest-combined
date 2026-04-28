@@ -384,10 +384,31 @@ const ResourceDependencyStep: React.FC<ResourceDependencyStepProps> = ({
     enabled: !!expandedTypeId,
   });
 
+  // Equipment templates for inline list
+  const {
+    templates: equipmentTemplates,
+    isLoading: loadingEquipment,
+  } = useResourceTemplatesBrowser({ limit: 100 });
+
+  const equipmentList = useMemo(() => {
+    return equipmentTemplates.filter(t =>
+      ['equipment', 'asset', 'consumable'].includes((t.resource_type_id || '').toLowerCase())
+    );
+  }, [equipmentTemplates]);
+
   const pricingMode = (formData.meta?.pricingMode as PricingMode) || 'independent';
   const selectedResources = (formData.meta?.selectedResources as SelectedResource[]) || [];
   const selectedResourceTypeIds = (formData.meta?.resourceTypes as string[]) || [];
   const selectedVariants = (formData.meta?.selectedVariants as SelectedVariant[]) || [];
+  const selectedEquipmentId = (formData.meta?.knowledge_tree_ref as any)?.resource_template_id || null;
+
+  const handleEquipmentSelect = (templateId: string) => {
+    onChange('meta', {
+      ...formData.meta,
+      knowledge_tree_ref: { resource_template_id: templateId },
+      selectedVariants: [],
+    });
+  };
 
   const handlePricingModeChange = (mode: PricingMode) => {
     onChange('meta', {
@@ -641,13 +662,7 @@ const ResourceDependencyStep: React.FC<ResourceDependencyStepProps> = ({
                       {/* Resource Type Header */}
                       <div
                         className="p-4 flex items-center justify-between cursor-pointer transition-colors"
-                        onClick={() => {
-                          if (isEquipmentType) {
-                            setIsEquipmentSliderOpen(true);
-                          } else {
-                            handleResourceTypeToggle(type.id);
-                          }
-                        }}
+                        onClick={() => handleResourceTypeToggle(type.id)}
                         style={{ backgroundColor: hasSelections ? `${colors.brand.primary}05` : 'transparent' }}
                       >
                         <div className="flex items-center gap-3">
@@ -695,9 +710,7 @@ const ResourceDependencyStep: React.FC<ResourceDependencyStepProps> = ({
                               {selectedCount}
                             </span>
                           )}
-                          {isEquipmentType ? (
-                            <ChevronDown className="w-5 h-5" style={{ color: colors.utility.secondaryText }} />
-                          ) : isExpanded ? (
+                          {isExpanded ? (
                             <ChevronUp className="w-5 h-5" style={{ color: colors.utility.secondaryText }} />
                           ) : (
                             <ChevronDown className="w-5 h-5" style={{ color: colors.utility.secondaryText }} />
@@ -705,7 +718,94 @@ const ResourceDependencyStep: React.FC<ResourceDependencyStepProps> = ({
                         </div>
                       </div>
 
-                      {/* Expanded Resources List (non-equipment types only) */}
+                      {/* Expanded: Equipment inline list (radio + auto-open slider) */}
+                      {isExpanded && isEquipmentType && (
+                        <div
+                          className="p-4 pt-0 border-t"
+                          style={{ borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB' }}
+                        >
+                          {loadingEquipment ? (
+                            <div className="flex items-center justify-center py-4">
+                              <Loader2 className="w-5 h-5 animate-spin" style={{ color: colors.brand.primary }} />
+                              <span className="ml-2 text-sm" style={{ color: colors.utility.secondaryText }}>Loading equipment...</span>
+                            </div>
+                          ) : equipmentList.length > 0 ? (
+                            <div className="space-y-1.5 mt-3">
+                              {equipmentList.map((template) => {
+                                const isSelected = selectedEquipmentId === template.id;
+                                return (
+                                  <div
+                                    key={template.id}
+                                    className="p-3 rounded-lg border cursor-pointer transition-all hover:shadow-sm"
+                                    onClick={() => {
+                                      handleEquipmentSelect(template.id);
+                                      setIsEquipmentSliderOpen(true);
+                                    }}
+                                    style={{
+                                      backgroundColor: isSelected ? colors.brand.primary + '08' : isDarkMode ? colors.utility.secondaryBackground : '#FAFAFA',
+                                      borderColor: isSelected ? colors.brand.primary : isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB',
+                                    }}
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      {/* Radio Button */}
+                                      <div
+                                        className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0"
+                                        style={{
+                                          borderColor: isSelected ? colors.brand.primary : isDarkMode ? colors.utility.secondaryText : '#D1D5DB',
+                                        }}
+                                      >
+                                        {isSelected && (
+                                          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: colors.brand.primary }} />
+                                        )}
+                                      </div>
+                                      <div
+                                        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                                        style={{
+                                          backgroundColor: isSelected ? colors.brand.primary + '20' : isDarkMode ? colors.utility.secondaryBackground : '#F3F4F6',
+                                        }}
+                                      >
+                                        <Wrench className="w-4 h-4" style={{ color: isSelected ? colors.brand.primary : colors.utility.secondaryText }} />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium truncate" style={{ color: colors.utility.primaryText }}>{template.name}</p>
+                                        {template.sub_category && (
+                                          <p className="text-xs truncate" style={{ color: colors.utility.secondaryText }}>{template.sub_category}</p>
+                                        )}
+                                      </div>
+                                      {isSelected && selectedVariants.length > 0 && (
+                                        <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: colors.semantic.success + '15', color: colors.semantic.success }}>
+                                          {selectedVariants.length}v
+                                        </span>
+                                      )}
+                                    </div>
+                                    {/* Selected variant chips */}
+                                    {isSelected && selectedVariants.length > 0 && (
+                                      <div className="flex flex-wrap gap-1 mt-2 pt-2 border-t" style={{ borderColor: colors.utility.primaryText + '10' }}>
+                                        {selectedVariants.slice(0, 4).map(v => (
+                                          <span key={v.variant_id} className="text-[10px] px-1.5 py-0.5 rounded" style={{ backgroundColor: colors.brand.primary + '12', color: colors.brand.primary }}>
+                                            {v.variant_name}
+                                          </span>
+                                        ))}
+                                        {selectedVariants.length > 4 && (
+                                          <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ backgroundColor: colors.utility.secondaryBackground, color: colors.utility.secondaryText }}>
+                                            +{selectedVariants.length - 4}
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <p className="text-sm py-4 text-center" style={{ color: colors.utility.secondaryText }}>
+                              No equipment available.
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Expanded Resources List (non-equipment types) */}
                       {isExpanded && !isEquipmentType && (
                         <div
                           className="p-4 pt-0 border-t"
@@ -843,69 +943,6 @@ const ResourceDependencyStep: React.FC<ResourceDependencyStepProps> = ({
             )}
           </div>
         )}
-
-        {/* ═══ Equipment Trigger Card (always visible) ═══ */}
-        <div
-          className="p-4 border-2 rounded-xl transition-all cursor-pointer hover:shadow-sm"
-          onClick={() => setIsEquipmentSliderOpen(true)}
-          style={{
-            backgroundColor: selectedVariants.length > 0
-              ? `${colors.brand.primary}08`
-              : (isDarkMode ? colors.utility.secondaryBackground : '#FFFFFF'),
-            borderColor: selectedVariants.length > 0
-              ? colors.brand.primary
-              : isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB',
-          }}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div
-                className="w-10 h-10 rounded-lg flex items-center justify-center"
-                style={{
-                  backgroundColor: selectedVariants.length > 0
-                    ? `${colors.brand.primary}20`
-                    : isDarkMode ? colors.utility.secondaryBackground : '#F3F4F6',
-                }}
-              >
-                <TreePine className="w-5 h-5" style={{ color: selectedVariants.length > 0 ? colors.brand.primary : colors.utility.secondaryText }} />
-              </div>
-              <div>
-                <h4 className="font-semibold text-sm" style={{ color: colors.utility.primaryText }}>
-                  Equipment (Knowledge Tree)
-                </h4>
-                <p className="text-xs mt-0.5" style={{ color: colors.utility.secondaryText }}>
-                  {selectedVariants.length > 0
-                    ? `${selectedVariants.length} variant${selectedVariants.length !== 1 ? 's' : ''} selected`
-                    : 'Select equipment and applicable variants'}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {selectedVariants.length > 0 && (
-                <div className="flex flex-wrap gap-1 max-w-[200px]">
-                  {selectedVariants.slice(0, 3).map(v => (
-                    <span
-                      key={v.variant_id}
-                      className="text-[10px] px-1.5 py-0.5 rounded"
-                      style={{ backgroundColor: colors.brand.primary + '12', color: colors.brand.primary }}
-                    >
-                      {v.variant_name}
-                    </span>
-                  ))}
-                  {selectedVariants.length > 3 && (
-                    <span
-                      className="text-[10px] px-1.5 py-0.5 rounded"
-                      style={{ backgroundColor: colors.utility.secondaryBackground, color: colors.utility.secondaryText }}
-                    >
-                      +{selectedVariants.length - 3}
-                    </span>
-                  )}
-                </div>
-              )}
-              <ChevronDown className="w-5 h-5" style={{ color: colors.utility.secondaryText }} />
-            </div>
-          </div>
-        </div>
 
         {/* ═══ Configuration Summary ═══ */}
         <div
