@@ -1,0 +1,43 @@
+=====================================================================
+COPY INSTRUCTIONS — Equipment Slider Fix
+=====================================================================
+
+Branch: equipment-slider-fix
+Date: 2026-04-28
+
+SUBMODULES AFFECTED:
+  - contractnest-ui
+
+=====================================================================
+FILES TO COPY (1 file total)
+=====================================================================
+
+--- UI (1 file) ---
+FROM: MANUAL_COPY_FILES\equipment-slider-fix\contractnest-ui\src\components\catalog-studio\BlockWizard\steps\ResourceDependencyStep.tsx
+TO:   contractnest-ui\src\components\catalog-studio\BlockWizard\steps\ResourceDependencyStep.tsx
+
+=====================================================================
+WHAT CHANGED
+=====================================================================
+
+ResourceDependencyStep.tsx — Full rewrite of equipment selection UX:
+
+1. Equipment selection is now RADIO BUTTONS (single select only)
+   - Old: Click cards with ambiguous multi-select
+   - New: Clear circular radio UI, only one equipment at a time
+
+2. Equipment list moved INTO slider (no more inline at bottom)
+   - Old: Equipment list rendered inline at bottom of page, slider opened on click
+   - New: "Equipment (Knowledge Tree)" trigger card opens slider immediately
+
+3. Slider has 2-step flow:
+   - Step 1: Select Equipment (radio buttons with search)
+   - Step 2: Select Variants (checkboxes, appears after equipment picked)
+
+4. Equipment trigger card always visible on the step
+   - Shows selected variant chips as preview
+   - Click opens slider immediately
+
+5. Equipment type in resource types list also opens slider
+   - When pricingMode = resource_based, clicking Equipment type opens slider
+   - Other resource types still expand inline as before

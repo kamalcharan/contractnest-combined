@@ -844,9 +844,122 @@ const ResourceDependencyStep: React.FC<ResourceDependencyStepProps> = ({
           </div>
         )}
 
-        {/* ═══ PART 3: Equipment trigger card, Summary, Slider, Export ═══ */}
+        {/* ═══ Equipment Trigger Card (always visible) ═══ */}
+        <div
+          className="p-4 border-2 rounded-xl transition-all cursor-pointer hover:shadow-sm"
+          onClick={() => setIsEquipmentSliderOpen(true)}
+          style={{
+            backgroundColor: selectedVariants.length > 0
+              ? `${colors.brand.primary}08`
+              : (isDarkMode ? colors.utility.secondaryBackground : '#FFFFFF'),
+            borderColor: selectedVariants.length > 0
+              ? colors.brand.primary
+              : isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB',
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-10 h-10 rounded-lg flex items-center justify-center"
+                style={{
+                  backgroundColor: selectedVariants.length > 0
+                    ? `${colors.brand.primary}20`
+                    : isDarkMode ? colors.utility.secondaryBackground : '#F3F4F6',
+                }}
+              >
+                <TreePine className="w-5 h-5" style={{ color: selectedVariants.length > 0 ? colors.brand.primary : colors.utility.secondaryText }} />
+              </div>
+              <div>
+                <h4 className="font-semibold text-sm" style={{ color: colors.utility.primaryText }}>
+                  Equipment (Knowledge Tree)
+                </h4>
+                <p className="text-xs mt-0.5" style={{ color: colors.utility.secondaryText }}>
+                  {selectedVariants.length > 0
+                    ? `${selectedVariants.length} variant${selectedVariants.length !== 1 ? 's' : ''} selected`
+                    : 'Select equipment and applicable variants'}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {selectedVariants.length > 0 && (
+                <div className="flex flex-wrap gap-1 max-w-[200px]">
+                  {selectedVariants.slice(0, 3).map(v => (
+                    <span
+                      key={v.variant_id}
+                      className="text-[10px] px-1.5 py-0.5 rounded"
+                      style={{ backgroundColor: colors.brand.primary + '12', color: colors.brand.primary }}
+                    >
+                      {v.variant_name}
+                    </span>
+                  ))}
+                  {selectedVariants.length > 3 && (
+                    <span
+                      className="text-[10px] px-1.5 py-0.5 rounded"
+                      style={{ backgroundColor: colors.utility.secondaryBackground, color: colors.utility.secondaryText }}
+                    >
+                      +{selectedVariants.length - 3}
+                    </span>
+                  )}
+                </div>
+              )}
+              <ChevronDown className="w-5 h-5" style={{ color: colors.utility.secondaryText }} />
+            </div>
+          </div>
+        </div>
 
+        {/* ═══ Configuration Summary ═══ */}
+        <div
+          className="p-4 rounded-xl border"
+          style={{
+            backgroundColor: isDarkMode ? colors.utility.secondaryBackground : '#F9FAFB',
+            borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB',
+          }}
+        >
+          <h4 className="text-sm font-semibold mb-2" style={{ color: colors.utility.primaryText }}>
+            Configuration Summary
+          </h4>
+          <div className="text-xs space-y-1" style={{ color: colors.utility.secondaryText }}>
+            <p>
+              <strong>Pricing Mode:</strong>{' '}
+              {pricingMode === 'independent' ? 'Independent (Fixed Price)' : 'Resource Dependent'}
+            </p>
+            {pricingMode === 'resource_based' && selectedResources.length > 0 && (
+              <>
+                <p><strong>Selected Resources ({selectedResources.length}):</strong></p>
+                <ul className="ml-4 list-disc">
+                  {selectedResources.map(r => (
+                    <li key={r.resource_id}>
+                      {r.resource_name} (x{r.quantity})
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+            {selectedVariants.length > 0 && (
+              <>
+                <p><strong>Equipment Variants ({selectedVariants.length}):</strong></p>
+                <ul className="ml-4 list-disc">
+                  {selectedVariants.map(v => (
+                    <li key={v.variant_id}>
+                      {v.variant_name}{v.capacity_range ? ` (${v.capacity_range})` : ''}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
+        </div>
       </div>
+
+      {/* ═══ Equipment Slider (Portal) ═══ */}
+      <KnowledgeTreeEquipmentSlider
+        isOpen={isEquipmentSliderOpen}
+        onClose={() => setIsEquipmentSliderOpen(false)}
+        formData={formData}
+        onChange={onChange}
+        colors={colors}
+        isDarkMode={isDarkMode}
+      />
     </div>
   );
 };
