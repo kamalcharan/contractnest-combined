@@ -1,5 +1,5 @@
 =====================================================================
-COPY INSTRUCTIONS — Equipment Slider Fix
+COPY INSTRUCTIONS — Equipment Slider + Variant Pricing Fix
 =====================================================================
 
 Branch: equipment-slider-fix
@@ -9,35 +9,34 @@ SUBMODULES AFFECTED:
   - contractnest-ui
 
 =====================================================================
-FILES TO COPY (1 file total)
+FILES TO COPY (3 files total)
 =====================================================================
 
---- UI (1 file) ---
+--- UI (3 files) ---
 FROM: MANUAL_COPY_FILES\equipment-slider-fix\contractnest-ui\src\components\catalog-studio\BlockWizard\steps\ResourceDependencyStep.tsx
 TO:   contractnest-ui\src\components\catalog-studio\BlockWizard\steps\ResourceDependencyStep.tsx
+
+FROM: MANUAL_COPY_FILES\equipment-slider-fix\contractnest-ui\src\components\catalog-studio\BlockWizard\BlockWizardContent.tsx
+TO:   contractnest-ui\src\components\catalog-studio\BlockWizard\BlockWizardContent.tsx
+
+FROM: MANUAL_COPY_FILES\equipment-slider-fix\contractnest-ui\src\components\catalog-studio\BlockWizard\steps\service\PricingStep.tsx
+TO:   contractnest-ui\src\components\catalog-studio\BlockWizard\steps\service\PricingStep.tsx
 
 =====================================================================
 WHAT CHANGED
 =====================================================================
 
-ResourceDependencyStep.tsx — Full rewrite of equipment selection UX:
+ResourceDependencyStep.tsx:
+  - Equipment expands inline with radio buttons (single select)
+  - Selecting equipment auto-opens variant slider (variants only)
+  - No equipment list at bottom of page
 
-1. Equipment selection is now RADIO BUTTONS (single select only)
-   - Old: Click cards with ambiguous multi-select
-   - New: Clear circular radio UI, only one equipment at a time
+BlockWizardContent.tsx:
+  - Step 5 validation now handles variant pricing mode
+  - Per Variant: validates variantPricingRecords (amount > 0)
+  - Same for All: validates base pricingRecords as before
+  - Resource based: validates resourcePricingRecords as before
 
-2. Equipment list moved INTO slider (no more inline at bottom)
-   - Old: Equipment list rendered inline at bottom of page, slider opened on click
-   - New: "Equipment (Knowledge Tree)" trigger card opens slider immediately
-
-3. Slider has 2-step flow:
-   - Step 1: Select Equipment (radio buttons with search)
-   - Step 2: Select Variants (checkboxes, appears after equipment picked)
-
-4. Equipment trigger card always visible on the step
-   - Shows selected variant chips as preview
-   - Click opens slider immediately
-
-5. Equipment type in resource types list also opens slider
-   - When pricingMode = resource_based, clicking Equipment type opens slider
-   - Other resource types still expand inline as before
+PricingStep.tsx:
+  - Hides "Currency-Specific Pricing" section when Per Variant is active
+  - Prevents confusing empty base price that blocks save
