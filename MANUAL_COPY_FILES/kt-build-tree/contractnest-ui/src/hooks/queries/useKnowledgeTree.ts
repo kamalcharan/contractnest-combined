@@ -198,7 +198,7 @@ export const useKnowledgeTreeGenerate = () => {
         subCategory,
         resourceTemplateId,
         serviceActivity,
-      });
+      }, { timeout: 180000 }); // 3 min — LLM generation takes 60-120s
 
       if (!response.data?.success) {
         throw new Error(response.data?.error?.message || 'Generation failed');
