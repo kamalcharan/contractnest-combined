@@ -12,13 +12,13 @@ interface GenerateKTInput {
 
 class KnowledgeTreeGeneratorService {
   private readonly anthropicKey: string;
-  // Allow override via env var; fallback to claude-opus-4-5 (widely available)
+  // Allow override via env var; sonnet-4-6 is the default — excellent structured JSON output
   private readonly model: string;
-  private readonly maxTokens = 16000;
+  private readonly maxTokens = 32000;
 
   constructor() {
     this.anthropicKey = process.env.ANTHROPIC_API_KEY || '';
-    this.model = process.env.KT_LLM_MODEL || 'claude-opus-4-5';
+    this.model = process.env.KT_LLM_MODEL || 'claude-sonnet-4-6';
     if (!this.anthropicKey) {
       console.warn('⚠️ ANTHROPIC_API_KEY not set — KnowledgeTreeGeneratorService disabled');
     } else {
