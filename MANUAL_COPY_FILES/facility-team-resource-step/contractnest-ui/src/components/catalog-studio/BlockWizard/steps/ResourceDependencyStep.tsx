@@ -49,9 +49,10 @@ const getIconForResourceType = (resourceType: ResourceType) => {
 };
 
 const getDisplayName = (resourceType: ResourceType): string => {
+  const id = resourceType.id.toLowerCase();
   const name = resourceType.name.toLowerCase();
-  if (name.includes('facilit')) return 'Facility';
-  if (name.includes('team') || name.includes('staff')) return 'Team Members';
+  if (id === 'asset' || name.includes('facilit') || name.includes('entit')) return 'Facility';
+  if (id === 'team_staff' || name.includes('team') || name.includes('staff')) return 'Team Members';
   return resourceType.name;
 };
 
@@ -319,13 +320,13 @@ const ResourceDependencyStep: React.FC<ResourceDependencyStepProps> = ({
 
   const equipmentList = useMemo(() => {
     return equipmentTemplates.filter(t =>
-      ['equipment', 'asset'].includes((t.resource_type_id || '').toLowerCase())
+      (t.resource_type_id || '').toLowerCase() === 'equipment'
     );
   }, [equipmentTemplates]);
 
   const facilityList = useMemo(() => {
     return equipmentTemplates.filter(t =>
-      (t.resource_type_id || '').toLowerCase().includes('facility')
+      (t.resource_type_id || '').toLowerCase() === 'asset'
     );
   }, [equipmentTemplates]);
 
@@ -333,10 +334,10 @@ const ResourceDependencyStep: React.FC<ResourceDependencyStepProps> = ({
   const { data: teamMembersData, isLoading: loadingTeamMembers } = useTeamMemberContactsForResource();
 
   const teamMemberItems = useMemo(() => {
-    return (teamMembersData?.data || []).map(c => ({
+    return (teamMembersData?.data || []).map((c: any) => ({
       id: c.id,
-      name: `${c.firstName} ${c.lastName}`.trim(),
-      subLabel: c.email,
+      name: c.displayName || c.name || `${c.firstName || ''} ${c.lastName || ''}`.trim() || 'Unknown',
+      subLabel: c.email || c.contact_channels?.find((ch: any) => ch.channel_type === 'email')?.value,
     }));
   }, [teamMembersData]);
 
@@ -619,9 +620,9 @@ const ResourceDependencyStep: React.FC<ResourceDependencyStepProps> = ({
                   const TypeIcon = getIconForResourceType(type);
                   const isExpanded = expandedTypeId === type.id;
                   const selectedCount = getSelectedCountForType(type.id);
-                  const isEquipmentType = type.name.toLowerCase().includes('equipment');
-                  const isFacilityType = type.name.toLowerCase().includes('facilit');
-                  const isTeamMemberType = type.name.toLowerCase().includes('team') || type.name.toLowerCase().includes('staff');
+                  const isEquipmentType = type.id.toLowerCase() === 'equipment' || type.name.toLowerCase().includes('equipment');
+                  const isFacilityType = type.id.toLowerCase() === 'asset' || type.name.toLowerCase().includes('facilit') || type.name.toLowerCase().includes('entit');
+                  const isTeamMemberType = type.id.toLowerCase() === 'team_staff' || type.name.toLowerCase().includes('team') || type.name.toLowerCase().includes('staff');
                   const displayName = getDisplayName(type);
 
                   const hasSelections = isEquipmentType
