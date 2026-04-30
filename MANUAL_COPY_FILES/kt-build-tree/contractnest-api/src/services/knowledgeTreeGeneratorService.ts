@@ -2,6 +2,7 @@
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
+import { jsonrepair } from 'jsonrepair';
 
 interface GenerateKTInput {
   equipmentName: string;
@@ -89,10 +90,18 @@ service_activity: ${serviceActivity}`;
 
     try {
       return JSON.parse(jsonText);
-    } catch (parseErr: any) {
-      console.error('❌ KT JSON parse error:', parseErr.message);
-      console.error('❌ KT extracted JSON (first 500 chars):', jsonText.substring(0, 500));
-      throw new Error(`LLM JSON parse failed: ${parseErr.message}`);
+    } catch {
+      // LLM occasionally produces minor syntax errors (missing commas, etc.) — repair and retry
+      console.warn('⚠️ KT JSON has syntax errors — attempting repair...');
+      try {
+        const repaired = jsonrepair(jsonText);
+        const result = JSON.parse(repaired);
+        console.log('✅ KT JSON repaired successfully');
+        return result;
+      } catch (repairErr: any) {
+        console.error('❌ KT JSON repair failed:', repairErr.message);
+        throw new Error(`KT generation produced invalid JSON: ${repairErr.message}`);
+      }
     }
   }
 }
