@@ -76,17 +76,23 @@ service_activity: ${serviceActivity}`;
       throw new Error('Empty response from Anthropic API');
     }
 
-    // Strip markdown code fences if the model wrapped the JSON (e.g. ```json ... ```)
-    const cleaned = rawText
-      .replace(/^```(?:json)?\s*/m, '')
-      .replace(/\s*```\s*$/m, '')
-      .trim();
+    // Extract the outermost JSON object — handles code fences, trailing notes, and any extra text
+    const firstBrace = rawText.indexOf('{');
+    const lastBrace = rawText.lastIndexOf('}');
+
+    if (firstBrace === -1 || lastBrace === -1) {
+      console.error('❌ KT raw response (first 500 chars):', rawText.substring(0, 500));
+      throw new Error('No JSON object found in LLM response');
+    }
+
+    const jsonText = rawText.substring(firstBrace, lastBrace + 1);
 
     try {
-      return JSON.parse(cleaned);
-    } catch {
-      console.error('❌ KT raw response (first 500 chars):', cleaned.substring(0, 500));
-      throw new Error('LLM returned non-JSON response — check API logs for raw output');
+      return JSON.parse(jsonText);
+    } catch (parseErr: any) {
+      console.error('❌ KT JSON parse error:', parseErr.message);
+      console.error('❌ KT extracted JSON (first 500 chars):', jsonText.substring(0, 500));
+      throw new Error(`LLM JSON parse failed: ${parseErr.message}`);
     }
   }
 }
