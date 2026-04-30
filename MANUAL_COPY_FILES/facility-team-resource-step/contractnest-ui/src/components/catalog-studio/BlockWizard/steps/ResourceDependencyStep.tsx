@@ -340,6 +340,15 @@ const ResourceDependencyStep: React.FC<ResourceDependencyStepProps> = ({
     }));
   }, [teamMembersData]);
 
+  // Hide Consumables and Partners/Vehicle from the accordion
+  const visibleResourceTypes = useMemo(() => {
+    if (!resourceTypes) return [];
+    return resourceTypes.filter(type => {
+      const name = type.name.toLowerCase();
+      return !name.includes('consumable') && !name.includes('partner') && !name.includes('vehicle');
+    });
+  }, [resourceTypes]);
+
   const pricingMode = (formData.meta?.pricingMode as PricingMode) || 'independent';
   const selectedResources = (formData.meta?.selectedResources as SelectedResource[]) || [];
   const selectedResourceTypeIds = (formData.meta?.resourceTypes as string[]) || [];
@@ -604,9 +613,9 @@ const ResourceDependencyStep: React.FC<ResourceDependencyStepProps> = ({
             )}
 
             {/* Resource Types List */}
-            {!loadingTypes && resourceTypes && resourceTypes.length > 0 && (
+            {!loadingTypes && visibleResourceTypes.length > 0 && (
               <div className="space-y-3">
-                {resourceTypes.map((type) => {
+                {visibleResourceTypes.map((type) => {
                   const TypeIcon = getIconForResourceType(type);
                   const isExpanded = expandedTypeId === type.id;
                   const selectedCount = getSelectedCountForType(type.id);
