@@ -1,0 +1,39 @@
+COPY INSTRUCTIONS — kt-build-tree
+==================================
+Branch: claude/fix-industry-equipment-pricing-yHxIw
+Step 1 Complete: Skill file created
+Steps Pending:   Step 2 (API endpoint) + Step 3 (Frontend hook) + Step 4 (Wire button)
+
+FILE CREATED (contractnest-api):
+─────────────────────────────────
+src/skills/kt-equipment-generator.md
+
+DESTINATION (on your local machine):
+─────────────────────────────────────
+D:\projects\core projects\ContractNest\contractnest-combined\contractnest-api\
+  src\skills\kt-equipment-generator.md
+
+WHAT THIS FILE IS:
+──────────────────
+System prompt for the Anthropic API. Used by the /api/knowledge-tree/generate
+endpoint (Step 2) as the LLM system prompt. Contains:
+  - Equipment classification logic (5 types)
+  - Quality rules for gold-standard output
+  - Exact JSON structure matching /knowledge-tree/save payload
+  - {{SERVICE_ACTIVITY}} placeholder — replaced at runtime with the actual
+    service activity value (default: "pm")
+  - HVAC gold-standard reference (benchmark for depth + specificity)
+  - Pre-output validation checklist
+
+COPY COMMAND (PowerShell):
+──────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+# Create skills directory if it doesn't exist
+New-Item -ItemType Directory -Force -Path "contractnest-api\src\skills"
+
+# Copy skill file
+Copy-Item "MANUAL_COPY_FILES\kt-build-tree\contractnest-api\src\skills\kt-equipment-generator.md" `
+  -Destination "contractnest-api\src\skills\kt-equipment-generator.md" -Force
+
+Write-Host "Step 1 complete — skill file in place" -ForegroundColor Green
