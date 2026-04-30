@@ -14,7 +14,7 @@ class KnowledgeTreeGeneratorService {
   private readonly anthropicKey: string;
   // Allow override via env var; sonnet-4-6 is the default — excellent structured JSON output
   private readonly model: string;
-  private readonly maxTokens = 32000;
+  private readonly maxTokens = 12000;
 
   constructor() {
     this.anthropicKey = process.env.ANTHROPIC_API_KEY || '';
@@ -66,7 +66,7 @@ service_activity: ${serviceActivity}`;
           'anthropic-version': '2023-06-01',
           'content-type': 'application/json',
         },
-        timeout: 180000, // 3 minutes
+        timeout: 300000, // 5 minutes
       }
     );
 
