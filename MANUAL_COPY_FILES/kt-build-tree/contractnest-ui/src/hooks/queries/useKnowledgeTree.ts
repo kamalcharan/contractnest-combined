@@ -214,7 +214,12 @@ export const useKnowledgeTreeGenerate = () => {
       setPhase('done');
       return resourceTemplateId;
     } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to generate Knowledge Tree');
+      const message =
+        err.response?.data?.error?.message ||
+        err.response?.data?.message ||
+        err.message ||
+        'Failed to generate Knowledge Tree';
+      setErrorMessage(message);
       setPhase('error');
       return null;
     }

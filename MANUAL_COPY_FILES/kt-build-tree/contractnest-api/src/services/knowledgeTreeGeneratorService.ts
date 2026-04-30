@@ -1,6 +1,7 @@
 // src/services/knowledgeTreeGeneratorService.ts
 import fs from 'fs';
 import path from 'path';
+import axios from 'axios';
 
 interface GenerateKTInput {
   equipmentName: string;
@@ -11,20 +12,25 @@ interface GenerateKTInput {
 
 class KnowledgeTreeGeneratorService {
   private readonly anthropicKey: string;
-  private readonly model = 'claude-opus-4-7';
+  // Allow override via env var; fallback to claude-opus-4-5 (widely available)
+  private readonly model: string;
   private readonly maxTokens = 16000;
 
   constructor() {
     this.anthropicKey = process.env.ANTHROPIC_API_KEY || '';
+    this.model = process.env.KT_LLM_MODEL || 'claude-opus-4-5';
     if (!this.anthropicKey) {
       console.warn('⚠️ ANTHROPIC_API_KEY not set — KnowledgeTreeGeneratorService disabled');
     } else {
-      console.log('✅ KnowledgeTreeGeneratorService: Initialized');
+      console.log(`✅ KnowledgeTreeGeneratorService: Initialized (model: ${this.model})`);
     }
   }
 
   private loadSkillPrompt(serviceActivity: string): string {
     const skillPath = path.join(process.cwd(), 'src', 'skills', 'kt-equipment-generator.md');
+    if (!fs.existsSync(skillPath)) {
+      throw new Error(`Skill file not found at: ${skillPath}`);
+    }
     const content = fs.readFileSync(skillPath, 'utf-8');
     return content.replace(/\{\{SERVICE_ACTIVITY\}\}/g, serviceActivity);
   }
@@ -33,7 +39,7 @@ class KnowledgeTreeGeneratorService {
     const { equipmentName, subCategory, resourceTemplateId, serviceActivity = 'pm' } = input;
 
     if (!this.anthropicKey) {
-      throw new Error('ANTHROPIC_API_KEY is not configured');
+      throw new Error('ANTHROPIC_API_KEY is not configured in .env');
     }
 
     const systemPrompt = this.loadSkillPrompt(serviceActivity);
@@ -44,39 +50,43 @@ Sub-category: ${subCategory}
 resource_template_id: ${resourceTemplateId}
 service_activity: ${serviceActivity}`;
 
-    console.log(`🤖 KT Generate: calling Anthropic for "${equipmentName}" (${serviceActivity})`);
+    console.log(`🤖 KT Generate: calling Anthropic for "${equipmentName}" (model: ${this.model})`);
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': this.anthropicKey,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
+    const response = await axios.post(
+      'https://api.anthropic.com/v1/messages',
+      {
         model: this.model,
         max_tokens: this.maxTokens,
         system: systemPrompt,
         messages: [{ role: 'user', content: userMessage }],
-      }),
-    });
+      },
+      {
+        headers: {
+          'x-api-key': this.anthropicKey,
+          'anthropic-version': '2023-06-01',
+          'content-type': 'application/json',
+        },
+        timeout: 180000, // 3 minutes
+      }
+    );
 
-    if (!response.ok) {
-      const errorBody = await response.json().catch(() => ({}));
-      throw new Error(`Anthropic API error ${response.status}: ${JSON.stringify(errorBody)}`);
-    }
-
-    const result = await response.json();
-    const rawText: string = result?.content?.[0]?.text;
+    const rawText: string = response.data?.content?.[0]?.text;
 
     if (!rawText) {
       throw new Error('Empty response from Anthropic API');
     }
 
+    // Strip markdown code fences if the model wrapped the JSON (e.g. ```json ... ```)
+    const cleaned = rawText
+      .replace(/^```(?:json)?\s*/m, '')
+      .replace(/\s*```\s*$/m, '')
+      .trim();
+
     try {
-      return JSON.parse(rawText);
+      return JSON.parse(cleaned);
     } catch {
-      throw new Error('LLM returned non-JSON response — check skill file output instructions');
+      console.error('❌ KT raw response (first 500 chars):', cleaned.substring(0, 500));
+      throw new Error('LLM returned non-JSON response — check API logs for raw output');
     }
   }
 }
