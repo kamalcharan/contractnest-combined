@@ -10,6 +10,7 @@ import { Block, SelectedVariant } from '../../../../types/catalogStudio';
 import { useResourceTypes, useResources, ResourceType, Resource } from '../../../../hooks/useResources';
 import { useResourceTemplatesBrowser } from '../../../../hooks/queries/useResourceTemplates';
 import { useKnowledgeTreeVariants } from '../../../../hooks/queries/useKnowledgeTree';
+import { useTeamMemberContactsForResource } from '../../../../hooks/queries/useContactsResource';
 
 // =================================================================
 // TYPES
@@ -50,6 +51,7 @@ const getIconForResourceType = (resourceType: ResourceType) => {
 const getDisplayName = (resourceType: ResourceType): string => {
   const name = resourceType.name.toLowerCase();
   if (name.includes('facilit')) return 'Facility';
+  if (name.includes('team') || name.includes('staff')) return 'Team Members';
   return resourceType.name;
 };
 
@@ -303,6 +305,7 @@ const ResourceDependencyStep: React.FC<ResourceDependencyStepProps> = ({
   const [expandedTypeId, setExpandedTypeId] = useState<string | null>(null);
   const [isEquipmentSliderOpen, setIsEquipmentSliderOpen] = useState(false);
   const [isFacilitySliderOpen, setIsFacilitySliderOpen] = useState(false);
+  const [isTeamMemberSliderOpen, setIsTeamMemberSliderOpen] = useState(false);
 
   const { data: resources, loading: loadingResources } = useResources(expandedTypeId || undefined, {
     enabled: !!expandedTypeId,
@@ -326,6 +329,17 @@ const ResourceDependencyStep: React.FC<ResourceDependencyStepProps> = ({
     );
   }, [equipmentTemplates]);
 
+  // Team Members contacts
+  const { data: teamMembersData, isLoading: loadingTeamMembers } = useTeamMemberContactsForResource();
+
+  const teamMemberItems = useMemo(() => {
+    return (teamMembersData?.data || []).map(c => ({
+      id: c.id,
+      name: `${c.firstName} ${c.lastName}`.trim(),
+      subLabel: c.email,
+    }));
+  }, [teamMembersData]);
+
   const pricingMode = (formData.meta?.pricingMode as PricingMode) || 'independent';
   const selectedResources = (formData.meta?.selectedResources as SelectedResource[]) || [];
   const selectedResourceTypeIds = (formData.meta?.resourceTypes as string[]) || [];
@@ -333,6 +347,8 @@ const ResourceDependencyStep: React.FC<ResourceDependencyStepProps> = ({
   const selectedEquipmentId = (formData.meta?.knowledge_tree_ref as any)?.resource_template_id || null;
   const selectedFacilityVariants = (formData.meta?.selectedFacilityVariants as SelectedVariant[]) || [];
   const selectedFacilityId = (formData.meta?.facility_knowledge_tree_ref as any)?.resource_template_id || null;
+  const selectedTeamMembersRaw = (formData.meta?.selectedTeamMembers as Array<{ contact_id: string; contact_name: string }>) || [];
+  const selectedTeamMembersForSlider = selectedTeamMembersRaw.map(t => ({ id: t.contact_id, name: t.contact_name }));
 
   const handleEquipmentSelect = (templateId: string) => {
     onChange('meta', {
@@ -347,6 +363,13 @@ const ResourceDependencyStep: React.FC<ResourceDependencyStepProps> = ({
       ...formData.meta,
       facility_knowledge_tree_ref: { resource_template_id: templateId },
       selectedFacilityVariants: [],
+    });
+  };
+
+  const handleTeamMemberSelectionChange = (selected: Array<{ id: string; name: string }>) => {
+    onChange('meta', {
+      ...formData.meta,
+      selectedTeamMembers: selected.map(s => ({ contact_id: s.id, contact_name: s.name })),
     });
   };
 
@@ -589,13 +612,16 @@ const ResourceDependencyStep: React.FC<ResourceDependencyStepProps> = ({
                   const selectedCount = getSelectedCountForType(type.id);
                   const isEquipmentType = type.name.toLowerCase().includes('equipment');
                   const isFacilityType = type.name.toLowerCase().includes('facilit');
+                  const isTeamMemberType = type.name.toLowerCase().includes('team') || type.name.toLowerCase().includes('staff');
                   const displayName = getDisplayName(type);
 
                   const hasSelections = isEquipmentType
                     ? (!!selectedEquipmentId || selectedVariants.length > 0)
                     : isFacilityType
                       ? (!!selectedFacilityId || selectedFacilityVariants.length > 0)
-                      : selectedCount > 0;
+                      : isTeamMemberType
+                        ? selectedTeamMembersRaw.length > 0
+                        : selectedCount > 0;
 
                   return (
                     <div
@@ -609,7 +635,7 @@ const ResourceDependencyStep: React.FC<ResourceDependencyStepProps> = ({
                       {/* Resource Type Header */}
                       <div
                         className="p-4 flex items-center justify-between cursor-pointer transition-colors"
-                        onClick={() => handleResourceTypeToggle(type.id)}
+                        onClick={() => isTeamMemberType ? setIsTeamMemberSliderOpen(true) : handleResourceTypeToggle(type.id)}
                         style={{ backgroundColor: hasSelections ? `${colors.brand.primary}05` : 'transparent' }}
                       >
                         <div className="flex items-center gap-3">
@@ -657,7 +683,15 @@ const ResourceDependencyStep: React.FC<ResourceDependencyStepProps> = ({
                               {selectedFacilityVariants.length} variant{selectedFacilityVariants.length !== 1 ? 's' : ''}
                             </span>
                           )}
-                          {!isEquipmentType && !isFacilityType && selectedCount > 0 && (
+                          {isTeamMemberType && selectedTeamMembersRaw.length > 0 && (
+                            <span
+                              className="text-xs px-2 py-0.5 rounded-full"
+                              style={{ backgroundColor: colors.brand.primary, color: '#FFFFFF' }}
+                            >
+                              {selectedTeamMembersRaw.length} contact{selectedTeamMembersRaw.length !== 1 ? 's' : ''}
+                            </span>
+                          )}
+                          {!isEquipmentType && !isFacilityType && !isTeamMemberType && selectedCount > 0 && (
                             <span
                               className="text-xs px-2 py-0.5 rounded-full"
                               style={{ backgroundColor: colors.brand.primary, color: '#FFFFFF' }}
@@ -665,7 +699,9 @@ const ResourceDependencyStep: React.FC<ResourceDependencyStepProps> = ({
                               {selectedCount}
                             </span>
                           )}
-                          {isExpanded ? (
+                          {isTeamMemberType ? (
+                            <ChevronDown className="w-5 h-5" style={{ color: colors.utility.secondaryText }} />
+                          ) : isExpanded ? (
                             <ChevronUp className="w-5 h-5" style={{ color: colors.utility.secondaryText }} />
                           ) : (
                             <ChevronDown className="w-5 h-5" style={{ color: colors.utility.secondaryText }} />
@@ -839,8 +875,8 @@ const ResourceDependencyStep: React.FC<ResourceDependencyStepProps> = ({
                         </div>
                       )}
 
-                      {/* Expanded Resources List (non-equipment, non-facility types) */}
-                      {isExpanded && !isEquipmentType && !isFacilityType && (
+                      {/* Expanded Resources List (non-equipment, non-facility, non-team types) */}
+                      {isExpanded && !isEquipmentType && !isFacilityType && !isTeamMemberType && (
                         <div
                           className="p-4 pt-0 border-t"
                           style={{ borderColor: isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB' }}
@@ -1030,6 +1066,16 @@ const ResourceDependencyStep: React.FC<ResourceDependencyStepProps> = ({
                 </ul>
               </>
             )}
+            {selectedTeamMembersRaw.length > 0 && (
+              <>
+                <p><strong>Team Members ({selectedTeamMembersRaw.length}):</strong></p>
+                <ul className="ml-4 list-disc">
+                  {selectedTeamMembersRaw.map(t => (
+                    <li key={t.contact_id}>{t.contact_name}</li>
+                  ))}
+                </ul>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -1057,6 +1103,23 @@ const ResourceDependencyStep: React.FC<ResourceDependencyStepProps> = ({
         colors={colors}
         isDarkMode={isDarkMode}
         metaVariantField="selectedFacilityVariants"
+      />
+
+      {/* ═══ Team Members Slider (Portal) ═══ */}
+      <VariantSlider
+        isOpen={isTeamMemberSliderOpen}
+        onClose={() => setIsTeamMemberSliderOpen(false)}
+        equipmentId={null}
+        equipmentName="Team Members"
+        formData={formData}
+        onChange={onChange}
+        colors={colors}
+        isDarkMode={isDarkMode}
+        items={teamMemberItems}
+        isLoadingItems={loadingTeamMembers}
+        selectedExternalItems={selectedTeamMembersForSlider}
+        onSelectionChange={handleTeamMemberSelectionChange}
+        itemLabel="contact"
       />
     </div>
   );
