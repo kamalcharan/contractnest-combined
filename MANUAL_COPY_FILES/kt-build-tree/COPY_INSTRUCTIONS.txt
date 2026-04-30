@@ -1,39 +1,56 @@
 COPY INSTRUCTIONS — kt-build-tree
 ==================================
 Branch: claude/fix-industry-equipment-pricing-yHxIw
-Step 1 Complete: Skill file created
-Steps Pending:   Step 2 (API endpoint) + Step 3 (Frontend hook) + Step 4 (Wire button)
+Steps Complete: Step 1 (skill file) + Step 2 (API endpoint)
+Steps Pending:  Step 3 (Frontend hook) + Step 4 (Wire button)
 
-FILE CREATED (contractnest-api):
-─────────────────────────────────
-src/skills/kt-equipment-generator.md
+FILES CREATED/MODIFIED (contractnest-api):
+───────────────────────────────────────────
+NEW  src/skills/kt-equipment-generator.md           ← LLM system prompt (Step 1)
+NEW  src/services/knowledgeTreeGeneratorService.ts  ← calls Anthropic API
+NEW  src/controllers/knowledgeTreeController.ts     ← validates input, handles response
+NEW  src/routes/knowledgeTreeRoutes.ts              ← POST /api/knowledge-tree/generate
+MOD  src/index.ts                                   ← registers route
 
 DESTINATION (on your local machine):
 ─────────────────────────────────────
 D:\projects\core projects\ContractNest\contractnest-combined\contractnest-api\
-  src\skills\kt-equipment-generator.md
 
-WHAT THIS FILE IS:
+API ENDPOINT:
+─────────────
+POST /api/knowledge-tree/generate
+Headers: Authorization: Bearer <token>, x-tenant-id: <tenantId>
+Body:
+{
+  "equipmentName": "Elevator / Lift",
+  "subCategory": "Vertical Transport",
+  "resourceTemplateId": "uuid-from-db",
+  "serviceActivity": "pm"          ← optional, defaults to "pm"
+}
+Response: { "success": true, "data": { ...full KT JSON payload... } }
+
+ENV VAR REQUIRED:
 ──────────────────
-System prompt for the Anthropic API. Used by the /api/knowledge-tree/generate
-endpoint (Step 2) as the LLM system prompt. Contains:
-  - Equipment classification logic (5 types)
-  - Quality rules for gold-standard output
-  - Exact JSON structure matching /knowledge-tree/save payload
-  - {{SERVICE_ACTIVITY}} placeholder — replaced at runtime with the actual
-    service activity value (default: "pm")
-  - HVAC gold-standard reference (benchmark for depth + specificity)
-  - Pre-output validation checklist
+Add to contractnest-api/.env:
+  ANTHROPIC_API_KEY=sk-ant-...
 
-COPY COMMAND (PowerShell):
-──────────────────────────
+COPY COMMANDS (PowerShell):
+────────────────────────────
 cd "D:\projects\core projects\ContractNest\contractnest-combined"
 
-# Create skills directory if it doesn't exist
+# Step 1 — skill file (if not already copied)
 New-Item -ItemType Directory -Force -Path "contractnest-api\src\skills"
-
-# Copy skill file
 Copy-Item "MANUAL_COPY_FILES\kt-build-tree\contractnest-api\src\skills\kt-equipment-generator.md" `
   -Destination "contractnest-api\src\skills\kt-equipment-generator.md" -Force
 
-Write-Host "Step 1 complete — skill file in place" -ForegroundColor Green
+# Step 2 — API endpoint
+Copy-Item "MANUAL_COPY_FILES\kt-build-tree\contractnest-api\src\services\knowledgeTreeGeneratorService.ts" `
+  -Destination "contractnest-api\src\services\knowledgeTreeGeneratorService.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\kt-build-tree\contractnest-api\src\controllers\knowledgeTreeController.ts" `
+  -Destination "contractnest-api\src\controllers\knowledgeTreeController.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\kt-build-tree\contractnest-api\src\routes\knowledgeTreeRoutes.ts" `
+  -Destination "contractnest-api\src\routes\knowledgeTreeRoutes.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\kt-build-tree\contractnest-api\src\index.ts" `
+  -Destination "contractnest-api\src\index.ts" -Force
+
+Write-Host "Steps 1+2 done — restart API server" -ForegroundColor Green
