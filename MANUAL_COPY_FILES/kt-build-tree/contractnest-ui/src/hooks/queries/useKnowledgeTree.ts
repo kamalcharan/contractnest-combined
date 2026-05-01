@@ -143,6 +143,22 @@ async function postKnowledgeTreeEdge<T>(
   return response.json();
 }
 
+// ── Mutation: Delete Knowledge Tree (all data + snapshot history) ──
+export const useKnowledgeTreeDelete = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (resource_template_id: string) =>
+      postKnowledgeTreeEdge<{ status: string }>('delete', { resource_template_id }),
+
+    onSuccess: (_data, resource_template_id) => {
+      queryClient.invalidateQueries({ queryKey: knowledgeTreeKeys.coverage() });
+      queryClient.invalidateQueries({ queryKey: knowledgeTreeKeys.summary(resource_template_id) });
+      queryClient.invalidateQueries({ queryKey: knowledgeTreeKeys.snapshots(resource_template_id) });
+    },
+  });
+};
+
 // ── Mutation: Save Knowledge Tree ──────────────────────────────────
 export const useKnowledgeTreeSave = () => {
   const queryClient = useQueryClient();

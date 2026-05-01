@@ -124,6 +124,15 @@ class KnowledgeTreeController {
       // Always enforce the correct resource_template_id regardless of LLM output
       payload.resource_template_id = resourceTemplateId;
 
+      // Completeness check — reject partial generations before they reach the DB
+      const missing: string[] = [];
+      if (!payload.variants?.length) missing.push('variants');
+      if (!payload.checkpoints?.length) missing.push('checkpoints');
+      if (!payload.service_cycles?.length) missing.push('service_cycles');
+      if (missing.length > 0) {
+        throw new Error(`Incomplete generation — missing: ${missing.join(', ')}. Please retry.`);
+      }
+
       console.log(
         `✅ KT ready — variants: ${payload.variants.length}, ` +
         `spare_parts: ${payload.spare_parts.length}, ` +

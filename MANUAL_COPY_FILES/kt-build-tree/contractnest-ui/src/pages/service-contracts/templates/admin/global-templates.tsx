@@ -50,7 +50,7 @@ import { useNomenclatureTypes, NomenclatureGroup } from '@/hooks/queries/useNome
 import { useResourceTemplatesBrowser, type ResourceTemplateFilters } from '@/hooks/queries/useResourceTemplates';
 
 // Knowledge Tree
-import { useKnowledgeTreeCoverage, useKnowledgeTreeGenerate } from '@/hooks/queries/useKnowledgeTree';
+import { useKnowledgeTreeCoverage, useKnowledgeTreeGenerate, useKnowledgeTreeDelete } from '@/hooks/queries/useKnowledgeTree';
 import KnowledgeTreeCard from './knowledge-tree/KnowledgeTreeCard';
 import KTGenerationModal from './knowledge-tree/components/KTGenerationModal';
 import type { KnowledgeTreeCoverageMap } from './knowledge-tree/types';
@@ -267,6 +267,10 @@ const TemplateGalleryPage: React.FC = () => {
   const { generate: ktGenerate, phase: ktPhase, errorMessage: ktError, reset: ktReset } = useKnowledgeTreeGenerate();
   const [generatingResource, setGeneratingResource] = useState<{ id: string; name: string } | null>(null);
 
+  // KT delete
+  const ktDeleteMutation = useKnowledgeTreeDelete();
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
+
   // ── Derived data ───────────────────────────────────────────────
   const rawTemplates: CatTemplate[] = systemData?.data?.templates || [];
 
@@ -401,6 +405,18 @@ const TemplateGalleryPage: React.FC = () => {
 
   const handleTemplateEdit = (template: Template) => {
     navigate(`/service-contracts/templates/admin/global-designer?templateId=${template.id}`);
+  };
+
+  const handleDeleteConfirmed = async () => {
+    if (!deleteConfirm) return;
+    try {
+      await ktDeleteMutation.mutateAsync(deleteConfirm.id);
+      toast({ title: `Knowledge Tree deleted`, description: `"${deleteConfirm.name}" cleared successfully.` });
+    } catch {
+      toast({ title: 'Delete failed', description: 'Please try again.', variant: 'destructive' });
+    } finally {
+      setDeleteConfirm(null);
+    }
   };
 
   const handleBuild = async (resource: any) => {
@@ -883,6 +899,7 @@ const TemplateGalleryPage: React.FC = () => {
                         navigate(`/service-contracts/templates/admin/global-templates/tree/${id}`);
                       }}
                       onBuild={() => handleBuild(resource)}
+                      onDelete={(id, name) => setDeleteConfirm({ id, name })}
                     />
                   ))}
                 </div>
@@ -1461,6 +1478,39 @@ const TemplateGalleryPage: React.FC = () => {
           setGeneratingResource(null);
         }}
       />
+
+      {/* ═══════════ KT DELETE CONFIRMATION ═══════════ */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-[9998] flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}>
+          <div className="rounded-2xl shadow-2xl px-8 py-7 max-w-sm w-full mx-4" style={{ backgroundColor: colors.utility.primaryBackground, border: `1px solid ${colors.utility.secondaryText}20` }}>
+            <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4" style={{ backgroundColor: colors.semantic.error + '15', color: colors.semantic.error }}>
+              <AlertTriangle className="h-5 w-5" />
+            </div>
+            <h3 className="text-[15px] font-bold mb-1" style={{ color: colors.utility.primaryText }}>Delete Knowledge Tree?</h3>
+            <p className="text-[13px] mb-1" style={{ color: '#ff6b2b' }}>{deleteConfirm.name}</p>
+            <p className="text-[12px] mb-6" style={{ color: colors.utility.secondaryText }}>
+              This will permanently delete all variants, spare parts, checkpoints, service cycles, overlays, and backup history. This cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="flex-1 py-2 rounded-xl text-[13px] font-semibold border transition-all hover:opacity-80"
+                style={{ borderColor: colors.utility.secondaryText + '30', color: colors.utility.secondaryText, backgroundColor: 'transparent' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirmed}
+                disabled={ktDeleteMutation.isPending}
+                className="flex-1 py-2 rounded-xl text-[13px] font-semibold text-white transition-all hover:opacity-90"
+                style={{ backgroundColor: colors.semantic.error }}
+              >
+                {ktDeleteMutation.isPending ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ═══════════ HELP MODAL ═══════════ */}
       {showHelp && (
