@@ -117,11 +117,13 @@ Set `"{{SERVICE_ACTIVITY}}"` on EVERY checkpoint and service_cycle.
 
 ## Target Counts
 
-| Data Type | Min | Typical |
+| Data Type | Min | Max |
 |---|---|---|
-| checkpoints | 20 | 25–35 |
-| checkpoint_values | 3 per condition cp | 4–5 |
-| service_cycles | 5 | 8–12 |
+| checkpoints | 12 | **20** |
+| checkpoint_values | 3 per condition cp | 4 |
+| service_cycles | 5 | 10 |
+
+**HARD LIMIT: 20 checkpoints maximum.** Stop generating checkpoints once you reach 20. Leave room for service_cycles — they MUST be included.
 
 ---
 

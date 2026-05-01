@@ -52,7 +52,7 @@ resource_template_id: ${resourceTemplateId}
 service_activity: ${serviceActivity}`;
 
     // Activity-only prompt is focused (no variants/parts) — needs far fewer tokens
-    const maxTokens = existingKT ? 8000 : 16000;
+    const maxTokens = existingKT ? 12000 : 16000;
 
     console.log(`🤖 KT Generate: "${equipmentName}" | activity: ${serviceActivity} | mode: ${existingKT ? 'activity-only' : 'full'} | maxTokens: ${maxTokens}`);
 
