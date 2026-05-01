@@ -95,6 +95,11 @@ Set `service_activity` to `"{{SERVICE_ACTIVITY}}"` on ALL checkpoints and servic
     }
   ],
 
+  /* ⚠️ spare_part_variant_map HARD LIMIT: maximum 100 entries total.
+     Strategy: parts that apply to ALL variants → map to first variant only (v1).
+     Parts specific to certain variants → map only to those variants.
+     Do NOT cross-product every part × every variant. */
+
   "checkpoints": [
     {
       "id": "cp1",
@@ -254,6 +259,7 @@ Common values: climate, season, industry, equipment_age, load_pattern, environme
 | Variants | 3 | 6–10 | 15 |
 | Spare Parts | 15 | 25–40 | 60 |
 | Component Groups | 3 | 5–7 | 10 |
+| **spare_part_variant_map** | 20 | 40–80 | **100** |
 | Checkpoints | 10 | 15–20 | 30 |
 | — Condition type | 5 | 8–12 | 20 |
 | — Reading type | 5 | 7–10 | 15 |
