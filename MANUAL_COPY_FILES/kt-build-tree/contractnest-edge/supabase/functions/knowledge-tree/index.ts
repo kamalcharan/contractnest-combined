@@ -385,10 +385,31 @@ async function getSummary(params: URLSearchParams) {
 }
 
 // ─── Helper: wipe all live KT data for a resource_template_id ──────
-// Deletes in FK-safe order (children before parents).
-async function wipeLiveData(sb: any, resource_template_id: string): Promise<void> {
-  const [varRes, partRes, cpRes] = await Promise.all([
-    sb.from("m_equipment_variants").select("id").eq("resource_template_id", resource_template_id),
+// service_activity: if provided, only wipes checkpoints for that activity
+//   (preserves variants, parts, overlays — used when adding a new activity to an existing KT).
+// If omitted: full wipe of all data (used for re-generation and delete).
+async function wipeLiveData(sb: any, resource_template_id: string, service_activity?: string): Promise<void> {
+  if (service_activity) {
+    // Scoped wipe: only remove checkpoints belonging to this activity
+    const cpRes = await sb
+      .from("m_equipment_checkpoints")
+      .select("id")
+      .eq("resource_template_id", resource_template_id)
+      .eq("service_activity", service_activity);
+    const cpIds = (cpRes.data || []).map((r: any) => r.id);
+    if (cpIds.length) {
+      await Promise.all([
+        sb.from("m_service_cycles").delete().in("checkpoint_id", cpIds),
+        sb.from("m_checkpoint_variant_map").delete().in("checkpoint_id", cpIds),
+        sb.from("m_checkpoint_values").delete().in("checkpoint_id", cpIds),
+      ]);
+      await sb.from("m_equipment_checkpoints").delete().in("id", cpIds);
+    }
+    return;
+  }
+
+  // Full wipe
+  const [partRes, cpRes] = await Promise.all([
     sb.from("m_equipment_spare_parts").select("id").eq("resource_template_id", resource_template_id),
     sb.from("m_equipment_checkpoints").select("id").eq("resource_template_id", resource_template_id),
   ]);
@@ -396,7 +417,6 @@ async function wipeLiveData(sb: any, resource_template_id: string): Promise<void
   const partIds = (partRes.data || []).map((r: any) => r.id);
   const cpIds = (cpRes.data || []).map((r: any) => r.id);
 
-  // Delete junction / child rows first
   if (cpIds.length) {
     await Promise.all([
       sb.from("m_service_cycles").delete().in("checkpoint_id", cpIds),
@@ -408,7 +428,6 @@ async function wipeLiveData(sb: any, resource_template_id: string): Promise<void
     await sb.from("m_spare_part_variant_map").delete().in("spare_part_id", partIds);
   }
 
-  // Delete parent rows
   await Promise.all([
     sb.from("m_equipment_checkpoints").delete().eq("resource_template_id", resource_template_id),
     sb.from("m_equipment_spare_parts").delete().eq("resource_template_id", resource_template_id),
@@ -418,15 +437,17 @@ async function wipeLiveData(sb: any, resource_template_id: string): Promise<void
 }
 
 // ─── Route: POST /save ─────────────────────────────────────────────
-// Wipes existing data first, then inserts fresh — full replace, no duplicates.
-// Body: { resource_template_id, variants, spare_parts, spare_part_variant_map,
-//         checkpoints, checkpoint_values, checkpoint_variant_map,
-//         service_cycles, context_overlays }
+// Two modes:
+//   Full save   — variants present in body → wipes all data, inserts everything.
+//   Activity save — no variants + service_activity set → scoped wipe of that activity,
+//                   inserts only checkpoints/cycles (variants/parts stay in DB).
+// Auto-creates a snapshot after every successful save.
 async function saveKnowledgeTree(body: any, isAdmin: boolean) {
   if (!isAdmin) return errorResponse("Admin access required", 403);
 
   const {
     resource_template_id,
+    service_activity,
     variants,
     spare_parts,
     spare_part_variant_map,
@@ -441,68 +462,64 @@ async function saveKnowledgeTree(body: any, isAdmin: boolean) {
 
   const sb = getSupabaseAdmin();
 
-  // Wipe existing data before inserting fresh
-  await wipeLiveData(sb, resource_template_id);
+  // Detect mode: activity-scoped save has no variants but has service_activity
+  const isActivitySave = !!service_activity && !variants?.length;
+
+  await wipeLiveData(sb, resource_template_id, isActivitySave ? service_activity : undefined);
 
   const results: Record<string, number> = {};
   const errors: string[] = [];
 
   try {
-    // Insert order: variants → spare_parts → spare_part_variant_map
-    //               → checkpoints → checkpoint_values → checkpoint_variant_map
-    //               → service_cycles → context_overlays
-
-    if (variants?.length) {
-      const rows = variants.map((v: any) => ({ ...v, resource_template_id, is_active: v.is_active ?? true }));
-      const { data, error } = await sb.from("m_equipment_variants").insert(rows).select("id");
-      if (error) errors.push(`variants: ${error.message}`);
-      else results.variants = data.length;
+    if (!isActivitySave) {
+      // Full save: variants → parts → mapping → overlays
+      if (variants?.length) {
+        const rows = variants.map((v: any) => ({ ...v, resource_template_id, is_active: v.is_active ?? true }));
+        const { data, error } = await sb.from("m_equipment_variants").insert(rows).select("id");
+        if (error) errors.push(`variants: ${error.message}`);
+        else results.variants = data.length;
+      }
+      if (spare_parts?.length) {
+        const rows = spare_parts.map((sp: any) => ({ ...sp, resource_template_id, is_active: sp.is_active ?? true }));
+        const { data, error } = await sb.from("m_equipment_spare_parts").insert(rows).select("id");
+        if (error) errors.push(`spare_parts: ${error.message}`);
+        else results.spare_parts = data.length;
+      }
+      if (spare_part_variant_map?.length) {
+        const { data, error } = await sb.from("m_spare_part_variant_map").insert(spare_part_variant_map).select("id");
+        if (error) errors.push(`spare_part_variant_map: ${error.message}`);
+        else results.spare_part_variant_map = data.length;
+      }
+      if (context_overlays?.length) {
+        const rows = context_overlays.map((co: any) => ({ ...co, resource_template_id, is_active: co.is_active ?? true }));
+        const { data, error } = await sb.from("m_context_overlays").insert(rows).select("id");
+        if (error) errors.push(`context_overlays: ${error.message}`);
+        else results.context_overlays = data.length;
+      }
     }
 
-    if (spare_parts?.length) {
-      const rows = spare_parts.map((sp: any) => ({ ...sp, resource_template_id, is_active: sp.is_active ?? true }));
-      const { data, error } = await sb.from("m_equipment_spare_parts").insert(rows).select("id");
-      if (error) errors.push(`spare_parts: ${error.message}`);
-      else results.spare_parts = data.length;
-    }
-
-    if (spare_part_variant_map?.length) {
-      const { data, error } = await sb.from("m_spare_part_variant_map").insert(spare_part_variant_map).select("id");
-      if (error) errors.push(`spare_part_variant_map: ${error.message}`);
-      else results.spare_part_variant_map = data.length;
-    }
-
+    // Both modes: insert checkpoints and cycles
     if (checkpoints?.length) {
       const rows = checkpoints.map((cp: any) => ({ ...cp, resource_template_id, is_active: cp.is_active ?? true }));
       const { data, error } = await sb.from("m_equipment_checkpoints").insert(rows).select("id");
       if (error) errors.push(`checkpoints: ${error.message}`);
       else results.checkpoints = data.length;
     }
-
     if (checkpoint_values?.length) {
       const { data, error } = await sb.from("m_checkpoint_values").insert(checkpoint_values).select("id");
       if (error) errors.push(`checkpoint_values: ${error.message}`);
       else results.checkpoint_values = data.length;
     }
-
     if (checkpoint_variant_map?.length) {
       const { data, error } = await sb.from("m_checkpoint_variant_map").insert(checkpoint_variant_map).select("id");
       if (error) errors.push(`checkpoint_variant_map: ${error.message}`);
       else results.checkpoint_variant_map = data.length;
     }
-
     if (service_cycles?.length) {
       const rows = service_cycles.map((sc: any) => ({ ...sc, is_active: sc.is_active ?? true }));
       const { data, error } = await sb.from("m_service_cycles").insert(rows).select("id");
       if (error) errors.push(`service_cycles: ${error.message}`);
       else results.service_cycles = data.length;
-    }
-
-    if (context_overlays?.length) {
-      const rows = context_overlays.map((co: any) => ({ ...co, resource_template_id, is_active: co.is_active ?? true }));
-      const { data, error } = await sb.from("m_context_overlays").insert(rows).select("id");
-      if (error) errors.push(`context_overlays: ${error.message}`);
-      else results.context_overlays = data.length;
     }
   } catch (e: any) {
     return errorResponse(`Unexpected error during insert: ${e.message}`, 500);
@@ -510,6 +527,22 @@ async function saveKnowledgeTree(body: any, isAdmin: boolean) {
 
   if (errors.length > 0) {
     return jsonResponse({ status: "partial", message: "Some inserts failed", inserted: results, errors }, 207);
+  }
+
+  // Auto-snapshot after every successful save (non-critical — don't fail the save if it errors)
+  try {
+    await createSnapshot(
+      {
+        resource_template_id,
+        snapshot_type: isActivitySave ? "activity_added" : "ai_generated",
+        notes: isActivitySave
+          ? `Auto: ${service_activity} activity generated by VaNi`
+          : "Auto: Knowledge tree generated by VaNi",
+      },
+      true,
+    );
+  } catch (snapErr: any) {
+    console.warn("Auto-snapshot failed (non-critical):", snapErr?.message);
   }
 
   return jsonResponse({ status: "success", resource_template_id, inserted: results });

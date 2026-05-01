@@ -194,6 +194,7 @@ export interface KTGenerateInput {
   equipmentName: string;
   subCategory: string;
   serviceActivity?: string; // defaults to 'pm'
+  existingKT?: boolean; // true when adding a new activity to an already-built KT
 }
 
 export const useKnowledgeTreeGenerate = () => {
@@ -202,7 +203,7 @@ export const useKnowledgeTreeGenerate = () => {
   const queryClient = useQueryClient();
 
   const generate = async (input: KTGenerateInput): Promise<string | null> => {
-    const { resourceTemplateId, equipmentName, subCategory, serviceActivity = 'pm' } = input;
+    const { resourceTemplateId, equipmentName, subCategory, serviceActivity = 'pm', existingKT = false } = input;
     setPhase('generating');
     setErrorMessage(null);
 
@@ -214,6 +215,7 @@ export const useKnowledgeTreeGenerate = () => {
         subCategory,
         resourceTemplateId,
         serviceActivity,
+        existingKT,
       }, { timeout: 300000 }); // 5 min — LLM generation takes 60-180s
 
       if (!response.data?.success) {

@@ -1,56 +1,94 @@
-COPY INSTRUCTIONS — kt-build-tree
-==================================
-Branch: claude/fix-industry-equipment-pricing-yHxIw
-Steps Complete: Step 1 (skill file) + Step 2 (API endpoint)
-Steps Pending:  Step 3 (Frontend hook) + Step 4 (Wire button)
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY — kt-build-tree (COMPLETE)
+═══════════════════════════════════════════════════
+Branch: kt-build-tree
+Submodules Affected: contractnest-ui, contractnest-api, contractnest-edge
 
-FILES CREATED/MODIFIED (contractnest-api):
-───────────────────────────────────────────
-NEW  src/skills/kt-equipment-generator.md           ← LLM system prompt (Step 1)
-NEW  src/services/knowledgeTreeGeneratorService.ts  ← calls Anthropic API
-NEW  src/controllers/knowledgeTreeController.ts     ← validates input, handles response
-NEW  src/routes/knowledgeTreeRoutes.ts              ← POST /api/knowledge-tree/generate
-MOD  src/index.ts                                   ← registers route
+FILES CHANGED:
 
-DESTINATION (on your local machine):
-─────────────────────────────────────
-D:\projects\core projects\ContractNest\contractnest-combined\contractnest-api\
+  contractnest-ui:
+  - src/hooks/queries/useKnowledgeTree.ts
+      existingKT flag added to KTGenerateInput; passed to API call.
 
-API ENDPOINT:
-─────────────
-POST /api/knowledge-tree/generate
-Headers: Authorization: Bearer <token>, x-tenant-id: <tenantId>
-Body:
-{
-  "equipmentName": "Elevator / Lift",
-  "subCategory": "Vertical Transport",
-  "resourceTemplateId": "uuid-from-db",
-  "serviceActivity": "pm"          ← optional, defaults to "pm"
-}
-Response: { "success": true, "data": { ...full KT JSON payload... } }
+  - src/pages/service-contracts/templates/admin/knowledge-tree/KnowledgeTreeDetail.tsx
+      ACTIVITY_CONFIG constant; useKnowledgeTreeGenerate integration;
+      activity badge row in header (built=green pill, unbuilt=orange + button);
+      handleAddActivity callback; KTGenerationModal render.
 
-ENV VAR REQUIRED:
-──────────────────
-Add to contractnest-api/.env:
-  ANTHROPIC_API_KEY=sk-ant-...
+  - src/pages/service-contracts/templates/admin/knowledge-tree/components/KTGenerationModal.tsx
+      serviceActivityLabel prop shown below equipment name during generation.
 
-COPY COMMANDS (PowerShell):
-────────────────────────────
+  contractnest-api:
+  - src/controllers/knowledgeTreeController.ts
+      existingKT mode: activity-only payload (checkpoints + cycles, no variants/parts).
+
+  - src/services/knowledgeTreeGeneratorService.ts
+      maxTokens 24000→32000; anthropic-beta output-128k header; stop_reason logging.
+
+  - src/skills/kt-equipment-generator.md
+      spare_part_variant_map moved to LAST in output order; max 100 entries cap.
+      service_cycles validation added; field order ensures service_cycles generated
+      before the large spare_part_variant_map array.
+
+  contractnest-edge:
+  - supabase/config.toml
+      [functions.knowledge-tree] verify_jwt = false  ← CRITICAL FIX (fixes invisible KTs)
+
+  - supabase/functions/knowledge-tree/index.ts
+      wipeLiveData: scoped wipe when service_activity provided (preserves variants/parts).
+      saveKnowledgeTree: dual-mode (full save vs activity-only save).
+      Auto-snapshot on every successful save (type: ai_generated or activity_added).
+
+Production Checklist:
+  ✅ Transaction Management: Sequential deletes + inserts in edge function
+  ✅ Race Condition Handling: Scoped wipe before activity insert
+  ✅ Error Handling: Try-catch in generate hook + controller; toasts on error
+  ✅ Toasts: vaniToast.success/error used throughout
+  ✅ Loaders: KTGenerationModal with spinner + progress bar + phase labels
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
 cd "D:\projects\core projects\ContractNest\contractnest-combined"
 
-# Step 1 — skill file (if not already copied)
-New-Item -ItemType Directory -Force -Path "contractnest-api\src\skills"
-Copy-Item "MANUAL_COPY_FILES\kt-build-tree\contractnest-api\src\skills\kt-equipment-generator.md" `
-  -Destination "contractnest-api\src\skills\kt-equipment-generator.md" -Force
+STEP 2: Copy All Changed Files
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\kt-build-tree\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\kt-build-tree\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\kt-build-tree\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Write-Host "✅ All files copied!" -ForegroundColor Green
 
-# Step 2 — API endpoint
-Copy-Item "MANUAL_COPY_FILES\kt-build-tree\contractnest-api\src\services\knowledgeTreeGeneratorService.ts" `
-  -Destination "contractnest-api\src\services\knowledgeTreeGeneratorService.ts" -Force
-Copy-Item "MANUAL_COPY_FILES\kt-build-tree\contractnest-api\src\controllers\knowledgeTreeController.ts" `
-  -Destination "contractnest-api\src\controllers\knowledgeTreeController.ts" -Force
-Copy-Item "MANUAL_COPY_FILES\kt-build-tree\contractnest-api\src\routes\knowledgeTreeRoutes.ts" `
-  -Destination "contractnest-api\src\routes\knowledgeTreeRoutes.ts" -Force
-Copy-Item "MANUAL_COPY_FILES\kt-build-tree\contractnest-api\src\index.ts" `
-  -Destination "contractnest-api\src\index.ts" -Force
+STEP 3: Redeploy Edge Function  ← CRITICAL (fixes invisible KTs + adds auto-snapshot + scoped wipe)
+─────────────────────────────────
+cd contractnest-edge
+supabase functions deploy knowledge-tree --no-verify-jwt
+cd ..
 
-Write-Host "Steps 1+2 done — restart API server" -ForegroundColor Green
+STEP 4: Start Dev Servers
+─────────────────────────────────
+cd contractnest-ui && npm run dev
+# In separate terminal:
+cd contractnest-api && npm run dev
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Existing KTs now load (not invisible) — verify_jwt fix
+- [ ] DG Set (Generator) generates without "missing: service_cycles" error
+- [ ] First KT save auto-creates "ai_generated" snapshot in Backup History
+- [ ] Activity badges appear in header: PM = green pill, others = orange "+ Repair" etc.
+- [ ] Clicking "+ Repair" shows KTGenerationModal with activity label "Breakdown / Repair"
+- [ ] After successful add: Repair badge turns green, data loads
+- [ ] Generating activity shows spinner; error shows Dismiss button
+- [ ] Delete Tree removes ALL data across ALL activities + snapshots
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════

@@ -3,12 +3,13 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, TreePine, Wrench, Package, ClipboardCheck, RefreshCw,
-  MapPin, CheckCircle2, AlertCircle, Save, History, Loader2, FileText, Trash2, AlertTriangle,
+  MapPin, CheckCircle2, AlertCircle, Save, History, Loader2, FileText, Trash2, AlertTriangle, Plus,
 } from 'lucide-react';
 import { useTheme } from '../../../../../contexts/ThemeContext';
 import { vaniToast } from '@/components/common/toast/VaNiToast';
-import { useKnowledgeTreeSummary, useKnowledgeTreeSave, useCreateSnapshot, useKnowledgeTreeDelete } from '@/hooks/queries/useKnowledgeTree';
+import { useKnowledgeTreeSummary, useKnowledgeTreeSave, useCreateSnapshot, useKnowledgeTreeDelete, useKnowledgeTreeGenerate } from '@/hooks/queries/useKnowledgeTree';
 import type { KnowledgeTreeSummary } from './types';
+import KTGenerationModal from './components/KTGenerationModal';
 
 import RightPanel from './components/RightPanel';
 import BackupHistoryPanel from './components/BackupHistoryPanel';
@@ -20,6 +21,14 @@ import OverlaysTab from './components/OverlaysTab';
 import FormPreviewTab from './components/FormPreviewTab';
 
 type DetailTab = 'variants' | 'spare-parts' | 'checkpoints' | 'cycles' | 'overlays' | 'form-preview';
+
+const ACTIVITY_CONFIG = [
+  { key: 'pm',           label: 'Preventive Maintenance', short: 'PM' },
+  { key: 'repair',       label: 'Breakdown / Repair',     short: 'Repair' },
+  { key: 'inspection',   label: 'Inspection',             short: 'Inspect' },
+  { key: 'install',      label: 'Installation',           short: 'Install' },
+  { key: 'decommission', label: 'Decommission',           short: 'Decomm' },
+] as const;
 
 const KnowledgeTreeDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -46,6 +55,9 @@ const KnowledgeTreeDetail: React.FC = () => {
   const snapshotMutation = useCreateSnapshot();
   const deleteMutation = useKnowledgeTreeDelete();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const { generate: ktGenerate, phase: ktPhase, isActive: ktIsActive, errorMessage: ktError, reset: ktReset } = useKnowledgeTreeGenerate();
+  const [addingActivity, setAddingActivity] = useState<string | null>(null);
 
   // Auto-create pre_edit snapshot on first change
   const ensurePreEditSnapshot = useCallback(() => {
@@ -306,6 +318,23 @@ const KnowledgeTreeDetail: React.FC = () => {
     });
   }, [id, localVariants, localParts, localCheckpoints, localCycles, selectedVariantIds, saveMutation]);
 
+  const handleAddActivity = useCallback(async (activityKey: string, activityLabel: string) => {
+    if (!id || !summary) return;
+    setAddingActivity(activityLabel);
+    const result = await ktGenerate({
+      resourceTemplateId: id,
+      equipmentName: summary.resource_template.name,
+      subCategory: summary.resource_template.sub_category,
+      serviceActivity: activityKey,
+      existingKT: true,
+    });
+    if (result) {
+      vaniToast.success(`${activityLabel} activity added to Knowledge Tree`);
+      refetch();
+    }
+    setAddingActivity(null);
+  }, [id, summary, ktGenerate, refetch]);
+
   const handleDelete = useCallback(async () => {
     if (!id) return;
     try {
@@ -382,6 +411,30 @@ const KnowledgeTreeDetail: React.FC = () => {
               <div>
                 <h1 className="text-2xl font-bold" style={{ color: colors.utility.primaryText }}>{rt.name}</h1>
                 <p className="text-sm mt-0.5" style={{ color: colors.utility.secondaryText }}>{rt.sub_category} · Knowledge Tree Builder</p>
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  {ACTIVITY_CONFIG.map((activity) => {
+                    const isBuilt = serviceActivities.includes(activity.key);
+                    return isBuilt ? (
+                      <span
+                        key={activity.key}
+                        className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full font-medium"
+                        style={{ backgroundColor: colors.semantic.success + '15', color: colors.semantic.success }}
+                      >
+                        <CheckCircle2 className="h-3 w-3" /> {activity.short}
+                      </span>
+                    ) : (
+                      <button
+                        key={activity.key}
+                        onClick={() => handleAddActivity(activity.key, activity.label)}
+                        disabled={ktIsActive}
+                        className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full font-medium border transition-all hover:opacity-80 disabled:opacity-40"
+                        style={{ borderColor: colors.brand.primary + '40', color: colors.brand.primary, backgroundColor: colors.brand.primary + '08' }}
+                      >
+                        <Plus className="h-3 w-3" /> {activity.short}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -434,6 +487,14 @@ const KnowledgeTreeDetail: React.FC = () => {
         )}
         <RightPanel summary={summary} selectedVariantCount={selectedVariantIds.size} partsCount={allPartsCount} checkpointsCount={allCheckpointsFlat.length} cyclesCount={localCycles.length} serviceActivities={serviceActivities} colors={colors} />
       </div>
+
+      <KTGenerationModal
+        phase={ktPhase}
+        equipmentName={summary?.resource_template?.name || ''}
+        errorMessage={ktError}
+        onClose={ktReset}
+        serviceActivityLabel={addingActivity || undefined}
+      />
 
       {/* Delete confirmation */}
       {showDeleteConfirm && (

@@ -20,6 +20,7 @@ interface KTGenerationModalProps {
   equipmentName: string;
   errorMessage: string | null;
   onClose: () => void; // only callable when phase === 'error'
+  serviceActivityLabel?: string; // e.g. "Breakdown / Repair" — shown for activity-adds
 }
 
 const KTGenerationModal: React.FC<KTGenerationModalProps> = ({
@@ -27,6 +28,7 @@ const KTGenerationModal: React.FC<KTGenerationModalProps> = ({
   equipmentName,
   errorMessage,
   onClose,
+  serviceActivityLabel,
 }) => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
@@ -106,11 +108,17 @@ const KTGenerationModal: React.FC<KTGenerationModalProps> = ({
 
         {/* Equipment name */}
         <p
-          className="text-[12px] mb-6 font-medium"
+          className="text-[12px] font-medium"
           style={{ color: '#ff6b2b' }}
         >
           {equipmentName}
         </p>
+        {serviceActivityLabel && (
+          <p className="text-[11px] mb-6 mt-0.5" style={{ color: '#ff8f5a' }}>
+            {serviceActivityLabel}
+          </p>
+        )}
+        {!serviceActivityLabel && <div className="mb-6" />}
 
         {/* Spinner + pulsing dots */}
         {!isError && (

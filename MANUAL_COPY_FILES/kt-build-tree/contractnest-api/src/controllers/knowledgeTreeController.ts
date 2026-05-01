@@ -97,7 +97,7 @@ class KnowledgeTreeController {
       return;
     }
 
-    const { equipmentName, subCategory, resourceTemplateId, serviceActivity } = req.body;
+    const { equipmentName, subCategory, resourceTemplateId, serviceActivity, existingKT } = req.body;
 
     if (!equipmentName || !subCategory || !resourceTemplateId) {
       res.status(400).json({
@@ -118,30 +118,52 @@ class KnowledgeTreeController {
         serviceActivity: serviceActivity || 'pm',
       });
 
-      // Replace temp IDs (v1, sp1 …) with real UUIDs and update all cross-references
       const payload = resolveIds(raw);
-
-      // Always enforce the correct resource_template_id regardless of LLM output
       payload.resource_template_id = resourceTemplateId;
 
-      // Completeness check — reject partial generations before they reach the DB
-      const missing: string[] = [];
-      if (!payload.variants?.length) missing.push('variants');
-      if (!payload.checkpoints?.length) missing.push('checkpoints');
-      if (!payload.service_cycles?.length) missing.push('service_cycles');
-      if (missing.length > 0) {
-        throw new Error(`Incomplete generation — missing: ${missing.join(', ')}. Please retry.`);
+      if (existingKT) {
+        // Activity-only save: variants/parts already in DB — send only checkpoints + cycles.
+        // checkpoint_variant_map is excluded because LLM-generated variant IDs don't match DB IDs.
+        const missing: string[] = [];
+        if (!payload.checkpoints?.length) missing.push('checkpoints');
+        if (!payload.service_cycles?.length) missing.push('service_cycles');
+        if (missing.length > 0) {
+          throw new Error(`Incomplete generation — missing: ${missing.join(', ')}. Please retry.`);
+        }
+
+        const activityPayload = {
+          resource_template_id: resourceTemplateId,
+          service_activity: serviceActivity || 'pm',
+          checkpoints: payload.checkpoints,
+          checkpoint_values: payload.checkpoint_values,
+          service_cycles: payload.service_cycles,
+        };
+
+        console.log(
+          `✅ Activity KT ready (${activityPayload.service_activity}) — ` +
+          `checkpoints: ${activityPayload.checkpoints.length}, ` +
+          `service_cycles: ${activityPayload.service_cycles.length}`
+        );
+        res.status(200).json({ success: true, data: activityPayload });
+      } else {
+        // Full KT — require variants, checkpoints, service_cycles
+        const missing: string[] = [];
+        if (!payload.variants?.length) missing.push('variants');
+        if (!payload.checkpoints?.length) missing.push('checkpoints');
+        if (!payload.service_cycles?.length) missing.push('service_cycles');
+        if (missing.length > 0) {
+          throw new Error(`Incomplete generation — missing: ${missing.join(', ')}. Please retry.`);
+        }
+
+        console.log(
+          `✅ KT ready — variants: ${payload.variants.length}, ` +
+          `spare_parts: ${payload.spare_parts?.length ?? 0}, ` +
+          `checkpoints: ${payload.checkpoints.length}, ` +
+          `service_cycles: ${payload.service_cycles.length}, ` +
+          `context_overlays: ${payload.context_overlays?.length ?? 0}`
+        );
+        res.status(200).json({ success: true, data: payload });
       }
-
-      console.log(
-        `✅ KT ready — variants: ${payload.variants.length}, ` +
-        `spare_parts: ${payload.spare_parts.length}, ` +
-        `checkpoints: ${payload.checkpoints.length}, ` +
-        `service_cycles: ${payload.service_cycles.length}, ` +
-        `context_overlays: ${payload.context_overlays.length}`
-      );
-
-      res.status(200).json({ success: true, data: payload });
     } catch (error: any) {
       console.error('❌ KT generate error:', error.message);
       res.status(500).json({
