@@ -85,21 +85,6 @@ Set `service_activity` to `"{{SERVICE_ACTIVITY}}"` on ALL checkpoints and servic
     }
   ],
 
-  "spare_part_variant_map": [
-    {
-      "id": "spvm1",
-      "spare_part_id": "sp1",
-      "variant_id": "v1",
-      "is_recommended": true,
-      "notes": null
-    }
-  ],
-
-  /* ⚠️ spare_part_variant_map HARD LIMIT: maximum 100 entries total.
-     Strategy: parts that apply to ALL variants → map to first variant only (v1).
-     Parts specific to certain variants → map only to those variants.
-     Do NOT cross-product every part × every variant. */
-
   "checkpoints": [
     {
       "id": "cp1",
@@ -209,9 +194,24 @@ Set `service_activity` to `"{{SERVICE_ACTIVITY}}"` on ALL checkpoints and servic
       "priority": 1,
       "is_active": true
     }
+  ],
+
+  "spare_part_variant_map": [
+    {
+      "id": "spvm1",
+      "spare_part_id": "sp1",
+      "variant_id": "v1",
+      "is_recommended": true,
+      "notes": null
+    }
   ]
 }
 ```
+
+**CRITICAL OUTPUT ORDER:** Generate the arrays in exactly the order shown above.
+`spare_part_variant_map` is LAST by design — it is the largest array and is non-critical for validation.
+Maximum 100 entries in `spare_part_variant_map`. Universal parts that apply to all variants: map to v1 only.
+Do NOT cross-product every part × every variant.
 
 ---
 
@@ -304,10 +304,10 @@ Before returning the JSON, verify every item in this checklist:
 - [ ] Every `reading` checkpoint has unit, normal_min, normal_max, amber_threshold, red_threshold
 - [ ] No `reading` checkpoint has checkpoint_values
 - [ ] No `condition` checkpoint has unit or threshold values
-- [ ] All spare_part_variant_map entries reference valid spare_part_id and variant_id from this payload
 - [ ] All checkpoint_values reference a valid checkpoint_id from this payload
 - [ ] All service_cycles reference a valid checkpoint_id from this payload
 - [ ] All checkpoint_variant_map entries reference valid IDs from this payload
+- [ ] service_cycles is NOT empty — every PM KT must have at least 6 service cycles
 - [ ] component_group values are from the allowed set
 - [ ] service_activity on every checkpoint and service_cycle is `"{{SERVICE_ACTIVITY}}"`
 - [ ] frequency_unit is "days", "hours", or "visits"
@@ -318,5 +318,7 @@ Before returning the JSON, verify every item in this checklist:
 - [ ] Overlay frequency_multiplier values are between 1.2 and 2.0
 - [ ] No duplicate names within variants, spare_parts, or checkpoints
 - [ ] section_name groups logically related checkpoints (3–8 sections)
+- [ ] spare_part_variant_map is last and has ≤ 100 entries
+- [ ] All spare_part_variant_map entries reference valid spare_part_id and variant_id
 
 Output raw JSON only. No markdown. No explanation.
