@@ -15,7 +15,7 @@ class KnowledgeTreeGeneratorService {
   private readonly anthropicKey: string;
   // Allow override via env var; sonnet-4-6 is the default — excellent structured JSON output
   private readonly model: string;
-  private readonly maxTokens = 32000;
+  private readonly maxTokens = 16000;
 
   constructor() {
     this.anthropicKey = process.env.ANTHROPIC_API_KEY || '';
@@ -53,24 +53,31 @@ service_activity: ${serviceActivity}`;
 
     console.log(`🤖 KT Generate: calling Anthropic for "${equipmentName}" (model: ${this.model})`);
 
-    const response = await axios.post(
-      'https://api.anthropic.com/v1/messages',
-      {
-        model: this.model,
-        max_tokens: this.maxTokens,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userMessage }],
-      },
-      {
-        headers: {
-          'x-api-key': this.anthropicKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-beta': 'output-128k-2025-02-19',
-          'content-type': 'application/json',
+    let response;
+    try {
+      response = await axios.post(
+        'https://api.anthropic.com/v1/messages',
+        {
+          model: this.model,
+          max_tokens: this.maxTokens,
+          system: systemPrompt,
+          messages: [{ role: 'user', content: userMessage }],
         },
-        timeout: 300000, // 5 minutes
-      }
-    );
+        {
+          headers: {
+            'x-api-key': this.anthropicKey,
+            'anthropic-version': '2023-06-01',
+            'content-type': 'application/json',
+          },
+          timeout: 300000, // 5 minutes
+        }
+      );
+    } catch (axiosErr: any) {
+      const status = axiosErr.response?.status;
+      const body = axiosErr.response?.data;
+      console.error(`❌ Anthropic API error (${status}):`, JSON.stringify(body));
+      throw new Error(body?.error?.message || axiosErr.message);
+    }
 
     const stopReason: string = response.data?.stop_reason;
     const rawText: string = response.data?.content?.[0]?.text;
