@@ -1,0 +1,53 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — kt-facility-detail-ux
+═══════════════════════════════════════════════════
+Submodules Affected: contractnest-ui, contractnest-api
+
+⚠️  IMPORTANT: Apply kt-facility-generator FIRST (if not already done), then
+    apply this folder on top.
+
+FILES TO COPY:
+────────────────────────────────────────────────────────────────────────────
+SOURCE (from MANUAL_COPY_FILES\kt-facility-detail-ux\)        DESTINATION
+────────────────────────────────────────────────────────────────────────────
+contractnest-ui\src\pages\service-contracts\templates\admin\knowledge-tree\KnowledgeTreeDetail.tsx
+    → src\pages\service-contracts\templates\admin\knowledge-tree\KnowledgeTreeDetail.tsx
+
+contractnest-ui\src\pages\service-contracts\templates\admin\global-templates.tsx
+    → src\pages\service-contracts\templates\admin\global-templates.tsx
+
+contractnest-api\src\skills\kt-facility-generator.md
+    → src\skills\kt-facility-generator.md
+────────────────────────────────────────────────────────────────────────────
+
+WHAT CHANGED:
+─────────────────────────────────────────────────────
+1. KnowledgeTreeDetail.tsx
+   - useSearchParams() reads ?type=facility|equipment from URL
+   - isFacility = searchParams.get('type') === 'facility'
+   - FACILITY_ACTIVITY_CONFIG — PM only (installation/decommission not applicable to facilities)
+   - EQUIPMENT_ACTIVITY_CONFIG — full 5 activities (unchanged from before)
+   - tabConfig: label/icon are conditional on isFacility:
+       · 'variants' tab  →  'Zones'  (Building2 icon) for facilities
+       · 'spare-parts' tab  →  'Consumables' for facilities
+   - Header icon switches to Building2 + purple for facilities, TreePine + green for equipment
+   - 'Facility' badge shown next to resource name for facilities
+   - Toast messages say "Zone" / "Consumable" instead of "Variant" / "Part" for facilities
+   - Delete confirmation text adapts to facility terminology
+   - KTGenerationModal receives resourceType={isFacility ? 'facility' : 'equipment'}
+   - Criticality tooltip says "Facility criticality level" for facilities
+
+2. global-templates.tsx
+   - handleBuild navigate: now appends ?type=${resource.resourceType ?? 'equipment'}
+     so navigating to KT detail after auto-generation lands with correct isFacility flag
+   - onView navigate: now appends ?type=${resource.resourceType ?? 'equipment'}
+     so clicking "View" on a facility card opens the detail view with correct terminology
+
+3. kt-facility-generator.md (skill file)
+   - context_overlays moved BEFORE service_cycles in the output order
+     → LLM generates overlays before the longest array (service_cycles), avoiding truncation
+   - Example shows 3 overlays (climate, industry_served, geography) not just 1
+   - Pre-output validation: new rule "context_overlays has ≥ 3 entries — include climate,
+     industry/operational trigger, and geography/seasonal overlay"
+   - CRITICAL OUTPUT ORDER comment updated to explicitly mention context_overlays position
+═══════════════════════════════════════════════════
