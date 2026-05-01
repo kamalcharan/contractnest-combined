@@ -132,45 +132,16 @@ Use the same JSON schema as equipment Knowledge Trees. The field names remain id
     }
   ],
 
-  "checkpoint_values": [
+  "service_cycles": [
     {
-      "id": "cv1",
+      "id": "sc1",
       "checkpoint_id": "cp1",
-      "label": "Clean — no visible soiling",
-      "severity": "ok",
-      "triggers_part_consumption": false,
-      "requires_photo": false,
-      "sort_order": 0
-    },
-    {
-      "id": "cv2",
-      "checkpoint_id": "cp1",
-      "label": "Soiled — cleaned and disinfected",
-      "severity": "attention",
-      "triggers_part_consumption": true,
-      "requires_photo": false,
-      "sort_order": 1
-    },
-    {
-      "id": "cv3",
-      "checkpoint_id": "cp1",
-      "label": "Damaged / Cracked — reported to engineering",
-      "severity": "critical",
-      "triggers_part_consumption": false,
-      "requires_photo": true,
-      "sort_order": 2
-    }
-  ],
-
-  "checkpoint_variant_map": [
-    {
-      "id": "cvm1",
-      "checkpoint_id": "cp2",
-      "variant_id": "v1",
-      "override_min": 18,
-      "override_max": 20,
-      "override_amber": 22,
-      "override_red": 24
+      "frequency_value": 1,
+      "frequency_unit": "days",
+      "varies_by": ["occupancy", "procedure_count", "infection_alert"],
+      "alert_overdue_days": 0,
+      "source": "ai_researched",
+      "is_active": true
     }
   ],
 
@@ -219,16 +190,45 @@ Use the same JSON schema as equipment Knowledge Trees. The field names remain id
     }
   ],
 
-  "service_cycles": [
+  "checkpoint_values": [
     {
-      "id": "sc1",
+      "id": "cv1",
       "checkpoint_id": "cp1",
-      "frequency_value": 1,
-      "frequency_unit": "days",
-      "varies_by": ["occupancy", "procedure_count", "infection_alert"],
-      "alert_overdue_days": 0,
-      "source": "ai_researched",
-      "is_active": true
+      "label": "Clean — no visible soiling",
+      "severity": "ok",
+      "triggers_part_consumption": false,
+      "requires_photo": false,
+      "sort_order": 0
+    },
+    {
+      "id": "cv2",
+      "checkpoint_id": "cp1",
+      "label": "Soiled — cleaned and disinfected",
+      "severity": "attention",
+      "triggers_part_consumption": true,
+      "requires_photo": false,
+      "sort_order": 1
+    },
+    {
+      "id": "cv3",
+      "checkpoint_id": "cp1",
+      "label": "Damaged / Cracked — reported to engineering",
+      "severity": "critical",
+      "triggers_part_consumption": false,
+      "requires_photo": true,
+      "sort_order": 2
+    }
+  ],
+
+  "checkpoint_variant_map": [
+    {
+      "id": "cvm1",
+      "checkpoint_id": "cp2",
+      "variant_id": "v1",
+      "override_min": 18,
+      "override_max": 20,
+      "override_amber": 22,
+      "override_red": 24
     }
   ],
 
@@ -244,8 +244,18 @@ Use the same JSON schema as equipment Knowledge Trees. The field names remain id
 }
 ```
 
-**CRITICAL OUTPUT ORDER:** Generate arrays in exactly the order shown above.
-`context_overlays` comes BEFORE `service_cycles`. `spare_part_variant_map` is LAST — it is the largest array and is non-critical for validation.
+**CRITICAL OUTPUT ORDER — generate arrays in EXACTLY this sequence:**
+1. `variants` (zones) — required
+2. `spare_parts` (consumables) — required
+3. `checkpoints` — required
+4. `service_cycles` — **required, generated BEFORE checkpoint_values**
+5. `context_overlays` — required (≥ 3 entries)
+6. `checkpoint_values` — large array, generated after all required fields
+7. `checkpoint_variant_map`
+8. `spare_part_variant_map` — LAST, largest array, non-critical for validation
+
+`service_cycles` and `context_overlays` are written BEFORE the large `checkpoint_values` array.
+This ensures they are present even if the output approaches the token limit.
 Maximum 80 entries in `spare_part_variant_map`. Map a consumable to a zone only where it is physically used.
 Do NOT cross-product every consumable × every zone.
 
@@ -345,6 +355,9 @@ Use this as your benchmark for depth and specificity when generating healthcare 
 
 Before returning the JSON, verify:
 
+- [ ] service_cycles is written BEFORE checkpoint_values in the output — check your output order
+- [ ] service_cycles is NOT empty — every facility KT must have at least 8 service cycles
+- [ ] context_overlays has ≥ 3 entries — include climate, an industry/operational trigger, and one geography/seasonal overlay specific to India
 - [ ] Every `condition` checkpoint has ≥ 3 checkpoint_values
 - [ ] Every `reading` checkpoint has unit, normal_min, normal_max, amber_threshold, red_threshold
 - [ ] No `reading` checkpoint has checkpoint_values
@@ -352,8 +365,6 @@ Before returning the JSON, verify:
 - [ ] All checkpoint_values reference a valid checkpoint_id from this payload
 - [ ] All service_cycles reference a valid checkpoint_id from this payload
 - [ ] All checkpoint_variant_map entries reference valid IDs
-- [ ] context_overlays has ≥ 3 entries — include climate, an industry/operational trigger, and one geography/seasonal overlay specific to India
-- [ ] service_cycles is NOT empty — every facility KT must have at least 8 service cycles
 - [ ] component_group values are from the allowed facility set
 - [ ] service_activity on every checkpoint and service_cycle is `"{{SERVICE_ACTIVITY}}"`
 - [ ] frequency_unit is "days" or "visits"

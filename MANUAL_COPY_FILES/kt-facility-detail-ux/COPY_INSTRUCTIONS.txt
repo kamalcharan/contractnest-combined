@@ -18,6 +18,9 @@ contractnest-ui\src\pages\service-contracts\templates\admin\global-templates.tsx
 
 contractnest-api\src\skills\kt-facility-generator.md
     → src\skills\kt-facility-generator.md
+
+contractnest-api\src\services\knowledgeTreeGeneratorService.ts
+    → src\services\knowledgeTreeGeneratorService.ts
 ────────────────────────────────────────────────────────────────────────────
 
 WHAT CHANGED:
@@ -43,11 +46,19 @@ WHAT CHANGED:
    - onView navigate: now appends ?type=${resource.resourceType ?? 'equipment'}
      so clicking "View" on a facility card opens the detail view with correct terminology
 
-3. kt-facility-generator.md (skill file)
-   - context_overlays moved BEFORE service_cycles in the output order
-     → LLM generates overlays before the longest array (service_cycles), avoiding truncation
-   - Example shows 3 overlays (climate, industry_served, geography) not just 1
-   - Pre-output validation: new rule "context_overlays has ≥ 3 entries — include climate,
-     industry/operational trigger, and geography/seasonal overlay"
+3. knowledgeTreeGeneratorService.ts
+   - Facility max_tokens raised 16 000 → 20 000
+     Hospital Ward / OT generate ~90 checkpoint_values; extra budget prevents truncation
+     Equipment generation budget is unchanged at 16 000
+
+4. kt-facility-generator.md (skill file)
+   ⚠️ ROOT FIX FOR TRUNCATION: Output order redesigned so required fields come first:
+       variants → spare_parts → checkpoints → service_cycles → context_overlays
+       → checkpoint_values → checkpoint_variant_map → spare_part_variant_map
+   - service_cycles now written BEFORE checkpoint_values (which can be 80-90 entries)
+     → Even if output truncates during checkpoint_values, service_cycles already exist
+   - Pre-output validation: first two rules now explicitly check output order and
+     service_cycles / context_overlays existence BEFORE format correctness checks
+   - Example in schema shows 3 overlays (climate, industry_served, geography)
    - CRITICAL OUTPUT ORDER comment updated to explicitly mention context_overlays position
 ═══════════════════════════════════════════════════
