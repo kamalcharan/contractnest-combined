@@ -14,15 +14,17 @@ interface GenerateKTInput {
 
 class KnowledgeTreeGeneratorService {
   private readonly anthropicKey: string;
+  private readonly anthropicUrl: string;
   private readonly model: string;
 
   constructor() {
     this.anthropicKey = process.env.ANTHROPIC_API_KEY || '';
+    this.anthropicUrl = process.env.ANTHROPIC_API_URL || 'https://api.anthropic.com/v1/messages';
     this.model = process.env.KT_LLM_MODEL || 'claude-sonnet-4-6';
     if (!this.anthropicKey) {
       console.warn('⚠️ ANTHROPIC_API_KEY not set — KnowledgeTreeGeneratorService disabled');
     } else {
-      console.log(`✅ KnowledgeTreeGeneratorService: Initialized (model: ${this.model})`);
+      console.log(`✅ KnowledgeTreeGeneratorService: model=${this.model}, url=${this.anthropicUrl}`);
     }
   }
 
@@ -59,7 +61,7 @@ service_activity: ${serviceActivity}`;
     let response;
     try {
       response = await axios.post(
-        'https://api.anthropic.com/v1/messages',
+        this.anthropicUrl,
         {
           model: this.model,
           max_tokens: maxTokens,
