@@ -21,6 +21,8 @@ const validateHeaders = (req: Request, res: Response, next: NextFunction): void 
 router.post('/generate', validateHeaders, knowledgeTreeController.generate);
 
 // POST /api/knowledge-tree/tag-compliance
+// Body: { equipmentName, subCategory, resourceTemplateId, checkpoints: [{id, name, section_name, service_activity}] }
+// Returns: { success: true, data: { resource_template_id, tags: [{checkpoint_id, compliance_standard, is_mandatory}] } }
 router.post('/tag-compliance', validateHeaders, knowledgeTreeController.tagCompliance);
 
 export default router;
