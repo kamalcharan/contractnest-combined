@@ -57,12 +57,12 @@ class KnowledgeTreeGeneratorService {
 
   // Token budget per generation mode:
   //   activity-only  — 12 000  (checkpoints + cycles only, no variants/parts)
-  //   facility full  — 20 000  (zones + consumables + checkpoints + cycles + overlays + checkpoint_values)
+  //   facility full  — 28 000  (zones + consumables + checkpoints + cycles + overlays + checkpoint_values + spare_part_variant_map)
   //   equipment full — 16 000  (variants + 40+ parts + spare_part_variant_map up to 100 entries)
   private getMaxTokens(existingKT: boolean, resourceType: string): number {
     if (existingKT) return 12_000;
-    // Facilities have up to ~90 checkpoint_values which are verbose — give extra budget
-    if (resourceType === 'facility') return 20_000;
+    // Hospital Ward / OT can produce 28 checkpoints × 3 values + 80-entry spare_part_variant_map
+    if (resourceType === 'facility') return 28_000;
     return 16_000;
   }
 

@@ -316,12 +316,12 @@ Common facility values: occupancy, season, infection_alert, procedure_count, foo
 | Consumables (spare_parts) | 8 | 15–22 | 35 |
 | Component Groups | 3 | 4–6 | 8 |
 | Consumable-Zone Map | 10 | 20–50 | 80 |
-| Checkpoints | 12 | 18–28 | 38 |
-| — Condition type | 8 | 12–18 | 28 |
-| — Reading type | 4 | 6–12 | 15 |
-| Checkpoint Values | 28 | 40–60 | 90 |
-| Values per condition checkpoint | 3 | 3–4 | 5 |
-| Service Cycles | 8 | 12–20 | 28 |
+| Checkpoints | 10 | 14–20 | 26 |
+| — Condition type | 6 | 10–14 | 18 |
+| — Reading type | 4 | 4–8 | 10 |
+| Checkpoint Values | 18 | 30–42 | 54 |
+| Values per condition checkpoint | 3 | 3 | 3 |
+| Service Cycles | 8 | 10–16 | 22 |
 | Context Overlays | 3 | 4–6 | 8 |
 
 ---
@@ -339,13 +339,13 @@ Use this as your benchmark for depth and specificity when generating healthcare 
 - medical_consumables (2): Autoclave Sterilisation Indicator Tape, Bowie-Dick Test Pack
 - hvac_utilities (1): HEPA Pre-Filter Insert (Replacement)
 
-**Checkpoints (22 across 4 sections):**
-- Environmental Controls (7 readings): OT Temperature (18–22°C, NABH), OT Relative Humidity (45–65% RH, NABH), Positive Pressure Differential vs Corridor (+8 to +15 Pa), Air Changes per Hour Log (≥20 ACH, NABH), Illuminance at Operating Table (≥10,000 lux), Anaesthesia Machine Electrical Supply Voltage (220–240 V), OT Ambient Noise Level (≤35 dB)
-- Surface & Structural (7 conditions): Floor Surface Integrity, Wall & Ceiling Panel Condition, Antistatic Flooring Continuity Test, Door Seal & Self-Close Function, Viewing Panel Cleanliness, Sterile Zone Demarcation Integrity, Pest Evidence Check
-- Safety & Regulatory (5 conditions): Fire Extinguisher Status, Emergency Exit Signage Lit, NABH Infection Control Checklist, Hand Hygiene Station Functional, Spill Kit Availability
+**Checkpoints (18 across 4 sections — TARGET: 14–20 total, exactly 3 values per condition checkpoint):**
+- Environmental Controls (6 readings): OT Temperature (18–22°C, NABH), OT Relative Humidity (45–65% RH, NABH), Positive Pressure Differential vs Corridor (+8 to +15 Pa), Air Changes per Hour Log (≥20 ACH, NABH), Illuminance at Operating Table (≥10,000 lux), Anaesthesia Machine Electrical Supply Voltage (220–240 V)
+- Surface & Structural (5 conditions): Floor Surface Integrity, Wall & Ceiling Panel Condition, Door Seal & Self-Close Function, Sterile Zone Demarcation Integrity, Pest Evidence Check
+- Safety & Regulatory (4 conditions): Fire Extinguisher Status, Emergency Exit Signage Lit, Hand Hygiene Station Functional, Spill Kit Availability
 - Medical Systems (3 conditions): Medical Gas Outlet Functional (O₂/N₂O/Vacuum/Air), Surgical Light Intensity & Focus, UV-C Germicidal Lamp Operation Log
 
-**Service Cycles (14):** Terminal Clean Post-Procedure (1d), HEPA Magnehelic Read (1d), UV-C Lamp Log (1d), Positive Pressure Differential (7d), Deep Surface Disinfection (7d), Autoclave Sterilisation Indicator (7d), Emergency Lighting Test (30d), HEPA Differential Pressure Full Inspection (30d), Antistatic Flooring Test (30d), Medical Gas Functional Check (30d), Air Quality Settle Plate Culture (90d), Autoclave Formal Validation (90d), HEPA Filter Replacement (365d), Annual Fire Audit (365d)
+**Service Cycles (12):** Terminal Clean Post-Procedure (1d), HEPA Magnehelic Read (1d), UV-C Lamp Log (1d), Positive Pressure Differential (7d), Deep Surface Disinfection (7d), Emergency Lighting Test (30d), HEPA Differential Pressure Full Inspection (30d), Antistatic Flooring Test (30d), Medical Gas Functional Check (30d), Air Quality Settle Plate Culture (90d), HEPA Filter Replacement (365d), Annual Fire Audit (365d)
 
 **Context Overlays (5):** hot_humid_monsoon — 1.4× (HEPA clogging, condensation risk), infection_control_surge — 2.0× (COVID/airborne precaution: full PPE terminal clean every procedure), coastal_salt_air — 1.3× (corrosion on gas outlets), construction_adjacent — 1.6× (particulate contamination), high_footfall_season — 1.2× (consumable depletion faster)
 
@@ -358,7 +358,7 @@ Before returning the JSON, verify:
 - [ ] service_cycles is written BEFORE checkpoint_values in the output — check your output order
 - [ ] service_cycles is NOT empty — every facility KT must have at least 8 service cycles
 - [ ] context_overlays has ≥ 3 entries — include climate, an industry/operational trigger, and one geography/seasonal overlay specific to India
-- [ ] Every `condition` checkpoint has ≥ 3 checkpoint_values
+- [ ] Every `condition` checkpoint has exactly 3 checkpoint_values (ok / attention / critical) — no more
 - [ ] Every `reading` checkpoint has unit, normal_min, normal_max, amber_threshold, red_threshold
 - [ ] No `reading` checkpoint has checkpoint_values
 - [ ] No `condition` checkpoint has unit or threshold values
