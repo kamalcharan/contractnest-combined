@@ -393,7 +393,6 @@ async function wipeLiveData(sb: any, resource_template_id: string): Promise<void
     sb.from("m_equipment_checkpoints").select("id").eq("resource_template_id", resource_template_id),
   ]);
 
-  const variantIds = (varRes.data || []).map((r: any) => r.id);
   const partIds = (partRes.data || []).map((r: any) => r.id);
   const cpIds = (cpRes.data || []).map((r: any) => r.id);
 
@@ -715,10 +714,6 @@ async function restoreSnapshot(body: any, isAdmin: boolean) {
   // (We don't fail the restore if backup has issues — just log)
 
   // Step 2: Delete current live data (in reverse FK order)
-  const cpIds = (sd.checkpoints || []).map((c: any) => c.id);
-  const partIds = (sd.spare_parts || []).map((p: any) => p.id);
-  const variantIds = (sd.variants || []).map((v: any) => v.id);
-
   // Delete existing data for this resource_template
   await sb.from("m_context_overlays").delete().eq("resource_template_id", resource_template_id);
   // Delete cycles linked to this resource's checkpoints
