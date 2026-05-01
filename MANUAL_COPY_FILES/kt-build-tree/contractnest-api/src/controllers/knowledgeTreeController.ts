@@ -1,9 +1,79 @@
 // src/controllers/knowledgeTreeController.ts
 import { Request, Response } from 'express';
+import { randomUUID } from 'crypto';
 import { knowledgeTreeGeneratorService } from '../services/knowledgeTreeGeneratorService';
 
 interface AuthRequest extends Request {
   user?: { id: string; email?: string };
+}
+
+// Replace LLM-generated short IDs (v1, sp1, cp1 …) with real UUIDs,
+// keeping all cross-references consistent across mapping tables.
+function resolveIds(payload: any): any {
+  const variantMap: Record<string, string> = {};
+  const sparePartMap: Record<string, string> = {};
+  const checkpointMap: Record<string, string> = {};
+
+  const variants = (payload.variants ?? []).map((v: any) => {
+    const id = randomUUID();
+    variantMap[v.id] = id;
+    return { ...v, id };
+  });
+
+  const spare_parts = (payload.spare_parts ?? []).map((sp: any) => {
+    const id = randomUUID();
+    sparePartMap[sp.id] = id;
+    return { ...sp, id };
+  });
+
+  const checkpoints = (payload.checkpoints ?? []).map((cp: any) => {
+    const id = randomUUID();
+    checkpointMap[cp.id] = id;
+    return { ...cp, id };
+  });
+
+  const spare_part_variant_map = (payload.spare_part_variant_map ?? []).map((m: any) => ({
+    ...m,
+    id: randomUUID(),
+    spare_part_id: sparePartMap[m.spare_part_id] ?? m.spare_part_id,
+    variant_id: variantMap[m.variant_id] ?? m.variant_id,
+  }));
+
+  const checkpoint_values = (payload.checkpoint_values ?? []).map((cv: any) => ({
+    ...cv,
+    id: randomUUID(),
+    checkpoint_id: checkpointMap[cv.checkpoint_id] ?? cv.checkpoint_id,
+  }));
+
+  const checkpoint_variant_map = (payload.checkpoint_variant_map ?? []).map((m: any) => ({
+    ...m,
+    id: randomUUID(),
+    checkpoint_id: checkpointMap[m.checkpoint_id] ?? m.checkpoint_id,
+    variant_id: variantMap[m.variant_id] ?? m.variant_id,
+  }));
+
+  const service_cycles = (payload.service_cycles ?? []).map((sc: any) => ({
+    ...sc,
+    id: randomUUID(),
+    checkpoint_id: checkpointMap[sc.checkpoint_id] ?? sc.checkpoint_id,
+  }));
+
+  const context_overlays = (payload.context_overlays ?? []).map((co: any) => ({
+    ...co,
+    id: randomUUID(),
+  }));
+
+  return {
+    ...payload,
+    variants,
+    spare_parts,
+    spare_part_variant_map,
+    checkpoints,
+    checkpoint_values,
+    checkpoint_variant_map,
+    service_cycles,
+    context_overlays,
+  };
 }
 
 class KnowledgeTreeController {
@@ -41,17 +111,26 @@ class KnowledgeTreeController {
     }
 
     try {
-      const payload = await knowledgeTreeGeneratorService.generate({
+      const raw = await knowledgeTreeGeneratorService.generate({
         equipmentName,
         subCategory,
         resourceTemplateId,
         serviceActivity: serviceActivity || 'pm',
       });
 
-      // Always enforce the correct ID — LLM may misinterpret the placeholder
+      // Replace temp IDs (v1, sp1 …) with real UUIDs and update all cross-references
+      const payload = resolveIds(raw);
+
+      // Always enforce the correct resource_template_id regardless of LLM output
       payload.resource_template_id = resourceTemplateId;
 
-      console.log(`✅ KT payload ready — resource_template_id: ${resourceTemplateId}, variants: ${payload.variants?.length ?? 0}, spare_parts: ${payload.spare_parts?.length ?? 0}, checkpoints: ${payload.checkpoints?.length ?? 0}`);
+      console.log(
+        `✅ KT ready — variants: ${payload.variants.length}, ` +
+        `spare_parts: ${payload.spare_parts.length}, ` +
+        `checkpoints: ${payload.checkpoints.length}, ` +
+        `service_cycles: ${payload.service_cycles.length}, ` +
+        `context_overlays: ${payload.context_overlays.length}`
+      );
 
       res.status(200).json({ success: true, data: payload });
     } catch (error: any) {
