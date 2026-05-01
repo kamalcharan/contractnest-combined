@@ -1,0 +1,38 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — kt-global-ux-fixes
+═══════════════════════════════════════════════════
+Submodules Affected: contractnest-ui only
+
+FILES TO COPY:
+─────────────────────────────────────────────────────────────────────
+SOURCE (from MANUAL_COPY_FILES)                                        DESTINATION (in contractnest-ui)
+─────────────────────────────────────────────────────────────────────
+kt-global-ux-fixes\contractnest-ui\src\pages\service-contracts\       src\pages\service-contracts\
+  templates\admin\global-templates.tsx                                   templates\admin\global-templates.tsx
+
+kt-global-ux-fixes\contractnest-ui\src\pages\service-contracts\       src\pages\service-contracts\
+  templates\admin\knowledge-tree\KnowledgeTreeCard.tsx                   templates\admin\knowledge-tree\KnowledgeTreeCard.tsx
+─────────────────────────────────────────────────────────────────────
+
+WHAT CHANGED:
+1. global-templates.tsx
+   - Issue 1 FIX: When "All Resources" is selected, passes all industry IDs
+     to useResourceTemplatesBrowser so the full list loads (was returning 0).
+     Uses allIndustryIds derived from coverage data — loads once industries load.
+   - Label: "All Equipment" renamed to "All Resources" (covers both types).
+   - Count badge shows "..." while loading, real count once loaded.
+   - Issue 2 FIX: Added Equipment + Facility filter sections to KT tab sidebar.
+     Both are clickable — clicking spotlights that single item in the grid.
+     Click again (or "Show all") to deselect. Spotlight chip shown in search bar.
+     New state: selectedKTResource, ktEquipmentSectionCollapsed, ktFacilitySectionCollapsed.
+     handleIndustrySelect now also resets selectedKTResource.
+   - KT sidebar is now sticky (self-start sticky top-4) for better UX.
+
+2. KnowledgeTreeCard.tsx
+   - Issue 3 FIX: New optional prop resourceType: 'equipment' | 'facility'.
+     Defaults to 'equipment' (backwards-compatible, no callers break).
+   - Equipment cards: show blue Wrench icon instead of TreePine.
+   - Facility cards: show purple Building2 icon + "Facility" badge in status bar
+     and inline next to name in list view.
+   - RESOURCE_TYPE_CONFIG object drives color/icon/label per type.
+═══════════════════════════════════════════════════
