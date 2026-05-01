@@ -1,0 +1,39 @@
+COPY INSTRUCTIONS — facility-team-resource-step
+================================================
+Branch: claude/fix-industry-equipment-pricing-yHxIw
+Steps Included: Step 1 (VariantSlider extension) + Step 2 (Facility support)
+Steps Pending:  Step 3 (Team Members) + Step 4 (Hide Consumables/Partners + Summary)
+
+FILE MODIFIED (contractnest-ui):
+─────────────────────────────────
+src/components/catalog-studio/BlockWizard/steps/ResourceDependencyStep.tsx
+
+DESTINATION (on your local machine):
+─────────────────────────────────────
+D:\projects\core projects\ContractNest\contractnest-combined\contractnest-ui\
+  src\components\catalog-studio\BlockWizard\steps\ResourceDependencyStep.tsx
+
+WHAT CHANGED IN THIS FILE:
+──────────────────────────
+STEP 1 — VariantSlider extended:
+  - 6 new optional props (items, isLoadingItems, selectedExternalItems,
+    onSelectionChange, metaVariantField, itemLabel)
+  - KT query disabled via undefined when in external mode
+  - All toggle/selectAll/isSelected logic branches on isExternalMode
+  - Footer, labels, empty state use itemLabel dynamically
+  - Equipment behavior 100% unchanged
+
+STEP 2 — Facility support added:
+  - getDisplayName() helper: maps facility types to "Facility" label
+  - isFacilitySliderOpen state
+  - facilityList memo (filters templates by resource_type_id containing 'facility')
+  - equipmentList: removed 'consumable' from filter (was ['equipment','asset','consumable'])
+  - selectedFacilityId from meta.facility_knowledge_tree_ref
+  - selectedFacilityVariants from meta.selectedFacilityVariants
+  - handleFacilitySelect() handler
+  - Accordion: isFacilityType detection, hasSelections updated for facility
+  - Accordion header: displayName override, (Knowledge Tree) tag, facility variants badge
+  - Facility inline radio list (mirrors Equipment block, uses Building icon)
+  - Generic resources guard updated: !isEquipmentType && !isFacilityType
+  - Facility VariantSlider instance with metaVariantField="selectedFacilityVariants"
+  - Configuration Summary: shows Facility Variants section
