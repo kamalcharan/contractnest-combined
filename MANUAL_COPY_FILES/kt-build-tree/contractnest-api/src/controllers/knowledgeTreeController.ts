@@ -116,6 +116,7 @@ class KnowledgeTreeController {
         subCategory,
         resourceTemplateId,
         serviceActivity: serviceActivity || 'pm',
+        existingKT: !!existingKT,
       });
 
       const payload = resolveIds(raw);

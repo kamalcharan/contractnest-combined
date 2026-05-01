@@ -9,13 +9,12 @@ interface GenerateKTInput {
   subCategory: string;
   resourceTemplateId: string;
   serviceActivity?: string;
+  existingKT?: boolean;
 }
 
 class KnowledgeTreeGeneratorService {
   private readonly anthropicKey: string;
-  // Allow override via env var; sonnet-4-6 is the default — excellent structured JSON output
   private readonly model: string;
-  private readonly maxTokens = 16000;
 
   constructor() {
     this.anthropicKey = process.env.ANTHROPIC_API_KEY || '';
@@ -37,7 +36,7 @@ class KnowledgeTreeGeneratorService {
   }
 
   async generate(input: GenerateKTInput): Promise<any> {
-    const { equipmentName, subCategory, resourceTemplateId, serviceActivity = 'pm' } = input;
+    const { equipmentName, subCategory, resourceTemplateId, serviceActivity = 'pm', existingKT = false } = input;
 
     if (!this.anthropicKey) {
       throw new Error('ANTHROPIC_API_KEY is not configured in .env');
@@ -45,13 +44,29 @@ class KnowledgeTreeGeneratorService {
 
     const systemPrompt = this.loadSkillPrompt(serviceActivity);
 
-    const userMessage = `Generate a complete Knowledge Tree for:
+    // Activity-only: tell LLM to skip variants/parts (already in DB) — saves ~60% of tokens
+    // Full KT: generate everything
+    const userMessage = existingKT
+      ? `Generate a Knowledge Tree for:
+Equipment: ${equipmentName}
+Sub-category: ${subCategory}
+resource_template_id: ${resourceTemplateId}
+service_activity: ${serviceActivity}
+
+IMPORTANT: This equipment already has variants and spare parts in the database.
+Output empty arrays [] for: variants, spare_parts, spare_part_variant_map, context_overlays, checkpoint_variant_map.
+Generate ONLY: checkpoints (with checkpoint_values) and service_cycles for the ${serviceActivity} activity.
+Focus all your output on producing comprehensive, high-quality checkpoints and service_cycles.`
+      : `Generate a complete Knowledge Tree for:
 Equipment: ${equipmentName}
 Sub-category: ${subCategory}
 resource_template_id: ${resourceTemplateId}
 service_activity: ${serviceActivity}`;
 
-    console.log(`🤖 KT Generate: calling Anthropic for "${equipmentName}" (model: ${this.model})`);
+    // Activity-only needs far fewer tokens (no variants/parts in output)
+    const maxTokens = existingKT ? 10000 : 16000;
+
+    console.log(`🤖 KT Generate: "${equipmentName}" | activity: ${serviceActivity} | mode: ${existingKT ? 'activity-only' : 'full'} | maxTokens: ${maxTokens}`);
 
     let response;
     try {
@@ -59,17 +74,26 @@ service_activity: ${serviceActivity}`;
         'https://api.anthropic.com/v1/messages',
         {
           model: this.model,
-          max_tokens: this.maxTokens,
-          system: systemPrompt,
+          max_tokens: maxTokens,
+          // System as array enables prompt caching — saves ~90% of input token cost
+          // on repeated calls since the skill prompt is identical across all generations
+          system: [
+            {
+              type: 'text',
+              text: systemPrompt,
+              cache_control: { type: 'ephemeral' },
+            },
+          ],
           messages: [{ role: 'user', content: userMessage }],
         },
         {
           headers: {
             'x-api-key': this.anthropicKey,
             'anthropic-version': '2023-06-01',
+            'anthropic-beta': 'prompt-caching-2024-07-31',
             'content-type': 'application/json',
           },
-          timeout: 300000, // 5 minutes
+          timeout: 300000,
         }
       );
     } catch (axiosErr: any) {
@@ -81,16 +105,19 @@ service_activity: ${serviceActivity}`;
 
     const stopReason: string = response.data?.stop_reason;
     const rawText: string = response.data?.content?.[0]?.text;
+    const usage = response.data?.usage;
 
+    if (usage) {
+      console.log(`📊 Tokens — in: ${usage.input_tokens} (cached: ${usage.cache_read_input_tokens ?? 0}), out: ${usage.output_tokens}, stop: ${stopReason}`);
+    }
     if (stopReason === 'max_tokens') {
-      console.warn(`⚠️ KT response hit max_tokens (${this.maxTokens}) — output may be truncated`);
+      console.warn(`⚠️ KT response hit max_tokens (${maxTokens}) — output may be truncated`);
     }
 
     if (!rawText) {
       throw new Error('Empty response from Anthropic API');
     }
 
-    // Extract the outermost JSON object — handles code fences, trailing notes, and any extra text
     const firstBrace = rawText.indexOf('{');
     const lastBrace = rawText.lastIndexOf('}');
 
@@ -104,7 +131,6 @@ service_activity: ${serviceActivity}`;
     try {
       return JSON.parse(jsonText);
     } catch {
-      // LLM occasionally produces minor syntax errors (missing commas, etc.) — repair and retry
       console.warn('⚠️ KT JSON has syntax errors — attempting repair...');
       try {
         const repaired = jsonrepair(jsonText);
