@@ -101,7 +101,7 @@ const KTGenerationModal: React.FC<KTGenerationModalProps> = ({
           className="text-[15px] font-semibold mb-1"
           style={{ color: colors.utility.primaryText }}
         >
-          {isError ? 'Generation Failed' : 'Building Knowledge Tree'}
+          {isError ? 'Generation Failed' : 'VaNi is Generating...'}
         </h3>
 
         {/* Equipment name */}

@@ -48,6 +48,11 @@ class KnowledgeTreeController {
         serviceActivity: serviceActivity || 'pm',
       });
 
+      // Always enforce the correct ID — LLM may misinterpret the placeholder
+      payload.resource_template_id = resourceTemplateId;
+
+      console.log(`✅ KT payload ready — resource_template_id: ${resourceTemplateId}, variants: ${payload.variants?.length ?? 0}, spare_parts: ${payload.spare_parts?.length ?? 0}, checkpoints: ${payload.checkpoints?.length ?? 0}`);
+
       res.status(200).json({ success: true, data: payload });
     } catch (error: any) {
       console.error('❌ KT generate error:', error.message);
