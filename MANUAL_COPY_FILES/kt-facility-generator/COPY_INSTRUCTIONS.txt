@@ -1,0 +1,76 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — kt-facility-generator
+═══════════════════════════════════════════════════
+Submodules Affected: contractnest-api, contractnest-ui
+
+⚠️  IMPORTANT: Apply kt-global-ux-fixes FIRST (if not already done), then apply
+    this folder on top. The global-templates.tsx here already includes all
+    kt-global-ux-fixes changes plus the new resourceType wiring.
+
+FILES TO COPY:
+────────────────────────────────────────────────────────────────────────────
+SOURCE (from MANUAL_COPY_FILES\kt-facility-generator\)   DESTINATION
+────────────────────────────────────────────────────────────────────────────
+contractnest-api\src\skills\kt-facility-generator.md     src\skills\kt-facility-generator.md          [NEW FILE]
+contractnest-api\src\services\knowledgeTreeGeneratorService.ts  src\services\knowledgeTreeGeneratorService.ts
+contractnest-api\src\controllers\knowledgeTreeController.ts     src\controllers\knowledgeTreeController.ts
+
+contractnest-ui\src\hooks\queries\useKnowledgeTree.ts    src\hooks\queries\useKnowledgeTree.ts
+contractnest-ui\src\pages\service-contracts\templates\admin\knowledge-tree\components\KTGenerationModal.tsx
+    → src\pages\service-contracts\templates\admin\knowledge-tree\components\KTGenerationModal.tsx
+contractnest-ui\src\pages\service-contracts\templates\admin\global-templates.tsx
+    → src\pages\service-contracts\templates\admin\global-templates.tsx
+────────────────────────────────────────────────────────────────────────────
+
+WHAT CHANGED:
+─────────────────────────────────────────────────────
+1. kt-facility-generator.md  [NEW]
+   - Full LLM skill for facility KT generation
+   - Zones replace variants (real named spaces: OT, Server Hall, Guest Room)
+   - Consumables replace spare parts (disinfectants, mop heads, indicator strips)
+   - 10 facility-appropriate component_group values
+   - Inspection-focused checkpoints with real regulatory ranges (NABH, FSSAI, NBC)
+   - Calendar-based service cycles (daily / weekly / monthly / quarterly)
+   - India-specific context overlays (monsoon, infection surge, festive crowd)
+   - Gold-standard reference: Operation Theatre (22 checkpoints, 14 cycles)
+   - Pre-output validation checklist (same rigour as equipment skill)
+
+2. knowledgeTreeGeneratorService.ts
+   - NEW: resourceType param ('equipment' | 'facility') → routes to correct skill
+   - Skill selection: existingKT → kt-activity-generator.md
+                      facility  → kt-facility-generator.md
+                      equipment → kt-equipment-generator.md (unchanged)
+   - Prompt caching: unchanged — cache_control: { type: 'ephemeral' } on system
+     message; Anthropic caches all three skill files after first call each
+   - Cache logging improved: reports cache_read_input_tokens and cache_creation_input_tokens
+     with ✅ cache hit / 🔄 cache miss label per call
+   - truncated flag: returns { data, truncated } instead of raw data so controller
+     can build a specific error message when output was cut off
+
+3. knowledgeTreeController.ts
+   - NEW: reads resourceType from request body (defaults 'equipment' for backwards compat)
+   - NEW: facility validation branch — zones + checkpoints + service_cycles required;
+     spare_parts (consumables) are OPTIONAL for facilities
+   - buildIncompleteError() — contextual error message distinguishes truncation
+     ("output was cut off — retry once") from genuine LLM omission ("Please retry")
+   - All three branches (activity / facility / equipment) log their output counts
+
+4. useKnowledgeTree.ts
+   - KTGenerateInput now includes: resourceType?: 'equipment' | 'facility'
+   - generate() passes resourceType to the API call body
+   - All other hooks unchanged
+
+5. KTGenerationModal.tsx
+   - FACILITY_MESSAGES array: no mention of "spare parts" or "variants"
+     ("Mapping zones and spaces...", "Generating consumables and materials list...")
+   - resourceType prop selects the right message set:
+     serviceActivityLabel → ACTIVITY_MESSAGES
+     facility             → FACILITY_MESSAGES
+     equipment (default)  → EQUIPMENT_MESSAGES
+   - "Facility Knowledge Tree" sub-label shown under resource name for facilities
+
+6. global-templates.tsx  (includes all kt-global-ux-fixes changes)
+   - generatingResource state now carries resourceType
+   - handleBuild passes resourceType: resource.resourceType ?? 'equipment' to ktGenerate
+   - KTGenerationModal receives resourceType={generatingResource?.resourceType}
+═══════════════════════════════════════════════════
