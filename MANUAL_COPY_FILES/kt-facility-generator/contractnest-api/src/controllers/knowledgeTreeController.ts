@@ -2,6 +2,7 @@
 import { Request, Response } from 'express';
 import { randomUUID } from 'crypto';
 import { knowledgeTreeGeneratorService } from '../services/knowledgeTreeGeneratorService';
+import { complianceTaggerService } from '../services/complianceTaggerService';
 
 interface AuthRequest extends Request {
   user?: { id: string; email?: string };
@@ -217,6 +218,51 @@ class KnowledgeTreeController {
         error: {
           code: 'GENERATE_FAILED',
           message: error.message || 'Failed to generate Knowledge Tree',
+        },
+      });
+    }
+  };
+
+  // POST /api/knowledge-tree/tag-compliance
+  // Body: { equipmentName, subCategory, resourceTemplateId, checkpoints: [{id, name, section_name, service_activity}] }
+  tagCompliance = async (req: AuthRequest, res: Response): Promise<void> => {
+    const context = this.getContext(req);
+    if (!context) {
+      res.status(401).json({
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'Missing authorization or x-tenant-id header' },
+      });
+      return;
+    }
+
+    const { equipmentName, subCategory, resourceTemplateId, checkpoints } = req.body;
+
+    if (!equipmentName || !subCategory || !resourceTemplateId || !Array.isArray(checkpoints) || checkpoints.length === 0) {
+      res.status(400).json({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'equipmentName, subCategory, resourceTemplateId, and checkpoints[] are required',
+        },
+      });
+      return;
+    }
+
+    try {
+      const tags = await complianceTaggerService.tag({
+        equipmentName,
+        subCategory,
+        checkpoints,
+      });
+
+      res.status(200).json({ success: true, data: { resource_template_id: resourceTemplateId, tags } });
+    } catch (error: any) {
+      console.error('❌ Tag compliance error:', error.message);
+      res.status(500).json({
+        success: false,
+        error: {
+          code: 'TAG_COMPLIANCE_FAILED',
+          message: error.message || 'Failed to tag compliance standards',
         },
       });
     }
