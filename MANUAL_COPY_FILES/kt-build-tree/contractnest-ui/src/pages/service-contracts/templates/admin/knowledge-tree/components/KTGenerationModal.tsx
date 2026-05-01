@@ -5,7 +5,7 @@ import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import type { KTGenerationPhase } from '@/hooks/queries/useKnowledgeTree';
 
-const GENERATING_MESSAGES = [
+const FULL_KT_MESSAGES = [
   'Classifying equipment type...',
   'Researching variants and specifications...',
   'Generating spare parts catalogue...',
@@ -13,6 +13,15 @@ const GENERATING_MESSAGES = [
   'Calculating service cycles and frequencies...',
   'Applying context overlays...',
   'Almost there — finalising output...',
+];
+
+const ACTIVITY_MESSAGES = [
+  'Reading equipment context...',
+  'Defining service checkpoints...',
+  'Setting acceptance criteria and thresholds...',
+  'Calculating service intervals...',
+  'Applying industry standards...',
+  'Almost there — finalising activity plan...',
 ];
 
 interface KTGenerationModalProps {
@@ -34,6 +43,8 @@ const KTGenerationModal: React.FC<KTGenerationModalProps> = ({
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
   const [msgIndex, setMsgIndex] = useState(0);
 
+  const messages = serviceActivityLabel ? ACTIVITY_MESSAGES : FULL_KT_MESSAGES;
+
   // Cycle through status messages while generating
   useEffect(() => {
     if (phase !== 'generating') {
@@ -41,19 +52,19 @@ const KTGenerationModal: React.FC<KTGenerationModalProps> = ({
       return;
     }
     const interval = setInterval(() => {
-      setMsgIndex(i => (i + 1) % GENERATING_MESSAGES.length);
+      setMsgIndex(i => (i + 1) % messages.length);
     }, 5500);
     return () => clearInterval(interval);
-  }, [phase]);
+  }, [phase, messages.length]);
 
   if (phase === 'idle' || phase === 'done') return null;
 
   const statusMessage =
     phase === 'saving'
-      ? 'Saving Knowledge Tree to database...'
+      ? 'Saving to database...'
       : phase === 'error'
       ? errorMessage || 'Generation failed'
-      : GENERATING_MESSAGES[msgIndex];
+      : messages[msgIndex];
 
   const isError = phase === 'error';
 

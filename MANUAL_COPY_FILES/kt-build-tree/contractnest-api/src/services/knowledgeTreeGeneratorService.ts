@@ -26,8 +26,9 @@ class KnowledgeTreeGeneratorService {
     }
   }
 
-  private loadSkillPrompt(serviceActivity: string): string {
-    const skillPath = path.join(process.cwd(), 'src', 'skills', 'kt-equipment-generator.md');
+  private loadSkillPrompt(serviceActivity: string, existingKT: boolean): string {
+    const fileName = existingKT ? 'kt-activity-generator.md' : 'kt-equipment-generator.md';
+    const skillPath = path.join(process.cwd(), 'src', 'skills', fileName);
     if (!fs.existsSync(skillPath)) {
       throw new Error(`Skill file not found at: ${skillPath}`);
     }
@@ -42,29 +43,16 @@ class KnowledgeTreeGeneratorService {
       throw new Error('ANTHROPIC_API_KEY is not configured in .env');
     }
 
-    const systemPrompt = this.loadSkillPrompt(serviceActivity);
+    const systemPrompt = this.loadSkillPrompt(serviceActivity, existingKT);
 
-    // Activity-only: tell LLM to skip variants/parts (already in DB) — saves ~60% of tokens
-    // Full KT: generate everything
-    const userMessage = existingKT
-      ? `Generate a Knowledge Tree for:
-Equipment: ${equipmentName}
-Sub-category: ${subCategory}
-resource_template_id: ${resourceTemplateId}
-service_activity: ${serviceActivity}
-
-IMPORTANT: This equipment already has variants and spare parts in the database.
-Output empty arrays [] for: variants, spare_parts, spare_part_variant_map, context_overlays, checkpoint_variant_map.
-Generate ONLY: checkpoints (with checkpoint_values) and service_cycles for the ${serviceActivity} activity.
-Focus all your output on producing comprehensive, high-quality checkpoints and service_cycles.`
-      : `Generate a complete Knowledge Tree for:
+    const userMessage = `Generate a ${existingKT ? '' : 'complete '}Knowledge Tree for:
 Equipment: ${equipmentName}
 Sub-category: ${subCategory}
 resource_template_id: ${resourceTemplateId}
 service_activity: ${serviceActivity}`;
 
-    // Activity-only needs far fewer tokens (no variants/parts in output)
-    const maxTokens = existingKT ? 10000 : 16000;
+    // Activity-only prompt is focused (no variants/parts) — needs far fewer tokens
+    const maxTokens = existingKT ? 8000 : 16000;
 
     console.log(`🤖 KT Generate: "${equipmentName}" | activity: ${serviceActivity} | mode: ${existingKT ? 'activity-only' : 'full'} | maxTokens: ${maxTokens}`);
 
