@@ -17,6 +17,7 @@ interface GenerateStepInput {
   subCategory: string;
   resourceTemplateId: string;
   serviceActivity?: string;
+  layer?: string;
   variants?: Array<{ id: string; name: string; capacity_range?: string | null }>;
   checkpoints?: Array<{ id: string; name: string; section_name: string; service_activity: string }>;
 }
@@ -156,9 +157,10 @@ class KnowledgeTreeGeneratorService {
 
   // ── Step 3: Checkpoints + values only (no service_cycles) ───────────────────
   async generateCheckpoints(input: GenerateStepInput): Promise<any> {
-    const { equipmentName, subCategory, resourceTemplateId, serviceActivity = 'pm', variants = [] } = input;
+    const { equipmentName, subCategory, resourceTemplateId, serviceActivity = 'pm', layer = 'equipment', variants = [] } = input;
     if (!this.anthropicKey) throw new Error('ANTHROPIC_API_KEY not configured');
-    const systemPrompt = this.loadSkill('kt-checkpoints-generator.md', { '\\{\\{SERVICE_ACTIVITY\\}\\}': serviceActivity });
+    const skillFile = layer === 'facility' ? 'kt-facility-checkpoints-generator.md' : 'kt-checkpoints-generator.md';
+    const systemPrompt = this.loadSkill(skillFile, { '\\{\\{SERVICE_ACTIVITY\\}\\}': serviceActivity });
     const variantsContext = variants.map(v => `  - id: "${v.id}"  name: "${v.name}"${v.capacity_range ? `  range: "${v.capacity_range}"` : ''}`).join('\n');
     const userMessage = `Generate checkpoints for:\nEquipment: ${equipmentName}\nSub-category: ${subCategory}\nresource_template_id: ${resourceTemplateId}\nservice_activity: ${serviceActivity}\n\nVariants (for reference):\n${variantsContext}`;
     return this.callAnthropic(systemPrompt, userMessage, 8000, `step3-checkpoints-${serviceActivity}`);

@@ -253,7 +253,7 @@ async function getSummary(params: URLSearchParams) {
 
   const { data: template, error: tplErr } = await sb
     .from("m_catalog_resource_templates")
-    .select("id, name, description, sub_category, scope")
+    .select("id, name, description, sub_category, scope, resource_type_id")
     .eq("id", resourceTemplateId)
     .single();
 

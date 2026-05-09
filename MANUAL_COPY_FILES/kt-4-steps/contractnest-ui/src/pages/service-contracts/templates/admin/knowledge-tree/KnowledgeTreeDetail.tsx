@@ -232,6 +232,7 @@ const KnowledgeTreeDetail: React.FC = () => {
         subCategory: summary.resource_template.sub_category,
         resourceTemplateId: id,
         serviceActivity: 'pm',
+        layer: ktLayer,
         variants: variants.map(v => ({ id: v.id, name: v.name, capacity_range: v.capacity_range })),
       });
       vaniToast.success(`Variants ✓ (${variantsCount})  |  Parts ✓ (${partsCount})  |  Step 3 — ${result.checkpoints.length} checkpoints saved`);
@@ -318,6 +319,7 @@ const KnowledgeTreeDetail: React.FC = () => {
         subCategory: summary.resource_template.sub_category,
         resourceTemplateId: id,
         serviceActivity: 'pm',
+        layer: ktLayer,
         variants: variantsResult.variants.map(v => ({ id: v.id, name: v.name, capacity_range: v.capacity_range })),
       });
       vaniToast.success(`Step 1 ✓  |  Step 2 ✓  |  Step 3/4 ✓ — ${checkpointsResult.checkpoints.length} checkpoints saved`);
@@ -647,6 +649,9 @@ const KnowledgeTreeDetail: React.FC = () => {
   const allPartsCount = useMemo(() => Object.values(localParts).flat().length, [localParts]);
   const allCheckpointsFlat = useMemo(() => Object.values(localCheckpoints).flat(), [localCheckpoints]);
   const serviceActivities = useMemo(() => [...new Set(allCheckpointsFlat.map((c: any) => c.service_activity))], [allCheckpointsFlat]);
+
+  // 'asset' resource_type_id = facility; anything else = equipment
+  const ktLayer = summary?.resource_template?.resource_type_id === 'asset' ? 'facility' : 'equipment';
 
   const hasOverlays = (summary?.summary?.overlays_count ?? 0) > 0;
   const variantsCount = summary?.summary?.variants_count ?? 0;

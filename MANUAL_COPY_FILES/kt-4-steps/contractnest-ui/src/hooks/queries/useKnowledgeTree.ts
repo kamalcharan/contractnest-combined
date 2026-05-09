@@ -209,7 +209,7 @@ export const useKTGenerateSpareParts = () => {
 export const useKTGenerateCheckpoints = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { equipmentName: string; subCategory: string; resourceTemplateId: string; serviceActivity?: string; variants: Array<{ id: string; name: string; capacity_range?: string | null }> }) => {
+    mutationFn: async (payload: { equipmentName: string; subCategory: string; resourceTemplateId: string; serviceActivity?: string; layer?: string; variants: Array<{ id: string; name: string; capacity_range?: string | null }> }) => {
       const { default: api } = await import('@/services/api');
       const response = await api.post('/api/knowledge-tree/generate-checkpoints', payload, { timeout: 120000 });
       if (!response.data?.success) throw new Error(response.data?.error?.message || 'Checkpoint generation failed');

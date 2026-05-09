@@ -70,7 +70,7 @@ class KnowledgeTreeController {
     const context = this.getContext(req);
     if (!context) { res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Missing authorization or x-tenant-id header' } }); return; }
 
-    const { equipmentName, subCategory, resourceTemplateId, serviceActivity, existingKT } = req.body;
+    const { equipmentName, subCategory, resourceTemplateId, serviceActivity, existingKT, layer } = req.body;
     if (!equipmentName || !subCategory || !resourceTemplateId) {
       res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'equipmentName, subCategory, and resourceTemplateId are required' } }); return;
     }
@@ -104,7 +104,8 @@ class KnowledgeTreeController {
 
         // Step 3: checkpoints + values only
         const activity = serviceActivity || 'pm';
-        const rawC = await knowledgeTreeGeneratorService.generateCheckpoints({ equipmentName, subCategory, resourceTemplateId, serviceActivity: activity, variants: variantRefs });
+        const ktLayer = layer || 'equipment';
+        const rawC = await knowledgeTreeGeneratorService.generateCheckpoints({ equipmentName, subCategory, resourceTemplateId, serviceActivity: activity, layer: ktLayer, variants: variantRefs });
         if (!rawC.checkpoints?.length) throw new Error('Step 3: No checkpoints returned');
         const cPayload = resolveCheckpointIds(rawC);
         console.log(`✅ 3/4 — ${cPayload.checkpoints.length} checkpoints, ${cPayload.checkpoint_values?.length ?? 0} values`);
@@ -180,12 +181,12 @@ class KnowledgeTreeController {
   generateCheckpoints = async (req: AuthRequest, res: Response): Promise<void> => {
     const context = this.getContext(req);
     if (!context) { res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Missing authorization or x-tenant-id header' } }); return; }
-    const { equipmentName, subCategory, resourceTemplateId, serviceActivity, variants } = req.body;
+    const { equipmentName, subCategory, resourceTemplateId, serviceActivity, layer, variants } = req.body;
     if (!equipmentName || !subCategory || !resourceTemplateId) { res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'equipmentName, subCategory, resourceTemplateId required' } }); return; }
     if (!Array.isArray(variants) || variants.length === 0) { res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'variants[] required — pull from DB first' } }); return; }
     try {
       const activity = serviceActivity || 'pm';
-      const raw = await knowledgeTreeGeneratorService.generateCheckpoints({ equipmentName, subCategory, resourceTemplateId, serviceActivity: activity, variants });
+      const raw = await knowledgeTreeGeneratorService.generateCheckpoints({ equipmentName, subCategory, resourceTemplateId, serviceActivity: activity, layer: layer || 'equipment', variants });
       if (!raw.checkpoints?.length) throw new Error('No checkpoints returned');
       const payload = resolveCheckpointIds(raw);
       payload.resource_template_id = resourceTemplateId;
