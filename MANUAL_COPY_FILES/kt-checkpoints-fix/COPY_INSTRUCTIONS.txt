@@ -1,0 +1,62 @@
+=====================================================
+COPY INSTRUCTIONS — kt-checkpoints-fix
+Fix: Step 3 hitting max_tokens:10000, service_cycles always truncated
+=====================================================
+
+ROOT CAUSE:
+  The checkpoints prompt allowed "Max 30 checkpoints, Max 80 values".
+  LLM generated 28 checkpoints + 61 values + checkpoint_variant_map
+  + service_cycles = well over 10,000 tokens.
+  service_cycles always appears LAST → always cut off → 500 error.
+  checkpoint_variant_map truncated to 1 entry → mappings useless.
+
+FIX:
+  1. kt-checkpoints-generator.md — hard limits enforced:
+     - Maximum 15 checkpoints total (was "Max 30")
+     - Exactly 3 values per condition checkpoint (was "3-5")
+     - checkpoint_variant_map REMOVED from output entirely
+       (was always truncated to 1 entry, user can set manually in UI)
+     - service_cycles capped at 5-8 (was 6-12)
+     - Output order: checkpoints → checkpoint_values → service_cycles
+       (ensures service_cycles is never the last thing cut off)
+
+  2. knowledgeTreeGeneratorService.ts — step 3 max_tokens: 10000 → 12000
+     - Extra safety buffer for complex equipment
+     - With hard caps: 15 checkpoints × 3 values + 8 cycles ≈ 6,500 tokens
+       → 12,000 gives 85% headroom
+
+ESTIMATED OUTPUT SIZE (after fix):
+  15 checkpoints × ~120 tokens = 1,800
+  45 values (15×3) × ~80 tokens = 3,600
+  8 service_cycles × ~100 tokens =   800
+  Total: ~6,200 tokens → safe under 12,000
+
+FILES CHANGED:
+  contractnest-api:
+  1. src/skills/kt-checkpoints-generator.md      [MODIFIED]
+  2. src/services/knowledgeTreeGeneratorService.ts [MODIFIED] — line ~212: 10000 → 12000
+
+APPLY AFTER: kt-stepwise-gen, kt-spare-parts-fix, kt-full-gen-stepwise
+
+=====================================================
+COPY COMMANDS (Windows PowerShell)
+Run from: D:\projects\core projects\ContractNest\contractnest-combined
+=====================================================
+
+Copy-Item "MANUAL_COPY_FILES\kt-checkpoints-fix\contractnest-api\src\skills\kt-checkpoints-generator.md" -Destination "contractnest-api\src\skills\kt-checkpoints-generator.md" -Force
+
+Copy-Item "MANUAL_COPY_FILES\kt-checkpoints-fix\contractnest-api\src\services\knowledgeTreeGeneratorService.ts" -Destination "contractnest-api\src\services\knowledgeTreeGeneratorService.ts" -Force
+
+Write-Host "Checkpoints fix applied! Restart API server." -ForegroundColor Green
+
+=====================================================
+TESTING CHECKLIST
+=====================================================
+  [ ] API log shows: stop: end_turn (NOT max_tokens) for step3-checkpoints
+  [ ] API log shows: checkpoints:10-15, checkpoint_values:30-45, service_cycles:5-8
+  [ ] POST /api/knowledge-tree/generate returns 200 (not 500)
+  [ ] Checkpoints tab shows 10-15 checkpoints
+  [ ] Service Cycles tab shows 5-8 cycles
+  [ ] No "service_cycles missing" error in logs
+  [ ] + Install / + Decomm activity generation still works (different path)
+=====================================================
