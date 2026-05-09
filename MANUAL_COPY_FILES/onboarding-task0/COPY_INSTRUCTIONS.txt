@@ -1,0 +1,31 @@
+═══════════════════════════════════════════════════
+TASK 0 — Pre-Build Scan: business_type_id audit
+Branch: claude/onboarding-setup-lQrdy
+Date: 2026-05-09
+═══════════════════════════════════════════════════
+
+FILES MODIFIED (contractnest-ui only):
+─────────────────────────────────────────────────────
+1. src/utils/constants/businessTypes.ts
+   → Added 'both' entry to businessTypes array
+   → Added audit comment block at top of file
+   → Color: #8B5CF6 (purple — distinct from blue/green)
+
+2. src/context/AuthContext.tsx
+   → Line 853: added comment explaining 'both' defaults to 'revenue'
+   → No logic change — 'both' !== 'buyer' already returns 'revenue' correctly
+
+3. src/pages/settings/business-profile/index.tsx
+   → Lines 260–290: replaced two-way ternary with three-way conditional
+   → Added 'both' branch showing dual perspective description
+   → 'buyer' and 'seller' branches unchanged
+
+COPY DESTINATIONS:
+─────────────────────────────────────────────────────
+Source (in this folder)                                          → Destination (in contractnest-ui)
+contractnest-ui/src/utils/constants/businessTypes.ts            → src/utils/constants/businessTypes.ts
+contractnest-ui/src/context/AuthContext.tsx                     → src/context/AuthContext.tsx
+contractnest-ui/src/pages/settings/business-profile/index.tsx  → src/pages/settings/business-profile/index.tsx
+
+SUBMODULES AFFECTED: contractnest-ui only
+═══════════════════════════════════════════════════
