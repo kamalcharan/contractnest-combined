@@ -145,11 +145,12 @@ class KnowledgeTreeGeneratorService {
     return this.callAnthropic(systemPrompt, userMessage, 2000, 'step1-variants');
   }
 
-  // ── Step 2: Spare parts + variant map ───────────────────────────────────────
+  // ── Step 2: Spare parts / consumables + variant map ─────────────────────────
   async generateSpareParts(input: GenerateStepInput): Promise<any> {
-    const { equipmentName, subCategory, resourceTemplateId, variants = [] } = input;
+    const { equipmentName, subCategory, resourceTemplateId, layer = 'equipment', variants = [] } = input;
     if (!this.anthropicKey) throw new Error('ANTHROPIC_API_KEY not configured');
-    const systemPrompt = this.loadSkill('kt-spare-parts-generator.md');
+    const skillFile = layer === 'facility' ? 'kt-facility-spare-parts-generator.md' : 'kt-spare-parts-generator.md';
+    const systemPrompt = this.loadSkill(skillFile);
     const variantsContext = variants.map(v => `  - id: "${v.id}"  name: "${v.name}"${v.capacity_range ? `  range: "${v.capacity_range}"` : ''}`).join('\n');
     const userMessage = `Generate spare parts for:\nEquipment: ${equipmentName}\nSub-category: ${subCategory}\nresource_template_id: ${resourceTemplateId}\n\nVariants (use EXACT UUIDs in spare_part_variant_map):\n${variantsContext}`;
     return this.callAnthropic(systemPrompt, userMessage, 10000, 'step2-spare-parts');

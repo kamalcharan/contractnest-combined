@@ -206,14 +206,16 @@ const KnowledgeTreeDetail: React.FC = () => {
     if (!id || !summary) return;
     const variants = summary.variants;
     const variantsCount = summary.summary.variants_count;
+    const partsLabel = ktLayer === 'facility' ? 'consumables' : 'spare parts';
     try {
       const result = await generateSparePartsMutation.mutateAsync({
         equipmentName: summary.resource_template.name,
         subCategory: summary.resource_template.sub_category,
         resourceTemplateId: id,
+        layer: ktLayer,
         variants: variants.map(v => ({ id: v.id, name: v.name, capacity_range: v.capacity_range })),
       });
-      vaniToast.success(`Variants ✓ (${variantsCount})  |  Step 2 — ${result.spare_parts.length} spare parts generated and saved`);
+      vaniToast.success(`Variants ✓ (${variantsCount})  |  Step 2 — ${result.spare_parts.length} ${partsLabel} generated and saved`);
       refetch();
       setActiveTab('spare-parts');
     } catch (err) {
@@ -299,9 +301,11 @@ const KnowledgeTreeDetail: React.FC = () => {
         equipmentName: summary.resource_template.name,
         subCategory: summary.resource_template.sub_category,
         resourceTemplateId: id,
+        layer: ktLayer,
         variants: variantsResult.variants.map(v => ({ id: v.id, name: v.name, capacity_range: v.capacity_range })),
       });
-      vaniToast.success(`Step 1 ✓  |  Step 2/4 ✓ — ${partsResult.spare_parts.length} spare parts generated`);
+      const partsLabel = ktLayer === 'facility' ? 'consumables' : 'spare parts';
+      vaniToast.success(`Step 1 ✓  |  Step 2/4 ✓ — ${partsResult.spare_parts.length} ${partsLabel} generated`);
       refetch();
     } catch (err) {
       vaniToast.error(`Step 1 ✓ (${variantsResult.variants.length})  |  Step 2/4 (Parts) failed: ${(err as Error).message} — click "+ Parts" to retry`);
@@ -652,6 +656,7 @@ const KnowledgeTreeDetail: React.FC = () => {
 
   // 'asset' resource_type_id = facility; anything else = equipment
   const ktLayer = summary?.resource_template?.resource_type_id === 'asset' ? 'facility' : 'equipment';
+  const partsTabLabel = ktLayer === 'facility' ? 'Consumables' : 'Spare Parts';
 
   const hasOverlays = (summary?.summary?.overlays_count ?? 0) > 0;
   const variantsCount = summary?.summary?.variants_count ?? 0;
@@ -675,7 +680,7 @@ const KnowledgeTreeDetail: React.FC = () => {
 
   const tabConfig: { key: DetailTab; label: string; icon: React.ReactNode; count: number }[] = useMemo(() => [
     { key: 'variants', label: 'Variants', icon: <Wrench className="h-4 w-4" />, count: localVariants.length },
-    { key: 'spare-parts', label: 'Spare Parts', icon: <Package className="h-4 w-4" />, count: allPartsCount },
+    { key: 'spare-parts', label: partsTabLabel, icon: <Package className="h-4 w-4" />, count: allPartsCount },
     { key: 'checkpoints', label: 'Checkpoints', icon: <ClipboardCheck className="h-4 w-4" />, count: allCheckpointsFlat.length },
     { key: 'cycles', label: 'Service Cycles', icon: <RefreshCw className="h-4 w-4" />, count: localCycles.length },
     { key: 'overlays', label: 'Overlays', icon: <MapPin className="h-4 w-4" />, count: summary?.summary.overlays_count || 0 },
@@ -759,15 +764,15 @@ const KnowledgeTreeDetail: React.FC = () => {
                     </button>
                   )}
 
-                  {/* Step 2: Spare Parts */}
+                  {/* Step 2: Spare Parts / Consumables */}
                   {partsCount > 0 ? (
                     <span
                       className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full font-medium cursor-pointer hover:opacity-80"
                       style={{ backgroundColor: '#f59e0b15', color: '#f59e0b' }}
                       onClick={() => setActiveTab('spare-parts')}
-                      title={`${partsCount} spare parts`}
+                      title={`${partsCount} ${partsTabLabel.toLowerCase()}`}
                     >
-                      <CheckCircle2 className="h-3 w-3" /> Parts ({partsCount})
+                      <CheckCircle2 className="h-3 w-3" /> {partsTabLabel} ({partsCount})
                     </span>
                   ) : (
                     <button
@@ -775,12 +780,12 @@ const KnowledgeTreeDetail: React.FC = () => {
                       disabled={isStepGenerating || ktIsActive || variantsCount === 0}
                       className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full font-medium border transition-all hover:opacity-80 disabled:opacity-40"
                       style={{ borderColor: '#f59e0b40', color: '#f59e0b', backgroundColor: '#f59e0b08' }}
-                      title={variantsCount === 0 ? 'Generate variants first (Step 1)' : 'Generate spare parts (Step 2 of 4)'}
+                      title={variantsCount === 0 ? 'Generate variants first (Step 1)' : `Generate ${partsTabLabel.toLowerCase()} (Step 2 of 4)`}
                     >
                       {generateSparePartsMutation.isPending
                         ? <Loader2 className="h-3 w-3 animate-spin" />
                         : <Plus className="h-3 w-3" />}
-                      {generateSparePartsMutation.isPending ? 'Generating...' : '+ Parts'}
+                      {generateSparePartsMutation.isPending ? 'Generating...' : `+ ${partsTabLabel}`}
                     </button>
                   )}
 

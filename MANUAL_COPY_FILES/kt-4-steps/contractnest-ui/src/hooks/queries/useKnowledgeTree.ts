@@ -191,7 +191,7 @@ export const useKTGenerateVariants = () => {
 export const useKTGenerateSpareParts = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: { equipmentName: string; subCategory: string; resourceTemplateId: string; variants: Array<{ id: string; name: string; capacity_range?: string | null }> }) => {
+    mutationFn: async (payload: { equipmentName: string; subCategory: string; resourceTemplateId: string; layer?: string; variants: Array<{ id: string; name: string; capacity_range?: string | null }> }) => {
       const { default: api } = await import('@/services/api');
       const response = await api.post('/api/knowledge-tree/generate-spare-parts', payload, { timeout: 120000 });
       if (!response.data?.success) throw new Error(response.data?.error?.message || 'Spare parts generation failed');

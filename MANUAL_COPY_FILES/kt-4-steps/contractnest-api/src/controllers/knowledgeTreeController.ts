@@ -97,8 +97,8 @@ class KnowledgeTreeController {
         const variantRefs = vPayload.variants.map((v: any) => ({ id: v.id, name: v.name, capacity_range: v.capacity_range ?? null }));
         console.log(`✅ 1/4 — ${vPayload.variants.length} variants`);
 
-        // Step 2: spare parts (real variant UUIDs passed in)
-        const rawP = await knowledgeTreeGeneratorService.generateSpareParts({ equipmentName, subCategory, resourceTemplateId, variants: variantRefs });
+        // Step 2: spare parts / consumables (real variant UUIDs passed in)
+        const rawP = await knowledgeTreeGeneratorService.generateSpareParts({ equipmentName, subCategory, resourceTemplateId, layer: ktLayer, variants: variantRefs });
         const pPayload = resolveSparePartIds(rawP);
         console.log(`✅ 2/4 — ${pPayload.spare_parts?.length ?? 0} spare parts, ${pPayload.spare_part_variant_map?.length ?? 0} mappings`);
 
@@ -161,11 +161,11 @@ class KnowledgeTreeController {
   generateSpareParts = async (req: AuthRequest, res: Response): Promise<void> => {
     const context = this.getContext(req);
     if (!context) { res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Missing authorization or x-tenant-id header' } }); return; }
-    const { equipmentName, subCategory, resourceTemplateId, variants } = req.body;
+    const { equipmentName, subCategory, resourceTemplateId, layer, variants } = req.body;
     if (!equipmentName || !subCategory || !resourceTemplateId) { res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'equipmentName, subCategory, resourceTemplateId required' } }); return; }
     if (!Array.isArray(variants) || variants.length === 0) { res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'variants[] required — pull from DB first' } }); return; }
     try {
-      const raw = await knowledgeTreeGeneratorService.generateSpareParts({ equipmentName, subCategory, resourceTemplateId, variants });
+      const raw = await knowledgeTreeGeneratorService.generateSpareParts({ equipmentName, subCategory, resourceTemplateId, layer: layer || 'equipment', variants });
       if (!raw.spare_parts?.length) throw new Error('No spare parts returned');
       const payload = resolveSparePartIds(raw);
       payload.resource_template_id = resourceTemplateId;
