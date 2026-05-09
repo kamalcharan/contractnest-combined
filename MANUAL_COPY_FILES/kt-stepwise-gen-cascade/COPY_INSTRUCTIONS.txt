@@ -1,0 +1,71 @@
+=====================================================
+COPY INSTRUCTIONS — kt-stepwise-gen-cascade
+Fix: Clicking the KT generate button now runs all 3 steps
+     sequentially in one go (variants → parts → checkpoints)
+=====================================================
+
+ROOT CAUSE:
+  When a KT is completely empty, the user expects clicking the
+  generate button to create everything (variants → spare parts →
+  checkpoints) in one pass — not require 3 separate manual clicks.
+
+FIX:
+  KnowledgeTreeDetail.tsx now detects when the KT is empty
+  (isEmptyKT = no variants AND no parts AND no checkpoints).
+
+  On an empty KT:
+    Clicking "+ Generate KT" triggers handleGenerateAll() which:
+      Step 1 — generates variants, saves, toasts "Step 1/3 ✓ — N variants"
+      Step 2 — uses real variant UUIDs from step 1 response, generates spare parts, saves
+      Step 3 — uses same variant UUIDs, generates checkpoints + cycles, saves
+    Each step toasts its own result. On failure the cascade stops
+    and the toast tells the user which individual button to click
+    to retry (no automatic retry).
+
+  On a partial KT (variants exist but parts/checkpoints missing):
+    Individual "+ Parts" and "+ Checkpoints" buttons work as before
+    for manual retry.
+
+  Button label on empty KT: "+ Generate KT"
+  Button label while cascade running: "Step 1/3…" / "Step 2/3…" / "Step 3/3…"
+
+FILES CHANGED:
+  contractnest-ui:
+  1. src/pages/service-contracts/templates/admin/knowledge-tree/KnowledgeTreeDetail.tsx
+     — Added isGeneratingAll, generateAllStep state
+     — Added handleGenerateAll() sequential cascade function
+     — Added isEmptyKT computed flag
+     — "+ Variants" button on empty KT calls handleGenerateAll instead
+     — isStepGenerating now includes isGeneratingAll to disable other
+       buttons during the cascade
+
+APPLY AFTER: kt-stepwise-gen AND kt-stepwise-gen-fix
+
+=====================================================
+COPY COMMANDS (Windows PowerShell)
+Run from: D:\projects\core projects\ContractNest\contractnest-combined
+=====================================================
+
+Copy-Item "MANUAL_COPY_FILES\kt-stepwise-gen-cascade\contractnest-ui\src\pages\service-contracts\templates\admin\knowledge-tree\KnowledgeTreeDetail.tsx" -Destination "contractnest-ui\src\pages\service-contracts\templates\admin\knowledge-tree\KnowledgeTreeDetail.tsx" -Force
+
+Write-Host "Cascade fix applied!" -ForegroundColor Green
+
+=====================================================
+TESTING CHECKLIST
+=====================================================
+  [ ] Open an empty KT — badge shows "+ Generate KT" (emerald)
+  [ ] Click "+ Generate KT":
+        - Toast: "Step 1/3 ✓ — N variants generated"
+        - Button label updates: "Step 2/3…"
+        - Toast: "Step 1 ✓ | Step 2/3 ✓ — N spare parts generated"
+        - Button label updates: "Step 3/3…"
+        - Toast: "Step 1 ✓ | Step 2 ✓ | Step 3 ✓ — N checkpoints + N cycles. Knowledge Tree complete!"
+        - All 3 badges now show ✓ completed state
+  [ ] Simulate Step 2 failure (temporarily break API route):
+        - Toast shows: "Step 1 ✓ (N) | Step 2/3 (Spare Parts) failed: ... — click '+ Parts' to retry"
+        - Variants badge shows ✓, Parts badge shows "+ Parts" (enabled)
+  [ ] Open a partial KT (has variants, no parts):
+        - Badge shows "+ Parts" (amber, enabled) — not "+ Generate KT"
+        - Clicking "+ Parts" runs step 2 only (no cascade)
+  [ ] Existing "+ Install", "+ Decomm", "+ Overlays" buttons unaffected
+  [ ] Manual "Save Changes" still works (no regression)
