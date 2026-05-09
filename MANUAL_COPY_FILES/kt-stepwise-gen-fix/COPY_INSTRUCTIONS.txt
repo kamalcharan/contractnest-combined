@@ -1,0 +1,59 @@
+=====================================================
+COPY INSTRUCTIONS — kt-stepwise-gen-fix
+Fix: Stepwise saves were wiping all unrelated tables
+=====================================================
+
+ROOT CAUSE:
+  The edge function's save endpoint calls wipeLiveData() which deletes ALL tables
+  (variants, spare_parts, checkpoints, overlays) before inserting.
+  Sending only spare_parts data would wipe variants and checkpoints.
+
+FIX:
+  1. Edge function (wipeLiveData): added save_mode parameter.
+     When save_mode is 'variants'/'spare_parts'/'checkpoints'/'overlays',
+     only that scope is wiped. Full wipe only when save_mode is absent (existing behavior preserved).
+
+  2. UI hooks (useKnowledgeTree.ts): each stepwise save now sends save_mode:
+     - useKTGenerateVariants   → save_mode: 'variants'
+     - useKTGenerateSpareParts → save_mode: 'spare_parts'
+     - useKTGenerateCheckpoints→ save_mode: 'checkpoints'
+     - useSaveContextOverlays  → save_mode: 'overlays'
+
+  Manual "Save Changes" (useKnowledgeTreeSave) sends no save_mode → full wipe as before.
+
+FILES CHANGED:
+  contractnest-edge:
+  1. supabase/functions/knowledge-tree/index.ts  [MODIFIED]
+     — wipeLiveData: added save_mode parameter with selective wipe paths
+     — saveKnowledgeTree: destructures save_mode from body, passes to wipeLiveData
+
+  contractnest-ui:
+  2. src/hooks/queries/useKnowledgeTree.ts       [MODIFIED]
+     — useKTGenerateVariants: adds save_mode:'variants' to save payload
+     — useKTGenerateSpareParts: adds save_mode:'spare_parts' to save payload
+     — useKTGenerateCheckpoints: adds save_mode:'checkpoints' to save payload
+     — useSaveContextOverlays: adds save_mode:'overlays' to save payload
+
+=====================================================
+COPY COMMANDS (Windows PowerShell)
+Run from: D:\projects\core projects\ContractNest\contractnest-combined
+APPLY THIS AFTER kt-stepwise-gen
+=====================================================
+
+# Edge function fix
+Copy-Item "MANUAL_COPY_FILES\kt-stepwise-gen-fix\contractnest-edge\supabase\functions\knowledge-tree\index.ts" -Destination "contractnest-edge\supabase\functions\knowledge-tree\index.ts" -Force
+
+# UI hooks fix (supersedes kt-stepwise-gen version)
+Copy-Item "MANUAL_COPY_FILES\kt-stepwise-gen-fix\contractnest-ui\src\hooks\queries\useKnowledgeTree.ts" -Destination "contractnest-ui\src\hooks\queries\useKnowledgeTree.ts" -Force
+
+Write-Host "Fix applied!" -ForegroundColor Green
+
+=====================================================
+TESTING CHECKLIST
+=====================================================
+  [ ] + Variants → variants saved, open DB: only m_equipment_variants changed
+  [ ] + Parts → spare parts saved, variants and checkpoints STILL in DB
+  [ ] + Checkpoints → checkpoints saved, variants and spare parts STILL in DB
+  [ ] + Overlays → overlays saved, everything else STILL in DB
+  [ ] Manual Save Changes → full wipe + reinsert as before (no regression)
+  [ ] + Install / + Decomm → activity-scoped wipe still works
