@@ -1,0 +1,128 @@
+═══════════════════════════════════════════════════
+📦 FEATURE: kt-4-steps — 4-Step KT Generation
+═══════════════════════════════════════════════════
+
+PROBLEM SOLVED:
+  The old single-prompt KT generation hit max_tokens limits:
+  - step3-checkpoints-pm: out=10000, stop=max_tokens → service_cycles missing → 500
+  - step2-spare-parts:    out=6000,  stop=max_tokens → spare_part_variant_map:1 entry
+  Each step now generates EXACTLY ONE array type, saving to DB immediately.
+  If a step fails, prior steps are already in DB and can be retried independently.
+
+ARCHITECTURE (4 separate API calls, each with its own token budget):
+  Step 1 → /api/knowledge-tree/generate-variants      (max_tokens: 2000)
+           Generates: variants[]
+  Step 2 → /api/knowledge-tree/generate-spare-parts   (max_tokens: 10000)
+           Reads:    real variant UUIDs from DB
+           Generates: spare_parts[] + spare_part_variant_map[]
+  Step 3 → /api/knowledge-tree/generate-checkpoints   (max_tokens: 8000)
+           Reads:    real variant UUIDs from DB (for context)
+           Generates: checkpoints[] + checkpoint_values[] ONLY (no service_cycles)
+  Step 4 → /api/knowledge-tree/generate-service-cycles (max_tokens: 4000)
+           Reads:    real checkpoint UUIDs from DB
+           Generates: service_cycles[]
+
+FILES CHANGED:
+  contractnest-api:
+    src/skills/kt-checkpoints-generator.md        (max 15 checkpoints, 3 values, NO service_cycles)
+    src/skills/kt-service-cycles-generator.md     (NEW — service_cycles only)
+    src/services/knowledgeTreeGeneratorService.ts (added generateServiceCycles method)
+    src/controllers/knowledgeTreeController.ts    (added generateServiceCycles handler)
+    src/routes/knowledgeTreeRoutes.ts             (added /generate-service-cycles route)
+
+  contractnest-edge:
+    supabase/functions/knowledge-tree/index.ts    (save_mode:'service_cycles' added)
+
+  contractnest-ui:
+    src/hooks/queries/useKnowledgeTree.ts         (useKTGenerateServiceCycles hook added)
+    src/pages/service-contracts/templates/admin/knowledge-tree/KnowledgeTreeDetail.tsx
+                                                  (4-step cascade + "+ Cycles" button)
+
+Submodules Affected: contractnest-api, contractnest-edge, contractnest-ui
+
+Production Checklist:
+  ✅ Transaction Management: Each step saves via edge function with save_mode selective wipe
+  ✅ Race Condition Handling: Each step is independent; DB is source of truth for UUIDs
+  ✅ Error Handling: Try-catch in each step handler; cascade stops on failure
+  ✅ Toasts: vaniToast.success/error on each step completion
+  ✅ Loaders: Loader2 spinner on each step button while pending
+
+═══════════════════════════════════════════════════
+💻 STEP 1: Navigate to Project
+═══════════════════════════════════════════════════
+
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+═══════════════════════════════════════════════════
+💻 STEP 2: Copy Files from MANUAL_COPY_FILES
+═══════════════════════════════════════════════════
+
+# ── contractnest-api ──
+Copy-Item "MANUAL_COPY_FILES\kt-4-steps\contractnest-api\src\skills\kt-checkpoints-generator.md" `
+  -Destination "contractnest-api\src\skills\kt-checkpoints-generator.md" -Force
+
+Copy-Item "MANUAL_COPY_FILES\kt-4-steps\contractnest-api\src\skills\kt-service-cycles-generator.md" `
+  -Destination "contractnest-api\src\skills\kt-service-cycles-generator.md" -Force
+
+Copy-Item "MANUAL_COPY_FILES\kt-4-steps\contractnest-api\src\services\knowledgeTreeGeneratorService.ts" `
+  -Destination "contractnest-api\src\services\knowledgeTreeGeneratorService.ts" -Force
+
+Copy-Item "MANUAL_COPY_FILES\kt-4-steps\contractnest-api\src\controllers\knowledgeTreeController.ts" `
+  -Destination "contractnest-api\src\controllers\knowledgeTreeController.ts" -Force
+
+Copy-Item "MANUAL_COPY_FILES\kt-4-steps\contractnest-api\src\routes\knowledgeTreeRoutes.ts" `
+  -Destination "contractnest-api\src\routes\knowledgeTreeRoutes.ts" -Force
+
+# ── contractnest-edge ──
+Copy-Item "MANUAL_COPY_FILES\kt-4-steps\contractnest-edge\supabase\functions\knowledge-tree\index.ts" `
+  -Destination "contractnest-edge\supabase\functions\knowledge-tree\index.ts" -Force
+
+# ── contractnest-ui ──
+Copy-Item "MANUAL_COPY_FILES\kt-4-steps\contractnest-ui\src\hooks\queries\useKnowledgeTree.ts" `
+  -Destination "contractnest-ui\src\hooks\queries\useKnowledgeTree.ts" -Force
+
+Copy-Item "MANUAL_COPY_FILES\kt-4-steps\contractnest-ui\src\pages\service-contracts\templates\admin\knowledge-tree\KnowledgeTreeDetail.tsx" `
+  -Destination "contractnest-ui\src\pages\service-contracts\templates\admin\knowledge-tree\KnowledgeTreeDetail.tsx" -Force
+
+Write-Host "✅ All files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+💻 STEP 3: Restart Services
+═══════════════════════════════════════════════════
+
+# Restart API (required — new route added)
+cd contractnest-api && npm run dev
+
+# Restart UI (required — new hook imported)
+cd ../contractnest-ui && npm run dev
+
+# Deploy edge function (required — new save_mode)
+cd ../contractnest-edge
+supabase functions deploy knowledge-tree --project-ref uwyqhzotluikawcboldr
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+
+Open a NEW equipment KT (empty — no variants/parts/checkpoints/cycles):
+
+[ ] Click "+ Generate KT" badge → should show "Step 1/4…" → "Step 2/4…" → "Step 3/4…" → "Step 4/4…"
+[ ] After cascade: Variants(N)✓ | Parts(N)✓ | Checkpoints(N)✓ | Cycles(N)✓ all show green badges
+[ ] Check API logs: no "stop: max_tokens" entries
+[ ] Check Spare Parts tab → variant mapping circles should be filled (not empty)
+[ ] Check Service Cycles tab → should have 5-8 cycles
+
+Manual retry buttons:
+[ ] Delete just cycles (from DB/via edge), reload page → "+ Cycles" button appears (pink)
+[ ] Click "+ Cycles" → generates and saves cycles independently
+[ ] Delete just checkpoints → "+ Checkpoints" button appears (blue)
+[ ] Click "+ Checkpoints" → generates only checkpoints (no cycles wipe)
+[ ] After "+ Checkpoints", click "+ Cycles" → uses new checkpoint UUIDs
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
