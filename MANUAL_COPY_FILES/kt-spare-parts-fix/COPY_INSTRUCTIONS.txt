@@ -1,0 +1,52 @@
+=====================================================
+COPY INSTRUCTIONS — kt-spare-parts-fix
+Fix: Spare parts generated with no variant mappings
+=====================================================
+
+ROOT CAUSE:
+  Step 2 (spare parts) was hitting max_tokens: 6000.
+  The LLM was generating 40+ spare parts (prompt said "15-50").
+  JSON got truncated mid-way through spare_part_variant_map.
+  jsonrepair salvaged the JSON but only 1 mapping survived out of 40 parts.
+  Result: spare parts exist in DB but ALL variant mapping circles are empty.
+
+FIX:
+  1. kt-spare-parts-generator.md — cap changed from "15-50" to "8-20 parts maximum"
+     - Added: CRITICAL note at top: "maximum 20 spare parts total"
+     - Added: "Skip parts trivially common across all equipment"
+     - Added: map all applicable variants for a part before moving to next part
+       (reduces chance of truncation cutting mid-mapping)
+
+  2. knowledgeTreeGeneratorService.ts — max_tokens raised from 6000 → 10000
+     - Gives enough headroom for 20 parts + all their variant mappings
+     - Even if LLM generates 20 parts with 25 svm entries, ~7000 tokens needed
+
+FILES CHANGED:
+  contractnest-api:
+  1. src/skills/kt-spare-parts-generator.md      [MODIFIED]
+  2. src/services/knowledgeTreeGeneratorService.ts [MODIFIED] — line 191: 6000 → 10000
+
+APPLY AFTER: kt-stepwise-gen
+
+=====================================================
+COPY COMMANDS (Windows PowerShell)
+Run from: D:\projects\core projects\ContractNest\contractnest-combined
+=====================================================
+
+Copy-Item "MANUAL_COPY_FILES\kt-spare-parts-fix\contractnest-api\src\skills\kt-spare-parts-generator.md" -Destination "contractnest-api\src\skills\kt-spare-parts-generator.md" -Force
+
+Copy-Item "MANUAL_COPY_FILES\kt-spare-parts-fix\contractnest-api\src\services\knowledgeTreeGeneratorService.ts" -Destination "contractnest-api\src\services\knowledgeTreeGeneratorService.ts" -Force
+
+Write-Host "Spare parts fix applied! Restart API server." -ForegroundColor Green
+
+=====================================================
+TESTING CHECKLIST
+=====================================================
+  [ ] API log shows: out: <10000 (not hitting max_tokens)
+  [ ] API log shows: stop: end_turn (not max_tokens)
+  [ ] API log shows: spare_parts: 8-20 (not 40+)
+  [ ] API log shows: spare_part_variant_map: 5+ entries (not 1)
+  [ ] Spare Parts tab: variant columns (REVE, ELEC, etc.) have checkmarks on variant-specific parts
+  [ ] Universal parts (electrical, controls, consumables) have NO variant mapping circles checked — correct
+  [ ] Generate again on empty KT: cascade runs all 3 steps, spare parts show with variant mappings
+=====================================================
