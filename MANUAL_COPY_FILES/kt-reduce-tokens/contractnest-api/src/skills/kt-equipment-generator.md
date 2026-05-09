@@ -40,7 +40,7 @@ Every rule below is mandatory. A field technician should look at your checkpoint
 5. **Meaningful severity** — `ok` = no action needed, `attention` = fixed during this visit, `critical` = escalation required
 6. **Real component groups only** — electrical, mechanical, refrigerant, filters, controls, consumables, water_side, hydraulic, pneumatic, optical, safety
 7. **Variants differ meaningfully** — by capacity, technology, or application — not just size labels
-8. **applies_to is accurate** — only mark a part as variant-specific when it genuinely cannot apply to other variants
+8. **spare_part_variant_map is lean** — only include variant-specific parts (e.g. water-side parts for water-cooled variants, high-pressure parts for large capacity). Universal parts (electrical, consumables, controls) must NOT appear in spare_part_variant_map. Hard cap: 25 entries total.
 9. **Every condition checkpoint** has at least 3 checkpoint_values
 10. **Every reading checkpoint** has unit, normal_min, normal_max, amber_threshold, red_threshold
 
@@ -48,14 +48,9 @@ Every rule below is mandatory. A field technician should look at your checkpoint
 
 ## Step 3: Output JSON
 
-Use temporary string IDs (v1, sp1, cp1, cv1, cvm1, sc1 …). The database replaces these with real UUIDs on insert.
+Use temporary string IDs (v1, sp1, cp1, cv1, cvm1, svm1, sc1 …). The database replaces these with real UUIDs on insert.
 
 Set `service_activity` to `"{{SERVICE_ACTIVITY}}"` on ALL checkpoints and service_cycles.
-
-**`applies_to` on spare_parts:**
-- Set `"applies_to": "all"` for parts that apply to every variant (most electrical, consumables, controls)
-- Set `"applies_to": ["v1", "v3"]` (array of temp variant IDs) only when the part genuinely cannot apply to other variants (e.g. water-side parts only for water-cooled variants, HEPA filters only for AHU/FCU)
-- The backend derives `spare_part_variant_map` from this field — do NOT include `spare_part_variant_map` in your output
 
 ```
 {
@@ -80,7 +75,6 @@ Set `service_activity` to `"{{SERVICE_ACTIVITY}}"` on ALL checkpoints and servic
       "component_group": "<from allowed set>",
       "name": "Part Name",
       "description": null,
-      "applies_to": "all",
       "specifications": {
         "typical_lifespan": "5–10 years",
         "common_makes": "Siemens, ABB, Schneider"
@@ -88,6 +82,16 @@ Set `service_activity` to `"{{SERVICE_ACTIVITY}}"` on ALL checkpoints and servic
       "sort_order": 0,
       "source": "ai_researched",
       "is_active": true
+    }
+  ],
+
+  "spare_part_variant_map": [
+    {
+      "id": "svm1",
+      "spare_part_id": "sp3",
+      "variant_id": "v2",
+      "is_recommended": true,
+      "notes": null
     }
   ],
 
@@ -188,9 +192,8 @@ Set `service_activity` to `"{{SERVICE_ACTIVITY}}"` on ALL checkpoints and servic
 ```
 
 **CRITICAL OUTPUT ORDER:** Generate arrays in exactly this order:
-`variants → spare_parts → checkpoints → checkpoint_values → checkpoint_variant_map → service_cycles`
+`variants → spare_parts → spare_part_variant_map → checkpoints → checkpoint_values → checkpoint_variant_map → service_cycles`
 
-Do NOT include `spare_part_variant_map` — it is derived from `applies_to` in the backend.
 Do NOT include `context_overlays` — they are generated separately on demand.
 
 ---
@@ -225,9 +228,10 @@ Do NOT include `context_overlays` — they are generated separately on demand.
 ### varies_by (array)
 Common values: climate, season, industry, equipment_age, load_pattern, environment, coastal, dust_level, humidity, monsoon, water_quality, usage_intensity, regulatory, contract, manufacturer, run_hours, leak_history
 
-### applies_to (on spare_parts)
-- `"all"` — part applies to every variant (string, not array)
-- `["v1", "v3"]` — part applies only to specific variants (array of temp IDs from this payload)
+### spare_part_variant_map rules
+- **Universal parts** (electrical components, controls, consumables, filters used by all variants) — DO NOT add to spare_part_variant_map
+- **Variant-specific parts only** — e.g. water-side components for water-cooled variants, high-pressure seals for large-capacity variants, technology-specific parts
+- **Hard cap: 25 entries maximum** — prioritise the most meaningful variant-specific relationships
 
 ---
 
@@ -238,6 +242,7 @@ Common values: climate, season, industry, equipment_age, load_pattern, environme
 | Variants | 3 | 5–8 | 12 |
 | Spare Parts | 15 | 25–35 | 50 |
 | Component Groups | 3 | 5–7 | 10 |
+| spare_part_variant_map | 0 | 5–15 | 25 |
 | Checkpoints | 10 | 15–20 | 30 |
 | — Condition type | 5 | 8–12 | 20 |
 | — Reading type | 5 | 7–10 | 15 |
@@ -254,13 +259,20 @@ Use HVAC as your benchmark for depth and specificity. Every generated KT should 
 **Variants (8):** Split AC (0.75–2.5 TR), Cassette AC (1.5–5 TR), Ductable AC (5.5–25 TR), VRF/VRV System (8–60 TR), Chiller Water-Cooled (50–2000 TR), Chiller Air-Cooled (30–500 TR), AHU, FCU
 
 **Spare Parts (35 across 7 groups):**
-- electrical (6): Capacitor `applies_to:"all"`, PCB/Controller Board `applies_to:"all"`, Contactor/Relay `applies_to:"all"`, Thermostat/Temp Sensor `applies_to:"all"`, Wiring Harness `applies_to:"all"`, Fuse/MCB `applies_to:"all"`
-- mechanical (7): Compressor `applies_to:["v1","v2","v3","v4","v5","v6"]`, Fan Motor indoor `applies_to:"all"`, Fan Motor outdoor `applies_to:["v1","v2","v3","v4","v5","v6"]`, Fan Blade/Blower Wheel `applies_to:"all"`, Bearing Set `applies_to:"all"`, Vibration Damper `applies_to:"all"`, V-Belt `applies_to:["v3","v4"]`
-- refrigerant (5): Refrigerant R410A `applies_to:["v1","v2","v3","v4"]`, Refrigerant R22 `applies_to:["v1","v2"]`, Expansion Valve TXV/EEV `applies_to:"all"`, Filter Drier `applies_to:"all"`, Sight Glass `applies_to:"all"`
-- filters (4): Pleated Panel Filter `applies_to:"all"`, Washable Mesh Filter `applies_to:"all"`, Carbon Filter `applies_to:"all"`, HEPA Filter `applies_to:["v7","v8"]`
-- water_side (5): Cooling Tower Fill Media `applies_to:["v5"]`, CT Float Valve `applies_to:["v5"]`, Chilled Water Pump Seal `applies_to:["v5","v6"]`, Strainer/Y-Filter `applies_to:["v5","v6"]`, Water Treatment Chemical `applies_to:["v5"]`
-- controls (3): Digital Thermostat `applies_to:"all"`, Pressure Switch HP/LP `applies_to:"all"`, BMS Gateway Module `applies_to:"all"`
-- consumables (5): Compressor Oil `applies_to:"all"`, Coil Cleaning Chemical `applies_to:"all"`, Drain Pan Algaecide Tablet `applies_to:"all"`, Pipe Insulation Tape `applies_to:"all"`, Copper Brazing Rod `applies_to:"all"`
+- electrical (6): Capacitor, PCB/Controller Board, Contactor/Relay, Thermostat/Temp Sensor, Wiring Harness, Fuse/MCB
+- mechanical (7): Compressor, Fan Motor indoor, Fan Motor outdoor, Fan Blade/Blower Wheel, Bearing Set, Vibration Damper, V-Belt
+- refrigerant (5): Refrigerant R410A, Refrigerant R22, Expansion Valve TXV/EEV, Filter Drier, Sight Glass
+- filters (4): Pleated Panel Filter, Washable Mesh Filter, Carbon Filter, HEPA Filter
+- water_side (5): Cooling Tower Fill Media, CT Float Valve, Chilled Water Pump Seal, Strainer/Y-Filter, Water Treatment Chemical
+- controls (3): Digital Thermostat, Pressure Switch HP/LP, BMS Gateway Module
+- consumables (5): Compressor Oil, Coil Cleaning Chemical, Drain Pan Algaecide Tablet, Pipe Insulation Tape, Copper Brazing Rod
+
+**spare_part_variant_map (variant-specific parts only, ~12 entries):**
+- Water-side parts (Cooling Tower Fill Media, CT Float Valve, Water Treatment Chemical) → Water-Cooled Chiller variant only
+- Chilled Water Pump Seal, Strainer/Y-Filter → Water-Cooled and Air-Cooled Chiller variants
+- HEPA Filter → AHU and FCU variants only
+- V-Belt → Ductable AC and AHU variants only
+- (Universal parts like electrical, controls, consumables → NOT listed in spare_part_variant_map)
 
 **Checkpoints (17 across 3 sections):**
 - Filter/Coils/Drainage: Air Filter Condition, Evaporator Coil, Condenser Coil, Drain Line, Drain Tray (all condition)
@@ -282,6 +294,8 @@ Before returning the JSON, verify every item in this checklist:
 - [ ] All checkpoint_values reference a valid checkpoint_id from this payload
 - [ ] All service_cycles reference a valid checkpoint_id from this payload
 - [ ] All checkpoint_variant_map entries reference valid IDs from this payload
+- [ ] All spare_part_variant_map entries reference valid spare_part_id and variant_id from this payload
+- [ ] spare_part_variant_map has ≤ 25 entries and contains only variant-specific parts
 - [ ] service_cycles is NOT empty — every PM KT must have at least 6 service cycles
 - [ ] component_group values are from the allowed set
 - [ ] service_activity on every checkpoint and service_cycle is `"{{SERVICE_ACTIVITY}}"`
@@ -291,8 +305,6 @@ Before returning the JSON, verify every item in this checklist:
 - [ ] All source fields are "ai_researched"
 - [ ] No duplicate names within variants, spare_parts, or checkpoints
 - [ ] section_name groups logically related checkpoints (3–8 sections)
-- [ ] Every spare part has applies_to set to "all" or a valid array of variant temp IDs from this payload
-- [ ] spare_part_variant_map is NOT present in output
 - [ ] context_overlays is NOT present in output
 
 Output raw JSON only. No markdown. No explanation.
