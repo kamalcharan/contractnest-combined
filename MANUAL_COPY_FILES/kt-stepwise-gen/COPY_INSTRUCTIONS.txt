@@ -1,0 +1,88 @@
+=====================================================
+COPY INSTRUCTIONS — kt-stepwise-gen
+Feature: Stepwise KT generation — 3 independent on-demand steps
+=====================================================
+
+NOTE: This supersedes kt-reduce-tokens for overlapping files.
+Apply kt-stepwise-gen AFTER kt-reduce-tokens, or apply only kt-stepwise-gen
+(it includes all kt-reduce-tokens changes for API files).
+
+SUBMODULES AFFECTED:
+  - contractnest-api
+  - contractnest-ui
+
+HOW IT WORKS:
+  Step 1 — + Variants    → POST /api/knowledge-tree/generate-variants
+  Step 2 — + Parts       → POST /api/knowledge-tree/generate-spare-parts  (requires variants)
+  Step 3 — + Checkpoints → POST /api/knowledge-tree/generate-checkpoints  (requires variants)
+  + Overlays             → POST /api/knowledge-tree/generate-overlays      (unchanged)
+  + Install / + Decomm   → POST /api/knowledge-tree/generate              (unchanged, uses existingKT:true)
+
+FAILURE UX:
+  - If Step 2 fails: toast shows "Step 1 (Variants) ✓ (N) | Step 2 (Spare Parts) failed: [msg] — click '+ Parts' to retry"
+  - If Step 3 fails: toast shows "Step 1 ✓ | Step 2 ✓ | Step 3 (Checkpoints) failed: [msg] — click '+ Checkpoints' to retry"
+  - No automatic retry. Each step button stays active for manual retry.
+
+TOKEN BUDGET PER STEP:
+  Step 1 (variants):           max 2,000 tokens  → near-zero failure risk
+  Step 2 (spare parts + map):  max 6,000 tokens  → very reliable
+  Step 3 (checkpoints+cycles): max 10,000 tokens → reliable
+  vs previous single prompt:   16,000 tokens     → was hitting limit
+
+FILES CHANGED:
+  contractnest-api:
+  1. src/skills/kt-variants-generator.md         [NEW] — focused variants-only prompt
+  2. src/skills/kt-spare-parts-generator.md      [NEW] — spare parts prompt (receives real variant UUIDs)
+  3. src/skills/kt-checkpoints-generator.md      [NEW] — checkpoints prompt (receives real variant UUIDs)
+  4. src/services/knowledgeTreeGeneratorService.ts [MODIFIED] — 3 new step methods + shared callAnthropic helper
+  5. src/controllers/knowledgeTreeController.ts  [MODIFIED] — generateVariants, generateSpareParts, generateCheckpoints methods
+  6. src/routes/knowledgeTreeRoutes.ts           [MODIFIED] — 3 new routes
+
+  contractnest-ui:
+  7. src/hooks/queries/useKnowledgeTree.ts       [MODIFIED] — useKTGenerateVariants, useKTGenerateSpareParts, useKTGenerateCheckpoints mutations
+  8. src/pages/service-contracts/templates/admin/knowledge-tree/KnowledgeTreeDetail.tsx [MODIFIED]
+     — 3 step badges in activity row (+ Variants / + Parts / + Checkpoints)
+     — Step 2 and 3 disabled until variants exist
+     — Clear step-context error messages
+
+=====================================================
+COPY COMMANDS (Windows PowerShell)
+Run from: D:\projects\core projects\ContractNest\contractnest-combined
+=====================================================
+
+# API — New skill prompts
+Copy-Item "MANUAL_COPY_FILES\kt-stepwise-gen\contractnest-api\src\skills\kt-variants-generator.md" -Destination "contractnest-api\src\skills\kt-variants-generator.md" -Force
+Copy-Item "MANUAL_COPY_FILES\kt-stepwise-gen\contractnest-api\src\skills\kt-spare-parts-generator.md" -Destination "contractnest-api\src\skills\kt-spare-parts-generator.md" -Force
+Copy-Item "MANUAL_COPY_FILES\kt-stepwise-gen\contractnest-api\src\skills\kt-checkpoints-generator.md" -Destination "contractnest-api\src\skills\kt-checkpoints-generator.md" -Force
+
+# API — Service, Controller, Routes (supersedes kt-reduce-tokens versions)
+Copy-Item "MANUAL_COPY_FILES\kt-stepwise-gen\contractnest-api\src\services\knowledgeTreeGeneratorService.ts" -Destination "contractnest-api\src\services\knowledgeTreeGeneratorService.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\kt-stepwise-gen\contractnest-api\src\controllers\knowledgeTreeController.ts" -Destination "contractnest-api\src\controllers\knowledgeTreeController.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\kt-stepwise-gen\contractnest-api\src\routes\knowledgeTreeRoutes.ts" -Destination "contractnest-api\src\routes\knowledgeTreeRoutes.ts" -Force
+
+# UI — Hooks + Page (supersedes kt-reduce-tokens versions)
+Copy-Item "MANUAL_COPY_FILES\kt-stepwise-gen\contractnest-ui\src\hooks\queries\useKnowledgeTree.ts" -Destination "contractnest-ui\src\hooks\queries\useKnowledgeTree.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\kt-stepwise-gen\contractnest-ui\src\pages\service-contracts\templates\admin\knowledge-tree\KnowledgeTreeDetail.tsx" -Destination "contractnest-ui\src\pages\service-contracts\templates\admin\knowledge-tree\KnowledgeTreeDetail.tsx" -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+=====================================================
+TESTING CHECKLIST
+=====================================================
+
+API server:
+  [ ] npm run dev starts without TypeScript errors
+  [ ] POST /api/knowledge-tree/generate-variants returns { success: true, step: 1, data: { variants: [...] } }
+  [ ] POST /api/knowledge-tree/generate-spare-parts returns { success: true, step: 2, data: { spare_parts, spare_part_variant_map } }
+  [ ] POST /api/knowledge-tree/generate-checkpoints returns { success: true, step: 3, data: { checkpoints, checkpoint_values, service_cycles } }
+  [ ] Missing variants[] in step 2/3 request returns 400 with clear message
+
+UI:
+  [ ] Empty KT page shows "+ Variants" (emerald), "+ Parts" (amber, disabled), "+ Checkpoints" (blue, disabled)
+  [ ] After variants: "+ Variants" becomes "✓ Variants (N)", Parts + Checkpoints buttons enable
+  [ ] After parts: "+ Parts" becomes "✓ Parts (N)"
+  [ ] After checkpoints: "+ Checkpoints" becomes "✓ Checkpoints (N)"
+  [ ] Step failure shows correct step-context error message in toast
+  [ ] Failed step button remains active for retry — no automatic retry
+  [ ] Existing "+ Install", "+ Decomm", "+ Overlays" buttons still work unchanged
+  [ ] Token logs show: step1 ~500-1500 out, step2 ~2000-5000 out, step3 ~5000-9000 out
