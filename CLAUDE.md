@@ -222,12 +222,12 @@ MANUAL_COPY_FILES/
 ═══════════════════════════════════════════════════
 📦 CHANGES SUMMARY
 ═══════════════════════════════════════════════════
-Branch: [feature-branch-name]
+Branch: [branch-name]
 Files Changed:
   - [submodule]/[path/to/file] - [purpose]
   - [submodule]/[path/to/file] - [purpose]
 
-Submodules Affected: [list affected submodules]
+Submodules Affected: [contractnest-ui, contractnest-api, contractnest-edge, FamilyKnows, etc.]
 
 Production Checklist:
   ✅ Transaction Management: [Yes/No - where applied]
@@ -237,37 +237,37 @@ Production Checklist:
   ✅ Loaders: [Yes/No - component used]
 
 ═══════════════════════════════════════════════════
-💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+💻 STEP-BY-STEP COMMANDS (Windows PowerShell)
 ═══════════════════════════════════════════════════
 
-STEP 1: Navigate to Project
+STEP 1: Pull the Feature Branch
 ─────────────────────────────────
 cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git fetch origin
+git checkout [branch-name]
+git pull origin [branch-name]
 
-STEP 2: Copy Files from MANUAL_COPY_FILES
+STEP 2: Verify Files Received
 ─────────────────────────────────
+ls MANUAL_COPY_FILES
+type MANUAL_COPY_FILES\COPY_INSTRUCTIONS.txt
+
+STEP 3: Copy All Files (PowerShell)
+─────────────────────────────────
+[Provide exact Copy-Item commands for each file]
 Copy-Item "MANUAL_COPY_FILES\[feature-branch-name]\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
 Copy-Item "MANUAL_COPY_FILES\[feature-branch-name]\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
 # ... etc for each affected submodule
 
 Write-Host "✅ All files copied!" -ForegroundColor Green
 
-STEP 3: Start Dev Server & Test
-─────────────────────────────────
-# ContractNest UI
-cd contractnest-ui && npm run dev
-
-# API (if modified)
-cd ../contractnest-api && npm run dev
-
-# Hard refresh browser: Ctrl+F5
-
 ═══════════════════════════════════════════════════
 🧪 TESTING CHECKLIST
 ═══════════════════════════════════════════════════
-- [ ] [Test item 1]
-- [ ] [Test item 2]
-- [ ] [Test item 3]
+Test these specific features:
+- [ ] [Feature 1]
+- [ ] [Feature 2]
+- [ ] [Feature 3]
 
 ═══════════════════════════════════════════════════
 ⏸️ WAITING FOR CONFIRMATION
@@ -287,7 +287,7 @@ Test locally and confirm:
 🚀 PHASE 2: COMMIT & MERGE TO MAIN
 ═══════════════════════════════════════════════════
 
-STEP 1: Commit UI Changes (if applicable)
+STEP 4: Commit UI Changes (if applicable)
 ─────────────────────────────────
 cd contractnest-ui
 git status
@@ -296,16 +296,7 @@ git commit -m "feat: [descriptive message]"
 git push origin main
 cd ..
 
-STEP 2: Commit API Changes (if applicable)
-─────────────────────────────────
-cd contractnest-api
-git status
-git add .
-git commit -m "feat: [descriptive message]"
-git push origin main
-cd ..
-
-STEP 3: Commit Edge Changes (if applicable)
+STEP 5: Commit Edge Changes (if applicable)
 ─────────────────────────────────
 cd contractnest-edge
 git status
@@ -314,7 +305,16 @@ git commit -m "feat: [descriptive message]"
 git push origin main
 cd ..
 
-STEP 4: Commit FamilyKnows Changes (if applicable)
+STEP 6: Commit API Changes (if applicable)
+─────────────────────────────────
+cd contractnest-api
+git status
+git add .
+git commit -m "feat: [descriptive message]"
+git push origin main
+cd ..
+
+STEP 7: Commit FamilyKnows Changes (if applicable)
 ─────────────────────────────────
 cd FamilyKnows
 git status
@@ -323,7 +323,7 @@ git commit -m "feat: [descriptive message]"
 git push origin main
 cd ..
 
-STEP 5: Commit Mobile Changes (if applicable)
+STEP 8: Commit Mobile Changes (if applicable)
 ─────────────────────────────────
 cd ContractNest-Mobile
 git status
@@ -332,7 +332,7 @@ git commit -m "feat: [descriptive message]"
 git push origin main
 cd ..
 
-STEP 6: Commit Documentation Changes (if applicable)
+STEP 9: Commit Documentation Changes (if applicable)
 ─────────────────────────────────
 cd ClaudeDocumentation
 git status
@@ -341,22 +341,62 @@ git commit -m "docs: [descriptive message]"
 git push origin master
 cd ..
 
-STEP 7: Update Parent Repo Submodule References
+STEP 10: Update Parent Repo Submodule References
 ─────────────────────────────────
 cd "D:\projects\core projects\ContractNest\contractnest-combined"
-git add contractnest-ui contractnest-api contractnest-edge ClaudeDocumentation ContractNest-Mobile FamilyKnows
+git add contractnest-ui contractnest-edge contractnest-api ClaudeDocumentation ContractNest-Mobile FamilyKnows
 git commit -m "chore: update submodules - [feature description]"
+git push origin [branch-name]
+
+STEP 11: Merge to Master
+─────────────────────────────────
+git checkout master
+git merge [branch-name]
+
+# If merge conflicts in submodules:
+cd [conflicted-submodule]
+git checkout main  # or master for ClaudeDocumentation
+git pull origin main  # or master for ClaudeDocumentation
+cd ..
+git add [conflicted-submodule]
+
+git commit -m "Merge [branch-name] with [feature description]"
 git push origin master
 
-STEP 8: Verify Clean State
+STEP 12: Verify Everything is Clean
 ─────────────────────────────────
 git status
 git submodule status
 # Should show: "nothing to commit, working tree clean"
 
+STEP 13: Restart Dev Server & Test
+─────────────────────────────────
+# For ContractNest UI
+cd contractnest-ui
+npm run dev
+
+# For FamilyKnows website (if modified)
+cd ../FamilyKnows/website
+npm run dev
+
+# For FamilyKnows Expo app (if modified)
+cd ../FamilyKnows/app
+npm start
+
+# Hard refresh browser: Ctrl+F5
+
 Write-Host "✅ All changes committed and merged!" -ForegroundColor Green
 ═══════════════════════════════════════════════════
 ```
+
+---
+
+**REMINDER:**
+- Provide ALL commands in copy-paste ready format
+- Include exact file paths in COPY_INSTRUCTIONS.txt
+- Specify which submodules were modified
+- Include descriptive commit messages
+- Add testing checklist for new features
 
 ---
 
