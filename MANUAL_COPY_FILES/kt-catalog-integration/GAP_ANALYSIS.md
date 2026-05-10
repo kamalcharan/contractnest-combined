@@ -2,7 +2,8 @@
 
 **Date:** 2026-05-10  
 **Author:** Charan Kamal Bommakanti / Claude Session  
-**Purpose:** Architecture alignment document before implementation begins
+**Purpose:** Architecture alignment document before implementation begins  
+**Status:** ✅ Phase 1 — COMPLETED (tested & working, 2026-05-10)
 
 ---
 
@@ -163,7 +164,7 @@ Tenant                      → Reviews, adjusts own pricing
 
 ## 6. Plan of Action (POA)
 
-### Phase 1 — Extend KT for Agent Readiness
+### Phase 1 — Extend KT for Agent Readiness ✅ COMPLETED
 
 #### 1.1 DB: Add Missing Columns
 
@@ -276,21 +277,25 @@ ALTER TABLE cat_blocks
 
 ## 7. Implementation Sequence
 
-| # | Task | Phase | Scope |
-|---|------|-------|-------|
-| 1 | DB migrations: add `service_name`, `catalog_name`, pricing columns to KT tables | 1.1 | API/DB |
-| 2 | Enhance Step 3 skill prompts to generate `service_name` | 1.2 | API (skills) |
-| 3 | Enhance Step 4 skill prompt to generate `catalog_name` | 1.3 | API (skills) |
-| 4 | Update edge function save for new columns | 1.1 | Edge |
-| 5 | Update KnowledgeTreeGeneratorService to pass new fields | 1.2/1.3 | API |
-| 6 | Build Step 5: pricing skill + API endpoint + edge save | 1.4 | API + Edge |
-| 7 | KT UI: Add `service_name` display + currency selector + "Generate Pricing" button | 1.5 | UI |
-| 8 | DB migration: add `resource_template_id`, `kt_checkpoint_ids` to cat_blocks | 2.1 | DB |
-| 9 | Catalog Studio: variant step from KT | 2.2 | UI |
-| 10 | Bulk block creation API | 2.3 | Edge |
-| 11 | Global → tenant block copy | 2.4 | Edge |
-| 12 | Onboarding Agent | Phase 3 | Agent |
-| 13 | contract_templates table + TemplateAgent | Phase 4 | Agent + DB |
+| # | Task | Phase | Scope | Status |
+|---|------|-------|-------|--------|
+| 1 | DB migrations: add `service_name`, `catalog_name`, pricing columns to KT tables | 1.1 | API/DB | ✅ Done |
+| 2 | Enhance Step 3 skill prompts to generate `service_name` | 1.2 | API (skills) | ✅ Done |
+| 3 | Enhance Step 4 skill prompt to generate `catalog_name` | 1.3 | API (skills) | ✅ Done |
+| 4 | Update edge function save for new columns | 1.1 | Edge | ✅ Done |
+| 5 | Update KnowledgeTreeGeneratorService to pass new fields | 1.2/1.3 | API | ✅ Done |
+| 6 | Build Step 5: pricing skill + API endpoint + edge save | 1.4 | API + Edge | ✅ Done |
+| 6A | Option A: `generate-service-names` skill + endpoint + edge patch | 1.4 | API + Edge | ✅ Done |
+| 7 | KT UI: `service_name` badge, currency selector, "Generate Pricing" + "Service Names" buttons | 1.5 | UI | ✅ Done |
+| 7A | SparePartsTab: grouped parts, pricing, variant chips, CRUD | 1.5 | UI | ✅ Done |
+| 7B | CyclesTab: `catalog_name` badge, pricing column | 1.5 | UI | ✅ Done |
+| 7C | CheckpointsTab: `service_name` amber badge + edit modal field | 1.5 | UI | ✅ Done |
+| 8 | DB migration: add `resource_template_id`, `kt_checkpoint_ids` to cat_blocks | 2.1 | DB | ⏳ Next |
+| 9 | Catalog Studio: variant step from KT | 2.2 | UI | ⏳ Pending |
+| 10 | Bulk block creation API | 2.3 | Edge | ⏳ Pending |
+| 11 | Global → tenant block copy | 2.4 | Edge | ⏳ Pending |
+| 12 | Onboarding Agent | Phase 3 | Agent | ⏳ Pending |
+| 13 | contract_templates table + TemplateAgent | Phase 4 | Agent + DB | ⏳ Pending |
 
 ---
 
