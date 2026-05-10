@@ -1,0 +1,21 @@
+═══════════════════════════════════════════════════
+KT → Catalog Studio Agent Readiness — TASK 1: DB Migration
+═══════════════════════════════════════════════════
+
+FILE TO COPY:
+  contractnest-edge/supabase/migrations/20260510000000_kt_catalog_agent_fields.sql
+
+DESTINATION:
+  contractnest-edge\supabase\migrations\20260510000000_kt_catalog_agent_fields.sql
+
+WHAT THIS MIGRATION DOES:
+  1. m_equipment_checkpoints → adds service_name (TEXT)
+  2. m_service_cycles        → adds catalog_name, price_min, price_median,
+                               price_max, price_currency, price_geo
+  3. m_equipment_spare_parts → adds price_min, price_median, price_max,
+                               price_unit, price_currency, price_geo
+  4. Indexes on service_name, catalog_name, pricing columns
+
+APPLY VIA SUPABASE:
+  supabase db push
+  -- or run directly in Supabase SQL editor
