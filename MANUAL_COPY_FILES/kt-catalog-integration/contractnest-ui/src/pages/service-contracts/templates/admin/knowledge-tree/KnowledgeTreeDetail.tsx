@@ -15,6 +15,7 @@ import {
   useKTGeneratePricing, useKTGenerateServiceNames,
 } from '@/hooks/queries/useKnowledgeTree';
 import type { KnowledgeTreeSummary } from './types';
+import { currencyOptions } from '../../../../../utils/constants/currencies';
 import KTGenerationModal from './components/KTGenerationModal';
 
 import RightPanel from './components/RightPanel';
@@ -42,15 +43,6 @@ const CRITICALITY_OPTIONS = [
   { value: 'life_critical',    label: '🔴 Life Critical' },
 ] as const;
 
-// Common currencies with ISO codes
-const CURRENCY_OPTIONS = [
-  { value: 'INR', label: '₹ INR', geo: 'IN' },
-  { value: 'USD', label: '$ USD', geo: 'US' },
-  { value: 'AED', label: 'AED',   geo: 'AE' },
-  { value: 'EUR', label: '€ EUR', geo: 'EU' },
-  { value: 'GBP', label: '£ GBP', geo: 'GB' },
-  { value: 'SGD', label: 'SGD',   geo: 'SG' },
-] as const;
 
 const KnowledgeTreeDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -233,18 +225,18 @@ const KnowledgeTreeDetail: React.FC = () => {
       vaniToast.warning('No spare parts or service cycles to price');
       return;
     }
-    const currencyOption = CURRENCY_OPTIONS.find(c => c.value === selectedCurrency) || CURRENCY_OPTIONS[0];
+    const currencyOption = currencyOptions.find(c => c.code === selectedCurrency) ?? currencyOptions[0];
     try {
       const result = await generatePricingMutation.mutateAsync({
         equipmentName: summary.resource_template.name,
         subCategory: summary.resource_template.sub_category,
         resourceTemplateId: id,
-        currency: currencyOption.value,
+        currency: currencyOption.code,
         geo: currencyOption.geo,
         spareParts: allPartsFlat.map((p: any) => ({ id: p.id, name: p.name, component_group: p.component_group })),
         serviceCycles: localCycles.map((cy: any) => ({ id: cy.id, catalog_name: cy.catalog_name, frequency_value: cy.frequency_value, frequency_unit: cy.frequency_unit, checkpoint_name: cy.checkpoint_name })),
       });
-      vaniToast.success(`Pricing generated [${currencyOption.value}] — ${result.spare_parts.length} parts, ${result.service_cycles.length} cycles priced`);
+      vaniToast.success(`Pricing generated [${currencyOption.code}] — ${result.spare_parts.length} parts, ${result.service_cycles.length} cycles priced`);
       refetch();
     } catch (err) {
       vaniToast.error(`Pricing generation failed: ${(err as Error).message}`);
@@ -936,8 +928,8 @@ const KnowledgeTreeDetail: React.FC = () => {
                       style={{ fontSize: '11px', padding: '3px 6px', borderRadius: '20px 0 0 20px', border: `1px solid #0891b240`, borderRight: 'none', background: '#0891b208', color: '#0891b2', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600, outline: 'none' }}
                       title="Select currency for pricing"
                     >
-                      {CURRENCY_OPTIONS.map((c) => (
-                        <option key={c.value} value={c.value}>{c.label}</option>
+                      {currencyOptions.filter(c => c.isActive !== false).map((c) => (
+                        <option key={c.code} value={c.code}>{c.symbol} {c.code} — {c.name}</option>
                       ))}
                     </select>
                     <button
