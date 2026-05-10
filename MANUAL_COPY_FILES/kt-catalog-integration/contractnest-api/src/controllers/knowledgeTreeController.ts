@@ -237,6 +237,29 @@ class KnowledgeTreeController {
     }
   };
 
+  // POST /api/knowledge-tree/generate-service-names — Option A: patch service_name on existing checkpoints
+  // Body: { equipmentName, subCategory, resourceTemplateId, checkpoints: [{ id, name, section_name }] }
+  generateServiceNames = async (req: AuthRequest, res: Response): Promise<void> => {
+    const context = this.getContext(req);
+    if (!context) { res.status(401).json({ success: false, error: { code: 'UNAUTHORIZED', message: 'Missing authorization or x-tenant-id header' } }); return; }
+    const { equipmentName, subCategory, resourceTemplateId, checkpoints } = req.body;
+    if (!equipmentName || !subCategory || !resourceTemplateId) {
+      res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'equipmentName, subCategory, resourceTemplateId required' } }); return;
+    }
+    if (!Array.isArray(checkpoints) || checkpoints.length === 0) {
+      res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'checkpoints[] required — pull from DB first' } }); return;
+    }
+    try {
+      const raw = await knowledgeTreeGeneratorService.generateServiceNames({ equipmentName, subCategory, resourceTemplateId, checkpoints });
+      if (!raw.service_names?.length) throw new Error('No service names returned');
+      console.log(`✅ Service names — ${raw.service_names.length} sections named for "${equipmentName}"`);
+      res.status(200).json({ success: true, data: { resource_template_id: resourceTemplateId, service_names: raw.service_names } });
+    } catch (error: any) {
+      console.error('❌ Generate service names error:', error.message);
+      res.status(500).json({ success: false, error: { code: 'GENERATE_SERVICE_NAMES_FAILED', message: error.message } });
+    }
+  };
+
   // POST /api/knowledge-tree/generate-pricing — Step 5
   // UI pulls real spare part + service cycle UUIDs from DB, passes them here.
   // Body: { equipmentName, subCategory, resourceTemplateId, currency, geo, spareParts[], serviceCycles[] }

@@ -9,6 +9,7 @@
 //   GET  /knowledge-tree/summary?resource_template_id=X
 //   GET  /knowledge-tree/equipment-meta?resource_template_id=X
 //   POST /knowledge-tree/save-pricing (admin only — upsert pricing on spare_parts + service_cycles)
+//   POST /knowledge-tree/patch-service-names (admin only — UPDATE service_name by section, no wipe)
 //   GET  /knowledge-tree/compliance-defaults?sub_category=X
 //   POST /knowledge-tree/save (admin only — transactional insert across all tables)
 //   POST /knowledge-tree/equipment-meta (admin only — upsert)
@@ -987,6 +988,46 @@ async function restoreSnapshot(body: any, isAdmin: boolean) {
   return jsonResponse({ status: "success", restored_from: `v${snapshot.version}`, inserted });
 }
 
+// ─── Route: POST /patch-service-names ────────────────────────────────────────
+// Option A: Patch service_name on existing checkpoints by section_name — no data wipe.
+// Body: { resource_template_id, service_names: [{ section_name, service_name }] }
+async function patchServiceNames(body: any, isAdmin: boolean) {
+  if (!isAdmin) return errorResponse("Admin access required", 403);
+
+  const { resource_template_id, service_names } = body;
+  if (!resource_template_id) return errorResponse("resource_template_id required");
+  if (!Array.isArray(service_names) || service_names.length === 0) return errorResponse("service_names array required");
+
+  const sb = getSupabaseAdmin();
+  const errors: string[] = [];
+  let updated = 0;
+
+  for (const entry of service_names) {
+    if (!entry.section_name || !entry.service_name) {
+      errors.push(`Missing section_name or service_name in entry: ${JSON.stringify(entry)}`);
+      continue;
+    }
+    const { error, count } = await sb
+      .from("m_equipment_checkpoints")
+      .update({ service_name: entry.service_name })
+      .eq("resource_template_id", resource_template_id)
+      .eq("section_name", entry.section_name)
+      .eq("is_active", true);
+
+    if (error) {
+      errors.push(`section "${entry.section_name}": ${error.message}`);
+    } else {
+      updated += count ?? 0;
+    }
+  }
+
+  if (errors.length > 0) {
+    return jsonResponse({ status: "partial", updated, errors }, 207);
+  }
+
+  return jsonResponse({ status: "success", resource_template_id, sections_patched: service_names.length, checkpoints_updated: updated });
+}
+
 // ─── Route: POST /save-pricing ────────────────────────────────────────────────
 // Step 5: Upsert pricing fields only — does NOT wipe/replace any KT data.
 // Body: {
@@ -1119,8 +1160,10 @@ serve(async (req: Request) => {
           return await tagCompliance(body, isAdmin);
         case "save-pricing":
           return await savePricing(body, isAdmin);
+        case "patch-service-names":
+          return await patchServiceNames(body, isAdmin);
         default:
-          return errorResponse(`Unknown path: /${path}. Valid POST: save, delete, snapshot, restore, equipment-meta, tag-compliance, save-pricing`, 404);
+          return errorResponse(`Unknown path: /${path}. Valid POST: save, delete, snapshot, restore, equipment-meta, tag-compliance, save-pricing, patch-service-names`, 404);
       }
     }
 

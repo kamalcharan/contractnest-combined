@@ -33,6 +33,9 @@ router.post('/generate-service-cycles', validateHeaders, knowledgeTreeController
 // Step 5 — Pricing only (receives spareParts[] + serviceCycles[] from UI after pulling from DB)
 router.post('/generate-pricing', validateHeaders, knowledgeTreeController.generatePricing);
 
+// Option A — Generate service_name per section from existing checkpoints (patch, no wipe)
+router.post('/generate-service-names', validateHeaders, knowledgeTreeController.generateServiceNames);
+
 // Other routes
 router.post('/tag-compliance', validateHeaders, knowledgeTreeController.tagCompliance);
 router.post('/generate-overlays', validateHeaders, knowledgeTreeController.generateOverlays);

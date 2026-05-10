@@ -1,25 +1,164 @@
 ═══════════════════════════════════════════════════
 KT → Catalog Studio Agent Readiness
-Tasks: DB Migration (Task 1) + Edge Function (Task 2)
+Tasks 1–8: Full Implementation
 ═══════════════════════════════════════════════════
 
-TASK 1: DB Migration (already applied)
-───────────────────────────────────────
-FILE: contractnest-edge/supabase/migrations/20260510000000_kt_catalog_agent_fields.sql
+SUBMODULES AFFECTED:
+  ✅ contractnest-api
+  ✅ contractnest-edge
+  ✅ contractnest-ui
+
+═══════════════════════════════════════════════════
+TASK 1: DB Migration (already applied to production)
+═══════════════════════════════════════════════════
+FILE:        contractnest-edge/supabase/migrations/20260510000000_kt_catalog_agent_fields.sql
 DESTINATION: contractnest-edge\supabase\migrations\
 
+═══════════════════════════════════════════════════
 TASK 2: Edge Function
-───────────────────────────────────────
-FILE: contractnest-edge/supabase/functions/knowledge-tree/index.ts
+═══════════════════════════════════════════════════
+FILE:        contractnest-edge/supabase/functions/knowledge-tree/index.ts
 DESTINATION: contractnest-edge\supabase\functions\knowledge-tree\index.ts
 
-WHAT CHANGED IN EDGE FUNCTION:
-  1. GET /spare-parts       → SELECT now includes price_min, price_median, price_max, price_unit, price_currency, price_geo
-  2. GET /cycles            → SELECT now includes catalog_name, price_min, price_median, price_max, price_currency, price_geo
-  3. GET /summary           → spare_parts and service_cycles selects updated with same new columns
-  4. POST /save checkpoints → explicit service_name: cp.service_name ?? null in insert row
-  5. POST /save cycles      → explicit catalog_name: sc.catalog_name ?? null in insert row
-  6. NEW POST /save-pricing → upserts pricing fields only (no wipe), accepts spare_parts[] + service_cycles[] with min/median/max
+Changes:
+  1. GET /spare-parts        → pricing columns added to SELECT
+  2. GET /cycles             → catalog_name + pricing columns added to SELECT
+  3. GET /summary            → same pricing columns on spare_parts + service_cycles
+  4. POST /save checkpoints  → service_name persisted in insert
+  5. POST /save cycles       → catalog_name persisted in insert
+  6. NEW POST /save-pricing  → UPDATE-only pricing patch (no wipe)
+  7. NEW POST /patch-service-names → UPDATE service_name by section_name (no wipe, Option A)
 
-DEPLOY:
-  supabase functions deploy knowledge-tree
+DEPLOY: supabase functions deploy knowledge-tree
+
+═══════════════════════════════════════════════════
+TASKS 3–4: LLM Skills (contractnest-api/src/skills/)
+═══════════════════════════════════════════════════
+Copy ALL files from:
+  contractnest-api/src/skills/
+To:
+  contractnest-api\src\skills\
+
+Files:
+  kt-checkpoints-generator.md          → adds service_name to output schema
+  kt-facility-checkpoints-generator.md → adds service_name to output schema
+  kt-service-cycles-generator.md       → adds catalog_name to output schema
+  kt-pricing-generator.md              → NEW Step 5 pricing skill (geo/currency aware)
+  kt-service-names-generator.md        → NEW Option A skill (section → service_name)
+
+═══════════════════════════════════════════════════
+TASKS 5–7: API Service + Controller + Routes
+═══════════════════════════════════════════════════
+FILE:        contractnest-api/src/services/knowledgeTreeGeneratorService.ts
+DESTINATION: contractnest-api\src\services\knowledgeTreeGeneratorService.ts
+Changes: Added generateServiceNames() + generatePricing() methods
+
+FILE:        contractnest-api/src/controllers/knowledgeTreeController.ts
+DESTINATION: contractnest-api\src\controllers\knowledgeTreeController.ts
+Changes: Added generateServiceNames handler + generatePricing handler; fixed TDZ bug
+
+FILE:        contractnest-api/src/routes/knowledgeTreeRoutes.ts
+DESTINATION: contractnest-api\src\routes\knowledgeTreeRoutes.ts
+Changes: Added POST /generate-service-names + POST /generate-pricing routes
+
+═══════════════════════════════════════════════════
+TASK 8: UI (contractnest-ui)
+═══════════════════════════════════════════════════
+
+FILE:        contractnest-ui/src/hooks/queries/useKnowledgeTree.ts
+DESTINATION: contractnest-ui\src\hooks\queries\useKnowledgeTree.ts
+Changes: Added useKTGeneratePricing + useKTGenerateServiceNames hooks
+
+FILE:        contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/types.ts
+DESTINATION: contractnest-ui\src\pages\service-contracts\templates\admin\knowledge-tree\types.ts
+Changes: Added service_name to KnowledgeTreeCheckpoint; pricing fields to KnowledgeTreeSparePart + KnowledgeTreeCycle
+
+FILE:        contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/KnowledgeTreeDetail.tsx
+DESTINATION: contractnest-ui\src\pages\service-contracts\templates\admin\knowledge-tree\KnowledgeTreeDetail.tsx
+Changes:
+  - Imports useKTGeneratePricing + useKTGenerateServiceNames
+  - selectedCurrency state (INR default) with CURRENCY_OPTIONS constant
+  - handleGenerateServiceNames() — calls API → patches checkpoints by section
+  - handleGeneratePricing()     — calls API → saves pricing for parts + cycles
+  - Header badge row: "Service Names" button + "Generate Pricing" button with currency picker
+  - isStepGenerating now includes pricing + service names mutations
+
+FILE:        contractnest-ui/src/pages/.../knowledge-tree/components/CheckpointsTab.tsx
+DESTINATION: contractnest-ui\src\pages\service-contracts\templates\admin\knowledge-tree\components\CheckpointsTab.tsx
+Changes:
+  - Shows service_name as amber badge on section header
+  - Edit modal now includes service_name field for inline editing
+  - VaNiBubble hint updated
+
+FILE:        contractnest-ui/src/pages/.../knowledge-tree/components/SparePartsTab.tsx
+DESTINATION: contractnest-ui\src\pages\service-contracts\templates\admin\knowledge-tree\components\SparePartsTab.tsx
+Changes: NEW FILE — grouped spare parts with pricing (min/median/max), variant mapping chips, CRUD
+
+FILE:        contractnest-ui/src/pages/.../knowledge-tree/components/CyclesTab.tsx
+DESTINATION: contractnest-ui\src\pages\service-contracts\templates\admin\knowledge-tree\components\CyclesTab.tsx
+Changes:
+  - Shows catalog_name as pink badge below checkpoint name
+  - Pricing column (min/median/max) shown when ANY cycle has pricing
+  - Grid auto-adjusts columns based on pricing presence
+
+═══════════════════════════════════════════════════
+COPY COMMANDS (PowerShell)
+═══════════════════════════════════════════════════
+
+STEP 1: API files
+─────────────────
+Copy-Item "MANUAL_COPY_FILES\kt-catalog-integration\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Write-Host "✅ API files copied" -ForegroundColor Green
+
+STEP 2: Edge function
+─────────────────────
+Copy-Item "MANUAL_COPY_FILES\kt-catalog-integration\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Write-Host "✅ Edge function copied" -ForegroundColor Green
+
+STEP 3: UI files
+─────────────────
+Copy-Item "MANUAL_COPY_FILES\kt-catalog-integration\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Write-Host "✅ UI files copied" -ForegroundColor Green
+
+STEP 4: Deploy edge function
+─────────────────────────────
+cd contractnest-edge
+supabase functions deploy knowledge-tree
+cd ..
+Write-Host "✅ Edge function deployed" -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+After copying, test these features:
+
+TASKS 1-7 (backend):
+  [ ] Existing KT summary loads with pricing fields (null initially)
+  [ ] Generate checkpoints → response includes service_name on each checkpoint
+  [ ] Generate service cycles → response includes catalog_name
+
+TASK 8A — Service Names:
+  [ ] "Service Names" button appears in header (enabled when checkpoints > 0)
+  [ ] Click → toast "Generating..." then success toast with section count
+  [ ] Checkpoints tab → each section header shows amber "🏷 [service name]" badge
+  [ ] Edit a checkpoint → service_name field is editable in modal
+
+TASK 8B — Generate Pricing:
+  [ ] Currency dropdown (₹ INR default) appears next to "Generate Pricing" button
+  [ ] Click "Generate Pricing" → toast with count of parts + cycles priced
+  [ ] Spare Parts tab → pricing row (min/median/max) visible under part name
+  [ ] Cycles tab → pricing column visible when any cycle has pricing
+  [ ] "Priced" badge appears on spare parts group header when priced
+  [ ] "🏷 [catalog_name]" badge appears below checkpoint name in cycle row
+
+TASK 8C — Combined:
+  [ ] isStepGenerating correctly disables all generation buttons when pricing/service-names are running
+  [ ] Pricing currency selector disabled during generation
+  [ ] refetch() after each generation updates UI immediately
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════

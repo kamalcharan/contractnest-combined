@@ -278,6 +278,32 @@ export const useKTGeneratePricing = () => {
   });
 };
 
+// Option A: Generate service_name per section from existing checkpoints → patch-service-names edge
+export const useKTGenerateServiceNames = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: {
+      equipmentName: string;
+      subCategory: string;
+      resourceTemplateId: string;
+      checkpoints: Array<{ id: string; name: string; section_name: string }>;
+    }) => {
+      const { default: api } = await import('@/services/api');
+      const response = await api.post('/api/knowledge-tree/generate-service-names', payload, { timeout: 60000 });
+      if (!response.data?.success) throw new Error(response.data?.error?.message || 'Service name generation failed');
+      await postKnowledgeTreeEdge('patch-service-names', {
+        resource_template_id: payload.resourceTemplateId,
+        service_names: response.data.data.service_names,
+      });
+      return response.data.data as { resource_template_id: string; service_names: Array<{ section_name: string; service_name: string }> };
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: knowledgeTreeKeys.summary(variables.resourceTemplateId) });
+      queryClient.invalidateQueries({ queryKey: knowledgeTreeKeys.checkpoints(variables.resourceTemplateId) });
+    },
+  });
+};
+
 // ── Legacy: full generation hook (+ Install / + Decomm activity mode) ─────
 export type KTGenerationPhase = 'idle' | 'generating' | 'saving' | 'done' | 'error';
 

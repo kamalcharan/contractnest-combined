@@ -22,6 +22,13 @@ interface GenerateStepInput {
   checkpoints?: Array<{ id: string; name: string; section_name: string; service_activity: string }>;
 }
 
+interface GenerateServiceNamesInput {
+  equipmentName: string;
+  subCategory: string;
+  resourceTemplateId: string;
+  checkpoints: Array<{ id: string; name: string; section_name: string }>;
+}
+
 interface GeneratePricingInput {
   equipmentName: string;
   subCategory: string;
@@ -188,6 +195,28 @@ class KnowledgeTreeGeneratorService {
       .join('\n');
     const userMessage = `Generate service cycles for:\nEquipment: ${equipmentName}\nSub-category: ${subCategory}\nresource_template_id: ${resourceTemplateId}\nservice_activity: ${serviceActivity}\n\nCheckpoints already in DB (use EXACT UUIDs in checkpoint_id):\n${checkpointsContext}`;
     return this.callAnthropic(systemPrompt, userMessage, 4000, `step4-cycles-${serviceActivity}`);
+  }
+
+  // ── Option A: Generate service_name per section from existing checkpoints ────
+  // Sends checkpoint names grouped by section → returns [{ section_name, service_name }].
+  // Edge then patches only service_name column — no wipe, no data loss.
+  async generateServiceNames(input: GenerateServiceNamesInput): Promise<any> {
+    const { equipmentName, subCategory, resourceTemplateId, checkpoints } = input;
+    if (!this.anthropicKey) throw new Error('ANTHROPIC_API_KEY not configured');
+    const systemPrompt = this.loadSkill('kt-service-names-generator.md');
+
+    // Group checkpoints by section for a compact prompt
+    const bySection: Record<string, string[]> = {};
+    for (const cp of checkpoints) {
+      if (!bySection[cp.section_name]) bySection[cp.section_name] = [];
+      bySection[cp.section_name].push(cp.name);
+    }
+    const sectionsContext = Object.entries(bySection)
+      .map(([sec, names]) => `  section: "${sec}"\n    checkpoints: ${names.map(n => `"${n}"`).join(', ')}`)
+      .join('\n');
+
+    const userMessage = `Generate service names for:\nEquipment: ${equipmentName}\nSub-category: ${subCategory}\nresource_template_id: ${resourceTemplateId}\n\nCheckpoints by section:\n${sectionsContext}`;
+    return this.callAnthropic(systemPrompt, userMessage, 2000, 'service-names');
   }
 
   // ── Step 5: Pricing — geo + currency aware, min/median/max ──────────────────
