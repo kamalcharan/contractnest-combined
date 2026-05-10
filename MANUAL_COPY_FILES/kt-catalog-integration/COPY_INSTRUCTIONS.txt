@@ -1,21 +1,25 @@
 ═══════════════════════════════════════════════════
-KT → Catalog Studio Agent Readiness — TASK 1: DB Migration
+KT → Catalog Studio Agent Readiness
+Tasks: DB Migration (Task 1) + Edge Function (Task 2)
 ═══════════════════════════════════════════════════
 
-FILE TO COPY:
-  contractnest-edge/supabase/migrations/20260510000000_kt_catalog_agent_fields.sql
+TASK 1: DB Migration (already applied)
+───────────────────────────────────────
+FILE: contractnest-edge/supabase/migrations/20260510000000_kt_catalog_agent_fields.sql
+DESTINATION: contractnest-edge\supabase\migrations\
 
-DESTINATION:
-  contractnest-edge\supabase\migrations\20260510000000_kt_catalog_agent_fields.sql
+TASK 2: Edge Function
+───────────────────────────────────────
+FILE: contractnest-edge/supabase/functions/knowledge-tree/index.ts
+DESTINATION: contractnest-edge\supabase\functions\knowledge-tree\index.ts
 
-WHAT THIS MIGRATION DOES:
-  1. m_equipment_checkpoints → adds service_name (TEXT)
-  2. m_service_cycles        → adds catalog_name, price_min, price_median,
-                               price_max, price_currency, price_geo
-  3. m_equipment_spare_parts → adds price_min, price_median, price_max,
-                               price_unit, price_currency, price_geo
-  4. Indexes on service_name, catalog_name, pricing columns
+WHAT CHANGED IN EDGE FUNCTION:
+  1. GET /spare-parts       → SELECT now includes price_min, price_median, price_max, price_unit, price_currency, price_geo
+  2. GET /cycles            → SELECT now includes catalog_name, price_min, price_median, price_max, price_currency, price_geo
+  3. GET /summary           → spare_parts and service_cycles selects updated with same new columns
+  4. POST /save checkpoints → explicit service_name: cp.service_name ?? null in insert row
+  5. POST /save cycles      → explicit catalog_name: sc.catalog_name ?? null in insert row
+  6. NEW POST /save-pricing → upserts pricing fields only (no wipe), accepts spare_parts[] + service_cycles[] with min/median/max
 
-APPLY VIA SUPABASE:
-  supabase db push
-  -- or run directly in Supabase SQL editor
+DEPLOY:
+  supabase functions deploy knowledge-tree
