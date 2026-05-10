@@ -1,0 +1,22 @@
+COPY INSTRUCTIONS — CLAUDE.md Update
+=====================================
+
+Feature: claude-md-update
+Purpose: Replace root CLAUDE.md with version written from actual submodule knowledge
+
+FILE TO COPY:
+─────────────────────────────────────────────────────
+Source:      MANUAL_COPY_FILES\claude-md-update\CLAUDE.md
+Destination: contractnest-combined\CLAUDE.md   (root of parent repo)
+─────────────────────────────────────────────────────
+
+PowerShell command:
+  Copy-Item "MANUAL_COPY_FILES\claude-md-update\CLAUDE.md" -Destination "CLAUDE.md" -Force
+
+Submodules affected: NONE (parent repo only)
+
+After copying:
+  - Review the file to confirm accuracy
+  - git add CLAUDE.md
+  - git commit -m "docs: rewrite CLAUDE.md from full submodule exploration"
+  - git push origin master
