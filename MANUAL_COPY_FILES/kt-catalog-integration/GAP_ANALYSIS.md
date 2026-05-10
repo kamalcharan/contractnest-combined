@@ -7,6 +7,35 @@
 
 ---
 
+## 🔁 Session Handover — Next Session Starts Here
+
+**Phase 1 is done and merged.** All KT agent-readiness fields are live:
+- `service_name` on checkpoints, `catalog_name` on service cycles, pricing on spare parts + cycles
+- "Generate Service Names" + "Generate Pricing" buttons working in KT UI
+- SparePartsTab, CyclesTab, CheckpointsTab all updated
+
+**Next session starts with Phase 2 — Catalog Studio KT Linkage.**
+
+First task: **Task 8 — DB migration on `cat_blocks`**
+```sql
+ALTER TABLE cat_blocks
+  ADD COLUMN resource_template_id UUID REFERENCES m_resource_templates(id),
+  ADD COLUMN kt_checkpoint_ids UUID[];
+```
+
+Then proceed in order: Task 9 (variant step from KT) → Task 10 (bulk block creation API) → Task 11 (global→tenant copy).
+
+**Key context to carry forward:**
+- KT median pricing → `base_price` on cat_block
+- KT variant → `variant_pricing` on cat_block
+- `service` blocks ← service cycles; `spare` blocks ← spare parts/consumables
+- Static `currencies.ts` is the system's currency source (all hooks wrap it — confirmed)
+- All MANUAL_COPY_FILES output goes under `MANUAL_COPY_FILES/kt-catalog-integration/`
+
+---
+
+---
+
 ## 1. Vision Summary
 
 ```
