@@ -1,0 +1,20 @@
+FEATURE BRANCH: kt-catalog-integration
+TASK: Task 9 — KT → Catalog Block Mapper Service
+
+FILES CHANGED:
+  - contractnest-api/src/services/ktCatBlockMapperService.ts  [NEW FILE]
+
+SUBMODULES AFFECTED: contractnest-api
+
+COPY COMMAND (PowerShell):
+─────────────────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\kt-catalog-integration\contractnest-api\src\services\ktCatBlockMapperService.ts" `
+  -Destination "contractnest-api\src\services\ktCatBlockMapperService.ts" -Force
+
+Write-Host "✅ Copied ktCatBlockMapperService.ts" -ForegroundColor Green
+─────────────────────────────────────────────────────────────
+
+NO SERVER RESTART NEEDED — this is a new service file, not imported anywhere yet.
+Task 10 (bulk API) will import and use it.
