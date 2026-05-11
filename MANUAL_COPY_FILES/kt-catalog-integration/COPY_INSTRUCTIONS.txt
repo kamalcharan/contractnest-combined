@@ -1,20 +1,10 @@
 FEATURE BRANCH: kt-catalog-integration
-TASK: Task 9 — KT → Catalog Block Mapper Service
+TASKS: Task 9 (KT mapper) + Task 10 (Bulk Block API)
 
 FILES CHANGED:
-  - contractnest-api/src/services/ktCatBlockMapperService.ts  [NEW FILE]
+  NEW  contractnest-api/src/services/ktCatBlockMapperService.ts
+  MOD  contractnest-api/src/services/catBlocksService.ts         (+ bulkSeed method + types)
+  MOD  contractnest-edge/supabase/functions/cat-blocks/index.ts  (+ POST /bulk route + handler)
+  NEW  contractnest-edge/supabase/migrations/catalog-studio/007_create_seed_logs.sql
 
-SUBMODULES AFFECTED: contractnest-api
-
-COPY COMMAND (PowerShell):
-─────────────────────────────────────────────────────────────
-cd "D:\projects\core projects\ContractNest\contractnest-combined"
-
-Copy-Item "MANUAL_COPY_FILES\kt-catalog-integration\contractnest-api\src\services\ktCatBlockMapperService.ts" `
-  -Destination "contractnest-api\src\services\ktCatBlockMapperService.ts" -Force
-
-Write-Host "✅ Copied ktCatBlockMapperService.ts" -ForegroundColor Green
-─────────────────────────────────────────────────────────────
-
-NO SERVER RESTART NEEDED — this is a new service file, not imported anywhere yet.
-Task 10 (bulk API) will import and use it.
+SUBMODULES AFFECTED: contractnest-api, contractnest-edge
