@@ -133,6 +133,12 @@ serve(async (req: Request) => {
           return await handleBulkSeed(supabase, bulkBody, context);
         }
 
+        // Copy global blocks to tenant — seeds both LIVE and TEST in one call
+        if (lastSegment === 'copy-to-tenant') {
+          const copyBody = requestBody ? JSON.parse(requestBody) : {};
+          return await handleCopyToTenant(supabase, copyBody, context);
+        }
+
         // Check idempotency first
         const createIdempotency = await checkIdempotency(
           supabase, context.idempotencyKey, context.tenantId, operationId, startTime
@@ -872,4 +878,159 @@ async function writeSeedLog(
     // Non-fatal — log but don't interrupt seeding
     console.error('[cat-blocks/bulk] Failed to write seed log:', error.message);
   }
+}
+
+// ============================================================================
+// HANDLER: POST /cat-blocks/copy-to-tenant
+// ============================================================================
+// Copies global/seed blocks (tenant_id = NULL) into a tenant's space.
+// Always seeds both LIVE and TEST environments in one call.
+// Idempotent — skips blocks already copied for this tenant (matched by name).
+//
+// Body: { block_ids: string[], tenant_id: string }
+// ============================================================================
+
+interface CopyResult {
+  block_id: string;
+  block_name: string;
+  live: 'created' | 'skipped';
+  test: 'created' | 'skipped';
+}
+
+async function handleCopyToTenant(
+  supabase: any,
+  body: any,
+  ctx: EdgeContext
+): Promise<Response> {
+  const { block_ids, tenant_id } = body;
+
+  if (!Array.isArray(block_ids) || block_ids.length === 0) {
+    return createErrorResponse('block_ids array is required and must not be empty', 'VALIDATION_ERROR', 400, ctx.operationId);
+  }
+
+  if (!tenant_id || !isValidUUID(tenant_id)) {
+    return createErrorResponse('tenant_id must be a valid UUID', 'VALIDATION_ERROR', 400, ctx.operationId);
+  }
+
+  if (!ctx.isAdmin && ctx.tenantId !== tenant_id) {
+    return createErrorResponse('Cannot copy blocks for another tenant', 'FORBIDDEN', 403, ctx.operationId);
+  }
+
+  // ── 1. Fetch the global source blocks ──────────────────────────────────────
+  const { data: sourceBlocks, error: fetchError } = await supabase
+    .from('m_cat_blocks')
+    .select('*')
+    .in('id', block_ids)
+    .is('tenant_id', null)
+    .eq('is_active', true);
+
+  if (fetchError) {
+    return createErrorResponse(fetchError.message, 'FETCH_ERROR', 500, ctx.operationId);
+  }
+
+  if (!sourceBlocks?.length) {
+    return createErrorResponse('No global blocks found for the provided IDs', 'NOT_FOUND', 404, ctx.operationId);
+  }
+
+  // ── 2. Fetch tenant's existing block names (for idempotency — both envs) ───
+  const { data: existingBlocks } = await supabase
+    .from('m_cat_blocks')
+    .select('name, is_live')
+    .eq('tenant_id', tenant_id)
+    .in('name', sourceBlocks.map((b: any) => b.name));
+
+  const alreadyLive = new Set(
+    (existingBlocks || []).filter((b: any) => b.is_live).map((b: any) => b.name)
+  );
+  const alreadyTest = new Set(
+    (existingBlocks || []).filter((b: any) => !b.is_live).map((b: any) => b.name)
+  );
+
+  // ── 3. Build insert rows for LIVE and TEST ─────────────────────────────────
+  const liveInserts: Record<string, any>[] = [];
+  const testInserts: Record<string, any>[] = [];
+  const results: CopyResult[] = [];
+
+  for (const src of sourceBlocks) {
+    const liveSkipped = alreadyLive.has(src.name);
+    const testSkipped = alreadyTest.has(src.name);
+
+    const base = {
+      name:                 src.name,
+      display_name:         src.display_name,
+      block_type_id:        src.block_type_id,
+      pricing_mode_id:      src.pricing_mode_id,
+      icon:                 src.icon,
+      description:          src.description,
+      tags:                 src.tags,
+      category:             src.category,
+      config:               src.config,
+      base_price:           src.base_price,
+      currency:             src.currency,
+      price_type_id:        src.price_type_id,
+      tax_rate:             src.tax_rate,
+      hsn_sac_code:         src.hsn_sac_code,
+      resource_pricing:     src.resource_pricing,
+      variant_pricing:      src.variant_pricing,
+      knowledge_tree_ref:   src.knowledge_tree_ref,
+      resource_template_id: src.resource_template_id,
+      kt_checkpoint_ids:    src.kt_checkpoint_ids,
+      form_template_id:     src.form_template_id,
+      sequence_no:          src.sequence_no,
+      is_admin:             false,
+      visible:              true,
+      is_active:            true,
+      is_seed:              false,
+      is_deletable:         true,
+      tenant_id:            tenant_id,
+      created_by:           ctx.userId || null,
+      updated_by:           ctx.userId || null,
+    };
+
+    if (!liveSkipped) liveInserts.push({ ...base, is_live: true });
+    if (!testSkipped) testInserts.push({ ...base, is_live: false });
+
+    results.push({
+      block_id:   src.id,
+      block_name: src.name,
+      live:       liveSkipped ? 'skipped' : 'created',
+      test:       testSkipped ? 'skipped' : 'created',
+    });
+  }
+
+  // ── 4. Insert LIVE copies ──────────────────────────────────────────────────
+  if (liveInserts.length > 0) {
+    const { error: liveError } = await supabase
+      .from('m_cat_blocks')
+      .insert(liveInserts);
+
+    if (liveError) {
+      console.error('[cat-blocks/copy-to-tenant] LIVE insert error:', liveError.message);
+      return createErrorResponse(liveError.message, 'INSERT_ERROR', 500, ctx.operationId);
+    }
+  }
+
+  // ── 5. Insert TEST copies ──────────────────────────────────────────────────
+  if (testInserts.length > 0) {
+    const { error: testError } = await supabase
+      .from('m_cat_blocks')
+      .insert(testInserts);
+
+    if (testError) {
+      console.error('[cat-blocks/copy-to-tenant] TEST insert error:', testError.message);
+      return createErrorResponse(testError.message, 'INSERT_ERROR', 500, ctx.operationId);
+    }
+  }
+
+  const summary = {
+    total:        results.length,
+    live_created: results.filter(r => r.live === 'created').length,
+    live_skipped: results.filter(r => r.live === 'skipped').length,
+    test_created: results.filter(r => r.test === 'created').length,
+    test_skipped: results.filter(r => r.test === 'skipped').length,
+  };
+
+  console.log(`[cat-blocks/copy-to-tenant] tenant=${tenant_id}`, summary);
+
+  return createSuccessResponse({ results, summary }, ctx.operationId, ctx.startTime);
 }

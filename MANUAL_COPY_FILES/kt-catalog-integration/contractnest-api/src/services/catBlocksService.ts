@@ -335,6 +335,31 @@ export class CatBlocksService {
       { kts, tenant_id: context.tenantId, is_live: isLive }
     );
   }
+
+  // --------------------------------------------------------------------------
+  // Copy global blocks to tenant — seeds both LIVE and TEST in one call
+  // --------------------------------------------------------------------------
+  async copyToTenant(
+    context: RequestContext,
+    blockIds: string[]
+  ): Promise<ApiResponse<CopyToTenantResponse>> {
+    if (!this.edgeFunctionUrl) {
+      return {
+        success: true,
+        data: {
+          results: [],
+          summary: { total: 0, live_created: 0, live_skipped: 0, test_created: 0, test_skipped: 0 },
+        },
+      };
+    }
+
+    return this.makeRequest<CopyToTenantResponse>(
+      'POST',
+      '/copy-to-tenant',
+      context,
+      { block_ids: blockIds, tenant_id: context.tenantId }
+    );
+  }
 }
 
 export const catBlocksService = new CatBlocksService();
@@ -370,4 +395,24 @@ export interface BulkSeedSummary {
 export interface BulkSeedResponse {
   results: BulkSeedResult[];
   summary: BulkSeedSummary;
+}
+
+export interface CopyToTenantResult {
+  block_id: string;
+  block_name: string;
+  live: 'created' | 'skipped';
+  test: 'created' | 'skipped';
+}
+
+export interface CopyToTenantSummary {
+  total: number;
+  live_created: number;
+  live_skipped: number;
+  test_created: number;
+  test_skipped: number;
+}
+
+export interface CopyToTenantResponse {
+  results: CopyToTenantResult[];
+  summary: CopyToTenantSummary;
 }
