@@ -1,0 +1,40 @@
+═══════════════════════════════════════════════════
+TASK 1 — Schema Migrations
+Branch: claude/onboarding-setup-lQrdy
+Date: 2026-05-15
+═══════════════════════════════════════════════════
+
+FILES ADDED (contractnest-api only):
+─────────────────────────────────────────────────────
+
+1. src/migrations/003_seed_le_hvac_resource_templates.sql
+   Step 1 → INSERT 'lifts_elevators' and 'hvac' into m_catalog_industries
+   Step 2 → INSERT 6 resource templates for Lifts & Elevators
+   Step 3 → INSERT 6 resource templates for HVAC
+   All rows use ON CONFLICT DO NOTHING — safe to re-run.
+   pricing_guidance JSONB provides benchmark bar data for Screen 8A.
+
+2. src/migrations/004_create_m_facility_hierarchy_templates.sql
+   Creates new table m_facility_hierarchy_templates.
+   Seeds 5 industry hierarchy templates:
+     - healthcare      (5 levels: Campus → Building → Floor → Ward → Bed)
+     - facility_management (5 levels: Campus → Building → Floor → Room → Zone)
+     - manufacturing   (4 levels: Plant → Building → Line → Workstation)
+     - hospitality     (4 levels: Property → Building → Floor → Room)
+     - real_estate     (4 levels: Campus → Tower → Floor → Zone)
+   Uses ON CONFLICT DO UPDATE — safe to re-run.
+
+COPY DESTINATIONS:
+─────────────────────────────────────────────────────
+contractnest-api/src/migrations/003_seed_le_hvac_resource_templates.sql
+contractnest-api/src/migrations/004_create_m_facility_hierarchy_templates.sql
+
+HOW TO RUN MIGRATIONS:
+─────────────────────────────────────────────────────
+Run each SQL file against your Supabase project via:
+  - Supabase Dashboard → SQL Editor → paste and run
+  - OR: supabase db push (if using local Supabase CLI)
+  - Run 003 before 004 (003 adds industries that 004 references)
+
+SUBMODULES AFFECTED: contractnest-api only
+═══════════════════════════════════════════════════
