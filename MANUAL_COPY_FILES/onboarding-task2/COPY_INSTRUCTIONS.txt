@@ -1,0 +1,77 @@
+═══════════════════════════════════════════════════
+TASK 2 — seedTenantOnIndustryConfirmed Skill
+Branch: claude/onboarding-setup-lQrdy
+Date: 2026-05-21
+═══════════════════════════════════════════════════
+
+FILES ADDED / MODIFIED:
+─────────────────────────────────────────────────────
+
+contractnest-edge (1 new migration):
+  supabase/migrations/onboarding/003_add_cat_blocks_tenant_seed_columns.sql
+    → Adds tenant_id (UUID, nullable) and is_seed (BOOLEAN DEFAULT false)
+      to m_cat_blocks if they don't already exist.
+    → Updates read RLS policy to include tenant-scoped blocks.
+    → Safe to re-run (ADD COLUMN IF NOT EXISTS, idempotent policy DROP+CREATE).
+    → Run BEFORE testing the seed route.
+
+contractnest-api (1 new service, 1 modified route):
+  src/services/seedTenantOnIndustryConfirmedService.ts  ← NEW
+    → Core seed skill. See HOW IT WORKS below.
+
+  src/routes/seedRoutes.ts  ← MODIFIED
+    → Added import for seedTenantOnIndustryConfirmed
+    → Added POST /seed/tenant/industry-confirmed route (line ~110)
+    → All existing routes unchanged.
+
+─────────────────────────────────────────────────────
+HOW IT WORKS
+─────────────────────────────────────────────────────
+POST /api/seed/tenant/industry-confirmed
+  Headers: Authorization: Bearer <token>, x-tenant-id: <uuid>
+  Body:    { "industryId": "lifts_elevators", "businessType": "seller" }
+
+  Step 1  Idempotency guard — returns cached result if already run
+  Step 2  Clones global KT blocks (m_cat_blocks WHERE tenant_id IS NULL
+          AND tags contains industryId) → tenant-scoped copies with
+          is_live=false, is_seed=true
+  Step 3  Buyer/both only: reads m_facility_hierarchy_templates for
+          industryId, inserts one t_client_asset_registry placeholder
+          per hierarchy level (ownership_type='self', is_live=false,
+          specifications.is_placeholder=true)
+  Step 4  Seeds sequences for live + test environments (non-fatal if
+          already seeded)
+  Step 5  Stores t_idempotency_keys record (1-year TTL)
+
+COPY DESTINATIONS:
+─────────────────────────────────────────────────────
+contractnest-edge/supabase/migrations/onboarding/003_add_cat_blocks_tenant_seed_columns.sql
+contractnest-api/src/services/seedTenantOnIndustryConfirmedService.ts
+contractnest-api/src/routes/seedRoutes.ts
+
+RUN ORDER:
+─────────────────────────────────────────────────────
+1. Run migration 003 in Supabase SQL Editor FIRST
+2. Copy API service and route files
+3. Restart contractnest-api (npm run dev)
+4. Test with curl or Postman (see TESTING CHECKLIST)
+
+SUBMODULES AFFECTED: contractnest-edge, contractnest-api
+═══════════════════════════════════════════════════
+
+TESTING CHECKLIST
+─────────────────────────────────────────────────────
+[ ] Migration 003 ran without error in Supabase SQL Editor
+[ ] m_cat_blocks now has tenant_id and is_seed columns (check in Table Editor)
+[ ] API server starts without TypeScript errors
+[ ] POST /api/seed/tenant/industry-confirmed returns 200 for a seller tenant
+    → catalogBlocksSeeded > 0 (if KT blocks exist for that industry)
+    → facilityNodesSeeded = 0 (seller, no facility nodes expected)
+    → sequencesSeeded = true
+[ ] Second call to same endpoint returns alreadySeeded: true (idempotency)
+[ ] POST with businessType="buyer" creates facility nodes in t_client_asset_registry
+    → Check Supabase: SELECT * FROM t_client_asset_registry
+      WHERE ownership_type='self' AND is_live=false
+    → Should see one row per hierarchy level for the industry
+[ ] POST with businessType="both" seeds both catalog blocks AND facility nodes
+═══════════════════════════════════════════════════
