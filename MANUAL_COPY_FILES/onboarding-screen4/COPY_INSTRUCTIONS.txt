@@ -1,0 +1,99 @@
+═══════════════════════════════════════════════════
+SCREEN 4 — Theme Selection  +  VaNi Theme Fix
+Branch: claude/onboarding-setup-lQrdy
+Date: 2026-05-22
+═══════════════════════════════════════════════════
+
+IMPORTANT: ALSO FIXES SCREENS 1–3
+─────────────────────────────────────────────────────
+Screens 1-3 called setTheme('vani') on mount, but 'vani'
+was never registered in ThemeContext — they silently fell
+back to the default theme and rendered with wrong colors.
+This screen adds vaniTheme.ts and updates ThemeContext to
+fix all previous screens retroactively.
+
+─────────────────────────────────────────────────────
+FILES ADDED / MODIFIED
+─────────────────────────────────────────────────────
+
+contractnest-ui (6 files):
+
+  src/config/theme/themes/vaniTheme.ts  ← NEW
+    → VaNi onboarding skin: primary #ff6b2b, bg #f0ece6, dark island #1a1816
+    → Full ThemeConfig shape (colors + darkMode.colors)
+    → Registered in ThemeContext only — NOT in utils/theme.ts
+
+  src/contexts/ThemeContext.tsx  ← MODIFIED
+    → imports VaniTheme
+    → adds [VaniTheme.id]: VaniTheme to local themes object
+    → adds 'vani': 'theme-vani' to legacyThemeMap
+    → adds 'theme-vani' to classList.remove list
+    → FIXES: setTheme('vani') no longer falls back to default
+
+  src/pages/onboarding/steps/ThemeSelectionStep.tsx  ← REWRITTEN
+    → Inside OnboardingLayout (progress header visible)
+    → Own floating action island
+    → setTheme('vani') on mount (stays VaNi during selection)
+    → VaNi intro bubble
+    → Dark mode toggle row
+    → 4-column grid of 12 theme cards (static color swatches)
+    → Each card: mini mockup preview + color dots + theme name
+    → On card click: orange border + check mark bounce
+    → VaNi reaction bubble after selection
+    → On Continue: setTheme(selectedId) → updateUserPreferences
+      → navigate /onboarding/industry-selection
+
+  src/pages/onboarding/steps/IndustrySelectionStep.tsx  ← NEW (placeholder)
+    → Bare placeholder so App.tsx compiles
+    → Replaced when Screen 5 is built
+
+  src/components/onboarding/OnboardingLayout.tsx  ← MODIFIED (cumulative)
+    → 'theme-selection' added to stepsWithOwnButtons
+    → 'industry-selection' added to stepsWithOwnButtons
+
+  src/App.tsx  ← MODIFIED (cumulative from screen15 + screen2 + screen3 + screen4)
+    → import IndustrySelectionStep
+    → Route "industry-selection" inside OnboardingLayout
+
+─────────────────────────────────────────────────────
+COPY COMMANDS (PowerShell)
+─────────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen4\contractnest-ui\src\config\theme\themes\vaniTheme.ts" -Destination "contractnest-ui\src\config\theme\themes\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen4\contractnest-ui\src\contexts\ThemeContext.tsx" -Destination "contractnest-ui\src\contexts\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen4\contractnest-ui\src\pages\onboarding\steps\ThemeSelectionStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen4\contractnest-ui\src\pages\onboarding\steps\IndustrySelectionStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen4\contractnest-ui\src\components\onboarding\OnboardingLayout.tsx" -Destination "contractnest-ui\src\components\onboarding\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen4\contractnest-ui\src\App.tsx" -Destination "contractnest-ui\src\" -Force
+
+NOTE: App.tsx here supersedes all previous onboarding screens' App.tsx files.
+
+─────────────────────────────────────────────────────
+SUBMODULES AFFECTED: contractnest-ui
+═══════════════════════════════════════════════════
+
+TESTING CHECKLIST
+─────────────────────────────────────────────────────
+[ ] npm run dev — no TypeScript errors
+
+VaNi theme fix (regression check on screens 1–3):
+[ ] /onboarding/vani-intro — orange gradient on the orb (#ff6b2b), not the default orange
+[ ] /onboarding/business-details — orange eyebrow "Step 2 of 9", correct off-white (#f0ece6) bg
+[ ] /onboarding/persona-selection — orange card borders, correct dark island (#1a1816)
+
+Theme Selection Screen:
+[ ] "Step 4 of 9" eyebrow in VaNi orange
+[ ] VaNi intro bubble visible
+[ ] Dark mode toggle works (slides left/right)
+[ ] 4-column grid of 12 theme cards
+[ ] Each card: mini sidebar mockup + color dots + theme name
+[ ] Hover: slight lift + orange border tint
+[ ] Click: orange border + glow + check mark bounces in
+[ ] VaNi reaction bubble slides up after selection
+[ ] Island label: "Choose a theme" before selection
+[ ] After selection: "Selected: [Theme Name]"
+[ ] Continue disabled (dimmed) before selection
+[ ] Continue enabled after selection
+[ ] ← Back → /onboarding/persona-selection
+[ ] Continue → saves preference → /onboarding/industry-selection (placeholder)
+[ ] Theme is actually applied after clicking Continue (check page colors change)
+═══════════════════════════════════════════════════
