@@ -1,0 +1,125 @@
+═══════════════════════════════════════════════════
+TASK 3 — Sample Contact Seed Data
+Branch: claude/onboarding-setup-lQrdy
+Date: 2026-05-22
+═══════════════════════════════════════════════════
+
+FILES ADDED / MODIFIED:
+─────────────────────────────────────────────────────
+
+contractnest-edge (1 new migration):
+  supabase/migrations/onboarding/007_add_contacts_is_seed_and_seed_rpc.sql
+    → ALTER TABLE t_contacts ADD COLUMN IF NOT EXISTS is_seed BOOLEAN DEFAULT false
+    → Index: idx_contacts_tenant_seed ON (tenant_id, is_seed) WHERE is_seed = true
+    → SECURITY DEFINER function seed_sample_contacts(UUID, JSONB):
+        - accepts pre-built contact array from API (UUIDs already assigned)
+        - idempotent: skips if is_seed contacts already exist for tenant
+        - inserts all 3 contacts respecting t_contacts type constraints
+        - parent_contact_ids JSONB built from parent_contact_id
+    → GRANT EXECUTE to anon, authenticated, service_role
+
+contractnest-api (2 new files, 2 updated files):
+  src/seeds/sampleContacts.seed.ts  ← NEW
+    → Industry-specific contact data for 7 industries:
+       lifts_elevators, hvac, healthcare, facility_management,
+       manufacturing, real_estate, hospitality
+    → 3 contacts per industry: corporate vendor, individual professional,
+       contact_person (linked to corporate via corporateIndex)
+    → getSampleContactsForIndustry(industryId) — falls back to
+       facility_management for unknown industries
+
+  src/services/seedSampleContactsService.ts  ← NEW
+    → Standalone service: idempotency check + RPC call
+    → Generates 3 UUIDs, builds contact payloads, calls seed_sample_contacts RPC
+    → Returns: { success, alreadySeeded, contactsSeeded, errors }
+    → Can be called independently for reseed flows
+
+  src/services/seedTenantOnIndustryConfirmedService.ts  ← UPDATED
+    → Added Step 4: calls seedSampleContacts({ tenantId, industryId })
+    → Added sampleContactsSeeded to SeedIndustryResult interface
+    → Sequences moved to Step 5
+
+  src/routes/seedRoutes.ts  ← UPDATED
+    → Added import for seedTenantOnIndustryConfirmed and seedSampleContacts
+    → Moved POST /tenant/industry-confirmed route here (from prior session)
+    → Added POST /tenant/sample-contacts — standalone reseed endpoint
+    → POST /tenant/:category remains AFTER named routes to avoid conflicts
+
+─────────────────────────────────────────────────────
+RESEED / CLEANUP PATTERN (for future use)
+─────────────────────────────────────────────────────
+To wipe and reseed sample contacts for a tenant:
+
+  -- Step 1: Delete seed contacts
+  DELETE FROM t_contacts WHERE tenant_id = '<uuid>' AND is_seed = true;
+
+  -- Step 2: Reseed via API
+  POST /api/seeds/tenant/sample-contacts
+  Headers: Authorization: Bearer <token>, x-tenant-id: <uuid>
+  Body: { "industryId": "healthcare" }
+
+─────────────────────────────────────────────────────
+CONTACT TYPE CONSTRAINTS (from t_contacts CHECK)
+─────────────────────────────────────────────────────
+  corporate     → company_name required, name must be NULL
+  individual    → name required, company_name must be NULL
+  contact_person→ name required, parent_contact_id required, company_name NULL
+
+─────────────────────────────────────────────────────
+COPY DESTINATIONS:
+─────────────────────────────────────────────────────
+contractnest-edge/supabase/migrations/onboarding/007_add_contacts_is_seed_and_seed_rpc.sql
+contractnest-api/src/seeds/sampleContacts.seed.ts
+contractnest-api/src/services/seedSampleContactsService.ts
+contractnest-api/src/services/seedTenantOnIndustryConfirmedService.ts
+contractnest-api/src/routes/seedRoutes.ts
+
+RUN ORDER:
+─────────────────────────────────────────────────────
+1. Run migration 007 in Supabase SQL Editor
+2. Copy all API files
+3. Restart contractnest-api (npm run dev)
+4. Test with Postman (see TESTING CHECKLIST)
+
+SUBMODULES AFFECTED: contractnest-edge, contractnest-api
+═══════════════════════════════════════════════════
+
+TESTING CHECKLIST
+─────────────────────────────────────────────────────
+[ ] Migration 007 ran without error
+[ ] t_contacts now has is_seed column:
+    SELECT column_name FROM information_schema.columns
+    WHERE table_name = 't_contacts' AND column_name = 'is_seed';
+[ ] RPC function created:
+    SELECT proname FROM pg_proc WHERE proname = 'seed_sample_contacts';
+[ ] API server starts without TypeScript errors
+
+[ ] POST /api/seeds/tenant/industry-confirmed (any businessType)
+    Body: { "industryId": "healthcare", "businessType": "buyer" }
+    Expected in response:
+      → success: true
+      → sampleContactsSeeded: 3
+    Verify in Supabase:
+      SELECT id, type, name, company_name, designation, parent_contact_id, is_seed, is_live
+      FROM t_contacts
+      WHERE tenant_id = '<your-tenant-uuid>' AND is_seed = true
+      ORDER BY type;
+      → 1 corporate row (company_name populated, name NULL)
+      → 1 individual row (name populated, company_name NULL)
+      → 1 contact_person row (name populated, parent_contact_id = corporate id)
+
+[ ] Same request again → alreadySeeded: true, sampleContactsSeeded: 3
+
+[ ] POST /api/seeds/tenant/sample-contacts (standalone endpoint)
+    Using a DIFFERENT tenant UUID:
+    Body: { "industryId": "hvac" }
+    Expected: sampleContactsSeeded: 3 (Blue Star, Suresh Nair, Deepa Krishnan)
+
+[ ] Test reseed flow:
+    1. DELETE FROM t_contacts WHERE tenant_id = '<uuid>' AND is_seed = true;
+    2. POST /api/seeds/tenant/sample-contacts again
+    → Should re-create 3 contacts without error
+
+[ ] Verify parent_contact_id chain:
+    The contact_person row's parent_contact_id should match the corporate row's id
+═══════════════════════════════════════════════════
