@@ -1,0 +1,106 @@
+═══════════════════════════════════════════════════
+SCREEN 2 FIX — BusinessDetailsStep (Complete Fields)
+Branch: claude/onboarding-setup-lQrdy
+Date: 2026-05-22
+═══════════════════════════════════════════════════
+
+WHY THIS FIX EXISTS
+─────────────────────────────────────────────────────
+The original BusinessDetailsStep (screen2) manually constructed
+the API payload with only 6 fields and missed:
+  - address_line2, state_code, postal_code, country_code
+  - business_phone, business_phone_country_code
+  - business_whatsapp, business_whatsapp_country_code
+  - contact_first_name, contact_last_name
+  - website_url, booking_url
+  - primary_color, secondary_color
+
+This rewrite uses useTenantProfile() hook so formData IS the
+payload — no manual mapping, zero missed fields.
+
+─────────────────────────────────────────────────────
+HOW FIELD MAPPING WORKS (to address the concern)
+─────────────────────────────────────────────────────
+1. useTenantProfile({ isOnboarding: true }) gives us:
+     formData  — full TenantProfile object (all fields)
+     updateField(field, value)  — updates any field by name
+
+2. OrganizationDetailsForm receives:
+     formData={formData}          — reads all fields
+     onUpdate={updateField}       — writes any field back
+
+3. On Continue, the payload is:
+     await api.put(PROFILE, { ...formData, logo_url })
+
+   That spread sends EVERY field in TenantProfile to the API.
+   There is NO manual payload construction — the interface is
+   the single source of truth.
+
+─────────────────────────────────────────────────────
+FILES MODIFIED
+─────────────────────────────────────────────────────
+contractnest-ui (2 files):
+
+  src/pages/onboarding/steps/BusinessDetailsStep.tsx  ← REWRITTEN
+    → Fetches existing profile on mount (pre-fills form)
+    → Embeds OrganizationDetailsForm (all TenantProfile fields)
+    → GST/PAN fields added below via updateField
+    → Logo upload handled inline (api.post UPLOAD_LOGO)
+    → Continue: api.put PROFILE with { ...formData, logo_url }
+    → Navigates to /onboarding/persona-selection on success
+    → Floating action island (dark pill, bottom-center)
+    → All colors from useTheme() VaNi tokens
+
+  src/hooks/useTenantProfile.ts  ← MODIFIED
+    → gst_number?: string | null  added to TenantProfile interface
+    → pan_number?: string | null  added to TenantProfile interface
+
+NOTE: This fix supersedes onboarding-screen2 and onboarding-screen3
+versions of BusinessDetailsStep.tsx and useTenantProfile.ts.
+The screen3 useTenantProfile.ts was identical to this one (gst/pan
+fields only). If you already applied screen3/useTenantProfile.ts,
+you can skip copying that file again.
+
+─────────────────────────────────────────────────────
+COPY COMMANDS (PowerShell)
+─────────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen2-fix\contractnest-ui\src\pages\onboarding\steps\BusinessDetailsStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen2-fix\contractnest-ui\src\hooks\useTenantProfile.ts" -Destination "contractnest-ui\src\hooks\" -Force
+
+─────────────────────────────────────────────────────
+COPY ORDER (full onboarding build so far)
+─────────────────────────────────────────────────────
+If applying all screens fresh:
+  1. onboarding-screen15  (VaNi Intro + updated index + App.tsx v1)
+  2. onboarding-screen2   (BusinessDetailsStep original — SKIP, superseded)
+  3. onboarding-screen3   (PersonaSelectionStep + migration 008)
+       BUT skip screen3/BusinessDetailsStep.tsx — use screen2-fix instead
+       AND skip screen3/useTenantProfile.ts — use screen2-fix instead
+  4. onboarding-screen2-fix  ← apply THIS (replaces screen2 + screen3 versions)
+
+─────────────────────────────────────────────────────
+TESTING CHECKLIST
+─────────────────────────────────────────────────────
+[ ] npm run dev — no TypeScript errors
+
+Business Details Screen:
+[ ] Form loads — existing profile data pre-fills all fields
+[ ] Logo upload works
+[ ] All 3 OrganizationDetailsForm cards render:
+      Card 1: Logo + Business Name + Brand Colors
+      Card 2: Contact Person (first/last name) + Email + Phone + WhatsApp + Website + Booking URL
+      Card 3: Address Line 1 + Line 2 + Country + State + City + Postal Code
+[ ] GST/PAN card renders below OrganizationDetailsForm
+[ ] GST auto-uppercases as you type
+[ ] PAN auto-uppercases as you type
+[ ] Character counters show (x/15) and (x/10)
+[ ] Continue: all fields saved to API (check Network tab → PUT /api/tenant-profile)
+[ ] Continue → navigates to /onboarding/persona-selection
+[ ] ← Back → navigates to /onboarding/vani-intro
+[ ] Continue disabled (grey) while saving
+
+DB verification (after migration 008 applied):
+[ ] gst_number column present in t_tenant_profiles
+[ ] pan_number column present in t_tenant_profiles
+[ ] Saved values visible in Supabase Table Editor
+═══════════════════════════════════════════════════
