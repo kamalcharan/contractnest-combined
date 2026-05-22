@@ -1,0 +1,120 @@
+═══════════════════════════════════════════════════
+SCREEN 5 — Industry Selection
+Branch: claude/onboarding-setup-lQrdy
+Date: 2026-05-22
+═══════════════════════════════════════════════════
+
+WHAT THIS SCREEN DOES
+─────────────────────────────────────────────────────
+Full VaNi-styled industry selection screen replacing the
+placeholder IndustrySelectionStep from onboarding-screen4.
+
+Features:
+• Step 5 of 9 eyebrow
+• VaNi intro bubble
+• Search bar (filters visible industry list)
+• 4-column grid of parent industries
+  - Parent WITH children: shows "X specializations →" hint,
+    clicking drills in to show child sub-segments
+  - Parent WITHOUT children: directly toggleable (check mark)
+  - Selected-child count badge shown on drillable parent cards
+• Breadcrumb / Back to all industries when drilling
+• Multi-select: click to toggle individual industries
+• VaNi reaction bubble slides up after first selection
+  (updates message based on count: 1 industry vs N industries)
+• Pre-populates from already-saved served industries
+• Floating action island:
+  - Shows "X industries selected" / "Select industries you serve"
+  - ← Back → /onboarding/theme-selection
+  - Continue → addIndustries(selectedIds) → /onboarding/vani-consent
+• Continue disabled before any selection
+• Loading spinner while catalog / served industries load
+
+DATA HOOKS
+─────────────────────────────────────────────────────
+useIndustries()           — industry catalog (from useProductMasterdata)
+useServedIndustriesManager()  — pre-populate + addIndustries() call
+
+SAVE PATTERN
+─────────────────────────────────────────────────────
+await addIndustries(Array.from(selectedIds))
+→ calls POST /api/tenant-profile/served-industries with { industry_ids: [...] }
+→ already production-ready with optimistic updates + rollback
+
+─────────────────────────────────────────────────────
+FILES ADDED / MODIFIED
+─────────────────────────────────────────────────────
+
+contractnest-ui (4 files):
+
+  src/pages/onboarding/steps/IndustrySelectionStep.tsx  ← REWRITTEN (replaces placeholder)
+    → Full VaNi-styled industry selection screen
+    → Parent + child drill-in hierarchy
+    → Multi-select with pre-population from existing served industries
+    → Saves via addIndustries() → /onboarding/vani-consent
+
+  src/pages/onboarding/steps/VaniConsentStep.tsx  ← NEW (placeholder)
+    → Bare placeholder so App.tsx compiles
+    → Replaced when Screen 6 is built
+
+  src/components/onboarding/OnboardingLayout.tsx  ← MODIFIED (cumulative)
+    → 'vani-consent' added to stepsWithOwnButtons
+
+  src/App.tsx  ← MODIFIED (cumulative from all previous screens)
+    → import VaniConsentStep
+    → Route "vani-consent" inside OnboardingLayout
+
+─────────────────────────────────────────────────────
+COPY COMMANDS (PowerShell)
+─────────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen5\contractnest-ui\src\pages\onboarding\steps\IndustrySelectionStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen5\contractnest-ui\src\pages\onboarding\steps\VaniConsentStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen5\contractnest-ui\src\components\onboarding\OnboardingLayout.tsx" -Destination "contractnest-ui\src\components\onboarding\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen5\contractnest-ui\src\App.tsx" -Destination "contractnest-ui\src\" -Force
+
+─────────────────────────────────────────────────────
+COPY ORDER (full onboarding build so far)
+─────────────────────────────────────────────────────
+If applying all screens fresh:
+  1. onboarding-screen15  (VaNi Intro + updated index + App.tsx v1)
+  2. onboarding-screen2-fix  (BusinessDetailsStep + PersonaSelectionStep API fix)
+  3. onboarding-screen4   (ThemeSelectionStep + vaniTheme.ts + ThemeContext fix)
+  4. onboarding-screen5   ← apply THIS
+
+─────────────────────────────────────────────────────
+SUBMODULES AFFECTED: contractnest-ui
+═══════════════════════════════════════════════════
+
+TESTING CHECKLIST
+─────────────────────────────────────────────────────
+[ ] npm run dev — no TypeScript errors
+
+Industry Selection Screen (/onboarding/industry-selection):
+[ ] "Step 5 of 9" eyebrow in VaNi orange (#ff6b2b)
+[ ] VaNi intro bubble visible with user's first name
+[ ] Loading spinner while industries/served-industries load
+[ ] 4-column grid of parent industries renders
+[ ] Each card shows icon (Lucide icon by name), industry name
+[ ] Parents WITH children show "X specializations →" text
+[ ] Parents WITHOUT children show check mark on selection
+[ ] Hover: slight lift + orange border tint on any card
+[ ] Click a parent WITH children → drills in, grid updates to children
+[ ] Breadcrumb shows: "← All industries  /  [Parent Name]"
+[ ] Back button in breadcrumb returns to parent list
+[ ] Click a child card → toggles selection (orange border + check mark)
+[ ] Click a parent WITHOUT children → toggles selection directly
+[ ] Drilled-back parent shows orange count badge (e.g. "3") when children selected
+[ ] Search bar filters visible list (works in both parent and child views)
+[ ] Clear (X) button in search bar clears filter
+[ ] VaNi reaction bubble slides up after first selection
+[ ] Bubble message updates: "1 industry selected" vs "N industries selected"
+[ ] Pre-population: if user already saved industries, they appear pre-selected
+[ ] Island label: "Select industries you serve" before selection
+[ ] Island label: "N industries selected" after selection
+[ ] Continue disabled (dimmed) before any selection
+[ ] Continue enabled after selection
+[ ] ← Back → /onboarding/theme-selection
+[ ] Continue → saves industries via addIndustries() → /onboarding/vani-consent
+[ ] vaniToast.success on addIndustries success (from the hook)
+[ ] vaniToast.error on failure
+═══════════════════════════════════════════════════
