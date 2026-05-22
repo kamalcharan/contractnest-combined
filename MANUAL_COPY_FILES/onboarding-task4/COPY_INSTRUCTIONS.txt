@@ -1,0 +1,114 @@
+═══════════════════════════════════════════════════
+TASK 4 — Screen 1: Registration (VaNi Theme)
+Branch: claude/onboarding-setup-lQrdy
+Date: 2026-05-22
+═══════════════════════════════════════════════════
+
+FILES ADDED / MODIFIED:
+─────────────────────────────────────────────────────
+
+contractnest-ui (4 files):
+
+  src/config/theme/themes/vaniTheme.ts  ← NEW
+    → VaNi onboarding theme following exact ThemeConfig structure
+    → brand.primary: #ff6b2b (VaNi orange — buttons, focus rings)
+    → utility.*: warm off-white page bg, white card surfaces
+    → accent.accent1/2: dark hero panel bg colours (gradient start/end)
+    → accent.accent3/4: hero headline + dim text colours
+    → Full dark mode variant included
+    → NOT shown in theme picker — onboarding only
+
+  src/contexts/ThemeContext.tsx  ← MODIFIED (2 additions only)
+    → import VaNiTheme
+    → [VaNiTheme.id]: VaNiTheme  added to themes object
+    → 'vani': 'theme-vani'  added to legacyThemeMap in applyTheme()
+    → Everything else unchanged
+
+  src/config/theme/index.ts  ← MODIFIED (2 additions only)
+    → import VaNiTheme
+    → 'VaNiTheme': VaNiTheme  added to THEME_REGISTRY
+    → Everything else unchanged
+
+  src/pages/auth/RegisterPage.tsx  ← FULL REDESIGN
+    → Beta access gate removed (product is open to customers)
+    → Google sign-in removed
+    → setTheme('vani') called on mount — applies VaNi theme for onboarding
+    → Fields: Company Name (auto-derives workspace slug), First Name,
+               Last Name, Work Email, Password, Confirm Password
+    → Workspace ID preview shown below company name input
+    → Mobile layout: compact dark top strip + full-width form
+    → Desktop layout: dark hero panel (45%) + form (55%)
+    → All colours from useTheme() — zero hardcoded values
+    → Focus rings, error states, button all use theme tokens
+    → All existing auth logic preserved:
+        register(), isAuthenticated redirect, clearError(),
+        analyticsService events, cnakRef support,
+        account-exists inline error, vaniToast
+
+─────────────────────────────────────────────────────
+DESIGN DECISIONS
+─────────────────────────────────────────────────────
+- Hero panel's dark look is achieved via colors.accent.accent1/2 tokens
+  in vaniTheme — not hardcoded. Any component using useTheme() gets them.
+- VaNi theme is registered in the system but excluded from the
+  theme picker (ThemeSelectionStep) — onboarding only.
+- Workspace slug auto-derived from Company Name on keypress.
+  Preview shown in IBM Plex Mono below the input.
+- IBM Plex Mono font for monospace stats/badges — loaded from Google
+  Fonts if not already present (same as HTML prototypes).
+
+─────────────────────────────────────────────────────
+COPY DESTINATIONS:
+─────────────────────────────────────────────────────
+contractnest-ui/src/config/theme/themes/vaniTheme.ts
+contractnest-ui/src/contexts/ThemeContext.tsx
+contractnest-ui/src/config/theme/index.ts
+contractnest-ui/src/pages/auth/RegisterPage.tsx
+
+COPY COMMANDS (PowerShell):
+─────────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\onboarding-task4\contractnest-ui\src\config\theme\themes\vaniTheme.ts" -Destination "contractnest-ui\src\config\theme\themes\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-task4\contractnest-ui\src\contexts\ThemeContext.tsx" -Destination "contractnest-ui\src\contexts\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-task4\contractnest-ui\src\config\theme\index.ts" -Destination "contractnest-ui\src\config\theme\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-task4\contractnest-ui\src\pages\auth\RegisterPage.tsx" -Destination "contractnest-ui\src\pages\auth\" -Force
+
+SUBMODULES AFFECTED: contractnest-ui
+═══════════════════════════════════════════════════
+
+TESTING CHECKLIST
+─────────────────────────────────────────────────────
+[ ] npm run dev starts without TypeScript errors
+[ ] Navigate to /register — page loads
+[ ] VaNi theme is applied (warm off-white background, orange accents)
+
+Desktop checks:
+[ ] Left hero panel is dark with orange glow orbs
+[ ] "Now Available" badge with pulsing dot visible
+[ ] Headline + stats visible in hero
+[ ] Form on right: Company Name, First+Last, Email, Password, Confirm
+
+Mobile checks (resize browser to < 1024px):
+[ ] Dark top strip visible with ContractNest logo + tagline
+[ ] Hero panel hidden
+[ ] Form takes full width with comfortable padding
+
+Form behaviour:
+[ ] Typing in Company Name auto-generates workspace slug below input
+    e.g. "Sharma Elevators Pvt Ltd" → "sharma-elevators-pvt-ltd"
+[ ] All fields show orange focus ring on focus
+[ ] Submit with empty fields → per-field error messages
+[ ] Mismatched passwords → "Passwords do not match" on confirm field
+[ ] Valid submission → loading spinner + "Setting up your workspace…"
+[ ] Already exists error → inline banner with Sign in link
+[ ] Sign in link → navigates to /login
+
+After registration:
+[ ] Redirects to /onboarding (AuthContext handles this)
+[ ] VaNi theme persists into the onboarding flow
+
+NOTE ON IBM PLEX MONO FONT:
+─────────────────────────────────────────────────────
+The workspace slug preview and hero stats use 'IBM Plex Mono'.
+If not already loaded, add this to contractnest-ui/index.html:
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+═══════════════════════════════════════════════════
