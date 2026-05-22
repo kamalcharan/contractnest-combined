@@ -4,31 +4,19 @@
 // What it does (in order):
 //   1. Idempotency guard — checks existing data, skips if already seeded
 //   2. Clone KT (global m_cat_blocks) → tenant-scoped blocks (is_live=false, is_seed=true)
-//   3. Buyer/both only: create placeholder facility hierarchy via client-asset-registry edge fn
+//   3. Buyer/both only: create placeholder facility hierarchy via SECURITY DEFINER RPC
 //   4. Seed sequence numbers for both live + test environments (silent, non-fatal)
 //
 // Auth model:
 //   The API server uses only the anon key (SUPABASE_KEY). The anon-key client
-//   is sufficient for reads against permissive-SELECT tables. Writes to RLS-protected
-//   tables use the client-asset-registry edge function, which has the service role key.
+//   is sufficient for reads against permissive-SELECT tables and for calling
+//   SECURITY DEFINER functions via supabase.rpc() — the DB function runs as
+//   the DB owner and bypasses RLS internally.
 
 import { createClient } from '@supabase/supabase-js';
 import { randomUUID } from 'crypto';
 import axios from 'axios';
 import { SEQUENCE_SEED_DATA } from '../seeds';
-
-// Internal server-to-edge-function auth token.
-// Supabase edge functions require a valid (non-expired) JWT.
-// User session JWTs expire in ~1 hour and are not suitable for server-side calls.
-// The anon key is a permanent JWT issued by Supabase — safe for internal API calls
-// where tenant isolation is enforced via x-tenant-id header + service role DB client.
-function getServiceAuthToken(): string {
-  const anonKey = process.env.SUPABASE_KEY || '';
-  return `Bearer ${anonKey}`;
-}
-
-const EDGE_BASE_URL = () =>
-  `${process.env.SUPABASE_URL}/functions/v1/client-asset-registry`;
 
 export interface SeedIndustryInput {
   tenantId: string;
@@ -52,8 +40,6 @@ function buildSupabase() {
   if (!url || !key) {
     throw new Error('[seedTenantOnIndustryConfirmed] Missing SUPABASE_URL or Supabase key');
   }
-  // Anon key is sufficient for reads against permissive-SELECT tables.
-  // Writes use edge function proxies (clientAssetRegistryService) which have service role.
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
@@ -67,8 +53,6 @@ export async function seedTenantOnIndustryConfirmed(
   console.log('[seedTenantOnIndustryConfirmed] Starting', { tenantId, industryId, businessType });
 
   // ── Step 1: Application-level idempotency ────────────────────────────────
-  // Check existing data rather than a separate idempotency key table.
-  // This is safe because both checks below are inside the seed logic.
   let alreadySeeded = false;
 
   // ── Step 2: Clone global KT blocks for this industry ────────────────────
@@ -95,10 +79,6 @@ export async function seedTenantOnIndustryConfirmed(
     if (fetchError) {
       errors.push(`KT blocks fetch failed: ${fetchError.message}`);
     } else if (ktBlocks && ktBlocks.length > 0) {
-      // Writes to m_cat_blocks require service role — uses direct insert.
-      // Migration 003 added is_seed + tenant_id; RLS for m_cat_blocks allows
-      // service_role writes. If this fails, catalogBlocksSeeded stays 0 (non-fatal
-      // while KT content is being built by admin).
       const tenantBlocks = ktBlocks.map(
         ({ created_at, updated_at, created_by, updated_by, ...block }) => ({
           ...block,
@@ -115,8 +95,6 @@ export async function seedTenantOnIndustryConfirmed(
       const { error: insertError } = await supabase.from('m_cat_blocks').insert(tenantBlocks);
 
       if (insertError) {
-        // Non-fatal: KT may be empty or service role key not configured.
-        // Facility and sequence seeding continues independently.
         console.warn('[seedTenantOnIndustryConfirmed] KT block clone skipped:', insertError.message);
       } else {
         catalogBlocksSeeded = tenantBlocks.length;
@@ -128,8 +106,8 @@ export async function seedTenantOnIndustryConfirmed(
   }
 
   // ── Step 3: Facility placeholders (buyer/both only) ──────────────────────
-  // Uses clientAssetRegistryService which proxies to the edge function.
-  // The edge function has the service role key and handles RLS correctly.
+  // Uses SECURITY DEFINER RPC — the DB function runs as DB owner, bypasses
+  // RLS internally. The anon/service key can call it without service_role role.
   let facilityNodesSeeded = 0;
   let existingPlaceholderCount = 0;
   const isBuyer = businessType === 'buyer' || businessType === 'both';
@@ -148,69 +126,23 @@ export async function seedTenantOnIndustryConfirmed(
       facilityNodesSeeded = existingPlaceholderCount;
       console.log('[seedTenantOnIndustryConfirmed] Facility placeholders already exist, skipping');
     } else {
-      const { data: templates, error: templateError } = await supabase
-        .from('m_facility_hierarchy_templates')
-        .select('*')
-        .eq('industry_id', industryId)
-        .eq('is_default', true)
-        .order('level', { ascending: true });
-
-      if (templateError) {
-        errors.push(`Facility hierarchy fetch failed: ${templateError.message}`);
-      } else if (templates && templates.length > 0) {
-        const levelToId: Record<number, string> = {};
-
-        for (const template of templates) {
-          const nodeId = randomUUID();
-          const parentId = template.level > 1 ? (levelToId[template.level - 1] ?? null) : null;
-
-          try {
-            // Use anon key as Bearer token — permanent JWT accepted by Supabase
-            // infrastructure. Tenant context enforced via x-tenant-id header.
-            await axios.post(
-              EDGE_BASE_URL(),
-              {
-                id: nodeId,
-                ownership_type: 'self',
-                owner_contact_id: null,
-                resource_type_id: 'asset',
-                name: template.label,
-                status: 'active',
-                condition: 'good',
-                criticality: 'low',
-                parent_asset_id: parentId,
-                is_live: false,
-                specifications: {
-                  entity_type: template.entity_type,
-                  industry_id: industryId,
-                  hierarchy_level: template.level,
-                  is_placeholder: true,
-                },
-              },
-              {
-                headers: {
-                  Authorization: getServiceAuthToken(),
-                  'x-tenant-id': tenantId,
-                  'Content-Type': 'application/json',
-                },
-                timeout: 15000,
-              }
-            );
-
-            levelToId[template.level] = nodeId;
-            facilityNodesSeeded++;
-          } catch (nodeError: any) {
-            const msg =
-              nodeError.response?.data?.error ||
-              nodeError.response?.data?.message ||
-              nodeError.message;
-            errors.push(`Facility node '${template.entity_type}' failed: ${msg}`);
-          }
+      const { data: rpcResult, error: rpcError } = await supabase.rpc(
+        'seed_onboarding_facility_nodes',
+        {
+          p_tenant_id: tenantId,
+          p_industry_id: industryId,
         }
+      );
 
-        console.log(`[seedTenantOnIndustryConfirmed] Created ${facilityNodesSeeded} facility nodes`);
-      } else {
-        console.log('[seedTenantOnIndustryConfirmed] No hierarchy templates for industry:', industryId);
+      if (rpcError) {
+        errors.push(`Facility node seeding failed: ${rpcError.message}`);
+        console.error('[seedTenantOnIndustryConfirmed] RPC error:', rpcError);
+      } else if (rpcResult) {
+        facilityNodesSeeded = rpcResult.facilityNodesSeeded ?? 0;
+        console.log(
+          `[seedTenantOnIndustryConfirmed] Created ${facilityNodesSeeded} facility nodes` +
+            (rpcResult.skipped ? ' (skipped — already existed)' : '')
+        );
       }
     }
   }
