@@ -7,8 +7,11 @@ Date: 2026-05-21
 FILES ADDED / MODIFIED:
 ─────────────────────────────────────────────────────
 
-contractnest-edge (1 new migration):
+contractnest-edge (2 new migrations):
   supabase/migrations/onboarding/003_add_cat_blocks_tenant_seed_columns.sql
+  supabase/migrations/onboarding/004_seed_rls_fixes.sql
+    → Ensures service_role bypass on t_client_asset_registry and t_idempotency_keys.
+    → Run this if seed returns RLS violations or idempotency key not storing.
     → Adds tenant_id (UUID, nullable) and is_seed (BOOLEAN DEFAULT false)
       to m_cat_blocks if they don't already exist.
     → Updates read RLS policy to include tenant-scoped blocks.
@@ -51,10 +54,13 @@ contractnest-api/src/routes/seedRoutes.ts
 
 RUN ORDER:
 ─────────────────────────────────────────────────────
-1. Run migration 003 in Supabase SQL Editor FIRST
-2. Copy API service and route files
-3. Restart contractnest-api (npm run dev)
-4. Test with curl or Postman (see TESTING CHECKLIST)
+1. Run migration 003 in Supabase SQL Editor
+2. Run migration 004 in Supabase SQL Editor (RLS fixes)
+3. Verify SUPABASE_SERVICE_ROLE_KEY is set in contractnest-api/.env
+   (if missing, add it — anon key causes RLS violations)
+4. Copy API service and route files
+5. Restart contractnest-api (npm run dev)
+6. Test with Postman (see TESTING CHECKLIST)
 
 SUBMODULES AFFECTED: contractnest-edge, contractnest-api
 ═══════════════════════════════════════════════════

@@ -33,10 +33,23 @@ const IDEMPOTENCY_ENDPOINT = 'seed/tenant/industry-confirmed';
 
 function buildSupabase() {
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const fallbackKey = process.env.SUPABASE_KEY;
+  const key = serviceRoleKey || fallbackKey;
+
   if (!url || !key) {
     throw new Error('[seedTenantOnIndustryConfirmed] Missing SUPABASE_URL or service role key');
   }
+
+  // Warn loudly if falling back to anon key — RLS will block writes
+  if (!serviceRoleKey) {
+    console.warn(
+      '[seedTenantOnIndustryConfirmed] WARNING: SUPABASE_SERVICE_ROLE_KEY not set. ' +
+      'Falling back to SUPABASE_KEY (anon). RLS policies may block inserts. ' +
+      'Add SUPABASE_SERVICE_ROLE_KEY to your .env file.'
+    );
+  }
+
   return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
