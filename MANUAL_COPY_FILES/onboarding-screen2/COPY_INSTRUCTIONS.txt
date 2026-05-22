@@ -1,0 +1,119 @@
+═══════════════════════════════════════════════════
+SCREEN 2 — Business Details
+Branch: claude/onboarding-setup-lQrdy
+Date: 2026-05-22
+═══════════════════════════════════════════════════
+
+FILES ADDED / MODIFIED:
+─────────────────────────────────────────────────────
+
+contractnest-ui (4 files):
+
+  src/pages/onboarding/steps/BusinessDetailsStep.tsx  ← NEW
+    → Inside OnboardingLayout (shows progress header)
+    → Applies setTheme('vani') on mount
+    → Pre-fills business name from currentTenant.name
+    → Pre-fills email from user.email / existing profile
+    → Logo upload via /api/tenant-profile/logo (multipart)
+    → GST/PAN fields — shown in UI, local state only (no DB column yet)
+      Auto-appends "✓ Valid" badge when GST reaches 15 chars
+    → Service Cities — 10 chip buttons (multi-select), saved as
+      comma-separated string in city field
+    → On Continue → api.put/post /api/tenant-profile with:
+        business_name, business_email, address_line1, city, logo_url
+    → Navigates to /onboarding/welcome on success
+    → Back button → /onboarding/vani-intro
+    → All colors from useTheme() VaNi tokens — zero hardcoded values
+    → Mobile-responsive (clamp padding, full-width on small screens)
+
+  src/pages/onboarding/steps/VaniIntroStep.tsx  ← MODIFIED
+    → handleLetsGo now navigates to /onboarding/business-details
+      (previously /onboarding/welcome)
+
+  src/App.tsx  ← MODIFIED (3 additions)
+    → import VaniIntroStep (if not already copied from screen15)
+    → import BusinessDetailsStep
+    → Route /onboarding/vani-intro (standalone, outside OnboardingLayout)
+    → Route "business-details" inside OnboardingLayout route group
+
+  src/components/onboarding/OnboardingLayout.tsx  ← MODIFIED (1 addition)
+    → 'business-details' added to stepsWithOwnButtons
+      (hides the layout's header Continue button for this step)
+
+─────────────────────────────────────────────────────
+DESIGN DECISIONS
+─────────────────────────────────────────────────────
+- BusinessDetailsStep lives inside OnboardingLayout so the progress
+  header chrome is visible (unlike VaNi Intro which is full-screen).
+- submitProfile() from useTenantProfile hook is NOT used because it
+  validates business_type_id + industry_id which are collected later.
+  Instead, api.put/post is called directly with only the fields
+  collected on this screen.
+- GST/PAN are cosmetically important for Indian SMB users but no DB
+  column exists yet. They're shown but their values aren't persisted.
+  When the column is added, just include them in the API payload.
+- City chips are a multi-select → joined as "Mumbai, Delhi" in `city`.
+
+─────────────────────────────────────────────────────
+COPY DESTINATIONS:
+─────────────────────────────────────────────────────
+contractnest-ui/src/pages/onboarding/steps/BusinessDetailsStep.tsx  (NEW)
+contractnest-ui/src/pages/onboarding/steps/VaniIntroStep.tsx
+contractnest-ui/src/App.tsx
+contractnest-ui/src/components/onboarding/OnboardingLayout.tsx
+
+COPY COMMANDS (PowerShell):
+─────────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen2\contractnest-ui\src\pages\onboarding\steps\BusinessDetailsStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen2\contractnest-ui\src\pages\onboarding\steps\VaniIntroStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen2\contractnest-ui\src\App.tsx" -Destination "contractnest-ui\src\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen2\contractnest-ui\src\components\onboarding\OnboardingLayout.tsx" -Destination "contractnest-ui\src\components\onboarding\" -Force
+
+NOTE: If you already copied onboarding-screen15 files, App.tsx in this
+folder supersedes that one — it includes all changes from both screen15
+and screen2.
+
+SUBMODULES AFFECTED: contractnest-ui
+═══════════════════════════════════════════════════
+
+TESTING CHECKLIST
+─────────────────────────────────────────────────────
+[ ] npm run dev starts without TypeScript errors
+
+Flow:
+[ ] Register → /onboarding/vani-intro (dark VaNi intro)
+[ ] "Let's go →" → /onboarding/business-details
+
+Visual (desktop):
+[ ] Progress header visible (from OnboardingLayout)
+[ ] "Step 2 of 9" eyebrow in VaNi orange
+[ ] Logo upload area (dashed border, initials placeholder)
+[ ] BUSINESS IDENTITY section: Business Name, GST, PAN (2-col)
+[ ] CONTACT & LOCATION section: Email, Address, City chips
+[ ] Back + Continue buttons at bottom
+
+Logo:
+[ ] Click upload area → file picker opens
+[ ] After selecting image → logo preview shows
+[ ] Remove icon on logo preview removes it
+
+GST/PAN:
+[ ] Typing 15-char GST → "✓ Valid" badge appears
+
+City chips:
+[ ] Click city → orange border + background
+[ ] Multiple cities selectable
+
+Form save:
+[ ] Click Continue with empty name → error toast
+[ ] Valid form → loader on button → "Business details saved" toast
+[ ] → navigates to /onboarding/welcome
+
+Back button:
+[ ] → back to /onboarding/vani-intro
+
+Mobile (< 768px):
+[ ] Card full-width with compact padding
+[ ] GST/PAN stack vertically on very small screens
+[ ] City chips wrap correctly
+═══════════════════════════════════════════════════
