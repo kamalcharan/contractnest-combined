@@ -1,0 +1,125 @@
+═══════════════════════════════════════════════════
+SCREEN 3 — Persona Selection  +  GST/PAN Migration
+Branch: claude/onboarding-setup-lQrdy
+Date: 2026-05-22
+═══════════════════════════════════════════════════
+
+FILES ADDED / MODIFIED:
+─────────────────────────────────────────────────────
+
+contractnest-edge (1 file):
+
+  supabase/migrations/onboarding/008_add_gst_pan_to_tenant_profiles.sql  ← NEW
+    → ALTER TABLE t_tenant_profiles:
+        ADD COLUMN gst_number TEXT DEFAULT NULL
+        ADD COLUMN pan_number TEXT DEFAULT NULL
+    → CHECK constraints: gst_number = 15 chars, pan_number = 10 chars
+    → Run on Supabase SQL editor (or via migration pipeline)
+
+contractnest-ui (5 files):
+
+  src/pages/onboarding/steps/PersonaSelectionStep.tsx  ← NEW
+    → Inside OnboardingLayout (progress header visible)
+    → Applies setTheme('vani') on mount
+    → VaNi intro bubble: "Hi [firstName]... Tell me how [companyName] operates..."
+    → 3 persona cards (2-column grid):
+        🔧 Service Provider (seller)
+        🏢 Asset Owner (buyer)
+        📤📥 Both — spans full width, horizontal layout
+    → On card click: orange border + glow + check mark animation
+    → VaNi reaction bubble slides up after selection
+    → Floating action island (dark pill, bottom-center):
+        "Choose how you operate" / "Confirmed: [role]" label
+        ← Back  |  Continue → (disabled until selection)
+    → On Continue: api.put /api/tenant-profile { business_type_id }
+        → navigates to /onboarding/theme-selection
+    → All colors from useTheme() VaNi tokens
+
+  src/hooks/useTenantProfile.ts  ← MODIFIED (2 field additions)
+    → gst_number?: string | null  added to TenantProfile interface
+    → pan_number?: string | null  added to TenantProfile interface
+
+  src/pages/onboarding/steps/BusinessDetailsStep.tsx  ← MODIFIED
+    → GST/PAN now included in profile API save payload
+      (gst_number, pan_number — persisted after migration 008)
+    → Pre-fills gst_number/pan_number from existing profile on load
+    → Navigate on success: /onboarding/welcome → /onboarding/persona-selection
+
+  src/App.tsx  ← MODIFIED (cumulative from screen15 + screen2 + screen3)
+    → import PersonaSelectionStep
+    → Route "persona-selection" inside OnboardingLayout
+
+  src/components/onboarding/OnboardingLayout.tsx  ← MODIFIED
+    → 'persona-selection' added to stepsWithOwnButtons
+
+─────────────────────────────────────────────────────
+MIGRATION NOTES
+─────────────────────────────────────────────────────
+Run 008_add_gst_pan_to_tenant_profiles.sql BEFORE copying UI files.
+The BusinessDetailsStep already sends gst_number/pan_number in the
+payload — if the columns don't exist yet, the API may silently ignore
+or error on those fields depending on the backend's update logic.
+Safe order:
+  1. Run migration
+  2. Deploy API (if any changes needed)
+  3. Copy UI files
+
+─────────────────────────────────────────────────────
+COPY DESTINATIONS:
+─────────────────────────────────────────────────────
+contractnest-edge/supabase/migrations/onboarding/008_add_gst_pan_to_tenant_profiles.sql (NEW)
+contractnest-ui/src/pages/onboarding/steps/PersonaSelectionStep.tsx  (NEW)
+contractnest-ui/src/hooks/useTenantProfile.ts
+contractnest-ui/src/pages/onboarding/steps/BusinessDetailsStep.tsx
+contractnest-ui/src/App.tsx
+contractnest-ui/src/components/onboarding/OnboardingLayout.tsx
+
+COPY COMMANDS (PowerShell):
+─────────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen3\contractnest-edge\supabase\migrations\onboarding\008_add_gst_pan_to_tenant_profiles.sql" -Destination "contractnest-edge\supabase\migrations\onboarding\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen3\contractnest-ui\src\pages\onboarding\steps\PersonaSelectionStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen3\contractnest-ui\src\hooks\useTenantProfile.ts" -Destination "contractnest-ui\src\hooks\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen3\contractnest-ui\src\pages\onboarding\steps\BusinessDetailsStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen3\contractnest-ui\src\App.tsx" -Destination "contractnest-ui\src\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen3\contractnest-ui\src\components\onboarding\OnboardingLayout.tsx" -Destination "contractnest-ui\src\components\onboarding\" -Force
+
+NOTE: App.tsx here supersedes all previous onboarding screens' App.tsx files.
+
+SUBMODULES AFFECTED: contractnest-ui, contractnest-edge
+═══════════════════════════════════════════════════
+
+TESTING CHECKLIST
+─────────────────────────────────────────────────────
+[ ] Migration runs without error on Supabase SQL editor
+[ ] t_tenant_profiles now has gst_number and pan_number columns
+[ ] npm run dev starts without TypeScript errors
+
+Flow:
+[ ] Business Details "Continue" → /onboarding/persona-selection
+[ ] Progress header visible (OnboardingLayout)
+
+Visual (Screen 3):
+[ ] "Step 3 of 9" eyebrow in VaNi orange
+[ ] VaNi intro bubble: "Hi [firstName]..." with company name
+[ ] 2-column grid: Service Provider (top-left), Asset Owner (top-right)
+[ ] "Both" card spans full width, horizontal layout with icons on left
+[ ] All cards: white bg, grey border
+[ ] Hover: slight lift + orange border tint
+[ ] Click card: orange border + orange glow + check mark bounces in
+[ ] Tags become orange tinted on selection
+[ ] VaNi reaction bubble slides up after selecting a persona
+[ ] Floating island at bottom with dark pill styling
+
+Action island:
+[ ] Label shows "Choose how you operate" before selection
+[ ] After selecting: label updates to "Confirmed: [role name]"
+[ ] Continue disabled (dimmed) before selection
+[ ] Continue enabled after selection
+[ ] ← Back → /onboarding/business-details
+[ ] Continue → saves business_type_id → /onboarding/theme-selection
+
+Business Details (Screen 2) regression:
+[ ] GST field now saves to DB (after migration)
+[ ] PAN field now saves to DB (after migration)
+[ ] Continue now routes to /onboarding/persona-selection (not welcome)
+═══════════════════════════════════════════════════
