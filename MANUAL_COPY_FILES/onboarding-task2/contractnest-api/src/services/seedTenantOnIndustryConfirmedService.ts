@@ -16,7 +16,19 @@ import { createClient } from '@supabase/supabase-js';
 import { randomUUID } from 'crypto';
 import axios from 'axios';
 import { SEQUENCE_SEED_DATA } from '../seeds';
-import { clientAssetRegistryService } from './clientAssetRegistryService';
+
+// Internal server-to-edge-function auth token.
+// Supabase edge functions require a valid (non-expired) JWT.
+// User session JWTs expire in ~1 hour and are not suitable for server-side calls.
+// The anon key is a permanent JWT issued by Supabase — safe for internal API calls
+// where tenant isolation is enforced via x-tenant-id header + service role DB client.
+function getServiceAuthToken(): string {
+  const anonKey = process.env.SUPABASE_KEY || '';
+  return `Bearer ${anonKey}`;
+}
+
+const EDGE_BASE_URL = () =>
+  `${process.env.SUPABASE_URL}/functions/v1/client-asset-registry`;
 
 export interface SeedIndustryInput {
   tenantId: string;
@@ -153,29 +165,45 @@ export async function seedTenantOnIndustryConfirmed(
           const parentId = template.level > 1 ? (levelToId[template.level - 1] ?? null) : null;
 
           try {
-            await clientAssetRegistryService.createAsset(authToken, tenantId, {
-              id: nodeId,
-              ownership_type: 'self',
-              owner_contact_id: null,
-              resource_type_id: 'asset',
-              name: template.label,
-              status: 'active',
-              condition: 'good',
-              criticality: 'low',
-              parent_asset_id: parentId,
-              is_live: false,
-              specifications: {
-                entity_type: template.entity_type,
-                industry_id: industryId,
-                hierarchy_level: template.level,
-                is_placeholder: true,
+            // Use anon key as Bearer token — permanent JWT accepted by Supabase
+            // infrastructure. Tenant context enforced via x-tenant-id header.
+            await axios.post(
+              EDGE_BASE_URL(),
+              {
+                id: nodeId,
+                ownership_type: 'self',
+                owner_contact_id: null,
+                resource_type_id: 'asset',
+                name: template.label,
+                status: 'active',
+                condition: 'good',
+                criticality: 'low',
+                parent_asset_id: parentId,
+                is_live: false,
+                specifications: {
+                  entity_type: template.entity_type,
+                  industry_id: industryId,
+                  hierarchy_level: template.level,
+                  is_placeholder: true,
+                },
               },
-            });
+              {
+                headers: {
+                  Authorization: getServiceAuthToken(),
+                  'x-tenant-id': tenantId,
+                  'Content-Type': 'application/json',
+                },
+                timeout: 15000,
+              }
+            );
 
             levelToId[template.level] = nodeId;
             facilityNodesSeeded++;
           } catch (nodeError: any) {
-            const msg = nodeError.response?.data?.message || nodeError.message;
+            const msg =
+              nodeError.response?.data?.error ||
+              nodeError.response?.data?.message ||
+              nodeError.message;
             errors.push(`Facility node '${template.entity_type}' failed: ${msg}`);
           }
         }
