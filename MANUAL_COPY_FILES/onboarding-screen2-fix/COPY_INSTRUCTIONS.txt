@@ -1,22 +1,30 @@
 ═══════════════════════════════════════════════════
-SCREEN 2 FIX — BusinessDetailsStep (Complete Fields)
+SCREEN 2 FIX — BusinessDetailsStep + PersonaSelectionStep API fix
 Branch: claude/onboarding-setup-lQrdy
 Date: 2026-05-22
 ═══════════════════════════════════════════════════
 
 WHY THIS FIX EXISTS
 ─────────────────────────────────────────────────────
-The original BusinessDetailsStep (screen2) manually constructed
-the API payload with only 6 fields and missed:
-  - address_line2, state_code, postal_code, country_code
-  - business_phone, business_phone_country_code
-  - business_whatsapp, business_whatsapp_country_code
-  - contact_first_name, contact_last_name
-  - website_url, booking_url
-  - primary_color, secondary_color
+1. FIELD COVERAGE: The original BusinessDetailsStep manually constructed
+   the API payload with only 6 fields and missed many required fields.
+   This rewrite uses useTenantProfile() hook so formData IS the payload.
 
-This rewrite uses useTenantProfile() hook so formData IS the
-payload — no manual mapping, zero missed fields.
+2. 404 on PUT: Both BusinessDetailsStep and PersonaSelectionStep were
+   calling api.put() which hits the edge function's PUT handler.
+   PUT does .update().select() — returns empty array and 404 when no
+   profile row exists yet (new registration).
+
+   ROOT CAUSE: The edge function's POST handler does UPSERT
+   (onConflict: 'tenant_id'). POST = create OR update.
+   PUT = update only, fails with 404 if row does not exist.
+
+   FIX: Both steps now use api.post() — UPSERT always works
+   regardless of whether the profile exists.
+
+3. business_name required: The edge function requires business_name
+   in both POST and PUT. PersonaSelectionStep was only sending
+   { business_type_id }. Fixed by including business_name: currentTenant.name.
 
 ─────────────────────────────────────────────────────
 HOW FIELD MAPPING WORKS (to address the concern)
@@ -65,6 +73,7 @@ you can skip copying that file again.
 COPY COMMANDS (PowerShell)
 ─────────────────────────────────────────────────────
 Copy-Item "MANUAL_COPY_FILES\onboarding-screen2-fix\contractnest-ui\src\pages\onboarding\steps\BusinessDetailsStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen2-fix\contractnest-ui\src\pages\onboarding\steps\PersonaSelectionStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\" -Force
 Copy-Item "MANUAL_COPY_FILES\onboarding-screen2-fix\contractnest-ui\src\hooks\useTenantProfile.ts" -Destination "contractnest-ui\src\hooks\" -Force
 
 ─────────────────────────────────────────────────────
