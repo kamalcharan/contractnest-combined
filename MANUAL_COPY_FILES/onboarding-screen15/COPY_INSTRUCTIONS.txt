@@ -1,0 +1,98 @@
+═══════════════════════════════════════════════════
+SCREEN 1.5 — VaNi Introduction
+Branch: claude/onboarding-setup-lQrdy
+Date: 2026-05-22
+═══════════════════════════════════════════════════
+
+FILES ADDED / MODIFIED:
+─────────────────────────────────────────────────────
+
+contractnest-ui (3 files):
+
+  src/pages/onboarding/steps/VaniIntroStep.tsx  ← NEW
+    → Full-screen dark standalone component (no OnboardingLayout header)
+    → Applies setTheme('vani') on mount
+    → Animated morphing orb (brand.primary → brand.alternate gradient)
+    → 8 floating particle dots with staggered animations
+    → Glassmorphic intro card (accent.accent1 @ 85% opacity, backdrop-blur)
+    → Badge: "VaNi Agent · Active" (IBM Plex Mono, pulsing dot)
+    → "Hi [firstName]." / "I'm VaNi." (gradient text)
+    → "Your setup agent for [companyName]."
+    → Body copy + time estimate in IBM Plex Mono
+    → "Let's go →" button → navigates to /onboarding/welcome
+    → Card enters with cardRise animation, text elements stagger in
+    → All colors from useTheme() — zero hardcoded values
+    → Uses user.first_name from AuthContext
+    → Uses currentTenant.name from AuthContext
+
+  src/App.tsx  ← MODIFIED (2 additions only)
+    → import VaniIntroStep
+    → Route path="/onboarding/vani-intro" added BEFORE the OnboardingLayout
+      route group (standalone ProtectedRoute, no layout wrapper)
+
+  src/pages/onboarding/index.tsx  ← MODIFIED (1 line change)
+    → New users now redirected to /onboarding/vani-intro instead of
+      /onboarding/welcome (so VaNi intro plays first)
+
+─────────────────────────────────────────────────────
+DESIGN DECISIONS
+─────────────────────────────────────────────────────
+- Standalone route (/onboarding/vani-intro) outside OnboardingLayout —
+  the design is intentionally full-screen with no header chrome.
+- All CSS keyframes injected via a <style> tag in JSX (no external CSS
+  file dependency, Tailwind not needed for this screen).
+- Orb background color is colors.accent.accent1 (VaNi token '#1a1816').
+  Slightly lighter than the prototype's #0c0b09, but avoids hardcoded values.
+- IBM Plex Mono used for badge + time estimate — loaded via index.html.
+
+─────────────────────────────────────────────────────
+COPY DESTINATIONS:
+─────────────────────────────────────────────────────
+contractnest-ui/src/pages/onboarding/steps/VaniIntroStep.tsx  (NEW)
+contractnest-ui/src/App.tsx
+contractnest-ui/src/pages/onboarding/index.tsx
+
+COPY COMMANDS (PowerShell):
+─────────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen15\contractnest-ui\src\pages\onboarding\steps\VaniIntroStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen15\contractnest-ui\src\App.tsx" -Destination "contractnest-ui\src\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen15\contractnest-ui\src\pages\onboarding\index.tsx" -Destination "contractnest-ui\src\pages\onboarding\" -Force
+
+SUBMODULES AFFECTED: contractnest-ui
+═══════════════════════════════════════════════════
+
+TESTING CHECKLIST
+─────────────────────────────────────────────────────
+[ ] npm run dev starts without TypeScript errors
+
+Flow test:
+[ ] Register a new account → lands on /onboarding/vani-intro
+[ ] VaNi theme is applied (dark background, orange orb)
+[ ] Card animates up on load (cardRise)
+
+Visual checks (desktop):
+[ ] Dark background with subtle orange radial glows
+[ ] Morphing orange orb visible behind the card
+[ ] 8 floating particles visible
+[ ] Glassmorphic card with orange border tint
+[ ] "VaNi Agent · Active" badge with pulsing orange dot
+[ ] "Hi [firstName]." in off-white
+[ ] "I'm VaNi." in orange → gold gradient
+[ ] "Your setup agent for [Company Name]." visible
+[ ] Body copy and time estimate row in IBM Plex Mono
+[ ] "Let's go →" button in orange gradient
+
+Visual checks (mobile < 1024px):
+[ ] Card takes full width with 16px side margin
+[ ] Text remains legible, no overflow
+
+Interaction:
+[ ] Hover on "Let's go →" → card lifts (translateY(-2px)), glow deepens
+[ ] Click "Let's go →" → navigates to /onboarding/welcome
+[ ] Returning user (currentStepId set) → bypasses vani-intro, resumes step
+
+NOTE ON IBM PLEX MONO FONT:
+─────────────────────────────────────────────────────
+Ensure this is in contractnest-ui/index.html (added in task4, verify):
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+═══════════════════════════════════════════════════
