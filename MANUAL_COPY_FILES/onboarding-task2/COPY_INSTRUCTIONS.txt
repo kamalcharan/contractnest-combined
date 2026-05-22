@@ -7,11 +7,13 @@ Date: 2026-05-21
 FILES ADDED / MODIFIED:
 ─────────────────────────────────────────────────────
 
-contractnest-edge (2 new migrations):
+contractnest-edge (3 new migrations):
   supabase/migrations/onboarding/003_add_cat_blocks_tenant_seed_columns.sql
   supabase/migrations/onboarding/004_seed_rls_fixes.sql
-    → Ensures service_role bypass on t_client_asset_registry and t_idempotency_keys.
-    → Run this if seed returns RLS violations or idempotency key not storing.
+  supabase/migrations/onboarding/005_rls_jwt_tenant_check.sql
+    → Updates car_tenant_isolation to accept auth.jwt()->>tenant_id as fallback
+      alongside current_setting(). Fixes RLS for API server clients that use
+      the user JWT instead of a service role key.
     → Adds tenant_id (UUID, nullable) and is_seed (BOOLEAN DEFAULT false)
       to m_cat_blocks if they don't already exist.
     → Updates read RLS policy to include tenant-scoped blocks.
@@ -55,9 +57,8 @@ contractnest-api/src/routes/seedRoutes.ts
 RUN ORDER:
 ─────────────────────────────────────────────────────
 1. Run migration 003 in Supabase SQL Editor
-2. Run migration 004 in Supabase SQL Editor (RLS fixes)
-3. Verify SUPABASE_SERVICE_ROLE_KEY is set in contractnest-api/.env
-   (if missing, add it — anon key causes RLS violations)
+2. Run migration 004 in Supabase SQL Editor
+3. Run migration 005 in Supabase SQL Editor (fixes RLS for JWT-based tenant checks)
 4. Copy API service and route files
 5. Restart contractnest-api (npm run dev)
 6. Test with Postman (see TESTING CHECKLIST)

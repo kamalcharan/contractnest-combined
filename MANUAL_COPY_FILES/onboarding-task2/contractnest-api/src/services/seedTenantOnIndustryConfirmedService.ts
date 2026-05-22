@@ -31,33 +31,31 @@ export interface SeedIndustryResult {
 
 const IDEMPOTENCY_ENDPOINT = 'seed/tenant/industry-confirmed';
 
-function buildSupabase() {
+// Pass the user's JWT so Supabase RLS policies see the correct tenant_id claim.
+// The API server uses the anon key (SUPABASE_KEY) — service role is not available
+// server-side. RLS policies must support auth.jwt() ->> 'tenant_id' checks.
+function buildSupabase(authToken: string) {
   const url = process.env.SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const fallbackKey = process.env.SUPABASE_KEY;
-  const key = serviceRoleKey || fallbackKey;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
 
   if (!url || !key) {
-    throw new Error('[seedTenantOnIndustryConfirmed] Missing SUPABASE_URL or service role key');
+    throw new Error('[seedTenantOnIndustryConfirmed] Missing SUPABASE_URL or Supabase key');
   }
 
-  // Warn loudly if falling back to anon key — RLS will block writes
-  if (!serviceRoleKey) {
-    console.warn(
-      '[seedTenantOnIndustryConfirmed] WARNING: SUPABASE_SERVICE_ROLE_KEY not set. ' +
-      'Falling back to SUPABASE_KEY (anon). RLS policies may block inserts. ' +
-      'Add SUPABASE_SERVICE_ROLE_KEY to your .env file.'
-    );
-  }
-
-  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  return createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: {
+      // Forward user JWT so auth.jwt() claims (including tenant_id) are available to RLS
+      headers: { Authorization: authToken },
+    },
+  });
 }
 
 export async function seedTenantOnIndustryConfirmed(
   input: SeedIndustryInput
 ): Promise<SeedIndustryResult> {
   const { tenantId, industryId, businessType, authToken } = input;
-  const supabase = buildSupabase();
+  const supabase = buildSupabase(authToken);
   const errors: string[] = [];
 
   console.log('[seedTenantOnIndustryConfirmed] Starting', { tenantId, industryId, businessType });
@@ -203,12 +201,11 @@ export async function seedTenantOnIndustryConfirmed(
 
   // ── Step 4: Seed sequence numbers (both environments, non-fatal) ─────────
   let sequencesSeeded = false;
-  const supabaseUrl = process.env.SUPABASE_URL!;
 
   try {
     for (const environment of ['live', 'test']) {
       await axios.post(
-        `${supabaseUrl}/functions/v1/sequences/seed`,
+        `${process.env.SUPABASE_URL}/functions/v1/sequences/seed`,
         { seedData: SEQUENCE_SEED_DATA },
         {
           headers: {
