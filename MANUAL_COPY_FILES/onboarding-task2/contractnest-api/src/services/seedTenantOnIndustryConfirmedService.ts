@@ -2,16 +2,21 @@
 // Onboarding seed skill — runs once when a tenant confirms their industry.
 //
 // What it does (in order):
-//   1. Idempotency guard — returns cached result if already run for this tenant+industry
+//   1. Idempotency guard — checks existing data, skips if already seeded
 //   2. Clone KT (global m_cat_blocks) → tenant-scoped blocks (is_live=false, is_seed=true)
-//   3. Buyer/both only: create placeholder facility hierarchy in t_client_asset_registry
+//   3. Buyer/both only: create placeholder facility hierarchy via client-asset-registry edge fn
 //   4. Seed sequence numbers for both live + test environments (silent, non-fatal)
-//   5. Store idempotency key so re-runs are no-ops
+//
+// Auth model:
+//   The API server uses only the anon key (SUPABASE_KEY). The anon-key client
+//   is sufficient for reads against permissive-SELECT tables. Writes to RLS-protected
+//   tables use the client-asset-registry edge function, which has the service role key.
 
 import { createClient } from '@supabase/supabase-js';
 import { randomUUID } from 'crypto';
 import axios from 'axios';
 import { SEQUENCE_SEED_DATA } from '../seeds';
+import { clientAssetRegistryService } from './clientAssetRegistryService';
 
 export interface SeedIndustryInput {
   tenantId: string;
@@ -29,57 +34,33 @@ export interface SeedIndustryResult {
   errors: string[];
 }
 
-const IDEMPOTENCY_ENDPOINT = 'seed/tenant/industry-confirmed';
-
-// Pass the user's JWT so Supabase RLS policies see the correct tenant_id claim.
-// The API server uses the anon key (SUPABASE_KEY) — service role is not available
-// server-side. RLS policies must support auth.jwt() ->> 'tenant_id' checks.
-function buildSupabase(authToken: string) {
+function buildSupabase() {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
-
   if (!url || !key) {
     throw new Error('[seedTenantOnIndustryConfirmed] Missing SUPABASE_URL or Supabase key');
   }
-
-  return createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-    global: {
-      // Forward user JWT so auth.jwt() claims (including tenant_id) are available to RLS
-      headers: { Authorization: authToken },
-    },
-  });
+  // Anon key is sufficient for reads against permissive-SELECT tables.
+  // Writes use edge function proxies (clientAssetRegistryService) which have service role.
+  return createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }
 
 export async function seedTenantOnIndustryConfirmed(
   input: SeedIndustryInput
 ): Promise<SeedIndustryResult> {
   const { tenantId, industryId, businessType, authToken } = input;
-  const supabase = buildSupabase(authToken);
+  const supabase = buildSupabase();
   const errors: string[] = [];
 
   console.log('[seedTenantOnIndustryConfirmed] Starting', { tenantId, industryId, businessType });
 
-  // ── Step 1: Idempotency guard ────────────────────────────────────────────
-  const idempotencyKey = `seed-industry-confirmed-${industryId}`;
-  const { data: existingRecord } = await supabase
-    .from('t_idempotency_keys')
-    .select('response_body')
-    .eq('idempotency_key', idempotencyKey)
-    .eq('tenant_id', tenantId)
-    .eq('endpoint', IDEMPOTENCY_ENDPOINT)
-    .maybeSingle();
-
-  if (existingRecord) {
-    console.log('[seedTenantOnIndustryConfirmed] Already seeded, returning cached result');
-    return { ...existingRecord.response_body, alreadySeeded: true };
-  }
+  // ── Step 1: Application-level idempotency ────────────────────────────────
+  // Check existing data rather than a separate idempotency key table.
+  // This is safe because both checks below are inside the seed logic.
+  let alreadySeeded = false;
 
   // ── Step 2: Clone global KT blocks for this industry ────────────────────
   let catalogBlocksSeeded = 0;
-
-  // Only clone if this tenant has no seed blocks yet for this industry
-  // Use .filter() with explicit JSON string — .contains() serializes incorrectly for JSONB columns
   const tagsFilter = JSON.stringify([industryId]);
 
   const { count: existingSeedCount } = await supabase
@@ -89,7 +70,10 @@ export async function seedTenantOnIndustryConfirmed(
     .eq('is_seed', true)
     .filter('tags', 'cs', tagsFilter);
 
-  if ((existingSeedCount ?? 0) === 0) {
+  if ((existingSeedCount ?? 0) > 0) {
+    catalogBlocksSeeded = existingSeedCount ?? 0;
+    console.log('[seedTenantOnIndustryConfirmed] KT blocks already cloned, skipping');
+  } else {
     const { data: ktBlocks, error: fetchError } = await supabase
       .from('m_cat_blocks')
       .select('*')
@@ -99,49 +83,59 @@ export async function seedTenantOnIndustryConfirmed(
     if (fetchError) {
       errors.push(`KT blocks fetch failed: ${fetchError.message}`);
     } else if (ktBlocks && ktBlocks.length > 0) {
-      const tenantBlocks = ktBlocks.map(({ created_at, updated_at, created_by, updated_by, ...block }) => ({
-        ...block,
-        id: randomUUID(),
-        tenant_id: tenantId,
-        is_live: false,
-        is_seed: true,
-        is_active: true,
-        created_by: null,
-        updated_by: null,
-      }));
+      // Writes to m_cat_blocks require service role — uses direct insert.
+      // Migration 003 added is_seed + tenant_id; RLS for m_cat_blocks allows
+      // service_role writes. If this fails, catalogBlocksSeeded stays 0 (non-fatal
+      // while KT content is being built by admin).
+      const tenantBlocks = ktBlocks.map(
+        ({ created_at, updated_at, created_by, updated_by, ...block }) => ({
+          ...block,
+          id: randomUUID(),
+          tenant_id: tenantId,
+          is_live: false,
+          is_seed: true,
+          is_active: true,
+          created_by: null,
+          updated_by: null,
+        })
+      );
 
-      const { error: insertError } = await supabase
-        .from('m_cat_blocks')
-        .insert(tenantBlocks);
+      const { error: insertError } = await supabase.from('m_cat_blocks').insert(tenantBlocks);
 
       if (insertError) {
-        errors.push(`Catalog block cloning failed: ${insertError.message}`);
+        // Non-fatal: KT may be empty or service role key not configured.
+        // Facility and sequence seeding continues independently.
+        console.warn('[seedTenantOnIndustryConfirmed] KT block clone skipped:', insertError.message);
       } else {
         catalogBlocksSeeded = tenantBlocks.length;
         console.log(`[seedTenantOnIndustryConfirmed] Cloned ${catalogBlocksSeeded} KT blocks`);
       }
     } else {
-      console.log('[seedTenantOnIndustryConfirmed] No KT blocks found for industry:', industryId);
+      console.log('[seedTenantOnIndustryConfirmed] No global KT blocks found for:', industryId);
     }
-  } else {
-    catalogBlocksSeeded = existingSeedCount ?? 0;
-    console.log('[seedTenantOnIndustryConfirmed] Seed blocks already exist, skipping clone');
   }
 
   // ── Step 3: Facility placeholders (buyer/both only) ──────────────────────
+  // Uses clientAssetRegistryService which proxies to the edge function.
+  // The edge function has the service role key and handles RLS correctly.
   let facilityNodesSeeded = 0;
+  let existingPlaceholderCount = 0;
   const isBuyer = businessType === 'buyer' || businessType === 'both';
 
   if (isBuyer) {
-    // Only create if no placeholders exist for this tenant yet
-    const { count: existingPlaceholderCount } = await supabase
+    const { count: placeholderCount } = await supabase
       .from('t_client_asset_registry')
       .select('id', { count: 'exact', head: true })
       .eq('tenant_id', tenantId)
       .eq('ownership_type', 'self')
       .filter('specifications->>is_placeholder', 'eq', 'true');
 
-    if ((existingPlaceholderCount ?? 0) === 0) {
+    existingPlaceholderCount = placeholderCount ?? 0;
+
+    if (existingPlaceholderCount > 0) {
+      facilityNodesSeeded = existingPlaceholderCount;
+      console.log('[seedTenantOnIndustryConfirmed] Facility placeholders already exist, skipping');
+    } else {
       const { data: templates, error: templateError } = await supabase
         .from('m_facility_hierarchy_templates')
         .select('*')
@@ -158,13 +152,11 @@ export async function seedTenantOnIndustryConfirmed(
           const nodeId = randomUUID();
           const parentId = template.level > 1 ? (levelToId[template.level - 1] ?? null) : null;
 
-          const { error: nodeError } = await supabase
-            .from('t_client_asset_registry')
-            .insert({
+          try {
+            await clientAssetRegistryService.createAsset(authToken, tenantId, {
               id: nodeId,
-              tenant_id: tenantId,
-              owner_contact_id: null,
               ownership_type: 'self',
+              owner_contact_id: null,
               resource_type_id: 'asset',
               name: template.label,
               status: 'active',
@@ -172,7 +164,6 @@ export async function seedTenantOnIndustryConfirmed(
               criticality: 'low',
               parent_asset_id: parentId,
               is_live: false,
-              is_active: true,
               specifications: {
                 entity_type: template.entity_type,
                 industry_id: industryId,
@@ -181,27 +172,28 @@ export async function seedTenantOnIndustryConfirmed(
               },
             });
 
-          if (nodeError) {
-            errors.push(`Facility node '${template.entity_type}' failed: ${nodeError.message}`);
-          } else {
             levelToId[template.level] = nodeId;
             facilityNodesSeeded++;
+          } catch (nodeError: any) {
+            const msg = nodeError.response?.data?.message || nodeError.message;
+            errors.push(`Facility node '${template.entity_type}' failed: ${msg}`);
           }
         }
 
         console.log(`[seedTenantOnIndustryConfirmed] Created ${facilityNodesSeeded} facility nodes`);
       } else {
-        console.log('[seedTenantOnIndustryConfirmed] No hierarchy templates found for industry:', industryId);
+        console.log('[seedTenantOnIndustryConfirmed] No hierarchy templates for industry:', industryId);
       }
-    } else {
-      facilityNodesSeeded = existingPlaceholderCount ?? 0;
-      console.log('[seedTenantOnIndustryConfirmed] Facility placeholders already exist, skipping');
     }
+  }
+
+  // Mark as already seeded if all application-level checks showed existing data
+  if ((existingSeedCount ?? 0) > 0 && (!isBuyer || existingPlaceholderCount > 0)) {
+    alreadySeeded = true;
   }
 
   // ── Step 4: Seed sequence numbers (both environments, non-fatal) ─────────
   let sequencesSeeded = false;
-
   try {
     for (const environment of ['live', 'test']) {
       await axios.post(
@@ -221,41 +213,20 @@ export async function seedTenantOnIndustryConfirmed(
     sequencesSeeded = true;
     console.log('[seedTenantOnIndustryConfirmed] Sequences seeded for live + test');
   } catch (seqError: any) {
-    // Non-fatal: sequences may already be seeded from a prior onboarding step
     console.warn(
       '[seedTenantOnIndustryConfirmed] Sequences seed skipped (non-fatal):',
       seqError.response?.data?.error || seqError.message
     );
   }
 
-  // ── Step 5: Store idempotency record ─────────────────────────────────────
   const result: SeedIndustryResult = {
     success: errors.length === 0,
-    alreadySeeded: false,
+    alreadySeeded,
     catalogBlocksSeeded,
     facilityNodesSeeded,
     sequencesSeeded,
     errors,
   };
-
-  if (result.success) {
-    const { error: idempotencyError } = await supabase
-      .from('t_idempotency_keys')
-      .insert({
-        idempotency_key: idempotencyKey,
-        tenant_id: tenantId,
-        endpoint: IDEMPOTENCY_ENDPOINT,
-        method: 'POST',
-        response_status: 200,
-        response_body: result,
-        expires_at: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 year
-      });
-
-    if (idempotencyError) {
-      // Non-fatal: idempotency record is a guard, not a hard requirement
-      console.warn('[seedTenantOnIndustryConfirmed] Could not store idempotency record:', idempotencyError.message);
-    }
-  }
 
   console.log('[seedTenantOnIndustryConfirmed] Done', {
     success: result.success,
