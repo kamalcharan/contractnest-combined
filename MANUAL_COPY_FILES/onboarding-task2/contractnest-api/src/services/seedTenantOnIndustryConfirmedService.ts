@@ -68,19 +68,22 @@ export async function seedTenantOnIndustryConfirmed(
   let catalogBlocksSeeded = 0;
 
   // Only clone if this tenant has no seed blocks yet for this industry
+  // Use .filter() with explicit JSON string — .contains() serializes incorrectly for JSONB columns
+  const tagsFilter = JSON.stringify([industryId]);
+
   const { count: existingSeedCount } = await supabase
     .from('m_cat_blocks')
     .select('id', { count: 'exact', head: true })
     .eq('tenant_id', tenantId)
     .eq('is_seed', true)
-    .contains('tags', [industryId]);
+    .filter('tags', 'cs', tagsFilter);
 
   if ((existingSeedCount ?? 0) === 0) {
     const { data: ktBlocks, error: fetchError } = await supabase
       .from('m_cat_blocks')
       .select('*')
       .is('tenant_id', null)
-      .contains('tags', [industryId]);
+      .filter('tags', 'cs', tagsFilter);
 
     if (fetchError) {
       errors.push(`KT blocks fetch failed: ${fetchError.message}`);
