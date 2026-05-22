@@ -26,12 +26,12 @@ const ThemeSelectionStep: React.FC = () => {
   const pickableThemes = Object.values(themes).filter(t => t.id !== 'vani');
 
   useEffect(() => {
-    setTheme('vani');
-    // Pre-select user's existing theme preference if any
-    const saved = localStorage.getItem('contractnest-theme');
-    if (saved && saved !== 'vani' && themes[saved]) {
-      setSelectedId(saved);
+    // Read user's saved preference BEFORE setTheme('vani') writes 'vani' to localStorage
+    const existingPreference = user?.preferred_theme;
+    if (existingPreference && existingPreference !== 'vani' && themes[existingPreference]) {
+      setSelectedId(existingPreference);
     }
+    setTheme('vani');
   }, []);
 
   const handleSelect = (id: string) => {

@@ -7,6 +7,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useTenantProfile } from '@/hooks/useTenantProfile';
 import api from '@/services/api';
 import { API_ENDPOINTS } from '@/services/serviceURLs';
 import { vaniToast } from '@/components/common/toast';
@@ -58,6 +59,8 @@ const PersonaSelectionStep: React.FC = () => {
   const navigate = useNavigate();
   const { setTheme, currentTheme } = useTheme();
   const { user, currentTenant } = useAuth();
+  // Fetch existing profile so we use the actual saved business_name, not the tenant slug
+  const { formData, fetchProfile } = useTenantProfile({ isOnboarding: true });
 
   const colors = currentTheme.colors;
   const firstName = user?.first_name || 'there';
@@ -69,6 +72,7 @@ const PersonaSelectionStep: React.FC = () => {
 
   useEffect(() => {
     setTheme('vani');
+    fetchProfile();
   }, []);
 
   const handleSelect = (id: PersonaId) => {
@@ -81,10 +85,10 @@ const PersonaSelectionStep: React.FC = () => {
     if (!selected || isSaving) return;
     setIsSaving(true);
     try {
-      // POST = UPSERT. business_name is required by the edge function; use tenant name.
-      // UPSERT only touches columns in the payload — other saved fields are preserved.
+      // POST = UPSERT (onConflict: tenant_id). Sends actual saved business_name
+      // so the business name the user entered in Screen 2 is never overwritten.
       await api.post(API_ENDPOINTS.TENANTS.PROFILE, {
-        business_name: currentTenant?.name || '',
+        business_name: formData.business_name || currentTenant?.name || '',
         business_type_id: selected,
       });
       vaniToast.success('Persona saved');
