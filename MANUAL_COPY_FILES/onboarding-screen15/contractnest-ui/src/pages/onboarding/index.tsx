@@ -8,9 +8,17 @@ const OnboardingIndexPage: React.FC = () => {
   const { currentStepId } = useOnboarding();
 
   useEffect(() => {
-    // Redirect to vani-intro for brand-new users, or resume from current step
-    if (!currentStepId || currentStepId === 'user-profile') {
-      // First time user — show VaNi introduction screen before the main flow
+    // Redirect to vani-intro for users who haven't passed the intro yet,
+    // then resume from current step for those mid-onboarding.
+    //
+    // Both entry points land here:
+    //   1. Registration → /onboarding (no currentStepId yet)
+    //   2. Login with incomplete onboarding → /onboarding (currentStepId may be 'welcome')
+    //
+    // 'welcome' is included because it's the first real step — anyone at that
+    // point hasn't experienced the VaNi intro yet and should see it first.
+    const needsIntro = !currentStepId || currentStepId === 'user-profile' || currentStepId === 'welcome';
+    if (needsIntro) {
       navigate('/onboarding/vani-intro', { replace: true });
     } else {
       // Resume from where they left off
