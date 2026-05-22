@@ -22,7 +22,7 @@ const BusinessDetailsStep: React.FC = () => {
   const { user } = useAuth();
   const colors = currentTheme.colors;
 
-  const { formData, updateField, fetchProfile, loading } = useTenantProfile({ isOnboarding: true });
+  const { formData, updateField, fetchProfile, loading, profile } = useTenantProfile({ isOnboarding: true });
 
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -55,12 +55,18 @@ const BusinessDetailsStep: React.FC = () => {
         logoUrl = res.data.url;
       }
 
-      // formData spread sends ALL TenantProfile fields — no manual mapping needed
-      await api.put(API_ENDPOINTS.TENANTS.PROFILE, {
+      // Use POST to create profile if none exists yet, PUT to update existing.
+      // profile?.id is set by fetchProfile() on mount when a row already exists.
+      const payload = {
         ...formData,
         business_name: formData.business_name.trim(),
         logo_url: logoUrl,
-      });
+      };
+      if (profile?.id) {
+        await api.put(API_ENDPOINTS.TENANTS.PROFILE, payload);
+      } else {
+        await api.post(API_ENDPOINTS.TENANTS.PROFILE, payload);
+      }
 
       vaniToast.success('Business details saved');
       navigate('/onboarding/persona-selection');
