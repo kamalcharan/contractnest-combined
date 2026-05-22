@@ -14,8 +14,7 @@ import { analyticsService, AUTH_EVENTS, UI_EVENTS } from '../../services/analyti
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface FormData {
-  companyDisplayName: string; // user-facing free text
-  workspaceName: string;      // derived slug, passed to register()
+  workspaceName: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -36,7 +35,6 @@ const RegisterPage: React.FC = () => {
 
   // ── State ──────────────────────────────────────────────────────────────────
   const [formData, setFormData] = useState<FormData>({
-    companyDisplayName: '',
     workspaceName: '',
     firstName: '',
     lastName: '',
@@ -101,21 +99,6 @@ const RegisterPage: React.FC = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-
-    if (name === 'companyDisplayName') {
-      // Auto-derive workspace slug from company name
-      const slug = value
-        .toLowerCase()
-        .replace(/\s+/g, '-')
-        .replace(/[^a-z0-9\-_]/g, '')
-        .replace(/-+/g, '-')
-        .replace(/^-|-$/g, '');
-      setFormData(prev => ({ ...prev, companyDisplayName: value, workspaceName: slug }));
-      if (errors.workspaceName) setErrors(prev => ({ ...prev, workspaceName: '' }));
-      if (errors.companyDisplayName) setErrors(prev => ({ ...prev, companyDisplayName: '' }));
-      return;
-    }
-
     setFormData(prev => ({ ...prev, [name]: value }));
     if (errors[name as keyof FormData]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
@@ -125,11 +108,8 @@ const RegisterPage: React.FC = () => {
   const validateForm = (): boolean => {
     const newErrors: Partial<Record<keyof FormData, string>> = {};
 
-    if (!formData.companyDisplayName.trim()) {
-      newErrors.companyDisplayName = 'Company name is required';
-    }
-    if (!formData.workspaceName) {
-      newErrors.workspaceName = 'Could not derive workspace name — please adjust company name';
+    if (!formData.workspaceName.trim()) {
+      newErrors.workspaceName = 'Company name is required';
     }
     if (!formData.firstName.trim()) newErrors.firstName = 'Required';
     if (!formData.lastName.trim()) newErrors.lastName = 'Required';
@@ -173,7 +153,7 @@ const RegisterPage: React.FC = () => {
         password: formData.password,
         firstName: formData.firstName,
         lastName: formData.lastName,
-        workspaceName: formData.workspaceName,
+        workspaceName: formData.workspaceName.trim(),
       });
       analyticsService.trackEvent(AUTH_EVENTS.SIGNUP_SUCCESS, {
         workspace_name: formData.workspaceName,
@@ -387,22 +367,16 @@ const RegisterPage: React.FC = () => {
               <label style={labelStyle}>Company Name</label>
               <input
                 type="text"
-                name="companyDisplayName"
-                value={formData.companyDisplayName}
+                name="workspaceName"
+                value={formData.workspaceName}
                 onChange={handleChange}
-                onFocus={() => setFocusedField('companyDisplayName')}
+                onFocus={() => setFocusedField('workspaceName')}
                 onBlur={() => setFocusedField(null)}
                 placeholder="Sharma Elevators Pvt Ltd"
                 autoComplete="organization"
-                style={inputStyle('companyDisplayName')}
+                style={inputStyle('workspaceName')}
               />
-              {formData.workspaceName && !errors.companyDisplayName && (
-                <p style={{ fontSize: '11px', color: colors.utility.secondaryText, marginTop: '4px', fontFamily: "'IBM Plex Mono', monospace" }}>
-                  Workspace ID: {formData.workspaceName}
-                </p>
-              )}
-              {errors.companyDisplayName && <p style={errorStyle}>{errors.companyDisplayName}</p>}
-              {errors.workspaceName && !errors.companyDisplayName && <p style={errorStyle}>{errors.workspaceName}</p>}
+              {errors.workspaceName && <p style={errorStyle}>{errors.workspaceName}</p>}
             </div>
 
             {/* First + Last Name — side by side */}
