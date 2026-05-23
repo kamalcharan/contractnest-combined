@@ -9,6 +9,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { useTenantProfile } from '@/hooks/useTenantProfile';
 import { useIndustries } from '@/hooks/queries/useProductMasterdata';
 import { useServedIndustriesManager } from '@/hooks/queries/useServedIndustries';
 import { vaniToast } from '@/components/common/toast';
@@ -18,7 +19,8 @@ import { Loader2, Search, ChevronLeft, ChevronRight, X } from 'lucide-react';
 const IndustrySelectionStep: React.FC = () => {
   const navigate = useNavigate();
   const { setTheme, currentTheme } = useTheme();
-  const { user } = useAuth();
+  const { user, currentTenant } = useAuth();
+  const { formData, fetchProfile } = useTenantProfile({ isOnboarding: true });
   const colors = currentTheme.colors;
 
   // Industry catalog
@@ -43,6 +45,7 @@ const IndustrySelectionStep: React.FC = () => {
 
   useEffect(() => {
     setTheme('vani');
+    fetchProfile();
   }, []);
 
   // Pre-populate from already-saved served industries (once data arrives)
@@ -131,6 +134,9 @@ const IndustrySelectionStep: React.FC = () => {
     if (!iconName) return LucideIcons.Briefcase;
     return (LucideIcons as any)[iconName] || LucideIcons.Briefcase;
   };
+
+  const firstName = user?.first_name && user.first_name.trim() ? user.first_name.trim() : null;
+  const businessName = formData.business_name?.trim() || currentTenant?.name || null;
 
   const isLoading = catalogLoading || servedLoading || !hydrated;
   const selectedCount = selectedIds.size;
@@ -362,7 +368,13 @@ const IndustrySelectionStep: React.FC = () => {
 
           {/* VaNi intro bubble */}
           <VaniBubble
-            msg={`Hi <strong>${user?.first_name || 'there'}</strong>! Pick the industries that match your work — you can always add more later. If an industry has specializations, tap it to explore them.`}
+            msg={
+              firstName && businessName
+                ? `Hi <strong>${firstName}</strong>! Let's set up the industry profile for <strong>${businessName}</strong>. Pick the sectors that match your work — VaNi will unlock contract templates and SLA defaults for each one.`
+                : businessName
+                  ? `Let's set up the industry profile for <strong>${businessName}</strong>. Pick the sectors that match your work — VaNi will unlock contract templates and SLA defaults for each one.`
+                  : `Pick the industries that match your work — you can always add more later. If an industry has specializations, tap it to explore them.`
+            }
           />
 
           {isLoading ? (
