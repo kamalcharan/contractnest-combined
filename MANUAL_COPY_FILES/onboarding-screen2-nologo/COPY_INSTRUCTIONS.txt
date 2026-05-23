@@ -1,0 +1,82 @@
+═══════════════════════════════════════════════════
+SCREEN 2 — Logo Removed (onboarding-screen2-nologo)
+Branch: claude/onboarding-setup-lQrdy
+Date: 2026-05-23
+═══════════════════════════════════════════════════
+
+WHY THIS FIX EXISTS
+─────────────────────────────────────────────────────
+Logo upload and brand colors require cloud storage to be
+live. Storage is set up automatically during Screen 8
+(VaNi Working). Business Details is Screen 2 — storage
+doesn't exist yet. Logo upload at Screen 2 would fail
+for every new user.
+
+FIX:
+- Logo + brand colors removed from Screen 2
+- Screen 9 (Branding) will collect logo + colors after
+  storage is guaranteed live post VaNi Working
+
+CHANGES
+─────────────────────────────────────────────────────
+OrganizationDetailsForm.tsx:
+  + hideBranding?: boolean prop (default false)
+  + When hideBranding=true: logo hidden, org name spans
+    full width, brand colors section hidden
+  + onLogoChange made optional (no-op when not provided)
+  + All existing usages (settings page etc) unchanged —
+    hideBranding defaults to false
+
+BusinessDetailsStep.tsx:
+  - Removed: logoFile state, handleLogoChange, logo upload
+    API call, api import for upload, onLogoChange prop
+  - Added: hideBranding prop on OrganizationDetailsForm
+  - Updated: VaNi bubble no longer mentions logo;
+    says "logo and brand colours come later"
+  - firstName null-check: shows personalised greeting
+    only when first_name is a real non-empty string
+
+─────────────────────────────────────────────────────
+FILES MODIFIED
+─────────────────────────────────────────────────────
+contractnest-ui (2 files):
+
+  src/components/tenantprofile/OrganizationDetailsForm.tsx  ← MODIFIED
+  src/pages/onboarding/steps/BusinessDetailsStep.tsx        ← MODIFIED
+
+─────────────────────────────────────────────────────
+COPY COMMANDS (PowerShell)
+─────────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen2-nologo\contractnest-ui\src\components\tenantprofile\OrganizationDetailsForm.tsx" -Destination "contractnest-ui\src\components\tenantprofile\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen2-nologo\contractnest-ui\src\pages\onboarding\steps\BusinessDetailsStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\" -Force
+
+─────────────────────────────────────────────────────
+COPY ORDER (full onboarding build so far)
+─────────────────────────────────────────────────────
+Apply in this order for a clean build:
+  1. onboarding-screen15       (VaNi Intro)
+  2. onboarding-screen2-fix    (BusinessDetailsStep + PersonaSelectionStep)
+  3. onboarding-screen2-nologo ← apply THIS (removes logo from Screen 2)
+  4. onboarding-screen4        (ThemeSelectionStep + vaniTheme)
+  5. onboarding-screen5        (IndustrySelectionStep)
+
+─────────────────────────────────────────────────────
+TESTING CHECKLIST
+─────────────────────────────────────────────────────
+Screen 2 — Business Details (/onboarding/business-details):
+[ ] No logo uploader visible anywhere on the page
+[ ] No brand color picker visible
+[ ] Organization Name field spans full width in Card 1
+[ ] Card 1 header still shows "Organization Identity"
+[ ] Cards 2 (Contact) and 3 (Address) render normally
+[ ] GST / PAN fields render below as before
+[ ] VaNi bubble says: "logo and brand colours come later"
+[ ] VaNi bubble shows first name if user.first_name is set
+[ ] Continue saves without any logo-related API call
+[ ] No errors in browser console about storage/upload
+
+Settings page (regression check):
+[ ] Business Profile settings page still shows logo uploader
+[ ] Brand color picker still shows in settings
+[ ] No TypeScript errors (onLogoChange is now optional)
+═══════════════════════════════════════════════════
