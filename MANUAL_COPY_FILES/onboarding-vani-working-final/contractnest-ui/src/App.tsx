@@ -264,7 +264,7 @@ const TeamEditPage = () => <div className="p-8">Edit Team Member Page (Coming So
 
 // Smart Home Page Component - Shows landing page OR redirects based on auth
 const SmartHomePage: React.FC = () => {
-  const { isAuthenticated, isLoading, currentTenant } = useAuth();
+  const { isAuthenticated, isLoading, currentTenant, hasCompletedOnboarding } = useAuth();
   const location = useLocation();
 
   // Don't redirect if user is on auth pages or welcome page
@@ -280,6 +280,10 @@ const SmartHomePage: React.FC = () => {
   }
 
   if (isAuthenticated && currentTenant) {
+    // Send to onboarding if not yet complete, otherwise to the main app
+    if (!hasCompletedOnboarding) {
+      return <Navigate to="/onboarding" replace />;
+    }
     return <Navigate to="/ops/cockpit" replace />;
   }
 
