@@ -1,0 +1,109 @@
+═══════════════════════════════════════════════════
+PRE-FILL FIX — Screens 3, 4, 5 (onboarding-prefill-fix)
+Branch: claude/onboarding-setup-lQrdy
+Date: 2026-05-23
+═══════════════════════════════════════════════════
+
+PROBLEM
+─────────────────────────────────────────────────────
+All three screens failed to restore previously saved data
+when the user returned mid-onboarding.
+
+ROOT CAUSES
+─────────────────────────────────────────────────────
+Screen 3 — PersonaSelectionStep:
+  fetchProfile() populates formData.business_type_id
+  asynchronously, but there was no effect watching that
+  field — selected state was only ever set by user clicks.
+
+Screen 4 — ThemeSelectionStep:
+  Read user?.preferred_theme from AuthContext, which may
+  not be loaded at mount time. ThemeContext's currentThemeId
+  (sourced from localStorage) is available synchronously and
+  is the correct source of truth for the active theme.
+
+Screen 5 — IndustrySelectionStep:
+  useServedIndustries is enabled: !!currentTenant?.id.
+  When currentTenant is null on mount (auth still loading),
+  the query is DISABLED → TanStack Query returns isLoading=false
+  immediately with empty data. The hydration effect ran, saw
+  isLoading=false + empty data, set hydrated=true — then when
+  the real fetch finally ran, hydrated=true blocked it.
+
+FIXES
+─────────────────────────────────────────────────────
+PersonaSelectionStep.tsx:
+  + useEffect watching formData.business_type_id
+  + When formData arrives from fetchProfile(), finds matching
+    PERSONA and sets selected + shows VaNi bubble immediately
+
+ThemeSelectionStep.tsx:
+  + Switched from user?.preferred_theme to currentThemeId
+    (from useTheme() — always available synchronously from
+    localStorage before setTheme('vani') overwrites it)
+  + If pre-selected, VaNi reaction bubble shown immediately
+
+IndustrySelectionStep.tsx:
+  + Added currentTenant?.id guard to hydration effect
+  + Effect now returns early if tenant not yet loaded
+  + Correctly waits for query to be enabled before initializing
+  + If pre-populated, VaNi reaction bubble shown immediately
+
+─────────────────────────────────────────────────────
+NOTE — Screen 2 logo still showing
+─────────────────────────────────────────────────────
+If logo + brand colors are still visible in Screen 2,
+apply onboarding-screen2-nologo FIRST, then this fix.
+
+─────────────────────────────────────────────────────
+FILES MODIFIED
+─────────────────────────────────────────────────────
+contractnest-ui (3 files):
+
+  src/pages/onboarding/steps/PersonaSelectionStep.tsx  ← MODIFIED
+  src/pages/onboarding/steps/ThemeSelectionStep.tsx    ← MODIFIED
+  src/pages/onboarding/steps/IndustrySelectionStep.tsx ← MODIFIED
+
+─────────────────────────────────────────────────────
+COPY COMMANDS (PowerShell)
+─────────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\onboarding-prefill-fix\contractnest-ui\src\pages\onboarding\steps\PersonaSelectionStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-prefill-fix\contractnest-ui\src\pages\onboarding\steps\ThemeSelectionStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-prefill-fix\contractnest-ui\src\pages\onboarding\steps\IndustrySelectionStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\" -Force
+
+─────────────────────────────────────────────────────
+FULL COPY ORDER
+─────────────────────────────────────────────────────
+Apply in this order:
+  1. onboarding-screen15       (VaNi Intro)
+  2. onboarding-screen2-fix    (BusinessDetailsStep + PersonaSelectionStep base)
+  3. onboarding-screen2-nologo (removes logo from Screen 2)  ← apply if not done
+  4. onboarding-screen4        (ThemeSelectionStep + vaniTheme)
+  5. onboarding-screen5        (IndustrySelectionStep)
+  6. onboarding-prefill-fix    ← apply THIS (pre-fill fixes for screens 3, 4, 5)
+
+─────────────────────────────────────────────────────
+TESTING CHECKLIST
+─────────────────────────────────────────────────────
+Complete screens 3, 4, 5 once. Then reload / re-trigger
+onboarding and verify:
+
+Screen 3 — Persona Selection:
+[ ] Previously selected persona card is highlighted on load
+[ ] Check mark visible, orange border on the saved card
+[ ] VaNi reaction bubble visible immediately (not waiting for click)
+[ ] User can change selection by clicking a different card
+
+Screen 4 — Theme Selection:
+[ ] Previously selected theme card is highlighted on load
+[ ] VaNi reaction bubble visible immediately
+[ ] Dark mode toggle reflects saved is_dark_mode state
+[ ] User can change selection
+
+Screen 5 — Industry Selection:
+[ ] Previously saved industries have check marks on load
+[ ] VaNi reaction bubble visible immediately (N industries selected)
+[ ] Drillable parent cards show count badge for saved children
+[ ] User can add/remove selections
+[ ] Continue saves the current full selection (not just additions)
+═══════════════════════════════════════════════════
