@@ -1,7 +1,8 @@
 // src/pages/onboarding/steps/VaniDoneStep.tsx
-// Screen 9 — VaNi Done (standalone full page, outside OnboardingLayout)
+// Screen 9 — VaNi Done (standalone full page, inside OnboardingLayout with isCompletePage guard)
 //
 // Reads state from navigate('/onboarding/done', { state: { … } })
+// Marks onboarding complete when user clicks "Go to dashboard / Try test mode".
 // Renders per-persona card:
 //   9A — seller: summary + VaNi signoff + "Try test mode →" + ETL entry
 //   9B — buyer:  summary + workspace code + VaNi signoff + "Try test mode →" + CNAK button
@@ -9,6 +10,9 @@
 
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
+import api from '@/services/api';
+import { API_ENDPOINTS } from '@/services/serviceURLs';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -336,6 +340,7 @@ const Screen9C: React.FC<{ state: DoneState; onDashboard: () => void }> = ({ sta
 const VaniDoneStep: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { markOnboardingComplete } = useAuth();
 
   const state = (location.state as DoneState) || {
     persona: 'seller' as const,
@@ -349,8 +354,16 @@ const VaniDoneStep: React.FC = () => {
   const { persona } = state;
   const cardWidth = persona === 'both' ? 580 : 540;
 
-  const handleDashboard = () => {
-    navigate('/dashboard');
+  const handleDashboard = async () => {
+    // Mark onboarding complete here — VaniWorkingStep only seeds data, it does
+    // not mark completion. This is the final step the user confirms before entering the app.
+    try {
+      await api.post(API_ENDPOINTS.ONBOARDING.COMPLETE);
+    } catch {
+      // 409 = already marked complete — safe to continue
+    }
+    markOnboardingComplete();
+    navigate('/ops/cockpit');
   };
 
   return (

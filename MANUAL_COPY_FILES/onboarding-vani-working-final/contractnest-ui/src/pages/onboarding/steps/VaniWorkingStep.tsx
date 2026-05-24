@@ -98,7 +98,7 @@ const DARK_CARD = 'linear-gradient(145deg, #1a1816, #2a2520)';
 
 const VaniWorkingStep: React.FC = () => {
   const navigate = useNavigate();
-  const { currentTenant, markOnboardingComplete, refreshData } = useAuth();
+  const { currentTenant } = useAuth();
   const { formData, fetchProfile } = useTenantProfile({ isOnboarding: true });
   const { servedIndustries, isLoading: industriesLoading } = useServedIndustriesManager();
 
@@ -267,26 +267,13 @@ const VaniWorkingStep: React.FC = () => {
     doneCount++;
     updateProgress(doneCount);
 
-    // ── Complete ──────────────────────────────────────────────────────────────
+    // ── Workspace ready (seeding complete — onboarding not yet marked done) ──
+    // Onboarding is marked complete only after the user confirms all steps
+    // in VaniDoneStep (or future pricing/equipment screens).
     setStatus('complete', 'running');
     setLiveOp('Finalising your workspace…');
-    try {
-      await api.post(API_ENDPOINTS.ONBOARDING.COMPLETE);
-      markOnboardingComplete();
-      if (refreshData) await refreshData();
-      setStatus('complete', 'done');
-    } catch (err: any) {
-      if (err?.response?.status === 409) {
-        markOnboardingComplete();
-        if (refreshData) await refreshData();
-        setStatus('complete', 'done');
-      } else {
-        const msg = err?.response?.data?.error || err?.message || 'Finalisation failed';
-        setStatus('complete', 'error');
-        setErrorMessages(prev => ({ ...prev, complete: msg }));
-        return;
-      }
-    }
+    await new Promise(r => setTimeout(r, 600));
+    setStatus('complete', 'done');
     doneCount++;
     updateProgress(doneCount);
 
