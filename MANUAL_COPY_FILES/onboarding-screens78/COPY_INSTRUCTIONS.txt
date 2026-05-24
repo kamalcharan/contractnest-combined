@@ -1,0 +1,76 @@
+═══════════════════════════════════════════════════
+SCREENS 7 & 8 — VaNi Consent + VaNi Working (onboarding-screens78)
+Branch: claude/onboarding-setup-lQrdy
+Date: 2026-05-24
+═══════════════════════════════════════════════════
+
+SCREEN 7 — VaNi Consent (/onboarding/vani-consent)
+─────────────────────────────────────────────────────
+Shows a summary of what VaNi has learned:
+  · User name, company, persona, theme, industry count
+Shows what VaNi will do (persona-specific bullet list)
+CTA "Set up my workspace →" navigates to Screen 8
+Step 7 of 9
+
+SCREEN 8 — VaNi Working (/onboarding/vani-working)
+─────────────────────────────────────────────────────
+Full-screen overlay. Auto-starts on mount.
+Runs 3 sequential steps:
+  1. POST /api/storage/setup
+  2. POST /api/sequences/seed
+  3. POST /api/onboarding/complete + markOnboardingComplete()
+     + refreshData()
+409 responses treated as "already done" (idempotent).
+On error: shows Retry button for the failed step.
+On all done: auto-navigates to /onboarding/branding after 1.6 s.
+Step 8 of 9 (shown as badge inside full-screen UI)
+
+─────────────────────────────────────────────────────
+FILES MODIFIED / CREATED
+─────────────────────────────────────────────────────
+contractnest-ui (3 files):
+
+  src/App.tsx                                              ← MODIFIED (new imports + routes)
+  src/pages/onboarding/steps/VaniConsentStep.tsx           ← NEW (Screen 7)
+  src/pages/onboarding/steps/VaniWorkingStep.tsx           ← NEW (Screen 8)
+
+─────────────────────────────────────────────────────
+COPY COMMANDS (PowerShell)
+─────────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\onboarding-screens78\contractnest-ui\src\App.tsx" -Destination "contractnest-ui\src\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-screens78\contractnest-ui\src\pages\onboarding\steps\VaniConsentStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-screens78\contractnest-ui\src\pages\onboarding\steps\VaniWorkingStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\" -Force
+
+─────────────────────────────────────────────────────
+APPLY ORDER
+─────────────────────────────────────────────────────
+  1–7. All previous patches (see onboarding-screen2-userprofile)
+  8. onboarding-screens78  ← apply THIS
+
+─────────────────────────────────────────────────────
+TESTING CHECKLIST
+─────────────────────────────────────────────────────
+Screen 7 — VaNi Consent:
+[ ] Shows "Step 7 of 9"
+[ ] Summary card shows: name, company, persona label + icon,
+    theme name, industry count
+[ ] VaNi intro bubble addresses user by first name
+[ ] Persona-specific "What VaNi will do" list visible
+[ ] Seller: service catalog, SLA, billing, sequences
+[ ] Buyer: asset registry, vendor, procurement, sequences
+[ ] Both: dual setup bullet list
+[ ] Back → /onboarding/industry-selection
+[ ] "Set up my workspace →" navigates to /onboarding/vani-working
+
+Screen 8 — VaNi Working:
+[ ] Full-screen dark overlay (OnboardingLayout hidden behind)
+[ ] "Step 8 of 9 · VaNi Working" badge visible at top
+[ ] VaNi orb animation plays in background
+[ ] Step 1 "Setting up cloud storage" runs first, spins, then ✓
+[ ] Step 2 "Configuring sequence numbers" runs after step 1 ✓
+[ ] Step 3 "Finalising your workspace" runs last, ✓
+[ ] On all ✓: "Workspace ready! 🎉" shows, then auto-nav to /onboarding/branding
+[ ] If any step fails: red XCircle, error message shown, Retry button appears
+[ ] Retry restarts from the beginning (all 3 steps run again)
+[ ] 409 response treated as success (idempotent — safe to retry)
+═══════════════════════════════════════════════════
