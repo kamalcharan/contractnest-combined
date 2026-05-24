@@ -61,7 +61,8 @@ const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({ children }) => {
 
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
   const allSteps = OnboardingUtils.getAllSteps();
-  const isCompletePage = location.pathname === '/onboarding/complete';
+  const isCompletePage = location.pathname === '/onboarding/complete' ||
+                         location.pathname === '/onboarding/done';
 
   // Track local UI step from URL
   const [uiStepId, setUiStepId] = useState<string>('');
