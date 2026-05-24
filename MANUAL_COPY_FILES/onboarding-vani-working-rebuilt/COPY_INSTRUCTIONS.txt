@@ -1,0 +1,137 @@
+═══════════════════════════════════════════════════
+VaNi Working — Rebuilt (Screens 7, 8 & 9)
+Branch: claude/onboarding-setup-lQrdy
+Date: 2026-05-24
+═══════════════════════════════════════════════════
+
+WHAT CHANGED vs PREVIOUS onboarding-screens78 PATCH
+─────────────────────────────────────────────────────
+Screen 7 — VaNi Consent (VaniConsentStep.tsx)
+  · "What VaNi will do" bullets now match the REAL 4 steps
+  · Timing updated from "10–20 seconds" to "30–60 seconds"
+  · No other visual changes
+
+Screen 8 — VaNi Working (VaniWorkingStep.tsx)  ← REBUILT
+  · Now runs 4 real steps (was 3 fake steps before):
+      1. POST /api/storage/setup                  (same as before)
+      2. POST /api/seeds/tenant                   (NEW: all 3 categories, BOTH environments)
+         categories: sequences + relationships + eventStatuses
+         Shows real insert counts from API response
+      3. GET /api/catalog-studio/templates/system  (NEW: real industry templates)
+         POST /api/catalog-studio/templates/:id/copy per template
+         Shows "N templates loaded" with real count
+         Non-fatal: gracefully handles 0 templates (e.g. library not yet populated)
+         409 on each copy = already copied → counted as "already configured"
+      4. POST /api/onboarding/complete             (same as before)
+         + markOnboardingComplete() + refreshData()
+  · Each step shows a live detail line when done (real counts from API)
+  · On success → navigates to /onboarding/done  (was /onboarding/branding — wrong)
+  · 409 on any step = idempotent success, retries safe
+
+Screen 9 — VaNi Done (VaniDoneStep.tsx)         ← NEW
+  Route: /onboarding/done
+  · Persona-specific content (reads currentTenant.business_type_id)
+  · Seller: "Open Service Catalog" → /catalog
+  · Buyer:  "View Asset Registry" → /client-asset-registry
+  · Both:   "Go to Dashboard" → /dashboard
+  · Shows workspace name + shortened workspace ID
+  · Lists what was set up (matches real Step 8 operations)
+
+─────────────────────────────────────────────────────
+FILES MODIFIED / CREATED
+─────────────────────────────────────────────────────
+contractnest-ui (4 files):
+
+  src/App.tsx                                          ← MODIFIED (added VaniDoneStep import + /done route)
+  src/pages/onboarding/steps/VaniConsentStep.tsx       ← MODIFIED (accurate "What VaNi will do" bullets + timing)
+  src/pages/onboarding/steps/VaniWorkingStep.tsx       ← REBUILT  (4 real steps + real API calls)
+  src/pages/onboarding/steps/VaniDoneStep.tsx          ← NEW      (Screen 9 — persona-specific done)
+
+─────────────────────────────────────────────────────
+APPLY ORDER
+─────────────────────────────────────────────────────
+  1–7. All previous patches (including onboarding-screen2-userprofile + onboarding-prefill-fix2)
+  8. onboarding-vani-working-rebuilt  ← apply THIS (replaces onboarding-screens78)
+
+─────────────────────────────────────────────────────
+COPY COMMANDS (PowerShell)
+─────────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\onboarding-vani-working-rebuilt\contractnest-ui\src\App.tsx" -Destination "contractnest-ui\src\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-vani-working-rebuilt\contractnest-ui\src\pages\onboarding\steps\VaniConsentStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-vani-working-rebuilt\contractnest-ui\src\pages\onboarding\steps\VaniWorkingStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-vani-working-rebuilt\contractnest-ui\src\pages\onboarding\steps\VaniDoneStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\" -Force
+
+─────────────────────────────────────────────────────
+BACKEND API ENDPOINTS CALLED (and their status)
+─────────────────────────────────────────────────────
+POST /api/storage/setup
+  → storageController.setupStorage → tenantStorageEdgeFunction
+  Status: BUILT ✅
+
+POST /api/seeds/tenant  { categories: ['sequences','relationships','eventStatuses'] }
+  → seedRoutes.ts → seeds both live and test environments
+  Status: BUILT ✅  (note: only 'sequences' was actually implemented in seedCategory();
+                     relationships and eventStatuses will need seedCategory() handlers
+                     added in seedRoutes.ts if they fail — currently only sequences works)
+
+GET /api/catalog-studio/templates/system
+  → catalogStudioController.getSystemTemplates
+  Status: BUILT ✅ (returns [] if no system templates exist in DB — non-fatal)
+
+POST /api/catalog-studio/templates/:id/copy
+  → catalogStudioController.copyTemplate
+  → Requires 'idempotency-key' header (generated per-copy)
+  Status: BUILT ✅
+
+POST /api/onboarding/complete
+  → onboardingController.completeOnboarding → onboarding edge function
+  Status: BUILT ✅
+
+─────────────────────────────────────────────────────
+KNOWN LIMITATION
+─────────────────────────────────────────────────────
+POST /api/seeds/tenant currently only runs 'sequences' in seedCategory().
+The 'relationships' and 'eventStatuses' categories are registered in SeedRegistry
+but seedRoutes.ts throws "Seed execution not implemented for category: X" for them.
+
+This means Step 2 will partially succeed (sequences seeded, others skipped with errors).
+The overall Step 2 status will still show done if sequences succeed (the API returns 207
+for partial success). The UI shows "N records seeded" from totalInserted.
+
+To fully seed relationships + eventStatuses, seedRoutes.ts needs:
+  case 'relationships': return await seedRelationships(tenantId, isLive, authHeader);
+  case 'eventStatuses': return await seedEventStatuses(tenantId, isLive, authHeader);
+(This is a future backend task — not blocking for onboarding UX.)
+
+─────────────────────────────────────────────────────
+TESTING CHECKLIST
+─────────────────────────────────────────────────────
+Screen 7 — VaNi Consent:
+[ ] Shows "Step 7 of 9"
+[ ] "What VaNi will do" shows 4 bullets matching real steps
+[ ] Timing shows "30–60 seconds"
+[ ] Summary card: name, company, persona, theme, industry count
+[ ] Back → /onboarding/industry-selection
+[ ] "Set up my workspace →" navigates to /onboarding/vani-working
+
+Screen 8 — VaNi Working (4 steps):
+[ ] Step 1 "Setting up cloud storage" runs, shows ✓ with detail message
+[ ] Step 2 "Configuring your workspace" runs, shows ✓ with insert count
+[ ] Step 3 "Loading industry templates" runs, shows ✓ with template count
+    (if 0 templates: shows "No curated templates available yet" — still ✓)
+[ ] Step 4 "Finalising your workspace" runs, shows ✓
+[ ] All ✓: "Workspace ready! 🎉" shows, navigates to /onboarding/done
+[ ] 409 on any step treated as success
+[ ] Error: red XCircle + "Retry setup" button
+[ ] Retry reruns all 4 steps from start
+
+Screen 9 — VaNi Done:
+[ ] Shows "Step 9 of 9"
+[ ] Headline matches persona (seller/buyer/both)
+[ ] VaNi message uses first name if available
+[ ] "What VaNi set up" list shows 4 correct items
+[ ] Workspace card shows company name + short ID
+[ ] Primary CTA matches persona (catalog/assets/dashboard)
+[ ] Secondary CTA works
+[ ] Animation: popIn emoji, fadeUp sections, checkIn list items
+═══════════════════════════════════════════════════
