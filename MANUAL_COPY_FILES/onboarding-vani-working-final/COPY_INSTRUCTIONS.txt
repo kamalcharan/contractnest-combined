@@ -1,0 +1,185 @@
+═══════════════════════════════════════════════════════════════════
+📦  CHANGES SUMMARY — onboarding-vani-working-final
+═══════════════════════════════════════════════════════════════════
+Branch: onboarding-vani-working-final
+
+Files Changed:
+  NEW  contractnest-api/src/services/seedTenantOnIndustryConfirmedService.ts
+       — Replaces broken Step 2 (global m_cat_blocks query → 0 rows)
+         with KT-based seeding from m_catalog_resource_templates
+
+  NEW  contractnest-ui/src/pages/onboarding/steps/VaniWorkingStep.tsx
+       — Full rebuild: standard 2-col layout per HTML spec (batch3),
+         persona-aware tasks, multi-industry seed loop, action island
+
+  NEW  contractnest-ui/src/pages/onboarding/steps/VaniDoneStep.tsx
+       — NEW FILE: standalone done screen (9A/9B/9C per persona)
+
+  DIFF contractnest-ui/src/App.tsx
+       — Add import for VaniDoneStep
+       — Add /onboarding/done route OUTSIDE OnboardingLayout
+
+  DIFF contractnest-ui/src/components/onboarding/OnboardingLayout.tsx
+       — Add 'vani-working' to stepsWithOwnButtons
+
+  DIFF contractnest-ui/src/services/serviceURLs.ts
+       — Add SEEDS.INDUSTRY_CONFIRMED endpoint constant
+
+Submodules Affected: contractnest-api, contractnest-ui
+
+Production Checklist:
+  ✅ Transaction Management: seed API handles each industry atomically server-side
+  ✅ Race Condition Handling: hasStarted.current ref prevents double-execution
+  ✅ Error Handling: per-step try/catch, 409 treated as success, errors surface in UI
+  ✅ Toasts: not needed — VaniWorkingStep shows per-task inline error state
+  ✅ Loaders: progress bar + spinner per task + live op line
+
+═══════════════════════════════════════════════════════════════════
+💻  PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════════════════════
+
+STEP 1: Navigate to project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+
+STEP 2: Copy new/replaced files
+─────────────────────────────────
+# API service (replaces existing)
+Copy-Item "MANUAL_COPY_FILES\onboarding-vani-working-final\contractnest-api\src\services\seedTenantOnIndustryConfirmedService.ts" `
+  -Destination "contractnest-api\src\services\seedTenantOnIndustryConfirmedService.ts" -Force
+
+# UI steps (VaniWorkingStep replaces existing; VaniDoneStep is new)
+Copy-Item "MANUAL_COPY_FILES\onboarding-vani-working-final\contractnest-ui\src\pages\onboarding\steps\VaniWorkingStep.tsx" `
+  -Destination "contractnest-ui\src\pages\onboarding\steps\VaniWorkingStep.tsx" -Force
+
+Copy-Item "MANUAL_COPY_FILES\onboarding-vani-working-final\contractnest-ui\src\pages\onboarding\steps\VaniDoneStep.tsx" `
+  -Destination "contractnest-ui\src\pages\onboarding\steps\VaniDoneStep.tsx" -Force
+
+Write-Host "✅ Files copied!" -ForegroundColor Green
+
+
+STEP 3: Apply diff changes manually
+─────────────────────────────────
+
+─── A) contractnest-ui/src/services/serviceURLs.ts ───────────────────────
+
+Find the end of the SEQUENCES section (around line 1205, after the closing brace of SEQUENCES: { ... }):
+
+    BACKFILL: (code: string) => `/api/sequences/backfill/${code}`,
+    ...
+  },                          ← find this closing brace of SEQUENCES
+
+ADD AFTER IT:
+
+  // =================================================================
+  // SEEDS ENDPOINTS
+  // =================================================================
+  SEEDS: {
+    INDUSTRY_CONFIRMED: '/api/seeds/tenant/industry-confirmed',
+  },
+
+
+─── B) contractnest-ui/src/App.tsx ───────────────────────────────────────
+
+1. After the existing VaniWorkingStep import (line 74), ADD:
+
+   import VaniDoneStep from '@/pages/onboarding/steps/VaniDoneStep';
+
+2. After the closing </Route> of the /onboarding block (line 424, after the vani-working route),
+   but BEFORE the /dashboard route block, ADD:
+
+          {/* VaNi Done — standalone, outside OnboardingLayout */}
+          <Route
+            path="/onboarding/done"
+            element={
+              <ProtectedRoute requireTenant={true}>
+                <VaniDoneStep />
+              </ProtectedRoute>
+            }
+          />
+
+   The surrounding context looks like:
+   ...
+     <Route path="vani-working" element={<VaniWorkingStep />} />
+   </Route>
+          ↑↑ ADD THE NEW ROUTE HERE ↑↑
+          {/* Protected Routes with MainLayout - Your Original Structure */}
+          <Route
+            path="/dashboard"
+   ...
+
+
+─── C) contractnest-ui/src/components/onboarding/OnboardingLayout.tsx ────
+
+Find the stepsWithOwnButtons array (around lines 82–93):
+
+   const stepsWithOwnButtons = [
+     'business-details',
+     'persona-selection',
+     'theme-selection',
+     'industry-selection',
+     'vani-consent',
+     'business-basic',
+     'business-branding',
+     'served-industries',
+     'business-preferences',
+     'storage-setup',
+   ];
+
+ADD 'vani-working' to the array:
+
+   const stepsWithOwnButtons = [
+     'business-details',
+     'persona-selection',
+     'theme-selection',
+     'industry-selection',
+     'vani-consent',
+     'business-basic',
+     'business-branding',
+     'served-industries',
+     'business-preferences',
+     'storage-setup',
+     'vani-working',       ← ADD THIS LINE
+   ];
+
+
+═══════════════════════════════════════════════════════════════════
+🧪  TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════
+
+Seller flow:
+  [ ] Navigate to /onboarding/vani-working as a seller tenant
+  [ ] Verify standard layout (NOT full-screen dark overlay)
+  [ ] Verify 2-col layout: left task list + right counter panel
+  [ ] Storage step completes (409 = already done = green)
+  [ ] Catalog seed calls /api/seeds/tenant/industry-confirmed per industry
+  [ ] Blocks Created counter increments in right panel
+  [ ] Action island stays disabled during work, goes orange on completion
+  [ ] Navigates to /onboarding/done with correct state
+  [ ] Screen 9A shows: success orb + company name + block count + ETL entry
+  [ ] "Try it in test mode →" navigates to /dashboard
+
+Buyer flow:
+  [ ] Right panel shows "Nodes Created" instead of "Blocks Created"
+  [ ] Facility seed task appears (not catalog seed)
+  [ ] Screen 9B shows: workspace code + Share via WhatsApp + "I have a CNAK" button
+
+Both flow:
+  [ ] Both catalog AND facility tasks appear
+  [ ] Screen 9C shows tabbed view (📤 As Provider / 📥 As Asset Owner)
+  [ ] Tab switching shows correct content
+
+API seeding:
+  [ ] seedTenantOnIndustryConfirmedService queries m_catalog_resource_templates (not m_cat_blocks)
+  [ ] blocks inserted with correct tenant_id, block_type_id, resource_template_id, is_seed=true
+  [ ] Idempotency: running twice doesn't double-seed
+  [ ] businessType='buyer' skips catalog seeding (catalogBlocksSeeded=0)
+
+═══════════════════════════════════════════════════════════════════
+⏸️  WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working — proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════════════════════
