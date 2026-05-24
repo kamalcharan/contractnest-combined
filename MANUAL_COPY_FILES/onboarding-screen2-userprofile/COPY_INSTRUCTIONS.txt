@@ -1,0 +1,99 @@
+═══════════════════════════════════════════════════
+SCREEN 2 — User Profile (onboarding-screen2-userprofile)
+Branch: claude/onboarding-setup-lQrdy
+Date: 2026-05-24
+═══════════════════════════════════════════════════
+
+WHAT THIS DOES
+─────────────────────────────────────────────────────
+Inserts User Profile as Step 2 so VaNi knows the user's
+name from Step 3 onwards and can greet them personally
+("Hi Charan! Let's set up Vikuna Technologies…").
+
+Screen 2 — User Profile collects:
+  first_name, last_name, country_code, mobile_number
+  Saves via PATCH /api/users/me + refreshData()
+  NO avatar — storage not live until Screen 8
+
+All existing screens shift +1 in step numbering.
+VaNi Intro now navigates to /onboarding/user-profile
+instead of /onboarding/welcome.
+
+─────────────────────────────────────────────────────
+FILES MODIFIED / CREATED
+─────────────────────────────────────────────────────
+contractnest-ui (7 files):
+
+  src/App.tsx                                             ← MODIFIED (new imports + routes)
+  src/pages/onboarding/steps/VaniIntroStep.tsx            ← MODIFIED (navigate → user-profile)
+  src/pages/onboarding/steps/UserProfileStep.tsx          ← NEW (Screen 2)
+  src/pages/onboarding/steps/BusinessDetailsStep.tsx      ← MODIFIED (Step 2→3, Back→user-profile)
+  src/pages/onboarding/steps/PersonaSelectionStep.tsx     ← MODIFIED (Step 3→4)
+  src/pages/onboarding/steps/ThemeSelectionStep.tsx       ← MODIFIED (Step 4→5)
+  src/pages/onboarding/steps/IndustrySelectionStep.tsx    ← MODIFIED (Step 5→6)
+
+─────────────────────────────────────────────────────
+APPLY ORDER (full onboarding build)
+─────────────────────────────────────────────────────
+Apply ALL previous patches first, THEN this one:
+  1. onboarding-screen15       (VaNi Intro)
+  2. onboarding-screen2-fix    (BusinessDetailsStep base)
+  3. onboarding-screen2-nologo (removes logo from Screen 2)
+  4. onboarding-screen4        (ThemeSelectionStep + vaniTheme)
+  5. onboarding-screen5        (IndustrySelectionStep)
+  6. onboarding-prefill-fix    (PersonaSelectionStep pre-fill)
+  7. onboarding-prefill-fix2   (Theme + Industry pre-fill)
+  8. onboarding-screen2-userprofile  ← apply THIS
+
+─────────────────────────────────────────────────────
+COPY COMMANDS (PowerShell)
+─────────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen2-userprofile\contractnest-ui\src\App.tsx" -Destination "contractnest-ui\src\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen2-userprofile\contractnest-ui\src\pages\onboarding\steps\VaniIntroStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen2-userprofile\contractnest-ui\src\pages\onboarding\steps\UserProfileStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen2-userprofile\contractnest-ui\src\pages\onboarding\steps\BusinessDetailsStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen2-userprofile\contractnest-ui\src\pages\onboarding\steps\PersonaSelectionStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen2-userprofile\contractnest-ui\src\pages\onboarding\steps\ThemeSelectionStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen2-userprofile\contractnest-ui\src\pages\onboarding\steps\IndustrySelectionStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\" -Force
+
+─────────────────────────────────────────────────────
+REVISED 9-STEP SEQUENCE (confirmed)
+─────────────────────────────────────────────────────
+  1. VaNi Intro          /onboarding/vani-intro
+  2. User Profile        /onboarding/user-profile        ← NEW
+  3. Business Details    /onboarding/business-details    (was 2)
+  4. Persona Selection   /onboarding/persona-selection   (was 3)
+  5. Theme Selection     /onboarding/theme-selection     (was 4)
+  6. Industry Selection  /onboarding/industry-selection  (was 5)
+  7. VaNi Consent        /onboarding/vani-consent        (pending)
+  8. VaNi Working        /onboarding/vani-working        (pending)
+  9. Branding            /onboarding/branding            (pending)
+
+─────────────────────────────────────────────────────
+TESTING CHECKLIST
+─────────────────────────────────────────────────────
+Screen 1 — VaNi Intro:
+[ ] "Let's go" navigates to /onboarding/user-profile (not /welcome)
+[ ] "Hi there" shown since name not yet collected
+
+Screen 2 — User Profile:
+[ ] First Name and Last Name fields visible
+[ ] Country code dropdown opens with search
+[ ] Selecting a flag updates the dial code displayed
+[ ] Mobile number only accepts digits
+[ ] VaNi reaction bubble appears as user types first name
+  → "Perfect, [name]! Now let's set up the workspace for [company]."
+[ ] Continue disabled until First Name has content
+[ ] Continue saves to PATCH /api/users/me, then navigates to /onboarding/business-details
+[ ] Back navigates to /onboarding/vani-intro
+[ ] Returning to this screen pre-fills saved name + mobile
+
+Screen 3 (was 2) — Business Details:
+[ ] Shows "Step 3 of 9"
+[ ] VaNi bubble now shows real first name (not fallback "your")
+[ ] Back navigates to /onboarding/user-profile
+
+Screens 4–6:
+[ ] Step numbers are 4, 5, 6 respectively
+[ ] Back navigation chain intact
+═══════════════════════════════════════════════════
