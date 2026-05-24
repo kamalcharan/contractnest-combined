@@ -1,0 +1,92 @@
+═══════════════════════════════════════════════════
+PRE-FILL FIX v2 — Screens 4 & 5 (onboarding-prefill-fix2)
+Branch: claude/onboarding-setup-lQrdy
+Date: 2026-05-24
+═══════════════════════════════════════════════════
+
+WHY v1 FAILED
+─────────────────────────────────────────────────────
+Screen 4 — ThemeSelectionStep (v1 used currentThemeId):
+  currentThemeId comes from ThemeContext, which reads
+  localStorage['contractnest-theme']. Every onboarding
+  screen calls setTheme('vani') on mount, which overwrites
+  that key to 'vani'. So by the time the user returns to
+  Screen 4, currentThemeId === 'vani' — the real saved
+  theme is gone from ThemeContext.
+
+Screen 5 — IndustrySelectionStep (v1 used !servedLoading):
+  useServedIndustries is enabled only when currentTenant?.id
+  exists. When tenant is null at mount (auth still loading),
+  the query is DISABLED — TanStack Query returns isLoading=false
+  immediately with no data. !servedLoading was true right away,
+  so hydration ran with an empty list and set hydrated=true.
+  When the real fetch completed, hydrated=true blocked it.
+  Additionally, useServedIndustriesManager does not expose
+  isSuccess — only isLoading.
+
+CORRECT FIXES
+─────────────────────────────────────────────────────
+Screen 4 — ThemeSelectionStep:
+  Read preferred_theme from localStorage['user_data'] directly.
+  user_data is written by updateUserPreferences (AuthContext)
+  and is NEVER overwritten by setTheme(). It is the only
+  durable source of the user's saved theme preference.
+  Parse synchronously before calling setTheme('vani').
+
+Screen 5 — IndustrySelectionStep:
+  Import useServedIndustries directly alongside
+  useServedIndustriesManager. Use isSuccess (true only after a
+  real server response) as the hydration trigger instead of
+  !isLoading (false when query is disabled or stale).
+  TanStack Query deduplicates — no double fetch occurs because
+  useServedIndustriesManager calls useServedIndustries internally
+  with the same query key.
+  Also adjusted the isLoading spinner condition to correctly
+  wait until hydration is complete when a tenant is loaded.
+
+─────────────────────────────────────────────────────
+FILES MODIFIED
+─────────────────────────────────────────────────────
+contractnest-ui (2 files):
+
+  src/pages/onboarding/steps/ThemeSelectionStep.tsx    ← MODIFIED
+  src/pages/onboarding/steps/IndustrySelectionStep.tsx ← MODIFIED
+
+─────────────────────────────────────────────────────
+COPY COMMANDS (PowerShell)
+─────────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\onboarding-prefill-fix2\contractnest-ui\src\pages\onboarding\steps\ThemeSelectionStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-prefill-fix2\contractnest-ui\src\pages\onboarding\steps\IndustrySelectionStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\" -Force
+
+─────────────────────────────────────────────────────
+APPLY ORDER (full onboarding build)
+─────────────────────────────────────────────────────
+  1. onboarding-screen15       (VaNi Intro)
+  2. onboarding-screen2-fix    (BusinessDetailsStep + PersonaSelectionStep base)
+  3. onboarding-screen2-nologo (removes logo from Screen 2)
+  4. onboarding-screen4        (ThemeSelectionStep + vaniTheme)
+  5. onboarding-screen5        (IndustrySelectionStep)
+  6. onboarding-prefill-fix    (PersonaSelectionStep pre-fill only — screens 3 fix)
+  7. onboarding-prefill-fix2   ← apply THIS (screens 4 & 5 pre-fill)
+
+─────────────────────────────────────────────────────
+TESTING CHECKLIST
+─────────────────────────────────────────────────────
+Complete screens 4 and 5 once. Then reload / re-trigger
+onboarding and verify:
+
+Screen 4 — Theme Selection:
+[ ] Previously selected theme card is highlighted on load
+[ ] Check mark visible, orange border on the saved card
+[ ] VaNi reaction bubble visible immediately (not waiting for click)
+[ ] Dark mode toggle reflects saved is_dark_mode state
+[ ] User can change selection by clicking a different card
+
+Screen 5 — Industry Selection:
+[ ] Spinner shows briefly while industries load
+[ ] Previously saved industries have check marks on load
+[ ] VaNi reaction bubble visible immediately (N industries selected)
+[ ] Drillable parent cards show count badge for saved children
+[ ] User can add / remove selections
+[ ] Continue saves the full current selection
+═══════════════════════════════════════════════════
