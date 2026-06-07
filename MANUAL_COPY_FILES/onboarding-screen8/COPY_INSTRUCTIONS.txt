@@ -1,0 +1,44 @@
+ONBOARDING SCREEN 8A & 8B — COPY INSTRUCTIONS
+=============================================
+Branch: onboarding-screen8
+Files: 5 (2 new + 3 updated)
+
+NEW FILES:
+  contractnest-ui\src\pages\onboarding\steps\Screen8APricingStep.tsx
+  contractnest-ui\src\pages\onboarding\steps\Screen8BEquipmentStep.tsx
+
+UPDATED FILES:
+  contractnest-ui\src\App.tsx                                    (added 2 imports + 2 routes)
+  contractnest-ui\src\components\onboarding\OnboardingLayout.tsx (added 2 steps to stepsWithOwnButtons + isCompletePage)
+  contractnest-ui\src\pages\onboarding\steps\VaniWorkingStep.tsx (changed navigate destination: seller→pricing-review, buyer→equipment-confirm, both→pricing-review)
+
+FLOW CHANGE:
+  Before: VaniWorkingStep → /onboarding/done
+  After:
+    seller → /onboarding/pricing-review → /onboarding/done
+    buyer  → /onboarding/equipment-confirm → /onboarding/done
+    both   → /onboarding/pricing-review → /onboarding/equipment-confirm → /onboarding/done
+
+COPY COMMANDS (PowerShell):
+=============================================
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen8\contractnest-ui\src\pages\onboarding\steps\Screen8APricingStep.tsx" `
+  -Destination "contractnest-ui\src\pages\onboarding\steps\Screen8APricingStep.tsx" -Force
+
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen8\contractnest-ui\src\pages\onboarding\steps\Screen8BEquipmentStep.tsx" `
+  -Destination "contractnest-ui\src\pages\onboarding\steps\Screen8BEquipmentStep.tsx" -Force
+
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen8\contractnest-ui\src\App.tsx" `
+  -Destination "contractnest-ui\src\App.tsx" -Force
+
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen8\contractnest-ui\src\components\onboarding\OnboardingLayout.tsx" `
+  -Destination "contractnest-ui\src\components\onboarding\OnboardingLayout.tsx" -Force
+
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen8\contractnest-ui\src\pages\onboarding\steps\VaniWorkingStep.tsx" `
+  -Destination "contractnest-ui\src\pages\onboarding\steps\VaniWorkingStep.tsx" -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+NOTE: Only contractnest-ui changes. No API changes needed (mock data only).
+Restart: cd contractnest-ui && npm run dev
