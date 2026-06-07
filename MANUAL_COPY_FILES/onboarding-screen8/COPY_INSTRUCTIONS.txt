@@ -1,44 +1,61 @@
-ONBOARDING SCREEN 8A & 8B — COPY INSTRUCTIONS
-=============================================
+ONBOARDING SCREEN 6 (ResourcePickStep) + Screen 8A & 8B — COPY INSTRUCTIONS
+=============================================================================
 Branch: onboarding-screen8
-Files: 5 (2 new + 3 updated)
 
 NEW FILES:
-  contractnest-ui\src\pages\onboarding\steps\Screen8APricingStep.tsx
-  contractnest-ui\src\pages\onboarding\steps\Screen8BEquipmentStep.tsx
+  contractnest-ui\src\pages\onboarding\steps\ResourcePickStep.tsx   ← NEW Screen 6
 
 UPDATED FILES:
-  contractnest-ui\src\App.tsx                                    (added 2 imports + 2 routes)
-  contractnest-ui\src\components\onboarding\OnboardingLayout.tsx (added 2 steps to stepsWithOwnButtons + isCompletePage)
-  contractnest-ui\src\pages\onboarding\steps\VaniWorkingStep.tsx (changed navigate destination: seller→pricing-review, buyer→equipment-confirm, both→pricing-review)
+  contractnest-ui\src\App.tsx                                         (import + route: resource-pick)
+  contractnest-ui\src\components\onboarding\OnboardingLayout.tsx      (resource-pick in stepsWithOwnButtons)
+  contractnest-ui\src\pages\onboarding\steps\IndustrySelectionStep.tsx (navigate → resource-pick instead of vani-consent)
+  contractnest-ui\src\pages\onboarding\steps\Screen8APricingStep.tsx  (full rewrite — spec-faithful)
+  contractnest-ui\src\pages\onboarding\steps\Screen8BEquipmentStep.tsx (industryLabel wired)
+  contractnest-ui\src\pages\onboarding\steps\VaniWorkingStep.tsx      (navigate → pricing-review / equipment-confirm)
 
-FLOW CHANGE:
-  Before: VaniWorkingStep → /onboarding/done
-  After:
-    seller → /onboarding/pricing-review → /onboarding/done
-    buyer  → /onboarding/equipment-confirm → /onboarding/done
-    both   → /onboarding/pricing-review → /onboarding/equipment-confirm → /onboarding/done
+FLOW AFTER THIS CHANGE:
+  Industry Selection → [NEW] Resource Pick → VaNi Consent → VaNi Working → 8A / 8B → Done
 
 COPY COMMANDS (PowerShell):
-=============================================
+=============================================================================
 cd "D:\projects\core projects\ContractNest\contractnest-combined"
 
-Copy-Item "MANUAL_COPY_FILES\onboarding-screen8\contractnest-ui\src\pages\onboarding\steps\Screen8APricingStep.tsx" `
-  -Destination "contractnest-ui\src\pages\onboarding\steps\Screen8APricingStep.tsx" -Force
+# Pull latest first
+git pull origin claude/serene-rubin-UQ641
 
-Copy-Item "MANUAL_COPY_FILES\onboarding-screen8\contractnest-ui\src\pages\onboarding\steps\Screen8BEquipmentStep.tsx" `
-  -Destination "contractnest-ui\src\pages\onboarding\steps\Screen8BEquipmentStep.tsx" -Force
+# NEW: Resource Pick screen
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen8\contractnest-ui\src\pages\onboarding\steps\ResourcePickStep.tsx" `
+  -Destination "contractnest-ui\src\pages\onboarding\steps\ResourcePickStep.tsx" -Force
 
+# Updated: routing + layout
 Copy-Item "MANUAL_COPY_FILES\onboarding-screen8\contractnest-ui\src\App.tsx" `
   -Destination "contractnest-ui\src\App.tsx" -Force
 
 Copy-Item "MANUAL_COPY_FILES\onboarding-screen8\contractnest-ui\src\components\onboarding\OnboardingLayout.tsx" `
   -Destination "contractnest-ui\src\components\onboarding\OnboardingLayout.tsx" -Force
 
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen8\contractnest-ui\src\pages\onboarding\steps\IndustrySelectionStep.tsx" `
+  -Destination "contractnest-ui\src\pages\onboarding\steps\IndustrySelectionStep.tsx" -Force
+
+# Previously updated screens (8A, 8B, VaniWorking)
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen8\contractnest-ui\src\pages\onboarding\steps\Screen8APricingStep.tsx" `
+  -Destination "contractnest-ui\src\pages\onboarding\steps\Screen8APricingStep.tsx" -Force
+
+Copy-Item "MANUAL_COPY_FILES\onboarding-screen8\contractnest-ui\src\pages\onboarding\steps\Screen8BEquipmentStep.tsx" `
+  -Destination "contractnest-ui\src\pages\onboarding\steps\Screen8BEquipmentStep.tsx" -Force
+
 Copy-Item "MANUAL_COPY_FILES\onboarding-screen8\contractnest-ui\src\pages\onboarding\steps\VaniWorkingStep.tsx" `
   -Destination "contractnest-ui\src\pages\onboarding\steps\VaniWorkingStep.tsx" -Force
 
-Write-Host "All files copied!" -ForegroundColor Green
+Write-Host "All files copied — restart dev server" -ForegroundColor Green
 
-NOTE: Only contractnest-ui changes. No API changes needed (mock data only).
-Restart: cd contractnest-ui && npm run dev
+RESTART:
+  cd contractnest-ui && npm run dev
+
+TEST PATH:
+  1. Complete onboarding up to Industry Selection
+  2. Click Continue → should land on /onboarding/resource-pick
+  3. Verify: correct templates shown for selected industry
+  4. Seller: sees equipment types; Buyer: sees facility types; Both: sees both
+  5. Toggle items off/on — island counter updates
+  6. Continue → /onboarding/vani-consent

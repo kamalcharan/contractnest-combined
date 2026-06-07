@@ -88,6 +88,7 @@ const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({ children }) => {
     'theme-selection',
     'industry-selection',
     'vani-consent',
+    'resource-pick',
     'business-basic',
     'business-branding',
     'served-industries',

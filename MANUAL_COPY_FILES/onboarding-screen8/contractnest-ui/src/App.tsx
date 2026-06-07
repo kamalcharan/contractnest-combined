@@ -79,6 +79,7 @@ import BusinessBrandingStep from '@/pages/onboarding/steps/BusinessBrandingStep'
 import ServedIndustriesStep from '@/pages/onboarding/steps/ServedIndustriesStep';
 import Screen8APricingStep from '@/pages/onboarding/steps/Screen8APricingStep';
 import Screen8BEquipmentStep from '@/pages/onboarding/steps/Screen8BEquipmentStep';
+import ResourcePickStep from '@/pages/onboarding/steps/ResourcePickStep';
 import BusinessPreferencesStep from '@/pages/onboarding/steps/BusinessPreferencesStep';
 import SequenceNumbersStep from '@/pages/onboarding/steps/SequenceNumbersStep';
 import MasterDataStep from '@/pages/onboarding/steps/MasterDataStep';
@@ -426,6 +427,7 @@ const AppContent: React.FC = () => {
   <Route path="persona-selection" element={<PersonaSelectionStep />} />
   <Route path="theme-selection" element={<ThemeSelectionStep />} />
   <Route path="industry-selection" element={<IndustrySelectionStep />} />
+  <Route path="resource-pick" element={<ResourcePickStep />} />
   <Route path="vani-consent" element={<VaniConsentStep />} />
   <Route path="vani-working" element={<VaniWorkingStep />} />
   <Route path="pricing-review" element={<Screen8APricingStep />} />
