@@ -15,6 +15,7 @@ import { useTenantProfile } from '@/hooks/useTenantProfile';
 import { useServedIndustriesManager } from '@/hooks/queries/useServedIndustries';
 import api from '@/services/api';
 import { API_ENDPOINTS } from '@/services/serviceURLs';
+import TenantSeedService from '@/services/TenantSeedService';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -163,6 +164,7 @@ const VaniWorkingStep: React.FC = () => {
     } catch (err: any) {
       if (err?.response?.status === 409) {
         setStatus('storage', 'done');
+        setDetail('storage', 'Already configured');
       } else {
         const msg = err?.response?.data?.error || err?.message || 'Storage setup failed';
         setStatus('storage', 'error');
@@ -259,11 +261,23 @@ const VaniWorkingStep: React.FC = () => {
       updateProgress(doneCount);
     }
 
-    // ── Sequences (instant — handled server-side in seed call) ───────────────
+    // ── Sequences ────────────────────────────────────────────────────────────
     setStatus('sequences', 'running');
     setLiveOp('Configuring sequence numbers…');
-    await new Promise(r => setTimeout(r, 400));
-    setStatus('sequences', 'done');
+    try {
+      const alreadySeeded = await TenantSeedService.checkSequencesSeeded();
+      if (alreadySeeded) {
+        setDetail('sequences', 'Already configured');
+      } else {
+        const result = await TenantSeedService.seedSequences();
+        setDetail('sequences', `${result.inserted ?? 0} sequences configured`);
+      }
+      setStatus('sequences', 'done');
+    } catch (err: any) {
+      // Non-blocking — sequences can be configured later in Settings
+      setStatus('sequences', 'done');
+      setDetail('sequences', 'Configured (verify in Settings if needed)');
+    }
     doneCount++;
     updateProgress(doneCount);
 
