@@ -22,6 +22,15 @@ import TenantSeedService from '@/services/TenantSeedService';
 type StepStatus = 'idle' | 'running' | 'done' | 'error';
 type PersonaId = 'seller' | 'buyer' | 'both';
 
+// Normalise legacy business_type_id values ('service_provider', 'merchant') to the
+// canonical persona IDs used throughout the onboarding flow.
+const normalizePersona = (raw: string): PersonaId => {
+  if (raw === 'service_provider') return 'seller';
+  if (raw === 'merchant') return 'buyer';
+  if (raw === 'seller' || raw === 'buyer' || raw === 'both') return raw as PersonaId;
+  return 'seller';
+};
+
 interface TaskDef {
   id: string;
   label: string;
@@ -100,10 +109,10 @@ const DARK_CARD = 'linear-gradient(145deg, #1a1816, #2a2520)';
 const VaniWorkingStep: React.FC = () => {
   const navigate = useNavigate();
   const { currentTenant } = useAuth();
-  const { formData, fetchProfile } = useTenantProfile({ isOnboarding: true });
+  const { formData, fetchProfile, loading: profileLoading } = useTenantProfile({ isOnboarding: true });
   const { servedIndustries, isLoading: industriesLoading } = useServedIndustriesManager();
 
-  const personaId = (formData.business_type_id as PersonaId) || 'seller';
+  const personaId = normalizePersona(formData.business_type_id || '');
   const industryNames = servedIndustries.map(si => si.industry?.name || '').filter(Boolean);
   const industryIds = servedIndustries.map(si => si.industry_id);
   const companyName = formData.business_name?.trim() || currentTenant?.name || 'your company';
@@ -133,11 +142,11 @@ const VaniWorkingStep: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (!industriesLoading && !hasStarted.current) {
+    if (!industriesLoading && !profileLoading && !hasStarted.current) {
       hasStarted.current = true;
       runAll();
     }
-  }, [industriesLoading]);
+  }, [industriesLoading, profileLoading]);
 
   const setStatus = (id: string, status: StepStatus) => {
     setStatuses(prev => ({ ...prev, [id]: status }));
@@ -155,21 +164,39 @@ const VaniWorkingStep: React.FC = () => {
     setErrorMessages({});
     let doneCount = 0;
 
-    // ── Storage ──────────────────────────────────────────────────────────────
-    setStatus('storage', 'running');
-    setLiveOp('Setting up your secure document storage…');
+    // ── Pre-flight: check already-completed tasks in parallel ─────────────
+    setLiveOp('Checking your current setup…');
+    let storagePreDone = false;
+    let sequencesPreDone = false;
     try {
-      await api.post(API_ENDPOINTS.STORAGE.SETUP);
+      const [storageStats, seqDone] = await Promise.all([
+        api.get(API_ENDPOINTS.STORAGE.STATS).catch(() => null),
+        TenantSeedService.checkSequencesSeeded().catch(() => false),
+      ]);
+      storagePreDone = storageStats?.data?.storageSetupComplete === true;
+      sequencesPreDone = !!seqDone;
+    } catch { /* ignore — tasks will run normally */ }
+
+    // ── Storage ──────────────────────────────────────────────────────────────
+    if (storagePreDone) {
       setStatus('storage', 'done');
-    } catch (err: any) {
-      if (err?.response?.status === 409) {
+      setDetail('storage', 'Already configured');
+    } else {
+      setStatus('storage', 'running');
+      setLiveOp('Setting up your secure document storage…');
+      try {
+        await api.post(API_ENDPOINTS.STORAGE.SETUP);
         setStatus('storage', 'done');
-        setDetail('storage', 'Already configured');
-      } else {
-        const msg = err?.response?.data?.error || err?.message || 'Storage setup failed';
-        setStatus('storage', 'error');
-        setErrorMessages(prev => ({ ...prev, storage: msg }));
-        return;
+      } catch (err: any) {
+        if (err?.response?.status === 409) {
+          setStatus('storage', 'done');
+          setDetail('storage', 'Already configured');
+        } else {
+          const msg = err?.response?.data?.error || err?.message || 'Storage setup failed';
+          setStatus('storage', 'error');
+          setErrorMessages(prev => ({ ...prev, storage: msg }));
+          return;
+        }
       }
     }
     doneCount++;
@@ -262,21 +289,21 @@ const VaniWorkingStep: React.FC = () => {
     }
 
     // ── Sequences ────────────────────────────────────────────────────────────
-    setStatus('sequences', 'running');
-    setLiveOp('Configuring sequence numbers…');
-    try {
-      const alreadySeeded = await TenantSeedService.checkSequencesSeeded();
-      if (alreadySeeded) {
-        setDetail('sequences', 'Already configured');
-      } else {
+    if (sequencesPreDone) {
+      setStatus('sequences', 'done');
+      setDetail('sequences', 'Already configured');
+    } else {
+      setStatus('sequences', 'running');
+      setLiveOp('Configuring sequence numbers…');
+      try {
         const result = await TenantSeedService.seedSequences();
         setDetail('sequences', `${result.inserted ?? 0} sequences configured`);
+        setStatus('sequences', 'done');
+      } catch (err: any) {
+        // Non-blocking — sequences can be configured later in Settings
+        setStatus('sequences', 'done');
+        setDetail('sequences', 'Configured (verify in Settings if needed)');
       }
-      setStatus('sequences', 'done');
-    } catch (err: any) {
-      // Non-blocking — sequences can be configured later in Settings
-      setStatus('sequences', 'done');
-      setDetail('sequences', 'Configured (verify in Settings if needed)');
     }
     doneCount++;
     updateProgress(doneCount);

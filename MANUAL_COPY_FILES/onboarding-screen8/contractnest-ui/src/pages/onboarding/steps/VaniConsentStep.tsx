@@ -17,6 +17,13 @@ import type { ResourceTemplate } from '@/services/resourcesService';
 
 type PersonaId = 'seller' | 'buyer' | 'both';
 
+const normalizePersona = (raw: string): PersonaId => {
+  if (raw === 'service_provider') return 'seller';
+  if (raw === 'merchant') return 'buyer';
+  if (raw === 'seller' || raw === 'buyer' || raw === 'both') return raw as PersonaId;
+  return 'seller';
+};
+
 const PERSONA_META: Record<PersonaId, { label: string; icon: string; whatVaniDoes: string[] }> = {
   seller: {
     label: 'Service Provider',
@@ -94,8 +101,8 @@ const VaniConsentStep: React.FC = () => {
   const firstName = user?.first_name?.trim() || null;
   const fullName  = [user?.first_name, user?.last_name].filter(Boolean).join(' ') || null;
   const company   = formData.business_name?.trim() || currentTenant?.name || 'your company';
-  const personaId = (formData.business_type_id as PersonaId) || null;
-  const persona   = personaId ? PERSONA_META[personaId] : null;
+  const personaId = normalizePersona(formData.business_type_id || '');
+  const persona   = PERSONA_META[personaId];
 
   // Selected templates from ResourcePickStep
   const selEquipment = routeState.selectedEquipmentTemplates || [];

@@ -38,6 +38,13 @@ const RED_SOFT    = '#fef2f2';
 
 type PersonaId = 'seller' | 'buyer' | 'both';
 
+const normalizePersona = (raw: string): PersonaId => {
+  if (raw === 'service_provider') return 'seller';
+  if (raw === 'merchant') return 'buyer';
+  if (raw === 'seller' || raw === 'buyer' || raw === 'both') return raw as PersonaId;
+  return 'seller';
+};
+
 const isEquipmentType = (t: string) => ['equipment', 'consumable'].includes(t.toLowerCase());
 const isFacilityType  = (t: string) => t.toLowerCase() === 'asset';
 const hasKT           = (t: ResourceTemplate) => t.pricing_guidance !== null && t.pricing_guidance !== undefined;
@@ -65,7 +72,7 @@ const ResourcePickStep: React.FC = () => {
   const { formData } = useTenantProfile({ isOnboarding: true });
   const { templates, isLoading, isError, refetch } = useResourceTemplatesBrowser({ limit: 200 });
 
-  const personaId  = (formData.business_type_id as PersonaId) || 'seller';
+  const personaId  = normalizePersona(formData.business_type_id || '');
   const firstName  = user?.first_name?.trim() || null;
 
   const equipmentTemplates = useMemo(() => templates.filter(t => isEquipmentType(t.resource_type_id)), [templates]);
