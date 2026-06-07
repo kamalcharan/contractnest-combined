@@ -225,6 +225,7 @@ const Screen8APricingStep: React.FC = () => {
                       fontSize: 12, fontWeight: 700,
                     }}
                   >
+                    {/* Circle number */}
                     <div style={{
                       width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
                       background: isDone ? GREEN : isActive ? VANI : BORDER_LT,
@@ -259,6 +260,7 @@ const Screen8APricingStep: React.FC = () => {
                     Basic AMC — Hydraulic Lift
                   </div>
 
+                  {/* Price input row */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
                     <select
                       value={currency}
@@ -292,6 +294,7 @@ const Screen8APricingStep: React.FC = () => {
                     <span style={{ fontSize: 14, fontWeight: 600, color: TEXT_DIM, whiteSpace: 'nowrap' }}>/ year</span>
                   </div>
 
+                  {/* Benchmark bar */}
                   <div style={{
                     background: SURFACE, border: `1px solid ${BORDER_LT}`,
                     borderRadius: 8, padding: '16px 18px', marginBottom: 20,
@@ -307,6 +310,7 @@ const Screen8APricingStep: React.FC = () => {
                         fontFamily: "'IBM Plex Mono', monospace",
                       }}>Low confidence</span>
                     </div>
+
                     <div style={{
                       display: 'flex', justifyContent: 'space-between',
                       fontSize: 11, color: TEXT_MUTED,
@@ -316,14 +320,18 @@ const Screen8APricingStep: React.FC = () => {
                       <span>median ₹18,000</span>
                       <span>₹22,000</span>
                     </div>
+
+                    {/* Bar with markers — spec layout: gray track, amber fill zone, two dot markers */}
                     <div style={{
                       height: 8, background: BORDER, borderRadius: 100,
                       position: 'relative', overflow: 'visible', marginBottom: 28,
                     }}>
+                      {/* Amber range fill (15%–70%) */}
                       <div style={{
                         position: 'absolute', left: '15%', width: '55%',
                         height: '100%', background: 'rgba(217,119,6,.2)', borderRadius: 100,
                       }} />
+                      {/* Median amber dot */}
                       <div style={{
                         position: 'absolute', left: `${MEDIAN_PCT}%`, top: -3,
                         width: 14, height: 14, borderRadius: '50%',
@@ -337,6 +345,7 @@ const Screen8APricingStep: React.FC = () => {
                         fontSize: 10, fontWeight: 700, color: AMBER,
                         fontFamily: "'IBM Plex Mono', monospace", whiteSpace: 'nowrap',
                       }}>median</div>
+                      {/* User price — orange dot (moves as user types) */}
                       {userBarPct >= 0 && (
                         <>
                           <div style={{
@@ -357,6 +366,7 @@ const Screen8APricingStep: React.FC = () => {
                         </>
                       )}
                     </div>
+
                     <div style={{ fontSize: 11, color: TEXT_MUTED, lineHeight: 1.5 }}>
                       Based on industry seed data for Hyderabad · Low confidence means fewer data points.
                       VaNi will improve benchmarks as more sellers join.
@@ -376,7 +386,8 @@ const Screen8APricingStep: React.FC = () => {
                         color: anchorNum ? '#fff' : TEXT_MUTED,
                         cursor: anchorNum ? 'pointer' : 'not-allowed',
                         boxShadow: anchorNum ? '0 3px 10px rgba(255,107,43,.28)' : 'none',
-                        transition: 'all .2s', display: 'flex', alignItems: 'center', gap: 8,
+                        transition: 'all .2s',
+                        display: 'flex', alignItems: 'center', gap: 8,
                       }}
                     >Apply &amp; calculate all rates →</button>
                     <span style={{ fontSize: 12, color: TEXT_MUTED }}>
@@ -390,6 +401,8 @@ const Screen8APricingStep: React.FC = () => {
             {/* ════ STEP 2: Rate card ════ */}
             {pricingStep === 'ratecard' && (
               <div style={{ animation: 'fadeUp .4s ease both' }}>
+
+                {/* VaNi bubble — step 2 (new bubble inside rate-card section) */}
                 <div style={{ display: 'flex', gap: 12, marginBottom: 20, animation: 'fadeUp .5s cubic-bezier(.22,1,.36,1) .1s both' }}>
                   <VaniAvatar />
                   <VaniMsg>
@@ -400,6 +413,7 @@ const Screen8APricingStep: React.FC = () => {
                   </VaniMsg>
                 </div>
 
+                {/* Rate cards — one per equipment type */}
                 {EQUIPMENT_TYPES.map((eq, eqIdx) => {
                   const isLast = eqIdx === EQUIPMENT_TYPES.length - 1;
                   return (
@@ -412,6 +426,7 @@ const Screen8APricingStep: React.FC = () => {
                         animation: `cardIn .4s ease ${eqIdx * 0.08}s both`,
                       }}
                     >
+                      {/* Card header */}
                       <div style={{
                         padding: '14px 20px', background: SURFACE,
                         borderBottom: `1px solid ${BORDER_LT}`,
@@ -419,7 +434,9 @@ const Screen8APricingStep: React.FC = () => {
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span style={{ fontSize: 16 }}>{eq.icon}</span>
-                          <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: -0.2, color: TEXT }}>{eq.name}</span>
+                          <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: -0.2, color: TEXT }}>
+                            {eq.name}
+                          </span>
                         </div>
                         {eq.baseMultiplier !== 1.0 && (
                           <span style={{
@@ -437,6 +454,7 @@ const Screen8APricingStep: React.FC = () => {
                         )}
                       </div>
 
+                      {/* Tier rows */}
                       {SERVICE_TIERS.map((tier, tierIdx) => {
                         const key       = `${eq.id}-${tier.id}`;
                         const price     = prices[key] ?? 0;
@@ -449,12 +467,15 @@ const Screen8APricingStep: React.FC = () => {
                             key={tier.id}
                             className="s8a-rate-row"
                             style={{
-                              display: 'grid', gridTemplateColumns: '1fr auto auto',
-                              alignItems: 'center', gap: 16, padding: '11px 20px',
-                              borderBottom: isLastRow ? 'none' : `1px solid ${BORDER_LT}`,
+                              display: 'grid',
+                              gridTemplateColumns: '1fr auto auto',
+                              alignItems: 'center', gap: 16,
+                              padding: '11px 20px',
+                              borderBottom: isLastRow && !isLast ? 'none' : isLastRow ? 'none' : `1px solid ${BORDER_LT}`,
                               transition: 'background .15s',
                             }}
                           >
+                            {/* Name + tier badge */}
                             <div style={{ display: 'flex', alignItems: 'center' }}>
                               <span style={{ fontSize: 13, fontWeight: 600, color: TEXT }}>{tier.label}</span>
                               <span style={{
@@ -468,29 +489,63 @@ const Screen8APricingStep: React.FC = () => {
                             </div>
 
                             {isEditing ? (
-                              <div style={{ display: 'flex', gap: 6, alignItems: 'center', gridColumn: '2 / 4' }}>
-                                <input
-                                  type="number" value={editRaw}
-                                  onChange={e => setEditRaw(e.target.value)}
-                                  onKeyDown={e => e.key === 'Enter' && handleEditSave(key)}
-                                  autoFocus
-                                  style={{ width: 120, padding: '6px 10px', borderRadius: 6, border: `1.5px solid ${VANI}`, fontSize: 14, fontWeight: 700, fontFamily: "'IBM Plex Mono', monospace", outline: 'none' }}
-                                />
-                                <button onClick={() => handleEditSave(key)} style={{ padding: '6px 12px', borderRadius: 6, border: 'none', background: VANI, color: '#fff', fontFamily: "'Outfit', sans-serif", fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>save</button>
-                                <button onClick={() => setEditingKey(null)} style={{ padding: '6px 10px', borderRadius: 6, border: `1.5px solid ${BORDER}`, background: 'transparent', fontFamily: "'Outfit', sans-serif", fontSize: 12, color: TEXT_DIM, cursor: 'pointer' }}>×</button>
-                              </div>
+                              <>
+                                <div style={{ display: 'flex', gap: 6, alignItems: 'center', gridColumn: '2 / 4' }}>
+                                  <input
+                                    type="number"
+                                    value={editRaw}
+                                    onChange={e => setEditRaw(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && handleEditSave(key)}
+                                    autoFocus
+                                    style={{
+                                      width: 120, padding: '6px 10px', borderRadius: 6,
+                                      border: `1.5px solid ${VANI}`, fontSize: 14, fontWeight: 700,
+                                      fontFamily: "'IBM Plex Mono', monospace", outline: 'none',
+                                    }}
+                                  />
+                                  <button
+                                    onClick={() => handleEditSave(key)}
+                                    style={{
+                                      padding: '6px 12px', borderRadius: 6, border: 'none',
+                                      background: VANI, color: '#fff',
+                                      fontFamily: "'Outfit', sans-serif", fontSize: 12, fontWeight: 700,
+                                      cursor: 'pointer',
+                                    }}
+                                  >save</button>
+                                  <button
+                                    onClick={() => setEditingKey(null)}
+                                    style={{
+                                      padding: '6px 10px', borderRadius: 6,
+                                      border: `1.5px solid ${BORDER}`, background: 'transparent',
+                                      fontFamily: "'Outfit', sans-serif", fontSize: 12, color: TEXT_DIM,
+                                      cursor: 'pointer',
+                                    }}
+                                  >×</button>
+                                </div>
+                              </>
                             ) : (
                               <>
-                                <span style={{ fontSize: 14, fontWeight: 800, color: TEXT, fontFamily: "'IBM Plex Mono', monospace" }}>
+                                {/* Price display */}
+                                <span style={{
+                                  fontSize: 14, fontWeight: 800, color: TEXT,
+                                  fontFamily: "'IBM Plex Mono', monospace",
+                                }}>
                                   {fmtPrice(price, currency)}
                                 </span>
+                                {/* Anchor row shows ✓; all others show edit button */}
                                 {isAnchor ? (
                                   <span style={{ fontSize: 14, color: GREEN }}>✓</span>
                                 ) : (
                                   <button
                                     className="s8a-edit-btn"
                                     onClick={() => handleEditStart(key, price)}
-                                    style={{ padding: '4px 10px', borderRadius: 5, border: `1.5px solid ${BORDER}`, background: 'transparent', fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, fontWeight: 700, color: TEXT_DIM, cursor: 'pointer', transition: 'all .15s' }}
+                                    style={{
+                                      padding: '4px 10px', borderRadius: 5,
+                                      border: `1.5px solid ${BORDER}`, background: 'transparent',
+                                      fontFamily: "'IBM Plex Mono', monospace",
+                                      fontSize: 11, fontWeight: 700, color: TEXT_DIM,
+                                      cursor: 'pointer', transition: 'all .15s',
+                                    }}
                                   >edit</button>
                                 )}
                               </>
@@ -499,13 +554,35 @@ const Screen8APricingStep: React.FC = () => {
                         );
                       })}
 
+                      {/* Currency chips — last card only */}
                       {isLast && (
-                        <div style={{ display: 'flex', gap: 8, padding: '14px 20px', flexWrap: 'wrap', borderTop: `1px solid ${BORDER_LT}` }}>
+                        <div style={{
+                          display: 'flex', gap: 8, padding: '14px 20px', flexWrap: 'wrap',
+                          borderTop: `1px solid ${BORDER_LT}`,
+                        }}>
                           {extraCurrencies.map(c => (
-                            <span key={c} style={{ padding: '6px 14px', borderRadius: 100, border: `1.5px solid ${GREEN_BORDER}`, fontSize: 11, fontWeight: 700, color: GREEN, fontFamily: "'IBM Plex Mono', monospace", background: GREEN_BG }}>{c} ✓</span>
+                            <span key={c} style={{
+                              padding: '6px 14px', borderRadius: 100,
+                              border: `1.5px solid ${GREEN_BORDER}`,
+                              fontSize: 11, fontWeight: 700, color: GREEN,
+                              fontFamily: "'IBM Plex Mono', monospace",
+                              background: GREEN_BG,
+                            }}>{c} ✓</span>
                           ))}
                           {availableCurrencies.map(c => (
-                            <button key={c} className="s8a-chip" onClick={() => handleAddCurrency(c)} style={{ padding: '6px 14px', borderRadius: 100, border: `1.5px dashed ${BORDER}`, fontSize: 11, fontWeight: 700, color: TEXT_MUTED, fontFamily: "'IBM Plex Mono', monospace", background: 'transparent', cursor: 'pointer', transition: 'all .15s' }}>+ {c}</button>
+                            <button
+                              key={c}
+                              className="s8a-chip"
+                              onClick={() => handleAddCurrency(c)}
+                              style={{
+                                padding: '6px 14px', borderRadius: 100,
+                                border: `1.5px dashed ${BORDER}`,
+                                fontSize: 11, fontWeight: 700, color: TEXT_MUTED,
+                                fontFamily: "'IBM Plex Mono', monospace",
+                                background: 'transparent', cursor: 'pointer',
+                                transition: 'all .15s',
+                              }}
+                            >+ {c}</button>
                           ))}
                         </div>
                       )}
@@ -513,7 +590,15 @@ const Screen8APricingStep: React.FC = () => {
                   );
                 })}
 
-                <div className="s8a-skip" onClick={handleSkip} style={{ fontSize: 12, color: TEXT_MUTED, textDecoration: 'underline', cursor: 'pointer', textAlign: 'center' as const, display: 'block', marginTop: 10 }}>
+                {/* Skip link */}
+                <div
+                  className="s8a-skip"
+                  onClick={handleSkip}
+                  style={{
+                    fontSize: 12, color: TEXT_MUTED, textDecoration: 'underline',
+                    cursor: 'pointer', textAlign: 'center' as const, display: 'block', marginTop: 10,
+                  }}
+                >
                   Skip for now — I'll set prices later
                 </div>
               </div>
@@ -522,9 +607,16 @@ const Screen8APricingStep: React.FC = () => {
 
           {/* ── RIGHT PANEL ── */}
           <div style={{ position: 'sticky', top: 84, paddingLeft: 24 }}>
-            <div style={{ background: DARK_BG, border: '1px solid rgba(255,107,43,.12)', borderRadius: 14, overflow: 'hidden', marginBottom: 12 }}>
+
+            {/* Pricing progress — dark card */}
+            <div style={{
+              background: DARK_BG, border: '1px solid rgba(255,107,43,.12)',
+              borderRadius: 14, overflow: 'hidden', marginBottom: 12,
+            }}>
               <div style={{ padding: '13px 18px 10px', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, fontFamily: "'IBM Plex Mono', monospace", color: 'rgba(255,255,255,.3)' }}>Pricing Progress</div>
+                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, fontFamily: "'IBM Plex Mono', monospace", color: 'rgba(255,255,255,.3)' }}>
+                  Pricing Progress
+                </div>
               </div>
               <div style={{ padding: '14px 18px' }}>
                 {[
@@ -533,13 +625,27 @@ const Screen8APricingStep: React.FC = () => {
                   { k: 'Currency',   v: currency },
                   { k: 'Anchor',     v: anchorNum > 0 ? fmtPrice(anchorNum, currency) : '—', accent: anchorNum > 0 },
                 ].map(row => (
-                  <div key={row.k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,.05)' }}>
+                  <div key={row.k} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,.05)',
+                    fontSize: 12,
+                  }}>
                     <span style={{ fontSize: 11, color: 'rgba(255,255,255,.35)', fontFamily: "'IBM Plex Mono', monospace" }}>{row.k}</span>
-                    <span style={{ fontSize: 11, fontWeight: 700, fontFamily: "'IBM Plex Mono', monospace", color: row.accent ? VANI : row.muted ? 'rgba(255,255,255,.25)' : '#f0ece6', fontStyle: row.muted ? 'italic' : 'normal' }}>{row.v}</span>
+                    <span style={{
+                      fontSize: 11, fontWeight: 700, fontFamily: "'IBM Plex Mono', monospace",
+                      color: row.accent ? VANI : row.muted ? 'rgba(255,255,255,.25)' : '#f0ece6',
+                      fontStyle: row.muted ? 'italic' : 'normal',
+                    }}>{row.v}</span>
                   </div>
                 ))}
+                {/* Progress bar */}
                 <div style={{ height: 6, background: 'rgba(255,255,255,.08)', borderRadius: 100, overflow: 'hidden', margin: '12px 0 6px' }}>
-                  <div style={{ height: '100%', borderRadius: 100, background: `linear-gradient(90deg, ${VANI}, #ff8f5a)`, width: `${pricingStep === 'anchor' ? 8 : progressPct}%`, transition: 'width .5s ease' }} />
+                  <div style={{
+                    height: '100%', borderRadius: 100,
+                    background: `linear-gradient(90deg, ${VANI}, #ff8f5a)`,
+                    width: `${pricingStep === 'anchor' ? 8 : progressPct}%`,
+                    transition: 'width .5s ease',
+                  }} />
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}>
                   <span style={{ color: VANI }}>{pricingStep === 'anchor' ? '8%' : `${progressPct}%`}</span>
@@ -548,9 +654,16 @@ const Screen8APricingStep: React.FC = () => {
               </div>
             </div>
 
-            <div style={{ background: WHITE, border: `1px solid ${BORDER}`, borderRadius: 14, overflow: 'hidden', marginBottom: 12, boxShadow: '0 2px 12px rgba(0,0,0,.05)' }}>
+            {/* Catalog summary — light card */}
+            <div style={{
+              background: WHITE, border: `1px solid ${BORDER}`,
+              borderRadius: 14, overflow: 'hidden', marginBottom: 12,
+              boxShadow: '0 2px 12px rgba(0,0,0,.05)',
+            }}>
               <div style={{ padding: '13px 18px 10px', borderBottom: `1px solid ${BORDER_LT}` }}>
-                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, fontFamily: "'IBM Plex Mono', monospace", color: TEXT_MUTED }}>Catalog Summary</div>
+                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, fontFamily: "'IBM Plex Mono', monospace", color: TEXT_MUTED }}>
+                  Catalog Summary
+                </div>
               </div>
               <div style={{ padding: '14px 18px' }}>
                 {[
@@ -559,17 +672,31 @@ const Screen8APricingStep: React.FC = () => {
                   { k: 'Equipment',  v: `${EQUIPMENT_TYPES.length} types` },
                   { k: 'Compliance', v: 'BIS · NBC', green: true },
                 ].map((row, i, arr) => (
-                  <div key={row.k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: i < arr.length - 1 ? `1px solid ${BORDER_LT}` : 'none' }}>
+                  <div key={row.k} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '6px 0',
+                    borderBottom: i < arr.length - 1 ? `1px solid ${BORDER_LT}` : 'none',
+                  }}>
                     <span style={{ fontSize: 11, color: TEXT_DIM, fontFamily: "'IBM Plex Mono', monospace" }}>{row.k}</span>
-                    <span style={{ fontSize: 11, fontWeight: 700, fontFamily: "'IBM Plex Mono', monospace", color: row.green ? GREEN : TEXT }}>{row.v}</span>
+                    <span style={{
+                      fontSize: 11, fontWeight: 700, fontFamily: "'IBM Plex Mono', monospace",
+                      color: row.green ? GREEN : TEXT,
+                    }}>{row.v}</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div style={{ background: WHITE, border: `1px solid ${BORDER}`, borderRadius: 14, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,.05)' }}>
+            {/* VaNi multipliers — light card */}
+            <div style={{
+              background: WHITE, border: `1px solid ${BORDER}`,
+              borderRadius: 14, overflow: 'hidden',
+              boxShadow: '0 2px 12px rgba(0,0,0,.05)',
+            }}>
               <div style={{ padding: '13px 18px 10px', borderBottom: `1px solid ${BORDER_LT}` }}>
-                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, fontFamily: "'IBM Plex Mono', monospace", color: TEXT_MUTED }}>VaNi Multipliers</div>
+                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, fontFamily: "'IBM Plex Mono', monospace", color: TEXT_MUTED }}>
+                  VaNi Multipliers
+                </div>
               </div>
               <div style={{ padding: '14px 18px' }}>
                 {[
@@ -578,7 +705,11 @@ const Screen8APricingStep: React.FC = () => {
                   { k: 'MRL vs Hydraulic', v: '+22%'        },
                   { k: 'Escalator',        v: '+95%'        },
                 ].map((row, i, arr) => (
-                  <div key={row.k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: i < arr.length - 1 ? `1px solid ${BORDER_LT}` : 'none' }}>
+                  <div key={row.k} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '6px 0',
+                    borderBottom: i < arr.length - 1 ? `1px solid ${BORDER_LT}` : 'none',
+                  }}>
                     <span style={{ fontSize: 11, color: TEXT_DIM, fontFamily: "'IBM Plex Mono', monospace" }}>{row.k}</span>
                     <span style={{ fontSize: 11, fontWeight: 700, fontFamily: "'IBM Plex Mono', monospace", color: TEXT }}>{row.v}</span>
                   </div>
@@ -592,22 +723,70 @@ const Screen8APricingStep: React.FC = () => {
         </div>
       </div>
 
-      <div style={{ position: 'fixed', bottom: 32, left: '50%', transform: 'translateX(-50%)', background: 'rgba(26,24,22,.94)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', padding: '10px 10px 10px 24px', borderRadius: 100, display: 'flex', alignItems: 'center', gap: 24, boxShadow: '0 20px 50px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.06)', zIndex: 200, whiteSpace: 'nowrap' }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,.65)' }}>{islandLabel}</span>
+      {/* ── ACTION ISLAND (fixed bottom) ── */}
+      <div style={{
+        position: 'fixed', bottom: 32, left: '50%', transform: 'translateX(-50%)',
+        background: 'rgba(26,24,22,.94)', backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        padding: '10px 10px 10px 24px', borderRadius: 100,
+        display: 'flex', alignItems: 'center', gap: 24,
+        boxShadow: '0 20px 50px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.06)',
+        zIndex: 200, whiteSpace: 'nowrap',
+      }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,.65)' }}>
+          {islandLabel}
+        </span>
         <div style={{ width: 1, height: 22, background: 'rgba(255,255,255,.12)' }} />
-        <button onClick={handleBack} style={{ padding: '10px 24px', borderRadius: 100, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.08)', color: 'rgba(255,255,255,.6)', fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>← Back</button>
-        <button onClick={handleConfirm} disabled={pricingStep !== 'ratecard'} style={{ padding: '10px 24px', borderRadius: 100, border: 'none', background: pricingStep === 'ratecard' ? `linear-gradient(135deg, ${VANI}, #ff8f5a)` : 'rgba(255,255,255,.1)', color: pricingStep === 'ratecard' ? '#fff' : 'rgba(255,255,255,.35)', fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 700, cursor: pricingStep === 'ratecard' ? 'pointer' : 'not-allowed', boxShadow: pricingStep === 'ratecard' ? `0 3px 10px rgba(255,107,43,.5)` : 'none', transition: 'all .3s ease' }}>Confirm pricing →</button>
+        <button
+          onClick={handleBack}
+          style={{
+            padding: '10px 24px', borderRadius: 100,
+            border: '1px solid rgba(255,255,255,.1)',
+            background: 'rgba(255,255,255,.08)', color: 'rgba(255,255,255,.6)',
+            fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 700,
+            cursor: 'pointer',
+          }}
+        >← Back</button>
+        <button
+          onClick={handleConfirm}
+          disabled={pricingStep !== 'ratecard'}
+          style={{
+            padding: '10px 24px', borderRadius: 100, border: 'none',
+            background: pricingStep === 'ratecard'
+              ? `linear-gradient(135deg, ${VANI}, #ff8f5a)`
+              : 'rgba(255,255,255,.1)',
+            color: pricingStep === 'ratecard' ? '#fff' : 'rgba(255,255,255,.35)',
+            fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 700,
+            cursor: pricingStep === 'ratecard' ? 'pointer' : 'not-allowed',
+            boxShadow: pricingStep === 'ratecard' ? `0 3px 10px rgba(255,107,43,.5)` : 'none',
+            transition: 'all .3s ease',
+          }}
+        >Confirm pricing →</button>
       </div>
     </>
   );
 };
 
+// ── Shared sub-components ─────────────────────────────────────────────────────
+
 const VaniAvatar: React.FC = () => (
-  <div style={{ width: 36, height: 36, borderRadius: 9, flexShrink: 0, background: `linear-gradient(135deg, ${VANI}, #ff8f5a)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 14, color: '#fff', boxShadow: '0 3px 8px rgba(255,107,43,.25)', marginTop: 2 }}>V</div>
+  <div style={{
+    width: 36, height: 36, borderRadius: 9, flexShrink: 0,
+    background: `linear-gradient(135deg, ${VANI}, #ff8f5a)`,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontWeight: 900, fontSize: 14, color: '#fff',
+    boxShadow: '0 3px 8px rgba(255,107,43,.25)', marginTop: 2,
+  }}>V</div>
 );
 
 const VaniMsg: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div style={{ background: WHITE, border: `1px solid ${BORDER}`, borderRadius: '3px 14px 14px 14px', padding: '14px 18px', boxShadow: '0 2px 12px rgba(0,0,0,.05)', fontSize: 14, color: TEXT_MID, lineHeight: 1.6 }}>
+  <div style={{
+    background: WHITE, border: `1px solid ${BORDER}`,
+    borderRadius: '3px 14px 14px 14px',
+    padding: '14px 18px',
+    boxShadow: '0 2px 12px rgba(0,0,0,.05)',
+    fontSize: 14, color: TEXT_MID, lineHeight: 1.6,
+  }}>
     {children}
   </div>
 );
