@@ -1,23 +1,34 @@
 // src/pages/onboarding/steps/Screen8APricingStep.tsx
 // Screen 8A — Pricing Review (Seller / Both)
-// Step 1: User sets anchor price → Step 2: VaNi extrapolates full rate card
-// Mock data: Lifts & Elevators (3 equipment types × 3 service tiers)
+// Step 1: Anchor price input with market benchmark bar
+// Step 2: Full rate card (4 equipment types × 3 tiers = 12 blocks)
 // Navigation: seller → /onboarding/done | both → /onboarding/equipment-confirm
 
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-// ── Color tokens (matches VaniWorkingStep) ────────────────────────────────────
-const VANI = '#ff6b2b';
-const TEXT = '#1a1816';
-const TEXT_DIM = '#8a847a';
-const TEXT_MUTED = '#bab4a8';
-const BORDER = '#e5e1db';
-const WHITE = '#ffffff';
-const BG = '#f7f5f2';
-const GREEN = '#16a34a';
-const SURFACE = '#f0ece6';
-const DARK_CARD = 'linear-gradient(145deg, #1a1816, #2a2520)';
+// ── Color tokens (matches spec CSS variables) ─────────────────────────────────
+const VANI        = '#ff6b2b';
+const VANI_SOFT   = '#fff8f4';
+const VANI_BORDER = 'rgba(255,107,43,.2)';
+const VANI_GLOW   = 'rgba(255,107,43,.08)';
+const TEXT        = '#1a1816';
+const TEXT_MID    = '#4a4540';
+const TEXT_DIM    = '#8a847a';
+const TEXT_MUTED  = '#bab4a8';
+const BORDER      = '#e5e1db';
+const BORDER_LT   = '#edeae4';
+const WHITE       = '#ffffff';
+const BG          = '#f7f5f2';
+const SURFACE     = '#faf9f7';
+const GREEN       = '#16a34a';
+const GREEN_BG    = '#f0fdf4';
+const GREEN_BORDER = '#bbf7d0';
+const AMBER       = '#d97706';
+const AMBER_BG    = '#fffbeb';
+const BLUE        = '#2563eb';
+const BLUE_BG     = '#eff6ff';
+const DARK_BG     = 'linear-gradient(145deg, #1a1816, #2a2520)';
 
 // ── Mock data ─────────────────────────────────────────────────────────────────
 
@@ -25,27 +36,32 @@ interface EquipmentType {
   id: string;
   name: string;
   icon: string;
-  baseMultiplier: number; // relative to hydraulic
+  baseMultiplier: number;
 }
 
 interface ServiceTier {
   id: string;
   label: string;
-  tierMultiplier: number; // relative to basic
+  badge: string;
+  tierMultiplier: number;
   color: string;
   bgColor: string;
+  borderColor: string;
 }
 
+// 4 equipment types × 3 tiers = 12 blocks (matches right panel)
 const EQUIPMENT_TYPES: EquipmentType[] = [
-  { id: 'hydraulic', name: 'Hydraulic Lift',    icon: '🛗', baseMultiplier: 1.0  },
-  { id: 'mrl',       name: 'MRL Traction Lift', icon: '⚙️', baseMultiplier: 1.22 },
-  { id: 'escalator', name: 'Escalator',          icon: '🏗️', baseMultiplier: 1.95 },
+  { id: 'hydraulic',  name: 'Hydraulic Lift',   icon: '🛗', baseMultiplier: 1.00 },
+  { id: 'mrl',        name: 'MRL Traction Lift', icon: '⚙️', baseMultiplier: 1.22 },
+  { id: 'escalator',  name: 'Escalator',          icon: '🏗️', baseMultiplier: 1.95 },
+  { id: 'dumbwaiter', name: 'Dumbwaiter',         icon: '📦', baseMultiplier: 0.75 },
 ];
 
+// Colors: Basic=gray, Comp=blue, CMC=vani — matches spec tier-basic/tier-comp/tier-cmc classes
 const SERVICE_TIERS: ServiceTier[] = [
-  { id: 'basic',   label: 'Basic AMC',          tierMultiplier: 1.0, color: '#3b82f6', bgColor: '#eff6ff' },
-  { id: 'comp',    label: 'Comprehensive AMC',  tierMultiplier: 1.5, color: '#8b5cf6', bgColor: '#f5f3ff' },
-  { id: 'premium', label: 'Premium CMC',        tierMultiplier: 2.3, color: '#f59e0b', bgColor: '#fffbeb' },
+  { id: 'basic',   label: 'Basic AMC',        badge: 'Basic', tierMultiplier: 1.0, color: TEXT_DIM, bgColor: SURFACE,   borderColor: BORDER_LT                },
+  { id: 'comp',    label: 'Comprehensive AMC', badge: 'Comp',  tierMultiplier: 1.5, color: BLUE,    bgColor: BLUE_BG,   borderColor: 'rgba(37,99,235,.15)'     },
+  { id: 'premium', label: 'Premium CMC',       badge: 'CMC',   tierMultiplier: 2.3, color: VANI,    bgColor: VANI_SOFT, borderColor: VANI_BORDER               },
 ];
 
 const CURRENCIES = ['INR', 'USD', 'AED', 'GBP'];
@@ -54,34 +70,40 @@ const DEFAULT_ANCHOR = 18000;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const fmtPrice = (n: number, currency: string) => {
+const fmtPrice = (n: number, currency: string): string => {
   if (currency === 'INR') return `₹${n.toLocaleString('en-IN')}`;
   if (currency === 'USD') return `$${n.toLocaleString()}`;
   if (currency === 'AED') return `AED ${n.toLocaleString()}`;
   if (currency === 'GBP') return `£${n.toLocaleString()}`;
-  return `${n.toLocaleString()}`;
+  return String(n.toLocaleString());
 };
 
+// VaNi multiplier formula: anchor × equip.baseMultiplier × tier.tierMultiplier
 const calcPrices = (anchor: number): Record<string, number> => {
   const result: Record<string, number> = {};
   EQUIPMENT_TYPES.forEach(eq => {
     SERVICE_TIERS.forEach(tier => {
-      result[`${eq.id}-${tier.id}`] = Math.round(anchor * eq.baseMultiplier * tier.multiplier);
+      result[`${eq.id}-${tier.id}`] = Math.round(anchor * eq.baseMultiplier * tier.tierMultiplier);
     });
   });
   return result;
 };
 
+// Maps a value to bar position % — fill covers 15%–70% of bar
+const getBarPct = (val: number): number =>
+  Math.min(100, Math.max(0, 15 + ((val - MARKET.min) / (MARKET.max - MARKET.min)) * 55));
+
+const MEDIAN_PCT = getBarPct(MARKET.median); // ≈ 38.6%
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 const Screen8APricingStep: React.FC = () => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const routeState = (location.state || {}) as Record<string, any>;
+  const navigate    = useNavigate();
+  const location    = useLocation();
+  const routeState  = (location.state || {}) as Record<string, any>;
 
-  const persona      = routeState.persona      || 'seller';
-  const companyName  = routeState.companyName  || 'Sharma Elevators';
-  const industryNames = routeState.industryNames || ['Lifts & Elevators'];
+  const persona       = (routeState.persona       || 'seller') as string;
+  const industryNames = (routeState.industryNames  || ['Lifts & Elevators']) as string[];
 
   const [pricingStep, setPricingStep] = useState<'anchor' | 'ratecard'>('anchor');
   const [currency, setCurrency]       = useState('INR');
@@ -91,20 +113,16 @@ const Screen8APricingStep: React.FC = () => {
   const [editRaw, setEditRaw]         = useState('');
   const [extraCurrencies, setExtraCurrencies] = useState<string[]>([]);
 
-  const anchorNum = parseInt(anchorRaw, 10) || 0;
-  const totalBlocks = EQUIPMENT_TYPES.length * SERVICE_TIERS.length;
-  const pricesSet = Object.keys(prices).length;
-
-  // Benchmark marker position (0-100%)
-  const markerPct = MARKET.max > MARKET.min
-    ? Math.min(100, Math.max(0, ((anchorNum - MARKET.min) / (MARKET.max - MARKET.min)) * 100))
-    : 50;
-  const medianPct = ((MARKET.median - MARKET.min) / (MARKET.max - MARKET.min)) * 100;
+  const anchorNum   = parseInt(anchorRaw, 10) || 0;
+  const totalBlocks = EQUIPMENT_TYPES.length * SERVICE_TIERS.length; // 12
+  const pricesSet   = Object.keys(prices).length;
+  const userBarPct  = anchorNum > 0 ? getBarPct(anchorNum) : -1;
 
   const handleApply = () => {
     if (!anchorNum) return;
     setPrices(calcPrices(anchorNum));
     setPricingStep('ratecard');
+    window.scrollTo(0, 0);
   };
 
   const handleEditStart = (key: string, currentPrice: number) => {
@@ -138,14 +156,18 @@ const Screen8APricingStep: React.FC = () => {
     navigate('/onboarding/vani-working', { state: routeState });
   };
 
+  const progressPct = totalBlocks > 0 ? Math.round((pricesSet / totalBlocks) * 100) : 0;
+
   const islandLabel = pricingStep === 'anchor'
     ? 'Set anchor price to continue'
-    : `${pricesSet} of ${totalBlocks} prices set`;
+    : pricesSet >= totalBlocks
+      ? `${totalBlocks} of ${totalBlocks} prices confirmed`
+      : `${pricesSet} of ${totalBlocks} prices set`;
 
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes fadeIn {
+        @keyframes fadeUp {
           from { opacity: 0; transform: translateY(8px); }
           to   { opacity: 1; transform: translateY(0); }
         }
@@ -153,100 +175,100 @@ const Screen8APricingStep: React.FC = () => {
           from { opacity: 0; transform: translateX(-6px); }
           to   { opacity: 1; transform: translateX(0); }
         }
-        .tab-active  { border-bottom: 2px solid ${VANI}; color: ${VANI}; font-weight: 700; }
-        .tab-inactive { border-bottom: 2px solid transparent; color: ${TEXT_MUTED}; }
-        .edit-btn:hover { border-color: ${VANI} !important; color: ${VANI} !important; background: #fff4ee !important; }
-        .chip-add:hover { background: #fff4ee !important; border-color: ${VANI} !important; color: ${VANI} !important; }
-        .skip-link:hover { text-decoration: underline; }
+        .s8a-rate-row:hover { background: ${SURFACE} !important; }
+        .s8a-edit-btn:hover { border-color: ${VANI} !important; color: ${VANI} !important; background: ${VANI_SOFT} !important; }
+        .s8a-chip:hover { border-color: ${VANI} !important; color: ${VANI} !important; background: ${VANI_SOFT} !important; border-style: solid !important; }
+        .s8a-apply-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 5px 16px rgba(255,107,43,.36) !important; }
+        .s8a-skip:hover { color: ${TEXT_DIM} !important; }
       `}} />
 
       <div style={{ background: BG, minHeight: '100vh', paddingTop: 64, fontFamily: "'Outfit', sans-serif" }}>
         <div style={{
           display: 'grid',
           gridTemplateColumns: '1fr 300px',
-          gap: 0,
-          maxWidth: 1100,
-          margin: '0 auto',
+          maxWidth: 1100, margin: '0 auto',
           padding: '40px 24px 160px',
           alignItems: 'start',
         }}>
 
-          {/* ── Left column ── */}
+          {/* ── LEFT COLUMN ── */}
           <div>
 
-            {/* VaNi bubble */}
-            <div style={{
-              display: 'flex', gap: 12, marginBottom: 28,
-              animation: 'fadeIn .5s ease both',
-            }}>
-              <div style={{
-                width: 36, height: 36, borderRadius: 9, flexShrink: 0,
-                background: `linear-gradient(135deg, ${VANI}, #ff8f5a)`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontWeight: 900, fontSize: 14, color: '#fff',
-              }}>V</div>
-              <div style={{
-                background: WHITE, border: `1px solid ${BORDER}`,
-                borderRadius: '0 12px 12px 12px',
-                padding: '12px 16px', fontSize: 14,
-                color: TEXT, lineHeight: 1.55, flex: 1,
-                boxShadow: '0 2px 8px rgba(0,0,0,.05)',
-              }}>
-                {pricingStep === 'anchor'
-                  ? <>One thing left — <strong>your prices</strong>. Start with your most common service and I'll calculate the rest.</>
-                  : <>Based on <strong>{fmtPrice(anchorNum, currency)}</strong> anchor + market data. <strong>Adjust anything that looks off</strong> — these are your prices.</>
-                }
-              </div>
-            </div>
-
-            {/* Step tabs */}
-            <div style={{ display: 'flex', gap: 0, marginBottom: 24, borderBottom: `2px solid ${BORDER}` }}>
-              {[
-                { key: 'anchor',   label: '1  Set anchor price' },
-                { key: 'ratecard', label: '2  Review rate card'  },
-              ].map(tab => (
-                <button
-                  key={tab.key}
-                  className={pricingStep === tab.key ? 'tab-active' : 'tab-inactive'}
-                  onClick={() => pricingStep === 'ratecard' && tab.key === 'anchor' && setPricingStep('anchor')}
-                  style={{
-                    padding: '10px 20px', background: 'none', border: 'none',
-                    fontFamily: "'Outfit', sans-serif", fontSize: 13,
-                    cursor: pricingStep === 'ratecard' && tab.key === 'anchor' ? 'pointer' : 'default',
-                    transition: 'all .2s',
-                  }}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* ── STEP 1: Anchor price ── */}
+            {/* VaNi bubble — step 1 message */}
             {pricingStep === 'anchor' && (
-              <div style={{ animation: 'fadeIn .4s ease both' }}>
+              <div style={{ display: 'flex', gap: 12, marginBottom: 24, animation: 'fadeUp .5s cubic-bezier(.22,1,.36,1) both' }}>
+                <VaniAvatar />
+                <VaniMsg>
+                  One thing left — <strong>your prices</strong>.
+                  Start with your most common service and I'll calculate the rest.
+                </VaniMsg>
+              </div>
+            )}
+
+            {/* Step tabs — pill style with circle numbers (matches spec) */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 28 }}>
+              {[
+                { key: 'anchor',   num: 1, label: 'Set anchor price' },
+                { key: 'ratecard', num: 2, label: 'Review rate card'  },
+              ].map(tab => {
+                const isActive = pricingStep === tab.key;
+                const isDone   = tab.key === 'anchor' && pricingStep === 'ratecard';
+                return (
+                  <div
+                    key={tab.key}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 7,
+                      padding: '6px 16px 6px 8px', borderRadius: 100,
+                      border: `1.5px solid ${isDone ? GREEN_BORDER : isActive ? VANI : BORDER}`,
+                      background: isDone ? GREEN_BG : isActive ? VANI_SOFT : WHITE,
+                      color: isDone ? GREEN : isActive ? VANI : TEXT_MUTED,
+                      fontSize: 12, fontWeight: 700,
+                    }}
+                  >
+                    <div style={{
+                      width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
+                      background: isDone ? GREEN : isActive ? VANI : BORDER_LT,
+                      color: '#fff',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 9, fontWeight: 800,
+                    }}>
+                      {isDone ? '✓' : tab.num}
+                    </div>
+                    {tab.label}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* ════ STEP 1: Anchor price ════ */}
+            {pricingStep === 'anchor' && (
+              <div style={{ animation: 'fadeUp .4s ease both' }}>
                 <div style={{
                   background: WHITE, border: `1px solid ${BORDER}`,
-                  borderRadius: 12, padding: '24px 28px',
-                  boxShadow: '0 2px 12px rgba(0,0,0,.06)',
-                  marginBottom: 0,
+                  borderRadius: 14, padding: '28px 32px',
+                  boxShadow: '0 4px 24px rgba(0,0,0,.08)',
                 }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, color: TEXT_MUTED, marginBottom: 4, fontFamily: "'IBM Plex Mono', monospace" }}>
+                  <div style={{
+                    fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
+                    letterSpacing: 0.8, color: TEXT_MUTED,
+                    fontFamily: "'IBM Plex Mono', monospace", marginBottom: 8,
+                  }}>
                     Your most common service
                   </div>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: TEXT, marginBottom: 22 }}>
+                  <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: -0.4, color: TEXT, marginBottom: 24 }}>
                     Basic AMC — Hydraulic Lift
                   </div>
 
-                  {/* Price input row */}
-                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 24 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
                     <select
                       value={currency}
                       onChange={e => setCurrency(e.target.value)}
                       style={{
-                        padding: '10px 12px', borderRadius: 8,
-                        border: `1.5px solid ${BORDER}`, fontSize: 13, fontWeight: 700,
-                        fontFamily: "'Outfit', sans-serif", color: TEXT,
+                        padding: '14px 16px', border: `1.5px solid ${BORDER}`,
+                        borderRadius: 8, fontFamily: "'IBM Plex Mono', monospace",
+                        fontSize: 14, fontWeight: 700, color: TEXT,
                         background: SURFACE, cursor: 'pointer', outline: 'none',
+                        minWidth: 80, appearance: 'none' as const,
                       }}
                     >
                       {CURRENCIES.map(c => <option key={c}>{c}</option>)}
@@ -257,84 +279,106 @@ const Screen8APricingStep: React.FC = () => {
                       onChange={e => setAnchorRaw(e.target.value)}
                       min={0}
                       style={{
-                        flex: 1, padding: '10px 14px', borderRadius: 8,
-                        border: `1.5px solid ${anchorNum ? VANI : BORDER}`,
-                        fontSize: 22, fontWeight: 800, fontFamily: "'IBM Plex Mono', monospace",
-                        color: TEXT, outline: 'none', transition: 'border-color .2s',
+                        flex: 1, padding: '14px 20px',
+                        border: `2px solid ${anchorNum ? VANI : BORDER}`,
+                        borderRadius: 8,
+                        fontFamily: "'IBM Plex Mono', monospace",
+                        fontSize: 24, fontWeight: 800, color: TEXT,
+                        outline: 'none', textAlign: 'right' as const,
+                        boxShadow: anchorNum ? `0 0 0 4px ${VANI_GLOW}` : 'none',
+                        transition: 'border-color .2s, box-shadow .2s',
                       }}
                     />
-                    <span style={{ fontSize: 14, color: TEXT_DIM, whiteSpace: 'nowrap' }}>/ year</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: TEXT_DIM, whiteSpace: 'nowrap' }}>/ year</span>
                   </div>
 
-                  {/* Benchmark */}
                   <div style={{
-                    background: SURFACE, borderRadius: 10,
-                    padding: '16px 18px', marginBottom: 22,
+                    background: SURFACE, border: `1px solid ${BORDER_LT}`,
+                    borderRadius: 8, padding: '16px 18px', marginBottom: 20,
                   }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: TEXT }}>Market rate · Hyderabad</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: TEXT_DIM, textTransform: 'uppercase', letterSpacing: 0.6 }}>
+                        Market rate · Hyderabad
+                      </span>
                       <span style={{
-                        fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 100,
-                        background: '#fef3c7', color: '#92400e', fontFamily: "'IBM Plex Mono', monospace",
+                        fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
+                        background: AMBER_BG, color: AMBER,
+                        border: '1px solid rgba(217,119,6,.2)',
+                        fontFamily: "'IBM Plex Mono', monospace",
                       }}>Low confidence</span>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: TEXT_DIM, marginBottom: 8, fontFamily: "'IBM Plex Mono', monospace" }}>
+                    <div style={{
+                      display: 'flex', justifyContent: 'space-between',
+                      fontSize: 11, color: TEXT_MUTED,
+                      fontFamily: "'IBM Plex Mono', monospace", marginBottom: 6,
+                    }}>
                       <span>₹15,000</span>
                       <span>median ₹18,000</span>
                       <span>₹22,000</span>
                     </div>
-
-                    {/* Range bar */}
-                    <div style={{ position: 'relative', height: 10, background: '#e5e1db', borderRadius: 100, marginBottom: 6 }}>
-                      {/* Filled range */}
-                      <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: '100%', borderRadius: 100, background: 'linear-gradient(90deg, #fde68a, #fbbf24)' }} />
-                      {/* Median marker */}
+                    <div style={{
+                      height: 8, background: BORDER, borderRadius: 100,
+                      position: 'relative', overflow: 'visible', marginBottom: 28,
+                    }}>
                       <div style={{
-                        position: 'absolute', top: -3, height: 16, width: 2,
-                        background: '#92400e', left: `${medianPct}%`, transform: 'translateX(-50%)',
-                        borderRadius: 2,
+                        position: 'absolute', left: '15%', width: '55%',
+                        height: '100%', background: 'rgba(217,119,6,.2)', borderRadius: 100,
                       }} />
-                      {/* User marker */}
-                      {anchorNum > 0 && (
-                        <div style={{
-                          position: 'absolute', top: -4, height: 18, width: 3,
-                          background: VANI, left: `${Math.min(100, Math.max(0, markerPct))}%`,
-                          transform: 'translateX(-50%)', borderRadius: 2,
-                          boxShadow: `0 0 6px ${VANI}80`,
-                          transition: 'left .3s ease',
-                        }} />
+                      <div style={{
+                        position: 'absolute', left: `${MEDIAN_PCT}%`, top: -3,
+                        width: 14, height: 14, borderRadius: '50%',
+                        background: AMBER, border: '2px solid #fff',
+                        boxShadow: '0 2px 4px rgba(0,0,0,.15)',
+                        transform: 'translateX(-50%)',
+                      }} />
+                      <div style={{
+                        position: 'absolute', left: `${MEDIAN_PCT}%`, top: 16,
+                        transform: 'translateX(-50%)',
+                        fontSize: 10, fontWeight: 700, color: AMBER,
+                        fontFamily: "'IBM Plex Mono', monospace", whiteSpace: 'nowrap',
+                      }}>median</div>
+                      {userBarPct >= 0 && (
+                        <>
+                          <div style={{
+                            position: 'absolute', left: `${userBarPct}%`, top: -3,
+                            width: 14, height: 14, borderRadius: '50%',
+                            background: VANI, border: '2px solid #fff',
+                            boxShadow: `0 2px 4px rgba(255,107,43,.3)`,
+                            transform: 'translateX(-50%)',
+                            transition: 'left .4s ease',
+                          }} />
+                          <div style={{
+                            position: 'absolute', left: `${userBarPct}%`, top: 16,
+                            transform: 'translateX(-50%)',
+                            fontSize: 10, fontWeight: 700, color: VANI,
+                            fontFamily: "'IBM Plex Mono', monospace", whiteSpace: 'nowrap',
+                            transition: 'left .4s ease',
+                          }}>you</div>
+                        </>
                       )}
                     </div>
-                    {anchorNum > 0 && (
-                      <div style={{ textAlign: 'right' }}>
-                        <span style={{ fontSize: 11, color: VANI, fontWeight: 700, fontFamily: "'IBM Plex Mono', monospace" }}>
-                          you: {fmtPrice(anchorNum, currency)}/yr
-                        </span>
-                      </div>
-                    )}
-                    <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 8, lineHeight: 1.5 }}>
-                      Based on industry seed data for Hyderabad · Low confidence means fewer data points. VaNi will improve benchmarks as more sellers join.
+                    <div style={{ fontSize: 11, color: TEXT_MUTED, lineHeight: 1.5 }}>
+                      Based on industry seed data for Hyderabad · Low confidence means fewer data points.
+                      VaNi will improve benchmarks as more sellers join.
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <button
+                      className="s8a-apply-btn"
                       onClick={handleApply}
                       disabled={!anchorNum}
                       style={{
-                        padding: '11px 22px', borderRadius: 8, border: 'none',
-                        background: anchorNum
-                          ? `linear-gradient(135deg, ${VANI}, #ff8f5a)`
-                          : '#e5e1db',
+                        padding: '13px 28px',
+                        background: anchorNum ? `linear-gradient(135deg, ${VANI}, #ff8f5a)` : '#e5e1db',
+                        border: 'none', borderRadius: 8,
+                        fontFamily: "'Outfit', sans-serif", fontSize: 14, fontWeight: 700,
                         color: anchorNum ? '#fff' : TEXT_MUTED,
-                        fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 700,
                         cursor: anchorNum ? 'pointer' : 'not-allowed',
-                        boxShadow: anchorNum ? `0 4px 14px ${VANI}40` : 'none',
-                        transition: 'all .2s',
+                        boxShadow: anchorNum ? '0 3px 10px rgba(255,107,43,.28)' : 'none',
+                        transition: 'all .2s', display: 'flex', alignItems: 'center', gap: 8,
                       }}
-                    >
-                      Apply & calculate all rates →
-                    </button>
+                    >Apply &amp; calculate all rates →</button>
                     <span style={{ fontSize: 12, color: TEXT_MUTED }}>
                       VaNi will extrapolate {totalBlocks - 1} more prices
                     </span>
@@ -343,290 +387,229 @@ const Screen8APricingStep: React.FC = () => {
               </div>
             )}
 
-            {/* ── STEP 2: Rate card ── */}
+            {/* ════ STEP 2: Rate card ════ */}
             {pricingStep === 'ratecard' && (
-              <div style={{ animation: 'fadeIn .4s ease both' }}>
-                {EQUIPMENT_TYPES.map((eq, eqIdx) => (
-                  <div
-                    key={eq.id}
-                    style={{
-                      background: WHITE, border: `1px solid ${BORDER}`,
-                      borderRadius: 12, overflow: 'hidden',
-                      boxShadow: '0 2px 12px rgba(0,0,0,.05)',
-                      marginBottom: 14,
-                      animation: `cardIn .4s ease ${eqIdx * 0.1}s both`,
-                    }}
-                  >
-                    {/* Card header */}
-                    <div style={{
-                      padding: '14px 20px',
-                      background: SURFACE,
-                      borderBottom: `1px solid ${BORDER}`,
-                      display: 'flex', alignItems: 'center', gap: 10,
-                    }}>
-                      <span style={{ fontSize: 20 }}>{eq.icon}</span>
-                      <span style={{ fontSize: 14, fontWeight: 800, color: TEXT }}>{eq.name}</span>
-                      {eq.baseMultiplier > 1 && (
-                        <span style={{
-                          fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 100,
-                          background: '#f0fdf4', color: GREEN, border: '1px solid #bbf7d0',
-                          fontFamily: "'IBM Plex Mono', monospace", marginLeft: 'auto',
-                        }}>
-                          +{Math.round((eq.baseMultiplier - 1) * 100)}% vs Hydraulic
-                        </span>
+              <div style={{ animation: 'fadeUp .4s ease both' }}>
+                <div style={{ display: 'flex', gap: 12, marginBottom: 20, animation: 'fadeUp .5s cubic-bezier(.22,1,.36,1) .1s both' }}>
+                  <VaniAvatar />
+                  <VaniMsg>
+                    Based on{' '}
+                    <span style={{ color: VANI, fontWeight: 700 }}>{fmtPrice(anchorNum, currency)}</span>
+                    {' '}anchor + market data.{' '}
+                    <strong>Adjust anything that looks off</strong> — these are your prices.
+                  </VaniMsg>
+                </div>
+
+                {EQUIPMENT_TYPES.map((eq, eqIdx) => {
+                  const isLast = eqIdx === EQUIPMENT_TYPES.length - 1;
+                  return (
+                    <div
+                      key={eq.id}
+                      style={{
+                        background: WHITE, border: `1px solid ${BORDER}`,
+                        borderRadius: 14, overflow: 'hidden',
+                        boxShadow: '0 2px 12px rgba(0,0,0,.05)', marginBottom: 14,
+                        animation: `cardIn .4s ease ${eqIdx * 0.08}s both`,
+                      }}
+                    >
+                      <div style={{
+                        padding: '14px 20px', background: SURFACE,
+                        borderBottom: `1px solid ${BORDER_LT}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 16 }}>{eq.icon}</span>
+                          <span style={{ fontSize: 13, fontWeight: 800, letterSpacing: -0.2, color: TEXT }}>{eq.name}</span>
+                        </div>
+                        {eq.baseMultiplier !== 1.0 && (
+                          <span style={{
+                            fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
+                            background: eq.baseMultiplier < 1 ? SURFACE : GREEN_BG,
+                            color: eq.baseMultiplier < 1 ? TEXT_DIM : GREEN,
+                            border: `1px solid ${eq.baseMultiplier < 1 ? BORDER_LT : GREEN_BORDER}`,
+                            fontFamily: "'IBM Plex Mono', monospace",
+                          }}>
+                            {eq.baseMultiplier > 1
+                              ? `+${Math.round((eq.baseMultiplier - 1) * 100)}% vs Hydraulic`
+                              : `−${Math.round((1 - eq.baseMultiplier) * 100)}% vs Hydraulic`
+                            }
+                          </span>
+                        )}
+                      </div>
+
+                      {SERVICE_TIERS.map((tier, tierIdx) => {
+                        const key       = `${eq.id}-${tier.id}`;
+                        const price     = prices[key] ?? 0;
+                        const isEditing = editingKey === key;
+                        const isAnchor  = eq.id === 'hydraulic' && tier.id === 'basic';
+                        const isLastRow = tierIdx === SERVICE_TIERS.length - 1;
+
+                        return (
+                          <div
+                            key={tier.id}
+                            className="s8a-rate-row"
+                            style={{
+                              display: 'grid', gridTemplateColumns: '1fr auto auto',
+                              alignItems: 'center', gap: 16, padding: '11px 20px',
+                              borderBottom: isLastRow ? 'none' : `1px solid ${BORDER_LT}`,
+                              transition: 'background .15s',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                              <span style={{ fontSize: 13, fontWeight: 600, color: TEXT }}>{tier.label}</span>
+                              <span style={{
+                                fontSize: 10, fontWeight: 700, marginLeft: 8,
+                                padding: '2px 8px', borderRadius: 4,
+                                background: tier.bgColor, color: tier.color,
+                                border: `1px solid ${tier.borderColor}`,
+                                fontFamily: "'IBM Plex Mono', monospace",
+                                textTransform: 'uppercase' as const, letterSpacing: 0.4,
+                              }}>{tier.badge}</span>
+                            </div>
+
+                            {isEditing ? (
+                              <div style={{ display: 'flex', gap: 6, alignItems: 'center', gridColumn: '2 / 4' }}>
+                                <input
+                                  type="number" value={editRaw}
+                                  onChange={e => setEditRaw(e.target.value)}
+                                  onKeyDown={e => e.key === 'Enter' && handleEditSave(key)}
+                                  autoFocus
+                                  style={{ width: 120, padding: '6px 10px', borderRadius: 6, border: `1.5px solid ${VANI}`, fontSize: 14, fontWeight: 700, fontFamily: "'IBM Plex Mono', monospace", outline: 'none' }}
+                                />
+                                <button onClick={() => handleEditSave(key)} style={{ padding: '6px 12px', borderRadius: 6, border: 'none', background: VANI, color: '#fff', fontFamily: "'Outfit', sans-serif", fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>save</button>
+                                <button onClick={() => setEditingKey(null)} style={{ padding: '6px 10px', borderRadius: 6, border: `1.5px solid ${BORDER}`, background: 'transparent', fontFamily: "'Outfit', sans-serif", fontSize: 12, color: TEXT_DIM, cursor: 'pointer' }}>×</button>
+                              </div>
+                            ) : (
+                              <>
+                                <span style={{ fontSize: 14, fontWeight: 800, color: TEXT, fontFamily: "'IBM Plex Mono', monospace" }}>
+                                  {fmtPrice(price, currency)}
+                                </span>
+                                {isAnchor ? (
+                                  <span style={{ fontSize: 14, color: GREEN }}>✓</span>
+                                ) : (
+                                  <button
+                                    className="s8a-edit-btn"
+                                    onClick={() => handleEditStart(key, price)}
+                                    style={{ padding: '4px 10px', borderRadius: 5, border: `1.5px solid ${BORDER}`, background: 'transparent', fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, fontWeight: 700, color: TEXT_DIM, cursor: 'pointer', transition: 'all .15s' }}
+                                  >edit</button>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {isLast && (
+                        <div style={{ display: 'flex', gap: 8, padding: '14px 20px', flexWrap: 'wrap', borderTop: `1px solid ${BORDER_LT}` }}>
+                          {extraCurrencies.map(c => (
+                            <span key={c} style={{ padding: '6px 14px', borderRadius: 100, border: `1.5px solid ${GREEN_BORDER}`, fontSize: 11, fontWeight: 700, color: GREEN, fontFamily: "'IBM Plex Mono', monospace", background: GREEN_BG }}>{c} ✓</span>
+                          ))}
+                          {availableCurrencies.map(c => (
+                            <button key={c} className="s8a-chip" onClick={() => handleAddCurrency(c)} style={{ padding: '6px 14px', borderRadius: 100, border: `1.5px dashed ${BORDER}`, fontSize: 11, fontWeight: 700, color: TEXT_MUTED, fontFamily: "'IBM Plex Mono', monospace", background: 'transparent', cursor: 'pointer', transition: 'all .15s' }}>+ {c}</button>
+                          ))}
+                        </div>
                       )}
                     </div>
+                  );
+                })}
 
-                    {/* Tier rows */}
-                    {SERVICE_TIERS.map(tier => {
-                      const key = `${eq.id}-${tier.id}`;
-                      const price = prices[key] ?? 0;
-                      const isEditing = editingKey === key;
-
-                      return (
-                        <div
-                          key={tier.id}
-                          style={{
-                            display: 'grid', gridTemplateColumns: '1fr auto auto',
-                            alignItems: 'center', gap: 14,
-                            padding: '13px 20px',
-                            borderBottom: `1px solid ${BORDER}`,
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ fontSize: 13, fontWeight: 600, color: TEXT }}>{tier.label}</span>
-                            <span style={{
-                              fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 100,
-                              background: tier.bgColor, color: tier.color,
-                              fontFamily: "'IBM Plex Mono', monospace",
-                            }}>
-                              {tier.tierMultiplier === 1 ? 'Anchor' : `${tier.tierMultiplier}×`}
-                            </span>
-                          </div>
-
-                          {isEditing ? (
-                            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                              <input
-                                type="number"
-                                value={editRaw}
-                                onChange={e => setEditRaw(e.target.value)}
-                                autoFocus
-                                style={{
-                                  width: 110, padding: '6px 10px', borderRadius: 6,
-                                  border: `1.5px solid ${VANI}`, fontSize: 14, fontWeight: 700,
-                                  fontFamily: "'IBM Plex Mono', monospace", outline: 'none',
-                                }}
-                              />
-                              <button
-                                onClick={() => handleEditSave(key)}
-                                style={{
-                                  padding: '6px 12px', borderRadius: 6, border: 'none',
-                                  background: VANI, color: '#fff',
-                                  fontFamily: "'Outfit', sans-serif", fontSize: 12, fontWeight: 700,
-                                  cursor: 'pointer',
-                                }}
-                              >save</button>
-                            </div>
-                          ) : (
-                            <>
-                              <span style={{
-                                fontSize: 16, fontWeight: 800, color: TEXT,
-                                fontFamily: "'IBM Plex Mono', monospace",
-                              }}>
-                                {fmtPrice(price, currency)}
-                              </span>
-                              <button
-                                className="edit-btn"
-                                onClick={() => handleEditStart(key, price)}
-                                style={{
-                                  padding: '5px 12px', borderRadius: 6,
-                                  border: `1.5px solid ${BORDER}`, background: 'transparent',
-                                  fontFamily: "'Outfit', sans-serif", fontSize: 11, fontWeight: 600,
-                                  color: TEXT_DIM, cursor: 'pointer', transition: 'all .15s',
-                                }}
-                              >edit</button>
-                            </>
-                          )}
-                        </div>
-                      );
-                    })}
-
-                    {/* Add currency row (last card only) */}
-                    {eqIdx === EQUIPMENT_TYPES.length - 1 && (
-                      <div style={{ padding: '12px 20px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        {extraCurrencies.map(c => (
-                          <span key={c} style={{
-                            padding: '5px 12px', borderRadius: 100,
-                            border: `1.5px solid ${BORDER}`,
-                            fontSize: 11, fontWeight: 700, color: GREEN,
-                            background: '#f0fdf4',
-                          }}>{c} ✓</span>
-                        ))}
-                        {availableCurrencies.map(c => (
-                          <button
-                            key={c}
-                            className="chip-add"
-                            onClick={() => handleAddCurrency(c)}
-                            style={{
-                              padding: '5px 12px', borderRadius: 100,
-                              border: `1.5px solid ${BORDER}`, background: 'transparent',
-                              fontFamily: "'Outfit', sans-serif", fontSize: 11, fontWeight: 600,
-                              color: TEXT_DIM, cursor: 'pointer', transition: 'all .15s',
-                            }}
-                          >+ {c}</button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-
-                <div
-                  className="skip-link"
-                  onClick={handleSkip}
-                  style={{ fontSize: 13, color: TEXT_MUTED, cursor: 'pointer', marginTop: 4, display: 'inline-block' }}
-                >
+                <div className="s8a-skip" onClick={handleSkip} style={{ fontSize: 12, color: TEXT_MUTED, textDecoration: 'underline', cursor: 'pointer', textAlign: 'center' as const, display: 'block', marginTop: 10 }}>
                   Skip for now — I'll set prices later
                 </div>
               </div>
             )}
           </div>
 
-          {/* ── Right panel ── */}
+          {/* ── RIGHT PANEL ── */}
           <div style={{ position: 'sticky', top: 84, paddingLeft: 24 }}>
-
-            {/* Pricing progress */}
-            <div style={{
-              background: DARK_CARD,
-              border: '1px solid rgba(255,107,43,.12)',
-              borderRadius: 14, padding: '20px 22px', marginBottom: 12,
-            }}>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, fontFamily: "'IBM Plex Mono', monospace", color: 'rgba(255,255,255,.3)', marginBottom: 12 }}>
-                Pricing Progress
+            <div style={{ background: DARK_BG, border: '1px solid rgba(255,107,43,.12)', borderRadius: 14, overflow: 'hidden', marginBottom: 12 }}>
+              <div style={{ padding: '13px 18px 10px', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, fontFamily: "'IBM Plex Mono', monospace", color: 'rgba(255,255,255,.3)' }}>Pricing Progress</div>
               </div>
-              {[
-                { k: 'Prices set', v: pricesSet > 0 ? `${pricesSet}` : '0', accent: pricesSet > 0 },
-                { k: 'Pending',    v: pricesSet > 0 ? `${totalBlocks - pricesSet} remaining` : `${totalBlocks} remaining`, warn: true },
-                { k: 'Currency',   v: currency },
-                { k: 'Anchor',     v: anchorNum > 0 ? fmtPrice(anchorNum, currency) : '—', accent: anchorNum > 0 },
-              ].map(row => (
-                <div key={row.k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 8, marginBottom: 8, borderBottom: '1px solid rgba(255,255,255,.05)' }}>
-                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,.35)', fontFamily: "'IBM Plex Mono', monospace" }}>{row.k}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, fontFamily: "'IBM Plex Mono', monospace", color: row.accent ? VANI : row.warn && pricesSet < totalBlocks ? '#fbbf24' : 'rgba(255,255,255,.65)' }}>{row.v}</span>
+              <div style={{ padding: '14px 18px' }}>
+                {[
+                  { k: 'Prices set', v: pricingStep === 'ratecard' ? String(pricesSet) : '1', accent: true },
+                  { k: 'Pending',    v: pricingStep === 'ratecard' && pricesSet >= totalBlocks ? 'all set ✓' : `${totalBlocks - (pricingStep === 'ratecard' ? pricesSet : 1)} remaining`, muted: true },
+                  { k: 'Currency',   v: currency },
+                  { k: 'Anchor',     v: anchorNum > 0 ? fmtPrice(anchorNum, currency) : '—', accent: anchorNum > 0 },
+                ].map(row => (
+                  <div key={row.k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,.05)' }}>
+                    <span style={{ fontSize: 11, color: 'rgba(255,255,255,.35)', fontFamily: "'IBM Plex Mono', monospace" }}>{row.k}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, fontFamily: "'IBM Plex Mono', monospace", color: row.accent ? VANI : row.muted ? 'rgba(255,255,255,.25)' : '#f0ece6', fontStyle: row.muted ? 'italic' : 'normal' }}>{row.v}</span>
+                  </div>
+                ))}
+                <div style={{ height: 6, background: 'rgba(255,255,255,.08)', borderRadius: 100, overflow: 'hidden', margin: '12px 0 6px' }}>
+                  <div style={{ height: '100%', borderRadius: 100, background: `linear-gradient(90deg, ${VANI}, #ff8f5a)`, width: `${pricingStep === 'anchor' ? 8 : progressPct}%`, transition: 'width .5s ease' }} />
                 </div>
-              ))}
-              {/* Progress bar */}
-              <div style={{ height: 6, background: 'rgba(255,255,255,.1)', borderRadius: 100, overflow: 'hidden', marginTop: 4 }}>
-                <div style={{
-                  height: '100%',
-                  background: `linear-gradient(90deg, ${VANI}, #ff8f5a)`,
-                  borderRadius: 100,
-                  width: `${totalBlocks > 0 ? Math.round((pricesSet / totalBlocks) * 100) : 0}%`,
-                  transition: 'width .5s ease',
-                }} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
-                <span style={{ fontSize: 10, color: VANI, fontFamily: "'IBM Plex Mono', monospace" }}>
-                  {totalBlocks > 0 ? Math.round((pricesSet / totalBlocks) * 100) : 0}%
-                </span>
-                <span style={{ fontSize: 10, color: 'rgba(255,255,255,.3)', fontFamily: "'IBM Plex Mono', monospace" }}>
-                  of {totalBlocks} prices
-                </span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, fontFamily: "'IBM Plex Mono', monospace" }}>
+                  <span style={{ color: VANI }}>{pricingStep === 'anchor' ? '8%' : `${progressPct}%`}</span>
+                  <span style={{ color: 'rgba(255,255,255,.3)' }}>of {totalBlocks} prices</span>
+                </div>
               </div>
             </div>
 
-            {/* Catalog summary */}
-            <div style={{
-              background: WHITE, border: `1px solid ${BORDER}`,
-              borderRadius: 14, padding: '16px 18px', marginBottom: 12,
-              boxShadow: '0 2px 12px rgba(0,0,0,.05)',
-            }}>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, fontFamily: "'IBM Plex Mono', monospace", color: TEXT_MUTED, marginBottom: 12 }}>
-                Catalog Summary
+            <div style={{ background: WHITE, border: `1px solid ${BORDER}`, borderRadius: 14, overflow: 'hidden', marginBottom: 12, boxShadow: '0 2px 12px rgba(0,0,0,.05)' }}>
+              <div style={{ padding: '13px 18px 10px', borderBottom: `1px solid ${BORDER_LT}` }}>
+                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, fontFamily: "'IBM Plex Mono', monospace", color: TEXT_MUTED }}>Catalog Summary</div>
               </div>
-              {[
-                { k: 'Blocks',     v: String(totalBlocks) },
-                { k: 'Templates',  v: '3' },
-                { k: 'Equipment',  v: String(EQUIPMENT_TYPES.length) + ' types' },
-                { k: 'Compliance', v: 'BIS · NBC', green: true },
-              ].map(row => (
-                <div key={row.k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 7, marginBottom: 7, borderBottom: `1px solid ${BORDER}` }}>
-                  <span style={{ fontSize: 11, color: TEXT_MUTED, fontFamily: "'IBM Plex Mono', monospace" }}>{row.k}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: row.green ? GREEN : TEXT, fontFamily: "'IBM Plex Mono', monospace" }}>{row.v}</span>
-                </div>
-              ))}
+              <div style={{ padding: '14px 18px' }}>
+                {[
+                  { k: 'Blocks',     v: `${totalBlocks} total` },
+                  { k: 'Templates',  v: '3 ready' },
+                  { k: 'Equipment',  v: `${EQUIPMENT_TYPES.length} types` },
+                  { k: 'Compliance', v: 'BIS · NBC', green: true },
+                ].map((row, i, arr) => (
+                  <div key={row.k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: i < arr.length - 1 ? `1px solid ${BORDER_LT}` : 'none' }}>
+                    <span style={{ fontSize: 11, color: TEXT_DIM, fontFamily: "'IBM Plex Mono', monospace" }}>{row.k}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, fontFamily: "'IBM Plex Mono', monospace", color: row.green ? GREEN : TEXT }}>{row.v}</span>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            {/* VaNi multipliers */}
-            <div style={{
-              background: WHITE, border: `1px solid ${BORDER}`,
-              borderRadius: 14, padding: '16px 18px',
-              boxShadow: '0 2px 12px rgba(0,0,0,.05)',
-            }}>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, fontFamily: "'IBM Plex Mono', monospace", color: TEXT_MUTED, marginBottom: 12 }}>
-                VaNi Multipliers
+            <div style={{ background: WHITE, border: `1px solid ${BORDER}`, borderRadius: 14, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,.05)' }}>
+              <div style={{ padding: '13px 18px 10px', borderBottom: `1px solid ${BORDER_LT}` }}>
+                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.8, fontFamily: "'IBM Plex Mono', monospace", color: TEXT_MUTED }}>VaNi Multipliers</div>
               </div>
-              {[
-                { k: 'Comp AMC',          v: '1.5× Basic'  },
-                { k: 'Premium CMC',       v: '2.3× Basic'  },
-                { k: 'MRL vs Hydraulic',  v: '+22%'        },
-                { k: 'Escalator',         v: '+95%'        },
-              ].map(row => (
-                <div key={row.k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 7, marginBottom: 7, borderBottom: `1px solid ${BORDER}` }}>
-                  <span style={{ fontSize: 11, color: TEXT_MUTED, fontFamily: "'IBM Plex Mono', monospace" }}>{row.k}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: VANI, fontFamily: "'IBM Plex Mono', monospace" }}>{row.v}</span>
+              <div style={{ padding: '14px 18px' }}>
+                {[
+                  { k: 'Comp AMC',         v: '1.5× Basic'  },
+                  { k: 'Premium CMC',      v: '2.3× Basic'  },
+                  { k: 'MRL vs Hydraulic', v: '+22%'        },
+                  { k: 'Escalator',        v: '+95%'        },
+                ].map((row, i, arr) => (
+                  <div key={row.k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: i < arr.length - 1 ? `1px solid ${BORDER_LT}` : 'none' }}>
+                    <span style={{ fontSize: 11, color: TEXT_DIM, fontFamily: "'IBM Plex Mono', monospace" }}>{row.k}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, fontFamily: "'IBM Plex Mono', monospace", color: TEXT }}>{row.v}</span>
+                  </div>
+                ))}
+                <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 8, lineHeight: 1.5 }}>
+                  From {industryNames.join(', ')} market data · editable per block
                 </div>
-              ))}
-              <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 6, lineHeight: 1.5 }}>
-                Derived from {industryNames.join(', ')} market data · editable per block
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── Action island (fixed bottom) ── */}
-      <div style={{
-        position: 'fixed', bottom: 32, left: '50%', transform: 'translateX(-50%)',
-        background: 'rgba(26,24,22,.94)',
-        backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
-        padding: '10px 10px 10px 24px', borderRadius: 100,
-        display: 'flex', alignItems: 'center', gap: 24,
-        boxShadow: '0 20px 50px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.06)',
-        zIndex: 200, whiteSpace: 'nowrap',
-      }}>
-        <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,.65)' }}>
-          {islandLabel}
-        </span>
+      <div style={{ position: 'fixed', bottom: 32, left: '50%', transform: 'translateX(-50%)', background: 'rgba(26,24,22,.94)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', padding: '10px 10px 10px 24px', borderRadius: 100, display: 'flex', alignItems: 'center', gap: 24, boxShadow: '0 20px 50px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.06)', zIndex: 200, whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,.65)' }}>{islandLabel}</span>
         <div style={{ width: 1, height: 22, background: 'rgba(255,255,255,.12)' }} />
-        <button
-          onClick={handleBack}
-          style={{
-            padding: '10px 18px', borderRadius: 100, border: '1px solid rgba(255,255,255,.15)',
-            background: 'transparent', color: 'rgba(255,255,255,.65)',
-            fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 600,
-            cursor: 'pointer',
-          }}
-        >← Back</button>
-        <button
-          onClick={handleConfirm}
-          disabled={pricingStep !== 'ratecard'}
-          style={{
-            padding: '10px 24px', borderRadius: 100, border: 'none',
-            background: pricingStep === 'ratecard'
-              ? `linear-gradient(135deg, ${VANI}, #ff8f5a)`
-              : 'rgba(255,255,255,.1)',
-            color: pricingStep === 'ratecard' ? '#fff' : 'rgba(255,255,255,.35)',
-            fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 700,
-            cursor: pricingStep === 'ratecard' ? 'pointer' : 'not-allowed',
-            boxShadow: pricingStep === 'ratecard' ? `0 3px 10px ${VANI}50` : 'none',
-            transition: 'all .3s ease',
-          }}
-        >
-          {persona === 'both' ? 'Confirm pricing →' : 'Confirm pricing →'}
-        </button>
+        <button onClick={handleBack} style={{ padding: '10px 24px', borderRadius: 100, border: '1px solid rgba(255,255,255,.1)', background: 'rgba(255,255,255,.08)', color: 'rgba(255,255,255,.6)', fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>← Back</button>
+        <button onClick={handleConfirm} disabled={pricingStep !== 'ratecard'} style={{ padding: '10px 24px', borderRadius: 100, border: 'none', background: pricingStep === 'ratecard' ? `linear-gradient(135deg, ${VANI}, #ff8f5a)` : 'rgba(255,255,255,.1)', color: pricingStep === 'ratecard' ? '#fff' : 'rgba(255,255,255,.35)', fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 700, cursor: pricingStep === 'ratecard' ? 'pointer' : 'not-allowed', boxShadow: pricingStep === 'ratecard' ? `0 3px 10px rgba(255,107,43,.5)` : 'none', transition: 'all .3s ease' }}>Confirm pricing →</button>
       </div>
     </>
   );
 };
+
+const VaniAvatar: React.FC = () => (
+  <div style={{ width: 36, height: 36, borderRadius: 9, flexShrink: 0, background: `linear-gradient(135deg, ${VANI}, #ff8f5a)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 14, color: '#fff', boxShadow: '0 3px 8px rgba(255,107,43,.25)', marginTop: 2 }}>V</div>
+);
+
+const VaniMsg: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div style={{ background: WHITE, border: `1px solid ${BORDER}`, borderRadius: '3px 14px 14px 14px', padding: '14px 18px', boxShadow: '0 2px 12px rgba(0,0,0,.05)', fontSize: 14, color: TEXT_MID, lineHeight: 1.6 }}>
+    {children}
+  </div>
+);
 
 export default Screen8APricingStep;
