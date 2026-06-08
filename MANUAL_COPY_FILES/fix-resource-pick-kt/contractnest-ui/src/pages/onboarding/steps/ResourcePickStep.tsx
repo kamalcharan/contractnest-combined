@@ -6,7 +6,7 @@
 // Passes selectedEquipmentTemplates + selectedFacilityTemplates forward via routeState.
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
 import { useTenantProfile } from '@/hooks/useTenantProfile';
@@ -73,6 +73,7 @@ const groupBySubCategory = (items: ResourceTemplate[]): [string, ResourceTemplat
 
 const ResourcePickStep: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentTheme } = useTheme();
   const colors = currentTheme.colors;
   const { user } = useAuth();
@@ -99,16 +100,27 @@ const ResourcePickStep: React.FC = () => {
   const eqKtCount  = useMemo(() => equipmentTemplates.filter(t => hasKT(t, ktCoverage)).length, [equipmentTemplates, ktCoverage]);
   const facKtCount = useMemo(() => facilityTemplates.filter(t => hasKT(t, ktCoverage)).length,  [facilityTemplates, ktCoverage]);
 
+  // ── Restore state when navigating back from VaniConsent ──────────────────
+  const routeState   = (location.state || {}) as Record<string, any>;
+  const _restoredIntent = (routeState.workIntent as WorkIntent) || null;
+  const _restoredIds    = useMemo(() => {
+    const eq:  string[] = (routeState.selectedEquipmentTemplates || []).map((t: any) => t.id);
+    const fac: string[] = (routeState.selectedFacilityTemplates  || []).map((t: any) => t.id);
+    return new Set([...eq, ...fac]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // only on mount — routeState is stable on first render
+
   // ── Intent selector state ─────────────────────────────────────────────────
   // null = not yet chosen (selector shown, list hidden)
-  const [workIntent, setWorkIntent] = useState<WorkIntent>(null);
+  const [workIntent, setWorkIntent] = useState<WorkIntent>(_restoredIntent);
 
   const showEquipment = workIntent === 'equipment' || workIntent === 'both';
   const showFacility  = workIntent === 'facilities' || workIntent === 'both';
 
   // ── Selection state — only KT-available items are pre-selected ────────────
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [initialised, setInitialised] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(_restoredIds);
+  // Skip auto-select if we're restoring a previous selection
+  const [initialised, setInitialised] = useState(_restoredIds.size > 0);
 
   // Auto-select KT-ready items once intent is chosen + data is ready
   useEffect(() => {
