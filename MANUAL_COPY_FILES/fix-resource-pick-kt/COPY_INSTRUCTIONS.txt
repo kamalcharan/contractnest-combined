@@ -1,0 +1,36 @@
+COPY INSTRUCTIONS — fix-resource-pick-kt
+==========================================
+Branch: fix-resource-pick-kt
+Submodules Affected: contractnest-ui
+
+FILES TO COPY:
+──────────────
+1. contractnest-ui/src/pages/onboarding/steps/ResourcePickStep.tsx
+   → Source:      MANUAL_COPY_FILES\fix-resource-pick-kt\contractnest-ui\src\pages\onboarding\steps\ResourcePickStep.tsx
+   → Destination: contractnest-ui\src\pages\onboarding\steps\ResourcePickStep.tsx
+
+WHAT CHANGED:
+──────────────
+Fix 1 — Real KT detection (Bug: Patient Monitor showed green with no KT)
+  - Removed: hasKT = pricing_guidance !== null  (incorrect proxy)
+  - Added:   import useKnowledgeTreeCoverage from hooks/queries/useKnowledgeTree
+  - Added:   import KnowledgeTreeCoverageMap type from knowledge-tree/types
+  - New:     hasKT = ktCoverage[t.id]?.variants_count > 0  (same logic as KnowledgeTreeCard.tsx)
+  - Loading state now waits for BOTH templates AND ktCoverage before initialising selections
+
+Fix 2 — All personas see Equipment + Facility sections
+  - Removed: showEquipment / showFacility persona gates
+  - All personas (seller, buyer, both, service_provider, merchant) now see both sections
+  - normalizePersona() helper added — maps legacy DB values (service_provider→seller, merchant→buyer)
+  - VaNi message updated per persona to reflect "equipment you service AND/OR facilities you manage"
+  - canContinue: at least one item selected across either section (not mandatory per section)
+  - Warning message simplified to single: "Select at least one equipment or facility type"
+  - Island label shows combined count dynamically
+
+PRODUCTION CHECKLIST:
+──────────────────────
+✅ Transaction Management: N/A (read-only step, no DB writes)
+✅ Race Condition Handling: isLoading gates on BOTH templates + ktCoverage before auto-selecting
+✅ Error Handling: existing error/retry UI preserved
+✅ Toasts: N/A (no mutations on this screen)
+✅ Loaders: spinner shown while templates OR ktCoverage loading
