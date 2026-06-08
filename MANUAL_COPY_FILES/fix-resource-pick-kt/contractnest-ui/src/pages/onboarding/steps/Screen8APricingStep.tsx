@@ -101,11 +101,12 @@ const Screen8APricingStep: React.FC = () => {
     }
     const fetchBlocks = async () => {
       try {
-        // axios will serialize arrays as tags[]=id1&tags[]=id2
+        // API expects comma-separated string: ?tags=id1,id2
         const resp = await api.get('/api/catalog-studio/blocks', {
-          params: { tags: industryIds, limit: 500 },
+          params: { tags: industryIds.join(','), limit: 500 },
         });
-        const raw: CatBlock[] = resp.data?.blocks || resp.data?.data || [];
+        // Response shape: { success, data: { blocks: [...], total: N } }
+        const raw: CatBlock[] = resp.data?.data?.blocks || resp.data?.blocks || [];
         // Keep only seeded blocks (is_seed = true)
         setBlocks(raw.filter(b => b.is_seed !== false));
       } catch {
