@@ -1,7 +1,7 @@
 // src/pages/onboarding/steps/ResourcePickStep.tsx
 // Screen 6 — Resource Picker
 // Sits between Industry Selection and VaNi Consent.
-// ALL personas see BOTH equipment and facility sections — user selects what they actually do.
+// Inline intent selector (Equipment / Facilities / Both) filters the list below — no extra route.
 // KT dot: green = KT available (variants_count > 0 from useKnowledgeTreeCoverage), red = no KT (disabled).
 // Passes selectedEquipmentTemplates + selectedFacilityTemplates forward via routeState.
 
@@ -12,8 +12,9 @@ import { useAuth } from '@/context/AuthContext';
 import { useTenantProfile } from '@/hooks/useTenantProfile';
 import useResourceTemplatesBrowser from '@/hooks/queries/useResourceTemplates';
 import { useKnowledgeTreeCoverage } from '@/hooks/queries/useKnowledgeTree';
+import { useServedIndustriesManager } from '@/hooks/queries/useServedIndustries';
 import { getSubCategoryConfig } from '@/constants/subCategoryConfig';
-import { ArrowRight, Package, RefreshCw } from 'lucide-react';
+import { ArrowRight, Package, RefreshCw, Wrench, Building2 } from 'lucide-react';
 import type { ResourceTemplate } from '@/services/resourcesService';
 import type { KnowledgeTreeCoverageMap } from '@/pages/service-contracts/templates/admin/knowledge-tree/types';
 
@@ -37,7 +38,8 @@ const GREEN       = '#16a34a';
 const RED         = '#dc2626';
 const RED_SOFT    = '#fef2f2';
 
-type PersonaId = 'seller' | 'buyer' | 'both';
+type PersonaId  = 'seller' | 'buyer' | 'both';
+type WorkIntent = 'equipment' | 'facilities' | 'both' | null;
 
 // Maps legacy DB values → current persona IDs
 const normalizePersona = (raw: string): PersonaId => {
@@ -75,6 +77,7 @@ const ResourcePickStep: React.FC = () => {
   const colors = currentTheme.colors;
   const { user } = useAuth();
   const { formData } = useTenantProfile({ isOnboarding: true });
+  const { servedIndustries } = useServedIndustriesManager();
 
   const { templates, isLoading: templatesLoading, isError, refetch } = useResourceTemplatesBrowser({ limit: 200 });
   const { data: ktCoverage, isLoading: ktLoading } = useKnowledgeTreeCoverage();
@@ -84,23 +87,49 @@ const ResourcePickStep: React.FC = () => {
   const personaId = normalizePersona(formData.business_type_id || '');
   const firstName = user?.first_name?.trim() || null;
 
+  // Industry names for contextual examples in intent selector
+  const industryNames = useMemo(
+    () => servedIndustries.map(si => si.industry?.name || '').filter(Boolean),
+    [servedIndustries]
+  );
+
   const equipmentTemplates = useMemo(() => templates.filter(t => isEquipmentType(t.resource_type_id)), [templates]);
   const facilityTemplates  = useMemo(() => templates.filter(t => isFacilityType(t.resource_type_id)),  [templates]);
 
-  // All personas see both sections — user selects what applies to them
-  const showEquipment = equipmentTemplates.length > 0;
-  const showFacility  = facilityTemplates.length > 0;
+  const eqKtCount  = useMemo(() => equipmentTemplates.filter(t => hasKT(t, ktCoverage)).length, [equipmentTemplates, ktCoverage]);
+  const facKtCount = useMemo(() => facilityTemplates.filter(t => hasKT(t, ktCoverage)).length,  [facilityTemplates, ktCoverage]);
+
+  // ── Intent selector state ─────────────────────────────────────────────────
+  // null = not yet chosen (selector shown, list hidden)
+  const [workIntent, setWorkIntent] = useState<WorkIntent>(null);
+
+  const showEquipment = workIntent === 'equipment' || workIntent === 'both';
+  const showFacility  = workIntent === 'facilities' || workIntent === 'both';
 
   // ── Selection state — only KT-available items are pre-selected ────────────
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [initialised, setInitialised] = useState(false);
 
+  // Auto-select KT-ready items once intent is chosen + data is ready
   useEffect(() => {
-    if (!isLoading && templates.length > 0 && !initialised) {
-      setSelectedIds(new Set(templates.filter(t => hasKT(t, ktCoverage)).map(t => t.id)));
+    if (!isLoading && workIntent !== null && !initialised) {
+      const toSelect = templates.filter(t => {
+        if (!hasKT(t, ktCoverage)) return false;
+        if (workIntent === 'equipment') return isEquipmentType(t.resource_type_id);
+        if (workIntent === 'facilities') return isFacilityType(t.resource_type_id);
+        return true; // both
+      });
+      setSelectedIds(new Set(toSelect.map(t => t.id)));
       setInitialised(true);
     }
-  }, [isLoading, templates, ktCoverage, initialised]);
+  }, [isLoading, workIntent, templates, ktCoverage, initialised]);
+
+  // Re-initialise selections when intent changes
+  const handleIntentSelect = (intent: WorkIntent) => {
+    setWorkIntent(intent);
+    setInitialised(false); // triggers re-auto-select for new intent
+    setSelectedIds(new Set()); // clear first, useEffect will repopulate
+  };
 
   const toggle = (t: ResourceTemplate) => {
     if (!hasKT(t, ktCoverage)) return;
@@ -119,37 +148,26 @@ const ResourcePickStep: React.FC = () => {
   const selEq  = useMemo(() => equipmentTemplates.filter(t => selectedIds.has(t.id)), [equipmentTemplates, selectedIds]);
   const selFac = useMemo(() => facilityTemplates.filter(t => selectedIds.has(t.id)),  [facilityTemplates, selectedIds]);
 
-  // Continue enabled when at least one item selected across either section (or no templates at all)
-  const hasTemplates = showEquipment || showFacility;
-  const canContinue  = selEq.length > 0 || selFac.length > 0;
+  const hasTemplates = equipmentTemplates.length > 0 || facilityTemplates.length > 0;
+  const canContinue  = workIntent !== null && (selEq.length > 0 || selFac.length > 0);
 
   const handleContinue = () => {
     navigate('/onboarding/vani-consent', {
       state: {
         selectedEquipmentTemplates: selEq,
         selectedFacilityTemplates:  selFac,
+        workIntent,
       },
     });
   };
 
-  const vaniMsg: Record<PersonaId, string> = {
-    seller: firstName
-      ? `<strong>${firstName}</strong>, here's what I found for your industries. Select the equipment you <em>service</em> and/or the facilities you <em>manage</em>. Items without a KT (red dot) can't be priced yet.`
-      : `Select the equipment you <em>service</em> and/or the facilities you <em>manage</em>. Items with a red dot have no Knowledge Tree yet and cannot be selected.`,
-    buyer: firstName
-      ? `<strong>${firstName}</strong>, select the equipment and facilities relevant to your organisation. I'll set up your registry and asset tracking for everything you pick.`
-      : `Select the equipment and facilities relevant to your organisation. I'll set up your registry for everything you pick.`,
-    both: firstName
-      ? `<strong>${firstName}</strong>, here's what I'll set up for both your service catalog and asset registry. Uncheck anything that doesn't apply.`
-      : `Here's what I'll set up for both your service catalog and asset registry. Uncheck anything that doesn't apply.`,
-  };
-
   const islandLabel = useMemo(() => {
+    if (workIntent === null) return 'Choose what you do first';
     const parts: string[] = [];
     if (selEq.length > 0)  parts.push(`${selEq.length} equipment`);
     if (selFac.length > 0) parts.push(`${selFac.length} ${selEq.length > 0 ? 'facilities' : 'facility types'}`);
     return parts.join(' · ') || 'Nothing selected yet';
-  }, [selEq, selFac]);
+  }, [selEq, selFac, workIntent]);
 
   // ── Sub-components ─────────────────────────────────────────────────────────
 
@@ -168,10 +186,174 @@ const ResourcePickStep: React.FC = () => {
         borderRadius: '3px 14px 14px 14px',
         padding: '13px 17px', fontSize: 13.5,
         color: colors.utility.secondaryText, lineHeight: 1.6,
-        maxWidth: 580,
+        maxWidth: 600,
       }} dangerouslySetInnerHTML={{ __html: msg }} />
     </div>
   );
+
+  // ── Intent selector card ───────────────────────────────────────────────────
+  const intentIndustryLine = industryNames.length > 0
+    ? industryNames.slice(0, 3).join(', ') + (industryNames.length > 3 ? ` +${industryNames.length - 3} more` : '')
+    : 'your selected industries';
+
+  const IntentCard = ({
+    intent, icon, label, sublabel, count, ktCount, accent, softBg,
+  }: {
+    intent: WorkIntent; icon: React.ReactNode; label: string; sublabel: string;
+    count: number; ktCount: number; accent: string; softBg: string;
+  }) => {
+    const isSelected = workIntent === intent;
+    return (
+      <button
+        onClick={() => handleIntentSelect(intent)}
+        style={{
+          flex: 1,
+          display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+          gap: 10, padding: '18px 20px',
+          background: isSelected ? softBg : WHITE,
+          border: `2px solid ${isSelected ? accent : BORDER}`,
+          borderRadius: 14, cursor: 'pointer',
+          transition: 'all .18s', textAlign: 'left',
+          boxShadow: isSelected ? `0 0 0 3px ${accent}18` : '0 1px 4px rgba(0,0,0,.05)',
+          fontFamily: "'Outfit', sans-serif",
+          outline: 'none',
+        }}
+        onMouseEnter={e => { if (!isSelected) { e.currentTarget.style.borderColor = `${accent}60`; e.currentTarget.style.background = `${softBg}80`; } }}
+        onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.background = WHITE; } }}
+      >
+        {/* Icon + selection ring */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: 10,
+            background: isSelected ? accent : `${accent}15`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'all .18s',
+          }}>
+            <span style={{ color: isSelected ? WHITE : accent }}>
+              {icon}
+            </span>
+          </div>
+          {/* Selection indicator */}
+          <div style={{
+            width: 20, height: 20, borderRadius: '50%',
+            border: `2px solid ${isSelected ? accent : BORDER}`,
+            background: isSelected ? accent : 'transparent',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'all .18s',
+            flexShrink: 0,
+          }}>
+            {isSelected && <span style={{ color: WHITE, fontSize: 10, fontWeight: 800 }}>✓</span>}
+          </div>
+        </div>
+
+        {/* Label */}
+        <div>
+          <div style={{
+            fontSize: 14, fontWeight: 800, color: isSelected ? accent : TEXT,
+            marginBottom: 3, transition: 'color .18s',
+          }}>{label}</div>
+          <div style={{ fontSize: 12, color: TEXT_DIM, lineHeight: 1.45 }}>{sublabel}</div>
+        </div>
+
+        {/* Count pills */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' as const }}>
+          <span style={{
+            fontSize: 11, fontWeight: 700,
+            color: isSelected ? accent : TEXT_DIM,
+            background: isSelected ? `${accent}15` : `${BORDER_LT}`,
+            borderRadius: 100, padding: '3px 10px',
+            fontFamily: "'IBM Plex Mono', monospace",
+            border: `1px solid ${isSelected ? `${accent}30` : BORDER}`,
+            transition: 'all .18s',
+          }}>
+            {count} types found
+          </span>
+          {ktCount > 0 && (
+            <span style={{
+              fontSize: 11, fontWeight: 700,
+              color: GREEN, background: '#f0fdf4',
+              borderRadius: 100, padding: '3px 10px',
+              fontFamily: "'IBM Plex Mono', monospace",
+              border: '1px solid #bbf7d0',
+            }}>
+              {ktCount} KT ready
+            </span>
+          )}
+          {count > 0 && ktCount === 0 && (
+            <span style={{
+              fontSize: 11, fontWeight: 700,
+              color: '#92400e', background: '#fffbeb',
+              borderRadius: 100, padding: '3px 10px',
+              fontFamily: "'IBM Plex Mono', monospace",
+              border: '1px solid #fde68a',
+            }}>
+              No KT yet
+            </span>
+          )}
+        </div>
+      </button>
+    );
+  };
+
+  const BothCard = () => {
+    const isSelected = workIntent === 'both';
+    return (
+      <button
+        onClick={() => handleIntentSelect('both')}
+        style={{
+          width: '100%',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '16px 20px',
+          background: isSelected ? VANI_SOFT : WHITE,
+          border: `2px solid ${isSelected ? VANI : BORDER}`,
+          borderRadius: 14, cursor: 'pointer',
+          transition: 'all .18s', textAlign: 'left',
+          boxShadow: isSelected ? `0 0 0 3px ${VANI}15` : '0 1px 4px rgba(0,0,0,.05)',
+          fontFamily: "'Outfit', sans-serif",
+          outline: 'none',
+        }}
+        onMouseEnter={e => { if (!isSelected) { e.currentTarget.style.borderColor = `${VANI}50`; e.currentTarget.style.background = VANI_SOFT; } }}
+        onMouseLeave={e => { if (!isSelected) { e.currentTarget.style.borderColor = BORDER; e.currentTarget.style.background = WHITE; } }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: 9,
+            background: isSelected ? VANI : `${VANI}15`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 16, transition: 'all .18s',
+          }}>
+            <span style={{ color: isSelected ? WHITE : VANI, fontSize: 16 }}>⚡</span>
+          </div>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 800, color: isSelected ? VANI : TEXT }}>Both — equipment & facilities</div>
+            <div style={{ fontSize: 12, color: TEXT_DIM, marginTop: 2 }}>
+              I service equipment <em>and</em> manage facilities
+            </div>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{
+            fontSize: 11, fontWeight: 700, fontFamily: "'IBM Plex Mono', monospace",
+            color: isSelected ? VANI : TEXT_DIM,
+            background: isSelected ? VANI_SOFT : BORDER_LT,
+            border: `1px solid ${isSelected ? VANI_BORDER : BORDER}`,
+            borderRadius: 100, padding: '3px 10px', transition: 'all .18s',
+          }}>
+            {equipmentTemplates.length + facilityTemplates.length} total
+          </span>
+          <div style={{
+            width: 20, height: 20, borderRadius: '50%',
+            border: `2px solid ${isSelected ? VANI : BORDER}`,
+            background: isSelected ? VANI : 'transparent',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'all .18s', flexShrink: 0,
+          }}>
+            {isSelected && <span style={{ color: WHITE, fontSize: 10, fontWeight: 800 }}>✓</span>}
+          </div>
+        </div>
+      </button>
+    );
+  };
 
   // Single row — matches .eq-row from batch4 spec
   const TemplateRow = ({ template }: { template: ResourceTemplate }) => {
@@ -260,18 +442,17 @@ const ResourcePickStep: React.FC = () => {
     );
   };
 
-  // Section: single bordered container with list rows inside
+  // Section with grouped rows
   const TemplateSection = ({
     title, items, accent, softBg,
   }: { title: string; items: ResourceTemplate[]; accent: string; softBg: string }) => {
-    const groups     = groupBySubCategory(items);
-    const selCount   = items.filter(t => selectedIds.has(t.id)).length;
-    const ktCount    = items.filter(t => hasKT(t, ktCoverage)).length;
-    const allKtSel   = selCount === ktCount && ktCount > 0;
+    const groups   = groupBySubCategory(items);
+    const selCount = items.filter(t => selectedIds.has(t.id)).length;
+    const ktCount  = items.filter(t => hasKT(t, ktCoverage)).length;
+    const allKtSel = selCount === ktCount && ktCount > 0;
 
     return (
       <div style={{ marginBottom: 24 }}>
-        {/* Section label + select-all */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ width: 3, height: 20, borderRadius: 2, background: accent }} />
@@ -295,12 +476,10 @@ const ResourcePickStep: React.FC = () => {
           </div>
         </div>
 
-        {/* List container */}
         <div style={{
           background: WHITE, border: `1px solid ${BORDER}`, borderRadius: 12,
           overflow: 'hidden', boxShadow: '0 1px 6px rgba(0,0,0,.04)',
         }}>
-          {/* Header row */}
           <div style={{
             padding: '10px 18px', background: SURFACE,
             borderBottom: `1px solid ${BORDER_LT}`,
@@ -318,8 +497,6 @@ const ResourcePickStep: React.FC = () => {
               </span>
             </div>
           </div>
-
-          {/* Rows grouped by sub_category */}
           {groups.map(([subCat, list]) => (
             <div key={subCat}>
               <div style={{
@@ -336,7 +513,6 @@ const ResourcePickStep: React.FC = () => {
           ))}
         </div>
 
-        {/* KT legend if any items are disabled */}
         {items.some(t => !hasKT(t, ktCoverage)) && (
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8,
@@ -385,9 +561,28 @@ const ResourcePickStep: React.FC = () => {
     );
   }
 
+  // ── VaNi bubble message (changes after intent is chosen) ───────────────────
+  const vaniMsg = workIntent === null
+    ? firstName
+      ? `<strong>${firstName}</strong>, I found resources across <strong>${industryNames.length > 0 ? intentIndustryLine : 'your industries'}</strong>. First — what do you do? This helps me show only what's relevant to you.`
+      : `I found resources across <strong>${intentIndustryLine}</strong>. What do you do in these industries? This helps me show only what's relevant.`
+    : workIntent === 'equipment'
+      ? firstName
+        ? `Got it <strong>${firstName}</strong> — here are the <strong>${equipmentTemplates.length} equipment types</strong> I found for your industries. Uncheck anything you don't service.`
+        : `Here are the <strong>${equipmentTemplates.length} equipment types</strong> found for your industries. Uncheck anything you don't service.`
+      : workIntent === 'facilities'
+        ? firstName
+          ? `Got it <strong>${firstName}</strong> — here are the <strong>${facilityTemplates.length} facility types</strong> I found. Uncheck anything that doesn't apply.`
+          : `Here are the <strong>${facilityTemplates.length} facility types</strong> found for your industries. Uncheck anything that doesn't apply.`
+        : firstName
+          ? `Got it <strong>${firstName}</strong> — showing all <strong>${equipmentTemplates.length + facilityTemplates.length} resource types</strong> across equipment and facilities. Uncheck anything that doesn't apply.`
+          : `Showing all <strong>${equipmentTemplates.length + facilityTemplates.length} resource types</strong> across equipment and facilities. Uncheck anything that doesn't apply.`;
+
   // ── Main render ────────────────────────────────────────────────────────────
   return (
     <>
+      <style>{`@keyframes fadeSlideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+
       <div style={{
         flex: 1, backgroundColor: BG,
         display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
@@ -404,43 +599,98 @@ const ResourcePickStep: React.FC = () => {
           </div>
 
           <h2 style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.8px', color: TEXT, marginBottom: 6 }}>
-            Select equipment & facilities
+            {workIntent === null ? 'What do you do in these industries?' : 'Select equipment & facilities'}
           </h2>
           <p style={{ fontSize: 14, color: TEXT_DIM, marginBottom: 24, lineHeight: 1.55 }}>
-            Pre-selected based on your industries. Pick the equipment you service and/or facilities you manage — VaNi only builds blocks for your selections.
+            {workIntent === null
+              ? `For ${intentIndustryLine} — VaNi uses your answer to show only the relevant resources.`
+              : 'Pre-selected based on your industries. Uncheck anything that doesn\'t apply — VaNi only builds blocks for your selections.'}
           </p>
 
-          <VaniBubble msg={vaniMsg[personaId]} />
+          {/* VaNi bubble */}
+          <VaniBubble msg={vaniMsg} />
 
-          {/* ── Sections ── */}
-          {!hasTemplates ? (
-            <div style={{
-              background: WHITE, border: `1px solid ${BORDER}`, borderRadius: 12,
-              padding: '40px 24px', textAlign: 'center',
-            }}>
-              <div style={{ fontSize: 28, marginBottom: 12 }}>📋</div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: TEXT, marginBottom: 8 }}>No templates found for your industries</div>
-              <div style={{ fontSize: 13, color: TEXT_DIM, marginBottom: 20, lineHeight: 1.55 }}>You can continue and add resources manually from Settings.</div>
-              <button onClick={handleContinue} style={{
-                padding: '10px 24px', borderRadius: 100, border: 'none',
-                background: VANI, color: WHITE, fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 800, cursor: 'pointer',
-              }}>Continue anyway →</button>
+          {/* ── Intent selector ──────────────────────────────────────────────── */}
+          <div style={{ marginBottom: workIntent !== null ? 32 : 0 }}>
+
+            {/* Two main cards side-by-side */}
+            <div style={{ display: 'flex', gap: 14, marginBottom: 12 }}>
+              <IntentCard
+                intent="equipment"
+                icon={<Wrench size={18} />}
+                label="I service / maintain equipment"
+                sublabel={`e.g. MRI machines, Ventilators, Dental chairs — ${equipmentTemplates.length} types found in ${intentIndustryLine}`}
+                count={equipmentTemplates.length}
+                ktCount={eqKtCount}
+                accent={BLUE}
+                softBg={BLUE_SOFT}
+              />
+              <IntentCard
+                intent="facilities"
+                icon={<Building2 size={18} />}
+                label="I manage / operate facilities"
+                sublabel={`e.g. Dental clinics, ICUs, Physiotherapy centres — ${facilityTemplates.length} types found in ${intentIndustryLine}`}
+                count={facilityTemplates.length}
+                ktCount={facKtCount}
+                accent={PURPLE}
+                softBg={PURPLE_SOFT}
+              />
             </div>
-          ) : (
-            <>
-              {showEquipment && (
-                <TemplateSection title="Equipment types" items={equipmentTemplates} accent={BLUE} softBg={BLUE_SOFT} />
-              )}
-              {showFacility && (
-                <TemplateSection title="Facility types" items={facilityTemplates} accent={PURPLE} softBg={PURPLE_SOFT} />
-              )}
-              {hasTemplates && !canContinue && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderRadius: 8, marginBottom: 12, background: '#fffbeb', border: '1px solid #fde68a', fontSize: 12, color: '#92400e' }}>
-                  ⚠️ Select at least one equipment or facility type to continue
+
+            {/* Both card — full width */}
+            <BothCard />
+
+            {/* Change selection link (shown after intent is set) */}
+            {workIntent !== null && (
+              <div style={{ textAlign: 'center', marginTop: 10 }}>
+                <button
+                  onClick={() => { setWorkIntent(null); setSelectedIds(new Set()); setInitialised(false); }}
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: 12, color: TEXT_DIM, textDecoration: 'underline',
+                    fontFamily: "'Outfit', sans-serif",
+                  }}
+                >
+                  Change my selection
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* ── Resource list (only shown after intent chosen) ──────────────── */}
+          {workIntent !== null && (
+            <div style={{ animation: 'fadeSlideIn .3s ease both' }}>
+              {!hasTemplates ? (
+                <div style={{
+                  background: WHITE, border: `1px solid ${BORDER}`, borderRadius: 12,
+                  padding: '40px 24px', textAlign: 'center',
+                }}>
+                  <div style={{ fontSize: 28, marginBottom: 12 }}>📋</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: TEXT, marginBottom: 8 }}>No templates found for your industries</div>
+                  <div style={{ fontSize: 13, color: TEXT_DIM, marginBottom: 20, lineHeight: 1.55 }}>You can continue and add resources manually from Settings.</div>
+                  <button onClick={handleContinue} style={{
+                    padding: '10px 24px', borderRadius: 100, border: 'none',
+                    background: VANI, color: WHITE, fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 800, cursor: 'pointer',
+                  }}>Continue anyway →</button>
                 </div>
+              ) : (
+                <>
+                  {showEquipment && equipmentTemplates.length > 0 && (
+                    <TemplateSection title="Equipment types" items={equipmentTemplates} accent={BLUE} softBg={BLUE_SOFT} />
+                  )}
+                  {showFacility && facilityTemplates.length > 0 && (
+                    <TemplateSection title="Facility types" items={facilityTemplates} accent={PURPLE} softBg={PURPLE_SOFT} />
+                  )}
+                  {!canContinue && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderRadius: 8, marginBottom: 12, background: '#fffbeb', border: '1px solid #fde68a', fontSize: 12, color: '#92400e' }}>
+                      ⚠️ Select at least one type to continue
+                    </div>
+                  )}
+                </>
               )}
-            </>
+            </div>
           )}
+
         </div>
       </div>
 
@@ -468,7 +718,7 @@ const ResourcePickStep: React.FC = () => {
         <button
           type="button"
           onClick={handleContinue}
-          disabled={hasTemplates && !canContinue}
+          disabled={!canContinue && hasTemplates}
           style={{
             padding: '10px 24px', borderRadius: 100, border: 'none',
             background: canContinue || !hasTemplates ? `linear-gradient(135deg, ${VANI}, #ff8f5a)` : 'rgba(255,255,255,.12)',
