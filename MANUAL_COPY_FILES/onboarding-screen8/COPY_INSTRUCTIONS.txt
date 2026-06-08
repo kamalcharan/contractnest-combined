@@ -1,17 +1,18 @@
-ONBOARDING SCREEN 6 (ResourcePickStep) + Screen 8A & 8B — COPY INSTRUCTIONS
+ONBOARDING SCREEN 6 (ResourcePickStep) + VaNiWorking fixes + Screen 8A & 8B
 =============================================================================
-Branch: onboarding-screen8
+Branch: claude/serene-rubin-UQ641
 
 NEW FILES:
   contractnest-ui\src\pages\onboarding\steps\ResourcePickStep.tsx   ← NEW Screen 6
 
 UPDATED FILES:
-  contractnest-ui\src\App.tsx                                         (import + route: resource-pick)
-  contractnest-ui\src\components\onboarding\OnboardingLayout.tsx      (resource-pick in stepsWithOwnButtons)
-  contractnest-ui\src\pages\onboarding\steps\IndustrySelectionStep.tsx (navigate → resource-pick instead of vani-consent)
-  contractnest-ui\src\pages\onboarding\steps\Screen8APricingStep.tsx  (full rewrite — spec-faithful)
-  contractnest-ui\src\pages\onboarding\steps\Screen8BEquipmentStep.tsx (industryLabel wired)
-  contractnest-ui\src\pages\onboarding\steps\VaniWorkingStep.tsx      (navigate → pricing-review / equipment-confirm)
+  contractnest-ui\src\App.tsx                                           (import + route: resource-pick)
+  contractnest-ui\src\components\onboarding\OnboardingLayout.tsx        (resource-pick in stepsWithOwnButtons)
+  contractnest-ui\src\pages\onboarding\steps\IndustrySelectionStep.tsx  (navigate → resource-pick instead of vani-consent)
+  contractnest-ui\src\pages\onboarding\steps\VaniConsentStep.tsx        (persona normalisation fix)
+  contractnest-ui\src\pages\onboarding\steps\Screen8APricingStep.tsx    (full rewrite — spec-faithful)
+  contractnest-ui\src\pages\onboarding\steps\Screen8BEquipmentStep.tsx  (industryLabel wired)
+  contractnest-ui\src\pages\onboarding\steps\VaniWorkingStep.tsx        (real storage+sequences, pre-flight, persona fix)
 
 FLOW AFTER THIS CHANGE:
   Industry Selection → [NEW] Resource Pick → VaNi Consent → VaNi Working → 8A / 8B → Done
