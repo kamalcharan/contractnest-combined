@@ -13,7 +13,7 @@
 // On completion: navigate to pricing-review (seller/both) or equipment-confirm (buyer)
 
 import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useTenantProfile } from '@/hooks/useTenantProfile';
 import { useServedIndustriesManager } from '@/hooks/queries/useServedIndustries';
@@ -151,6 +151,13 @@ const VaniWorkingStep: React.FC = () => {
   const industryNames = servedIndustries.map(si => si.industry?.name || '').filter(Boolean);
   const industryIds = servedIndustries.map(si => si.industry_id);
   const companyName = formData.business_name?.trim() || currentTenant?.name || 'your company';
+
+  // Carry forward data from ResourcePickStep → VaniConsent → here
+  const location = useLocation();
+  const incomingState = (location.state || {}) as Record<string, any>;
+  const selectedEquipmentTemplates: any[] = incomingState.selectedEquipmentTemplates || [];
+  const selectedFacilityTemplates:  any[] = incomingState.selectedFacilityTemplates  || [];
+  const workIntent: string | null         = incomingState.workIntent || null;
 
   const tasks = buildTasks(personaId, industryNames);
 
@@ -361,6 +368,10 @@ const VaniWorkingStep: React.FC = () => {
           sampleContactsSeeded,
           companyName,
           industryNames,
+          industryIds,
+          selectedEquipmentTemplates,
+          selectedFacilityTemplates,
+          workIntent,
         },
       });
     }, 1200);

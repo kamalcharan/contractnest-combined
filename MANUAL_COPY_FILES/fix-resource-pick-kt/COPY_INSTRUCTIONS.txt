@@ -13,6 +13,29 @@ FILES TO COPY:
    Source:      MANUAL_COPY_FILES\fix-resource-pick-kt\contractnest-ui\src\pages\onboarding\steps\VaniWorkingStep.tsx
    Destination: contractnest-ui\src\pages\onboarding\steps\VaniWorkingStep.tsx
 
+3. VaniConsentStep.tsx
+   Source:      MANUAL_COPY_FILES\fix-resource-pick-kt\contractnest-ui\src\pages\onboarding\steps\VaniConsentStep.tsx
+   Destination: contractnest-ui\src\pages\onboarding\steps\VaniConsentStep.tsx
+
+4. Screen8APricingStep.tsx  ← REPLACED (real API, was mock data)
+   Source:      MANUAL_COPY_FILES\fix-resource-pick-kt\contractnest-ui\src\pages\onboarding\steps\Screen8APricingStep.tsx
+   Destination: contractnest-ui\src\pages\onboarding\steps\Screen8APricingStep.tsx
+
+5. Screen8BEquipmentStep.tsx  ← REPLACED (real API, was mock data)
+   Source:      MANUAL_COPY_FILES\fix-resource-pick-kt\contractnest-ui\src\pages\onboarding\steps\Screen8BEquipmentStep.tsx
+   Destination: contractnest-ui\src\pages\onboarding\steps\Screen8BEquipmentStep.tsx
+
+PowerShell copy command (run from project root):
+─────────────────────────────────────────────────
+$src = "MANUAL_COPY_FILES\fix-resource-pick-kt\contractnest-ui\src\pages\onboarding\steps"
+$dst = "contractnest-ui\src\pages\onboarding\steps"
+Copy-Item "$src\ResourcePickStep.tsx"    "$dst\ResourcePickStep.tsx"    -Force
+Copy-Item "$src\VaniWorkingStep.tsx"     "$dst\VaniWorkingStep.tsx"     -Force
+Copy-Item "$src\VaniConsentStep.tsx"     "$dst\VaniConsentStep.tsx"     -Force
+Copy-Item "$src\Screen8APricingStep.tsx" "$dst\Screen8APricingStep.tsx" -Force
+Copy-Item "$src\Screen8BEquipmentStep.tsx" "$dst\Screen8BEquipmentStep.tsx" -Force
+Write-Host "✅ All files copied!" -ForegroundColor Green
+
 WHAT CHANGED — ResourcePickStep.tsx:
 ──────────────────────────────────────
 Fix 1 — Real KT detection (Bug: Patient Monitor showed green with no KT)
@@ -30,29 +53,93 @@ Fix 2 — All personas see Equipment + Facility sections
   - canContinue: at least one item selected across either section
   - Warning message: single unified "Select at least one equipment or facility type"
 
+Fix 3 — Inline intent selector (Equipment / Facilities / Both)
+  - 3 intent cards shown above the list, list hidden until intent chosen
+  - Each card shows count of available templates + KT-ready count + industry examples
+  - Selecting intent auto-selects KT-ready items in relevant sections
+  - "Change my selection" link to go back to intent picker
+  - workIntent passed forward to VaniConsent via navigate state
+
 WHAT CHANGED — VaniWorkingStep.tsx:
 ──────────────────────────────────────
-Fix 3 — Storage preflight check (Bug: animation ran every visit even if already set up)
+Fix 4 — Storage preflight check (Bug: animation ran every visit even if already set up)
   - NEW: checkStorageAlreadySetup() — calls GET /api/storage/stats BEFORE the POST
   - If storageSetupComplete !== false → status = 'skipped', shows "Already configured" instantly
   - 409 from POST still also caught as skip (belt-and-suspenders)
 
-Fix 4 — Sequences preflight check (Bug: fake 400ms delay, no real check)
+Fix 5 — Sequences preflight check (Bug: fake 400ms delay, no real check)
   - NEW: checkSequencesAlreadySeeded() — calls GET /api/seeds/status
   - Parses statuses[].isSeeded for category = 'sequences'
   - If isSeeded === true → status = 'skipped', shows "Already configured · N sequences" instantly
-  - If not seeded → brief wait (sequences are seeded inside industry-confirmed call above)
 
-Fix 5 — New 'skipped' StepStatus + visual treatment
+Fix 6 — New 'skipped' StepStatus + visual treatment
   - 'skipped' cards get a grey/slate background (distinct from green 'done')
   - 'skipped' shows a grey ✓ + "Already done" badge pill on the right
   - Progress counting: doneCount now includes both 'done' and 'skipped' statuses
   - normalizePersona() added to handle legacy DB values (service_provider, merchant)
 
+Fix 7 — Forward selectedEquipmentTemplates + selectedFacilityTemplates in navigate state
+  - Added useLocation() to read incoming state (from VaniConsent)
+  - Extracts: selectedEquipmentTemplates, selectedFacilityTemplates, workIntent
+  - Adds to outgoing navigate state: industryIds, selectedEquipmentTemplates, selectedFacilityTemplates, workIntent
+  - Screen8A uses industryIds + selectedEquipmentTemplates to fetch real blocks
+  - Screen8B uses selectedFacilityTemplates to group real assets
+
+WHAT CHANGED — VaniConsentStep.tsx:
+──────────────────────────────────────
+Fix 8 — Correct output labels
+  - "Service catalog" → "Equipment types" (counts seeded equipment catalog blocks)
+  - "Asset registry"  → "Facility types"  (counts seeded facility asset nodes)
+  - normalizePersona() inline logic for legacy DB values
+
+WHAT CHANGED — Screen8APricingStep.tsx  (FULL REPLACEMENT):
+──────────────────────────────────────────────────────────────
+Was: Hardcoded mock data (Hydraulic Lift, MRL Traction Lift — Lifts & Elevators)
+Now: Real API-driven implementation
+
+- Fetches blocks: GET /api/catalog-studio/blocks?tags[]=industryId1&...
+- Filters client-side to is_seed=true blocks
+- Groups blocks by resource_template_id
+- Template display name resolved from selectedEquipmentTemplates (passed via routeState)
+  or parsed from block name ("Basic AMC — Hydraulic Lift" → "Hydraulic Lift")
+- Tier detected from block name: "premium"/"cmc" → tier 2, "comp" → tier 1, else tier 0
+- Anchor step: user sets price for first block (basic tier of first equipment group)
+- Rate card: all blocks shown with computed prices (anchor × tier multiplier: 1×, 1.5×, 2.3×)
+- Any price is editable inline
+- On confirm: PATCH /api/catalog-studio/blocks/:id with { config: { base_price, currency_id } }
+- Empty state if no blocks found (with graceful "Continue anyway" button)
+- Loading spinner while fetching
+- Save error message on PATCH failure
+- Saving spinner in action island button
+
+WHAT CHANGED — Screen8BEquipmentStep.tsx  (FULL REPLACEMENT):
+──────────────────────────────────────────────────────────────
+Was: Hardcoded mock data (MRI Scanner, CT Scanner… Healthcare equipment)
+Now: Real API-driven implementation
+
+- Fetches assets: GET /api/client-asset-registry?ownership_type=self&is_live=false&limit=200
+- Filters to placeholder nodes (specifications.is_placeholder=true OR ownership_type='self')
+- Groups by resource_type_id using selectedFacilityTemplates (passed via routeState)
+  Falls back to single "Your Industry Assets" group if no templates available
+- Each asset shows rename button — updates name in local state until confirm
+- On confirm: PATCH /api/client-asset-registry?id=:id with { name, is_live: true } for all assets
+  (all assets go live at once — single confirm gesture)
+- Empty state if no placeholder assets found
+- Loading spinner while fetching
+- Save error message on PATCH failure
+- Saving spinner in action island button
+- Navigation: /onboarding/done (buyer) or /onboarding/done (both after 8A)
+
 PRODUCTION CHECKLIST:
 ──────────────────────
-✅ Transaction Management: N/A (no DB writes on this screen, all via API calls)
-✅ Race Condition Handling: hasStarted ref prevents double-run; preflight checks are parallel GET calls
-✅ Error Handling: storage errors still block + show retry; sequences error falls through gracefully
-✅ Toasts: N/A
-✅ Loaders: spinner per task card, progress bar, live operation line
+✅ Transaction Management: N/A for UI screens (API handles transactions server-side)
+✅ Race Condition Handling:
+   - VaniWorkingStep: hasStarted ref prevents double-run; preflight GETs are parallel
+   - Screen8A: single confirm button disabled while saving
+   - Screen8B: single confirm button disabled while saving
+✅ Error Handling:
+   - Screen8A: blocks fetch error → graceful empty state; PATCH error → inline message
+   - Screen8B: assets fetch error → graceful empty state; PATCH error → inline message
+   - VaniWorking storage error → blocks whole flow + shows retry button
+✅ Toasts: N/A (inline error messages used instead)
+✅ Loaders: full-screen spinners on load; button spinner on save
