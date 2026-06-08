@@ -1,16 +1,20 @@
 COPY INSTRUCTIONS — fix-resource-pick-kt
 ==========================================
-Branch: fix-resource-pick-kt
-Submodules Affected: contractnest-ui
+Branch: claude/charming-archimedes-wRjXN
+Submodules Affected: contractnest-ui only
 
 FILES TO COPY:
 ──────────────
-1. contractnest-ui/src/pages/onboarding/steps/ResourcePickStep.tsx
-   → Source:      MANUAL_COPY_FILES\fix-resource-pick-kt\contractnest-ui\src\pages\onboarding\steps\ResourcePickStep.tsx
-   → Destination: contractnest-ui\src\pages\onboarding\steps\ResourcePickStep.tsx
+1. ResourcePickStep.tsx
+   Source:      MANUAL_COPY_FILES\fix-resource-pick-kt\contractnest-ui\src\pages\onboarding\steps\ResourcePickStep.tsx
+   Destination: contractnest-ui\src\pages\onboarding\steps\ResourcePickStep.tsx
 
-WHAT CHANGED:
-──────────────
+2. VaniWorkingStep.tsx
+   Source:      MANUAL_COPY_FILES\fix-resource-pick-kt\contractnest-ui\src\pages\onboarding\steps\VaniWorkingStep.tsx
+   Destination: contractnest-ui\src\pages\onboarding\steps\VaniWorkingStep.tsx
+
+WHAT CHANGED — ResourcePickStep.tsx:
+──────────────────────────────────────
 Fix 1 — Real KT detection (Bug: Patient Monitor showed green with no KT)
   - Removed: hasKT = pricing_guidance !== null  (incorrect proxy)
   - Added:   import useKnowledgeTreeCoverage from hooks/queries/useKnowledgeTree
@@ -20,17 +24,35 @@ Fix 1 — Real KT detection (Bug: Patient Monitor showed green with no KT)
 
 Fix 2 — All personas see Equipment + Facility sections
   - Removed: showEquipment / showFacility persona gates
-  - All personas (seller, buyer, both, service_provider, merchant) now see both sections
+  - All personas (seller, buyer, both) now see both sections
   - normalizePersona() helper added — maps legacy DB values (service_provider→seller, merchant→buyer)
   - VaNi message updated per persona to reflect "equipment you service AND/OR facilities you manage"
-  - canContinue: at least one item selected across either section (not mandatory per section)
-  - Warning message simplified to single: "Select at least one equipment or facility type"
-  - Island label shows combined count dynamically
+  - canContinue: at least one item selected across either section
+  - Warning message: single unified "Select at least one equipment or facility type"
+
+WHAT CHANGED — VaniWorkingStep.tsx:
+──────────────────────────────────────
+Fix 3 — Storage preflight check (Bug: animation ran every visit even if already set up)
+  - NEW: checkStorageAlreadySetup() — calls GET /api/storage/stats BEFORE the POST
+  - If storageSetupComplete !== false → status = 'skipped', shows "Already configured" instantly
+  - 409 from POST still also caught as skip (belt-and-suspenders)
+
+Fix 4 — Sequences preflight check (Bug: fake 400ms delay, no real check)
+  - NEW: checkSequencesAlreadySeeded() — calls GET /api/seeds/status
+  - Parses statuses[].isSeeded for category = 'sequences'
+  - If isSeeded === true → status = 'skipped', shows "Already configured · N sequences" instantly
+  - If not seeded → brief wait (sequences are seeded inside industry-confirmed call above)
+
+Fix 5 — New 'skipped' StepStatus + visual treatment
+  - 'skipped' cards get a grey/slate background (distinct from green 'done')
+  - 'skipped' shows a grey ✓ + "Already done" badge pill on the right
+  - Progress counting: doneCount now includes both 'done' and 'skipped' statuses
+  - normalizePersona() added to handle legacy DB values (service_provider, merchant)
 
 PRODUCTION CHECKLIST:
 ──────────────────────
-✅ Transaction Management: N/A (read-only step, no DB writes)
-✅ Race Condition Handling: isLoading gates on BOTH templates + ktCoverage before auto-selecting
-✅ Error Handling: existing error/retry UI preserved
-✅ Toasts: N/A (no mutations on this screen)
-✅ Loaders: spinner shown while templates OR ktCoverage loading
+✅ Transaction Management: N/A (no DB writes on this screen, all via API calls)
+✅ Race Condition Handling: hasStarted ref prevents double-run; preflight checks are parallel GET calls
+✅ Error Handling: storage errors still block + show retry; sequences error falls through gracefully
+✅ Toasts: N/A
+✅ Loaders: spinner per task card, progress bar, live operation line
