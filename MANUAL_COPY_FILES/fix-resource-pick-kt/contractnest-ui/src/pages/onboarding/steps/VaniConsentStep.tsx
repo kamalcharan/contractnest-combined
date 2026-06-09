@@ -2,7 +2,7 @@
 // Screen 7 — VaNi Consent (6A = Seller, 6B = Buyer, 6C = Both)
 // Receives selectedEquipmentTemplates + selectedFacilityTemplates from ResourcePickStep via routeState.
 // Shows a dynamic preview of exactly what VaNi will build.
-// CTA "Set up my workspace →" navigates to /onboarding/vani-working, passing templates forward.
+// CTA "Set up my workspace →" navigates to /onboarding/vani-intelligence, passing templates forward.
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -108,7 +108,7 @@ const VaniConsentStep: React.FC = () => {
   const blockCount   = selEquipment.length * 3;
 
   const handleStart = () => {
-    navigate('/onboarding/vani-working', {
+    navigate('/onboarding/vani-intelligence', {
       state: {
         selectedEquipmentTemplates: selEquipment,
         selectedFacilityTemplates:  selFacility,
