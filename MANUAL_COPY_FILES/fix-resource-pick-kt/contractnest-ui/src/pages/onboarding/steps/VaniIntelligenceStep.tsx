@@ -175,6 +175,10 @@ const VaniIntelligenceStep: React.FC = () => {
     Promise.all(allTemplates.map(t => fetchKTSummary(t.id))).then(results => {
       clearInterval(phaseTimer);
       setFetchPhase('Intelligence ready ✓');
+      // DEBUG — remove after confirming structure
+      results.forEach((r, i) => {
+        if (r) console.log(`[KT Summary] ${allTemplates[i]?.name}`, JSON.stringify(r, null, 2));
+      });
       setSummaries(results.filter(Boolean) as KnowledgeTreeSummary[]);
       setLoading(false);
     });
