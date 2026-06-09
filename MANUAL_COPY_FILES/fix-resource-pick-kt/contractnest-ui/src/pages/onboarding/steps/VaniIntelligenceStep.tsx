@@ -67,8 +67,9 @@ const VaniIntelligenceStep: React.FC = () => {
   const { user } = useAuth();
 
   const routeState = (location.state || {}) as Record<string, any>;
-  const selEquipment: ResourceTemplate[] = routeState.selectedEquipmentTemplates || [];
-  const selFacility:  ResourceTemplate[] = routeState.selectedFacilityTemplates  || [];
+  // Filter out any undefined/null items that may come through route state serialisation
+  const selEquipment: ResourceTemplate[] = (routeState.selectedEquipmentTemplates || []).filter(Boolean);
+  const selFacility:  ResourceTemplate[] = (routeState.selectedFacilityTemplates  || []).filter(Boolean);
   const workIntent: string | null        = routeState.workIntent || null;
 
   const { data: ktCoverage, isLoading: ktLoading } = useKnowledgeTreeCoverage();
@@ -433,7 +434,7 @@ const VaniIntelligenceStep: React.FC = () => {
       }}>
         <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,.65)' }}>
           {!scanDone
-            ? 'Scanning…'
+            ? 'Gathering Intelligence…'
             : allRevealed
               ? `${totalBlocks} blocks ready`
               : 'Analysing…'
