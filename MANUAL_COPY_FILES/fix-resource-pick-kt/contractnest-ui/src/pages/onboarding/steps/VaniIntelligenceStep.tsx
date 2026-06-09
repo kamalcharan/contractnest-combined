@@ -1,10 +1,9 @@
 // src/pages/onboarding/steps/VaniIntelligenceStep.tsx
-// Screen 6A / 6B — VaNi Intelligence (reference: onboarding-batch3.html screen6a / screen6b)
-// Fetches real KT summary per selected template, then shows:
-//   Seller  → Service Catalog blocks · Contract Templates · Equipment Types
-//   Buyer   → Equipment Registry · Facility Hierarchy · Compliance Standards
-//   Both    → all of the above
-// Right panel: dark "VaNi Intelligence" stats card + Compliance card
+// Screen 6A — VaNi Gathering Intelligence
+// Fetches KT summary per selected template, renders:
+//   Equipment templates → Service Catalog · Contract Templates · Equipment Types
+//   Facility templates  → Facility Spaces (variants are zones/rooms)
+//   Right panel         → dark VaNi Intelligence stats + Compliance card
 // CTA: "VaNi, set this up →" → /onboarding/vani-working
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -17,7 +16,7 @@ import { supabase } from '@/utils/supabase';
 import type { ResourceTemplate } from '@/services/resourcesService';
 import type { KnowledgeTreeSummary } from '@/pages/service-contracts/templates/admin/knowledge-tree/types';
 
-// ── Color tokens (match HTML reference) ──────────────────────────────────────
+// ── Color tokens ──────────────────────────────────────────────────────────────
 const VANI        = '#ff6b2b';
 const VANI_SOFT   = '#fff8f4';
 const VANI_BORDER = 'rgba(255,107,43,.2)';
@@ -31,8 +30,6 @@ const SURFACE     = '#faf9f7';
 const BG          = '#f7f5f2';
 const WHITE       = '#ffffff';
 const GREEN       = '#16a34a';
-const GREEN_BG    = '#f0fdf4';
-const AMBER_BG    = '#fffbeb';
 
 const normalizePersona = (raw: string) => {
   if (raw === 'service_provider') return 'seller';
@@ -41,7 +38,16 @@ const normalizePersona = (raw: string) => {
   return 'seller';
 };
 
-// ── KT fetch helper (mirrors callKnowledgeTreeEdge in useKnowledgeTree.ts) ──
+// Human-readable labels for KT service_activity codes
+const ACTIVITY_LABEL: Record<string, string> = {
+  pm:           'Preventive Maintenance',
+  inspection:   'Inspection',
+  repair:       'Repair & Breakdown',
+  install:      'Installation',
+  decommission: 'Decommission',
+};
+
+// ── KT fetch helper ───────────────────────────────────────────────────────────
 async function fetchKTSummary(templateId: string): Promise<KnowledgeTreeSummary | null> {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -58,72 +64,6 @@ async function fetchKTSummary(templateId: string): Promise<KnowledgeTreeSummary 
   } catch {
     return null;
   }
-}
-
-// ── Derive service catalog blocks from KT cycles + variants ──────────────────
-// Fallback chain:
-//   1. cycles with catalog_name  → use catalog_name as tier label
-//   2. cycles with service_activity (no catalog_name) → use service_activity
-//   3. no cycles but variants exist → use default 3 tiers (Basic AMC / Comp AMC / Premium CMC)
-function deriveBlocks(summary: KnowledgeTreeSummary): { tier: string; variant: string; detail: string }[] {
-  const cycles:   any[] = (summary as any).cycles   || [];
-  const variants: any[] = (summary as any).variants || [];
-
-  const variantNames = variants.length > 0
-    ? variants.map((v: any) => v.name as string)
-    : [summary.resource_template.name];
-
-  // Tier resolution: catalog_name → service_activity → default 3 tiers
-  let tiers: string[];
-  const namedTiers = [...new Set(cycles.map((c: any) => c.catalog_name).filter(Boolean))] as string[];
-  if (namedTiers.length > 0) {
-    tiers = namedTiers;
-  } else {
-    const activityTiers = [...new Set(cycles.map((c: any) => c.service_activity).filter(Boolean))] as string[];
-    tiers = activityTiers.length > 0
-      ? activityTiers
-      : ['Basic AMC', 'Comprehensive AMC', 'Premium CMC'];
-  }
-
-  const blocks: { tier: string; variant: string; detail: string }[] = [];
-  for (const tier of tiers) {
-    for (const variant of variantNames) {
-      const cycle = cycles.find((c: any) => (c.catalog_name || c.service_activity) === tier);
-      const detail = cycle
-        ? [
-            cycle.frequency_value ? `${cycle.frequency_value} ${cycle.frequency_unit || ''} PM`.trim() : null,
-            cycle.alert_overdue_days ? `${cycle.alert_overdue_days}hr response` : null,
-          ].filter(Boolean).join(' · ')
-        : '';
-      blocks.push({ tier, variant, detail });
-    }
-  }
-  return blocks;
-}
-
-// ── Derive contract template names from tiers ─────────────────────────────────
-function deriveContractTemplates(summaries: KnowledgeTreeSummary[]): string[] {
-  const tiers = new Set<string>();
-  for (const s of summaries) {
-    const cycles: any[] = (s as any).cycles || [];
-    // prefer catalog_name, fall back to service_activity
-    cycles.forEach((c: any) => {
-      const name = c.catalog_name || c.service_activity;
-      if (name) tiers.add(name);
-    });
-  }
-  // If still nothing, use defaults
-  if (tiers.size === 0 && summaries.length > 0) {
-    return ['Basic AMC Agreement', 'Comprehensive AMC Agreement', 'Premium CMC Agreement'];
-  }
-  return [...tiers].map(t => `${t} Agreement`);
-}
-
-// ── Gather compliance standards across all summaries ────────────────────────
-function gatherCompliance(summaries: KnowledgeTreeSummary[]): string[] {
-  const set = new Set<string>();
-  summaries.forEach(s => (s.summary?.compliance_standards || []).forEach((c: string) => set.add(c)));
-  return [...set];
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -147,7 +87,7 @@ const VaniIntelligenceStep: React.FC = () => {
   const firstName  = user?.first_name?.trim() || null;
   const industryName = industries?.[0]?.name || '';
 
-  // ── KT summary fetch state ───────────────────────────────────────────────
+  // ── KT fetch state ─────────────────────────────────────────────────────────
   const [summaries, setSummaries]   = useState<KnowledgeTreeSummary[]>([]);
   const [loading,   setLoading]     = useState(true);
   const [fetchPhase, setFetchPhase] = useState('Connecting to Knowledge Tree…');
@@ -170,43 +110,73 @@ const VaniIntelligenceStep: React.FC = () => {
       setFetchPhase(phases[pi]);
     }, 600);
 
-    // Fetch KT summaries for all equipment templates in parallel
     const allTemplates = [...selEquipment, ...selFacility];
     Promise.all(allTemplates.map(t => fetchKTSummary(t.id))).then(results => {
       clearInterval(phaseTimer);
       setFetchPhase('Intelligence ready ✓');
-      // DEBUG — remove after confirming structure
-      results.forEach((r, i) => {
-        if (r) console.log(`[KT Summary] ${allTemplates[i]?.name}`, JSON.stringify(r, null, 2));
-      });
       setSummaries(results.filter(Boolean) as KnowledgeTreeSummary[]);
       setLoading(false);
     });
 
     return () => clearInterval(phaseTimer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // run once on mount
+  }, []);
 
-  // ── Derived data ─────────────────────────────────────────────────────────
-  const allBlocks = useMemo(
-    () => summaries.flatMap(s => deriveBlocks(s)),
-    [summaries]
+  // ── Derived data ───────────────────────────────────────────────────────────
+  // Separate summaries by whether the template was equipment or facility
+  const eqSummaries  = useMemo(
+    () => summaries.filter(s => selEquipment.some(e => e.id === s.resource_template.id)),
+    [summaries, selEquipment]
   );
+  const facSummaries = useMemo(
+    () => summaries.filter(s => selFacility.some(f => f.id === s.resource_template.id)),
+    [summaries, selFacility]
+  );
+
+  // Unique service activities across all equipment templates
+  const serviceActivities = useMemo(
+    () => [...new Set(eqSummaries.flatMap(s => s.summary?.service_activities || []))],
+    [eqSummaries]
+  );
+
+  // Total cycle (block) count across equipment templates
+  const totalBlocks = useMemo(
+    () => eqSummaries.reduce((sum, s) => sum + (s.summary?.cycles_count || 0), 0),
+    [eqSummaries]
+  );
+
+  // Contract templates derived from service activities (one Agreement per activity)
   const contractTemplates = useMemo(
-    () => deriveContractTemplates(summaries),
-    [summaries]
+    () => serviceActivities.map(a => `${ACTIVITY_LABEL[a] || a} Agreement`),
+    [serviceActivities]
   );
-  const equipmentTypes = useMemo(
-    () => summaries.map(s => ({
-      name: s.resource_template.name,
-      variants: (s as any).variants || [],
-    })),
-    [summaries]
-  );
-  const complianceStandards = useMemo(() => gatherCompliance(summaries), [summaries]);
 
-  const totalBlocks = allBlocks.length;
-  const MAX_SHOWN   = 5;
+  // Equipment type cards: template name + variant list
+  const equipmentGroups = useMemo(
+    () => eqSummaries.map(s => ({
+      name:     s.resource_template.name,
+      variants: (s.variants || []) as any[],
+    })),
+    [eqSummaries]
+  );
+
+  // Facility space cards: template name + zone/space list
+  const facilityGroups = useMemo(
+    () => facSummaries.map(s => ({
+      name:   s.resource_template.name,
+      spaces: (s.variants || []) as any[],
+    })),
+    [facSummaries]
+  );
+
+  // Compliance standards across ALL summaries (equipment + facility)
+  const complianceStandards = useMemo(
+    () => [...new Set(summaries.flatMap(s => s.summary?.compliance_standards || []))],
+    [summaries]
+  );
+
+  const hasEquipment = selEquipment.length > 0;
+  const hasFacility  = selFacility.length > 0;
 
   const handleConfirm = () => {
     navigate('/onboarding/vani-working', {
@@ -214,9 +184,8 @@ const VaniIntelligenceStep: React.FC = () => {
     });
   };
 
-  // ── Shared sub-components ─────────────────────────────────────────────────
-
-  const ConsentSection = ({
+  // ── Sub-components ─────────────────────────────────────────────────────────
+  const Section = ({
     title, count, children,
   }: { title: string; count: string; children: React.ReactNode }) => (
     <div style={{
@@ -238,17 +207,16 @@ const VaniIntelligenceStep: React.FC = () => {
     </div>
   );
 
-  const CsItem = ({ title, sub, delay = 0 }: { title: React.ReactNode; sub?: string; delay?: number }) => (
+  const Item = ({ title, sub, delay = 0 }: { title: React.ReactNode; sub?: string; delay?: number }) => (
     <div style={{
       display: 'flex', alignItems: 'flex-start', gap: 10,
       padding: '8px 12px', borderRadius: 8,
       background: SURFACE, border: `1px solid ${BORDER_LT}`,
-      fontSize: 13, color: TEXT_MID,
       opacity: loading ? 0.4 : 1,
       transform: loading ? 'translateX(-8px)' : 'translateX(0)',
       transition: `opacity .35s ease ${delay}ms, transform .35s ease ${delay}ms`,
     }}>
-      <div style={{ width: 8, height: 8, borderRadius: '50%', background: BORDER, flexShrink: 0, marginTop: 5 }} />
+      <div style={{ width: 8, height: 8, borderRadius: '50%', background: VANI_BORDER, flexShrink: 0, marginTop: 5 }} />
       <div>
         <div style={{ fontSize: 13, color: TEXT }}>{title}</div>
         {sub && <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 1 }}>{sub}</div>}
@@ -256,13 +224,13 @@ const VaniIntelligenceStep: React.FC = () => {
     </div>
   );
 
-  // ── Loading spinner ───────────────────────────────────────────────────────
+  // ── Loading state ──────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: BG, minHeight: '100vh', fontFamily: "'Outfit', sans-serif" }}>
         <div style={{ textAlign: 'center', maxWidth: 360 }}>
           <div style={{ width: 48, height: 48, border: `3px solid ${VANI}22`, borderTopColor: VANI, borderRadius: '50%', margin: '0 auto 20px', animation: 'spin .8s linear infinite' }} />
-          <div style={{ fontSize: 15, fontWeight: 700, color: TEXT, marginBottom: 6 }}>VaNi Gathering Intelligence</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: TEXT, marginBottom: 6 }}>VaNi Gathering Knowledge Intelligence</div>
           <div style={{ fontSize: 13, color: TEXT_DIM, animation: 'pulse 1.4s ease infinite' }}>{fetchPhase}</div>
           <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}`}</style>
         </div>
@@ -270,7 +238,7 @@ const VaniIntelligenceStep: React.FC = () => {
     );
   }
 
-  // ── Main render ───────────────────────────────────────────────────────────
+  // ── Main render ────────────────────────────────────────────────────────────
   return (
     <>
       <style>{`@keyframes bIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}`}</style>
@@ -302,10 +270,8 @@ const VaniIntelligenceStep: React.FC = () => {
                 padding: '14px 18px', boxShadow: '0 2px 12px rgba(0,0,0,.05)',
                 fontSize: 14, color: TEXT_MID, lineHeight: 1.6, maxWidth: 520,
               }}>
-                Here's what I'm setting up for <strong style={{ color: TEXT }}>{tenantName}</strong>.{' '}
-                {personaId !== 'buyer'
-                  ? "Once done, you'll only need to set your prices."
-                  : "Your asset registry and facility hierarchy will be ready shortly."}
+                Here's what I found for <strong style={{ color: TEXT }}>{tenantName}</strong>.{' '}
+                Once you confirm, I'll set everything up — you'll only need to set your prices.
               </div>
             </div>
 
@@ -318,85 +284,98 @@ const VaniIntelligenceStep: React.FC = () => {
               <span style={{ fontSize: 18 }}>⏱</span>
               <div style={{ fontSize: 13, color: TEXT_MID, lineHeight: 1.5 }}>
                 <strong style={{ color: TEXT }}>About 90 seconds.</strong>{' '}
-                VaNi will generate your full service catalog, contract templates, and compliance checklists automatically.
+                VaNi will generate your service catalog, contract templates, and compliance checklists automatically.
               </div>
             </div>
 
-            {/* SERVICE CATALOG */}
-            {personaId !== 'buyer' && (
-              <ConsentSection title="Service Catalog" count={`${totalBlocks} blocks`}>
-                {allBlocks.slice(0, MAX_SHOWN).map((b, i) => (
-                  <CsItem key={i} delay={i * 50}
-                    title={<><strong>{b.tier}</strong> — {b.variant}</>}
-                    sub={b.detail || undefined}
-                  />
-                ))}
-                {allBlocks.length > MAX_SHOWN && (
-                  <div style={{ fontSize: 12, color: TEXT_MUTED, padding: '6px 12px', fontFamily: "'IBM Plex Mono', monospace" }}>
-                    + {allBlocks.length - MAX_SHOWN} more blocks
-                    {equipmentTypes.length > 0 && ` (${equipmentTypes.slice(2).map(e => e.name).join(', ')} × 3 tiers)`}
-                  </div>
-                )}
-                {totalBlocks === 0 && (
-                  <CsItem title="No KT data found — blocks will be generated from industry defaults" />
-                )}
-              </ConsentSection>
+            {/* ── SERVICE CATALOG (equipment templates) ── */}
+            {hasEquipment && (
+              <Section title="Service Catalog" count={`${totalBlocks} blocks`}>
+                {serviceActivities.length > 0
+                  ? serviceActivities.map((a, i) => (
+                      <Item key={a} delay={i * 50}
+                        title={<strong>{ACTIVITY_LABEL[a] || a}</strong>}
+                        sub={`${eqSummaries.filter(s => (s.summary?.service_activities || []).includes(a)).map(s => s.resource_template.name).join(', ')}`}
+                      />
+                    ))
+                  : <Item title="Service activities will be generated from industry defaults" />
+                }
+              </Section>
             )}
 
-            {/* CONTRACT TEMPLATES */}
-            {personaId !== 'buyer' && contractTemplates.length > 0 && (
-              <ConsentSection title="Contract Templates" count={`${contractTemplates.length} templates`}>
+            {/* ── CONTRACT TEMPLATES (equipment templates) ── */}
+            {hasEquipment && contractTemplates.length > 0 && (
+              <Section title="Contract Templates" count={`${contractTemplates.length} templates`}>
                 {contractTemplates.map((t, i) => (
-                  <CsItem key={t} delay={i * 60} title={<strong>{t}</strong>} />
+                  <Item key={t} delay={i * 60} title={<strong>{t}</strong>} />
                 ))}
-              </ConsentSection>
+              </Section>
             )}
 
-            {/* EQUIPMENT TYPES (seller/both) */}
-            {personaId !== 'buyer' && equipmentTypes.length > 0 && (
-              <ConsentSection title="Equipment Types" count={`${equipmentTypes.length} types`}>
-                {equipmentTypes.map((e, i) => {
-                  const variantNames = e.variants.slice(0, 3).map((v: any) => v.name).join(', ');
+            {/* ── EQUIPMENT TYPES (equipment templates) ── */}
+            {hasEquipment && equipmentGroups.length > 0 && (
+              <Section
+                title="Equipment Types"
+                count={`${equipmentGroups.reduce((n, g) => n + g.variants.length, 0)} variants`}
+              >
+                {equipmentGroups.map((g, gi) => {
+                  const shown = g.variants.slice(0, 4);
+                  const extra = g.variants.length - shown.length;
                   return (
-                    <CsItem key={e.name} delay={i * 55}
-                      title={<strong>{e.name}</strong>}
-                      sub={e.variants.length > 0
-                        ? `${variantNames}${e.variants.length > 3 ? ` + ${e.variants.length - 3} more` : ''}`
-                        : undefined}
-                    />
+                    <div key={g.name}>
+                      {equipmentGroups.length > 1 && (
+                        <div style={{ fontSize: 11, fontWeight: 700, color: TEXT_DIM, textTransform: 'uppercase' as const, letterSpacing: .5, marginBottom: 4, marginTop: gi > 0 ? 10 : 0, fontFamily: "'IBM Plex Mono', monospace" }}>
+                          {g.name}
+                        </div>
+                      )}
+                      {shown.map((v: any, i: number) => (
+                        <Item key={v.id || v.name} delay={i * 45}
+                          title={<strong>{v.name}</strong>}
+                          sub={v.capacity_range ? v.capacity_range : (v.description || undefined)}
+                        />
+                      ))}
+                      {extra > 0 && (
+                        <div style={{ fontSize: 12, color: TEXT_MUTED, padding: '4px 12px', fontFamily: "'IBM Plex Mono', monospace" }}>
+                          + {extra} more variants
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
-              </ConsentSection>
+              </Section>
             )}
 
-            {/* EQUIPMENT REGISTRY (buyer/both) */}
-            {personaId !== 'seller' && selEquipment.length > 0 && (
-              <ConsentSection title="Equipment Registry" count={`${selEquipment.length} types`}>
-                {selEquipment.map((t, i) => (
-                  <CsItem key={t.id} delay={i * 55}
-                    title={<strong>{t.name}</strong>}
-                    sub={t.sub_category || undefined}
-                  />
-                ))}
-              </ConsentSection>
-            )}
-
-            {/* FACILITY HIERARCHY (buyer/both) */}
-            {personaId !== 'seller' && selFacility.length > 0 && (
-              <ConsentSection title="Facility Hierarchy" count={`${selFacility.length} template${selFacility.length !== 1 ? 's' : ''}`}>
-                {selFacility.map((t, i) => (
-                  <CsItem key={t.id} delay={i * 55} title={<strong>{t.name}</strong>} />
-                ))}
-              </ConsentSection>
-            )}
-
-            {/* COMPLIANCE (buyer / both) */}
-            {personaId !== 'seller' && complianceStandards.length > 0 && (
-              <ConsentSection title="Compliance Standards" count={`${complianceStandards.length} active`}>
-                {complianceStandards.map((c, i) => (
-                  <CsItem key={c} delay={i * 50} title={<strong>{c}</strong>} />
-                ))}
-              </ConsentSection>
+            {/* ── FACILITY SPACES (facility/asset templates) ── */}
+            {hasFacility && facilityGroups.length > 0 && (
+              <Section
+                title="Facility Spaces"
+                count={`${facilityGroups.reduce((n, g) => n + g.spaces.length, 0)} zones`}
+              >
+                {facilityGroups.map((g, gi) => {
+                  const shown = g.spaces.slice(0, 6);
+                  const extra = g.spaces.length - shown.length;
+                  return (
+                    <div key={g.name}>
+                      {facilityGroups.length > 1 && (
+                        <div style={{ fontSize: 11, fontWeight: 700, color: TEXT_DIM, textTransform: 'uppercase' as const, letterSpacing: .5, marginBottom: 4, marginTop: gi > 0 ? 10 : 0, fontFamily: "'IBM Plex Mono', monospace" }}>
+                          {g.name}
+                        </div>
+                      )}
+                      {shown.map((sp: any, i: number) => (
+                        <Item key={sp.id || sp.name} delay={i * 45}
+                          title={<strong>{sp.name}</strong>}
+                          sub={sp.description || undefined}
+                        />
+                      ))}
+                      {extra > 0 && (
+                        <div style={{ fontSize: 12, color: TEXT_MUTED, padding: '4px 12px', fontFamily: "'IBM Plex Mono', monospace" }}>
+                          + {extra} more zones
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </Section>
             )}
 
             {/* Fallback when no selections */}
@@ -424,24 +403,26 @@ const VaniIntelligenceStep: React.FC = () => {
                 </span>
               </div>
               <div style={{ padding: '14px 18px' }}>
-                {[
-                  ['Tenant',    tenantName,                  false],
-                  ['Industry',  industryName || '—',         true],
-                  ['Persona',   personaId === 'seller' ? 'Seller' : personaId === 'buyer' ? 'Buyer' : 'Both', false],
-                  ...(personaId !== 'buyer' ? [
-                    ['Blocks',    totalBlocks > 0 ? String(totalBlocks) : '—', true],
-                    ['Templates', String(contractTemplates.length || '—'), true],
-                    ['Pricing',   'after setup', null],
-                  ] : [
-                    ['Assets',    String(selEquipment.length || '—'), true],
-                    ['Facilities',String(selFacility.length  || '—'), true],
-                    ['Compliance',String(complianceStandards.length || '—'), true],
-                  ]),
-                ].map(([k, v, accent]) => (
-                  <div key={String(k)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,.05)' }}>
+                {([
+                  ['Tenant',     tenantName,                                      false],
+                  ['Industry',   industryName || '—',                             true],
+                  ['Persona',    personaId === 'seller' ? 'Seller' : personaId === 'buyer' ? 'Buyer' : 'Both', false],
+                  ...(hasEquipment ? [
+                    ['Eq. Types',  String(selEquipment.length),                    true],
+                    ['Blocks',     totalBlocks > 0 ? String(totalBlocks) : '—',   true],
+                    ['Templates',  String(contractTemplates.length || '—'),         true],
+                  ] : []),
+                  ...(hasFacility ? [
+                    ['Facilities', String(selFacility.length),                     true],
+                    ['Zones',      String(facilityGroups.reduce((n, g) => n + g.spaces.length, 0) || '—'), true],
+                  ] : []),
+                  ['Compliance', String(complianceStandards.length || '—'),        true],
+                  ['Pricing',    'after setup',                                    null],
+                ] as [string, string, boolean | null][]).map(([k, v, accent]) => (
+                  <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,.05)' }}>
                     <span style={{ fontSize: 11, color: 'rgba(255,255,255,.35)' }}>{k}</span>
                     <span style={{
-                      fontSize: 11, fontWeight: 700, fontFamily: "'IBM Plex Mono', monospace",
+                      fontSize: 11, fontWeight: 700,
                       color: accent === null ? 'rgba(255,255,255,.25)' : accent ? VANI : '#f0ece6',
                       fontStyle: accent === null ? 'italic' : 'normal',
                       fontFamily: accent === null ? "'Outfit', sans-serif" : "'IBM Plex Mono', monospace",
@@ -469,7 +450,6 @@ const VaniIntelligenceStep: React.FC = () => {
                 </div>
               </div>
             )}
-
           </div>
         </div>
       </div>
@@ -485,7 +465,7 @@ const VaniIntelligenceStep: React.FC = () => {
         zIndex: 200, whiteSpace: 'nowrap' as const, fontFamily: "'Outfit', sans-serif",
       }}>
         <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,.65)' }}>
-          {industryName ? `${industryName} · ` : ''}{personaId === 'seller' ? 'Seller' : personaId === 'buyer' ? 'Buyer' : 'Both'} · {totalBlocks > 0 ? `${totalBlocks} blocks ready` : `${selEquipment.length + selFacility.length} types selected`}
+          {industryName ? `${industryName} · ` : ''}{totalBlocks > 0 ? `${totalBlocks} blocks` : `${selEquipment.length + selFacility.length} types`}{hasFacility ? ` · ${facilityGroups.reduce((n, g) => n + g.spaces.length, 0)} zones` : ''}
         </span>
         <div style={{ width: 1, height: 22, background: 'rgba(255,255,255,.12)' }} />
         <button
@@ -502,7 +482,6 @@ const VaniIntelligenceStep: React.FC = () => {
             background: `linear-gradient(135deg, ${VANI}, #ff8f5a)`,
             color: WHITE, fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 800,
             cursor: 'pointer', boxShadow: `0 8px 24px ${VANI}50`,
-            transition: 'all .2s',
           }}
         >
           VaNi, set this up →
