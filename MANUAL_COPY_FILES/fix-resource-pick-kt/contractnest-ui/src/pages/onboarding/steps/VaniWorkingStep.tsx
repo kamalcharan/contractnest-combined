@@ -152,6 +152,10 @@ const VaniWorkingStep: React.FC = () => {
   const industryIds = servedIndustries.map(si => si.industry_id);
   const companyName = formData.business_name?.trim() || currentTenant?.name || 'your company';
 
+  // Keep a always-current ref so runAll() reads the latest value even after awaits
+  const industryIdsRef = useRef<string[]>(industryIds);
+  industryIdsRef.current = industryIds;
+
   // Carry forward data from ResourcePickStep → VaniConsent → here
   const location = useLocation();
   const incomingState = (location.state || {}) as Record<string, any>;
@@ -359,6 +363,12 @@ const VaniWorkingStep: React.FC = () => {
       ? '/onboarding/equipment-confirm'
       : '/onboarding/pricing-review';
 
+    // Read ref values at navigation time — avoids stale closure after all the awaits
+    const finalIndustryIds   = industryIdsRef.current;
+    const finalIndustryNames = finalIndustryIds
+      .map(id => servedIndustries.find(si => si.industry_id === id)?.industry?.name || '')
+      .filter(Boolean);
+
     setTimeout(() => {
       navigate(nextRoute, {
         state: {
@@ -367,8 +377,8 @@ const VaniWorkingStep: React.FC = () => {
           facilityNodesSeeded,
           sampleContactsSeeded,
           companyName,
-          industryNames,
-          industryIds,
+          industryNames: finalIndustryNames.length > 0 ? finalIndustryNames : industryNames,
+          industryIds: finalIndustryIds,
           selectedEquipmentTemplates,
           selectedFacilityTemplates,
           workIntent,
