@@ -107,8 +107,9 @@ const VaniIntelligenceStep: React.FC = () => {
     let idx = 0;
     const reveal = () => {
       if (idx >= allTemplates.length) return;
-      setRevealed(prev => new Set([...prev, allTemplates[idx].id]));
+      const id = allTemplates[idx].id; // capture before incrementing
       idx++;
+      setRevealed(prev => new Set([...prev, id]));
       setTimeout(reveal, 120);
     };
     setTimeout(reveal, 200);
