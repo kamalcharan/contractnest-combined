@@ -1,9 +1,8 @@
 // src/pages/onboarding/steps/ResourcePickStep.tsx
-// Screen 6 — Resource Picker
-// Shows all equipment + facility templates for the user's industries.
-// KT dot: green = KT available (variants_count > 0), grey = no KT (disabled/unselectable).
-// Auto-selects KT-ready items on load. User ticks/unticks freely.
-// workIntent is derived from selections at Continue time — no intent cards.
+// Screen 6 — Resource Picker (Seller focus)
+// Shows Equipment and Facilities tabs. User selects what applies to them.
+// KT dot: green = KT available (variants_count > 0), grey = no KT.
+// Auto-selects KT-ready items on load. Selections restored when navigating Back.
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -37,13 +36,13 @@ const GREEN       = '#16a34a';
 const RED         = '#dc2626';
 const RED_SOFT    = '#fef2f2';
 
-type PersonaId  = 'seller' | 'buyer' | 'both';
 type WorkIntent = 'equipment' | 'facilities' | 'both' | null;
+type ActiveTab  = 'equipment' | 'facilities';
 
-const normalizePersona = (raw: string): PersonaId => {
+const normalizePersona = (raw: string) => {
   if (raw === 'service_provider') return 'seller';
   if (raw === 'merchant')         return 'buyer';
-  if (raw === 'seller' || raw === 'buyer' || raw === 'both') return raw as PersonaId;
+  if (raw === 'seller' || raw === 'buyer' || raw === 'both') return raw as 'seller' | 'buyer' | 'both';
   return 'seller';
 };
 
@@ -59,11 +58,9 @@ const groupBySubCategory = (items: ResourceTemplate[]): [string, ResourceTemplat
     const key = t.sub_category || 'General';
     (map[key] = map[key] || []).push(t);
   });
-  return Object.entries(map).sort(([, a], [, b]) => {
-    const aRec = a.some(x => x.is_recommended) ? 0 : 1;
-    const bRec = b.some(x => x.is_recommended) ? 0 : 1;
-    return aRec - bRec;
-  });
+  return Object.entries(map).sort(([, a], [, b]) =>
+    (a.some(x => x.is_recommended) ? 0 : 1) - (b.some(x => x.is_recommended) ? 0 : 1)
+  );
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -80,9 +77,9 @@ const ResourcePickStep: React.FC = () => {
     useResourceTemplatesBrowser({ limit: 200 });
   const { data: ktCoverage, isLoading: ktLoading } = useKnowledgeTreeCoverage();
 
-  const isLoading  = templatesLoading || ktLoading;
-  const personaId  = normalizePersona(formData.business_type_id || '');
-  const firstName  = user?.first_name?.trim() || null;
+  const isLoading = templatesLoading || ktLoading;
+  const personaId = normalizePersona(formData.business_type_id || '');
+  const firstName = user?.first_name?.trim() || null;
 
   const equipmentTemplates = useMemo(
     () => templates.filter(t => isEquipmentType(t.resource_type_id)), [templates]);
@@ -96,13 +93,16 @@ const ResourcePickStep: React.FC = () => {
     const fac: string[] = (routeState.selectedFacilityTemplates  || []).map((t: any) => t.id);
     return new Set<string>([...eq, ...fac]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // stable on mount
+  }, []); // stable — only reads state on mount
 
   // ── Selection state ───────────────────────────────────────────────────────
   const [selectedIds, setSelectedIds] = useState<Set<string>>(restoredIds);
   const [initialised, setInitialised] = useState(restoredIds.size > 0);
 
-  // Auto-select all KT-ready templates as soon as data is ready
+  // ── Tab state — default to equipment tab ─────────────────────────────────
+  const [activeTab, setActiveTab] = useState<ActiveTab>('equipment');
+
+  // Auto-select all KT-ready templates once data is ready (first visit only)
   useEffect(() => {
     if (!isLoading && !initialised) {
       const toSelect = templates.filter(t => hasKT(t, ktCoverage));
@@ -120,7 +120,7 @@ const ResourcePickStep: React.FC = () => {
     });
   };
 
-  const selectAll   = (items: ResourceTemplate[]) =>
+  const selectAll = (items: ResourceTemplate[]) =>
     setSelectedIds(prev => {
       const n = new Set(prev);
       items.filter(t => hasKT(t, ktCoverage)).forEach(t => n.add(t.id));
@@ -138,7 +138,6 @@ const ResourcePickStep: React.FC = () => {
 
   const canContinue = selEq.length > 0 || selFac.length > 0;
 
-  // Derive workIntent from what the user actually selected
   const deriveWorkIntent = (): WorkIntent => {
     if (selEq.length > 0 && selFac.length > 0) return 'both';
     if (selEq.length > 0)  return 'equipment';
@@ -163,18 +162,9 @@ const ResourcePickStep: React.FC = () => {
     return parts.length > 0 ? parts.join(' · ') : 'Select at least one to continue';
   }, [selEq, selFac]);
 
-  // ── VaNi bubble message ───────────────────────────────────────────────────
-  const vaniMsg = personaId === 'buyer'
-    ? firstName
-      ? `<strong>${firstName}</strong>, here are the equipment types and facility types for your industries. Select everything that applies — you can always change this later.`
-      : `Here are the equipment and facility types for your industries. Select everything that applies — you can always change this later.`
-    : personaId === 'both'
-    ? firstName
-      ? `<strong>${firstName}</strong>, showing everything across equipment and facilities for your industries. Select what you service <em>and</em> what you manage.`
-      : `Showing equipment and facility types for your industries. Select what you service and what you manage.`
-    : firstName
-      ? `<strong>${firstName}</strong>, here are all the equipment and facility types for your industries. Select everything you work with — VaNi builds pricing blocks only for your selections.`
-      : `Here are the equipment and facility types for your industries. Select what you work with — VaNi builds pricing blocks only for your selections.`;
+  const vaniMsg = firstName
+    ? `<strong>${firstName}</strong>, here are all the equipment types and facility types for your industries. Switch between tabs and select everything that applies — VaNi will set up only what you choose.`
+    : `Here are the equipment types and facility types for your industries. Switch between tabs and select everything that applies.`;
 
   // ── Sub-components ────────────────────────────────────────────────────────
 
@@ -278,37 +268,46 @@ const ResourcePickStep: React.FC = () => {
     );
   };
 
-  const TemplateSection = ({
-    title, items, accent, softBg,
-  }: { title: string; items: ResourceTemplate[]; accent: string; softBg: string }) => {
-    const groups    = groupBySubCategory(items);
-    const selCount  = items.filter(t => selectedIds.has(t.id)).length;
-    const ktCount   = items.filter(t => hasKT(t, ktCoverage)).length;
-    const allKtSel  = selCount === ktCount && ktCount > 0;
+  const TemplateList = ({
+    items, accent, softBg,
+  }: { items: ResourceTemplate[]; accent: string; softBg: string }) => {
+    const groups   = groupBySubCategory(items);
+    const selCount = items.filter(t => selectedIds.has(t.id)).length;
+    const ktCount  = items.filter(t => hasKT(t, ktCoverage)).length;
+    const allKtSel = selCount === ktCount && ktCount > 0;
+
+    if (items.length === 0) {
+      return (
+        <div style={{
+          background: WHITE, border: `1px solid ${BORDER}`, borderRadius: 12,
+          padding: '40px 24px', textAlign: 'center',
+        }}>
+          <div style={{ fontSize: 28, marginBottom: 12 }}>📋</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: TEXT, marginBottom: 8 }}>
+            No templates found for your industries
+          </div>
+          <div style={{ fontSize: 13, color: TEXT_DIM, lineHeight: 1.55 }}>
+            Templates for this category haven't been seeded yet. You can add them manually from Settings.
+          </div>
+        </div>
+      );
+    }
 
     return (
-      <div style={{ marginBottom: 28 }}>
+      <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 3, height: 20, borderRadius: 2, background: accent }} />
-            <span style={{ fontSize: 12, fontWeight: 800, textTransform: 'uppercase' as const, letterSpacing: 0.7, color: accent }}>
-              {title}
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 11, color: TEXT_DIM, fontFamily: "'IBM Plex Mono', monospace" }}>
-              {selCount} / {items.length} selected
-            </span>
-            <button
-              onClick={() => allKtSel ? deselectAll(items) : selectAll(items)}
-              style={{
-                fontSize: 11, fontWeight: 700, color: accent,
-                background: softBg, border: `1px solid ${accent}25`,
-                borderRadius: 6, padding: '3px 9px', cursor: 'pointer',
-                fontFamily: "'Outfit', sans-serif",
-              }}
-            >{allKtSel ? 'Deselect all' : 'Select all'}</button>
-          </div>
+          <span style={{ fontSize: 11, color: TEXT_DIM, fontFamily: "'IBM Plex Mono', monospace" }}>
+            {selCount} / {items.length} selected
+          </span>
+          <button
+            onClick={() => allKtSel ? deselectAll(items) : selectAll(items)}
+            style={{
+              fontSize: 11, fontWeight: 700, color: accent,
+              background: softBg, border: `1px solid ${accent}25`,
+              borderRadius: 6, padding: '3px 9px', cursor: 'pointer',
+              fontFamily: "'Outfit', sans-serif",
+            }}
+          >{allKtSel ? 'Deselect all' : 'Select all'}</button>
         </div>
 
         <div style={{
@@ -321,7 +320,7 @@ const ResourcePickStep: React.FC = () => {
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           }}>
             <span style={{ fontSize: 12, fontWeight: 700, color: TEXT }}>
-              {items.length} {title.toLowerCase()} for your industries
+              {items.length} types for your industries
             </span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 10, color: TEXT_MUTED, fontFamily: "'IBM Plex Mono', monospace" }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -398,14 +397,13 @@ const ResourcePickStep: React.FC = () => {
     );
   }
 
-  const hasEquipment = equipmentTemplates.length > 0;
-  const hasFacility  = facilityTemplates.length  > 0;
-  const hasTemplates = hasEquipment || hasFacility;
+  const eqCount  = selEq.length;
+  const facCount = selFac.length;
 
   // ── Main render ───────────────────────────────────────────────────────────
   return (
     <>
-      <style>{`@keyframes fadeSlideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+      <style>{`@keyframes fadeSlideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }`}</style>
 
       <div style={{
         flex: 1, backgroundColor: BG,
@@ -430,54 +428,122 @@ const ResourcePickStep: React.FC = () => {
 
           <VaniBubble msg={vaniMsg} />
 
-          {!hasTemplates ? (
-            <div style={{
-              background: WHITE, border: `1px solid ${BORDER}`, borderRadius: 12,
-              padding: '40px 24px', textAlign: 'center',
-            }}>
-              <div style={{ fontSize: 28, marginBottom: 12 }}>📋</div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: TEXT, marginBottom: 8 }}>
-                No templates found for your industries
-              </div>
-              <div style={{ fontSize: 13, color: TEXT_DIM, marginBottom: 20, lineHeight: 1.55 }}>
-                You can continue and add resources manually from Settings.
-              </div>
-              <button
-                onClick={() => navigate('/onboarding/vani-consent', { state: { selectedEquipmentTemplates: [], selectedFacilityTemplates: [], workIntent: null } })}
-                style={{
-                  padding: '10px 24px', borderRadius: 100, border: 'none',
-                  background: VANI, color: WHITE, fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 800, cursor: 'pointer',
-                }}
-              >Continue anyway →</button>
-            </div>
-          ) : (
-            <div style={{ animation: 'fadeSlideIn .3s ease both' }}>
-              {hasEquipment && (
-                <TemplateSection
-                  title="Equipment types"
-                  items={equipmentTemplates}
-                  accent={BLUE}
-                  softBg={BLUE_SOFT}
-                />
-              )}
-              {hasFacility && (
-                <TemplateSection
-                  title="Facility types"
-                  items={facilityTemplates}
-                  accent={PURPLE}
-                  softBg={PURPLE_SOFT}
-                />
-              )}
-              {!canContinue && (
+          {/* ── Tabs ── */}
+          <div style={{
+            display: 'flex', gap: 0, marginBottom: 24,
+            background: WHITE, border: `1px solid ${BORDER}`,
+            borderRadius: 12, overflow: 'hidden',
+            boxShadow: '0 1px 4px rgba(0,0,0,.04)',
+          }}>
+            {/* Equipment tab */}
+            <button
+              onClick={() => setActiveTab('equipment')}
+              style={{
+                flex: 1, padding: '14px 20px',
+                border: 'none', borderRight: `1px solid ${BORDER}`,
+                cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
+                background: activeTab === 'equipment' ? BLUE_SOFT : WHITE,
+                transition: 'background .15s',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
                 <div style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '9px 14px', borderRadius: 8, marginTop: 4,
-                  background: '#fffbeb', border: '1px solid #fde68a',
-                  fontSize: 12, color: '#92400e',
+                  width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                  background: activeTab === 'equipment' ? `${BLUE}18` : `${TEXT_MUTED}10`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
-                  ⚠️ Select at least one equipment or facility type to continue
+                  <span style={{ fontSize: 16 }}>🔧</span>
                 </div>
+                <div style={{ textAlign: 'left' as const }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: activeTab === 'equipment' ? BLUE : TEXT }}>
+                    Equipment
+                  </div>
+                  <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 1 }}>
+                    {equipmentTemplates.length} types
+                    {eqCount > 0 && (
+                      <span style={{
+                        marginLeft: 6, fontSize: 10, fontWeight: 700,
+                        color: VANI, background: VANI_SOFT,
+                        border: `1px solid ${VANI_BORDER}`,
+                        borderRadius: 10, padding: '1px 6px',
+                      }}>{eqCount} selected</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              {activeTab === 'equipment' && (
+                <div style={{ height: 2, background: BLUE, borderRadius: 1, marginTop: 10, marginLeft: -20, marginRight: -20 }} />
               )}
+            </button>
+
+            {/* Facilities tab */}
+            <button
+              onClick={() => setActiveTab('facilities')}
+              style={{
+                flex: 1, padding: '14px 20px',
+                border: 'none',
+                cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
+                background: activeTab === 'facilities' ? PURPLE_SOFT : WHITE,
+                transition: 'background .15s',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                  background: activeTab === 'facilities' ? `${PURPLE}18` : `${TEXT_MUTED}10`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <span style={{ fontSize: 16 }}>🏢</span>
+                </div>
+                <div style={{ textAlign: 'left' as const }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: activeTab === 'facilities' ? PURPLE : TEXT }}>
+                    Facilities
+                  </div>
+                  <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 1 }}>
+                    {facilityTemplates.length} types
+                    {facCount > 0 && (
+                      <span style={{
+                        marginLeft: 6, fontSize: 10, fontWeight: 700,
+                        color: VANI, background: VANI_SOFT,
+                        border: `1px solid ${VANI_BORDER}`,
+                        borderRadius: 10, padding: '1px 6px',
+                      }}>{facCount} selected</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              {activeTab === 'facilities' && (
+                <div style={{ height: 2, background: PURPLE, borderRadius: 1, marginTop: 10, marginLeft: -20, marginRight: -20 }} />
+              )}
+            </button>
+          </div>
+
+          {/* ── Tab content ── */}
+          <div style={{ animation: 'fadeSlideIn .2s ease both' }} key={activeTab}>
+            {activeTab === 'equipment' && (
+              <TemplateList
+                items={equipmentTemplates}
+                accent={BLUE}
+                softBg={BLUE_SOFT}
+              />
+            )}
+            {activeTab === 'facilities' && (
+              <TemplateList
+                items={facilityTemplates}
+                accent={PURPLE}
+                softBg={PURPLE_SOFT}
+              />
+            )}
+          </div>
+
+          {!canContinue && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '9px 14px', borderRadius: 8, marginTop: 16,
+              background: '#fffbeb', border: '1px solid #fde68a',
+              fontSize: 12, color: '#92400e',
+            }}>
+              ⚠️ Select at least one equipment or facility type to continue
             </div>
           )}
 
@@ -510,16 +576,16 @@ const ResourcePickStep: React.FC = () => {
         <button
           type="button"
           onClick={handleContinue}
-          disabled={!canContinue && hasTemplates}
+          disabled={!canContinue}
           style={{
             padding: '10px 24px', borderRadius: 100, border: 'none',
-            background: canContinue || !hasTemplates
+            background: canContinue
               ? `linear-gradient(135deg, ${VANI}, #ff8f5a)`
               : 'rgba(255,255,255,.12)',
-            color: canContinue || !hasTemplates ? WHITE : 'rgba(255,255,255,.3)',
+            color: canContinue ? WHITE : 'rgba(255,255,255,.3)',
             fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 800,
-            cursor: canContinue || !hasTemplates ? 'pointer' : 'not-allowed',
-            boxShadow: canContinue || !hasTemplates ? `0 8px 24px ${VANI}50` : 'none',
+            cursor: canContinue ? 'pointer' : 'not-allowed',
+            boxShadow: canContinue ? `0 8px 24px ${VANI}50` : 'none',
             transition: 'all .2s', display: 'flex', alignItems: 'center', gap: 8,
           }}
         >
