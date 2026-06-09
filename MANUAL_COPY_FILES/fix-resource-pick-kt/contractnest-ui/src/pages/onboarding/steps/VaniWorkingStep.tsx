@@ -43,7 +43,7 @@ const normalizePersona = (raw: string): PersonaId => {
 
 // ── Persona-specific task definitions ────────────────────────────────────────
 
-function buildTasks(persona: PersonaId, industryNames: string[]): TaskDef[] {
+function buildTasks(persona: PersonaId, industryNames: string[], equipCount = 0): TaskDef[] {
   const industryLabel = industryNames.length > 0 ? industryNames.join(', ') : 'your industries';
 
   const storageTask: TaskDef = {
@@ -63,7 +63,9 @@ function buildTasks(persona: PersonaId, industryNames: string[]): TaskDef[] {
   const catalogTask: TaskDef = {
     id: 'catalog',
     label: 'Service blocks generating',
-    detail: 'Creating catalog blocks from your knowledge tree',
+    detail: equipCount > 0
+      ? `Seeding ${equipCount} equipment template${equipCount !== 1 ? 's' : ''} into catalog…`
+      : 'Creating catalog blocks from your knowledge tree',
     detailDone: 'Catalog blocks ready',
     detailSkipped: 'Already configured',
   };
@@ -163,7 +165,7 @@ const VaniWorkingStep: React.FC = () => {
   const selectedFacilityTemplates:  any[] = incomingState.selectedFacilityTemplates  || [];
   const workIntent: string | null         = incomingState.workIntent || null;
 
-  const tasks = buildTasks(personaId, industryNames);
+  const tasks = buildTasks(personaId, industryNames, selectedEquipmentTemplates.length);
 
   const [statuses, setStatuses] = useState<Record<string, StepStatus>>(() =>
     Object.fromEntries(tasks.map(t => [t.id, 'idle']))
@@ -245,84 +247,65 @@ const VaniWorkingStep: React.FC = () => {
     doneCount++;
     updateProgress(doneCount);
 
-    // ── Catalog seeding (seller/both — per industry) ──────────────────────────
-    if (tasks.find(t => t.id === 'catalog')) {
-      setStatus('catalog', 'running');
-      let totalCatalogBlocks = 0;
-      const seedIds = industryIds.length > 0 ? industryIds : ['default'];
+    // ── Template-scoped seeding (catalog + facility + contacts + sequences) ──────
+    // Single POST /api/seeds/tenant/templates call covers all environments (test + live).
+    const hasCatalogTask  = !!tasks.find(t => t.id === 'catalog');
+    const hasFacilityTask = !!tasks.find(t => t.id === 'facility');
 
-      for (const industryId of seedIds) {
-        const name = servedIndustries.find(si => si.industry_id === industryId)?.industry?.name || industryId;
-        setLiveOp(`Seeding catalog blocks for ${name}…`);
-        setDetail('catalog', `Creating blocks for ${name}…`);
+    if (hasCatalogTask || hasFacilityTask) {
+      const industryId = industryIdsRef.current[0] || '';
 
-        try {
-          const resp = await api.post(API_ENDPOINTS.SEEDS.INDUSTRY_CONFIRMED, {
-            industryId,
-            businessType: 'seller',
-          });
-          totalCatalogBlocks += resp.data?.data?.catalogBlocksSeeded ?? 0;
-          const fc = resp.data?.data?.facilityNodesSeeded ?? 0;
-          if (fc) setFacilityNodesSeeded(prev => prev + fc);
-          const sc = resp.data?.data?.sampleContactsSeeded ?? 0;
-          if (sc) setSampleContactsSeeded(prev => prev + sc);
-          setCatalogBlocksSeeded(totalCatalogBlocks);
-        } catch (err: any) {
-          if (err?.response?.status === 409) {
-            // already seeded — continue
-            setDetail('catalog', 'Already configured');
-          } else {
-            const msg = err?.response?.data?.error || err?.message || 'Catalog seeding failed';
-            setStatus('catalog', 'error');
-            setErrorMessages(prev => ({ ...prev, catalog: msg }));
-            return;
-          }
-        }
+      if (hasCatalogTask) {
+        setStatus('catalog', 'running');
+        const eqNames = selectedEquipmentTemplates.map((t: any) => t.name).join(', ') || 'selected templates';
+        setLiveOp(`Seeding catalog blocks for ${eqNames}…`);
+        setDetail('catalog', `Creating blocks for ${selectedEquipmentTemplates.length} template${selectedEquipmentTemplates.length !== 1 ? 's' : ''}…`);
+      }
+      if (hasFacilityTask && !hasCatalogTask) {
+        setStatus('facility', 'running');
+        setLiveOp('Seeding asset registry…');
       }
 
-      setStatus('catalog', 'done');
-      setDetail('catalog', totalCatalogBlocks > 0 ? `${totalCatalogBlocks} blocks created` : 'Already configured');
-      doneCount++;
-      updateProgress(doneCount);
-    }
+      try {
+        const resp = await api.post(API_ENDPOINTS.SEEDS.TEMPLATES, {
+          equipmentTemplateIds: selectedEquipmentTemplates.map((t: any) => t.id),
+          facilityTemplateIds:  selectedFacilityTemplates.map((t: any) => t.id),
+          businessType: personaId,
+          industryId,
+        });
 
-    // ── Facility seeding (buyer/both — per industry) ──────────────────────────
-    if (tasks.find(t => t.id === 'facility')) {
-      setStatus('facility', 'running');
-      let totalFacilityNodes = 0;
-      const seedIds = industryIds.length > 0 ? industryIds : ['default'];
+        const data     = resp.data?.data || {};
+        const blocks   = data.equipmentBlocksSeeded ?? 0;
+        const nodes    = data.facilityNodesSeeded   ?? 0;
+        const contacts = data.sampleContactsSeeded  ?? 0;
 
-      for (const industryId of seedIds) {
-        const name = servedIndustries.find(si => si.industry_id === industryId)?.industry?.name || industryId;
-        setLiveOp(`Seeding asset registry for ${name}…`);
-        setDetail('facility', `Creating facility nodes for ${name}…`);
+        setCatalogBlocksSeeded(blocks);
+        setFacilityNodesSeeded(nodes);
+        setSampleContactsSeeded(contacts);
 
-        try {
-          const resp = await api.post(API_ENDPOINTS.SEEDS.INDUSTRY_CONFIRMED, {
-            industryId,
-            businessType: 'buyer',
-          });
-          totalFacilityNodes += resp.data?.data?.facilityNodesSeeded ?? 0;
-          const sc = resp.data?.data?.sampleContactsSeeded ?? 0;
-          if (sc) setSampleContactsSeeded(prev => prev + sc);
-          setFacilityNodesSeeded(totalFacilityNodes);
-        } catch (err: any) {
-          if (err?.response?.status === 409) {
-            // already seeded — continue
-            setDetail('facility', 'Already configured');
-          } else {
-            const msg = err?.response?.data?.error || err?.message || 'Facility seeding failed';
-            setStatus('facility', 'error');
-            setErrorMessages(prev => ({ ...prev, facility: msg }));
-            return;
-          }
+        if (hasCatalogTask) {
+          setStatus('catalog', 'done');
+          setDetail('catalog', blocks > 0 ? `${blocks} blocks created · test + live` : 'Already configured');
+          doneCount++;
+          updateProgress(doneCount);
+        }
+        if (hasFacilityTask) {
+          setStatus('facility', 'done');
+          setDetail('facility', nodes > 0 ? `${nodes} nodes created` : 'Already configured');
+          doneCount++;
+          updateProgress(doneCount);
+        }
+      } catch (err: any) {
+        if (err?.response?.status === 409) {
+          if (hasCatalogTask)  { setStatus('catalog',  'skipped'); setDetail('catalog',  'Already configured'); doneCount++; updateProgress(doneCount); }
+          if (hasFacilityTask) { setStatus('facility', 'skipped'); setDetail('facility', 'Already configured'); doneCount++; updateProgress(doneCount); }
+        } else {
+          const msg = err?.response?.data?.error || err?.message || 'Template seeding failed';
+          if (hasCatalogTask)  { setStatus('catalog',  'error'); setErrorMessages(prev => ({ ...prev, catalog: msg })); }
+          if (hasFacilityTask) { setStatus('facility', 'error'); setErrorMessages(prev => ({ ...prev, facility: msg })); }
+          return;
         }
       }
-
-      setStatus('facility', 'done');
-      setDetail('facility', totalFacilityNodes > 0 ? `${totalFacilityNodes} nodes created` : 'Already configured');
-      doneCount++;
-      updateProgress(doneCount);
     }
 
     // ── Sequences — real preflight check ─────────────────────────────────────
@@ -602,7 +585,7 @@ const VaniWorkingStep: React.FC = () => {
                 {personaId === 'buyer' ? facilityNodesSeeded : catalogBlocksSeeded}
               </div>
               <div style={{ fontSize: 11, color: 'rgba(255,255,255,.3)', marginTop: 4 }}>
-                {allDone ? 'complete' : 'seeded so far'}
+                {allDone ? 'complete · test + live' : 'seeded so far'}
               </div>
             </div>
 
@@ -621,7 +604,7 @@ const VaniWorkingStep: React.FC = () => {
                   Templates
                 </div>
                 <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: -1, color: TEXT, fontFamily: "'IBM Plex Mono', monospace" }}>
-                  {catalogBlocksSeeded}
+                  {selectedEquipmentTemplates.length + selectedFacilityTemplates.length}
                 </div>
               </div>
               <div style={{
@@ -657,6 +640,7 @@ const VaniWorkingStep: React.FC = () => {
               </div>
               {[
                 { key: 'Phase', val: allDone ? 'Complete' : hasError ? 'Error' : doneCount > 0 ? 'In progress' : 'Starting', accent: !hasError && !allDone },
+                { key: 'Environments', val: 'test + live' },
                 { key: 'KT source', val: 'Master data' },
                 { key: 'Tenant', val: companyName },
               ].map(row => (
