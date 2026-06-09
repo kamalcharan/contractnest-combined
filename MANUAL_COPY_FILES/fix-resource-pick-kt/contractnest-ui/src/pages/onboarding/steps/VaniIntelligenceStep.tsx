@@ -61,21 +61,34 @@ async function fetchKTSummary(templateId: string): Promise<KnowledgeTreeSummary 
 }
 
 // ── Derive service catalog blocks from KT cycles + variants ──────────────────
-// Each unique catalog_name (tier) × each variant = one block entry
+// Fallback chain:
+//   1. cycles with catalog_name  → use catalog_name as tier label
+//   2. cycles with service_activity (no catalog_name) → use service_activity
+//   3. no cycles but variants exist → use default 3 tiers (Basic AMC / Comp AMC / Premium CMC)
 function deriveBlocks(summary: KnowledgeTreeSummary): { tier: string; variant: string; detail: string }[] {
   const cycles:   any[] = (summary as any).cycles   || [];
   const variants: any[] = (summary as any).variants || [];
 
-  const tiers = [...new Set(cycles.map((c: any) => c.catalog_name).filter(Boolean))] as string[];
-  if (tiers.length === 0) return [];
   const variantNames = variants.length > 0
     ? variants.map((v: any) => v.name as string)
     : [summary.resource_template.name];
 
+  // Tier resolution: catalog_name → service_activity → default 3 tiers
+  let tiers: string[];
+  const namedTiers = [...new Set(cycles.map((c: any) => c.catalog_name).filter(Boolean))] as string[];
+  if (namedTiers.length > 0) {
+    tiers = namedTiers;
+  } else {
+    const activityTiers = [...new Set(cycles.map((c: any) => c.service_activity).filter(Boolean))] as string[];
+    tiers = activityTiers.length > 0
+      ? activityTiers
+      : ['Basic AMC', 'Comprehensive AMC', 'Premium CMC'];
+  }
+
   const blocks: { tier: string; variant: string; detail: string }[] = [];
   for (const tier of tiers) {
     for (const variant of variantNames) {
-      const cycle = cycles.find((c: any) => c.catalog_name === tier);
+      const cycle = cycles.find((c: any) => (c.catalog_name || c.service_activity) === tier);
       const detail = cycle
         ? [
             cycle.frequency_value ? `${cycle.frequency_value} ${cycle.frequency_unit || ''} PM`.trim() : null,
@@ -93,7 +106,15 @@ function deriveContractTemplates(summaries: KnowledgeTreeSummary[]): string[] {
   const tiers = new Set<string>();
   for (const s of summaries) {
     const cycles: any[] = (s as any).cycles || [];
-    cycles.forEach((c: any) => { if (c.catalog_name) tiers.add(c.catalog_name); });
+    // prefer catalog_name, fall back to service_activity
+    cycles.forEach((c: any) => {
+      const name = c.catalog_name || c.service_activity;
+      if (name) tiers.add(name);
+    });
+  }
+  // If still nothing, use defaults
+  if (tiers.size === 0 && summaries.length > 0) {
+    return ['Basic AMC Agreement', 'Comprehensive AMC Agreement', 'Premium CMC Agreement'];
   }
   return [...tiers].map(t => `${t} Agreement`);
 }
