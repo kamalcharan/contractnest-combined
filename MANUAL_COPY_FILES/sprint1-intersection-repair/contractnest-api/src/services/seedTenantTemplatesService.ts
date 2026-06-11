@@ -24,6 +24,7 @@
 //     ux_car_onboarding_seed_template (tenant_id, template_id) for onboarding seeds.
 
 import axios from 'axios';
+import crypto from 'crypto';
 import { ktCatBlockMapperService, CatBlockPayload } from './ktCatBlockMapperService';
 import { seedSampleContacts } from './seedSampleContactsService';
 import { SEQUENCE_SEED_DATA } from '../seeds';
@@ -72,6 +73,32 @@ export interface SeedTemplatesResult {
 
 const SUPABASE_EDGE = () => process.env.SUPABASE_URL;
 
+// Edge functions reject unsigned writes ("Direct access ... is not allowed"):
+// every non-GET call must carry x-timestamp + x-internal-signature
+// (HMAC-SHA256 base64 of `${timestamp}.${body}`, INTERNAL_SIGNING_SECRET).
+// The pre-Sprint-1 seeder posted raw axios with neither header, so the bulk
+// seed ALWAYS 403'd — one more reason no tenant ever had seeded blocks.
+function signedHeaders(requestBody: string, tenantId: string, authToken: string): Record<string, string> {
+  const timestamp = Date.now().toString();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Authorization: authToken,
+    'x-tenant-id': tenantId,
+    'x-is-admin': 'false',
+    'x-timestamp': timestamp,
+  };
+  const secret = process.env.INTERNAL_SIGNING_SECRET || '';
+  if (secret) {
+    headers['x-internal-signature'] = crypto
+      .createHmac('sha256', secret)
+      .update(`${timestamp}.${requestBody}`)
+      .digest('base64');
+  } else {
+    console.warn('[seedTenantTemplates] INTERNAL_SIGNING_SECRET not set — bulk seed will be rejected by the edge');
+  }
+  return headers;
+}
+
 // Call the cat-blocks/bulk edge function for one environment
 async function callBulkSeed(
   kts: Array<{ resource_template_id: string; kt_name: string; blocks: CatBlockPayload[] }>,
@@ -85,18 +112,12 @@ async function callBulkSeed(
   let alreadySeeded = 0;
 
   try {
-    const resp = await axios.post(
-      url,
-      { kts, tenant_id: tenantId, is_live: isLive },
-      {
-        headers: {
-          Authorization: authToken,
-          'x-tenant-id':  tenantId,
-          'Content-Type': 'application/json',
-        },
-        timeout: 60000,
-      },
-    );
+    const bodyObj = { kts, tenant_id: tenantId, is_live: isLive };
+    const requestBody = JSON.stringify(bodyObj);
+    const resp = await axios.post(url, requestBody, {
+      headers: signedHeaders(requestBody, tenantId, authToken),
+      timeout: 60000,
+    });
 
     const summary = resp.data?.data?.summary;
     blocksCreated = summary?.blocks_created ?? 0;
