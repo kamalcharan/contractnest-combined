@@ -32,3 +32,11 @@ NOTES:
   - Create the target folder if it does not exist:
     New-Item -ItemType Directory -Force -Path "ClaudeDocumentation\transformation"
 ═══════════════════════════════════════════════════
+
+─── ADDED 2026-06-11 (Legibility Probe) ───
+3. MANUAL_COPY_FILES\transformation\ClaudeDocumentation\transformation\LEGIBILITY_REPORT.md
+   → ClaudeDocumentation\transformation\LEGIBILITY_REPORT.md
+   Purpose: Agent legibility probe — L1/L2/L3 scorecard (A1-A10, B0-B2),
+   KT→Catalog→Contract traversal map with the onboarding break-point,
+   semantic-layer backlog (views/ontology/COMMENTs), schema-change backlog
+   (S1-S13), data-depth gaps (D0), kernel contract candidate, re-probe criteria.
