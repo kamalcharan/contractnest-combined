@@ -31,6 +31,8 @@ contractnest-api/
   src/routes/onboardingRoutes.ts                 (POST/GET /selected-resources)
   src/controllers/catalogStudioController.ts     (is_seed query param)
   src/types/catalogStudioTypes.ts                (is_seed in BlockQueryParams)
+  src/types/onboardingTypes.ts                   (FIX: VaNi step ids accepted by step validator — S13 API side)
+  src/validators/catalogStudio.validators.ts     (FIX: is_seed param + limit cap 100→500)
   src/__tests__/sprint1.integration.test.mjs     (NEW — tests 6.1–6.3, run: node --test src/__tests__/)
   .github/workflows/ci.yml                       (NEW — typecheck + tests)
 
