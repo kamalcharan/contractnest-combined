@@ -25,7 +25,7 @@ FILES → DESTINATIONS (copy each, mirroring the path)
 
 contractnest-api/
   src/services/onboardingIntentService.ts        (NEW — S8 persistence + resolution; forwards user JWT, anon-key API safe)
-  src/services/ktCatBlockMapperService.ts        (FIX: forwards user JWT — KT tables are RLS-restricted to authenticated)
+  src/services/ktCatBlockMapperService.ts        (JWT forwarding + serviceCycles from KT frequency + kt_price_min/max + variant_based pricingMode)
   src/services/seedTenantTemplatesService.ts     (REWRITTEN — intent-driven, no_coverage, buyer registry leg)
   src/services/catBlocksService.ts               (is_seed list param + comment)
   src/routes/seedRoutes.ts                       (legacy route removed; status passthrough)
@@ -43,14 +43,14 @@ contractnest-ui/
   src/pages/onboarding/steps/PersonaSelectionStep.tsx  (dual-writes persona + business_type_id)
   src/pages/onboarding/steps/ResourcePickStep.tsx      (persists picks to S8 table)
   src/pages/onboarding/steps/VaniWorkingStep.tsx       (no fake delay; no_coverage amber state; industryIds)
-  src/pages/onboarding/steps/Screen8APricingStep.tsx   (is_seed fetch fix; top-level base_price PATCH fix)
+  src/pages/onboarding/steps/Screen8APricingStep.tsx   (KT-FIRST REDESIGN: real names, services/spares sections, KT medians as defaults, real market range, bulk-fill for unpriced only, delta-only PATCH)
   src/pages/onboarding/steps/Screen8BEquipmentStep.tsx (template_id grouping; step persistence)
   src/pages/catalog-studio/blocks.tsx            ("Seeded from X" lineage badge, grid + list)
   src/utils/catalog-studio/catBlockAdapter.ts    (is_seed / resource_template_id / seeded_from_name in meta)
   .github/workflows/ci.yml                       (NEW — build gate)
 
 contractnest-edge/
-  supabase/functions/cat-blocks/index.ts         (tenant can edit/delete own seeded blocks — Task 4.3 fix)
+  supabase/functions/cat-blocks/index.ts         (Task 4.3 guards + is_live env filter on list + tax from t_tax_settings in bulk seed) ⚠️ REDEPLOY REQUIRED
   supabase/functions/onboarding/index.ts         (13-step VaNi model; step_data accumulates; done-step completion)
   supabase/functions/tenant-profile/index.ts     (persona read/write; normalizePersona)
   supabase/migrations/transformation/20260611000001_s7_tenant_persona.sql

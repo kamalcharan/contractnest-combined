@@ -298,3 +298,37 @@ fed real data it was never built for:
 Open design questions: which environment does pricing-review edit (live only
 vs both); spares in the same review or deferred to Catalog Studio; bulk-fill
 vs flag-for-later for unpriced equipment (Operation Theatre).
+
+
+## 10. Founder-review fixes implemented (2026-06-11, round 2)
+
+All four observations + the five §9 findings addressed:
+1. **Spares** — were seeded (62/91 live blocks are Spare Parts type); now rendered
+   as their own per-unit section in pricing review; Studio category verification
+   remains a manual check.
+2. **Resource classification** — mapper no longer contradicts itself:
+   `config.pricingMode='variant_based'` for services with KT variants
+   (matches the top-level pricing_mode_id), `'independent'` for spares;
+   equipment/facility linkage was already present via selectedResources +
+   resource_template_id.
+3. **Service cycles** — mapper now emits `config.serviceCycles
+   {enabled, days, gracePeriod}` from `m_service_cycles.frequency_value/unit`
+   (+`alert_overdue_days`) for day-based cadences; this shape is consumed by
+   Catalog Studio's BlockEditorPanel AND the contract wizard, so KT cadence now
+   flows into contract service cycles. visits/hours cadences are usage-based and
+   intentionally skipped.
+4. **Tax** — bulk-seed edge reads `t_tax_settings` (display_mode → tax_inclusion
+   stamped into pricing records; default_tax_rate_id → t_tax_rates.rate, falling
+   back to the tenant's is_default rate, then 18%/exclusive). OPEN: whether tax
+   setup should precede seeding in flow order, or seeded blocks get re-stamped
+   when tax settings are first saved.
+5. **Pricing screen rebuilt KT-first** (§9 items 1–3,5): KT medians are the
+   defaults, real names, market range from kt_price_min/max (mapper now carries
+   them), bulk-fill only for unpriced items, Confirm PATCHes deltas only.
+6. **Environment duplicates** (§9 item 4): edge blocks list now filters
+   `is_live` by the x-environment header. ⚠️ requires cat-blocks redeploy.
+
+NOTE: serviceCycles/kt_price_min/max/pricingMode/tax improvements apply to NEW
+seeds. To refresh an existing test tenant: delete its seeded blocks
+(`DELETE FROM m_cat_blocks WHERE tenant_id='…' AND is_seed`) and re-run the
+working step — idempotency makes this clean.

@@ -192,6 +192,10 @@ async function handleGetBlocks(
   // Build base query
   let query = supabase.from('m_cat_blocks').select('*', { count: 'exact' });
 
+  // Environment scoping (Sprint 1): blocks exist per environment; without this
+  // every caller received test+live duplicates once seeding worked.
+  query = query.eq('is_live', ctx.isLive);
+
   // Visibility filter
   if (!ctx.isAdmin) {
     query = query.or(
@@ -695,6 +699,55 @@ async function handleBulkSeed(
 
   console.log(`[cat-blocks/bulk] Starting bulk seed: ${kts.length} KTs for tenant ${tenant_id}, is_live=${is_live}`);
 
+  // Tenant tax defaults (/settings/tax-settings) — previously hardcoded 18% exclusive.
+  // display_mode 'including_tax' => inclusive pricing records; default rate from
+  // t_tax_settings.default_tax_rate_id, else the tenant's is_default rate.
+  let seedTaxRate = 18.0;
+  let seedTaxInclusion: 'inclusive' | 'exclusive' = 'exclusive';
+  try {
+    const { data: taxSettings } = await supabase
+      .from('t_tax_settings')
+      .select('display_mode, default_tax_rate_id')
+      .eq('tenant_id', tenant_id)
+      .maybeSingle();
+    if (taxSettings?.display_mode === 'including_tax') seedTaxInclusion = 'inclusive';
+
+    let rateRow: any = null;
+    if (taxSettings?.default_tax_rate_id) {
+      const { data } = await supabase
+        .from('t_tax_rates')
+        .select('rate')
+        .eq('id', taxSettings.default_tax_rate_id)
+        .maybeSingle();
+      rateRow = data;
+    }
+    if (!rateRow) {
+      const { data } = await supabase
+        .from('t_tax_rates')
+        .select('rate')
+        .eq('tenant_id', tenant_id)
+        .eq('is_default', true)
+        .eq('is_active', true)
+        .maybeSingle();
+      rateRow = data;
+    }
+    if (rateRow?.rate != null) seedTaxRate = Number(rateRow.rate);
+  } catch (taxErr) {
+    console.warn('[cat-blocks/bulk] Tax settings lookup failed, using defaults:', taxErr);
+  }
+  console.log(`[cat-blocks/bulk] Tax defaults: rate=${seedTaxRate} inclusion=${seedTaxInclusion}`);
+
+  // Stamp the tenant's tax inclusion into mapper-built pricing records
+  const applyTaxInclusion = (config: Record<string, any> | undefined) => {
+    if (!config) return config;
+    const stamp = (rec: any) => ({ ...rec, tax_inclusion: seedTaxInclusion });
+    return {
+      ...config,
+      pricingRecords: Array.isArray(config.pricingRecords) ? config.pricingRecords.map(stamp) : config.pricingRecords,
+      variantPricingRecords: Array.isArray(config.variantPricingRecords) ? config.variantPricingRecords.map(stamp) : config.variantPricingRecords,
+    };
+  };
+
   const results: KtResult[] = [];
 
   // Process each KT sequentially
@@ -772,7 +825,7 @@ async function handleBulkSeed(
       pricing_mode_id:      block.pricing_mode_id || null,
       base_price:           block.base_price || null,
       currency:             block.currency || 'INR',
-      config:               block.config || {},
+      config:               applyTaxInclusion(block.config) || {},
       variant_pricing:      block.variant_pricing || null,
       knowledge_tree_ref:   block.knowledge_tree_ref || null,
       resource_template_id: resource_template_id,
@@ -787,7 +840,7 @@ async function handleBulkSeed(
       is_live:              is_live,
       tenant_id:            tenant_id,
       sequence_no:          0,
-      tax_rate:             18.00,
+      tax_rate:             seedTaxRate,
       created_by:           ctx.userId || null,
       updated_by:           ctx.userId || null,
     }));

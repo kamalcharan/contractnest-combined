@@ -50,9 +50,15 @@ interface BlockConfig {
   // Catalog-studio ResourceDependencyStep
   selectedResources:      SelectedResource[];
   selectedVariants:       SelectedVariant[];
-  pricingMode:            'independent';
+  // variant_based for services with KT variants, independent for spares —
+  // must agree with the top-level pricing_mode_id (founder finding #2)
+  pricingMode:            'independent' | 'variant_based';
   priceType:              'fixed';
   deliveryMode:           'onsite';
+
+  // Service cadence from KT (m_service_cycles.frequency_*) — shape consumed by
+  // Catalog Studio BlockEditorPanel and the contract wizard (founder finding #3)
+  serviceCycles?:         { enabled: boolean; days: number; gracePeriod: number };
 
   // Catalog-studio PricingStep — base pricing card
   pricingRecords: PricingRecord[];
@@ -63,6 +69,8 @@ interface BlockConfig {
 
   // KT reference for pricing-review step (user sees suggestion, sets final price)
   kt_reference_price:    number | null;
+  kt_price_min?:         number | null;
+  kt_price_max?:         number | null;
   kt_service_activity:   string;
   kt_price_geo?:         string;
 }
@@ -115,15 +123,22 @@ interface ServiceGroupRow {
   service_name:     string;
   service_activity: string;
   catalog_name:     string | null;
+  price_min:        number | null;
   price_median:     number | null;
+  price_max:        number | null;
   price_currency:   string;
   checkpoint_id:    string;
+  frequency_value:  number | null;
+  frequency_unit:   string | null;
+  alert_overdue_days: number | null;
 }
 
 interface SparePartRow {
   id:             string;
   name:           string;
+  price_min:      number | null;
   price_median:   number | null;
+  price_max:      number | null;
   price_currency: string;
   price_unit:     string | null;
 }
@@ -237,6 +252,24 @@ export class KtCatBlockMapperService {
 
       const ktCheckpointIds = [...new Set(groupRows.map(r => r.checkpoint_id))];
 
+      // KT market range across the group (min of mins, max of maxes)
+      const mins = groupRows.map(r => r.price_min).filter((v): v is number => v != null);
+      const maxs = groupRows.map(r => r.price_max).filter((v): v is number => v != null);
+      const ktPriceMin = mins.length ? Math.min(...mins) : null;
+      const ktPriceMax = maxs.length ? Math.max(...maxs) : null;
+
+      // Service cadence: only calendar ('days') cycles translate to the
+      // serviceCycles shape; 'visits'/'hours' cadences are usage-based.
+      // Prefer the cycle that supplied the reference price, else the most
+      // frequent day-based cycle in the group.
+      const dayCycles = groupRows.filter(r => r.frequency_unit === 'days' && (r.frequency_value ?? 0) > 0);
+      const cycleSource =
+        dayCycles.find(r => r.price_median != null && r.price_median === representative.price_median) ||
+        dayCycles.sort((a, b) => (a.frequency_value ?? 0) - (b.frequency_value ?? 0))[0];
+      const serviceCycles = cycleSource
+        ? { enabled: true, days: cycleSource.frequency_value!, gracePeriod: cycleSource.alert_overdue_days ?? 0 }
+        : undefined;
+
       // variant_pricing top-level column (KT reference — used by contract pricing engine)
       const variantPricing = variants.length > 0
         ? { variants: variants.map(v => ({ id: v.id, name: v.name, capacity_range: v.capacity_range, price: referencePrice })) }
@@ -259,9 +292,10 @@ export class KtCatBlockMapperService {
       const config: BlockConfig = {
         selectedResources:    [selectedResource],
         selectedVariants,
-        pricingMode:          'independent',
+        pricingMode:          variants.length > 0 ? 'variant_based' : 'independent',
         priceType:            'fixed',
         deliveryMode:         'onsite',
+        serviceCycles,
         pricingRecords:       [{
           id:            '1',
           currency,
@@ -275,6 +309,8 @@ export class KtCatBlockMapperService {
         variantPricingRecords: variants.length > 0 ? variantPricingRecords : undefined,
         // KT reference — pricing review step uses these to show suggested prices
         kt_reference_price:    representative.price_median,
+        kt_price_min:          ktPriceMin,
+        kt_price_max:          ktPriceMax,
         kt_service_activity:   representative.service_activity,
       };
 
@@ -343,6 +379,8 @@ export class KtCatBlockMapperService {
           }],
           variantPricingMode:   'all',
           kt_reference_price:   spare.price_median,
+          kt_price_min:         spare.price_min,
+          kt_price_max:         spare.price_max,
           kt_service_activity:  'spare_part',
         },
         is_seed:   true,
@@ -411,7 +449,7 @@ export class KtCatBlockMapperService {
     // Fetch cycles — NO longer filter by catalog_name or price_median being non-null
     const { data: cycles, error: cyError } = await sb
       .from('m_service_cycles')
-      .select('id, checkpoint_id, catalog_name, price_median, price_currency')
+      .select('id, checkpoint_id, catalog_name, price_min, price_median, price_max, price_currency, frequency_value, frequency_unit, alert_overdue_days')
       .in('checkpoint_id', checkpointIds)
       .eq('is_active', true);
 
@@ -437,9 +475,14 @@ export class KtCatBlockMapperService {
             service_name:     cp.service_name,
             service_activity: cp.service_activity,
             catalog_name:     cycle.catalog_name,   // may be null — display_name fallback
+            price_min:        cycle.price_min,
             price_median:     cycle.price_median,    // may be null — user sets in pricing review
+            price_max:        cycle.price_max,
             price_currency:   cycle.price_currency || 'INR',
             checkpoint_id:    cp.id,
+            frequency_value:  cycle.frequency_value,
+            frequency_unit:   cycle.frequency_unit,
+            alert_overdue_days: cycle.alert_overdue_days,
           });
         }
       } else {
@@ -448,9 +491,14 @@ export class KtCatBlockMapperService {
           service_name:     cp.service_name,
           service_activity: cp.service_activity,
           catalog_name:     null,
+          price_min:        null,
           price_median:     null,
+          price_max:        null,
           price_currency:   'INR',
           checkpoint_id:    cp.id,
+          frequency_value:  null,
+          frequency_unit:   null,
+          alert_overdue_days: null,
         });
       }
     }
@@ -461,7 +509,7 @@ export class KtCatBlockMapperService {
   private async fetchSparePartRows(sb: SupabaseClient, resourceTemplateId: string): Promise<SparePartRow[]> {
     const { data, error } = await sb
       .from('m_equipment_spare_parts')
-      .select('id, name, price_median, price_currency, price_unit')
+      .select('id, name, price_min, price_median, price_max, price_currency, price_unit')
       .eq('resource_template_id', resourceTemplateId)
       .eq('is_active', true)
       .order('sort_order', { ascending: true });
