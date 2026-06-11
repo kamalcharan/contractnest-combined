@@ -185,6 +185,16 @@
       <span class="badge b-kt">KT READY</span>
     </div>
 
+    <div class="side-section">Content Library</div>
+    <div class="eq-item" onclick="selectEq(this,'content')">
+      <div class="eq-ico">🗂️</div>
+      <div class="eq-meta">
+        <div class="eq-name">Proposal content</div>
+        <div class="eq-sub">4 texts · 2 images · 1 video · 3 docs</div>
+      </div>
+      <span class="badge b-none">10</span>
+    </div>
+
     <div class="side-section">Other Items</div>
     <div class="eq-item" onclick="selectEq(this,'custom')">
       <div class="eq-ico">✏️</div>
@@ -363,15 +373,18 @@
       <!-- Terms & Conditions -->
       <div class="panel" id="tnc-panel">
         <div class="panel-h section-toggle" onclick="togglePanel('tnc-panel')">
-          <span class="car">▾</span><span class="t">Terms &amp; Conditions</span><span class="sub">text blocks attached to HVAC — auto-pulled into contracts that use HVAC blocks</span>
-          <div class="right"><button class="mini-btn" onclick="event.stopPropagation();alert('Mockup: existing text-block wizard, linked to HVAC')">＋ add T&amp;C</button></div>
+          <span class="car">▾</span><span class="t">Content &amp; Terms</span><span class="sub">text, media &amp; document blocks attached to HVAC — available to proposals/contracts that use HVAC blocks</span>
+          <div class="right"><button class="mini-btn" onclick="event.stopPropagation();alert('Mockup: existing wizard — pick type (text/image/video/checklist/document), HVAC pre-linked')">＋ add content</button></div>
         </div>
         <table>
-          <thead><tr><th style="width:40%">Clause</th><th>Applies</th><th></th></tr></thead>
+          <thead><tr><th style="width:40%">Block</th><th>Type</th><th>Used in</th><th></th></tr></thead>
           <tbody>
-            <tr class="rowhover searchable"><td class="name-cell">📄 AMC Scope &amp; Exclusions — HVAC<div class="lineage">Text block · hand-made</div></td><td class="mono" style="font-size:11px">all HVAC contracts</td><td><button class="mini-btn">edit</button></td></tr>
-            <tr class="rowhover searchable"><td class="name-cell">📄 Refrigerant Gas Top-up Policy<div class="lineage">Text block · hand-made</div></td><td class="mono" style="font-size:11px">service blocks only</td><td><button class="mini-btn">edit</button></td></tr>
-            <tr><td colspan="3" style="font-size:11px;color:var(--text-muted)">Tenant-level default T&amp;C (under Other Items) applies when an equipment has none.</td></tr>
+            <tr class="rowhover searchable"><td class="name-cell">📄 AMC Scope &amp; Exclusions — HVAC<div class="lineage">Text · hand-made</div></td><td class="mono" style="font-size:11px">Text / T&amp;C</td><td class="mono" style="font-size:11px">3 templates</td><td><button class="mini-btn">edit</button></td></tr>
+            <tr class="rowhover searchable"><td class="name-cell">📄 Refrigerant Gas Top-up Policy<div class="lineage">Text · hand-made</div></td><td class="mono" style="font-size:11px">Text / T&amp;C</td><td class="mono" style="font-size:11px">1 template</td><td><button class="mini-btn">edit</button></td></tr>
+            <tr class="rowhover searchable"><td class="name-cell">🖼️ VRF Installation Reference Photos<div class="lineage">Image · hand-made</div></td><td class="mono" style="font-size:11px">Image</td><td class="mono" style="font-size:11px">—</td><td><button class="mini-btn">edit</button></td></tr>
+            <tr class="rowhover searchable"><td class="name-cell">🎬 AMC Service Walkthrough (2 min)<div class="lineage">Video · hand-made</div></td><td class="mono" style="font-size:11px">Video</td><td class="mono" style="font-size:11px">2 templates</td><td><button class="mini-btn">edit</button></td></tr>
+            <tr class="rowhover searchable"><td class="name-cell">☑ Pre-handover Inspection Checklist<div class="lineage">Checklist · hand-made</div></td><td class="mono" style="font-size:11px">Checklist</td><td class="mono" style="font-size:11px">1 template</td><td><button class="mini-btn">edit</button></td></tr>
+            <tr><td colspan="4" style="font-size:11px;color:var(--text-muted)">Tenant-level default content (Content Library) applies when an equipment has none.</td></tr>
           </tbody>
         </table>
       </div>
@@ -449,6 +462,76 @@
       <p>28 checkpoints available in the knowledge tree.</p>
       <button class="btn btn-vani" onclick="openModal('vent')">✨ Seed Hospital Ward with VaNi</button></div>
     </div>
+    <div id="view-content" class="hidden">
+      <div class="eq-header">
+        <div class="big-ico">🗂️</div>
+        <div>
+          <h2>Content Library</h2>
+          <div class="tags">
+            <span class="badge b-none">GENERAL — NOT EQUIPMENT-BOUND</span>
+            <span class="badge b-kt">USED BY PROPOSALS &amp; TEMPLATES</span>
+          </div>
+        </div>
+        <div class="stat-strip">
+          <div class="stat"><div class="v">4</div><div class="k">Texts</div></div>
+          <div class="stat"><div class="v">3</div><div class="k">Media</div></div>
+          <div class="stat"><div class="v">3</div><div class="k">Documents</div></div>
+        </div>
+      </div>
+
+      <div class="panel" id="cl-text">
+        <div class="panel-h section-toggle" onclick="togglePanel('cl-text')">
+          <span class="car">▾</span><span class="t">Text &amp; Clauses</span><span class="sub">company-wide T&amp;C, intros, payment terms</span>
+          <div class="right"><button class="mini-btn" onclick="event.stopPropagation();alert('Mockup: existing text-block wizard, no equipment link')">＋ add text</button></div>
+        </div>
+        <table>
+          <thead><tr><th style="width:45%">Block</th><th>Used in</th><th></th></tr></thead>
+          <tbody>
+            <tr class="rowhover searchable"><td class="name-cell">📄 Standard Payment Terms (Net 15)<div class="lineage">Text · default for all proposals</div></td><td class="mono" style="font-size:11px">all templates</td><td><button class="mini-btn">edit</button></td></tr>
+            <tr class="rowhover searchable"><td class="name-cell">📄 About Our Company<div class="lineage">Text</div></td><td class="mono" style="font-size:11px">5 templates</td><td><button class="mini-btn">edit</button></td></tr>
+            <tr class="rowhover searchable"><td class="name-cell">📄 General Liability &amp; Insurance Clause<div class="lineage">Text · T&amp;C</div></td><td class="mono" style="font-size:11px">all templates</td><td><button class="mini-btn">edit</button></td></tr>
+            <tr class="rowhover searchable"><td class="name-cell">📄 Cancellation &amp; Refund Policy<div class="lineage">Text · T&amp;C</div></td><td class="mono" style="font-size:11px">2 templates</td><td><button class="mini-btn">edit</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="panel" id="cl-media">
+        <div class="panel-h section-toggle" onclick="togglePanel('cl-media')">
+          <span class="car">▾</span><span class="t">Images &amp; Videos</span><span class="sub">brand and marketing media for proposals</span>
+          <div class="right"><button class="mini-btn" onclick="event.stopPropagation();alert('Mockup: existing media-block wizard')">＋ add media</button></div>
+        </div>
+        <table>
+          <thead><tr><th style="width:45%">Block</th><th>Used in</th><th></th></tr></thead>
+          <tbody>
+            <tr class="rowhover searchable"><td class="name-cell">🖼️ Company Banner &amp; Certifications<div class="lineage">Image</div></td><td class="mono" style="font-size:11px">all templates</td><td><button class="mini-btn">edit</button></td></tr>
+            <tr class="rowhover searchable"><td class="name-cell">🖼️ Team &amp; Facility Photos<div class="lineage">Image</div></td><td class="mono" style="font-size:11px">1 template</td><td><button class="mini-btn">edit</button></td></tr>
+            <tr class="rowhover searchable"><td class="name-cell">🎬 Company Introduction (90 sec)<div class="lineage">Video</div></td><td class="mono" style="font-size:11px">3 templates</td><td><button class="mini-btn">edit</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="panel" id="cl-docs">
+        <div class="panel-h section-toggle" onclick="togglePanel('cl-docs')">
+          <span class="car">▾</span><span class="t">Documents &amp; Checklists</span><span class="sub">attachments &amp; signable docs</span>
+          <div class="right"><button class="mini-btn" onclick="event.stopPropagation();alert('Mockup: existing document/checklist wizard')">＋ add document</button></div>
+        </div>
+        <table>
+          <thead><tr><th style="width:45%">Block</th><th>Used in</th><th></th></tr></thead>
+          <tbody>
+            <tr class="rowhover searchable"><td class="name-cell">📎 Master Service Agreement (signable)<div class="lineage">Document · requires signature</div></td><td class="mono" style="font-size:11px">all templates</td><td><button class="mini-btn">edit</button></td></tr>
+            <tr class="rowhover searchable"><td class="name-cell">📎 GST &amp; PAN Certificates<div class="lineage">Document</div></td><td class="mono" style="font-size:11px">—</td><td><button class="mini-btn">edit</button></td></tr>
+            <tr class="rowhover searchable"><td class="name-cell">☑ Site Readiness Checklist<div class="lineage">Checklist</div></td><td class="mono" style="font-size:11px">2 templates</td><td><button class="mini-btn">edit</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="footnote" style="margin-top:0">
+        <b>Composition stays in Templates:</b> proposals/templates assemble pricing blocks + this content into a
+        document, exactly as today. "Used in" tells you what's safe to edit. Equipment-specific content lives
+        under its equipment ("Content &amp; Terms" on HVAC); this library is everything company-wide.
+      </div>
+    </div>
+
     <div id="view-custom" class="hidden">
       <div class="panel"><div class="panel-h"><span class="t">My custom blocks</span><span class="sub">hand-made blocks with no equipment link</span></div>
       <table><thead><tr><th>Block</th><th>Type</th><th>Price</th><th></th></tr></thead>
@@ -516,7 +599,7 @@
 function selectEq(el, id){
   document.querySelectorAll('.eq-item').forEach(e=>e.classList.remove('active'));
   el.classList.add('active');
-  ['hvac','ventilator','dental','ot','ward','custom'].forEach(v=>{
+  ['hvac','ventilator','dental','ot','ward','custom','content'].forEach(v=>{
     document.getElementById('view-'+v).classList.toggle('hidden', v!==id);
   });
 }
