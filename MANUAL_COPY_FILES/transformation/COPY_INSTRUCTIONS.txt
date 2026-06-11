@@ -1,0 +1,34 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — Service-as-Software Transformation Docs
+═══════════════════════════════════════════════════
+Feature: SaaS → Service-as-Software Audit & Transformation Plan
+Branch (parent repo): claude/epic-pascal-kw0edn
+Date: 2026-06-11
+
+SUBMODULES AFFECTED:
+  - ClaudeDocumentation (ONLY — documentation, no code changes)
+
+FILES TO COPY (2 files):
+
+1. MANUAL_COPY_FILES\transformation\ClaudeDocumentation\transformation\AUDIT.md
+   → ClaudeDocumentation\transformation\AUDIT.md
+   Purpose: Phase 1 evidence-backed audit (architecture map, data model
+   inventory, API surface, UI journey table, AI/agent footprint,
+   gaps & risks register G1–G18, Top-10 findings). Verified against
+   live DB (cron.job, pgmq, RLS state) and current submodule HEADs.
+
+2. MANUAL_COPY_FILES\transformation\ClaudeDocumentation\transformation\TRANSFORMATION_PLAN.md
+   → ClaudeDocumentation\transformation\TRANSFORMATION_PLAN.md
+   Purpose: Phase 2 plan — the reframe, 7-agent portfolio (Service Cycle,
+   Onboarding, Renewal, Drafting, SLA Sentinel, RFP, VaNi Concierge),
+   agent runtime architecture (PGMQ-based, tool layer over existing RPCs,
+   safety rails), UX shift to approval-first, phased roadmap (Phase 0–3,
+   16–23 sprints), decision log D1–D12, and Questions for Charan.
+
+NOTES:
+  - The same two files also exist at the parent-repo root (AUDIT.md,
+    TRANSFORMATION_PLAN.md on branch claude/epic-pascal-kw0edn) — the
+    canonical home going forward is ClaudeDocumentation/transformation/.
+  - Create the target folder if it does not exist:
+    New-Item -ItemType Directory -Force -Path "ClaudeDocumentation\transformation"
+═══════════════════════════════════════════════════
