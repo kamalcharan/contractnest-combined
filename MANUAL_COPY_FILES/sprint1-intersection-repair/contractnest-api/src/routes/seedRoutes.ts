@@ -204,6 +204,97 @@ router.post('/tenant', async (req: Request, res: Response) => {
 });
 
 // =================================================================
+// Settings → Seed Data (founder request): UI-managed seed lifecycle.
+// Overview + reseed run from PERSISTED intent (t_tenant_selected_resources) —
+// no onboarding replay needed. Cleanup keeps contract-referenced rows.
+// =================================================================
+function jwtClient(authToken: string) {
+  // API layer holds only the anon key by design; the user's JWT makes the
+  // role 'authenticated' and the RPCs below are SECURITY DEFINER.
+  const { createClient } = require('@supabase/supabase-js');
+  return createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY!,
+    {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { headers: { Authorization: authToken } },
+    },
+  );
+}
+
+// GET /tenant/seed-overview — what onboarding seeded + picks + recent logs
+router.get('/tenant/seed-overview', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const tenantId   = req.headers['x-tenant-id'] as string;
+    if (!authHeader) return res.status(401).json({ error: 'Authorization header is required' });
+    if (!tenantId)   return res.status(400).json({ error: 'x-tenant-id header is required' });
+
+    const sb = jwtClient(authHeader);
+    const { data, error } = await sb.rpc('get_tenant_seed_overview', { p_tenant_id: tenantId });
+    if (error) return res.status(500).json({ success: false, error: error.message });
+    return res.status(200).json({ success: true, data });
+  } catch (error: any) {
+    console.error('[SeedRoutes] seed-overview error:', error.message);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /tenant/reseed — body { target: 'catalog' | 'registry' | 'all' }
+// 1) cleanup (skips contract-referenced rows)  2) re-run the idempotent seed
+// from persisted picks; persona + industries are read server-side.
+router.post('/tenant/reseed', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const tenantId   = req.headers['x-tenant-id'] as string;
+    if (!authHeader) return res.status(401).json({ error: 'Authorization header is required' });
+    if (!tenantId)   return res.status(400).json({ error: 'x-tenant-id header is required' });
+
+    const target = ['catalog', 'registry', 'all'].includes(req.body?.target) ? req.body.target : 'all';
+    const sb = jwtClient(authHeader);
+
+    const { data: cleanup, error: cleanupError } = await sb.rpc('cleanup_tenant_seed_data', {
+      p_tenant_id: tenantId,
+      p_target: target,
+    });
+    if (cleanupError) return res.status(500).json({ success: false, error: `Cleanup failed: ${cleanupError.message}` });
+
+    // Server-side intent: persona from profile, industries from served list
+    const [{ data: profile }, { data: served }] = await Promise.all([
+      sb.from('t_tenant_profiles').select('persona, business_type_id').eq('tenant_id', tenantId).maybeSingle(),
+      sb.from('t_tenant_served_industries').select('industry_id').eq('tenant_id', tenantId),
+    ]);
+    const rawPersona = profile?.persona || profile?.business_type_id || 'seller';
+    const businessType = (['seller', 'buyer', 'both'].includes(rawPersona) ? rawPersona : 'seller') as 'seller' | 'buyer' | 'both';
+    const industryIds: string[] = (served || []).map((r: any) => r.industry_id).filter(Boolean);
+
+    console.log('[SeedRoutes] reseed', { tenantId, target, businessType, industryIds, cleanup });
+
+    // Picks come from t_tenant_selected_resources inside the seeder (S8)
+    const result = await seedTenantTemplates({
+      tenantId,
+      equipmentTemplateIds: [],
+      facilityTemplateIds: [],
+      businessType,
+      industryId: industryIds[0] || '',
+      industryIds,
+      authToken: authHeader,
+      userId: (req as any).user?.id || null,
+    });
+
+    const httpStatus = result.status === 'success' || result.status === 'no_coverage' ? 200 : 207;
+    return res.status(httpStatus).json({
+      success: result.success,
+      status: result.status,
+      data: { cleanup, seed: result },
+    });
+  } catch (error: any) {
+    console.error('[SeedRoutes] reseed error:', error.message);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// =================================================================
 // POST /tenant/industry-confirmed — REMOVED (Sprint 1, Task 1.3)
 // The legacy name-only/price-less seeder (seedTenantOnIndustryConfirmedService)
 // was the wrong seeder identified by the legibility probe (B0.5 point 1) and

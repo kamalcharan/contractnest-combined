@@ -332,3 +332,20 @@ NOTE: serviceCycles/kt_price_min/max/pricingMode/tax improvements apply to NEW
 seeds. To refresh an existing test tenant: delete its seeded blocks
 (`DELETE FROM m_cat_blocks WHERE tenant_id='…' AND is_seed`) and re-run the
 working step — idempotency makes this clean.
+
+
+## 11. Settings → Seed Data (founder request, implemented)
+
+UI-managed seed lifecycle at `/settings/seed-data` (Business Profile group):
+- **Overview**: seeded catalog blocks (test/live/in-use-by-contracts), registry
+  assets, the persisted resource picks (S8 — the durable intent every reseed
+  runs from), and the last 10 `t_seed_logs` entries.
+- **Re-seed catalog / registry**: inline-confirmed; calls
+  `cleanup_tenant_seed_data` (SECURITY DEFINER — deletes seeded rows but KEEPS
+  anything referenced by contracts via source_block_id / t_contract_assets,
+  reporting kept counts) then re-runs the idempotent seeder with persona +
+  industries read server-side and picks from t_tenant_selected_resources.
+  No onboarding replay ever needed.
+- New RPCs (migration 20260611000006, applied): `get_tenant_seed_overview`,
+  `cleanup_tenant_seed_data`. New API: GET /api/seeds/tenant/seed-overview,
+  POST /api/seeds/tenant/reseed {target: catalog|registry|all}.
