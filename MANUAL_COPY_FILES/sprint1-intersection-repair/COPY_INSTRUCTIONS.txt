@@ -1,0 +1,59 @@
+═══════════════════════════════════════════════════════════════════
+SPRINT 1 — INTERSECTION REPAIR (KT → Onboarding → Catalog → Contract)
+Branch folder: MANUAL_COPY_FILES/sprint1-intersection-repair/
+═══════════════════════════════════════════════════════════════════
+
+SUBMODULES AFFECTED: contractnest-api, contractnest-ui, contractnest-edge
+(Plus parent-repo root: SPRINT1_REPORT.md, scripts/sprint1_proof.sql)
+
+⚠️ ONE FILE TO DELETE (legacy seeder, Task 1.3 decision):
+  contractnest-api\src\services\seedTenantOnIndustryConfirmedService.ts
+  (its route /api/seeds/tenant/industry-confirmed is removed in seedRoutes.ts)
+
+⚠️ DB MIGRATIONS: the 5 SQL files under contractnest-edge\supabase\migrations\
+  transformation\ are ALREADY APPLIED to the Supabase project
+  (uwyqhzotluikawcboldr) via MCP on 2026-06-11. Copy the files for the repo
+  record — do NOT re-run them (they are idempotent anyway).
+
+⚠️ EDGE DEPLOY REQUIRED before testing:
+  supabase functions deploy cat-blocks
+  supabase functions deploy onboarding
+  supabase functions deploy tenant-profile
+
+───────────────────────────────────────────────────────────────────
+FILES → DESTINATIONS (copy each, mirroring the path)
+
+contractnest-api/
+  src/services/onboardingIntentService.ts        (NEW — S8 persistence + resolution wrapper)
+  src/services/seedTenantTemplatesService.ts     (REWRITTEN — intent-driven, no_coverage, buyer registry leg)
+  src/services/catBlocksService.ts               (is_seed list param + comment)
+  src/routes/seedRoutes.ts                       (legacy route removed; status passthrough)
+  src/routes/onboardingRoutes.ts                 (POST/GET /selected-resources)
+  src/controllers/catalogStudioController.ts     (is_seed query param)
+  src/types/catalogStudioTypes.ts                (is_seed in BlockQueryParams)
+  src/__tests__/sprint1.integration.test.mjs     (NEW — tests 6.1–6.3, run: node --test src/__tests__/)
+  .github/workflows/ci.yml                       (NEW — typecheck + tests)
+
+contractnest-ui/
+  src/utils/onboarding/completeVaniStep.ts       (NEW — S13 step_data persistence helper)
+  src/hooks/useTenantProfile.ts                  (persona field on TenantProfile)
+  src/pages/onboarding/steps/PersonaSelectionStep.tsx  (writes persona, not business_type_id)
+  src/pages/onboarding/steps/ResourcePickStep.tsx      (persists picks to S8 table)
+  src/pages/onboarding/steps/VaniWorkingStep.tsx       (no fake delay; no_coverage amber state; industryIds)
+  src/pages/onboarding/steps/Screen8APricingStep.tsx   (is_seed fetch fix; top-level base_price PATCH fix)
+  src/pages/onboarding/steps/Screen8BEquipmentStep.tsx (template_id grouping; step persistence)
+  src/pages/catalog-studio/blocks.tsx            ("Seeded from X" lineage badge, grid + list)
+  src/utils/catalog-studio/catBlockAdapter.ts    (is_seed / resource_template_id / seeded_from_name in meta)
+  .github/workflows/ci.yml                       (NEW — build gate)
+
+contractnest-edge/
+  supabase/functions/cat-blocks/index.ts         (tenant can edit/delete own seeded blocks — Task 4.3 fix)
+  supabase/functions/onboarding/index.ts         (13-step VaNi model; step_data accumulates; done-step completion)
+  supabase/functions/tenant-profile/index.ts     (persona read/write; normalizePersona)
+  supabase/migrations/transformation/20260611000001_s7_tenant_persona.sql
+  supabase/migrations/transformation/20260611000002_s8_tenant_selected_resources.sql
+  supabase/migrations/transformation/20260611000003_s13_onboarding_step_model.sql
+  supabase/migrations/transformation/20260611000004_resolve_industry_resource_templates.sql
+  supabase/migrations/transformation/20260611000005_seed_onboarding_registry_assets.sql
+  .github/workflows/ci.yml                       (NEW — deno check)
+═══════════════════════════════════════════════════════════════════

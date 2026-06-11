@@ -1,0 +1,24 @@
+# Sprint 1 (Task 6.5) — first CI in this repo.
+# Note: full `tsc --noEmit` fails on two pre-existing broken files unrelated to
+# any feature work (src/contexts/OnboardingContext.ts, src/services/serviceURLs.addition.ts);
+# the build (which only bundles imported modules) is the honest gate until those
+# are repaired or removed.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Build
+        run: npm run build
