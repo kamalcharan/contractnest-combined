@@ -39,20 +39,26 @@ export interface IndustryResolution {
   industryIds: string[];
 }
 
-let adminClient: SupabaseClient | null = null;
-
-function getAdminClient(): SupabaseClient {
-  if (!adminClient) {
-    const url = process.env.SUPABASE_URL;
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
-    if (!url || !key) {
-      throw new Error('onboardingIntentService: Missing SUPABASE_URL or SUPABASE_KEY');
-    }
-    adminClient = createClient(url, key, {
+// Architecture note: the API layer holds only the ANON key by design (service
+// keys live in edge-function secrets). RLS-protected reads/writes therefore run
+// as the AUTHENTICATED user by forwarding the caller's JWT — which also means
+// tenant policies are genuinely enforced instead of bypassed.
+function getClient(authToken?: string): SupabaseClient {
+  const url = process.env.SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const anonKey = process.env.SUPABASE_KEY;
+  if (!url || (!serviceKey && !anonKey)) {
+    throw new Error('onboardingIntentService: Missing SUPABASE_URL or SUPABASE_KEY');
+  }
+  if (serviceKey) {
+    return createClient(url, serviceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
   }
-  return adminClient;
+  return createClient(url, anonKey!, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: authToken ? { headers: { Authorization: authToken } } : undefined,
+  });
 }
 
 export async function persistSelectedResources(
@@ -60,10 +66,11 @@ export async function persistSelectedResources(
   selections: ResourceSelection[],
   source: SelectionSource = 'onboarding',
   createdBy: string | null = null,
+  authToken?: string,
 ): Promise<{ persisted: number; errors: string[] }> {
   if (!selections.length) return { persisted: 0, errors: [] };
 
-  const sb = getAdminClient();
+  const sb = getClient(authToken);
   const rows = selections.map(s => ({
     tenant_id: tenantId,
     resource_template_id: s.resource_template_id,
@@ -87,8 +94,9 @@ export async function persistSelectedResources(
 export async function getSelectedResources(
   tenantId: string,
   purpose?: SelectionPurpose,
+  authToken?: string,
 ): Promise<Array<{ resource_template_id: string; purpose: SelectionPurpose; source: string; selected_at: string }>> {
-  const sb = getAdminClient();
+  const sb = getClient(authToken);
   let query = sb
     .from('t_tenant_selected_resources')
     .select('resource_template_id, purpose, source, selected_at')
@@ -103,11 +111,11 @@ export async function getSelectedResources(
   return data || [];
 }
 
-export async function resolveIndustryTemplates(industryIds: string[]): Promise<IndustryResolution> {
+export async function resolveIndustryTemplates(industryIds: string[], authToken?: string): Promise<IndustryResolution> {
   const ids = [...new Set(industryIds.filter(Boolean))];
   if (!ids.length) return { templates: [], hasCoverage: false, industryIds: ids };
 
-  const sb = getAdminClient();
+  const sb = getClient(authToken);
   const { data, error } = await sb.rpc('resolve_industry_resource_templates', {
     p_industry_ids: ids,
   });

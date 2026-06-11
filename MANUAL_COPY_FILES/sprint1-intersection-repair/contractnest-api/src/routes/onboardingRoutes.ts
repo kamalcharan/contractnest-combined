@@ -84,6 +84,7 @@ router.post('/selected-resources', async (req, res) => {
       selections,
       source === 'settings' || source === 'agent' ? source : 'onboarding',
       (req as any).user?.id || null,
+      req.headers.authorization,
     );
 
     if (result.errors.length > 0) {
@@ -107,7 +108,11 @@ router.get('/selected-resources', async (req, res) => {
 
     const purpose = req.query.purpose as 'sell' | 'own' | undefined;
     const { getSelectedResources } = await import('../services/onboardingIntentService');
-    const rows = await getSelectedResources(tenantId, purpose === 'sell' || purpose === 'own' ? purpose : undefined);
+    const rows = await getSelectedResources(
+      tenantId,
+      purpose === 'sell' || purpose === 'own' ? purpose : undefined,
+      req.headers.authorization,
+    );
     return res.status(200).json({ success: true, data: rows });
   } catch (error: any) {
     console.error('[OnboardingRoutes] selected-resources GET error:', error.message);

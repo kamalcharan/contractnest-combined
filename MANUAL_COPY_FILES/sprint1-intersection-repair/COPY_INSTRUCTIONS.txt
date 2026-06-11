@@ -24,7 +24,8 @@ SUBMODULES AFFECTED: contractnest-api, contractnest-ui, contractnest-edge
 FILES → DESTINATIONS (copy each, mirroring the path)
 
 contractnest-api/
-  src/services/onboardingIntentService.ts        (NEW — S8 persistence + resolution wrapper)
+  src/services/onboardingIntentService.ts        (NEW — S8 persistence + resolution; forwards user JWT, anon-key API safe)
+  src/services/ktCatBlockMapperService.ts        (FIX: forwards user JWT — KT tables are RLS-restricted to authenticated)
   src/services/seedTenantTemplatesService.ts     (REWRITTEN — intent-driven, no_coverage, buyer registry leg)
   src/services/catBlocksService.ts               (is_seed list param + comment)
   src/routes/seedRoutes.ts                       (legacy route removed; status passthrough)

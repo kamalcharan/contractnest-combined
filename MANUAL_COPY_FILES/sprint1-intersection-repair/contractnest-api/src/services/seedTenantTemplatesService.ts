@@ -170,7 +170,7 @@ export async function seedTenantTemplates(
   // ── Step 0a: Persist intent (S8) — upsert, race-safe ─────────────────────────
   const requestedSelections = buildSelections(businessType, equipmentTemplateIds, facilityTemplateIds);
   if (requestedSelections.length > 0) {
-    const persistResult = await persistSelectedResources(tenantId, requestedSelections, 'onboarding', userId);
+    const persistResult = await persistSelectedResources(tenantId, requestedSelections, 'onboarding', userId, authToken);
     errors.push(...persistResult.errors.map(e => `Selections: ${e}`));
   }
 
@@ -180,7 +180,7 @@ export async function seedTenantTemplates(
   let resolvedIds = new Set<string>();
   let hasCoverage = false;
   try {
-    const resolution = await resolveIndustryTemplates(allIndustryIds);
+    const resolution = await resolveIndustryTemplates(allIndustryIds, authToken);
     hasCoverage = resolution.hasCoverage;
     resolvedIds = new Set(resolution.templates.map(t => t.resource_template_id));
   } catch (err: any) {
@@ -221,7 +221,7 @@ export async function seedTenantTemplates(
   // ── Step 0c: Read intent back from the durable table — the table drives the
   // seed (covers rows persisted earlier by ResourcePickStep too), intersected
   // with the industry resolution set. Out-of-coverage requests are dropped loudly.
-  const persisted = await getSelectedResources(tenantId);
+  const persisted = await getSelectedResources(tenantId, undefined, authToken);
   const inCoverage = (id: string) => resolvedIds.has(id);
 
   const sellTemplateIds = [...new Set(
@@ -249,7 +249,7 @@ export async function seedTenantTemplates(
 
     for (const templateId of sellIds) {
       try {
-        const { blocks } = await ktCatBlockMapperService.buildBlocksForTemplate(templateId);
+        const { blocks } = await ktCatBlockMapperService.buildBlocksForTemplate(templateId, authToken);
         const ktName = blocks[0]?.config?.selectedResources?.[0]?.resource_name || templateId;
 
         kts.push({ resource_template_id: templateId, kt_name: ktName, blocks });
@@ -298,7 +298,11 @@ export async function seedTenantTemplates(
       const sb = createClient(
         process.env.SUPABASE_URL!,
         process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY!,
-        { auth: { persistSession: false, autoRefreshToken: false } },
+        {
+          auth: { persistSession: false, autoRefreshToken: false },
+          // SECURITY DEFINER RPC — callable as authenticated; JWT forwarded
+          global: { headers: { Authorization: authToken } },
+        },
       );
 
       const { data: rpcResult, error: rpcError } = await sb.rpc(
