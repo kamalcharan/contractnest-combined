@@ -100,11 +100,13 @@ const PersonaSelectionStep: React.FC = () => {
     try {
       // POST = UPSERT (onConflict: tenant_id). Sends actual saved business_name
       // so the business name the user entered in Screen 2 is never overwritten.
-      // S7: persona is the canonical column — business_type_id is no longer
-      // written from this step (probe finding A10).
+      // S7 dual-write: persona is the constrained agent-readable column;
+      // business_type_id stays written because /settings/business-profile and
+      // AuthContext.initializePerspective consume it (buyer/seller/both LOV).
       await api.post(API_ENDPOINTS.TENANTS.PROFILE, {
         business_name: formData.business_name || currentTenant?.name || '',
         persona: selected,
+        business_type_id: selected,
       });
       completeVaniStep('persona-selection', { persona: selected });
       vaniToast.success('Persona saved');

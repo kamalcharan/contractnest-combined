@@ -13,7 +13,7 @@ COMMENT ON COLUMN t_tenant_profiles.persona IS
   'Tenant operating persona captured during onboarding (S7). seller = provides services (gets a sales catalog), buyer = procures services (gets asset/facility registries), both = dual setup. Canonical source for persona; written by PersonaSelectionStep via tenant-profile edge function.';
 
 COMMENT ON COLUMN t_tenant_profiles.business_type_id IS
-  'DEPRECATED for persona use (Sprint 1, 2026-06-11). Historically held free strings (seller/buyer/both/service_provider/merchant) duplicated into profile_type by the tenant-profile edge function. Use t_tenant_profiles.persona instead. Retained only for legacy reads; no new writes.';
+  'Legacy persona field (stored in profile_type by the tenant-profile edge function), values buyer|seller|both. Still WRITTEN (dual-write with persona) because /settings/business-profile and AuthContext perspective init consume it. persona is the constrained, canonical column for agent reads.';
 
 COMMENT ON COLUMN t_tenant_profiles.profile_type IS
   'Legacy duplicate of business_type_id written by tenant-profile edge upserts. Superseded by persona for seller/buyer/both semantics.';

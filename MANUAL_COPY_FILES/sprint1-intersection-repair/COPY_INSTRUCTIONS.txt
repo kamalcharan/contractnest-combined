@@ -37,7 +37,7 @@ contractnest-api/
 contractnest-ui/
   src/utils/onboarding/completeVaniStep.ts       (NEW — S13 step_data persistence helper)
   src/hooks/useTenantProfile.ts                  (persona field on TenantProfile)
-  src/pages/onboarding/steps/PersonaSelectionStep.tsx  (writes persona, not business_type_id)
+  src/pages/onboarding/steps/PersonaSelectionStep.tsx  (dual-writes persona + business_type_id)
   src/pages/onboarding/steps/ResourcePickStep.tsx      (persists picks to S8 table)
   src/pages/onboarding/steps/VaniWorkingStep.tsx       (no fake delay; no_coverage amber state; industryIds)
   src/pages/onboarding/steps/Screen8APricingStep.tsx   (is_seed fetch fix; top-level base_price PATCH fix)

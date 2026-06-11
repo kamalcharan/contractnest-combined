@@ -181,8 +181,11 @@ Live SQL evidence captured during the sprint:
 
 1. **Legacy seeder (1.3): deleted**, not demoted — zero callers, and "documented
    fallback" would have kept a known-bad path alive.
-2. **business_type_id (3.1): deprecated for persona** via column COMMENT; no new
-   writes from the persona step; `profile_type` documented as its legacy duplicate.
+2. **business_type_id (3.1): DUAL-WRITE** (revised after founder review). The
+   settings page (/settings/business-profile) and AuthContext perspective init
+   consume business_type_id (buyer|seller|both LOV), so the persona step keeps
+   writing it alongside the new constrained persona column. persona is the
+   canonical agent-readable field; business_type_id/profile_type stay in sync.
 3. **S8 purpose column** (founder-approved): UNIQUE(tenant, template, purpose) so
    "both" tenants can hold dual intent for one template.
 4. **'both' persona purposes**: equipment picks → `sell` + `own`; facility picks →
