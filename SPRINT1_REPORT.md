@@ -240,3 +240,61 @@ Live SQL evidence captured during the sprint:
   `t_seed_logs` observability, resolution failure is loud.
 - Toasts/loaders: existing `vaniToast` + existing loaders/saving states reused;
   no new components invented.
+
+
+---
+
+## 8. ACCEPTANCE-RUN RESULTS (live debugging session, 2026-06-11 — post-handoff)
+
+The founder's live run surfaced six additional defects (four pre-existing, two
+mine). All fixed, pushed, and verified. **The §6 probe flip is now REAL:**
+
+### §6 re-run — B0.2/B0.3 flipped to L1
+| Check | Probe baseline | Now |
+|---|---|---|
+| `is_seed=true` blocks platform-wide | **0** | **182** |
+| `resource_template_id` populated | **0**/45 | **182**/227 |
+| Price lineage | none | `base_price` joins exactly to `m_service_cycles.price_median` via checkpoint `service_name` (verified: Refrigerant & Electrical Performance Check ₹1400=1400, Compressor Performance Check ₹1200=1200, …) |
+
+Tenant `bcc93584` (seller, dental_clinics/physiotherapy/general_practice,
+picks HVAC + Operation Theatre): persona persisted (S7 ✓), 2 sell-purpose rows
+in `t_tenant_selected_resources` (S8 ✓), `total_steps=13` with persona/
+resource-pick/vani-working payloads in `step_data` (S13 ✓), 68 HVAC blocks
+(58 KT-priced, ₹120–₹200,000) + 23 Operation Theatre blocks (unpriced — KT has
+no OT pricing yet) seeded into BOTH environments (B0.2/B0.3 ✓).
+
+### Defects found & fixed during the run
+| # | Defect | Origin | Fix |
+|---|---|---|---|
+| F1 | API step-id whitelist (`onboardingTypes.ts`) only knew 6 legacy steps → every VaNi step/complete 400'd | pre-existing | VaNi ids added (S13 API side) |
+| F2 | Blocks-list validator capped `limit` at 100 → pricing fetch 400'd | pre-existing | cap → 500, `is_seed` declared |
+| F3 | `complete-step` 500: stale `allRequiredComplete` reference after rename (threw AFTER persisting) | mine | uses `flowComplete` |
+| F4 | **API holds only the ANON key (by design); KT master tables are RLS-readable only by authenticated/service_role → the mapper has ALWAYS read an empty knowledge tree; S8 writes RLS-denied** | pre-existing (architectural) | mapper/intent/seed services forward the caller's JWT → run as `authenticated`; RLS genuinely enforced |
+| F5 | Missing UPDATE policy on `t_tenant_selected_resources` → idempotent retry (upsert conflict path) denied | mine | policy added |
+| F6 | **`cat-blocks/bulk` requires HMAC signing (`x-timestamp`+`x-internal-signature`); the seeder (incl. its pre-sprint version) posted raw axios → every bulk seed ever made 403'd** | pre-existing | `callBulkSeed` signs identically to `catBlocksService.makeRequest` |
+
+F4 + F6 are the answer to the probe's deepest question: the platform never
+seeded a block because the seed pipeline had two independent, silent,
+infrastructure-level failures — invisible without `t_seed_logs` + edge logs.
+
+## 9. PRICING-REVIEW SCREEN — design findings (OPEN, for founder discussion)
+
+The seed now works; `Screen8APricingStep` is the remaining elevator-era design
+fed real data it was never built for:
+
+1. **Market-range bar is hardcoded** ("Illustrative"). KT has `price_min/median/max`
+   but the mapper carries only the median into blocks — min/max never arrive.
+2. **3-tier assumption**: rows render TIER LABELS ("Basic AMC") instead of real
+   block names; HVAC is 29 distinct services + 39 spares, not 3 tiers.
+3. **Anchor×multiplier OVERWRITES KT medians**: Confirm patches anchor-derived
+   prices over all 58 seeded KT prices — destroys the pricing intelligence.
+   Should invert: KT median is the default; anchor only bulk-fills unpriced
+   blocks (10 HVAC + 23 OT).
+4. **Both environments returned**: edge `handleGetBlocks` never filters
+   `is_live` → every screen sees test+live duplicates ("100" = pagination cap).
+   One-line edge fix + redeploy; also affects Catalog Studio.
+5. **Confirm PATCHes all blocks** even unchanged — should write deltas only.
+
+Open design questions: which environment does pricing-review edit (live only
+vs both); spares in the same review or deferred to Catalog Studio; bulk-fill
+vs flag-for-later for unpriced equipment (Operation Theatre).
