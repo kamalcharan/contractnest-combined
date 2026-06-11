@@ -484,7 +484,7 @@ async function handleCompleteStep(supabase: any, tenantId: string, body: any, id
         message: `Step ${stepId} completed`,
         current_step: nextStep,
         completed_steps: completedSteps,
-        is_complete: completedSteps.length >= onboarding.total_steps || allRequiredComplete
+        is_complete: flowComplete
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
