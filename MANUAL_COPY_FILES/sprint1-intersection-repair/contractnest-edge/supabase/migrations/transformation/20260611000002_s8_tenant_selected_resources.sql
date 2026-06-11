@@ -55,3 +55,13 @@ CREATE POLICY tenant_delete_selected_resources ON t_tenant_selected_resources
       WHERE ut.user_id = auth.uid() AND ut.status::text = 'active'
     )
   );
+
+-- Follow-up (applied 2026-06-11): upsert ON CONFLICT takes the UPDATE path;
+-- without an UPDATE policy, authenticated retries were RLS-denied.
+CREATE POLICY tenant_update_selected_resources ON t_tenant_selected_resources
+  FOR UPDATE USING (
+    tenant_id IN (
+      SELECT ut.tenant_id FROM t_user_tenants ut
+      WHERE ut.user_id = auth.uid() AND ut.status::text = 'active'
+    )
+  );
