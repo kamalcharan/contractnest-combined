@@ -73,10 +73,10 @@ contact (details below).
 - **S7** (migration 20260611000001): `t_tenant_profiles.persona` with
   CHECK (seller|buyer|both) + COMMENT; backfill from legacy values
   (`seller/buyer/both/service_provider/merchant` in either `business_type_id` or
-  `profile_type`). `PersonaSelectionStep` now writes `persona`;
-  **`business_type_id` decision: deprecated for persona use** — column COMMENT
-  says so; it is no longer written by the persona step; retained read-only for
-  legacy consumers (it was always duplicated into `profile_type` by the edge).
+  `profile_type`). `PersonaSelectionStep` now **dual-writes** `persona` +
+  `business_type_id`: the settings page and AuthContext perspective init consume
+  `business_type_id`, so it keeps being written; `persona` is the constrained,
+  canonical column for agent reads (see decision log #2).
 - **S8** (migration 20260611000002): `t_tenant_selected_resources`
   (tenant FK, template FK, **purpose** sell|own, source, UNIQUE(tenant, template,
   purpose), RLS matching the `t_tenant_served_industries` pattern).
