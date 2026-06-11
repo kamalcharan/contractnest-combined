@@ -242,10 +242,29 @@ async function handleGetBlocks(
     return createErrorResponse(error.message, error.code || 'QUERY_ERROR', 500, ctx.operationId);
   }
 
+  // Enrich with LOV names (Sprint 1): the UI adapter classifies blocks by
+  // block_type_name; without it every block fell back to 'service' and spares
+  // were invisible as spares in Catalog Studio.
+  let enriched = data || [];
+  if (enriched.length > 0) {
+    const lovIds = [...new Set(enriched.flatMap((b: any) => [b.block_type_id, b.pricing_mode_id]).filter(Boolean))];
+    const { data: lovs } = await supabase
+      .from('m_category_details')
+      .select('id, sub_cat_name, display_name')
+      .in('id', lovIds);
+    const lovMap = new Map((lovs || []).map((l: any) => [l.id, l]));
+    enriched = enriched.map((b: any) => ({
+      ...b,
+      block_type_name: lovMap.get(b.block_type_id)?.sub_cat_name || null,
+      block_type_display_name: lovMap.get(b.block_type_id)?.display_name || null,
+      pricing_mode_name: lovMap.get(b.pricing_mode_id)?.sub_cat_name || null,
+    }));
+  }
+
   // Build response (backward compatible)
   const responseData: any = {
-    blocks: data || [],
-    count: data?.length || 0,
+    blocks: enriched,
+    count: enriched.length,
     filters: {
       block_type_id: blockTypeId,
       category,
