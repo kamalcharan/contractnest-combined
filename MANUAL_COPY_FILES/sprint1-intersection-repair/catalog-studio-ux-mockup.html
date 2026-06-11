@@ -215,6 +215,12 @@
           <div class="stat"><div class="v">29</div><div class="k">Services</div></div>
           <div class="stat"><div class="v">39</div><div class="k">Spares</div></div>
           <div class="stat"><div class="v">58/68</div><div class="k">Priced</div></div>
+          <div class="stat" style="min-width:108px">
+            <select onchange="alert('Mockup: all price cells re-render in '+this.value+'. Blocks without a '+this.value+' price show + add price.')" style="border:none;background:none;font-family:var(--mono);font-weight:800;font-size:15px;outline:none;cursor:pointer">
+              <option>₹ INR</option><option>$ USD</option><option>AED</option>
+            </select>
+            <div class="k">Currency · 2 configured</div>
+          </div>
         </div>
       </div>
 
@@ -248,18 +254,40 @@
       <div class="panel" id="svc-panel">
         <div class="panel-h section-toggle" onclick="togglePanel('svc-panel')">
           <span class="car">▾</span><span class="t">Services</span><span class="sub">29 blocks · grouped from KT checkpoints</span>
-          <div class="right"><span class="badge b-seeded">KT PRICED</span></div>
+          <div class="right"><span class="badge b-seeded">KT PRICED</span>
+            <button class="mini-btn" onclick="event.stopPropagation();alert('Mockup: opens the EXISTING block wizard with HVAC + its variants pre-linked (resource dependency prefilled from context)')">＋ add service</button>
+          </div>
         </div>
         <table>
           <thead><tr><th style="width:34%">Service</th><th>Cycle</th><th>Applies to</th><th>Your price</th><th>KT market range</th><th></th></tr></thead>
           <tbody>
-            <tr class="rowhover searchable">
-              <td class="name-cell">Filter, Coil &amp; Drainage Servicing<div class="lineage">Seeded from HVAC · KT</div></td>
+            <tr class="rowhover searchable" onclick="toggleMatrix(event)" style="cursor:pointer">
+              <td class="name-cell">🖼️ Filter, Coil &amp; Drainage Servicing<div class="lineage">Seeded from HVAC · KT · also every 30 visits (usage-based, info)</div></td>
               <td><span class="cycle">every 45 days</span></td>
               <td class="mono" style="font-size:11px">8 variants</td>
-              <td class="price">₹800 <span class="unit">/visit</span></td>
+              <td class="price">₹500 – ₹3,500 <span class="unit" style="color:var(--blue)">varies ▾</span></td>
               <td class="range">₹400 – ₹6,000</td>
               <td><button class="mini-btn">edit</button></td>
+            </tr>
+            <tr class="matrix-row" style="display:none;background:var(--surface)">
+              <td colspan="6" style="padding:0">
+                <div style="padding:12px 20px 16px">
+                  <div style="font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:8px">Variant pricing — ₹ INR <span style="color:var(--text-muted);font-weight:400;text-transform:none">(switch currency above; only applicable variants listed)</span></div>
+                  <table style="background:#fff;border:1px solid var(--border-lt);border-radius:8px;overflow:hidden">
+                    <thead><tr><th>Variant</th><th>Your price</th><th>KT range</th></tr></thead>
+                    <tbody>
+                      <tr><td>Split AC / Room AC (0.75–2.5 TR)</td><td class="price">₹500</td><td class="range">₹400 – ₹800</td></tr>
+                      <tr><td>Cassette AC (1.5–5 TR)</td><td class="price">₹650</td><td class="range">₹500 – ₹1,000</td></tr>
+                      <tr><td>Ductable AC (5.5–25 TR)</td><td class="price">₹1,200</td><td class="range">₹900 – ₹2,200</td></tr>
+                      <tr><td>VRF / VRV (8–60 TR)</td><td class="price">₹2,000</td><td class="range">₹1,500 – ₹4,000</td></tr>
+                      <tr><td>Package / Rooftop (3–25 TR)</td><td class="price">₹1,500</td><td class="range">₹1,100 – ₹2,800</td></tr>
+                      <tr><td>Window AC (0.75–2 TR)</td><td class="price">₹500</td><td class="range">₹400 – ₹700</td></tr>
+                      <tr><td>AHU</td><td class="price">₹3,500</td><td class="range">₹2,000 – ₹6,000</td></tr>
+                      <tr><td>FCU</td><td class="price">₹600</td><td class="range">₹450 – ₹900</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </td>
             </tr>
             <tr class="rowhover searchable">
               <td class="name-cell">Refrigerant &amp; Electrical Performance Check<div class="lineage">Seeded from HVAC · KT</div></td>
@@ -302,12 +330,13 @@
       <div class="panel" id="spare-panel">
         <div class="panel-h section-toggle" onclick="togglePanel('spare-panel')">
           <span class="car">▾</span><span class="t">Spare Parts &amp; Consumables</span><span class="sub">39 blocks · priced per unit</span>
+          <div class="right"><button class="mini-btn" onclick="event.stopPropagation();alert('Mockup: opens the EXISTING block wizard, spare type, HVAC pre-linked')">＋ add spare</button></div>
         </div>
         <table>
           <thead><tr><th style="width:40%">Part</th><th>Applies to</th><th>Your price</th><th>KT market range</th><th></th></tr></thead>
           <tbody>
             <tr class="rowhover searchable">
-              <td class="name-cell">Air Filter (washable)<div class="lineage">Seeded from HVAC · KT</div></td>
+              <td class="name-cell">🖼️ Air Filter (washable)<div class="lineage">Seeded from HVAC · KT · photo added</div></td>
               <td class="mono" style="font-size:11px">Split, Window, Cassette</td>
               <td class="price">₹500 <span class="unit">/unit</span></td>
               <td class="range">₹250 – ₹1,200</td>
@@ -328,6 +357,21 @@
               <td><button class="mini-btn">edit</button></td>
             </tr>
             <tr><td colspan="5" style="text-align:center;color:var(--text-muted);font-size:12px;cursor:pointer">show 36 more parts…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <!-- Terms & Conditions -->
+      <div class="panel" id="tnc-panel">
+        <div class="panel-h section-toggle" onclick="togglePanel('tnc-panel')">
+          <span class="car">▾</span><span class="t">Terms &amp; Conditions</span><span class="sub">text blocks attached to HVAC — auto-pulled into contracts that use HVAC blocks</span>
+          <div class="right"><button class="mini-btn" onclick="event.stopPropagation();alert('Mockup: existing text-block wizard, linked to HVAC')">＋ add T&amp;C</button></div>
+        </div>
+        <table>
+          <thead><tr><th style="width:40%">Clause</th><th>Applies</th><th></th></tr></thead>
+          <tbody>
+            <tr class="rowhover searchable"><td class="name-cell">📄 AMC Scope &amp; Exclusions — HVAC<div class="lineage">Text block · hand-made</div></td><td class="mono" style="font-size:11px">all HVAC contracts</td><td><button class="mini-btn">edit</button></td></tr>
+            <tr class="rowhover searchable"><td class="name-cell">📄 Refrigerant Gas Top-up Policy<div class="lineage">Text block · hand-made</div></td><td class="mono" style="font-size:11px">service blocks only</td><td><button class="mini-btn">edit</button></td></tr>
+            <tr><td colspan="3" style="font-size:11px;color:var(--text-muted)">Tenant-level default T&amp;C (under Other Items) applies when an equipment has none.</td></tr>
           </tbody>
         </table>
       </div>
@@ -483,6 +527,11 @@ function openModal(kind){
   document.getElementById('modal').classList.add('open');
 }
 function closeModal(){ document.getElementById('modal').classList.remove('open'); }
+function toggleMatrix(ev){
+  if(ev.target.closest('button')) return;
+  const next = ev.currentTarget.nextElementSibling;
+  if(next && next.classList.contains('matrix-row')) next.style.display = next.style.display==='none' ? '' : 'none';
+}
 function doSearch(q){
   q=q.trim().toLowerCase();
   // rows
