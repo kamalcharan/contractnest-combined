@@ -118,6 +118,16 @@ interface KtVariant {
   capacity_range: string | null;
 }
 
+// m_checkpoint_variant_map: which variants a checkpoint applies to, with
+// optional per-variant price overrides (founder finding: variants were
+// "dumped" — every service got all variants at one flat price)
+interface VariantMapRow {
+  checkpoint_id: string;
+  variant_id:    string;
+  override_min:  number | null;
+  override_max:  number | null;
+}
+
 // catalog_name and price_median are now nullable — relaxed from original
 interface ServiceGroupRow {
   service_name:     string;
@@ -183,11 +193,12 @@ export class KtCatBlockMapperService {
     skipped:  { serviceGroups: number; spareParts: number };
   }> {
     const sb = this.clientFor(authToken);
-    const [resourceTemplate, variants, serviceRows, spareRows] = await Promise.all([
+    const [resourceTemplate, variants, serviceRows, spareRows, variantMap] = await Promise.all([
       this.fetchResourceTemplate(sb, resourceTemplateId),
       this.fetchVariants(sb, resourceTemplateId),
       this.fetchServiceCycleRows(sb, resourceTemplateId),
       this.fetchSparePartRows(sb, resourceTemplateId),
+      this.fetchVariantMap(sb, resourceTemplateId),
     ]);
 
     if (!resourceTemplate) {
@@ -207,7 +218,7 @@ export class KtCatBlockMapperService {
     };
 
     const { blocks: serviceBlocks, skipped: skippedServiceGroups } =
-      this.buildServiceBlocks(serviceRows, variants, resourceTemplateId, selectedResource);
+      this.buildServiceBlocks(serviceRows, variants, variantMap, resourceTemplateId, selectedResource);
 
     const { blocks: spareBlocks, skipped: skippedSpareParts } =
       this.buildSpareBlocks(spareRows, resourceTemplateId, selectedResource);
@@ -225,6 +236,7 @@ export class KtCatBlockMapperService {
   private buildServiceBlocks(
     rows:             ServiceGroupRow[],
     variants:         KtVariant[],
+    variantMap:       VariantMapRow[],
     resourceTemplateId: string,
     selectedResource: SelectedResource,
   ): { blocks: CatBlockPayload[]; skipped: number } {
@@ -236,27 +248,66 @@ export class KtCatBlockMapperService {
       groups.set(row.service_name, existing);
     }
 
-    // Build SelectedVariant list from KT variants (for wizard pre-population)
-    const selectedVariants: SelectedVariant[] = variants.map(v => ({
-      variant_id:     v.id,
-      variant_name:   v.name,
-      capacity_range: v.capacity_range,
-    }));
+    // checkpoint → applicable variant rows (with optional price overrides)
+    const mapByCheckpoint = new Map<string, VariantMapRow[]>();
+    for (const m of variantMap) {
+      const arr = mapByCheckpoint.get(m.checkpoint_id) || [];
+      arr.push(m);
+      mapByCheckpoint.set(m.checkpoint_id, arr);
+    }
 
     const blocks: CatBlockPayload[] = [];
 
     for (const [serviceName, groupRows] of groups) {
-      const representative = groupRows[0];
-      const referencePrice = representative.price_median ?? 0;
-      const currency       = representative.price_currency || 'INR';
-
       const ktCheckpointIds = [...new Set(groupRows.map(r => r.checkpoint_id))];
 
-      // KT market range across the group (min of mins, max of maxes)
-      const mins = groupRows.map(r => r.price_min).filter((v): v is number => v != null);
-      const maxs = groupRows.map(r => r.price_max).filter((v): v is number => v != null);
+      // Multi-currency: one pricing entry per currency present on the group's
+      // cycles (KT holds one currency per cycle row, per geo). Primary currency
+      // prefers INR, else the first currency seen.
+      const byCurrency = new Map<string, ServiceGroupRow>();
+      for (const r of groupRows) {
+        if (r.price_median != null && !byCurrency.has(r.price_currency || 'INR')) {
+          byCurrency.set(r.price_currency || 'INR', r);
+        }
+      }
+      const currencies = [...byCurrency.keys()];
+      const primaryCurrency = currencies.includes('INR') ? 'INR' : (currencies[0] || 'INR');
+      const representative = byCurrency.get(primaryCurrency) || groupRows[0];
+      const referencePrice = representative.price_median ?? 0;
+      const currency = primaryCurrency;
+
+      // KT market range across the group, primary currency only
+      const primaryRows = groupRows.filter(r => (r.price_currency || 'INR') === primaryCurrency);
+      const rangeRows = primaryRows.length ? primaryRows : groupRows;
+      const mins = rangeRows.map(r => r.price_min).filter((v): v is number => v != null);
+      const maxs = rangeRows.map(r => r.price_max).filter((v): v is number => v != null);
       const ktPriceMin = mins.length ? Math.min(...mins) : null;
       const ktPriceMax = maxs.length ? Math.max(...maxs) : null;
+
+      // Variant applicability (founder finding): only the variants this
+      // service's checkpoints are mapped to — falling back to ALL variants
+      // when KT has no map rows for the group. Per-variant price = override
+      // midpoint when KT provides one, else the group reference price.
+      const groupMapRows = ktCheckpointIds.flatMap(id => mapByCheckpoint.get(id) || []);
+      const overrideByVariant = new Map<string, number>();
+      for (const m of groupMapRows) {
+        if (!overrideByVariant.has(m.variant_id) && (m.override_min != null || m.override_max != null)) {
+          const lo = m.override_min ?? m.override_max!;
+          const hi = m.override_max ?? m.override_min!;
+          overrideByVariant.set(m.variant_id, Math.round((lo + hi) / 2));
+        }
+      }
+      const applicableIds = new Set(groupMapRows.map(m => m.variant_id));
+      const applicableVariants = applicableIds.size > 0
+        ? variants.filter(v => applicableIds.has(v.id))
+        : variants;
+      const variantPrice = (v: KtVariant) => overrideByVariant.get(v.id) ?? referencePrice;
+
+      const selectedVariants: SelectedVariant[] = applicableVariants.map(v => ({
+        variant_id:     v.id,
+        variant_name:   v.name,
+        capacity_range: v.capacity_range,
+      }));
 
       // Service cadence: only calendar ('days') cycles translate to the
       // serviceCycles shape; 'visits'/'hours' cadences are usage-based.
@@ -271,42 +322,46 @@ export class KtCatBlockMapperService {
         : undefined;
 
       // variant_pricing top-level column (KT reference — used by contract pricing engine)
-      const variantPricing = variants.length > 0
-        ? { variants: variants.map(v => ({ id: v.id, name: v.name, capacity_range: v.capacity_range, price: referencePrice })) }
+      const variantPricing = applicableVariants.length > 0
+        ? { variants: applicableVariants.map(v => ({ id: v.id, name: v.name, capacity_range: v.capacity_range, price: variantPrice(v) })) }
         : undefined;
 
-      // Per-variant pricing records for the wizard's PricingStep
-      const variantPricingRecords: VariantPricingRecord[] = variants.map(v => ({
+      // Per-variant pricing records for the wizard's PricingStep (primary currency;
+      // KT overrides have no currency dimension yet)
+      const variantPricingRecords: VariantPricingRecord[] = applicableVariants.map(v => ({
         id:             `vp-${v.id}`,
         variant_id:     v.id,
         variant_name:   v.name,
         capacity_range: v.capacity_range,
         currency,
-        amount:         referencePrice,
+        amount:         variantPrice(v),
         price_type:     'fixed',
         tax_inclusion:  'exclusive',
         taxes:          [],
         is_active:      true,
       }));
 
+      // One pricing record per currency present in KT (multi-currency support)
+      const pricingRecords: PricingRecord[] = (currencies.length ? currencies : [currency]).map((cur, i) => ({
+        id:            String(i + 1),
+        currency:      cur,
+        amount:        byCurrency.get(cur)?.price_median ?? referencePrice,
+        price_type:    'fixed' as const,
+        tax_inclusion: 'exclusive' as const,
+        taxes:         [] as [],
+        is_active:     true,
+      }));
+
       const config: BlockConfig = {
         selectedResources:    [selectedResource],
         selectedVariants,
-        pricingMode:          variants.length > 0 ? 'variant_based' : 'independent',
+        pricingMode:          applicableVariants.length > 0 ? 'variant_based' : 'independent',
         priceType:            'fixed',
         deliveryMode:         'onsite',
         serviceCycles,
-        pricingRecords:       [{
-          id:            '1',
-          currency,
-          amount:        referencePrice,
-          price_type:    'fixed',
-          tax_inclusion: 'exclusive',
-          taxes:         [],
-          is_active:     true,
-        }],
-        variantPricingMode:    variants.length > 0 ? 'per_variant' : 'all',
-        variantPricingRecords: variants.length > 0 ? variantPricingRecords : undefined,
+        pricingRecords,
+        variantPricingMode:    applicableVariants.length > 0 ? 'per_variant' : 'all',
+        variantPricingRecords: applicableVariants.length > 0 ? variantPricingRecords : undefined,
         // KT reference — pricing review step uses these to show suggested prices
         kt_reference_price:    representative.price_median,
         kt_price_min:          ktPriceMin,
@@ -504,6 +559,26 @@ export class KtCatBlockMapperService {
     }
 
     return rows;
+  }
+
+  private async fetchVariantMap(sb: SupabaseClient, resourceTemplateId: string): Promise<VariantMapRow[]> {
+    // Two-step (checkpoints for template → map rows) keeps this anon/JWT-safe
+    const { data: cps, error: cpErr } = await sb
+      .from('m_equipment_checkpoints')
+      .select('id')
+      .eq('resource_template_id', resourceTemplateId)
+      .eq('is_active', true);
+    if (cpErr || !cps?.length) return [];
+
+    const { data, error } = await sb
+      .from('m_checkpoint_variant_map')
+      .select('checkpoint_id, variant_id, override_min, override_max')
+      .in('checkpoint_id', cps.map((c: any) => c.id));
+    if (error) {
+      console.error('KtCatBlockMapper: fetchVariantMap error', error.message);
+      return [];
+    }
+    return data || [];
   }
 
   private async fetchSparePartRows(sb: SupabaseClient, resourceTemplateId: string): Promise<SparePartRow[]> {

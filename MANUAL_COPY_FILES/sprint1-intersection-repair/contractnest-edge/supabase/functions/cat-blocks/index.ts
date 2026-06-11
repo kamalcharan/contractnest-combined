@@ -196,11 +196,14 @@ async function handleGetBlocks(
   // every caller received test+live duplicates once seeding worked.
   query = query.eq('is_live', ctx.isLive);
 
-  // Visibility filter
+  // Visibility filter (Sprint 1 SECURITY FIX): the is_seed clause used to have
+  // NO tenant condition — written when seeds were imagined as global content —
+  // so the moment seeding worked, every tenant saw every tenant's seeded
+  // blocks. Seeded blocks are tenant-owned; only global (tenant_id null)
+  // blocks are shared.
   if (!ctx.isAdmin) {
     query = query.or(
       `and(tenant_id.is.null,is_active.eq.true,visible.eq.true),` +
-      `and(is_seed.eq.true,is_active.eq.true),` +
       `tenant_id.eq.${ctx.tenantId}`
     );
   }
