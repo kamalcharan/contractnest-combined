@@ -151,6 +151,7 @@ interface SparePartRow {
   price_max:      number | null;
   price_currency: string;
   price_unit:     string | null;
+  prices?:        Array<{ currency: string; price_min: number | null; price_median: number | null; price_max: number | null }>;
 }
 
 interface ResourceTemplateRow {
@@ -405,8 +406,13 @@ export class KtCatBlockMapperService {
     const blocks: CatBlockPayload[] = [];
 
     for (const spare of rows) {
-      const price    = spare.price_median ?? 0;
-      const currency = spare.price_currency || 'INR';
+      // Multi-currency: all active geo-pricings, INR primary when present
+      const priceList = (spare.prices && spare.prices.length)
+        ? spare.prices
+        : [{ currency: spare.price_currency || 'INR', price_min: spare.price_min, price_median: spare.price_median, price_max: spare.price_max }];
+      const primary = priceList.find(p => p.currency === 'INR') || priceList[0];
+      const price    = primary.price_median ?? 0;
+      const currency = primary.currency || 'INR';
 
       blocks.push({
         name:                 spare.name,
@@ -423,19 +429,19 @@ export class KtCatBlockMapperService {
           pricingMode:          'independent',
           priceType:            'fixed',
           deliveryMode:         'onsite',
-          pricingRecords:       [{
-            id:            '1',
-            currency,
-            amount:        price,
-            price_type:    'fixed',
-            tax_inclusion: 'exclusive',
-            taxes:         [],
+          pricingRecords:       priceList.map((pv, i) => ({
+            id:            String(i + 1),
+            currency:      pv.currency || 'INR',
+            amount:        pv.price_median ?? 0,
+            price_type:    'fixed' as const,
+            tax_inclusion: 'exclusive' as const,
+            taxes:         [] as [],
             is_active:     true,
-          }],
+          })),
           variantPricingMode:   'all',
-          kt_reference_price:   spare.price_median,
-          kt_price_min:         spare.price_min,
-          kt_price_max:         spare.price_max,
+          kt_reference_price:   primary.price_median,
+          kt_price_min:         primary.price_min,
+          kt_price_max:         primary.price_max,
           kt_service_activity:  'spare_part',
         },
         is_seed:   true,
@@ -510,6 +516,25 @@ export class KtCatBlockMapperService {
 
     const checkpointMap = new Map(checkpoints.map((c: any) => [c.id, c]));
 
+    // Multi-pricing (m_kt_prices): every active geo/currency per cycle.
+    // Falls back to the legacy single-slot columns when a cycle has no rows.
+    const cycleIds = (cycles || []).map((c: any) => c.id);
+    let ktPriceRows: any[] = [];
+    if (cycleIds.length) {
+      const { data: pr } = await sb
+        .from('m_kt_prices')
+        .select('entity_id, currency, geo, price_min, price_median, price_max')
+        .eq('entity_type', 'service_cycle')
+        .in('entity_id', cycleIds);
+      ktPriceRows = pr || [];
+    }
+    const pricesByCycle = new Map<string, any[]>();
+    for (const r of ktPriceRows) {
+      const arr = pricesByCycle.get(r.entity_id) || [];
+      arr.push(r);
+      pricesByCycle.set(r.entity_id, arr);
+    }
+
     // Group cycles by checkpoint
     const cyclesByCheckpoint = new Map<string, any[]>();
     for (const cycle of (cycles || [])) {
@@ -524,21 +549,27 @@ export class KtCatBlockMapperService {
       const cpCycles = cyclesByCheckpoint.get(cp.id) || [];
 
       if (cpCycles.length > 0) {
-        // One row per cycle for this checkpoint
+        // One row per (cycle × active geo-pricing); legacy slot as fallback
         for (const cycle of cpCycles) {
-          rows.push({
-            service_name:     cp.service_name,
-            service_activity: cp.service_activity,
-            catalog_name:     cycle.catalog_name,   // may be null — display_name fallback
-            price_min:        cycle.price_min,
-            price_median:     cycle.price_median,    // may be null — user sets in pricing review
-            price_max:        cycle.price_max,
-            price_currency:   cycle.price_currency || 'INR',
-            checkpoint_id:    cp.id,
-            frequency_value:  cycle.frequency_value,
-            frequency_unit:   cycle.frequency_unit,
-            alert_overdue_days: cycle.alert_overdue_days,
-          });
+          const priceVariants = pricesByCycle.get(cycle.id);
+          const priceList = priceVariants?.length
+            ? priceVariants
+            : [{ currency: cycle.price_currency || 'INR', price_min: cycle.price_min, price_median: cycle.price_median, price_max: cycle.price_max }];
+          for (const pv of priceList) {
+            rows.push({
+              service_name:     cp.service_name,
+              service_activity: cp.service_activity,
+              catalog_name:     cycle.catalog_name,   // may be null — display_name fallback
+              price_min:        pv.price_min,
+              price_median:     pv.price_median,      // may be null — user sets in pricing review
+              price_max:        pv.price_max,
+              price_currency:   pv.currency || 'INR',
+              checkpoint_id:    cp.id,
+              frequency_value:  cycle.frequency_value,
+              frequency_unit:   cycle.frequency_unit,
+              alert_overdue_days: cycle.alert_overdue_days,
+            });
+          }
         }
       } else {
         // No cycles for this checkpoint — still create a block (price = 0)
@@ -592,7 +623,24 @@ export class KtCatBlockMapperService {
       console.error('KtCatBlockMapper: fetchSparePartRows error', error.message);
       return [];
     }
-    return data || [];
+    const spares = (data || []) as SparePartRow[];
+
+    // Attach multi-pricing rows (m_kt_prices) per spare
+    if (spares.length) {
+      const { data: pr } = await sb
+        .from('m_kt_prices')
+        .select('entity_id, currency, price_min, price_median, price_max')
+        .eq('entity_type', 'spare_part')
+        .in('entity_id', spares.map(sp => sp.id));
+      const byId = new Map<string, any[]>();
+      for (const r of (pr || [])) {
+        const arr = byId.get(r.entity_id) || [];
+        arr.push(r);
+        byId.set(r.entity_id, arr);
+      }
+      for (const sp of spares) sp.prices = byId.get(sp.id) as any;
+    }
+    return spares;
   }
 }
 

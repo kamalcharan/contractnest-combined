@@ -49,6 +49,7 @@ contractnest-ui/
   src/pages/catalog-studio/blocks.tsx            ("Seeded from X" lineage badge, grid + list)
   src/utils/catalog-studio/catBlockAdapter.ts    (is_seed / resource_template_id / seeded_from_name in meta)
   src/pages/settings/seed-data/index.tsx         (NEW — Settings→Seed Data page: overview + safe re-seed)
+  src/pages/service-contracts/templates/admin/knowledge-tree/KnowledgeTreeDetail.tsx (active-pricing chips per currency/geo — FULL FILE; if you have local edits here, hand-insert the chips block instead)
   src/utils/constants/settingsMenus.ts           (Seed Data menu entry under Business Profile)
   src/App.tsx                                    (route /settings/seed-data)
   .github/workflows/ci.yml                       (NEW — build gate)
@@ -63,5 +64,7 @@ contractnest-edge/
   supabase/migrations/transformation/20260611000004_resolve_industry_resource_templates.sql
   supabase/migrations/transformation/20260611000005_seed_onboarding_registry_assets.sql
   supabase/migrations/transformation/20260611000006_seed_data_management.sql (overview + cleanup RPCs — ALREADY APPLIED)
+  supabase/migrations/transformation/20260611000007_kt_multi_pricing.sql (m_kt_prices multi-currency store — ALREADY APPLIED)
+  supabase/functions/knowledge-tree/index.ts     (KT FIX: save-pricing upserts per-geo into m_kt_prices, never cross-geo overwrites; summary returns pricing_coverage + per-row prices) ⚠️ REDEPLOY REQUIRED
   .github/workflows/ci.yml                       (NEW — deno check)
 ═══════════════════════════════════════════════════════════════════
