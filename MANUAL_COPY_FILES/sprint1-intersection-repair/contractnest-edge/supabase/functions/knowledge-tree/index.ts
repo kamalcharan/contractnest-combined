@@ -10,6 +10,7 @@
 //   GET  /knowledge-tree/equipment-meta?resource_template_id=X
 //   POST /knowledge-tree/save-pricing (admin only — upsert pricing on spare_parts + service_cycles)
 //   POST /knowledge-tree/patch-service-names (admin only — UPDATE service_name by section, no wipe)
+//   POST /knowledge-tree/patch-variant-map (admin only — REPLACE checkpoint→variant applicability, no other data touched)
 //   GET  /knowledge-tree/compliance-defaults?sub_category=X
 //   POST /knowledge-tree/save (admin only — transactional insert across all tables)
 //   POST /knowledge-tree/equipment-meta (admin only — upsert)
@@ -1072,6 +1073,65 @@ async function patchServiceNames(body: any, isAdmin: boolean) {
   return jsonResponse({ status: "success", resource_template_id, sections_patched: service_names.length, checkpoints_updated: updated });
 }
 
+// ─── Route: POST /patch-variant-map ──────────────────────────────────────────
+// Patch: Replace checkpoint→variant applicability for an existing KT — no other data touched.
+// Empty map after replace = every checkpoint applies to all variants (mapper fallback).
+// Body: { resource_template_id, checkpoint_variant_map: [{ id?, checkpoint_id, variant_id, override_min, override_max }] }
+async function patchVariantMap(body: any, isAdmin: boolean) {
+  if (!isAdmin) return errorResponse("Admin access required", 403);
+
+  const { resource_template_id, checkpoint_variant_map } = body;
+  if (!resource_template_id) return errorResponse("resource_template_id required");
+  if (!Array.isArray(checkpoint_variant_map)) return errorResponse("checkpoint_variant_map array required (empty array = all checkpoints universal)");
+
+  const sb = getSupabaseAdmin();
+
+  // Scope safety: only accept IDs that belong to this template
+  const [cpRes, varRes] = await Promise.all([
+    sb.from("m_equipment_checkpoints").select("id").eq("resource_template_id", resource_template_id),
+    sb.from("m_equipment_variants").select("id").eq("resource_template_id", resource_template_id),
+  ]);
+  if (cpRes.error) return errorResponse(`checkpoints lookup: ${cpRes.error.message}`, 500);
+  if (varRes.error) return errorResponse(`variants lookup: ${varRes.error.message}`, 500);
+
+  const cpIds = new Set((cpRes.data || []).map((r: any) => r.id));
+  const varIds = new Set((varRes.data || []).map((r: any) => r.id));
+  if (cpIds.size === 0) return errorResponse("No checkpoints found for this resource_template_id");
+
+  const rows = checkpoint_variant_map
+    .filter((m: any) => cpIds.has(m.checkpoint_id) && varIds.has(m.variant_id))
+    .map((m: any) => ({
+      ...(m.id ? { id: m.id } : {}),
+      checkpoint_id: m.checkpoint_id,
+      variant_id: m.variant_id,
+      override_min: m.override_min ?? null,
+      override_max: m.override_max ?? null,
+    }));
+  const skipped = checkpoint_variant_map.length - rows.length;
+
+  // Replace semantics: wipe existing map for this template's checkpoints, insert fresh
+  const { error: delError } = await sb
+    .from("m_checkpoint_variant_map")
+    .delete()
+    .in("checkpoint_id", Array.from(cpIds));
+  if (delError) return errorResponse(`wipe failed: ${delError.message}`, 500);
+
+  let inserted = 0;
+  if (rows.length) {
+    const { data, error: insError } = await sb.from("m_checkpoint_variant_map").insert(rows).select("id");
+    if (insError) return errorResponse(`insert failed after wipe: ${insError.message}`, 500);
+    inserted = data?.length ?? 0;
+  }
+
+  return jsonResponse({
+    status: "success",
+    resource_template_id,
+    mappings_inserted: inserted,
+    skipped_foreign_ids: skipped,
+    variant_specific_checkpoints: new Set(rows.map((r: any) => r.checkpoint_id)).size,
+  });
+}
+
 // ─── Route: POST /save-pricing ────────────────────────────────────────────────
 // Step 5: Upsert pricing fields only — does NOT wipe/replace any KT data.
 // Body: {
@@ -1240,8 +1300,10 @@ serve(async (req: Request) => {
           return await savePricing(body, isAdmin);
         case "patch-service-names":
           return await patchServiceNames(body, isAdmin);
+        case "patch-variant-map":
+          return await patchVariantMap(body, isAdmin);
         default:
-          return errorResponse(`Unknown path: /${path}. Valid POST: save, delete, snapshot, restore, equipment-meta, tag-compliance, save-pricing, patch-service-names`, 404);
+          return errorResponse(`Unknown path: /${path}. Valid POST: save, delete, snapshot, restore, equipment-meta, tag-compliance, save-pricing, patch-service-names, patch-variant-map`, 404);
       }
     }
 

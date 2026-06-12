@@ -3,7 +3,7 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, TreePine, Wrench, Package, ClipboardCheck, RefreshCw,
-  MapPin, CheckCircle2, AlertCircle, Save, History, Loader2, FileText, Trash2, AlertTriangle, Plus, ShieldCheck, DollarSign, Tag,
+  MapPin, CheckCircle2, AlertCircle, Save, History, Loader2, FileText, Trash2, AlertTriangle, Plus, ShieldCheck, DollarSign, Tag, Network,
 } from 'lucide-react';
 import { useTheme } from '../../../../../contexts/ThemeContext';
 import { vaniToast } from '@/components/common/toast/VaNiToast';
@@ -12,7 +12,7 @@ import {
   useKnowledgeTreeDelete, useKnowledgeTreeGenerate,
   useUpsertEquipmentMeta, useTagCompliance, useSaveContextOverlays,
   useKTGenerateVariants, useKTGenerateSpareParts, useKTGenerateCheckpoints, useKTGenerateServiceCycles,
-  useKTGeneratePricing, useKTGenerateServiceNames,
+  useKTGeneratePricing, useKTGenerateServiceNames, useKTGenerateVariantApplicability,
 } from '@/hooks/queries/useKnowledgeTree';
 import type { KnowledgeTreeSummary } from './types';
 import KTGenerationModal from './components/KTGenerationModal';
@@ -88,6 +88,7 @@ const KnowledgeTreeDetail: React.FC = () => {
   // ── Step 5 + Option A mutations ──
   const generatePricingMutation = useKTGeneratePricing();
   const generateServiceNamesMutation = useKTGenerateServiceNames();
+  const generateVariantMapMutation = useKTGenerateVariantApplicability();
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isTaggingCompliance, setIsTaggingCompliance] = useState(false);
@@ -224,6 +225,38 @@ const KnowledgeTreeDetail: React.FC = () => {
       vaniToast.error(`Service name generation failed: ${(err as Error).message}`);
     }
   }, [id, summary, localCheckpoints, generateServiceNamesMutation, refetch]);
+
+  // ── Patch: Generate variant applicability for existing checkpoints ────────────
+  const handleGenerateVariantMap = useCallback(async () => {
+    if (!id || !summary) return;
+    const allCheckpointsFlat = Object.values(localCheckpoints).flat();
+    if (summary.variants.length === 0) {
+      vaniToast.warning('No variants — generate variants first (Step 1)');
+      return;
+    }
+    if (allCheckpointsFlat.length === 0) {
+      vaniToast.warning('No checkpoints — generate checkpoints first (Step 3)');
+      return;
+    }
+    try {
+      const result = await generateVariantMapMutation.mutateAsync({
+        equipmentName: summary.resource_template.name,
+        subCategory: summary.resource_template.sub_category,
+        resourceTemplateId: id,
+        variants: summary.variants.map((v: any) => ({ id: v.id, name: v.name, capacity_range: v.capacity_range })),
+        checkpoints: allCheckpointsFlat.map((cp: any) => ({ id: cp.id, name: cp.name, section_name: cp.section_name, service_activity: cp.service_activity })),
+      });
+      const { mappings, variant_specific_checkpoints, universal_checkpoints } = result.stats;
+      vaniToast.success(
+        mappings === 0
+          ? `Variant applicability done — all ${universal_checkpoints} checkpoints are universal (apply to every variant)`
+          : `Variant applicability done — ${mappings} mappings on ${variant_specific_checkpoints} variant-specific checkpoints (${universal_checkpoints} universal)`
+      );
+      refetch();
+    } catch (err) {
+      vaniToast.error(`Variant applicability generation failed: ${(err as Error).message}`);
+    }
+  }, [id, summary, localCheckpoints, generateVariantMapMutation, refetch]);
 
   // ── Step 5: Generate pricing for spare parts + service cycles ─────────────────
   const handleGeneratePricing = useCallback(async () => {
@@ -745,7 +778,8 @@ const KnowledgeTreeDetail: React.FC = () => {
     generateCheckpointsMutation.isPending ||
     generateServiceCyclesMutation.isPending ||
     generatePricingMutation.isPending ||
-    generateServiceNamesMutation.isPending;
+    generateServiceNamesMutation.isPending ||
+    generateVariantMapMutation.isPending;
 
   const borderColor = colors.utility.secondaryText + '15';
   const cardBg = colors.utility.secondaryBackground;
@@ -930,6 +964,24 @@ const KnowledgeTreeDetail: React.FC = () => {
                       ? <Loader2 className="h-3 w-3 animate-spin" />
                       : <Tag className="h-3 w-3" />}
                     {generateServiceNamesMutation.isPending ? 'Naming...' : 'Service Names'}
+                  </button>
+
+                  {/* Patch: Generate Variant Applicability (checkpoint→variant map, no wipe) */}
+                  <button
+                    onClick={handleGenerateVariantMap}
+                    disabled={isStepGenerating || ktIsActive || checkpointsCount === 0 || variantsCount === 0}
+                    className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full font-medium border transition-all hover:opacity-80 disabled:opacity-40"
+                    style={{ borderColor: '#8b5cf640', color: '#8b5cf6', backgroundColor: '#8b5cf608' }}
+                    title={
+                      variantsCount === 0 ? 'Generate variants first (Step 1)'
+                      : checkpointsCount === 0 ? 'Generate checkpoints first (Step 3)'
+                      : 'Map which variants each checkpoint applies to (enables variant-aware seeding + per-variant pricing)'
+                    }
+                  >
+                    {generateVariantMapMutation.isPending
+                      ? <Loader2 className="h-3 w-3 animate-spin" />
+                      : <Network className="h-3 w-3" />}
+                    {generateVariantMapMutation.isPending ? 'Mapping...' : 'Variant Map'}
                   </button>
 
                   {/* Step 5: Generate Pricing with currency selector */}
