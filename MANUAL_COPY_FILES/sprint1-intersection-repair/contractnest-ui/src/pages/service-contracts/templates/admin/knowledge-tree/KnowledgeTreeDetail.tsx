@@ -218,8 +218,8 @@ const KnowledgeTreeDetail: React.FC = () => {
         checkpoints: allCheckpointsFlat.map((cp: any) => ({ id: cp.id, name: cp.name, section_name: cp.section_name })),
       });
       vaniToast.success(`Service names generated — ${result.service_names.length} sections named`);
+      setActiveTab('services');
       refetch();
-      setActiveTab('checkpoints');
     } catch (err) {
       vaniToast.error(`Service name generation failed: ${(err as Error).message}`);
     }
@@ -755,7 +755,11 @@ const KnowledgeTreeDetail: React.FC = () => {
     { key: 'spare-parts', label: partsTabLabel, icon: <Package className="h-4 w-4" />, count: allPartsCount },
     { key: 'checkpoints', label: 'Checkpoints', icon: <ClipboardCheck className="h-4 w-4" />, count: allCheckpointsFlat.length },
     { key: 'cycles', label: 'Service Cycles', icon: <RefreshCw className="h-4 w-4" />, count: localCycles.length },
-    { key: 'services', label: 'Services', icon: <Tag className="h-4 w-4" />, count: ((summary as any)?.service_definitions || []).length },
+    { key: 'services', label: 'Services', icon: <Tag className="h-4 w-4" />, count: (() => {
+        const defs = ((summary as any)?.service_definitions || []).map((d: any) => d.service_name);
+        const offerings = [...new Set((((summary as any)?.cycles) || []).map((cy: any) => cy.catalog_name).filter(Boolean))];
+        return new Set([...defs, ...offerings]).size;
+      })() },
     { key: 'overlays', label: 'Overlays', icon: <MapPin className="h-4 w-4" />, count: summary?.summary.overlays_count || 0 },
     { key: 'form-preview', label: 'Form Preview', icon: <FileText className="h-4 w-4" />, count: allCheckpointsFlat.length },
   ], [localVariants, allPartsCount, allCheckpointsFlat, localCycles, summary]);
@@ -1103,16 +1107,40 @@ const KnowledgeTreeDetail: React.FC = () => {
               arr.push(c); cpsByService.set(c.service_name, arr);
             });
             const cpIds = (name: string) => new Set((cpsByService.get(name) || []).map((c: any) => c.id));
+            // Founder taxonomy: chargeable Services = named work packages
+            // (cycle.catalog_name) ∪ section jobs (checkpoint.service_name).
+            const cpById = new Map(cps.map((c: any) => [c.id, c]));
+            const defNames = new Set(defs.map((d: any) => d.service_name));
+            const offeringNames = [...new Set(cycles.filter((cy: any) => cy.catalog_name).map((cy: any) => cy.catalog_name))]
+              .filter((n: any) => !defNames.has(n));
+            const allServices = [
+              ...defs.map((d: any) => ({ ...d, kind: 'job' as const })),
+              ...offeringNames.map((n: any) => ({ service_name: n, description: null, kind: 'offering' as const })),
+            ];
+            const actsFor = (svc: any): string[] => {
+              if (svc.kind === 'offering') {
+                const set = new Set<string>();
+                cycles.filter((cy: any) => cy.catalog_name === svc.service_name)
+                  .forEach((cy: any) => { const c = cpById.get(cy.checkpoint_id); if (c?.service_activity) set.add(c.service_activity); });
+                return [...set];
+              }
+              return [...new Set((cpsByService.get(svc.service_name) || []).map((c: any) => c.service_activity).filter(Boolean))] as string[];
+            };
             return (
               <div className="space-y-3">
-                {defs.length === 0 && (
+                {allServices.length === 0 && (
                   <div className="text-sm py-10 text-center" style={{ color: colors.utility.secondaryText }}>
                     No services defined yet — run <b>Service Names</b> above to group checkpoints into sellable services.
                   </div>
                 )}
-                {defs.map((d: any) => {
-                  const ids = cpIds(d.service_name);
-                  const svcCycles = cycles.filter((cy: any) => ids.has(cy.checkpoint_id));
+                {allServices.map((d: any) => {
+                  const ids = d.kind === 'offering'
+                    ? new Set(cycles.filter((cy: any) => cy.catalog_name === d.service_name).map((cy: any) => cy.checkpoint_id))
+                    : cpIds(d.service_name);
+                  const svcCycles = d.kind === 'offering'
+                    ? cycles.filter((cy: any) => cy.catalog_name === d.service_name)
+                    : cycles.filter((cy: any) => ids.has(cy.checkpoint_id));
+                  const acts = actsFor(d);
                   const cadences = [...new Set(svcCycles.filter((cy: any) => cy.frequency_unit === 'days' && cy.frequency_value)
                     .map((cy: any) => `every ${cy.frequency_value}d`))];
                   const prices = svcCycles.flatMap((cy: any) => cy.prices || []);
@@ -1132,6 +1160,9 @@ const KnowledgeTreeDetail: React.FC = () => {
                           )}
                         </div>
                         <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
+                          {acts.map((a: string) => (
+                            <span key={a} className="text-[10px] font-mono px-2 py-0.5 rounded-full uppercase" style={{ backgroundColor: '#8b5cf615', color: '#8b5cf6' }}>{a}</span>
+                          ))}
                           <span className="text-[10px] font-mono px-2 py-0.5 rounded-full" style={{ backgroundColor: colors.brand.primary + '12', color: colors.brand.primary }}>
                             {ids.size} checkpoints
                           </span>

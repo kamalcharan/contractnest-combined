@@ -1120,8 +1120,9 @@ async function savePricing(body: any, isAdmin: boolean) {
     const upErr = await upsertPrice("spare_part", sp, sp.price_unit);
     if (upErr) { errors.push(`spare_part ${sp.id}: ${upErr.message}`); continue; }
 
-    // Legacy slot: never cross-geo overwrite
-    const { error } = await sb
+    // Legacy slot policy (founder: INR is default): home geo 'IN' ALWAYS owns
+    // the slot; other geos may only fill an empty slot.
+    let slotQuery = sb
       .from("m_equipment_spare_parts")
       .update({
         price_min: sp.price_min ?? null,
@@ -1132,8 +1133,9 @@ async function savePricing(body: any, isAdmin: boolean) {
         price_geo: geo,
       })
       .eq("id", sp.id)
-      .eq("resource_template_id", resource_template_id)
-      .or(`price_geo.is.null,price_geo.eq.${geo}`);
+      .eq("resource_template_id", resource_template_id);
+    if (geo !== "IN") slotQuery = slotQuery.or(`price_geo.is.null,price_geo.eq.${geo}`);
+    const { error } = await slotQuery;
     if (error) errors.push(`spare_part ${sp.id}: ${error.message}`);
     else updated.spare_parts = (updated.spare_parts || 0) + 1;
   }
@@ -1144,7 +1146,7 @@ async function savePricing(body: any, isAdmin: boolean) {
     const upErr = await upsertPrice("service_cycle", sc);
     if (upErr) { errors.push(`service_cycle ${sc.id}: ${upErr.message}`); continue; }
 
-    const { error } = await sb
+    let cycleSlotQuery = sb
       .from("m_service_cycles")
       .update({
         price_min: sc.price_min ?? null,
@@ -1153,8 +1155,9 @@ async function savePricing(body: any, isAdmin: boolean) {
         price_currency: currency,
         price_geo: geo,
       })
-      .eq("id", sc.id)
-      .or(`price_geo.is.null,price_geo.eq.${geo}`);
+      .eq("id", sc.id);
+    if (geo !== "IN") cycleSlotQuery = cycleSlotQuery.or(`price_geo.is.null,price_geo.eq.${geo}`);
+    const { error } = await cycleSlotQuery;
     if (error) errors.push(`service_cycle ${sc.id}: ${error.message}`);
     else updated.service_cycles = (updated.service_cycles || 0) + 1;
   }

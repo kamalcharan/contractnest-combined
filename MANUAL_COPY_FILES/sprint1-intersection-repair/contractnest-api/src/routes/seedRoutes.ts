@@ -250,6 +250,9 @@ router.get('/tenant/seed-preview', async (req: Request, res: Response) => {
       kt_price_max: b.config?.kt_price_max ?? null,
     });
 
+    const variantIds = new Set<string>();
+    blocks.forEach((b: any) => (b.config?.selectedVariants || []).forEach((v: any) => v?.variant_id && variantIds.add(v.variant_id)));
+
     return res.status(200).json({
       success: true,
       data: {
@@ -258,6 +261,7 @@ router.get('/tenant/seed-preview', async (req: Request, res: Response) => {
           services: services.length,
           spares: spares.length,
           priced: blocks.filter(b => (b.base_price || 0) > 0).length,
+          variants: variantIds.size,
           total: blocks.length,
         },
         services: services.map(summarize),

@@ -32,7 +32,7 @@ interface RawBlock {
 }
 
 interface SeedPreview {
-  counts: { services: number; spares: number; priced: number; total: number };
+  counts: { services: number; spares: number; priced: number; variants?: number; total: number };
   services: PreviewItem[];
   spares: PreviewItem[];
 }
@@ -279,6 +279,10 @@ const CatalogEquipmentPage: React.FC = () => {
 
   const selBlocks = selectedId ? (blocksByTemplate.get(selectedId) || []) : [];
 
+  // Facilities call parts "Consumables" (founder taxonomy)
+  const selIsFacility = ((selected as any)?.resource_type_id || '').toLowerCase() === 'asset';
+  const partsLabel = selIsFacility ? 'Consumables' : 'Spare Parts';
+
   // Variants present across this equipment's blocks (for the variant filter)
   const selVariants = useMemo(() => {
     const m = new Map<string, string>();
@@ -316,13 +320,13 @@ const CatalogEquipmentPage: React.FC = () => {
   const cov = selectedId ? ktCoverage?.[selectedId] : undefined;
 
   // Column headings (founder feedback #1)
-  const Cols: React.FC<{ perUnit: boolean }> = ({ perUnit }) => (
+  const Cols: React.FC<{ perUnit: boolean; partsHeading?: string }> = ({ perUnit, partsHeading }) => (
     <div style={{
       display: 'grid', gridTemplateColumns: '1fr 110px 90px 130px 130px 60px',
       gap: 12, padding: '8px 20px', background: SURFACE, borderBottom: `1px solid ${BORDER_LT}`,
       fontFamily: MONO, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, color: TEXT_MUTED,
     }}>
-      <span>{perUnit ? 'Part / Consumable' : 'Service'}</span>
+      <span>{perUnit ? (partsHeading || 'Part / Consumable') : 'Service'}</span>
       <span>{perUnit ? '' : 'Cycle'}</span>
       <span>{perUnit ? '' : 'Variants'}</span>
       <span>Your price</span>
@@ -403,7 +407,7 @@ const CatalogEquipmentPage: React.FC = () => {
                     </div>
                   </div>
                   <div style={{ marginLeft: 'auto', display: 'flex', gap: 10 }}>
-                    {[['Services', selServices.length], ['Spares', selSpares.length], ['Priced', selBlocks.filter(b => num(b.base_price) > 0).length]].map(([k, v]) => (
+                    {[['Services', selServices.length], [partsLabel, selSpares.length], ['Variants', selVariants.length], ['Priced', selBlocks.filter(b => num(b.base_price) > 0).length]].map(([k, v]) => (
                       <div key={String(k)} style={{ background: WHITE, border: `1px solid ${BORDER}`, borderRadius: 10, padding: '8px 16px', textAlign: 'center', minWidth: 84 }}>
                         <div style={{ fontFamily: MONO, fontSize: 17, fontWeight: 800, color: TEXT }}>{String(v)}</div>
                         <div style={{ fontSize: 10, color: TEXT_DIM }}>{String(k)}</div>
@@ -503,9 +507,9 @@ const CatalogEquipmentPage: React.FC = () => {
                 {selSpares.length > 0 && (
                   <div style={{ background: WHITE, border: `1px solid ${BORDER}`, borderRadius: 14, overflow: 'hidden', marginBottom: 16, boxShadow: '0 2px 12px rgba(0,0,0,.04)' }}>
                     <div style={{ padding: '12px 20px', background: SURFACE, borderBottom: `1px solid ${BORDER_LT}`, fontSize: 13, fontWeight: 800, color: TEXT }}>
-                      Spare Parts &amp; Consumables <span style={{ fontFamily: MONO, fontSize: 10, color: TEXT_DIM, fontWeight: 400 }}>· {selSpares.length}</span>
+                      {partsLabel} <span style={{ fontFamily: MONO, fontSize: 10, color: TEXT_DIM, fontWeight: 400 }}>· {selSpares.length}</span>
                     </div>
-                    <Cols perUnit={true} />
+                    <Cols perUnit={true} partsHeading={selIsFacility ? 'Consumable' : 'Spare Part'} />
                     {selSpares.map(b => <Row key={b.id} b={b} perUnit={true} viewCurrency={activeCurrency} />)}
                   </div>
                 )}
@@ -541,7 +545,7 @@ const CatalogEquipmentPage: React.FC = () => {
               ) : preview ? (
                 <>
                   <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-                    {[['Services', preview.counts.services], ['Spares', preview.counts.spares], ['KT priced', preview.counts.priced], ['Total blocks', preview.counts.total]].map(([k, v]) => (
+                    {[['Services', preview.counts.services], [selIsFacility ? 'Consumables' : 'Spares', preview.counts.spares], ['Variants', preview.counts.variants ?? 0], ['KT priced', preview.counts.priced], ['Total blocks', preview.counts.total]].map(([k, v]) => (
                       <div key={String(k)} style={{ flex: 1, background: SURFACE, border: `1px solid ${BORDER_LT}`, borderRadius: 10, padding: 10, textAlign: 'center' }}>
                         <div style={{ fontFamily: MONO, fontWeight: 800, fontSize: 18, color: VANI }}>{String(v)}</div>
                         <div style={{ fontSize: 10, color: TEXT_DIM }}>{String(k)}</div>
@@ -549,7 +553,7 @@ const CatalogEquipmentPage: React.FC = () => {
                     ))}
                   </div>
 
-                  {[['Services it will create', preview.services, false], ['Spare parts it will create', preview.spares, true]].map(([title, items, perUnit]) => (items as PreviewItem[]).length > 0 && (
+                  {[['Services it will create', preview.services, false], [selIsFacility ? 'Consumables it will create' : 'Spare parts it will create', preview.spares, true]].map(([title, items, perUnit]) => (items as PreviewItem[]).length > 0 && (
                     <div key={String(title)} style={{ border: `1px solid ${BORDER_LT}`, borderRadius: 10, overflow: 'hidden', marginBottom: 14 }}>
                       <div style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, color: TEXT_MUTED, padding: '8px 14px', background: SURFACE, borderBottom: `1px solid ${BORDER_LT}` }}>{String(title)}</div>
                       {(items as PreviewItem[]).slice(0, 8).map((it, i) => (

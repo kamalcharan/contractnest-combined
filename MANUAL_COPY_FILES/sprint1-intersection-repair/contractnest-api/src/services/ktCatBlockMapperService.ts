@@ -245,12 +245,18 @@ export class KtCatBlockMapperService {
     resourceTemplateId: string,
     selectedResource: SelectedResource,
   ): { blocks: CatBlockPayload[]; skipped: number } {
-    // Group rows by service_name
+    // Group rows into chargeable Services (founder taxonomy):
+    //   named work packages (cycle.catalog_name) first — e.g. "DG Set
+    //   Preventive Maintenance — Comprehensive"; per-section jobs
+    //   (checkpoint.service_name) for everything else. Each group becomes
+    //   exactly ONE block; cadence rides along as serviceCycles data.
     const groups = new Map<string, ServiceGroupRow[]>();
     for (const row of rows) {
-      const existing = groups.get(row.service_name) || [];
+      const key = row.catalog_name || row.service_name;
+      if (!key) continue;
+      const existing = groups.get(key) || [];
       existing.push(row);
-      groups.set(row.service_name, existing);
+      groups.set(key, existing);
     }
 
     // checkpoint → applicable variant rows (with optional price overrides)
@@ -371,12 +377,12 @@ export class KtCatBlockMapperService {
         kt_reference_price:    representative.price_median,
         kt_price_min:          ktPriceMin,
         kt_price_max:          ktPriceMax,
-        kt_service_activity:   representative.service_activity,
+        kt_service_activity:   representative.service_activity || 'pm',
       };
 
       blocks.push({
         name:                 serviceName,
-        display_name:         representative.catalog_name || serviceName,
+        display_name:         serviceName,
         description:          serviceDefs.get(serviceName) ?? null,
         block_type_id:        BLOCK_TYPE_SERVICE,
         pricing_mode_id:      PRICING_MODE_VARIANT_BASED,
@@ -501,13 +507,17 @@ export class KtCatBlockMapperService {
   }
 
   private async fetchServiceCycleRowsFallback(sb: SupabaseClient, resourceTemplateId: string): Promise<ServiceGroupRow[]> {
-    // Fetch checkpoints — service_name must be non-null (it's the block name)
+    // Founder model: every chargeable non-part is a Service. Blocks come from
+    // (a) named work packages — cycles carrying catalog_name (e.g. "DG Set
+    //     Preventive Maintenance" scope), even when checkpoints aren't named;
+    // (b) service_name groupings (per-section jobs: repair/install/decomm).
+    // So fetch ALL active checkpoints; rows are emitted only when a group key
+    // (catalog_name ?? service_name) exists.
     const { data: checkpoints, error: cpError } = await sb
       .from('m_equipment_checkpoints')
       .select('id, service_name, service_activity')
       .eq('resource_template_id', resourceTemplateId)
-      .eq('is_active', true)
-      .not('service_name', 'is', null);
+      .eq('is_active', true);
 
     if (cpError || !checkpoints?.length) return [];
 
@@ -555,8 +565,11 @@ export class KtCatBlockMapperService {
       const cpCycles = cyclesByCheckpoint.get(cp.id) || [];
 
       if (cpCycles.length > 0) {
-        // One row per (cycle × active geo-pricing); legacy slot as fallback
+        // One row per (cycle × active geo-pricing); legacy slot as fallback.
+        // Rows without any group key (no catalog_name AND unnamed checkpoint)
+        // are skipped — nothing chargeable to sell yet.
         for (const cycle of cpCycles) {
+          if (!cycle.catalog_name && !cp.service_name) continue;
           const priceVariants = pricesByCycle.get(cycle.id);
           const priceList = priceVariants?.length
             ? priceVariants
@@ -565,7 +578,7 @@ export class KtCatBlockMapperService {
             rows.push({
               service_name:     cp.service_name,
               service_activity: cp.service_activity,
-              catalog_name:     cycle.catalog_name,   // may be null — display_name fallback
+              catalog_name:     cycle.catalog_name,
               price_min:        pv.price_min,
               price_median:     pv.price_median,      // may be null — user sets in pricing review
               price_max:        pv.price_max,
@@ -577,8 +590,8 @@ export class KtCatBlockMapperService {
             });
           }
         }
-      } else {
-        // No cycles for this checkpoint — still create a block (price = 0)
+      } else if (cp.service_name) {
+        // No cycles for this checkpoint — still part of its named job (price = 0)
         rows.push({
           service_name:     cp.service_name,
           service_activity: cp.service_activity,
