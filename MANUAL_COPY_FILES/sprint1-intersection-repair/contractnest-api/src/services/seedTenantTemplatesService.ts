@@ -161,6 +161,66 @@ function buildSelections(
   return selections;
 }
 
+// Single-equipment seed (Catalog Studio "Seed with VaNi") — the per-equipment
+// primitive the founder's design is built on. Persists the pick (S8), maps,
+// and bulk-loads both environments. Idempotent per (tenant, template, env).
+export async function seedSingleEquipment(input: {
+  tenantId: string;
+  resourceTemplateId: string;
+  purpose?: 'sell' | 'own';
+  authToken: string;
+  userId?: string | null;
+}): Promise<{
+  success: boolean;
+  status: 'success' | 'already_seeded' | 'no_kt_data' | 'error';
+  blocksCreated: number;
+  alreadySeeded: boolean;
+  errors: string[];
+}> {
+  const { tenantId, resourceTemplateId, purpose = 'sell', authToken, userId = null } = input;
+  const errors: string[] = [];
+
+  const persist = await persistSelectedResources(
+    tenantId,
+    [{ resource_template_id: resourceTemplateId, purpose }],
+    'settings',
+    userId,
+    authToken,
+  );
+  errors.push(...persist.errors.map(e => `Selection: ${e}`));
+
+  let blocks: CatBlockPayload[] = [];
+  let ktName = resourceTemplateId;
+  try {
+    const built = await ktCatBlockMapperService.buildBlocksForTemplate(resourceTemplateId, authToken);
+    blocks = built.blocks;
+    ktName = blocks[0]?.config?.selectedResources?.[0]?.resource_name || resourceTemplateId;
+  } catch (err: any) {
+    return { success: false, status: 'error', blocksCreated: 0, alreadySeeded: false, errors: [...errors, err?.message || 'mapper error'] };
+  }
+
+  if (!blocks.length) {
+    return { success: false, status: 'no_kt_data', blocksCreated: 0, alreadySeeded: false, errors };
+  }
+
+  const kts = [{ resource_template_id: resourceTemplateId, kt_name: ktName, blocks }];
+  const [testResult, liveResult] = await Promise.all([
+    callBulkSeed(kts, tenantId, authToken, false),
+    callBulkSeed(kts, tenantId, authToken, true),
+  ]);
+  errors.push(...testResult.errors, ...liveResult.errors);
+
+  const blocksCreated = testResult.blocksCreated + liveResult.blocksCreated;
+  const alreadySeeded = testResult.alreadySeeded + liveResult.alreadySeeded > 0;
+  const status = errors.length && blocksCreated === 0 && !alreadySeeded
+    ? 'error'
+    : blocksCreated > 0 ? 'success'
+    : alreadySeeded ? 'already_seeded'
+    : 'error';
+
+  return { success: status === 'success' || status === 'already_seeded', status, blocksCreated, alreadySeeded, errors };
+}
+
 export async function seedTenantTemplates(
   input: SeedTemplatesInput,
 ): Promise<SeedTemplatesResult> {

@@ -222,6 +222,82 @@ function jwtClient(authToken: string) {
   );
 }
 
+// GET /tenant/seed-preview?resource_template_id=X — what a seed WOULD create.
+// Runs the read-only mapper; nothing is written (Catalog Studio preview modal).
+router.get('/tenant/seed-preview', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const tenantId   = req.headers['x-tenant-id'] as string;
+    const templateId = req.query.resource_template_id as string;
+    if (!authHeader) return res.status(401).json({ error: 'Authorization header is required' });
+    if (!tenantId)   return res.status(400).json({ error: 'x-tenant-id header is required' });
+    if (!templateId) return res.status(400).json({ error: 'resource_template_id is required' });
+
+    const { ktCatBlockMapperService } = await import('../services/ktCatBlockMapperService');
+    const { blocks } = await ktCatBlockMapperService.buildBlocksForTemplate(templateId, authHeader);
+
+    const SPARE_TYPE = '1221e2dd-a603-47fb-9063-c393193514b7';
+    const services = blocks.filter(b => b.block_type_id !== SPARE_TYPE);
+    const spares   = blocks.filter(b => b.block_type_id === SPARE_TYPE);
+    const summarize = (b: any) => ({
+      name: b.name,
+      base_price: b.base_price,
+      currency: b.currency,
+      currencies: (b.config?.pricingRecords || []).map((r: any) => r.currency),
+      cycle_days: b.config?.serviceCycles?.days ?? null,
+      variants: (b.config?.selectedVariants || []).length,
+      kt_price_min: b.config?.kt_price_min ?? null,
+      kt_price_max: b.config?.kt_price_max ?? null,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        resource_template_id: templateId,
+        counts: {
+          services: services.length,
+          spares: spares.length,
+          priced: blocks.filter(b => (b.base_price || 0) > 0).length,
+          total: blocks.length,
+        },
+        services: services.map(summarize),
+        spares: spares.map(summarize),
+      },
+    });
+  } catch (error: any) {
+    console.error('[SeedRoutes] seed-preview error:', error.message);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /tenant/seed-equipment — body { resourceTemplateId, purpose? }
+// The single-equipment seed (Catalog Studio "Seed with VaNi" → Load).
+router.post('/tenant/seed-equipment', async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const tenantId   = req.headers['x-tenant-id'] as string;
+    if (!authHeader) return res.status(401).json({ error: 'Authorization header is required' });
+    if (!tenantId)   return res.status(400).json({ error: 'x-tenant-id header is required' });
+
+    const { resourceTemplateId, purpose } = req.body || {};
+    if (!resourceTemplateId) return res.status(400).json({ error: 'resourceTemplateId is required' });
+
+    const { seedSingleEquipment } = await import('../services/seedTenantTemplatesService');
+    const result = await seedSingleEquipment({
+      tenantId,
+      resourceTemplateId,
+      purpose: purpose === 'own' ? 'own' : 'sell',
+      authToken: authHeader,
+      userId: (req as any).user?.id || null,
+    });
+
+    return res.status(result.success ? 200 : 207).json({ success: result.success, status: result.status, data: result });
+  } catch (error: any) {
+    console.error('[SeedRoutes] seed-equipment error:', error.message);
+    return res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // GET /tenant/seed-overview — what onboarding seeded + picks + recent logs
 router.get('/tenant/seed-overview', async (req: Request, res: Response) => {
   try {
