@@ -1118,32 +1118,36 @@ const KnowledgeTreeDetail: React.FC = () => {
               </div>
             </div>
 
-            {/* Generation Sequence card — the canonical order for a COMPLETE Knowledge Tree */}
+            {/* Generation Sequence card — the canonical order for a COMPLETE Knowledge Tree.
+                Steps 1–4 are created automatically by the "+ Generate KT" prompt (grey =
+                auto); 5–6 are MANUAL admin runs (amber until done) — founder request. */}
             <div className="hidden xl:block px-4 py-2.5 rounded-xl border self-start" style={{ borderColor, background: colors.utility.primaryBackground }}>
               <p className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: colors.utility.secondaryText }}>
-                Generation Sequence · steps 3–5 per activity · pricing per currency
+                Generation Sequence · <span style={{ background: colors.utility.secondaryText + '14', padding: '0 4px', borderRadius: '3px' }}>auto via + Generate KT</span> · <span style={{ color: '#f59e0b' }}>amber = run manually</span> · steps 3–5 per activity · pricing per currency
               </p>
               <div className="flex items-center gap-1 flex-wrap">
                 {[
-                  { n: 1, label: 'Variants', done: variantsCount > 0 },
-                  { n: 2, label: 'Spare Parts', done: partsCount > 0 },
-                  { n: 3, label: 'Checkpoints + Variant Map', done: checkpointsCount > 0 },
-                  { n: 4, label: 'Cycles', done: cyclesCount > 0 },
-                  { n: 5, label: 'Service Names', done: (((summary as any)?.service_definitions || []).length) > 0 },
-                  { n: 6, label: 'Pricing', done: (((summary as any)?.pricing_coverage || []).length) > 0 },
+                  { n: 1, label: 'Variants', auto: true, done: variantsCount > 0 },
+                  { n: 2, label: 'Spare Parts', auto: true, done: partsCount > 0 },
+                  { n: 3, label: 'Checkpoints + Variant Map', auto: true, done: checkpointsCount > 0 },
+                  { n: 4, label: 'Cycles', auto: true, done: cyclesCount > 0 },
+                  { n: 5, label: 'Service Names', auto: false, done: (((summary as any)?.service_definitions || []).length) > 0 },
+                  { n: 6, label: 'Pricing', auto: false, done: (((summary as any)?.pricing_coverage || []).length) > 0 },
                 ].map((s, i, arr) => (
                   <React.Fragment key={s.n}>
                     <span
                       className="flex items-center gap-1 text-[11px] font-medium px-1.5 py-0.5 rounded"
                       style={{
-                        color: s.done ? colors.semantic.success : colors.utility.secondaryText,
-                        background: s.done ? colors.semantic.success + '10' : 'transparent',
+                        color: s.done ? colors.semantic.success : (s.auto ? colors.utility.secondaryText : '#f59e0b'),
+                        background: s.done
+                          ? colors.semantic.success + '10'
+                          : (s.auto ? colors.utility.secondaryText + '14' : '#f59e0b15'),
                       }}
-                      title={s.done ? `${s.n}. ${s.label} — done` : `${s.n}. ${s.label} — pending`}
+                      title={`${s.n}. ${s.label} — ${s.done ? 'done' : 'pending'} · ${s.auto ? 'created automatically by + Generate KT' : 'MANUAL: run from the buttons below'}`}
                     >
                       {s.done
                         ? <CheckCircle2 className="h-3 w-3" />
-                        : <span className="w-3.5 h-3.5 rounded-full border text-[9px] font-bold flex items-center justify-center" style={{ borderColor: colors.utility.secondaryText + '50' }}>{s.n}</span>}
+                        : <span className="w-3.5 h-3.5 rounded-full border text-[9px] font-bold flex items-center justify-center" style={{ borderColor: (s.auto ? colors.utility.secondaryText : '#f59e0b') + '60' }}>{s.n}</span>}
                       {s.label}
                     </span>
                     {i < arr.length - 1 && <span className="text-[11px]" style={{ color: colors.utility.secondaryText + '60' }}>→</span>}
