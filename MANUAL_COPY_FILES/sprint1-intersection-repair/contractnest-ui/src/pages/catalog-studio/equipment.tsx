@@ -429,7 +429,7 @@ const CatalogEquipmentPage: React.FC = () => {
                 )}
 
                 {/* Filters: variant applicability + currency view (founder feedback #2, #3) */}
-                {selBlocks.length > 0 && (selVariants.length > 0 || selCurrencies.length > 1) && (
+                {selBlocks.length > 0 && (selVariants.length > 0 || selCurrencies.length > 0) && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
                     {selVariants.length > 0 && (
                       <>
@@ -444,17 +444,32 @@ const CatalogEquipmentPage: React.FC = () => {
                         </select>
                       </>
                     )}
-                    {selCurrencies.length > 1 && (
+                    {selCurrencies.length > 0 && (
                       <>
                         <span style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, color: TEXT_MUTED, marginLeft: 8 }}>Currency</span>
-                        <select
-                          value={activeCurrency}
-                          onChange={e => setCurrencyView(e.target.value)}
-                          style={{ padding: '7px 12px', border: `1.5px solid ${BORDER}`, borderRadius: 8, fontFamily: MONO, fontSize: 12, fontWeight: 700, color: TEXT, background: WHITE, outline: 'none', cursor: 'pointer' }}
-                        >
-                          {selCurrencies.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                        <Badge tone="blue" title="This equipment's blocks hold prices in multiple currencies">{`${selCurrencies.length} CURRENCIES`}</Badge>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          {selCurrencies.map(c => {
+                            const active = c === activeCurrency;
+                            return (
+                              <button
+                                key={c}
+                                onClick={() => setCurrencyView(c)}
+                                title={active ? `Showing prices in ${c}` : `Click to view prices in ${c}`}
+                                style={{
+                                  fontFamily: MONO, fontSize: 12, fontWeight: 700,
+                                  padding: '6px 14px', borderRadius: 100, cursor: 'pointer',
+                                  border: `1.5px solid ${active ? VANI : BORDER}`,
+                                  background: active ? '#fff8f4' : WHITE,
+                                  color: active ? VANI : TEXT_DIM,
+                                  boxShadow: active ? '0 0 0 3px rgba(255,107,43,.08)' : 'none',
+                                  transition: 'all .15s',
+                                }}
+                              >
+                                {c === 'INR' ? '₹ INR' : c === 'USD' ? '$ USD' : c === 'EUR' ? '€ EUR' : c}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </>
                     )}
                     {variantFilter !== 'all' && (
