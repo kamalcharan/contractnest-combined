@@ -1,0 +1,79 @@
+═══════════════════════════════════════════════════════════════════
+SPRINT 1 — INTERSECTION REPAIR (KT → Onboarding → Catalog → Contract)
+Branch folder: MANUAL_COPY_FILES/sprint1-intersection-repair/
+═══════════════════════════════════════════════════════════════════
+
+SUBMODULES AFFECTED: contractnest-api, contractnest-ui, contractnest-edge
+(Plus parent-repo root: SPRINT1_REPORT.md, scripts/sprint1_proof.sql)
+
+⚠️ ONE FILE TO DELETE (legacy seeder, Task 1.3 decision):
+  contractnest-api\src\services\seedTenantOnIndustryConfirmedService.ts
+  (its route /api/seeds/tenant/industry-confirmed is removed in seedRoutes.ts)
+
+⚠️ DB MIGRATIONS: the 5 SQL files under contractnest-edge\supabase\migrations\
+  transformation\ are ALREADY APPLIED to the Supabase project
+  (uwyqhzotluikawcboldr) via MCP on 2026-06-11. Copy the files for the repo
+  record — do NOT re-run them (they are idempotent anyway).
+
+⚠️ EDGE DEPLOY REQUIRED before testing:
+  supabase functions deploy cat-blocks
+  supabase functions deploy onboarding
+  supabase functions deploy tenant-profile
+
+───────────────────────────────────────────────────────────────────
+FILES → DESTINATIONS (copy each, mirroring the path)
+
+contractnest-api/
+  src/services/onboardingIntentService.ts        (NEW — S8 persistence + resolution; forwards user JWT, anon-key API safe)
+  src/services/ktCatBlockMapperService.ts        (JWT forwarding + serviceCycles from KT frequency + kt_price_min/max + variant_based pricingMode)
+  src/services/seedTenantTemplatesService.ts     (REWRITTEN — intent-driven, no_coverage, buyer registry leg)
+  src/services/catBlocksService.ts               (is_seed list param + comment)
+  src/services/knowledgeTreeGeneratorService.ts  (VARIANT MAP: checkpoints step now asks for checkpoint_variant_map, tokens 8000→10000; NEW generateVariantApplicability; service-names tokens 2000→3000)
+  src/routes/seedRoutes.ts                       (legacy route removed; status passthrough)
+  src/routes/onboardingRoutes.ts                 (POST/GET /selected-resources)
+  src/routes/knowledgeTreeRoutes.ts              (NEW route: POST /generate-variant-map)
+  src/controllers/catalogStudioController.ts     (is_seed query param)
+  src/controllers/knowledgeTreeController.ts     (NEW endpoint generateVariantApplicability — validates/dedupes map entries against real IDs)
+  src/types/catalogStudioTypes.ts                (is_seed in BlockQueryParams)
+  src/types/onboardingTypes.ts                   (FIX: VaNi step ids accepted by step validator — S13 API side)
+  src/validators/catalogStudio.validators.ts     (FIX: is_seed param + limit cap 100→500)
+  src/skills/kt-checkpoints-generator.md         (VARIANT MAP: clean-generation fix — checkpoints step also emits checkpoint_variant_map)
+  src/skills/kt-facility-checkpoints-generator.md (same fix for facility zones)
+  src/skills/kt-variant-applicability-generator.md (NEW — retroactive patch skill for existing KTs)
+  src/__tests__/sprint1.integration.test.mjs     (NEW — tests 6.1–6.3, run: node --test src/__tests__/)
+  (seedRoutes.ts also adds: GET /tenant/seed-overview, POST /tenant/reseed,
+   GET /tenant/seed-preview (read-only mapper preview), POST /tenant/seed-equipment (single-equipment seed))
+  .github/workflows/ci.yml                       (NEW — typecheck + tests)
+
+contractnest-ui/
+  src/utils/onboarding/completeVaniStep.ts       (NEW — S13 step_data persistence helper)
+  src/hooks/useTenantProfile.ts                  (persona field on TenantProfile)
+  src/hooks/queries/useKnowledgeTree.ts          (NEW hook useKTGenerateVariantApplicability → /generate-variant-map + edge patch-variant-map)
+  src/pages/onboarding/steps/PersonaSelectionStep.tsx  (dual-writes persona + business_type_id)
+  src/pages/onboarding/steps/ResourcePickStep.tsx      (persists picks to S8 table)
+  src/pages/onboarding/steps/VaniWorkingStep.tsx       (no fake delay; no_coverage amber state; industryIds)
+  src/pages/onboarding/steps/Screen8APricingStep.tsx   (KT-FIRST REDESIGN: real names, services/spares sections, KT medians as defaults, real market range, bulk-fill for unpriced only, delta-only PATCH)
+  src/pages/onboarding/steps/Screen8BEquipmentStep.tsx (template_id grouping; step persistence)
+  src/pages/catalog-studio/blocks.tsx            ("Seeded from X" lineage badge, grid + list)
+  src/utils/catalog-studio/catBlockAdapter.ts    (is_seed / resource_template_id / seeded_from_name in meta)
+  src/pages/settings/seed-data/index.tsx         (NEW — Settings→Seed Data page: overview + safe re-seed)
+  src/pages/service-contracts/templates/admin/knowledge-tree/KnowledgeTreeDetail.tsx (active-pricing chips per currency/geo + Services tab + NEW "Variant Map" button — FULL FILE; if you have local edits here, hand-insert instead)
+  src/utils/constants/settingsMenus.ts           (Seed Data menu entry under Business Profile)
+  src/App.tsx                                    (routes: /settings/seed-data + /catalog-studio/equipment)
+  src/pages/catalog-studio/equipment.tsx         (NEW — Equipment & Facilities view: sidebar, per-equipment services/spares, single-equipment VaNi seed with preview)
+  .github/workflows/ci.yml                       (NEW — build gate)
+
+contractnest-edge/
+  supabase/functions/cat-blocks/index.ts         (Task 4.3 guards + is_live env filter on list + tax from t_tax_settings in bulk seed) ⚠️ REDEPLOY REQUIRED
+  supabase/functions/onboarding/index.ts         (13-step VaNi model; step_data accumulates; done-step completion)
+  supabase/functions/tenant-profile/index.ts     (persona read/write; normalizePersona)
+  supabase/migrations/transformation/20260611000001_s7_tenant_persona.sql
+  supabase/migrations/transformation/20260611000002_s8_tenant_selected_resources.sql
+  supabase/migrations/transformation/20260611000003_s13_onboarding_step_model.sql
+  supabase/migrations/transformation/20260611000004_resolve_industry_resource_templates.sql
+  supabase/migrations/transformation/20260611000005_seed_onboarding_registry_assets.sql
+  supabase/migrations/transformation/20260611000006_seed_data_management.sql (overview + cleanup RPCs — ALREADY APPLIED)
+  supabase/migrations/transformation/20260611000007_kt_multi_pricing.sql (m_kt_prices multi-currency store — ALREADY APPLIED)
+  supabase/functions/knowledge-tree/index.ts     (KT FIX: save-pricing upserts per-geo into m_kt_prices, never cross-geo overwrites; summary returns pricing_coverage + per-row prices) ⚠️ REDEPLOY REQUIRED
+  .github/workflows/ci.yml                       (NEW — deno check)
+═══════════════════════════════════════════════════════════════════

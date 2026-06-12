@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Catalog Studio — Equipment-Centric UX (Mockup)</title>
+<style>
+  :root{
+    --vani:#ff6b2b; --vani-soft:#fff8f4; --vani-border:rgba(255,107,43,.25);
+    --text:#1a1816; --text-mid:#4a4540; --text-dim:#8a847a; --text-muted:#bab4a8;
+    --border:#e5e1db; --border-lt:#edeae4; --surface:#faf9f7; --bg:#f7f5f2;
+    --green:#16a34a; --green-bg:#f0fdf4; --green-bd:#bbf7d0;
+    --amber:#d97706; --amber-bg:#fffbeb; --blue:#2563eb; --blue-bg:#eff6ff;
+    --mono:'IBM Plex Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Outfit','Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+  .mono{font-family:var(--mono)}
+
+  /* ── Top bar ── */
+  .topbar{background:#fff;border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:50}
+  .topbar h1{font-size:17px;font-weight:800;letter-spacing:-.3px}
+  .topbar .crumb{color:var(--text-muted);font-size:12px}
+  .env-pill{margin-left:auto;font-family:var(--mono);font-size:11px;font-weight:700;padding:4px 12px;border-radius:100px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)}
+
+  /* ── Layout ── */
+  .wrap{display:grid;grid-template-columns:320px 1fr;gap:0;max-width:1480px;margin:0 auto;min-height:calc(100vh - 57px)}
+
+  /* ── LEFT: equipment / facility tree ── */
+  .sidebar{background:#fff;border-right:1px solid var(--border);padding:18px 0}
+  .search-box{margin:0 16px 14px;position:relative}
+  .search-box input{width:100%;padding:10px 14px 10px 36px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13px;outline:none;background:var(--surface)}
+  .search-box input:focus{border-color:var(--vani);box-shadow:0 0 0 3px rgba(255,107,43,.1)}
+  .search-box .ic{position:absolute;left:12px;top:10px;color:var(--text-muted)}
+  .side-section{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--text-muted);padding:14px 18px 6px}
+  .eq-item{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;border-left:3px solid transparent;transition:background .12s}
+  .eq-item:hover{background:var(--surface)}
+  .eq-item.active{background:var(--vani-soft);border-left-color:var(--vani)}
+  .eq-ico{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;background:var(--surface);border:1px solid var(--border-lt);flex-shrink:0}
+  .eq-item.active .eq-ico{background:#fff}
+  .eq-meta{min-width:0;flex:1}
+  .eq-name{font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .eq-sub{font-family:var(--mono);font-size:10px;color:var(--text-dim)}
+  .badge{font-family:var(--mono);font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.4px;flex-shrink:0}
+  .b-seeded{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)}
+  .b-kt{background:var(--blue-bg);color:var(--blue);border:1px solid rgba(37,99,235,.2)}
+  .b-none{background:var(--surface);color:var(--text-muted);border:1px solid var(--border-lt)}
+  .b-partial{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(217,119,6,.25)}
+
+  /* ── RIGHT: equipment detail ── */
+  .main{padding:24px 28px 80px;overflow:auto}
+  .eq-header{display:flex;align-items:flex-start;gap:16px;margin-bottom:18px}
+  .eq-header .big-ico{width:52px;height:52px;border-radius:13px;background:#fff;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:26px}
+  .eq-header h2{font-size:21px;font-weight:800;letter-spacing:-.4px}
+  .eq-header .tags{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+  .stat-strip{display:flex;gap:10px;margin-left:auto}
+  .stat{background:#fff;border:1px solid var(--border);border-radius:10px;padding:8px 16px;text-align:center;min-width:84px}
+  .stat .v{font-family:var(--mono);font-size:17px;font-weight:800}
+  .stat .k{font-size:10px;color:var(--text-dim)}
+
+  .vani-cta{display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,#1a1816,#2a2520);border-radius:14px;padding:14px 18px;margin-bottom:20px;color:#fff}
+  .vani-av{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--vani),#ff8f5a);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;flex-shrink:0}
+  .vani-cta .msg{font-size:13px;color:rgba(255,255,255,.8);flex:1;line-height:1.5}
+  .vani-cta .msg strong{color:#fff}
+  .btn{border:none;border-radius:100px;padding:10px 20px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:transform .12s}
+  .btn:hover{transform:translateY(-1px)}
+  .btn-vani{background:linear-gradient(135deg,var(--vani),#ff8f5a);color:#fff;box-shadow:0 3px 10px rgba(255,107,43,.35)}
+  .btn-ghost{background:rgba(255,255,255,.1);color:rgba(255,255,255,.75);border:1px solid rgba(255,255,255,.15)}
+
+  /* variant matrix */
+  .panel{background:#fff;border:1px solid var(--border);border-radius:14px;margin-bottom:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.04)}
+  .panel-h{padding:13px 20px;background:var(--surface);border-bottom:1px solid var(--border-lt);display:flex;align-items:center;gap:10px}
+  .panel-h .t{font-size:13px;font-weight:800}
+  .panel-h .sub{font-family:var(--mono);font-size:10px;color:var(--text-dim)}
+  .panel-h .right{margin-left:auto;display:flex;gap:8px;align-items:center}
+  .chip-row{display:flex;gap:6px;flex-wrap:wrap;padding:12px 20px}
+  .v-chip{font-family:var(--mono);font-size:10px;font-weight:600;padding:4px 10px;border-radius:100px;background:var(--blue-bg);color:var(--blue);border:1px solid rgba(37,99,235,.15)}
+
+  table{width:100%;border-collapse:collapse}
+  th{font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);text-align:left;padding:9px 20px;border-bottom:1px solid var(--border-lt);background:var(--surface)}
+  td{padding:10px 20px;border-bottom:1px solid var(--border-lt);font-size:13px;vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  tr.rowhover:hover{background:var(--surface)}
+  .price{font-family:var(--mono);font-weight:700;white-space:nowrap}
+  .price .unit{font-size:10px;color:var(--text-muted);font-weight:600}
+  .cycle{font-family:var(--mono);font-size:11px;color:var(--blue);background:var(--blue-bg);padding:2px 8px;border-radius:4px;white-space:nowrap}
+  .range{font-family:var(--mono);font-size:10px;color:var(--text-dim);white-space:nowrap}
+  .name-cell{font-weight:600;max-width:320px}
+  .lineage{font-size:10px;color:var(--text-muted);font-family:var(--mono)}
+  .mini-btn{font-family:var(--mono);font-size:10px;font-weight:700;padding:4px 10px;border-radius:5px;border:1.5px solid var(--border);background:none;color:var(--text-dim);cursor:pointer}
+  .mini-btn:hover{border-color:var(--vani);color:var(--vani);background:var(--vani-soft)}
+  .section-toggle{cursor:pointer;user-select:none}
+  .section-toggle .car{display:inline-block;transition:transform .15s;color:var(--text-muted);margin-right:4px}
+  .collapsed .car{transform:rotate(-90deg)}
+  .collapsed tbody{display:none}
+
+  /* unseeded state */
+  .empty-eq{padding:60px 20px;text-align:center}
+  .empty-eq .e{font-size:40px;margin-bottom:12px}
+  .empty-eq h3{font-size:17px;font-weight:800;margin-bottom:6px}
+  .empty-eq p{color:var(--text-dim);max-width:440px;margin:0 auto 20px;line-height:1.6}
+
+  /* ── Seed preview modal ── */
+  .modal-bg{position:fixed;inset:0;background:rgba(26,24,22,.5);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:100}
+  .modal-bg.open{display:flex}
+  .modal{background:#fff;border-radius:18px;width:720px;max-width:94vw;max-height:86vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.3)}
+  .modal-h{padding:18px 24px;border-bottom:1px solid var(--border-lt);display:flex;align-items:center;gap:12px}
+  .modal-h h3{font-size:16px;font-weight:800}
+  .modal-h .x{margin-left:auto;cursor:pointer;color:var(--text-muted);font-size:20px;line-height:1}
+  .modal-body{padding:18px 24px;overflow:auto}
+  .modal-f{padding:14px 24px;border-top:1px solid var(--border-lt);display:flex;align-items:center;gap:12px;background:var(--surface)}
+  .preview-stat{display:flex;gap:10px;margin-bottom:16px}
+  .preview-stat .ps{flex:1;background:var(--surface);border:1px solid var(--border-lt);border-radius:10px;padding:10px;text-align:center}
+  .preview-stat .ps .v{font-family:var(--mono);font-weight:800;font-size:18px;color:var(--vani)}
+  .preview-stat .ps .k{font-size:10px;color:var(--text-dim)}
+  .preview-list{border:1px solid var(--border-lt);border-radius:10px;overflow:hidden;margin-bottom:14px}
+  .preview-list .pl-h{font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);padding:8px 14px;background:var(--surface);border-bottom:1px solid var(--border-lt)}
+  .pl-row{display:flex;justify-content:space-between;padding:8px 14px;border-bottom:1px solid var(--border-lt);font-size:12px}
+  .pl-row:last-child{border-bottom:none}
+  .note{font-size:11px;color:var(--text-dim);background:var(--amber-bg);border:1px solid rgba(217,119,6,.15);border-radius:8px;padding:10px 14px;line-height:1.5}
+
+  .hidden{display:none!important}
+  .footnote{margin-top:26px;padding:14px 18px;background:#fff;border:1px dashed var(--border);border-radius:12px;font-size:12px;color:var(--text-dim);line-height:1.7}
+  .footnote b{color:var(--text-mid)}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>Catalog Studio</h1>
+  <span class="crumb">Equipment &amp; Facilities view <span style="color:var(--border)">|</span> <span style="color:var(--text-dim)">All blocks (classic list)</span></span>
+  <span class="env-pill">LIVE</span>
+</div>
+
+<div class="wrap">
+
+  <!-- ════ LEFT SIDEBAR ════ -->
+  <div class="sidebar">
+    <div class="search-box">
+      <span class="ic">⌕</span>
+      <input id="search" placeholder="Search equipment, services, spares…" oninput="doSearch(this.value)">
+    </div>
+
+    <div class="side-section">My Equipment</div>
+    <div class="eq-item active" onclick="selectEq(this,'hvac')">
+      <div class="eq-ico">❄️</div>
+      <div class="eq-meta">
+        <div class="eq-name">HVAC System</div>
+        <div class="eq-sub">29 services · 39 spares · 10 variants</div>
+      </div>
+      <span class="badge b-seeded">SEEDED</span>
+    </div>
+    <div class="eq-item" onclick="selectEq(this,'ventilator')">
+      <div class="eq-ico">🫁</div>
+      <div class="eq-meta">
+        <div class="eq-name">Ventilator</div>
+        <div class="eq-sub">KT ready · not in catalog</div>
+      </div>
+      <span class="badge b-kt">KT READY</span>
+    </div>
+    <div class="eq-item" onclick="selectEq(this,'dental')">
+      <div class="eq-ico">🦷</div>
+      <div class="eq-meta">
+        <div class="eq-name">Dental Chair</div>
+        <div class="eq-sub">no knowledge tree yet</div>
+      </div>
+      <span class="badge b-none">NO KT</span>
+    </div>
+
+    <div class="side-section">My Facilities</div>
+    <div class="eq-item" onclick="selectEq(this,'ot')">
+      <div class="eq-ico">🏥</div>
+      <div class="eq-meta">
+        <div class="eq-name">Operation Theatre</div>
+        <div class="eq-sub">23 consumables · prices pending</div>
+      </div>
+      <span class="badge b-partial">UNPRICED</span>
+    </div>
+    <div class="eq-item" onclick="selectEq(this,'ward')">
+      <div class="eq-ico">🛏️</div>
+      <div class="eq-meta">
+        <div class="eq-name">Hospital Ward</div>
+        <div class="eq-sub">KT ready · not in catalog</div>
+      </div>
+      <span class="badge b-kt">KT READY</span>
+    </div>
+
+    <div class="side-section">Content Library</div>
+    <div class="eq-item" onclick="selectEq(this,'content')">
+      <div class="eq-ico">🗂️</div>
+      <div class="eq-meta">
+        <div class="eq-name">Proposal content</div>
+        <div class="eq-sub">4 texts · 2 images · 1 video · 3 docs</div>
+      </div>
+      <span class="badge b-none">10</span>
+    </div>
+
+    <div class="side-section">Other Items</div>
+    <div class="eq-item" onclick="selectEq(this,'custom')">
+      <div class="eq-ico">✏️</div>
+      <div class="eq-meta">
+        <div class="eq-name">My custom blocks</div>
+        <div class="eq-sub">hand-made, no equipment link</div>
+      </div>
+      <span class="badge b-none">3</span>
+    </div>
+  </div>
+
+  <!-- ════ RIGHT MAIN ════ -->
+  <div class="main">
+
+    <!-- ── HVAC (seeded equipment) ── -->
+    <div id="view-hvac">
+      <div class="eq-header">
+        <div class="big-ico">❄️</div>
+        <div>
+          <h2>HVAC System</h2>
+          <div class="tags">
+            <span class="badge b-seeded">SEEDED · 11 Jun, 15:52</span>
+            <span class="badge b-kt">KNOWLEDGE TREE LINKED</span>
+            <span class="badge b-none">Facility Management</span>
+          </div>
+        </div>
+        <div class="stat-strip">
+          <div class="stat"><div class="v">29</div><div class="k">Services</div></div>
+          <div class="stat"><div class="v">39</div><div class="k">Spares</div></div>
+          <div class="stat"><div class="v">58/68</div><div class="k">Priced</div></div>
+          <div class="stat" style="min-width:108px">
+            <select onchange="alert('Mockup: all price cells re-render in '+this.value+'. Blocks without a '+this.value+' price show + add price.')" style="border:none;background:none;font-family:var(--mono);font-weight:800;font-size:15px;outline:none;cursor:pointer">
+              <option>₹ INR</option><option>$ USD</option><option>AED</option>
+            </select>
+            <div class="k">Currency · 2 configured</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="vani-cta">
+        <div class="vani-av">V</div>
+        <div class="msg">This catalog was seeded from the <strong>HVAC knowledge tree</strong>. I can <strong>refresh it</strong> when the knowledge tree improves — your edits and any blocks used in contracts are always kept.</div>
+        <button class="btn btn-ghost" onclick="alert('Mockup: shows the same preview as Seed, diffed against current blocks')">Preview updates</button>
+        <button class="btn btn-vani" onclick="openModal('hvac-re')">⟳ Re-seed with VaNi</button>
+      </div>
+
+      <!-- Variants -->
+      <div class="panel">
+        <div class="panel-h">
+          <span class="t">Variants</span><span class="sub">price can vary per variant — from KT applicability map</span>
+        </div>
+        <div class="chip-row">
+          <span class="v-chip">Split AC / Room AC (0.75–2.5 TR)</span>
+          <span class="v-chip">Cassette AC (1.5–5 TR)</span>
+          <span class="v-chip">Ductable AC (5.5–25 TR)</span>
+          <span class="v-chip">VRF / VRV (8–60 TR)</span>
+          <span class="v-chip">Chiller Water-Cooled (50–2000 TR)</span>
+          <span class="v-chip">Chiller Air-Cooled (30–500 TR)</span>
+          <span class="v-chip">AHU</span>
+          <span class="v-chip">FCU</span>
+          <span class="v-chip">Package / Rooftop (3–25 TR)</span>
+          <span class="v-chip">Window AC (0.75–2 TR)</span>
+        </div>
+      </div>
+
+      <!-- Services -->
+      <div class="panel" id="svc-panel">
+        <div class="panel-h section-toggle" onclick="togglePanel('svc-panel')">
+          <span class="car">▾</span><span class="t">Services</span><span class="sub">29 blocks · grouped from KT checkpoints</span>
+          <div class="right"><span class="badge b-seeded">KT PRICED</span>
+            <button class="mini-btn" onclick="event.stopPropagation();alert('Mockup: opens the EXISTING block wizard with HVAC + its variants pre-linked (resource dependency prefilled from context)')">＋ add service</button>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th style="width:34%">Service</th><th>Cycle</th><th>Applies to</th><th>Your price</th><th>KT market range</th><th></th></tr></thead>
+          <tbody>
+            <tr class="rowhover searchable" onclick="toggleMatrix(event)" style="cursor:pointer">
+              <td class="name-cell">🖼️ Filter, Coil &amp; Drainage Servicing<div class="lineage">Seeded from HVAC · KT · also every 30 visits (usage-based, info)</div></td>
+              <td><span class="cycle">every 45 days</span></td>
+              <td class="mono" style="font-size:11px">8 variants</td>
+              <td class="price">₹500 – ₹3,500 <span class="unit" style="color:var(--blue)">varies ▾</span></td>
+              <td class="range">₹400 – ₹6,000</td>
+              <td><button class="mini-btn">edit</button></td>
+            </tr>
+            <tr class="matrix-row" style="display:none;background:var(--surface)">
+              <td colspan="6" style="padding:0">
+                <div style="padding:12px 20px 16px">
+                  <div style="font-family:var(--mono);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted);margin-bottom:8px">Variant pricing — ₹ INR <span style="color:var(--text-muted);font-weight:400;text-transform:none">(switch currency above; only applicable variants listed)</span></div>
+                  <table style="background:#fff;border:1px solid var(--border-lt);border-radius:8px;overflow:hidden">
+                    <thead><tr><th>Variant</th><th>Your price</th><th>KT range</th></tr></thead>
+                    <tbody>
+                      <tr><td>Split AC / Room AC (0.75–2.5 TR)</td><td class="price">₹500</td><td class="range">₹400 – ₹800</td></tr>
+                      <tr><td>Cassette AC (1.5–5 TR)</td><td class="price">₹650</td><td class="range">₹500 – ₹1,000</td></tr>
+                      <tr><td>Ductable AC (5.5–25 TR)</td><td class="price">₹1,200</td><td class="range">₹900 – ₹2,200</td></tr>
+                      <tr><td>VRF / VRV (8–60 TR)</td><td class="price">₹2,000</td><td class="range">₹1,500 – ₹4,000</td></tr>
+                      <tr><td>Package / Rooftop (3–25 TR)</td><td class="price">₹1,500</td><td class="range">₹1,100 – ₹2,800</td></tr>
+                      <tr><td>Window AC (0.75–2 TR)</td><td class="price">₹500</td><td class="range">₹400 – ₹700</td></tr>
+                      <tr><td>AHU</td><td class="price">₹3,500</td><td class="range">₹2,000 – ₹6,000</td></tr>
+                      <tr><td>FCU</td><td class="price">₹600</td><td class="range">₹450 – ₹900</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </td>
+            </tr>
+            <tr class="rowhover searchable">
+              <td class="name-cell">Refrigerant &amp; Electrical Performance Check<div class="lineage">Seeded from HVAC · KT</div></td>
+              <td><span class="cycle">every 90 days</span></td>
+              <td class="mono" style="font-size:11px">10 variants</td>
+              <td class="price">₹1,400 <span class="unit">/visit</span></td>
+              <td class="range">₹600 – ₹4,500</td>
+              <td><button class="mini-btn">edit</button></td>
+            </tr>
+            <tr class="rowhover searchable">
+              <td class="name-cell">Compressor Performance Check<div class="lineage">Seeded from HVAC · KT</div></td>
+              <td><span class="cycle">every 180 days</span></td>
+              <td class="mono" style="font-size:11px">6 variants</td>
+              <td class="price">₹1,200 <span class="unit">/visit</span></td>
+              <td class="range">₹500 – ₹8,000</td>
+              <td><button class="mini-btn">edit</button></td>
+            </tr>
+            <tr class="rowhover searchable">
+              <td class="name-cell">Chiller Descaling &amp; Water Treatment<div class="lineage">Seeded from HVAC · KT</div></td>
+              <td><span class="cycle">every 365 days</span></td>
+              <td class="mono" style="font-size:11px">2 variants <span style="color:var(--blue)">(chillers only)</span></td>
+              <td class="price">₹18,000 <span class="unit">/visit</span></td>
+              <td class="range">₹8,000 – ₹2,00,000</td>
+              <td><button class="mini-btn">edit</button></td>
+            </tr>
+            <tr class="rowhover searchable">
+              <td class="name-cell">Air Handling Unit Servicing<div class="lineage">Seeded from HVAC · KT</div></td>
+              <td><span class="cycle">—</span></td>
+              <td class="mono" style="font-size:11px">AHU only</td>
+              <td class="price" style="color:var(--amber)">set price</td>
+              <td class="range">no market data</td>
+              <td><button class="mini-btn">edit</button></td>
+            </tr>
+            <tr><td colspan="6" style="text-align:center;color:var(--text-muted);font-size:12px;cursor:pointer">show 24 more services…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Spares -->
+      <div class="panel" id="spare-panel">
+        <div class="panel-h section-toggle" onclick="togglePanel('spare-panel')">
+          <span class="car">▾</span><span class="t">Spare Parts &amp; Consumables</span><span class="sub">39 blocks · priced per unit</span>
+          <div class="right"><button class="mini-btn" onclick="event.stopPropagation();alert('Mockup: opens the EXISTING block wizard, spare type, HVAC pre-linked')">＋ add spare</button></div>
+        </div>
+        <table>
+          <thead><tr><th style="width:40%">Part</th><th>Applies to</th><th>Your price</th><th>KT market range</th><th></th></tr></thead>
+          <tbody>
+            <tr class="rowhover searchable">
+              <td class="name-cell">🖼️ Air Filter (washable)<div class="lineage">Seeded from HVAC · KT · photo added</div></td>
+              <td class="mono" style="font-size:11px">Split, Window, Cassette</td>
+              <td class="price">₹500 <span class="unit">/unit</span></td>
+              <td class="range">₹250 – ₹1,200</td>
+              <td><button class="mini-btn">edit</button></td>
+            </tr>
+            <tr class="rowhover searchable">
+              <td class="name-cell">Belt (V-belt)<div class="lineage">Seeded from HVAC · KT</div></td>
+              <td class="mono" style="font-size:11px">AHU, Ductable, Package</td>
+              <td class="price">₹350 <span class="unit">/unit</span></td>
+              <td class="range">₹200 – ₹900</td>
+              <td><button class="mini-btn">edit</button></td>
+            </tr>
+            <tr class="rowhover searchable">
+              <td class="name-cell">BMS Interface Module<div class="lineage">Seeded from HVAC · KT</div></td>
+              <td class="mono" style="font-size:11px">VRF, Chillers, AHU</td>
+              <td class="price">₹12,000 <span class="unit">/unit</span></td>
+              <td class="range">₹8,000 – ₹25,000</td>
+              <td><button class="mini-btn">edit</button></td>
+            </tr>
+            <tr><td colspan="5" style="text-align:center;color:var(--text-muted);font-size:12px;cursor:pointer">show 36 more parts…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <!-- Terms & Conditions -->
+      <div class="panel" id="tnc-panel">
+        <div class="panel-h section-toggle" onclick="togglePanel('tnc-panel')">
+          <span class="car">▾</span><span class="t">Content &amp; Terms</span><span class="sub">text, media &amp; document blocks attached to HVAC — available to proposals/contracts that use HVAC blocks</span>
+          <div class="right"><button class="mini-btn" onclick="event.stopPropagation();alert('Mockup: existing wizard — pick type (text/image/video/checklist/document), HVAC pre-linked')">＋ add content</button></div>
+        </div>
+        <table>
+          <thead><tr><th style="width:40%">Block</th><th>Type</th><th>Used in</th><th></th></tr></thead>
+          <tbody>
+            <tr class="rowhover searchable"><td class="name-cell">📄 AMC Scope &amp; Exclusions — HVAC<div class="lineage">Text · hand-made</div></td><td class="mono" style="font-size:11px">Text / T&amp;C</td><td class="mono" style="font-size:11px">3 templates</td><td><button class="mini-btn">edit</button></td></tr>
+            <tr class="rowhover searchable"><td class="name-cell">📄 Refrigerant Gas Top-up Policy<div class="lineage">Text · hand-made</div></td><td class="mono" style="font-size:11px">Text / T&amp;C</td><td class="mono" style="font-size:11px">1 template</td><td><button class="mini-btn">edit</button></td></tr>
+            <tr class="rowhover searchable"><td class="name-cell">🖼️ VRF Installation Reference Photos<div class="lineage">Image · hand-made</div></td><td class="mono" style="font-size:11px">Image</td><td class="mono" style="font-size:11px">—</td><td><button class="mini-btn">edit</button></td></tr>
+            <tr class="rowhover searchable"><td class="name-cell">🎬 AMC Service Walkthrough (2 min)<div class="lineage">Video · hand-made</div></td><td class="mono" style="font-size:11px">Video</td><td class="mono" style="font-size:11px">2 templates</td><td><button class="mini-btn">edit</button></td></tr>
+            <tr class="rowhover searchable"><td class="name-cell">☑ Pre-handover Inspection Checklist<div class="lineage">Checklist · hand-made</div></td><td class="mono" style="font-size:11px">Checklist</td><td class="mono" style="font-size:11px">1 template</td><td><button class="mini-btn">edit</button></td></tr>
+            <tr><td colspan="4" style="font-size:11px;color:var(--text-muted)">Tenant-level default content (Content Library) applies when an equipment has none.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── Ventilator (KT ready, NOT seeded — the single-equipment invoke) ── -->
+    <div id="view-ventilator" class="hidden">
+      <div class="eq-header">
+        <div class="big-ico">🫁</div>
+        <div>
+          <h2>Ventilator</h2>
+          <div class="tags">
+            <span class="badge b-kt">KNOWLEDGE TREE READY</span>
+            <span class="badge b-none">Healthcare</span>
+          </div>
+        </div>
+        <div class="stat-strip">
+          <div class="stat"><div class="v">0</div><div class="k">In catalog</div></div>
+          <div class="stat"><div class="v">6</div><div class="k">KT variants</div></div>
+          <div class="stat"><div class="v">32</div><div class="k">KT parts</div></div>
+        </div>
+      </div>
+
+      <div class="empty-eq panel">
+        <div class="e">🌱</div>
+        <h3>Nothing in your catalog for Ventilator yet</h3>
+        <p>The knowledge tree has <b>6 variants, 19 checkpoints and 32 spare parts</b> for this equipment.
+           Ask VaNi to build your starter catalog — you'll <b>preview everything before it's loaded</b>.</p>
+        <button class="btn btn-vani" onclick="openModal('vent')">✨ Seed Ventilator with VaNi</button>
+        <div style="margin-top:10px"><button class="mini-btn" onclick="alert('Mockup: opens the normal blank block wizard')">or add a block manually</button></div>
+      </div>
+    </div>
+
+    <!-- ── Operation Theatre (seeded, unpriced) ── -->
+    <div id="view-ot" class="hidden">
+      <div class="eq-header">
+        <div class="big-ico">🏥</div>
+        <div>
+          <h2>Operation Theatre</h2>
+          <div class="tags">
+            <span class="badge b-seeded">SEEDED · 11 Jun, 15:52</span>
+            <span class="badge b-partial">0/23 PRICED — KT has no price data yet</span>
+          </div>
+        </div>
+        <div class="stat-strip">
+          <div class="stat"><div class="v">23</div><div class="k">Consumables</div></div>
+          <div class="stat"><div class="v" style="color:var(--amber)">0</div><div class="k">Priced</div></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-h"><span class="t">Consumables</span>
+          <div class="right"><input placeholder="Bulk price for unpriced…" style="padding:6px 10px;border:1.5px solid var(--border);border-radius:6px;font-family:var(--mono);font-size:12px;width:140px"><button class="mini-btn">apply</button></div>
+        </div>
+        <table>
+          <thead><tr><th style="width:55%">Item</th><th>Your price</th><th></th></tr></thead>
+          <tbody>
+            <tr class="rowhover searchable"><td class="name-cell">Biological Indicator Strips — Geobacillus (50s)<div class="lineage">Seeded from Operation Theatre · KT</div></td><td class="price" style="color:var(--amber)">set price</td><td><button class="mini-btn">edit</button></td></tr>
+            <tr class="rowhover searchable"><td class="name-cell">Bowie-Dick Test Pack (Single-use)<div class="lineage">Seeded from Operation Theatre · KT</div></td><td class="price" style="color:var(--amber)">set price</td><td><button class="mini-btn">edit</button></td></tr>
+            <tr><td colspan="3" style="text-align:center;color:var(--text-muted);font-size:12px;cursor:pointer">show 21 more…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- other views collapse to placeholders in this mockup -->
+    <div id="view-dental" class="hidden">
+      <div class="empty-eq panel"><div class="e">🦷</div><h3>Dental Chair — no knowledge tree yet</h3>
+      <p>VaNi can't seed this equipment until its knowledge tree is built. You can add blocks manually,
+         or flag it — flagged equipment is queued for KT coverage.</p>
+      <button class="btn btn-vani" onclick="alert('Mockup: records a KT coverage request')">🚩 Request KT coverage</button>
+      <div style="margin-top:10px"><button class="mini-btn">add a block manually</button></div></div>
+    </div>
+    <div id="view-ward" class="hidden">
+      <div class="empty-eq panel"><div class="e">🛏️</div><h3>Hospital Ward — KT ready, not in catalog</h3>
+      <p>28 checkpoints available in the knowledge tree.</p>
+      <button class="btn btn-vani" onclick="openModal('vent')">✨ Seed Hospital Ward with VaNi</button></div>
+    </div>
+    <div id="view-content" class="hidden">
+      <div class="eq-header">
+        <div class="big-ico">🗂️</div>
+        <div>
+          <h2>Content Library</h2>
+          <div class="tags">
+            <span class="badge b-none">GENERAL — NOT EQUIPMENT-BOUND</span>
+            <span class="badge b-kt">USED BY PROPOSALS &amp; TEMPLATES</span>
+          </div>
+        </div>
+        <div class="stat-strip">
+          <div class="stat"><div class="v">4</div><div class="k">Texts</div></div>
+          <div class="stat"><div class="v">3</div><div class="k">Media</div></div>
+          <div class="stat"><div class="v">3</div><div class="k">Documents</div></div>
+        </div>
+      </div>
+
+      <div class="panel" id="cl-text">
+        <div class="panel-h section-toggle" onclick="togglePanel('cl-text')">
+          <span class="car">▾</span><span class="t">Text &amp; Clauses</span><span class="sub">company-wide T&amp;C, intros, payment terms</span>
+          <div class="right"><button class="mini-btn" onclick="event.stopPropagation();alert('Mockup: existing text-block wizard, no equipment link')">＋ add text</button></div>
+        </div>
+        <table>
+          <thead><tr><th style="width:45%">Block</th><th>Used in</th><th></th></tr></thead>
+          <tbody>
+            <tr class="rowhover searchable"><td class="name-cell">📄 Standard Payment Terms (Net 15)<div class="lineage">Text · default for all proposals</div></td><td class="mono" style="font-size:11px">all templates</td><td><button class="mini-btn">edit</button></td></tr>
+            <tr class="rowhover searchable"><td class="name-cell">📄 About Our Company<div class="lineage">Text</div></td><td class="mono" style="font-size:11px">5 templates</td><td><button class="mini-btn">edit</button></td></tr>
+            <tr class="rowhover searchable"><td class="name-cell">📄 General Liability &amp; Insurance Clause<div class="lineage">Text · T&amp;C</div></td><td class="mono" style="font-size:11px">all templates</td><td><button class="mini-btn">edit</button></td></tr>
+            <tr class="rowhover searchable"><td class="name-cell">📄 Cancellation &amp; Refund Policy<div class="lineage">Text · T&amp;C</div></td><td class="mono" style="font-size:11px">2 templates</td><td><button class="mini-btn">edit</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="panel" id="cl-media">
+        <div class="panel-h section-toggle" onclick="togglePanel('cl-media')">
+          <span class="car">▾</span><span class="t">Images &amp; Videos</span><span class="sub">brand and marketing media for proposals</span>
+          <div class="right"><button class="mini-btn" onclick="event.stopPropagation();alert('Mockup: existing media-block wizard')">＋ add media</button></div>
+        </div>
+        <table>
+          <thead><tr><th style="width:45%">Block</th><th>Used in</th><th></th></tr></thead>
+          <tbody>
+            <tr class="rowhover searchable"><td class="name-cell">🖼️ Company Banner &amp; Certifications<div class="lineage">Image</div></td><td class="mono" style="font-size:11px">all templates</td><td><button class="mini-btn">edit</button></td></tr>
+            <tr class="rowhover searchable"><td class="name-cell">🖼️ Team &amp; Facility Photos<div class="lineage">Image</div></td><td class="mono" style="font-size:11px">1 template</td><td><button class="mini-btn">edit</button></td></tr>
+            <tr class="rowhover searchable"><td class="name-cell">🎬 Company Introduction (90 sec)<div class="lineage">Video</div></td><td class="mono" style="font-size:11px">3 templates</td><td><button class="mini-btn">edit</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="panel" id="cl-docs">
+        <div class="panel-h section-toggle" onclick="togglePanel('cl-docs')">
+          <span class="car">▾</span><span class="t">Documents &amp; Checklists</span><span class="sub">attachments &amp; signable docs</span>
+          <div class="right"><button class="mini-btn" onclick="event.stopPropagation();alert('Mockup: existing document/checklist wizard')">＋ add document</button></div>
+        </div>
+        <table>
+          <thead><tr><th style="width:45%">Block</th><th>Used in</th><th></th></tr></thead>
+          <tbody>
+            <tr class="rowhover searchable"><td class="name-cell">📎 Master Service Agreement (signable)<div class="lineage">Document · requires signature</div></td><td class="mono" style="font-size:11px">all templates</td><td><button class="mini-btn">edit</button></td></tr>
+            <tr class="rowhover searchable"><td class="name-cell">📎 GST &amp; PAN Certificates<div class="lineage">Document</div></td><td class="mono" style="font-size:11px">—</td><td><button class="mini-btn">edit</button></td></tr>
+            <tr class="rowhover searchable"><td class="name-cell">☑ Site Readiness Checklist<div class="lineage">Checklist</div></td><td class="mono" style="font-size:11px">2 templates</td><td><button class="mini-btn">edit</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="footnote" style="margin-top:0">
+        <b>Composition stays in Templates:</b> proposals/templates assemble pricing blocks + this content into a
+        document, exactly as today. "Used in" tells you what's safe to edit. Equipment-specific content lives
+        under its equipment ("Content &amp; Terms" on HVAC); this library is everything company-wide.
+      </div>
+    </div>
+
+    <div id="view-custom" class="hidden">
+      <div class="panel"><div class="panel-h"><span class="t">My custom blocks</span><span class="sub">hand-made blocks with no equipment link</span></div>
+      <table><thead><tr><th>Block</th><th>Type</th><th>Price</th><th></th></tr></thead>
+      <tbody>
+        <tr class="rowhover"><td class="name-cell">Annual Site Audit</td><td>Service</td><td class="price">₹15,000</td><td><button class="mini-btn">edit</button></td></tr>
+        <tr class="rowhover"><td class="name-cell">Emergency Callout Fee</td><td>Service</td><td class="price">₹2,500</td><td><button class="mini-btn">edit</button></td></tr>
+      </tbody></table></div>
+    </div>
+
+    <div class="footnote">
+      <b>How this simplifies everything:</b> every problem becomes fixable at the single-equipment level —
+      seed ONE equipment, preview before loading, verify in ONE screen, re-seed safely (edits &amp; contract-linked
+      blocks always kept). Onboarding then becomes just "run this same action for each picked equipment" —
+      one code path, already built. The search box finds equipment, services and spares across everything;
+      the classic flat list remains as a second tab for those who want it.
+    </div>
+  </div>
+</div>
+
+<!-- ════ SEED PREVIEW MODAL ════ -->
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <div class="modal-h">
+      <div class="vani-av">V</div>
+      <h3 id="modal-title">Seed Ventilator — preview</h3>
+      <span class="x" onclick="closeModal()">×</span>
+    </div>
+    <div class="modal-body">
+      <div class="preview-stat">
+        <div class="ps"><div class="v">7</div><div class="k">Service blocks</div></div>
+        <div class="ps"><div class="v">32</div><div class="k">Spare parts</div></div>
+        <div class="ps"><div class="v">6</div><div class="k">Variants</div></div>
+        <div class="ps"><div class="v">21</div><div class="k">KT priced</div></div>
+      </div>
+      <div class="preview-list">
+        <div class="pl-h">Services it will create</div>
+        <div class="pl-row"><span>Patient Circuit &amp; Filter Replacement <span class="cycle" style="margin-left:6px">every 30 days</span></span><span class="price">₹1,200</span></div>
+        <div class="pl-row"><span>Calibration &amp; Performance Verification <span class="cycle" style="margin-left:6px">every 180 days</span></span><span class="price">₹4,500</span></div>
+        <div class="pl-row"><span>O₂ Cell &amp; Sensor Check</span><span class="price" style="color:var(--amber)">no KT price</span></div>
+        <div class="pl-row" style="color:var(--text-muted)">+ 4 more services…</div>
+      </div>
+      <div class="preview-list">
+        <div class="pl-h">Spare parts it will create</div>
+        <div class="pl-row"><span>Bacterial/Viral Filter (box of 50)</span><span class="price">₹3,800</span></div>
+        <div class="pl-row"><span>O₂ Sensor Cell</span><span class="price">₹9,500</span></div>
+        <div class="pl-row" style="color:var(--text-muted)">+ 30 more parts…</div>
+      </div>
+      <div class="note">
+        Nothing is saved until you press <b>Load into my catalog</b>. Prices are market medians from the
+        knowledge tree — you can adjust each one afterwards. Re-running this later is safe: your edits and
+        anything used by a contract are always kept.
+      </div>
+    </div>
+    <div class="modal-f">
+      <span style="font-size:12px;color:var(--text-dim)">Will be added to <b>LIVE</b> and <b>TEST</b> catalogs</span>
+      <div style="margin-left:auto;display:flex;gap:10px">
+        <button class="btn" style="background:var(--surface);color:var(--text-dim);border:1px solid var(--border)" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-vani" onclick="alert('Mockup: invokes the existing per-equipment seed (mapper → preview already shown → signed bulk load), then this equipment flips to SEEDED.');closeModal()">Load into my catalog →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function selectEq(el, id){
+  document.querySelectorAll('.eq-item').forEach(e=>e.classList.remove('active'));
+  el.classList.add('active');
+  ['hvac','ventilator','dental','ot','ward','custom','content'].forEach(v=>{
+    document.getElementById('view-'+v).classList.toggle('hidden', v!==id);
+  });
+}
+function togglePanel(id){ document.getElementById(id).classList.toggle('collapsed'); }
+function openModal(kind){
+  document.getElementById('modal-title').textContent =
+    kind==='hvac-re' ? 'Re-seed HVAC System — preview of updates' : 'Seed Ventilator — preview';
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal(){ document.getElementById('modal').classList.remove('open'); }
+function toggleMatrix(ev){
+  if(ev.target.closest('button')) return;
+  const next = ev.currentTarget.nextElementSibling;
+  if(next && next.classList.contains('matrix-row')) next.style.display = next.style.display==='none' ? '' : 'none';
+}
+function doSearch(q){
+  q=q.trim().toLowerCase();
+  // rows
+  document.querySelectorAll('.searchable').forEach(r=>{
+    r.style.display = !q || r.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+  // sidebar equipment
+  document.querySelectorAll('.eq-item').forEach(e=>{
+    e.style.display = !q || e.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+</script>
+</body>
+</html>

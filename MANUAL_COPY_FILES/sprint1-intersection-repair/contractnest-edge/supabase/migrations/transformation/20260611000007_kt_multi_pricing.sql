@@ -1,0 +1,10 @@
+-- KT upgrade (founder bug report): pricing generation REPLACED the single
+-- price slot on m_service_cycles / m_equipment_spare_parts, so generating USD
+-- destroyed INR. KT must hold MULTIPLE pricings per node (per geo/currency).
+-- ALREADY APPLIED to the Supabase project on 2026-06-11 (incl. backfill of
+-- all surviving slot values: INR/IN, USD/US, EUR/EU rows preserved).
+-- See applied migration 'kt_multi_pricing' for the authoritative SQL:
+--   * m_kt_prices(entity_type, entity_id, geo, currency, min/median/max, unit,
+--     source, UNIQUE(entity_type, entity_id, geo)) + RLS (authenticated read)
+--   * backfill from both legacy tables
+--   * COMMENTs marking legacy price_* columns as single-slot cache
