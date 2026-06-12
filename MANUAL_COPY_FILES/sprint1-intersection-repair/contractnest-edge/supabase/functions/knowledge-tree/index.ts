@@ -386,10 +386,17 @@ async function getSummary(params: URLSearchParams) {
     }, {})
   );
 
+  // Sellable service definitions (first-class service entity, with descriptions)
+  const { data: serviceDefs } = await sb
+    .from("m_kt_service_definitions")
+    .select("service_name, description, source, updated_at")
+    .eq("resource_template_id", resourceTemplateId);
+
   return jsonResponse({
     resource_template: template,
     equipment_meta: equipmentMeta,
     pricing_coverage: pricingCoverage,
+    service_definitions: serviceDefs || [],
     summary: {
       variants_count: variants.length,
       spare_parts_count: parts.length,
@@ -1043,6 +1050,19 @@ async function patchServiceNames(body: any, isAdmin: boolean) {
     } else {
       updated += count ?? 0;
     }
+
+    // Service definition: one row per sellable service; description stored ONCE
+    // (founder decision — m_kt_service_definitions, not repeated on checkpoints)
+    const { error: defError } = await sb
+      .from("m_kt_service_definitions")
+      .upsert({
+        resource_template_id,
+        service_name: entry.service_name,
+        ...(entry.description ? { description: entry.description } : {}),
+        source: "generated",
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "resource_template_id,service_name" });
+    if (defError) errors.push(`service_definition "${entry.service_name}": ${defError.message}`);
   }
 
   if (errors.length > 0) {

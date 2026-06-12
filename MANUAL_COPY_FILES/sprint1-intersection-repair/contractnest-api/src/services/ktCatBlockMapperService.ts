@@ -20,6 +20,7 @@ const PRICING_MODE_INDEPENDENT   = '718f839d-9d41-4212-b2b0-553a2198fb86';
 export interface CatBlockPayload {
   name:                 string;
   display_name:         string;
+  description?:         string | null;
   block_type_id:        string;
   pricing_mode_id:      string;
   base_price:           number;
@@ -146,6 +147,7 @@ interface ServiceGroupRow {
 interface SparePartRow {
   id:             string;
   name:           string;
+  description:    string | null;
   price_min:      number | null;
   price_median:   number | null;
   price_max:      number | null;
@@ -194,12 +196,13 @@ export class KtCatBlockMapperService {
     skipped:  { serviceGroups: number; spareParts: number };
   }> {
     const sb = this.clientFor(authToken);
-    const [resourceTemplate, variants, serviceRows, spareRows, variantMap] = await Promise.all([
+    const [resourceTemplate, variants, serviceRows, spareRows, variantMap, serviceDefs] = await Promise.all([
       this.fetchResourceTemplate(sb, resourceTemplateId),
       this.fetchVariants(sb, resourceTemplateId),
       this.fetchServiceCycleRows(sb, resourceTemplateId),
       this.fetchSparePartRows(sb, resourceTemplateId),
       this.fetchVariantMap(sb, resourceTemplateId),
+      this.fetchServiceDefinitions(sb, resourceTemplateId),
     ]);
 
     if (!resourceTemplate) {
@@ -219,7 +222,7 @@ export class KtCatBlockMapperService {
     };
 
     const { blocks: serviceBlocks, skipped: skippedServiceGroups } =
-      this.buildServiceBlocks(serviceRows, variants, variantMap, resourceTemplateId, selectedResource);
+      this.buildServiceBlocks(serviceRows, variants, variantMap, serviceDefs, resourceTemplateId, selectedResource);
 
     const { blocks: spareBlocks, skipped: skippedSpareParts } =
       this.buildSpareBlocks(spareRows, resourceTemplateId, selectedResource);
@@ -238,6 +241,7 @@ export class KtCatBlockMapperService {
     rows:             ServiceGroupRow[],
     variants:         KtVariant[],
     variantMap:       VariantMapRow[],
+    serviceDefs:      Map<string, string | null>,
     resourceTemplateId: string,
     selectedResource: SelectedResource,
   ): { blocks: CatBlockPayload[]; skipped: number } {
@@ -373,6 +377,7 @@ export class KtCatBlockMapperService {
       blocks.push({
         name:                 serviceName,
         display_name:         representative.catalog_name || serviceName,
+        description:          serviceDefs.get(serviceName) ?? null,
         block_type_id:        BLOCK_TYPE_SERVICE,
         pricing_mode_id:      PRICING_MODE_VARIANT_BASED,
         base_price:           referencePrice,
@@ -417,6 +422,7 @@ export class KtCatBlockMapperService {
       blocks.push({
         name:                 spare.name,
         display_name:         spare.name,
+        description:          spare.description ?? null,
         block_type_id:        BLOCK_TYPE_SPARE,
         pricing_mode_id:      PRICING_MODE_INDEPENDENT,
         base_price:           price,
@@ -592,6 +598,20 @@ export class KtCatBlockMapperService {
     return rows;
   }
 
+  private async fetchServiceDefinitions(sb: SupabaseClient, resourceTemplateId: string): Promise<Map<string, string | null>> {
+    // One row per sellable service (m_kt_service_definitions) — description
+    // stored once and seeded into m_cat_blocks.description (founder decision)
+    const { data, error } = await sb
+      .from('m_kt_service_definitions')
+      .select('service_name, description')
+      .eq('resource_template_id', resourceTemplateId);
+    if (error) {
+      console.error('KtCatBlockMapper: fetchServiceDefinitions error', error.message);
+      return new Map();
+    }
+    return new Map((data || []).map((d: any) => [d.service_name, d.description ?? null]));
+  }
+
   private async fetchVariantMap(sb: SupabaseClient, resourceTemplateId: string): Promise<VariantMapRow[]> {
     // Two-step (checkpoints for template → map rows) keeps this anon/JWT-safe
     const { data: cps, error: cpErr } = await sb
@@ -615,7 +635,7 @@ export class KtCatBlockMapperService {
   private async fetchSparePartRows(sb: SupabaseClient, resourceTemplateId: string): Promise<SparePartRow[]> {
     const { data, error } = await sb
       .from('m_equipment_spare_parts')
-      .select('id, name, price_min, price_median, price_max, price_currency, price_unit')
+      .select('id, name, description, price_min, price_median, price_max, price_currency, price_unit')
       .eq('resource_template_id', resourceTemplateId)
       .eq('is_active', true)
       .order('sort_order', { ascending: true });

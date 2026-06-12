@@ -1,0 +1,7 @@
+-- Founder-approved: services become a FIRST-CLASS KT entity — one row per
+-- sellable service, description stored ONCE (not repeated per checkpoint).
+-- ALREADY APPLIED on 2026-06-11 (incl. backfill of all existing named service
+-- groupings, description NULL until Service Names regeneration).
+-- See applied migration 'kt_service_definitions' for the authoritative SQL:
+--   m_kt_service_definitions(resource_template_id FK, service_name,
+--   description, source, UNIQUE(resource_template_id, service_name)) + RLS.

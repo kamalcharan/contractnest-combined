@@ -26,7 +26,7 @@ import CyclesTab from './components/CyclesTab';
 import OverlaysTab from './components/OverlaysTab';
 import FormPreviewTab from './components/FormPreviewTab';
 
-type DetailTab = 'variants' | 'spare-parts' | 'checkpoints' | 'cycles' | 'overlays' | 'form-preview';
+type DetailTab = 'variants' | 'spare-parts' | 'checkpoints' | 'cycles' | 'services' | 'overlays' | 'form-preview';
 
 const ACTIVITY_CONFIG = [
   { key: 'pm',           label: 'Preventive Maintenance', short: 'PM' },
@@ -755,6 +755,7 @@ const KnowledgeTreeDetail: React.FC = () => {
     { key: 'spare-parts', label: partsTabLabel, icon: <Package className="h-4 w-4" />, count: allPartsCount },
     { key: 'checkpoints', label: 'Checkpoints', icon: <ClipboardCheck className="h-4 w-4" />, count: allCheckpointsFlat.length },
     { key: 'cycles', label: 'Service Cycles', icon: <RefreshCw className="h-4 w-4" />, count: localCycles.length },
+    { key: 'services', label: 'Services', icon: <Tag className="h-4 w-4" />, count: ((summary as any)?.service_definitions || []).length },
     { key: 'overlays', label: 'Overlays', icon: <MapPin className="h-4 w-4" />, count: summary?.summary.overlays_count || 0 },
     { key: 'form-preview', label: 'Form Preview', icon: <FileText className="h-4 w-4" />, count: allCheckpointsFlat.length },
   ], [localVariants, allPartsCount, allCheckpointsFlat, localCycles, summary]);
@@ -1091,6 +1092,66 @@ const KnowledgeTreeDetail: React.FC = () => {
           {activeTab === 'spare-parts' && <SparePartsTab summary={summary} variants={localVariants} partsByGroup={localParts} selectedVariantIds={selectedVariantIds} onAddPart={addSparePart} onRemovePart={removeSparePart} onEditPart={editSparePart} onToggleMapping={togglePartVariantMapping} colors={colors} expandedGroups={expandedGroups} toggleGroup={toggleGroup} />}
           {activeTab === 'checkpoints' && <CheckpointsTab summary={summary} checkpointsBySection={localCheckpoints} onAddCheckpoint={addCheckpoint} onAddValue={addCheckpointValue} onEditCheckpoint={editCheckpoint} colors={colors} />}
           {activeTab === 'cycles' && <CyclesTab summary={summary} cycles={localCycles} onAdd={addCycle} onRemove={removeCycle} onEditCycle={editCycle} colors={colors} />}
+          {activeTab === 'services' && (() => {
+            const defs: any[] = (summary as any)?.service_definitions || [];
+            const cps: any[] = Object.values(summary?.checkpoints_by_section || {}).flat() as any[];
+            const cycles: any[] = (summary as any)?.cycles || [];
+            const cpsByService = new Map<string, any[]>();
+            cps.forEach((c: any) => {
+              if (!c.service_name) return;
+              const arr = cpsByService.get(c.service_name) || [];
+              arr.push(c); cpsByService.set(c.service_name, arr);
+            });
+            const cpIds = (name: string) => new Set((cpsByService.get(name) || []).map((c: any) => c.id));
+            return (
+              <div className="space-y-3">
+                {defs.length === 0 && (
+                  <div className="text-sm py-10 text-center" style={{ color: colors.utility.secondaryText }}>
+                    No services defined yet — run <b>Service Names</b> above to group checkpoints into sellable services.
+                  </div>
+                )}
+                {defs.map((d: any) => {
+                  const ids = cpIds(d.service_name);
+                  const svcCycles = cycles.filter((cy: any) => ids.has(cy.checkpoint_id));
+                  const cadences = [...new Set(svcCycles.filter((cy: any) => cy.frequency_unit === 'days' && cy.frequency_value)
+                    .map((cy: any) => `every ${cy.frequency_value}d`))];
+                  const prices = svcCycles.flatMap((cy: any) => cy.prices || []);
+                  const byCur: Record<string, number[]> = {};
+                  prices.forEach((p: any) => { if (p.price_median != null) (byCur[p.currency] = byCur[p.currency] || []).push(Number(p.price_median)); });
+                  return (
+                    <div key={d.service_name} className="rounded-xl border p-4" style={{ borderColor, backgroundColor: colors.utility.primaryBackground }}>
+                      <div className="flex items-start justify-between gap-3 flex-wrap">
+                        <div className="min-w-0">
+                          <div className="font-semibold text-sm" style={{ color: colors.utility.primaryText }}>{d.service_name}</div>
+                          {d.description ? (
+                            <p className="text-xs mt-1 leading-relaxed max-w-2xl" style={{ color: colors.utility.secondaryText }}>{d.description}</p>
+                          ) : (
+                            <p className="text-xs mt-1 italic" style={{ color: colors.utility.secondaryText + '99' }}>
+                              No description yet — re-run Service Names to generate one.
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full" style={{ backgroundColor: colors.brand.primary + '12', color: colors.brand.primary }}>
+                            {ids.size} checkpoints
+                          </span>
+                          {cadences.slice(0, 3).map(c => (
+                            <span key={c} className="text-[10px] font-mono px-2 py-0.5 rounded-full" style={{ backgroundColor: '#2563eb15', color: '#2563eb' }}>{c}</span>
+                          ))}
+                          {Object.entries(byCur).map(([cur, vals]) => (
+                            <span key={cur} className="text-[10px] font-mono px-2 py-0.5 rounded-full" style={{ backgroundColor: '#10b98115', color: '#10b981' }}>
+                              {cur} {Math.min(...vals).toLocaleString()}–{Math.max(...vals).toLocaleString()}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+
           {activeTab === 'overlays' && (
             <OverlaysTab
               resourceTemplateId={id!}

@@ -843,6 +843,7 @@ async function handleBulkSeed(
     const insertRows = blocks.map((block: Record<string, any>) => ({
       name:                 block.name,
       display_name:         block.display_name || block.name,
+      description:          block.description || null,
       block_type_id:        block.block_type_id,
       pricing_mode_id:      block.pricing_mode_id || null,
       base_price:           block.base_price || null,
