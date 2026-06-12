@@ -267,6 +267,20 @@ const KnowledgeTreeDetail: React.FC = () => {
       return;
     }
     const currencyOption = CURRENCY_OPTIONS.find(c => c.value === selectedCurrency) || CURRENCY_OPTIONS[0];
+
+    // Layer 2: each cycle carries its applicable variants (from the variant map;
+    // no map rows = applies to ALL variants) so the LLM can return currency-neutral
+    // per-variant multipliers alongside min/median/max.
+    const allVariants = (summary.variants || []).map((v: any) => ({ id: v.id, name: v.name, capacity_range: v.capacity_range }));
+    const applicabilityByCp = new Map<string, string[]>();
+    for (const cp of Object.values(localCheckpoints).flat() as any[]) {
+      applicabilityByCp.set(cp.id, (cp.variant_applicability || []).map((m: any) => m.variant_id));
+    }
+    const variantsForCycle = (cy: any) => {
+      const mapped = applicabilityByCp.get(cy.checkpoint_id) || [];
+      return mapped.length ? allVariants.filter(v => mapped.includes(v.id)) : allVariants;
+    };
+
     try {
       const result = await generatePricingMutation.mutateAsync({
         equipmentName: summary.resource_template.name,
@@ -275,14 +289,22 @@ const KnowledgeTreeDetail: React.FC = () => {
         currency: currencyOption.value,
         geo: currencyOption.geo,
         spareParts: allPartsFlat.map((p: any) => ({ id: p.id, name: p.name, component_group: p.component_group })),
-        serviceCycles: localCycles.map((cy: any) => ({ id: cy.id, catalog_name: cy.catalog_name, frequency_value: cy.frequency_value, frequency_unit: cy.frequency_unit, checkpoint_name: cy.checkpoint_name })),
+        serviceCycles: localCycles.map((cy: any) => ({
+          id: cy.id,
+          catalog_name: cy.catalog_name,
+          frequency_value: cy.frequency_value,
+          frequency_unit: cy.frequency_unit,
+          checkpoint_name: cy.checkpoint_name,
+          variants: variantsForCycle(cy),
+        })),
       });
-      vaniToast.success(`Pricing generated [${currencyOption.value}] — ${result.spare_parts.length} parts, ${result.service_cycles.length} cycles priced`);
+      const multCount = (result.service_cycles || []).reduce((n: number, sc: any) => n + (sc.variant_multipliers?.length || 0), 0);
+      vaniToast.success(`Pricing generated [${currencyOption.value}] — ${result.spare_parts.length} parts, ${result.service_cycles.length} cycles priced${multCount ? `, ${multCount} variant multipliers` : ''}`);
       refetch();
     } catch (err) {
       vaniToast.error(`Pricing generation failed: ${(err as Error).message}`);
     }
-  }, [id, summary, localParts, localCycles, selectedCurrency, generatePricingMutation, refetch]);
+  }, [id, summary, localParts, localCycles, localCheckpoints, selectedCurrency, generatePricingMutation, refetch]);
 
   // ── Individual step handlers (manual retry) ────────────────────────────────
 

@@ -139,6 +139,7 @@ interface ServiceGroupRow {
   price_max:        number | null;
   price_currency:   string;
   checkpoint_id:    string;
+  cycle_id?:        string | null;   // Layer 2: keys per-variant multipliers
   frequency_value:  number | null;
   frequency_unit:   string | null;
   alert_overdue_days: number | null;
@@ -221,8 +222,11 @@ export class KtCatBlockMapperService {
       is_required:      true,
     };
 
+    // Layer 2: currency-neutral per-variant multipliers, keyed by service cycle
+    const multipliers = await this.fetchVariantMultipliers(sb, serviceRows);
+
     const { blocks: serviceBlocks, skipped: skippedServiceGroups } =
-      this.buildServiceBlocks(serviceRows, variants, variantMap, serviceDefs, resourceTemplateId, selectedResource);
+      this.buildServiceBlocks(serviceRows, variants, variantMap, serviceDefs, multipliers, resourceTemplateId, selectedResource);
 
     const { blocks: spareBlocks, skipped: skippedSpareParts } =
       this.buildSpareBlocks(spareRows, resourceTemplateId, selectedResource);
@@ -242,6 +246,7 @@ export class KtCatBlockMapperService {
     variants:         KtVariant[],
     variantMap:       VariantMapRow[],
     serviceDefs:      Map<string, string | null>,
+    multipliers:      Map<string, Map<string, number>>,
     resourceTemplateId: string,
     selectedResource: SelectedResource,
   ): { blocks: CatBlockPayload[]; skipped: number } {
@@ -312,7 +317,26 @@ export class KtCatBlockMapperService {
       const applicableVariants = applicableIds.size > 0
         ? variants.filter(v => applicableIds.has(v.id))
         : variants;
-      const variantPrice = (v: KtVariant) => overrideByVariant.get(v.id) ?? referencePrice;
+
+      // Layer 2 multipliers: currency-neutral, relative to the cycle median.
+      // First multiplier found across the group's cycles wins per variant.
+      const multByVariant = new Map<string, number>();
+      for (const r of groupRows) {
+        const cm = r.cycle_id ? multipliers.get(r.cycle_id) : undefined;
+        if (!cm) continue;
+        for (const [variantId, mult] of cm) {
+          if (!multByVariant.has(variantId)) multByVariant.set(variantId, mult);
+        }
+      }
+
+      // Precedence: absolute override midpoint (hand-curated era) > median × multiplier > flat median
+      const variantPrice = (v: KtVariant) => {
+        const override = overrideByVariant.get(v.id);
+        if (override != null) return override;
+        const mult = multByVariant.get(v.id);
+        if (mult != null && referencePrice > 0) return Math.round(referencePrice * mult);
+        return referencePrice;
+      };
 
       const selectedVariants: SelectedVariant[] = applicableVariants.map(v => ({
         variant_id:     v.id,
@@ -584,6 +608,7 @@ export class KtCatBlockMapperService {
               price_max:        pv.price_max,
               price_currency:   pv.currency || 'INR',
               checkpoint_id:    cp.id,
+              cycle_id:         cycle.id,
               frequency_value:  cycle.frequency_value,
               frequency_unit:   cycle.frequency_unit,
               alert_overdue_days: cycle.alert_overdue_days,
@@ -601,6 +626,7 @@ export class KtCatBlockMapperService {
           price_max:        null,
           price_currency:   'INR',
           checkpoint_id:    cp.id,
+          cycle_id:         null,
           frequency_value:  null,
           frequency_unit:   null,
           alert_overdue_days: null,
@@ -609,6 +635,32 @@ export class KtCatBlockMapperService {
     }
 
     return rows;
+  }
+
+  // Layer 2: currency-neutral per-variant multipliers (cycleId → variantId → multiplier).
+  // Empty map = flat pricing; the variantPrice precedence handles absence gracefully.
+  private async fetchVariantMultipliers(
+    sb: SupabaseClient,
+    serviceRows: ServiceGroupRow[],
+  ): Promise<Map<string, Map<string, number>>> {
+    const result = new Map<string, Map<string, number>>();
+    const cycleIds = [...new Set(serviceRows.map(r => r.cycle_id).filter((id): id is string => !!id))];
+    if (!cycleIds.length) return result;
+
+    const { data, error } = await sb
+      .from('m_kt_variant_price_multipliers')
+      .select('service_cycle_id, variant_id, multiplier')
+      .in('service_cycle_id', cycleIds);
+    if (error) {
+      console.error('KtCatBlockMapper: fetchVariantMultipliers error', error.message);
+      return result;
+    }
+    for (const row of data || []) {
+      const m = result.get(row.service_cycle_id) || new Map<string, number>();
+      m.set(row.variant_id, Number(row.multiplier));
+      result.set(row.service_cycle_id, m);
+    }
+    return result;
   }
 
   private async fetchServiceDefinitions(sb: SupabaseClient, resourceTemplateId: string): Promise<Map<string, string | null>> {

@@ -1220,6 +1220,30 @@ async function savePricing(body: any, isAdmin: boolean) {
     const { error } = await cycleSlotQuery;
     if (error) errors.push(`service_cycle ${sc.id}: ${error.message}`);
     else updated.service_cycles = (updated.service_cycles || 0) + 1;
+
+    // Layer 2: currency-neutral per-variant multipliers (relative to the cycle
+    // median) — upserted per (cycle, variant), so re-runs in ANY currency refresh
+    // the same rows instead of duplicating.
+    if (Array.isArray(sc.variant_multipliers) && sc.variant_multipliers.length) {
+      for (const vm of sc.variant_multipliers) {
+        const mult = Number(vm?.multiplier);
+        if (!vm?.variant_id || !Number.isFinite(mult) || mult <= 0 || mult > 20) {
+          errors.push(`cycle ${sc.id}: invalid multiplier entry ${JSON.stringify(vm)}`);
+          continue;
+        }
+        const { error: vmErr } = await sb
+          .from("m_kt_variant_price_multipliers")
+          .upsert({
+            service_cycle_id: sc.id,
+            variant_id: vm.variant_id,
+            multiplier: mult,
+            source: "generated",
+            updated_at: new Date().toISOString(),
+          }, { onConflict: "service_cycle_id,variant_id" });
+        if (vmErr) errors.push(`cycle ${sc.id} variant ${vm.variant_id}: ${vmErr.message}`);
+        else updated.variant_multipliers = (updated.variant_multipliers || 0) + 1;
+      }
+    }
   }
 
   if (errors.length > 0) {

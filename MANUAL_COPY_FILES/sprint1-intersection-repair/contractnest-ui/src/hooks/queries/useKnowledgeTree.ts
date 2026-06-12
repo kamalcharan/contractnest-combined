@@ -252,7 +252,11 @@ export const useKTGeneratePricing = () => {
       currency?: string;
       geo?: string;
       spareParts: Array<{ id: string; name: string; component_group: string }>;
-      serviceCycles: Array<{ id: string; catalog_name?: string | null; frequency_value: number; frequency_unit: string; checkpoint_name?: string }>;
+      serviceCycles: Array<{
+        id: string; catalog_name?: string | null; frequency_value: number; frequency_unit: string; checkpoint_name?: string;
+        // Layer 2: applicable variants → LLM returns currency-neutral variant_multipliers
+        variants?: Array<{ id: string; name: string; capacity_range?: string | null }>;
+      }>;
     }) => {
       const { default: api } = await import('@/services/api');
       const response = await api.post('/api/knowledge-tree/generate-pricing', payload, { timeout: 120000 });

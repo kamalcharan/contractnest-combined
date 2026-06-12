@@ -36,7 +36,15 @@ interface GeneratePricingInput {
   currency?: string;
   geo?: string;
   spareParts?: Array<{ id: string; name: string; component_group: string }>;
-  serviceCycles?: Array<{ id: string; catalog_name?: string | null; frequency_value: number; frequency_unit: string; checkpoint_name?: string }>;
+  serviceCycles?: Array<{
+    id: string;
+    catalog_name?: string | null;
+    frequency_value: number;
+    frequency_unit: string;
+    checkpoint_name?: string;
+    // Layer 2: applicable variants → LLM returns currency-neutral variant_multipliers
+    variants?: Array<{ id: string; name: string; capacity_range?: string | null }>;
+  }>;
 }
 
 class KnowledgeTreeGeneratorService {
@@ -249,11 +257,18 @@ class KnowledgeTreeGeneratorService {
       .map(sp => `  - id: "${sp.id}"  name: "${sp.name}"  group: "${sp.component_group}"`)
       .join('\n');
     const cyclesContext = serviceCycles
-      .map(sc => `  - id: "${sc.id}"  name: "${sc.catalog_name || sc.checkpoint_name || 'unnamed'}"  frequency: ${sc.frequency_value} ${sc.frequency_unit}`)
+      .map(sc => {
+        const head = `  - id: "${sc.id}"  name: "${sc.catalog_name || sc.checkpoint_name || 'unnamed'}"  frequency: ${sc.frequency_value} ${sc.frequency_unit}`;
+        if (!sc.variants?.length) return head;
+        const vars = sc.variants
+          .map(v => `      * variant_id: "${v.id}"  name: "${v.name}"${v.capacity_range ? `  range: "${v.capacity_range}"` : ''}`)
+          .join('\n');
+        return `${head}\n    variants (return variant_multipliers using these EXACT UUIDs):\n${vars}`;
+      })
       .join('\n');
 
     const userMessage = `Generate pricing for:\nEquipment: ${equipmentName}\nSub-category: ${subCategory}\nresource_template_id: ${resourceTemplateId}\nCurrency: ${currency}\nGeography: ${geo}\n\nSpare Parts (use EXACT IDs):\n${partsContext}\n\nService Cycles (use EXACT IDs):\n${cyclesContext}`;
-    return this.callAnthropic(systemPrompt, userMessage, 6000, `step5-pricing-${geo}-${currency}`);
+    return this.callAnthropic(systemPrompt, userMessage, 8000, `step5-pricing-${geo}-${currency}`);
   }
 }
 
