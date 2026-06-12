@@ -114,11 +114,26 @@ const Screen8APricingStep: React.FC = () => {
   useEffect(() => {
     const fetchBlocks = async () => {
       try {
+        // Scope to THIS onboarding session's picks (founder bug: a reused tenant
+        // accumulates seeds from earlier runs — pricing must only show what the
+        // user just selected). Route state first; S8 table as refresh-safe source.
+        let selectedIds = new Set<string>(allTemplates.map((t: any) => t.id).filter(Boolean));
+        if (selectedIds.size === 0) {
+          try {
+            const sel = await api.get('/api/onboarding/selected-resources', { params: { purpose: 'sell' } });
+            const rows: any[] = sel.data?.data || [];
+            selectedIds = new Set(rows.map(r => r.resource_template_id).filter(Boolean));
+          } catch { /* fall through — show all seeded blocks rather than none */ }
+        }
+
         const resp = await api.get('/api/catalog-studio/blocks', {
           params: { is_seed: true, limit: 500 },
         });
         const raw: CatBlock[] = resp.data?.data?.blocks || resp.data?.blocks || [];
-        const seededBlocks = raw.filter(b => b.is_seed !== false);
+        const allSeeded = raw.filter(b => b.is_seed !== false);
+        const seededBlocks = selectedIds.size > 0
+          ? allSeeded.filter(b => b.resource_template_id && selectedIds.has(b.resource_template_id))
+          : allSeeded;
         setBlocks(seededBlocks);
 
         const initial: Record<string, number> = {};
@@ -334,7 +349,7 @@ const Screen8APricingStep: React.FC = () => {
           <>
             <span style={{ fontSize: 13, fontWeight: 800, color: price > 0 ? TEXT : TEXT_MUTED, fontFamily: "'IBM Plex Mono', monospace", whiteSpace: 'nowrap' }}>
               {price > 0 ? fmtPrice(price, currency) : '—'}
-              <span style={{ fontSize: 10, fontWeight: 600, color: TEXT_MUTED }}> {perUnit ? '/unit' : '/yr'}</span>
+              <span style={{ fontSize: 10, fontWeight: 600, color: TEXT_MUTED }}> {perUnit ? '/unit' : '/visit'}</span>
             </span>
             <button
               className="s8a-edit-btn"
