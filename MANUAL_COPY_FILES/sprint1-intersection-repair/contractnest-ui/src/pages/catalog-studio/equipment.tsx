@@ -89,6 +89,8 @@ const CatalogEquipmentPage: React.FC = () => {
   const [blocksLoading, setBlocksLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [variantFilter, setVariantFilter] = useState<string>('all');   // variant_id | 'all'
+  const [currencyView, setCurrencyView] = useState<string>('');        // '' = auto (primary)
 
   // Seed preview / load state
   const [preview, setPreview] = useState<SeedPreview | null>(null);
@@ -156,6 +158,8 @@ const CatalogEquipmentPage: React.FC = () => {
   }, [templates, blocksByTemplate, selectedId]);
 
   // ── Seed actions ────────────────────────────────────────────────────────────
+
+  useEffect(() => { setVariantFilter('all'); }, [selectedId]);
 
   const openPreview = async (tplId: string) => {
     setPreviewFor(tplId);
@@ -233,10 +237,12 @@ const CatalogEquipmentPage: React.FC = () => {
     );
   };
 
-  const Row: React.FC<{ b: RawBlock; perUnit: boolean }> = ({ b, perUnit }) => {
-    const price = num(b.base_price);
+  const Row: React.FC<{ b: RawBlock; perUnit: boolean; viewCurrency: string }> = ({ b, perUnit, viewCurrency }) => {
     const cfg = b.config || {};
-    const cur = b.currency || 'INR';
+    const inView = priceIn(b, viewCurrency);
+    const price = inView ?? 0;
+    const missingInCurrency = inView === null && num(b.base_price) > 0;
+    const cur = viewCurrency;
     const currencies: string[] = [...new Set(((cfg.pricingRecords || []) as any[]).map(r => r.currency).filter(Boolean))];
     const min = num(cfg.kt_price_min); const max = num(cfg.kt_price_max);
     const days = cfg.serviceCycles?.enabled ? cfg.serviceCycles.days : null;
@@ -256,7 +262,7 @@ const CatalogEquipmentPage: React.FC = () => {
         <div>{days ? <span style={{ fontFamily: MONO, fontSize: 11, color: BLUE, background: BLUE_BG, padding: '2px 8px', borderRadius: 4, whiteSpace: 'nowrap' }}>every {days}d</span> : <span style={{ color: TEXT_MUTED }}>—</span>}</div>
         <div style={{ fontFamily: MONO, fontSize: 11, color: TEXT_DIM }}>{variants > 0 ? `${variants} variants` : '—'}</div>
         <div style={{ fontFamily: MONO, fontWeight: 700, color: price > 0 ? TEXT : AMBER, whiteSpace: 'nowrap' }}>
-          {price > 0 ? fmt(price, cur) : 'set price'}
+          {price > 0 ? fmt(price, cur) : missingInCurrency ? `+ add ${cur}` : 'set price'}
           {price > 0 && <span style={{ fontSize: 10, color: TEXT_MUTED, fontWeight: 600 }}> {perUnit ? '/unit' : '/visit'}</span>}
         </div>
         <div style={{ fontFamily: MONO, fontSize: 10, color: TEXT_DIM, whiteSpace: 'nowrap' }}>
@@ -272,10 +278,58 @@ const CatalogEquipmentPage: React.FC = () => {
   };
 
   const selBlocks = selectedId ? (blocksByTemplate.get(selectedId) || []) : [];
-  const selServices = selBlocks.filter(b => !isSpare(b) && matches(b.name)).sort((a, b) => a.name.localeCompare(b.name));
-  const selSpares = selBlocks.filter(b => isSpare(b) && matches(b.name)).sort((a, b) => a.name.localeCompare(b.name));
+
+  // Variants present across this equipment's blocks (for the variant filter)
+  const selVariants = useMemo(() => {
+    const m = new Map<string, string>();
+    selBlocks.forEach(b => (b.config?.selectedVariants || []).forEach((v: any) => {
+      if (v?.variant_id && !m.has(v.variant_id)) m.set(v.variant_id, v.variant_name || v.variant_id);
+    }));
+    return [...m.entries()].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [selBlocks]);
+
+  // Currencies present across this equipment's pricing records
+  const selCurrencies = useMemo(() => {
+    const set = new Set<string>();
+    selBlocks.forEach(b => {
+      if (b.currency) set.add(b.currency);
+      (b.config?.pricingRecords || []).forEach((r: any) => r?.currency && set.add(r.currency));
+    });
+    return [...set];
+  }, [selBlocks]);
+  const activeCurrency = currencyView || (selCurrencies.includes('INR') ? 'INR' : selCurrencies[0] || 'INR');
+
+  // Price of a block in the viewed currency (pricing record per currency)
+  const priceIn = (b: RawBlock, cur: string): number | null => {
+    const rec = (b.config?.pricingRecords || []).find((r: any) => r?.currency === cur);
+    if (rec) return num(rec.amount);
+    return (b.currency || 'INR') === cur ? num(b.base_price) : null;
+  };
+
+  const appliesToVariant = (b: RawBlock) =>
+    variantFilter === 'all' ||
+    (b.config?.selectedVariants || []).some((v: any) => v?.variant_id === variantFilter) ||
+    (b.config?.selectedVariants || []).length === 0; // spares without variant scoping stay visible
+  const selServices = selBlocks.filter(b => !isSpare(b) && matches(b.name) && appliesToVariant(b)).sort((a, b) => a.name.localeCompare(b.name));
+  const selSpares = selBlocks.filter(b => isSpare(b) && matches(b.name) && appliesToVariant(b)).sort((a, b) => a.name.localeCompare(b.name));
   const selState: EqState | null = selectedId && selectedId !== '__custom__' ? stateFor(selectedId) : null;
   const cov = selectedId ? ktCoverage?.[selectedId] : undefined;
+
+  // Column headings (founder feedback #1)
+  const Cols: React.FC<{ perUnit: boolean }> = ({ perUnit }) => (
+    <div style={{
+      display: 'grid', gridTemplateColumns: '1fr 110px 90px 130px 130px 60px',
+      gap: 12, padding: '8px 20px', background: SURFACE, borderBottom: `1px solid ${BORDER_LT}`,
+      fontFamily: MONO, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, color: TEXT_MUTED,
+    }}>
+      <span>{perUnit ? 'Part / Consumable' : 'Service'}</span>
+      <span>{perUnit ? '' : 'Cycle'}</span>
+      <span>{perUnit ? '' : 'Variants'}</span>
+      <span>Your price</span>
+      <span>KT market range</span>
+      <span></span>
+    </div>
+  );
 
   const loading = tplLoading || blocksLoading;
 
@@ -374,6 +428,43 @@ const CatalogEquipmentPage: React.FC = () => {
                   </div>
                 )}
 
+                {/* Filters: variant applicability + currency view (founder feedback #2, #3) */}
+                {selBlocks.length > 0 && (selVariants.length > 0 || selCurrencies.length > 1) && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+                    {selVariants.length > 0 && (
+                      <>
+                        <span style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, color: TEXT_MUTED }}>Variant</span>
+                        <select
+                          value={variantFilter}
+                          onChange={e => setVariantFilter(e.target.value)}
+                          style={{ padding: '7px 12px', border: `1.5px solid ${BORDER}`, borderRadius: 8, fontFamily: 'inherit', fontSize: 12, fontWeight: 600, color: TEXT, background: WHITE, outline: 'none', cursor: 'pointer', maxWidth: 280 }}
+                        >
+                          <option value="all">All variants</option>
+                          {selVariants.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+                        </select>
+                      </>
+                    )}
+                    {selCurrencies.length > 1 && (
+                      <>
+                        <span style={{ fontFamily: MONO, fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, color: TEXT_MUTED, marginLeft: 8 }}>Currency</span>
+                        <select
+                          value={activeCurrency}
+                          onChange={e => setCurrencyView(e.target.value)}
+                          style={{ padding: '7px 12px', border: `1.5px solid ${BORDER}`, borderRadius: 8, fontFamily: MONO, fontSize: 12, fontWeight: 700, color: TEXT, background: WHITE, outline: 'none', cursor: 'pointer' }}
+                        >
+                          {selCurrencies.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                        <Badge tone="blue" title="This equipment's blocks hold prices in multiple currencies">{`${selCurrencies.length} CURRENCIES`}</Badge>
+                      </>
+                    )}
+                    {variantFilter !== 'all' && (
+                      <span style={{ fontSize: 11, color: TEXT_DIM }}>
+                        showing items applicable to <b>{selVariants.find(v => v.id === variantFilter)?.name}</b>
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 {selState === 'none' && (
                   <div style={{ background: WHITE, border: `1px solid ${BORDER}`, borderRadius: 14, padding: '50px 20px', textAlign: 'center', marginBottom: 16 }}>
                     <div style={{ fontSize: 36, marginBottom: 10 }}>🌱</div>
@@ -388,7 +479,8 @@ const CatalogEquipmentPage: React.FC = () => {
                     <div style={{ padding: '12px 20px', background: SURFACE, borderBottom: `1px solid ${BORDER_LT}`, fontSize: 13, fontWeight: 800, color: TEXT }}>
                       Services <span style={{ fontFamily: MONO, fontSize: 10, color: TEXT_DIM, fontWeight: 400 }}>· {selServices.length}</span>
                     </div>
-                    {selServices.map(b => <Row key={b.id} b={b} perUnit={false} />)}
+                    <Cols perUnit={false} />
+                    {selServices.map(b => <Row key={b.id} b={b} perUnit={false} viewCurrency={activeCurrency} />)}
                   </div>
                 )}
 
@@ -398,7 +490,8 @@ const CatalogEquipmentPage: React.FC = () => {
                     <div style={{ padding: '12px 20px', background: SURFACE, borderBottom: `1px solid ${BORDER_LT}`, fontSize: 13, fontWeight: 800, color: TEXT }}>
                       Spare Parts &amp; Consumables <span style={{ fontFamily: MONO, fontSize: 10, color: TEXT_DIM, fontWeight: 400 }}>· {selSpares.length}</span>
                     </div>
-                    {selSpares.map(b => <Row key={b.id} b={b} perUnit={true} />)}
+                    <Cols perUnit={true} />
+                    {selSpares.map(b => <Row key={b.id} b={b} perUnit={true} viewCurrency={activeCurrency} />)}
                   </div>
                 )}
 
