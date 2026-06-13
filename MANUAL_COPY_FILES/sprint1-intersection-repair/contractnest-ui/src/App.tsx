@@ -69,6 +69,7 @@ import VaniIntroStep from '@/pages/onboarding/steps/VaniIntroStep';
 import UserProfileStep from '@/pages/onboarding/steps/UserProfileStep';
 import BusinessDetailsStep from '@/pages/onboarding/steps/BusinessDetailsStep';
 import PersonaSelectionStep from '@/pages/onboarding/steps/PersonaSelectionStep';
+import EngagementModelStep from '@/pages/onboarding/steps/EngagementModelStep';
 import ThemeSelectionStep from '@/pages/onboarding/steps/ThemeSelectionStep';
 import VaniConsentStep from '@/pages/onboarding/steps/VaniConsentStep';
 import VaniIntelligenceStep from '@/pages/onboarding/steps/VaniIntelligenceStep';
@@ -428,6 +429,7 @@ const AppContent: React.FC = () => {
   <Route path="user-profile" element={<UserProfileStep />} />
   <Route path="business-details" element={<BusinessDetailsStep />} />
   <Route path="persona-selection" element={<PersonaSelectionStep />} />
+  <Route path="engagement-model" element={<EngagementModelStep />} />
   <Route path="theme-selection" element={<ThemeSelectionStep />} />
   <Route path="industry-selection" element={<IndustrySelectionStep />} />
   <Route path="resource-pick" element={<ResourcePickStep />} />

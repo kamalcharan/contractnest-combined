@@ -110,7 +110,11 @@ const PersonaSelectionStep: React.FC = () => {
       });
       completeVaniStep('persona-selection', { persona: selected });
       vaniToast.success('Persona saved');
-      navigate('/onboarding/theme-selection');
+      // Sellers and dual tenants capture engagement model before theme setup
+      const nextRoute = (selected === 'seller' || selected === 'both')
+        ? '/onboarding/engagement-model'
+        : '/onboarding/theme-selection';
+      navigate(nextRoute);
     } catch (err: any) {
       vaniToast.error(err?.response?.data?.error || 'Failed to save — please try again');
     } finally {

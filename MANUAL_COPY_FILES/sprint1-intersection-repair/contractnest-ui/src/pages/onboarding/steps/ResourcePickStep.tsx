@@ -1,8 +1,8 @@
 // src/pages/onboarding/steps/ResourcePickStep.tsx
-// Screen 6 — Resource Picker (Seller focus)
-// Shows Equipment and Facilities tabs. User selects what applies to them.
-// KT dot: green = KT available (variants_count > 0), grey = no KT.
-// Auto-selects KT-ready items on load. Selections restored when navigating Back.
+// Stream 1 / Task 1.2 — Resource Picker (3 tabs: Equipment | Facilities | Services)
+// Equipment + Facilities: KT-gated (green dot = selectable, red = not yet).
+// Services: always selectable — no KT required (flat pricing, lighter KT path).
+// Selections saved to t_tenant_selected_resources before navigating.
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -14,7 +14,7 @@ import { useKnowledgeTreeCoverage } from '@/hooks/queries/useKnowledgeTree';
 import { getSubCategoryConfig } from '@/constants/subCategoryConfig';
 import api from '@/services/api';
 import { completeVaniStep } from '@/utils/onboarding/completeVaniStep';
-import { ArrowRight, Package, RefreshCw } from 'lucide-react';
+import { ArrowRight, Package, Briefcase, RefreshCw } from 'lucide-react';
 import type { ResourceTemplate } from '@/services/resourcesService';
 import type { KnowledgeTreeCoverageMap } from '@/pages/service-contracts/templates/admin/knowledge-tree/types';
 
@@ -34,12 +34,13 @@ const BLUE        = '#2563eb';
 const BLUE_SOFT   = '#eff6ff';
 const PURPLE      = '#8B5CF6';
 const PURPLE_SOFT = '#f5f3ff';
+const TEAL        = '#0d9488';
+const TEAL_SOFT   = '#f0fdfa';
 const GREEN       = '#16a34a';
 const RED         = '#dc2626';
 const RED_SOFT    = '#fef2f2';
 
-type WorkIntent = 'equipment' | 'facilities' | 'both' | null;
-type ActiveTab  = 'equipment' | 'facilities';
+type ActiveTab = 'equipment' | 'facilities' | 'services';
 
 const normalizePersona = (raw: string) => {
   if (raw === 'service_provider') return 'seller';
@@ -50,6 +51,7 @@ const normalizePersona = (raw: string) => {
 
 const isEquipmentType = (t: string) => ['equipment', 'consumable'].includes(t.toLowerCase());
 const isFacilityType  = (t: string) => t.toLowerCase() === 'asset';
+const isServiceType   = (t: string) => t.toLowerCase() === 'service';
 
 const hasKT = (t: ResourceTemplate, coverage: KnowledgeTreeCoverageMap | undefined): boolean =>
   (coverage?.[t.id]?.variants_count ?? 0) > 0;
@@ -75,46 +77,54 @@ const ResourcePickStep: React.FC = () => {
   const { user }   = useAuth();
   const { formData } = useTenantProfile({ isOnboarding: true });
 
+  // Increased limit to 500 to cover all resource types including services
   const { templates, isLoading: templatesLoading, isError, refetch } =
-    useResourceTemplatesBrowser({ limit: 200 });
+    useResourceTemplatesBrowser({ limit: 500 });
   const { data: ktCoverage, isLoading: ktLoading } = useKnowledgeTreeCoverage();
 
   const isLoading = templatesLoading || ktLoading;
-  const personaId = normalizePersona((formData as any).persona || formData.business_type_id || '');
+  const personaId = normalizePersona((formData as any).persona || (formData as any).business_type_id || '');
+  const engagementModel = (formData as any).engagement_model || 'equipment_first';
   const firstName = user?.first_name?.trim() || null;
 
   const equipmentTemplates = useMemo(
     () => templates.filter(t => isEquipmentType(t.resource_type_id)), [templates]);
   const facilityTemplates  = useMemo(
     () => templates.filter(t => isFacilityType(t.resource_type_id)),  [templates]);
+  const serviceTemplates   = useMemo(
+    () => templates.filter(t => isServiceType(t.resource_type_id)),   [templates]);
 
   // ── Restore selections when navigating Back from VaniConsent ─────────────
   const routeState = (location.state || {}) as Record<string, any>;
   const restoredIds = useMemo(() => {
     const eq:  string[] = (routeState.selectedEquipmentTemplates || []).map((t: any) => t.id);
     const fac: string[] = (routeState.selectedFacilityTemplates  || []).map((t: any) => t.id);
-    return new Set<string>([...eq, ...fac]);
+    const svc: string[] = (routeState.selectedServiceTemplates   || []).map((t: any) => t.id);
+    return new Set<string>([...eq, ...fac, ...svc]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // stable — only reads state on mount
+  }, []);
 
-  // ── Selection state ───────────────────────────────────────────────────────
   const [selectedIds, setSelectedIds] = useState<Set<string>>(restoredIds);
   const [initialised, setInitialised] = useState(restoredIds.size > 0);
 
-  // ── Tab state — default to equipment tab ─────────────────────────────────
-  const [activeTab, setActiveTab] = useState<ActiveTab>('equipment');
+  // Default tab driven by engagement model
+  const defaultTab: ActiveTab =
+    engagementModel === 'service_first'  ? 'services'   :
+    engagementModel === 'facility_first' ? 'facilities' : 'equipment';
+  const [activeTab, setActiveTab] = useState<ActiveTab>(defaultTab);
 
-  // Auto-select all KT-ready templates once data is ready (first visit only)
+  // Auto-select KT-ready equipment/facility templates on first visit
   useEffect(() => {
     if (!isLoading && !initialised) {
-      const toSelect = templates.filter(t => hasKT(t, ktCoverage));
-      setSelectedIds(new Set(toSelect.map(t => t.id)));
+      const ktReady = [...equipmentTemplates, ...facilityTemplates].filter(t => hasKT(t, ktCoverage));
+      setSelectedIds(new Set(ktReady.map(t => t.id)));
       setInitialised(true);
     }
-  }, [isLoading, templates, ktCoverage, initialised]);
+  }, [isLoading, equipmentTemplates, facilityTemplates, ktCoverage, initialised]);
 
   const toggle = (t: ResourceTemplate) => {
-    if (!hasKT(t, ktCoverage)) return;
+    // Equipment and facilities are gated by KT; services are always toggleable
+    if (!isServiceType(t.resource_type_id) && !hasKT(t, ktCoverage)) return;
     setSelectedIds(prev => {
       const next = new Set(prev);
       next.has(t.id) ? next.delete(t.id) : next.add(t.id);
@@ -122,10 +132,10 @@ const ResourcePickStep: React.FC = () => {
     });
   };
 
-  const selectAll = (items: ResourceTemplate[]) =>
+  const selectAll = (items: ResourceTemplate[], ignoreKT = false) =>
     setSelectedIds(prev => {
       const n = new Set(prev);
-      items.filter(t => hasKT(t, ktCoverage)).forEach(t => n.add(t.id));
+      items.filter(t => ignoreKT || hasKT(t, ktCoverage)).forEach(t => n.add(t.id));
       return n;
     });
   const deselectAll = (items: ResourceTemplate[]) =>
@@ -137,33 +147,26 @@ const ResourcePickStep: React.FC = () => {
 
   const selEq  = useMemo(() => equipmentTemplates.filter(t => selectedIds.has(t.id)), [equipmentTemplates, selectedIds]);
   const selFac = useMemo(() => facilityTemplates.filter(t => selectedIds.has(t.id)),  [facilityTemplates, selectedIds]);
+  const selSvc = useMemo(() => serviceTemplates.filter(t => selectedIds.has(t.id)),   [serviceTemplates, selectedIds]);
 
-  const canContinue = selEq.length > 0 || selFac.length > 0;
+  const canContinue = selEq.length > 0 || selFac.length > 0 || selSvc.length > 0;
 
-  const deriveWorkIntent = (): WorkIntent => {
-    if (selEq.length > 0 && selFac.length > 0) return 'both';
-    if (selEq.length > 0)  return 'equipment';
-    if (selFac.length > 0) return 'facilities';
-    return null;
-  };
-
-  // S8: persist picks durably (t_tenant_selected_resources) before navigating.
-  // Purpose rule mirrors the backend seeder:
-  //   seller → equipment picks are 'sell'
-  //   buyer  → equipment + facility picks are 'own'
-  //   both   → equipment picks are 'sell' AND 'own'; facility picks are 'own'
-  // Best-effort: the seed endpoint re-persists from its payload as a backstop,
-  // so a transient failure here must not block onboarding.
   const handleContinue = async () => {
     const selections: Array<{ resource_template_id: string; purpose: 'sell' | 'own' }> = [];
     const isSeller = personaId === 'seller' || personaId === 'both';
     const isBuyer  = personaId === 'buyer'  || personaId === 'both';
-    if (isSeller) selEq.forEach(t => selections.push({ resource_template_id: t.id, purpose: 'sell' }));
+
+    if (isSeller) {
+      selEq.forEach(t => selections.push({ resource_template_id: t.id, purpose: 'sell' }));
+      selSvc.forEach(t => selections.push({ resource_template_id: t.id, purpose: 'sell' }));
+    }
     if (isBuyer) {
       selEq.forEach(t => selections.push({ resource_template_id: t.id, purpose: 'own' }));
       selFac.forEach(t => selections.push({ resource_template_id: t.id, purpose: 'own' }));
     }
-    if (!isBuyer) selFac.forEach(t => selections.push({ resource_template_id: t.id, purpose: 'sell' }));
+    if (!isBuyer) {
+      selFac.forEach(t => selections.push({ resource_template_id: t.id, purpose: 'sell' }));
+    }
 
     if (selections.length > 0) {
       try {
@@ -172,18 +175,19 @@ const ResourcePickStep: React.FC = () => {
         console.error('[ResourcePick] Failed to persist selections (seed will retry):', err?.message);
       }
     }
+
     completeVaniStep('resource-pick', {
       equipment_template_ids: selEq.map(t => t.id),
       facility_template_ids:  selFac.map(t => t.id),
+      service_template_ids:   selSvc.map(t => t.id),
       persona: personaId,
-      work_intent: deriveWorkIntent(),
     });
 
     navigate('/onboarding/vani-consent', {
       state: {
         selectedEquipmentTemplates: selEq,
         selectedFacilityTemplates:  selFac,
-        workIntent: deriveWorkIntent(),
+        selectedServiceTemplates:   selSvc,
       },
     });
   };
@@ -192,12 +196,13 @@ const ResourcePickStep: React.FC = () => {
     const parts: string[] = [];
     if (selEq.length  > 0) parts.push(`${selEq.length} equipment`);
     if (selFac.length > 0) parts.push(`${selFac.length} facilit${selFac.length === 1 ? 'y' : 'ies'}`);
+    if (selSvc.length > 0) parts.push(`${selSvc.length} service${selSvc.length === 1 ? '' : 's'}`);
     return parts.length > 0 ? parts.join(' · ') : 'Select at least one to continue';
-  }, [selEq, selFac]);
+  }, [selEq, selFac, selSvc]);
 
   const vaniMsg = firstName
-    ? `<strong>${firstName}</strong>, here are all the equipment types and facility types for your industries. Switch between tabs and select everything that applies — VaNi will set up only what you choose.`
-    : `Here are the equipment types and facility types for your industries. Switch between tabs and select everything that applies.`;
+    ? `<strong>${firstName}</strong>, here are all the types for your industries. Switch between tabs and select everything that applies — VaNi will set up only what you choose.`
+    : `Here are all the types for your industries. Switch between tabs and select everything that applies.`;
 
   // ── Sub-components ────────────────────────────────────────────────────────
 
@@ -221,7 +226,8 @@ const ResourcePickStep: React.FC = () => {
     </div>
   );
 
-  const TemplateRow = ({ template }: { template: ResourceTemplate }) => {
+  // Row for equipment/facilities (KT-gated)
+  const KtTemplateRow = ({ template }: { template: ResourceTemplate }) => {
     const selected  = selectedIds.has(template.id);
     const ktAvail   = hasKT(template, ktCoverage);
     const subCatCfg = getSubCategoryConfig(template.sub_category);
@@ -237,14 +243,12 @@ const ResourcePickStep: React.FC = () => {
         onKeyDown={e => ktAvail && (e.key === ' ' || e.key === 'Enter') ? toggle(template) : null}
         title={!ktAvail ? 'No Knowledge Tree — cannot be selected yet' : undefined}
         style={{
-          display: 'grid',
-          gridTemplateColumns: '20px 30px 1fr 28px',
+          display: 'grid', gridTemplateColumns: '20px 30px 1fr 28px',
           alignItems: 'center', gap: 12,
           padding: '11px 18px',
           borderBottom: `1px solid ${BORDER_LT}`,
           cursor: ktAvail ? 'pointer' : 'not-allowed',
-          transition: 'background .12s',
-          opacity: ktAvail ? 1 : 0.45,
+          transition: 'background .12s', opacity: ktAvail ? 1 : 0.45,
           background: selected ? VANI_SOFT : 'transparent',
           outline: 'none', userSelect: 'none' as const,
         }}
@@ -255,14 +259,10 @@ const ResourcePickStep: React.FC = () => {
           width: 18, height: 18, borderRadius: 5, flexShrink: 0,
           border: `2px solid ${!ktAvail ? BORDER : selected ? VANI : BORDER}`,
           background: selected && ktAvail ? VANI : 'transparent',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          transition: 'all .12s',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .12s',
         }}>
-          {selected && ktAvail && (
-            <span style={{ color: WHITE, fontSize: 10, fontWeight: 800, lineHeight: 1 }}>✓</span>
-          )}
+          {selected && ktAvail && <span style={{ color: WHITE, fontSize: 10, fontWeight: 800, lineHeight: 1 }}>✓</span>}
         </div>
-
         <div style={{
           width: 28, height: 28, borderRadius: 7, flexShrink: 0,
           background: `${accentClr}18`, border: `1px solid ${accentClr}22`,
@@ -270,7 +270,6 @@ const ResourcePickStep: React.FC = () => {
         }}>
           <IconComp size={13} color={accentClr} />
         </div>
-
         <div style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' as const }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: TEXT }}>{template.name}</span>
@@ -286,22 +285,81 @@ const ResourcePickStep: React.FC = () => {
             {[template.sub_category, template.maintenance_schedule].filter(Boolean).join(' · ')}
           </div>
         </div>
-
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div
-            title={ktAvail ? 'Knowledge Tree available' : 'No Knowledge Tree'}
-            style={{
-              width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
-              background: ktAvail ? GREEN : RED,
-              boxShadow: ktAvail ? `0 0 0 3px ${GREEN}20` : `0 0 0 3px ${RED}15`,
-            }}
-          />
+          <div title={ktAvail ? 'Knowledge Tree available' : 'No Knowledge Tree'} style={{
+            width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
+            background: ktAvail ? GREEN : RED,
+            boxShadow: ktAvail ? `0 0 0 3px ${GREEN}20` : `0 0 0 3px ${RED}15`,
+          }} />
         </div>
       </div>
     );
   };
 
-  const TemplateList = ({
+  // Row for services (no KT gating — always selectable)
+  const ServiceTemplateRow = ({ template }: { template: ResourceTemplate }) => {
+    const selected  = selectedIds.has(template.id);
+    const subCatCfg = getSubCategoryConfig(template.sub_category);
+    const IconComp  = subCatCfg?.icon ?? Briefcase;
+    const accentClr = subCatCfg?.color ?? TEAL;
+
+    return (
+      <div
+        role="checkbox"
+        aria-checked={selected}
+        tabIndex={0}
+        onClick={() => toggle(template)}
+        onKeyDown={e => (e.key === ' ' || e.key === 'Enter') ? toggle(template) : null}
+        style={{
+          display: 'grid', gridTemplateColumns: '20px 30px 1fr auto',
+          alignItems: 'center', gap: 12,
+          padding: '11px 18px',
+          borderBottom: `1px solid ${BORDER_LT}`,
+          cursor: 'pointer', transition: 'background .12s',
+          background: selected ? TEAL_SOFT : 'transparent',
+          outline: 'none', userSelect: 'none' as const,
+        }}
+        onMouseEnter={e => { e.currentTarget.style.background = selected ? TEAL_SOFT : SURFACE; }}
+        onMouseLeave={e => { e.currentTarget.style.background = selected ? TEAL_SOFT : 'transparent'; }}
+      >
+        <div style={{
+          width: 18, height: 18, borderRadius: 5, flexShrink: 0,
+          border: `2px solid ${selected ? TEAL : BORDER}`,
+          background: selected ? TEAL : 'transparent',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .12s',
+        }}>
+          {selected && <span style={{ color: WHITE, fontSize: 10, fontWeight: 800, lineHeight: 1 }}>✓</span>}
+        </div>
+        <div style={{
+          width: 28, height: 28, borderRadius: 7, flexShrink: 0,
+          background: `${accentClr}18`, border: `1px solid ${accentClr}22`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <IconComp size={13} color={accentClr} />
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' as const }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: TEXT }}>{template.name}</span>
+            {template.is_recommended && (
+              <span style={{
+                fontSize: 9, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: 0.4,
+                color: TEAL, background: TEAL_SOFT, border: `1px solid ${TEAL}30`,
+                borderRadius: 4, padding: '1px 5px',
+              }}>Rec</span>
+            )}
+          </div>
+          <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 1 }}>
+            {[template.sub_category, template.maintenance_schedule].filter(Boolean).join(' · ')}
+          </div>
+        </div>
+        <div style={{ fontSize: 10, color: TEAL, fontWeight: 600, flexShrink: 0 }}>
+          {selected ? '✓' : ''}
+        </div>
+      </div>
+    );
+  };
+
+  const KtTemplateList = ({
     items, accent, softBg,
   }: { items: ResourceTemplate[]; accent: string; softBg: string }) => {
     const groups   = groupBySubCategory(items);
@@ -342,7 +400,6 @@ const ResourcePickStep: React.FC = () => {
             }}
           >{allKtSel ? 'Deselect all' : 'Select all'}</button>
         </div>
-
         <div style={{
           background: WHITE, border: `1px solid ${BORDER}`, borderRadius: 12,
           overflow: 'hidden', boxShadow: '0 1px 6px rgba(0,0,0,.04)',
@@ -372,14 +429,11 @@ const ResourcePickStep: React.FC = () => {
                 letterSpacing: 0.5, color: TEXT_MUTED, background: `${BORDER_LT}60`,
                 borderBottom: `1px solid ${BORDER_LT}`,
                 fontFamily: "'IBM Plex Mono', monospace",
-              }}>
-                {subCat}
-              </div>
-              {list.map(t => <TemplateRow key={t.id} template={t} />)}
+              }}>{subCat}</div>
+              {list.map(t => <KtTemplateRow key={t.id} template={t} />)}
             </div>
           ))}
         </div>
-
         {items.some(t => !hasKT(t, ktCoverage)) && (
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8,
@@ -391,6 +445,85 @@ const ResourcePickStep: React.FC = () => {
             Red-dot items have no Knowledge Tree yet — VaNi cannot build pricing blocks for them.
           </div>
         )}
+      </div>
+    );
+  };
+
+  const ServiceTemplateList = ({ items }: { items: ResourceTemplate[] }) => {
+    const groups   = groupBySubCategory(items);
+    const selCount = items.filter(t => selectedIds.has(t.id)).length;
+    const allSel   = selCount === items.length && items.length > 0;
+
+    if (items.length === 0) {
+      return (
+        <div style={{
+          background: WHITE, border: `1px solid ${BORDER}`, borderRadius: 12,
+          padding: '40px 24px', textAlign: 'center',
+        }}>
+          <div style={{ fontSize: 28, marginBottom: 12 }}>💼</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: TEXT, marginBottom: 8 }}>
+            No service templates for your industries yet
+          </div>
+          <div style={{ fontSize: 13, color: TEXT_DIM, lineHeight: 1.55 }}>
+            Service templates will be added based on your industry selection.
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <span style={{ fontSize: 11, color: TEXT_DIM, fontFamily: "'IBM Plex Mono', monospace" }}>
+            {selCount} / {items.length} selected
+          </span>
+          <button
+            onClick={() => allSel ? deselectAll(items) : selectAll(items, true)}
+            style={{
+              fontSize: 11, fontWeight: 700, color: TEAL,
+              background: TEAL_SOFT, border: `1px solid ${TEAL}25`,
+              borderRadius: 6, padding: '3px 9px', cursor: 'pointer',
+              fontFamily: "'Outfit', sans-serif",
+            }}
+          >{allSel ? 'Deselect all' : 'Select all'}</button>
+        </div>
+        <div style={{
+          background: WHITE, border: `1px solid ${BORDER}`, borderRadius: 12,
+          overflow: 'hidden', boxShadow: '0 1px 6px rgba(0,0,0,.04)',
+        }}>
+          <div style={{
+            padding: '10px 18px', background: SURFACE,
+            borderBottom: `1px solid ${BORDER_LT}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: TEXT }}>
+              {items.length} services for your industries
+            </span>
+            <span style={{ fontSize: 10, color: TEAL, fontFamily: "'IBM Plex Mono', monospace" }}>
+              All selectable · flat pricing
+            </span>
+          </div>
+          {groups.map(([subCat, list]) => (
+            <div key={subCat}>
+              <div style={{
+                padding: '6px 18px 4px',
+                fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const,
+                letterSpacing: 0.5, color: TEXT_MUTED, background: `${BORDER_LT}60`,
+                borderBottom: `1px solid ${BORDER_LT}`,
+                fontFamily: "'IBM Plex Mono', monospace",
+              }}>{subCat}</div>
+              {list.map(t => <ServiceTemplateRow key={t.id} template={t} />)}
+            </div>
+          ))}
+        </div>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '7px 12px', marginTop: 8, borderRadius: 7,
+          background: TEAL_SOFT, border: `1px solid ${TEAL}18`,
+          fontSize: 11, color: '#134e4a',
+        }}>
+          💡 Services use flat or per-unit pricing — no equipment variants required.
+        </div>
       </div>
     );
   };
@@ -408,7 +541,6 @@ const ResourcePickStep: React.FC = () => {
     );
   }
 
-  // ── Error ─────────────────────────────────────────────────────────────────
   if (isError) {
     return (
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: BG, minHeight: '100vh', fontFamily: "'Outfit', sans-serif" }}>
@@ -432,6 +564,7 @@ const ResourcePickStep: React.FC = () => {
 
   const eqCount  = selEq.length;
   const facCount = selFac.length;
+  const svcCount = selSvc.length;
 
   // ── Main render ───────────────────────────────────────────────────────────
   return (
@@ -449,19 +582,19 @@ const ResourcePickStep: React.FC = () => {
             fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const,
             letterSpacing: 1, color: VANI, fontFamily: "'IBM Plex Mono', monospace", marginBottom: 10,
           }}>
-            Step 6 of 9 · Select equipment &amp; facilities
+            Step 7 · Select what you work with
           </div>
 
           <h2 style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.8px', color: TEXT, marginBottom: 6 }}>
             What do you work with?
           </h2>
           <p style={{ fontSize: 14, color: TEXT_DIM, marginBottom: 24, lineHeight: 1.55 }}>
-            All equipment and facility types for your selected industries. Pre-selected based on Knowledge Tree availability — uncheck anything that doesn't apply.
+            Equipment, facilities, and services for your selected industries. Select everything that applies — VaNi builds only what you choose.
           </p>
 
           <VaniBubble msg={vaniMsg} />
 
-          {/* ── Tabs ── */}
+          {/* ── 3-Tab Bar ── */}
           <div style={{
             display: 'flex', gap: 0, marginBottom: 24,
             background: WHITE, border: `1px solid ${BORDER}`,
@@ -472,9 +605,9 @@ const ResourcePickStep: React.FC = () => {
             <button
               onClick={() => setActiveTab('equipment')}
               style={{
-                flex: 1, padding: '14px 20px',
-                border: 'none', borderRight: `1px solid ${BORDER}`,
-                cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
+                flex: 1, padding: '14px 20px', border: 'none',
+                borderRight: `1px solid ${BORDER}`, cursor: 'pointer',
+                fontFamily: "'Outfit', sans-serif",
                 background: activeTab === 'equipment' ? BLUE_SOFT : WHITE,
                 transition: 'background .15s',
               }}
@@ -496,8 +629,7 @@ const ResourcePickStep: React.FC = () => {
                     {eqCount > 0 && (
                       <span style={{
                         marginLeft: 6, fontSize: 10, fontWeight: 700,
-                        color: VANI, background: VANI_SOFT,
-                        border: `1px solid ${VANI_BORDER}`,
+                        color: VANI, background: VANI_SOFT, border: `1px solid ${VANI_BORDER}`,
                         borderRadius: 10, padding: '1px 6px',
                       }}>{eqCount} selected</span>
                     )}
@@ -513,9 +645,9 @@ const ResourcePickStep: React.FC = () => {
             <button
               onClick={() => setActiveTab('facilities')}
               style={{
-                flex: 1, padding: '14px 20px',
-                border: 'none',
-                cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
+                flex: 1, padding: '14px 20px', border: 'none',
+                borderRight: `1px solid ${BORDER}`, cursor: 'pointer',
+                fontFamily: "'Outfit', sans-serif",
                 background: activeTab === 'facilities' ? PURPLE_SOFT : WHITE,
                 transition: 'background .15s',
               }}
@@ -537,8 +669,7 @@ const ResourcePickStep: React.FC = () => {
                     {facCount > 0 && (
                       <span style={{
                         marginLeft: 6, fontSize: 10, fontWeight: 700,
-                        color: VANI, background: VANI_SOFT,
-                        border: `1px solid ${VANI_BORDER}`,
+                        color: VANI, background: VANI_SOFT, border: `1px solid ${VANI_BORDER}`,
                         borderRadius: 10, padding: '1px 6px',
                       }}>{facCount} selected</span>
                     )}
@@ -549,23 +680,57 @@ const ResourcePickStep: React.FC = () => {
                 <div style={{ height: 2, background: PURPLE, borderRadius: 1, marginTop: 10, marginLeft: -20, marginRight: -20 }} />
               )}
             </button>
+
+            {/* Services tab */}
+            <button
+              onClick={() => setActiveTab('services')}
+              style={{
+                flex: 1, padding: '14px 20px', border: 'none',
+                cursor: 'pointer', fontFamily: "'Outfit', sans-serif",
+                background: activeTab === 'services' ? TEAL_SOFT : WHITE,
+                transition: 'background .15s',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: 8, flexShrink: 0,
+                  background: activeTab === 'services' ? `${TEAL}18` : `${TEXT_MUTED}10`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <span style={{ fontSize: 16 }}>💼</span>
+                </div>
+                <div style={{ textAlign: 'left' as const }}>
+                  <div style={{ fontSize: 13, fontWeight: 800, color: activeTab === 'services' ? TEAL : TEXT }}>
+                    Services
+                  </div>
+                  <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 1 }}>
+                    {serviceTemplates.length} types
+                    {svcCount > 0 && (
+                      <span style={{
+                        marginLeft: 6, fontSize: 10, fontWeight: 700,
+                        color: TEAL, background: TEAL_SOFT, border: `1px solid ${TEAL}30`,
+                        borderRadius: 10, padding: '1px 6px',
+                      }}>{svcCount} selected</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              {activeTab === 'services' && (
+                <div style={{ height: 2, background: TEAL, borderRadius: 1, marginTop: 10, marginLeft: -20, marginRight: -20 }} />
+              )}
+            </button>
           </div>
 
           {/* ── Tab content ── */}
           <div style={{ animation: 'fadeSlideIn .2s ease both' }} key={activeTab}>
             {activeTab === 'equipment' && (
-              <TemplateList
-                items={equipmentTemplates}
-                accent={BLUE}
-                softBg={BLUE_SOFT}
-              />
+              <KtTemplateList items={equipmentTemplates} accent={BLUE} softBg={BLUE_SOFT} />
             )}
             {activeTab === 'facilities' && (
-              <TemplateList
-                items={facilityTemplates}
-                accent={PURPLE}
-                softBg={PURPLE_SOFT}
-              />
+              <KtTemplateList items={facilityTemplates} accent={PURPLE} softBg={PURPLE_SOFT} />
+            )}
+            {activeTab === 'services' && (
+              <ServiceTemplateList items={serviceTemplates} />
             )}
           </div>
 
@@ -576,17 +741,16 @@ const ResourcePickStep: React.FC = () => {
               background: '#fffbeb', border: '1px solid #fde68a',
               fontSize: 12, color: '#92400e',
             }}>
-              ⚠️ Select at least one equipment or facility type to continue
+              ⚠️ Select at least one item across any tab to continue
             </div>
           )}
-
         </div>
       </div>
 
       {/* ── Floating action island ── */}
       <div style={{
         position: 'fixed', bottom: 32, left: '50%', transform: 'translateX(-50%)',
-        background: `${colors.accent.accent1 || '#1a1816'}f2`,
+        background: `${(colors as any).accent?.accent1 || '#1a1816'}f2`,
         backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
         padding: '10px 10px 10px 24px', borderRadius: 100,
         display: 'flex', alignItems: 'center', gap: 16,
