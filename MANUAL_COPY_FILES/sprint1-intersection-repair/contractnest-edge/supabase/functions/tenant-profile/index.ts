@@ -76,6 +76,7 @@ function transformProfileToResponse(data: any): any {
     contact_last_name: data.contact_last_name,
     primary_color: data.primary_color,
     secondary_color: data.secondary_color,
+    engagement_model: data.engagement_model,
     created_at: data.created_at,
     updated_at: data.updated_at
   };
@@ -565,7 +566,8 @@ serve(async (req) => {
           logo_url: requestData.logo_url,
           primary_color: requestData.primary_color,
           secondary_color: requestData.secondary_color,
-          website_url: requestData.website_url
+          website_url: requestData.website_url,
+          engagement_model: requestData.engagement_model ?? null
         };
 
         // ✅ FIX: Use atomic upsert instead of check-then-insert (prevents race condition)
@@ -677,7 +679,8 @@ serve(async (req) => {
           logo_url: requestData.logo_url,
           primary_color: requestData.primary_color,
           secondary_color: requestData.secondary_color,
-          website_url: requestData.website_url
+          website_url: requestData.website_url,
+          engagement_model: requestData.engagement_model ?? null
         };
 
         // Update the profile directly by tenant_id
