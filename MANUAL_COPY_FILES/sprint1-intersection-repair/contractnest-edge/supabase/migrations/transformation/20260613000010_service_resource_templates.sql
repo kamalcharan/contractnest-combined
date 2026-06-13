@@ -1,14 +1,26 @@
 -- Stream 1 / Task 1.3 — Seed service resource templates
--- Adds 'service' resource_type_id to m_catalog_resource_templates.
+-- Adds 'service' resource_type_id to m_catalog_resource_types (lookup table)
+-- then seeds templates into m_catalog_resource_templates.
 -- These represent WHAT IS SOLD (deliverables / packages), distinct from:
---   equipment = physical machines the tenant services
---   asset     = physical spaces/facilities
+--   equipment  = physical machines the tenant services
+--   asset      = physical spaces/facilities
 --   team_staff = people/roles (WHO delivers)
---   service   = the sellable deliverable itself (WHAT is sold)
+--   service    = the sellable deliverable itself (WHAT is sold)
 --
 -- Covers 6 industries plus 2 universal (NULL industry) templates.
 -- Idempotent via ON CONFLICT DO NOTHING.
 
+-- ── Step 1: register the 'service' resource type ──────────────────────────────
+INSERT INTO m_catalog_resource_types
+  (id, name, description, icon, pricing_model,
+   requires_human_assignment, has_capacity_limits, is_active, sort_order)
+VALUES
+  ('service', 'Services',
+   'Sellable service deliverables — consulting, wellness, legal, payroll, and other knowledge-based packages',
+   'Briefcase', 'fixed', false, false, true, 6)
+ON CONFLICT (id) DO NOTHING;
+
+-- ── Step 2: seed service templates ───────────────────────────────────────────
 INSERT INTO m_catalog_resource_templates
   (id, name, resource_type_id, industry_id, sub_category,
    is_active, is_recommended, description)
