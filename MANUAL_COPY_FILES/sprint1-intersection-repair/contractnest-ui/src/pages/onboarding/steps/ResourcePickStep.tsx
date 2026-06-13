@@ -282,7 +282,7 @@ const ResourcePickStep: React.FC = () => {
             )}
           </div>
           <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 1 }}>
-            {[template.sub_category, template.maintenance_schedule].filter(Boolean).join(' · ')}
+            {template.sub_category || ''}
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -349,7 +349,7 @@ const ResourcePickStep: React.FC = () => {
             )}
           </div>
           <div style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 1 }}>
-            {[template.sub_category, template.maintenance_schedule].filter(Boolean).join(' · ')}
+            {template.sub_category || ''}
           </div>
         </div>
         <div style={{ fontSize: 10, color: TEAL, fontWeight: 600, flexShrink: 0 }}>
