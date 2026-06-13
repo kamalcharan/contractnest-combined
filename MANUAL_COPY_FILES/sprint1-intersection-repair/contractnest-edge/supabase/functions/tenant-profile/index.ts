@@ -48,6 +48,11 @@ function normalizePersona(value: unknown): string | undefined {
   return value === 'seller' || value === 'buyer' || value === 'both' ? value : undefined;
 }
 
+// Strips undefined values so partial saves don't null out existing NOT NULL columns.
+function stripUndefined(obj: Record<string, any>): Record<string, any> {
+  return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined));
+}
+
 // Helper to transform DB record to API response format
 function transformProfileToResponse(data: any): any {
   if (!data) return null;
@@ -571,9 +576,10 @@ serve(async (req) => {
         };
 
         // ✅ FIX: Use atomic upsert instead of check-then-insert (prevents race condition)
+        // stripUndefined: prevents partial saves from nulling NOT NULL columns
         const { data, error } = await supabase
           .from('t_tenant_profiles')
-          .upsert(dbRecord, {
+          .upsert(stripUndefined(dbRecord), {
             onConflict: 'tenant_id',
             ignoreDuplicates: false
           })
@@ -684,9 +690,10 @@ serve(async (req) => {
         };
 
         // Update the profile directly by tenant_id
+        // stripUndefined: prevents partial saves from nulling NOT NULL columns
         const { data, error } = await supabase
           .from('t_tenant_profiles')
-          .update(dbRecord)
+          .update(stripUndefined(dbRecord))
           .eq('tenant_id', tenantHeader)
           .select();
 
