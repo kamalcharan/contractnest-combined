@@ -97,8 +97,10 @@ const VaniConsentStep: React.FC = () => {
   const firstName = user?.first_name?.trim() || null;
   const fullName  = [user?.first_name, user?.last_name].filter(Boolean).join(' ') || null;
   const company   = formData.business_name?.trim() || currentTenant?.name || 'your company';
-  // Route state is synchronous — use it first to avoid async formData flash showing seller content
-  const rawPersona = routeState.personaId || formData.business_type_id || '';
+  // formData (DB truth) takes priority; route state only used as fast initial value
+  // Check both .persona and .business_type_id since different steps may save to either field
+  const profilePersona = (formData as any).persona || formData.business_type_id || '';
+  const rawPersona = profilePersona || (routeState.personaId as string | undefined) || '';
   const personaId: PersonaId | null = rawPersona === 'service_provider' ? 'seller'
     : rawPersona === 'merchant' ? 'buyer'
     : (rawPersona === 'seller' || rawPersona === 'buyer' || rawPersona === 'both') ? rawPersona as PersonaId
@@ -109,9 +111,9 @@ const VaniConsentStep: React.FC = () => {
   const selEquipment = routeState.selectedEquipmentTemplates || [];
   const selFacility  = routeState.selectedFacilityTemplates  || [];
   const selService   = routeState.selectedServiceTemplates   || [];
-  const isBuyer      = personaId === 'buyer';
-  // Catalog blocks only apply to seller / both personas
-  const blockCount   = isBuyer ? 0 : selEquipment.length * 3;
+  const isBuyer    = personaId === 'buyer';
+  const isSeller   = personaId === 'seller' || personaId === 'both'; // only show KT content when explicitly seller/both
+  const blockCount = isSeller ? selEquipment.length * 3 : 0;
 
   const handleStart = () => {
     navigate('/onboarding/vani-intelligence', {
@@ -325,7 +327,7 @@ const VaniConsentStep: React.FC = () => {
                         {isBuyer ? 'Equipment registry' : 'Equipment types'}
                       </span>
                     </div>
-                    {!isBuyer && (
+                    {isSeller && (
                       <span style={{ fontSize: 10, color: colors.utility.secondaryText, fontFamily: "'IBM Plex Mono', monospace", background: BLUE_BG, border: `1px solid ${BLUE}20`, borderRadius: 100, padding: '1px 8px' }}>
                         {selEquipment.length} types × 3 tiers = {blockCount} blocks
                       </span>
@@ -334,7 +336,7 @@ const VaniConsentStep: React.FC = () => {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                     {selEquipment.map(t => <TemplateChip key={t.id} t={t} accent={BLUE} />)}
                   </div>
-                  {!isBuyer && (
+                  {isSeller && (
                     <div style={{ marginTop: 10, fontSize: 11, color: colors.utility.secondaryText }}>
                       Each type → <strong>Basic AMC</strong> · <strong>Comprehensive AMC</strong> · <strong>Premium CMC</strong>
                     </div>
