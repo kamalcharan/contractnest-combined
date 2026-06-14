@@ -188,6 +188,7 @@ const ResourcePickStep: React.FC = () => {
         selectedEquipmentTemplates: selEq,
         selectedFacilityTemplates:  selFac,
         selectedServiceTemplates:   selSvc,
+        personaId,
       },
     });
   };

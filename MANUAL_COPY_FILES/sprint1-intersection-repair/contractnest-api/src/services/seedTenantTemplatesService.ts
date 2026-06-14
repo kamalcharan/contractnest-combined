@@ -406,15 +406,17 @@ export async function seedTenantTemplates(
     persisted.filter(s => s.purpose === 'own').map(s => s.resource_template_id),
   )];
 
-  for (const id of [...sellTemplateIds, ...ownTemplateIds]) {
+  // Coverage filter applies only to sell-leg (KT mapper requires it).
+  // Registry entries (purpose='own') do NOT need KT coverage — drop only sell IDs.
+  for (const id of sellTemplateIds) {
     if (!inCoverage(id) && !droppedTemplateIds.includes(id)) {
       droppedTemplateIds.push(id);
-      console.warn(`[seedTenantTemplates] Dropping template ${id}: outside industry resolution set`);
+      console.warn(`[seedTenantTemplates] Dropping sell template ${id}: outside industry resolution set`);
     }
   }
 
   const sellIds = sellTemplateIds.filter(inCoverage);
-  const ownIds  = ownTemplateIds.filter(inCoverage);
+  const ownIds  = ownTemplateIds; // registry doesn't require KT coverage
 
   // ── Step 1: SELLER leg — catalog blocks from the KT mapper ───────────────────
   const isSeller = businessType === 'seller' || businessType === 'both';

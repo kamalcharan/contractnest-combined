@@ -69,7 +69,9 @@ const VaniConsentStep: React.FC = () => {
   const routeState = (location.state || {}) as {
     selectedEquipmentTemplates?: ResourceTemplate[];
     selectedFacilityTemplates?: ResourceTemplate[];
+    selectedServiceTemplates?: ResourceTemplate[];
     workIntent?: string | null;
+    personaId?: string | null;
   };
 
   const { setTheme, currentTheme } = useTheme();
@@ -95,7 +97,8 @@ const VaniConsentStep: React.FC = () => {
   const firstName = user?.first_name?.trim() || null;
   const fullName  = [user?.first_name, user?.last_name].filter(Boolean).join(' ') || null;
   const company   = formData.business_name?.trim() || currentTenant?.name || 'your company';
-  const rawPersona = formData.business_type_id || '';
+  // Route state is synchronous — use it first to avoid async formData flash showing seller content
+  const rawPersona = routeState.personaId || formData.business_type_id || '';
   const personaId: PersonaId | null = rawPersona === 'service_provider' ? 'seller'
     : rawPersona === 'merchant' ? 'buyer'
     : (rawPersona === 'seller' || rawPersona === 'buyer' || rawPersona === 'both') ? rawPersona as PersonaId
@@ -123,13 +126,13 @@ const VaniConsentStep: React.FC = () => {
   };
 
   const handleBack = () => {
-    // Pass selections back so ResourcePickStep can restore them
     navigate('/onboarding/resource-pick', {
       state: {
         selectedEquipmentTemplates: selEquipment,
         selectedFacilityTemplates:  selFacility,
         selectedServiceTemplates:   selService,
         workIntent: routeState.workIntent || null,
+        personaId: personaId || null,
       },
     });
   };
