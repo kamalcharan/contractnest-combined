@@ -551,7 +551,7 @@ serve(async (req) => {
         const dbRecord = {
           tenant_id: tenantHeader,
           persona: normalizePersona(requestData.persona), // S7 — canonical persona column
-          profile_type: requestData.business_type_id,
+          profile_type: requestData.business_type_id ?? requestData.persona ?? null,
           industry_id: requestData.industry_id,
           business_name: requestData.business_name,
           business_email: requestData.business_email,
@@ -665,7 +665,7 @@ serve(async (req) => {
         // Map request to database structure (without tenant_id for update)
         const dbRecord = {
           persona: normalizePersona(requestData.persona), // S7 — canonical persona column
-          profile_type: requestData.business_type_id,
+          profile_type: requestData.business_type_id ?? requestData.persona ?? null,
           industry_id: requestData.industry_id,
           business_name: requestData.business_name,
           business_email: requestData.business_email,
