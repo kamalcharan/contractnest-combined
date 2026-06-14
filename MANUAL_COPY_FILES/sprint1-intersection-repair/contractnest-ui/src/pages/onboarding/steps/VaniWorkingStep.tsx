@@ -150,7 +150,9 @@ const VaniWorkingStep: React.FC = () => {
   const { formData, fetchProfile } = useTenantProfile({ isOnboarding: true });
   const { servedIndustries, isLoading: industriesLoading } = useServedIndustriesManager();
 
-  const personaId = normalizePersona((formData as any).persona || formData.business_type_id || '');
+  // Read personaId from route state first (sync) to avoid async formData race on task init
+  const routePersonaId = incomingState.personaId as string | undefined;
+  const personaId = normalizePersona(routePersonaId || (formData as any).persona || formData.business_type_id || '');
   const industryNames = servedIndustries.map(si => si.industry?.name || '').filter(Boolean);
   const industryIds = servedIndustries.map(si => si.industry_id);
   const companyName = formData.business_name?.trim() || currentTenant?.name || 'your company';
