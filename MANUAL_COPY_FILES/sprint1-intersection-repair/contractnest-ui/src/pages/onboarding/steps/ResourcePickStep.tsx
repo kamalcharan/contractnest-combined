@@ -116,15 +116,18 @@ const ResourcePickStep: React.FC = () => {
   // Auto-select KT-ready equipment/facility templates on first visit
   useEffect(() => {
     if (!isLoading && !initialised) {
-      const ktReady = [...equipmentTemplates, ...facilityTemplates].filter(t => hasKT(t, ktCoverage));
+      const ktReady = [
+        ...equipmentTemplates.filter(t => hasKT(t, ktCoverage)),
+        ...facilityTemplates, // asset/facility go to registry — no KT required
+      ];
       setSelectedIds(new Set(ktReady.map(t => t.id)));
       setInitialised(true);
     }
   }, [isLoading, equipmentTemplates, facilityTemplates, ktCoverage, initialised]);
 
   const toggle = (t: ResourceTemplate) => {
-    // Equipment and facilities are gated by KT; services are always toggleable
-    if (!isServiceType(t.resource_type_id) && !hasKT(t, ktCoverage)) return;
+    // Equipment is gated by KT; facilities (asset) and services are always toggleable
+    if (!isServiceType(t.resource_type_id) && !isFacilityType(t.resource_type_id) && !hasKT(t, ktCoverage)) return;
     setSelectedIds(prev => {
       const next = new Set(prev);
       next.has(t.id) ? next.delete(t.id) : next.add(t.id);
@@ -135,7 +138,7 @@ const ResourcePickStep: React.FC = () => {
   const selectAll = (items: ResourceTemplate[], ignoreKT = false) =>
     setSelectedIds(prev => {
       const n = new Set(prev);
-      items.filter(t => ignoreKT || hasKT(t, ktCoverage)).forEach(t => n.add(t.id));
+      items.filter(t => ignoreKT || isFacilityType(t.resource_type_id) || hasKT(t, ktCoverage)).forEach(t => n.add(t.id));
       return n;
     });
   const deselectAll = (items: ResourceTemplate[]) =>
@@ -230,7 +233,8 @@ const ResourcePickStep: React.FC = () => {
   // Row for equipment/facilities (KT-gated)
   const KtTemplateRow = ({ template }: { template: ResourceTemplate }) => {
     const selected  = selectedIds.has(template.id);
-    const ktAvail   = hasKT(template, ktCoverage);
+    // Facility/asset templates go to registry — always selectable regardless of KT coverage
+    const ktAvail   = isFacilityType(template.resource_type_id) || hasKT(template, ktCoverage);
     const subCatCfg = getSubCategoryConfig(template.sub_category);
     const IconComp  = subCatCfg?.icon ?? Package;
     const accentClr = subCatCfg?.color ?? '#6B7280';
@@ -365,7 +369,7 @@ const ResourcePickStep: React.FC = () => {
   }: { items: ResourceTemplate[]; accent: string; softBg: string }) => {
     const groups   = groupBySubCategory(items);
     const selCount = items.filter(t => selectedIds.has(t.id)).length;
-    const ktCount  = items.filter(t => hasKT(t, ktCoverage)).length;
+    const ktCount  = items.filter(t => isFacilityType(t.resource_type_id) || hasKT(t, ktCoverage)).length;
     const allKtSel = selCount === ktCount && ktCount > 0;
 
     if (items.length === 0) {
@@ -435,7 +439,7 @@ const ResourcePickStep: React.FC = () => {
             </div>
           ))}
         </div>
-        {items.some(t => !hasKT(t, ktCoverage)) && (
+        {items.some(t => !isFacilityType(t.resource_type_id) && !hasKT(t, ktCoverage)) && (
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8,
             padding: '7px 12px', marginTop: 8, borderRadius: 7,
