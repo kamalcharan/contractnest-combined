@@ -537,6 +537,24 @@ Use these prefixes for clear commit history:
 
 ---
 
+## 🔮 Future Review Items
+
+### Service KT (Knowledge Tree) — Stream 1 architectural decision
+Services (`resource_type_id = 'service'`) currently seed as **shell cat-blocks** (price = 0, no variants, `pricingMode = independent`). This is intentional for Stream 1.
+
+Equipment has admin-curated KT master data:
+`m_equipment_checkpoints` → `m_service_cycles` → `m_equipment_variants` → prices + cadence
+
+Services do NOT have KT equivalent yet. Future work if needed:
+- `m_service_packages` (analogous to checkpoints) — defines deliverables per service type
+- `m_service_pricing` — market-reference pricing per package
+- Extend `ktCatBlockMapperService` to handle `resource_type_id = 'service'`
+
+**Current state**: tenant sets price manually in pricing-review step or catalog-studio editor after onboarding.
+**When to revisit**: when platform needs pre-filled market-reference pricing for consulting/wellness/legal service types.
+
+---
+
 ## ⚠️ Session Reminders
 
 1. **ALWAYS initialize all submodules at session start**
