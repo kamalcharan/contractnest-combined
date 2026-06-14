@@ -114,10 +114,13 @@ const ResourcePickStep: React.FC = () => {
   const [activeTab, setActiveTab] = useState<ActiveTab>(defaultTab);
 
   // Auto-select KT-ready equipment/facility templates on first visit
+  const isSeller = personaId === 'seller' || personaId === 'both';
+
   useEffect(() => {
     if (!isLoading && !initialised) {
       const ktReady = [
-        ...equipmentTemplates.filter(t => hasKT(t, ktCoverage)),
+        // Sellers need KT for catalog blocks; buyers take all equipment for registry
+        ...(isSeller ? equipmentTemplates.filter(t => hasKT(t, ktCoverage)) : equipmentTemplates),
         ...facilityTemplates, // asset/facility go to registry — no KT required
       ];
       setSelectedIds(new Set(ktReady.map(t => t.id)));
@@ -126,8 +129,10 @@ const ResourcePickStep: React.FC = () => {
   }, [isLoading, equipmentTemplates, facilityTemplates, ktCoverage, initialised]);
 
   const toggle = (t: ResourceTemplate) => {
-    // Equipment is gated by KT; facilities (asset) and services are always toggleable
-    if (!isServiceType(t.resource_type_id) && !isFacilityType(t.resource_type_id) && !hasKT(t, ktCoverage)) return;
+    // KT gate only applies to equipment for sellers (catalog blocks need KT).
+    // Buyers select equipment/facilities for their registry — no KT required.
+    const needsKT = isEquipmentType(t.resource_type_id) && isSeller;
+    if (needsKT && !hasKT(t, ktCoverage)) return;
     setSelectedIds(prev => {
       const next = new Set(prev);
       next.has(t.id) ? next.delete(t.id) : next.add(t.id);
@@ -138,7 +143,12 @@ const ResourcePickStep: React.FC = () => {
   const selectAll = (items: ResourceTemplate[], ignoreKT = false) =>
     setSelectedIds(prev => {
       const n = new Set(prev);
-      items.filter(t => ignoreKT || isFacilityType(t.resource_type_id) || hasKT(t, ktCoverage)).forEach(t => n.add(t.id));
+      items.filter(t => {
+        if (ignoreKT) return true;
+        if (isFacilityType(t.resource_type_id)) return true;     // facility → registry, no KT needed
+        if (isEquipmentType(t.resource_type_id) && !isSeller) return true; // buyer equipment → registry
+        return hasKT(t, ktCoverage);
+      }).forEach(t => n.add(t.id));
       return n;
     });
   const deselectAll = (items: ResourceTemplate[]) =>
@@ -231,10 +241,10 @@ const ResourcePickStep: React.FC = () => {
   );
 
   // Row for equipment/facilities (KT-gated)
-  const KtTemplateRow = ({ template }: { template: ResourceTemplate }) => {
+  const KtTemplateRow = ({ template, requiresKT = true }: { template: ResourceTemplate; requiresKT?: boolean }) => {
     const selected  = selectedIds.has(template.id);
-    // Facility/asset templates go to registry — always selectable regardless of KT coverage
-    const ktAvail   = isFacilityType(template.resource_type_id) || hasKT(template, ktCoverage);
+    // requiresKT=false for buyer equipment and all facility/asset templates (registry-bound)
+    const ktAvail   = !requiresKT || isFacilityType(template.resource_type_id) || hasKT(template, ktCoverage);
     const subCatCfg = getSubCategoryConfig(template.sub_category);
     const IconComp  = subCatCfg?.icon ?? Package;
     const accentClr = subCatCfg?.color ?? '#6B7280';
@@ -365,12 +375,15 @@ const ResourcePickStep: React.FC = () => {
   };
 
   const KtTemplateList = ({
-    items, accent, softBg,
-  }: { items: ResourceTemplate[]; accent: string; softBg: string }) => {
+    items, accent, softBg, requiresKT = true,
+  }: { items: ResourceTemplate[]; accent: string; softBg: string; requiresKT?: boolean }) => {
     const groups   = groupBySubCategory(items);
     const selCount = items.filter(t => selectedIds.has(t.id)).length;
-    const ktCount  = items.filter(t => isFacilityType(t.resource_type_id) || hasKT(t, ktCoverage)).length;
-    const allKtSel = selCount === ktCount && ktCount > 0;
+    // Items that can be selected: if requiresKT=false all are selectable; otherwise only KT-ready or facility
+    const selectableCount = requiresKT
+      ? items.filter(t => isFacilityType(t.resource_type_id) || hasKT(t, ktCoverage)).length
+      : items.length;
+    const allKtSel = selCount === selectableCount && selectableCount > 0;
 
     if (items.length === 0) {
       return (
@@ -417,6 +430,7 @@ const ResourcePickStep: React.FC = () => {
             <span style={{ fontSize: 12, fontWeight: 700, color: TEXT }}>
               {items.length} types for your industries
             </span>
+            {requiresKT && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 10, color: TEXT_MUTED, fontFamily: "'IBM Plex Mono', monospace" }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: GREEN, display: 'inline-block' }} /> KT ready
@@ -425,6 +439,7 @@ const ResourcePickStep: React.FC = () => {
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: RED, display: 'inline-block' }} /> No KT
               </span>
             </div>
+            )}
           </div>
           {groups.map(([subCat, list]) => (
             <div key={subCat}>
@@ -435,11 +450,11 @@ const ResourcePickStep: React.FC = () => {
                 borderBottom: `1px solid ${BORDER_LT}`,
                 fontFamily: "'IBM Plex Mono', monospace",
               }}>{subCat}</div>
-              {list.map(t => <KtTemplateRow key={t.id} template={t} />)}
+              {list.map(t => <KtTemplateRow key={t.id} template={t} requiresKT={requiresKT} />)}
             </div>
           ))}
         </div>
-        {items.some(t => !isFacilityType(t.resource_type_id) && !hasKT(t, ktCoverage)) && (
+        {requiresKT && items.some(t => !isFacilityType(t.resource_type_id) && !hasKT(t, ktCoverage)) && (
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8,
             padding: '7px 12px', marginTop: 8, borderRadius: 7,
@@ -731,10 +746,10 @@ const ResourcePickStep: React.FC = () => {
           {/* ── Tab content ── */}
           <div style={{ animation: 'fadeSlideIn .2s ease both' }} key={activeTab}>
             {activeTab === 'equipment' && (
-              <KtTemplateList items={equipmentTemplates} accent={BLUE} softBg={BLUE_SOFT} />
+              <KtTemplateList items={equipmentTemplates} accent={BLUE} softBg={BLUE_SOFT} requiresKT={isSeller} />
             )}
             {activeTab === 'facilities' && (
-              <KtTemplateList items={facilityTemplates} accent={PURPLE} softBg={PURPLE_SOFT} />
+              <KtTemplateList items={facilityTemplates} accent={PURPLE} softBg={PURPLE_SOFT} requiresKT={false} />
             )}
             {activeTab === 'services' && personaId !== 'buyer' && (
               <ServiceTemplateList items={serviceTemplates} />
