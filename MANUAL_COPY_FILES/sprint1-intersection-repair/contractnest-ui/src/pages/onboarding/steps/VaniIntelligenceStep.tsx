@@ -81,7 +81,8 @@ const VaniIntelligenceStep: React.FC = () => {
   const selFacility:  ResourceTemplate[] = (routeState.selectedFacilityTemplates  || []).filter(Boolean);
   const workIntent: string | null        = routeState.workIntent || null;
 
-  const personaId    = normalizePersona(formData.business_type_id || '');
+  const routePersonaId = routeState.personaId as string | undefined;
+  const personaId      = normalizePersona(routePersonaId || formData.business_type_id || '');
   const tenantName   = formData.company_name || currentTheme?.name || 'your business';
   const industryName = industries?.[0]?.name || '';
 
@@ -93,6 +94,11 @@ const VaniIntelligenceStep: React.FC = () => {
   const [confirmed,  setConfirmed]  = useState(false);  // disables CTA after click
 
   useEffect(() => {
+    // Buyer: assets go to registry, not catalog-studio — no KT fetch needed
+    if (personaId === 'buyer') {
+      setLoading(false);
+      return;
+    }
     if (selEquipment.length === 0 && selFacility.length === 0) {
       setLoading(false);
       return;
@@ -342,6 +348,209 @@ const VaniIntelligenceStep: React.FC = () => {
     );
   }
 
+  // ── Buyer-specific render (no KT data — just registry preview) ────────────
+  if (personaId === 'buyer') {
+    return (
+      <>
+        <style>{`@keyframes bIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        <div style={{ flex: 1, backgroundColor: BG, display: 'flex', flexDirection: 'column' as const, fontFamily: "'Outfit', sans-serif" }}>
+          <div style={{
+            flex: 1, display: 'grid', gridTemplateColumns: '1fr 300px',
+            maxWidth: 1100, margin: '0 auto', padding: '40px 24px 140px',
+            width: '100%', alignItems: 'start', gap: 0,
+          }}>
+            {/* LEFT COLUMN */}
+            <div>
+              <div style={{ display: 'flex', gap: 12, marginBottom: 24, animation: 'bIn .5s cubic-bezier(.22,1,.36,1) both' }}>
+                <div style={{
+                  width: 36, height: 36, flexShrink: 0,
+                  background: `linear-gradient(135deg, ${colors.brand.primary}, ${colors.brand.alternate})`,
+                  borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontWeight: 900, fontSize: 14, color: WHITE,
+                  boxShadow: `0 3px 8px ${colors.brand.primary}40`, marginTop: 2,
+                }}>V</div>
+                <div style={{
+                  background: WHITE, border: `1px solid ${BORDER}`,
+                  borderRadius: '3px 14px 14px 14px',
+                  padding: '14px 18px', boxShadow: '0 2px 12px rgba(0,0,0,.05)',
+                  fontSize: 14, color: TEXT_MID, lineHeight: 1.6, maxWidth: 520,
+                }}>
+                  Here's what I'll register for <strong style={{ color: TEXT }}>{tenantName}</strong>.
+                  Your assets will be tracked in the registry — no catalog setup required.
+                </div>
+              </div>
+
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '12px 18px', background: '#eff6ff',
+                border: '1px solid rgba(37,99,235,.2)', borderRadius: 8, marginBottom: 20,
+              }}>
+                <span style={{ fontSize: 16 }}>🏢</span>
+                <div style={{ fontSize: 13, color: TEXT_MID, lineHeight: 1.5 }}>
+                  <strong style={{ color: TEXT }}>Registry setup — about 30 seconds.</strong>{' '}
+                  Equipment and facilities will be added to your asset registry for vendor and maintenance tracking.
+                </div>
+              </div>
+
+              {selEquipment.length > 0 && (
+                <>
+                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: .8, color: TEXT_DIM, marginBottom: 10, fontFamily: "'IBM Plex Mono', monospace" }}>
+                    Equipment Registry
+                  </div>
+                  {selEquipment.map(t => (
+                    <div key={t.id} style={{
+                      background: WHITE, border: `1px solid ${BORDER}`, borderRadius: 14,
+                      padding: '16px 20px', marginBottom: 10, boxShadow: '0 2px 12px rgba(0,0,0,.05)',
+                      display: 'flex', alignItems: 'center', gap: 12,
+                    }}>
+                      <div style={{
+                        width: 34, height: 34, borderRadius: 8, flexShrink: 0,
+                        background: 'linear-gradient(135deg,#2563eb22,#2563eb08)',
+                        border: '1px solid rgba(37,99,235,.2)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
+                      }}>🔧</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: TEXT }}>{t.name}</div>
+                        <div style={{ fontSize: 11, color: TEXT_DIM, marginTop: 1 }}>{t.sub_category || 'Equipment'}</div>
+                      </div>
+                      <span style={{
+                        fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: .5,
+                        padding: '3px 9px', borderRadius: 100,
+                        background: '#eff6ff', color: '#2563eb', border: '1px solid rgba(37,99,235,.2)',
+                        fontFamily: "'IBM Plex Mono', monospace",
+                      }}>→ Registry</span>
+                    </div>
+                  ))}
+                </>
+              )}
+
+              {selFacility.length > 0 && (
+                <>
+                  <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: .8, color: TEXT_DIM, marginBottom: 10, marginTop: selEquipment.length > 0 ? 8 : 0, fontFamily: "'IBM Plex Mono', monospace" }}>
+                    Facility Registry
+                  </div>
+                  {selFacility.map(t => (
+                    <div key={t.id} style={{
+                      background: WHITE, border: `1px solid ${BORDER}`, borderRadius: 14,
+                      padding: '16px 20px', marginBottom: 10, boxShadow: '0 2px 12px rgba(0,0,0,.05)',
+                      display: 'flex', alignItems: 'center', gap: 12,
+                    }}>
+                      <div style={{
+                        width: 34, height: 34, borderRadius: 8, flexShrink: 0,
+                        background: 'linear-gradient(135deg,#8B5CF622,#8B5CF608)',
+                        border: '1px solid rgba(139,92,246,.2)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
+                      }}>🏢</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: TEXT }}>{t.name}</div>
+                        <div style={{ fontSize: 11, color: TEXT_DIM, marginTop: 1 }}>{t.sub_category || 'Facility'}</div>
+                      </div>
+                      <span style={{
+                        fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: .5,
+                        padding: '3px 9px', borderRadius: 100,
+                        background: '#f5f3ff', color: '#8B5CF6', border: '1px solid rgba(139,92,246,.2)',
+                        fontFamily: "'IBM Plex Mono', monospace",
+                      }}>→ Registry</span>
+                    </div>
+                  ))}
+                </>
+              )}
+
+              {selEquipment.length === 0 && selFacility.length === 0 && (
+                <div style={{ background: WHITE, border: `1px solid ${BORDER}`, borderRadius: 14, padding: '40px 24px', textAlign: 'center' }}>
+                  <div style={{ fontSize: 28, marginBottom: 12 }}>📋</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: TEXT, marginBottom: 8 }}>No items selected</div>
+                  <div style={{ fontSize: 13, color: TEXT_DIM }}>Go back and select at least one equipment or facility type.</div>
+                </div>
+              )}
+            </div>
+
+            {/* RIGHT PANEL */}
+            <div style={{ position: 'sticky' as const, top: 84, paddingLeft: 24 }}>
+              <div style={{
+                background: 'linear-gradient(145deg, #1a1816, #2a2520)',
+                border: '1px solid rgba(255,107,43,.12)',
+                borderRadius: 14, overflow: 'hidden',
+              }}>
+                <div style={{ padding: '13px 18px 10px', borderBottom: '1px solid rgba(255,255,255,.06)' }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: .8, fontFamily: "'IBM Plex Mono', monospace", color: 'rgba(255,255,255,.3)' }}>
+                    VaNi Intelligence
+                  </span>
+                </div>
+                <div style={{ padding: '14px 18px' }}>
+                  {([
+                    ['Tenant',       tenantName,                false],
+                    ['Industry',     industryName || '—',       true],
+                    ['Persona',      'Asset Owner',             false],
+                    ...(selEquipment.length > 0 ? [['Eq. Types',   String(selEquipment.length), true]] : []),
+                    ...(selFacility.length  > 0 ? [['Facilities',  String(selFacility.length),  true]] : []),
+                    ['Setup',        'Asset Registry',          true],
+                    ['Environments', 'test + live',             null],
+                  ] as [string, string, boolean | null][]).map(([k, v, accent]) => (
+                    <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,.05)' }}>
+                      <span style={{ fontSize: 11, color: 'rgba(255,255,255,.35)' }}>{k}</span>
+                      <span style={{
+                        fontSize: 11, fontWeight: 700,
+                        color: accent === null ? 'rgba(255,255,255,.25)' : accent ? VANI : '#f0ece6',
+                        fontStyle: accent === null ? 'italic' : 'normal',
+                        fontFamily: accent === null ? "'Outfit', sans-serif" : "'IBM Plex Mono', monospace",
+                      }}>{v}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Floating action island */}
+        <div style={{
+          position: 'fixed', bottom: 32, left: '50%', transform: 'translateX(-50%)',
+          background: 'rgba(26,24,22,.94)',
+          backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+          padding: '10px 10px 10px 24px', borderRadius: 100,
+          display: 'flex', alignItems: 'center', gap: 16,
+          boxShadow: '0 20px 50px rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.06)',
+          zIndex: 200, whiteSpace: 'nowrap' as const, fontFamily: "'Outfit', sans-serif",
+        }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,.65)' }}>
+            {industryName ? `${industryName} · ` : ''}
+            {selEquipment.length > 0 ? `${selEquipment.length} equipment` : ''}
+            {selEquipment.length > 0 && selFacility.length > 0 ? ' · ' : ''}
+            {selFacility.length > 0 ? `${selFacility.length} facilit${selFacility.length === 1 ? 'y' : 'ies'}` : ''}
+            {' · registry'}
+          </span>
+          <div style={{ width: 1, height: 22, background: 'rgba(255,255,255,.12)' }} />
+          <button
+            type="button"
+            disabled={confirmed}
+            onClick={() => navigate('/onboarding/vani-consent', { state: { selectedEquipmentTemplates: selEquipment, selectedFacilityTemplates: selFacility, selectedServiceTemplates: routeState.selectedServiceTemplates || [], workIntent, personaId: routePersonaId } })}
+            style={{ padding: '10px 20px', borderRadius: 100, border: 'none', background: 'rgba(255,255,255,.08)', color: 'rgba(255,255,255,.6)', fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 700, cursor: confirmed ? 'not-allowed' : 'pointer', opacity: confirmed ? .4 : 1 }}
+          >← Back</button>
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={confirmed || (selEquipment.length === 0 && selFacility.length === 0)}
+            style={{
+              padding: '10px 24px', borderRadius: 100, border: 'none',
+              background: confirmed ? 'rgba(255,255,255,.12)' : `linear-gradient(135deg, ${VANI}, #ff8f5a)`,
+              color: confirmed ? 'rgba(255,255,255,.4)' : WHITE,
+              fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 800,
+              cursor: confirmed ? 'not-allowed' : 'pointer',
+              boxShadow: confirmed ? 'none' : `0 8px 24px ${VANI}50`,
+              transition: 'all .2s', display: 'flex', alignItems: 'center', gap: 8,
+            }}
+          >
+            {confirmed
+              ? <><div style={{ width: 13, height: 13, border: '2px solid rgba(255,255,255,.3)', borderTopColor: 'rgba(255,255,255,.8)', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />Setting up…</>
+              : 'VaNi, set this up →'
+            }
+          </button>
+        </div>
+      </>
+    );
+  }
+
   // ── Main render ────────────────────────────────────────────────────────────
   return (
     <>
@@ -524,7 +733,7 @@ const VaniIntelligenceStep: React.FC = () => {
         <button
           type="button"
           disabled={confirmed}
-          onClick={() => navigate('/onboarding/vani-consent', { state: { selectedEquipmentTemplates: selEquipment, selectedFacilityTemplates: selFacility, selectedServiceTemplates: routeState.selectedServiceTemplates || [], workIntent } })}
+          onClick={() => navigate('/onboarding/vani-consent', { state: { selectedEquipmentTemplates: selEquipment, selectedFacilityTemplates: selFacility, selectedServiceTemplates: routeState.selectedServiceTemplates || [], workIntent, personaId: routePersonaId } })}
           style={{ padding: '10px 20px', borderRadius: 100, border: 'none', background: 'rgba(255,255,255,.08)', color: 'rgba(255,255,255,.6)', fontFamily: "'Outfit', sans-serif", fontSize: 13, fontWeight: 700, cursor: confirmed ? 'not-allowed' : 'pointer', opacity: confirmed ? .4 : 1 }}
         >← Back</button>
         <button

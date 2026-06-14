@@ -115,6 +115,7 @@ const VaniConsentStep: React.FC = () => {
         selectedFacilityTemplates:  selFacility,
         selectedServiceTemplates:   selService,
         workIntent: routeState.workIntent || null,
+        personaId: personaId || null,
       },
     });
   };

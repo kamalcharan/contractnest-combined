@@ -107,8 +107,8 @@ const ResourcePickStep: React.FC = () => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(restoredIds);
   const [initialised, setInitialised] = useState(restoredIds.size > 0);
 
-  // Default tab driven by engagement model
-  const defaultTab: ActiveTab =
+  // Buyer always starts on equipment; others follow engagement model
+  const defaultTab: ActiveTab = personaId === 'buyer' ? 'equipment' :
     engagementModel === 'service_first'  ? 'services'   :
     engagementModel === 'facility_first' ? 'facilities' : 'equipment';
   const [activeTab, setActiveTab] = useState<ActiveTab>(defaultTab);
@@ -681,7 +681,8 @@ const ResourcePickStep: React.FC = () => {
               )}
             </button>
 
-            {/* Services tab */}
+            {/* Services tab — hidden for buyer persona */}
+            {personaId !== 'buyer' && (
             <button
               onClick={() => setActiveTab('services')}
               style={{
@@ -719,6 +720,7 @@ const ResourcePickStep: React.FC = () => {
                 <div style={{ height: 2, background: TEAL, borderRadius: 1, marginTop: 10, marginLeft: -20, marginRight: -20 }} />
               )}
             </button>
+            )}
           </div>
 
           {/* ── Tab content ── */}
@@ -729,7 +731,7 @@ const ResourcePickStep: React.FC = () => {
             {activeTab === 'facilities' && (
               <KtTemplateList items={facilityTemplates} accent={PURPLE} softBg={PURPLE_SOFT} />
             )}
-            {activeTab === 'services' && (
+            {activeTab === 'services' && personaId !== 'buyer' && (
               <ServiceTemplateList items={serviceTemplates} />
             )}
           </div>
