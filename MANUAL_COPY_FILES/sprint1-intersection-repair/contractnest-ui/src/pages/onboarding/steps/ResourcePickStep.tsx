@@ -41,12 +41,15 @@ const RED         = '#dc2626';
 const RED_SOFT    = '#fef2f2';
 
 type ActiveTab = 'equipment' | 'facilities' | 'services';
+type PersonaId = 'seller' | 'buyer' | 'both';
 
-const normalizePersona = (raw: string) => {
+// Returns null when the persona field hasn't loaded yet — avoids defaulting to 'seller'
+// before formData arrives from useTenantProfile, which would wrongly KT-gate a buyer.
+const normalizePersona = (raw: string): PersonaId | null => {
   if (raw === 'service_provider') return 'seller';
   if (raw === 'merchant')         return 'buyer';
-  if (raw === 'seller' || raw === 'buyer' || raw === 'both') return raw as 'seller' | 'buyer' | 'both';
-  return 'seller';
+  if (raw === 'seller' || raw === 'buyer' || raw === 'both') return raw as PersonaId;
+  return null;
 };
 
 const isEquipmentType = (t: string) => ['equipment', 'consumable'].includes(t.toLowerCase());
@@ -84,6 +87,8 @@ const ResourcePickStep: React.FC = () => {
 
   const isLoading = templatesLoading || ktLoading;
   const personaId = normalizePersona((formData as any).persona || (formData as any).business_type_id || '');
+  // isSeller is false until formData resolves — avoids KT-gating buyer equipment on first render
+  const isSeller  = personaId === 'seller' || personaId === 'both';
   const engagementModel = (formData as any).engagement_model || 'equipment_first';
   const firstName = user?.first_name?.trim() || null;
 
@@ -113,11 +118,9 @@ const ResourcePickStep: React.FC = () => {
     engagementModel === 'facility_first' ? 'facilities' : 'equipment';
   const [activeTab, setActiveTab] = useState<ActiveTab>(defaultTab);
 
-  // Auto-select KT-ready equipment/facility templates on first visit
-  const isSeller = personaId === 'seller' || personaId === 'both';
-
+  // Auto-select: wait for persona to resolve before running (personaId null = still loading)
   useEffect(() => {
-    if (!isLoading && !initialised) {
+    if (!isLoading && !initialised && personaId !== null) {
       const ktReady = [
         // Sellers need KT for catalog blocks; buyers take all equipment for registry
         ...(isSeller ? equipmentTemplates.filter(t => hasKT(t, ktCoverage)) : equipmentTemplates),
@@ -126,7 +129,7 @@ const ResourcePickStep: React.FC = () => {
       setSelectedIds(new Set(ktReady.map(t => t.id)));
       setInitialised(true);
     }
-  }, [isLoading, equipmentTemplates, facilityTemplates, ktCoverage, initialised]);
+  }, [isLoading, personaId, equipmentTemplates, facilityTemplates, ktCoverage, initialised]);
 
   const toggle = (t: ResourceTemplate) => {
     // KT gate only applies to equipment for sellers (catalog blocks need KT).
