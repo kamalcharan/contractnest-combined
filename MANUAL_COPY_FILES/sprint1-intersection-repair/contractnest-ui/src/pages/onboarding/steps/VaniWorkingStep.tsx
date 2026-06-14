@@ -164,6 +164,7 @@ const VaniWorkingStep: React.FC = () => {
   const incomingState = (location.state || {}) as Record<string, any>;
   const selectedEquipmentTemplates: any[] = incomingState.selectedEquipmentTemplates || [];
   const selectedFacilityTemplates:  any[] = incomingState.selectedFacilityTemplates  || [];
+  const selectedServiceTemplates:   any[] = incomingState.selectedServiceTemplates   || [];
   const workIntent: string | null         = incomingState.workIntent || null;
 
   const tasks = buildTasks(personaId, industryNames, selectedEquipmentTemplates.length);
@@ -277,6 +278,7 @@ const VaniWorkingStep: React.FC = () => {
         const resp = await api.post(API_ENDPOINTS.SEEDS.TEMPLATES, {
           equipmentTemplateIds: selectedEquipmentTemplates.map((t: any) => t.id),
           facilityTemplateIds:  selectedFacilityTemplates.map((t: any) => t.id),
+          serviceTemplateIds:   selectedServiceTemplates.map((t: any) => t.id),
           businessType: personaId,
           industryId,
           industryIds: industryIdsRef.current,
