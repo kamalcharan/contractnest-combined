@@ -150,6 +150,14 @@ const VaniWorkingStep: React.FC = () => {
   const { formData, fetchProfile } = useTenantProfile({ isOnboarding: true });
   const { servedIndustries, isLoading: industriesLoading } = useServedIndustriesManager();
 
+  // Carry forward data from ResourcePickStep → VaniConsent → here
+  const location = useLocation();
+  const incomingState = (location.state || {}) as Record<string, any>;
+  const selectedEquipmentTemplates: any[] = incomingState.selectedEquipmentTemplates || [];
+  const selectedFacilityTemplates:  any[] = incomingState.selectedFacilityTemplates  || [];
+  const selectedServiceTemplates:   any[] = incomingState.selectedServiceTemplates   || [];
+  const workIntent: string | null         = incomingState.workIntent || null;
+
   // Read personaId from route state first (sync) to avoid async formData race on task init
   const routePersonaId = incomingState.personaId as string | undefined;
   const personaId = normalizePersona(routePersonaId || (formData as any).persona || formData.business_type_id || '');
@@ -160,14 +168,6 @@ const VaniWorkingStep: React.FC = () => {
   // Keep a always-current ref so runAll() reads the latest value even after awaits
   const industryIdsRef = useRef<string[]>(industryIds);
   industryIdsRef.current = industryIds;
-
-  // Carry forward data from ResourcePickStep → VaniConsent → here
-  const location = useLocation();
-  const incomingState = (location.state || {}) as Record<string, any>;
-  const selectedEquipmentTemplates: any[] = incomingState.selectedEquipmentTemplates || [];
-  const selectedFacilityTemplates:  any[] = incomingState.selectedFacilityTemplates  || [];
-  const selectedServiceTemplates:   any[] = incomingState.selectedServiceTemplates   || [];
-  const workIntent: string | null         = incomingState.workIntent || null;
 
   const tasks = buildTasks(personaId, industryNames, selectedEquipmentTemplates.length);
 
