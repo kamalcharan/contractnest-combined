@@ -2,8 +2,24 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>3 · Contract Copilot Draft — ContractNest Agent</title>
+<title>3 · Contract (Human ⇄ VaNi) — ContractNest Agent</title>
 <link rel="stylesheet" href="styles.css">
+<style>
+  /* ONE page, local Human/VaNi switch. body.human => Human mode. default => VaNi mode. */
+  .human-only{display:none}
+  body.human .vani-only{display:none}
+  body.human .human-only{display:revert}
+  body.human .human-only.flex{display:flex}
+  /* credit meter is meaningless in Human mode */
+  body.human .credit{opacity:.35;filter:grayscale(1)}
+  .modeswitch{display:flex;align-items:center;gap:10px;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:4px 5px}
+  .modeswitch .seg{display:flex;gap:2px}
+  .modeswitch .seg b{font-size:12px;font-weight:700;padding:6px 13px;border-radius:999px;cursor:pointer;color:var(--ink-3)}
+  .modeswitch .seg b.on-h{background:#fff;color:var(--indigo-700);box-shadow:var(--shadow-sm)}
+  .modeswitch .seg b.on-v{background:var(--teal-600);color:#fff;box-shadow:var(--shadow-sm)}
+  body:not(.human) .modeswitch .seg b[data-m="vani"]{background:var(--teal-600);color:#fff;box-shadow:var(--shadow-sm)}
+  body.human .modeswitch .seg b[data-m="human"]{background:#fff;color:var(--indigo-700);box-shadow:var(--shadow-sm)}
+</style>
 </head>
 <body>
 <div class="app">
@@ -11,13 +27,13 @@
     <div class="brand"><div class="logo">C</div><div><b>ContractNest</b><div class="sub">Agent</div></div></div>
     <nav class="nav">
       <a href="01-cockpit.html"><span class="ic">🧭</span> Cockpit</a>
-      <a href="#"><span class="ic">👥</span> Contacts</a>
+      <a href="06-contacts.html"><span class="ic">👥</span> Contacts</a>
       <a href="03-contract-copilot.html" class="active"><span class="ic">📄</span> Contracts</a>
-      <a href="#"><span class="ic">💸</span> AR / AP</a>
-      <a href="#"><span class="ic">🛠️</span> Service</a>
+      <a href="04-ar-ap-collections.html"><span class="ic">💸</span> AR / AP</a>
+      <a href="05-service-lifecycle.html"><span class="ic">🛠️</span> Service</a>
       <div class="group">Agent</div>
       <a href="02-vani-whatsapp.html"><span class="ic">💬</span> VaNi Inbox</a>
-      <a href="#"><span class="ic">⚙️</span> Autonomy &amp; Credits</a>
+      <a href="07-autonomy-credits.html"><span class="ic">⚙️</span> Autonomy &amp; Credits</a>
     </nav>
   </aside>
 
@@ -26,33 +42,46 @@
       <a href="01-cockpit.html" class="btn ghost sm">← Cockpit</a>
       <h3 style="font-size:15px">Contract · CN-2026-0042</h3>
       <span class="pill gray">Draft</span>
-      <span class="vani-badge"><span class="v">V</span> Pre-filled by VaNi</span>
+      <!-- THE LOCAL SWITCH -->
+      <div class="modeswitch" onclick="document.body.classList.toggle('human')" title="Local switch — global 'running VaNi' switch comes later">
+        <span class="tiny muted" style="padding-left:6px">Mode</span>
+        <div class="seg"><b data-m="human">🧭 Human</b><b data-m="vani">🤖 VaNi</b></div>
+      </div>
       <div class="spacer"></div>
       <div class="credit"><span class="dot"></span><b>1,238</b><span class="lbl">credits</span></div>
     </div>
 
     <div class="content">
-      <!-- VaNi context strip: nothing here started blank -->
-      <div class="banner">
+      <!-- BANNER: swaps by mode -->
+      <div class="banner vani-only">
         <div class="av">V</div>
         <div style="flex:1">
           <h2>I drafted this — your job is to check, not to type</h2>
           <p>Built from your <b>Standard AMC template</b> + last year's Kamal Industries contract. I suggested a <b>+8% escalation</b> (your usual) and scheduled <b>12 visits</b>. Edit anything; every field is already filled.</p>
         </div>
       </div>
+      <div class="banner human-only" style="background:linear-gradient(100deg,var(--indigo-50),#fff)">
+        <div class="av" style="background:linear-gradient(135deg,var(--indigo-600),var(--indigo-500))">🧭</div>
+        <div style="flex:1">
+          <h2>You're building this — the form does the busywork</h2>
+          <p>Fields are pre-filled from your <b>catalog</b> &amp; last year's contract (that's free Copilot help). You send, schedule and invoice. <b>Want it done for you?</b> Flip to VaNi mode.</p>
+        </div>
+        <button class="btn teal sm" onclick="document.body.classList.remove('human')">🤖 Let VaNi run it</button>
+      </div>
 
       <div class="grid" style="grid-template-columns:1.6fr 1fr;gap:20px;align-items:start">
-        <!-- The artifact -->
+        <!-- The artifact — shared; zero-blank fields are Copilot (free) in BOTH modes -->
         <div class="card pad">
           <div class="flex between center mb">
             <h3 style="font-size:16px">Annual Maintenance Contract</h3>
-            <span class="pill teal">zero blank fields</span>
+            <span class="vani-badge vani-only"><span class="v">V</span> Pre-filled by VaNi</span>
+            <span class="pill indigo human-only">Pre-filled from catalog</span>
           </div>
 
           <div class="grid cols-2">
-            <div class="field"><label>Buyer</label><div class="input filled"><span>Kamal Industries</span><span class="tiny muted">edit</span></div><span class="prefill">✓ resolved from t_contacts</span></div>
+            <div class="field"><label>Buyer</label><div class="input filled"><span>Kamal Industries</span><span class="tiny muted">edit</span></div><span class="prefill">✓ from your contacts</span></div>
             <div class="field"><label>Contact person</label><div class="input filled"><span>Ravi Menon · +91 98•• ••12</span><span class="tiny muted">edit</span></div><span class="prefill">✓ primary channel</span></div>
-            <div class="field"><label>Term</label><div class="input filled"><span>1 year · 01 Jul 2026 → 30 Jun 2027</span><span class="tiny muted">edit</span></div><span class="prefill">✓ from "1 year contract"</span></div>
+            <div class="field"><label>Term</label><div class="input filled"><span>1 year · 01 Jul 2026 → 30 Jun 2027</span><span class="tiny muted">edit</span></div><span class="prefill">✓ 1-year template</span></div>
             <div class="field"><label>Billing cycle</label><div class="input filled"><span>Quarterly · 4 invoices</span><span class="tiny muted">edit</span></div><span class="prefill">✓ your default</span></div>
           </div>
 
@@ -67,68 +96,96 @@
             </tbody>
           </table>
           <div class="divider"></div>
-          <div style="max-width:280px;margin-left:auto">
+          <div style="max-width:300px;margin-left:auto">
             <div class="flex between small"><span class="muted">Subtotal</span><b>₹2,40,000</b></div>
-            <div class="flex between small mt-s"><span class="muted">+8% escalation <span class="pill teal" style="padding:1px 6px">VaNi</span></span><b>included</b></div>
+            <div class="flex between small mt-s"><span class="muted">+8% escalation <span class="pill teal vani-only" style="padding:1px 6px">VaNi suggested</span><span class="pill gray human-only" style="padding:1px 6px">last year</span></span><b>included</b></div>
             <div class="flex between small mt-s"><span class="muted">GST 18%</span><b>₹43,200</b></div>
             <div class="flex between mt-s" style="font-size:15px;border-top:1px solid var(--line);padding-top:8px"><b>Grand total</b><b>₹2,83,200</b></div>
           </div>
 
           <div class="divider"></div>
           <details open>
-            <summary style="cursor:pointer;font-weight:680;font-size:14px">12 service visits scheduled <span class="muted tiny">(computed events — VaNi will run these)</span></summary>
+            <summary style="cursor:pointer;font-weight:680;font-size:14px">12 service visits scheduled
+              <span class="muted tiny vani-only">(VaNi will run these)</span>
+              <span class="muted tiny human-only">(you'll schedule each)</span>
+            </summary>
             <div class="timeline mt">
-              <div class="tl done"><div class="node"></div><div class="tt">Visit 1 · HVAC PM — 15 Jul 2026</div><div class="td">VaNi will request the appointment 5 days prior.</div></div>
-              <div class="tl agent"><div class="node"></div><div class="tt">Visit 2 · HVAC PM — 15 Aug 2026 <span class="pill teal">auto-book</span></div><div class="td">Appointment → ticket → evidence → invoice, on its own.</div></div>
+              <div class="tl done"><div class="node"></div><div class="tt">Visit 1 · HVAC PM — 15 Jul 2026</div><div class="td"><span class="vani-only">VaNi will request the appointment 5 days prior.</span><span class="human-only">You'll set the appointment closer to the date.</span></div></div>
+              <div class="tl agent"><div class="node"></div><div class="tt">Visit 2 · HVAC PM — 15 Aug 2026 <span class="pill teal vani-only">auto-book</span></div><div class="td"><span class="vani-only">Appointment → ticket → evidence → invoice, on its own.</span><span class="human-only">You run the appointment, ticket and invoice.</span></div></div>
               <div class="tl future"><div class="node"></div><div class="tt">Visit 3 · Chiller deep service — 15 Sep 2026</div><div class="td">…and 9 more through Jun 2027.</div></div>
             </div>
           </details>
         </div>
 
-        <!-- The dial + actions -->
+        <!-- RIGHT RAIL — this is where the modes truly diverge -->
         <div>
-          <!-- Layer 1 <-> Layer 2 dial -->
-          <div class="card pad" style="border-color:var(--teal-200)">
-            <div class="flex between center"><b>Who runs this contract?</b><span class="pill teal">the dial</span></div>
-            <div class="small muted mt-s mb">Hand the whole lifecycle to VaNi, or keep it manual. Switch any time.</div>
-
-            <label class="flex gap" style="align-items:flex-start;padding:11px;border:1px solid var(--line);border-radius:10px;cursor:pointer">
-              <input type="radio" name="mode" style="margin-top:3px">
-              <div><b class="small">🧭 I'll handle it (Copilot)</b><div class="tiny muted">You send, schedule and invoice — UI pre-fills each step. No credits used.</div></div>
-            </label>
-            <label class="flex gap" style="align-items:flex-start;padding:11px;border:2px solid var(--teal-500);border-radius:10px;cursor:pointer;margin-top:8px;background:var(--teal-50)">
-              <input type="radio" name="mode" checked style="margin-top:3px">
-              <div><b class="small">🤖 VaNi handles renewals, service &amp; billing (Autopilot)</b><div class="tiny muted">Books visits, invoices, follows up. Asks you only for sends &amp; money over ₹50k.</div>
-                <div class="mt-s"><span class="credit-chip">⛁ ~14 credits / year est.</span></div>
+          <!-- ===== VaNi mode rail ===== -->
+          <div class="vani-only">
+            <div class="card pad" style="border-color:var(--teal-200)">
+              <div class="flex between center"><b>Who runs this contract?</b><span class="pill teal">the dial</span></div>
+              <div class="small muted mt-s mb">Hand the whole lifecycle to VaNi, or keep it manual. Switch any time.</div>
+              <label class="flex gap" style="align-items:flex-start;padding:11px;border:1px solid var(--line);border-radius:10px;cursor:pointer">
+                <input type="radio" name="mode" style="margin-top:3px">
+                <div><b class="small">🧭 I'll handle it (Copilot)</b><div class="tiny muted">You send, schedule and invoice. No credits used.</div></div>
+              </label>
+              <label class="flex gap" style="align-items:flex-start;padding:11px;border:2px solid var(--teal-500);border-radius:10px;cursor:pointer;margin-top:8px;background:var(--teal-50)">
+                <input type="radio" name="mode" checked style="margin-top:3px">
+                <div><b class="small">🤖 VaNi handles renewals, service &amp; billing</b><div class="tiny muted">Books visits, invoices, follows up. Asks you only for sends &amp; money over ₹50k.</div>
+                  <div class="mt-s"><span class="credit-chip">⛁ ~14 credits / year est.</span></div>
+                </div>
+              </label>
+            </div>
+            <div class="card pad mt">
+              <b>VaNi will, on approval:</b>
+              <div class="mt-s">
+                <div class="flex between small" style="padding:6px 0;border-bottom:1px solid var(--line-2)"><span>📧 Email contract to buyer</span><span class="credit-chip">⛁ 2</span></div>
+                <div class="flex between small" style="padding:6px 0;border-bottom:1px solid var(--line-2)"><span>📅 Request 12 appointments</span><span class="credit-chip">⛁ 1 ea</span></div>
+                <div class="flex between small" style="padding:6px 0;border-bottom:1px solid var(--line-2)"><span>🧾 Raise 4 quarterly invoices</span><span class="credit-chip">⛁ 1 ea</span></div>
+                <div class="flex between small" style="padding:6px 0"><span>🔁 Chase payments &amp; evidence</span><span class="credit-chip">⛁ 1 ea</span></div>
               </div>
-            </label>
-          </div>
-
-          <!-- VaNi can take it from here checklist -->
-          <div class="card pad mt">
-            <b>VaNi will, on approval:</b>
-            <div class="mt-s">
-              <div class="flex between small" style="padding:6px 0;border-bottom:1px solid var(--line-2)"><span>📧 Email contract to buyer</span><span class="credit-chip">⛁ 2</span></div>
-              <div class="flex between small" style="padding:6px 0;border-bottom:1px solid var(--line-2)"><span>📅 Request 12 appointments</span><span class="credit-chip">⛁ 1 ea</span></div>
-              <div class="flex between small" style="padding:6px 0;border-bottom:1px solid var(--line-2)"><span>🧾 Raise 4 quarterly invoices</span><span class="credit-chip">⛁ 1 ea</span></div>
-              <div class="flex between small" style="padding:6px 0"><span>🔁 Chase payments &amp; evidence</span><span class="credit-chip">⛁ 1 ea</span></div>
+            </div>
+            <div class="card pad mt">
+              <div class="flex gap center mb"><span class="pill amber">⚠︎ Risk gate</span><span class="tiny muted">sending is high-risk → your call</span></div>
+              <button class="btn teal" style="width:100%;justify-content:center">✓ Approve &amp; send via email</button>
+              <div class="flex gap mt-s"><button class="btn sm" style="flex:1;justify-content:center">Save draft</button><button class="btn ghost sm" style="flex:1;justify-content:center">Discard</button></div>
+              <div class="divider"></div>
+              <div class="tiny muted">Audit · <span class="mono">t_audit_log</span><br>09:42 — draft created by VaNi<br>09:42 — escalation suggested (+8%)<br>— awaiting your approval —</div>
             </div>
           </div>
 
-          <!-- Risk gate -->
-          <div class="card pad mt" style="position:sticky;top:80px">
-            <div class="flex gap center mb"><span class="pill amber">⚠︎ Risk gate</span><span class="tiny muted">sending is high-risk → your call</span></div>
-            <button class="btn teal" style="width:100%;justify-content:center">✓ Approve &amp; send via email</button>
-            <div class="flex gap mt-s"><button class="btn sm" style="flex:1;justify-content:center">Save draft</button><button class="btn ghost sm" style="flex:1;justify-content:center">Discard</button></div>
-            <div class="divider"></div>
-            <div class="tiny muted">Audit · <span class="mono">t_audit_log</span><br>09:42 — draft created by VaNi<br>09:42 — escalation suggested (+8%)<br>— awaiting your approval —</div>
+          <!-- ===== Human mode rail ===== -->
+          <div class="human-only">
+            <div class="card pad">
+              <b>You'll do these — when you're ready</b>
+              <div class="small muted mt-s mb">Manual lifecycle. No credits.</div>
+              <div>
+                <div class="flex between small" style="padding:7px 0;border-bottom:1px solid var(--line-2)"><span>📧 Send contract to buyer</span><span class="pill gray">now</span></div>
+                <div class="flex between small" style="padding:7px 0;border-bottom:1px solid var(--line-2)"><span>📅 Schedule each visit</span><span class="tiny muted">you, monthly</span></div>
+                <div class="flex between small" style="padding:7px 0;border-bottom:1px solid var(--line-2)"><span>🧾 Raise invoices</span><span class="tiny muted">you, quarterly</span></div>
+                <div class="flex between small" style="padding:7px 0"><span>🔁 Follow up on payments</span><span class="tiny muted">you</span></div>
+              </div>
+            </div>
+            <div class="card pad mt">
+              <button class="btn primary" style="width:100%;justify-content:center">Send via email</button>
+              <div class="flex gap mt-s"><button class="btn sm" style="flex:1;justify-content:center">Save draft</button><button class="btn ghost sm" style="flex:1;justify-content:center">Discard</button></div>
+            </div>
+            <div class="card pad mt" style="background:var(--teal-50);border-color:var(--teal-200)">
+              <div class="flex gap center"><div style="font-size:20px">🤖</div>
+                <div style="flex:1"><b class="small">Don't want to babysit this for a year?</b><div class="tiny muted">VaNi can run all 4 steps above automatically — you approve only sends &amp; big money.</div></div>
+              </div>
+              <button class="btn teal sm mt-s" style="width:100%;justify-content:center" onclick="document.body.classList.remove('human')">Switch to VaNi · ⛁ ~14 credits / yr</button>
+            </div>
           </div>
         </div>
       </div>
 
-      <p class="tiny muted mt" style="text-align:center">Layer 1 Copilot (pre-filled artifact) with a built-in handoff to Layer 2 VaNi · Persona: Seller issuing · Tables: t_contracts · t_contract_blocks · t_contract_events · t_contract_access · t_bm_credit_transaction · t_audit_log</p>
+      <p class="tiny muted mt" style="text-align:center"><b>One page, one local switch</b> (global "running VaNi" switch comes later) · Human mode = free Copilot, you drive · VaNi mode = paid Autopilot, you approve · Tables: t_contracts · t_contract_blocks · t_contract_events · t_contract_access · t_bm_credit_transaction · t_audit_log</p>
     </div>
   </div>
 </div>
+<script>
+  // Local switch: support deep-link (#human) so we can capture both states; click toggles.
+  if (location.hash === '#human') document.body.classList.add('human');
+</script>
 </body>
 </html>
