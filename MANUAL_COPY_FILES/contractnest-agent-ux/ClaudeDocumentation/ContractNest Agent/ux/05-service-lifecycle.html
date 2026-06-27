@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>5 · Service Lifecycle — ContractNest Agent</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  .evidence{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .ev{border:1px solid var(--line);border-radius:9px;padding:7px 10px;display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600}
+  .ev.done{background:var(--green-bg);border-color:#bbf7d0;color:var(--green)}
+  .ev.wait{background:var(--bg);color:var(--ink-3)}
+  .chk{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line-2);font-size:12.5px}
+  .chk:last-child{border-bottom:0}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><div class="logo">C</div><div><b>ContractNest</b><div class="sub">Agent</div></div></div>
+    <nav class="nav">
+      <a href="01-cockpit.html"><span class="ic">🧭</span> Cockpit</a>
+      <a href="06-contacts.html"><span class="ic">👥</span> Contacts</a>
+      <a href="03-contract-copilot.html"><span class="ic">📄</span> Contracts</a>
+      <a href="04-ar-ap-collections.html"><span class="ic">💸</span> AR / AP</a>
+      <a href="05-service-lifecycle.html" class="active"><span class="ic">🛠️</span> Service</a>
+      <div class="group">Agent</div>
+      <a href="02-vani-whatsapp.html"><span class="ic">💬</span> VaNi Inbox</a>
+      <a href="07-autonomy-credits.html"><span class="ic">⚙️</span> Autonomy &amp; Credits</a>
+    </nav>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="persona"><button class="on">Seller</button><button>Buyer</button></div>
+      <h3 style="font-size:15px;margin-left:6px">Service · Kamal Industries AMC</h3>
+      <span class="pill gray">CN-2026-0042</span>
+      <div class="spacer"></div>
+      <div class="credit"><span class="dot"></span><b>1,238</b><span class="lbl">credits</span></div>
+      <div class="vani-toggle">Service autopilot <span class="switch"></span></div>
+    </div>
+
+    <div class="content">
+      <div class="banner">
+        <div class="av">V</div>
+        <div style="flex:1">
+          <h2>VaNi is running all 12 visits for this contract</h2>
+          <p>It books each appointment, opens the ticket, assigns the right technician, and chases evidence. <b>3 done · 1 in progress · 8 to come.</b> You only step in on reschedules and exceptions.</p>
+        </div>
+      </div>
+
+      <div class="grid" style="grid-template-columns:1.3fr 1fr;gap:20px;align-items:start">
+        <!-- Lifecycle timeline -->
+        <div class="card pad">
+          <div class="section-h"><h3>Visit lifecycle</h3><span class="count">12</span><span class="muted tiny" style="margin-left:auto">computed events → field work</span></div>
+          <div class="timeline">
+            <div class="tl done"><div class="node"></div><div class="tt">Visit 1 · HVAC PM — 15 Jun ✓</div><div class="td">Done. Evidence: 4 photos + customer OTP. Invoiced ₹12,000, paid.</div></div>
+            <div class="tl done"><div class="node"></div><div class="tt">Visit 2 · HVAC PM — 15 Jul ✓</div><div class="td">Done. All checkpoints green. Auto-invoiced.</div></div>
+            <div class="tl done"><div class="node"></div><div class="tt">Visit 3 · Chiller deep service — 15 Aug ✓</div><div class="td">1 checkpoint flagged amber → spare part proposed (see ticket).</div></div>
+            <div class="tl agent"><div class="node"></div><div class="tt">Visit 4 · HVAC PM — Fri 20 Sep · 10:00 <span class="pill teal">booked by VaNi</span></div><div class="td">Confirmed with buyer on WhatsApp. Technician Suresh assigned. Ticket SVT-4471 open.</div></div>
+            <div class="tl future"><div class="node"></div><div class="tt">Visit 5 · HVAC PM — 15 Oct <span class="pill gray">auto-book in 21 days</span></div><div class="td">VaNi will request the slot 5 days prior.</div></div>
+            <div class="tl future"><div class="node"></div><div class="tt">Visits 6–12 — Nov 2026 → Jun 2027</div><div class="td">Scheduled. Will run on the same loop.</div></div>
+          </div>
+        </div>
+
+        <!-- Active ticket -->
+        <div>
+          <div class="card pad" style="border-color:var(--teal-200)">
+            <div class="flex between center"><b>Active ticket · SVT-4471</b><span class="pill teal">in progress</span></div>
+            <div class="small muted mt-s mb">Visit 4 · HVAC preventive maintenance · Fri 20 Sep 10:00</div>
+            <div class="flex gap center mb" style="padding:9px;background:var(--bg);border-radius:9px">
+              <div style="width:30px;height:30px;border-radius:50%;background:var(--indigo-100);display:grid;place-items:center;font-weight:700;color:var(--indigo-700)">S</div>
+              <div><b class="small">Suresh K.</b><div class="tiny muted">HVAC technician · 4.8★ · 2.3km away</div></div>
+              <span class="pill green" style="margin-left:auto">confirmed</span>
+            </div>
+            <b class="small">Checkpoints (from Knowledge Tree)</b>
+            <div class="mt-s mb">
+              <div class="chk"><span>Compressor pressure</span><span class="muted">reading · threshold set</span></div>
+              <div class="chk"><span>Refrigerant level</span><span class="muted">reading</span></div>
+              <div class="chk"><span>Coil condition</span><span class="muted">condition · dropdown</span></div>
+              <div class="chk"><span>Filter status</span><span class="muted">condition</span></div>
+            </div>
+            <b class="small">Evidence required</b>
+            <div class="evidence">
+              <span class="ev wait">📷 Photos (min 3)</span>
+              <span class="ev wait">🔢 Customer OTP</span>
+              <span class="ev wait">📝 Service form</span>
+            </div>
+            <div class="small muted mt"><span class="vani-badge"><span class="v">V</span> VaNi will</span> remind the tech 2h before, collect evidence in-app, then auto-raise the invoice on sign-off.</div>
+          </div>
+
+          <!-- Buyer asset-upkeep proactive trigger -->
+          <div class="card pad mt" style="background:var(--indigo-50);border-color:var(--indigo-100)">
+            <div class="flex gap center mb"><span class="pill indigo">Buyer view</span><span class="tiny muted">asset upkeep is the proactive trigger</span></div>
+            <b>Your chiller is due for deep service</b>
+            <div class="small muted mt-s">Lotus Hospital · Carrier 30XA chiller · last serviced 88 days ago (cycle: 90). VaNi can raise an RFQ to your AMC vendor.</div>
+            <div class="actions mt"><button class="btn primary sm">Raise RFQ via VaNi</button><button class="btn ghost sm">Remind me later</button></div>
+            <div class="tiny muted mt-s">⛁ 2 credits · drafts the request and sends to your seller</div>
+          </div>
+        </div>
+      </div>
+
+      <p class="tiny muted mt" style="text-align:center">Seller services the buyer's assets; Buyer view turns asset upkeep into auto-RFQs · Tables: t_service_tickets · t_service_evidence · t_contract_events · t_service_ticket_events · m_equipment_checkpoints · t_client_asset_registry · t_equipment · m_service_cycles</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>

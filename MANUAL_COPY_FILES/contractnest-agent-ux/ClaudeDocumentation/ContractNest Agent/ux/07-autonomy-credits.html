@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>7 · Autonomy &amp; Credits — ContractNest Agent</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  .seg{display:inline-flex;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:2px}
+  .seg span{font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:6px;color:var(--ink-3);cursor:pointer}
+  .seg span.off{background:#fff;color:var(--ink-3);box-shadow:var(--shadow-sm)}
+  .seg span.prop{background:var(--indigo-600);color:#fff;box-shadow:var(--shadow-sm)}
+  .seg span.auto{background:var(--teal-600);color:#fff;box-shadow:var(--shadow-sm)}
+  .arow{display:flex;align-items:center;gap:14px;padding:15px 4px;border-bottom:1px solid var(--line-2)}
+  .arow:last-child{border-bottom:0}
+  .arow .ico{width:38px;height:38px;border-radius:11px;background:var(--bg);display:grid;place-items:center;font-size:17px;flex:0 0 auto}
+  .bar{height:9px;border-radius:6px;background:var(--line-2);overflow:hidden}
+  .bar i{display:block;height:100%;border-radius:6px}
+  .pack{border:1px solid var(--line);border-radius:12px;padding:15px;text-align:center}
+  .pack.pop{border-color:var(--teal-400,#2dd4bf);background:var(--teal-50);position:relative}
+  .pack .q{font-size:24px;font-weight:780;letter-spacing:-.02em}
+  .cap{position:relative}
+  .cap input[type=range]{width:100%}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><div class="logo">C</div><div><b>ContractNest</b><div class="sub">Agent</div></div></div>
+    <nav class="nav">
+      <a href="01-cockpit.html"><span class="ic">🧭</span> Cockpit</a>
+      <a href="06-contacts.html"><span class="ic">👥</span> Contacts</a>
+      <a href="03-contract-copilot.html"><span class="ic">📄</span> Contracts</a>
+      <a href="04-ar-ap-collections.html"><span class="ic">💸</span> AR / AP</a>
+      <a href="05-service-lifecycle.html"><span class="ic">🛠️</span> Service</a>
+      <div class="group">Agent</div>
+      <a href="02-vani-whatsapp.html"><span class="ic">💬</span> VaNi Inbox</a>
+      <a href="07-autonomy-credits.html" class="active"><span class="ic">⚙️</span> Autonomy &amp; Credits</a>
+    </nav>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <h3 style="font-size:15px">Autonomy &amp; Credits</h3>
+      <span class="pill teal">the dial that powers every screen</span>
+      <div class="spacer"></div>
+      <div class="credit"><span class="dot"></span><b>1,238</b><span class="lbl">VaNi credits</span></div>
+    </div>
+
+    <div class="content">
+      <div class="banner">
+        <div class="av">⚙</div>
+        <div>
+          <h2>Set how far VaNi can go — per domain, per rupee</h2>
+          <p>Off = manual (Copilot only). Propose = VaNi prepares, you approve. Auto = VaNi acts within your caps. Money &amp; customer-facing actions always respect the limits below.</p>
+        </div>
+      </div>
+
+      <div class="grid" style="grid-template-columns:1.4fr 1fr;gap:20px;align-items:start">
+        <!-- Per-domain autonomy -->
+        <div class="card pad">
+          <div class="section-h"><h3>Autonomy by domain</h3><span class="muted tiny" style="margin-left:auto">tiered by risk</span></div>
+
+          <div class="arow">
+            <div class="ico">👥</div>
+            <div style="flex:1"><b>Contacts</b><div class="tiny muted">Enrich &amp; classify auto · merges proposed</div></div>
+            <div class="seg"><span>Off</span><span class="prop">Propose</span><span class="auto">Auto</span></div>
+          </div>
+          <div class="arow">
+            <div class="ico">📄</div>
+            <div style="flex:1"><b>Contracts</b><div class="tiny muted">Draft auto · <b>sending always asks you</b></div></div>
+            <div class="seg"><span>Off</span><span class="prop">Propose</span><span>Auto</span></div>
+          </div>
+          <div class="arow">
+            <div class="ico">💸</div>
+            <div style="flex:1"><b>AR / AP — Collections</b><div class="tiny muted">Reminders &amp; reconcile auto · write-off &amp; settlement gated</div></div>
+            <div class="seg"><span>Off</span><span>Propose</span><span class="auto">Auto</span></div>
+          </div>
+          <div class="arow">
+            <div class="ico">🛠️</div>
+            <div style="flex:1"><b>Service &amp; Appointments</b><div class="tiny muted">Book, ticket, evidence auto · reschedule/cancel gated</div></div>
+            <div class="seg"><span>Off</span><span>Propose</span><span class="auto">Auto</span></div>
+          </div>
+
+          <div class="divider"></div>
+
+          <!-- Money cap -->
+          <div class="cap mb">
+            <div class="flex between"><b class="small">Always ask me above</b><b class="small" style="color:var(--indigo-700)">₹50,000</b></div>
+            <input type="range" min="0" max="100" value="50" style="accent-color:var(--indigo-600)">
+            <div class="flex between tiny muted"><span>₹0 (ask for everything)</span><span>₹1,00,000</span></div>
+          </div>
+
+          <div class="card pad" style="background:var(--bg);box-shadow:none">
+            <b class="small">Hard rules VaNi can never cross</b>
+            <div class="small muted mt-s">• Never send money out without approval &nbsp; • Never delete a contact or contract &nbsp; • Agent power ≤ your own RBAC role &nbsp; • Stop all autopilot if credits hit 0</div>
+          </div>
+        </div>
+
+        <!-- Credits -->
+        <div>
+          <div class="card pad">
+            <div class="flex between center mb"><b>VaNi credits</b><span class="pill teal">metered usage</span></div>
+            <div class="flex between" style="align-items:flex-end"><div><div style="font-size:30px;font-weight:780;letter-spacing:-.02em">1,238</div><div class="tiny muted">expires 31 Dec 2026</div></div><div class="tiny" style="text-align:right"><span class="pill amber">low at 200</span><div class="muted mt-s">~6 weeks at current pace</div></div></div>
+            <div class="bar mt"><i style="width:62%;background:linear-gradient(90deg,var(--teal-500),var(--indigo-500))"></i></div>
+            <div class="tiny muted mt-s">762 of 2,000 used this cycle</div>
+          </div>
+
+          <div class="card pad mt">
+            <b class="small">Where credits went · this cycle</b>
+            <div class="mt-s">
+              <div class="flex between small" style="padding:5px 0"><span>💸 Collections &amp; reminders</span><b>314</b></div>
+              <div class="bar"><i style="width:80%;background:var(--teal-500)"></i></div>
+              <div class="flex between small" style="padding:5px 0;margin-top:6px"><span>🛠️ Appointments &amp; tickets</span><b>248</b></div>
+              <div class="bar"><i style="width:63%;background:var(--indigo-500)"></i></div>
+              <div class="flex between small" style="padding:5px 0;margin-top:6px"><span>📄 Contracts drafted/sent</span><b>120</b></div>
+              <div class="bar"><i style="width:31%;background:var(--amber)"></i></div>
+              <div class="flex between small" style="padding:5px 0;margin-top:6px"><span>👥 Contact enrichment</span><b>80</b></div>
+              <div class="bar"><i style="width:20%;background:#94a3b8"></i></div>
+            </div>
+            <div class="tiny muted mt">Every debit is attributed in <span class="mono">t_bm_credit_transaction</span> — fully auditable.</div>
+          </div>
+
+          <div class="card pad mt">
+            <b class="small">Top up</b>
+            <div class="grid cols-3 mt-s">
+              <div class="pack"><div class="q">500</div><div class="tiny muted">credits</div><div class="mt-s"><b>₹1,499</b></div></div>
+              <div class="pack pop"><div class="pill teal" style="position:absolute;top:-10px;left:50%;transform:translateX(-50%)">Popular</div><div class="q">2,000</div><div class="tiny muted">credits</div><div class="mt-s"><b>₹4,999</b></div><div class="tiny" style="color:var(--teal-700)">17% off</div></div>
+              <div class="pack"><div class="q">5,000</div><div class="tiny muted">credits</div><div class="mt-s"><b>₹9,999</b></div></div>
+            </div>
+            <button class="btn teal mt" style="width:100%;justify-content:center">Buy credits</button>
+            <label class="flex gap center mt-s tiny muted"><input type="checkbox" checked> Auto-top-up 2,000 when balance hits 200</label>
+          </div>
+        </div>
+      </div>
+
+      <p class="tiny muted mt" style="text-align:center">This screen is the "dial" referenced across the cockpit, contract, AR/AP &amp; service views · Tables: t_bm_credit_balance · t_bm_credit_transaction · t_bm_topup_pack · t_bm_product_config (per-product billing_config)</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>6 · Contacts — ContractNest Agent</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  .merge{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:center}
+  .mcard{border:1px solid var(--line);border-radius:11px;padding:12px}
+  .mcard.keep{border-color:var(--teal-300,#5eead4);background:var(--teal-50)}
+  .arrow{font-size:22px;color:var(--teal-600)}
+  .row{display:flex;justify-content:space-between;font-size:12.5px;padding:3px 0}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><div class="logo">C</div><div><b>ContractNest</b><div class="sub">Agent</div></div></div>
+    <nav class="nav">
+      <a href="01-cockpit.html"><span class="ic">🧭</span> Cockpit</a>
+      <a href="06-contacts.html" class="active"><span class="ic">👥</span> Contacts</a>
+      <a href="03-contract-copilot.html"><span class="ic">📄</span> Contracts</a>
+      <a href="04-ar-ap-collections.html"><span class="ic">💸</span> AR / AP</a>
+      <a href="05-service-lifecycle.html"><span class="ic">🛠️</span> Service</a>
+      <div class="group">Agent</div>
+      <a href="02-vani-whatsapp.html"><span class="ic">💬</span> VaNi Inbox</a>
+      <a href="07-autonomy-credits.html"><span class="ic">⚙️</span> Autonomy &amp; Credits</a>
+    </nav>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="persona"><button class="on">Seller</button><button>Buyer</button><button>Both</button></div>
+      <h3 style="font-size:15px;margin-left:6px">Contacts</h3>
+      <div class="spacer"></div>
+      <div class="credit"><span class="dot"></span><b>1,238</b><span class="lbl">credits</span></div>
+    </div>
+
+    <div class="content">
+      <div class="banner">
+        <div class="av">V</div>
+        <div style="flex:1">
+          <h2>A self-maintaining contact graph — not a list you groom</h2>
+          <p>VaNi dedupes, enriches (GSTIN, PAN), classifies customer vs vendor, and links org hierarchies as data flows in from contracts, invoices &amp; WhatsApp. <b>49 contacts · 3 need a decision.</b></p>
+        </div>
+      </div>
+
+      <!-- The headline proposed-action: merge -->
+      <div class="proposed mb">
+        <div class="ph"><span class="vani-badge"><span class="v">V</span> Proposed merge · 92% confidence</span><span class="pill gray">Contacts · duplicate detected</span><span class="muted tiny" style="margin-left:auto">your call — auto-merge is off above ₹0 risk</span></div>
+        <div class="pb">
+          <div class="merge">
+            <div class="mcard">
+              <b>Kamal Traders</b><div class="tiny muted mb">created 2024 · via contract</div>
+              <div class="row"><span class="muted">GSTIN</span><b>29ABCDE1234F1Z5</b></div>
+              <div class="row"><span class="muted">Phone</span><b>+91 98•• ••12</b></div>
+              <div class="row"><span class="muted">Contracts</span><b>3</b></div>
+            </div>
+            <div class="arrow">→</div>
+            <div class="mcard keep">
+              <div class="flex between"><b>Kamal Traders</b><span class="pill teal">keep · merged</span></div>
+              <div class="tiny muted mb">single record · both channels retained</div>
+              <div class="row"><span class="muted">GSTIN</span><b>29ABCDE1234F1Z5</b></div>
+              <div class="row"><span class="muted">Phones</span><b>2 (both kept)</b></div>
+              <div class="row"><span class="muted">Contracts</span><b>5 (combined)</b></div>
+            </div>
+          </div>
+          <div class="small muted mt"><b>Why VaNi thinks they match:</b> identical GSTIN, same email domain, overlapping contact person. Same <span class="mono">duplicate_reasons</span> it already flagged on the row.</div>
+          <div class="actions mt"><button class="btn primary sm">Approve merge</button><button class="btn sm">Keep separate</button><button class="btn ghost sm">Review fields</button></div>
+        </div>
+      </div>
+
+      <div class="grid" style="grid-template-columns:1.5fr 1fr;gap:20px;align-items:start">
+        <!-- Contact list -->
+        <div class="card pad">
+          <div class="section-h"><h3>All contacts</h3><span class="count">49</span>
+            <div style="margin-left:auto" class="flex gap"><span class="pill teal">customers 31</span><span class="pill indigo">vendors 14</span><span class="pill amber">leads 4</span></div>
+          </div>
+          <table class="t">
+            <thead><tr><th>Name</th><th>Type</th><th>Enrichment</th><th>Source</th></tr></thead>
+            <tbody>
+              <tr><td><b>Kamal Industries</b><div class="tiny muted">Ravi Menon</div></td><td><span class="pill teal">Customer</span></td><td><span class="pill green">GSTIN ✓ PAN ✓</span></td><td class="tiny muted">WhatsApp</td></tr>
+              <tr><td><b>BlueStar Facilities</b></td><td><span class="pill teal">Customer</span></td><td><span class="pill green">GSTIN ✓</span></td><td class="tiny muted">Contract</td></tr>
+              <tr><td><b>Suresh Spares Co.</b></td><td><span class="pill indigo">Vendor</span></td><td><span class="pill amber">PAN missing</span> <span class="vani-badge"><span class="v">V</span> fetching</span></td><td class="tiny muted">Invoice</td></tr>
+              <tr><td><b>Greenfield Mall</b></td><td><span class="pill amber">Lead</span></td><td><span class="muted tiny">classifying…</span></td><td class="tiny muted">WhatsApp enquiry</td></tr>
+              <tr><td><b>Lotus Hospital</b><div class="tiny muted">+ 2 sub-contacts</div></td><td><span class="pill teal">Customer</span></td><td><span class="pill green">GSTIN ✓</span></td><td class="tiny muted">CNAK · cross-tenant</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- What VaNi maintained -->
+        <div>
+          <div class="card pad">
+            <div class="section-h"><h3>Maintained by VaNi</h3><span class="pill teal">last 7 days</span></div>
+            <div class="feed">
+              <div class="feed-item"><div class="ico">🔗</div><div><div class="ft">Enriched 6 contacts</div><div class="fm">Filled GSTIN/PAN from the GST registry.</div></div><div class="fr"><div class="credit-chip">⛁ 6</div></div></div>
+              <div class="feed-item"><div class="ico">🏷️</div><div><div class="ft">Classified 4 new contacts</div><div class="fm">Customer vs vendor from first interaction.</div></div><div class="fr"><div class="credit-chip">⛁ 4</div></div></div>
+              <div class="feed-item"><div class="ico">👥</div><div><div class="ft">Linked org hierarchy</div><div class="fm">2 sub-contacts under Lotus Hospital via manager_id.</div></div><div class="fr"><div class="credit-chip">⛁ 1</div></div></div>
+              <div class="feed-item"><div class="ico">🔀</div><div><div class="ft">Flagged 3 possible duplicates</div><div class="fm">1 awaiting your merge decision.</div></div><div class="fr"><div class="tiny muted">free</div></div></div>
+            </div>
+          </div>
+          <div class="card pad mt" style="background:var(--teal-50);border-color:var(--teal-200)">
+            <b>Autonomy: Contacts</b>
+            <div class="small muted mt-s">Enrich &amp; classify = <b>auto</b>. Merge = <b>propose-only</b> (you confirm). <a href="07-autonomy-credits.html" style="color:var(--teal-700);font-weight:700">Change →</a></div>
+          </div>
+        </div>
+      </div>
+
+      <p class="tiny muted mt" style="text-align:center">The <span class="mono">potential_duplicate</span> / <span class="mono">duplicate_reasons</span> columns you already have become resolved actions · Tables: t_contacts · t_contact_channels · t_contact_addresses</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>

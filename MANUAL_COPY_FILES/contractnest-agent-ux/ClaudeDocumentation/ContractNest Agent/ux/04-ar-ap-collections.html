@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>4 · AR/AP Collections — ContractNest Agent</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  .ladder{display:flex;gap:0;align-items:stretch;margin:6px 0}
+  .rung{flex:1;text-align:center;position:relative;padding:8px 6px}
+  .rung .dot{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;margin:0 auto 6px;font-size:11px;font-weight:800;color:#fff;background:var(--teal-500)}
+  .rung.pending .dot{background:var(--line);color:var(--ink-4)}
+  .rung.gate .dot{background:var(--amber)}
+  .rung::before{content:"";position:absolute;top:18px;left:-50%;width:100%;height:2px;background:var(--line);z-index:0}
+  .rung:first-child::before{display:none}
+  .rung .lbl{font-size:10.5px;font-weight:700;color:var(--ink-2)}
+  .rung .sub{font-size:9.5px;color:var(--ink-4)}
+  .tab{display:inline-flex;gap:2px;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:3px}
+  .tab button{border:0;background:transparent;font-weight:680;font-size:13px;padding:7px 16px;border-radius:8px;cursor:pointer;color:var(--ink-3)}
+  .tab button.on{background:var(--surface);color:var(--indigo-700);box-shadow:var(--shadow-sm)}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><div class="logo">C</div><div><b>ContractNest</b><div class="sub">Agent</div></div></div>
+    <nav class="nav">
+      <a href="01-cockpit.html"><span class="ic">🧭</span> Cockpit</a>
+      <a href="06-contacts.html"><span class="ic">👥</span> Contacts</a>
+      <a href="03-contract-copilot.html"><span class="ic">📄</span> Contracts</a>
+      <a href="04-ar-ap-collections.html" class="active"><span class="ic">💸</span> AR / AP</a>
+      <a href="05-service-lifecycle.html"><span class="ic">🛠️</span> Service</a>
+      <div class="group">Agent</div>
+      <a href="02-vani-whatsapp.html"><span class="ic">💬</span> VaNi Inbox</a>
+      <a href="07-autonomy-credits.html"><span class="ic">⚙️</span> Autonomy &amp; Credits</a>
+    </nav>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="persona"><button class="on">Seller · AR</button><button>Buyer · AP</button></div>
+      <div class="tab" style="margin-left:6px"><button class="on">Receivables</button><button>Payables</button></div>
+      <div class="spacer"></div>
+      <div class="credit"><span class="dot"></span><b>1,238</b><span class="lbl">credits</span></div>
+      <div class="vani-toggle">Collections autopilot <span class="switch"></span></div>
+    </div>
+
+    <div class="content">
+      <div class="banner">
+        <div class="av">V</div>
+        <div style="flex:1">
+          <h2>VaNi is running your collections desk</h2>
+          <p>This month it sent <b>34 reminders</b>, collected <b>₹2.9L</b> across 11 invoices, and reconciled <b>7 payments</b> — auto. <b>2 invoices</b> hit a human gate (write-off / dispute).</p>
+        </div>
+        <a class="btn ghost sm" href="07-autonomy-credits.html">Tune rules →</a>
+      </div>
+
+      <div class="grid cols-3 mb">
+        <div class="card kpi"><div class="label">Total AR outstanding</div><div class="val">₹6.42L</div><div class="sub muted tiny">across 18 invoices</div></div>
+        <div class="card kpi"><div class="label">Collected this month · by VaNi</div><div class="val" style="color:var(--teal-600)">₹2.9L</div><div class="sub pill teal" style="display:inline-flex">82% auto-collected</div></div>
+        <div class="card kpi"><div class="label">Needs your decision</div><div class="val" style="color:var(--rose)">2</div><div class="sub pill rose" style="display:inline-flex">write-off · dispute</div></div>
+      </div>
+
+      <!-- The dunning ladder -->
+      <div class="card pad mb">
+        <div class="section-h"><h3>The dunning ladder</h3><span class="pill teal">VaNi escalates automatically · you own the last rung</span></div>
+        <div class="ladder">
+          <div class="rung"><div class="dot">1</div><div class="lbl">In-app + email</div><div class="sub">day 0 · ⛁1</div></div>
+          <div class="rung"><div class="dot">2</div><div class="lbl">WhatsApp nudge</div><div class="sub">day 3 · ⛁1</div></div>
+          <div class="rung"><div class="dot">3</div><div class="lbl">Call task → owner</div><div class="sub">day 7 · ⛁1</div></div>
+          <div class="rung gate"><div class="dot">⚠︎</div><div class="lbl">Settlement offer</div><div class="sub">gate · your ok</div></div>
+          <div class="rung pending gate"><div class="dot">✕</div><div class="lbl">Write-off</div><div class="sub">gate · your ok</div></div>
+        </div>
+      </div>
+
+      <!-- AR worklist -->
+      <div class="section-h"><h3>Receivables</h3><span class="count">18</span><span class="muted tiny" style="margin-left:auto">every overdue invoice arrives with the next action prepared</span></div>
+
+      <div class="nba urgent">
+        <div class="ribbon"></div>
+        <div class="body">
+          <div class="flex between center"><div class="t">BlueStar Facilities · INV-2026-0188 · ₹45,000</div><span class="pill rose">9 days overdue</span></div>
+          <div class="d">2 reminders sent (in-app, WhatsApp), no reply. VaNi is at <b>rung 3</b> and proposes a call task for Ravi + a 5% settlement offer.</div>
+          <div class="meta"><span class="vani-badge"><span class="v">V</span> Dunning step 3</span><span class="pill gray">Razorpay link opened 2×, not paid</span><span class="credit-chip">⛁ 1 / follow-up</span></div>
+          <div class="actions"><button class="btn primary sm">Approve call task</button><button class="btn sm">Offer 5% settlement</button><button class="btn ghost sm">Write off…</button></div>
+        </div>
+      </div>
+
+      <div class="nba money">
+        <div class="ribbon"></div>
+        <div class="body">
+          <div class="flex between center"><div class="t">Acme Corp · INV-2026-0231 · ₹22,000</div><span class="pill amber">due in 3 days</span></div>
+          <div class="d">VaNi sent the invoice + Razorpay link. Reminder auto-scheduled for the due date. Nothing needed from you.</div>
+          <div class="meta"><span class="vani-badge"><span class="v">V</span> Auto · reminder armed</span><span class="pill green">link clicked</span><span class="credit-chip">⛁ 1 spent</span></div>
+        </div>
+      </div>
+
+      <div class="nba agent">
+        <div class="ribbon"></div>
+        <div class="body">
+          <div class="flex between center"><div class="t">Greenfield Mall · INV-2026-0205 · ₹1,18,000</div><span class="pill rose">disputed</span></div>
+          <div class="d">Buyer replied "visit 4 not done". VaNi cross-checked the ticket — evidence is missing for SVT-4460. It paused dunning and flagged it for you.</div>
+          <div class="meta"><span class="vani-badge"><span class="v">V</span> Paused — needs a human</span><span class="pill gray">linked: SVT-4460</span></div>
+          <div class="actions"><button class="btn primary sm">Open ticket</button><button class="btn sm">Message buyer</button></div>
+        </div>
+      </div>
+
+      <div class="card pad mt">
+        <div class="section-h"><h3>Reconciled by VaNi</h3><span class="pill green">no action needed</span></div>
+        <table class="t">
+          <thead><tr><th>Invoice</th><th>Customer</th><th class="right">Amount</th><th>Matched to</th><th>When</th><th class="right">Credits</th></tr></thead>
+          <tbody>
+            <tr><td>INV-2026-0210</td><td>Acme Corp</td><td class="right">₹38,000</td><td>Receipt RCP-0098 · UPI</td><td>Today 03:18</td><td class="right"><span class="credit-chip">⛁ 1</span></td></tr>
+            <tr><td>INV-2026-0199</td><td>Lotus Hospital</td><td class="right">₹64,000</td><td>Receipt RCP-0097 · NEFT</td><td>Yesterday</td><td class="right"><span class="credit-chip">⛁ 1</span></td></tr>
+            <tr><td>INV-2026-0192</td><td>Sunrise Apts</td><td class="right">₹27,500</td><td>Razorpay auto-settle</td><td>2 days ago</td><td class="right"><span class="credit-chip">⛁ 1</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="tiny muted mt" style="text-align:center">AR (Seller) shown; Payables tab mirrors it for Buyer — VaNi matches incoming invoices to PO/contract &amp; schedules approved payments · Tables: t_contract_invoice · t_invoice_receipts · t_contract_payment_requests · t_contract_payment_events · t_bm_credit_transaction · t_audit_log</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>

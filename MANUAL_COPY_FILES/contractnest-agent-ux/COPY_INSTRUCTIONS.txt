@@ -1,5 +1,5 @@
 ═══════════════════════════════════════════════════
-📦 ContractNest Agent — UX Prototypes (cut 1 of 2)
+📦 ContractNest Agent — UX Prototypes (complete · 7 screens)
 ═══════════════════════════════════════════════════
 Branch: claude/contractnest-agentic-design-zm9xcs (in contractnest-combined)
 Target submodule: ClaudeDocumentation (branch: master)
@@ -17,7 +17,11 @@ WHAT'S INCLUDED:
     ├── index.html                  (hub: two-layer model + screen gallery)
     ├── 01-cockpit.html             (Next-Best-Action cockpit)
     ├── 02-vani-whatsapp.html       (VaNi flagship: "generate 1 year contract to kamal")
-    └── 03-contract-copilot.html    (pre-filled contract draft + delegate dial)
+    ├── 03-contract-copilot.html    (pre-filled contract draft + delegate dial)
+    ├── 04-ar-ap-collections.html   (dunning ladder, dispute/write-off gates, AR/AP)
+    ├── 05-service-lifecycle.html   (12-visit timeline, live ticket+evidence, buyer asset trigger)
+    ├── 06-contacts.html            (self-maintaining graph + dedupe/merge action)
+    └── 07-autonomy-credits.html    (the dial: per-domain autonomy, money caps, credit metering)
   _screenshots/                     (rendered previews — not needed in the repo)
 
 ─────────────────────────────────────────────────
@@ -45,10 +49,11 @@ STEP 3 — Commit (only after you're happy)
 cd ClaudeDocumentation
 git checkout master && git pull origin master
 git add "ContractNest Agent"
-git commit -m "docs: ContractNest Agent UX prototypes (cut 1 — cockpit, VaNi WhatsApp, contract copilot)"
+git commit -m "docs: ContractNest Agent UX prototypes (7 screens, indigo+teal)"
 git push origin master
 cd ..
 
-NEXT CUT (after your verification): screens 4 AR/AP Collections, 5 Service
-lifecycle, 6 Contacts, 7 Autonomy & Credits — same design system.
+All 7 screens are built on one shared design system. Next logical step is the
+architecture document that sits beside this ux/ folder (the two-layer model,
+shared engine, three gates, per-domain design, phased rollout).
 ═══════════════════════════════════════════════════
