@@ -12,7 +12,9 @@ convention, the deliverable is mirrored under MANUAL_COPY_FILES for you to copy
 into the real submodule and commit yourself.
 
 WHAT'S INCLUDED:
-  ClaudeDocumentation/ContractNest Agent/ux/
+  ClaudeDocumentation/ContractNest Agent/
+    ├── ARCHITECTURE.md             (the architecture doc — two-layer model, gates, per-domain, rollout)
+    └── ux/
     ├── styles.css                  (shared design system — indigo + teal)
     ├── index.html                  (hub: two-layer model + screen gallery)
     ├── 01-cockpit.html             (Next-Best-Action cockpit)
