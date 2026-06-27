@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>1 · Next-Best-Action Cockpit — ContractNest Agent</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">C</div>
+      <div><b>ContractNest</b><div class="sub">Agent</div></div>
+    </div>
+    <nav class="nav">
+      <a href="01-cockpit.html" class="active"><span class="ic">🧭</span> Cockpit</a>
+      <a href="#"><span class="ic">👥</span> Contacts</a>
+      <a href="03-contract-copilot.html"><span class="ic">📄</span> Contracts</a>
+      <a href="#"><span class="ic">💸</span> AR / AP</a>
+      <a href="#"><span class="ic">🛠️</span> Service</a>
+      <div class="group">Agent</div>
+      <a href="02-vani-whatsapp.html"><span class="ic">💬</span> VaNi Inbox</a>
+      <a href="#"><span class="ic">⚙️</span> Autonomy &amp; Credits</a>
+      <div class="group">Stable rails</div>
+      <a href="#" style="opacity:.6"><span class="ic">📦</span> Catalog Studio</a>
+      <a href="#" style="opacity:.6"><span class="ic">🔔</span> JTD Queue</a>
+    </nav>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="topbar">
+      <div class="persona">
+        <button class="on">Seller</button>
+        <button>Buyer</button>
+        <button>Both</button>
+      </div>
+      <div class="spacer"></div>
+      <div class="credit"><span class="dot"></span><b>1,240</b><span class="lbl">VaNi credits</span></div>
+      <div class="vani-toggle">VaNi Autopilot <span class="switch"></span></div>
+      <div style="width:34px;height:34px;border-radius:50%;background:var(--indigo-100);display:grid;place-items:center;font-weight:700;color:var(--indigo-700)">K</div>
+    </div>
+
+    <div class="content">
+      <!-- Agentic greeting, not a blank dashboard -->
+      <div class="banner">
+        <div class="av">V</div>
+        <div style="flex:1">
+          <h2>Good morning, Kamal 👋</h2>
+          <p>Overnight VaNi handled <b>6 jobs</b> (used 11 credits), booked <b>2 service visits</b>, and collected <b>₹38,000</b>. <b>3 things</b> need your eye, and I've already drafted them.</p>
+        </div>
+        <a class="btn ghost sm" href="#">View audit log →</a>
+      </div>
+
+      <!-- KPI strip framed as live state, every number is a doorway -->
+      <div class="grid cols-3 mb">
+        <div class="card kpi"><div class="label">Renewals due · 30 days</div><div class="val">7</div><div class="sub pill teal" style="display:inline-flex">3 drafted by VaNi</div></div>
+        <div class="card kpi"><div class="label">Overdue AR</div><div class="val">₹1.84L</div><div class="sub pill amber" style="display:inline-flex">dunning running</div></div>
+        <div class="card kpi"><div class="label">Service visits · this week</div><div class="val">9</div><div class="sub pill green" style="display:inline-flex">6 confirmed by buyers</div></div>
+      </div>
+
+      <div class="grid cols-2">
+        <!-- Needs you: human-in-loop proposed actions -->
+        <div>
+          <div class="section-h"><h3>Needs you</h3><span class="count">3</span><span class="muted tiny" style="margin-left:auto">risk gate · VaNi prepared, you decide</span></div>
+
+          <div class="nba money">
+            <div class="ribbon"></div>
+            <div class="body">
+              <div class="t">Renewal: Acme AMC expires in 12 days</div>
+              <div class="d">VaNi drafted a 1-year renewal with a <b>+8% escalation</b> (matches your last 3 renewals). 12 service visits scheduled, ₹2.64L total.</div>
+              <div class="meta">
+                <span class="vani-badge"><span class="v">V</span> Drafted by VaNi</span>
+                <span class="pill gray">Contract · CN-2026-0188</span>
+                <span class="credit-chip">⛁ 2 credits to send</span>
+              </div>
+              <div class="actions">
+                <a class="btn primary sm" href="03-contract-copilot.html">Review &amp; send</a>
+                <button class="btn sm">Edit draft</button>
+                <button class="btn ghost sm">Snooze</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="nba urgent">
+            <div class="ribbon"></div>
+            <div class="body">
+              <div class="t">Overdue: ₹45,000 from BlueStar Facilities</div>
+              <div class="d">VaNi sent 2 reminders (in-app + WhatsApp), no response in 9 days. It suggests escalating to a <b>call task</b> for Ravi and a 5% settlement offer.</div>
+              <div class="meta">
+                <span class="vani-badge"><span class="v">V</span> Dunning step 3</span>
+                <span class="pill rose">9 days overdue</span>
+                <span class="credit-chip">⛁ 1 credit / follow-up</span>
+              </div>
+              <div class="actions">
+                <button class="btn primary sm">Approve call task</button>
+                <button class="btn sm">Offer settlement</button>
+                <button class="btn ghost sm">Write off…</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="nba agent">
+            <div class="ribbon"></div>
+            <div class="body">
+              <div class="t">Duplicate contacts: "Kamal Traders" ×2</div>
+              <div class="d">Same GSTIN, two phone numbers. VaNi proposes merging into one and keeping both channels.</div>
+              <div class="meta">
+                <span class="vani-badge"><span class="v">V</span> Confidence 92%</span>
+                <span class="pill gray">Contacts</span>
+              </div>
+              <div class="actions">
+                <button class="btn primary sm">Review merge</button>
+                <button class="btn ghost sm">Keep separate</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- What VaNi did: autopilot activity, audited + metered -->
+        <div>
+          <div class="section-h"><h3>What VaNi did</h3><span class="count">6</span><span class="muted tiny" style="margin-left:auto">autopilot · audited · undoable</span></div>
+          <div class="card pad">
+            <div class="feed">
+              <div class="feed-item"><div class="ico">📅</div><div><div class="ft">Booked service visit · Lotus Hospital chiller</div><div class="fm">Confirmed with buyer on WhatsApp for Fri 10:00. Ticket SVT-4471 opened, technician Suresh assigned.</div></div><div class="fr"><div class="credit-chip">⛁ 2</div><div class="tiny muted mt-s">06:12</div></div></div>
+              <div class="feed-item"><div class="ico">💸</div><div><div class="ft">Sent invoice + payment link · Acme</div><div class="fm">Invoice INV-2026-0231 for ₹22,000 via Razorpay. Reminder scheduled in 3 days.</div></div><div class="fr"><div class="credit-chip">⛁ 1</div><div class="tiny muted mt-s">04:40</div></div></div>
+              <div class="feed-item"><div class="ico">✅</div><div><div class="ft">Reconciled payment · ₹38,000 from Acme</div><div class="fm">Matched receipt to INV-2026-0210. Marked paid, receipt RCP-0098 issued.</div></div><div class="fr"><div class="credit-chip">⛁ 1</div><div class="tiny muted mt-s">03:18</div></div></div>
+              <div class="feed-item"><div class="ico">💬</div><div><div class="ft">Answered enquiry · new lead "Greenfield Mall"</div><div class="fm">Shared AMC brochure + price band on WhatsApp, created contact, flagged for your follow-up.</div></div><div class="fr"><div class="credit-chip">⛁ 2</div><div class="tiny muted mt-s">01:55</div></div></div>
+              <div class="feed-item"><div class="ico">📅</div><div><div class="ft">Rescheduled visit · Sunrise Apartments</div><div class="fm">Buyer asked to move to Mon; updated event &amp; notified technician.</div></div><div class="fr"><div class="credit-chip">⛁ 1</div><div class="tiny muted mt-s">Yesterday</div></div></div>
+            </div>
+            <div class="divider"></div>
+            <div class="flex between center">
+              <span class="tiny muted">11 credits spent overnight · balance 1,240</span>
+              <a class="btn ghost sm" href="#">Full activity →</a>
+            </div>
+          </div>
+
+          <div class="card pad mt" style="background:var(--teal-50);border-color:var(--teal-200)">
+            <div class="flex gap center">
+              <div style="font-size:20px">🤖</div>
+              <div style="flex:1">
+                <b>VaNi is on Autopilot for: Billing &amp; Appointments</b>
+                <div class="small muted mt-s">Contracts &amp; Contacts are set to <b>propose-only</b>. Money over ₹50k always asks you. Change anytime.</div>
+              </div>
+              <a class="btn sm" href="#">Tune autonomy</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="tiny muted mt" style="text-align:center">Layer 1 (Copilot) + Layer 2 (VaNi Autopilot) on one screen · Persona: Seller · Tables behind this view: t_contracts · t_contract_invoice · t_contract_events · t_service_tickets · t_contacts · t_bm_credit_transaction · t_audit_log</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>

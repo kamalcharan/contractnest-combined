@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>2 · VaNi on WhatsApp — ContractNest Agent</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  /* showcase: let the full conversation breathe instead of scrolling inside the phone */
+  .phone .screen{height:auto}
+  .phone .wa-body{overflow:visible}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><div class="logo">C</div><div><b>ContractNest</b><div class="sub">Agent</div></div></div>
+    <nav class="nav">
+      <a href="01-cockpit.html"><span class="ic">🧭</span> Cockpit</a>
+      <a href="#"><span class="ic">👥</span> Contacts</a>
+      <a href="03-contract-copilot.html"><span class="ic">📄</span> Contracts</a>
+      <a href="#"><span class="ic">💸</span> AR / AP</a>
+      <a href="#"><span class="ic">🛠️</span> Service</a>
+      <div class="group">Agent</div>
+      <a href="02-vani-whatsapp.html" class="active"><span class="ic">💬</span> VaNi Inbox</a>
+      <a href="#"><span class="ic">⚙️</span> Autonomy &amp; Credits</a>
+    </nav>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <h3 style="font-size:15px">VaNi Inbox</h3>
+      <span class="pill teal">WhatsApp · +91 98•• ••12</span>
+      <div class="spacer"></div>
+      <div class="credit"><span class="dot"></span><b>1,240</b><span class="lbl">VaNi credits</span></div>
+    </div>
+
+    <div class="content">
+      <div class="banner">
+        <div class="av">V</div>
+        <div>
+          <h2>Natural language in → completed work out</h2>
+          <p>A one-line WhatsApp message becomes a drafted contract, a human approval, an email, and a year of tracked service — every step gated and metered.</p>
+        </div>
+      </div>
+
+      <div class="flex gap wrap" style="gap:24px;align-items:flex-start">
+        <!-- Phone -->
+        <div class="phone">
+          <div class="screen">
+            <div class="wa-top">
+              <div class="av">V</div>
+              <div><div class="nm">VaNi · ContractNest</div><div class="st">business assistant · online</div></div>
+            </div>
+            <div class="wa-body">
+              <div class="bubble out">generate 1 year contract to kamal<div class="time">9:41 am ✓✓</div></div>
+
+              <div class="bubble in">I found <b>2 contacts named Kamal</b>. Which one?
+                <div class="qa"><span>Kamal Traders</span><span>Kamal Industries ✓</span></div>
+                <div class="time">9:41 am</div>
+              </div>
+
+              <div class="bubble out">Kamal Industries<div class="time">9:42 am ✓✓</div></div>
+
+              <div class="bubble in">Drafting a <b>1-year AMC</b> for Kamal Industries from your standard template 👇
+                <div class="mini-card">
+                  <div class="r"><span>Term</span><b>1 year · 12 visits</b></div>
+                  <div class="r"><span>Service value</span><b>₹2,40,000</b></div>
+                  <div class="r"><span>Tax (18% GST)</span><b>₹43,200</b></div>
+                  <div class="r" style="border-top:1px solid var(--line-2);margin-top:4px;padding-top:6px"><span><b>Grand total</b></span><b>₹2,83,200</b></div>
+                </div>
+                Approve to email it to kamal@kamalind.com?
+                <div class="qa"><span>✓ Approve &amp; send</span><span>Edit</span></div>
+                <div class="time">9:42 am</div>
+              </div>
+
+              <div class="bubble out">approve &amp; send<div class="time">9:43 am ✓✓</div></div>
+
+              <div class="bubble in">✅ Sent. Contract <b>CN-2026-0042</b> emailed to Kamal Industries.<br>I'll track all <b>12 service visits</b>, request appointments, and invoice each one. I'll ping you only when something needs a decision.
+                <div style="margin-top:6px"><span class="credit-chip">⛁ used 2 VaNi credits · 1,238 left</span></div>
+                <div class="time">9:43 am</div>
+              </div>
+            </div>
+            <div class="wa-input"><div class="box">Message</div><span>🎤</span></div>
+          </div>
+        </div>
+
+        <!-- Behind the scenes -->
+        <div style="flex:1;min-width:320px">
+          <div class="card pad">
+            <div class="section-h"><h3>Behind the message</h3><span class="pill teal">same engine the UI uses</span></div>
+            <div class="pipe">
+              <div class="pstep"><div class="n">1</div><div><div class="pt">Ingest · WhatsApp inbound</div><div class="pd">Channel adapter opens an agent session, detects language.</div><span class="tbl">t_ai_agent_sessions · t_tenant_integrations</span></div></div>
+              <div class="pstep"><div class="n">2</div><div><div class="pt">Intent · <span class="mono">create_contract</span></div><div class="pd">Classified against the intent catalog (requires_ai = true).</div><span class="tbl">t_intent_definitions</span></div></div>
+              <div class="pstep agentstep"><div class="n">⛁</div><div><div class="pt">Gate · Affordability</div><div class="pd"><b>Reserve 2 credits</b> before doing the work. Released if rejected or failed.</div><span class="tbl">t_bm_credit_balance.reserved_balance</span></div></div>
+              <div class="pstep"><div class="n">3</div><div><div class="pt">Resolve entity · "kamal"</div><div class="pd">2 matches → ask to disambiguate. (No match → propose create.)</div><span class="tbl">t_contacts</span></div></div>
+              <div class="pstep"><div class="n">4</div><div><div class="pt">Draft</div><div class="pd">1-year term, 12 events, blocks + tax computed from template.</div><span class="tbl">t_contracts · t_contract_blocks · t_contract_events</span></div></div>
+              <div class="pstep gate"><div class="n">⚠︎</div><div><div class="pt">Gate · Risk (human-in-loop)</div><div class="pd">Sending a contract is high-risk → wait for "approve". RBAC checked too.</div><span class="tbl">role permissions · proposed-action envelope</span></div></div>
+              <div class="pstep"><div class="n">5</div><div><div class="pt">Execute · send</div><div class="pd">Generate PDF, email via secure access link.</div><span class="tbl">t_contract_access (global_access_id, secret_code)</span></div></div>
+              <div class="pstep agentstep"><div class="n">⛁</div><div><div class="pt">Commit metering</div><div class="pd"><b>Debit 2 credits</b>, attributed to this contract. Append-only.</div><span class="tbl">t_bm_credit_transaction (reference_id = CN-2026-0042)</span></div></div>
+              <div class="pstep"><div class="n">6</div><div><div class="pt">Audit</div><div class="pd">Every step logged with actor = VaNi.</div><span class="tbl">t_audit_log</span></div></div>
+            </div>
+          </div>
+
+          <div class="grid cols-3 mt">
+            <div class="card pad" style="text-align:center"><div style="font-size:18px">🔐</div><b class="small">Permission</b><div class="tiny muted">Agent ≤ user's RBAC</div></div>
+            <div class="card pad" style="text-align:center"><div style="font-size:18px">⚠︎</div><b class="small">Risk</b><div class="tiny muted">Send needs approval</div></div>
+            <div class="card pad" style="text-align:center"><div style="font-size:18px">⛁</div><b class="small">Affordability</b><div class="tiny muted">Reserve → commit credits</div></div>
+          </div>
+
+          <div class="card pad mt" style="background:var(--indigo-50);border-color:var(--indigo-100)">
+            <b>Then the long tail runs on its own.</b>
+            <div class="small muted mt-s">Those 12 events now belong to VaNi: it requests each appointment, opens the service ticket, chases evidence, raises the invoice, and follows up on payment — surfacing only the exceptions. Each action is one more metered, audited step. <a href="01-cockpit.html" style="color:var(--indigo-700);font-weight:700">See it on the cockpit →</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,54 @@
+═══════════════════════════════════════════════════
+📦 ContractNest Agent — UX Prototypes (cut 1 of 2)
+═══════════════════════════════════════════════════
+Branch: claude/contractnest-agentic-design-zm9xcs (in contractnest-combined)
+Target submodule: ClaudeDocumentation (branch: master)
+
+WHY THIS IS IN MANUAL_COPY_FILES:
+This Claude Code session is scoped to the kamalcharan/contractnest-combined
+repo only. The ClaudeDocumentation submodule is a SEPARATE repo and returns
+403 from this session, so it cannot be cloned or pushed here. Per the project
+convention, the deliverable is mirrored under MANUAL_COPY_FILES for you to copy
+into the real submodule and commit yourself.
+
+WHAT'S INCLUDED:
+  ClaudeDocumentation/ContractNest Agent/ux/
+    ├── styles.css                  (shared design system — indigo + teal)
+    ├── index.html                  (hub: two-layer model + screen gallery)
+    ├── 01-cockpit.html             (Next-Best-Action cockpit)
+    ├── 02-vani-whatsapp.html       (VaNi flagship: "generate 1 year contract to kamal")
+    └── 03-contract-copilot.html    (pre-filled contract draft + delegate dial)
+  _screenshots/                     (rendered previews — not needed in the repo)
+
+─────────────────────────────────────────────────
+STEP 1 — Copy into the ClaudeDocumentation submodule
+─────────────────────────────────────────────────
+# from contractnest-combined root (Windows PowerShell):
+New-Item -ItemType Directory -Force -Path "ClaudeDocumentation\ContractNest Agent"
+Copy-Item "MANUAL_COPY_FILES\contractnest-agent-ux\ClaudeDocumentation\ContractNest Agent\*" `
+          -Destination "ClaudeDocumentation\ContractNest Agent\" -Recurse -Force
+
+# macOS / Linux:
+mkdir -p "ClaudeDocumentation/ContractNest Agent"
+cp -R "MANUAL_COPY_FILES/contractnest-agent-ux/ClaudeDocumentation/ContractNest Agent/." \
+      "ClaudeDocumentation/ContractNest Agent/"
+
+─────────────────────────────────────────────────
+STEP 2 — Open & review locally
+─────────────────────────────────────────────────
+Just double-click:  ClaudeDocumentation/ContractNest Agent/ux/index.html
+(No build step, no server, no external dependencies.)
+
+─────────────────────────────────────────────────
+STEP 3 — Commit (only after you're happy)
+─────────────────────────────────────────────────
+cd ClaudeDocumentation
+git checkout master && git pull origin master
+git add "ContractNest Agent"
+git commit -m "docs: ContractNest Agent UX prototypes (cut 1 — cockpit, VaNi WhatsApp, contract copilot)"
+git push origin master
+cd ..
+
+NEXT CUT (after your verification): screens 4 AR/AP Collections, 5 Service
+lifecycle, 6 Contacts, 7 Autonomy & Credits — same design system.
+═══════════════════════════════════════════════════
