@@ -21,9 +21,10 @@ WHAT'S INCLUDED:
     ├── 02-vani-whatsapp.html       (VaNi flagship: "generate 1 year contract to kamal")
     ├── 03-contract-copilot.html    (pre-filled contract draft + delegate dial)
     ├── 04-ar-ap-collections.html   (dunning ladder, dispute/write-off gates, AR/AP)
-    ├── 05-service-lifecycle.html   (12-visit timeline, live ticket+evidence, buyer asset trigger)
+    ├── 05-service-lifecycle.html   (Service + Finance tabs: lifecycle, ticket+evidence, payment model/schedule)
     ├── 06-contacts.html            (self-maintaining graph + dedupe/merge action)
-    └── 07-autonomy-credits.html    (the dial: per-domain autonomy, money caps, credit metering)
+    ├── 07-autonomy-credits.html    (the dial: per-domain autonomy, money caps, credit metering)
+    └── 08-appointments.html        (appointment chase board: required-vs-not, statuses, technician load)
   _screenshots/                     (rendered previews — not needed in the repo)
 
 ─────────────────────────────────────────────────

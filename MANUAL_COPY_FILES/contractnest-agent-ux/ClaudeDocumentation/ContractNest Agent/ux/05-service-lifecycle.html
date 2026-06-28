@@ -2,15 +2,35 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>5 · Service Lifecycle — ContractNest Agent</title>
+<title>5 · Service + Finance — ContractNest Agent</title>
 <link rel="stylesheet" href="styles.css">
 <style>
   .evidence{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
   .ev{border:1px solid var(--line);border-radius:9px;padding:7px 10px;display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600}
-  .ev.done{background:var(--green-bg);border-color:#bbf7d0;color:var(--green)}
   .ev.wait{background:var(--bg);color:var(--ink-3)}
   .chk{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line-2);font-size:12.5px}
   .chk:last-child{border-bottom:0}
+  /* tabs */
+  .tabs{display:inline-flex;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:3px;margin-left:6px}
+  .tabs b{font-size:13px;font-weight:700;padding:7px 15px;border-radius:8px;cursor:pointer;color:var(--ink-3)}
+  body:not(.fin) .tabs b[data-t="svc"]{background:var(--surface);color:var(--indigo-700);box-shadow:var(--shadow-sm)}
+  body.fin .tabs b[data-t="fin"]{background:var(--surface);color:var(--teal-700);box-shadow:var(--shadow-sm)}
+  .tab-finance{display:none}
+  body.fin .tab-service{display:none}
+  body.fin .tab-finance{display:block}
+  /* payment model chips */
+  .pm{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .pmc{border:1px solid var(--line);border-radius:11px;padding:12px;text-align:center}
+  .pmc.on{border-color:var(--teal-500);background:var(--teal-50)}
+  .pmc .ic{font-size:18px}
+  .pmc .nm{font-weight:700;font-size:12.5px;margin-top:4px}
+  .pmc .ds{font-size:10.5px;color:var(--ink-3);margin-top:2px}
+  .inst{display:flex;align-items:center;gap:13px;padding:13px 4px;border-bottom:1px solid var(--line-2)}
+  .inst:last-child{border-bottom:0}
+  .inst .st{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-size:14px;flex:0 0 auto}
+  .inst .st.paid{background:var(--green-bg)}
+  .inst .st.due{background:var(--amber-bg)}
+  .inst .st.up{background:var(--bg)}
 </style>
 </head>
 <body>
@@ -23,6 +43,7 @@
       <a href="03-contract-copilot.html"><span class="ic">📄</span> Contracts</a>
       <a href="04-ar-ap-collections.html"><span class="ic">💸</span> AR / AP</a>
       <a href="05-service-lifecycle.html" class="active"><span class="ic">🛠️</span> Service</a>
+      <a href="08-appointments.html" style="padding-left:34px"><span class="ic">📅</span> Appointments</a>
       <div class="group">Agent</div>
       <a href="02-vani-whatsapp.html"><span class="ic">💬</span> VaNi Inbox</a>
       <a href="07-autonomy-credits.html"><span class="ic">⚙️</span> Autonomy &amp; Credits</a>
@@ -32,76 +53,136 @@
   <div class="main">
     <div class="topbar">
       <div class="persona"><button class="on">Seller</button><button>Buyer</button></div>
-      <h3 style="font-size:15px;margin-left:6px">Service · Kamal Industries AMC</h3>
+      <h3 style="font-size:15px;margin-left:6px">Kamal Industries AMC</h3>
       <span class="pill gray">CN-2026-0042</span>
+      <!-- Service / Finance lens -->
+      <div class="tabs" onclick="document.body.classList.toggle('fin')">
+        <b data-t="svc">🛠️ Service</b><b data-t="fin">💰 Finance</b>
+      </div>
       <div class="spacer"></div>
       <div class="credit"><span class="dot"></span><b>1,238</b><span class="lbl">credits</span></div>
-      <div class="vani-toggle">Service autopilot <span class="switch"></span></div>
+      <div class="vani-toggle">Autopilot <span class="switch"></span></div>
     </div>
 
     <div class="content">
-      <div class="banner">
-        <div class="av">V</div>
-        <div style="flex:1">
-          <h2>VaNi is running all 12 visits for this contract</h2>
-          <p>It books each appointment, opens the ticket, assigns the right technician, and chases evidence. <b>3 done · 1 in progress · 8 to come.</b> You only step in on reschedules and exceptions.</p>
-        </div>
-      </div>
-
-      <div class="grid" style="grid-template-columns:1.3fr 1fr;gap:20px;align-items:start">
-        <!-- Lifecycle timeline -->
-        <div class="card pad">
-          <div class="section-h"><h3>Visit lifecycle</h3><span class="count">12</span><span class="muted tiny" style="margin-left:auto">computed events → field work</span></div>
-          <div class="timeline">
-            <div class="tl done"><div class="node"></div><div class="tt">Visit 1 · HVAC PM — 15 Jun ✓</div><div class="td">Done. Evidence: 4 photos + customer OTP. Invoiced ₹12,000, paid.</div></div>
-            <div class="tl done"><div class="node"></div><div class="tt">Visit 2 · HVAC PM — 15 Jul ✓</div><div class="td">Done. All checkpoints green. Auto-invoiced.</div></div>
-            <div class="tl done"><div class="node"></div><div class="tt">Visit 3 · Chiller deep service — 15 Aug ✓</div><div class="td">1 checkpoint flagged amber → spare part proposed (see ticket).</div></div>
-            <div class="tl agent"><div class="node"></div><div class="tt">Visit 4 · HVAC PM — Fri 20 Sep · 10:00 <span class="pill teal">booked by VaNi</span></div><div class="td">Confirmed with buyer on WhatsApp. Technician Suresh assigned. Ticket SVT-4471 open.</div></div>
-            <div class="tl future"><div class="node"></div><div class="tt">Visit 5 · HVAC PM — 15 Oct <span class="pill gray">auto-book in 21 days</span></div><div class="td">VaNi will request the slot 5 days prior.</div></div>
-            <div class="tl future"><div class="node"></div><div class="tt">Visits 6–12 — Nov 2026 → Jun 2027</div><div class="td">Scheduled. Will run on the same loop.</div></div>
+      <!-- ============ SERVICE TAB ============ -->
+      <div class="tab-service">
+        <div class="banner">
+          <div class="av">V</div>
+          <div style="flex:1">
+            <h2>VaNi is running all 12 visits for this contract</h2>
+            <p>It books each appointment, opens the ticket, assigns the right technician, and chases evidence. <b>3 done · 1 in progress · 8 to come.</b> Appointment chasing lives on the <a href="08-appointments.html" style="color:var(--indigo-700);font-weight:700">Appointments board</a>.</p>
           </div>
         </div>
 
-        <!-- Active ticket -->
-        <div>
-          <div class="card pad" style="border-color:var(--teal-200)">
-            <div class="flex between center"><b>Active ticket · SVT-4471</b><span class="pill teal">in progress</span></div>
-            <div class="small muted mt-s mb">Visit 4 · HVAC preventive maintenance · Fri 20 Sep 10:00</div>
-            <div class="flex gap center mb" style="padding:9px;background:var(--bg);border-radius:9px">
-              <div style="width:30px;height:30px;border-radius:50%;background:var(--indigo-100);display:grid;place-items:center;font-weight:700;color:var(--indigo-700)">S</div>
-              <div><b class="small">Suresh K.</b><div class="tiny muted">HVAC technician · 4.8★ · 2.3km away</div></div>
-              <span class="pill green" style="margin-left:auto">confirmed</span>
+        <div class="grid" style="grid-template-columns:1.3fr 1fr;gap:20px;align-items:start">
+          <div class="card pad">
+            <div class="section-h"><h3>Visit lifecycle</h3><span class="count">12</span><span class="muted tiny" style="margin-left:auto">📅 = needs appointment</span></div>
+            <div class="timeline">
+              <div class="tl done"><div class="node"></div><div class="tt">Visit 1 · HVAC PM — 15 Jun 📅 ✓</div><div class="td">Done. Evidence: 4 photos + customer OTP. Invoiced ₹12,000, paid.</div></div>
+              <div class="tl done"><div class="node"></div><div class="tt">Visit 2 · HVAC PM — 15 Jul 📅 ✓</div><div class="td">Done. All checkpoints green. Auto-invoiced.</div></div>
+              <div class="tl done"><div class="node"></div><div class="tt">Visit 3 · Chiller deep service — 15 Aug 📅 ✓</div><div class="td">1 checkpoint amber → spare part proposed.</div></div>
+              <div class="tl agent"><div class="node"></div><div class="tt">Visit 4 · HVAC PM — Fri 20 Sep · 10:00 📅 <span class="pill teal">accepted</span></div><div class="td">Confirmed on WhatsApp. Suresh assigned. Ticket SVT-4471 open.</div></div>
+              <div class="tl future"><div class="node"></div><div class="tt">Remote monitoring check — 15 Oct <span class="pill gray">no appt</span></div><div class="td">Tracked for SLA; VaNi runs it remotely, no customer slot.</div></div>
+              <div class="tl future"><div class="node"></div><div class="tt">Visit 5 · HVAC PM — 15 Oct 📅 <span class="pill gray">requested</span></div><div class="td">VaNi sent the appointment request 6 days prior.</div></div>
+              <div class="tl future"><div class="node"></div><div class="tt">Visits 6–12 — Nov 2026 → Jun 2027</div><div class="td">Scheduled. Same loop.</div></div>
             </div>
-            <b class="small">Checkpoints (from Knowledge Tree)</b>
-            <div class="mt-s mb">
-              <div class="chk"><span>Compressor pressure</span><span class="muted">reading · threshold set</span></div>
-              <div class="chk"><span>Refrigerant level</span><span class="muted">reading</span></div>
-              <div class="chk"><span>Coil condition</span><span class="muted">condition · dropdown</span></div>
-              <div class="chk"><span>Filter status</span><span class="muted">condition</span></div>
-            </div>
-            <b class="small">Evidence required</b>
-            <div class="evidence">
-              <span class="ev wait">📷 Photos (min 3)</span>
-              <span class="ev wait">🔢 Customer OTP</span>
-              <span class="ev wait">📝 Service form</span>
-            </div>
-            <div class="small muted mt"><span class="vani-badge"><span class="v">V</span> VaNi will</span> remind the tech 2h before, collect evidence in-app, then auto-raise the invoice on sign-off.</div>
           </div>
 
-          <!-- Buyer asset-upkeep proactive trigger -->
-          <div class="card pad mt" style="background:var(--indigo-50);border-color:var(--indigo-100)">
-            <div class="flex gap center mb"><span class="pill indigo">Buyer view</span><span class="tiny muted">asset upkeep is the proactive trigger</span></div>
-            <b>Your chiller is due for deep service</b>
-            <div class="small muted mt-s">Lotus Hospital · Carrier 30XA chiller · last serviced 88 days ago (cycle: 90). VaNi can raise an RFQ to your AMC vendor.</div>
-            <div class="actions mt"><button class="btn primary sm">Raise RFQ via VaNi</button><button class="btn ghost sm">Remind me later</button></div>
-            <div class="tiny muted mt-s">⛁ 2 credits · drafts the request and sends to your seller</div>
+          <div>
+            <div class="card pad" style="border-color:var(--teal-200)">
+              <div class="flex between center"><b>Active ticket · SVT-4471</b><span class="pill teal">in progress</span></div>
+              <div class="small muted mt-s mb">Visit 4 · HVAC PM · Fri 20 Sep 10:00</div>
+              <div class="flex gap center mb" style="padding:9px;background:var(--bg);border-radius:9px">
+                <div style="width:30px;height:30px;border-radius:50%;background:var(--indigo-100);display:grid;place-items:center;font-weight:700;color:var(--indigo-700)">S</div>
+                <div><b class="small">Suresh K.</b><div class="tiny muted">HVAC technician · 4.8★ · 2.3km</div></div>
+                <span class="pill green" style="margin-left:auto">confirmed</span>
+              </div>
+              <b class="small">Checkpoints (Knowledge Tree)</b>
+              <div class="mt-s mb">
+                <div class="chk"><span>Compressor pressure</span><span class="muted">reading</span></div>
+                <div class="chk"><span>Refrigerant level</span><span class="muted">reading</span></div>
+                <div class="chk"><span>Coil condition</span><span class="muted">condition</span></div>
+              </div>
+              <b class="small">Evidence required</b>
+              <div class="evidence"><span class="ev wait">📷 Photos</span><span class="ev wait">🔢 OTP</span><span class="ev wait">📝 Form</span></div>
+              <div class="small muted mt"><span class="vani-badge"><span class="v">V</span> VaNi will</span> remind the tech 2h before, collect evidence, then auto-raise the invoice on sign-off.</div>
+            </div>
+
+            <div class="card pad mt" style="background:var(--indigo-50);border-color:var(--indigo-100)">
+              <div class="flex gap center mb"><span class="pill indigo">Buyer view</span><span class="tiny muted">asset upkeep trigger</span></div>
+              <b>Your chiller is due for deep service</b>
+              <div class="small muted mt-s">Lotus Hospital · Carrier 30XA · last serviced 88 days ago (cycle 90).</div>
+              <div class="actions mt"><button class="btn primary sm">Raise RFQ via VaNi</button><button class="btn ghost sm">Later</button></div>
+            </div>
           </div>
         </div>
       </div>
 
-      <p class="tiny muted mt" style="text-align:center">Seller services the buyer's assets; Buyer view turns asset upkeep into auto-RFQs · Tables: t_service_tickets · t_service_evidence · t_contract_events · t_service_ticket_events · m_equipment_checkpoints · t_client_asset_registry · t_equipment · m_service_cycles</p>
+      <!-- ============ FINANCE TAB ============ -->
+      <div class="tab-finance">
+        <div class="banner" style="background:linear-gradient(100deg,var(--teal-50),#fff)">
+          <div class="av" style="background:linear-gradient(135deg,var(--teal-600),var(--teal-500))">₹</div>
+          <div style="flex:1">
+            <h2>Finance — how this contract gets paid</h2>
+            <p>Payment model: <b>Quarterly</b> · ₹2,83,200/yr in 4 installments. VaNi raises each invoice on schedule, sends the link, and runs follow-ups. <b>₹70,800 collected · ₹2,12,400 outstanding.</b></p>
+          </div>
+          <a class="btn ghost sm" href="04-ar-ap-collections.html">Collections →</a>
+        </div>
+
+        <!-- payment model selector -->
+        <div class="card pad mb">
+          <div class="section-h"><h3>Payment model</h3><span class="muted tiny" style="margin-left:auto">set on the contract · drives when invoices fire</span></div>
+          <div class="pm">
+            <div class="pmc"><div class="ic">💳</div><div class="nm">Full upfront</div><div class="ds">one invoice, paid before start</div></div>
+            <div class="pmc"><div class="ic">🗓️</div><div class="nm">Monthly / EMI</div><div class="ds">fixed date each month</div></div>
+            <div class="pmc on"><div class="ic">📊</div><div class="nm">Quarterly ✓</div><div class="ds">4 installments · this contract</div></div>
+            <div class="pmc"><div class="ic">🛠️</div><div class="nm">After each service</div><div class="ds">visit completion → invoice</div></div>
+          </div>
+          <div class="small muted mt"><b>Schedule-based</b> (upfront/monthly/quarterly) fires on dates, independent of visits. <b>After-service</b> couples money to delivery — each completed visit triggers its own invoice.</div>
+        </div>
+
+        <div class="grid" style="grid-template-columns:1.3fr 1fr;gap:20px;align-items:start">
+          <!-- schedule -->
+          <div class="card pad">
+            <div class="section-h"><h3>Payment schedule</h3><span class="pill teal">VaNi raises &amp; collects each</span></div>
+            <div class="inst"><div class="st paid">✅</div><div style="flex:1"><b class="small">Q1 · Jul–Sep 2026</b><div class="tiny muted">INV-2026-0210 · paid 03 Jul · UPI</div></div><div style="text-align:right"><b>₹70,800</b><div class="tiny" style="color:var(--green)">paid</div></div></div>
+            <div class="inst"><div class="st due">⏳</div><div style="flex:1"><b class="small">Q2 · Oct–Dec 2026</b><div class="tiny muted">INV-2026-0233 · sent · due 05 Oct · <span class="vani-badge"><span class="v">V</span> reminder armed</span></div></div><div style="text-align:right"><b>₹70,800</b><div class="tiny" style="color:#b45309">due in 9 days</div></div></div>
+            <div class="inst"><div class="st up">○</div><div style="flex:1"><b class="small">Q3 · Jan–Mar 2027</b><div class="tiny muted">VaNi will raise on 01 Jan</div></div><div style="text-align:right"><b>₹70,800</b><div class="tiny muted">upcoming</div></div></div>
+            <div class="inst"><div class="st up">○</div><div style="flex:1"><b class="small">Q4 · Apr–Jun 2027</b><div class="tiny muted">VaNi will raise on 01 Apr</div></div><div style="text-align:right"><b>₹70,800</b><div class="tiny muted">upcoming</div></div></div>
+            <div class="divider"></div>
+            <div class="flex between"><span class="muted small">Collected</span><b>₹70,800</b></div>
+            <div class="flex between mt-s"><span class="muted small">Outstanding</span><b style="color:#b45309">₹2,12,400</b></div>
+            <div class="flex between mt-s" style="font-size:15px;border-top:1px solid var(--line);padding-top:8px"><b>Contract value</b><b>₹2,83,200</b></div>
+          </div>
+
+          <!-- what VaNi does on finance + coupling note -->
+          <div>
+            <div class="card pad">
+              <div class="section-h"><h3>VaNi · finance actions</h3></div>
+              <div class="feed">
+                <div class="feed-item"><div class="ico">🧾</div><div><div class="ft">Raised Q2 invoice</div><div class="fm">₹70,800 · Razorpay link sent to buyer.</div></div><div class="fr"><div class="credit-chip">⛁ 1</div></div></div>
+                <div class="feed-item"><div class="ico">✅</div><div><div class="ft">Reconciled Q1</div><div class="fm">Matched UPI receipt to INV-2026-0210.</div></div><div class="fr"><div class="credit-chip">⛁ 1</div></div></div>
+                <div class="feed-item"><div class="ico">🔁</div><div><div class="ft">Reminder armed · Q2</div><div class="fm">Auto nudge on due date, then dunning ladder.</div></div><div class="fr"><div class="tiny muted">scheduled</div></div></div>
+              </div>
+              <div class="divider"></div>
+              <div class="tiny muted">Big money still gated: amounts over your ₹50k cap ask before sending. Refunds always ask.</div>
+            </div>
+
+            <div class="card pad mt" style="background:var(--bg);box-shadow:none">
+              <b class="small">If this were "after each service"</b>
+              <div class="small muted mt-s">Each completed visit would generate its own invoice — Visit 1 → ₹12,000 paid, Visit 2 → ₹12,000… VaNi would raise it the moment evidence is signed off. (Coupling money to delivery.)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="tiny muted mt" style="text-align:center"><b>One contract, two lenses</b> · Service: t_service_tickets · t_service_evidence · t_contract_events · m_equipment_checkpoints · t_client_asset_registry &nbsp;|&nbsp; Finance: t_contracts (billing_cycle_type, payment_mode, emi_months, per_block_payment_type) · t_invoices · t_contract_invoice · t_invoice_receipts</p>
     </div>
   </div>
 </div>
+<script>
+  if (location.hash === '#finance') document.body.classList.add('fin');
+</script>
 </body>
 </html>

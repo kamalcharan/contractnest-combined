@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>8 · Appointments — ContractNest Agent</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  .board{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;align-items:start}
+  .col{background:var(--bg);border:1px solid var(--line);border-radius:13px;padding:11px}
+  .col .ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;padding:0 3px}
+  .col .ch b{font-size:12.5px}
+  .col .ch .n{font-size:11px;font-weight:800;border-radius:999px;padding:2px 8px}
+  .col.req .ch .n{background:var(--indigo-50);color:var(--indigo-700)}
+  .col.acc .ch .n{background:var(--green-bg);color:var(--green)}
+  .col.resc .ch .n{background:var(--amber-bg);color:#b45309}
+  .col.esc .ch .n{background:var(--rose-bg);color:var(--rose)}
+  .acard{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:11px;margin-bottom:9px}
+  .acard .svc{font-weight:680;font-size:13px}
+  .acard .meta{font-size:11.5px;color:var(--ink-3);margin-top:2px}
+  .acard .tech{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11.5px}
+  .acard .tech .av{width:20px;height:20px;border-radius:50%;background:var(--indigo-100);color:var(--indigo-700);display:grid;place-items:center;font-size:9px;font-weight:800}
+  .col.esc .acard{border-color:#fecdd3}
+  .when{font-size:11px;font-weight:700;color:var(--ink-2);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:1px 7px}
+  .modeswitch{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:4px 5px}
+  .modeswitch b{font-size:12px;font-weight:700;padding:6px 12px;border-radius:999px;cursor:pointer;color:var(--ink-3)}
+  body:not(.human) .modeswitch b[data-m="vani"]{background:var(--teal-600);color:#fff;box-shadow:var(--shadow-sm)}
+  body.human .modeswitch b[data-m="human"]{background:#fff;color:var(--indigo-700);box-shadow:var(--shadow-sm)}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><div class="logo">C</div><div><b>ContractNest</b><div class="sub">Agent</div></div></div>
+    <nav class="nav">
+      <a href="01-cockpit.html"><span class="ic">🧭</span> Cockpit</a>
+      <a href="06-contacts.html"><span class="ic">👥</span> Contacts</a>
+      <a href="03-contract-copilot.html"><span class="ic">📄</span> Contracts</a>
+      <a href="04-ar-ap-collections.html"><span class="ic">💸</span> AR / AP</a>
+      <a href="05-service-lifecycle.html"><span class="ic">🛠️</span> Service</a>
+      <a href="08-appointments.html" class="active" style="padding-left:34px"><span class="ic">📅</span> Appointments</a>
+      <div class="group">Agent</div>
+      <a href="02-vani-whatsapp.html"><span class="ic">💬</span> VaNi Inbox</a>
+      <a href="07-autonomy-credits.html"><span class="ic">⚙️</span> Autonomy &amp; Credits</a>
+    </nav>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <h3 style="font-size:15px">Appointments</h3>
+      <div class="modeswitch" onclick="document.body.classList.toggle('human')"><span class="tiny muted" style="padding-left:4px">Mode</span><b data-m="human">🧭 Human</b><b data-m="vani">🤖 VaNi</b></div>
+      <div class="spacer"></div>
+      <div class="credit"><span class="dot"></span><b>1,238</b><span class="lbl">credits</span></div>
+      <div class="vani-toggle">Appointment autopilot <span class="switch"></span></div>
+    </div>
+
+    <div class="content">
+      <div class="banner">
+        <div class="av">V</div>
+        <div style="flex:1">
+          <h2>VaNi is chasing appointments so you don't have to</h2>
+          <p>It only chases visits that <b>need an appointment</b> (on-site). Reminders go out ~5–6 days ahead; it reads the reply, assigns a technician, and <b>pulls you in only when a customer goes silent</b>.</p>
+        </div>
+        <a class="btn ghost sm" href="05-service-lifecycle.html">Service lifecycle →</a>
+      </div>
+
+      <!-- KPIs -->
+      <div class="grid cols-4 mb" style="grid-template-columns:repeat(4,1fr);gap:16px">
+        <div class="card kpi"><div class="label">Lined up · next 7 days</div><div class="val">14</div><div class="sub muted tiny">9 on-site · 5 remote (no appt)</div></div>
+        <div class="card kpi"><div class="label">Accepted &amp; scheduled</div><div class="val" style="color:var(--green)">9</div><div class="sub pill green" style="display:inline-flex">tech assigned</div></div>
+        <div class="card kpi"><div class="label">Awaiting response</div><div class="val" style="color:#b45309">3</div><div class="sub pill amber" style="display:inline-flex">reminders sent</div></div>
+        <div class="card kpi"><div class="label">No response → your follow-up</div><div class="val" style="color:var(--rose)">2</div><div class="sub pill rose" style="display:inline-flex">escalated to you</div></div>
+      </div>
+
+      <!-- Status board -->
+      <div class="section-h"><h3>Appointment board</h3><span class="muted tiny" style="margin-left:auto">VaNi works left → right; the last column is yours</span></div>
+      <div class="board">
+        <!-- Requested -->
+        <div class="col req">
+          <div class="ch"><b>🤖 Requested</b><span class="n">3</span></div>
+          <div class="acard">
+            <div class="svc">HVAC PM · Visit 5</div>
+            <div class="meta">Kamal Industries · CN-2026-0042</div>
+            <div class="flex between center mt-s"><span class="when">15 Oct</span><span class="credit-chip">⛁ 1</span></div>
+            <div class="meta mt-s">Reminder sent 6 days ahead · WhatsApp. Awaiting reply.</div>
+          </div>
+          <div class="acard">
+            <div class="svc">Chiller service</div>
+            <div class="meta">Lotus Hospital · CN-2026-0031</div>
+            <div class="flex between center mt-s"><span class="when">16 Oct</span><span class="credit-chip">⛁ 1</span></div>
+            <div class="meta mt-s">1st reminder sent. 2nd auto in 2 days.</div>
+          </div>
+          <div class="acard">
+            <div class="svc">DG set maintenance</div>
+            <div class="meta">Sunrise Apts · CN-2026-0019</div>
+            <div class="flex between center mt-s"><span class="when">17 Oct</span><span class="credit-chip">⛁ 1</span></div>
+            <div class="meta mt-s">Reminder sent · email + WhatsApp.</div>
+          </div>
+        </div>
+
+        <!-- Accepted -->
+        <div class="col acc">
+          <div class="ch"><b>✓ Accepted</b><span class="n">9</span></div>
+          <div class="acard">
+            <div class="svc">HVAC PM · Visit 4</div>
+            <div class="meta">Kamal Industries</div>
+            <div class="flex between center mt-s"><span class="when">Fri 20 Sep · 10:00</span><span class="pill green">confirmed</span></div>
+            <div class="tech"><span class="av">S</span> Suresh K. · 2.3km</div>
+          </div>
+          <div class="acard">
+            <div class="svc">Quarterly AC service</div>
+            <div class="meta">BlueStar Facilities</div>
+            <div class="flex between center mt-s"><span class="when">Sat 21 Sep · 09:30</span><span class="pill green">confirmed</span></div>
+            <div class="tech"><span class="av">R</span> Rahul M.</div>
+          </div>
+          <div class="acard" style="opacity:.7">
+            <div class="meta">+ 7 more confirmed this week</div>
+          </div>
+        </div>
+
+        <!-- Reschedule -->
+        <div class="col resc">
+          <div class="ch"><b>🤖 Reschedule</b><span class="n">1</span></div>
+          <div class="acard">
+            <div class="svc">HVAC PM</div>
+            <div class="meta">Greenfield Mall</div>
+            <div class="flex between center mt-s"><span class="when">was 19 Sep</span><span class="pill amber">declined</span></div>
+            <div class="meta mt-s">Customer asked for next week. VaNi proposed 3 new slots, awaiting pick.</div>
+            <div class="credit-chip mt-s">⛁ 1 · rebooking</div>
+          </div>
+        </div>
+
+        <!-- Escalated -->
+        <div class="col esc">
+          <div class="ch"><b>⚠︎ Your follow-up</b><span class="n">2</span></div>
+          <div class="acard">
+            <div class="svc">Chiller deep service</div>
+            <div class="meta">Acme Corp · CN-2026-0007</div>
+            <div class="flex between center mt-s"><span class="when">due 18 Sep</span><span class="pill rose">no response</span></div>
+            <div class="meta mt-s">3 reminders over 6 days, no reply. VaNi paused &amp; handed it to you.</div>
+            <div class="actions mt-s"><button class="btn primary sm">Call customer</button><button class="btn ghost sm">Snooze</button></div>
+          </div>
+          <div class="acard">
+            <div class="svc">Lift AMC visit</div>
+            <div class="meta">Metro Towers</div>
+            <div class="flex between center mt-s"><span class="when">overdue 2d</span><span class="pill rose">no response</span></div>
+            <div class="actions mt-s"><button class="btn primary sm">Call customer</button><button class="btn ghost sm">Snooze</button></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid cols-2 mt">
+        <!-- No appointment needed -->
+        <div class="card pad">
+          <div class="section-h"><h3>Tracked · no appointment needed</h3><span class="pill gray">auto-tracked</span></div>
+          <div class="small muted mb">These service dates are tracked for SLA, but need no customer slot — VaNi just executes and logs.</div>
+          <table class="t">
+            <thead><tr><th>Service</th><th>Contract</th><th>Date</th><th>Type</th></tr></thead>
+            <tbody>
+              <tr><td>Remote monitoring check</td><td>Kamal Industries</td><td>15 Oct</td><td><span class="pill indigo">remote</span></td></tr>
+              <tr><td>Compliance report</td><td>Lotus Hospital</td><td>30 Sep</td><td><span class="pill indigo">desk</span></td></tr>
+              <tr><td>Spare-stock review</td><td>BlueStar</td><td>01 Oct</td><td><span class="pill indigo">internal</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Technician load -->
+        <div class="card pad">
+          <div class="section-h"><h3>Technician assignment · next 7 days</h3><span class="pill teal">VaNi balances by skill &amp; route</span></div>
+          <div>
+            <div class="flex between center" style="padding:9px 0;border-bottom:1px solid var(--line-2)"><div class="flex gap center"><span style="width:26px;height:26px;border-radius:50%;background:var(--indigo-100);color:var(--indigo-700);display:grid;place-items:center;font-weight:800;font-size:11px">S</span><div><b class="small">Suresh K.</b><div class="tiny muted">HVAC · 4.8★</div></div></div><div class="flex gap center"><div class="bar" style="width:120px"><i style="width:80%;background:var(--indigo-500)"></i></div><b class="small">4</b></div></div>
+            <div class="flex between center" style="padding:9px 0;border-bottom:1px solid var(--line-2)"><div class="flex gap center"><span style="width:26px;height:26px;border-radius:50%;background:var(--indigo-100);color:var(--indigo-700);display:grid;place-items:center;font-weight:800;font-size:11px">R</span><div><b class="small">Rahul M.</b><div class="tiny muted">AC · Lifts</div></div></div><div class="flex gap center"><div class="bar" style="width:120px"><i style="width:60%;background:var(--indigo-500)"></i></div><b class="small">3</b></div></div>
+            <div class="flex between center" style="padding:9px 0"><div class="flex gap center"><span style="width:26px;height:26px;border-radius:50%;background:var(--indigo-100);color:var(--indigo-700);display:grid;place-items:center;font-weight:800;font-size:11px">P</span><div><b class="small">Priya N.</b><div class="tiny muted">Chiller · DG</div></div></div><div class="flex gap center"><div class="bar" style="width:120px"><i style="width:40%;background:var(--indigo-500)"></i></div><b class="small">2</b></div></div>
+          </div>
+          <div class="tiny muted mt"><span class="vani-badge"><span class="v">V</span> 2 unassigned</span> visits waiting on customer acceptance before VaNi locks a technician.</div>
+        </div>
+      </div>
+
+      <p class="tiny muted mt" style="text-align:center"><b>Appointment-required</b> is a per-service flag; only those get chased. Chase loop = a JTD job (request → remind → read status → escalate) · Tables: t_contract_events (scheduled_date, status, assigned_to) · t_service_tickets · n_jtd* (chase + reminders) · t_bm_credit_transaction</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>
