@@ -1,0 +1,57 @@
+===============================================================
+GOOGLE CALLBACK -> API/SERVICE_ROLE FIX — COPY INSTRUCTIONS
+===============================================================
+
+WHY
+---------------------------------------------------------------
+GoogleCallbackPage previously made 3 DIRECT browser (anon) Supabase
+queries: SELECT t_user_profiles, UPSERT t_user_profiles (new users),
+and SELECT t_user_tenants + t_tenants. That is an anti-pattern and a
+latent landmine for tenant-isolation RLS (it would resurrect the moment
+Google auth is re-enabled via VITE_GOOGLE_AUTH_ENABLED).
+
+This change moves all of that BEHIND the existing API endpoint
+GET /api/auth/user, which proxies to the edge `auth/user` function and
+runs with service_role. The browser no longer touches those tables.
+
+BONUS FIX: the edge handler previously created new profiles using only
+metadata.first_name/last_name — Google sends given_name/family_name/
+full_name/name, so new Google users were getting BLANK names. The edge
+now uses the full name-derivation fallback chain.
+
+SUBMODULES AFFECTED
+---------------------------------------------------------------
+  contractnest-edge   (handlers/profile.ts — enhanced, backward compatible)
+  contractnest-ui     (GoogleCallbackPage.tsx — uses API instead of direct DB)
+  contractnest-api    (NO CHANGE — already proxies auth/user verbatim)
+
+FILES
+---------------------------------------------------------------
+1. contractnest-edge/supabase/functions/auth/handlers/profile.ts
+   -> contractnest-edge/supabase/functions/auth/handlers/profile.ts
+   handleGetUserProfile now ALSO returns { isNewUser, tenants } and
+   derives Google names properly. Additive — existing GET /api/auth/user
+   callers are unaffected (profile fields stay at top level).
+
+2. contractnest-ui/src/pages/auth/GoogleCallbackPage.tsx
+   -> contractnest-ui/src/pages/auth/GoogleCallbackPage.tsx
+   The 3 supabase.from(...) calls are replaced by a single
+   api.get(API_ENDPOINTS.AUTH.USER). Session handling (setSession/
+   getSession/signOut) is unchanged.
+
+DEPLOY NOTE
+---------------------------------------------------------------
+  The edge function must be re-deployed for profile.ts to take effect:
+      supabase functions deploy auth
+  (or via your normal edge deploy pipeline).
+
+TEST (after re-enabling Google in a non-prod env)
+---------------------------------------------------------------
+  [ ] Existing Google user signs in -> lands on cockpit, tenants load
+  [ ] BRAND NEW Google user signs in -> profile auto-created WITH name,
+      routed to /create-tenant
+  [ ] Normal email login GET /api/auth/user still returns profile (now
+      also carries tenants[] — ignored by existing callers)
+  [ ] Network tab: NO direct supabase REST calls to t_user_profiles /
+      t_user_tenants from the browser during the callback
+===============================================================
