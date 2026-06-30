@@ -1,0 +1,58 @@
+===============================================================
+TENANT ISOLATION — BATCH 1 — COPY / APPLY INSTRUCTIONS
+===============================================================
+
+PURPOSE
+---------------------------------------------------------------
+Enable RLS + tenant-membership SELECT policy + explicit service_role
+bypass on 11 tables that currently have RLS DISABLED while holding
+tenant_id data (any authenticated user could read all tenants' rows).
+
+SUBMODULE AFFECTED
+---------------------------------------------------------------
+  contractnest-edge  (SQL migration only — no API/UI code in this batch)
+
+FILES
+---------------------------------------------------------------
+  contractnest-edge/supabase/migrations/tenant-isolation/
+      001_batch1_enable_rls_exposed_tenant_tables.sql        (UP)
+      001_batch1_enable_rls_exposed_tenant_tables_DOWN.sql   (rollback)
+
+TABLES TOUCHED (11)
+---------------------------------------------------------------
+  m_event_status_config, m_event_status_transitions, n_tenant_preferences,
+  t_catalog_categories, t_catalog_industries, t_category_details,
+  t_category_master, t_category_resources_master, t_group_memberships,
+  t_idempotency_keys, t_tenant_context
+
+HOW IT WAS VALIDATED (no prod changes persisted)
+---------------------------------------------------------------
+  Applied inside a BEGIN ... ROLLBACK transaction on the live DB and
+  impersonated two real cross-tenant users via SET ROLE authenticated +
+  request.jwt.claims:
+      total rows (RLS off) ......... 146  (all tenants visible — the bug)
+      User A visible after batch1 ...   5  (own tenant only)  PASS
+      User B visible after batch1 ...   3  (own tenant only)  PASS
+  Rollback verified: RLS still off, 0 batch1 policies left, scratch table gone.
+
+HOW TO APPLY TO PRODUCTION
+---------------------------------------------------------------
+  Option A (used in this project): Supabase MCP apply_migration
+     name : tenant_isolation_batch1
+     query: contents of 001_batch1_enable_rls_exposed_tenant_tables.sql
+  Option B: psql "<prod connection>" -f 001_batch1_enable_rls_exposed_tenant_tables.sql
+
+  ROLLBACK: run 001_..._DOWN.sql the same way.
+
+POST-APPLY CHECK
+---------------------------------------------------------------
+  Re-run Supabase security advisors; the 11 tables should drop out of the
+  "RLS Disabled in Public" findings. Spot-check the app (loads via
+  service_role, so behaviour should be unchanged).
+
+NOTE
+---------------------------------------------------------------
+  Production apply is GATED on user review (per agreed prod gate).
+  Batches 2-5 (dormant policies, always-true writes, GUC/JWT convergence,
+  the 3 live browser tables) are planned separately.
+===============================================================
