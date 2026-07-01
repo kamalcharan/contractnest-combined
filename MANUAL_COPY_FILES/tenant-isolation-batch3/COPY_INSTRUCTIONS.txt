@@ -1,0 +1,53 @@
+===============================================================
+TENANT ISOLATION — BATCH 3 — APPLY INSTRUCTIONS (MANUAL)
+===============================================================
+
+STATUS: NOT YET APPLIED. Apply manually (Supabase SQL Editor or psql).
+
+PURPOSE
+---------------------------------------------------------------
+Remove always-true WRITE grants (INSERT/UPDATE/DELETE) that were open to
+anon/authenticated/public on 5 backend-only tables, so writes fall back to
+service_role (bypass) + existing properly-scoped policies.
+
+TABLES / POLICIES DROPPED
+---------------------------------------------------------------
+  t_bm_pricing_plan          : allow_insert_plans, allow_update_plans
+  t_campaign_leads           : leads_delete_policy, leads_insert_policy_anon,
+                               leads_insert_policy_auth, leads_update_policy
+  t_campaigns                : campaigns_delete_policy, campaigns_insert_policy,
+                               campaigns_update_policy
+  t_contract_payment_events  : "Service role can insert payment events",
+                               "Service role can update payment events"
+                               (named "service role" but actually PUBLIC + true)
+  t_tax_settings             : service_role_bypass_rls_tax_settings
+                               (ALL roles USING/CHECK true — full open access)
+
+LEFT INTACT (verified)
+---------------------------------------------------------------
+  t_tax_settings: tenant-admin insert/update, tenant-user/super-admin selects,
+                  service_role_full_access_tax_settings
+  t_contract_payment_events: "Tenant members can view payment events" (SELECT)
+  t_bm_pricing_plan: authenticated_view_visible_plans, service_role_manage_plans
+
+WHY NON-BREAKING
+---------------------------------------------------------------
+  These tables are written only via service_role (API/edge); no browser .from()
+  writes target them. service_role bypasses RLS, so backend writes continue.
+
+HOW TO APPLY
+---------------------------------------------------------------
+  Paste 003_batch3_lock_always_true_writes.sql into the Supabase SQL Editor and Run.
+  ROLLBACK: run 003_batch3_lock_always_true_writes_DOWN.sql.
+
+RESIDUAL (NOT in this batch)
+---------------------------------------------------------------
+  t_campaigns / t_campaign_leads still have SELECT USING true (authenticated).
+  Feature is unused (0 rows) -> deferred to a later read-tightening pass.
+
+FILES
+---------------------------------------------------------------
+  contractnest-edge/supabase/migrations/tenant-isolation/
+      003_batch3_lock_always_true_writes.sql        (UP)
+      003_batch3_lock_always_true_writes_DOWN.sql   (rollback)
+===============================================================
