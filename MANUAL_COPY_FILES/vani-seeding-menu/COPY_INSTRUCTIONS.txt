@@ -1,0 +1,50 @@
+===================================================================
+VaNi SEEDING MENU ITEM — Catalog Studio submenu (FULL FILE — copy & replace)
+===================================================================
+The file below is a COMPLETE replacement for the original — just Copy-Item
+over the original (no manual editing). Structure mirrors the repo exactly.
+
+GOAL: surface the existing (but menu-less) /catalog-studio/equipment page
+— the Equipment & Facilities view + VaNi seed launcher — in the Catalog
+Studio sidebar submenu, so it is reachable from the nav instead of by
+direct URL only.
+
+SUBMODULES AFFECTED: contractnest-ui  (ONLY)
+  contractnest-api      : NOT affected
+  contractnest-edge     : NOT affected
+  ClaudeDocumentation   : NOT affected
+  ContractNest-Mobile   : NOT affected
+  FamilyKnows           : NOT affected (submodule removed from this repo)
+
+-------------------------------------------------------------------
+FILE (source in MANUAL_COPY_FILES  ->  destination in repo)
+-------------------------------------------------------------------
+MANUAL_COPY_FILES/vani-seeding-menu/contractnest-ui/src/utils/constants/industryMenus.ts
+    ->  contractnest-ui/src/utils/constants/industryMenus.ts        (REPLACE)
+
+WHAT CHANGED (1 line added)
+  Inside the 'catalog-studio' menu object, submenuItems array, a new entry
+  was inserted between "Configure" and "Template Builder":
+
+    { id: 'catalog-studio-equipment', label: 'VaNi Seeding', icon: 'Sprout', path: '/catalog-studio/equipment' },
+
+  Resulting Catalog Studio submenu order:
+    Configure  ->  VaNi Seeding  ->  Template Builder  ->  Templates List
+
+NO OTHER CHANGES
+  - No route change: /catalog-studio/equipment is already registered in
+    App.tsx (under ProtectedRoute + MainLayout), same as its siblings.
+  - No access-control change: reachable by any Catalog Studio user
+    (admin or tenant) — supports re-seeding / new seeding for anyone.
+  - Icon 'Sprout' is a standard lucide-react icon; the sidebar resolves
+    icon strings dynamically (LucideIcons[name]), so no import needed.
+
+AFTER COPY: verify the entry is present
+  Select-String -Path "contractnest-ui\src\utils\constants\industryMenus.ts" -Pattern "VaNi Seeding"
+  (expect 1 match)
+
+TEST
+  cd contractnest-ui ; npm run dev
+  Sidebar -> Catalog Studio -> "VaNi Seeding" appears between Configure and
+  Template Builder -> click -> lands on the Equipment & Facilities page.
+===================================================================
