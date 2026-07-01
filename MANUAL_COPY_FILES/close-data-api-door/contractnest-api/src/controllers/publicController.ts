@@ -45,7 +45,7 @@ export const createLead = async (req: Request, res: Response) => {
 
     if (error) {
       // Non-fatal for the UX: the demo flows continue even if persistence fails.
-      captureException(error instanceof Error ? error : new Error(error.message), {
+      captureException(error instanceof Error ? error : new Error(String((error as any)?.message ?? error)), {
         tags: { source: 'api_public', action: 'createLead' }
       });
       return res.status(200).json({ success: false, lead: row });
@@ -89,7 +89,7 @@ export const updateLead = async (req: Request, res: Response) => {
       .eq('id', id);
 
     if (error) {
-      captureException(error instanceof Error ? error : new Error(error.message), {
+      captureException(error instanceof Error ? error : new Error(String((error as any)?.message ?? error)), {
         tags: { source: 'api_public', action: 'updateLead' }
       });
       return res.status(200).json({ success: false });
@@ -145,7 +145,7 @@ export const getAuthMethods = async (req: Request, res: Response) => {
       .order('last_used_at', { ascending: false });
 
     if (error) {
-      captureException(error instanceof Error ? error : new Error(error.message), {
+      captureException(error instanceof Error ? error : new Error(String((error as any)?.message ?? error)), {
         tags: { source: 'api_public', action: 'getAuthMethods' }
       });
       return res.status(500).json({ error: 'Failed to fetch auth methods' });
