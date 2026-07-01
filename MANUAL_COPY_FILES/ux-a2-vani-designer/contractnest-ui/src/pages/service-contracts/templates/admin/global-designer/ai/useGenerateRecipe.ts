@@ -69,6 +69,26 @@ const COMPLIANCE_BY_INDUSTRY: Record<string, string[]> = {
   manufacturing: ['ISO 9001'],
 };
 
+// Stub variant lists per asset family (batch C replaces this with real KG
+// variants for the resource template). Used by the slot card's variant picker.
+const STUB_VARIANTS: { match: RegExp; variants: string[] }[] = [
+  {
+    match: /hvac|air ?condition|\bac\b|chiller|cooling/i,
+    variants: [
+      'Split AC / Room AC', 'Cassette AC', 'Ductable AC', 'VRF / VRV System',
+      'Chiller (Water-Cooled)', 'Chiller (Air-Cooled)', 'AHU (Air Handling Unit)',
+      'FCU (Fan Coil Unit)', 'Package / Rooftop Unit', 'Window AC',
+    ],
+  },
+];
+
+/** Variant options for an asset name (stub; empty if unknown). */
+export function stubVariantsFor(assetName: string | undefined): string[] {
+  if (!assetName) return [];
+  const hit = STUB_VARIANTS.find((s) => s.match.test(assetName));
+  return hit ? hit.variants : [];
+}
+
 interface SlotSeed {
   activity: RecipeSlot['activity'];
   label: string;
@@ -127,6 +147,7 @@ function buildSlots(ctx: RecipeContext, action: GenAction): RecipeSlot[] {
     priceHintMin: s.priceHintMin,
     priceHintMax: s.priceHintMax,
     currency: ctx.currency || 'INR',
+    variantScope: 'all', // global recipe applies to all variants by default
     // "Suggest" opts the admin IN per slot; "Generate Full" pre-accepts all.
     accepted: action === 'generate_full',
   }));
@@ -249,7 +270,15 @@ export function useGenerateRecipe() {
     });
   }, []);
 
-  return { phase, action, steps, result, error, run, reset, toggleSlot, setAllSlots };
+  // Set a slot's variant applicability scope ('all' or a specific name list).
+  const setSlotVariants = useCallback((id: string, scope: 'all' | string[]) => {
+    setResult((prev) => {
+      if (!prev || prev.kind !== 'slots') return prev;
+      return { kind: 'slots', slots: prev.slots.map((s) => (s.id === id ? { ...s, variantScope: scope } : s)) };
+    });
+  }, []);
+
+  return { phase, action, steps, result, error, run, reset, toggleSlot, setAllSlots, setSlotVariants };
 }
 
 export default useGenerateRecipe;

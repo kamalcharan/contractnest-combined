@@ -17,6 +17,7 @@ import {
   Sparkles,
   CalendarClock,
   ShieldCheck,
+  Layers,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import type { GlobalDesignerWizardState } from '../types';
@@ -217,6 +218,12 @@ const ReviewPublishStep: React.FC<ReviewPublishStepProps> = ({ state, onUpdate, 
                         ? <span className="flex items-center gap-1"><CalendarClock className="w-3 h-3" /> every {slot.cadenceDays}d</span>
                         : <span>on-demand</span>}
                       {slot.checkpointCount > 0 && <span>{slot.checkpointCount} checkpoints</span>}
+                      {slot.activity !== 'spare_pool' && (
+                        <span className="flex items-center gap-1">
+                          <Layers className="w-3 h-3" />
+                          {Array.isArray(slot.variantScope) ? `${slot.variantScope.length} variants` : 'all variants'}
+                        </span>
+                      )}
                       {slot.complianceStandards.length > 0 && (
                         <span className="flex items-center gap-1" style={{ color: '#7c3aed' }}>
                           <ShieldCheck className="w-3 h-3" /> {slot.complianceStandards.join(', ')}

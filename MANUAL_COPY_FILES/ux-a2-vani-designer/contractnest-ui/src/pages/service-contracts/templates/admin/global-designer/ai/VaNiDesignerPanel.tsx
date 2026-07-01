@@ -8,12 +8,12 @@
 // suggestions, or a review list) → Apply / Regenerate. Preview-before-commit:
 // nothing touches the wizard until the admin presses Apply.
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Sparkles, Brain, PenLine, Search, Check, RotateCcw, Loader2, CalendarClock, ShieldCheck } from 'lucide-react';
+import { X, Sparkles, Brain, PenLine, Search, Check, RotateCcw, Loader2, CalendarClock, ShieldCheck, Layers } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import type { GlobalDesignerWizardState, RecipeSlot } from '../types';
-import useGenerateRecipe, { type GenAction, type FieldSuggestion, type RecipeContext } from './useGenerateRecipe';
+import useGenerateRecipe, { stubVariantsFor, type GenAction, type FieldSuggestion, type RecipeContext } from './useGenerateRecipe';
 
 interface Props {
   isOpen: boolean;
@@ -43,7 +43,7 @@ const activityTone: Record<string, string> = {
 const VaNiDesignerPanel: React.FC<Props> = ({ isOpen, onClose, state, industryLabels, onApplySlots, onApplyFields }) => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
-  const { phase, action, steps, result, error, run, reset, toggleSlot, setAllSlots } = useGenerateRecipe();
+  const { phase, action, steps, result, error, run, reset, toggleSlot, setAllSlots, setSlotVariants } = useGenerateRecipe();
 
   const ctx: RecipeContext = useMemo(() => ({
     industries: state.targetIndustries,
@@ -54,6 +54,9 @@ const VaNiDesignerPanel: React.FC<Props> = ({ isOpen, onClose, state, industryLa
     nomenclatureDisplayName: state.nomenclatureDisplayName,
     currency: state.contractDetails.currency || 'INR',
   }), [state, industryLabels]);
+
+  // Variant options for the selected asset (stub; real KG variants in batch C)
+  const variantOptions = useMemo(() => stubVariantsFor(ctx.assetTypeNames[0]), [ctx.assetTypeNames]);
 
   if (!isOpen) return null;
 
@@ -197,7 +200,14 @@ const VaNiDesignerPanel: React.FC<Props> = ({ isOpen, onClose, state, industryLa
                 </div>
               </div>
               {result.slots.map((slot) => (
-                <SlotCard key={slot.id} slot={slot} colors={colors} onToggle={() => toggleSlot(slot.id)} />
+                <SlotCard
+                  key={slot.id}
+                  slot={slot}
+                  colors={colors}
+                  variantOptions={variantOptions}
+                  onToggle={() => toggleSlot(slot.id)}
+                  onSetVariants={(scope) => setSlotVariants(slot.id, scope)}
+                />
               ))}
             </div>
           )}
@@ -263,19 +273,40 @@ const VaNiDesignerPanel: React.FC<Props> = ({ isOpen, onClose, state, industryLa
 
 // ─── Slot card ──────────────────────────────────────────────────────
 
-const SlotCard: React.FC<{ slot: RecipeSlot; colors: any; onToggle: () => void }> = ({ slot, colors, onToggle }) => {
+interface SlotCardProps {
+  slot: RecipeSlot;
+  colors: any;
+  variantOptions: string[];
+  onToggle: () => void;
+  onSetVariants: (scope: 'all' | string[]) => void;
+}
+
+const SlotCard: React.FC<SlotCardProps> = ({ slot, colors, variantOptions, onToggle, onSetVariants }) => {
   const tone = activityTone[slot.activity] || colors.brand.primary;
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  // Variant control is meaningless for on-demand spare pools.
+  const showVariants = slot.activity !== 'spare_pool' && variantOptions.length > 0;
+  const isAll = !Array.isArray(slot.variantScope);
+  const selected = Array.isArray(slot.variantScope) ? slot.variantScope : [];
+
+  const toggleVariant = (name: string) => {
+    if (isAll) { onSetVariants([name]); return; }
+    const next = selected.includes(name) ? selected.filter((v) => v !== name) : [...selected, name];
+    onSetVariants(next.length === 0 ? 'all' : next);
+  };
+
   return (
-    <button
-      onClick={onToggle}
-      className="w-full text-left px-3.5 py-3 rounded-xl transition"
+    <div
+      className="w-full rounded-xl transition"
       style={{
         border: `1.5px solid ${slot.accepted ? tone : `${colors.utility.secondaryText}18`}`,
         background: slot.accepted ? `${tone}0c` : colors.utility.primaryBackground,
       }}
     >
-      <div className="flex items-start gap-2.5">
-        <div className="w-4.5 h-4.5 rounded-md flex items-center justify-center shrink-0 mt-0.5"
+      {/* Clickable header toggles accept/reject */}
+      <div className="flex items-start gap-2.5 px-3.5 py-3 cursor-pointer" onClick={onToggle}>
+        <div className="rounded-md flex items-center justify-center shrink-0 mt-0.5"
           style={{ background: slot.accepted ? tone : 'transparent', border: `1.5px solid ${slot.accepted ? tone : `${colors.utility.secondaryText}40`}`, width: 18, height: 18 }}>
           {slot.accepted && <Check className="w-3 h-3 text-white" />}
         </div>
@@ -305,8 +336,44 @@ const SlotCard: React.FC<{ slot: RecipeSlot; colors: any; onToggle: () => void }
           </div>
         </div>
       </div>
-    </button>
+
+      {/* Variant applicability control */}
+      {showVariants && (
+        <div className="px-3.5 pb-3 pt-0" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={() => setPickerOpen((o) => !o)}
+            className="flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-lg"
+            style={{ border: `1px solid ${colors.utility.secondaryText}22`, color: colors.utility.secondaryText }}
+          >
+            <Layers className="w-3 h-3" />
+            {isAll ? 'All variants' : `${selected.length} of ${variantOptions.length} variants`}
+          </button>
+          {pickerOpen && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <VariantChip label="All variants" active={isAll} tone={tone} colors={colors} onClick={() => onSetVariants('all')} />
+              {variantOptions.map((name) => (
+                <VariantChip key={name} label={name} active={!isAll && selected.includes(name)} tone={tone} colors={colors} onClick={() => toggleVariant(name)} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 };
+
+const VariantChip: React.FC<{ label: string; active: boolean; tone: string; colors: any; onClick: () => void }> = ({ label, active, tone, colors, onClick }) => (
+  <button
+    onClick={onClick}
+    className="text-[10.5px] font-medium px-2 py-1 rounded-full transition"
+    style={{
+      border: `1px solid ${active ? tone : `${colors.utility.secondaryText}22`}`,
+      background: active ? `${tone}14` : 'transparent',
+      color: active ? tone : colors.utility.secondaryText,
+    }}
+  >
+    {label}
+  </button>
+);
 
 export default VaNiDesignerPanel;

@@ -23,6 +23,10 @@ export interface RecipeSlot {
   priceHintMin: number | null;      // KT reference band (tenant sets the real price)
   priceHintMax: number | null;
   currency: string;
+  // Applicability scope across the asset's variants. 'all' (default) = applies
+  // to every variant; string[] = scoped to specific variant names. PRICING is
+  // NOT set here — per-variant prices are tenant-owned (block variantPricingRecords).
+  variantScope: 'all' | string[];
   accepted: boolean;                // per-slot accept/reject in the review UI
 }
 
