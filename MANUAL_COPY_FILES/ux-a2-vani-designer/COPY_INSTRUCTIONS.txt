@@ -33,6 +33,7 @@ Base path (same for both sides):
 -------------------------------------------------------------------
   ai/VaNiDesignerPanel.tsx      (NEW)     -> <base>/ai/VaNiDesignerPanel.tsx
   ai/useGenerateRecipe.ts       (NEW)     -> <base>/ai/useGenerateRecipe.ts
+  steps/RecipeSlotsStep.tsx     (NEW)     -> <base>/steps/RecipeSlotsStep.tsx
   types.ts                      (REPLACE) -> <base>/types.ts
   index.tsx                     (REPLACE) -> <base>/index.tsx
   steps/ReviewPublishStep.tsx   (REPLACE) -> <base>/steps/ReviewPublishStep.tsx
@@ -56,6 +57,7 @@ POWERSHELL COPY (from repo root)
   New-Item -ItemType Directory -Force -Path "$d\ai" | Out-Null
   Copy-Item "$b\ai\VaNiDesignerPanel.tsx"    "$d\ai\VaNiDesignerPanel.tsx"    -Force
   Copy-Item "$b\ai\useGenerateRecipe.ts"     "$d\ai\useGenerateRecipe.ts"     -Force
+  Copy-Item "$b\steps\RecipeSlotsStep.tsx"   "$d\steps\RecipeSlotsStep.tsx"   -Force
   Copy-Item "$b\types.ts"                    "$d\types.ts"                    -Force
   Copy-Item "$b\index.tsx"                   "$d\index.tsx"                   -Force
   Copy-Item "$b\steps\ReviewPublishStep.tsx" "$d\steps\ReviewPublishStep.tsx" -Force

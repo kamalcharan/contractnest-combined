@@ -117,6 +117,14 @@ export const WIZARD_STEPS: WizardStep[] = [
   },
   {
     id: 4,
+    key: 'recipe_slots',
+    title: 'Recipe Slots',
+    subtitle: 'Define service slots — by hand or with VaNi',
+    icon: 'Sparkles',
+    isOptional: true,
+  },
+  {
+    id: 5,
     key: 'blocks',
     title: 'Service Blocks',
     subtitle: 'Add blocks from service catalog',
@@ -124,7 +132,7 @@ export const WIZARD_STEPS: WizardStep[] = [
     isOptional: false,
   },
   {
-    id: 5,
+    id: 6,
     key: 'billing',
     title: 'Billing Defaults',
     subtitle: 'Payment & billing configuration',
@@ -132,7 +140,7 @@ export const WIZARD_STEPS: WizardStep[] = [
     isOptional: true,
   },
   {
-    id: 6,
+    id: 7,
     key: 'policies',
     title: 'Policies & Compliance',
     subtitle: 'Evidence, acceptance & compliance',
@@ -140,7 +148,7 @@ export const WIZARD_STEPS: WizardStep[] = [
     isOptional: true,
   },
   {
-    id: 7,
+    id: 8,
     key: 'review',
     title: 'Review & Publish',
     subtitle: 'Summary and publish settings',

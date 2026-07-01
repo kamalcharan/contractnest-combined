@@ -52,6 +52,7 @@ import AssetNamesStep from './steps/AssetNamesStep';
 import BillingDefaultsStep from './steps/BillingDefaultsStep';
 import PoliciesStep from './steps/PoliciesStep';
 import ReviewPublishStep from './steps/ReviewPublishStep';
+import RecipeSlotsStep from './steps/RecipeSlotsStep';
 
 // ─── Component ──────────────────────────────────────────────────────
 
@@ -223,24 +224,13 @@ const GlobalDesignerPage: React.FC = () => {
   const isLastStep = currentStep === totalSteps - 1;
 
   const canProceed = (): boolean => {
-    switch (currentStep) {
-      case 0: // Nomenclature — optional
-        return true;
-      case 1: // Template Details — name required
+    // Key-based so inserting/reordering steps can't desync validation.
+    switch (WIZARD_STEPS[currentStep]?.key) {
+      case 'details': // Template name required
         return wizardState.contractDetails.contractName.trim().length >= 3;
-      case 2: // Industries — at least 1 selected
+      case 'industries': // at least 1 selected
         return wizardState.targetIndustries.length > 0;
-      case 3: // Equipment / Facility — optional
-        return true;
-      case 4: // Service Blocks — always valid
-        return true;
-      case 5: // Billing — optional
-        return true;
-      case 6: // Policies — optional
-        return true;
-      case 7: // Review — ready
-        return true;
-      default:
+      default: // nomenclature, assets, recipe_slots, blocks, billing, policies, review
         return true;
     }
   };
@@ -409,31 +399,34 @@ const GlobalDesignerPage: React.FC = () => {
 
   // ─── Render current step ───────────────────────────────────────
   const renderStep = () => {
-    switch (currentStep) {
-      case 0: // Nomenclature
+    // Key-based so step order changes never mis-map to the wrong component.
+    switch (WIZARD_STEPS[currentStep]?.key) {
+      case 'nomenclature':
         return (
           <NomenclatureStep
             selectedId={wizardState.nomenclatureId}
             onSelect={handleNomenclatureSelect}
           />
         );
-      case 1: // Template Details
+      case 'details':
         return (
           <TemplateDetailsStep
             data={wizardState.contractDetails}
             onChange={handleContractDetailsChange}
           />
         );
-      case 2: // Industries
+      case 'industries':
         return (
           <IndustryStep
             state={wizardState}
             onUpdate={updateWizardState}
           />
         );
-      case 3: // Equipment / Facility Names (filtered by industries + nomenclature)
+      case 'assets': // Equipment / Facility Names (filtered by industries + nomenclature)
         return <AssetNamesStep state={wizardState} onUpdate={updateWizardState} />;
-      case 4: // Service Blocks — from catalog (same as contract wizard)
+      case 'recipe_slots': // Manual slot editor — same recipeSlots the VaNi panel writes
+        return <RecipeSlotsStep state={wizardState} onUpdate={updateWizardState} onOpenVaNi={() => setShowVaNi(true)} />;
+      case 'blocks': // Service Blocks — from catalog (same as contract wizard)
         return (
           <ServiceBlocksStep
             selectedBlocks={selectedBlocks}
@@ -447,11 +440,11 @@ const GlobalDesignerPage: React.FC = () => {
             coverageTypes={[]}
           />
         );
-      case 5: // Billing Defaults
+      case 'billing':
         return <BillingDefaultsStep state={wizardState} onUpdate={updateWizardState} />;
-      case 6: // Policies & Compliance
+      case 'policies':
         return <PoliciesStep state={wizardState} onUpdate={updateWizardState} />;
-      case 7: // Review & Publish
+      case 'review':
         return (
           <ReviewPublishStep
             state={wizardState}
