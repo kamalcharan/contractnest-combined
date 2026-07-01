@@ -1,238 +1,45 @@
 ===================================================================
-CLOSE THE DATA-API BACKDOOR — STEP 1: move client Supabase calls to API
+CLOSE THE DATA-API BACKDOOR — STEP 1 (FULL FILES — copy & replace)
 ===================================================================
+Every file below is a COMPLETE replacement for the original — just Copy-Item
+over the original (no manual editing). Structure mirrors the repos exactly.
+
 GOAL: remove every direct browser -> Supabase Data API (.from) call so the
 anon/authenticated Postgres grants can be REVOKED (closing PostgREST "Door B").
-After all edits below are deployed, the revoke SQL (separate file) is safe.
 
 SUBMODULES AFFECTED: contractnest-api, contractnest-ui
-(No edge deploy needed — the new endpoints use the service_role client directly.)
+(No edge deploy — new endpoints use the service_role client directly.)
 
 -------------------------------------------------------------------
-A) contractnest-api  — NEW FILES (copy as-is)
+FILES (source in MANUAL_COPY_FILES  ->  destination in repo)
 -------------------------------------------------------------------
-1. contractnest-api/src/controllers/publicController.ts   (provided)
-2. contractnest-api/src/routes/publicRoutes.ts            (provided)
+contractnest-api/src/controllers/publicController.ts   (NEW)  -> same path
+contractnest-api/src/routes/publicRoutes.ts            (NEW)  -> same path
+contractnest-api/src/index.ts                          (REPL) -> same path  [adds import + app.use('/api/public', publicRoutes)]
 
-3. MOUNT the router — edit contractnest-api/src/index.ts:
-   • Near the other route imports, add:
-        import publicRoutes from './routes/publicRoutes';
-   • Near the other app.use('/api/...') mounts (e.g. beside app.use('/api/tenants', tenantRoutes)), add:
-        app.use('/api/public', publicRoutes);
+contractnest-ui/src/services/serviceURLs.ts            (REPL) -> same path  [adds PUBLIC block + TENANTS.CHECK_AVAILABILITY]
+contractnest-ui/src/components/playground/LeadCaptureForm.tsx   (REPL)
+contractnest-ui/src/components/landing/LandingPlayground.tsx    (REPL)
+contractnest-ui/src/components/CRO/UrgencyElements.tsx          (REPL)
+contractnest-ui/src/pages/public/PlaygroundPage.tsx            (REPL)
+contractnest-ui/src/pages/auth/ForgotPasswordPage.tsx          (REPL)
+contractnest-ui/src/components/auth/LockScreen.tsx             (REPL)
+contractnest-ui/src/pages/auth/CreateTenantPage.tsx           (REPL)
 
--------------------------------------------------------------------
-B) contractnest-ui  — serviceURLs.ts   (src/services/serviceURLs.ts)
--------------------------------------------------------------------
-Inside `export const API_ENDPOINTS = {`, add a PUBLIC block and a
-CHECK_AVAILABILITY entry. FIND the TENANTS block start:
+WHAT EACH DOES
+  publicController.ts / publicRoutes.ts : POST /api/public/leads, PATCH
+      /api/public/leads/:id, GET /api/public/auth-methods (service_role).
+  index.ts             : mounts app.use('/api/public', publicRoutes).
+  serviceURLs.ts       : API_ENDPOINTS.PUBLIC.{LEAD_CREATE,LEAD_UPDATE,AUTH_METHODS}
+                         + API_ENDPOINTS.TENANTS.CHECK_AVAILABILITY.
+  4 lead files         : supabase.from('leads_contractnest') -> api.post/patch.
+  ForgotPassword/Lock  : t_user_auth_methods -> GET /api/public/auth-methods.
+  CreateTenant         : t_tenants name check -> GET /api/tenants/check-availability.
 
-    TENANTS: {
-      LIST: '/api/tenants',
-      CREATE: '/api/tenants',
-      UPDATE: '/api/tenants',
-      GET: '/api/tenants',
-      PROFILE: '/api/tenant-profile',
+AFTER DEPLOY: verify none remain
+  Select-String -Path "contractnest-ui\src\*" -Pattern "\.from\('t_|\.from\('leads" -Recurse
+  (expect no matches; supabase.auth.* is fine — separate GoTrue door)
 
-REPLACE with:
-
-    // Public (unauthenticated) endpoints — replace direct Supabase Data API calls
-    PUBLIC: {
-      LEAD_CREATE: '/api/public/leads',
-      LEAD_UPDATE: (id: string) => `/api/public/leads/${id}`,
-      AUTH_METHODS: '/api/public/auth-methods',
-    },
-
-    TENANTS: {
-      LIST: '/api/tenants',
-      CREATE: '/api/tenants',
-      UPDATE: '/api/tenants',
-      GET: '/api/tenants',
-      CHECK_AVAILABILITY: '/api/tenants/check-availability',
-      PROFILE: '/api/tenant-profile',
-
--------------------------------------------------------------------
-C) contractnest-ui  — LEAD CAPTURE (4 files)
-   In each file: ensure these imports exist at top:
-        import api from '../../services/api';                 // adjust relative depth
-        import { API_ENDPOINTS } from '../../services/serviceURLs';
-   (Remove the `import { supabase } from '.../utils/supabase';` line ONLY if the
-    file no longer references `supabase` anywhere else.)
--------------------------------------------------------------------
-C1) src/components/playground/LeadCaptureForm.tsx
-   FIND:
-        // Save to Supabase directly
-        const { data, error } = await supabase
-          .from('leads_contractnest')
-          .insert([leadData])
-          .select()
-          .single();
-
-        if (error) {
-          console.error('Error saving lead:', error);
-          // Continue anyway - don't block the demo if DB fails
-        }
-
-        // Pass the lead data (with ID if saved) to parent
-        onSubmit(data || leadData);
-   REPLACE:
-        // Save via API (service_role) instead of the public Data API
-        let saved: any = null;
-        try {
-          const resp = await api.post(API_ENDPOINTS.PUBLIC.LEAD_CREATE, leadData);
-          saved = resp.data?.lead || null;
-        } catch (error) {
-          console.error('Error saving lead:', error);   // continue anyway
-        }
-        onSubmit(saved || leadData);
-
-C2) src/components/landing/LandingPlayground.tsx
-   FIND:
-        // Save lead to Supabase
-        await supabase.from('leads_contractnest').insert([{
-          name: leadData.name.trim(),
-          email: `${leadData.mobile}@playground.demo`,
-          phone: leadData.mobile.trim(),
-          industry: 'equipment_amc',
-          persona: 'seller',
-          completed_demo: false,
-        }]);
-   REPLACE:
-        // Save lead via API (service_role)
-        await api.post(API_ENDPOINTS.PUBLIC.LEAD_CREATE, {
-          name: leadData.name.trim(),
-          email: `${leadData.mobile}@playground.demo`,
-          phone: leadData.mobile.trim(),
-          industry: 'equipment_amc',
-          persona: 'seller',
-          completed_demo: false,
-        });
-
-C3) src/components/CRO/UrgencyElements.tsx
-   FIND:
-        await supabase.from('leads_contractnest').insert([{
-          name: formData.name.trim(),
-          email: `${formData.mobile}@earlyaccess.contractnest.com`,
-          phone: formData.mobile.trim(),
-          industry: 'early_access',
-          persona: 'founder',
-          completed_demo: false,
-          source: 'early_access_countdown'
-        }]);
-   REPLACE:
-        await api.post(API_ENDPOINTS.PUBLIC.LEAD_CREATE, {
-          name: formData.name.trim(),
-          email: `${formData.mobile}@earlyaccess.contractnest.com`,
-          phone: formData.mobile.trim(),
-          industry: 'early_access',
-          persona: 'founder',
-          completed_demo: false,
-          source: 'early_access_countdown'
-        });
-
-C4) src/pages/public/PlaygroundPage.tsx  (lead UPDATE)
-   FIND:
-        await supabase
-          .from('leads_contractnest')
-          .update({
-            completed_demo: true,
-            contract_data: persona === 'seller' ? contractData : { rfpData, selectedVendor },
-          })
-          .eq('id', lead.id);
-   REPLACE:
-        await api.patch(API_ENDPOINTS.PUBLIC.LEAD_UPDATE(lead.id), {
-          completed_demo: true,
-          contract_data: persona === 'seller' ? contractData : { rfpData, selectedVendor },
-        });
-   NOTE: PlaygroundPage also renders LeadCaptureForm (C1) — that insert is already
-   handled there; only this update needs changing here.
-
--------------------------------------------------------------------
-D) contractnest-ui — AUTH METHODS (2 files)
--------------------------------------------------------------------
-D1) src/pages/auth/ForgotPasswordPage.tsx   (pre-login -> by email)
-   FIND:
-        const { data, error } = await supabase
-          .from('t_user_auth_methods')
-          .select('auth_type, is_primary')
-          .eq('auth_identifier', email.toLowerCase())
-          .eq('is_deleted', false);
-
-        if (error) {
-          console.error('Error checking auth methods:', error);
-          setUserAuthType('unknown');
-          return;
-        }
-   REPLACE:
-        let data: Array<{ auth_type: string; is_primary: boolean }> = [];
-        try {
-          const resp = await api.get(API_ENDPOINTS.PUBLIC.AUTH_METHODS, {
-            params: { identifier: email.toLowerCase() },
-          });
-          data = resp.data?.methods || [];
-        } catch (error) {
-          console.error('Error checking auth methods:', error);
-          setUserAuthType('unknown');
-          return;
-        }
-   (Ensure `api` + `API_ENDPOINTS` are imported.)
-
-D2) src/components/auth/LockScreen.tsx   (post-login -> by token/user_id)
-   FIND:
-          const { data: authMethods, error } = await supabase
-            .from('t_user_auth_methods')
-            .select('auth_type, is_primary, is_deleted')
-            .eq('user_id', user.id)
-            .eq('is_deleted', false)
-            .order('is_primary', { ascending: false })
-            .order('last_used_at', { ascending: false });
-   REPLACE:
-          let authMethods: Array<{ auth_type: string; is_primary: boolean }> = [];
-          let error: any = null;
-          try {
-            const resp = await api.get(API_ENDPOINTS.PUBLIC.AUTH_METHODS);
-            authMethods = resp.data?.methods || [];
-          } catch (e) {
-            error = e;
-          }
-   NOTE: the api axios instance carries the logged-in Authorization header, so the
-   endpoint resolves the user from the token. The downstream code that reads
-   authMethods[].auth_type / .is_primary is unchanged.
-
--------------------------------------------------------------------
-E) contractnest-ui — TENANT NAME CHECK (1 file)
--------------------------------------------------------------------
-E1) src/pages/auth/CreateTenantPage.tsx
-   FIND:
-        const workspaceCode = generateWorkspaceCode(name);
-        const { data: existing } = await supabase
-          .from('t_tenants')
-          .select('id')
-          .eq('workspace_code', workspaceCode)
-          .maybeSingle();
-
-        setNameAvailable(!existing);
-   REPLACE:
-        const resp = await api.get(API_ENDPOINTS.TENANTS.CHECK_AVAILABILITY, {
-          params: { name },
-        });
-        setNameAvailable(resp.data?.available ?? null);
-   (Uses the existing /api/tenants/check-availability endpoint. Ensure `api` +
-    `API_ENDPOINTS` are imported.)
-
--------------------------------------------------------------------
-F) AFTER deploying A–E: verify no client Data-API calls remain
--------------------------------------------------------------------
-   grep -rnE "\\.(from|rpc)\\(['\"]" contractnest-ui/src   # expect: none
-   (supabase.auth.* is fine — that's GoTrue, a separate door.)
-
-Then apply the grant-revoke SQL (see ../close-data-api-door-REVOKE/) to shut
-Door B. Do NOT revoke before A–E are live, or lead capture / forgot-password /
-lock-screen / create-tenant will break.
-
-TESTING CHECKLIST
-   [ ] Landing + playground + early-access forms save a lead (check leads_contractnest)
-   [ ] Playground "completed" updates the lead row
-   [ ] Forgot-password detects email/google/both correctly
-   [ ] Lock screen detects the right unlock method
-   [ ] Create-tenant name availability check works (available/taken)
+THEN CLOSE DOOR B — run REVOKE_DATA_API_grants.sql (staged, reversible) in the
+Supabase SQL Editor. Do NOT revoke before the files above are deployed.
 ===================================================================
