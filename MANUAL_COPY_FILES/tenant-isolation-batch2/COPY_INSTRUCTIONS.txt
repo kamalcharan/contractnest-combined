@@ -1,0 +1,47 @@
+===============================================================
+TENANT ISOLATION — BATCH 2 — COPY / APPLY INSTRUCTIONS
+===============================================================
+
+STATUS: ALREADY APPLIED TO PRODUCTION (via Supabase execute_sql, with approval).
+        These files keep the repo migration history in sync. Copying them does
+        NOT re-run anything unless you execute them.
+
+PURPOSE
+---------------------------------------------------------------
+(a) Enable RLS on t_business_groups  -> Model A (open directory):
+      - reads: existing groups_select_active (is_active = true) = open browse
+      - writes: existing groups_*_service policies = service_role only
+(b) Consolidate the 4 tables Batch 1 enabled (t_category_master,
+    t_category_details, t_category_resources_master, t_group_memberships) onto
+    the clean batch1_* policies by dropping 15 inert/buggy legacy policies.
+
+SUBMODULE AFFECTED
+---------------------------------------------------------------
+  contractnest-edge  (SQL migration only)
+
+FILES
+---------------------------------------------------------------
+  contractnest-edge/supabase/migrations/tenant-isolation/
+      002_batch2_business_groups_and_policy_consolidation.sql        (UP)
+      002_batch2_business_groups_and_policy_consolidation_DOWN.sql   (rollback)
+
+VALIDATION (live, then re-confirmed on committed state)
+---------------------------------------------------------------
+  t_category_master  : User A sees 5 / 146  (isolation preserved after cleanup)
+  t_business_groups  : User A sees 2 / 2     (directory stays OPEN — Model A)
+  t_group_memberships: User A sees 1 / 61    (isolation correct)
+  Post-apply policy counts: t_category_master = 2, t_group_memberships = 2
+  (batch1_* only), t_business_groups RLS = ON.
+
+ROLLBACK
+---------------------------------------------------------------
+  Run 002_..._DOWN.sql (disables RLS on t_business_groups). The dropped legacy
+  policies were provably dead (0 row-visibility impact) and are intentionally
+  not recreated; the tables stay protected by the batch1_* policies.
+
+NOT IN THIS BATCH
+---------------------------------------------------------------
+  leads / leads_contractnest  -> left untouched (drop candidates; handle as a
+  separate, confirmed deletion).
+  leads_contractnest RLS      -> deferred to Batch 5 (browser-facing table).
+===============================================================
