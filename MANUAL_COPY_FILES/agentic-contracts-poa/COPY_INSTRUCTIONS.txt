@@ -1,0 +1,21 @@
+BATCH: agentic-contracts-poa
+DATE: 2026-07-02
+TYPE: Documentation only (no code)
+
+SUBMODULES AFFECTED:
+  - ClaudeDocumentation (1 new file)
+
+FILES:
+  1. ClaudeDocumentation/ContractNest Agent/POA-AGENTIC-CONTRACTS.md
+     Purpose: Agreed plan of action for the agentic Contracts/Templates build
+     (Composer + Runtime Loop + data flywheel). Companion to ARCHITECTURE.md
+     and the agenticAI audit P5.
+
+COPY COMMANDS (PowerShell, from contractnest-combined root):
+  Copy-Item "MANUAL_COPY_FILES\agentic-contracts-poa\ClaudeDocumentation\*" -Destination "ClaudeDocumentation\" -Recurse -Force
+
+COMMIT (after review):
+  cd ClaudeDocumentation
+  git add "ContractNest Agent/POA-AGENTIC-CONTRACTS.md"
+  git commit -m "docs: POA for agentic contracts - composer + runtime loop + flywheel"
+  git push origin master
