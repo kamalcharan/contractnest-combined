@@ -1,0 +1,49 @@
+BATCH: agentic-p1.2.1-interactive-cards
+DATE: 2026-07-02
+TYPE: Code — Phase 1.2.1: canvas observations from the owner's first full run
+DEPENDS ON: p0 → p1 → p1.1 → p1.2 (this batch REPLACES p1.2 files)
+
+SUBMODULES AFFECTED:
+  - contractnest-api  (2 replaced: composer service, controller)
+  - contractnest-ui   (6 replaced/updated: vaniComposerService, canvas, review,
+                       ContractWizard/index.tsx, create page, hub page)
+
+WHAT THIS DELIVERS (owner observations 1–6):
+  1. BIGGER SURFACES — canvas max-w-7xl/94vh; review max-w-7xl/95vh.
+  2. BUYER FIXED ON THE CARD — the buyer "needs you" card now has: candidate
+     buttons, an on-card contact SEARCH (re-queries your contacts live), a
+     CREATE CONTACT button (same QuickAddContactDrawer the wizard uses —
+     pipeline resumes with the new contact), and "Skip — pick later".
+     No wizard detour for buyer gaps.
+  3. CARDS MITIGATE GAPS — new PREFERENCES card after assembly: billing mode
+     (Upfront / EMI×n / Per-cycle + cycle picker), acceptance (Sign-off /
+     Payment / Auto), start date, and currency are all adjustable ON the card;
+     every change re-runs the real assemble step (~2-4s) and refreshes the
+     draft, totals, calendar and readiness. Defaults are labeled "(default)".
+  4. EDIT JUMPS TO THE STEP — "Edit in wizard" opens at the FIRST step that
+     needs you (not step 1); every "needs you" chip on the readiness card is
+     a deep link into its exact wizard step (new vaniInitialStepId prop).
+  5. DEFAULTS VISIBLE — review header shows a defaults strip (acceptance /
+     start / currency / billing); change them via ← Back → Preferences card.
+  6. TENANT DEFAULT CURRENCY — contract currency now comes from your tenant
+     default (getDefaultCurrency), changeable on the Preferences card; if any
+     block is priced in a different currency VaNi flags it (never silently
+     converts).
+
+COPY COMMANDS (PowerShell, from contractnest-combined root):
+  Copy-Item "MANUAL_COPY_FILES\agentic-p1.2.1-interactive-cards\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\agentic-p1.2.1-interactive-cards\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+NO DB MIGRATIONS. NO ENV CHANGES.
+
+LOCAL TESTING:
+  1. Canvas fills more of the screen; cards + dotted connector as before
+  2. Fake buyer name → buyer card: search your contacts on-card; or
+     "Create contact" → drawer → save → pipeline RESUMES automatically
+  3. After "Draft assembled": Preferences card → switch billing to EMI ×6 →
+     VaNi box shows "Assembling…" (~3s) → assembled card + totals update;
+     same for acceptance / start date / currency
+  4. Currency: switch to USD with INR-priced blocks → warning gap appears
+  5. Readiness chips: click a "needs you" chip → wizard opens AT that step
+  6. "Edit in wizard" from ready state → opens at first gap (or Review if none)
+  7. Review header shows the defaults strip
