@@ -1,0 +1,31 @@
+===================================================================
+AGENT BUILD — RETRO & HANDOFF DOC (session reset)
+===================================================================
+The canonical home is the ClaudeDocumentation submodule, but that submodule's
+remote was NOT pushable from the build session (403). So this parent-repo copy
+is the guaranteed-present one, and CLAUDE.md points a new session to it as the
+fallback.
+
+FILES
+  AGENT_BUILD_RETRO_AND_HANDOFF.md
+      -> read directly here; this is the copy the new session falls back to.
+
+  ClaudeDocumentation/agenticAI audit/AGENT_BUILD_RETRO_AND_HANDOFF.md
+      -> copy this into your ClaudeDocumentation checkout at the same path and
+         push it, so the canonical location is populated:
+
+         Copy-Item "MANUAL_COPY_FILES\agent-handoff\ClaudeDocumentation\agenticAI audit\AGENT_BUILD_RETRO_AND_HANDOFF.md" `
+                   "ClaudeDocumentation\agenticAI audit\AGENT_BUILD_RETRO_AND_HANDOFF.md" -Force
+         cd ClaudeDocumentation
+         git add "agenticAI audit/AGENT_BUILD_RETRO_AND_HANDOFF.md"
+         git commit -m "docs: agent build retro & handoff"
+         git push origin master   # or your ClaudeDocumentation branch
+         cd ..
+
+NOTE: A local commit of this doc already exists in the ClaudeDocumentation
+submodule in the build container (commit fd1673e) but could not be pushed.
+If that container is gone, use the copy here.
+
+CLAUDE.md (parent repo) was updated to instruct new sessions to READ the
+handoff -> DISCUSS the open decisions -> only then work (no jumping to build).
+===================================================================

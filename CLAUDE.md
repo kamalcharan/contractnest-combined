@@ -4,6 +4,20 @@
 
 ---
 
+## 🧭 AGENT WORKSTREAM — READ BEFORE ANY AGENT WORK
+
+If this session touches the **Template/Contract Agent**, "VaNi" agent, recipes, templates, catalog blocks, or the "service as software" direction:
+
+1. **Read first:** `ClaudeDocumentation/agenticAI audit/AGENT_BUILD_RETRO_AND_HANDOFF.md` — the retro/handoff from the prior attempt (the correct data model, what was tried and rejected, and why). **If that file is missing** (the ClaudeDocumentation submodule may not have synced — see note below), read the identical copy at `MANUAL_COPY_FILES/agent-handoff/AGENT_BUILD_RETRO_AND_HANDOFF.md` in this parent repo instead.
+2. **Then discuss:** work through the open decisions in §9 of that doc *in conversation with the owner*.
+3. **Only then work.** Do **NOT** jump straight to building. The prior session's failure was building UX shells with stubbed intelligence before the problem was agreed. No mocked/stubbed "agent" brains.
+
+Non-negotiables from that doc: **nothing is global — everything is tenant-scoped**; a **recipe = the tenant picking their own blocks** (blocks are the unit, not "slots"); **contextual filtering ≠ an agent**.
+
+> Note: the canonical copy lives in the `ClaudeDocumentation` submodule, but that submodule's remote was not pushable from the build session, so the parent-repo copy under `MANUAL_COPY_FILES/agent-handoff/` is the guaranteed-present one. If you have push access, sync the ClaudeDocumentation copy to its remote and drop the parent duplicate.
+
+---
+
 ## 🛑 GOLDEN RULES - READ FIRST
 
 ### 1. ANALYSIS FIRST, CODE LATER
