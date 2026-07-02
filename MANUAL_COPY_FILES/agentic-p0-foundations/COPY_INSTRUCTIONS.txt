@@ -1,0 +1,62 @@
+BATCH: agentic-p0-foundations
+DATE: 2026-07-02
+TYPE: Code (backend services + SQL migration) — Phase 0 of the agentic contracts POA
+
+SUBMODULES AFFECTED:
+  - contractnest-api  (3 new services, 2 new test scripts — nothing existing modified)
+  - contractnest-edge (1 new SQL migration — NOT auto-applied; owner applies via Supabase SQL editor)
+
+FILES:
+  1. contractnest-api/src/services/contractEventsDerivationService.ts
+     Server-side derivation of the contract forward calendar (computed_events).
+     1:1 port of the ContractWizard algorithm — the unlock that lets any
+     backend/agent draft a contract without the browser.
+
+  2. contractnest-api/src/services/vaniLLMClient.ts
+     Gateway for all VaNi LLM calls — self-hosted Qwen (OpenAI-compatible),
+     env-swappable model, /no_think enforced, JSON-repair parsing,
+     graceful degradation when the LLM VPS is down.
+
+  3. contractnest-api/src/services/vaniInteractionLogger.ts
+     Logs every LLM call to vn_interaction_log via SECURITY DEFINER RPCs
+     (auditService pattern, anon key). Fire-and-forget — logging failures
+     never break the user flow. Includes recordFeedback() for
+     was_edited / was_accepted / rating (the fine-tuning gold signals).
+
+  4. contractnest-api/src/__tests__/contractEventsDerivationParity.ts
+     Parity test: backend derivation vs verbatim UI algorithm, 6 scenarios.
+     PASSED in dev environment: all byte-identical.
+
+  5. contractnest-api/src/__tests__/vaniLLMSmoke.ts
+     End-to-end smoke: Qwen call -> JSON parse -> interaction logged ->
+     feedback recorded. Run after setting env + applying the migration.
+
+  6. contractnest-edge/supabase/migrations/vani-agent/001_create_vn_interaction_log.sql
+     vn_interaction_log table (LLM Strategy v1.0 schema) + insert/feedback
+     RPCs. New objects only — touches NO existing table, grant, or policy.
+     Table is RLS-locked with zero policies; the RPCs are the only write path.
+
+COPY COMMANDS (PowerShell, from contractnest-combined root):
+  Copy-Item "MANUAL_COPY_FILES\agentic-p0-foundations\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\agentic-p0-foundations\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+ENV VARS (add to contractnest-api\.env — values are in your Infrastructure doc v3.0 §4.3;
+never commit them):
+  VANI_LLM_URL=https://llm.dristiq.io/v1/chat/completions
+  VANI_LLM_API_KEY=<the vk-llm-... key from the infra doc>
+  VANI_LLM_MODEL=qwen3-4b-q4km
+  # optional: VANI_LLM_TIMEOUT_MS=90000
+
+DB MIGRATION (owner-applied, when ready):
+  Open Supabase SQL editor on project uwyqhzotluikawcboldr and run the
+  contents of contractnest-edge/supabase/migrations/vani-agent/001_create_vn_interaction_log.sql
+  (creates only new objects: 1 table, 4 indexes, 2 functions).
+
+LOCAL TESTS:
+  cd contractnest-api
+  npx ts-node --transpile-only src/__tests__/contractEventsDerivationParity.ts   # expect: all PARITY
+  npx ts-node -r dotenv/config src/__tests__/vaniLLMSmoke.ts                     # needs env + migration
+  npm run dev                                                                     # boots clean; new services are inert until Phase 1 wires them
+
+NOTE: If the global ts-node complains about tsconfig deprecations, use the
+project-local one: node_modules\.bin\ts-node

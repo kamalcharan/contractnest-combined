@@ -123,6 +123,13 @@ All DB/cron changes ship as migrations reviewed and applied by owner — **never
 2. **Knowledge asset** — 513 checkpoints, cycles, compliance defaults, KT price bands make drafts *correct*, not just fluent. Generic-LLM competitors can't replicate the data.
 3. **Data flywheel** — every draft, edit, and approval logged from day one → ContractNest-LLM (Strategy v1.0: 300+ interactions by M9; licensable at 18–24 mo). The moat compounds as a byproduct of normal usage.
 
+## 6a. Addendum (Phase 0 kickoff, 2026-07-02) — test tenant & cold start
+
+- **Test tenant:** hubb (HVAC, `1f0a8dd2-d467-458f-8598-fe5c69548d7e`). Live data verified: 660 active blocks (526 spare_part / 42 pm / 32 inspection / 30 repair / 22 decommission / 8 install), 4 contacts, **0 templates, 1 draft contract, 0 contract events**.
+- **Cold-start is a Phase 1 requirement:** the composer must draft from blocks + KT knowledge alone when a tenant has no templates and no accepted contracts (hubb's state today = most new tenants' state).
+- **Owner test-data prep before Phase 1 acceptance testing (~15 min, via existing UI):** create 1–2 templates in Catalog Studio (e.g. "Standard HVAC AMC"); take one contract to accepted so `t_contract_events` materializes (needed for Phase 2 loop testing and renewal gap-reasoning).
+- **Flagship test story:** "1-year AMC for [buyer], quarterly billing" → correct PM/inspection blocks (not spare-part noise), priced calendar, ≥1 genuine gap flag.
+
 ## 7. Build order & delivery
 
 Phases ship in order; each is independently demoable. Delivery per CLAUDE.md: full-file copies under `MANUAL_COPY_FILES/<batch>/` + `COPY_INSTRUCTIONS.txt`; Phase-2-style merge commands only after owner confirms local testing. DB migrations always owner-applied.
