@@ -130,6 +130,30 @@ All DB/cron changes ship as migrations reviewed and applied by owner — **never
 - **Owner test-data prep before Phase 1 acceptance testing (~15 min, via existing UI):** create 1–2 templates in Catalog Studio (e.g. "Standard HVAC AMC"); take one contract to accepted so `t_contract_events` materializes (needed for Phase 2 loop testing and renewal gap-reasoning).
 - **Flagship test story:** "1-year AMC for [buyer], quarterly billing" → correct PM/inspection blocks (not spare-part noise), priced calendar, ≥1 genuine gap flag.
 
+## 6b. Addendum (2026-07-02) — business-model alignment & the template tier ladder
+
+**Paywall line (owner decision):** the Agent is visible only to VaNi subscribers; otherwise manual. Consequences:
+
+| Capability | Tier |
+|---|---|
+| Manual wizard + templates (create/save/instantiate) | Free/manual — templates are the free tier's spine |
+| Intent box → composed draft, gap analysis | VaNi subscription |
+| Runtime loop (auto tickets/reminders/renewal drafts) | VaNi, metered |
+
+**The tier ladder (LLM is not mandatory per request):**
+- Tier 1 — template hit: deterministic match (nomenclature + equipment + duration) → instantiate, no LLM, instant. One engine, two doors: manual pick (free) / VaNi auto-match (paid, metered low or free — honest metering).
+- Tier 2 — rules-first intent parse: duration/billing/buyer/equipment resolved deterministically from regex + tenant data; LLM only for fuzzy language.
+- Tier 3 — full composition (both LLM calls) for novel requests; accepted drafts get a "Save as template?" offer → next time it's Tier 1. The agent populates its own cache; every cache entry is human-approved. No hidden LLM-response cache — t_cat_templates IS the cache.
+- Gap-check runs on ALL tiers (visible subscriber value even on template hits).
+
+**POA amendments:**
+1. VaNi entitlement gate at the composer boundary now (UI button + server-side route check); full credit reserve/commit stays Phase 3.
+2. New free-tier dependency: FIX manual template instantiation — TemplateSelectionStep is a stub (templates=[] hardcoded; templateId never hydrates blocks). Reuses the vaniPrefill hydration mechanics. Required for paywall coherence: templates=free, intelligence=paid.
+3. Phase 2 metering rides existing JTD credit rails (jtd-framework/003_jtd_credit_integration.sql + expire-no-credits-jtds) — autopilot halts at 0 credits by existing design.
+4. Retention property: "save VaNi draft as template" creates an asset the tenant keeps in the free tier.
+
+Pricing integration deliberately deferred (owner: later).
+
 ## 7. Build order & delivery
 
 Phases ship in order; each is independently demoable. Delivery per CLAUDE.md: full-file copies under `MANUAL_COPY_FILES/<batch>/` + `COPY_INSTRUCTIONS.txt`; Phase-2-style merge commands only after owner confirms local testing. DB migrations always owner-applied.
