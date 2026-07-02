@@ -1,0 +1,76 @@
+BATCH: agentic-p1-composer
+DATE: 2026-07-02
+TYPE: Code — Phase 1 of the agentic contracts POA (the Contract Composer)
+DEPENDS ON: agentic-p0-foundations (must be applied first: env vars + vn_interaction_log migration)
+
+SUBMODULES AFFECTED:
+  - contractnest-api  (4 new files, 2 modified: vaniLLMClient.ts, index.ts)
+  - contractnest-ui   (2 new files, 2 modified: ContractWizard/index.tsx, pages/contracts/create/index.tsx)
+
+WHAT THIS DELIVERS:
+  "Draft with VaNi" on /contracts/create/:type — type one sentence
+  ("1 year AMC for Kamal Industries with quarterly billing") and VaNi:
+    1. parses intent (real LLM call),
+    2. resolves the buyer from your contacts (disambiguates if needed),
+    3. deterministically shortlists your catalog blocks by activity + equipment,
+    4. LLM-selects blocks and FLAGS GAPS,
+    5. opens the ContractWizard fully pre-filled for your review.
+  Nothing is created or sent without your review. Both LLM calls are logged
+  to vn_interaction_log; sending a VaNi draft reports was_accepted/was_edited.
+
+NEW FILES (api):
+  contractnest-api/src/services/contractComposerService.ts   - the pipeline
+  contractnest-api/src/controllers/vaniComposerController.ts - request handling
+  contractnest-api/src/routes/vaniComposerRoutes.ts          - /api/vani-composer/*
+  contractnest-api/src/skills/vani-intent-parser.md          - LLM prompt: intent
+  contractnest-api/src/skills/vani-block-composer.md         - LLM prompt: selection+gaps
+
+MODIFIED FILES (api):
+  contractnest-api/src/services/vaniLLMClient.ts  - adds per-call timeoutMs option
+  contractnest-api/src/index.ts                   - registers vani-composer routes
+    ⚠️ index.ts is shipped as a FULL file based on the current main. If your
+    local index.ts has newer changes, DO NOT overwrite — instead apply the two
+    marked blocks manually (search "VaNi Composer" in the shipped file):
+      (1) lazy-load block after the contract-event routes load block
+      (2) app.use('/api/vani-composer', ...) after the contract-event mount
+
+NEW FILES (ui):
+  contractnest-ui/src/services/vaniComposerService.ts
+  contractnest-ui/src/components/contracts/vani/VaNiComposerLauncher.tsx
+
+MODIFIED FILES (ui):
+  contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+    - vaniPrefill/vaniInteractionIds props, hydration effect, feedback effect
+    ⚠️ Same full-file caution as index.ts — search "vani" for the added blocks.
+  contractnest-ui/src/pages/contracts/create/index.tsx
+    - "Draft with VaNi" button + launcher wiring
+
+COPY COMMANDS (PowerShell, from contractnest-combined root):
+  Copy-Item "MANUAL_COPY_FILES\agentic-p1-composer\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\agentic-p1-composer\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+TEST DATA PREP (hubb tenant, ~15 min — see POA §6a):
+  - Ensure at least 1 client contact exists (e.g. "Kamal Industries")
+  - Optional: create a template in Catalog Studio (composer works cold-start without it)
+
+LOCAL TESTING:
+  1. cd contractnest-api && npm run dev     (watch for "VaNi composer routes registered")
+  2. cd contractnest-ui && npm run dev
+  3. Login as hub@h.com → /contracts/create/client → "Draft with VaNi"
+  4. Type: "1 year AMC for <your contact> with quarterly billing" → Draft it
+     Expect: parsing ~30-60s, composing ~60-120s (real CPU inference, honest timer)
+  5. Review the result card (blocks/events/total + gap flags) → "Review in Wizard"
+  6. Wizard opens pre-filled: buyer, name, duration, billing mode, blocks
+  7. Walk the steps, adjust anything, send (or discard)
+  8. Verify logging:  select context_payload->>'skill', was_accepted, was_edited
+     from vn_interaction_log order by created_at desc limit 4;
+
+PRODUCTION CHECKLIST:
+  - Transactions: composer is read-only; contract creation uses the existing
+    create_contract_transaction path (unchanged)
+  - Race conditions: rate limit 10 req/min/IP on composer routes; feedback
+    idempotent via client-generated interaction ids
+  - Error handling: every stage try/caught; LLM failure → clear toast, no
+    partial state; buyer-not-found → guided warning toast
+  - Toasts: existing VaNiToast (useVaNiToast)
+  - Loaders: existing pattern (Loader2 spinner) with REAL elapsed-time counter
