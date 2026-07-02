@@ -1,0 +1,67 @@
+BATCH: agentic-p1.1-composer
+DATE: 2026-07-02
+TYPE: Code — Phase 1.1 (audit fixes + business-model gating)
+DEPENDS ON: agentic-p0-foundations AND agentic-p1-composer (apply those first)
+
+SUBMODULES AFFECTED:
+  - contractnest-api  (1 new: vaniEntitlementService; 4 modified: composer service,
+                       controller, routes, intent-parser skill)
+  - contractnest-ui   (5 modified: vaniComposerService, VaNiComposerLauncher,
+                       ContractWizard/index.tsx, pages/contracts/create, pages/contracts/hub)
+
+WHAT THIS DELIVERS (from AUDIT-WIZARD-STEPS-VS-COMPOSER.md):
+  1. NOMENCLATURE MAPPING (keystone): VaNi picks from your real cat_contract_nomenclature
+     master (21 items, 4 groups) as a closed choice, validated deterministically →
+     nomenclatureId/Name/Group prefilled. Groups drive the Assets step + industry
+     awareness (healthcare → service_delivery, no asset step).
+  2. ASSETS & COVERAGE: for equipment/facility contracts VaNi reads the client's
+     registered assets, prefills equipmentDetails + coverage types (derived from
+     assets + selected blocks' equipment), enables 'buyer can add' + warns when
+     the client has none.
+  3. ACCEPTANCE: extracted from intent when stated; else defaults to Sign-off
+     with an explicit info note. No more silent hard-block.
+  4. BUYER NOT FOUND: VaNi drafts anyway — you select or quick-create the buyer
+     in the wizard. Disambiguation gets a "none of these" option too.
+  5. EVIDENCE PROPOSAL: blocks carrying form templates → smart_form with those
+     forms; equipment/facility else → upload; service else → none.
+  6. START DATE + GRACE parsed from intent ("from 1st August", "15 days grace").
+  7. READINESS CARD: result shows "Ready: N of M steps · Needs you: …" — every
+     gated wizard step arrives satisfied or explicitly flagged.
+  8. GATING (business model): "Draft with VaNi" appears ONLY in Revenue mode
+     (client contracts) AND for VaNi-entitled tenants. Server-side 403 on the
+     composer routes for non-entitled tenants. NEW: hub (/contracts) entry button.
+
+ENTITLEMENT (pricing integration deferred — policy is env-pluggable):
+  VANI_ENTITLEMENT_MODE=open           (default: all tenants entitled — use this now)
+  VANI_ENTITLEMENT_MODE=subscription   (requires active/trial t_bm_tenant_subscription row)
+
+COPY COMMANDS (PowerShell, from contractnest-combined root):
+  Copy-Item "MANUAL_COPY_FILES\agentic-p1.1-composer\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\agentic-p1.1-composer\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+⚠️ FULL-FILE CAUTION (same as p1): ContractWizard\index.tsx and pages\contracts\hub\index.tsx
+   ship as full files based on current main. If your local copies have newer
+   changes, apply the marked blocks manually (search "vani" / "VaNi") instead
+   of overwriting.
+
+NO DB MIGRATIONS in this batch.
+
+TEST DATA PREP (hubb — for the asset/coverage features to have data):
+  - Register 2-3 client assets for one hubb contact (Client Assets / asset registry)
+  - Ensure equipment resources exist for the tenant (t_category_resources_master
+    currently has 0 rows for hubb — coverage will honestly flag "needs you" until then)
+
+LOCAL TESTING:
+  1. api + ui npm run dev
+  2. /contracts (hub, Revenue mode) → "Draft with VaNi" appears; flip to Expense → hidden
+  3. Intent: "1 year AMC for <contact> with quarterly billing"
+     → readiness card shows "Ready N of M" + Contract type: AMC · Acceptance: signoff
+     → wizard opens with nomenclature pre-selected; Assets step NOW APPEARS (AMC =
+       equipment_maintenance); coverage flagged if underivable
+  4. Buyer-not-found test: use a fake name → info toast, draft continues, buyer
+     step flagged in "Needs you", wizard lets you quick-add
+  5. Healthcare test: "3 month care plan for <contact>, billed monthly"
+     → nomenclature Care Plan (service_delivery) → NO assets step (correct by taxonomy)
+  6. Entitlement test (optional): set VANI_ENTITLEMENT_MODE=subscription in api .env,
+     restart → button disappears for hubb (no subscription row), API returns 403
+  7. vn_interaction_log: nomenclature_options in context_payload of intent_parse rows
