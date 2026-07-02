@@ -1,0 +1,69 @@
+BATCH: agentic-p1.2-canvas
+DATE: 2026-07-02
+TYPE: Code — Phase 1.2: the VaNi Canvas (per-step pipeline + animated cards +
+      single-view review & finalize)
+DEPENDS ON: agentic-p0-foundations, agentic-p1-composer, agentic-p1.1-composer
+            (apply in order; this batch REPLACES files from p1/p1.1)
+
+SUBMODULES AFFECTED:
+  - contractnest-api  (3 replaced: composer service, controller, routes)
+  - contractnest-ui   (3 replaced: vaniComposerService, VaNiComposerLauncher,
+                       ContractWizard/index.tsx; 2 new: VaNiReviewFinalize,
+                       hooks/useContractSubmission)
+
+WHAT THIS DELIVERS (owner design, 2026-07-02 sketch):
+  1. TRUE PER-STEP PIPELINE — the composer is now 5 stateless endpoints:
+     parse-intent (LLM) → resolve-buyer → shortlist → select-blocks (LLM) → assemble.
+     Each canvas card corresponds to exactly one completed call. No simulated
+     progress, ever.
+  2. THE VANI CANVAS — left: VaNi builder box (live narration, real elapsed
+     seconds); right: step cards that ANIMATE OUT OF THE VANI BOX along a
+     dotted connector, one per completed step. Interactive cards pause the
+     pipeline for user action (buyer disambiguation / continue-without-buyer),
+     with per-step retry on errors.
+  3. SINGLE-VIEW REVIEW & FINALIZE — no wizard walk needed: the canvas flows
+     into the contract view (reuses ReviewSendStep's paper canvas) with
+     Approve & Send. "Edit in wizard" remains the fallback (vaniPrefill).
+  4. ONE WRITE PATH — finalize goes through useContractSubmission which uses
+     the wizard's own exported mapWizardToRequest + the existing
+     createContract/updateStatus/sendNotification operations. Totals are now
+     computed server-side in /assemble so the review can send without the
+     wizard's billing step.
+     · Auto-accept drafts route to the wizard (the pre-payment dialog lives
+       there); payment/signoff acceptance finalize directly from the canvas.
+  5. Send is blocked (with explicit reasons) until hard requirements are met:
+     buyer selected, blocks present, coverage picked for asset-group contracts
+     — same rules the wizard's gated steps enforce.
+
+COPY COMMANDS (PowerShell, from contractnest-combined root):
+  Copy-Item "MANUAL_COPY_FILES\agentic-p1.2-canvas\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\agentic-p1.2-canvas\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+⚠️ ContractWizard\index.tsx ships as a full file (adds `export` to
+   mapWizardToRequest and createInitialWizardState, on top of p1.1 content).
+   If your local wizard moved ahead, apply those two `export` keywords +
+   the p1.1 "vani" blocks manually instead of overwriting.
+
+NO DB MIGRATIONS. NO ENV CHANGES.
+
+LOCAL TESTING:
+  1. api + ui npm run dev
+  2. /contracts (Revenue) → Draft with VaNi →
+     "1 year AMC for <contact> with quarterly billing" → Draft it
+  3. Watch the canvas: cards slide out of the VaNi box one per step —
+     Request understood → Buyer found → Catalog scanned → N blocks composed →
+     Draft assembled → readiness card. Timers are real (parse ~40s, compose ~90s).
+  4. Ambiguity: partial buyer name → pipeline PAUSES at the buyer card,
+     pick a contact → pipeline resumes
+  5. Review & Finalize → the contract paper view opens → Approve & Send →
+     success panel with CNAK → verify the contract in the hub list
+  6. Edit path: from ready state click "Edit in wizard" → wizard opens prefilled
+  7. Auto-accept test: "...auto accept on delivery" → review shows
+     "Continue in wizard (payment on acceptance)" instead of direct send
+  8. Feedback: after Approve & Send, vn_interaction_log rows for this run
+     show was_accepted=true
+
+KNOWN LIMITS (honest):
+  - Send from canvas covers signoff + payment acceptance; auto-accept uses wizard
+  - Buyer quick-create from the canvas routes through the wizard (Edit path);
+    inline quick-add on the buyer card is a p1.3 candidate
