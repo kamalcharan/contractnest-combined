@@ -1,0 +1,57 @@
+===================================================================
+TENANT VaNi — "Suggest blocks" on the contract's Add Service Blocks step
+(Template/Contract Agent — tenant flow · correct model: recipe = picked blocks)
+===================================================================
+Full-file copies — Copy-Item each over the original (1 NEW, 1 REPLACE).
+Frontend only. No DB / API / edge changes. Recommendation is a local,
+deterministic heuristic in this slice (asset relevance) — a later batch can
+swap it for an API/edge call without changing the component surface.
+
+WHAT THIS IS
+  The tenant agent. On the contract wizard's "Add Service Blocks" step, a
+  "Suggest blocks with VaNi" button opens a right drawer that reads the
+  TENANT'S OWN catalog blocks (same source as the block library), surfaces the
+  ones relevant to the contract's assets (services + spares), lets the tenant
+  accept/reject, and adds the accepted ones straight into the wizard's
+  selectedBlocks. It never invents blocks — it only picks from what the tenant
+  already has. This is the "recipe = pick your blocks" model, accelerated.
+
+SUBMODULES AFFECTED: contractnest-ui  (ONLY)
+
+-------------------------------------------------------------------
+FILES (source in MANUAL_COPY_FILES  ->  destination in repo)
+Base: contractnest-ui/src/components/contracts/ContractWizard/
+-------------------------------------------------------------------
+  vani/VaNiBlockRecommender.tsx   (NEW)     -> <base>/vani/VaNiBlockRecommender.tsx
+  steps/ServiceBlocksStep.tsx     (REPLACE) -> <base>/steps/ServiceBlocksStep.tsx
+
+WHAT CHANGED IN ServiceBlocksStep.tsx
+  - Extracted buildConfigurableBlock() — the block→ConfigurableBlock pricing/
+    tax/cycle logic — as a pure helper (no behaviour change to single-add).
+  - Added handleAddBlocks(blocks[]) — bulk add in ONE onBlocksChange (avoids the
+    stale-closure loop bug; single-add still used by the library).
+  - Added a "Suggest blocks with VaNi" button in the step header + mounts the
+    VaNiBlockRecommender drawer (portaled), passing asset names (from coverage
+    types), already-added base ids, and onAddBlocks=handleAddBlocks.
+
+  VaNiBlockRecommender.tsx — reads useCatBlocksTest() (tenant catalog), filters
+    blocks relevant to the assets, groups Services / Spares, services pre-
+    accepted, "Add N blocks" -> handleAddBlocks.
+
+POWERSHELL COPY (from repo root)
+  $b = "MANUAL_COPY_FILES\tenant-vani-blocks\contractnest-ui\src\components\contracts\ContractWizard"
+  $d = "contractnest-ui\src\components\contracts\ContractWizard"
+  New-Item -ItemType Directory -Force -Path "$d\vani" | Out-Null
+  Copy-Item "$b\vani\VaNiBlockRecommender.tsx" "$d\vani\VaNiBlockRecommender.tsx" -Force
+  Copy-Item "$b\steps\ServiceBlocksStep.tsx"   "$d\steps\ServiceBlocksStep.tsx"   -Force
+  Write-Host "tenant VaNi blocks copied" -ForegroundColor Green
+
+TEST
+  cd contractnest-ui ; npm run dev
+  Create a contract (a tenant with a catalog, e.g. an HVAC tenant) -> reach
+  "Add Service Blocks" -> click "Suggest blocks with VaNi" -> drawer lists YOUR
+  catalog's services (cadence + price) + spares -> toggle a few -> "Add N blocks"
+  -> they appear in Added Blocks with correct pricing -> continue to billing/
+  events as normal. If assets have no matching blocks, the drawer says so and
+  points to Catalog Studio -> VaNi Seeding.
+===================================================================
