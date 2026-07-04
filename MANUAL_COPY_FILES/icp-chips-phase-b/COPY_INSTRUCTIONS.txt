@@ -1,0 +1,64 @@
+═══════════════════════════════════════════════════
+📦 CHANGE: ICP smart chips — Phase B (near-profile / archetype)
+═══════════════════════════════════════════════════
+Branch (combined repo): claude/handover-templates-agent-qretm1
+Submodule affected: contractnest-api  (only)   |   NO UI change
+
+FILE (copy 1)
+  contractnest-api/src/services/contractComposerService.ts
+  (SUPERSEDES the copy in finish-line-A — this is the latest of that file: it
+   already carries ICP chips Phase A, template faithfulness, template tax, AND
+   this Phase B. The finish-line-A UI files are unchanged — keep them.)
+
+DB MIGRATION — ✅ ALREADY APPLIED (project uwyqhzotluikawcboldr)
+  migrations/001_icp_archetypes_and_neighbours.sql is here for your records only.
+  It created:
+    • m_icp_archetypes  (7 seeded ICP archetypes: healthcare, facility/property,
+      IT/digital consulting, professional services, wellness/fitness, field
+      services, + a generic fallback) — each with composable starter chips.
+    • icp_similar_tenants(tenant_id, limit)  RPC — nearest Smart-Profile
+      neighbours by embedding (pgvector cosine).
+  You do NOT need to run it again.
+
+WHAT PHASE B DOES
+  Phase A builds chips from the tenant's OWN data (profile clusters, keywords,
+  resources, templates). If that yields a FULL row (4 chips), Phase B never runs.
+  When it yields FEWER than 4 (cold-start / thin profile), buildSuggestions now
+  borrows to fill the rest — grounded, composable starters, never generic:
+    1) ICP ARCHETYPE (works from day one): classifies the tenant by industry
+       (t_tenant_profiles.industry_id + t_tenant_served_industries) + persona +
+       vocabulary → best m_icp_archetypes match → its chip_patterns. Falls back
+       to 'generic_service' if nothing matches.
+    2) EMBEDDING NEIGHBOURS (once the tenant has a profile embedding): calls
+       icp_similar_tenants → borrows the strongest cluster terms of the most
+       similar tenants → "1 year <Their Term> service package…".
+  Precedence: own-data chips (Phase A) > neighbour > archetype > (UI static
+  examples). So "same/near profiles get similar chips", and a good profile for
+  one tenant improves suggestions for similar tenants.
+
+  ENV: still needs SUPABASE_SERVICE_ROLE_KEY (the archetype table + neighbour RPC
+  + profile/cluster reads are service-role). Without it, Phase A resource chips
+  still work; Phase B (and vocabulary ranking) are skipped — no crash.
+
+VERIFIED: tsc --noEmit = 0 source errors. Migration applied + verified (7
+  archetypes; RPC runs — returns 0 for a tenant with no embedding, which is
+  exactly when the archetype layer covers instead).
+
+═══════════════════════════════════════════════════
+PHASE 1 — COPY & TEST
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\icp-chips-phase-b\contractnest-api\src\services\contractComposerService.ts" -Destination "contractnest-api\src\services\contractComposerService.ts" -Force
+cd contractnest-api ; npm run dev   (restart API)
+
+TEST
+  [ ] A COLD-START tenant (fresh onboard, industry set, no Smart Profile yet):
+      open "Draft with VaNi" → chips now reflect their INDUSTRY archetype
+      (e.g. a gym → "1 year Membership package…"; an IT firm → "1 year Digital
+      Transformation program…"), not generic HVAC examples.
+  [ ] hubb (rich own-data) → chips unchanged (Phase B doesn't trigger — own row full).
+  [ ] A tenant with a real Smart Profile embedding → may see a borrowed chip from
+      a similar tenant's vocabulary when its own row is short.
+
+No Phase 2 (submodule commit) until you confirm "tested, working".
+═══════════════════════════════════════════════════
