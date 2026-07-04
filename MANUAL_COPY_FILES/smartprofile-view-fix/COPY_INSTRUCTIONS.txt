@@ -1,0 +1,60 @@
+═══════════════════════════════════════════════════
+📦 CHANGE: Smart Profile — the REAL fix for "opens in new mode only"
+═══════════════════════════════════════════════════
+Branch (combined repo): claude/handover-templates-agent-qretm1
+Submodule affected: contractnest-ui  (only)
+
+ROOT CAUSE (response-shape mismatch — present all along)
+  Edge GET /smartprofiles/:tenantId returns:
+      { success, exists, smartprofile: { ...row, clusters: [...] } }
+  API passes it straight through.
+  But the UI getSmartProfile() read `response.data.data?.profile`
+  → there is no `.data.profile` key → it ALWAYS returned profile = null.
+  Result: existingProfile was always null → the page ALWAYS showed the
+  create/new wizard, for every tenant. That's why the view page never
+  appeared and why "Save" reopened new mode (the seed showed the view for a
+  blink, then the refetch through this broken parser returned null).
+
+  Confirmed in DB: hub@h.com tenant (1f0a8dd2 "hubb") saved correctly —
+  real AI description, website_url, generation_method='website'. The data was
+  always there; only the read was broken.
+
+FILES (copy BOTH — self-contained latest state)
+  1) contractnest-ui/src/services/groupsService.ts
+       getSmartProfile() now reads response.data.smartprofile (row) and
+       response.data.smartprofile.clusters (nested). THE key fix.
+  2) contractnest-ui/src/pages/settings/business-profile/smart-profile.tsx
+       (same view-flow file you already applied: no-fallbacks + seed-cache
+        + land-on-view-after-save. Included so this folder is complete.)
+
+TYPECHECK
+  tsc --noEmit = 23 errors (unchanged baseline). None in either file.
+
+═══════════════════════════════════════════════════
+PHASE 1 — COPY & TEST (local)
+═══════════════════════════════════════════════════
+STEP 1: cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy BOTH files
+  Copy-Item "MANUAL_COPY_FILES\smartprofile-view-fix\contractnest-ui\src\services\groupsService.ts" -Destination "contractnest-ui\src\services\groupsService.ts" -Force
+  Copy-Item "MANUAL_COPY_FILES\smartprofile-view-fix\contractnest-ui\src\pages\settings\business-profile\smart-profile.tsx" -Destination "contractnest-ui\src\pages\settings\business-profile\smart-profile.tsx" -Force
+
+STEP 3: Clean restart + hard reload
+  (Ctrl+C the dev server) ; cd contractnest-ui ; npm run dev
+  Browser: Ctrl+Shift+R
+
+TEST CHECKLIST (hub@h.com)
+  [ ] Open Settings -> Business Profile -> Smart Profile.
+      It should NOW load the EXISTING "hubb" profile in the 65:35 VIEW page
+      (the real "Transform with Vikuna..." description), NOT the create wizard.
+  [ ] Edit -> change -> Save -> lands back on the view page (not new mode).
+  [ ] Generate Clusters -> clusters appear -> Save Clusters.
+  [ ] Reload -> view page persists.
+
+  (Note: hub's approved_keywords are currently empty because prior saves went
+   through the broken path; generate clusters / re-enhance to populate.)
+
+═══════════════════════════════════════════════════
+This SUPERSEDES smartprofile-view-flow (which was missing the GET fix).
+No Phase 2 (submodule commit) until you confirm "tested, working".
+═══════════════════════════════════════════════════
