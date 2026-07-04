@@ -1,0 +1,93 @@
+BATCH: agentic-p1.3d-vani-template-tier
+DATE: 2026-07-04
+TYPE: VaNi template tier — the agent consumes signed-off templates
+DEPENDS ON: all prior batches copied (p0 → p1 → p1.1 → p1.2 → p1.2.1 →
+  materialize → p1.3a → p1.3b → p1.3c). No edge changes, NO DB changes,
+  no redeploys — API restart + UI refresh only.
+
+WHAT THIS DOES (the tier ladder from the POA):
+  1. TEMPLATE MATCH (deterministic): after understanding your request, the
+     composer scores your SIGNED-OFF templates against it (contract type,
+     nomenclature group, name/tag keywords, duration proximity). Threshold
+     5+ → the catalog scan AND the LLM block selection are SKIPPED — the
+     draft is instantiated from the template's saved wizard state through
+     the same assemble path (pricing, assets, evidence, events, readiness).
+  2. ZERO-LLM FAST PATH: simple requests ("1 month AMC for Kamal Industries
+     with monthly billing") are quick-parsed by regex/keywords — the quick
+     parse is only trusted when a template ALSO matches it (double
+     confirmation). On that path a repeat contract composes with NO LLM
+     calls: ~85s → a few seconds.
+  3. CANVAS HONESTY: "⚡ Matched your template <name>" card with reasons and
+     a "Compose fresh instead" escape hatch (drops the template, continues
+     via catalog scan + AI selection). Zero-LLM parse shows "Request
+     understood — instant · Parsed without AI — confirmed by your template."
+  4. SELF-FEEDING: after a VaNi contract is sent, the success panel offers
+     "Save this as a template?" — saves a DRAFT template (name input with
+     suggestion); sign it off on the Templates page and the next similar
+     request hits the fast path.
+  5. Template-carried evidence policy and acceptance/billing defaults fill
+     intent gaps (never overriding what you actually asked for). If your
+     requested duration differs >15% from the template's, quantities are
+     rescaled by the engine and an info gap says so.
+
+VERIFIED BEFORE SHIPPING:
+  - Your wizard-built templates carry everything the tier needs (checked in
+    DB: wizard_state blocks, defaults, category, tags). None are signed off
+    yet — the tier correctly sees zero until you sign one off.
+  - Scorer simulated against your real "testing template copy" row:
+    matching request scores 8 (match), unrelated housekeeping request scores
+    0 (miss), same-type/other-duration scores 6 (match + rescale note).
+  - Quick-parse verified: "1 month …", "1-year …" parse; "annual maintenance"
+    (no digit) correctly falls back to the LLM. Buyer "for Kamal Industries"
+    extracts cleanly.
+  - TypeScript: API 0 errors, UI at the 23-error baseline (0 new).
+
+SUBMODULES AFFECTED:
+  - contractnest-api (3 files) — RESTART THE API after copying
+  - contractnest-ui  (3 files)
+
+FILES:
+  1. contractnest-api/src/services/contractComposerService.ts
+     + quickParseIntent, matchTemplate (scoring vs signed-off templates),
+       assembleFromTemplate (template blocks → synthetic candidates →
+       existing assembleDraft: ONE assemble path)
+  2. contractnest-api/src/controllers/vaniComposerController.ts
+     + POST /match-template, POST /assemble-from-template handlers
+  3. contractnest-api/src/routes/vaniComposerRoutes.ts
+     + both routes (fast rate limit, entitlement-gated like the rest)
+  4. contractnest-ui/src/services/vaniComposerService.ts
+     + matchTemplate/assembleFromTemplate clients + types
+  5. contractnest-ui/.../vani/VaNiComposerLauncher.tsx
+     + template check step + matched card + escape hatch + zero-LLM entry;
+       preference adjusters re-assemble via whichever path is active
+  6. contractnest-ui/.../vani/VaNiReviewFinalize.tsx
+     + "Save this as a template?" on the success panel
+
+COPY COMMANDS (PowerShell, from contractnest-combined root):
+  Copy-Item "MANUAL_COPY_FILES\agentic-p1.3d-vani-template-tier\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\agentic-p1.3d-vani-template-tier\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+  # restart the API (npm run dev in contractnest-api), hard refresh UI
+
+LOCAL TESTING:
+  0. PREREQUISITE: Templates page → SIGN OFF a real template (build a proper
+     one via New Template if you only have test junk — e.g. "1-Year HVAC
+     AMC — Quarterly" with real blocks).
+  1. FAST PATH: Contracts → Draft with VaNi → type a request matching that
+     template, with a digit duration + the contract type word, e.g.
+     "1 year AMC for <your contact> with quarterly billing"
+     → cards: "Request understood — instant" (⚡, no AI) → "Matched your
+     template" → buyer → "Draft assembled from template". Whole run should
+     be a few seconds. Review → Approve & Send works as before.
+  2. ESCAPE HATCH: same request → on the template card click "Compose fresh
+     instead" → catalog scan + AI selection continue (slow path).
+  3. LLM + TEMPLATE: phrase it without a digit ("annual AMC for …") → parse
+     runs via AI (~30s), then the template still matches → scan/selection
+     skipped.
+  4. NO MATCH: request something unrelated ("6 month housekeeping FMC…") →
+     no template card, full pipeline as before (nothing regresses).
+  5. SAVE-AS-TEMPLATE: send any VaNi contract → success panel → name it →
+     Save → appears on Templates page as Draft → sign off → repeat a similar
+     request → fast path hits.
+  6. Duration rescale: request "2 year <template type>" when the template
+     was built for 1 year → gaps show the rescale note; block quantities
+     doubled by the engine.
