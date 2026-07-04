@@ -6,7 +6,23 @@ SCOPE AGREED: points 1 & 2 only (template home + manual creation).
   removal and smart-forms exploration come in later stages.
 
 SUBMODULES AFFECTED:
-  - contractnest-ui ONLY (2 modified files, no API/edge/DB changes)
+  - contractnest-ui   (2 modified files)
+  - contractnest-edge (1 HOTFIX — cat-templates, must be REDEPLOYED, see below)
+
+⚠️ HOTFIX ADDED AFTER FIRST TEST ("Couldn't load your templates / 400"):
+  contractnest-edge/supabase/functions/cat-templates/index.ts
+  - PRE-EXISTING BUG in the deployed function (v15): handleGetTemplates
+    built its response with `category`/`isSystem`/`search` variables that
+    were declared inside an inner closure -> ReferenceError -> GET 500 on
+    EVERY template list call (confirmed in Supabase edge logs), which the
+    API surfaces as 400. Nothing ever called this endpoint before this
+    batch, so it went unnoticed.
+  - FIX: the three filter params are now declared at handler scope.
+  - NOTE: your template SAVE actually worked (POST 201 in the logs) — the
+    template exists; only the list was broken. After redeploy it will show.
+
+  REDEPLOY (from contractnest-edge folder, after copying the file):
+    npx supabase functions deploy cat-templates --project-ref uwyqhzotluikawcboldr
 
 FILES:
   1. contractnest-ui/src/pages/catalog-studio/templates-list.tsx
@@ -49,6 +65,10 @@ TYPESCRIPT: UI total stays at the 23 pre-existing baseline errors (0 new).
 
 COPY COMMANDS (PowerShell, from contractnest-combined root):
   Copy-Item "MANUAL_COPY_FILES\agentic-p1.3a-templates-manual\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\agentic-p1.3a-templates-manual\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+  cd contractnest-edge
+  npx supabase functions deploy cat-templates --project-ref uwyqhzotluikawcboldr
+  cd ..
 
 LOCAL TESTING:
   1. /catalog-studio/templates-list -> lands on "My Templates" (empty state
