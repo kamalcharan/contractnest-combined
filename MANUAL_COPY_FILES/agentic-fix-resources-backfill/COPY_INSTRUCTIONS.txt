@@ -1,0 +1,42 @@
+BATCH: agentic-fix-resources-backfill
+DATE: 2026-07-02
+TYPE: Data fix (SQL, owner-applied) — no code changes
+
+THE BUG YOU HIT:
+  Settings → Resources is empty (no equipment/facilities) while
+  Settings → Business Profile shows industries correctly.
+
+ROOT CAUSE (verified against live DB):
+  - Business Profile industries live in the tenant profile — captured fine.
+  - Settings → Resources reads t_category_resources_master (tenant-scoped,
+    via the resources edge function).
+  - Your onboarding selections DID persist: hubb has 24 rows in
+    t_tenant_selected_resources (HVAC System, DG Set, Elevator/Lift, UPS,
+    STP/WTP Plant, Transformer, Ventilator, consultations… as sell/own).
+  - BUT nothing in the onboarding/seed pipeline materializes those selections
+    into t_category_resources_master. The only writer of that table is the
+    Resources UI/API itself. Tenants that show resources (rows dated Feb 2026)
+    got them manually. hubb: 24 selections, 0 materialized → empty page.
+  - Knock-on effect: VaNi's Assets & Coverage card finds no coverage types
+    (coverage is keyed on these resources).
+
+FIX (two parts):
+
+PART 1 — BACKFILL NOW (this batch):
+  Open Supabase SQL editor (project uwyqhzotluikawcboldr) and run:
+    contractnest-edge/supabase/migrations/vani-agent/002_backfill_tenant_resources_from_selections.sql
+  - Idempotent; inserts only missing rows; touches no existing data.
+  - Fixes ALL tenants with unmaterialized selections, not just hubb.
+  - Run the commented PREVIEW select first if you want to see what lands.
+  After running: Settings → Resources shows your equipment/facilities, and
+  VaNi coverage derivation starts working (re-run a draft to see coverage).
+
+PART 2 — PRODUCT FIX (backlog, proposed for the next batch):
+  Add resource materialization to the seed pipeline (the Settings → Seed Data
+  reseed path already re-runs from t_tenant_selected_resources — the same
+  logic as this SQL belongs there), so every new tenant gets resources
+  automatically at onboarding. Say the word and I'll build it.
+
+NOTE: Registered client assets (t_client_asset_registry) are a separate,
+still-empty dataset for hubb — the Resources fix gives VaNi coverage TYPES;
+registering 2-3 client assets additionally unlocks equipmentDetails prefill.
