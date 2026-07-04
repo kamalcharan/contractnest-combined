@@ -1,0 +1,66 @@
+═══════════════════════════════════════════════════
+📦 CHANGE: Smart Profile — remove fabricated fallbacks (honesty rule)
+═══════════════════════════════════════════════════
+Branch (combined repo): claude/handover-templates-agent-qretm1
+Submodule affected: contractnest-ui  (only)
+
+FILE
+  contractnest-ui/src/pages/settings/business-profile/smart-profile.tsx
+
+WHAT CHANGED (and WHY)
+  The page was MASKING AI/scrape failures by fabricating a profile:
+    - generateFallbackDescription() -> "...professional organization committed
+      to delivering high-quality services..." boilerplate  (REMOVED)
+    - extractKeywordsFromText() + hardcoded ['Professional','Services',
+      'Quality','Solutions'] keywords  (REMOVED)
+    - both catch blocks advanced the wizard to 'enhanced' and showed a
+      SUCCESS toast even though nothing real was produced.
+  That fake data would flow into keywords -> clusters -> chips -> nomenclature
+  -> template ranking = poisoned ICP. Now removed entirely.
+
+  New behaviour (honest failure):
+    • Enhance with AI (manual mode): only accepts a REAL AI result; empty is
+      treated as failure. On failure -> ERROR toast, user STAYS on entry.
+    • Analyze Website: only accepts REAL scraped content; empty = failure.
+      On failure -> switches to MANUAL entry + ERROR toast (no fake profile).
+    • NEW "Continue without AI" button (manual mode): proceeds with the
+      user's OWN typed description verbatim (real input, empty keywords to be
+      added manually) — this is the "switch to manual" path, now actually
+      usable when AI/n8n is down.
+
+  A profile now only ever contains REAL AI output or the user's OWN words —
+  never invented text or keywords.
+
+TYPECHECK
+  tsc --noEmit = 23 errors (unchanged baseline). No new errors; none in this file.
+
+═══════════════════════════════════════════════════
+PHASE 1 — COPY & TEST (local)
+═══════════════════════════════════════════════════
+STEP 1: cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy the one file
+  Copy-Item "MANUAL_COPY_FILES\smartprofile-no-fallbacks\contractnest-ui\src\pages\settings\business-profile\smart-profile.tsx" -Destination "contractnest-ui\src\pages\settings\business-profile\smart-profile.tsx" -Force
+
+STEP 3: cd contractnest-ui ; npm run dev   (Ctrl+F5)
+  Settings -> Business Profile -> Smart Profile
+
+TEST CHECKLIST
+  [ ] Website mode, bad/failing URL -> ERROR toast, NO fake description,
+      view switches to manual entry. (No "professional organization..." text.)
+  [ ] Manual mode, AI down -> "Enhance with AI" shows ERROR toast, stays put.
+  [ ] Manual mode -> "Continue without AI" -> proceeds using exactly what you
+      typed, keywords empty, you add clusters manually.
+  [ ] Happy path (n8n up) -> real AI description + keywords, success toast.
+
+NOTE: the underlying 500 is n8n-side (PROCESS_PROFILE webhook). This change
+does NOT fix n8n — it makes the UI FAIL HONESTLY instead of faking success.
+To fix the scrape itself: ensure the n8n 'process-profile' workflow is ACTIVE
+(production /webhook/) or in test-listen mode (/webhook-test/), and that
+N8N_WEBHOOK_URL points at the right instance. x-environment != 'live' uses the
+TEST webhook.
+
+═══════════════════════════════════════════════════
+No Phase 2 (submodule commit) until you confirm "tested, working".
+Claude cannot push to the contractnest-ui submodule (combined-repo scope only).
+═══════════════════════════════════════════════════
