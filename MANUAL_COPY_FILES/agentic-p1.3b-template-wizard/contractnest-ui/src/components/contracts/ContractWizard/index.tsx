@@ -679,10 +679,11 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
       tags: state.nomenclatureName ? [state.nomenclatureName] : undefined,
       subtotal: state.baseSubtotal || state.totalValue || null,
       total: state.grandTotal || state.totalValue || null,
-      // New templates start as draft — sign-off happens on the templates list
-      ...(templateRecordId ? {} : { status_id: 'draft' }),
       settings: {
         template_source: 'contract-wizard',
+        // Lifecycle lives in settings (status_id is an unused uuid column in
+        // t_cat_templates). New templates start as draft; edits preserve it.
+        lifecycle: ((editTemplate?.settings as any)?.lifecycle) || 'draft',
         wizard_state: serializeWizardState(sanitizeStateForTemplate(state)),
         defaults: {
           nomenclature_id: state.nomenclatureId,
@@ -708,7 +709,9 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
         templateId: templateRecordId || undefined,
         data,
       });
-      const savedId = (result as any)?.data?.id;
+      // Edge wraps the row as data.template; versioned updates return a NEW id
+      const saved = (result as any)?.data;
+      const savedId = saved?.template?.id || saved?.id;
       if (savedId) setTemplateRecordId(savedId);
       onTemplateSaved?.();
       return true;
@@ -716,7 +719,7 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
       // Error toast handled by the mutation's onError
       return false;
     }
-  }, [wizardState, templateRecordId, saveTemplateMutation, onTemplateSaved]);
+  }, [wizardState, templateRecordId, saveTemplateMutation, onTemplateSaved, editTemplate]);
 
   // Reset entire wizard to fresh state
   const resetWizard = useCallback(() => {

@@ -1168,9 +1168,11 @@ const GLOBAL_TEMPLATES: GlobalTemplate[] = [
 // =====================================================
 // Sign-off lifecycle: only signed-off templates will be offered to the
 // contract wizard and the VaNi template-match tier (later stages).
+// Lives in settings.lifecycle — status_id is an unused uuid column.
 const SIGNED_OFF_STATUS = 'signed_off';
 
-const isSignedOff = (t: CatTemplate): boolean => t.status_id === SIGNED_OFF_STATUS;
+const isSignedOff = (t: CatTemplate): boolean =>
+  (t.settings as any)?.lifecycle === SIGNED_OFF_STATUS;
 
 // Templates store their own currency — display as-is, no demo-rate conversion
 const formatTemplateValue = (total: number | null | undefined, currency?: string): string | null => {
@@ -1307,7 +1309,14 @@ const TemplatesList: React.FC = () => {
       if (updateTemplateMutation.isPending) return;
       updateTemplateMutation.mutate({
         id: t.id,
-        data: { status_id: isSignedOff(t) ? 'draft' : SIGNED_OFF_STATUS },
+        // Spread existing settings — the edge update replaces the whole JSON,
+        // and wizard_state must survive the lifecycle flip
+        data: {
+          settings: {
+            ...((t.settings as Record<string, any>) || {}),
+            lifecycle: isSignedOff(t) ? 'draft' : SIGNED_OFF_STATUS,
+          },
+        },
       });
     },
     [updateTemplateMutation]

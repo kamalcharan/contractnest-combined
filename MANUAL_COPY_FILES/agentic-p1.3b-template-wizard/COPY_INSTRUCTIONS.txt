@@ -15,6 +15,21 @@ OWNER DECISION IMPLEMENTED:
 SUBMODULES AFFECTED:
   - contractnest-ui ONLY (3 modified files, no API/edge/DB changes)
 
+⚠️ HOTFIX v2 (after "save template failed / invalid input syntax for type
+uuid: draft"):
+  - status_id in t_cat_templates is a UUID column with NO status master
+    behind it (all rows null) — slugs like 'draft' can never go there.
+    The sign-off lifecycle now lives in settings.lifecycle
+    ('draft' | 'signed_off'): wizard writes it on save, templates-list
+    badge + Sign off toggle read/write it (spreading existing settings so
+    wizard_state survives).
+  - Response-shape fix: the edge wraps saved rows as data.template — the
+    wizard now reads the saved id from there (content updates are
+    copy-on-write versioned and return a NEW id each save; the wizard
+    tracks it, the list always shows the latest version).
+  - Same shape fix applied to the old builder's create-redirect
+    (p1.3a batch file updated too — re-copy BOTH batches).
+
 FILES:
   1. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
      - New props: mode="template", editTemplate, onTemplateSaved.

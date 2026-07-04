@@ -641,8 +641,10 @@ const CatalogStudioTemplatePage: React.FC = () => {
       showToast('success', 'Template saved', `"${templateName}" has been saved successfully`);
 
       // If creating new, navigate to edit mode with new ID
-      if (!isEditMode && saveResult?.data?.id) {
-        navigate(`/catalog-studio/template?templateId=${saveResult.data.id}&edit=true`, { replace: true });
+      // (edge wraps the created row as data.template)
+      const createdId = (saveResult?.data as any)?.template?.id || (saveResult?.data as any)?.id;
+      if (!isEditMode && createdId) {
+        navigate(`/catalog-studio/template?templateId=${createdId}&edit=true`, { replace: true });
       }
     } catch (error) {
       console.error('Failed to save template:', error);
