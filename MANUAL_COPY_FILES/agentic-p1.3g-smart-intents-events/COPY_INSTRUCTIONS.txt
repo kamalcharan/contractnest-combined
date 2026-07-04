@@ -51,3 +51,15 @@ LOCAL TESTING:
      step now appears before Review.
   6. Cold start check: a tenant with no templates/equipment still sees
      the static example chips (fallback).
+
+HOTFIX v2 (after first chip sighting):
+  - "Washroom / Restroom AMC" / "Parking Area AMC" were WRONG pairings:
+    those are FACILITY resources (resource_type_id 'asset'); chips now pair
+    facilities with the facility nomenclature (FMC, billed monthly) and
+    only equipment with AMC. Service/consumable/team resources are skipped.
+  - The client name in template chips now comes from your most recent
+    CLIENT-classified contact only (was: any recent contact).
+  - Billing suffix on template chips is derived from the template's actual
+    block cycle (was: hardcoded "with quarterly billing").
+  - Quick-parse now accepts lowercase buyer names ("for kamal industries").
+  RE-COPY the api folder and restart the API.

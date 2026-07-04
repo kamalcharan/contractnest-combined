@@ -552,7 +552,7 @@ class ContractComposerService {
 
     // Buyer: "for <Name>" up to a delimiter keyword
     const buyerMatch = text.match(
-      /\bfor\s+([A-Z][A-Za-z0-9&.,'()\- ]{2,60}?)(?=\s+(?:with|billed|billing|starting|from|paying|and)\b|\s*[,.;]|$)/
+      /\bfor\s+([A-Za-z][A-Za-z0-9&.,'()\- ]{2,60}?)(?=\s+(?:with|billed|billing|starting|from|paying|and)\b|\s*[,.;]|$)/
     );
 
     const acceptance: ParsedIntent['acceptance'] = /sign[\s-]?off/.test(lower) ? 'signoff' : '';
@@ -848,11 +848,13 @@ class ContractComposerService {
       ]);
 
       // A recent active client personalises the contract chips
+      // Personalisation: the most recent CLIENT — never vendors/team members.
+      // If none, the chip simply omits the name and the buyer card asks.
       let recentClient = '';
       if (mode === 'contract') {
         try {
           const res = await this.contactService.listContacts(
-            { per_page: 5, status: 'active' },
+            { per_page: 3, status: 'active', classifications: ['client'] } as any,
             ctx.userJWT,
             ctx.tenantId,
             ctx.environment
@@ -867,35 +869,47 @@ class ContractComposerService {
         return n?.name || '';
       };
 
-      // 1. Published templates → guaranteed fast-path phrasing
+      // 1. Published templates → guaranteed fast-path phrasing.
+      // Billing suffix is derived from the template's actual blocks —
+      // never invented.
       for (const t of templates.slice(0, 2)) {
         const d = t.settings?.defaults || {};
         const kind = d.nomenclature_name || t.name;
         const dur = durText(d.duration_value || 1, d.duration_unit || 'years');
-        const billing = d.billing_cycle_type === 'unified' && d.payment_mode === 'per_block' ? '' : '';
+        const blockCycle = t.settings?.wizard_state?.selectedBlocks?.[0]?.cycle;
+        const billing = ['monthly', 'fortnightly', 'quarterly'].includes(blockCycle)
+          ? ` with ${blockCycle} billing`
+          : d.payment_mode === 'emi' && d.emi_months
+            ? ` on ${d.emi_months}-month EMI`
+            : '';
         if (mode === 'contract') {
-          push(`${dur} ${kind}${recentClient ? ` for ${recentClient}` : ''} with quarterly billing${billing}`);
+          push(`${dur} ${kind}${recentClient ? ` for ${recentClient}` : ''}${billing}`);
         } else {
           push(`${dur} ${kind} based on a different scope than "${t.name}"`);
         }
       }
 
-      // 2. Equipment from the tenant's own catalog blocks
-      let equipmentNames: string[] = [];
+      // 2. Resources from the tenant's own catalog blocks — phrased by TYPE
+      // (facility resources pair with the facility nomenclature, not AMC)
+      let resources: Array<{ name: string; type: string }> = [];
       try {
         const blocks = await this.fetchTenantBlocks(ctx);
-        const names = await this.fetchResourceTemplateNames(blocks);
-        equipmentNames = Array.from(new Set(Array.from(names.values()).filter(Boolean))).slice(0, 3);
-      } catch { /* equipment chips are optional */ }
+        resources = (await this.fetchResourceInfo(blocks)).slice(0, 3);
+      } catch { /* resource chips are optional */ }
 
       const equipNom = nomFor('equipment_maintenance');
-      for (const eq of equipmentNames) {
+      const facNom = nomFor('facility_property');
+      for (const r of resources) {
         if (suggestions.length >= (mode === 'contract' ? 3 : 4)) break;
+        // resource_type_id: equipment | asset (facility) | service — skip the rest
+        if (!['equipment', 'asset'].includes(String(r.type))) continue;
+        const isFacility = String(r.type) === 'asset';
+        const nom = isFacility ? (facNom || 'FMC') : (equipNom || 'AMC');
         if (mode === 'contract') {
-          // Equipment leads the phrase — "for <Name>" stays reserved for the buyer
-          push(`${eq} ${equipNom || 'maintenance contract'} for 1 year, billed quarterly`);
+          // Resource leads the phrase — "for <Name>" stays reserved for the buyer
+          push(`${r.name} ${nom} for 1 year, billed ${isFacility ? 'monthly' : 'quarterly'}`);
         } else {
-          push(`1 year ${eq} ${equipNom || 'maintenance'} with quarterly PM visits and sign-off acceptance`);
+          push(`1 year ${r.name} ${nom} with ${isFacility ? 'monthly service visits' : 'quarterly PM visits'} and sign-off acceptance`);
         }
       }
 
@@ -1491,6 +1505,27 @@ class ContractComposerService {
       console.warn('⚠️ Composer: resource template lookup failed (ranking degrades):', e.message);
     }
     return map;
+  }
+
+  /** Resource names WITH their type — facilities must not be phrased as AMC */
+  private async fetchResourceInfo(blocks: any[]): Promise<Array<{ name: string; type: string }>> {
+    const ids = Array.from(new Set(blocks.map((b) => b.resource_template_id).filter(Boolean)));
+    if (ids.length === 0) return [];
+    try {
+      const supabase = this.supabaseRead();
+      if (!supabase) return [];
+      const { data, error } = await supabase
+        .from('m_catalog_resource_templates')
+        .select('id, name, resource_type_id')
+        .in('id', ids);
+      if (error || !data) return [];
+      const seen = new Set<string>();
+      return data
+        .filter((r: any) => r.name && !seen.has(r.name) && seen.add(r.name))
+        .map((r: any) => ({ name: r.name, type: r.resource_type_id || 'equipment' }));
+    } catch {
+      return [];
+    }
   }
 
   private async buildTemplateContext(ctx: ComposerCallContext): Promise<string> {
