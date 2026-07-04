@@ -1,0 +1,52 @@
+BATCH: agentic-fix-resources-materialize
+DATE: 2026-07-02
+TYPE: Bug fix + architecture alignment (owner decision)
+SUPERSEDES: agentic-fix-resources-backfill (do not run that one)
+
+OWNER DECISION IMPLEMENTED:
+  1) Onboarding puts the tenant's PICKED equipment/facilities into Resources.
+  2) Catalog-studio picks dependencies from Resources, not Business Profile.
+  → With both in place, contracts / contract-agent get correct, tenant-scoped data.
+
+SUBMODULES AFFECTED:
+  - contractnest-edge  (1 new SQL migration — owner-applied)
+  - contractnest-api   (1 modified: onboardingIntentService.ts)
+  - contractnest-ui    (1 modified: BlockWizard ResourceDependencyStep.tsx)
+
+FILES:
+  1. contractnest-edge/supabase/migrations/vani-agent/002_materialize_tenant_resources.sql
+     - Creates materialize_tenant_resources(tenant_id): SECURITY DEFINER,
+       idempotent — inserts one Resources row per distinct selected template
+       (skips same-name+type rows). New objects only.
+     - Runs a ONE-TIME BACKFILL for all existing tenants at the end
+       (fixes hubb: HVAC System, DG Set, Elevator/Lift, UPS, STP/WTP, …).
+  2. contractnest-api/src/services/onboardingIntentService.ts
+     - persistSelectedResources() now calls the RPC right after selections are
+       upserted → every future onboarding materializes Resources automatically.
+       Non-fatal on failure (reseed recovers).
+  3. contractnest-ui/.../ResourceDependencyStep.tsx
+     - Equipment & Facility pickers in catalog-studio (blocks/new) are now
+       narrowed to the tenant's Resources (matched name+type against the
+       working set; template id kept because the Knowledge Tree keys on it).
+       HVAC-only tenant sees HVAC — not the whole industry menu.
+       Team Members unchanged (contacts). Services unchanged (standalone).
+
+COPY COMMANDS (PowerShell, from contractnest-combined root):
+  Copy-Item "MANUAL_COPY_FILES\agentic-fix-resources-materialize\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\agentic-fix-resources-materialize\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\agentic-fix-resources-materialize\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+DB MIGRATION (owner-applied):
+  Run 002_materialize_tenant_resources.sql in the Supabase SQL editor
+  (project uwyqhzotluikawcboldr). It creates the RPC + backfills all tenants.
+  The verify SELECT for hubb is commented at the bottom.
+
+LOCAL TESTING:
+  1. Run the migration → Settings → Resources now shows hubb's working set
+     (Equipment: HVAC System, DG Set, UPS, … · Facilities as picked)
+  2. catalog-studio → blocks/new?type=service → dependency step: Equipment
+     slider shows ONLY your picked equipment (not all 24 of the industry)
+  3. Contract wizard → Assets step: coverage picker now offers your resources
+  4. VaNi draft (HVAC AMC) → Assets & Coverage card populates coverage types
+  5. Future-proof check (optional): re-run onboarding industry selection or
+     Settings → Seed Data reseed → new picks appear in Resources automatically

@@ -1,3 +1,7 @@
+⛔ SUPERSEDED by agentic-fix-resources-materialize (owner architectural decision:
+   materialize at onboarding + one-time backfill INSIDE the new migration).
+   DO NOT run the SQL in this folder.
+
 BATCH: agentic-fix-resources-backfill
 DATE: 2026-07-02
 TYPE: Data fix (SQL, owner-applied) — no code changes
