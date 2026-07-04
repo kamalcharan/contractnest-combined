@@ -1,0 +1,65 @@
+BATCH: agentic-p1.3a-templates-manual
+DATE: 2026-07-04
+TYPE: p1.3 stage 1+2 — templates-list on real data + manual template creation E2E
+SCOPE AGREED: points 1 & 2 only (template home + manual creation).
+  Wizard integration, VaNi match tier, VaNi template creation, stale-code
+  removal and smart-forms exploration come in later stages.
+
+SUBMODULES AFFECTED:
+  - contractnest-ui ONLY (2 modified files, no API/edge/DB changes)
+
+FILES:
+  1. contractnest-ui/src/pages/catalog-studio/templates-list.tsx
+     - "My Templates" tab now shows REAL tenant templates from
+       t_cat_templates (via existing useCatTemplates hook) — replaces the
+       hardcoded empty MY_TEMPLATES array. My Templates is now the FIRST
+       and DEFAULT tab.
+     - Per-template card: name, description, blocks count, value (template's
+       own currency, no demo conversion), updated date, status pill.
+     - Actions per card: Edit (opens designer), Duplicate (real copy API),
+       Delete (confirm modal, soft delete), Sign off / Back to draft toggle
+       (status_id: 'draft' <-> 'signed_off').
+       SIGN-OFF NOTE: only signed-off templates will be offered to the
+       contract wizard and VaNi in later stages — the gate ships now.
+     - "Create New" wired -> /catalog-studio/template (designer, create mode).
+     - Search bar filters My Templates by name/description/tags.
+     - Loading / error / empty states added. Hero count badge is real.
+     - Global Templates tab left UNTOUCHED (still demo data; flagged as
+       stale-code candidate for the cleanup stage).
+  2. contractnest-ui/src/pages/catalog-studio/template.tsx (designer)
+     - BUG FIX: back-navigation went to /catalog-studio/templates, a route
+       that does not exist -> now /catalog-studio/templates-list (2 places).
+     - BUG FIX: after creating a NEW template, the redirect into edit mode
+       read stale mutation state and never fired -> now uses the mutateAsync
+       return value, so a fresh save correctly lands in edit mode with the
+       new template id.
+
+PRODUCTION CHECKLIST:
+  - Transaction Management: single-row ops on edge (existing); mutation
+    hooks already send x-idempotency-key on create/update/delete/copy.
+  - Race Conditions: action buttons disabled while their mutation is
+    pending; per-card spinner via mutation.variables.id match.
+  - Error Handling: query error state with Retry; mutation errors surfaced
+    by existing hook handlers.
+  - Toasts: existing react-hot-toast handlers inside useCatTemplatesMutations
+    (same pattern the designer already uses).
+  - Loaders: Loader2 spinners matching this page's existing idiom.
+
+TYPESCRIPT: UI total stays at the 23 pre-existing baseline errors (0 new).
+
+COPY COMMANDS (PowerShell, from contractnest-combined root):
+  Copy-Item "MANUAL_COPY_FILES\agentic-p1.3a-templates-manual\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+LOCAL TESTING:
+  1. /catalog-studio/templates-list -> lands on "My Templates" (empty state
+     if none) -> "Create New Template".
+  2. Designer: add blocks from your catalog, name it (e.g. "1-Year HVAC AMC
+     — Quarterly"), Save -> success toast AND the URL switches to
+     ?templateId=...&edit=true (create->edit redirect fix).
+  3. Back arrow from designer -> returns to templates-list (route fix),
+     new template visible with "Draft" pill and real blocks count.
+  4. Card actions: Sign off -> green "Signed off" pill (refresh to verify it
+     persisted); Duplicate -> "(Copy)" appears; Delete -> confirm modal ->
+     card gone.
+  5. Search filters your templates; count badge in hero matches reality.
+  6. Global Templates tab still renders the old gallery (unchanged).
