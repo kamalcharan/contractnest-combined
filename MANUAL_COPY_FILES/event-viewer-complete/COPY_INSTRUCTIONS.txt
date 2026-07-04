@@ -1,0 +1,72 @@
+═══════════════════════════════════════════════════
+📦 CHANGE: Event viewer — completion (Batch 2 of 2)
+═══════════════════════════════════════════════════
+Branch (combined repo): claude/handover-templates-agent-qretm1
+Submodule affected: contractnest-ui  (only)
+
+FILES (copy all 4)
+  1) src/components/contracts/ContractWizard/steps/EventsPreviewStep.tsx
+  2) src/components/contracts/vani/VaNiReviewFinalize.tsx
+  3) src/components/contracts/ContractWizard/index.tsx
+  4) src/utils/service-contracts/contractEvents.ts
+
+WHAT CHANGED
+  #4 Template mode = illustrative/read-only (honesty).
+     Previously you could edit event dates in TEMPLATE mode; they highlighted and
+     counted "N adjusted" — then were SILENTLY discarded on save. Now, in template
+     mode the Events Schedule shows dates as static chips (no editing, no reset),
+     and the footer reads "Illustrative schedule — this preview assumes a start
+     today; real dates are set on each contract created from this template."
+     Wired via a new EventsPreviewStep `readOnly` prop; VaNiReviewFinalize passes
+     readOnly={isTemplateMode}. (Contract mode is unchanged — fully editable and
+     the overrides persist as before.)
+
+  #5 Persisted event order now matches the preview.
+     computeEventsForApi applied date overrides but never re-sorted, so a moved
+     event kept its old slot in computed_events. Now it re-sorts by scheduled_date
+     after overrides — persisted order == the (re-sorted) preview.
+
+  #6 EMI installments reconcile to the exact total.
+     The final EMI installment now absorbs rounding, so the installments sum
+     EXACTLY to grandTotal (no ±cents drift).
+
+  #7 Robust event ids.
+     makeEventId used blockId.slice(0,8) — two blocks sharing an 8-char id prefix
+     could collide, misapplying date overrides / clashing React keys. Now uses the
+     full blockId. (Event ids are not persisted in computed_events, so no migration.)
+
+  + Dropped the misleading "Service & Parts" column label -> "Service" (spare_part
+    events are never emitted by the derivation).
+
+DEFERRED (flagged, not in this batch)
+  • Timezone normalization (UTC grouping key vs local display) — bigger, touches
+    both derivation copies; follow-up.
+  • Per-block recurring rounding reconciliation (same idea as EMI #6, different
+    code path) — follow-up.
+  • Unify the VaNi-vs-wizard template serializer (block-shape) so a VaNi-saved
+    template edits cleanly in the wizard — focused follow-up.
+
+VERIFIED: tsc --noEmit = 23 (unchanged baseline). No new errors.
+
+═══════════════════════════════════════════════════
+PHASE 1 — COPY & TEST
+═══════════════════════════════════════════════════
+STEP 1: cd "D:\projects\core projects\ContractNest\contractnest-combined"
+STEP 2:
+  Copy-Item "MANUAL_COPY_FILES\event-viewer-complete\contractnest-ui\src\components\contracts\ContractWizard\steps\EventsPreviewStep.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\EventsPreviewStep.tsx" -Force
+  Copy-Item "MANUAL_COPY_FILES\event-viewer-complete\contractnest-ui\src\components\contracts\vani\VaNiReviewFinalize.tsx" -Destination "contractnest-ui\src\components\contracts\vani\VaNiReviewFinalize.tsx" -Force
+  Copy-Item "MANUAL_COPY_FILES\event-viewer-complete\contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Force
+  Copy-Item "MANUAL_COPY_FILES\event-viewer-complete\contractnest-ui\src\utils\service-contracts\contractEvents.ts" -Destination "contractnest-ui\src\utils\service-contracts\contractEvents.ts" -Force
+STEP 3: cd contractnest-ui ; npm run dev   (Ctrl+Shift+R)
+
+TEST CHECKLIST
+  [ ] CONTRACT: compose -> Events Schedule tab -> edit a date -> it persists on the
+      created contract (unchanged behaviour); the schedule re-sorts by date.
+  [ ] TEMPLATE ("Draft with VaNi" template mode): Events Schedule shows static
+      dates (no edit/reset), footer says "Illustrative schedule".
+  [ ] An EMI contract: installments sum exactly to the grand total (last one
+      carries the rounding).
+  [ ] Column header reads "Service" (not "Service & Parts").
+
+No Phase 2 (submodule commit) until you confirm "tested, working".
+═══════════════════════════════════════════════════
