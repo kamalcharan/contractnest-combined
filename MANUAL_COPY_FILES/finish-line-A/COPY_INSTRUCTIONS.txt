@@ -1,0 +1,75 @@
+═══════════════════════════════════════════════════
+📦 CHANGE: Finish-line polish "A" — the 4 deferred items
+═══════════════════════════════════════════════════
+Branch (combined repo): claude/handover-templates-agent-qretm1
+Submodules: contractnest-ui (5 files) + contractnest-api (1 file)
+
+⚠️ DEFINITIVE BUNDLE — supersedes BOTH:
+     - MANUAL_COPY_FILES/template-generation-faithful
+     - MANUAL_COPY_FILES/events-schedule-shortcut
+   It contains the latest of every touched file (template faithfulness + ICP
+   chips + event viewer + events-schedule button + these 4 A items). Copy the
+   6 files below and you have everything.
+
+WHAT CHANGED (A items)
+  #1 Unified template serializer (highest-value).
+     VaNiReviewFinalize.handleSaveAsTemplate now builds wizard_state the SAME way
+     the wizard does — createInitialWizardState() fills every field,
+     sanitizeStateForTemplate() strips buyer/assets/overrides, serializeWizardState()
+     normalises dates. Both serializers are now exported from ContractWizard/index.
+     -> a VaNi-saved template hydrates CLEANLY when later opened in the wizard
+        (identical wizard_state shape on both save paths).
+
+  #2 Contract-level tax carries through the template fast path (API).
+     assembleFromTemplate now applies the template's defaults.selected_tax_rate_ids
+     to the subtotal (fetched via taxSettingsService.getTaxRates) — setting
+     selectedTaxRateIds + taxBreakdown + taxTotal + grandTotal. SAFE GUARD: it only
+     applies when per-block tax came out ZERO, so a template that already taxes per
+     block is never double-taxed.
+
+  #3 Timezone-correct event grouping.
+     groupEventsByDate (and the timeline React key) now key on the LOCAL calendar
+     day instead of UTC — an event near local midnight no longer lands under the
+     wrong day / splits a day for non-UTC tenants.
+
+  #4 Per-block recurring installments reconcile.
+     Recurring per-block billing now makes the final period absorb rounding, so a
+     block's recurring billing sums EXACTLY to its total (matches the EMI fix).
+
+FILES (copy all 6)
+  contractnest-ui:
+    1) src/components/contracts/vani/VaNiComposerLauncher.tsx      (events button)
+    2) src/components/contracts/vani/VaNiReviewFinalize.tsx        (#1 + readOnly + initialView)
+    3) src/components/contracts/ContractWizard/index.tsx           (#1 exports + re-sort)
+    4) src/components/contracts/ContractWizard/steps/EventsPreviewStep.tsx (#3 key + readOnly)
+    5) src/utils/service-contracts/contractEvents.ts              (#3 + #4 + EMI + ids)
+  contractnest-api:
+    6) src/services/contractComposerService.ts                    (#2 tax + template faithfulness + ICP chips)
+
+VERIFIED: API tsc = 0 source errors; UI tsc = 23 (unchanged baseline). No cycle
+from the serializer import (ContractWizard does not import the VaNi components).
+
+═══════════════════════════════════════════════════
+PHASE 1 — COPY & TEST (all 6)
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\finish-line-A\contractnest-ui\src\components\contracts\vani\VaNiComposerLauncher.tsx" -Destination "contractnest-ui\src\components\contracts\vani\VaNiComposerLauncher.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\finish-line-A\contractnest-ui\src\components\contracts\vani\VaNiReviewFinalize.tsx" -Destination "contractnest-ui\src\components\contracts\vani\VaNiReviewFinalize.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\finish-line-A\contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\finish-line-A\contractnest-ui\src\components\contracts\ContractWizard\steps\EventsPreviewStep.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\EventsPreviewStep.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\finish-line-A\contractnest-ui\src\utils\service-contracts\contractEvents.ts" -Destination "contractnest-ui\src\utils\service-contracts\contractEvents.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\finish-line-A\contractnest-api\src\services\contractComposerService.ts" -Destination "contractnest-api\src\services\contractComposerService.ts" -Force
+
+Then restart both:  cd contractnest-ui ; npm run dev    |    cd contractnest-api ; npm run dev
+
+TEST CHECKLIST
+  [ ] Compose via VaNi -> Save as Template -> open that template in the wizard
+      (Start from Template) -> blocks/billing/tax hydrate cleanly (no broken step).
+  [ ] A template authored with contract-level GST (per-block tax 0) -> instantiate
+      via a chip -> the draft shows the tax + correct grand total.
+  [ ] EMI / recurring per-block contract -> billing events sum exactly to the total.
+  [ ] Events schedule groups dates correctly (no off-by-one-day near midnight).
+
+No Phase 2 (submodule commit) until you confirm "tested, working".
+═══════════════════════════════════════════════════
