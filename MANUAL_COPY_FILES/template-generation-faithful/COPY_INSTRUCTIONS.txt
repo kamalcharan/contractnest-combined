@@ -1,0 +1,65 @@
+═══════════════════════════════════════════════════
+📦 CHANGE: Template-based generation — faithful instantiation (Batch 1 of 2)
+═══════════════════════════════════════════════════
+Branch (combined repo): claude/handover-templates-agent-qretm1
+Submodule affected: contractnest-api  (only)   |   NO UI change
+SUPERSEDES: MANUAL_COPY_FILES/icp-smart-chips-diverse  (SAME FILE — this one has
+            the ICP chips AND the template-faithfulness fixes; copy THIS one.)
+
+FILE
+  contractnest-api/src/services/contractComposerService.ts
+
+WHAT CHANGED (assembleFromTemplate / assembleDraft)
+  When you instantiate a signed-off template (chip → "instant" path, or the
+  matched-template path), the template's SETUP now actually carries through.
+  Previously only `acceptance` + `nomenclature` were applied; billing/EMI/grace
+  and each block's saved cycle were silently dropped (a "monthly EMI" template
+  came out prepaid).
+
+  Now the template's `settings.defaults` become the BASELINE when instantiating:
+    • payment_mode = emi  -> EMI mode + emi_months from the template
+    • payment_mode = defined / billing_cycle_type = mixed / blocks have cycles
+        -> per-block billing, each block keeping its OWN saved cycle
+    • else prepaid
+    • grace_period_value/unit -> applied (as days)
+  An EXPLICIT user request still wins (e.g. a chip that says "billed quarterly"
+  or "on 6-month EMI" overrides the template baseline). Per-block cycle is
+  carried via a new optional CandidatePayload.cycle; the LLM compose path is
+  unchanged (no cycle on those candidates -> same behaviour as before).
+
+  NOT changed (deliberate, per your architecture):
+    • Buyer / dates / assets still left to the user on the review + buyer card.
+    • Equipment/facility templates still expect assets to be added after (the
+      "add assets" readiness prompt is correct, not a bug).
+    • Contract-level tax rate ids (selected_tax_rate_ids) still deferred — per
+      block taxRate is applied as before; layering contract tax rates is a
+      follow-up (needs a tax-rate lookup + total reconciliation).
+
+VERIFIED: tsc --noEmit = 0 source errors (2 unrelated tsconfig deprecation notices).
+
+═══════════════════════════════════════════════════
+PHASE 1 — COPY & TEST
+═══════════════════════════════════════════════════
+STEP 1: cd "D:\projects\core projects\ContractNest\contractnest-combined"
+STEP 2:
+  Copy-Item "MANUAL_COPY_FILES\template-generation-faithful\contractnest-api\src\services\contractComposerService.ts" -Destination "contractnest-api\src\services\contractComposerService.ts" -Force
+STEP 3: cd contractnest-api ; npm run dev   (restart API)
+
+TEST CHECKLIST
+  [ ] Author a template with monthly per-block billing + a grace period, sign it
+      off. Compose a contract that matches it (chip or "for X ... " text).
+      -> the assembled draft shows per-block MONTHLY billing + the grace period
+         (not prepaid), and the Events Schedule reflects the monthly cadence.
+  [ ] A template saved as EMI -> instantiated draft is EMI with the same months.
+  [ ] A chip that explicitly says "billed quarterly" still overrides a monthly
+      template (explicit request wins).
+  [ ] ICP smart chips still behave as before (this file also carries them).
+
+BATCH 2 (next): event viewer — template-mode read-only dates, persisted-order
+re-sort, installment reconciliation, robust event ids, drop the dead spare_part
+label. (TZ normalization deferred.)  Plus a focused follow-up: unify the
+VaNi-vs-wizard template serializer (block-shape) so a VaNi-saved template edits
+cleanly in the wizard.
+
+No Phase 2 (submodule commit) until you confirm "tested, working".
+═══════════════════════════════════════════════════
