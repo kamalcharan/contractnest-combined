@@ -1,0 +1,84 @@
+BATCH: agentic-p1.3b-template-wizard
+DATE: 2026-07-04
+TYPE: p1.3 — template creation via the CONTRACT WIZARD (identical UX, one code path)
+DEPENDS ON: agentic-p1.2.1-interactive-cards AND agentic-p1.3a-templates-manual
+  must already be copied (this batch's ContractWizard/index.tsx builds on the
+  p1.2.1 version; templates-list.tsx builds on the p1.3a version).
+
+OWNER DECISION IMPLEMENTED:
+  "We have a wizard pattern for contract creation — have an identical pattern
+  for templates." A template IS a contract minus buyer and dates, so the SAME
+  ContractWizard now runs in mode="template" with those steps removed. The
+  old template builder page is NOT used any more by templates-list (stale-code
+  candidate, untouched in this batch).
+
+SUBMODULES AFFECTED:
+  - contractnest-ui ONLY (3 modified files, no API/edge/DB changes)
+
+FILES:
+  1. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+     - New props: mode="template", editTemplate, onTemplateSaved.
+     - TEMPLATE_STEPS (all existing step components, same order as contracts):
+         Contract Type → Acceptance → Details → Billing Cycle → Add Blocks
+         → Billing View → Evidence Policy → Review & Save
+       Skipped: path, counterparty (buyer), buyer assets, events preview.
+     - Final action = "Save Template" → t_cat_templates via existing
+       useSaveTemplate mutation. New templates save as DRAFT; sign-off stays
+       on the templates list. NO contract records are ever created in
+       template mode (contract draft auto-save is suppressed).
+     - Storage: blocks[] in the standard {block_id, order, config_overrides}
+       shape (for the VaNi match tier + wizard instantiation later);
+       settings.wizard_state = full serialized wizard state (buyer/asset
+       fields stripped) so EDITING A TEMPLATE ROUND-TRIPS EXACTLY;
+       settings.defaults = nomenclature/duration/acceptance/billing/tax/
+       evidence defaults for external consumers.
+     - Edit hydration: opening a template restores its saved wizard state.
+       Templates saved by other tools (no wizard_state) open with
+       name/description/currency prefilled; blocks are re-picked.
+     - Close mid-flow: same "Save as Draft?" dialog — in template mode it
+       saves a draft TEMPLATE (wording adjusted), never a contract draft.
+     - NOTE: editing a signed-off template keeps its signed-off status
+       (flag if you'd rather it revert to draft on edit).
+  2. contractnest-ui/.../ContractWizard/steps/ContractDetailsStep.tsx
+     - Optional templateMode prop: hides the contract Status card (lifecycle
+       lives on the templates list) and relabels "Contract Title" →
+       "Template Title" with a template placeholder. Contract mode unchanged.
+  3. contractnest-ui/src/pages/catalog-studio/templates-list.tsx
+     - "Create New" and card click / Edit now open the ContractWizard in
+       template mode (modal on the same page) instead of navigating to the
+       old builder. List refreshes on save.
+
+PRODUCTION CHECKLIST:
+  - Transactions: single template row write via existing edge function
+    (idempotency keys already sent by the mutation hooks).
+  - Race conditions: Save button disabled while saving; templateRecordId
+    tracked so save-then-save updates instead of duplicating.
+  - Error handling: mutation onError toasts; save failure keeps the wizard
+    open with state intact.
+  - Toasts: existing react-hot-toast handlers in useCatTemplatesMutations.
+  - Loaders: FloatingActionIsland "Saving…" state + dialog spinner.
+
+TYPESCRIPT: UI total stays at the 23 pre-existing baseline errors (0 new).
+
+COPY COMMANDS (PowerShell, from contractnest-combined root):
+  Copy-Item "MANUAL_COPY_FILES\agentic-p1.3b-template-wizard\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+LOCAL TESTING:
+  1. /catalog-studio/templates-list → "Create New" → the familiar contract
+     wizard opens, but with 8 template steps (no path/buyer/assets steps).
+  2. Walk it: pick nomenclature (e.g. AMC) → acceptance → name it
+     ("1-Year HVAC AMC — Quarterly") + duration 1 year → billing cycle →
+     add blocks from your catalog → billing view (tax) → evidence policy →
+     Review shows the standard contract review (no buyer) → "Save Template".
+  3. Toast + wizard closes → new card on the list with Draft pill, correct
+     blocks count and value.
+  4. Click the card → wizard reopens WITH EVERYTHING RESTORED (nomenclature,
+     acceptance, duration, blocks, tax, evidence). Change something → Save →
+     card updates (no duplicate).
+  5. Close mid-flow after naming + blocks → "Save as Draft?" dialog (template
+     wording) → Save → draft template appears on the list.
+  6. Sanity: Contracts → Create Client Contract → normal contract wizard is
+     unchanged (path step, buyer, assets, events all still there).
+  7. Your earlier junk templates ("asdds", "asddsd", "Untitled Template")
+     have no wizard_state — clicking them opens the wizard with only
+     name/description prefilled. Delete them or rebuild properly.
