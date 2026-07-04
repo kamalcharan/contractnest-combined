@@ -208,6 +208,14 @@ async function handleGetTemplates(
 ) {
   const pagination = parsePaginationParams(params);
 
+  // Filter params — declared at HANDLER scope (not inside the query builder)
+  // because the response payload below references them too. Declaring them
+  // inside the closure caused a ReferenceError -> 500 on every list call.
+  const category = params.get('category');
+  const isSystem = params.get('is_system');
+  const search = params.get('search');
+  const isActiveParam = params.get('is_active');
+
   // Build base query — try with is_latest first; fallback without if column missing
   const buildListQuery = (withLatest: boolean) => {
     let q = supabase
@@ -215,7 +223,6 @@ async function handleGetTemplates(
       .select('*', { count: 'exact' });
 
     // is_active: 'true' (default) | 'false' | 'all'
-    const isActiveParam = params.get('is_active');
     if (isActiveParam === 'false') {
       q = q.eq('is_active', false);
     } else if (isActiveParam === 'all') {
@@ -233,13 +240,8 @@ async function handleGetTemplates(
     }
 
     // Filters
-    const category = params.get('category');
     if (category) q = q.eq('category', category);
-
-    const isSystem = params.get('is_system');
     if (isSystem !== null) q = q.eq('is_system', isSystem === 'true');
-
-    const search = params.get('search');
     if (search) q = q.ilike('name', `%${search}%`);
 
     // Order
