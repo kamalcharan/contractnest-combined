@@ -1,0 +1,66 @@
+═══════════════════════════════════════════════════
+📦 CHANGE: Smart Profile — land on view/clusters page after save
+         (COMBINED: includes the earlier no-fallbacks fix too)
+═══════════════════════════════════════════════════
+Branch (combined repo): claude/handover-templates-agent-qretm1
+Submodule affected: contractnest-ui  (only)
+
+FILE
+  contractnest-ui/src/pages/settings/business-profile/smart-profile.tsx
+
+⚠️ THIS SUPERSEDES  MANUAL_COPY_FILES/smartprofile-no-fallbacks/
+   This one file contains BOTH:
+     1) the honest-failure / no-fabricated-fallbacks fix (previous batch), AND
+     2) the save → view/clusters page fix (this batch).
+   Just copy THIS file; you don't need to copy the older folder again.
+
+WHAT CHANGED (this batch) & WHY
+  Problem: after "Save Profile", the wizard reset to step 1 and relied on a
+  query refetch to swap in the view page. For a NEW profile, existingProfile
+  was still null for a beat, so it bounced back to the BLANK wizard and you
+  never reached the 65:35 view (which already has the Semantic Clusters
+  section). So it looked like "no view page".
+
+  Fix (handleSaveProfile):
+    • On save success, seed the react-query cache from the just-saved values
+      (setQueryData) so `existingProfile` is populated IMMEDIATELY → the 65:35
+      view page renders with no blank-wizard flash.
+    • Removed the setWizardStep('entry') reset; leaves the wizard and lands on
+      the view page.
+    • Then invalidateQueries to reconcile with the canonical server row.
+    • Toast now says: "Profile saved! Add semantic clusters below."
+  The view page already had the full clusters UI (generate / add / edit /
+  delete / save) on the right — same role as the Groups dashboard. No new
+  view page needed; you just now actually land on it.
+
+  NOTE: the "basic save" does not generate the embedding (that happens via the
+  clusters/generate path), so the "Vector Indexed" badge appears only after
+  clusters/embedding are generated — expected.
+
+TYPECHECK
+  tsc --noEmit = 23 errors (unchanged baseline). None in this file.
+
+═══════════════════════════════════════════════════
+PHASE 1 — COPY & TEST (local)
+═══════════════════════════════════════════════════
+STEP 1: cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy the one file
+  Copy-Item "MANUAL_COPY_FILES\smartprofile-view-flow\contractnest-ui\src\pages\settings\business-profile\smart-profile.tsx" -Destination "contractnest-ui\src\pages\settings\business-profile\smart-profile.tsx" -Force
+
+STEP 3: (dev server is likely already running; Vite HMR will pick it up) Ctrl+F5
+  Settings -> Business Profile -> Smart Profile
+
+TEST CHECKLIST
+  [ ] Create/enhance a profile -> click "Save Profile"
+  [ ] You land DIRECTLY on the 65:35 view page (NOT back on the blank form)
+  [ ] Right column shows the Semantic Clusters section with "Generate Clusters"
+  [ ] Generate Clusters -> clusters appear -> Save Clusters works
+  [ ] Reload the page -> view page persists with saved profile + clusters
+  [ ] Edit -> change something -> Save -> lands back on view page cleanly
+
+═══════════════════════════════════════════════════
+Prereq already done: DB migration adding website_url + generation_method
+columns to t_tenant_smartprofiles (that fixed the save 500).
+No Phase 2 (submodule commit) until you confirm "tested, working".
+═══════════════════════════════════════════════════
