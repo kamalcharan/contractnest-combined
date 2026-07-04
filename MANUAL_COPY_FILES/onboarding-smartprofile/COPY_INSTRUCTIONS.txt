@@ -1,0 +1,86 @@
+═══════════════════════════════════════════════════
+📦 CHANGE: Background Smart Profile build in onboarding (Piece 1)
+═══════════════════════════════════════════════════
+Branch (combined repo): claude/handover-templates-agent-qretm1
+Submodules: contractnest-api (2 files) + contractnest-ui (1 file)
+NO migration. NO new onboarding step.
+
+WHY
+  You completed an onboarding and the Smart Profile never triggered — because it
+  was never wired in. Onboarding ALREADY captures the website URL at the branding
+  step (BusinessPreferencesStep) but did nothing with it. This makes that URL
+  actually build the tenant's Smart Profile — in the background — so the ICP is
+  ready to power resource-seeding rank (Piece 2) + smart chips + nomenclature.
+
+WHAT IT DOES
+  When the branding step is submitted WITH a website URL, the UI fires a
+  fire-and-forget call to a new endpoint. The server responds 202 immediately and
+  runs the SAME pipeline the Settings wizard uses, detached:
+      scrape-website (n8n) → save profile → generate clusters (n8n) → save clusters
+  Onboarding is NEVER blocked (no spinner, no wait). By the time the tenant
+  reaches resource seeding (~2 steps later) the profile is usually ready; if not,
+  seeding/chips degrade to archetype ranking.
+
+  TWO HARD RULES (enforced server-side):
+    • HONEST — if the scrape/AI returns no real content, it persists NOTHING. No
+      fabricated description, no placeholder keywords. (Your standing rule.)
+    • IDEMPOTENT — if the tenant already has a profile, it SKIPS. Never clobbers a
+      hand-authored profile, never double-builds on a re-submit.
+
+FILES (copy all 3)
+  contractnest-api:
+    1) src/services/onboardingSmartProfileService.ts   (NEW — the orchestrator)
+    2) src/routes/onboardingRoutes.ts                  (adds POST /build-smart-profile)
+  contractnest-ui:
+    3) src/pages/onboarding/steps/BusinessPreferencesStep.tsx (fires the build)
+
+  ⚠️ DEPENDENCY: this onboardingRoutes.ts is the LATEST — it contains BOTH the
+     Piece 2 route (GET /resource-ranking) AND this new one. It expects
+     src/services/icpRankingService.ts (from the icp-seeding-rank bundle) to be
+     present. If you have not copied that bundle yet, copy its icpRankingService.ts
+     too (or copy both bundles). This file SUPERSEDES the onboardingRoutes.ts in
+     the icp-seeding-rank bundle.
+
+NEW ENDPOINT
+  POST /api/onboarding/build-smart-profile   Body: { website_url }
+  → 202 { success:true, data:{ accepted:true } } and builds in the background.
+
+ENV: uses the same n8n webhooks as the Settings Smart Profile wizard (PROCESS_PROFILE,
+     GENERATE_SEMANTIC_CLUSTERS). Needs OpenAI credit on the n8n key (the 429 we hit
+     before). On any failure it persists nothing — safe, just no profile.
+
+VERIFIED
+  - API tsc --noEmit = 0 source errors.
+  - UI  tsc --noEmit = 23 = unchanged baseline (touched file clean).
+
+═══════════════════════════════════════════════════
+PHASE 1 — COPY & TEST (all 3)
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\onboarding-smartprofile\contractnest-api\src\services\onboardingSmartProfileService.ts" -Destination "contractnest-api\src\services\onboardingSmartProfileService.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-smartprofile\contractnest-api\src\routes\onboardingRoutes.ts" -Destination "contractnest-api\src\routes\onboardingRoutes.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-smartprofile\contractnest-ui\src\pages\onboarding\steps\BusinessPreferencesStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\BusinessPreferencesStep.tsx" -Force
+
+# If not already done, also copy the Piece 2 service that onboardingRoutes.ts imports:
+Copy-Item "MANUAL_COPY_FILES\icp-seeding-rank\contractnest-api\src\services\icpRankingService.ts" -Destination "contractnest-api\src\services\icpRankingService.ts" -Force
+
+Then restart both:  cd contractnest-api ; npm run dev   |   cd contractnest-ui ; npm run dev
+
+TEST CHECKLIST
+  [ ] Onboard a FRESH tenant, fill a real website URL at the branding step, Continue.
+      → API log shows "[Onboarding] smart-profile autobuild: {"built":true}" within
+        ~10–90s. Settings → Business Profile → Smart Profile now shows the profile
+        + clusters WITHOUT you building it by hand.
+  [ ] Reach the resource-seeding step → on-profile resources ranked to top with the
+      "★ For you" badge (Piece 2 now has a real ICP to rank from).
+  [ ] Bad/blank URL, or n8n down (OpenAI 429): onboarding still completes normally,
+      NO profile is saved (check log: "persisting nothing"), no error shown to user.
+  [ ] Re-run branding for a tenant that already has a profile → log shows
+      {"built":false,"reason":"already_exists"} (no clobber, no duplicate).
+
+Note: your just-completed tenant won't retro-build — this triggers on the branding
+step going forward. To give that tenant a profile now, build it once in Settings.
+
+No Phase 2 (submodule commit) until you confirm "tested, working".
+═══════════════════════════════════════════════════
