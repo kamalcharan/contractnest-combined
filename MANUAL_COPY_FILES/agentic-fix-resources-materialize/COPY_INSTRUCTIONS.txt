@@ -50,3 +50,14 @@ LOCAL TESTING:
   4. VaNi draft (HVAC AMC) → Assets & Coverage card populates coverage types
   5. Future-proof check (optional): re-run onboarding industry selection or
      Settings → Seed Data reseed → new picks appear in Resources automatically
+
+ADDED (owner request, same batch):
+  4. contractnest-ui/src/pages/settings/Resources/index.tsx
+     - New "Team Members" tab on Settings → Resources: read-only list of
+       CONTACTS tagged as team members (same source catalog-studio uses),
+       with count, search, and a "Manage in Contacts" link. The person is
+       the resource; master data stays in Contacts. Tab appears in
+       My Resources view (not in Browse Catalog — there is no template
+       catalog for people).
+     TEST: Settings → Resources → "Team Members" pill shows your tagged
+     contacts; clicking Manage in Contacts navigates to /contacts.
