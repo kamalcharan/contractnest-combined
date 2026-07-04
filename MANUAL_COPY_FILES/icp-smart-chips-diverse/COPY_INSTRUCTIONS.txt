@@ -1,0 +1,71 @@
+═══════════════════════════════════════════════════
+📦 CHANGE: ICP smart chips — diverse portfolio (the "wow" pass)
+═══════════════════════════════════════════════════
+Branch (combined repo): claude/handover-templates-agent-qretm1
+Submodule affected: contractnest-api  (only)   |   NO UI change
+SUPERSEDES: MANUAL_COPY_FILES/icp-smart-chips-phaseA  (same file, improved)
+
+FILE
+  contractnest-api/src/services/contractComposerService.ts
+
+WHAT CHANGED (buildSuggestions — rebuilt for impact)
+  Two problems with the previous chips:
+    (a) "for kamal industries" was stamped on EVERY contract chip. That name is
+        the tenant's most-recent CLIENT contact (contactService) — NOT the Smart
+        Profile. It was pre-existing personalisation, repeated on all chips.
+    (b) all chips came from the same skeleton → four look-alikes.
+
+  New behaviour:
+    • NO buyer name on chips. A chip is a distinct OFFERING; the buyer is chosen
+      on the composer's buyer card. The whole recentClient/contact lookup is gone
+      from the chip builder (also one fewer network call).
+    • DIVERSE PORTFOLIO. Candidates are tagged by ARCHETYPE — template /
+      equipment(AMC) / facility(FMC) / service(package) / consulting(program) —
+      each ranked by the tenant's own vocabulary. Selection takes the best of
+      EACH archetype first, then fills remaining slots. So the row spans the
+      tenant's whole business instead of repeating one shape.
+    • Real data only (honesty rule): real signed-off templates, real materialized
+      resources (t_category_resources_master, their own display names), real
+      semantic clusters. No data -> empty -> UI cold-start examples.
+
+  EXAMPLE (hub@h.com, contract mode)
+    BEFORE:
+      1 year Service Package for kamal industries with quarterly billing
+      1 year General Consultation service package for kamal industries, billed quarterly
+      1 year Specialist Consultation service package for kamal industries, billed quarterly
+    AFTER:
+      1 year Service Package with quarterly billing            (template)
+      1 year HVAC System AMC, billed quarterly                 (equipment)
+      1 year Washroom / Restroom FMC, billed monthly           (facility)
+      6 month General Consultation service package, billed monthly  (service)
+    (exact resources shown depend on your templates + cluster related-terms;
+     a healthcare-heavy profile floats Ventilator / Operation Theatre up.)
+
+  Output shape UNCHANGED: { suggestions: string[] } (max 4). Chips still feed the
+  quick-parse path; clicking a chip fills the textarea, buyer card resolves the
+  buyer as before.
+
+ENV: still needs SUPABASE_SERVICE_ROLE_KEY for the RLS-protected profile/cluster
+     reads (resource chips work without it; ranking/consulting chips need it).
+
+VERIFIED: tsc --noEmit = 0 source errors (only the 2 unrelated tsconfig
+     deprecation notices). Chip output traced against live hub@h.com ICP data.
+
+═══════════════════════════════════════════════════
+PHASE 1 — COPY & TEST
+═══════════════════════════════════════════════════
+STEP 1: cd "D:\projects\core projects\ContractNest\contractnest-combined"
+STEP 2:
+  Copy-Item "MANUAL_COPY_FILES\icp-smart-chips-diverse\contractnest-api\src\services\contractComposerService.ts" -Destination "contractnest-api\src\services\contractComposerService.ts" -Force
+STEP 3: cd contractnest-api ; npm run dev   (restart the API)
+STEP 4: Open "Draft with VaNi" in the composer, check the chip row.
+
+TEST CHECKLIST
+  [ ] No client name ("kamal industries") on any chip.
+  [ ] Chips are DISTINCT offerings (template / equipment / facility / service /
+      consulting) — not repeats of one shape.
+  [ ] Each uses the tenant's real resource display names / cluster terms.
+  [ ] Clicking a chip fills the textarea; "Draft it" composes; buyer card asks who.
+
+No Phase 2 (submodule commit) until you confirm "tested, working".
+═══════════════════════════════════════════════════
