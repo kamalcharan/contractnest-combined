@@ -1,0 +1,77 @@
+BATCH: agentic-p1.3c-templates-hub
+DATE: 2026-07-04
+TYPE: Templates Hub rebuild + fixes for the 7 review points
+DEPENDS ON: p1.2.1 + p1.3a + p1.3b already copied. This batch's
+  templates-list.tsx and ContractWizard/index.tsx SUPERSEDE the p1.3b copies.
+
+THE 7 POINTS → WHAT CHANGED:
+  1. Rename not saved  → ROOT CAUSE: rename WAS saved (verified in DB); the
+     card rendered display_name, which versioning carried forward stale.
+     Fix: wizard + copy keep display_name in sync with name, and the card
+     now renders `name` (source of truth). Your "testing template copy"
+     will display correctly immediately.
+  2. Copy naming/uniqueness → copies auto-name "X (Copy)", "X (Copy 2)", …
+     against existing names; wizard save now REJECTS a name already used by
+     another template (case-insensitive, excludes the template's own version
+     lineage) with a clear toast.
+  3. Landing UX → page rebuilt on the CONTRACTS HUB chrome: same header
+     pattern (title + mono count + subtitle), same right-side controls
+     (search / refresh / primary "New Template"), same pill-with-count
+     filter idiom. Gradient hero gone.
+  4. Filters → Lifecycle pills: All / Draft / Signed off / Inactive (with
+     counts). Type chips: Equipment / Facilities / Services / Hybrid
+     (from the nomenclature group each template was built with).
+     Currency chips appear automatically when >1 currency exists.
+  5. Global Templates → REMOVED (tab + ~1000-line hardcoded demo gallery +
+     demo currency converter). Admin-driven templates parked per owner
+     decision ("a trap"); system/public APIs remain if ever needed.
+  6. Delete → confirmed soft (verified in DB: is_active=false). Dialog now
+     says "Deactivate"; Inactive pill shows those templates with a RESTORE
+     action (in-place update, no version churn — write dry-run verified).
+  7. Multi-currency → cards always show the template's own currency;
+     Currency filter chips slice across currencies. No fake conversion.
+
+SUBMODULES AFFECTED:
+  - contractnest-ui   (3 files)
+  - contractnest-edge (1 file — cat-templates, REDEPLOY REQUIRED)
+
+FILES:
+  1. contractnest-ui/src/pages/catalog-studio/templates-list.tsx — full
+     rebuild (2445 → ~780 lines) as described above.
+  2. contractnest-ui/src/components/contracts/ContractWizard/index.tsx —
+     display_name synced with name on save; new takenTemplateNames prop +
+     duplicate-name rejection toast.
+  3. contractnest-ui/src/services/serviceURLs.ts — CatTemplateFilters gets
+     is_active ('true'|'false'|'all') and the list URL builder passes it.
+  4. contractnest-edge/supabase/functions/cat-templates/index.ts —
+     (a) tenant list now honors is_active param (was hardcoded active-only,
+         which blocked the Inactive filter);
+     (b) copies start as lifecycle 'draft' (a copy of a signed-off template
+         must be re-signed-off).
+
+COPY COMMANDS (PowerShell, from contractnest-combined root):
+  Copy-Item "MANUAL_COPY_FILES\agentic-p1.3c-templates-hub\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\agentic-p1.3c-templates-hub\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+  cd contractnest-edge
+  npx supabase functions deploy cat-templates --project-ref uwyqhzotluikawcboldr
+  cd ..
+
+VERIFIED BEFORE SHIPPING (rolled-back dry runs on the live DB):
+  - Restore write (is_active=true in-place) on your real inactive row
+  - settings.lifecycle create + flip with wizard_state surviving
+  TypeScript: 23 pre-existing baseline errors, 0 new.
+
+LOCAL TESTING:
+  1. /catalog-studio/templates-list → hub-style page: header + count,
+     search/refresh/New Template, lifecycle pills, Type chips.
+  2. "testing template copy" now shows its correct name.
+  3. Duplicate a template → "X (Copy)" appears; duplicate again → "(Copy 2)".
+  4. Edit any template → rename it to another template's exact name →
+     Save → error toast "Name already in use"; rename to something unique
+     → saves and the card shows the new name.
+  5. Deactivate a template → Inactive pill count +1 → open Inactive →
+     Restore → back under All.
+  6. Copy a SIGNED-OFF template → the copy is a Draft.
+  7. Type chips filter by nomenclature group; if you create a USD template,
+     Currency chips appear.
+  8. Global Templates tab is gone.
