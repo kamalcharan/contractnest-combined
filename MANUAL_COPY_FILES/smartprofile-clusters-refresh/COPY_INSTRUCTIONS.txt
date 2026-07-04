@@ -1,0 +1,57 @@
+═══════════════════════════════════════════════════
+📦 CHANGE: Smart Profile — clusters persist in the view after save
+═══════════════════════════════════════════════════
+Branch (combined repo): claude/handover-templates-agent-qretm1
+Submodule affected: contractnest-ui  (only)
+
+ROOT CAUSE
+  The view page reads its cluster list from the PROFILE query cache
+  (smartProfileData.clusters). But "Save Clusters" only invalidated the
+  separate CLUSTERS query — never the profile query. So the profile cache
+  kept the stale empty cluster list from before you generated them, and
+  navigating back to the view showed 0 clusters (even though they were saved
+  in the DB and returned correctly by the edge GET).
+
+  Confirmed: hub@h.com (1f0a8dd2) has 5 clusters saved in t_semantic_clusters,
+  and the deployed edge GET returns them nested under smartprofile.clusters.
+  Purely a client cache-refresh gap.
+
+FIX (handleSaveClusters)
+  After saving clusters, also invalidate the PROFILE query
+  (smartProfileQueryKeys.profile(tenantId)) so it refetches with the saved
+  clusters. Now the view shows them immediately and after navigating away/back.
+
+FILES (copy BOTH for a complete, self-contained state — supersedes
+       smartprofile-view-fix)
+  1) contractnest-ui/src/pages/settings/business-profile/smart-profile.tsx
+       (no-fallbacks + seed-cache/land-on-view + THIS clusters-refresh)
+  2) contractnest-ui/src/services/groupsService.ts
+       (getSmartProfile GET-shape fix — unchanged from view-fix)
+
+PREREQS ALREADY APPLIED (owner)
+  - Migration: website_url + generation_method columns on t_tenant_smartprofiles
+  - Migration: ALTER TABLE t_semantic_clusters ALTER COLUMN membership_id DROP NOT NULL
+
+TYPECHECK  tsc --noEmit = 23 (unchanged). No new errors.
+
+═══════════════════════════════════════════════════
+PHASE 1 — COPY & TEST
+═══════════════════════════════════════════════════
+STEP 1: cd "D:\projects\core projects\ContractNest\contractnest-combined"
+STEP 2:
+  Copy-Item "MANUAL_COPY_FILES\smartprofile-clusters-refresh\contractnest-ui\src\pages\settings\business-profile\smart-profile.tsx" -Destination "contractnest-ui\src\pages\settings\business-profile\smart-profile.tsx" -Force
+  Copy-Item "MANUAL_COPY_FILES\smartprofile-clusters-refresh\contractnest-ui\src\services\groupsService.ts" -Destination "contractnest-ui\src\services\groupsService.ts" -Force
+STEP 3: clean restart (Ctrl+C ; npm run dev) + Ctrl+Shift+R
+
+TEST (hub@h.com — already has 5 saved clusters)
+  [ ] Open Smart Profile -> view page shows the 5 clusters on the right
+      (c-suite leadership, digital transformation, cost savings,
+       healthcare transformation, training and skill-building).
+  [ ] Regenerate / edit / Save Clusters -> stays visible.
+  [ ] Navigate away (to another settings page) and back -> clusters STILL show.
+  [ ] Hard reload -> clusters still show.
+
+This closes the full Smart Profile loop:
+  enhance -> save -> view -> generate clusters -> save clusters -> persists.
+No Phase 2 (submodule commit) until you confirm "tested, working".
+═══════════════════════════════════════════════════
