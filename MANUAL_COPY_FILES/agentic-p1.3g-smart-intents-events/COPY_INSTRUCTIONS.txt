@@ -1,0 +1,53 @@
+BATCH: agentic-p1.3g-smart-intents-events
+DATE: 2026-07-04
+TYPE: Query 2 (smart intents) + Query 6 (Events Preview in agent flows)
+DEPENDS ON: all prior batches copied (through p1.3f). No edge, no DB.
+  RESTART THE API after copying.
+
+SMART INTENTS (query 2):
+  - New GET /api/vani-composer/suggestions (deterministic, entitlement-
+    gated, never fails the canvas — returns [] on any error).
+  - Chips are built from YOUR data, priority order:
+      1. published templates (+ a recent client name) — these chips are
+         phrased to hit the ZERO-LLM fast path when clicked
+      2. your equipment (from catalog blocks) + your nomenclature
+         vocabulary ("HVAC System AMC for 1 year, billed quarterly")
+      3. service-delivery phrasing when you sell services
+  - Both canvases use them (contract + template mode); the old static
+    examples remain only as cold-start fallback.
+
+EVENTS PREVIEW (query 6):
+  - VaNi review now has a view switch: [Contract | Events Schedule].
+    Contract mode: the full wizard events timeline, INTERACTIVE — date
+    adjustments made there flow into the same computed_events pipeline
+    the wizard uses (verified through useContractSubmission).
+    Template mode: same timeline with an "Illustrative — assumes a start
+    today" note (real dates are set per contract).
+  - The template WIZARD also gets its Events Preview step back (between
+    Evidence and Review) with the same illustrative wording — every door
+    now shows the calendar before commitment.
+
+SUBMODULES AFFECTED:
+  - contractnest-api (3 files) — restart API
+  - contractnest-ui  (4 files)
+TYPESCRIPT: API 0 errors · UI 23 baseline (0 new).
+
+COPY COMMANDS (PowerShell, from contractnest-combined root):
+  Copy-Item "MANUAL_COPY_FILES\agentic-p1.3g-smart-intents-events\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+  Copy-Item "MANUAL_COPY_FILES\agentic-p1.3g-smart-intents-events\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+  # restart contractnest-api, Ctrl+F5
+
+LOCAL TESTING:
+  1. Contracts → Draft with VaNi → the helper chips are now YOUR data
+     (template-derived chip with a real client name, your equipment).
+     Click the template-derived chip → should run the zero-LLM fast path.
+  2. Templates → Draft with VaNi → template-flavoured smart chips.
+  3. VaNi contract run → review → [Events Schedule] → full timeline;
+     adjust an event date → Approve & Send → open the contract → the
+     adjusted date persisted.
+  4. VaNi template run → review → Events Schedule shows the illustrative
+     note.
+  5. New Template (manual wizard) → an "Events Preview (illustrative)"
+     step now appears before Review.
+  6. Cold start check: a tenant with no templates/equipment still sees
+     the static example chips (fallback).
