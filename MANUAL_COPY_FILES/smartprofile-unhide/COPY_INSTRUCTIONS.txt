@@ -1,0 +1,50 @@
+═══════════════════════════════════════════════════
+📦 CHANGE: Unhide "Smart Profile" settings card
+═══════════════════════════════════════════════════
+Branch (combined repo): claude/handover-templates-agent-qretm1
+Submodule affected: contractnest-ui  (only)
+
+WHAT CHANGED
+  contractnest-ui/src/utils/constants/settingsMenus.ts
+    - Uncommented the 'smart-profile' menu entry (was HIDDEN).
+    - No other change. Route + component were already live
+      (App.tsx:663 -> SmartProfilePage), only the nav card was suppressed.
+
+WHY
+  You asked to un-hide Smart Profile to view it once and decide whether it
+  should stay a separate card under Business Profile or be folded into the
+  Business Profile details page. This change makes the card appear as-is
+  (sibling card under the "Business Profile" group).
+
+═══════════════════════════════════════════════════
+PHASE 1 — COPY & VIEW (local)
+═══════════════════════════════════════════════════
+STEP 1: Navigate to project
+  cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy the one changed file
+  Copy-Item "MANUAL_COPY_FILES\smartprofile-unhide\contractnest-ui\src\utils\constants\settingsMenus.ts" -Destination "contractnest-ui\src\utils\constants\settingsMenus.ts" -Force
+
+STEP 3: Run UI and view
+  cd contractnest-ui
+  npm run dev
+  # Hard refresh (Ctrl+F5), go to: Settings -> Business Profile group
+  # You should now see a "Smart Profile" card (Sparkles icon).
+  # Direct route also works: /settings/business-profile/smart-profile
+
+═══════════════════════════════════════════════════
+WHAT TO EVALUATE WHILE VIEWING
+═══════════════════════════════════════════════════
+  [ ] Does the wizard flow (entry -> enhanced -> clusters -> success) render?
+  [ ] Website-scan + keyword/cluster generation behaviour (needs n8n up).
+  [ ] DECIDE placement:
+        (A) keep as its own card under Business Profile  (current state)
+        (B) fold into the Business Profile details page as a tab/section
+            (aligns with "Smart Profile IS the real business profile")
+
+═══════════════════════════════════════════════════
+NOTE — no Phase 2 provided yet
+═══════════════════════════════════════════════════
+  This is view-only. No submodule commit/push commands until you confirm
+  placement + "tested, working". (Claude cannot push to the contractnest-ui
+  submodule directly — combined-repo scope only — so Phase 2 stays owner-run.)
