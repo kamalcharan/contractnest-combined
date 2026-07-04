@@ -1,0 +1,49 @@
+═══════════════════════════════════════════════════
+📦 CHANGE: "Events Schedule" button on the Draft-ready card
+═══════════════════════════════════════════════════
+Branch (combined repo): claude/handover-templates-agent-qretm1
+Submodule affected: contractnest-ui  (only)
+SUPERSEDES: MANUAL_COPY_FILES/event-viewer-complete  (this bundle includes all of
+            it PLUS the shortcut — copy THIS folder's 5 files.)
+
+WHAT CHANGED
+  You wanted the Events Schedule reachable straight from the "Draft ready" card,
+  not only as a tab inside Review & Finalize. Added an "Events Schedule" button
+  on that card (between "Review & Finalize" and "Edit in wizard") that opens the
+  review already on the Events Schedule tab.
+    • VaNiComposerLauncher.tsx — new button; tracks which tab to open and passes
+      initialView to the review. (Template mode labels it "Events Schedule
+      (illustrative)".)
+    • VaNiReviewFinalize.tsx — new `initialView` prop ('contract' default, or
+      'events'); the review opens on that tab. (Also carries the Batch-2
+      read-only/illustrative events behaviour.)
+  The other 3 files are the unchanged event-viewer completion (Batch 2).
+
+FILES (copy all 5)
+  1) src/components/contracts/vani/VaNiComposerLauncher.tsx        (button)
+  2) src/components/contracts/vani/VaNiReviewFinalize.tsx          (initialView + readOnly)
+  3) src/components/contracts/ContractWizard/steps/EventsPreviewStep.tsx
+  4) src/components/contracts/ContractWizard/index.tsx
+  5) src/utils/service-contracts/contractEvents.ts
+
+VERIFIED: tsc --noEmit = 23 (unchanged baseline).
+
+═══════════════════════════════════════════════════
+PHASE 1 — COPY & TEST (all 5 commands)
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\events-schedule-shortcut\contractnest-ui\src\components\contracts\vani\VaNiComposerLauncher.tsx" -Destination "contractnest-ui\src\components\contracts\vani\VaNiComposerLauncher.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\events-schedule-shortcut\contractnest-ui\src\components\contracts\vani\VaNiReviewFinalize.tsx" -Destination "contractnest-ui\src\components\contracts\vani\VaNiReviewFinalize.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\events-schedule-shortcut\contractnest-ui\src\components\contracts\ContractWizard\steps\EventsPreviewStep.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\EventsPreviewStep.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\events-schedule-shortcut\contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\events-schedule-shortcut\contractnest-ui\src\utils\service-contracts\contractEvents.ts" -Destination "contractnest-ui\src\utils\service-contracts\contractEvents.ts" -Force
+
+Then: cd contractnest-ui ; npm run dev   (Ctrl+Shift+R)
+
+TEST
+  [ ] On the "Draft ready" card there is now an "Events Schedule" button.
+  [ ] Clicking it opens Review & Finalize already on the Events Schedule tab.
+  [ ] "Review & Finalize" still opens on the Contract tab.
+  [ ] Template mode: button reads "Events Schedule (illustrative)"; dates static.
+═══════════════════════════════════════════════════
