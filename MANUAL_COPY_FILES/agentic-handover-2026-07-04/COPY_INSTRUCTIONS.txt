@@ -1,0 +1,17 @@
+BATCH: agentic-handover-2026-07-04
+TYPE: Documentation only — session handover for the next session.
+
+FILE:
+  ClaudeDocumentation/ContractNest Agent/HANDOVER-2026-07-04-TEMPLATES-AND-AGENT.md
+
+COPY COMMAND (PowerShell, from contractnest-combined root):
+  Copy-Item "MANUAL_COPY_FILES\agentic-handover-2026-07-04\ClaudeDocumentation\*" -Destination "ClaudeDocumentation\" -Recurse -Force
+
+Then commit ClaudeDocumentation (branch master) along with your Phase 2
+commits — the handover doc contains the full Phase 2 command sequence.
+
+NEXT SESSION KICKOFF PROMPT (suggested):
+  "init submodules, read claude.md, then read
+   ClaudeDocumentation/ContractNest Agent/HANDOVER-2026-07-04-TEMPLATES-AND-AGENT.md
+   — first task: inspect the ICP data model, then design ICP-aligned smart
+   chips (section 5). Analysis first, no code."
