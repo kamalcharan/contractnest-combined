@@ -1,0 +1,83 @@
+═══════════════════════════════════════════════════
+📦 CHANGE: ICP-ranked resource seeding (Onboarding — Piece 2)
+═══════════════════════════════════════════════════
+Branch (combined repo): claude/handover-templates-agent-qretm1
+Submodules: contractnest-api (2 files) + contractnest-ui (3 files)
+NO migration (reuses m_icp_archetypes + icp_similar_tenants already deployed).
+NO onboarding step reorder.
+
+WHAT THIS DOES
+  The onboarding "What do you work with?" step (ResourcePickStep, the Data-Setup
+  phase) used to order resource templates by a STATIC, global signal
+  (is_recommended / popularity_score — identical for every tenant in an industry).
+  This overlays a PER-TENANT ICP relevance ranking on the SAME list:
+    • rank-to-top — the most on-profile sub-categories AND rows float to the top
+    • a "★ For you" badge on templates that matched the tenant's real ICP
+  Decision locked with you: RANK-TO-TOP, KEEP SELECT-ALL — the existing auto-tick
+  (all KT-ready equipment + all facilities) is UNCHANGED. Nothing that ticks today
+  gets un-ticked. ICP only reorders + badges.
+
+  Ranking signal (same brain as the smart chips, so near/similar profiles get
+  similar recommendations):
+    • Smart Profile vocabulary (approved keywords + semantic-cluster terms)
+    • ICP archetype keywords (m_icp_archetypes matched by industry / persona)
+    • Embedding-neighbour terms (icp_similar_tenants → their cluster vocabulary)
+    • The tenant's own materialized resources (re-seed / settings case)
+    • Industry overlap + static signal as stable tiebreakers
+
+  COLD-START SAFE: no ICP signal (blank/new tenant, or no SUPABASE_SERVICE_ROLE_KEY)
+  → the endpoint returns {} and the step keeps its EXISTING static order. Zero
+  regression. The ranking call also never blocks the step: the picker renders
+  immediately in static order, then rank-to-top applies the moment ranking arrives.
+
+FILES (copy all 5)
+  contractnest-api:
+    1) src/services/icpRankingService.ts            (NEW — self-contained ICP ranker)
+    2) src/routes/onboardingRoutes.ts               (adds GET /resource-ranking)
+  contractnest-ui:
+    3) src/services/resourcesService.ts             (adds getResourceRanking + types)
+    4) src/hooks/queries/useResourceRanking.ts      (NEW — ranking query hook)
+    5) src/pages/onboarding/steps/ResourcePickStep.tsx (rank-to-top + "For you" badge)
+
+NEW ENDPOINT
+  GET /api/onboarding/resource-ranking
+  → { success: true, data: { [resource_template_id]: { score, forYou } } }
+  Read-only, tenant-scoped, degrades to { data: {} } on any error (never fails the step).
+
+ENV: needs SUPABASE_SERVICE_ROLE_KEY for the ICP read (same as the chips). Without
+     it → empty ranking → static order (no crash).
+
+VERIFIED
+  - API  tsc --noEmit = 0 source errors (only pre-existing tsconfig deprecation notes).
+  - UI   tsc --noEmit = 23 errors = unchanged baseline (0 new; touched files clean).
+
+═══════════════════════════════════════════════════
+PHASE 1 — COPY & TEST (all 5)
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\icp-seeding-rank\contractnest-api\src\services\icpRankingService.ts" -Destination "contractnest-api\src\services\icpRankingService.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\icp-seeding-rank\contractnest-api\src\routes\onboardingRoutes.ts" -Destination "contractnest-api\src\routes\onboardingRoutes.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\icp-seeding-rank\contractnest-ui\src\services\resourcesService.ts" -Destination "contractnest-ui\src\services\resourcesService.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\icp-seeding-rank\contractnest-ui\src\hooks\queries\useResourceRanking.ts" -Destination "contractnest-ui\src\hooks\queries\useResourceRanking.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\icp-seeding-rank\contractnest-ui\src\pages\onboarding\steps\ResourcePickStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\ResourcePickStep.tsx" -Force
+
+Then restart both:  cd contractnest-api ; npm run dev   |   cd contractnest-ui ; npm run dev
+
+TEST CHECKLIST
+  [ ] A tenant WITH a Smart Profile (e.g. hubb): open onboarding resource step (or
+      re-run seeding) → on-profile resources sit at the TOP of each tab, with a
+      "★ For you" badge. Everything that auto-ticked before still auto-ticks.
+  [ ] A COLD tenant (industry set, no Smart Profile): order is UNCHANGED from today
+      (static). No "For you" badges. No errors.
+  [ ] Kill the API's SUPABASE_SERVICE_ROLE_KEY (or the endpoint): step still renders
+      in static order, select-all still works, no console error breaks the flow.
+  [ ] Continue → selections persist exactly as before (no change to save path).
+
+REMAINING SURFACE (follow-up, not in this bundle)
+  • Background Smart-Profile capture in onboarding steps 5–6 (the "Piece 1" website
+    URL field) — so more tenants HAVE an ICP by the time they reach this step.
+  • Wizard NomenclatureStep ICP ranking (offered earlier).
+
+No Phase 2 (submodule commit) until you confirm "tested, working".
+═══════════════════════════════════════════════════
