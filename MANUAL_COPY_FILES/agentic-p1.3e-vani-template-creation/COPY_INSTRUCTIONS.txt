@@ -1,0 +1,68 @@
+BATCH: agentic-p1.3e-vani-template-creation
+DATE: 2026-07-04
+TYPE: Point 3 of the template plan — VaNi CREATES templates from the
+      Templates hub ("Draft with VaNi" on /catalog-studio/templates-list)
+DEPENDS ON: all prior batches INCLUDING p1.3d copied (this batch's
+  VaNiComposerLauncher/VaNiReviewFinalize SUPERSEDE the p1.3d copies).
+  UI-ONLY: no API restart strictly needed if p1.3d's API is already
+  running; no edge, no DB.
+
+WHAT THIS DOES:
+  - Templates hub gets a "Draft with VaNi" button (VaNi subscribers only —
+    same entitlement gate as the contracts hub).
+  - Same canvas, SHORTER pipeline: describe the offering ("1 year HVAC AMC
+    with quarterly PM visits and sign-off acceptance") → AI parse → catalog
+    scan → AI block selection → assemble. NO buyer step, NO dates — a
+    template has no counterparty.
+  - Duplicate guard: if a signed-off template already matches the request,
+    an info card says so ("Similar template already exists: X") and
+    composing continues — compare before signing off.
+  - Review shows the standard contract view (buyer blank, as in the template
+    wizard); footer = template name input (prefilled) + "Save Template" →
+    saves a DRAFT template with the full wizard_state + defaults payload
+    (identical shape to wizard-built templates, so editing round-trips
+    through the template wizard and the VaNi match tier can consume it
+    once signed off).
+  - Sign-off stays on the Templates hub — VaNi never activates a template.
+
+SUBMODULES AFFECTED:
+  - contractnest-ui ONLY (3 files)
+
+FILES:
+  1. contractnest-ui/.../vani/VaNiComposerLauncher.tsx
+     + mode="template": skips the zero-LLM instantiation path (authoring ≠
+       instantiating), skips the buyer step, template-specific header/
+       placeholder/example chips, duplicate-guard card.
+  2. contractnest-ui/.../vani/VaNiReviewFinalize.tsx
+     + mode="template": blockers reduced to blocks-only, footer = name +
+       Save Template, template-saved success panel, acceptance feedback
+       signal on save.
+  3. contractnest-ui/src/pages/catalog-studio/templates-list.tsx
+     + "Draft with VaNi" button (entitlement-gated) + launcher mount;
+       list refreshes on save.
+
+TYPESCRIPT: UI at the 23-error baseline (0 new).
+
+COPY COMMANDS (PowerShell, from contractnest-combined root):
+  Copy-Item "MANUAL_COPY_FILES\agentic-p1.3e-vani-template-creation\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+  # hard refresh (Ctrl+F5)
+
+LOCAL TESTING:
+  1. /catalog-studio/templates-list → "Draft with VaNi" appears next to
+     New Template (only when VaNi-entitled).
+  2. Click it → template-flavoured canvas ("no buyer, no dates") → type
+     "1 year HVAC AMC with quarterly PM visits and sign-off acceptance"
+     → cards: parse (AI, ~30s) → catalog scanned → blocks composed →
+     draft assembled. NO buyer card.
+  3. Review → footer shows a prefilled name input + "Save Template" →
+     save → success panel → Done → new DRAFT template on the hub with
+     correct type/blocks/value.
+  4. Edit that template (card click) → the template WIZARD opens with
+     everything restored (blocks, billing, acceptance, evidence).
+  5. Sign it off → run "Draft with VaNi" on the CONTRACTS hub with a
+     matching request → p1.3d's fast path uses the VaNi-authored template.
+     (The full loop: VaNi authors a template → you sign off → VaNi reuses
+     it instantly for contracts.)
+  6. Duplicate guard: with that template signed off, draft another similar
+     template → "Similar template already exists" info card shows, flow
+     continues.
