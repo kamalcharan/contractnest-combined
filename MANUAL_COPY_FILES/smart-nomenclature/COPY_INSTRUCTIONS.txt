@@ -1,0 +1,66 @@
+═══════════════════════════════════════════════════
+📦 CHANGE: Smart nomenclature — ICP-aware parse list (VaNi)
+═══════════════════════════════════════════════════
+Branch (combined repo): claude/handover-templates-agent-qretm1
+Submodule affected: contractnest-api  (only)   |   NO UI change | NO migration
+
+FILE (copy 1)
+  contractnest-api/src/services/contractComposerService.ts
+  (SUPERSEDES the icp-chips-phase-b copy — this file carries everything to date
+   PLUS smart nomenclature.)
+
+WHAT CHANGED
+  The VaNi intent-parse LLM chooses a contract nomenclature from a CLOSED list.
+  It was injecting ALL nomenclatures. Now the list is SHRUNK to the tenant's
+  ICP-relevant contract types before it hits the prompt — a shorter closed list
+  = faster + more accurate classification.
+    • fetchNomenclatures() now carries form_settings.industries (was dropped).
+    • New relevantNomenclatures(list, icp): keeps only groups that fit the tenant:
+        equipment/consumable resources -> equipment_maintenance
+        asset (facility) resources     -> facility_property
+        service resources OR service-led (no hard resources) -> service_delivery
+        flexible_hybrid                -> always kept (catch-all)
+        + any nomenclature whose industries overlap the tenant's industries.
+      Falls back to the FULL list when there is no ICP signal (blank/new tenant).
+    • parseIntentOnly() fetches the tenant ICP (fetchTenantIcp) and injects the
+      shrunk list into the prompt. IMPORTANT: the LLM's answer is still resolved
+      against the FULL list (matchNomenclature), so a valid choice is never lost.
+
+  Effect: a FOCUSED tenant (pure services / pure equipment shop) sees a tight
+  list (e.g. service_delivery + flexible_hybrid only). A GENERALIST like hubb
+  (equipment + asset + service) keeps all groups — no shrink, correctly.
+
+VERIFIED
+  - tsc --noEmit = 0 source errors.
+  - Against live data: cat_contract_nomenclature groups are exactly
+    equipment_maintenance / facility_property / service_delivery / flexible_hybrid
+    — the resource-type mapping the filter uses. (The per-nomenclature industries
+    vocabulary differs from m_catalog_industries, so it only ADDS relevance where
+    they align, e.g. 'healthcare'; resource types are the primary signal.)
+
+ENV: needs SUPABASE_SERVICE_ROLE_KEY (the ICP read is service-role). Without it,
+     no ICP signal -> the parse list falls back to the full list (no crash).
+
+═══════════════════════════════════════════════════
+PHASE 1 — COPY & TEST
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\smart-nomenclature\contractnest-api\src\services\contractComposerService.ts" -Destination "contractnest-api\src\services\contractComposerService.ts" -Force
+cd contractnest-api ; npm run dev
+
+TEST
+  [ ] Draft a contract via VaNi for a service-led tenant -> nomenclature parses
+      correctly (and the API log line "nomenclature_options: N" shows a SHRUNK N
+      vs the full count for a focused tenant).
+  [ ] Generalist tenant (hubb) -> still parses across all contract types.
+  [ ] Ask for something outside the tenant's usual type -> still resolves if the
+      LLM names it (resolution matches the FULL list), else nomenclature is blank
+      (optional) and the draft still proceeds.
+
+REMAINING SURFACE (follow-up, not in this file)
+  Wizard NomenclatureStep (UI) — rank the ICP-relevant groups to the top of the
+  manual picker. Needs the tenant industry/resource-types passed down from
+  ContractWizard. Say the word and I'll add it.
+
+No Phase 2 (submodule commit) until you confirm "tested, working".
+═══════════════════════════════════════════════════
