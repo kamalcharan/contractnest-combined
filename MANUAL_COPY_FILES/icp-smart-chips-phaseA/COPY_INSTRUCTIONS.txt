@@ -1,0 +1,70 @@
+═══════════════════════════════════════════════════
+📦 CHANGE: ICP-aligned smart chips — Phase A (per-tenant)
+═══════════════════════════════════════════════════
+Branch (combined repo): claude/handover-templates-agent-qretm1
+Submodule affected: contractnest-api  (only)   |   NO UI change
+
+FILE
+  contractnest-api/src/services/contractComposerService.ts
+
+WHAT CHANGED (buildSuggestions is now ICP-driven)
+  New helper fetchTenantIcp(ctx) reads the tenant's REAL Smart Profile signal:
+    - t_tenant_smartprofiles  -> approved_keywords + suggested_keywords, persona
+    - t_semantic_clusters     -> primary_term + related_terms + category (VOCAB)
+    - t_category_resources_master -> the tenant's real materialized resources
+  buildSuggestions now:
+    1. Templates  -> RANKED by overlap with the tenant vocabulary (was: first 2).
+    2. Resources  -> reads t_category_resources_master (the tenant's OWN resources
+       in their OWN display names), RANKED by vocabulary overlap; phrased by type:
+       equipment/consumable -> AMC, asset(facility) -> FMC, service -> "service package".
+       (Was: read m_catalog_resource_templates via catalog blocks, no ranking,
+        equipment/asset only.)
+    3. Vocabulary chip (NEW) -> for SERVICE-LED tenants (no equipment/facility,
+       persona != buyer), a package phrased from the STRONGEST semantic cluster,
+       e.g. "1 year Digital Transformation service package for <client>, billed
+       quarterly". Real cluster term only; falls back to service nomenclature.
+  Output shape UNCHANGED: { suggestions: string[] } (max 4). Chips still feed the
+  quick-parse / template-match path. Honesty rule kept — a chip is emitted only
+  when its backing data is real; no data -> fewer/empty -> UI cold-start examples.
+
+⚙️  ENV REQUIREMENT (important)
+  t_tenant_smartprofiles and t_semantic_clusters have ROW-LEVEL SECURITY ON.
+  The ICP read uses SUPABASE_SERVICE_ROLE_KEY (falls back to SUPABASE_KEY).
+  -> Ensure SUPABASE_SERVICE_ROLE_KEY is set in the contractnest-api env for
+     FULL ICP (vocabulary ranking + cluster chips).
+  -> If it's NOT set and SUPABASE_KEY is anon: resource chips still work
+     (t_category_resources_master has NO RLS), but keyword/cluster ranking and
+     the cluster chip are silently skipped. No crash either way.
+
+VERIFIED
+  - tsc --noEmit: 0 source errors (only 2 pre-existing tsconfig deprecation
+    notices in this newer TS, unrelated to this change).
+  - Ran the exact 3 ICP queries against the live DB for hub@h.com (1f0a8dd2):
+    returns 5 clusters, 13 live resources (equipment/asset/service), persona=seller.
+    Chip trace: resource-backed AMC/FMC/service-package chips, vocabulary-ranked.
+
+═══════════════════════════════════════════════════
+PHASE 1 — COPY & TEST (local)
+═══════════════════════════════════════════════════
+STEP 1: cd "D:\projects\core projects\ContractNest\contractnest-combined"
+STEP 2:
+  Copy-Item "MANUAL_COPY_FILES\icp-smart-chips-phaseA\contractnest-api\src\services\contractComposerService.ts" -Destination "contractnest-api\src\services\contractComposerService.ts" -Force
+STEP 3: (ensure SUPABASE_SERVICE_ROLE_KEY is in contractnest-api\.env)
+        cd contractnest-api ; npm run dev   (restart the API)
+STEP 4: In the UI, open the VaNi composer ("Draft with VaNi"). The smart chips
+        row should now reflect the tenant's real resources/vocabulary.
+
+TEST CHECKLIST
+  [ ] hub@h.com composer chips = real resources (AMC/FMC) and/or a service-package
+      chip; NOT generic examples.
+  [ ] A tenant with equipment -> AMC chips; a facility -> FMC; a service resource
+      -> "... service package".
+  [ ] A pure consulting tenant (no equipment) -> a cluster-based service package
+      chip in their own vocabulary.
+  [ ] Clicking a chip fills the composer textarea; "Draft it" still composes.
+  [ ] With SUPABASE_SERVICE_ROLE_KEY missing -> no crash, resource chips still show.
+
+No Phase 2 (submodule commit) until you confirm "tested, working".
+This is Phase A. Phase B (embedding-neighbor / archetype chips for cold-start
+tenants) is the follow-up.
+═══════════════════════════════════════════════════
