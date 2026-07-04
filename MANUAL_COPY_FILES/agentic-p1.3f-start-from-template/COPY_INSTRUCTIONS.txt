@@ -1,0 +1,71 @@
+BATCH: agentic-p1.3f-start-from-template
+DATE: 2026-07-04
+TYPE: Point 5 (wizard "Start from Template") + Point 6 (stale-code removal)
+      + Draft→Publish terminology
+DEPENDS ON: all prior batches copied (through p1.3e). UI-ONLY.
+
+⚠️ THIS BATCH DELETES TWO FILES — run the Remove-Item commands below.
+   (If you ever re-copy older batches, re-run the deletes afterwards:
+   p1.3a still ships the old builder file.)
+
+POINT 5 — START FROM TEMPLATE (manual contract wizard):
+  - "From Template" on the wizard's path step now lists your PUBLISHED
+    templates (real data — the old empty stub is gone).
+  - Selecting one hydrates the wizard from the template's saved state:
+    blocks, billing, acceptance, evidence, duration, currency. You add
+    buyer, dates and assets — the same steps VaNi leaves to you.
+  - Only published templates with a saved wizard state appear; drafts are
+    invisible here (the gate you asked for).
+
+PUBLISH TERMINOLOGY (your report "no way to mark Draft -> Publish"):
+  - The card action previously labelled "Sign off" IS the publish action —
+    it now says "Publish" / "Unpublish", the status pill says "Published",
+    the filter pill says "Published", and every helper text across the
+    wizard/VaNi surfaces says "publish". Stored value stays 'signed_off'
+    (data-compatible with everything already shipped).
+
+POINT 6 — STALE CODE REMOVED:
+  DELETED (run the Remove-Item commands):
+    - src/pages/catalog-studio/template.tsx        (old template builder —
+      superseded by the template wizard; no longer routed or linked)
+    - src/utils/catalog-studio/catTemplateAdapter.ts (only the old builder
+      family used it)
+  UPDATED:
+    - App.tsx                — old builder import + /catalog-studio/template
+                               route removed
+    - industryMenus.ts       — "Template Builder" menu entry removed;
+                               "Templates List" renamed "Templates";
+                               ADMIN "Global Templates" + "Global Template
+                               Designer" menu entries removed (admin-driven
+                               templates are a trap — owner decision)
+    - MainLayout.tsx         — dead route dropped from auto-collapse list
+    - utils/catalog-studio/index.ts — adapter re-exports removed
+  KEPT (flagged, not removed): the admin global-templates/global-designer
+    PAGES and their routes — the Knowledge Tree detail route nests under
+    them and KT is live master data. They are unreachable from the menu
+    now; deeper removal is a separate decision.
+
+SUBMODULES AFFECTED: contractnest-ui ONLY (9 files updated, 2 deleted)
+TYPESCRIPT: 23 pre-existing baseline errors (0 new) — verified after the
+  deletions, so nothing else depended on the removed files.
+
+COPY COMMANDS (PowerShell, from contractnest-combined root):
+  Copy-Item "MANUAL_COPY_FILES\agentic-p1.3f-start-from-template\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+  Remove-Item "contractnest-ui\src\pages\catalog-studio\template.tsx" -Force
+  Remove-Item "contractnest-ui\src\utils\catalog-studio\catTemplateAdapter.ts" -Force
+  # hard refresh (Ctrl+F5)
+
+LOCAL TESTING:
+  1. Templates page: pill row now reads All / Draft / Published / Inactive;
+     card button says "Publish". Publish a real template.
+  2. Contracts → New Contract → path step → "From Template" → your
+     PUBLISHED template appears as a card (drafts don't).
+  3. Select it → Continue → wizard lands on Acceptance with everything
+     prefilled (check Details: duration/currency; Blocks: the template's
+     blocks; Evidence: template's policy). Pick buyer + dates + assets →
+     send. Contract carries template_id.
+  4. Menu: Catalog Studio no longer shows "Template Builder";
+     /catalog-studio/template is gone (404/redirect). Admin menu no longer
+     shows Global Templates / Global Template Designer.
+  5. Regression: scratch path unchanged; template-mode wizard (New Template)
+     unchanged; VaNi flows unchanged apart from "publish" wording.
