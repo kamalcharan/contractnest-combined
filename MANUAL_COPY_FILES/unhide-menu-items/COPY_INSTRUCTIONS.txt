@@ -1,0 +1,62 @@
+═══════════════════════════════════════════════════
+📦 CHANGE: Unhide 3 confirmed-safe sidebar menu items
+═══════════════════════════════════════════════════
+Branch (combined repo): claude/handover-templates-agent-qretm1
+Submodule affected: contractnest-ui (2 files)  |  NO API/DB change
+
+AUDIT FIRST — full sidebar audit of every hidden/commented menu item, checked
+each candidate route against actual pages + registered routes in App.tsx before
+touching anything. Findings:
+
+  UNHIDDEN (page + route both live, only nav was commented — safe):
+    ✅ Smart Profile          (Settings → Business Profile) — confirmed WORKING
+                               this session; menu card was still commented out.
+    ✅ Contract Preview        (Contracts submenu) — ContractPreviewPage, routed.
+    ✅ Invite Sellers          (Contracts submenu) — InviteSellersPage, routed.
+    ✅ Appointments            (top-level) — AppointmentsPage, routed.
+
+  LEFT HIDDEN (owner reviewed, explicitly did NOT select these):
+    ⛔ Dashboard              — comment: "login/signup now redirects to
+                                 /ops/cockpit" — deliberate replacement.
+    ⛔ Old Service Catalog (/catalog) — likely superseded by Catalog Studio;
+                                 unhiding risks two competing catalog UIs.
+    ⛔ Pricing Plans / My Subscription — comment: "simplified (removed...)";
+                                 My Subscription already has Credits merged in.
+    ⛔ Templates (top-level, /service-contracts/templates) — NO live route;
+                                 this is the OLD template builder the 07-04
+                                 session deliberately deleted. Superseded by
+                                 Catalog Studio → Templates (already visible).
+    ⛔ Tasks, Ops Activity Feed, SMS/Email settings — NO page exists for any
+                                 of these. Dead menu entries, correctly hidden.
+    ⛔ Ops → Reports — page EXISTS (pages/ops/reports/index.tsx) but has NO
+                                 route registered in App.tsx — half-built,
+                                 needs a route added before it can be unhidden
+                                 (flagging for a future task, not done here).
+
+FILES (copy both)
+  contractnest-ui/src/utils/constants/settingsMenus.ts   (Smart Profile card)
+  contractnest-ui/src/utils/constants/industryMenus.ts   (Contract Preview,
+                                                           Invite Sellers,
+                                                           Appointments)
+
+VERIFIED: UI tsc --noEmit = 23 (unchanged baseline); both touched files clean.
+
+═══════════════════════════════════════════════════
+PHASE 1 — COPY & TEST
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\unhide-menu-items\contractnest-ui\src\utils\constants\settingsMenus.ts" -Destination "contractnest-ui\src\utils\constants\settingsMenus.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\unhide-menu-items\contractnest-ui\src\utils\constants\industryMenus.ts" -Destination "contractnest-ui\src\utils\constants\industryMenus.ts" -Force
+
+cd contractnest-ui ; npm run dev
+
+TEST
+  [ ] Settings → Business Profile shows the Smart Profile card; opens correctly.
+  [ ] Sidebar → Contracts submenu shows Contract Preview + Invite Sellers;
+      both pages open without error.
+  [ ] Sidebar top-level shows Appointments; page opens without error.
+  [ ] Nothing else in the sidebar changed.
+
+No Phase 2 (submodule commit) until you confirm "tested, working".
+═══════════════════════════════════════════════════
