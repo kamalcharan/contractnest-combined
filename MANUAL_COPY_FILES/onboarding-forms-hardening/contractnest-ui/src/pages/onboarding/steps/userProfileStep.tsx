@@ -119,6 +119,14 @@ const UserProfileStep: React.FC = () => {
       vaniToast.error('First name is required');
       return;
     }
+    if (!mobile.trim()) {
+      vaniToast.error('Mobile number is required');
+      return;
+    }
+    if (mobile.replace(/\D/g, '').length < 10) {
+      vaniToast.error('Please enter a valid mobile number (at least 10 digits)');
+      return;
+    }
     setIsSaving(true);
     try {
       await api.patch(API_ENDPOINTS.USERS.UPDATE_PROFILE, {
@@ -143,7 +151,7 @@ const UserProfileStep: React.FC = () => {
   );
 
   const companyName = currentTenant?.name || 'your company';
-  const isReady = firstName.trim().length > 0;
+  const isReady = firstName.trim().length > 0 && mobile.replace(/\D/g, '').length >= 10;
 
   // ── sub-components ──
 
@@ -307,7 +315,7 @@ const UserProfileStep: React.FC = () => {
 
               {/* Mobile row */}
               <div>
-                <label style={labelStyle}>Mobile Number</label>
+                <label style={labelStyle}>Mobile Number *</label>
                 <div style={{ display: 'flex', gap: 10 }}>
 
                   {/* Dial code selector */}
