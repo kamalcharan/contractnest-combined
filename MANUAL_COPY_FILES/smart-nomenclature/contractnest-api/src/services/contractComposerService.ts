@@ -1115,7 +1115,7 @@ class ContractComposerService {
       const [templates, nomenclatures, icp] = await Promise.all([
         this.fetchSignedOffTemplates(ctx).catch(() => [] as any[]),
         this.fetchNomenclatures(ctx).catch(() => [] as NomenclatureItem[]),
-        this.fetchTenantIcp(ctx).catch(() => ({ vocabulary: [] as string[], clusters: [] as Array<{ primary_term: string; category: string }>, persona: '', resources: [] as Array<{ name: string; type: string }> })),
+        this.fetchTenantIcp(ctx).catch(() => ({ vocabulary: [] as string[], clusters: [] as Array<{ primary_term: string; category: string }>, persona: '', resources: [] as Array<{ name: string; type: string }>, industryIds: [] as string[] })),
       ]);
 
       // ICP relevance = how many of the tenant's OWN vocabulary terms (approved
