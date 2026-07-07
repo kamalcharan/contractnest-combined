@@ -1,9 +1,12 @@
 // ============================================================================
-// Settings → Automation Rules — VaNi Rules v1
+// Settings → Configure → VaNi → Automation Rules — VaNi Rules v1
 // The tenant's standing instructions to the automation engine (scanner v3
 // reads these per tenant). Aligned free/paid line: rules are VISIBLE to every
 // tenant (defaults run for everyone); EDITING needs a VaNi trial/subscription.
-// Curated typed templates with bounded knobs — no free-form IF/THEN.
+//
+// VIEW-FIRST (owner feedback): cards show the current rule values as text.
+// One card at a time enters Edit mode via the Edit button → inputs + toggle
+// with Save / Cancel / Reset-to-default. Never "form mode" by default.
 // ============================================================================
 
 import React, { useMemo, useState } from 'react';
@@ -16,6 +19,8 @@ import {
   Loader2,
   AlertTriangle,
   Sparkles,
+  Pencil,
+  X,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -48,9 +53,11 @@ const AutomationRulesPage: React.FC = () => {
   const rulesQuery = useVaniRules();
   const updateMutation = useUpdateVaniRule();
 
-  // Local draft edits per rule (rule_key → field → value)
-  const [drafts, setDrafts] = useState<Record<string, Record<string, number>>>({});
-  const [savingKey, setSavingKey] = useState<string | null>(null);
+  // One card in edit mode at a time; draft holds its field values + toggle
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const [draftConfig, setDraftConfig] = useState<Record<string, number>>({});
+  const [draftEnabled, setDraftEnabled] = useState<boolean>(true);
+  const [saving, setSaving] = useState(false);
 
   const rules = rulesQuery.data || [];
   const byDomain = useMemo(() => {
@@ -61,42 +68,31 @@ const AutomationRulesPage: React.FC = () => {
     return groups;
   }, [rules]);
 
-  const draftFor = (rule: VaniRule): Record<string, number> => ({
-    ...rule.config,
-    ...(drafts[rule.rule_key] || {}),
-  });
-
-  const isDirty = (rule: VaniRule): boolean => {
-    const d = drafts[rule.rule_key];
-    if (!d) return false;
-    return Object.keys(d).some((k) => d[k] !== rule.config[k]);
+  const startEdit = (rule: VaniRule) => {
+    setEditingKey(rule.rule_key);
+    setDraftConfig({ ...rule.config });
+    setDraftEnabled(rule.is_enabled);
   };
 
-  const setDraftField = (ruleKey: string, field: string, value: number) => {
-    setDrafts((prev) => ({
-      ...prev,
-      [ruleKey]: { ...(prev[ruleKey] || {}), [field]: value },
-    }));
+  const cancelEdit = () => {
+    setEditingKey(null);
+    setDraftConfig({});
   };
 
-  const save = async (rule: VaniRule, overrides?: { is_enabled?: boolean; reset?: boolean }) => {
-    setSavingKey(rule.rule_key);
+  const save = async (rule: VaniRule, resetToDefault = false) => {
+    setSaving(true);
     try {
       await updateMutation.mutateAsync({
         ruleKey: rule.rule_key,
-        config: overrides?.reset ? rule.defaults : draftFor(rule),
-        is_enabled: overrides?.is_enabled ?? rule.is_enabled,
+        config: resetToDefault ? rule.defaults : draftConfig,
+        is_enabled: resetToDefault ? true : draftEnabled,
         expected_version: rule.version > 0 ? rule.version : undefined,
       });
-      setDrafts((prev) => {
-        const next = { ...prev };
-        delete next[rule.rule_key];
-        return next;
-      });
+      cancelEdit();
     } catch {
-      // toasts handled by the mutation hook
+      // toasts handled by the mutation hook (409 also refetches)
     } finally {
-      setSavingKey(null);
+      setSaving(false);
     }
   };
 
@@ -139,8 +135,8 @@ const AutomationRulesPage: React.FC = () => {
         </h1>
         <p style={{ fontSize: 13.5, color: colors.utility.secondaryText, lineHeight: 1.5 }}>
           Standing instructions for the automation that runs your contracts — reminders,
-          invoice drafts and appointment requests. Defaults work for everyone;{' '}
-          {canEdit ? 'your changes apply from the next scanner run (within 15 minutes).' : 'editing them is part of VaNi.'}
+          invoice drafts and appointment requests. These are the values running for you right now
+          {canEdit ? '; changes apply from the next automation run (within 15 minutes).' : '.'}
         </p>
       </div>
 
@@ -191,21 +187,29 @@ const AutomationRulesPage: React.FC = () => {
           </div>
 
           {domainRules.map((rule) => {
-            const draft = draftFor(rule);
             const fields = Object.keys(rule.defaults);
-            const saving = savingKey === rule.rule_key;
+            const isEditing = editingKey === rule.rule_key;
 
             return (
-              <Card key={rule.rule_key} style={{ marginBottom: 10, opacity: rule.is_enabled ? 1 : 0.75 }}>
+              <Card key={rule.rule_key} style={{ marginBottom: 10, opacity: rule.is_enabled || isEditing ? 1 : 0.75 }}>
                 <CardContent style={{ padding: 16 }}>
                   <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
                     {/* Name + description */}
                     <div style={{ flex: 1, minWidth: 240 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 13.5, fontWeight: 700, color: colors.utility.primaryText }}>
                           {rule.name}
                         </span>
-                        {rule.is_customized && (
+                        <span
+                          style={{
+                            fontSize: 10.5, fontWeight: 700, padding: '1px 8px', borderRadius: 10,
+                            backgroundColor: rule.is_enabled ? `${colors.semantic.success}18` : `${colors.semantic.warning}18`,
+                            color: rule.is_enabled ? colors.semantic.success : colors.semantic.warning,
+                          }}
+                        >
+                          {rule.is_enabled ? 'On' : 'Off'}
+                        </span>
+                        {rule.is_customized ? (
                           <span
                             style={{
                               fontSize: 10.5, fontWeight: 700, padding: '1px 8px', borderRadius: 10,
@@ -214,15 +218,9 @@ const AutomationRulesPage: React.FC = () => {
                           >
                             customized
                           </span>
-                        )}
-                        {!rule.is_enabled && (
-                          <span
-                            style={{
-                              fontSize: 10.5, fontWeight: 700, padding: '1px 8px', borderRadius: 10,
-                              backgroundColor: `${colors.semantic.warning}18`, color: colors.semantic.warning,
-                            }}
-                          >
-                            off
+                        ) : (
+                          <span style={{ fontSize: 10.5, fontWeight: 600, color: colors.utility.secondaryText }}>
+                            default
                           </span>
                         )}
                       </div>
@@ -231,59 +229,104 @@ const AutomationRulesPage: React.FC = () => {
                       </p>
                     </div>
 
-                    {/* Knobs */}
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                      {fields.map((field) => {
-                        const bounds = rule.constraints?.[field] || {};
-                        return (
-                          <label key={field} style={{ fontSize: 11, color: colors.utility.secondaryText, fontWeight: 600 }}>
-                            <div style={{ marginBottom: 4 }}>{FIELD_LABELS[field] || field.replace(/_/g, ' ')}</div>
-                            <input
-                              type="number"
-                              value={draft[field] ?? ''}
-                              min={bounds.min}
-                              max={bounds.max}
-                              disabled={!canEdit || saving}
-                              onChange={(e) => setDraftField(rule.rule_key, field, Number(e.target.value))}
+                    {/* ── VIEW MODE: current values as text + Edit button ── */}
+                    {!isEditing && (
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                        {fields.map((field) => (
+                          <span
+                            key={field}
+                            style={{
+                              fontSize: 12, fontWeight: 600, padding: '5px 12px', borderRadius: 8,
+                              backgroundColor: `${colors.utility.secondaryText}12`,
+                              color: colors.utility.primaryText,
+                            }}
+                          >
+                            {FIELD_LABELS[field] || field.replace(/_/g, ' ')}:{' '}
+                            <b>{rule.config[field] ?? rule.defaults[field]}</b>
+                          </span>
+                        ))}
+                        <button
+                          onClick={() => (canEdit ? startEdit(rule) : navigate('/vani/landing'))}
+                          title={canEdit ? 'Edit this rule' : 'Editing needs a VaNi trial'}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 5,
+                            padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 650,
+                            border: canEdit ? 'none' : `1px solid ${colors.utility.secondaryText}35`,
+                            color: canEdit ? '#fff' : colors.utility.secondaryText,
+                            backgroundColor: canEdit ? colors.brand.primary : 'transparent',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {canEdit ? <Pencil size={12} /> : <Lock size={12} />} Edit
+                        </button>
+                      </div>
+                    )}
+
+                    {/* ── EDIT MODE: inputs + toggle ── */}
+                    {isEditing && (
+                      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                        {fields.map((field) => {
+                          const bounds = rule.constraints?.[field] || {};
+                          return (
+                            <label key={field} style={{ fontSize: 11, color: colors.utility.secondaryText, fontWeight: 600 }}>
+                              <div style={{ marginBottom: 4 }}>
+                                {FIELD_LABELS[field] || field.replace(/_/g, ' ')}
+                                {(bounds.min !== undefined || bounds.max !== undefined) && (
+                                  <span style={{ fontWeight: 400 }}> ({bounds.min ?? 0}–{bounds.max ?? '∞'})</span>
+                                )}
+                              </div>
+                              <input
+                                type="number"
+                                value={draftConfig[field] ?? ''}
+                                min={bounds.min}
+                                max={bounds.max}
+                                disabled={saving}
+                                autoFocus={field === fields[0]}
+                                onChange={(e) =>
+                                  setDraftConfig((prev) => ({ ...prev, [field]: Number(e.target.value) }))
+                                }
+                                style={{
+                                  width: 100, padding: '7px 10px', borderRadius: 8, fontSize: 13,
+                                  border: `1px solid ${colors.brand.primary}60`,
+                                  backgroundColor: colors.utility.primaryBackground,
+                                  color: colors.utility.primaryText,
+                                }}
+                              />
+                            </label>
+                          );
+                        })}
+
+                        <label style={{ fontSize: 11, color: colors.utility.secondaryText, fontWeight: 600 }}>
+                          <div style={{ marginBottom: 6 }}>Active</div>
+                          <button
+                            onClick={() => setDraftEnabled((v) => !v)}
+                            disabled={saving}
+                            title={draftEnabled ? 'Turn off' : 'Turn on'}
+                            style={{
+                              width: 44, height: 24, borderRadius: 20, border: 'none', position: 'relative',
+                              cursor: 'pointer',
+                              backgroundColor: draftEnabled ? colors.semantic.success : `${colors.utility.secondaryText}40`,
+                              transition: 'background-color 0.15s',
+                            }}
+                          >
+                            <span
                               style={{
-                                width: 90, padding: '7px 10px', borderRadius: 8, fontSize: 13,
-                                border: `1px solid ${colors.utility.secondaryText}35`,
-                                backgroundColor: canEdit ? colors.utility.primaryBackground : 'transparent',
-                                color: colors.utility.primaryText,
+                                position: 'absolute', top: 3, left: draftEnabled ? 23 : 3,
+                                width: 18, height: 18, borderRadius: '50%', backgroundColor: '#fff',
+                                transition: 'left 0.15s', boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
                               }}
                             />
-                          </label>
-                        );
-                      })}
-
-                      {/* On/off toggle */}
-                      <button
-                        onClick={() => canEdit && save(rule, { is_enabled: !rule.is_enabled })}
-                        disabled={!canEdit || saving}
-                        title={rule.is_enabled ? 'Turn off' : 'Turn on'}
-                        style={{
-                          width: 44, height: 24, borderRadius: 20, border: 'none', position: 'relative',
-                          cursor: canEdit ? 'pointer' : 'default',
-                          backgroundColor: rule.is_enabled ? colors.semantic.success : `${colors.utility.secondaryText}40`,
-                          transition: 'background-color 0.15s',
-                        }}
-                      >
-                        <span
-                          style={{
-                            position: 'absolute', top: 3, left: rule.is_enabled ? 23 : 3,
-                            width: 18, height: 18, borderRadius: '50%', backgroundColor: '#fff',
-                            transition: 'left 0.15s', boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
-                          }}
-                        />
-                      </button>
-                    </div>
+                          </button>
+                        </label>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Save / reset row — only when edited */}
-                  {canEdit && (isDirty(rule) || saving) && (
-                    <div style={{ display: 'flex', gap: 8, marginTop: 12, justifyContent: 'flex-end' }}>
+                  {/* Edit-mode action row */}
+                  {isEditing && (
+                    <div style={{ display: 'flex', gap: 8, marginTop: 14, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                       <button
-                        onClick={() => save(rule, { reset: true })}
+                        onClick={() => save(rule, true)}
                         disabled={saving}
                         style={{
                           display: 'inline-flex', alignItems: 'center', gap: 5,
@@ -295,11 +338,23 @@ const AutomationRulesPage: React.FC = () => {
                         <RotateCcw size={12} /> Reset to default
                       </button>
                       <button
+                        onClick={cancelEdit}
+                        disabled={saving}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 5,
+                          padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                          border: `1px solid ${colors.utility.secondaryText}35`,
+                          background: 'transparent', color: colors.utility.primaryText, cursor: 'pointer',
+                        }}
+                      >
+                        <X size={12} /> Cancel
+                      </button>
+                      <button
                         onClick={() => save(rule)}
                         disabled={saving}
                         style={{
                           display: 'inline-flex', alignItems: 'center', gap: 6,
-                          padding: '6px 16px', borderRadius: 8, fontSize: 12, fontWeight: 650,
+                          padding: '6px 18px', borderRadius: 8, fontSize: 12, fontWeight: 650,
                           border: 'none', color: '#fff', backgroundColor: colors.brand.primary, cursor: 'pointer',
                         }}
                       >

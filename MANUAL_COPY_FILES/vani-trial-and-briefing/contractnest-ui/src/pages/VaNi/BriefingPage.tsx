@@ -288,7 +288,7 @@ const BriefingPage: React.FC = () => {
               </span>
             )}
             <button
-              onClick={() => navigate('/settings/automation-rules')}
+              onClick={() => navigate('/settings/configure/automation-rules')}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',

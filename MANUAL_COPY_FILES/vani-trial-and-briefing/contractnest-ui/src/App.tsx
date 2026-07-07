@@ -691,7 +691,7 @@ const AppContent: React.FC = () => {
             <Route path="configure/lovs" element={<ListOfValuesPage />} />
             <Route path="configure/resources" element={<ResourcesPage />} />
             <Route path="configure/smart-forms" element={<SmartFormsSelectionPage />} />
-            <Route path="automation-rules" element={<AutomationRulesPage />} />
+            <Route path="configure/automation-rules" element={<AutomationRulesPage />} />
 
             {/* Team Management Routes */}
             <Route path="users" element={<UsersPage />} />

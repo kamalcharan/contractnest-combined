@@ -201,7 +201,7 @@ export default function VaNiLandingPage() {
               )}
               {trialCtaLabel}
             </button>
-            <button onClick={() => navigate("/settings/automation-rules")}
+            <button onClick={() => navigate("/settings/configure/automation-rules")}
               style={{ padding: "14px 28px", borderRadius: 14, border: "1px solid rgba(139,92,246,0.35)", background: "rgba(139,92,246,0.08)", color: "#c4b5fd", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}
             >
               Set your own rules →

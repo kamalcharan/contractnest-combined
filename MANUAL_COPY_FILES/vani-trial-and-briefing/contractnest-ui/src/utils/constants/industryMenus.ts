@@ -204,12 +204,6 @@ export const defaultMenuItems: MenuItem[] = [
         label: 'Configure',
         icon: 'Sliders',
         path: '/settings/configure'
-      },
-      {
-        id: 'settings-automation-rules',
-        label: 'Automation Rules',
-        icon: 'SlidersHorizontal',
-        path: '/settings/automation-rules'
       }
       // HIDDEN: Pricing Plans, My Subscription - commented out
       /*
