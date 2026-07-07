@@ -1,0 +1,56 @@
+═══════════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS — stage2-services
+Stage 2: Services + Smart-Forms Glue (Operations → Service Schedule)
+Date: 2026-07-07
+═══════════════════════════════════════════════════════════════════
+
+SUBMODULES AFFECTED:
+  - contractnest-edge   (3 SQL migrations — NO edge function deploys)
+  - contractnest-ui     (3 new + 5 modified files)
+  - ClaudeDocumentation (1 new doc)
+  - contractnest-api    UNTOUCHED (service-execution API already existed)
+
+⚠️ PREREQUISITE: apply the stage1-finance-ar-ap batch FIRST (this batch's
+App.tsx + industryMenus.ts include and supersede stage1's versions).
+
+───────────────────────────────────────────────────────────────────
+FILES (paths mirror the repos exactly)
+───────────────────────────────────────────────────────────────────
+contractnest-edge (run in Supabase SQL editor, in order; all re-runnable):
+1. supabase/migrations/operations-loop/008_stage2_evidence_policy_hygiene.sql
+   — evidence-policy columns DDL (live DB no-op; repo hygiene)
+2. supabase/migrations/operations-loop/009_stage2_ticket_event_propagation.sql
+   — create/update_service_ticket now move linked service events
+     (in_progress on start, completed on completion) — dry-run verified
+3. supabase/migrations/operations-loop/010_stage2_forms_glue.sql
+   — sync_contract_form_mappings + activation trigger + backfill
+
+contractnest-ui:
+4.  src/pages/operations/services/index.tsx            (NEW — Service Schedule page)
+5.  src/components/contracts/TicketEvidencePanel.tsx    (NEW — upload + smart-form capture)
+6.  src/components/ops/FinanceActionChips.tsx           (NEW — cockpit finance chips)
+7.  src/components/contracts/ServiceTicketDetail.tsx    (FULL REPLACE — mounts evidence panel)
+8.  src/components/contracts/OperationsTab.tsx          (FULL REPLACE — passes evidence policy)
+9.  src/pages/ops/cockpit/index.tsx                     (FULL REPLACE — renders finance chips)
+10. src/App.tsx                                          (FULL REPLACE — adds /ops/services; includes stage1)
+11. src/utils/constants/industryMenus.ts                 (FULL REPLACE — adds Service Schedule; includes stage1)
+
+ClaudeDocumentation:
+12. ClaudeDocumentation/ContractNest Agent/STAGE2-SERVICES.md
+
+⚠️ FULL-REPLACE files were generated from current main (7-9) / from the
+stage1 batch (10-11) with anchor assertions. If you have OTHER uncommitted
+local edits in any of them, stop and tell Claude.
+
+───────────────────────────────────────────────────────────────────
+QUALITY (verified in-session before delivery)
+───────────────────────────────────────────────────────────────────
+- SQL dry-run on live DB (rolled back): ticket TKT-10001 created →
+  event overdue → in_progress → completed; sync function clean
+- UI tsc (tsconfig.app.json) with stage1+stage2 applied: 23 errors
+  (exact baseline, none in new/modified files)
+
+TESTING CONSTRAINT: +91 9885164233 is the only number allowed for message
+tests. Stage 2 sends NO messages (no new JTD producers).
+Full checklist: STAGE2-SERVICES.md §5.
+═══════════════════════════════════════════════════════════════════
