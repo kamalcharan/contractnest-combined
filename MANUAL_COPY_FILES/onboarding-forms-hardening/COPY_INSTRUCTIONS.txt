@@ -1,0 +1,101 @@
+═══════════════════════════════════════════════════
+📦 CHANGE: Onboarding forms hardening — required markers, client-side
+          validation, client-side URL normalization
+═══════════════════════════════════════════════════
+Branch (combined repo): claude/handover-templates-agent-qretm1
+Submodules: contractnest-ui (12 files) + contractnest-api (1 file)
+NO migration.
+
+ADDRESSES YOUR 5 POINTS
+  1 + 5) Website URL is now normalized CLIENT-SIDE, transparently. The dead
+         `formatWebsiteUrl` in ContactFields is wired to onBlur: "www.acme.io"
+         → "https://www.acme.io" with a visible "Website URL formatted" toast,
+         then validated. Same onBlur normalization added to the other website
+         (+ booking) inputs in OrganizationDetailsForm. The silent SERVER-SIDE
+         prepend I added earlier is REMOVED — the server no longer papers over
+         bad input; it honest-fails if a malformed URL ever reaches it.
+  2)     Confirmed: the bad value was stored scheme-less; the above fixes it at
+         the source (the input), so it is saved correct.
+  3)     Every mandatory field is now marked with a red `*`.
+  4)     Mandatory fields are validated CLIENT-SIDE before any server round-trip
+         (toast on the field screens; disabled-button + `*` marker on the
+         choice-picker screens, whose buttons are already gated so a toast could
+         never fire).
+
+REQUIRED SET (as you confirmed: table + business email + phone)
+  • First Name (userProfile)                       — already *, now toasts if empty
+  • Business/Company Name (BusinessDetails, BusinessPreferences) — *
+  • Business EMAIL + PHONE (BusinessDetails, BusinessPreferences) — NEW required, *,
+      client-side validated (format + ≥10 digits)
+  • One choice per picker: business role, industry, persona, engagement model,
+      ≥1 served industry, ≥1 resource — each heading now carries a red *
+  Website, WhatsApp, GST/PAN, booking, personal mobile remain OPTIONAL.
+
+FILES (copy all 13)
+  contractnest-ui:
+    shared components
+      1) src/components/tenantprofile/shared/ContactFields.tsx
+         (per-field required props emailRequired/phoneRequired/websiteRequired;
+          website onBlur normalization; per-field * markers)
+      2) src/components/tenantprofile/OrganizationDetailsForm.tsx
+         (* on Email/Phone; website + booking onBlur normalization)
+    step screens
+      3) src/pages/onboarding/steps/BusinessPreferencesStep.tsx
+         ⚠️ SUPERSEDES the onboarding-smartprofile copy — carries the Smart
+            Profile background trigger PLUS email/phone validation + required props.
+      4) src/pages/onboarding/steps/BusinessDetailsStep.tsx   (client-side email/phone guard)
+      5) src/pages/onboarding/steps/userProfileStep.tsx       (toast if first name empty)
+      6) src/pages/onboarding/steps/PersonaSelectionStep.tsx  (* on question)
+      7) src/pages/onboarding/steps/EngagementModelStep.tsx   (*)
+      8) src/pages/onboarding/steps/IndustrySelectionStep.tsx (*)
+      9) src/pages/onboarding/steps/ServedIndustriesStep.tsx  (*)
+     10) src/pages/onboarding/steps/BusinessBasicStep.tsx     (*)
+     11) src/pages/onboarding/steps/BusinessBrandingStep.tsx  (*)
+     12) src/pages/onboarding/steps/ResourcePickStep.tsx
+         ⚠️ SUPERSEDES the icp-seeding-rank copy — carries the ICP ranking + "For
+            you" badge PLUS the required * marker.
+  contractnest-api:
+     13) src/services/onboardingSmartProfileService.ts
+         ⚠️ SUPERSEDES the onboarding-smartprofile copy — removes the server-side
+            URL prepend (point 1). Keeps honest-fail + idempotency + start log.
+
+VERIFIED
+  - UI  tsc --noEmit = 23 errors = unchanged baseline (0 new; all 12 touched files clean).
+  - API tsc --noEmit = 0 source errors.
+
+═══════════════════════════════════════════════════
+PHASE 1 — COPY & TEST (all 13)
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+$src = "MANUAL_COPY_FILES\onboarding-forms-hardening"
+Copy-Item "$src\contractnest-ui\src\components\tenantprofile\shared\ContactFields.tsx" -Destination "contractnest-ui\src\components\tenantprofile\shared\ContactFields.tsx" -Force
+Copy-Item "$src\contractnest-ui\src\components\tenantprofile\OrganizationDetailsForm.tsx" -Destination "contractnest-ui\src\components\tenantprofile\OrganizationDetailsForm.tsx" -Force
+Copy-Item "$src\contractnest-ui\src\pages\onboarding\steps\BusinessPreferencesStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\BusinessPreferencesStep.tsx" -Force
+Copy-Item "$src\contractnest-ui\src\pages\onboarding\steps\BusinessDetailsStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\BusinessDetailsStep.tsx" -Force
+Copy-Item "$src\contractnest-ui\src\pages\onboarding\steps\userProfileStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\userProfileStep.tsx" -Force
+Copy-Item "$src\contractnest-ui\src\pages\onboarding\steps\PersonaSelectionStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\PersonaSelectionStep.tsx" -Force
+Copy-Item "$src\contractnest-ui\src\pages\onboarding\steps\EngagementModelStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\EngagementModelStep.tsx" -Force
+Copy-Item "$src\contractnest-ui\src\pages\onboarding\steps\IndustrySelectionStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\IndustrySelectionStep.tsx" -Force
+Copy-Item "$src\contractnest-ui\src\pages\onboarding\steps\ServedIndustriesStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\ServedIndustriesStep.tsx" -Force
+Copy-Item "$src\contractnest-ui\src\pages\onboarding\steps\BusinessBasicStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\BusinessBasicStep.tsx" -Force
+Copy-Item "$src\contractnest-ui\src\pages\onboarding\steps\BusinessBrandingStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\BusinessBrandingStep.tsx" -Force
+Copy-Item "$src\contractnest-ui\src\pages\onboarding\steps\ResourcePickStep.tsx" -Destination "contractnest-ui\src\pages\onboarding\steps\ResourcePickStep.tsx" -Force
+Copy-Item "$src\contractnest-api\src\services\onboardingSmartProfileService.ts" -Destination "contractnest-api\src\services\onboardingSmartProfileService.ts" -Force
+
+Then restart both:  cd contractnest-ui ; npm run dev   |   cd contractnest-api ; npm run dev
+
+TEST CHECKLIST
+  [ ] Branding/details step: leave email or phone blank → Continue shows a
+      client-side toast ("Business email is required" / "…phone…"), no server call.
+  [ ] Type "www.foo.com" in website → click away → it becomes "https://www.foo.com"
+      with a "Website URL formatted" toast. Saved with scheme.
+  [ ] Every required field/label shows a red * (First Name, Company/Business Name,
+      Email, Phone, and each picker question).
+  [ ] Picker screens (role/industry/persona/model/served/resources): Continue stays
+      disabled until you choose; the * explains why.
+  [ ] Full run with a real https URL → Smart Profile now builds (scheme is correct),
+      no silent server patching.
+
+No Phase 2 (submodule commit) until you confirm "tested, working".
+═══════════════════════════════════════════════════
