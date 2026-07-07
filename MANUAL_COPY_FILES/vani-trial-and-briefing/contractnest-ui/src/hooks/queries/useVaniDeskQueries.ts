@@ -42,6 +42,8 @@ export interface VaniBriefingItemAppointment {
   scheduled_at: string | null;
   assigned_to_name: string | null;
   created_at: string;
+  block_name?: string | null;
+  event_date?: string | null;
 }
 
 export interface VaniBriefingItemServiceEvent {

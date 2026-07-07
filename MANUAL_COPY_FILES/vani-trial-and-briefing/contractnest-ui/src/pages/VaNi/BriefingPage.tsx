@@ -112,9 +112,13 @@ const BriefingPage: React.FC = () => {
         action: { label: 'Open Appointments', path: '/ops/appointments' },
         rows: (n.appointments_requested?.items ?? []).map((a) => ({
           id: a.id,
-          primary: a.assigned_to_name || 'Service visit',
+          primary: a.block_name || a.assigned_to_name || 'Service visit',
           secondary: `Requested ${formatDate(a.created_at)}`,
-          value: a.scheduled_at ? formatDateTime(a.scheduled_at) : 'no slot yet',
+          value: a.scheduled_at
+            ? formatDateTime(a.scheduled_at)
+            : a.event_date
+              ? `due ${formatDate(a.event_date)}`
+              : 'no slot yet',
         })),
       },
       {
