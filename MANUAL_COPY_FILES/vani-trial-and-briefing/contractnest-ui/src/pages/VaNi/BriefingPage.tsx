@@ -65,7 +65,8 @@ const FEED_ICONS: Record<VaniFeedEntry['kind'], React.ReactNode> = {
 
 const BriefingPage: React.FC = () => {
   const navigate = useNavigate();
-  const { colors } = useTheme();
+  const { isDarkMode, currentTheme } = useTheme();
+  const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
 
   const entitlementQuery = useVaniEntitlement();
   const entitled = entitlementQuery.data?.entitled === true;
