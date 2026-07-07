@@ -30,7 +30,6 @@ class VaniDeskController {
       const details = await vaniEntitlementService.getDetails(this.tenantId(req));
       sendSuccess(res, details);
     } catch (error) {
-      console.error('[VaniDeskController] getEntitlement error:', error);
       internalError(res, 'Failed to load VaNi entitlement');
     }
   };
@@ -53,7 +52,6 @@ class VaniDeskController {
 
       sendSuccess(res, result.data);
     } catch (error) {
-      console.error('[VaniDeskController] startTrial error:', error);
       internalError(res, 'Failed to start the VaNi trial');
     }
   };
@@ -71,7 +69,6 @@ class VaniDeskController {
 
       sendSuccess(res, result.data);
     } catch (error) {
-      console.error('[VaniDeskController] getRules error:', error);
       internalError(res, 'Failed to load automation rules');
     }
   };
@@ -132,7 +129,6 @@ class VaniDeskController {
 
       sendSuccess(res, result.data);
     } catch (error) {
-      console.error('[VaniDeskController] updateRule error:', error);
       internalError(res, 'Failed to update the rule');
     }
   };
@@ -166,7 +162,6 @@ class VaniDeskController {
 
       sendSuccess(res, result.data);
     } catch (error) {
-      console.error('[VaniDeskController] getBriefing error:', error);
       internalError(res, 'Failed to load the VaNi briefing');
     }
   };

@@ -397,13 +397,10 @@ try {
 let vaniRoutes;
 try {
   vaniRoutes = require('./routes/vaniRoutes').default;
-  console.log('\u2705 VaNi desk routes loaded');
 } catch (error) {
-  console.error('\u274c Failed to load VaNi desk routes:', error);
   if (process.env.NODE_ENV === 'production') {
     process.exit(1);
   } else {
-    console.warn('\u26a0\ufe0f  Continuing without VaNi desk routes...');
     vaniRoutes = null;
   }
 }
@@ -874,12 +871,8 @@ try {
 try {
   if (vaniRoutes) {
     app.use('/api/vani', vaniRoutes);
-    console.log('\u2705 VaNi desk routes registered at /api/vani');
-  } else {
-    console.log('\u26a0\ufe0f  VaNi desk routes skipped (not loaded)');
   }
 } catch (error) {
-  console.error('\u274c Failed to register VaNi desk routes:', error);
   captureException(error instanceof Error ? error : new Error(String(error)), {
     tags: { source: 'route_registration', route_type: 'vani' }
   });

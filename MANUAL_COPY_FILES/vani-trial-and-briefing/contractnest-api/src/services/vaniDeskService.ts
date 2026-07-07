@@ -42,7 +42,6 @@ class VaniDeskService {
       });
 
       if (error) {
-        console.error('[VaniDeskService] start_vani_trial failed:', error.message);
         return { success: false, error: { code: 'RPC_ERROR', message: error.message } };
       }
       if (!data?.success) {
@@ -57,7 +56,6 @@ class VaniDeskService {
 
       return { success: true, data };
     } catch (e: any) {
-      console.error('[VaniDeskService] startTrial error:', e.message);
       return { success: false, error: { code: 'INTERNAL', message: e.message } };
     }
   }
@@ -75,7 +73,6 @@ class VaniDeskService {
       });
 
       if (error) {
-        console.error('[VaniDeskService] get_vani_rules failed:', error.message);
         return { success: false, error: { code: 'RPC_ERROR', message: error.message } };
       }
       if (!data?.success) {
@@ -87,7 +84,6 @@ class VaniDeskService {
 
       return { success: true, data };
     } catch (e: any) {
-      console.error('[VaniDeskService] getRules error:', e.message);
       return { success: false, error: { code: 'INTERNAL', message: e.message } };
     }
   }
@@ -121,7 +117,6 @@ class VaniDeskService {
       });
 
       if (error) {
-        console.error('[VaniDeskService] update_vani_rule failed:', error.message);
         return { success: false, error: { code: 'RPC_ERROR', message: error.message } };
       }
       if (!data?.success) {
@@ -141,7 +136,6 @@ class VaniDeskService {
 
       return { success: true, data };
     } catch (e: any) {
-      console.error('[VaniDeskService] updateRule error:', e.message);
       return { success: false, error: { code: 'INTERNAL', message: e.message } };
     }
   }
@@ -165,7 +159,6 @@ class VaniDeskService {
       });
 
       if (error) {
-        console.error('[VaniDeskService] get_vani_briefing failed:', error.message);
         return { success: false, error: { code: 'RPC_ERROR', message: error.message } };
       }
       if (!data?.success) {
@@ -177,7 +170,6 @@ class VaniDeskService {
 
       return { success: true, data };
     } catch (e: any) {
-      console.error('[VaniDeskService] getBriefing error:', e.message);
       return { success: false, error: { code: 'INTERNAL', message: e.message } };
     }
   }

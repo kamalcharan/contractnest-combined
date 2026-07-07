@@ -106,8 +106,8 @@ class VaniEntitlementService {
           };
         }
       }
-    } catch (e: any) {
-      console.warn('⚠️ VaniEntitlement details failed (returning mode default):', e.message);
+    } catch {
+      // lookup failure → mode default (open: entitled, subscription: not)
     }
 
     this.cache.set(tenantId, { details, expires: Date.now() + CACHE_TTL_MS });

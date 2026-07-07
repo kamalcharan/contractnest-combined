@@ -253,21 +253,6 @@ import FormEditorPage from './pages/admin/smart-forms/FormEditorPage';
 import SmartFormsSelectionPage from './pages/settings/smart-forms/SmartFormsSelectionPage';
 
 
-// Temporary API test
-const testAPIConnection = () => {
-  console.log('Testing API connection...');
-  console.log('VITE_API_URL:', import.meta.env.VITE_API_URL);
-
-  // Test with your api service
-  import('./services/api').then(({ default: api }) => {
-    api.get('/')
-      .then(response => console.log('API Connected:', response.data))
-      .catch(err => console.error('API Error:', err));
-  });
-};
-
-// Call it immediately when module loads
-testAPIConnection();
 
 // Placeholder components for pages we haven't built yet
 const ProfilePage = () => <div className="p-8">Profile Page (Coming Soon)</div>;
@@ -311,13 +296,11 @@ const NetworkStatusHandler: React.FC = () => {
   useEffect(() => {
     // Handle online/offline events
     const handleOnline = () => {
-      console.log('Back online');
       // Optionally show a toast notification
       // toast.success('Connection restored', { duration: 2000 });
     };
 
     const handleOffline = () => {
-      console.log('Gone offline');
       // The MiscPageWrapper will handle showing the no-internet page
     };
 
@@ -928,6 +911,5 @@ const App: React.FC = () => {
   );
 };
 
-console.log('VITE_API_URL =', import.meta.env.VITE_API_URL);
 
 export default App;
