@@ -24,6 +24,9 @@ contractnest-edge (run in Supabase SQL editor, in order; all re-runnable):
      (in_progress on start, completed on completion) — dry-run verified
 3. supabase/migrations/operations-loop/010_stage2_forms_glue.sql
    — sync_contract_form_mappings + activation trigger + backfill
+3b. supabase/migrations/operations-loop/011_stage2_events_list_customer_fields.sql
+   — events list RPC now returns contract_number, task_id, customer
+     name/phone/email (v2 feedback) — dry-run verified
 
 contractnest-ui:
 4.  src/pages/operations/services/index.tsx            (NEW — Service Schedule page)

@@ -1,13 +1,13 @@
 // ============================================================================
-// Operations → Service Schedule — Stage 2
-// The tenant-wide events working list (absorbs the old mock ServiceSchedule +
-// BusinessEvents pages). Real data: contract-events list + date-summary RPCs,
-// status transitions via event-status-config, deep links into contract detail
-// (the Tasks tab there hosts Start Service / tickets / evidence).
-// The Ops Cockpit stays the at-a-glance summary; this is the full worklist.
+// Operations → Service Schedule — Stage 2 (v2 after owner feedback)
+// Tenant-wide events working list (absorbs the old ServiceSchedule +
+// BusinessEvents mocks). Real data: contract-events list + date-summary RPCs.
+// v2: hub-style table columns (Task · Contract · Customer · Phone · Email ·
+// Date · Status · Action), grouped-by-customer view (contracts-hub pattern)
+// with flat toggle, date-summary buckets fixed to the RPC's `total` shape.
 // ============================================================================
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   CalendarClock,
@@ -20,6 +20,11 @@ import {
   Inbox,
   Loader2,
   ChevronDown,
+  ChevronRight,
+  Phone,
+  Mail,
+  Users,
+  List,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -34,6 +39,20 @@ import type { ContractEvent } from '@/types/contractEvents';
 
 type LaneFilter = 'all' | 'service' | 'billing';
 type DatePreset = 'overdue' | 'today' | 'this_week' | 'next_30' | 'upcoming' | 'all';
+type ViewMode = 'grouped' | 'flat';
+
+// Row shape = ContractEvent + the customer fields added by migration 011
+type EventRow = ContractEvent & {
+  contract_number?: string | null;
+  contract_name?: string | null;
+  task_id?: string | null;
+  buyer_id?: string | null;
+  buyer_name?: string | null;
+  buyer_phone?: string | null;
+  buyer_email?: string | null;
+  billing_cycle_label?: string | null;
+  version?: number;
+};
 
 const toISODate = (d: Date): string => d.toISOString().slice(0, 10);
 
@@ -71,6 +90,9 @@ const formatEventDate = (value: string): string => {
   return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
+// Table column template (shared by header + rows). Action column last.
+const GRID_COLS = 'minmax(180px,1.4fr) 110px minmax(140px,1fr) 130px minmax(160px,1.1fr) 105px 130px 44px';
+
 const ServiceSchedulePage: React.FC = () => {
   const navigate = useNavigate();
   const { isDarkMode, currentTheme } = useTheme();
@@ -78,10 +100,12 @@ const ServiceSchedulePage: React.FC = () => {
 
   const [lane, setLane] = useState<LaneFilter>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [datePreset, setDatePreset] = useState<DatePreset>('this_week');
+  const [datePreset, setDatePreset] = useState<DatePreset>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
+  const [viewMode, setViewMode] = useState<ViewMode>('grouped');
   const [openStatusMenu, setOpenStatusMenu] = useState<string | null>(null);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   // ── Data ──
   const summaryQuery = useContractEventDateSummary({});
@@ -92,7 +116,7 @@ const ServiceSchedulePage: React.FC = () => {
     date_from: range.date_from,
     date_to: range.date_to,
     page,
-    per_page: 50,
+    per_page: 100,
     sort_by: 'scheduled_date',
     sort_order: datePreset === 'overdue' ? 'desc' : 'asc',
   } as any);
@@ -105,7 +129,7 @@ const ServiceSchedulePage: React.FC = () => {
   const serviceTransitions = useTransitionMap('service');
   const billingTransitions = useTransitionMap('billing');
 
-  const events: ContractEvent[] = eventsQuery.data?.items || [];
+  const events: EventRow[] = (eventsQuery.data?.items as EventRow[]) || [];
   const totalCount = eventsQuery.data?.total_count || 0;
   const pageInfo = eventsQuery.data?.page_info;
 
@@ -113,22 +137,58 @@ const ServiceSchedulePage: React.FC = () => {
     const term = searchTerm.trim().toLowerCase();
     if (!term) return events;
     return events.filter((e) =>
-      [e.block_name, (e as any).contract_title, (e as any).contract_number, (e as any).task_id]
+      [e.block_name, e.contract_name, e.contract_number, e.task_id, e.buyer_name, e.buyer_email, e.buyer_phone]
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(term))
     );
   }, [events, searchTerm]);
 
-  const summary = summaryQuery.data;
+  // ── Grouped view: by customer (contracts-hub pattern) ──
+  const groups = useMemo(() => {
+    const map = new Map<string, { key: string; name: string; rows: EventRow[]; overdue: number }>();
+    for (const e of filteredEvents) {
+      const key = e.buyer_id || e.buyer_name || 'unknown';
+      if (!map.has(key)) {
+        map.set(key, { key, name: e.buyer_name || 'Unknown customer', rows: [], overdue: 0 });
+      }
+      const g = map.get(key)!;
+      g.rows.push(e);
+      if (e.status === 'overdue') g.overdue += 1;
+    }
+    return Array.from(map.values()).sort((a, b) => b.overdue - a.overdue || b.rows.length - a.rows.length);
+  }, [filteredEvents]);
 
-  const bucketDefs: { key: string; label: string; preset: DatePreset; color: string }[] = [
+  // Expand all groups by default whenever the group set changes
+  useEffect(() => {
+    if (viewMode === 'grouped' && groups.length > 0) {
+      setExpandedGroups(new Set(groups.map((g) => g.key)));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode, groups.length]);
+
+  const toggleGroup = (key: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const summary: any = summaryQuery.data;
+
+  // NOTE: the date-summary RPC emits `total` per bucket (not `count`),
+  // with by_type.{service,billing} — read defensively.
+  const bucketCount = (bucket: any): number => Number(bucket?.total ?? bucket?.count ?? 0);
+
+  const bucketDefs: { key: string; label: string; preset: DatePreset; color: string; extraKeys?: string[] }[] = [
     { key: 'overdue', label: 'Overdue', preset: 'overdue', color: colors.semantic.error },
     { key: 'today', label: 'Today', preset: 'today', color: colors.semantic.warning },
-    { key: 'this_week', label: 'This week', preset: 'this_week', color: colors.brand.primary },
-    { key: 'later', label: 'Upcoming', preset: 'upcoming', color: colors.utility.secondaryText },
+    { key: 'this_week', label: 'This week', preset: 'this_week', color: colors.brand.primary, extraKeys: ['tomorrow'] },
+    { key: 'later', label: 'Upcoming', preset: 'upcoming', color: colors.utility.secondaryText, extraKeys: ['next_week'] },
   ];
 
-  const statusInfo = (event: ContractEvent) => {
+  const statusInfo = (event: EventRow) => {
     const map = event.event_type === 'billing' ? billingStatusMap : serviceStatusMap;
     const def: any = (map as any)?.[event.status];
     return {
@@ -137,25 +197,24 @@ const ServiceSchedulePage: React.FC = () => {
     };
   };
 
-  const allowedTransitions = (event: ContractEvent): string[] => {
+  const allowedTransitions = (event: EventRow): string[] => {
     const map = event.event_type === 'billing' ? billingTransitions : serviceTransitions;
     return ((map as any)?.[event.status] as string[]) || [];
   };
 
-  const handleStatusChange = async (event: ContractEvent, newStatus: string) => {
+  const handleStatusChange = async (event: EventRow, newStatus: string) => {
     setOpenStatusMenu(null);
     try {
       await updateStatus({
         eventId: event.id,
         newStatus: newStatus as any,
-        version: (event as any).version,
+        version: event.version as any,
       });
     } catch {
       // errors are toasted by the mutation hook (409/422 handling included)
     }
   };
 
-  // Statuses offered in the filter dropdown (union of both lanes)
   const filterStatuses = useMemo(() => {
     const keys = new Set<string>();
     Object.keys((serviceStatusMap as any) || {}).forEach((k) => keys.add(k));
@@ -163,6 +222,137 @@ const ServiceSchedulePage: React.FC = () => {
     return Array.from(keys);
   }, [serviceStatusMap, billingStatusMap]);
 
+  // ── Row renderer (table-style grid, hub-like) ──
+  const renderRow = (event: EventRow, indent: boolean) => {
+    const sInfo = statusInfo(event);
+    const transitions = allowedTransitions(event);
+    const isBilling = event.event_type === 'billing';
+    const isUpdatingThis = isChangingStatus && changingStatusEventId === event.id;
+
+    return (
+      <div
+        key={event.id}
+        className="grid items-center gap-2 px-3 py-2.5 rounded-lg border overflow-x-auto"
+        style={{
+          gridTemplateColumns: GRID_COLS,
+          borderColor: colors.utility.secondaryText + '15',
+          marginLeft: indent ? 20 : 0,
+          backgroundColor: colors.utility.primaryBackground,
+        }}
+      >
+        {/* Task */}
+        <div className="flex items-center gap-2 min-w-0">
+          <div
+            className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: (isBilling ? colors.semantic.warning : colors.brand.primary) + '15' }}
+          >
+            {isBilling ? (
+              <DollarSign className="h-3.5 w-3.5" style={{ color: colors.semantic.warning }} />
+            ) : (
+              <Wrench className="h-3.5 w-3.5" style={{ color: colors.brand.primary }} />
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-semibold truncate" style={{ color: colors.utility.primaryText }}>
+              {event.block_name || (isBilling ? 'Billing milestone' : 'Service visit')}
+            </p>
+            <p className="text-[10px] truncate" style={{ color: colors.utility.secondaryText }}>
+              {event.task_id || ''}
+              {event.billing_cycle_label ? `${event.task_id ? ' · ' : ''}${event.billing_cycle_label}` : ''}
+              {isBilling && event.amount ? ` · ₹${Number(event.amount).toLocaleString('en-IN')}` : ''}
+            </p>
+          </div>
+        </div>
+
+        {/* Contract # */}
+        <button
+          onClick={(e) => { e.stopPropagation(); navigate(`/contracts/${event.contract_id}`); }}
+          className="text-xs font-semibold text-left truncate hover:underline"
+          style={{ color: colors.brand.primary }}
+          title={event.contract_name || undefined}
+        >
+          {event.contract_number || '—'}
+        </button>
+
+        {/* Customer */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (event.buyer_id) navigate(`/contacts/${event.buyer_id}`);
+          }}
+          className="text-xs text-left truncate hover:underline"
+          style={{ color: colors.utility.primaryText }}
+        >
+          {event.buyer_name || '—'}
+        </button>
+
+        {/* Phone */}
+        <span className="text-[11px] inline-flex items-center gap-1 truncate" style={{ color: colors.utility.secondaryText }}>
+          {event.buyer_phone ? (<><Phone className="h-3 w-3 flex-shrink-0" />{event.buyer_phone}</>) : '—'}
+        </span>
+
+        {/* Email */}
+        <span className="text-[11px] inline-flex items-center gap-1 truncate" style={{ color: colors.utility.secondaryText }}>
+          {event.buyer_email ? (<><Mail className="h-3 w-3 flex-shrink-0" />{event.buyer_email}</>) : '—'}
+        </span>
+
+        {/* Date */}
+        <span className="text-[11px] inline-flex items-center gap-1" style={{ color: colors.utility.secondaryText }}>
+          <CalendarClock className="h-3 w-3 flex-shrink-0" />
+          {formatEventDate(event.scheduled_date)}
+        </span>
+
+        {/* Status + transitions */}
+        <div className="relative">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (transitions.length > 0) setOpenStatusMenu(openStatusMenu === event.id ? null : event.id);
+            }}
+            disabled={isUpdatingThis}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-semibold max-w-full"
+            style={{ backgroundColor: sInfo.color + '20', color: sInfo.color }}
+          >
+            {isUpdatingThis ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+            <span className="truncate">{sInfo.label}</span>
+            {transitions.length > 0 && <ChevronDown className="h-3 w-3 flex-shrink-0" />}
+          </button>
+          {openStatusMenu === event.id && transitions.length > 0 && (
+            <div
+              className="absolute right-0 top-full mt-1 z-20 rounded-lg border shadow-lg py-1 min-w-[150px]"
+              style={{
+                backgroundColor: colors.utility.primaryBackground,
+                borderColor: colors.utility.secondaryText + '25',
+              }}
+            >
+              {transitions.map((to) => (
+                <button
+                  key={to}
+                  onClick={(e) => { e.stopPropagation(); handleStatusChange(event, to); }}
+                  className="w-full text-left px-3 py-1.5 text-xs capitalize hover:opacity-80"
+                  style={{ color: colors.utility.primaryText }}
+                >
+                  → {to.replace(/_/g, ' ')}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Action: open contract (Start Service / invoices live there) */}
+        <button
+          onClick={(e) => { e.stopPropagation(); navigate(`/contracts/${event.contract_id}`); }}
+          title={isBilling ? 'Open contract (invoices)' : 'Open contract (Start Service)'}
+          className="inline-flex items-center justify-center h-7 w-7 rounded-lg border"
+          style={{ borderColor: colors.utility.secondaryText + '30', color: colors.utility.secondaryText }}
+        >
+          <ExternalLink className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    );
+  };
+
+  // ── Loading / error ──
   if (eventsQuery.isLoading && !eventsQuery.data) {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-3">
@@ -191,6 +381,22 @@ const ServiceSchedulePage: React.FC = () => {
       </div>
     );
   }
+
+  const tableHeader = (
+    <div
+      className="grid items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase tracking-wider"
+      style={{ gridTemplateColumns: GRID_COLS, color: colors.utility.secondaryText }}
+    >
+      <span>Task</span>
+      <span>Contract</span>
+      <span>Customer</span>
+      <span>Phone</span>
+      <span>Email</span>
+      <span>Date</span>
+      <span>Status</span>
+      <span />
+    </div>
+  );
 
   return (
     <div className="p-6 space-y-5" onClick={() => setOpenStatusMenu(null)}>
@@ -238,15 +444,14 @@ const ServiceSchedulePage: React.FC = () => {
         </button>
       </div>
 
-      {/* Bucket bar (from the date-summary RPC) */}
+      {/* Bucket bar (RPC emits `total` per bucket) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {bucketDefs.map((bucket) => {
-          const data: any = (summary as any)?.[bucket.key];
-          const laterExtra =
-            bucket.key === 'later'
-              ? ((summary as any)?.tomorrow?.count || 0) + ((summary as any)?.next_week?.count || 0)
-              : 0;
-          const count = (data?.count || 0) + laterExtra;
+          const own = bucketCount(summary?.[bucket.key]);
+          const extra = (bucket.extraKeys || []).reduce((acc, k) => acc + bucketCount(summary?.[k]), 0);
+          const count = own + extra;
+          const billingAmt =
+            Number(summary?.[bucket.key]?.by_type?.billing ?? 0);
           const active = datePreset === bucket.preset;
           return (
             <button
@@ -265,9 +470,9 @@ const ServiceSchedulePage: React.FC = () => {
               <p className="text-xl font-bold mt-0.5" style={{ color: colors.utility.primaryText }}>
                 {summaryQuery.isLoading ? '…' : count}
               </p>
-              {data?.billing_amount > 0 && (
+              {billingAmt > 0 && (
                 <p className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
-                  incl. billing ₹{Number(data.billing_amount).toLocaleString('en-IN')}
+                  {billingAmt} billing event{billingAmt === 1 ? '' : 's'}
                 </p>
               )}
             </button>
@@ -283,7 +488,7 @@ const ServiceSchedulePage: React.FC = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onClick={(e) => e.stopPropagation()}
-            placeholder="Search block, contract, task id…"
+            placeholder="Search task, contract, customer, email…"
             className="pl-9 pr-3 py-2 rounded-lg border text-sm w-72 bg-transparent"
             style={{ borderColor: colors.utility.secondaryText + '30', color: colors.utility.primaryText }}
           />
@@ -317,22 +522,49 @@ const ServiceSchedulePage: React.FC = () => {
             backgroundColor: colors.utility.primaryBackground,
           }}
         >
+          <option value="all">All dates</option>
           <option value="overdue">Overdue</option>
           <option value="today">Today</option>
           <option value="this_week">This week</option>
           <option value="next_30">Next 30 days</option>
           <option value="upcoming">All upcoming</option>
-          <option value="all">All dates</option>
         </select>
+
+        {/* Grouped / flat toggle (contracts-hub pattern) */}
+        <div
+          className="inline-flex rounded-lg border p-1"
+          style={{ borderColor: colors.utility.secondaryText + '30', backgroundColor: colors.utility.secondaryBackground }}
+        >
+          {(
+            [
+              { mode: 'grouped' as ViewMode, icon: Users, label: 'By customer' },
+              { mode: 'flat' as ViewMode, icon: List, label: 'Flat' },
+            ]
+          ).map(({ mode, icon: Icon, label }) => (
+            <button
+              key={mode}
+              onClick={(e) => { e.stopPropagation(); setViewMode(mode); }}
+              title={label}
+              className="px-2.5 py-1.5 rounded-md text-xs font-semibold inline-flex items-center gap-1.5"
+              style={{
+                backgroundColor: viewMode === mode ? colors.brand.primary : 'transparent',
+                color: viewMode === mode ? '#fff' : colors.utility.secondaryText,
+              }}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {label}
+            </button>
+          ))}
+        </div>
 
         <span className="text-xs ml-auto" style={{ color: colors.utility.secondaryText }}>
           {filteredEvents.length} of {totalCount} events
         </span>
       </div>
 
-      {/* Event list */}
+      {/* Event table */}
       <Card>
-        <CardContent className="pt-4">
+        <CardContent className="pt-4 overflow-x-auto">
           {filteredEvents.length === 0 ? (
             <div className="flex flex-col items-center py-12 gap-2">
               <Inbox className="h-8 w-8" style={{ color: colors.utility.secondaryText }} />
@@ -340,105 +572,49 @@ const ServiceSchedulePage: React.FC = () => {
                 No events match this view
               </p>
             </div>
+          ) : viewMode === 'flat' ? (
+            <div className="space-y-1.5 min-w-[980px]">
+              {tableHeader}
+              {filteredEvents.map((event) => renderRow(event, false))}
+            </div>
           ) : (
-            <div className="space-y-2">
-              {filteredEvents.map((event) => {
-                const sInfo = statusInfo(event);
-                const transitions = allowedTransitions(event);
-                const isBilling = event.event_type === 'billing';
-                const isUpdatingThis = isChangingStatus && changingStatusEventId === event.id;
-
+            <div className="space-y-2 min-w-[980px]">
+              {tableHeader}
+              {groups.map((group) => {
+                const isExpanded = expandedGroups.has(group.key);
                 return (
-                  <div
-                    key={event.id}
-                    className="flex flex-wrap items-center gap-3 p-3 rounded-lg border"
-                    style={{ borderColor: colors.utility.secondaryText + '18' }}
-                  >
-                    <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: (isBilling ? colors.semantic.warning : colors.brand.primary) + '15' }}
-                    >
-                      {isBilling ? (
-                        <DollarSign className="h-4 w-4" style={{ color: colors.semantic.warning }} />
-                      ) : (
-                        <Wrench className="h-4 w-4" style={{ color: colors.brand.primary }} />
-                      )}
-                    </div>
-
-                    <div className="flex-1 min-w-[220px]">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
-                          {event.block_name || (isBilling ? 'Billing milestone' : 'Service visit')}
-                        </p>
-                        {(event as any).task_id && (
-                          <span className="text-[10px] font-mono" style={{ color: colors.utility.secondaryText }}>
-                            {(event as any).task_id}
-                          </span>
-                        )}
-                        {(event as any).billing_cycle_label && (
-                          <span className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
-                            {(event as any).billing_cycle_label}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs mt-0.5 inline-flex items-center gap-1.5" style={{ color: colors.utility.secondaryText }}>
-                        <CalendarClock className="h-3 w-3" />
-                        {formatEventDate(event.scheduled_date)}
-                        {(event as any).contract_title ? ` · ${(event as any).contract_title}` : ''}
-                        {isBilling && event.amount
-                          ? ` · ₹${Number(event.amount).toLocaleString('en-IN')}`
-                          : ''}
-                      </p>
-                    </div>
-
-                    {/* Status badge + transition menu */}
-                    <div className="relative">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (transitions.length > 0) {
-                            setOpenStatusMenu(openStatusMenu === event.id ? null : event.id);
-                          }
-                        }}
-                        disabled={isUpdatingThis}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold"
-                        style={{ backgroundColor: sInfo.color + '20', color: sInfo.color }}
-                      >
-                        {isUpdatingThis ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
-                        {sInfo.label}
-                        {transitions.length > 0 && <ChevronDown className="h-3 w-3" />}
-                      </button>
-                      {openStatusMenu === event.id && transitions.length > 0 && (
-                        <div
-                          className="absolute right-0 top-full mt-1 z-20 rounded-lg border shadow-lg py-1 min-w-[160px]"
-                          style={{
-                            backgroundColor: colors.utility.primaryBackground,
-                            borderColor: colors.utility.secondaryText + '25',
-                          }}
-                        >
-                          {transitions.map((to) => (
-                            <button
-                              key={to}
-                              onClick={(e) => { e.stopPropagation(); handleStatusChange(event, to); }}
-                              className="w-full text-left px-3 py-1.5 text-xs capitalize hover:opacity-80"
-                              style={{ color: colors.utility.primaryText }}
-                            >
-                              → {to.replace(/_/g, ' ')}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
+                  <div key={group.key} className="space-y-1.5">
+                    {/* Customer group header (hub pattern) */}
                     <button
-                      onClick={(e) => { e.stopPropagation(); navigate(`/contracts/${event.contract_id}`); }}
-                      title="Open contract (Start Service / tickets live there)"
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border"
-                      style={{ borderColor: colors.utility.secondaryText + '30', color: colors.utility.secondaryText }}
+                      onClick={(e) => { e.stopPropagation(); toggleGroup(group.key); }}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border text-left"
+                      style={{
+                        borderColor: colors.utility.secondaryText + '20',
+                        backgroundColor: colors.utility.secondaryBackground,
+                      }}
                     >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      Contract
+                      {isExpanded ? (
+                        <ChevronDown className="h-4 w-4 flex-shrink-0" style={{ color: colors.utility.secondaryText }} />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 flex-shrink-0" style={{ color: colors.utility.secondaryText }} />
+                      )}
+                      <Users className="h-4 w-4 flex-shrink-0" style={{ color: colors.brand.primary }} />
+                      <span className="text-sm font-bold" style={{ color: colors.utility.primaryText }}>
+                        {group.name}
+                      </span>
+                      <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                        {group.rows.length} event{group.rows.length === 1 ? '' : 's'}
+                      </span>
+                      {group.overdue > 0 && (
+                        <span
+                          className="px-2 py-0.5 rounded-full text-[10px] font-bold"
+                          style={{ backgroundColor: colors.semantic.error + '15', color: colors.semantic.error }}
+                        >
+                          {group.overdue} overdue
+                        </span>
+                      )}
                     </button>
+                    {isExpanded && group.rows.map((event) => renderRow(event, true))}
                   </div>
                 );
               })}
