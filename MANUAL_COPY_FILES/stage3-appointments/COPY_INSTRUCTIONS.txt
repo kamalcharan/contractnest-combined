@@ -22,6 +22,9 @@ contractnest-edge (Supabase SQL editor, in order; re-runnable):
 2. supabase/migrations/operations-loop/013_stage3_scanner_v2.sql
    — scanner v2: auto-requests appointments ≤6 days ahead (dry-run: 21
      requested, 0 errors). DROPs the old 4-arg scanner; cron unchanged.
+2b. supabase/migrations/operations-loop/014_stage3_events_list_appointment_fields.sql
+   — events list RPC v3: + appointment_id/status/scheduled_at (feeds the
+     Service Schedule Appointment column + EventCard chip) — dry-run verified
 3. supabase/functions/appointments/index.ts   (NEW edge fn)
    → cd contractnest-edge && supabase functions deploy appointments
 
@@ -35,6 +38,10 @@ contractnest-api:
 contractnest-ui:
 9.  src/hooks/queries/useAppointmentQueries.ts
 10. src/pages/operations/appointments/index.tsx (the kanban board)
+10b. src/pages/operations/services/index.tsx    (v3 — SUPERSEDES stage2's copy:
+     clip-safe inline status chips, Appointment column + Book action)
+10c. src/components/contracts/EventCard.tsx      (FULL REPLACE from main —
+     appointment chip + Book button on contract Tasks/Operations tabs + cockpit)
 11. src/App.tsx                                 (FULL REPLACE — includes stages 1+2)
 12. src/utils/constants/industryMenus.ts        (FULL REPLACE — includes stages 1+2)
 
