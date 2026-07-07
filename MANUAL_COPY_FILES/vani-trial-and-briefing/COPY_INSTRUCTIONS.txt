@@ -1,0 +1,54 @@
+════════════════════════════════════════════════════════════════════
+BATCH: vani-trial-and-briefing
+VaNi 1-week trial (landing CTA) + VaNi → Briefing page
+════════════════════════════════════════════════════════════════════
+
+SUBMODULES AFFECTED: contractnest-edge, contractnest-api, contractnest-ui,
+                     ClaudeDocumentation
+
+NOTE: stages 1–3 are already committed on the submodules' main branches —
+this batch is standalone on top of main. Its App.tsx / industryMenus.ts /
+index.ts were generated FROM the stage3 copies (supersession chain intact).
+
+──────────────────────────────────────────────────────────────────────
+FILES (mirror of exact repo paths)
+──────────────────────────────────────────────────────────────────────
+
+contractnest-edge/
+  supabase/migrations/operations-loop/015_vani_trial_and_briefing.sql
+      → VaNi plan seed + one-trial-per-tenant guard + start_vani_trial +
+        get_vani_briefing RPCs + REPAIR of broken subscription→context trigger.
+        ⚠️ NOT YET APPLIED to the live DB (dry-run verified only).
+        Apply via Supabase SQL editor, or tell Claude "apply 015" for MCP run.
+
+contractnest-api/src/
+  index.ts                              → registers /api/vani (composed from stage3 copy)
+  routes/vaniRoutes.ts                  → NEW
+  controllers/vaniDeskController.ts     → NEW
+  services/vaniDeskService.ts           → NEW
+  services/vaniEntitlementService.ts    → MODIFIED (product-aware + getDetails)
+
+contractnest-ui/src/
+  App.tsx                               → adds /vani/briefing route (composed from stage3 copy)
+  utils/constants/industryMenus.ts      → VaNi = [Overview, Briefing]; mocks → "VaNi (old)"
+  vani/pages/VaNiLandingPage.tsx        → MODIFIED (trial CTA: start / days-left / expired)
+  pages/VaNi/BriefingPage.tsx           → NEW (the Briefing)
+  hooks/queries/useVaniDeskQueries.ts   → NEW (entitlement / trial / briefing hooks)
+
+ClaudeDocumentation/ContractNest Agent/
+  STAGE-VANI-TRIAL-BRIEFING.md          → batch doc (decisions, trigger repair, dry-run)
+
+──────────────────────────────────────────────────────────────────────
+ENVIRONMENT
+──────────────────────────────────────────────────────────────────────
+VANI_ENTITLEMENT_MODE stays unset/open (owner decision) — everyone passes the
+gate for now; the trial CTA + states still work end-to-end. Flip to
+"subscription" in the API env when the gate should be enforced.
+
+──────────────────────────────────────────────────────────────────────
+ORDER
+──────────────────────────────────────────────────────────────────────
+1. Apply migration 015 to the live DB (required before testing the CTA).
+2. Copy API + UI files, restart both dev servers.
+3. Test per checklist (in the session output).
+4. Commit each submodule, then parent repo (commands in session output).
