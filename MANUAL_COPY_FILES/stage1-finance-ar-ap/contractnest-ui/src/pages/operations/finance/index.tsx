@@ -7,7 +7,8 @@
 //   - Who owes (by buyer) · Drafts pending approval (scanner-created)
 //   - Invoice worklist with manual actions: Approve draft, Send reminder,
 //     Cancel draft, Open contract (record payment lives on the contract page)
-//   - Receivables ⇄ Payables toggle (buyer mirror, read-only)
+//   - Follows the GLOBAL Revenue/Expense perspective (header switcher):
+//     Revenue → Receivables (seller AR) · Expense → Payables (buyer mirror)
 // Dunning ladder visuals arrive with the VaNi stage (POA Stage 5).
 // ============================================================================
 
@@ -31,6 +32,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { VaNiMetricCard } from '@/vani/components/shared';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
 import {
   useReceivables,
   usePayables,
@@ -68,7 +70,10 @@ const FinancePage: React.FC = () => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
 
-  const [view, setView] = useState<ViewMode>('receivables');
+  // View follows the GLOBAL Revenue/Expense perspective (header switcher),
+  // same convention as the Ops Cockpit: Revenue → AR, Expense → AP.
+  const { perspective } = useAuth();
+  const view: ViewMode = perspective === 'expense' ? 'payables' : 'receivables';
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [actioningId, setActioningId] = useState<string | null>(null);
@@ -254,24 +259,22 @@ const FinancePage: React.FC = () => {
           </p>
         </div>
 
-        {/* Receivables / Payables toggle */}
+        {/* Perspective indicator — switch Revenue/Expense from the header */}
         <div
-          className="inline-flex rounded-lg border p-1"
-          style={{ borderColor: colors.utility.secondaryText + '30', backgroundColor: colors.utility.secondaryBackground }}
+          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border"
+          style={{
+            borderColor: colors.brand.primary + '40',
+            backgroundColor: colors.brand.primary + '0D'
+          }}
+          title="Follows your Revenue/Expense perspective — switch it from the header"
         >
-          {(['receivables', 'payables'] as ViewMode[]).map((mode) => (
-            <button
-              key={mode}
-              onClick={() => setView(mode)}
-              className="px-4 py-1.5 rounded-md text-sm font-semibold transition-colors"
-              style={{
-                backgroundColor: view === mode ? colors.brand.primary : 'transparent',
-                color: view === mode ? '#fff' : colors.utility.secondaryText
-              }}
-            >
-              {mode === 'receivables' ? 'Receivables' : 'Payables'}
-            </button>
-          ))}
+          <span
+            className="h-2 w-2 rounded-full"
+            style={{ backgroundColor: view === 'receivables' ? colors.semantic.success : colors.semantic.warning }}
+          />
+          <span className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
+            {view === 'receivables' ? 'Revenue · Receivables' : 'Expense · Payables'}
+          </span>
         </div>
 
         <button
