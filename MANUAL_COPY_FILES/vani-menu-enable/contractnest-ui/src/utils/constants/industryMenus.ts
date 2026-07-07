@@ -105,6 +105,7 @@ export const defaultMenuItems: MenuItem[] = [
     icon: 'Sparkles',
     path: '/vani/landing',
     hasSubmenu: true,
+    defaultOpen: false, // 13 items — must not auto-expand and crowd the rest of the sidebar
     submenuItems: [
       { id: 'vani-landing', label: 'Overview', icon: 'Home', path: '/vani/landing' },
       { id: 'vani-dashboard', label: 'Dashboard', icon: 'LayoutDashboard', path: '/vani/dashboard' },
