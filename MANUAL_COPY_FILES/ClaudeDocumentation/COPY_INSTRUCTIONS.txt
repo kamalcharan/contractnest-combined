@@ -1,0 +1,17 @@
+═══════════════════════════════════════════════════
+📄 POA STATUS UPDATE — Smart Profile · Onboarding · ICP (2026-07-07)
+═══════════════════════════════════════════════════
+Submodule: ClaudeDocumentation (docs only — no code)
+
+NEW FILE
+  ClaudeDocumentation/ContractNest Agent/HANDOVER-2026-07-07-SMARTPROFILE-ONBOARDING-ICP.md
+  → the current POA state: what's DONE and what's PENDING this session.
+    Updates HANDOVER-2026-07-04-TEMPLATES-AND-AGENT.md (its §5 first task
+    "ICP smart chips" + most of §6 backlog are now built).
+
+COPY
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\ClaudeDocumentation\ContractNest Agent\HANDOVER-2026-07-07-SMARTPROFILE-ONBOARDING-ICP.md" -Destination "ClaudeDocumentation\ContractNest Agent\HANDOVER-2026-07-07-SMARTPROFILE-ONBOARDING-ICP.md" -Force
+
+Then commit the ClaudeDocumentation submodule (master branch) as part of Phase 2.
+═══════════════════════════════════════════════════
