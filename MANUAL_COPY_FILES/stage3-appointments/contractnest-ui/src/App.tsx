@@ -176,7 +176,7 @@ import PDFViewPage from './pages/contracts/pdf-view';
 import OpsCockpitPage from './pages/ops/cockpit';
 import FinancePage from './pages/operations/finance';
 import OpsServiceSchedulePage from './pages/operations/services';
-import AppointmentsPage from './pages/operations/appointments';
+import OpsAppointmentsPage from './pages/operations/appointments';
 import AppointmentsPage from './pages/appointments';
 import InviteSellersPage from './pages/contracts/invite';
 
@@ -594,7 +594,7 @@ const AppContent: React.FC = () => {
               </ProtectedRoute>
             }
           >
-            <Route index element={<AppointmentsPage />} />
+            <Route index element={<OpsAppointmentsPage />} />
           </Route>
 
           {/* Equipment Registry — standalone page under Operations */}
