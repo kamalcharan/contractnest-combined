@@ -1,6 +1,9 @@
 // src/pages/onboarding/steps/ResourcePickStep.tsx
 // Stream 1 / Task 1.2 — Resource Picker (3 tabs: Equipment | Facilities | Services)
-// Equipment + Facilities: KT-gated (green dot = selectable, red = not yet).
+// Equipment + Facilities: dot reflects TRUE Knowledge Tree status (green = KT
+//   variants generated, red = none). Selectability is separate: a seller's
+//   equipment needs a KT to seed catalog pricing; facilities + buyer equipment
+//   go to the asset registry and stay selectable even when red.
 // Services: always selectable — no KT required (flat pricing, lighter KT path).
 // Selections saved to t_tenant_selected_resources before navigating.
 
@@ -278,40 +281,47 @@ const ResourcePickStep: React.FC = () => {
   // Row for equipment/facilities (KT-gated)
   const KtTemplateRow = ({ template, requiresKT = true }: { template: ResourceTemplate; requiresKT?: boolean }) => {
     const selected  = selectedIds.has(template.id);
-    // requiresKT=false for buyer equipment and all facility/asset templates (registry-bound)
-    const ktAvail   = !requiresKT || isFacilityType(template.resource_type_id) || hasKT(template, ktCoverage);
+    // ktReady = the HONEST Knowledge Tree status (variants generated). Drives the dot
+    // colour for BOTH equipment and facilities — green only when a KT actually exists.
+    const ktReady   = hasKT(template, ktCoverage);
+    // selectable = can this be picked here (drives cursor/opacity/checkbox/click).
+    // Unchanged rule: facilities + buyer equipment go to the asset registry (no KT
+    // needed); only a SELLER's equipment needs a KT to seed catalog pricing blocks.
+    // So a red (no-KT) facility/registry item still shows red but stays selectable.
+    const selectable = !requiresKT || isFacilityType(template.resource_type_id) || ktReady;
     const subCatCfg = getSubCategoryConfig(template.sub_category);
     const IconComp  = subCatCfg?.icon ?? Package;
     const accentClr = subCatCfg?.color ?? '#6B7280';
 
     return (
       <div
-        role={ktAvail ? 'checkbox' : undefined}
-        aria-checked={ktAvail ? selected : undefined}
-        tabIndex={ktAvail ? 0 : -1}
+        role={selectable ? 'checkbox' : undefined}
+        aria-checked={selectable ? selected : undefined}
+        tabIndex={selectable ? 0 : -1}
         onClick={() => toggle(template)}
-        onKeyDown={e => ktAvail && (e.key === ' ' || e.key === 'Enter') ? toggle(template) : null}
-        title={!ktAvail ? 'No Knowledge Tree — cannot be selected yet' : undefined}
+        onKeyDown={e => selectable && (e.key === ' ' || e.key === 'Enter') ? toggle(template) : null}
+        title={!selectable ? 'No Knowledge Tree yet — cannot seed catalog pricing for this'
+               : !ktReady ? 'No Knowledge Tree yet — selectable for your registry' : undefined}
         style={{
           display: 'grid', gridTemplateColumns: '20px 30px 1fr 28px',
           alignItems: 'center', gap: 12,
           padding: '11px 18px',
           borderBottom: `1px solid ${BORDER_LT}`,
-          cursor: ktAvail ? 'pointer' : 'not-allowed',
-          transition: 'background .12s', opacity: ktAvail ? 1 : 0.45,
+          cursor: selectable ? 'pointer' : 'not-allowed',
+          transition: 'background .12s', opacity: selectable ? 1 : 0.45,
           background: selected ? VANI_SOFT : 'transparent',
           outline: 'none', userSelect: 'none' as const,
         }}
-        onMouseEnter={e => { if (ktAvail) e.currentTarget.style.background = selected ? VANI_SOFT : SURFACE; }}
+        onMouseEnter={e => { if (selectable) e.currentTarget.style.background = selected ? VANI_SOFT : SURFACE; }}
         onMouseLeave={e => { e.currentTarget.style.background = selected ? VANI_SOFT : 'transparent'; }}
       >
         <div style={{
           width: 18, height: 18, borderRadius: 5, flexShrink: 0,
-          border: `2px solid ${!ktAvail ? BORDER : selected ? VANI : BORDER}`,
-          background: selected && ktAvail ? VANI : 'transparent',
+          border: `2px solid ${!selectable ? BORDER : selected ? VANI : BORDER}`,
+          background: selected && selectable ? VANI : 'transparent',
           display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .12s',
         }}>
-          {selected && ktAvail && <span style={{ color: WHITE, fontSize: 10, fontWeight: 800, lineHeight: 1 }}>✓</span>}
+          {selected && selectable && <span style={{ color: WHITE, fontSize: 10, fontWeight: 800, lineHeight: 1 }}>✓</span>}
         </div>
         <div style={{
           width: 28, height: 28, borderRadius: 7, flexShrink: 0,
@@ -343,10 +353,10 @@ const ResourcePickStep: React.FC = () => {
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div title={ktAvail ? 'Knowledge Tree available' : 'No Knowledge Tree'} style={{
+          <div title={ktReady ? 'Knowledge Tree available' : 'No Knowledge Tree'} style={{
             width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
-            background: ktAvail ? GREEN : RED,
-            boxShadow: ktAvail ? `0 0 0 3px ${GREEN}20` : `0 0 0 3px ${RED}15`,
+            background: ktReady ? GREEN : RED,
+            boxShadow: ktReady ? `0 0 0 3px ${GREEN}20` : `0 0 0 3px ${RED}15`,
           }} />
         </div>
       </div>
@@ -479,7 +489,7 @@ const ResourcePickStep: React.FC = () => {
             <span style={{ fontSize: 12, fontWeight: 700, color: TEXT }}>
               {items.length} types for your industries
             </span>
-            {requiresKT && (
+            {/* KT legend — always shown now that the dot reflects true KT status on both tabs */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 10, color: TEXT_MUTED, fontFamily: "'IBM Plex Mono', monospace" }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: GREEN, display: 'inline-block' }} /> KT ready
@@ -488,7 +498,6 @@ const ResourcePickStep: React.FC = () => {
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: RED, display: 'inline-block' }} /> No KT
               </span>
             </div>
-            )}
           </div>
           {groups.map(([subCat, list]) => (
             <div key={subCat}>
