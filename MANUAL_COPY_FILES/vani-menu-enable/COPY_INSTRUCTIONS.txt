@@ -1,0 +1,59 @@
+═══════════════════════════════════════════════════
+📦 CHANGE: Enable full VaNi module in the sidebar (reference/testing pass)
+═══════════════════════════════════════════════════
+Branch (combined repo): claude/handover-templates-agent-qretm1
+Submodule affected: contractnest-ui (1 file)  |  NO API/DB change, NO new pages
+
+AUDIT FIRST
+  Surveyed the whole VaNi surface: src/vani/pages/* (20 files) + src/pages/VaNi/*
+  (5 files) = 23 real page components. ALL 23 are already imported in App.tsx and
+  ALL have live <Route> entries under the protected "/vani" parent route
+  (MainLayout-wrapped) — nothing here is broken or half-built.
+  The gap was pure navigation: the sidebar's "VaNi" entry was a single flat link
+  (hasSubmenu:false) pointing only to /vani/landing. Everything else — jobs,
+  templates, channels, analytics, webhooks, receivables, service schedule,
+  rules, chat, BBB chat — had ZERO menu presence, reachable only by typing the
+  URL directly.
+  (3 pages — Tenant Profiles, BBB Admin, Product Masters — already had nav
+  entries, under the admin-only Implementation Toolkit menu; left as-is, not
+  duplicated here.)
+  Excluded 4 routes that are placeholder stubs, not real pages: webhooks/create,
+  webhooks/:id, rules/create, rules/:id/edit, analytics/rules (all render
+  `<div>...Coming Soon</div>`).
+
+WHAT CHANGED
+  utils/constants/industryMenus.ts — the 'vani' menu item: hasSubmenu:false with
+  no submenu → hasSubmenu:true with a 13-item submenu covering every real,
+  working VaNi page:
+    Overview (preserves the old /vani/landing destination — parent items with
+      hasSubmenu:true no longer navigate on click in this sidebar, they just
+      toggle, same as every other submenu in the app; without this row the
+      landing page would've become orphaned)
+    Dashboard · Jobs · Business Events · Templates · Channels · BBB Chat ·
+    Analytics · Webhooks · Accounts Receivable · Service Schedule ·
+    Process Rules · Chat
+  Owner's call: enabling now for reference/testing; a cleanup/consolidation
+  pass on this whole module is expected later (icons/grouping may change).
+
+VERIFIED: UI tsc --noEmit = 23 (unchanged baseline); touched file clean.
+  Icon names are standard lucide-react icons; Sidebar.tsx resolves icon strings
+  dynamically with a safe fallback (iconsMap[iconName] || LucideIcons.Circle),
+  so even a mistyped icon degrades to a generic circle, never a crash.
+
+═══════════════════════════════════════════════════
+PHASE 1 — COPY & TEST
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\vani-menu-enable\contractnest-ui\src\utils\constants\industryMenus.ts" -Destination "contractnest-ui\src\utils\constants\industryMenus.ts" -Force
+
+cd contractnest-ui ; npm run dev
+
+TEST
+  [ ] Sidebar "VaNi" now expands into a submenu (click toggles, matches
+      Contracts/Operations/Catalog Studio behaviour).
+  [ ] Each of the 13 submenu rows opens its page without error.
+  [ ] Nothing else in the sidebar changed.
+
+No Phase 2 (submodule commit) until you confirm "tested, working".
+═══════════════════════════════════════════════════
