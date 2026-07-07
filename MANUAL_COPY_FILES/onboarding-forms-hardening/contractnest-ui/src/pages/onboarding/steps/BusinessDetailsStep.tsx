@@ -58,6 +58,17 @@ const BusinessDetailsStep: React.FC = () => {
         business_name: formData.business_name.trim(),
       });
       vaniToast.success('Business details saved');
+
+      // ICP Smart Profile — Piece 1 (VaNi flow): kick off the BACKGROUND build
+      // from the website URL captured here. Fire-and-forget: never awaited, never
+      // blocks onboarding; the server persists nothing on failure and skips if a
+      // profile already exists. (This is the VaNi flow's website step — the Outlet
+      // flow fires the same call from BusinessPreferencesStep.)
+      if (formData.website_url?.trim()) {
+        api.post('/api/onboarding/build-smart-profile', { website_url: formData.website_url.trim() })
+          .catch((e: any) => console.warn('Smart Profile background build not started:', e?.message));
+      }
+
       navigate('/onboarding/persona-selection');
     } catch (err: any) {
       vaniToast.error(err?.response?.data?.error || 'Failed to save — please try again');
