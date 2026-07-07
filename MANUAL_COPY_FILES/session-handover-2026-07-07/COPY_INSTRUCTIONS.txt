@@ -1,0 +1,11 @@
+═══════════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS — session-handover-2026-07-07
+Session handover: Operations POA stages 0–3
+═══════════════════════════════════════════════════════════════════
+SUBMODULES AFFECTED: ClaudeDocumentation only.
+
+1. ClaudeDocumentation/ContractNest Agent/HANDOVER-2026-07-07-OPERATIONS-STAGES-0-3.md
+   → ClaudeDocumentation\ContractNest Agent\HANDOVER-2026-07-07-OPERATIONS-STAGES-0-3.md
+   Purpose: next-session entry point — stage statuses, verified facts,
+   conventions, queued items (1b/3b), Stage 4 start point.
+═══════════════════════════════════════════════════════════════════

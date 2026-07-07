@@ -1,0 +1,63 @@
+═══════════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS — stage0-runtime-loop
+Stage 0: The Runtime Loop (contract-event scanner)
+Date: 2026-07-07
+═══════════════════════════════════════════════════════════════════
+
+SUBMODULES AFFECTED:
+  - contractnest-edge      (6 new SQL migration files — NEW folder operations-loop/)
+  - ClaudeDocumentation    (1 new doc)
+  - NO changes to contractnest-api / contractnest-ui / Mobile / FamilyKnows
+  - NO edge function deploys needed. This stage is SQL-only.
+
+───────────────────────────────────────────────────────────────────
+FILES (source → destination, paths mirror the repo exactly)
+───────────────────────────────────────────────────────────────────
+1. contractnest-edge/supabase/migrations/operations-loop/001_stage0_dispatch_tracking.sql
+   → contractnest-edge\supabase\migrations\operations-loop\001_stage0_dispatch_tracking.sql
+   Purpose: dispatch-tracking + linkage columns (t_contract_events, t_invoices) + idempotency indexes
+
+2. contractnest-edge/supabase/migrations/operations-loop/002_stage0_due_status_config.sql
+   → contractnest-edge\supabase\migrations\operations-loop\002_stage0_due_status_config.sql
+   Purpose: seed 'due' status + transitions (service/billing, system + tenant scopes)
+
+3. contractnest-edge/supabase/migrations/operations-loop/003_stage0_update_contract_event_due.sql
+   → contractnest-edge\supabase\migrations\operations-loop\003_stage0_update_contract_event_due.sql
+   Purpose: update_contract_event now accepts manual moves from 'due' (one CASE line added)
+
+4. contractnest-edge/supabase/migrations/operations-loop/004_stage0_scanner.sql
+   → contractnest-edge\supabase\migrations\operations-loop\004_stage0_scanner.sql
+   Purpose: run_contract_event_scanner() — THE runtime loop
+
+5. contractnest-edge/supabase/migrations/operations-loop/005_stage0_cron.sql
+   → contractnest-edge\supabase\migrations\operations-loop\005_stage0_cron.sql
+   Purpose: schedules scanner (*/15) + de-dupes the double jtd-worker cron (jobids 1 & 3)
+
+6. contractnest-edge/supabase/migrations/operations-loop/006_stage0_rollback.sql
+   → contractnest-edge\supabase\migrations\operations-loop\006_stage0_rollback.sql
+   Purpose: ROLLBACK ONLY — do NOT apply during normal install
+
+7. ClaudeDocumentation/ContractNest Agent/STAGE0-RUNTIME-LOOP.md
+   → ClaudeDocumentation\ContractNest Agent\STAGE0-RUNTIME-LOOP.md
+   Purpose: design decisions, acceptance tests, ops runbook, Stage 1 hooks
+
+───────────────────────────────────────────────────────────────────
+DATABASE APPLY (owner — Supabase SQL editor, project uwyqhzotluikawcboldr)
+───────────────────────────────────────────────────────────────────
+Run IN ORDER: 001 → 002 → 003 → 004 → 005.
+Do NOT run 006 (rollback) unless undoing Stage 0.
+All files are safe to re-run.
+
+⚠️ BEFORE applying 005 (cron), read STAGE0-RUNTIME-LOOP.md §6:
+   the first scan sends ONE payment_due email per open test invoice (6 of
+   them) and service reminders for events entering the due window — to the
+   buyer contacts on your test contracts. To preview without sending, run
+   `SELECT run_contract_event_scanner();` manually BEFORE applying 005 and
+   inspect n_jtd (unschedule the jtd-worker cron temporarily if you want to
+   freeze dispatch).
+
+Smoke test after apply:
+   SELECT run_contract_event_scanner();
+   -- expect JSON summary with counts, errors = 0
+Full acceptance script: STAGE0-RUNTIME-LOOP.md §5.
+═══════════════════════════════════════════════════════════════════

@@ -1,0 +1,61 @@
+═══════════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS — stage3-appointments
+Stage 3: Appointments (Operations → Appointments kanban)
+Date: 2026-07-07
+═══════════════════════════════════════════════════════════════════
+
+SUBMODULES AFFECTED:
+  - contractnest-edge   (2 SQL migrations + NEW edge fn `appointments` — DEPLOY REQUIRED)
+  - contractnest-api    (4 new files + 1 FULL-REPLACE: src/index.ts)
+  - contractnest-ui     (2 new files + 2 FULL-REPLACE: App.tsx, industryMenus.ts)
+  - ClaudeDocumentation (1 new doc)
+
+⚠️ PREREQUISITE: stage1 + stage2 batches applied first. This batch's
+index.ts / App.tsx / industryMenus.ts include and supersede theirs.
+
+───────────────────────────────────────────────────────────────────
+FILES (paths mirror the repos exactly)
+───────────────────────────────────────────────────────────────────
+contractnest-edge (Supabase SQL editor, in order; re-runnable):
+1. supabase/migrations/operations-loop/012_stage3_appointments.sql
+   — t_appointments + create/list/update RPCs (accept syncs event date)
+2. supabase/migrations/operations-loop/013_stage3_scanner_v2.sql
+   — scanner v2: auto-requests appointments ≤6 days ahead (dry-run: 21
+     requested, 0 errors). DROPs the old 4-arg scanner; cron unchanged.
+2b. supabase/migrations/operations-loop/014_stage3_events_list_appointment_fields.sql
+   — events list RPC v3: + appointment_id/status/scheduled_at (feeds the
+     Service Schedule Appointment column + EventCard chip) — dry-run verified
+3. supabase/functions/appointments/index.ts   (NEW edge fn)
+   → cd contractnest-edge && supabase functions deploy appointments
+
+contractnest-api:
+4. src/services/appointmentService.ts
+5. src/controllers/appointmentController.ts
+6. src/validators/appointmentValidators.ts
+7. src/routes/appointmentRoutes.ts
+8. src/index.ts                                (FULL REPLACE — includes stage1)
+
+contractnest-ui:
+9.  src/hooks/queries/useAppointmentQueries.ts
+10. src/pages/operations/appointments/index.tsx (the kanban board)
+10b. src/pages/operations/services/index.tsx    (v3 — SUPERSEDES stage2's copy:
+     clip-safe inline status chips, Appointment column + Book action)
+10c. src/components/contracts/EventCard.tsx      (FULL REPLACE from main —
+     appointment chip + Book button on contract Tasks/Operations tabs + cockpit)
+11. src/App.tsx                                 (FULL REPLACE — includes stages 1+2)
+12. src/utils/constants/industryMenus.ts        (FULL REPLACE — includes stages 1+2)
+
+ClaudeDocumentation:
+13. ClaudeDocumentation/ContractNest Agent/STAGE3-APPOINTMENTS.md
+
+───────────────────────────────────────────────────────────────────
+QUALITY (verified in-session before delivery)
+───────────────────────────────────────────────────────────────────
+- SQL dry-run on live DB (rolled back): 21 appointments requested,
+  accept → event scheduled_date synced, 0 errors
+- API tsc: 0 (baseline) · UI tsc: 23 (baseline) with stages 1+2+3 applied
+
+MANUAL MODE: appointments send NO messages (no JTD producers added).
+Test-number constraint (+91 9885164233 only) trivially satisfied.
+Full checklist: STAGE3-APPOINTMENTS.md §3.
+═══════════════════════════════════════════════════════════════════
