@@ -35,10 +35,20 @@ export interface AutobuildResult {
   reason?: string;
 }
 
+// Ensure the URL carries a scheme — a bare "www.example.com" commonly breaks the
+// n8n / Jina Reader scrape, which is the #1 reason an onboarding build fails.
+function normalizeUrl(raw: string): string {
+  const u = (raw || '').trim();
+  if (!u) return '';
+  if (/^https?:\/\//i.test(u)) return u;
+  return `https://${u}`;
+}
+
 export async function autobuildSmartProfile(params: AutobuildParams): Promise<AutobuildResult> {
   const { authHeader, tenantId, environment = 'live' } = params;
-  const url = (params.websiteUrl || '').trim();
+  const url = normalizeUrl(params.websiteUrl);
   if (!url) return { built: false, reason: 'no_url' };
+  console.log('[SP autobuild] start:', JSON.stringify({ tenantId, url, environment }));
 
   // ── Idempotency: never rebuild over an existing profile ──────────────────
   try {
