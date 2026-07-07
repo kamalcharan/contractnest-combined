@@ -7,20 +7,16 @@
 //
 //   scrape-website (n8n)  →  save profile  →  generate clusters (n8n)  →  save clusters
 //
-// So the tenant lands with a real ICP that powers the resource-seeding ranking
-// (Piece 2) + smart chips + nomenclature from day one — without a blocking step.
-//
 // TWO HARD RULES:
-//   • HONEST — if the scrape/AI returns no real content, persist NOTHING. No
-//     fabricated description, no placeholder keywords. The tenant can still
-//     build it by hand in Settings → Business Profile → Smart Profile.
-//   • IDEMPOTENT — if the tenant already has a profile, skip (never clobber a
-//     hand-authored one, never double-build on a re-submit).
+//   • HONEST — if the scrape/AI returns no real content, persist NOTHING.
+//   • IDEMPOTENT — if the tenant already has a profile, skip.
 //
-// Best-effort: any failure logs and returns { built:false }. It never throws to
-// the caller (the route already responded 202) and never blocks onboarding.
+// TEMP INSTRUMENTATION: every step also writes a row to t_sp_autobuild_debug so
+// the exact failure point is visible server-side (the client console has been
+// hard to capture). Remove once the onboarding path is confirmed working.
 // ============================================================================
 
+import { createClient } from '@supabase/supabase-js';
 import { groupsService } from './groupsService';
 
 export interface AutobuildParams {
@@ -35,61 +31,90 @@ export interface AutobuildResult {
   reason?: string;
 }
 
+// ── TEMP debug sink ─────────────────────────────────────────────────────────
+function dbgClient() {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key);
+}
+async function dbg(tenantId: string, step: string, detail: any) {
+  const line = typeof detail === 'string' ? detail : JSON.stringify(detail);
+  console.log(`[SP autobuild] ${step}:`, line);
+  try {
+    const c = dbgClient();
+    if (c) await c.from('t_sp_autobuild_debug').insert({ tenant_id: tenantId, step, detail: line });
+  } catch { /* never let debug logging break the build */ }
+}
+
 export async function autobuildSmartProfile(params: AutobuildParams): Promise<AutobuildResult> {
   const { authHeader, tenantId, environment = 'live' } = params;
-  // The URL is normalized (scheme guaranteed) CLIENT-SIDE at the website input.
-  // We do NOT silently patch it here — if it arrives malformed the scrape will
-  // honest-fail and nothing is persisted, rather than papering over bad input.
   const url = (params.websiteUrl || '').trim();
-  if (!url) return { built: false, reason: 'no_url' };
-  console.log('[SP autobuild] start:', JSON.stringify({ tenantId, url, environment }));
 
-  // ── Idempotency: never rebuild over an existing profile ──────────────────
+  await dbg(tenantId, 'start', { url, environment, hasAuth: !!authHeader });
+  if (!url) { await dbg(tenantId, 'end', 'no_url'); return { built: false, reason: 'no_url' }; }
+
+  // ── Idempotency ──────────────────────────────────────────────────────────
   try {
     const existing: any = await groupsService.getSmartProfile(authHeader, tenantId);
     const sp = existing?.smartprofile || existing?.data?.smartprofile || existing?.data || existing;
+    await dbg(tenantId, 'idempotency', {
+      raw: existing ? JSON.stringify(existing).slice(0, 300) : null,
+      hasDesc: !!sp?.ai_enhanced_description, hasId: !!sp?.id,
+    });
     if (sp && (sp.ai_enhanced_description || sp.id)) {
+      await dbg(tenantId, 'end', 'already_exists');
       return { built: false, reason: 'already_exists' };
     }
-  } catch {
-    // No profile yet (404 / empty) — proceed to build.
+  } catch (e: any) {
+    await dbg(tenantId, 'idempotency_err', e?.message || String(e));
   }
 
-  // ── 1) Scrape + AI-enhance the website (n8n) ─────────────────────────────
+  // ── 1) Scrape ──────────────────────────────────────────────────────────────
   let scraped: any;
   try {
     scraped = await groupsService.scrapeWebsiteForSmartProfile(authHeader, tenantId, url, environment);
+    await dbg(tenantId, 'scrape_ok', {
+      keys: scraped ? Object.keys(scraped) : null,
+      descLen: String(scraped?.ai_enhanced_description || '').length,
+      raw: JSON.stringify(scraped || {}).slice(0, 400),
+    });
   } catch (e: any) {
-    console.warn('[SP autobuild] scrape failed — persisting nothing:', e?.message);
+    await dbg(tenantId, 'scrape_err', {
+      message: e?.message, status: e?.response?.status,
+      data: JSON.stringify(e?.response?.data || {}).slice(0, 400),
+    });
+    await dbg(tenantId, 'end', 'scrape_failed');
     return { built: false, reason: 'scrape_failed' };
   }
 
   const description = String(scraped?.ai_enhanced_description || '').trim();
   const keywords: string[] = Array.isArray(scraped?.suggested_keywords) ? scraped.suggested_keywords : [];
-
-  // HONEST GUARD: no real AI content → do NOT fabricate anything.
   if (!description) {
-    console.warn('[SP autobuild] scrape returned no description — persisting nothing');
+    await dbg(tenantId, 'end', 'no_description');
     return { built: false, reason: 'no_description' };
   }
 
-  // ── 2) Persist the profile ───────────────────────────────────────────────
+  // ── 2) Save profile ──────────────────────────────────────────────────────
   try {
-    await groupsService.saveSmartProfile(authHeader, tenantId, {
+    const saved = await groupsService.saveSmartProfile(authHeader, tenantId, {
       ai_enhanced_description: description,
       approved_keywords: keywords,
       website_url: url,
       generation_method: 'website',
       profile_type: 'business',
     });
+    await dbg(tenantId, 'save_ok', JSON.stringify(saved || {}).slice(0, 300));
   } catch (e: any) {
-    console.warn('[SP autobuild] saveSmartProfile failed:', e?.message);
+    await dbg(tenantId, 'save_err', {
+      message: e?.message, status: e?.response?.status,
+      data: JSON.stringify(e?.response?.data || {}).slice(0, 400),
+    });
+    await dbg(tenantId, 'end', 'save_failed');
     return { built: false, reason: 'save_failed' };
   }
 
-  // ── 3) Generate + 4) save semantic clusters (best-effort) ────────────────
-  // The profile is already saved; clusters only enrich it, so a failure here
-  // must not undo the profile — it just means fewer ranking signals.
+  // ── 3) Clusters (best-effort) ────────────────────────────────────────────
   try {
     const gen: any = await groupsService.generateSmartProfileClusters(authHeader, tenantId, description, keywords, environment);
     const clusters = (gen?.clusters || [])
@@ -104,10 +129,12 @@ export async function autobuildSmartProfile(params: AutobuildParams): Promise<Au
     if (clusters.length > 0) {
       await groupsService.saveSmartProfileClusters(authHeader, tenantId, clusters);
     }
+    await dbg(tenantId, 'clusters_ok', { count: clusters.length });
   } catch (e: any) {
-    console.warn('[SP autobuild] clusters step failed (profile still saved):', e?.message);
+    await dbg(tenantId, 'clusters_err', e?.message || String(e));
   }
 
+  await dbg(tenantId, 'end', 'built');
   return { built: true };
 }
 
