@@ -64,6 +64,18 @@ The three registration files (`index.ts`, `App.tsx`, `industryMenus.ts`) are shi
 - "Send reminder" requires the buyer contact to have an **email** channel (else 422 with a clear message) and the **MSG91 `payment_due` template to be approved** + `provider_template_id` set (Stage 0 follow-up). Until then the JTD will show `failed` in JTD Admin — the queueing itself still proves the flow.
 - Payables view will be empty unless a contract has been claimed by another tenant (or you own vendor-type contracts).
 
+## 5b. Stage 1b — ON HOLD (owner, 2026-07-07): Razorpay pay-link in reminders
+
+Assessed and ready to build next session. Findings: the full rail already
+exists — `t_tenant_integrations` (payment_gateway + get_tenant_gateway_credentials),
+`payment-gateway` edge fn (Razorpay payment links → t_contract_payment_requests),
+`payment-webhook` → `process_payment_webhook` → `record_invoice_payment`
+(auto-reconciliation), and `payment_due_email_v1` already declares an optional
+`payment_link` variable. Build = wiring: gateway check at reminder time →
+reuse-or-create payment link → pass `payment_link`; no gateway → current
+manual behaviour. Needs one MSG91 template edit ({{#if payment_link}} Pay-now
+block → re-approval) + verify the Settings→Integrations connect surface.
+
 ## 6. Open item carried from Stage 0 (decision needed later)
 
 Lump-sum activation invoice vs per-event drafts for EMI/recurring contracts (see STAGE0-RUNTIME-LOOP.md §2). The Finance page makes both visible, so the duplication (if any) is now easy to spot and cancel manually. Recommend deciding in Stage 2 window: likely "skip lump generation when `payment_mode` = emi/recurring".
