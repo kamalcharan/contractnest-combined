@@ -1,0 +1,63 @@
+═══════════════════════════════════════════════════
+📦 FIX: Contract detail "Failed to load contract" (400 + retry loop)
+═══════════════════════════════════════════════════
+Branch (combined repo): claude/handover-templates-agent-qretm1
+Submodules: contractnest-api (1 file) + contractnest-edge (1 migration, record only)
+
+ROOT CAUSE (proven live, not inferred)
+  TWO overloads of get_contract_by_id coexisted in the DB:
+    • (uuid, uuid)                              — migration 060 body
+    • (uuid, uuid, varchar, varchar)            — 060 body + CNAK access-key params
+  The CNAK/global-access work grew the function's SIGNATURE; CREATE OR REPLACE
+  only replaces a same-signature function, so Postgres created a SECOND one and
+  nothing dropped the first. From that day, the edge's 2-named-arg call matched
+  BOTH candidates → Postgres 42725 "function is not unique" (reproduced verbatim
+  in SQL) → edge 500 RPC_ERROR → API default-mapped unknown codes to 400 → UI
+  "Failed to load contract / Request failed with status code 400", and React
+  Query retry:3 = the "auto refresh".
+  Scope: detail view broken for EVERYONE (seller AND buyer — same endpoint,
+  role is client-side). The contracts LIST was never broken (different query).
+  "Nothing changed recently" was true — the duplicate dates to the CNAK-era SQL;
+  it went unnoticed because later sessions never opened /contracts/:id.
+
+DB FIX — ✅ ALREADY APPLIED (project uwyqhzotluikawcboldr, 2026-07-07, owner go)
+  DROP FUNCTION public.get_contract_by_id(uuid, uuid);
+  Keeps the 4-param SUPERSET (identical tenant/buyer logic + CNAK access path;
+  defaults let the 2-arg call resolve cleanly).
+  VERIFIED live: the previously-failing named call now returns
+  success=true · CN-1006 · active · 5 blocks · access_role=owner.
+  ROLLBACK: re-run migration 060 (its body = the dropped function, byte-identical).
+  The migration file here (061_drop_duplicate_get_contract_by_id.sql) is the
+  repo record — commit it to contractnest-edge; do NOT run it again.
+
+FILES
+  1) contractnest-api/src/controllers/contractController.ts   (hardening)
+     • adds 'RPC_ERROR': 502 to codeToStatus
+     • default for UNKNOWN edge codes changed 400 → 502 (an unrecognized edge
+       error is a server fault, not a client error — this exact default masked
+       the incident as a client 400). Flagging explicitly in case any flow
+       relied on unknown-code → 400 (none found in repo).
+  2) contractnest-edge/supabase/migrations/contracts/061_drop_duplicate_get_contract_by_id.sql
+     (record of the applied fix — copy into the edge repo, no action needed)
+
+VERIFIED: API tsc --noEmit = 0 source errors.
+
+═══════════════════════════════════════════════════
+PHASE 1 — COPY & TEST
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\fix-contract-detail-400\contractnest-api\src\controllers\contractController.ts" -Destination "contractnest-api\src\controllers\contractController.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\fix-contract-detail-400\contractnest-edge\supabase\migrations\contracts\061_drop_duplicate_get_contract_by_id.sql" -Destination "contractnest-edge\supabase\migrations\contracts\061_drop_duplicate_get_contract_by_id.sql" -Force
+
+cd contractnest-api ; npm run dev   (restart API)
+
+TEST
+  [ ] The DB fix is live already — /contracts/2d325d8e-d81c-49c5-9d43-faf07deafc2f
+      should load RIGHT NOW even before copying (hard refresh, Ctrl+F5).
+  [ ] Open other contracts from the hub list → detail loads, no retry loop.
+  [ ] After copying + API restart: any future edge RPC failure shows as 502 in
+      the network tab (server fault), not 400.
+
+No Phase 2 (submodule commit) until you confirm "tested, working".
+═══════════════════════════════════════════════════
