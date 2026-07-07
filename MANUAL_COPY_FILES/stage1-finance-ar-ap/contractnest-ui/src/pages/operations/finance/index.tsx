@@ -58,6 +58,9 @@ const formatMoney = (value: number | null | undefined, currency: string = 'INR')
   }
 };
 
+// Table column template (product-wide list pattern)
+const FINANCE_GRID_COLS = 'minmax(150px,1.2fr) 100px minmax(140px,1fr) 100px 130px minmax(110px,0.8fr) 190px';
+
 const formatDate = (value: string | null | undefined): string => {
   if (!value) return '—';
   const d = new Date(value);
@@ -596,7 +599,7 @@ const FinancePage: React.FC = () => {
           </div>
         </CardHeader>
 
-        <CardContent>
+        <CardContent className="overflow-x-auto">
           {filteredInvoices.length === 0 ? (
             <div className="flex flex-col items-center py-12 gap-2">
               <Inbox className="h-8 w-8" style={{ color: colors.utility.secondaryText }} />
@@ -605,7 +608,21 @@ const FinancePage: React.FC = () => {
               </p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1.5 min-w-[960px]">
+              {/* Table header (product-wide list pattern) */}
+              <div
+                className="grid items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase tracking-wider"
+                style={{ gridTemplateColumns: FINANCE_GRID_COLS, color: colors.utility.secondaryText }}
+              >
+                <span>Invoice</span>
+                <span>Contract</span>
+                <span>{view === 'receivables' ? 'Customer' : 'Vendor'}</span>
+                <span>Due date</span>
+                <span>Status</span>
+                <span className="text-right">Balance</span>
+                <span />
+              </div>
+
               {filteredInvoices.map((inv) => {
                 const isOpen = inv.status === 'unpaid' || inv.status === 'partially_paid';
                 const paidPct =
@@ -616,60 +633,73 @@ const FinancePage: React.FC = () => {
                 return (
                   <div
                     key={inv.id}
-                    className="flex flex-wrap items-center gap-3 p-3 rounded-lg border"
-                    style={{ borderColor: colors.utility.secondaryText + '18' }}
+                    className="grid items-center gap-2 px-3 py-2.5 rounded-lg border"
+                    style={{ gridTemplateColumns: FINANCE_GRID_COLS, borderColor: colors.utility.secondaryText + '15' }}
                   >
-                    <div className="flex-1 min-w-[240px]">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>
-                          {inv.invoice_number}
-                        </p>
-                        {statusBadge(inv)}
-                        {inv.emi_sequence && inv.emi_total && (
-                          <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
-                            EMI {inv.emi_sequence}/{inv.emi_total}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs mt-0.5" style={{ color: colors.utility.secondaryText }}>
-                        {view === 'receivables'
-                          ? inv.buyer_company || inv.buyer_name || 'Customer'
-                          : inv.counterparty_name || 'Vendor'}
-                        {' · '}
-                        {inv.contract_number} · due {formatDate(inv.due_date)}
-                        {inv.last_reminder_at ? ` · last reminder ${formatDate(inv.last_reminder_at)}` : ''}
+                    {/* Invoice */}
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold truncate" style={{ color: colors.utility.primaryText }}>
+                        {inv.invoice_number}
+                      </p>
+                      <p className="text-[10px] truncate" style={{ color: colors.utility.secondaryText }}>
+                        {inv.emi_sequence && inv.emi_total ? `EMI ${inv.emi_sequence}/${inv.emi_total}` : inv.billing_cycle || inv.payment_mode || ''}
+                        {inv.last_reminder_at ? ` · reminded ${formatDate(inv.last_reminder_at)}` : ''}
                       </p>
                       {isOpen && Number(inv.amount_paid) > 0 && (
-                        <div className="mt-1.5 h-1.5 rounded-full w-48" style={{ backgroundColor: colors.utility.secondaryText + '20' }}>
-                          <div
-                            className="h-1.5 rounded-full"
-                            style={{ width: `${paidPct}%`, backgroundColor: colors.semantic.success }}
-                          />
+                        <div className="mt-1 h-1 rounded-full w-24" style={{ backgroundColor: colors.utility.secondaryText + '20' }}>
+                          <div className="h-1 rounded-full" style={{ width: `${paidPct}%`, backgroundColor: colors.semantic.success }} />
                         </div>
                       )}
                     </div>
 
-                    <div className="text-right min-w-[110px]">
-                      <p className="text-sm font-bold" style={{ color: colors.utility.primaryText }}>
+                    {/* Contract */}
+                    <button
+                      onClick={() => navigate(`/contracts/${inv.contract_id}`)}
+                      className="text-xs font-semibold text-left truncate hover:underline"
+                      style={{ color: colors.brand.primary }}
+                      title={inv.contract_name}
+                    >
+                      {inv.contract_number || '—'}
+                    </button>
+
+                    {/* Customer / Vendor */}
+                    <span className="text-xs truncate" style={{ color: colors.utility.primaryText }}>
+                      {view === 'receivables'
+                        ? inv.buyer_company || inv.buyer_name || '—'
+                        : inv.counterparty_name || '—'}
+                    </span>
+
+                    {/* Due date */}
+                    <span className="text-[11px]" style={{ color: inv.days_overdue > 0 ? colors.semantic.error : colors.utility.secondaryText }}>
+                      {formatDate(inv.due_date)}
+                    </span>
+
+                    {/* Status */}
+                    <div>{statusBadge(inv)}</div>
+
+                    {/* Balance */}
+                    <div className="text-right">
+                      <p className="text-xs font-bold" style={{ color: colors.utility.primaryText }}>
                         {formatMoney(isOpen ? inv.balance : inv.total_amount, inv.currency)}
                       </p>
                       {isOpen && Number(inv.amount_paid) > 0 && (
-                        <p className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                        <p className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
                           of {formatMoney(inv.total_amount, inv.currency)}
                         </p>
                       )}
                     </div>
 
-                    <div className="flex items-center gap-1.5">
+                    {/* Actions */}
+                    <div className="flex items-center justify-end gap-1.5">
                       {view === 'receivables' && inv.status === 'draft' && (
                         <button
                           onClick={() => handleApprove(inv)}
                           disabled={actioningId === inv.id}
                           title="Approve draft"
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold"
                           style={{ backgroundColor: colors.brand.primary, color: '#fff', opacity: actioningId === inv.id ? 0.6 : 1 }}
                         >
-                          {actioningId === inv.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                          {actioningId === inv.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
                           Approve
                         </button>
                       )}
@@ -678,24 +708,20 @@ const FinancePage: React.FC = () => {
                           onClick={() => handleRemind(inv)}
                           disabled={actioningId === inv.id}
                           title="Send payment reminder (email)"
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold border"
-                          style={{
-                            borderColor: colors.brand.primary + '50',
-                            color: colors.brand.primary,
-                            opacity: actioningId === inv.id ? 0.6 : 1
-                          }}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold border"
+                          style={{ borderColor: colors.brand.primary + '50', color: colors.brand.primary, opacity: actioningId === inv.id ? 0.6 : 1 }}
                         >
-                          {actioningId === inv.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                          {actioningId === inv.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
                           Remind
                         </button>
                       )}
                       <button
                         onClick={() => navigate(`/contracts/${inv.contract_id}`)}
                         title="Open contract (record payment there)"
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-medium border"
+                        className="inline-flex items-center justify-center h-6 w-6 rounded-lg border"
                         style={{ borderColor: colors.utility.secondaryText + '30', color: colors.utility.secondaryText }}
                       >
-                        <ExternalLink className="h-3.5 w-3.5" />
+                        <ExternalLink className="h-3 w-3" />
                       </button>
                     </div>
                   </div>
