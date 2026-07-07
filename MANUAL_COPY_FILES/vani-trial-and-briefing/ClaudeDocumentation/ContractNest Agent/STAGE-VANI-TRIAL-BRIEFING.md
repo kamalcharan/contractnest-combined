@@ -64,3 +64,41 @@ the real schema (`version_id`, `subscription_id`, `start_date`, `renewal_date`,
    will reuse its tenant-scoped RPC discipline.
 4. Flip `VANI_ENTITLEMENT_MODE=subscription` when the owner wants the gate real.
 5. Cleanup pass: delete "VaNi (old)" menu + mock pages.
+
+---
+
+## 7. Rules v1 addendum (same session, 2026-07-08)
+
+**Owner decisions locked:**
+- VaNi rule engine = **curated typed templates with bounded knobs** (no free-form
+  IF/THEN — the mock ProcessRulesPage stays reference-only for its card UX).
+- Rules live in **Settings → Automation Rules** (not under VaNi). Landing page +
+  Briefing link into it ("Set your own rules →" / "Tune rules →").
+- **Aligned free/paid line: "defaults run for everyone; controlling the
+  automation is VaNi."** Rules visible (read-only) to all tenants; editing
+  gated on VaNi entitlement. Trial expiry keeps edited rules running.
+- Defaults **seeded per tenant**: AFTER INSERT trigger on t_tenants (=
+  onboarding start) + one-time backfill (942 rows / 157 tenants). Runtime
+  always COALESCEs to template defaults — a missing row can never break.
+
+**Shipped (017, APPLIED live in two parts: infra + scanner v3):**
+- `m_vani_rule_templates` (6 templates, ALL consumed — honesty rule):
+  service_due_window · service_reminder · appointment_request (lead +
+  **backlog_cutoff_days=30**, the fix for the 21-appointment flood) ·
+  billing_due_window · draft_invoice · payment_reminder
+- `t_vani_rules` + seed trigger/backfill; helpers `vani_rule_int` /
+  `vani_rule_enabled`; RPCs `get_vani_rules` / `update_vani_rule` (bounded,
+  optimistic-concurrency) / `seed_vani_rules`
+- **Scanner v3**: same 5-arg signature (cron untouched, params = system
+  fallback); per-tenant resolution in STEP 2 / 2b / 3 / 4 / 5; new
+  `skipped_by_rule` counter. Live run post-apply: 0 errors.
+- API: `GET /api/vani/rules` (free) · `PUT /api/vani/rules/:ruleKey`
+  (entitlement-gated; 400 bounds / 404 unknown / 409 version conflict)
+- UI: Settings → Automation Rules page (domain-grouped rule cards, toggles,
+  bounded numeric knobs, save/reset, locked-mode upsell banner), menu entry,
+  route, landing hero link, Briefing chip.
+
+**Rules v2 candidates (when consumed — never ship no-op templates):** channel
+preferences + quiet hours (JTD dispatch), payment reminder repeat cadence,
+lump-sum suppression for emi/recurring (inside generate_contract_invoices),
+dunning ladder rungs (VaNi autopilot stage).

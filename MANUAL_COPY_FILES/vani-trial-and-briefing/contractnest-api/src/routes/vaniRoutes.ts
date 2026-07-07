@@ -65,4 +65,8 @@ router.post('/trial/start', vaniActionRateLimit, vaniDeskController.startTrial);
 // Briefing page payload (entitlement-gated in the controller)
 router.get('/briefing', vaniReadRateLimit, vaniDeskController.getBriefing);
 
+// Automation rules — read is free for every tenant; EDIT is the paywall
+router.get('/rules', vaniReadRateLimit, vaniDeskController.getRules);
+router.put('/rules/:ruleKey', vaniActionRateLimit, vaniDeskController.updateRule);
+
 export default router;

@@ -58,6 +58,85 @@ class VaniDeskController {
     }
   };
 
+  /** GET /api/vani/rules — visible to every tenant (read is free) */
+  getRules = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const result = await vaniDeskService.getRules(this.tenantId(req));
+
+      if (!result.success) {
+        sendError(res, ERROR_CODES.INTERNAL_ERROR,
+          result.error?.message || 'Could not load the rules', 500);
+        return;
+      }
+
+      sendSuccess(res, result.data);
+    } catch (error) {
+      console.error('[VaniDeskController] getRules error:', error);
+      internalError(res, 'Failed to load automation rules');
+    }
+  };
+
+  /**
+   * PUT /api/vani/rules/:ruleKey — EDIT is the paywall
+   * ("defaults run for everyone; controlling the automation is VaNi").
+   */
+  updateRule = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+      const tenantId = this.tenantId(req);
+
+      const entitled = await vaniEntitlementService.isEntitled(tenantId);
+      if (!entitled) {
+        sendError(res, ERROR_CODES.FORBIDDEN,
+          'Changing automation rules needs a VaNi trial or subscription', 403);
+        return;
+      }
+
+      const ruleKey = String(req.params.ruleKey || '');
+      const { config, is_enabled, expected_version } = req.body || {};
+
+      if (!ruleKey) {
+        sendError(res, ERROR_CODES.BAD_REQUEST, 'ruleKey is required', 400);
+        return;
+      }
+      if (config !== undefined && (typeof config !== 'object' || Array.isArray(config) || config === null)) {
+        sendError(res, ERROR_CODES.VALIDATION_ERROR, 'config must be an object of numeric fields', 400);
+        return;
+      }
+      if (is_enabled !== undefined && typeof is_enabled !== 'boolean') {
+        sendError(res, ERROR_CODES.VALIDATION_ERROR, 'is_enabled must be a boolean', 400);
+        return;
+      }
+
+      const result = await vaniDeskService.updateRule(
+        tenantId,
+        ruleKey,
+        config ?? null,
+        is_enabled ?? null,
+        Number.isFinite(Number(expected_version)) ? Number(expected_version) : null,
+        req.user?.id || null
+      );
+
+      if (!result.success) {
+        const code = result.error?.code;
+        const status =
+          code === 'VERSION_CONFLICT' ? 409 :
+          code === 'OUT_OF_BOUNDS' || code === 'UNKNOWN_FIELD' || code === 'INVALID_TYPE' ? 400 :
+          code === 'UNKNOWN_RULE' ? 404 : 500;
+        sendError(res,
+          status === 409 ? ERROR_CODES.VERSION_CONFLICT :
+          status === 400 ? ERROR_CODES.VALIDATION_ERROR :
+          status === 404 ? ERROR_CODES.NOT_FOUND : ERROR_CODES.INTERNAL_ERROR,
+          result.error?.message || 'Could not update the rule', status);
+        return;
+      }
+
+      sendSuccess(res, result.data);
+    } catch (error) {
+      console.error('[VaniDeskController] updateRule error:', error);
+      internalError(res, 'Failed to update the rule');
+    }
+  };
+
   /** GET /api/vani/briefing?days=7 */
   getBriefing = async (req: AuthRequest, res: Response): Promise<void> => {
     try {

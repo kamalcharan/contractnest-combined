@@ -288,6 +288,24 @@ const BriefingPage: React.FC = () => {
               </span>
             )}
             <button
+              onClick={() => navigate('/settings/automation-rules')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                padding: '7px 12px',
+                borderRadius: 8,
+                border: `1px solid ${colors.utility.secondaryText}30`,
+                background: 'transparent',
+                color: colors.utility.secondaryText,
+                cursor: 'pointer',
+                fontSize: 12,
+                fontWeight: 600,
+              }}
+            >
+              Tune rules →
+            </button>
+            <button
               onClick={() => briefingQuery.refetch()}
               disabled={briefingQuery.isFetching}
               title="Refresh"

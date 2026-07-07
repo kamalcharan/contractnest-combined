@@ -201,6 +201,11 @@ export default function VaNiLandingPage() {
               )}
               {trialCtaLabel}
             </button>
+            <button onClick={() => navigate("/settings/automation-rules")}
+              style={{ padding: "14px 28px", borderRadius: 14, border: "1px solid rgba(139,92,246,0.35)", background: "rgba(139,92,246,0.08)", color: "#c4b5fd", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}
+            >
+              Set your own rules →
+            </button>
             <a href="#how" style={{ padding: "14px 36px", borderRadius: 14, background: "linear-gradient(135deg, #8b5cf6, #7c3aed)", color: "#fff", fontSize: 16, fontWeight: 700, textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 8, boxShadow: "0 8px 30px rgba(139,92,246,0.3)", transition: "transform 0.2s, box-shadow 0.2s" }}
               onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 12px 40px rgba(139,92,246,0.4)"; }}
               onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 8px 30px rgba(139,92,246,0.3)"; }}

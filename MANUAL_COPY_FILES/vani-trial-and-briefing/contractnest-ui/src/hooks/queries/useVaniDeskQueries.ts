@@ -12,7 +12,9 @@ import { vaniToast } from '@/components/common/toast';
 export const VANI_ENDPOINTS = {
   ENTITLEMENT: '/api/vani/entitlement',
   TRIAL_START: '/api/vani/trial/start',
-  BRIEFING: '/api/vani/briefing'
+  BRIEFING: '/api/vani/briefing',
+  RULES: '/api/vani/rules',
+  RULE: (ruleKey: string) => `/api/vani/rules/${ruleKey}`
 };
 
 export interface VaniEntitlement {
@@ -141,6 +143,77 @@ export const useStartVaniTrial = () => {
       vaniToast.error(`Could not start the trial: ${extractErrorMessage(error)}`, {
         duration: 5000
       });
+    }
+  });
+};
+
+// ── Automation rules (Settings → Automation Rules) ─────────────────────────
+// Read is free for every tenant; editing needs VaNi entitlement (403 otherwise).
+
+export interface VaniRule {
+  rule_key: string;
+  name: string;
+  description: string;
+  domain: 'services' | 'finance' | string;
+  config: Record<string, number>;
+  is_enabled: boolean;
+  defaults: Record<string, number>;
+  constraints: Record<string, { min?: number; max?: number }>;
+  version: number;
+  is_customized: boolean;
+}
+
+export const useVaniRules = (options?: { enabled?: boolean }) => {
+  const { currentTenant } = useAuth();
+
+  return useQuery({
+    queryKey: [...vaniDeskKeys.all, 'rules', currentTenant?.id || ''],
+    queryFn: async (): Promise<VaniRule[]> => {
+      if (!currentTenant?.id) {
+        throw new Error('Missing tenant');
+      }
+      const response = await api.get(VANI_ENDPOINTS.RULES);
+      const data = response.data?.data || response.data;
+      return Array.isArray(data?.rules) ? data.rules : [];
+    },
+    enabled: !!currentTenant?.id && (options?.enabled !== false),
+    staleTime: 30_000,
+    refetchOnWindowFocus: false
+  });
+};
+
+export interface UpdateVaniRuleParams {
+  ruleKey: string;
+  config?: Record<string, number>;
+  is_enabled?: boolean;
+  expected_version?: number;
+}
+
+export const useUpdateVaniRule = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ ruleKey, ...body }: UpdateVaniRuleParams) => {
+      const response = await api.put(VANI_ENDPOINTS.RULE(ruleKey), body);
+      return response.data?.data || response.data;
+    },
+    onSuccess: (data) => {
+      vaniToast.success(
+        data?.rule_key ? `Rule updated — ${String(data.rule_key).replace(/_/g, ' ')}` : 'Rule updated',
+        { duration: 2500 }
+      );
+      queryClient.invalidateQueries({ queryKey: vaniDeskKeys.all });
+    },
+    onError: (error: any) => {
+      const status = error?.response?.status;
+      if (status === 403) {
+        vaniToast.warning('Changing rules needs a VaNi trial or subscription', { duration: 4000 });
+      } else if (status === 409) {
+        vaniToast.error('This rule was changed elsewhere — reloading', { duration: 4000 });
+      } else {
+        vaniToast.error(`Could not update the rule: ${extractErrorMessage(error)}`, { duration: 5000 });
+      }
+      queryClient.invalidateQueries({ queryKey: vaniDeskKeys.all });
     }
   });
 };

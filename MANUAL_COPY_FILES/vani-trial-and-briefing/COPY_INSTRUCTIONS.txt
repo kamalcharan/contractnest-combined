@@ -38,6 +38,31 @@ contractnest-ui/src/
 ClaudeDocumentation/ContractNest Agent/
   STAGE-VANI-TRIAL-BRIEFING.md          → batch doc (decisions, trigger repair, dry-run)
 
+──── FEEDBACK ROUND + RULES V1 ADDITIONS (2026-07-08) ────
+
+contractnest-edge/
+  supabase/migrations/operations-loop/016_vani_briefing_v2.sql   → APPLIED (briefing feed context + per-kind cap)
+  supabase/migrations/operations-loop/017_vani_rules_v1.sql      → APPLIED (rule templates + t_vani_rules +
+                                                                    seed trigger/backfill + RPCs + SCANNER V3)
+
+contractnest-api/src/
+  routes/vaniRoutes.ts                  → +GET /rules, +PUT /rules/:ruleKey
+  controllers/vaniDeskController.ts     → +getRules (free), +updateRule (entitlement-gated)
+  services/vaniDeskService.ts           → +getRules/updateRule RPC calls
+
+contractnest-ui/src/
+  pages/settings/automation-rules/index.tsx  → NEW (Settings → Automation Rules)
+  pages/operations/appointments/index.tsx    → perspective gate (Expense = explanatory empty state)
+  pages/VaNi/BriefingPage.tsx                → appointment context rows + "Tune rules →" chip
+  hooks/queries/useVaniDeskQueries.ts        → +useVaniRules/useUpdateVaniRule
+  vani/pages/VaNiLandingPage.tsx             → +"Set your own rules →" hero link
+  App.tsx                                    → +/settings/automation-rules route
+  utils/constants/industryMenus.ts           → +Settings → Automation Rules menu item
+
+ALIGNED FREE/PAID LINE: rules VISIBLE to every tenant (defaults run for
+everyone); EDITING needs VaNi trial/subscription. Trial expiry keeps edited
+rules running — only further editing locks.
+
 ──────────────────────────────────────────────────────────────────────
 ENVIRONMENT
 ──────────────────────────────────────────────────────────────────────
