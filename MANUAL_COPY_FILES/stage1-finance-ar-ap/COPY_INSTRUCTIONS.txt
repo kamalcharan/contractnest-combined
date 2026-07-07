@@ -1,0 +1,67 @@
+═══════════════════════════════════════════════════════════════════
+COPY INSTRUCTIONS — stage1-finance-ar-ap
+Stage 1: Finance AR/AP (Operations → Finance)
+Date: 2026-07-07
+═══════════════════════════════════════════════════════════════════
+
+SUBMODULES AFFECTED:
+  - contractnest-edge   (1 SQL migration + NEW edge function `finance` — DEPLOY REQUIRED)
+  - contractnest-api    (4 new files + 1 FULL-REPLACE: src/index.ts)
+  - contractnest-ui     (2 new files + 2 FULL-REPLACE: src/App.tsx, src/utils/constants/industryMenus.ts)
+  - ClaudeDocumentation (1 new doc)
+
+⚠️ FULL-REPLACE files (index.ts / App.tsx / industryMenus.ts) were generated
+from current main in this session — if you have OTHER uncommitted local edits
+to those three files, do NOT overwrite; tell Claude instead.
+
+───────────────────────────────────────────────────────────────────
+FILES (source → destination, paths mirror the repos exactly)
+───────────────────────────────────────────────────────────────────
+contractnest-edge:
+1. contractnest-edge/supabase/migrations/operations-loop/007_stage1_finance_rpcs.sql
+   Purpose: get_tenant_receivables / get_tenant_payables / approve_draft_invoice / send_invoice_reminder
+2. contractnest-edge/supabase/functions/finance/index.ts
+   Purpose: NEW `finance` edge function (HMAC handshake, routes onto the RPCs)
+
+contractnest-api:
+3. contractnest-api/src/services/financeService.ts       — HMAC proxy to the finance edge fn
+4. contractnest-api/src/controllers/financeController.ts — receivables/payables + invoice actions
+5. contractnest-api/src/validators/financeValidators.ts  — express-validator chains
+6. contractnest-api/src/routes/financeRoutes.ts          — /api/finance routes (auth + tenant + rate limit)
+7. contractnest-api/src/index.ts                          — FULL REPLACE (adds finance loader + mount blocks)
+
+contractnest-ui:
+8. contractnest-ui/src/hooks/queries/useFinanceQueries.ts       — react-query hooks + types + endpoints
+9. contractnest-ui/src/pages/operations/finance/index.tsx        — the Finance (AR/AP) page
+10. contractnest-ui/src/App.tsx                                  — FULL REPLACE (adds /ops/finance route)
+11. contractnest-ui/src/utils/constants/industryMenus.ts         — FULL REPLACE (adds Finance under Operations)
+
+ClaudeDocumentation:
+12. ClaudeDocumentation/ContractNest Agent/STAGE1-FINANCE-AR-AP.md
+
+───────────────────────────────────────────────────────────────────
+APPLY ORDER (owner)
+───────────────────────────────────────────────────────────────────
+STEP A — SQL (Supabase SQL editor, project uwyqhzotluikawcboldr):
+   Run 007_stage1_finance_rpcs.sql (safe to re-run).
+
+STEP B — Edge function deploy (after copying files into contractnest-edge):
+   cd contractnest-edge
+   supabase functions deploy finance
+   (no new secrets; uses SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY /
+    INTERNAL_SIGNING_SECRET already configured for contract-events)
+
+STEP C — API: copy files, restart `npm run dev` — look for
+   "✅ Finance routes registered at /api/finance" in the boot log.
+
+STEP D — UI: copy files, `npm run dev`, hard refresh (Ctrl+F5).
+   Sidebar → Operations → "Finance (AR/AP)" → /ops/finance
+
+QUALITY (verified in-session before delivery):
+   - API tsc: 0 errors (baseline 0)
+   - UI tsc (tsconfig.app.json): 23 errors (exact baseline, none in new files)
+   - Registration files generated programmatically from current main
+
+TESTING CONSTRAINT: +91 9885164233 is the only number allowed for message
+tests. Stage 1 reminders are EMAIL-ONLY, so no SMS can fire from this stage.
+═══════════════════════════════════════════════════════════════════
