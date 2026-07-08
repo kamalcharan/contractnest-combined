@@ -240,14 +240,14 @@ const BillingViewStep: React.FC<BillingViewStepProps> = ({
     });
   }, [totals.baseSubtotal, totals.totalTax, totals.grandTotal, totals.taxBreakup, onTotalsChange]);
 
-  // Mixed cycles have no lump-sum/EMI selector on this step — each block bills
-  // on its own cycle, which is exactly what payment mode 'defined' generates.
-  // Force it here so a draft saved earlier as mixed + prepaid self-heals on
-  // revisit (otherwise the Events page shows one lump invoice for the grand
-  // total instead of per-block recurring billing). Settles after one update:
-  // once paymentMode === 'defined' the guard is false and the effect no-ops.
+  // 'prepaid' is the invalid default for mixed cycles — it bills everything
+  // upfront as ONE lump event instead of per-block. When a contract enters
+  // mixed mode still carrying that default, seed it to 'defined' (per-block
+  // schedule → 1 upfront + N recurring events). We only override 'prepaid':
+  // 'defined' and 'emi' are both valid, user-selectable choices in mixed mode
+  // (see the selector in the mixed branch below), so leave those alone.
   useEffect(() => {
-    if (isMixed && paymentMode !== 'defined') {
+    if (isMixed && paymentMode === 'prepaid') {
       onPaymentModeChange('defined');
     }
   }, [isMixed, paymentMode, onPaymentModeChange]);
@@ -1034,7 +1034,7 @@ const BillingViewStep: React.FC<BillingViewStepProps> = ({
                   )}
                 </>
               ) : (
-                /* Mixed: Show breakup by cycle type */
+                /* Mixed: selectable payment options (per-block schedule or EMI) */
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <Shuffle className="w-4 h-4" style={{ color: colors.brand.primary }} />
@@ -1042,8 +1042,80 @@ const BillingViewStep: React.FC<BillingViewStepProps> = ({
                       Mixed Payment Schedule
                     </span>
                   </div>
+
+                  {/* Payment option selector — visible & selectable in mixed mode.
+                      'Per Schedule' (defined) → each block bills on its own cycle
+                      (1 upfront + one per cycle). 'EMI' → split the total evenly. */}
+                  <div className="flex gap-2 mb-3">
+                    <button
+                      onClick={() => onPaymentModeChange('defined')}
+                      className="flex-1 p-3 rounded-xl border-2 transition-all text-left"
+                      style={{
+                        borderColor: paymentMode !== 'emi' ? colors.brand.primary : `${colors.utility.primaryText}15`,
+                        backgroundColor: paymentMode !== 'emi' ? `${colors.brand.primary}08` : 'transparent',
+                      }}
+                    >
+                      <ListChecks className="w-5 h-5 mb-2" style={{ color: paymentMode !== 'emi' ? colors.brand.primary : colors.utility.secondaryText }} />
+                      <div className="text-xs font-bold" style={{ color: paymentMode !== 'emi' ? colors.brand.primary : colors.utility.primaryText }}>
+                        Per Schedule
+                      </div>
+                      <div className="text-[10px] mt-0.5" style={{ color: colors.utility.secondaryText }}>
+                        Each block on its own cycle
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => onPaymentModeChange('emi')}
+                      className="flex-1 p-3 rounded-xl border-2 transition-all text-left"
+                      style={{
+                        borderColor: paymentMode === 'emi' ? colors.brand.primary : `${colors.utility.primaryText}15`,
+                        backgroundColor: paymentMode === 'emi' ? `${colors.brand.primary}08` : 'transparent',
+                      }}
+                    >
+                      <CalendarRange className="w-5 h-5 mb-2" style={{ color: paymentMode === 'emi' ? colors.brand.primary : colors.utility.secondaryText }} />
+                      <div className="text-xs font-bold" style={{ color: paymentMode === 'emi' ? colors.brand.primary : colors.utility.primaryText }}>
+                        EMI
+                      </div>
+                      <div className="text-[10px] mt-0.5" style={{ color: colors.utility.secondaryText }}>
+                        Equal installments of total
+                      </div>
+                    </button>
+                  </div>
+
+                  {paymentMode === 'emi' ? (
+                    /* EMI: installment stepper + per-installment amount */
+                    <div className="space-y-3">
+                      <div className="p-3 rounded-lg" style={{ backgroundColor: `${colors.utility.primaryText}05` }}>
+                        <label className="text-[10px] font-medium uppercase tracking-wide mb-2 block" style={{ color: colors.utility.secondaryText }}>
+                          Installments
+                        </label>
+                        <div className="flex items-center rounded-lg border overflow-hidden" style={{ borderColor: `${colors.utility.primaryText}20`, backgroundColor: colors.utility.primaryBackground }}>
+                          <button type="button" onClick={() => onEmiMonthsChange(Math.max(2, emiMonths - 1))} disabled={emiMonths <= 2} className="px-3 py-2 hover:opacity-80 disabled:opacity-30 border-r transition-colors" style={{ color: colors.utility.primaryText, borderColor: `${colors.utility.primaryText}15`, backgroundColor: `${colors.utility.primaryText}05` }}>
+                            <Minus className="w-4 h-4" />
+                          </button>
+                          <input type="number" value={emiMonths} onChange={(e) => { const val = parseInt(e.target.value, 10); if (!isNaN(val)) onEmiMonthsChange(Math.max(2, Math.min(contractDuration || 60, val))); }} min={2} max={contractDuration || 60} className="flex-1 text-center text-sm font-bold bg-transparent border-0 outline-none w-12 py-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" style={{ color: colors.brand.primary }} />
+                          <button type="button" onClick={() => onEmiMonthsChange(Math.min(contractDuration || 60, emiMonths + 1))} className="px-3 py-2 hover:opacity-80 border-l transition-colors" style={{ color: colors.utility.primaryText, borderColor: `${colors.utility.primaryText}15`, backgroundColor: `${colors.utility.primaryText}05` }}>
+                            <Plus className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="p-3 rounded-lg" style={{ backgroundColor: `${colors.utility.primaryText}05` }}>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-medium" style={{ color: colors.utility.primaryText }}>Per Installment</span>
+                          <span className="text-sm font-bold" style={{ color: colors.brand.primary }}>{formatCurrency(totals.emiInstallment, currency)}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Info className="w-3 h-3 flex-shrink-0" style={{ color: colors.utility.secondaryText }} />
+                          <span className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
+                            {emiMonths} equal installments — the total is split evenly across each
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                  <>
                   <p className="text-[11px] mb-3" style={{ color: colors.utility.secondaryText }}>
-                    Each service is billed per its own cycle. Payment types are shown on each card.
+                    Each block bills on its own cycle — one invoice on acceptance plus one per cycle. See Events Preview for the full schedule.
                   </p>
 
                   {/* Breakup by cycle type */}
@@ -1107,6 +1179,8 @@ const BillingViewStep: React.FC<BillingViewStepProps> = ({
                       </span>
                     </div>
                   </div>
+                  </>
+                  )}
                 </div>
               )}
             </div>
