@@ -279,9 +279,16 @@ export function computeContractEvents(input: ComputeEventsInput): ContractEvent[
           status: 'scheduled',
         });
       } else {
-        // Recurring: monthly, fortnightly, quarterly, custom
+        // Recurring: monthly, fortnightly, quarterly, custom.
+        // The block's quantity is the user-intended number of billing
+        // occurrences (BAU "×12 Monthly" = 12 invoices), so honor it directly.
+        // Otherwise the count drifts to ceil(days/periodDays) — e.g. a 1-year
+        // monthly block would bill ceil(365/30)=13× at ₹1,384.62 instead of
+        // 12× ₹1,500. Fall back to the date-derived count only when quantity
+        // isn't a meaningful multi-count (qty ≤ 1).
         const periodDays = cycleToPeriodDays(blockCycle, block.customCycleDays);
-        const count = countRecurringPeriods(totalDays, periodDays);
+        const qty = block.quantity || 0;
+        const count = qty > 1 ? qty : countRecurringPeriods(totalDays, periodDays);
         const perPeriodAmount = Math.round((blockTotal / count) * 100) / 100;
 
         const startIdx = events.length;
