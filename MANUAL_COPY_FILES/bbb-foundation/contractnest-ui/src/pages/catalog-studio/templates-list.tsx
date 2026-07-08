@@ -97,9 +97,14 @@ const TemplatesList: React.FC = () => {
 
   const allTemplates: CatTemplate[] = useMemo(() => {
     const list = templatesResponse?.data?.templates || [];
-    return [...list].sort(
-      (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-    );
+    return [...list]
+      // Tenant hub shows TENANT templates only — the edge merges global/system
+      // rows (tenant_id null) into every tenant's list; exclude them here
+      // (global demo gallery removed — owner decision)
+      .filter((t) => !(t.is_system && !t.tenant_id))
+      .sort(
+        (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+      );
   }, [templatesResponse]);
 
   // ── Filter state ──
@@ -743,21 +748,17 @@ const TemplatesList: React.FC = () => {
                               <Copy className="w-4 h-4" />
                             )}
                           </button>
-                          {/* Global/system templates aren't tenant-owned — the
-                              API rejects the delete with 403, so don't offer it */}
-                          {!(template.is_system && !template.tenant_id) && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setDeleteTarget(template);
-                              }}
-                              title="Deactivate"
-                              className="p-2 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
-                              style={{ color: colors.semantic.error }}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteTarget(template);
+                            }}
+                            title="Deactivate"
+                            className="p-2 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+                            style={{ color: colors.semantic.error }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </>
                     )}
