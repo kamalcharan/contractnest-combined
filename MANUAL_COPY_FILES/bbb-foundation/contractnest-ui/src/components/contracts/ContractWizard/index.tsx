@@ -1874,6 +1874,7 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
             buyerId={wizardState.buyerId}
             buyerName={wizardState.buyerName}
             contractType={contractType}
+            isTemplate={isTemplateMode}
             acceptanceMethod={wizardState.acceptanceMethod}
             billingCycleType={wizardState.billingCycleType}
             currency={wizardState.currency}

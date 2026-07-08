@@ -62,6 +62,9 @@ export interface ReviewSendStepProps {
   buyerName: string;
   // Relationship type — drives the counterparty label (Customer/Vendor/Partner)
   contractType?: 'client' | 'vendor' | 'partner';
+  // Template mode: a template has no counterparty, so the customer/partner
+  // block is hidden entirely (showing "Not selected" is meaningless there).
+  isTemplate?: boolean;
   acceptanceMethod: 'payment' | 'signoff' | 'auto' | null;
   billingCycleType: BillingCycleType;
   currency: string;
@@ -133,6 +136,7 @@ const ReviewSendStep: React.FC<ReviewSendStepProps> = ({
   buyerId,
   buyerName,
   contractType = 'client',
+  isTemplate = false,
   acceptanceMethod,
   billingCycleType,
   currency,
@@ -1086,7 +1090,8 @@ const ReviewSendStep: React.FC<ReviewSendStepProps> = ({
                 )}
               </div>
 
-              {/* Customer / Vendors */}
+              {/* Customer / Vendors — hidden for templates (no counterparty) */}
+              {!isTemplate && (
               <div>
                 <span
                   className="text-[10px] font-bold uppercase tracking-wider block mb-2"
@@ -1144,6 +1149,7 @@ const ReviewSendStep: React.FC<ReviewSendStepProps> = ({
                   </>
                 )}
               </div>
+              )}
 
               {/* Duration */}
               <div>
