@@ -71,6 +71,26 @@ class ContactService {
     return await this.makeRequest('GET', url, null, userJWT, tenantId, environment);
   }
 
+  // Proxies the edge /stats route (get_contact_stats RPC): totals, by_type,
+  // by_classification, by_tag — with optional search/type/classifications/tags filters
+  async getContactStats(filters: any, userJWT: string, tenantId: string, environment: string = 'live'): Promise<EdgeFunctionResponse> {
+    const queryParams = new URLSearchParams();
+
+    Object.entries(filters || {}).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        if (Array.isArray(value)) {
+          if (value.length > 0) queryParams.append(key, value.join(','));
+        } else {
+          queryParams.append(key, String(value));
+        }
+      }
+    });
+
+    const query = queryParams.toString();
+    const url = `${this.edgeFunctionUrl}/stats${query ? `?${query}` : ''}`;
+    return await this.makeRequest('GET', url, null, userJWT, tenantId, environment);
+  }
+
   async createContact(contactData: any, userJWT: string, tenantId: string, userId: string, environment: string = 'live'): Promise<EdgeFunctionResponse> {
     const requestPayload = {
       ...contactData,

@@ -107,29 +107,32 @@ class ContactController {
         return;
       }
 
-      // Get counts for different statuses
-      const [activeResult, inactiveResult, archivedResult] = await Promise.all([
-        this.contactService.listContacts({ status: 'active', limit: 1 }, userJWT, tenantId, environment),
-        this.contactService.listContacts({ status: 'inactive', limit: 1 }, userJWT, tenantId, environment),
-        this.contactService.listContacts({ status: 'archived', limit: 1 }, userJWT, tenantId, environment)
-      ]);
+      // Proxy the edge /stats route — single RPC returns totals, by_type,
+      // by_classification and by_tag (the UI filter chips depend on these)
+      const result = await this.contactService.getContactStats(
+        {
+          search: req.query.search,
+          type: req.query.type,
+          classifications: req.query.classifications,
+          tags: req.query.tags
+        },
+        userJWT,
+        tenantId,
+        environment
+      );
 
-      const stats = {
-        total: (activeResult.pagination?.total || 0) + 
-               (inactiveResult.pagination?.total || 0) + 
-               (archivedResult.pagination?.total || 0),
-        active: activeResult.pagination?.total || 0,
-        inactive: inactiveResult.pagination?.total || 0,
-        archived: archivedResult.pagination?.total || 0,
-        byType: {
-          individual: 0,
-          corporate: 0
-        }
-      };
+      if (!result.success) {
+        res.status(500).json({
+          success: false,
+          error: result.error || 'Failed to get contact statistics',
+          code: result.code || 'GET_STATS_ERROR'
+        });
+        return;
+      }
 
       res.status(200).json({
         success: true,
-        data: stats,
+        data: result.data,
         timestamp: new Date().toISOString()
       });
     } catch (error) {
