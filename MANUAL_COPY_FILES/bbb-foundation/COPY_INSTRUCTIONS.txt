@@ -1,0 +1,121 @@
+═══════════════════════════════════════════════════
+BATCH: bbb-foundation  (BBB Bhagyanagar — Batch 1)
+Date: 2026-07-08
+═══════════════════════════════════════════════════
+
+WHAT THIS BATCH CONTAINS (4 features):
+1. Onboarding LOV setup — new VaNi step 'lov-setup' between equipment-confirm
+   and done. Tenant creation now seeds Roles (Owner/Admin/Member) + Tags
+   (Lead/Guest/VIP); the step lets users review/add values, fully driven by
+   DEFAULT_LOV_SEED (add a category to the config = it appears in the step).
+2. Contacts: Tags in Quick Add drawer (chip toggles from the Tags LOV).
+3. Contacts: Industries multi-select (sub-industries, same master data as
+   business-profile) on the full contact form; stored as jsonb on t_contacts.
+   PLUS: Contact Persons section now available for INDIVIDUAL contacts as
+   "Alternative Contact Person" (stand-in / replacement attendance).
+4. Import wizard — /contacts/import (entry: "Import" button on Contacts page).
+   Upload .xlsx/.csv -> map columns -> review (incl. Category->Industry
+   mapping) -> batched import (25/request) -> per-row results report.
+   New API endpoint: POST /api/contacts/import (10 batches / 15 min).
+
+SUBMODULES AFFECTED: contractnest-ui, contractnest-api, contractnest-edge
+
+⚠️ DATABASE MIGRATION (NOT YET APPLIED — needs your go-ahead):
+   contractnest-edge/supabase/migrations/bbb-foundation/001_contact_industries.sql
+   - Adds t_contacts.industries jsonb + GIN index
+   - Re-creates create/update/get contact v2 RPCs with industries support
+   - Pins search_path + revokes anon/authenticated EXECUTE (service-role only)
+   Without this migration, saving industries on a contact will fail — the UI
+   still works for everything else.
+
+⚠️ EDGE FUNCTIONS need redeploy after copy: tenants, contacts
+   (contacts shares _shared/contacts/contactService.ts)
+
+⚠️ NEW UI DEPENDENCY: xlsx. After copying, run:
+   cd contractnest-ui
+   npm install --legacy-peer-deps
+   (--legacy-peer-deps needed due to a pre-existing peer conflict in the repo)
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\bbb-foundation\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\bbb-foundation\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\bbb-foundation\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Write-Host "✅ All files copied!" -ForegroundColor Green
+
+STEP 3: Install + Start
+─────────────────────────────────
+cd contractnest-ui
+npm install --legacy-peer-deps
+npm run dev
+# in another terminal:
+cd contractnest-api && npm run dev
+# Hard refresh browser: Ctrl+F5
+
+FILES (23):
+─────────────────────────────────
+contractnest-edge/
+  supabase/migrations/bbb-foundation/001_contact_industries.sql   [NEW — apply on go-ahead]
+  supabase/functions/tenants/index.ts                             [LOV seeding at tenant creation]
+  supabase/functions/_shared/contacts/contactService.ts           [industries passthrough]
+
+contractnest-api/
+  src/types/onboardingTypes.ts        [+ 'lov-setup' in VANI_STEPS]
+  src/routes/contactRoutes.ts         [+ POST /import + rate limit]
+  src/controllers/contactController.ts[+ importContacts]
+  src/services/contactService.ts      [+ importContacts loop]
+
+contractnest-ui/
+  package.json                                        [+ xlsx]
+  src/App.tsx                                         [+ lov-setup & /contacts/import routes]
+  src/utils/constants/lovDefaults.ts                  [NEW — LOV seed config]
+  src/pages/onboarding/steps/LovSetupStep.tsx         [NEW — VaNi step]
+  src/pages/onboarding/steps/Screen8APricingStep.tsx  [nav -> lov-setup (seller path)]
+  src/pages/onboarding/steps/Screen8BEquipmentStep.tsx[nav -> lov-setup (buyer/both path)]
+  src/pages/onboarding/index.tsx                      [resume routing for lov-setup]
+  src/utils/onboarding/completeVaniStep.ts            [+ 'lov-setup' step id]
+  src/components/contacts/QuickAddContactDrawer.tsx   [+ Tags section]
+  src/components/contacts/forms/ContactIndustriesSection.tsx [NEW]
+  src/components/contacts/forms/ContactPersonsSection.tsx    [individual-aware labels]
+  src/pages/contacts/create.tsx                       [industries + persons for individuals]
+  src/pages/contacts/index.tsx                        [+ Import button]
+  src/pages/contacts/import/index.tsx                 [NEW — wizard]
+  src/pages/contacts/import/contactsAdapter.ts        [NEW — parsing/mapping logic]
+  src/types/contacts.ts                               [+ industries]
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+Onboarding (needs a fresh test tenant):
+- [ ] New tenant → LOVs seeded (Roles: Owner/Admin/Member, Tags: Lead/Guest/VIP)
+- [ ] Onboarding reaches "lov-setup" after pricing-review (seller) or
+      equipment-confirm (buyer/both); values shown, add-your-own works, Skip works
+- [ ] Existing tenants: onboarding unaffected (they're already done)
+
+Contacts:
+- [ ] Quick Add shows "5. Tags" chips; created contact carries the tags
+- [ ] Full form shows Industries card; select sub-industries (Parent > Sub)
+      → ⚠️ SAVE REQUIRES THE DB MIGRATION — before it, skip this check
+- [ ] Individual contact shows "Alternative Contact Person" section; add one
+      with a mobile; corporate still shows "Contact Persons" unchanged
+
+Import (use the BBB member XLSX):
+- [ ] /contacts (Import button) → upload sheet → header row auto-detected
+      (row 2 in the BBB file), columns auto-mapped
+- [ ] Batch settings: classification Partner preselected; pick a tag
+- [ ] Review: 50 rows, multi-number cells split (e.g. Akhilesh has 2 mobiles),
+      Category→Industry suggestions editable
+- [ ] Import → progress → results report (created/duplicate/failed counts)
+- [ ] Re-import same file → all rows reported as duplicates, nothing created
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+→ "Apply migration" — I apply 001_contact_industries.sql via MCP
+→ "Tested, working - proceed with merge" — I provide Phase 2 commands
+→ "Issue found: [describe]"
+═══════════════════════════════════════════════════
