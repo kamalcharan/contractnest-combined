@@ -23,6 +23,7 @@ export type TargetFieldKey =
   | 'company_name'
   | 'designation'
   | 'category'
+  | 'tags'
   | 'reference'
   | 'ignore';
 
@@ -40,6 +41,7 @@ export const TARGET_FIELDS: TargetField[] = [
   { key: 'company_name', label: 'Business Name', hint: 'Company / business name' },
   { key: 'designation', label: 'Designation', hint: 'Role or title (e.g. President, Member)' },
   { key: 'category', label: 'Category → Industry', hint: 'Business category, mapped to industries' },
+  { key: 'tags', label: 'Tags', hint: 'Tag name(s) — multiple separated by / or ,' },
   { key: 'reference', label: 'Reference Id', hint: 'External id, stored in notes' },
   { key: 'ignore', label: 'Ignore', hint: 'Skip this column' },
 ];
@@ -53,6 +55,7 @@ export interface ImportRow {
   companyName: string;
   designation: string;
   category: string;
+  tags: string[];
   reference: string;
   errors: string[];
   include: boolean;
@@ -118,6 +121,7 @@ const HEADER_PATTERNS: Array<{ field: TargetFieldKey; patterns: RegExp[] }> = [
   { field: 'company_name', patterns: [/company/i, /business\s*name/i, /firm/i, /organi[sz]ation/i] },
   { field: 'designation', patterns: [/designation/i, /^role$/i, /title/i, /position/i] },
   { field: 'category', patterns: [/category/i, /industry/i, /business\s*type/i, /segment/i] },
+  { field: 'tags', patterns: [/^tags?$/i, /labels?/i] },
   { field: 'reference', patterns: [/member\s*id/i, /\bid\b/i, /reference/i, /reg\s*no/i, /code/i] },
 ];
 
@@ -128,8 +132,8 @@ export function suggestMapping(headers: string[]): TargetFieldKey[] {
     const h = header.trim();
     if (!h) return 'ignore';
     for (const { field, patterns } of HEADER_PATTERNS) {
-      // mobile/email allow multiple columns; single-value fields map once
-      const reusable = field === 'mobile' || field === 'email';
+      // mobile/email/tags allow multiple columns; single-value fields map once
+      const reusable = field === 'mobile' || field === 'email' || field === 'tags';
       if (!reusable && used.has(field)) continue;
       if (patterns.some((p) => p.test(h))) {
         used.add(field);
@@ -163,6 +167,15 @@ export function splitPhones(raw: string): string[] {
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/** Split a multi-value cell (tags, …) on the common separators. */
+export function splitList(raw: string): string[] {
+  if (!raw) return [];
+  return raw
+    .split(/[\/,;|\n]+/)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+}
+
 // ============================================================================
 // ROW EXTRACTION + VALIDATION
 // ============================================================================
@@ -177,6 +190,7 @@ export function extractRows(sheet: ParsedSheet, mapping: TargetFieldKey[]): Impo
   const companyCols = col('company_name');
   const designationCols = col('designation');
   const categoryCols = col('category');
+  const tagCols = col('tags');
   const referenceCols = col('reference');
 
   const firstValue = (row: string[], cols: number[]): string => {
@@ -191,6 +205,9 @@ export function extractRows(sheet: ParsedSheet, mapping: TargetFieldKey[]): Impo
     const companyName = firstValue(raw, companyCols);
     const designation = firstValue(raw, designationCols);
     const category = firstValue(raw, categoryCols);
+    const tags = Array.from(new Set(
+      tagCols.flatMap((c) => splitList(raw[c] || ''))
+    ));
     const reference = firstValue(raw, referenceCols);
 
     const errors: string[] = [];
@@ -209,6 +226,7 @@ export function extractRows(sheet: ParsedSheet, mapping: TargetFieldKey[]): Impo
       companyName,
       designation,
       category,
+      tags,
       reference,
       errors,
       include: errors.length === 0,
@@ -264,11 +282,47 @@ export function suggestIndustry(category: string, industries: Industry[]): strin
 // PAYLOAD BUILDING
 // ============================================================================
 
+export interface TagCatalogEntry {
+  value: string;
+  label: string;
+  color?: string;
+}
+
+/**
+ * Resolve row-level tag names against the tenant's Tags LOV (case-insensitive
+ * on value or label). Unmatched names still import as free-text tags. Merged
+ * with the batch-level tags, deduped by tag_value.
+ */
+export function resolveRowTags(
+  rowTags: string[],
+  batchTags: BatchSettings['tags'],
+  catalog: TagCatalogEntry[]
+): BatchSettings['tags'] {
+  const merged = [...batchTags];
+  const seen = new Set(batchTags.map((t) => t.tag_value.toLowerCase()));
+  for (const raw of rowTags) {
+    const match = catalog.find(
+      (c) =>
+        c.value.toLowerCase() === raw.toLowerCase() ||
+        c.label.toLowerCase() === raw.toLowerCase()
+    );
+    const tag = match
+      ? { tag_value: match.value, tag_label: match.label, tag_color: match.color || undefined }
+      : { tag_value: raw, tag_label: raw };
+    if (!seen.has(tag.tag_value.toLowerCase())) {
+      seen.add(tag.tag_value.toLowerCase());
+      merged.push(tag);
+    }
+  }
+  return merged;
+}
+
 /** Build the create-contact API payload for one validated row. */
 export function buildContactPayload(
   row: ImportRow,
   batch: BatchSettings,
-  categoryIndustryMap: Record<string, string | null>
+  categoryIndustryMap: Record<string, string | null>,
+  tagCatalog: TagCatalogEntry[] = []
 ) {
   const industryId = row.category ? categoryIndustryMap[row.category] : null;
 
@@ -303,7 +357,7 @@ export function buildContactPayload(
     addresses: [],
     compliance_numbers: [],
     contact_persons: [],
-    tags: batch.tags,
+    tags: resolveRowTags(row.tags, batch.tags, tagCatalog),
     industries: industryId ? [industryId] : [],
     notes: noteParts.length > 0 ? noteParts.join('\n') : undefined,
   };

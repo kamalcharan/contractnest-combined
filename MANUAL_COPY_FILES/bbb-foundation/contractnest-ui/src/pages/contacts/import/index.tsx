@@ -184,9 +184,14 @@ const ContactsImportPage: React.FC = () => {
       skipDuplicates,
     };
 
+    const tagCatalog = tagOptions.map((opt) => ({
+      value: opt.value,
+      label: opt.label,
+      color: opt.color || undefined,
+    }));
     const payloads = includedRows.map((row) => ({
       row,
-      payload: buildContactPayload(row, batchSettings, categoryMap),
+      payload: buildContactPayload(row, batchSettings, categoryMap, tagCatalog),
     }));
     const chunks = chunk(payloads, IMPORT_CHUNK_SIZE);
     setProgress({ done: 0, total: payloads.length });
@@ -466,6 +471,9 @@ const ContactsImportPage: React.FC = () => {
             <div>
               <label className="block text-sm font-semibold mb-2" style={{ color: colors.utility.primaryText }}>
                 Tags
+                <span className="ml-2 text-xs font-normal" style={{ color: colors.utility.secondaryText }}>
+                  (added to every contact — merged with any column mapped to "Tags")
+                </span>
               </label>
               {tagOptions.length === 0 ? (
                 <p className="text-xs" style={{ color: colors.utility.secondaryText }}>
@@ -602,6 +610,7 @@ const ContactsImportPage: React.FC = () => {
                     <th className="text-left py-2 pr-4 font-semibold">Email</th>
                     <th className="text-left py-2 pr-4 font-semibold">Business</th>
                     <th className="text-left py-2 pr-4 font-semibold">Designation</th>
+                    <th className="text-left py-2 pr-4 font-semibold">Tags</th>
                     <th className="text-left py-2 pr-4 font-semibold">Status</th>
                   </tr>
                 </thead>
@@ -628,6 +637,9 @@ const ContactsImportPage: React.FC = () => {
                       <td className="py-2 pr-4 max-w-[180px] truncate" style={{ color: colors.utility.secondaryText }}>{row.email || '—'}</td>
                       <td className="py-2 pr-4 max-w-[180px] truncate" style={{ color: colors.utility.secondaryText }}>{row.companyName || '—'}</td>
                       <td className="py-2 pr-4" style={{ color: colors.utility.secondaryText }}>{row.designation || '—'}</td>
+                      <td className="py-2 pr-4 max-w-[160px] truncate" style={{ color: colors.utility.secondaryText }} title={row.tags.join(', ')}>
+                        {row.tags.length > 0 ? row.tags.join(', ') : '—'}
+                      </td>
                       <td className="py-2 pr-4">
                         {row.errors.length > 0 ? (
                           <span className="flex items-center gap-1 text-xs font-semibold" style={{ color: colors.semantic.error }} title={row.errors.join('; ')}>
