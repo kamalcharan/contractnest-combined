@@ -128,7 +128,6 @@ export function computeContractEvents(input: ComputeEventsInput): ContractEvent[
     selectedBlocks,
     paymentMode,
     emiMonths,
-    perBlockPaymentType,
     grandTotal,
     currency,
   } = input;
@@ -236,10 +235,14 @@ export function computeContractEvents(input: ComputeEventsInput): ContractEvent[
       if (!hasPricing || block.unlimited) continue;
 
       const blockCycle = block.cycle || 'prepaid';
-      const blockPayType = perBlockPaymentType[block.id] || 'prepaid';
       const blockTotal = block.totalPrice || 0;
 
-      if (blockCycle === 'prepaid' || blockPayType === 'prepaid') {
+      // The block's CYCLE (frequency) drives billing — NOT the prepaid/postpaid
+      // payment type. A Monthly block bills every month even when its payment
+      // type is 'prepaid' (that only means "invoice at the start of the period").
+      // Only a genuine one-shot 'prepaid'/'postpaid' cycle collapses to 1 event;
+      // monthly/fortnightly/quarterly/custom fall through to the recurring branch.
+      if (blockCycle === 'prepaid') {
         // On acceptance — 1 event
         events.push({
           id: makeEventId(block.id, 'billing', 1),
