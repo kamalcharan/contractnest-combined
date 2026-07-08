@@ -68,11 +68,6 @@ const ContactPersonsSection: React.FC<ContactPersonsSectionProps> = ({
     }
   }, [value.length, contactType]);
 
-  // Don't render if individual contact
-  if (contactType === 'individual') {
-    return null;
-  }
-
   // Glass morphism styles
   const glassStyle: React.CSSProperties = {
     background: isDarkMode
