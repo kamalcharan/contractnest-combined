@@ -1873,6 +1873,7 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
             durationUnit={wizardState.durationUnit}
             buyerId={wizardState.buyerId}
             buyerName={wizardState.buyerName}
+            contractType={contractType}
             acceptanceMethod={wizardState.acceptanceMethod}
             billingCycleType={wizardState.billingCycleType}
             currency={wizardState.currency}
