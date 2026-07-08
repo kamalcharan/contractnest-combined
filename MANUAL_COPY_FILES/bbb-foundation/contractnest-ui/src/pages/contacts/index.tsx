@@ -67,6 +67,7 @@ const contactsFloatingIcons = [
 
 // Import API hooks
 import { useContactList, useContactStats, useUpdateContactStatus, invalidateContactsCache } from '../../hooks/useContacts';
+import { useMasterDataOptions } from '../../hooks/useMasterData';
 import { ContactFilters } from '../../types/contact';
 
 // Import constants
@@ -354,7 +355,8 @@ const ContactsPage: React.FC = () => {
     status: advancedFilters.contactStatus !== 'all' ? (advancedFilters.contactStatus as any) : undefined,
     sort_by: sortBy,
     sort_order: sortOrder,
-    ...(combinedClassifications.length > 0 && { classifications: combinedClassifications })
+    ...(combinedClassifications.length > 0 && { classifications: combinedClassifications }),
+    ...((advancedFilters.tags || []).length > 0 && { tags: advancedFilters.tags })
   };
 
   // API Hooks
@@ -371,6 +373,15 @@ const ContactsPage: React.FC = () => {
     data: stats,
     loading: statsLoading
   } = useContactStats();
+
+  // Tags LOV for the tag filter chips (same source as the contact forms)
+  const { options: tagLovOptions } = useMasterDataOptions('Tags', {
+    valueField: 'SubCatName',
+    labelField: 'DisplayName',
+    includeInactive: false,
+    sortBy: 'Sequence_no',
+    sortOrder: 'asc'
+  });
 
   // Soft delete (archive) hook
   const { mutate: updateContactStatus, loading: archiving } = useUpdateContactStatus();
@@ -415,7 +426,8 @@ const ContactsPage: React.FC = () => {
       status: advancedFilters.contactStatus !== 'all' ? (advancedFilters.contactStatus as any) : undefined,
       sort_by: sortBy,
       sort_order: sortOrder,
-      ...(updatedClassifications.length > 0 && { classifications: updatedClassifications })
+      ...(updatedClassifications.length > 0 && { classifications: updatedClassifications }),
+      ...((advancedFilters.tags || []).length > 0 && { tags: advancedFilters.tags })
     };
 
     updateFilters(newFilters);
@@ -424,6 +436,18 @@ const ContactsPage: React.FC = () => {
   // Reset page when filters change
   const handleFilterChange = (newFilter: string) => {
     setActiveFilter(newFilter);
+    setCurrentPage(1);
+    setSelectedContacts(new Set());
+  };
+
+  // Toggle a tag filter chip
+  const toggleTagFilter = (tagValue: string) => {
+    setAdvancedFilters(prev => ({
+      ...prev,
+      tags: (prev.tags || []).includes(tagValue)
+        ? (prev.tags || []).filter((t: string) => t !== tagValue)
+        : [...(prev.tags || []), tagValue]
+    }));
     setCurrentPage(1);
     setSelectedContacts(new Set());
   };
@@ -521,10 +545,29 @@ const ContactsPage: React.FC = () => {
     ...CONTACT_CLASSIFICATION_CONFIG.map(cls => ({
       id: cls.id,
       label: cls.labelPlural,
-      count: stats?.[cls.id === 'team_member' ? 'team_members' : `${cls.id}s`] || 0,
+      // Stats RPC returns counts under by_classification keyed by the raw id
+      count: stats?.by_classification?.[cls.id] ?? 0,
       colorKey: cls.colorKey
     }))
   ];
+
+  // Tag filter chips: tenant's Tags LOV plus any free-text tags found on
+  // contacts (from imports), with per-tag counts from stats
+  const tagFilterChips = React.useMemo(() => {
+    const byTag: Record<string, number> = stats?.by_tag || {};
+    const seen = new Set<string>();
+    const chips: Array<{ value: string; label: string; color?: string; count: number }> = [];
+    tagLovOptions.forEach(opt => {
+      seen.add(opt.value.toLowerCase());
+      chips.push({ value: opt.value, label: opt.label, color: opt.color || undefined, count: byTag[opt.value] ?? 0 });
+    });
+    Object.entries(byTag).forEach(([tagValue, count]) => {
+      if (!seen.has(tagValue.toLowerCase())) {
+        chips.push({ value: tagValue, label: tagValue, count });
+      }
+    });
+    return chips;
+  }, [stats, tagLovOptions]);
 
   const tabConfigs = {
     status: {
@@ -730,11 +773,50 @@ const ContactsPage: React.FC = () => {
                     borderColor: filterColor.border
                   }}
                 >
-                  {filter.label} {filter.count > 0 && `(${filter.count})`}
+                  {filter.label} ({filter.count || 0})
                 </button>
               );
             })}
           </div>
+
+          {/* Tag filters */}
+          {tagFilterChips.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              <span
+                className="text-xs font-bold uppercase tracking-widest flex items-center mr-2"
+                style={{ color: colors.utility.secondaryText }}
+              >
+                Tags:
+              </span>
+              {tagFilterChips.map((tag) => {
+                const isActive = (advancedFilters.tags || []).includes(tag.value);
+                return (
+                  <button
+                    key={tag.value}
+                    onClick={() => toggleTagFilter(tag.value)}
+                    className="px-3 py-1 rounded-full text-xs font-bold border transition-all hover:scale-105 flex items-center gap-1.5"
+                    style={{
+                      backgroundColor: isActive
+                        ? (tag.color ? `${tag.color}25` : colors.brand.primary + '20')
+                        : 'transparent',
+                      borderColor: isActive
+                        ? (tag.color || colors.brand.primary)
+                        : colors.utility.primaryText + '25',
+                      color: isActive ? colors.utility.primaryText : colors.utility.secondaryText
+                    }}
+                  >
+                    {tag.color && (
+                      <span
+                        className="w-2 h-2 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: tag.color }}
+                      />
+                    )}
+                    {tag.label} ({tag.count})
+                  </button>
+                );
+              })}
+            </div>
+          )}
 
           {/* Search Row */}
           <div className="flex items-center gap-3">
