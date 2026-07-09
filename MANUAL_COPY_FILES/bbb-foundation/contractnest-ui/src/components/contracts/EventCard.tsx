@@ -17,6 +17,10 @@ import {
   ChevronUp,
   Package,
   Wallet,
+  BellRing,
+  CircleDot,
+  MinusCircle,
+  Ban,
 } from 'lucide-react';
 import { getCurrencySymbol } from '@/utils/constants/currencies';
 import type { ContractEvent, ContractEventStatus } from '@/types/contractEvents';
@@ -47,8 +51,14 @@ const STATUS_ICON_MAP: Record<string, any> = {
   PauseCircle: Clock,
   Eye: Clock,
   CheckCircle2,
+  CheckCircle: CheckCircle2,
   XCircle,
   AlertTriangle,
+  // Billing status icons
+  BellRing,
+  CircleDot,
+  MinusCircle,
+  Ban,
 };
 
 // Fallback transitions when DB data hasn't loaded yet
