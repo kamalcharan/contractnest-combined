@@ -19,7 +19,7 @@ import { useCreateOrder, useCreateLink } from '@/hooks/queries/usePaymentGateway
 import type { CreateOrderResponse, CreateLinkResponse } from '@/hooks/queries/usePaymentGatewayQueries';
 import { useVaNiToast } from '@/components/common/toast/VaNiToast';
 import type { PaymentMethod, RecordPaymentResponse } from '@/types/contracts';
-import { Loader2, Receipt, CheckCircle2, AlertCircle, Globe, Wallet, Send, Monitor, Mail, MessageSquare, Link2, Copy } from 'lucide-react';
+import { Loader2, Receipt, CheckCircle2, AlertCircle, Globe, Wallet, Send, Monitor, Mail, MessageSquare, Link2, Copy, Check, ListChecks } from 'lucide-react';
 
 // =================================================================
 // TYPES
@@ -189,6 +189,29 @@ const RecordPaymentDialog: React.FC<RecordPaymentDialogProps> = ({
       setAmount(next.size > 0 ? (Math.round(sum * 100) / 100).toString() : '');
       return next;
     });
+  };
+
+  // Open (still-payable) billing events — used for the "select all" control.
+  const openEvents = React.useMemo(
+    () => billingEvents.filter((e) => eventOpenAmount(e) > 0.001),
+    [billingEvents]
+  );
+  const allOpenSelected = openEvents.length > 0 && openEvents.every((e) => selectedEventIds.has(e.id));
+  const selectedOpenSum = billingEvents
+    .filter((e) => selectedEventIds.has(e.id))
+    .reduce((acc, e) => acc + eventOpenAmount(e), 0);
+
+  // Select / clear all open dues in one tap.
+  const toggleSelectAll = () => {
+    if (allOpenSelected) {
+      setSelectedEventIds(new Set());
+      setAmount('');
+      return;
+    }
+    const next = new Set(openEvents.map((e) => e.id));
+    const sum = openEvents.reduce((acc, e) => acc + eventOpenAmount(e), 0);
+    setSelectedEventIds(next);
+    setAmount((Math.round(sum * 100) / 100).toString());
   };
 
   // Pre-fill amount for EMI once invoice loads
@@ -595,10 +618,351 @@ const RecordPaymentDialog: React.FC<RecordPaymentDialogProps> = ({
   // ═══════════════════════════════════════════════════════════════
   // RENDER: PAYMENT FORM
   // ═══════════════════════════════════════════════════════════════
+
+  // Landscape layout kicks in when there are billing dues to pick from
+  // (offline settlement). Online / no-events falls back to the compact column.
+  const hasEventPanel = !isOnline && billingEvents.length > 0;
+
+  // ─── Left panel: outstanding dues checklist ───────────────
+  const eventPanel = (
+    <div className="flex flex-col min-h-0">
+      <div className="flex items-center justify-between mb-1.5">
+        <label style={{ ...labelStyle, marginBottom: 0 }} className="flex items-center gap-1.5">
+          <ListChecks className="w-3.5 h-3.5" style={{ color: colors.brand.primary }} />
+          Outstanding dues
+        </label>
+        {openEvents.length > 0 && (
+          <button
+            type="button"
+            onClick={toggleSelectAll}
+            className="text-[10px] font-semibold px-2 py-0.5 rounded-md transition-all hover:opacity-80"
+            style={{ color: colors.brand.primary, backgroundColor: `${colors.brand.primary}12` }}
+          >
+            {allOpenSelected ? 'Clear all' : 'Select all'}
+          </button>
+        )}
+      </div>
+      <div
+        className="rounded-lg border overflow-y-auto flex-1"
+        style={{ borderColor: colors.utility.border, minHeight: '12rem', maxHeight: '22rem' }}
+      >
+        {billingEvents.map((e) => {
+          const open = eventOpenAmount(e);
+          const settled = open <= 0.001 && (e.amount || 0) > 0;
+          const checked = selectedEventIds.has(e.id);
+          return (
+            <button
+              key={e.id}
+              type="button"
+              disabled={settled}
+              onClick={() => toggleEvent(e.id)}
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left border-b last:border-b-0 transition-colors"
+              style={{
+                borderColor: colors.utility.border,
+                backgroundColor: checked ? `${colors.brand.primary}12` : 'transparent',
+                opacity: settled ? 0.6 : 1,
+                cursor: settled ? 'default' : 'pointer',
+              }}
+            >
+              <span
+                className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 transition-all"
+                style={{
+                  border: `2px solid ${
+                    checked ? colors.brand.primary : settled ? colors.semantic.success : `${colors.utility.secondaryText}55`
+                  }`,
+                  backgroundColor: checked ? colors.brand.primary : settled ? colors.semantic.success : 'transparent',
+                }}
+              >
+                {(checked || settled) && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="text-[11px] font-semibold truncate" style={{ color: colors.utility.primaryText }}>
+                  {e.billing_cycle_label || `Event ${e.sequence_number}`}
+                </div>
+                <div className="text-[9px] mt-0.5" style={{ color: colors.utility.secondaryText }}>
+                  {new Date(e.scheduled_date).toLocaleDateString()}
+                  {settled && ' · Settled'}
+                </div>
+              </div>
+              <span
+                className="text-xs font-bold flex-shrink-0"
+                style={{ color: settled ? colors.semantic.success : colors.utility.primaryText }}
+              >
+                {fmt(e.amount || 0)}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <div
+        className="flex items-center justify-between mt-2 px-2.5 py-1.5 rounded-lg"
+        style={{ backgroundColor: colors.utility.secondaryBackground }}
+      >
+        <span className="text-[10px] font-medium" style={{ color: colors.utility.secondaryText }}>
+          {selectedEventIds.size} due{selectedEventIds.size === 1 ? '' : 's'} selected
+        </span>
+        <span className="text-sm font-bold" style={{ color: colors.brand.primary }}>
+          {fmt(selectedOpenSum)}
+        </span>
+      </div>
+      <p className="text-[9px] mt-1.5" style={{ color: colors.utility.secondaryText }}>
+        Tick the dues this receipt covers — the amount fills in automatically. Leave all unticked to record a plain payment against the invoice.
+      </p>
+    </div>
+  );
+
+  // ─── Channel toggle (full width, above the columns) ───────
+  const channelToggle = hasActiveGateway ? (
+    <div>
+      <label style={labelStyle}>Payment Channel</label>
+      <div className="flex gap-1.5">
+        <button
+          type="button"
+          onClick={() => setPaymentChannel('offline')}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-medium transition-all"
+          style={{
+            backgroundColor: !isOnline ? `${colors.brand.primary}15` : colors.utility.secondaryBackground,
+            border: `1.5px solid ${!isOnline ? colors.brand.primary : colors.utility.border}`,
+            color: !isOnline ? colors.brand.primary : colors.utility.secondaryText,
+          }}
+        >
+          <Wallet className="w-3.5 h-3.5" />
+          Offline
+        </button>
+        <button
+          type="button"
+          onClick={() => setPaymentChannel('online')}
+          className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-medium transition-all"
+          style={{
+            backgroundColor: isOnline ? `${colors.brand.primary}15` : colors.utility.secondaryBackground,
+            border: `1.5px solid ${isOnline ? colors.brand.primary : colors.utility.border}`,
+            color: isOnline ? colors.brand.primary : colors.utility.secondaryText,
+          }}
+        >
+          <Globe className="w-3.5 h-3.5" />
+          Online
+        </button>
+      </div>
+    </div>
+  ) : null;
+
+  // ─── Right panel: payment fields ──────────────────────────
+  const paymentFields = (
+    <div className="space-y-3">
+      {/* Collection Mode (online only) */}
+      {isOnline && (
+        <div>
+          <label style={labelStyle}>Collection Mode</label>
+          <div className="grid grid-cols-3 gap-1.5">
+            {COLLECTION_MODE_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setCollectionMode(opt.value)}
+                className="flex flex-col items-center gap-1 py-2 px-1 rounded-lg text-center transition-all"
+                style={{
+                  backgroundColor: collectionMode === opt.value ? `${colors.brand.primary}15` : colors.utility.secondaryBackground,
+                  border: `1.5px solid ${collectionMode === opt.value ? colors.brand.primary : colors.utility.border}`,
+                  color: collectionMode === opt.value ? colors.brand.primary : colors.utility.secondaryText,
+                }}
+              >
+                {opt.icon}
+                <span className="text-[10px] font-medium leading-tight">{opt.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* EMI Installment Selector */}
+      {isEmi && !isOnline && (
+        <div>
+          <label style={labelStyle}>Installment</label>
+          <select
+            value={emiSequence}
+            onChange={(e) => setEmiSequence(parseInt(e.target.value, 10))}
+            style={inputStyle}
+          >
+            {Array.from({ length: emiTotal! }, (_, i) => {
+              const seq = i + 1;
+              const isPaid = seq <= receiptsCount;
+              return (
+                <option key={seq} value={seq} disabled={isPaid}>
+                  Installment {seq} of {emiTotal}
+                  {isPaid ? ' (Paid)' : seq === receiptsCount + 1 ? ' (Next)' : ''}
+                </option>
+              );
+            })}
+          </select>
+        </div>
+      )}
+
+      {/* Amount */}
+      <div>
+        <label style={labelStyle}>
+          Amount ({currency})
+          {isEmi && !isOnline && (
+            <span style={{ color: colors.utility.secondaryText, fontWeight: 400 }}>
+              {' '}&middot; Per installment: {fmt(emiInstallmentAmount)}
+            </span>
+          )}
+        </label>
+        <input
+          type="number"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          placeholder={balance.toString()}
+          min="0"
+          max={balance}
+          step="0.01"
+          style={inputStyle}
+        />
+      </div>
+
+      {/* Offline Fields */}
+      {!isOnline && (
+        <>
+          <div>
+            <label style={labelStyle}>Payment Method</label>
+            <select
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+              style={inputStyle}
+            >
+              {PAYMENT_METHOD_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label style={labelStyle}>Payment Date</label>
+            <input
+              type="date"
+              value={paymentDate}
+              onChange={(e) => setPaymentDate(e.target.value)}
+              style={inputStyle}
+            />
+          </div>
+
+          <div>
+            <label style={labelStyle}>Reference / Transaction ID (optional)</label>
+            <input
+              type="text"
+              value={referenceNumber}
+              onChange={(e) => setReferenceNumber(e.target.value)}
+              placeholder="e.g. UTR number, cheque no."
+              style={inputStyle}
+            />
+          </div>
+
+          <div>
+            <label style={labelStyle}>Notes (optional)</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Any additional notes..."
+              rows={2}
+              style={{ ...inputStyle, resize: 'none' }}
+            />
+          </div>
+        </>
+      )}
+
+      {/* Online Link Fields (customer info) */}
+      {isLinkMode && (
+        <>
+          <div>
+            <label style={labelStyle}>Buyer Name (optional)</label>
+            <input
+              type="text"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              placeholder="Buyer's name"
+              style={inputStyle}
+            />
+          </div>
+
+          {collectionMode === 'email_link' && (
+            <div>
+              <label style={labelStyle}>Buyer Email</label>
+              <input
+                type="email"
+                value={customerEmail}
+                onChange={(e) => setCustomerEmail(e.target.value)}
+                placeholder="buyer@example.com"
+                style={inputStyle}
+              />
+            </div>
+          )}
+
+          {collectionMode === 'whatsapp_link' && (
+            <div>
+              <label style={labelStyle}>Buyer Phone</label>
+              <input
+                type="tel"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                placeholder="+91 98765 43210"
+                style={inputStyle}
+              />
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+
+  // ─── Actions row ──────────────────────────────────────────
+  const actions = (
+    <div className="flex justify-end gap-2 mt-4">
+      <button
+        onClick={onClose}
+        disabled={isPending}
+        className="px-4 py-2 rounded-lg text-xs font-medium transition-all hover:opacity-80"
+        style={{
+          backgroundColor: colors.utility.secondaryBackground,
+          color: colors.utility.secondaryText,
+          border: `1px solid ${colors.utility.border}`,
+        }}
+      >
+        Cancel
+      </button>
+      <button
+        onClick={handleSubmit}
+        disabled={isPending || (!amount && !isOnline)}
+        className="px-4 py-2 rounded-lg text-xs font-semibold text-white transition-all hover:opacity-90 flex items-center gap-1.5"
+        style={{
+          backgroundColor: isOnline ? colors.brand.primary : colors.semantic.success,
+          opacity: isPending ? 0.6 : 1,
+        }}
+      >
+        {isPending ? (
+          <>
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            {isCreatingOrder ? 'Creating Order...' : isCreatingLink ? 'Creating Link...' : 'Recording...'}
+          </>
+        ) : isOnline ? (
+          <>
+            {collectionMode === 'terminal' ? (
+              <><Monitor className="w-3.5 h-3.5" /> Pay Now</>
+            ) : (
+              <><Send className="w-3.5 h-3.5" /> Create Link</>
+            )}
+          </>
+        ) : (
+          'Record Payment'
+        )}
+      </button>
+    </div>
+  );
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent
-        className="sm:max-w-md rounded-xl"
+        className={`${hasEventPanel ? 'sm:max-w-3xl' : 'sm:max-w-md'} rounded-xl`}
         style={{ backgroundColor: colors.utility.primaryBackground, borderColor: colors.utility.border }}
       >
         <DialogHeader>
@@ -613,318 +977,20 @@ const RecordPaymentDialog: React.FC<RecordPaymentDialogProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3 mt-1">
-          {/* ─── Online / Offline Toggle ─────────────────────── */}
-          {hasActiveGateway && (
-            <div>
-              <label style={labelStyle}>Payment Channel</label>
-              <div className="flex gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setPaymentChannel('offline')}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-medium transition-all"
-                  style={{
-                    backgroundColor: !isOnline ? `${colors.brand.primary}15` : colors.utility.secondaryBackground,
-                    border: `1.5px solid ${!isOnline ? colors.brand.primary : colors.utility.border}`,
-                    color: !isOnline ? colors.brand.primary : colors.utility.secondaryText,
-                  }}
-                >
-                  <Wallet className="w-3.5 h-3.5" />
-                  Offline
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPaymentChannel('online')}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-[11px] font-medium transition-all"
-                  style={{
-                    backgroundColor: isOnline ? `${colors.brand.primary}15` : colors.utility.secondaryBackground,
-                    border: `1.5px solid ${isOnline ? colors.brand.primary : colors.utility.border}`,
-                    color: isOnline ? colors.brand.primary : colors.utility.secondaryText,
-                  }}
-                >
-                  <Globe className="w-3.5 h-3.5" />
-                  Online
-                </button>
-              </div>
+        <div className="mt-1 space-y-3">
+          {channelToggle}
+
+          {hasEventPanel ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
+              {eventPanel}
+              {paymentFields}
             </div>
-          )}
-
-          {/* ─── Collection Mode (online only) ───────────────── */}
-          {isOnline && (
-            <div>
-              <label style={labelStyle}>Collection Mode</label>
-              <div className="grid grid-cols-3 gap-1.5">
-                {COLLECTION_MODE_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setCollectionMode(opt.value)}
-                    className="flex flex-col items-center gap-1 py-2 px-1 rounded-lg text-center transition-all"
-                    style={{
-                      backgroundColor: collectionMode === opt.value ? `${colors.brand.primary}15` : colors.utility.secondaryBackground,
-                      border: `1.5px solid ${collectionMode === opt.value ? colors.brand.primary : colors.utility.border}`,
-                      color: collectionMode === opt.value ? colors.brand.primary : colors.utility.secondaryText,
-                    }}
-                  >
-                    {opt.icon}
-                    <span className="text-[10px] font-medium leading-tight">{opt.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ─── EMI Installment Selector ─────────────────────── */}
-          {isEmi && !isOnline && (
-            <div>
-              <label style={labelStyle}>Installment</label>
-              <select
-                value={emiSequence}
-                onChange={(e) => setEmiSequence(parseInt(e.target.value, 10))}
-                style={inputStyle}
-              >
-                {Array.from({ length: emiTotal! }, (_, i) => {
-                  const seq = i + 1;
-                  const isPaid = seq <= receiptsCount;
-                  return (
-                    <option key={seq} value={seq} disabled={isPaid}>
-                      Installment {seq} of {emiTotal}
-                      {isPaid ? ' (Paid)' : seq === receiptsCount + 1 ? ' (Next)' : ''}
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
-          )}
-
-          {/* ─── Settle specific billing events (offline) ─────── */}
-          {!isOnline && billingEvents.length > 0 && (
-            <div>
-              <label style={labelStyle}>Settle specific dues (optional)</label>
-              <div
-                className="rounded-lg border max-h-44 overflow-y-auto"
-                style={{ borderColor: colors.utility.border }}
-              >
-                {billingEvents.map((e) => {
-                  const open = eventOpenAmount(e);
-                  const settled = open <= 0.001 && (e.amount || 0) > 0;
-                  const checked = selectedEventIds.has(e.id);
-                  return (
-                    <button
-                      key={e.id}
-                      type="button"
-                      disabled={settled}
-                      onClick={() => toggleEvent(e.id)}
-                      className="w-full flex items-center justify-between gap-2 px-2.5 py-2 text-left border-b last:border-b-0 transition-colors"
-                      style={{
-                        borderColor: colors.utility.border,
-                        backgroundColor: checked ? `${colors.brand.primary}0c` : 'transparent',
-                        opacity: settled ? 0.55 : 1,
-                        cursor: settled ? 'default' : 'pointer',
-                      }}
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span
-                          className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0"
-                          style={{
-                            border: `1.5px solid ${checked || settled ? colors.brand.primary : colors.utility.border}`,
-                            backgroundColor: checked || settled ? colors.brand.primary : 'transparent',
-                          }}
-                        >
-                          {(checked || settled) && <CheckCircle2 className="w-3 h-3 text-white" />}
-                        </span>
-                        <span className="text-[11px] font-medium truncate" style={{ color: colors.utility.primaryText }}>
-                          {e.billing_cycle_label || `Event ${e.sequence_number}`}
-                        </span>
-                        <span className="text-[9px] flex-shrink-0" style={{ color: colors.utility.secondaryText }}>
-                          {new Date(e.scheduled_date).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        {settled && (
-                          <span
-                            className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full"
-                            style={{ backgroundColor: `${colors.semantic.success}18`, color: colors.semantic.success }}
-                          >
-                            Settled
-                          </span>
-                        )}
-                        <span className="text-[11px] font-semibold" style={{ color: colors.utility.primaryText }}>
-                          {fmt(e.amount || 0)}
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="text-[9px] mt-1" style={{ color: colors.utility.secondaryText }}>
-                Tick the dues this receipt covers — the amount fills automatically. Leave all unticked to record a plain payment against the invoice.
-              </p>
-            </div>
-          )}
-
-          {/* ─── Amount ───────────────────────────────────────── */}
-          <div>
-            <label style={labelStyle}>
-              Amount ({currency})
-              {isEmi && !isOnline && (
-                <span style={{ color: colors.utility.secondaryText, fontWeight: 400 }}>
-                  {' '}&middot; Per installment: {fmt(emiInstallmentAmount)}
-                </span>
-              )}
-            </label>
-            <input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder={balance.toString()}
-              min="0"
-              max={balance}
-              step="0.01"
-              style={inputStyle}
-            />
-          </div>
-
-          {/* ─── Offline Fields ────────────────────────────────── */}
-          {!isOnline && (
-            <>
-              {/* Payment Method */}
-              <div>
-                <label style={labelStyle}>Payment Method</label>
-                <select
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                  style={inputStyle}
-                >
-                  {PAYMENT_METHOD_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Payment Date */}
-              <div>
-                <label style={labelStyle}>Payment Date</label>
-                <input
-                  type="date"
-                  value={paymentDate}
-                  onChange={(e) => setPaymentDate(e.target.value)}
-                  style={inputStyle}
-                />
-              </div>
-
-              {/* Reference Number */}
-              <div>
-                <label style={labelStyle}>Reference / Transaction ID (optional)</label>
-                <input
-                  type="text"
-                  value={referenceNumber}
-                  onChange={(e) => setReferenceNumber(e.target.value)}
-                  placeholder="e.g. UTR number, cheque no."
-                  style={inputStyle}
-                />
-              </div>
-
-              {/* Notes */}
-              <div>
-                <label style={labelStyle}>Notes (optional)</label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Any additional notes..."
-                  rows={2}
-                  style={{ ...inputStyle, resize: 'none' }}
-                />
-              </div>
-            </>
-          )}
-
-          {/* ─── Online Link Fields (customer info) ────────────── */}
-          {isLinkMode && (
-            <>
-              <div>
-                <label style={labelStyle}>Buyer Name (optional)</label>
-                <input
-                  type="text"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="Buyer's name"
-                  style={inputStyle}
-                />
-              </div>
-
-              {collectionMode === 'email_link' && (
-                <div>
-                  <label style={labelStyle}>Buyer Email</label>
-                  <input
-                    type="email"
-                    value={customerEmail}
-                    onChange={(e) => setCustomerEmail(e.target.value)}
-                    placeholder="buyer@example.com"
-                    style={inputStyle}
-                  />
-                </div>
-              )}
-
-              {collectionMode === 'whatsapp_link' && (
-                <div>
-                  <label style={labelStyle}>Buyer Phone</label>
-                  <input
-                    type="tel"
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                    placeholder="+91 98765 43210"
-                    style={inputStyle}
-                  />
-                </div>
-              )}
-            </>
+          ) : (
+            paymentFields
           )}
         </div>
 
-        {/* ─── Actions ─────────────────────────────────────────── */}
-        <div className="flex justify-end gap-2 mt-2">
-          <button
-            onClick={onClose}
-            disabled={isPending}
-            className="px-4 py-2 rounded-lg text-xs font-medium transition-all hover:opacity-80"
-            style={{
-              backgroundColor: colors.utility.secondaryBackground,
-              color: colors.utility.secondaryText,
-              border: `1px solid ${colors.utility.border}`,
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={isPending || (!amount && !isOnline)}
-            className="px-4 py-2 rounded-lg text-xs font-semibold text-white transition-all hover:opacity-90 flex items-center gap-1.5"
-            style={{
-              backgroundColor: isOnline ? colors.brand.primary : colors.semantic.success,
-              opacity: isPending ? 0.6 : 1,
-            }}
-          >
-            {isPending ? (
-              <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                {isCreatingOrder ? 'Creating Order...' : isCreatingLink ? 'Creating Link...' : 'Recording...'}
-              </>
-            ) : isOnline ? (
-              <>
-                {collectionMode === 'terminal' ? (
-                  <><Monitor className="w-3.5 h-3.5" /> Pay Now</>
-                ) : (
-                  <><Send className="w-3.5 h-3.5" /> Create Link</>
-                )}
-              </>
-            ) : (
-              'Record Payment'
-            )}
-          </button>
-        </div>
+        {actions}
       </DialogContent>
     </Dialog>
   );
