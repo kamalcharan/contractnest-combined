@@ -26,6 +26,12 @@ import {
   Mail,
   Users,
   List,
+  Building2,
+  User,
+  ShoppingCart,
+  Handshake,
+  Package,
+  Tag,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -38,18 +44,39 @@ import {
 import { useStatusMap, useTransitionMap } from '@/hooks/queries/useEventStatusConfigQueries';
 import { useCreateAppointment } from '@/hooks/queries/useAppointmentQueries';
 import type { ContractEvent } from '@/types/contractEvents';
+import {
+  CONTACT_CLASSIFICATION_CONFIG,
+  getClassificationThemeColor,
+} from '@/utils/constants/contacts';
+
+// Relationship (contract_type / classification) → icon + label + colour, reusing
+// the Contacts module's config so the Event Schedule matches the Contacts list.
+const RELATIONSHIP_ICON_MAP: Record<string, React.ComponentType<any>> = {
+  ShoppingCart, Package, Handshake, Users,
+};
+const relationshipConfig = (relType?: string | null) => {
+  if (!relType) return null;
+  const cfg = CONTACT_CLASSIFICATION_CONFIG.find((c: any) => c.id === relType);
+  if (!cfg) return null;
+  const { themeColor } = getClassificationThemeColor((cfg as any).colorKey);
+  const Icon = RELATIONSHIP_ICON_MAP[(cfg as any).lucideIcon] || Tag;
+  return { label: (cfg as any).label as string, color: themeColor, Icon };
+};
 
 type LaneFilter = 'all' | 'service' | 'billing';
 type DatePreset = 'overdue' | 'today' | 'this_week' | 'next_30' | 'upcoming' | 'all';
 type ViewMode = 'grouped' | 'flat';
 
-// Row shape = ContractEvent + the customer fields added by migration 011
+// Row shape = ContractEvent + the contract/contact context added by the events RPC
 type EventRow = ContractEvent & {
   contract_number?: string | null;
   contract_name?: string | null;
+  contract_type?: string | null;         // client / partner / vendor
   task_id?: string | null;
   buyer_id?: string | null;
   buyer_name?: string | null;
+  buyer_type?: string | null;            // individual / corporate
+  buyer_classifications?: string[] | null;
   buyer_phone?: string | null;
   buyer_email?: string | null;
   billing_cycle_label?: string | null;
@@ -106,6 +133,7 @@ const ServiceSchedulePage: React.FC = () => {
 
   const [lane, setLane] = useState<LaneFilter>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all'); // contract relationship: client/partner/vendor
   const [datePreset, setDatePreset] = useState<DatePreset>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
@@ -143,13 +171,14 @@ const ServiceSchedulePage: React.FC = () => {
 
   const filteredEvents = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    if (!term) return events;
-    return events.filter((e) =>
-      [e.block_name, e.contract_name, e.contract_number, e.task_id, e.buyer_name, e.buyer_email, e.buyer_phone]
+    return events.filter((e) => {
+      if (typeFilter !== 'all' && (e.contract_type || '') !== typeFilter) return false;
+      if (!term) return true;
+      return [e.block_name, e.contract_name, e.contract_number, e.task_id, e.buyer_name, e.buyer_email, e.buyer_phone]
         .filter(Boolean)
-        .some((v) => String(v).toLowerCase().includes(term))
-    );
-  }, [events, searchTerm]);
+        .some((v) => String(v).toLowerCase().includes(term));
+    });
+  }, [events, searchTerm, typeFilter]);
 
   // ── Grouped view: by customer (contracts-hub pattern) ──
   const groups = useMemo(() => {
@@ -157,7 +186,7 @@ const ServiceSchedulePage: React.FC = () => {
     for (const e of filteredEvents) {
       const key = e.buyer_id || e.buyer_name || 'unknown';
       if (!map.has(key)) {
-        map.set(key, { key, name: e.buyer_name || 'Unknown customer', rows: [], overdue: 0 });
+        map.set(key, { key, name: e.buyer_name || 'Unknown contact', rows: [], overdue: 0 });
       }
       const g = map.get(key)!;
       g.rows.push(e);
@@ -342,17 +371,41 @@ const ServiceSchedulePage: React.FC = () => {
             {event.contract_number || '—'}
           </button>
 
-          {/* Customer */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (event.buyer_id) navigate(`/contacts/${event.buyer_id}`);
-            }}
-            className="text-xs text-left truncate hover:underline"
-            style={{ color: colors.utility.primaryText }}
-          >
-            {event.buyer_name || '—'}
-          </button>
+          {/* Contact — entity icon + name + relationship badge (Contacts parity) */}
+          {(() => {
+            const isCorp = event.buyer_type === 'corporate';
+            const EntityIcon = isCorp ? Building2 : User;
+            const rel = relationshipConfig(event.contract_type);
+            const RelIcon = rel?.Icon;
+            return (
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span
+                  className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: (rel?.color || colors.utility.secondaryText) + '15' }}
+                  title={isCorp ? 'Corporate' : 'Individual'}
+                >
+                  <EntityIcon className="h-3 w-3" style={{ color: rel?.color || colors.utility.secondaryText }} />
+                </span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); if (event.buyer_id) navigate(`/contacts/${event.buyer_id}`); }}
+                  className="text-xs text-left truncate hover:underline min-w-0"
+                  style={{ color: colors.utility.primaryText }}
+                >
+                  {event.buyer_name || '—'}
+                </button>
+                {rel && RelIcon && (
+                  <span
+                    className="hidden xl:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold flex-shrink-0"
+                    style={{ backgroundColor: rel.color + '18', color: rel.color }}
+                    title={rel.label}
+                  >
+                    <RelIcon className="h-2.5 w-2.5" />
+                    {rel.label}
+                  </span>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Phone */}
           <span className="text-[11px] inline-flex items-center gap-1 truncate" style={{ color: colors.utility.secondaryText }}>
@@ -493,9 +546,9 @@ const ServiceSchedulePage: React.FC = () => {
       className="grid items-center gap-2 px-3 py-2 text-[10px] font-bold uppercase tracking-wider"
       style={{ gridTemplateColumns: GRID_COLS, color: colors.utility.secondaryText }}
     >
-      <span>Task</span>
+      <span>Event</span>
       <span>Contract</span>
-      <span>Customer</span>
+      <span>Contact</span>
       <span>Phone</span>
       <span>Email</span>
       <span>Date</span>
@@ -596,7 +649,7 @@ const ServiceSchedulePage: React.FC = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onClick={(e) => e.stopPropagation()}
-            placeholder="Search task, contract, customer, email…"
+            placeholder="Search event, contract, contact, email…"
             className="pl-9 pr-3 py-2 rounded-lg border text-sm w-72 bg-transparent"
             style={{ borderColor: colors.utility.secondaryText + '30', color: colors.utility.primaryText }}
           />
@@ -626,6 +679,26 @@ const ServiceSchedulePage: React.FC = () => {
           </optgroup>
         </select>
 
+        {/* Contact type filter (client / partner / vendor) */}
+        <select
+          value={typeFilter}
+          onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }}
+          onClick={(e) => e.stopPropagation()}
+          className="px-3 py-2 rounded-lg border text-sm"
+          style={{
+            borderColor: colors.utility.secondaryText + '30',
+            color: colors.utility.primaryText,
+            backgroundColor: colors.utility.primaryBackground,
+          }}
+        >
+          <option value="all">All contact types</option>
+          {CONTACT_CLASSIFICATION_CONFIG
+            .filter((c: any) => ['client', 'partner', 'vendor'].includes(c.id))
+            .map((c: any) => (
+              <option key={c.id} value={c.id}>{c.label}</option>
+            ))}
+        </select>
+
         <select
           value={datePreset}
           onChange={(e) => { setDatePreset(e.target.value as DatePreset); setPage(1); }}
@@ -652,7 +725,7 @@ const ServiceSchedulePage: React.FC = () => {
         >
           {(
             [
-              { mode: 'grouped' as ViewMode, icon: Users, label: 'By customer' },
+              { mode: 'grouped' as ViewMode, icon: Users, label: 'By contact' },
               { mode: 'flat' as ViewMode, icon: List, label: 'Flat' },
             ]
           ).map(({ mode, icon: Icon, label }) => (
