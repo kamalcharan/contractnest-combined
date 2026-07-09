@@ -22,6 +22,7 @@ import {
   Layers,
   Sparkles,
   UserPlus,
+  Users,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -34,6 +35,7 @@ import {
 import ContractWizard from '../../components/contracts/ContractWizard';
 import { VaNiLoader } from '../../components/common/loaders/UnifiedLoader';
 import VaNiComposerLauncher, { buildTemplateSeed } from '../../components/contracts/vani/VaNiComposerLauncher';
+import BulkAssignDialog from '../../components/contracts/vani/BulkAssignDialog';
 import vaniComposerService from '../../services/vaniComposerService';
 
 // =====================================================
@@ -175,6 +177,8 @@ const TemplatesList: React.FC = () => {
   const handleAssignTemplate = useCallback((template: any) => {
     navigate('/contracts', { state: { assignSeed: buildTemplateSeed(template) } });
   }, [navigate]);
+  // Multi-party assignment: one template → many members in one batch.
+  const [bulkTemplate, setBulkTemplate] = useState<CatTemplate | null>(null);
   const [vaniEntitled, setVaniEntitled] = useState(false);
   useEffect(() => {
     vaniComposerService.checkEntitlement().then((e) => setVaniEntitled(e.entitled && e.llm_enabled));
@@ -743,6 +747,20 @@ const TemplatesList: React.FC = () => {
                             Assign
                           </button>
                         )}
+                        {signedOff && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setBulkTemplate(template);
+                            }}
+                            title="Assign this template to many members at once"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                            style={{ backgroundColor: colors.utility.secondaryBackground, color: colors.utility.secondaryText, border: `1px solid ${colors.utility.secondaryText}30` }}
+                          >
+                            <Users className="w-3.5 h-3.5" />
+                            Bulk
+                          </button>
+                        )}
                         </div>
                         <div className="flex items-center gap-1">
                           <button
@@ -867,6 +885,15 @@ const TemplatesList: React.FC = () => {
           onDraftReady={() => { /* template mode saves in-review; no wizard handoff */ }}
         />
       )}
+
+      {/* ═══ BULK ASSIGN (multi-party) ═══ */}
+      <BulkAssignDialog
+        isOpen={!!bulkTemplate}
+        onClose={() => setBulkTemplate(null)}
+        seed={bulkTemplate ? buildTemplateSeed(bulkTemplate) : null}
+        templateName={bulkTemplate?.display_name || bulkTemplate?.name || 'Template'}
+        onDone={() => refetch()}
+      />
 
       {/* ═══ TEMPLATE WIZARD (ContractWizard in template mode) ═══ */}
       <ContractWizard
