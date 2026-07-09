@@ -365,8 +365,11 @@ export const EventCard: React.FC<EventCardProps> = ({
             {canRecordPayment && (
               <button
                 onClick={(e) => { e.stopPropagation(); onRecordPayment!(event); }}
-                className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full transition-all hover:opacity-90"
-                style={{ backgroundColor: colors.semantic?.success || '#10B981', color: '#ffffff' }}
+                className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full transition-all hover:opacity-80"
+                style={{
+                  backgroundColor: `${colors.semantic?.success || '#10B981'}12`,
+                  color: colors.semantic?.success || '#10B981',
+                }}
                 title="Record a payment against this due"
               >
                 <Wallet className="w-3 h-3" />
