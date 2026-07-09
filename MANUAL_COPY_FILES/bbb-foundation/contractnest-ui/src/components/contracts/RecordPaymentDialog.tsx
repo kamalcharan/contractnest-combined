@@ -42,6 +42,8 @@ interface RecordPaymentDialogProps {
   currency?: string;
   paymentMode?: string;
   emiMonths?: number;
+  /** Billing event ids to pre-tick in the "specific dues" checklist (per-event Record Payment). */
+  preselectedEventIds?: string[];
 }
 
 // =================================================================
@@ -78,6 +80,7 @@ const RecordPaymentDialog: React.FC<RecordPaymentDialogProps> = ({
   currency: currencyProp,
   paymentMode: paymentModeProp,
   emiMonths,
+  preselectedEventIds,
 }) => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
@@ -213,6 +216,33 @@ const RecordPaymentDialog: React.FC<RecordPaymentDialogProps> = ({
     setSelectedEventIds(next);
     setAmount((Math.round(sum * 100) / 100).toString());
   };
+
+  // Pre-tick specific dues when opened from a per-event "Record Payment" button.
+  // Applies once per open, after billing events have loaded (so the amount can
+  // be summed from their open balances).
+  const preselectAppliedRef = React.useRef(false);
+  useEffect(() => {
+    if (!isOpen) {
+      preselectAppliedRef.current = false;
+      return;
+    }
+    if (
+      preselectAppliedRef.current ||
+      !preselectedEventIds ||
+      preselectedEventIds.length === 0 ||
+      billingEvents.length === 0
+    ) {
+      return;
+    }
+    const wanted = new Set(preselectedEventIds);
+    const matches = billingEvents.filter((e) => wanted.has(e.id) && eventOpenAmount(e) > 0.001);
+    if (matches.length === 0) return;
+    const next = new Set(matches.map((e) => e.id));
+    const sum = matches.reduce((acc, e) => acc + eventOpenAmount(e), 0);
+    setSelectedEventIds(next);
+    setAmount((Math.round(sum * 100) / 100).toString());
+    preselectAppliedRef.current = true;
+  }, [isOpen, billingEvents, preselectedEventIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Pre-fill amount for EMI once invoice loads
   useEffect(() => {
