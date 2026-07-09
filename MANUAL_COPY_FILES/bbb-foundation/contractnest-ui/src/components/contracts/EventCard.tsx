@@ -153,9 +153,9 @@ export const EventCard: React.FC<EventCardProps> = ({
   const isBilling = event.event_type === 'billing';
   const isCompact = variant === 'compact';
 
-  // Billing status is money-driven (advanced by receipts), not hand-set — so
-  // billing cards never show the manual status dropdown. Instead, open billing
-  // events offer a "Record Payment" action.
+  // Billing events keep their manual status dropdown (config-driven transitions)
+  // AND, when still open, offer a "Record Payment" action. Receipts also
+  // auto-advance the status to Paid / Partial in the background.
   const eventAmount = event.amount || 0;
   const eventSettled = (event as any).amount_settled || 0;
   const openAmount = Math.max(0, Math.round((eventAmount - eventSettled) * 100) / 100);
@@ -180,8 +180,7 @@ export const EventCard: React.FC<EventCardProps> = ({
   const resolvedTransitions = (allowedTransitions && allowedTransitions.length > 0)
     ? allowedTransitions
     : (FALLBACK_TRANSITIONS[event.status] || []);
-  // Billing events are money-driven: no manual status dropdown.
-  const hasActions = !isBilling && !hideActions && resolvedTransitions.length > 0;
+  const hasActions = !hideActions && resolvedTransitions.length > 0;
 
   // Type icon
   const TypeIcon = isSparePart ? Package : isService ? Wrench : Receipt;
