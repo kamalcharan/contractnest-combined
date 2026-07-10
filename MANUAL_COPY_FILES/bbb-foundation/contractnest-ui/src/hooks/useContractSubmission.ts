@@ -18,12 +18,37 @@ import {
   ContractWizardState,
 } from '@/components/contracts/ContractWizard';
 import type { CreateContractRequest } from '@/types/contracts';
+import api from '@/services/api';
+import { API_ENDPOINTS } from '@/services/serviceURLs';
 
 export interface SubmissionResult {
   id: string;
   contract_number?: string;
   global_access_id?: string;
   status: string;
+}
+
+/** One member in a bulk assignment. */
+export interface BulkSubmitItem {
+  buyerId: string;
+  draft: Partial<ContractWizardState> & Record<string, any>;
+  contractType?: 'client' | 'vendor' | 'partner';
+}
+
+/** Per-member outcome returned by the bulk endpoint. */
+export interface BulkResultRow {
+  buyer_id: string | null;
+  status: string;           // 'active' | 'pending_acceptance' | 'created' | 'skipped' | 'failed'
+  contract_id?: string;
+  contract_number?: string;
+  global_access_id?: string;
+  error?: string;
+  reason?: string;
+}
+
+export interface BulkSubmitResult {
+  results: BulkResultRow[];
+  summary: { total: number; created: number; skipped: number; failed: number };
 }
 
 export function useContractSubmission() {
@@ -96,7 +121,55 @@ export function useContractSubmission() {
     [createContract, updateStatus, sendNotification]
   );
 
-  return { submit, isSubmitting };
+  /**
+   * Bulk finalize: map many drafts → requests (same client mapper as submit,
+   * so there is ONE source of truth) and post them in a single call to the
+   * bulk endpoint, which creates + optionally activates each server-side and
+   * returns per-member results. Used by BulkAssignDialog.
+   *
+   * `templateId` is stamped onto every draft so the created contracts carry
+   * their template link (the assembled draft omits it) — this is also what the
+   * server dedup keys on to skip members already assigned this template.
+   */
+  const submitBulk = useCallback(
+    async (
+      items: BulkSubmitItem[],
+      opts: { templateId?: string; activate?: boolean } = {}
+    ): Promise<BulkSubmitResult> => {
+      setIsSubmitting(true);
+      try {
+        const requestItems = items.map(({ buyerId, draft, contractType = 'client' }) => {
+          const state: ContractWizardState = {
+            ...createInitialWizardState(),
+            ...draft,
+            templateId: opts.templateId || (draft as any).templateId || null,
+            startDate: draft.startDate
+              ? (draft.startDate instanceof Date ? draft.startDate : new Date(draft.startDate as any))
+              : new Date(),
+          };
+          const request = mapWizardToRequest(state, contractType);
+          request.metadata = {};
+          return { buyer_id: buyerId, request };
+        });
+
+        const resp = await api.post(API_ENDPOINTS.CONTRACTS.BULK_CREATE, {
+          template_id: opts.templateId,
+          activate: opts.activate !== false,
+          items: requestItems,
+        });
+        const data = (resp.data?.data || resp.data) as BulkSubmitResult;
+        return {
+          results: data?.results || [],
+          summary: data?.summary || { total: items.length, created: 0, skipped: 0, failed: items.length },
+        };
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    []
+  );
+
+  return { submit, submitBulk, isSubmitting };
 }
 
 export default useContractSubmission;

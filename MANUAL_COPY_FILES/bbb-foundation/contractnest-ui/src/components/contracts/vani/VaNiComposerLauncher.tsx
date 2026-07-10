@@ -329,6 +329,9 @@ const VaNiComposerLauncher: React.FC<VaNiComposerLauncherProps> = ({
         match.template_id, parse.intent, buyerRef.current,
         currencyOverride ?? contractCurrency
       );
+      // The assembled draft omits the template link — stamp it so the created
+      // contract carries template_id (used for template lineage + bulk dedup).
+      (res.draft as any).templateId = match.template_id;
       setResult(res);
       pushCard({
         id: 'assemble',
