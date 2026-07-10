@@ -27,7 +27,7 @@ interface BulkAssignDialogProps {
   onDone?: () => void;
 }
 
-type RowStatus = 'pending' | 'running' | 'done' | 'error';
+type RowStatus = 'pending' | 'running' | 'done' | 'skipped' | 'error';
 interface ProgressRow {
   id: string;
   name: string;
@@ -55,7 +55,7 @@ const BulkAssignDialog: React.FC<BulkAssignDialogProps> = ({
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
   const { addToast } = useVaNiToast();
-  const { submit } = useContractSubmission();
+  const { submitBulk } = useContractSubmission();
 
   const [search, setSearch] = useState('');
   const [classFilter, setClassFilter] = useState<string>('all');
@@ -107,40 +107,75 @@ const BulkAssignDialog: React.FC<BulkAssignDialogProps> = ({
   };
   const handleClose = () => { if (!running) { reset(); onClose(); } };
 
-  // ── Run the batch: assemble-from-template → submit, per member ──
+  // ── Run the batch: assemble ONCE → clone per member → single bulk call ──
+  // The template's assembled draft is buyer-independent, so we assemble once
+  // and clone it per member (setting buyer + type + template link), then hand
+  // the whole set to the server bulk endpoint (create + activate + idempotent
+  // dedup, one round-trip). No per-member client loop.
   const run = async () => {
     if (!seed || selectedCount === 0) return;
     const members = selectedIds.map((id) => selected[id]);
-    setProgress(members.map((c) => ({ id: c.id, name: contactDisplayName(c), status: 'pending' as RowStatus })));
+    setProgress(members.map((c) => ({ id: c.id, name: contactDisplayName(c), status: 'running' as RowStatus })));
     setRunning(true);
     setFinished(false);
 
-    let created = 0, failed = 0;
-    for (const c of members) {
-      const name = contactDisplayName(c);
-      setProgress((p) => p.map((r) => r.id === c.id ? { ...r, status: 'running' } : r));
-      try {
-        const intent = { ...seed.intent, buyer_text: name, start_date: startDate };
-        const res = await vaniComposerService.assembleFromTemplate(
-          seed.match.template_id, intent, { id: c.id, name }, seed.match.currency
-        );
-        const result = await submit(res.draft as any, contactContractType(c));
-        created += 1;
-        setProgress((p) => p.map((r) => r.id === c.id ? { ...r, status: 'done', contractNumber: result.contract_number } : r));
-      } catch (err: any) {
-        failed += 1;
-        setProgress((p) => p.map((r) => r.id === c.id ? { ...r, status: 'error', error: err?.message || 'Failed' } : r));
-      }
-    }
+    try {
+      const base = await vaniComposerService.assembleFromTemplate(
+        seed.match.template_id,
+        { ...seed.intent, start_date: startDate },
+        null,
+        seed.match.currency
+      );
 
-    setRunning(false);
-    setFinished(true);
-    addToast({
-      type: failed === 0 ? 'success' : 'warning',
-      title: 'Bulk assignment complete',
-      message: `${created} created${failed ? `, ${failed} failed` : ''}`,
-    });
-    onDone?.();
+      const items = members.map((c) => ({
+        buyerId: c.id,
+        contractType: contactContractType(c),
+        draft: {
+          ...(base.draft as any),
+          buyerId: c.id,
+          buyerName: contactDisplayName(c),
+          startDate,
+          templateId: seed.match.template_id,
+        },
+      }));
+
+      const { results, summary } = await submitBulk(items, {
+        templateId: seed.match.template_id,
+        activate: true,
+      });
+
+      const byBuyer = new Map(results.map((r) => [r.buyer_id, r]));
+      setProgress(members.map((c) => {
+        const r = byBuyer.get(c.id);
+        const status: RowStatus =
+          r?.status === 'skipped' ? 'skipped'
+          : r?.status === 'failed' ? 'error'
+          : 'done';
+        return {
+          id: c.id,
+          name: contactDisplayName(c),
+          status,
+          contractNumber: r?.contract_number,
+          error: r?.error || r?.reason,
+        };
+      }));
+
+      addToast({
+        type: summary.failed === 0 ? 'success' : 'warning',
+        title: 'Bulk assignment complete',
+        message: `${summary.created} created`
+          + (summary.skipped ? `, ${summary.skipped} skipped` : '')
+          + (summary.failed ? `, ${summary.failed} failed` : ''),
+      });
+    } catch (err: any) {
+      // Whole-batch failure (e.g. the one-shot assemble failed) — mark all rows.
+      setProgress((p) => p.map((r) => ({ ...r, status: 'error' as RowStatus, error: err?.message || 'Failed' })));
+      addToast({ type: 'error', title: 'Bulk assignment failed', message: err?.message || 'Please try again.' });
+    } finally {
+      setRunning(false);
+      setFinished(true);
+      onDone?.();
+    }
   };
 
   if (!isOpen || !seed) return null;
@@ -270,11 +305,15 @@ const BulkAssignDialog: React.FC<BulkAssignDialogProps> = ({
                     {r.status === 'done' && <CheckCircle2 className="w-4 h-4" style={{ color: colors.semantic.success }} />}
                     {r.status === 'running' && <Loader2 className="w-4 h-4 animate-spin" style={{ color: colors.brand.primary }} />}
                     {r.status === 'error' && <AlertTriangle className="w-4 h-4" style={{ color: colors.semantic.error }} />}
+                    {r.status === 'skipped' && <CheckCircle2 className="w-4 h-4" style={{ color: `${colors.utility.secondaryText}99` }} />}
                     {r.status === 'pending' && <span className="w-2 h-2 rounded-full" style={{ backgroundColor: `${colors.utility.secondaryText}55` }} />}
                   </span>
                   <span className="text-xs font-medium truncate flex-1" style={{ color: colors.utility.primaryText }}>{r.name}</span>
                   <span className="text-[10px] flex-shrink-0" style={{ color: r.status === 'error' ? colors.semantic.error : colors.utility.secondaryText }}>
-                    {r.status === 'done' ? r.contractNumber : r.status === 'error' ? r.error : r.status === 'running' ? 'Creating…' : 'Queued'}
+                    {r.status === 'done' ? r.contractNumber
+                      : r.status === 'skipped' ? 'Already assigned'
+                      : r.status === 'error' ? r.error
+                      : r.status === 'running' ? 'Creating…' : 'Queued'}
                   </span>
                 </div>
               ))}
@@ -282,6 +321,7 @@ const BulkAssignDialog: React.FC<BulkAssignDialogProps> = ({
             {finished && (
               <p className="text-xs mt-2 font-semibold" style={{ color: colors.utility.primaryText }}>
                 {progress.filter((r) => r.status === 'done').length} created
+                {progress.some((r) => r.status === 'skipped') ? ` · ${progress.filter((r) => r.status === 'skipped').length} already assigned` : ''}
                 {progress.some((r) => r.status === 'error') ? ` · ${progress.filter((r) => r.status === 'error').length} failed` : ''}
               </p>
             )}
