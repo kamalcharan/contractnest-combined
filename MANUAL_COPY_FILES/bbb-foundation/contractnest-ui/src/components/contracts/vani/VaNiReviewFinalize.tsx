@@ -41,6 +41,10 @@ export interface VaNiReviewFinalizeProps {
   onTemplateSaved?: () => void;
   /** Which review tab to open on ('contract' default, or jump straight to 'events') */
   initialView?: 'contract' | 'events';
+  /** Draft originated from a template (Assign / From Template / matched tier).
+   *  Suppresses the "Save as template" offer on the success screen — the
+   *  pattern is already a template. */
+  fromTemplate?: boolean;
 }
 
 const VaNiReviewFinalize: React.FC<VaNiReviewFinalizeProps> = ({
@@ -52,6 +56,7 @@ const VaNiReviewFinalize: React.FC<VaNiReviewFinalizeProps> = ({
   mode = 'contract',
   onTemplateSaved,
   initialView = 'contract',
+  fromTemplate = false,
 }) => {
   const isTemplateMode = mode === 'template';
   const { isDarkMode, currentTheme } = useTheme();
@@ -307,7 +312,9 @@ const VaNiReviewFinalize: React.FC<VaNiReviewFinalizeProps> = ({
                 {sent.global_access_id}
               </button>
             )}
-            {/* Save this pick as a template — next time VaNi answers instantly */}
+            {/* Save this pick as a template — next time VaNi answers instantly.
+                Hidden when the draft already came from a template. */}
+            {!fromTemplate && (
             <div
               className="w-full max-w-md rounded-xl border p-4 mb-6 text-left"
               style={{ borderColor: `${colors.brand.primary}30`, backgroundColor: `${colors.brand.primary}06` }}
@@ -351,6 +358,7 @@ const VaNiReviewFinalize: React.FC<VaNiReviewFinalizeProps> = ({
                 </>
               )}
             </div>
+            )}
             <button
               onClick={onDone}
               className="px-8 py-3 rounded-xl text-white text-sm font-semibold hover:opacity-90"

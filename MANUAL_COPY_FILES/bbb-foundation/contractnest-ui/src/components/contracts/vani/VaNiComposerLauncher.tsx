@@ -227,8 +227,18 @@ const VaNiComposerLauncher: React.FC<VaNiComposerLauncherProps> = ({
     setCards((prev) => [...prev.filter((c) => c.id !== card.id), card]);
   }, []);
 
-  const fail = useCallback((step: StepId, title: string, err: any, retry: () => void) => {
+  const fail = useCallback((
+    step: StepId,
+    title: string,
+    err: any,
+    retry: () => void,
+    opts?: { retryable?: boolean; hint?: React.ReactNode },
+  ) => {
     setRunningStep(null);
+    // Prefer the API's own message (err.response.data.message) over axios's
+    // generic "Request failed with status code 500".
+    const message = err?.response?.data?.message || err?.message || 'Failed';
+    const retryable = opts?.retryable !== false;
     setCards((prev) => [...prev.filter((c) => c.id !== step), {
       id: step,
       title,
@@ -236,13 +246,16 @@ const VaNiComposerLauncher: React.FC<VaNiComposerLauncherProps> = ({
       status: 'error' as const,
       body: (
         <div>
-          <p className="text-xs mb-2">{err?.message || 'Failed'}</p>
-          <button
-            onClick={retry}
-            className="flex items-center gap-1.5 text-xs font-semibold hover:opacity-80"
-          >
-            <RotateCcw className="w-3 h-3" /> Retry this step
-          </button>
+          <p className="text-xs mb-2">{message}</p>
+          {opts?.hint && <p className="text-xs mb-2 opacity-80">{opts.hint}</p>}
+          {retryable && (
+            <button
+              onClick={retry}
+              className="flex items-center gap-1.5 text-xs font-semibold hover:opacity-80"
+            >
+              <RotateCcw className="w-3 h-3" /> Retry this step
+            </button>
+          )}
         </div>
       ),
     }]);
@@ -419,7 +432,19 @@ const VaNiComposerLauncher: React.FC<VaNiComposerLauncherProps> = ({
       });
       runSelect();
     } catch (err: any) {
-      fail('shortlist', 'Catalog scan failed', err, runShortlist);
+      // Empty/insufficient catalog is a user-actionable condition (422), not a
+      // server fault — steer to the template path instead of a scary retry.
+      const status = err?.response?.status;
+      const serverMsg = err?.response?.data?.message || '';
+      const noCatalog = status === 422 || /no matching service blocks|catalog/i.test(serverMsg);
+      if (noCatalog) {
+        fail('shortlist', 'No matching catalog blocks', err, runShortlist, {
+          retryable: false,
+          hint: 'Nothing in your catalog matches this request. Start from a template instead — New Contract → From Template, or the Assign button on the Templates page.',
+        });
+      } else {
+        fail('shortlist', 'Catalog scan failed', err, runShortlist);
+      }
     }
   }, [pushCard, fail, runSelect]);
 
@@ -726,6 +751,9 @@ const VaNiComposerLauncher: React.FC<VaNiComposerLauncherProps> = ({
         mode={mode}
         onTemplateSaved={onTemplateSaved}
         initialView={reviewInitialView}
+        // Draft came from a template (Assign / From Template / matched tier):
+        // no point offering "Save as template" — it already is one.
+        fromTemplate={!!seedTemplate || !!templateMatchRef.current}
       />
     );
   }
