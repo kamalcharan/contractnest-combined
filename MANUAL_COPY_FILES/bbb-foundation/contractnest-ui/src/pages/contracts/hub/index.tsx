@@ -5,7 +5,7 @@
 // pipeline bar with counts + colored segments. Fixed By Client grouping.
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useTenantContext } from '@/contexts/TenantContext';
 import {
@@ -29,7 +29,7 @@ import type {
 import { VaNiLoader } from '@/components/common/loaders/UnifiedLoader';
 import ContractWizard from '@/components/contracts/ContractWizard';
 import type { ContractType } from '@/components/contracts/ContractWizard';
-import VaNiComposerLauncher from '@/components/contracts/vani/VaNiComposerLauncher';
+import VaNiComposerLauncher, { TemplateSeed } from '@/components/contracts/vani/VaNiComposerLauncher';
 import vaniComposerService, { type VaniComposeResult } from '@/services/vaniComposerService';
 
 // Portfolio list components
@@ -446,6 +446,9 @@ const ContractsHubPage: React.FC = () => {
 
   // ── VaNi composer state (Revenue mode + subscription only) ──
   const [showVaniComposer, setShowVaniComposer] = useState(false);
+  // Single-party assignment: composer seeded from a chosen template (arrives via
+  // router state from the Templates list "Assign to member" action).
+  const [assignSeed, setAssignSeed] = useState<TemplateSeed | null>(null);
   const [vaniPrefill, setVaniPrefill] = useState<Record<string, any> | null>(null);
   const [vaniInteractionIds, setVaniInteractionIds] = useState<string[]>([]);
   const [vaniEntitled, setVaniEntitled] = useState(false);
@@ -456,6 +459,20 @@ const ContractsHubPage: React.FC = () => {
     vaniComposerService.checkEntitlement().then((e) => setVaniEntitled(e.entitled && e.llm_enabled));
   }, [activePerspective]);
   const showVaniEntry = activePerspective === 'revenue' && vaniEntitled;
+
+  // Template → contract assignment: a seed handed over from the Templates list.
+  // Deterministic (no LLM), so it opens the composer regardless of entitlement.
+  const location = useLocation();
+  useEffect(() => {
+    const seed = (location.state as any)?.assignSeed as TemplateSeed | undefined;
+    if (seed) {
+      setAssignSeed(seed);
+      setShowVaniComposer(true);
+      // Drop the router state so a refresh/back doesn't re-open it.
+      navigate('.', { replace: true, state: {} });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
   const handleVaniDraftReady = (result: VaniComposeResult, interactionIds: string[], initialStepId?: string) => {
     setVaniPrefill(result.draft);
@@ -960,8 +977,9 @@ const ContractsHubPage: React.FC = () => {
       {/* VaNi Composer — intent → drafted contract (Revenue mode) */}
       <VaNiComposerLauncher
         isOpen={showVaniComposer}
-        onClose={() => setShowVaniComposer(false)}
+        onClose={() => { setShowVaniComposer(false); setAssignSeed(null); }}
         onDraftReady={handleVaniDraftReady}
+        seedTemplate={assignSeed}
       />
 
       {/* Contract Creation Wizard Modal */}
