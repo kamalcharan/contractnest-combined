@@ -29,7 +29,7 @@ import type {
 import { VaNiLoader } from '@/components/common/loaders/UnifiedLoader';
 import ContractWizard from '@/components/contracts/ContractWizard';
 import type { ContractType } from '@/components/contracts/ContractWizard';
-import VaNiComposerLauncher, { TemplateSeed } from '@/components/contracts/vani/VaNiComposerLauncher';
+import VaNiComposerLauncher, { TemplateSeed, buildTemplateSeed } from '@/components/contracts/vani/VaNiComposerLauncher';
 import vaniComposerService, { type VaniComposeResult } from '@/services/vaniComposerService';
 
 // Portfolio list components
@@ -1007,6 +1007,17 @@ const ContractsHubPage: React.FC = () => {
         vaniPrefill={vaniPrefill}
         vaniInteractionIds={vaniInteractionIds}
         vaniInitialStepId={vaniInitialStep}
+        onAssignTemplate={(tpl) => {
+          // From Template → seeded VaNi composer (direct assemble → review →
+          // create), the same path as the Templates-list "Assign" action.
+          setShowWizard(false);
+          setResumeDraftId(null);
+          setVaniPrefill(null);
+          setVaniInteractionIds([]);
+          setVaniInitialStep(null);
+          setAssignSeed(buildTemplateSeed(tpl));
+          setShowVaniComposer(true);
+        }}
       />
     </div>
   );

@@ -119,6 +119,12 @@ interface ContractWizardProps {
   // settings.wizard_state when present.
   editTemplate?: CatTemplate | null;
   onTemplateSaved?: () => void;
+  // From-Template hand-off: when provided (contract mode), picking a template
+  // in the selection step does NOT walk the wizard — instead the chosen
+  // template is handed to the seeded VaNi composer for the direct
+  // assemble → review → create flow (the same path as the Templates-list
+  // "Assign" action). The caller receives the selected published template.
+  onAssignTemplate?: (template: CatTemplate) => void;
   // Lower-cased names already used by OTHER templates (uniqueness check;
   // provided by templates-list, excludes the edited template's own lineage)
   takenTemplateNames?: string[];
@@ -500,6 +506,7 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
   editTemplate = null,
   onTemplateSaved,
   takenTemplateNames = [],
+  onAssignTemplate,
 }) => {
   const isTemplateMode = mode === 'template';
   const { isDarkMode, currentTheme } = useTheme();
@@ -1082,10 +1089,20 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
         // Error toast is handled by the mutation's onError
       }
     } else if (showTemplateSelection) {
+      const tpl = publishedTemplates.find((t) => t.id === wizardState.templateId);
+      // Direct path: hand the chosen template to the seeded VaNi composer
+      // (assemble → review → create) instead of walking the wizard. This is
+      // what the Templates-list "Assign" action does — unified here so
+      // New Contract → From Template behaves identically. Falls through to the
+      // legacy wizard hydrate only when no hand-off handler is wired.
+      if (onAssignTemplate && tpl) {
+        onAssignTemplate(tpl);
+        setShowTemplateSelection(false);
+        return;
+      }
       // Hydrate the wizard from the chosen PUBLISHED template's saved state:
       // blocks, billing, acceptance, evidence, duration — you add buyer,
       // dates and assets. Then continue to the acceptance step.
-      const tpl = publishedTemplates.find((t) => t.id === wizardState.templateId);
       const savedState = (tpl?.settings as any)?.wizard_state;
       if (tpl && savedState) {
         const restored = deserializeWizardState(savedState);
@@ -1157,7 +1174,7 @@ const ContractWizard: React.FC<ContractWizardProps> = ({
         return next;
       });
     }
-  }, [isLastStep, canGoNext, wizardState, showTemplateSelection, currentStepId, totalSteps, contractType, createContract, updateContract, updateStatus, sendNotification, addToast, shouldSkipAssetStep, assetStepIndex, draftId, draftVersion, saveDraftToApi, currentStep, detailsStepIdx, isTemplateMode, handleSaveTemplate, resetWizard, onClose, publishedTemplates]);
+  }, [isLastStep, canGoNext, wizardState, showTemplateSelection, currentStepId, totalSteps, contractType, createContract, updateContract, updateStatus, sendNotification, addToast, shouldSkipAssetStep, assetStepIndex, draftId, draftVersion, saveDraftToApi, currentStep, detailsStepIdx, isTemplateMode, handleSaveTemplate, resetWizard, onClose, publishedTemplates, onAssignTemplate]);
 
   // Done button handler on success screen
   const handleDone = useCallback(() => {
