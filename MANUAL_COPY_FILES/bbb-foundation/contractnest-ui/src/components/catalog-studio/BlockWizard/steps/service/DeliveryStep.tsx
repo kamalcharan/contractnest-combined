@@ -17,6 +17,9 @@ interface DeliveryStepProps {
     cycleGracePeriod?: number;
     // Billing-only: bills on its cycle, generates no service events/visits
     billingOnly?: boolean;
+    // Audience: who receives each cycle — the contract's buyer (individual/1:1)
+    // or a group that checks in (group/1:N). The engine branches on this field.
+    audience?: 'individual' | 'group';
   };
   onChange: (field: string, value: unknown) => void;
 }
@@ -30,10 +33,18 @@ const DeliveryStep: React.FC<DeliveryStepProps> = ({ formData, onChange }) => {
     // top-level (wizard edits) with meta fallback (editing an existing block)
     formData.billingOnly ?? (formData as { meta?: { billingOnly?: boolean } }).meta?.billingOnly ?? false
   );
+  const [audience, setAudience] = useState<'individual' | 'group'>(
+    formData.audience ?? (formData as { meta?: { audience?: 'individual' | 'group' } }).meta?.audience ?? 'individual'
+  );
 
   const handleBillingOnlyToggle = (enabled: boolean) => {
     setBillingOnly(enabled);
     onChange('billingOnly', enabled);
+  };
+
+  const handleAudienceChange = (value: 'individual' | 'group') => {
+    setAudience(value);
+    onChange('audience', value);
   };
 
   const handleModeChange = (mode: 'on-site' | 'virtual' | 'hybrid') => {
@@ -83,6 +94,50 @@ const DeliveryStep: React.FC<DeliveryStepProps> = ({ formData, onChange }) => {
       </p>
 
       <div className="space-y-6">
+        {/* Audience — who receives each cycle. Individual (1:1, the buyer) or
+            Group (1:N, a roster that checks in). Group Session presets this. */}
+        <div className="p-6 rounded-xl border" style={cardStyle}>
+          <label className="block text-sm font-semibold mb-1" style={labelStyle}>
+            Who attends each cycle?
+          </label>
+          <p className="text-xs mb-4" style={{ color: colors.utility.secondaryText }}>
+            <strong>Individual</strong> — delivered to the one buyer on the contract (a visit).{' '}
+            <strong>Group</strong> — one shared occurrence that many people check into (a meeting, class or session).
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            {([
+              { id: 'individual', icon: MapPin, label: 'Individual', desc: '1:1 — the buyer' },
+              { id: 'group', icon: Users, label: 'Group', desc: '1:N — a roster checks in' },
+            ] as const).map((opt) => {
+              const IconComp = opt.icon;
+              const isSelected = audience === opt.id;
+              return (
+                <div
+                  key={opt.id}
+                  onClick={() => handleAudienceChange(opt.id)}
+                  className="p-4 border-2 rounded-xl cursor-pointer text-center transition-all hover:shadow-md"
+                  style={{
+                    backgroundColor: isSelected ? `${colors.brand.primary}08` : (isDarkMode ? colors.utility.primaryBackground : '#FFFFFF'),
+                    borderColor: isSelected ? colors.brand.primary : (isDarkMode ? colors.utility.secondaryBackground : '#E5E7EB'),
+                  }}
+                >
+                  <div
+                    className="w-11 h-11 mx-auto mb-2 rounded-xl flex items-center justify-center"
+                    style={{ backgroundColor: isSelected ? colors.brand.primary : `${colors.brand.primary}15` }}
+                  >
+                    <IconComp className="w-5 h-5" style={{ color: isSelected ? '#FFFFFF' : colors.brand.primary }} />
+                  </div>
+                  <div className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>{opt.label}</div>
+                  <div className="text-xs mt-0.5" style={{ color: colors.utility.secondaryText }}>{opt.desc}</div>
+                  {isSelected && (
+                    <CheckCircle2 className="w-4 h-4 mx-auto mt-2" style={{ color: colors.brand.primary }} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Billing-only toggle — fees/dues blocks that never create service visits */}
         <div className="p-6 rounded-xl border" style={cardStyle}>
           <div className="flex items-start justify-between gap-4">
