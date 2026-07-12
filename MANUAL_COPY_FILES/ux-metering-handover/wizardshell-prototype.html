@@ -1,0 +1,908 @@
+<title>WizardShell — Interactive UX Prototype</title>
+<style>
+  :root {
+    --bg: #F4F5F1;
+    --surface: #FFFFFF;
+    --surface-2: #ECEEE7;
+    --ink: #1C2420;
+    --muted: #5B655F;
+    --faint: #8A938D;
+    --line: #DDE0D7;
+    --accent: #0B6B63;
+    --accent-ink: #FFFFFF;
+    --accent-soft: #E0EEEB;
+    --crit: #B3402F;
+    --crit-soft: #F9ECE9;
+    --good: #3E7C4F;
+    --good-soft: #E6F0E8;
+    --warn: #8F6B0C;
+    --warn-soft: #F6EFDB;
+    --shadow: 0 8px 28px rgba(28,36,32,0.12);
+    --sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --serif: 'Charter', 'Bitstream Charter', 'Sitka Text', Cambria, Georgia, serif;
+    --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #101412; --surface: #1B211E; --surface-2: #232A26;
+      --ink: #E7EAE5; --muted: #A0AAA3; --faint: #79837C; --line: #2C342F;
+      --accent: #4FB3A6; --accent-ink: #0E1513; --accent-soft: #1B2E2B;
+      --crit: #E28170; --crit-soft: #33211D;
+      --good: #84BE8F; --good-soft: #1D2B20;
+      --warn: #D9AC45; --warn-soft: #322A16;
+      --shadow: 0 8px 28px rgba(0,0,0,0.45);
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #F4F5F1; --surface: #FFFFFF; --surface-2: #ECEEE7;
+    --ink: #1C2420; --muted: #5B655F; --faint: #8A938D; --line: #DDE0D7;
+    --accent: #0B6B63; --accent-ink: #FFFFFF; --accent-soft: #E0EEEB;
+    --crit: #B3402F; --crit-soft: #F9ECE9;
+    --good: #3E7C4F; --good-soft: #E6F0E8;
+    --warn: #8F6B0C; --warn-soft: #F6EFDB;
+    --shadow: 0 8px 28px rgba(28,36,32,0.12);
+  }
+  :root[data-theme="dark"] {
+    --bg: #101412; --surface: #1B211E; --surface-2: #232A26;
+    --ink: #E7EAE5; --muted: #A0AAA3; --faint: #79837C; --line: #2C342F;
+    --accent: #4FB3A6; --accent-ink: #0E1513; --accent-soft: #1B2E2B;
+    --crit: #E28170; --crit-soft: #33211D;
+    --good: #84BE8F; --good-soft: #1D2B20;
+    --warn: #D9AC45; --warn-soft: #322A16;
+    --shadow: 0 8px 28px rgba(0,0,0,0.45);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: var(--sans); font-size: 15px; line-height: 1.55;
+  }
+  button { font: inherit; cursor: pointer; }
+  input, select { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* ── App bar ─────────────────────────── */
+  .appbar {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    padding: 12px 20px; background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; z-index: 40;
+  }
+  .brand { font-family: var(--serif); font-weight: 700; font-size: 1.05rem; }
+  .brand small { display: block; font-family: var(--sans); font-weight: 500; font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
+  .skin-toggle { display: flex; background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+  .skin-toggle button {
+    border: none; background: transparent; color: var(--muted);
+    padding: 5px 14px; border-radius: 999px; font-size: 0.82rem; font-weight: 600;
+  }
+  .skin-toggle button.active { background: var(--accent); color: var(--accent-ink); }
+  .spacer { flex: 1; }
+  .save-pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 0.78rem; font-weight: 600; color: var(--muted);
+    background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 999px; padding: 5px 12px; min-width: 118px; justify-content: center;
+  }
+  .save-pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--faint); flex: none; }
+  .save-pill.saving .dot { background: var(--warn); animation: pulse 0.9s infinite; }
+  .save-pill.saved .dot { background: var(--good); }
+  @keyframes pulse { 50% { opacity: 0.3; } }
+  @media (prefers-reduced-motion: reduce) {
+    .save-pill.saving .dot { animation: none; }
+    * { scroll-behavior: auto !important; transition: none !important; }
+  }
+  .help-btn {
+    border: 1px solid var(--line); background: var(--surface-2); color: var(--muted);
+    width: 30px; height: 30px; border-radius: 50%; font-weight: 700;
+  }
+
+  /* ── Layout ─────────────────────────── */
+  .shell { display: flex; min-height: calc(100vh - 57px); }
+  .rail {
+    width: 250px; flex: none; padding: 24px 16px 120px;
+    border-right: 1px solid var(--line);
+  }
+  .main { flex: 1; min-width: 0; padding: 28px 28px 150px; }
+  .panel { max-width: 660px; margin: 0 auto; }
+  @media (max-width: 760px) {
+    .shell { flex-direction: column; }
+    .rail { width: 100%; border-right: none; border-bottom: 1px solid var(--line); padding: 12px 16px; display: flex; gap: 6px; overflow-x: auto; }
+    .rail .step { flex: none; }
+    .rail .step .desc, .rail .connector { display: none; }
+    .main { padding: 20px 16px 150px; }
+  }
+
+  /* ── Stepper ─────────────────────────── */
+  .step {
+    display: flex; gap: 12px; align-items: flex-start; width: 100%;
+    background: none; border: none; text-align: left; color: inherit;
+    padding: 8px 10px; border-radius: 8px;
+  }
+  .step:hover:not(.locked) { background: var(--surface-2); }
+  .step.locked { cursor: not-allowed; opacity: 0.55; }
+  .step .bubble {
+    width: 26px; height: 26px; flex: none; border-radius: 50%;
+    border: 2px solid var(--line); background: var(--surface);
+    display: grid; place-items: center;
+    font-size: 0.75rem; font-weight: 700; color: var(--faint);
+  }
+  .step.current .bubble { border-color: var(--accent); color: var(--accent); }
+  .step.done .bubble { border-color: var(--good); background: var(--good); color: #fff; }
+  .step .labels { padding-top: 2px; }
+  .step .name { font-weight: 650; font-size: 0.88rem; }
+  .step.current .name { color: var(--accent); }
+  .step .desc { font-size: 0.75rem; color: var(--faint); }
+  .connector { width: 2px; height: 14px; background: var(--line); margin-left: 22px; }
+  .rail-note { margin-top: 18px; font-size: 0.72rem; color: var(--faint); padding: 0 10px; }
+
+  /* ── Content ─────────────────────────── */
+  .phase-eyebrow { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+  h1.screen-title { font-family: var(--serif); font-size: 1.65rem; margin: 4px 0 4px; text-wrap: balance; }
+  .screen-sub { color: var(--muted); margin: 0 0 24px; font-size: 0.95rem; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 12px; padding: 22px; margin-bottom: 18px;
+  }
+  .card h3 { margin: 0 0 4px; font-size: 1rem; }
+  .card .hint { font-size: 0.82rem; color: var(--faint); margin: 0 0 16px; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; }
+  @media (max-width: 560px) { .grid2 { grid-template-columns: 1fr; } }
+
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 0.8rem; font-weight: 650; color: var(--muted); }
+  .field label .req { color: var(--crit); }
+  .field input, .field select {
+    background: var(--surface); border: 1.5px solid var(--line); border-radius: 8px;
+    padding: 9px 12px; font-size: 0.92rem; width: 100%;
+  }
+  .field input:focus, .field select:focus { border-color: var(--accent); outline: none; }
+  .field.invalid input, .field.invalid select { border-color: var(--crit); background: var(--crit-soft); }
+  .field .err { font-size: 0.76rem; color: var(--crit); font-weight: 600; display: none; }
+  .field.invalid .err { display: block; }
+  .field .microcopy { font-size: 0.74rem; color: var(--faint); }
+
+  /* choice cards */
+  .choices { display: grid; gap: 14px; grid-template-columns: 1fr 1fr; }
+  @media (max-width: 620px) { .choices { grid-template-columns: 1fr; } }
+  .choice {
+    position: relative; text-align: left; background: var(--surface);
+    border: 1.5px solid var(--line); border-radius: 12px; padding: 20px;
+    transition: border-color 0.15s;
+  }
+  .choice:hover { border-color: var(--accent); }
+  .choice.selected { border-color: var(--accent); background: var(--accent-soft); }
+  .choice h3 { margin: 0 0 4px; font-size: 1.02rem; }
+  .choice p { margin: 0; font-size: 0.84rem; color: var(--muted); }
+  .choice .glyph { font-size: 1.5rem; margin-bottom: 10px; }
+  .badge {
+    position: absolute; top: 14px; right: 14px;
+    font-size: 0.64rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
+    background: var(--accent); color: var(--accent-ink); border-radius: 999px; padding: 3px 9px;
+  }
+  .badge.soft { background: var(--accent-soft); color: var(--accent); }
+
+  /* checkbox rows (service blocks) */
+  .rowline {
+    display: flex; align-items: center; gap: 12px;
+    border: 1.5px solid var(--line); border-radius: 10px;
+    padding: 12px 14px; margin-bottom: 10px; background: var(--surface);
+    cursor: pointer;
+  }
+  .rowline:hover { border-color: var(--accent); }
+  .rowline.on { border-color: var(--accent); background: var(--accent-soft); }
+  .rowline input { width: 17px; height: 17px; accent-color: var(--accent); flex: none; }
+  .rowline .r-name { font-weight: 650; font-size: 0.9rem; }
+  .rowline .r-sub { font-size: 0.76rem; color: var(--faint); }
+  .rowline .r-price { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .total-line {
+    display: flex; justify-content: space-between; padding: 12px 14px;
+    font-weight: 700; border-top: 2px solid var(--line); margin-top: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* segmented radio */
+  .seg { display: flex; gap: 8px; flex-wrap: wrap; }
+  .seg button {
+    border: 1.5px solid var(--line); background: var(--surface); color: var(--muted);
+    border-radius: 999px; padding: 7px 16px; font-size: 0.85rem; font-weight: 600;
+  }
+  .seg button.on { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+
+  /* review */
+  .rev-card { position: relative; }
+  .rev-card .edit-link {
+    position: absolute; top: 16px; right: 16px;
+    border: 1px solid var(--line); background: var(--surface-2); color: var(--accent);
+    border-radius: 999px; padding: 4px 14px; font-size: 0.78rem; font-weight: 700;
+  }
+  .rev-card .edit-link:hover { border-color: var(--accent); }
+  .kv { display: grid; grid-template-columns: 150px 1fr; gap: 6px 14px; font-size: 0.88rem; }
+  .kv dt { color: var(--faint); margin: 0; }
+  .kv dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+  .tpl-chip {
+    display: inline-block; font-size: 0.64rem; font-weight: 700; letter-spacing: 0.05em;
+    text-transform: uppercase; background: var(--warn-soft); color: var(--warn);
+    border-radius: 999px; padding: 1px 8px; margin-left: 8px; vertical-align: middle;
+  }
+  .tpl-chip.edited { background: var(--good-soft); color: var(--good); }
+
+  /* VaNi */
+  .vani-btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    border: 1.5px dashed var(--accent); background: var(--accent-soft); color: var(--accent);
+    border-radius: 999px; padding: 7px 16px; font-size: 0.84rem; font-weight: 700;
+  }
+  .vani-note { font-size: 0.72rem; color: var(--faint); margin-top: 6px; }
+
+  /* action island */
+  .island {
+    position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+    background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
+    box-shadow: var(--shadow); padding: 10px 12px;
+    display: flex; align-items: center; gap: 12px; z-index: 50;
+    max-width: calc(100vw - 24px);
+  }
+  .island .ghost {
+    border: none; background: transparent; color: var(--muted);
+    padding: 8px 14px; border-radius: 999px; font-weight: 600; font-size: 0.88rem;
+  }
+  .island .ghost:hover { background: var(--surface-2); }
+  .island .primary {
+    border: none; background: var(--accent); color: var(--accent-ink);
+    padding: 10px 26px; border-radius: 999px; font-weight: 700; font-size: 0.92rem;
+  }
+  .island .primary:hover { filter: brightness(1.08); }
+  .island .step-label { font-size: 0.78rem; color: var(--faint); white-space: nowrap; }
+  .island-hint {
+    position: fixed; bottom: 76px; left: 50%; transform: translateX(-50%);
+    background: var(--crit-soft); color: var(--crit); border: 1px solid var(--crit);
+    font-size: 0.8rem; font-weight: 650; border-radius: 999px; padding: 6px 16px;
+    z-index: 49; display: none; max-width: calc(100vw - 24px); text-align: center;
+  }
+  .island-hint.show { display: block; }
+
+  /* toast */
+  .toast {
+    position: fixed; bottom: 84px; right: 20px; z-index: 60;
+    background: var(--ink); color: var(--bg); font-size: 0.85rem; font-weight: 600;
+    border-radius: 10px; padding: 11px 18px; box-shadow: var(--shadow);
+    opacity: 0; transform: translateY(8px); transition: all 0.25s; pointer-events: none;
+    max-width: 320px;
+  }
+  .toast.show { opacity: 1; transform: none; }
+
+  /* success */
+  .success { text-align: center; padding: 48px 20px; }
+  .success .big { font-size: 3rem; }
+  .success h1 { font-family: var(--serif); margin: 10px 0 6px; }
+  .success p { color: var(--muted); max-width: 46ch; margin: 0 auto 22px; }
+
+  /* notice panel */
+  .notice {
+    position: fixed; top: 66px; right: 14px; width: 320px; max-width: calc(100vw - 28px);
+    max-height: calc(100vh - 160px); overflow-y: auto;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: var(--shadow); padding: 18px 20px; z-index: 55; display: none;
+  }
+  .notice.show { display: block; }
+  .notice h3 { margin: 0 0 10px; font-family: var(--serif); font-size: 1rem; }
+  .notice ol { margin: 0; padding-left: 18px; font-size: 0.8rem; color: var(--muted); }
+  .notice li { margin-bottom: 8px; }
+  .notice li strong { color: var(--ink); }
+</style>
+
+<div class="appbar">
+  <div class="brand">ContractNest<small>WizardShell · UX prototype</small></div>
+  <div class="skin-toggle" role="tablist" aria-label="Flow skin">
+    <button id="skinContract" class="active" onclick="setSkin('contract')">Contract</button>
+    <button id="skinBlock" onclick="setSkin('block')">Catalog Block</button>
+  </div>
+  <div class="spacer"></div>
+  <div class="save-pill" id="savePill"><span class="dot"></span><span id="saveText">Draft</span></div>
+  <button class="help-btn" onclick="toggleNotice()" aria-label="What to notice in this prototype">?</button>
+</div>
+
+<div class="shell">
+  <nav class="rail" id="rail" aria-label="Wizard progress"></nav>
+  <main class="main"><div class="panel" id="panel"></div></main>
+</div>
+
+<div class="island-hint" id="islandHint"></div>
+<div class="island" id="island"></div>
+<div class="toast" id="toast"></div>
+
+<aside class="notice" id="notice" aria-label="Prototype guide">
+  <h3>What this prototype demonstrates</h3>
+  <ol>
+    <li><strong>One spine, two skins</strong> — toggle Contract ⇄ Catalog Block up top: same shell, stepper, autosave, and review; only the step registry changes.</li>
+    <li><strong>Review-first templates</strong> — pick "Start from a template" and you land on a pre-filled review, not step 1. Edit only what differs.</li>
+    <li><strong>Never a silent wall</strong> — Continue is never greyed out. Press it with missing fields: inline errors, scroll-to-field, and a hint above the island.</li>
+    <li><strong>Autosave from the first keystroke</strong> — watch the pill top-right. Refresh the page mid-wizard: your draft is restored.</li>
+    <li><strong>Edit-from-review</strong> — every review card has Edit; it deep-links to the step and returns you to review on save.</li>
+    <li><strong>Phases, not 12 dots</strong> — the contract flow reads as 4 chapters (Setup · Terms · Scope · Review).</li>
+    <li><strong>Honest AI</strong> — "Draft with VaNi" fills the form and is labelled as simulated. Nothing fakes a backend.</li>
+  </ol>
+</aside>
+
+<script>
+/* ───────────────────────── data ───────────────────────── */
+const SERVICE_BLOCKS = [
+  { id: 'pm',  name: 'Preventive Maintenance', sub: 'Quarterly visit · 12 checkpoints', price: 24000 },
+  { id: 'bd',  name: 'Breakdown Support',      sub: '24-hr response · parts extra',     price: 18000 },
+  { id: 'amc', name: 'Annual Deep Service',    sub: 'Once a year · full teardown',      price: 15000 },
+  { id: 'rep', name: 'Compliance Reporting',   sub: 'Monthly digital report',           price: 6000  },
+];
+const TEMPLATES = [
+  { id: 'gold', name: 'AMC Gold — Electronics', desc: '4 blocks · quarterly billing · 12 months',
+    data: { cpName: '', cpEmail: '', nomen: 'amc', cName: 'AMC Gold Agreement', start: '2026-08-01', duration: '12', currency: 'INR', billing: 'Quarterly', blocks: ['pm','bd','amc','rep'] } },
+  { id: 'hvac', name: 'HVAC Quarterly Care', desc: '2 blocks · quarterly billing · 24 months',
+    data: { cpName: '', cpEmail: '', nomen: 'service', cName: 'HVAC Quarterly Care', start: '2026-08-01', duration: '24', currency: 'INR', billing: 'Quarterly', blocks: ['pm','bd'] } },
+  { id: 'lite', name: 'Breakdown-Only Lite', desc: '1 block · monthly billing · 6 months',
+    data: { cpName: '', cpEmail: '', nomen: 'service', cName: 'Breakdown Cover Lite', start: '2026-08-01', duration: '6', currency: 'INR', billing: 'Monthly', blocks: ['bd'] } },
+];
+const NOMEN = { amc: 'Annual Maintenance Contract', service: 'Service Agreement', rental: 'Rental Agreement' };
+const BLOCK_TYPES = [
+  { id: 'service', glyph: '🛠️', name: 'Service Block', desc: 'A deliverable with visits, resources and pricing' },
+  { id: 'spare',   glyph: '🔩', name: 'Spare Part',    desc: 'A physical part with SKU and unit price' },
+  { id: 'billing', glyph: '🧾', name: 'Billing Block', desc: 'A charge structure and schedule' },
+];
+
+const STEPS = {
+  contract: [
+    { id: 'setup',  name: 'Setup',  desc: 'Path · counterparty · type' },
+    { id: 'terms',  name: 'Terms',  desc: 'Name · dates · billing cycle' },
+    { id: 'scope',  name: 'Scope',  desc: 'Service blocks & value' },
+    { id: 'review', name: 'Review', desc: 'Confirm & create' },
+  ],
+  block: [
+    { id: 'type',    name: 'Type',    desc: 'What kind of block' },
+    { id: 'basics',  name: 'Basics',  desc: 'Name & description' },
+    { id: 'pricing', name: 'Pricing', desc: 'Price & unit' },
+    { id: 'review',  name: 'Review',  desc: 'Confirm & save' },
+  ],
+};
+
+/* ───────────────────────── state ───────────────────────── */
+const FRESH = () => ({
+  skin: 'contract',
+  screen: 'path',            // path | templates | step | success
+  step: 0,
+  maxVisited: 0,
+  fromTemplate: null,        // template id
+  edited: {},                // fields touched after template fill
+  returnToReview: false,
+  c: { cpName: '', cpEmail: '', nomen: '', cName: '', start: '', duration: '', currency: 'INR', billing: '', blocks: [] },
+  b: { type: '', name: '', desc: '', price: '', unit: 'per visit' },
+});
+let S = FRESH();
+let errors = {};
+
+/* draft persistence — the "refresh me" demo */
+const LS_KEY = 'wizardshell-proto-draft';
+try {
+  const saved = localStorage.getItem(LS_KEY);
+  if (saved) {
+    const parsed = JSON.parse(saved);
+    if (parsed && parsed.screen && parsed.screen !== 'success') {
+      S = Object.assign(FRESH(), parsed);
+      setTimeout(() => toast('Draft restored — picking up where you left off'), 400);
+    }
+  }
+} catch (e) { /* storage unavailable — prototype still works in-memory */ }
+
+let saveTimer = null;
+function markDirty() {
+  const pill = document.getElementById('savePill');
+  pill.className = 'save-pill saving';
+  document.getElementById('saveText').textContent = 'Saving…';
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch (e) {}
+    pill.className = 'save-pill saved';
+    document.getElementById('saveText').textContent = 'Saved · just now';
+  }, 700);
+}
+
+/* ───────────────────────── helpers ───────────────────────── */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money = n => '₹' + Number(n).toLocaleString('en-IN');
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2600);
+}
+function toggleNotice() { $('notice').classList.toggle('show'); }
+function steps() { return STEPS[S.skin]; }
+function form() { return S.skin === 'contract' ? S.c : S.b; }
+
+function setSkin(skin) {
+  if (S.skin === skin) return;
+  S = FRESH(); S.skin = skin;
+  if (skin === 'block') S.screen = 'step';   // blocks have no path screen
+  errors = {};
+  $('skinContract').classList.toggle('active', skin === 'contract');
+  $('skinBlock').classList.toggle('active', skin === 'block');
+  markDirty(); render();
+}
+
+function setField(key, value) {
+  form()[key] = value;
+  if (S.fromTemplate) S.edited[key] = true;
+  if (errors[key]) { delete errors[key]; }
+  markDirty(); render(false);   // soft render: keep focus by not rebuilding inputs mid-typing
+}
+/* inputs write through oninput without re-render, via a global helper.
+   NB: inside inline handlers on form controls, bare `form` resolves to the
+   element's own .form DOM property — never call form() from an attribute. */
+function onField(key, el) {
+  form()[key] = el.value;
+  if (S.fromTemplate) S.edited[key] = true;
+  clearFieldError(key, el);
+  markDirty();
+}
+function bindInput(key) {
+  return `oninput="onField('${key}',this)"`;
+}
+function clearFieldError(key, el) {
+  if (errors[key]) {
+    delete errors[key];
+    const wrap = el.closest('.field'); if (wrap) wrap.classList.remove('invalid');
+    updateHint();
+  }
+}
+
+/* ───────────────────────── validation ───────────────────────── */
+function validateStep() {
+  const id = steps()[S.step].id;
+  if (id === 'review') {
+    /* the last gate validates the whole draft — review-first templates rely on this */
+    const all = {};
+    steps().slice(0, -1).forEach(s => Object.assign(all, validateFor(s.id)));
+    return all;
+  }
+  return validateFor(id);
+}
+function validateFor(id) {
+  const e = {};
+  if (S.skin === 'contract') {
+    const c = S.c;
+    if (id === 'setup') {
+      if (!c.cpName.trim()) e.cpName = 'Add the counterparty name to continue.';
+      if (!c.cpEmail.trim()) e.cpEmail = 'An email is needed to send the contract.';
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.cpEmail)) e.cpEmail = 'That doesn’t look like a valid email.';
+      if (!c.nomen) e.nomen = 'Pick a contract type.';
+    }
+    if (id === 'terms') {
+      if (!c.cName.trim()) e.cName = 'Give the contract a name.';
+      if (!c.start) e.start = 'Pick a start date.';
+      if (!c.duration || Number(c.duration) < 1) e.duration = 'Duration must be at least 1 month.';
+      if (!c.billing) e.billing = 'Choose a billing cycle.';
+    }
+    if (id === 'scope') {
+      if (!c.blocks.length) e.blocks = 'Select at least one service block.';
+    }
+  } else {
+    const b = S.b;
+    if (id === 'type' && !b.type) e.type = 'Choose a block type.';
+    if (id === 'basics' && !b.name.trim()) e.name = 'Give the block a name — it appears in templates and contracts.';
+    if (id === 'pricing') {
+      if (!b.price || Number(b.price) <= 0) e.price = 'Price must be greater than zero.';
+    }
+  }
+  return e;
+}
+function updateHint() {
+  const n = Object.keys(errors).length;
+  const hint = $('islandHint');
+  if (n > 0) {
+    hint.textContent = n === 1 ? '1 field needs attention — fix it above to continue' : n + ' fields need attention — first one is highlighted above';
+    hint.classList.add('show');
+  } else hint.classList.remove('show');
+}
+
+/* ───────────────────────── navigation ───────────────────────── */
+function goNext() {
+  errors = validateStep();
+  if (Object.keys(errors).length) {
+    render();
+    const bad = document.querySelector('.field.invalid input, .field.invalid select, [data-errblock]');
+    if (bad) { bad.scrollIntoView({ behavior: 'smooth', block: 'center' }); if (bad.focus) bad.focus({ preventScroll: true }); }
+    else toast('Some details are missing — the review cards mark what to fix');
+    return;
+  }
+  const last = steps().length - 1;
+  if (S.step === last) { finish(); return; }
+  if (S.returnToReview) { S.returnToReview = false; S.step = last; }
+  else S.step += 1;
+  S.maxVisited = Math.max(S.maxVisited, S.step);
+  markDirty(); render(); window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function goBack() {
+  if (S.returnToReview) { S.returnToReview = false; S.step = steps().length - 1; render(); return; }
+  if (S.step > 0) { S.step -= 1; errors = {}; render(); }
+  else if (S.skin === 'contract') { S.screen = S.fromTemplate ? 'templates' : 'path'; render(); }
+}
+function jumpTo(i) {
+  if (i > S.maxVisited) { toast('Finish “' + steps()[S.maxVisited].name + '” first — Continue validates as you go'); return; }
+  S.step = i; S.returnToReview = false; errors = {}; markDirty(); render(); window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function editFromReview(i) {
+  S.step = i; S.returnToReview = true; errors = {}; render(); window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function finish() {
+  S.screen = 'success';
+  try { localStorage.removeItem(LS_KEY); } catch (e) {}
+  render();
+  toast(S.skin === 'contract' ? 'Contract created and sent for acceptance' : 'Block saved to your catalog');
+}
+function startOver() { const skin = S.skin; S = FRESH(); S.skin = skin; if (skin === 'block') S.screen = 'step'; errors = {}; markDirty(); render(); }
+
+function choosePath(path) {
+  if (path === 'template') { S.screen = 'templates'; }
+  else { S.fromTemplate = null; S.screen = 'step'; S.step = 0; S.maxVisited = 0; }
+  markDirty(); render();
+}
+function chooseTemplate(id) {
+  const t = TEMPLATES.find(x => x.id === id);
+  S.c = Object.assign({}, t.data, { blocks: [...t.data.blocks] });
+  S.fromTemplate = id; S.edited = {};
+  S.screen = 'step';
+  S.step = steps().length - 1;          /* ← review-first: land on Review */
+  S.maxVisited = S.step;                 /* every step unlocked */
+  markDirty(); render();
+  toast('Template applied — review and edit only what differs');
+}
+
+function toggleBlockSel(id) {
+  const arr = S.c.blocks;
+  const i = arr.indexOf(id);
+  if (i >= 0) arr.splice(i, 1); else arr.push(id);
+  if (S.fromTemplate) S.edited.blocks = true;
+  delete errors.blocks;
+  markDirty(); render();
+}
+function setSeg(key, val) { setField(key, val); render(); }
+function setBlockType(id) { S.b.type = id; delete errors.type; markDirty(); render(); }
+
+/* VaNi — clearly-simulated assist */
+function vaniFill() {
+  const btn = $('vaniBtn'); if (btn) { btn.textContent = '✦ VaNi is drafting…'; btn.disabled = true; }
+  setTimeout(() => {
+    if (S.skin === 'contract') {
+      Object.assign(S.c, { cpName: 'Meridian Facilities Pvt Ltd', cpEmail: 'ops@meridianfacilities.in', nomen: 'amc' });
+    } else {
+      Object.assign(S.b, { name: 'Preventive Maintenance — Split AC', desc: 'Quarterly visit covering filters, coils, gas pressure and drainage', price: '1800', unit: 'per visit' });
+    }
+    errors = {}; markDirty(); render();
+    toast('VaNi drafted the fields — review and adjust anything');
+  }, 900);
+}
+
+/* ───────────────────────── renderers ───────────────────────── */
+function fieldHTML(key, label, opts) {
+  const o = opts || {};
+  const val = esc(form()[key] ?? '');
+  const bad = errors[key] ? ' invalid' : '';
+  const req = o.required !== false ? ' <span class="req">*</span>' : '';
+  let control;
+  if (o.select) {
+    control = `<select ${bindInput(key)} onchange="onField('${key}',this)">` +
+      `<option value="">Select…</option>` +
+      o.select.map(([v, l]) => `<option value="${v}"${form()[key] === v ? ' selected' : ''}>${esc(l)}</option>`).join('') +
+      `</select>`;
+  } else {
+    control = `<input type="${o.type || 'text'}" value="${val}" placeholder="${esc(o.ph || '')}" ${o.min ? 'min="' + o.min + '"' : ''} ${bindInput(key)}>`;
+  }
+  return `<div class="field${bad}">
+    <label>${label}${req}</label>
+    ${control}
+    <span class="err">${esc(errors[key] || '')}</span>
+    ${o.micro ? `<span class="microcopy">${o.micro}</span>` : ''}
+  </div>`;
+}
+
+function renderRail() {
+  const rail = $('rail');
+  if (S.screen !== 'step') {
+    rail.innerHTML = `<div class="rail-note">${S.skin === 'contract'
+      ? 'A guided build in <strong>4 phases</strong> — or skip straight to review with a template.'
+      : ''}</div>`;
+    return;
+  }
+  rail.innerHTML = steps().map((st, i) => {
+    const state = i === S.step ? 'current' : (i < S.step || (i <= S.maxVisited && i !== S.step) ? 'done' : '');
+    const locked = i > S.maxVisited ? ' locked' : '';
+    const bubble = state === 'done' && i !== S.step ? '✓' : (i + 1);
+    return `${i > 0 ? '<div class="connector"></div>' : ''}
+      <button class="step ${state}${locked}" onclick="jumpTo(${i})" ${locked ? 'aria-disabled="true" title="Complete the current phase first"' : ''}>
+        <span class="bubble">${bubble}</span>
+        <span class="labels"><span class="name">${st.name}</span><span class="desc">${st.desc}</span></span>
+      </button>`;
+  }).join('') + `<div class="rail-note">Completed phases stay clickable. Future phases unlock as you go — never a mystery grey-out.</div>`;
+}
+
+function renderIsland() {
+  const island = $('island');
+  if (S.screen === 'success') { island.style.display = 'none'; $('islandHint').classList.remove('show'); return; }
+  island.style.display = 'flex';
+  if (S.screen !== 'step') {
+    island.innerHTML = `<span class="step-label" style="padding:0 10px">${S.screen === 'path' ? 'Choose how to start' : 'Pick a template — you’ll land on a filled review'}</span>` +
+      (S.screen === 'templates' ? `<button class="ghost" onclick="S.screen='path';render()">Back</button>` : '');
+    updateHint(); return;
+  }
+  const last = steps().length - 1;
+  const isReview = S.step === last;
+  const primary = S.returnToReview ? 'Save & return to review'
+    : isReview ? (S.skin === 'contract' ? 'Create contract' : 'Save block')
+    : 'Continue';
+  island.innerHTML = `
+    <button class="ghost" onclick="goBack()">Back</button>
+    <span class="step-label">${S.skin === 'contract' ? 'Phase' : 'Step'} ${S.step + 1} of ${steps().length} · ${steps()[S.step].name}</span>
+    <button class="primary" onclick="goNext()">${primary}</button>`;
+  updateHint();
+}
+
+function tplChip(key) {
+  if (!S.fromTemplate) return '';
+  return S.edited[key] ? '<span class="tpl-chip edited">edited</span>' : '<span class="tpl-chip">from template</span>';
+}
+
+function renderPanel() {
+  const p = $('panel');
+  /* ── success ── */
+  if (S.screen === 'success') {
+    const isC = S.skin === 'contract';
+    p.innerHTML = `<div class="success">
+      <div class="big">✅</div>
+      <h1>${isC ? esc(S.c.cName || 'Contract') + ' is on its way' : esc(S.b.name || 'Block') + ' saved'}</h1>
+      <p>${isC
+        ? `Sent to <strong>${esc(S.c.cpEmail)}</strong> for acceptance. Total contract value <strong>${money(S.c.blocks.reduce((s, id) => s + SERVICE_BLOCKS.find(b => b.id === id).price, 0))}</strong>, billed ${esc(S.c.billing.toLowerCase())} for ${esc(S.c.duration)} months.`
+        : `Your ${esc(S.b.type)} block is now in the catalog, priced at ${money(S.b.price || 0)} ${esc(S.b.unit)}. It can be dropped into any template or contract.`}</p>
+      <button class="primary" style="border:none;background:var(--accent);color:var(--accent-ink);padding:11px 28px;border-radius:999px;font-weight:700" onclick="startOver()">Start another</button>
+    </div>`;
+    return;
+  }
+  /* ── path chooser (contract only) ── */
+  if (S.screen === 'path') {
+    p.innerHTML = `
+      <div class="phase-eyebrow">New contract</div>
+      <h1 class="screen-title">How would you like to start?</h1>
+      <p class="screen-sub">Templates skip the walkthrough entirely — you land on a filled review and change only what differs.</p>
+      <div class="choices">
+        <button class="choice" onclick="choosePath('template')">
+          <span class="badge">Recommended</span>
+          <div class="glyph">⚡</div>
+          <h3>Start from a template</h3>
+          <p>Land directly on a pre-filled review. Most contracts take under 3 minutes this way.</p>
+        </button>
+        <button class="choice" onclick="choosePath('scratch')">
+          <div class="glyph">🧱</div>
+          <h3>Start from scratch</h3>
+          <p>A guided build in 4 phases: Setup, Terms, Scope, Review.</p>
+        </button>
+      </div>`;
+    return;
+  }
+  /* ── template picker ── */
+  if (S.screen === 'templates') {
+    p.innerHTML = `
+      <div class="phase-eyebrow">New contract · from template</div>
+      <h1 class="screen-title">Pick a template</h1>
+      <p class="screen-sub">Only published templates appear here. Choosing one takes you straight to a filled review.</p>
+      <div class="choices" style="grid-template-columns:1fr">
+        ${TEMPLATES.map(t => `
+          <button class="choice" onclick="chooseTemplate('${t.id}')">
+            <span class="badge soft">Published</span>
+            <h3>${esc(t.name)}</h3>
+            <p>${esc(t.desc)}</p>
+          </button>`).join('')}
+      </div>`;
+    return;
+  }
+
+  /* ── steps ── */
+  const id = steps()[S.step].id;
+  if (S.skin === 'contract') renderContractStep(id, p);
+  else renderBlockStep(id, p);
+}
+
+function renderContractStep(id, p) {
+  const c = S.c;
+  if (id === 'setup') {
+    p.innerHTML = `
+      <div class="phase-eyebrow">Phase 1 · Setup</div>
+      <h1 class="screen-title">Who is this contract with?</h1>
+      <p class="screen-sub">Just the essentials — everything here autosaves as you type.</p>
+      <div class="card">
+        <h3>Counterparty</h3>
+        <p class="hint">The customer who will receive and accept this contract.</p>
+        <div class="grid2">
+          ${fieldHTML('cpName', 'Business name', { ph: 'e.g. Meridian Facilities Pvt Ltd' })}
+          ${fieldHTML('cpEmail', 'Email', { type: 'email', ph: 'ops@company.in', micro: 'The contract is sent here for acceptance.' })}
+        </div>
+        <div style="margin-top:16px">
+          <button class="vani-btn" id="vaniBtn" onclick="vaniFill()">✦ Draft with VaNi</button>
+          <div class="vani-note">Simulated in this prototype — fills the form with a sample draft you can edit.</div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Contract type</h3>
+        <p class="hint">Determines the vocabulary and default policies used throughout.</p>
+        ${fieldHTML('nomen', 'Type', { select: Object.entries(NOMEN) })}
+      </div>`;
+  }
+  if (id === 'terms') {
+    p.innerHTML = `
+      <div class="phase-eyebrow">Phase 2 · Terms</div>
+      <h1 class="screen-title">Name, dates and billing</h1>
+      <p class="screen-sub">Advanced terms (grace periods, EMI, tax nuances) live behind “Advanced” — smart defaults cover the common case.</p>
+      <div class="card">
+        <h3>Basics ${tplChip('cName')}</h3>
+        <p class="hint">&nbsp;</p>
+        <div class="grid2">
+          ${fieldHTML('cName', 'Contract name', { ph: 'e.g. AMC Gold Agreement' })}
+          ${fieldHTML('start', 'Start date', { type: 'date' })}
+          ${fieldHTML('duration', 'Duration (months)', { type: 'number', min: 1, ph: '12' })}
+          ${fieldHTML('currency', 'Currency', { select: [['INR', 'INR ₹'], ['USD', 'USD $'], ['EUR', 'EUR €']] })}
+        </div>
+      </div>
+      <div class="card">
+        <h3>Billing cycle ${tplChip('billing')}</h3>
+        <p class="hint">How often invoices are raised across the term.</p>
+        <div class="field${errors.billing ? ' invalid' : ''}" ${errors.billing ? 'data-errblock' : ''}>
+          <div class="seg">
+            ${['Monthly', 'Quarterly', 'Half-yearly', 'Annual'].map(b =>
+              `<button class="${c.billing === b ? 'on' : ''}" onclick="setSeg('billing','${b}')">${b}</button>`).join('')}
+          </div>
+          <span class="err">${esc(errors.billing || '')}</span>
+        </div>
+      </div>`;
+  }
+  if (id === 'scope') {
+    const total = c.blocks.reduce((s, bid) => s + SERVICE_BLOCKS.find(b => b.id === bid).price, 0);
+    p.innerHTML = `
+      <div class="phase-eyebrow">Phase 3 · Scope</div>
+      <h1 class="screen-title">What are you delivering?</h1>
+      <p class="screen-sub">Blocks come from your Catalog Studio — same objects, same prices, zero re-entry.</p>
+      <div class="card">
+        <h3>Service blocks ${tplChip('blocks')}</h3>
+        <p class="hint">Pick everything covered by this contract.</p>
+        <div class="field${errors.blocks ? ' invalid' : ''}" ${errors.blocks ? 'data-errblock' : ''}>
+          ${SERVICE_BLOCKS.map(b => `
+            <label class="rowline ${c.blocks.includes(b.id) ? 'on' : ''}">
+              <input type="checkbox" ${c.blocks.includes(b.id) ? 'checked' : ''} onchange="toggleBlockSel('${b.id}')">
+              <span><span class="r-name">${b.name}</span><br><span class="r-sub">${b.sub}</span></span>
+              <span class="r-price">${money(b.price)}</span>
+            </label>`).join('')}
+          <span class="err">${esc(errors.blocks || '')}</span>
+        </div>
+        <div class="total-line"><span>Contract value / year</span><span>${money(total)}</span></div>
+      </div>`;
+  }
+  if (id === 'review') {
+    const total = c.blocks.reduce((s, bid) => s + SERVICE_BLOCKS.find(b => b.id === bid).price, 0);
+    const tplBanner = S.fromTemplate ? `
+      <div class="card" style="border-color:var(--accent);background:var(--accent-soft)">
+        <h3 style="margin-bottom:2px">⚡ Filled from “${esc(TEMPLATES.find(t => t.id === S.fromTemplate).name)}”</h3>
+        <p class="hint" style="margin:0">Everything below came from the template. Edit any card — changes are marked. The only thing a template can’t know is your counterparty.</p>
+      </div>` : '';
+    p.innerHTML = `
+      <div class="phase-eyebrow">Phase 4 · Review</div>
+      <h1 class="screen-title">Review &amp; create</h1>
+      <p class="screen-sub">Every card links back to its phase — fix anything without losing your place.</p>
+      ${tplBanner}
+      <div class="card rev-card">
+        <button class="edit-link" onclick="editFromReview(0)">Edit</button>
+        <h3>Setup</h3>
+        <dl class="kv">
+          <dt>Counterparty</dt><dd>${c.cpName ? esc(c.cpName) : '<span style="color:var(--crit)">Missing — click Edit</span>'}</dd>
+          <dt>Email</dt><dd>${c.cpEmail ? esc(c.cpEmail) : '<span style="color:var(--crit)">Missing — click Edit</span>'}</dd>
+          <dt>Type</dt><dd>${esc(NOMEN[c.nomen] || '—')} ${tplChip('nomen')}</dd>
+        </dl>
+      </div>
+      <div class="card rev-card">
+        <button class="edit-link" onclick="editFromReview(1)">Edit</button>
+        <h3>Terms</h3>
+        <dl class="kv">
+          <dt>Name</dt><dd>${esc(c.cName || '—')} ${tplChip('cName')}</dd>
+          <dt>Start</dt><dd>${esc(c.start || '—')} ${tplChip('start')}</dd>
+          <dt>Duration</dt><dd>${esc(c.duration || '—')} months ${tplChip('duration')}</dd>
+          <dt>Billing</dt><dd>${esc(c.billing || '—')} · ${esc(c.currency)} ${tplChip('billing')}</dd>
+        </dl>
+      </div>
+      <div class="card rev-card">
+        <button class="edit-link" onclick="editFromReview(2)">Edit</button>
+        <h3>Scope ${tplChip('blocks')}</h3>
+        <dl class="kv">
+          ${c.blocks.map(bid => { const b = SERVICE_BLOCKS.find(x => x.id === bid); return `<dt>${b.name}</dt><dd>${money(b.price)}</dd>`; }).join('') || '<dt>Blocks</dt><dd>—</dd>'}
+          <dt style="font-weight:700;color:var(--ink)">Total / year</dt><dd style="color:var(--accent)">${money(total)}</dd>
+        </dl>
+      </div>`;
+  }
+}
+
+function renderBlockStep(id, p) {
+  const b = S.b;
+  if (id === 'type') {
+    p.innerHTML = `
+      <div class="phase-eyebrow">Catalog Studio · new block</div>
+      <h1 class="screen-title">What are you adding to the catalog?</h1>
+      <p class="screen-sub">Same shell as the contract wizard — different step registry. That’s the whole trick.</p>
+      <div class="field${errors.type ? ' invalid' : ''}" ${errors.type ? 'data-errblock' : ''}>
+        <div class="choices" style="grid-template-columns:1fr">
+          ${BLOCK_TYPES.map(t => `
+            <button class="choice ${b.type === t.id ? 'selected' : ''}" onclick="setBlockType('${t.id}')">
+              <div class="glyph">${t.glyph}</div>
+              <h3>${t.name}</h3><p>${t.desc}</p>
+            </button>`).join('')}
+        </div>
+        <span class="err">${esc(errors.type || '')}</span>
+      </div>`;
+  }
+  if (id === 'basics') {
+    p.innerHTML = `
+      <div class="phase-eyebrow">Catalog Studio · Basics</div>
+      <h1 class="screen-title">Name it like a customer would read it</h1>
+      <p class="screen-sub">This name appears in templates, contracts and invoices.</p>
+      <div class="card">
+        <div class="grid2">
+          ${fieldHTML('name', 'Block name', { ph: 'e.g. Preventive Maintenance — Split AC' })}
+          ${fieldHTML('desc', 'Short description', { required: false, ph: 'What’s covered, in one line', micro: 'Optional — shown as a subtitle in the library.' })}
+        </div>
+        <div style="margin-top:16px">
+          <button class="vani-btn" id="vaniBtn" onclick="vaniFill()">✦ Draft with VaNi</button>
+          <div class="vani-note">Simulated in this prototype — fills name, description and pricing.</div>
+        </div>
+      </div>`;
+  }
+  if (id === 'pricing') {
+    p.innerHTML = `
+      <div class="phase-eyebrow">Catalog Studio · Pricing</div>
+      <h1 class="screen-title">Price the block</h1>
+      <p class="screen-sub">Variants and market-reference pricing would attach here in the full build.</p>
+      <div class="card">
+        <div class="grid2">
+          ${fieldHTML('price', 'Price (₹)', { type: 'number', min: 1, ph: '1800' })}
+          ${fieldHTML('unit', 'Unit', { select: [['per visit', 'per visit'], ['per month', 'per month'], ['per unit', 'per unit'], ['flat', 'flat / one-time']] })}
+        </div>
+      </div>`;
+  }
+  if (id === 'review') {
+    const t = BLOCK_TYPES.find(x => x.id === b.type);
+    p.innerHTML = `
+      <div class="phase-eyebrow">Catalog Studio · Review</div>
+      <h1 class="screen-title">Here’s your block</h1>
+      <p class="screen-sub">The block wizard today saves 6 steps of config with no summary. This card is the fix.</p>
+      <div class="card rev-card">
+        <button class="edit-link" onclick="editFromReview(0)">Edit</button>
+        <h3>Type</h3>
+        <dl class="kv"><dt>Block type</dt><dd>${t ? t.glyph + ' ' + t.name : '—'}</dd></dl>
+      </div>
+      <div class="card rev-card">
+        <button class="edit-link" onclick="editFromReview(1)">Edit</button>
+        <h3>Basics</h3>
+        <dl class="kv">
+          <dt>Name</dt><dd>${esc(b.name || '—')}</dd>
+          <dt>Description</dt><dd>${esc(b.desc || '—')}</dd>
+        </dl>
+      </div>
+      <div class="card rev-card">
+        <button class="edit-link" onclick="editFromReview(2)">Edit</button>
+        <h3>Pricing</h3>
+        <dl class="kv"><dt>Price</dt><dd>${b.price ? money(b.price) + ' ' + esc(b.unit) : '—'}</dd></dl>
+      </div>`;
+  }
+}
+
+function render(rebuild) {
+  if (rebuild === false) { renderIsland(); return; }
+  /* keep skin toggle in sync (after restore) */
+  $('skinContract').classList.toggle('active', S.skin === 'contract');
+  $('skinBlock').classList.toggle('active', S.skin === 'block');
+  renderRail(); renderPanel(); renderIsland();
+}
+render();
+</script>

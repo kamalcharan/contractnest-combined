@@ -1,0 +1,458 @@
+<title>ContractNest UX — Audit &amp; North-Star Recommendation</title>
+<style>
+  :root {
+    --bg: #FAF9F6;
+    --surface: #FFFFFF;
+    --surface-2: #F1F2ED;
+    --ink: #1C2420;
+    --muted: #5B655F;
+    --faint: #8A938D;
+    --line: #E2E4DD;
+    --accent: #0B6B63;
+    --accent-soft: #E3F0EE;
+    --crit: #B3402F;
+    --crit-soft: #F7E8E4;
+    --warn: #8F6B0C;
+    --warn-soft: #F6EFDB;
+    --good: #3E7C4F;
+    --good-soft: #E6F0E8;
+    --radius: 6px;
+    --serif: 'Charter', 'Bitstream Charter', 'Sitka Text', Cambria, Georgia, serif;
+    --sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --mono: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #131715;
+      --surface: #1B211E;
+      --surface-2: #222925;
+      --ink: #E7EAE5;
+      --muted: #A0AAA3;
+      --faint: #79837C;
+      --line: #2C342F;
+      --accent: #55B8AB;
+      --accent-soft: #1B2E2B;
+      --crit: #E28170;
+      --crit-soft: #35211D;
+      --warn: #D9AC45;
+      --warn-soft: #322A16;
+      --good: #84BE8F;
+      --good-soft: #1D2B20;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #FAF9F6; --surface: #FFFFFF; --surface-2: #F1F2ED;
+    --ink: #1C2420; --muted: #5B655F; --faint: #8A938D; --line: #E2E4DD;
+    --accent: #0B6B63; --accent-soft: #E3F0EE;
+    --crit: #B3402F; --crit-soft: #F7E8E4;
+    --warn: #8F6B0C; --warn-soft: #F6EFDB;
+    --good: #3E7C4F; --good-soft: #E6F0E8;
+  }
+  :root[data-theme="dark"] {
+    --bg: #131715; --surface: #1B211E; --surface-2: #222925;
+    --ink: #E7EAE5; --muted: #A0AAA3; --faint: #79837C; --line: #2C342F;
+    --accent: #55B8AB; --accent-soft: #1B2E2B;
+    --crit: #E28170; --crit-soft: #35211D;
+    --warn: #D9AC45; --warn-soft: #322A16;
+    --good: #84BE8F; --good-soft: #1D2B20;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.6;
+    margin: 0;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 48px 24px 96px; }
+
+  h1, h2, h3 { font-family: var(--serif); text-wrap: balance; line-height: 1.2; }
+  h1 { font-size: 2.3rem; font-weight: 700; margin: 8px 0 12px; }
+  h2 { font-size: 1.55rem; font-weight: 700; margin: 0 0 6px; }
+  h3 { font-size: 1.15rem; font-weight: 700; margin: 0 0 8px; }
+  p { margin: 0 0 14px; max-width: 72ch; }
+  section { margin-top: 64px; }
+
+  .eyebrow {
+    font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--accent); margin-bottom: 10px;
+  }
+  .lede { font-size: 1.08rem; color: var(--muted); max-width: 68ch; }
+  .meta { font-size: 0.82rem; color: var(--faint); margin-top: 18px; display: flex; gap: 18px; flex-wrap: wrap; }
+
+  header.doc { border-bottom: 1px solid var(--line); padding-bottom: 32px; }
+
+  .chip {
+    display: inline-block; font-size: 0.7rem; font-weight: 600;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 2px 9px; border-radius: 999px; white-space: nowrap;
+  }
+  .chip.crit { background: var(--crit-soft); color: var(--crit); }
+  .chip.warn { background: var(--warn-soft); color: var(--warn); }
+  .chip.good { background: var(--good-soft); color: var(--good); }
+  .chip.info { background: var(--accent-soft); color: var(--accent); }
+
+  code, .path {
+    font-family: var(--mono); font-size: 0.82em;
+    background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 4px; padding: 1px 5px; word-break: break-all;
+  }
+
+  /* verdict panel */
+  .verdict {
+    margin-top: 36px; border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--surface); overflow: hidden;
+  }
+  .verdict-head {
+    padding: 20px 24px; border-bottom: 1px solid var(--line);
+    display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+  }
+  .verdict-head strong { font-family: var(--serif); font-size: 1.2rem; }
+  .verdict-body { padding: 20px 24px; }
+  .scorecard { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--line); border-top: 1px solid var(--line); }
+  .score { background: var(--surface); padding: 14px 16px; }
+  .score .dim { font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); }
+  .score .val { font-family: var(--serif); font-size: 1.05rem; font-weight: 700; margin-top: 2px; }
+  .score .val.crit { color: var(--crit); }
+  .score .val.warn { color: var(--warn); }
+  .score .val.good { color: var(--good); }
+
+  /* findings */
+  .finding {
+    border: 1px solid var(--line); border-left: 3px solid var(--line);
+    border-radius: var(--radius); background: var(--surface);
+    padding: 16px 20px; margin-bottom: 14px;
+  }
+  .finding.crit { border-left-color: var(--crit); }
+  .finding.warn { border-left-color: var(--warn); }
+  .finding .f-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+  .finding .f-title { font-weight: 650; }
+  .finding p { color: var(--muted); font-size: 0.94rem; margin-bottom: 6px; }
+  .finding .refs { font-size: 0.8rem; color: var(--faint); }
+
+  /* flow map */
+  .map { display: grid; gap: 20px; grid-template-columns: 1fr 1fr; margin: 24px 0; }
+  @media (max-width: 720px) { .map { grid-template-columns: 1fr; } }
+  .map-col { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); padding: 18px; }
+  .map-col h4 { margin: 0 0 12px; font-size: 0.78rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); font-weight: 600; }
+  .node {
+    border: 1px solid var(--line); border-radius: 5px; background: var(--surface-2);
+    padding: 8px 12px; font-size: 0.85rem; margin-bottom: 8px;
+  }
+  .node small { display: block; color: var(--faint); font-size: 0.75rem; }
+  .node.dead { border-style: dashed; color: var(--faint); }
+  .node.spine { background: var(--accent-soft); border-color: var(--accent); }
+  .node.spine strong { color: var(--accent); }
+
+  /* pillars */
+  .pillar { margin-bottom: 36px; }
+  .pillar-num {
+    font-family: var(--serif); font-size: 0.95rem; font-weight: 700;
+    color: var(--accent); letter-spacing: 0.04em;
+  }
+  .pillar ul { margin: 8px 0 0; padding-left: 20px; }
+  .pillar li { margin-bottom: 8px; max-width: 72ch; }
+  .pillar li strong { font-weight: 650; }
+
+  /* tables */
+  .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); margin: 18px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.9rem; background: var(--surface); }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); font-weight: 600; background: var(--surface-2); }
+  tr:last-child td { border-bottom: none; }
+  td.num { font-variant-numeric: tabular-nums; }
+
+  .callout {
+    border: 1px solid var(--accent); border-radius: var(--radius);
+    background: var(--accent-soft); padding: 16px 20px; margin: 20px 0;
+    max-width: 76ch;
+  }
+  .callout p { margin: 0; color: var(--ink); }
+
+  a { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+
+<header class="doc">
+  <div class="eyebrow">ContractNest · UX Audit &amp; Recommendation</div>
+  <h1>One spine, three skins: a north-star UX for Catalog Studio, Contracts, and Templates</h1>
+  <p class="lede">A code-level audit of <code>/catalog-studio/configure</code>, the contract creation wizard, and both template creation flows — followed by a concrete proposal for the ultimate UX and a phased roadmap to get there.</p>
+  <div class="meta">
+    <span>Scope: contractnest-ui</span>
+    <span>Method: full source walkthrough with file:line evidence</span>
+    <span>July 2026</span>
+  </div>
+</header>
+
+<!-- ══════════════ VERDICT ══════════════ -->
+<div class="verdict">
+  <div class="verdict-head">
+    <strong>The verdict</strong>
+    <span class="chip warn">Good bones, fragmented delivery</span>
+  </div>
+  <div class="verdict-body">
+    <p>Individually, each flow shows real product thinking — per-type wizard steps, server-side contract drafts, a shared Floating Action Island, VaNi AI entry points. But the three flows were built as <strong>parallel implementations that never converged</strong>: four wizard frameworks, two toast systems, two template-authoring paradigms, two block libraries, and roughly 7,000 lines of orphaned dead code sitting beside the live code. The user pays for this in the three ways that matter most in a long-form authoring product: <strong>lost work</strong> (no refresh protection, a Save Draft button that does nothing), <strong>silent walls</strong> (disabled buttons with no explanation), and <strong>broken bridges</strong> (the "Use template" button drops the template on the floor).</p>
+  </div>
+  <div class="scorecard">
+    <div class="score"><div class="dim">Data safety</div><div class="val crit">At risk</div></div>
+    <div class="score"><div class="dim">Guidance</div><div class="val warn">Silent</div></div>
+    <div class="score"><div class="dim">Navigation</div><div class="val warn">Inconsistent</div></div>
+    <div class="score"><div class="dim">Feedback</div><div class="val warn">Mixed</div></div>
+    <div class="score"><div class="dim">Visual system</div><div class="val warn">Divergent</div></div>
+    <div class="score"><div class="dim">AI assist</div><div class="val warn">Uneven</div></div>
+  </div>
+</div>
+
+<!-- ══════════════ CURRENT STATE MAP ══════════════ -->
+<section>
+  <div class="eyebrow">Part 1 · Where things stand</div>
+  <h2>The current landscape: four wizards, one product</h2>
+  <p>The first structural surprise: <code>/catalog-studio/configure</code> is not a wizard at all. It is a three-panel <strong>Block Library</strong> (category rail · card grid · slide-in editor); the actual block wizard lives behind <code>blocks/new</code> and <code>blocks/:id/edit</code> as a separate 442-line component with per-type step sequences (2–6 steps depending on block type). The contract wizard is a 2,906-line modal component with <strong>12 steps</strong> (its own header comment still says 8), reused in template mode with 9 steps and RFQ mode with 6. Templates can additionally be authored in a completely different drag-and-drop canvas, and admins get a third, separate 9-step global designer.</p>
+
+  <div class="map">
+    <div class="map-col">
+      <h4>Today — parallel stacks</h4>
+      <div class="node"><strong>Block wizard</strong><small>own stepper, footer validation summary, no-op Save Draft</small></div>
+      <div class="node"><strong>Contract wizard</strong> (12 / 9 / 6 steps)<small>2,906-line god-file, two progress indicators, server drafts</small></div>
+      <div class="node"><strong>Template DnD designer</strong><small>second authoring paradigm for the same object</small></div>
+      <div class="node"><strong>Admin global designer</strong><small>9 steps, no draft persistence, stubbed AI</small></div>
+      <div class="node dead"><strong>Dead trees</strong> ~7,000 lines<small>pages/contracts/create/steps, pages/templates/create, "classic" blocks library</small></div>
+    </div>
+    <div class="map-col">
+      <h4>Proposed — one spine</h4>
+      <div class="node spine"><strong>WizardShell framework</strong><small>stepper · autosave · resume · validation · review · guards</small></div>
+      <div class="node">Block authoring <small>skin over the shell, per-type step registry</small></div>
+      <div class="node">Contract authoring <small>4 phases wrapping the 12 steps; review-first from template</small></div>
+      <div class="node">Template authoring <small>one paradigm: wizard authoring + canvas as arrange step</small></div>
+      <div class="node spine"><strong>One design kit</strong><small>one toast · one loader · one confirm dialog · one progress bar</small></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════ FINDINGS ══════════════ -->
+<section>
+  <div class="eyebrow">Part 2 · Findings</div>
+  <h2>What's hurting users today</h2>
+  <p>Findings are ordered by user impact. Every claim is anchored to source; the evidence appendix at the end lists exact locations.</p>
+
+  <h3 style="margin-top:28px">Trust &amp; data safety</h3>
+
+  <div class="finding crit">
+    <div class="f-head"><span class="chip crit">Critical</span><span class="f-title">"Save Draft" in the block wizard does nothing</span></div>
+    <p>The button is prominently rendered in the wizard footer, but its handler is a <code>console.log</code>. A user who clicks it, sees no error, and closes the tab has lost everything — while believing it was saved. This is the single most trust-damaging pattern in the product.</p>
+    <div class="refs">BlockWizardContent.tsx:278–281 · WizardFooter.tsx:155–168</div>
+  </div>
+
+  <div class="finding crit">
+    <div class="f-head"><span class="chip crit">Critical</span><span class="f-title">Refresh or mis-navigation silently destroys work in three of four flows</span></div>
+    <p>There is no <code>beforeunload</code> handler anywhere in the app and no router blocker. The block wizard has zero persistence. The contract wizard autosaves only when you press Continue <em>after</em> the details step — steps 0–3 (path, nomenclature, acceptance, counterparty) are never saved. The admin global designer persists nothing at all across its 9 steps.</p>
+    <div class="refs">ContractWizard/index.tsx:805, 1165 · global-designer/index.tsx:80 · grep "beforeunload" = 0 hits</div>
+  </div>
+
+  <div class="finding crit">
+    <div class="f-head"><span class="chip crit">Critical</span><span class="f-title">"Use this template" is a broken bridge</span></div>
+    <p>The templates list navigates to <code>/contracts?action=create&amp;template=&lt;id&gt;</code>, but the contracts hub never reads either query param. The user lands on a plain list page, template silently discarded. Several other links on the templates pages point to routes that don't exist and fall through to the 404 page.</p>
+    <div class="refs">service-contracts/templates/index.tsx:421, 578, 602, 952 · templates/preview.tsx:356, 388, 969 · hub/index.tsx (params never read)</div>
+  </div>
+
+  <div class="finding crit">
+    <div class="f-head"><span class="chip crit">Critical</span><span class="f-title">Admin AI designer streams a fake animation over a stub</span></div>
+    <p>"Design with VaNi" in the global designer plays a 7-step streaming progress sequence, but the generator is an explicitly documented deterministic stub with no backend. Shipping mock AI as real UI erodes trust in the genuine VaNi features elsewhere (the contract-side composer is real).</p>
+    <div class="refs">global-designer/ai/useGenerateRecipe.ts:6–11, 50 · VaNiDesignerPanel.tsx</div>
+  </div>
+
+  <h3 style="margin-top:28px">Guidance &amp; feedback</h3>
+
+  <div class="finding warn">
+    <div class="f-head"><span class="chip warn">Major</span><span class="f-title">Validation blocks silently instead of guiding</span></div>
+    <p>The contract wizard's Continue button simply greys out with no explanation of what's missing. The block wizard validates only on Next and surfaces errors as a summary in the footer — no inline field errors, no red borders, no scroll-to-field, so on a long step the user can't see why Continue "did nothing". Worst case: the global designer validates the template name at final save with a destructive toast, then force-jumps the user back 8 steps.</p>
+    <div class="refs">ContractWizard/index.tsx:964–1001 · WizardFooter.tsx:71–98 · global-designer/index.tsx:263–265</div>
+  </div>
+
+  <div class="finding warn">
+    <div class="f-head"><span class="chip warn">Major</span><span class="f-title">A 1,659-line review step you can't edit from</span></div>
+    <p>Neither the contract review step nor the global designer's review exposes any "edit this section" affordance. To fix a typo spotted at review, the user pounds Back through up to 11 steps. No block wizard flow has a review step at all — users save 6 steps of configuration without ever seeing a consolidated summary.</p>
+    <div class="refs">ReviewSendStep.tsx (no onEditStep/goToStep) · ReviewPublishStep.tsx · WizardFooter.tsx:184</div>
+  </div>
+
+  <div class="finding warn">
+    <div class="f-head"><span class="chip warn">Major</span><span class="f-title">Two progress indicators on one screen, with different rules</span></div>
+    <p>The contract wizard renders clickable (backward-only) dots in the header <em>and</em> inert dots in the Floating Action Island. The global designer shows only the inert island dots. The block wizard's side stepper allows free jumping in edit mode but backward-only in create mode — three different mental models for "where am I and where can I click".</p>
+    <div class="refs">ContractWizard/index.tsx:2821–2852 · FloatingActionIsland.tsx:208–225 · WizardProgress.tsx:26 · BlockWizardContent.tsx:417</div>
+  </div>
+
+  <div class="finding warn">
+    <div class="f-head"><span class="chip warn">Major</span><span class="f-title">Heavy-load steps pack 25+ decisions onto one screen</span></div>
+    <p>ContractDetailsStep binds ~28 inputs on a single screen; BuyerSelectionStep (1,359 lines) and AssetSelectionStep (1,297 lines) are similarly dense. In the block wizard, PricingStep alone is 1,160 lines of fields. Long steps plus footer-only errors plus no autosave is the exact combination that produces abandoned wizards.</p>
+    <div class="refs">ContractDetailsStep.tsx (826) · BuyerSelectionStep.tsx · AssetSelectionStep.tsx · steps/service/PricingStep.tsx</div>
+  </div>
+
+  <h3 style="margin-top:28px">Coherence &amp; hygiene</h3>
+
+  <div class="finding warn">
+    <div class="f-head"><span class="chip warn">Major</span><span class="f-title">Two authoring paradigms for the same template object</span></div>
+    <p>From the same templates list page, one button opens the contract wizard in template mode (9 steps) and another opens a full drag-and-drop canvas designer (854 lines, react-dnd). Same artifact, two entirely different UIs — users can't build a stable mental model, and every improvement must be built twice.</p>
+    <div class="refs">catalog-studio/templates-list.tsx:883, 899 · service-contracts/templates/designer/index.tsx</div>
+  </div>
+
+  <div class="finding warn">
+    <div class="f-head"><span class="chip warn">Major</span><span class="f-title">Fragmented design kit: two toasts, three loaders, two confirms, hand-rolled buttons</span></div>
+    <p>ContractWizard uses the VaNi toast; the global designer and DnD designer use the shadcn toast. Loaders range from the branded VaNiLoader to lucide spinners to a hand-rolled CSS circle to bare "Loading blocks..." text. Delete confirmation is a styled modal on one page and <code>window.confirm</code> on another. Block-wizard buttons re-implement hover states with inline styles and mouse events instead of a shared Button.</p>
+    <div class="refs">ContractWizard/index.tsx:26 · global-designer/index.tsx:526 · configure.tsx:205, 266–281 · edit.tsx:292–347 · WizardFooter.tsx:114–186</div>
+  </div>
+
+  <div class="finding warn">
+    <div class="f-head"><span class="chip warn">Major</span><span class="f-title">~7,000 lines of dead code shadowing the live flows</span></div>
+    <p>An entire earlier contract wizard (<code>pages/contracts/create/steps/</code>, 8 step files), two duplicated template page trees, and the 1,094-line "classic" block library are unreferenced by the router yet still in the tree — one is even still linked from the equipment page. Dead code here isn't just hygiene: it actively misleads anyone (human or AI) trying to change the real flow, and the two separate copies of the block wizard's step definitions have already begun to drift.</p>
+    <div class="refs">pages/contracts/create/steps/** · pages/templates/create/** · catalog-studio/blocks.tsx · equipment.tsx:350 · wizard-data.ts vs data/wizard-steps.ts</div>
+  </div>
+
+  <div class="finding">
+    <div class="f-head"><span class="chip info">Minor</span><span class="f-title">Smaller cuts that add up</span></div>
+    <p>Block-wizard save button stays clickable during save (double-submit risk); a navigation-state success toast is dispatched but never read (dead feedback path, masked by a second toast from the mutation hook); edit mode starts at "step 2" while step 1 is hidden (off-by-one numbering); wizard shells are fixed desktop layouts with no responsive collapse; unhandled steps render a hardcoded "🚧 available soon" placeholder; empty-category state shows only a dashed add-tile with no onboarding.</p>
+    <div class="refs">WizardFooter.tsx (no isSaving prop) · edit.tsx:118–126 · edit.tsx:34, 279–281 · WizardProgress.tsx:33 · BlockWizardContent.tsx:398–404 · BlockGrid.tsx:150–202</div>
+  </div>
+</section>
+
+<!-- ══════════════ RECOMMENDATION ══════════════ -->
+<section>
+  <div class="eyebrow">Part 3 · Recommendation</div>
+  <h2>The ultimate UX: one spine, three skins</h2>
+  <p>The insight the audit forces: ContractNest doesn't have a catalog problem, a contract problem, and a template problem. It has <strong>one problem — long-form authoring — expressed three times</strong>. Blocks, contracts, and templates are all "build a structured document step by step, with money attached". The ultimate UX is therefore not three redesigns; it is one authoring spine that all three flows wear as skins, so every guarantee (never lose work, always know why you're blocked, always edit from review) is built once and holds everywhere.</p>
+
+  <div class="callout">
+    <p><strong>The one-sentence north star:</strong> a user can start any authoring flow, walk away mid-step, come back on any device, resume exactly where they left off, always see why they can't proceed, and always jump from the review straight to the field that needs fixing.</p>
+  </div>
+
+  <div class="pillar">
+    <div class="pillar-num">Pillar 1</div>
+    <h3>WizardShell — a single authoring framework</h3>
+    <p>Extract one shell component that owns everything the four wizards currently reimplement, and let each flow supply only a step registry and step bodies:</p>
+    <ul>
+      <li><strong>Never lose work.</strong> Debounced autosave from the <em>first keystroke</em> (server draft where an API exists, localStorage fallback where it doesn't), plus a router blocker and <code>beforeunload</code> guard. The draft pill ("Saving… / Saved") the contract wizard already has becomes universal.</li>
+      <li><strong>Resumable by URL.</strong> Wizard state keyed by draft id and step in the route (<code>/contracts/new/:draftId/:step</code>). Refresh, share, or reopen on another device and you land exactly where you were. This also kills the modal-wizard pattern's biggest weakness — the browser back button currently exits the whole wizard.</li>
+      <li><strong>One validation contract.</strong> Each step exports <code>validate() → field-level errors</code>. The shell renders inline errors at the field, an error summary that scrolls-to-field on click, and — crucially — <strong>never a silently disabled button</strong>: Continue stays enabled and, when pressed with errors, focuses the first problem. A short hint under the button ("Add a contract name to continue") replaces the mystery grey-out.</li>
+      <li><strong>One progress model.</strong> A single stepper (side rail on desktop, collapsed top bar on mobile): completed steps always clickable, future steps visibly locked with a reason. Delete the second dot-row; keep the Floating Action Island as the action bar only (Back / Continue / draft status).</li>
+      <li><strong>Review as a contract, not a page.</strong> Every flow ends in a generated review composed of per-step summary cards, each with an Edit link that deep-links to that step and returns to review on save. This single pattern fixes the block wizard's missing review, the contract wizard's 1,659-line dead-end, and the global designer's late-toast failure at once.</li>
+      <li><strong>One kit.</strong> One toast provider, one loader (VaNi-branded for full-screen, one spinner for inline), one confirm dialog, one Button. Retire <code>window.confirm</code>, inline-style hover hacks, and bare "Loading..." text in the same sweep.</li>
+    </ul>
+  </div>
+
+  <div class="pillar">
+    <div class="pillar-num">Pillar 2</div>
+    <h3>Contract wizard — 12 steps become 4 phases, and templates become "review-first"</h3>
+    <ul>
+      <li><strong>Group, don't just count.</strong> Keep the 12 granular steps but present them as four named phases: <strong>Setup</strong> (path · nomenclature · counterparty), <strong>Terms</strong> (acceptance · details · billing cycle), <strong>Scope</strong> (assets · service blocks · billing view), <strong>Finalize</strong> (evidence · events · review). The stepper shows phases; steps become sub-progress within a phase. Twelve dots feels like a tax form; four chapters feels like a guided build.</li>
+      <li><strong>Review-first from template.</strong> Today "From Template" is marked recommended but still walks the full wizard. Invert it: choosing a template lands the user directly on a <em>pre-filled review screen</em>, with every section marked "from template" and editable in place. They only touch what differs — counterparty, dates, price. This turns the 80% case from a 12-step march into a 2-minute confirm, and it's the feature that makes templates actually worth authoring.</li>
+      <li><strong>Split the details cliff.</strong> ContractDetailsStep's ~28 inputs collapse into essentials + progressive disclosure ("Advanced terms" accordion for grace periods, EMI, tax nuances), with smart defaults from nomenclature and tenant settings.</li>
+      <li><strong>Fix the bridge.</strong> "Use template" from the templates list must open the wizard with the template applied — one consistent handoff mechanism (router state or a real query-param reader), used by every entry point, with a test that fails if it breaks again.</li>
+    </ul>
+  </div>
+
+  <div class="pillar">
+    <div class="pillar-num">Pillar 3</div>
+    <h3>Templates — one paradigm, with the canvas demoted to a step</h3>
+    <ul>
+      <li><strong>Converge on the wizard</strong> as the single template-authoring flow (tenant and admin skins of the same shell; the admin skin adds industries, recipe slots, and publish states as extra steps).</li>
+      <li><strong>Keep the drag-and-drop canvas — as the "Arrange blocks" step</strong>, not a rival full-page paradigm. Its strength (spatial composition of blocks) is a step-sized job; its weakness (no guidance, no validation, no draft) disappears once it lives inside the shell.</li>
+      <li><strong>Show lifecycle honestly.</strong> Only signed-off templates are usable in contracts today, but nothing on the templates list communicates that. Add lifecycle badges (Draft / In review / Published) with the publish action inline, so "why can't I use my template?" answers itself.</li>
+    </ul>
+  </div>
+
+  <div class="pillar">
+    <div class="pillar-num">Pillar 4</div>
+    <h3>Catalog Studio — a store-manager's library, with an honest wizard</h3>
+    <ul>
+      <li><strong>The library concept is right — commit to it.</strong> Delete the "classic" 1,094-line blocks page, repoint the equipment page's link, and make <code>configure</code> the only library. Give it a real zero-state ("Your catalog is empty — start with a Service block" + template gallery), skeleton cards instead of "Loading blocks...", and the same confirm dialog as everywhere else.</li>
+      <li><strong>Make Save Draft real or remove the button today.</strong> Under the shell, block drafts persist like contract drafts, and the button disappears entirely because autosave subsumes it.</li>
+      <li><strong>One step registry.</strong> Collapse the two duplicated step-definition files into one; move each step's validation into the step module beside its UI; add the missing review step ("Here's your Service block: 3 resources, ₹12,000/quarter, 2 business rules — Save?").</li>
+      <li><strong>Fix the numbering.</strong> In edit mode, hide the type step from the count instead of starting at a visible "step 2".</li>
+    </ul>
+  </div>
+
+  <div class="pillar">
+    <div class="pillar-num">Pillar 5</div>
+    <h3>VaNi — one assistant, honestly present everywhere</h3>
+    <ul>
+      <li><strong>One assist surface across all three flows:</strong> the same "Draft with VaNi" affordance in the block wizard ("describe the service, I'll draft the block"), the contract wizard (already real), and template authoring — same placement, same visual language, same apply/review interaction.</li>
+      <li><strong>Never fake it.</strong> Feature-flag the admin recipe generator off until the backend exists; fake streaming over a stub costs more trust than the feature's absence.</li>
+      <li><strong>VaNi as the guide, not just the generator:</strong> the shell's validation hints and empty states are natural VaNi moments ("Most electronics-service tenants add a preventive-maintenance block here").</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ══════════════ ROADMAP ══════════════ -->
+<section>
+  <div class="eyebrow">Part 4 · Roadmap</div>
+  <h2>Sequenced by user pain, not by architecture</h2>
+  <p>Phase 0 is deliberately small and shippable in days — it removes every active trap without touching architecture. The shell lands in Phase 1 and everything after is a re-skin onto it.</p>
+
+  <div class="table-scroll">
+    <table>
+      <tr><th>Phase</th><th>Theme</th><th>Contents</th><th>Effort</th></tr>
+      <tr>
+        <td><strong>0</strong></td>
+        <td>Defuse the traps</td>
+        <td>Remove/wire the no-op Save Draft · add <code>beforeunload</code> + router guards to all wizards · fix "Use template" handoff and the 404 links · disable save buttons while saving · scroll-to-error on blocked Continue · flag off the stub AI panel</td>
+        <td class="num">~1–2 wks</td>
+      </tr>
+      <tr>
+        <td><strong>1</strong></td>
+        <td>Build the spine</td>
+        <td>Extract WizardShell (stepper, autosave/resume by URL, validation contract, review-with-edit, one toast/loader/confirm) · migrate the <em>block wizard</em> first as the smallest proof · delete dead trees and the classic library</td>
+        <td class="num">~3–4 wks</td>
+      </tr>
+      <tr>
+        <td><strong>2</strong></td>
+        <td>Contract flow</td>
+        <td>Migrate ContractWizard onto the shell · 4-phase grouping · split the details cliff with progressive disclosure · <strong>review-first template path</strong> · full-route wizard (goodbye modal), browser back works</td>
+        <td class="num">~4–5 wks</td>
+      </tr>
+      <tr>
+        <td><strong>3</strong></td>
+        <td>Templates &amp; VaNi</td>
+        <td>Converge tenant + admin template authoring onto the shell · canvas becomes the Arrange step · lifecycle badges + inline publish · unified VaNi assist surface (real backends only) · mobile-responsive stepper</td>
+        <td class="num">~4 wks</td>
+      </tr>
+    </table>
+  </div>
+
+  <p>Success measures worth instrumenting from Phase 0: wizard abandonment rate per step, drafts resumed vs. abandoned, time-to-contract from template (target: under 3 minutes with review-first), and support tickets mentioning "lost my work".</p>
+</section>
+
+<!-- ══════════════ EVIDENCE ══════════════ -->
+<section>
+  <div class="eyebrow">Appendix</div>
+  <h2>Evidence index</h2>
+  <p>Key anchors for every major claim, relative to <code>contractnest-ui/src/</code>.</p>
+  <div class="table-scroll">
+    <table>
+      <tr><th>Claim</th><th>Location</th></tr>
+      <tr><td>Configure page is a 3-panel library, not a wizard</td><td><code>pages/catalog-studio/configure.tsx:283–372</code> (376 lines)</td></tr>
+      <tr><td>Save Draft is a console.log no-op</td><td><code>components/catalog-studio/BlockWizard/BlockWizardContent.tsx:278–281</code></td></tr>
+      <tr><td>Block wizard errors shown only in footer</td><td><code>WizardFooter.tsx:71–98</code>; validation gate <code>BlockWizardContent.tsx:246–261</code></td></tr>
+      <tr><td>Contract wizard god-file, 12 steps ("8" in comment)</td><td><code>components/contracts/ContractWizard/index.tsx:142–180</code> (2,906 lines)</td></tr>
+      <tr><td>Autosave only on Continue past details step</td><td><code>ContractWizard/index.tsx:805, 829, 1165</code></td></tr>
+      <tr><td>Silently disabled Continue</td><td><code>ContractWizard/index.tsx:964–1001</code>; <code>FloatingActionIsland.tsx:288</code></td></tr>
+      <tr><td>Dual progress indicators, backward-only header dots</td><td><code>ContractWizard/index.tsx:2821–2852</code>; <code>FloatingActionIsland.tsx:208–225</code></td></tr>
+      <tr><td>Review step has no edit-from-review</td><td><code>steps/ReviewSendStep.tsx</code> (1,659 lines, no goToStep prop)</td></tr>
+      <tr><td>Template→contract query params never read</td><td><code>pages/service-contracts/templates/index.tsx:421, 578</code> vs <code>pages/contracts/hub/index.tsx</code></td></tr>
+      <tr><td>Links to nonexistent routes (404)</td><td><code>templates/index.tsx:602, 952</code>; <code>templates/preview.tsx:356, 388, 969</code></td></tr>
+      <tr><td>Two template paradigms from one list page</td><td><code>catalog-studio/templates-list.tsx:883, 899</code>; <code>service-contracts/templates/designer/index.tsx</code> (854 lines)</td></tr>
+      <tr><td>Admin AI is a deterministic stub with fake streaming</td><td><code>admin/global-designer/ai/useGenerateRecipe.ts:6–11, 50</code></td></tr>
+      <tr><td>Global designer: no drafts, window.confirm guard, late name validation</td><td><code>admin/global-designer/index.tsx:80, 263–265, 388</code></td></tr>
+      <tr><td>Dead code trees (~7,000 lines)</td><td><code>pages/contracts/create/steps/**</code>, <code>pages/templates/create/**</code>, <code>pages/contracts/create/templates/**</code>, <code>pages/catalog-studio/blocks.tsx</code></td></tr>
+      <tr><td>Two toast systems; three loader styles</td><td><code>ContractWizard/index.tsx:26</code> (VaNiToast) vs <code>global-designer/index.tsx</code> (shadcn); <code>configure.tsx:266–272</code>; <code>global-designer/index.tsx:526</code></td></tr>
+      <tr><td>Two delete-confirm patterns</td><td><code>configure.tsx:205</code> (window.confirm) vs <code>blocks/[id]/edit.tsx:292–347</code> (modal)</td></tr>
+      <tr><td>Duplicated block-wizard step definitions</td><td><code>utils/catalog-studio/wizard-data.ts</code> vs <code>pages/catalog-studio/data/wizard-steps.ts</code></td></tr>
+      <tr><td>Giant step files</td><td>PricingStep 1,160 · ResourceDependencyStep 1,156 · BuyerSelectionStep 1,359 · AssetSelectionStep 1,297 · BillingViewStep 1,294</td></tr>
+    </table>
+  </div>
+</section>
+
+</div>
