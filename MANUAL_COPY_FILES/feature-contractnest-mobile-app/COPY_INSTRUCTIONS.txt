@@ -1,0 +1,104 @@
+═══════════════════════════════════════════════════
+📦 FEATURE: ContractNest Mobile App (Expo rebuild)
+═══════════════════════════════════════════════════
+Branch folder : feature-contractnest-mobile-app
+Submodules    : ContractNest-Mobile (ONLY)
+Verified      : TypeScript strict — 0 errors · Metro/Hermes bundle — OK
+
+WHAT THIS DELIVERS
+  • Rebrands the FamilyKnows scaffold into the ContractNest mobile app
+  • Login against the live API (Supabase JWT, tenant selection, session restore)
+  • Signup from invitation (validate code+secret → register new / accept existing)
+  • Registration placeholder → points to website onboarding
+  • Contact management on the LIVE API (list/search/filter, detail with
+    tap-to-call/mail/WhatsApp, create/edit with validation + duplicate handling,
+    archive/restore/delete)
+  • UI previews (mock data, web-exact statuses & colors): Contract Hub,
+    Finance AR/AP, Ops Cockpit, Cadence event schedule
+  • All 12 web themes (incl. contract-nest, vikuna-black) with dark mode;
+    default = bharathavarsha, same as web
+  • Toasts, skeleton loaders, empty states throughout
+
+⚠️ DEPENDENCIES CHANGED — run `npm install` inside ContractNest-Mobile after
+   copying (removed: rneui, redux, i18next, mmkv, sqlite, vector-icons, etc.;
+   added: @expo/vector-icons).
+
+═══════════════════════════════════════════════════
+STEP 1 — Navigate to project
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+═══════════════════════════════════════════════════
+STEP 2 — DELETE removed FamilyKnows files (PowerShell)
+═══════════════════════════════════════════════════
+cd ContractNest-Mobile
+
+Remove-Item -Recurse -Force "productdocument", "src\components\layout", "src\components\navigation", "src\components\common", "src\components\themed", "src\constants", "src\features\onboarding", "src\features\dashboard", "src\features\auth\screens", "src\features\auth\components", "src\navigation\stacks", "src\store" -ErrorAction SilentlyContinue
+
+Remove-Item -Force "create-assets.js", "package.json.backup", "src\contexts\WorkspaceContext.tsx", "src\features\auth\index.ts", "src\navigation\MainNavigator.tsx", "src\navigation\index.ts", "src\services\index.ts", "src\theme\index.ts", "src\types\index.ts" -ErrorAction SilentlyContinue
+
+cd ..
+
+═══════════════════════════════════════════════════
+STEP 3 — COPY new/updated files
+═══════════════════════════════════════════════════
+Copy-Item "MANUAL_COPY_FILES\feature-contractnest-mobile-app\ContractNest-Mobile\*" -Destination "ContractNest-Mobile\" -Recurse -Force
+
+Write-Host "✅ All files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+STEP 4 — Install deps & start
+═══════════════════════════════════════════════════
+cd ContractNest-Mobile
+npm install
+npm run typecheck   # should report no errors
+npm start           # Expo dev server → scan QR with Expo Go / dev client
+
+# Optional: point at a local API instead of production:
+#   $env:EXPO_PUBLIC_API_URL="http://<your-ip>:3000"; npm start
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Login with a real account → lands on Home with workspace name
+- [ ] Login with account that has no workspace → "finish setup on web" notice
+- [ ] "Have an invitation?" → validate a real code+secret → workspace preview
+      → new-user registration OR existing-user accept → back to login
+- [ ] "New to ContractNest?" → web registration pointer opens the website
+- [ ] Contacts: list loads, search debounces, classification chips filter,
+      infinite scroll past 20, pull-to-refresh
+- [ ] Contact detail: tap phone → dialer, email → mail app, WhatsApp → wa.me
+- [ ] Create contact: validation errors show; duplicate mobile → 409 dialog
+      with "Create anyway"; success toast; appears in list
+- [ ] Edit contact, archive/restore, delete (confirm dialog)
+- [ ] Hub / AR-AP / Ops / Cadence tabs render preview data, filters work
+- [ ] Appearance: switch several themes + dark mode → persists after app restart
+- [ ] Account menu: workspace switcher (if multi-tenant), sign out
+
+═══════════════════════════════════════════════════
+FILES ADDED / MODIFIED (46)
+═══════════════════════════════════════════════════
+Root: App.tsx, app.json, package.json, package-lock.json, README.md
+src/components/AppHeader.tsx, src/components/ui/index.tsx
+src/contexts/AuthContext.tsx, src/contexts/ToastContext.tsx
+src/navigation/RootNavigator.tsx, src/navigation/types.ts
+src/services/{config,session,apiClient,authService,contactService}.ts
+src/types/{api,contacts}.ts, src/utils/{format,validation}.ts
+src/theme/ThemeContext.tsx, src/theme/themes/* (12 themes, RN color fix)
+src/features/auth/{SplashScreen,LoginScreen,InvitationSignupScreen,RegisterInfoScreen}.tsx
+src/features/home/HomeScreen.tsx
+src/features/contacts/{ContactsScreen,ContactDetailScreen,ContactFormScreen}.tsx
+src/features/contracts/ContractHubScreen.tsx
+src/features/finance/FinanceScreen.tsx
+src/features/ops/OpsScreen.tsx
+src/features/settings/AppearanceScreen.tsx
+src/features/preview/mockData.ts
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+Phase-2 commit/merge commands will be provided after confirmation.
+═══════════════════════════════════════════════════
