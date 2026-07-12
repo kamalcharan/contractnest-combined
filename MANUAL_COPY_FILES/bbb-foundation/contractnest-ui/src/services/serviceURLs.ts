@@ -1233,6 +1233,13 @@ export const API_ENDPOINTS = {
     ADD_HOLIDAY: '/api/settings/cadence/holidays',
     REMOVE_HOLIDAY: (date: string) => `/api/settings/cadence/holidays?date=${date}`,
   },
+  // Group Session check-in — chair (authenticated) side. The member-facing
+  // public endpoints (/api/checkin/...) are called by a bare axios client.
+  SESSION_CHECKIN: {
+    ENSURE_TOKEN: '/api/session-checkin/token',
+    DECLARATIONS: '/api/session-checkin/declarations',
+    CONFIRM_DECLARATION: (id: string) => `/api/session-checkin/declarations/${id}/confirm`,
+  },
   SMART_FORMS: {
     // Convenience: admin template endpoints (same as ADMIN.SMART_FORMS)
     ADMIN: {
