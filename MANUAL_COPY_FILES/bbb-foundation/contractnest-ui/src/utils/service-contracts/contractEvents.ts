@@ -23,6 +23,7 @@ export interface ContractEvent {
   event_type: EventType;
   billing_sub_type?: BillingSubType;
   billing_cycle_label?: string;  // 'Monthly', 'EMI 3/5', 'Prepaid', etc.
+  audience?: 'individual' | 'group'; // 'group' => a Group Session occurrence (1:N attendance)
 
   // Schedule
   sequence_number: number;       // 1-based: 1 of 5, 2 of 5...
@@ -185,6 +186,7 @@ export function computeContractEvents(input: ComputeEventsInput): ContractEvent[
           block_name: block.name,
           category_id: block.categoryId || '',
           event_type: 'service',
+          audience: isGroupSession ? 'group' : undefined,
           sequence_number: i + 1,
           total_occurrences: qty,
           scheduled_date: date,
@@ -200,6 +202,7 @@ export function computeContractEvents(input: ComputeEventsInput): ContractEvent[
         block_name: block.name,
         category_id: block.categoryId || '',
         event_type: 'service',
+        audience: isGroupSession ? 'group' : undefined,
         sequence_number: 1,
         total_occurrences: 1,
         scheduled_date: new Date(startDate),

@@ -21,6 +21,7 @@ import {
   CircleDot,
   MinusCircle,
   Ban,
+  Users,
 } from 'lucide-react';
 import { getCurrencySymbol } from '@/utils/constants/currencies';
 import type { ContractEvent, ContractEventStatus } from '@/types/contractEvents';
@@ -154,8 +155,12 @@ export const EventCard: React.FC<EventCardProps> = ({
   const createAppointment = useCreateAppointment();
   const appointmentStatus = (event as any).appointment_status as string | undefined;
   const appointmentAt = (event as any).appointment_scheduled_at as string | undefined;
+  // Group Session occurrences are 1:N (attendance/roster), not 1:1 visits — so
+  // they present as a "Group Session" and never offer the single-appointment CTA.
+  const isGroupSession = (event as any).audience === 'group';
   const canBookAppointment =
     event.event_type === 'service' &&
+    !isGroupSession &&
     !appointmentStatus &&
     !['completed', 'cancelled'].includes(event.status);
   const isService = event.event_type === 'service';
@@ -193,8 +198,10 @@ export const EventCard: React.FC<EventCardProps> = ({
   const hasActions = !hideActions && resolvedTransitions.length > 0;
 
   // Type icon
-  const TypeIcon = isSparePart ? Package : isService ? Wrench : Receipt;
-  const typeLabel = isService ? 'Service Delivery' : isSparePart ? 'Spare Part' : (event.billing_cycle_label || 'Billing');
+  const TypeIcon = isGroupSession ? Users : isSparePart ? Package : isService ? Wrench : Receipt;
+  const typeLabel = isGroupSession
+    ? 'Group Session'
+    : isService ? 'Service Delivery' : isSparePart ? 'Spare Part' : (event.billing_cycle_label || 'Billing');
 
   const handleCardClick = () => {
     if (onViewContract) {
