@@ -162,6 +162,9 @@ const buildConfigurableBlock = (
       // Carry the full service-cycle config (incl. anchorWeekday) so occurrence
       // generation can snap to the weekday.
       serviceCycles: (block.meta as any)?.serviceCycles || (block.config as any)?.serviceCycles,
+      // Group Sessions fill the contract: keep the count auto-derived from the
+      // duration until the user pins it manually on the card.
+      autoCount: isGroupSession && serviceCycleDays && serviceCycleDays > 0 ? true : undefined,
     },
   } as ConfigurableBlock;
 };
@@ -291,6 +294,35 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
       count: subset.length,
     };
   }, [selectedBlocks, blocksForActiveTab, hasCoverageTypes]);
+
+  // ── Group Session auto-count ──────────────────────────────────────
+  // A Group Session runs on its cadence for the whole contract, so its
+  // occurrence count must track the duration — otherwise a session added while
+  // the duration was still the default (e.g. 1 month) keeps a stale count after
+  // the user extends the contract to a year. Recompute the count whenever the
+  // duration changes, but only while the session is still on auto-count; a
+  // manual edit on the card pins it (autoCount=false) and we leave it alone.
+  useEffect(() => {
+    if (!contractDuration) return;
+    const durationDays = contractDuration * 30;
+    let changed = false;
+    const next = selectedBlocks.map((b) => {
+      const isGroup = (b.config as any)?.audience === 'group' || b.categoryId === 'session';
+      const auto = (b.config as any)?.autoCount === true;
+      const cycle = b.serviceCycleDays;
+      if (isGroup && auto && cycle && cycle > 0) {
+        const derived = Math.max(1, Math.floor(durationDays / cycle));
+        if (b.quantity !== derived) {
+          changed = true;
+          const unitWithTax =
+            b.taxInclusion === 'inclusive' ? b.price : b.price + (b.price * (b.taxRate || 0)) / 100;
+          return { ...b, quantity: derived, totalPrice: Math.round(unitWithTax * derived * 100) / 100 };
+        }
+      }
+      return b;
+    });
+    if (changed) onBlocksChange(next);
+  }, [contractDuration, selectedBlocks, onBlocksChange]);
 
   const grandTotal = useMemo(() => {
     return selectedBlocks.reduce((sum, b) => sum + b.totalPrice, 0);
