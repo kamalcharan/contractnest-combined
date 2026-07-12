@@ -74,6 +74,14 @@ function addDays(date: Date, days: number): Date {
   return result;
 }
 
+/** First date on/after `date` that falls on weekday `wd` (0=Sun..6=Sat). */
+function firstWeekdayOnOrAfter(date: Date, wd: number): Date {
+  const d = new Date(date);
+  const diff = ((wd - d.getDay()) % 7 + 7) % 7;
+  d.setDate(d.getDate() + diff);
+  return d;
+}
+
 /** Add months to a date */
 function addMonths(date: Date, months: number): Date {
   const result = new Date(date);
@@ -149,10 +157,19 @@ export function computeContractEvents(input: ComputeEventsInput): ContractEvent[
     const qty = block.quantity || 1;
 
     if (block.serviceCycleDays && block.serviceCycleDays > 0 && qty > 1) {
-      // Recurring service: qty events, each serviceCycleDays apart
+      // Day-of-week anchor: when the cycle names a weekday (e.g. "alternate
+      // Saturdays"), occurrences snap to that weekday at a whole-week interval
+      // so they never drift. Otherwise fall back to the raw day interval.
+      const anchorWeekday = (block.config?.serviceCycles as { anchorWeekday?: number } | undefined)?.anchorWeekday;
+      const anchored = typeof anchorWeekday === 'number' && anchorWeekday >= 0 && anchorWeekday <= 6;
+      const everyNWeeks = Math.max(1, Math.round(block.serviceCycleDays / 7));
+      const anchorStart = anchored ? firstWeekdayOnOrAfter(startDate, anchorWeekday as number) : startDate;
+
+      // Recurring service: qty events, snapped to the weekday (or raw interval)
       for (let i = 0; i < qty; i++) {
-        const dayOffset = i * block.serviceCycleDays;
-        const date = addDays(startDate, dayOffset);
+        const date = anchored
+          ? addDays(anchorStart, i * everyNWeeks * 7)
+          : addDays(startDate, i * block.serviceCycleDays);
 
         events.push({
           id: makeEventId(block.id, 'service', i + 1),
