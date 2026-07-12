@@ -87,8 +87,15 @@ const buildConfigurableBlock = (
   const { currency, activeCoverageType, activeCoverageTabId, hasCoverageTypes } = ctx;
   const category = getCategoryById(block.categoryId);
 
-  const blockServiceCycles = (block.meta as any)?.serviceCycles;
-  const hasCustomCycle = blockServiceCycles?.enabled && blockServiceCycles?.days;
+  const blockServiceCycles = (block.meta as any)?.serviceCycles || (block.config as any)?.serviceCycles;
+  const blockAudience = (block.meta as any)?.audience || (block.config as any)?.audience;
+  const isGroupSession = blockAudience === 'group';
+  // Group Sessions are cadence-first: their cycle drives the roster occurrences,
+  // so honor the days even when `enabled` was never stamped on the config.
+  const hasCustomCycle = Boolean(
+    (blockServiceCycles?.enabled && blockServiceCycles?.days) ||
+    (isGroupSession && blockServiceCycles?.days)
+  );
   const defaultCycle = hasCustomCycle ? 'custom' : 'prepaid';
   const customCycleDays = hasCustomCycle ? blockServiceCycles.days : undefined;
   const serviceCycleDays = hasCustomCycle ? blockServiceCycles.days : undefined;
@@ -135,6 +142,14 @@ const buildConfigurableBlock = (
       // Inherit billing-only from the catalog block (fees/dues blocks never
       // generate service events); still toggleable per-contract on the card
       billingOnly: (block.meta as any)?.billingOnly === true || (block.config as any)?.billingOnly === true,
+      // Inherit audience (group => a session with a roster) and complimentary
+      // (free => no price, no billing) so the card shows the right options and
+      // generation branches correctly.
+      audience: (block.meta as any)?.audience || (block.config as any)?.audience,
+      complimentary: (block.meta as any)?.complimentary === true || (block.config as any)?.complimentary === true,
+      // Carry the full service-cycle config (incl. anchorWeekday) so occurrence
+      // generation can snap to the weekday.
+      serviceCycles: (block.meta as any)?.serviceCycles || (block.config as any)?.serviceCycles,
     },
   } as ConfigurableBlock;
 };

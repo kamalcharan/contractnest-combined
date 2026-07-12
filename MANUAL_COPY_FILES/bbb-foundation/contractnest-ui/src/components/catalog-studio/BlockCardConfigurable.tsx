@@ -75,6 +75,9 @@ export interface ConfigurableBlock {
     content?: string; // Text block content
     sku?: string; // Spare part SKU
     fileType?: string; // Document file type
+    audience?: 'individual' | 'group'; // Group Session marker (1:N attendance)
+    complimentary?: boolean; // Complimentary block — delivers occurrences but no price/billing
+    serviceCycles?: { anchorWeekday?: number; days?: number; enabled?: boolean }; // Cadence config
   };
 }
 
@@ -121,6 +124,12 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
   const IconComponent = getIconComponent(block.icon);
   const hasPricing = categoryHasPricing(block.categoryId || '');
+  // Group Sessions / complimentary blocks deliver occurrences (Quantity + Service Cycle)
+  // even when they carry no price. Gate delivery config on that, not on pricing alone.
+  const deliversOccurrences =
+    hasPricing || block.config?.audience === 'group' || !!block.serviceCycleDays;
+  // Price sections stay gated on real pricing AND not-complimentary.
+  const showPrice = hasPricing && block.config?.complimentary !== true;
 
   // Tax master data
   const { options: taxRateOptions } = useTaxRatesDropdown();
@@ -285,7 +294,7 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
                   {block.coverageTypeName}
                 </span>
               )}
-              {hasPricing && (
+              {deliversOccurrences && (
                 <span className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
                   {block.unlimited ? '∞' : `×${block.quantity}`} • {currentCycle.shortLabel}
                 </span>
@@ -293,8 +302,8 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
             </div>
           </div>
 
-          {/* Price - only for pricing categories */}
-          {hasPricing && (
+          {/* Price - only for pricing categories (hidden for complimentary) */}
+          {showPrice && (
             <div className="text-right">
               <span className="text-sm font-bold" style={{ color: colors.brand.primary }}>
                 {formatCurrency(Math.round(block.totalPrice), block.currency)}
@@ -337,8 +346,8 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
           style={{ borderColor: `${colors.utility.primaryText}10` }}
         >
           <div className="pt-3 space-y-4">
-            {/* Description for non-pricing blocks */}
-            {!hasPricing && block.description && (
+            {/* Description for pure non-delivering blocks (text/document) */}
+            {!deliversOccurrences && block.description && (
               <div
                 className="text-xs prose prose-xs max-w-none"
                 style={{ color: colors.utility.secondaryText }}
@@ -346,8 +355,8 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
               />
             )}
 
-            {/* Quantity Section - Limited/Unlimited Switch (pricing blocks only) */}
-            {hasPricing && <div>
+            {/* Quantity Section - Limited/Unlimited Switch (delivering blocks) */}
+            {deliversOccurrences && <div>
               <label
                 className="text-[10px] font-medium uppercase tracking-wide mb-1.5 block"
                 style={{ color: colors.utility.secondaryText }}
@@ -409,8 +418,8 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
               </div>
             </div>}
 
-            {/* Service Cycle Interval Card (pricing blocks, not unlimited) */}
-            {hasPricing && !block.unlimited && (
+            {/* Service Cycle Interval Card (delivering blocks, not unlimited) */}
+            {deliversOccurrences && !block.unlimited && (
               <div
                 className="p-3 rounded-xl border-2 border-dashed"
                 style={{
@@ -494,8 +503,8 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
               </div>
             )}
 
-            {/* Billing Cycle Section (pricing blocks only) */}
-            {hasPricing && <div>
+            {/* Billing Cycle Section (billing blocks only) */}
+            {showPrice && <div>
               <label
                 className="text-[10px] font-medium uppercase tracking-wide mb-1.5 block"
                 style={{ color: colors.utility.secondaryText }}
@@ -547,8 +556,8 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
               )}
             </div>}
 
-            {/* Advanced Settings (pricing blocks only) */}
-            {hasPricing && <>
+            {/* Advanced Settings (billing blocks only) */}
+            {showPrice && <>
             <div
               className="p-3 rounded-lg"
               style={{ backgroundColor: `${colors.utility.primaryText}05` }}
@@ -860,8 +869,8 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
             )}
             </>}
 
-            {/* Show Description toggle - always available for all block types */}
-            {!hasPricing && (
+            {/* Show Description toggle - shown when the priced Advanced Settings block is hidden */}
+            {!showPrice && (
               <div>
                 <button
                   onClick={() => handleConfigChange('showDescription', !block.config?.showDescription)}
