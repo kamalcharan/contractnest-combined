@@ -290,15 +290,21 @@ const buildServiceConfig = (block: Partial<Block>): Record<string, unknown> => {
     config.deliveryMode = deliveryMode;
   }
 
-  // Service cycles - wizard sets requiresCycles, cycleDays, cycleGracePeriod
+  // Service cycles - wizard sets requiresCycles, cycleDays, cycleGracePeriod,
+  // and optionally cycleAnchorWeekday (0=Sun..6=Sat) so occurrences snap to a
+  // fixed weekday instead of drifting.
   const requiresCycles = getField(block, 'requiresCycles');
   const cycleDays = getField(block, 'cycleDays');
+  const cycleAnchorWeekday = getField(block, 'cycleAnchorWeekday');
   const serviceCycles = getField(block, 'serviceCycles');
   if (requiresCycles || serviceCycles) {
     config.serviceCycles = serviceCycles || {
       enabled: requiresCycles,
       days: cycleDays,
       gracePeriod: getField(block, 'cycleGracePeriod'),
+      ...(cycleAnchorWeekday !== undefined && cycleAnchorWeekday !== null
+        ? { anchorWeekday: cycleAnchorWeekday }
+        : {}),
     };
   }
 

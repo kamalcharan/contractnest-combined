@@ -15,6 +15,9 @@ interface DeliveryStepProps {
     requiresCycles?: boolean;
     cycleDays?: number;
     cycleGracePeriod?: number;
+    // Optional day-of-week anchor: occurrences snap to this weekday (0=Sun..6=Sat)
+    // at a whole-week interval instead of drifting off a raw day count.
+    cycleAnchorWeekday?: number;
     // Billing-only: bills on its cycle, generates no service events/visits
     billingOnly?: boolean;
     // Audience: who receives each cycle — the contract's buyer (individual/1:1)
@@ -443,6 +446,38 @@ const DeliveryStep: React.FC<DeliveryStepProps> = ({ formData, onChange }) => {
                       </div>
                       <p className="text-xs mt-2" style={{ color: colors.utility.secondaryText }}>
                         How often should this service be repeated?
+                      </p>
+                    </div>
+
+                    {/* Day-of-week anchor — keeps occurrences on a fixed weekday */}
+                    <div>
+                      <label className="block text-sm font-medium mb-2" style={labelStyle}>
+                        Repeat on a fixed weekday?
+                      </label>
+                      <select
+                        value={
+                          formData.cycleAnchorWeekday ??
+                          (formData as { meta?: { serviceCycles?: { anchorWeekday?: number } } }).meta?.serviceCycles?.anchorWeekday ??
+                          ''
+                        }
+                        onChange={(e) =>
+                          onChange('cycleAnchorWeekday', e.target.value === '' ? undefined : parseInt(e.target.value))
+                        }
+                        className="w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 transition-all"
+                        style={{ ...inputStyle, borderRadius: '0.75rem' }}
+                      >
+                        <option value="">No — space by the interval above</option>
+                        <option value="0">Every Sunday</option>
+                        <option value="1">Every Monday</option>
+                        <option value="2">Every Tuesday</option>
+                        <option value="3">Every Wednesday</option>
+                        <option value="4">Every Thursday</option>
+                        <option value="5">Every Friday</option>
+                        <option value="6">Every Saturday</option>
+                      </select>
+                      <p className="text-xs mt-2" style={{ color: colors.utility.secondaryText }}>
+                        When set, occurrences snap to this weekday (e.g. a 14-day cycle → alternate Saturdays)
+                        instead of drifting.
                       </p>
                     </div>
 
