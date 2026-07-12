@@ -1238,6 +1238,16 @@ const ReviewSendStep: React.FC<ReviewSendStepProps> = ({
                       const lineTotal = block.unlimited ? effectivePrice : effectivePrice * block.quantity;
                       const blockPayType = perBlockPaymentType[block.id] || 'prepaid';
 
+                      // Group Session: surface its occurrence count + cadence so the
+                      // review reflects the real schedule (e.g. 25 sessions), not a
+                      // bare block. Non-pricing sessions otherwise show only a name.
+                      const isGroupSession = (block.config as any)?.audience === 'group' || categoryId === 'session';
+                      const gsAnchor = (block.config as any)?.serviceCycles?.anchorWeekday;
+                      const gsAnchorLabel =
+                        typeof gsAnchor === 'number' && gsAnchor >= 0 && gsAnchor <= 6
+                          ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][gsAnchor]
+                          : null;
+
                       return (
                         <div
                           key={block.id}
@@ -1274,8 +1284,9 @@ const ReviewSendStep: React.FC<ReviewSendStepProps> = ({
                               )}
                             </div>
 
-                            {/* Pricing tags - hidden in RFQ mode */}
-                            {hasPricing && !rfqMode && (
+                            {/* Pricing tags - hidden in RFQ mode and for Group Sessions
+                                (which render their own occurrence + cadence summary) */}
+                            {hasPricing && !isGroupSession && !rfqMode && (
                               <div className="flex items-center gap-2 mt-1.5">
                                 <span
                                   className="text-[10px] px-2 py-0.5 rounded-md font-medium"
@@ -1301,6 +1312,29 @@ const ReviewSendStep: React.FC<ReviewSendStepProps> = ({
                                     }}
                                   >
                                     {blockPayType === 'prepaid' ? 'Prepaid' : 'Postpaid'}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Group Session: occurrence count + cadence summary */}
+                            {isGroupSession && !rfqMode && (
+                              <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                <span
+                                  className="text-[10px] px-2 py-0.5 rounded-md font-medium"
+                                  style={{
+                                    backgroundColor: `${colors.utility.primaryText}08`,
+                                    color: colors.utility.secondaryText,
+                                  }}
+                                >
+                                  {block.unlimited ? '∞' : block.quantity} session{block.quantity > 1 ? 's' : ''}
+                                </span>
+                                {block.serviceCycleDays && block.serviceCycleDays > 0 && (
+                                  <span
+                                    className="text-[10px] px-2 py-0.5 rounded-md font-medium"
+                                    style={{ backgroundColor: `${brandPrimary}10`, color: brandPrimary }}
+                                  >
+                                    Every {block.serviceCycleDays} days{gsAnchorLabel ? ` · ${gsAnchorLabel}` : ''}
                                   </span>
                                 )}
                               </div>
