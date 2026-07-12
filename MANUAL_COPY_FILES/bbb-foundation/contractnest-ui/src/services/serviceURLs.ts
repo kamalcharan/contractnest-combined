@@ -1226,6 +1226,13 @@ export const API_ENDPOINTS = {
   // =================================================================
   // SMART FORMS — Tenant-facing Selections + Submissions (Cycle 3)
   // =================================================================
+  // Cadence Settings — tenant holiday calendar + shift policy (smart Service Cycles)
+  CADENCE_SETTINGS: {
+    GET: '/api/settings/cadence',
+    UPDATE: '/api/settings/cadence',
+    ADD_HOLIDAY: '/api/settings/cadence/holidays',
+    REMOVE_HOLIDAY: (date: string) => `/api/settings/cadence/holidays?date=${date}`,
+  },
   SMART_FORMS: {
     // Convenience: admin template endpoints (same as ADMIN.SMART_FORMS)
     ADMIN: {

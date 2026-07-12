@@ -80,7 +80,6 @@ import BusinessBrandingStep from '@/pages/onboarding/steps/BusinessBrandingStep'
 import ServedIndustriesStep from '@/pages/onboarding/steps/ServedIndustriesStep';
 import Screen8APricingStep from '@/pages/onboarding/steps/Screen8APricingStep';
 import Screen8BEquipmentStep from '@/pages/onboarding/steps/Screen8BEquipmentStep';
-import LovSetupStep from '@/pages/onboarding/steps/LovSetupStep';
 import ResourcePickStep from '@/pages/onboarding/steps/ResourcePickStep';
 import BusinessPreferencesStep from '@/pages/onboarding/steps/BusinessPreferencesStep';
 import SequenceNumbersStep from '@/pages/onboarding/steps/SequenceNumbersStep';
@@ -236,7 +235,6 @@ import SubscriptionPage from './pages/settings/businessmodel/tenants/Subscriptio
 import ContactsPage from './pages/contacts/index';
 import ContactViewPage from './pages/contacts/view';
 import ContactCreateForm from './pages/contacts/create';
-import ContactsImportPage from './pages/contacts/import';
 
 // Admin - Subscription Management
 import SubscriptionManagementPage from './pages/admin/subscription-management';
@@ -253,6 +251,7 @@ import FormEditorPage from './pages/admin/smart-forms/FormEditorPage';
 
 // Tenant - Smart Forms Selection (Cycle 3)
 import SmartFormsSelectionPage from './pages/settings/smart-forms/SmartFormsSelectionPage';
+import CadenceSettingsPage from './pages/settings/cadence/CadenceSettingsPage';
 
 
 // Temporary API test
@@ -444,7 +443,6 @@ const AppContent: React.FC = () => {
   <Route path="vani-working" element={<VaniWorkingStep />} />
   <Route path="pricing-review" element={<Screen8APricingStep />} />
   <Route path="equipment-confirm" element={<Screen8BEquipmentStep />} />
-  <Route path="lov-setup" element={<LovSetupStep />} />
   <Route path="done" element={
     <ProtectedRoute requireTenant={true}>
       <VaniDoneStep />
@@ -694,6 +692,7 @@ const AppContent: React.FC = () => {
             <Route path="configure/lovs" element={<ListOfValuesPage />} />
             <Route path="configure/resources" element={<ResourcesPage />} />
             <Route path="configure/smart-forms" element={<SmartFormsSelectionPage />} />
+            <Route path="configure/cadence" element={<CadenceSettingsPage />} />
             <Route path="configure/automation-rules" element={<AutomationRulesPage />} />
 
             {/* Team Management Routes */}
@@ -764,7 +763,6 @@ const AppContent: React.FC = () => {
           >
             <Route index element={<ContactsPage />} />
             <Route path="create" element={<ContactCreateForm />} />
-            <Route path="import" element={<ContactsImportPage />} />
             <Route path=":id" element={<ContactViewPage />} />
             <Route path=":id/edit" element={<ContactCreateForm mode="edit" />} />
           </Route>

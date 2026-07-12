@@ -286,13 +286,19 @@ const BlockWizardContent: React.FC<BlockWizardContentProps> = ({
 
   const handleTypeChange = (type: string) => {
     onBlockTypeChange(type);
-    // Group Session preset: it's a service block with audience=group. Seed the
-    // default so the Delivery step shows Group and the engine has the field.
+    // Group Session preset: it's a service block with audience=group that is
+    // inherently recurring, so seed audience=group AND turn Service Cycles on by
+    // default (the cycle is what generates the session's occurrences). Both stay
+    // editable on the Delivery step.
     if (type === 'session') {
-      setFormData((prev) => ({
-        ...prev,
-        audience: (prev as { audience?: string }).audience || 'group',
-      }));
+      setFormData((prev) => {
+        const p = prev as { audience?: string; requiresCycles?: boolean };
+        return {
+          ...prev,
+          audience: p.audience || 'group',
+          requiresCycles: p.requiresCycles ?? true,
+        };
+      });
     }
     // Don't reset step when changing type in full page mode
     // The parent component controls navigation
