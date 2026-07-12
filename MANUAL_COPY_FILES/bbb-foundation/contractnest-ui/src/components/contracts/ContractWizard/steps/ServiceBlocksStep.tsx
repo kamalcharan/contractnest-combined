@@ -89,7 +89,9 @@ const buildConfigurableBlock = (
 
   const blockServiceCycles = (block.meta as any)?.serviceCycles || (block.config as any)?.serviceCycles;
   const blockAudience = (block.meta as any)?.audience || (block.config as any)?.audience;
-  const isGroupSession = blockAudience === 'group';
+  // A block is a Group Session if it carries audience=group OR it still lives under
+  // the legacy 'session' category (older blocks whose meta.audience never mapped).
+  const isGroupSession = blockAudience === 'group' || block.categoryId === 'session';
   // Group Sessions are cadence-first: their cycle drives the roster occurrences,
   // so honor the days even when `enabled` was never stamped on the config.
   const hasCustomCycle = Boolean(
@@ -144,8 +146,9 @@ const buildConfigurableBlock = (
       billingOnly: (block.meta as any)?.billingOnly === true || (block.config as any)?.billingOnly === true,
       // Inherit audience (group => a session with a roster) and complimentary
       // (free => no price, no billing) so the card shows the right options and
-      // generation branches correctly.
-      audience: (block.meta as any)?.audience || (block.config as any)?.audience,
+      // generation branches correctly. Fall back to 'group' for legacy session
+      // blocks whose meta.audience never mapped.
+      audience: (block.meta as any)?.audience || (block.config as any)?.audience || (isGroupSession ? 'group' : undefined),
       complimentary: (block.meta as any)?.complimentary === true || (block.config as any)?.complimentary === true,
       // Carry the full service-cycle config (incl. anchorWeekday) so occurrence
       // generation can snap to the weekday.
