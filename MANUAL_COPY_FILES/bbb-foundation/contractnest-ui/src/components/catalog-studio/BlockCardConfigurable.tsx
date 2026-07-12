@@ -130,6 +130,14 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
     hasPricing || block.config?.audience === 'group' || !!block.serviceCycleDays;
   // Price sections stay gated on real pricing AND not-complimentary.
   const showPrice = hasPricing && block.config?.complimentary !== true;
+  // Group Session cadence: the named weekday the occurrences anchor to, and a
+  // holiday note. Actual N+1/N-1 shift is resolved at the Events Preview step.
+  const isGroupSession = block.config?.audience === 'group' || block.categoryId === 'session';
+  const anchorWeekday = block.config?.serviceCycles?.anchorWeekday;
+  const anchorLabel =
+    typeof anchorWeekday === 'number' && anchorWeekday >= 0 && anchorWeekday <= 6
+      ? ['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays'][anchorWeekday]
+      : null;
 
   // Tax master data
   const { options: taxRateOptions } = useTaxRatesDropdown();
@@ -465,7 +473,7 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
                     }}
                   />
                   <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
-                    days from start of contract
+                    {anchorLabel ? `days · on ${anchorLabel}` : 'days from start of contract'}
                   </span>
                 </div>
 
@@ -476,14 +484,23 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
                       className="text-xs leading-relaxed"
                       style={{ color: colors.utility.primaryText }}
                     >
-                      This service will be performed every <strong>{block.serviceCycleDays} days</strong>,{' '}
+                      {isGroupSession ? 'This session runs' : 'This service will be performed'} every{' '}
+                      <strong>{block.serviceCycleDays} days</strong>
+                      {anchorLabel && <> on <strong>{anchorLabel}</strong></>},{' '}
                       <strong>{block.quantity} time{block.quantity > 1 ? 's' : ''}</strong>
-                      {block.quantity > 1 && (
+                      {block.quantity > 1 && !anchorLabel && (
                         <span style={{ color: colors.utility.secondaryText }}>
                           {' '}(Day 1 to Day {(block.quantity - 1) * block.serviceCycleDays})
                         </span>
                       )}
                     </p>
+
+                    {/* Holiday handling note for Group Sessions (resolved at Events Preview) */}
+                    {isGroupSession && (
+                      <p className="text-[11px] mt-1" style={{ color: colors.utility.secondaryText }}>
+                        Holidays shift per Cadence Settings — you'll confirm each clash at the schedule preview.
+                      </p>
+                    )}
 
                     {/* Validation warning */}
                     {serviceCycleExceedsDuration && contractDurationDays && (

@@ -148,7 +148,12 @@ export function computeContractEvents(input: ComputeEventsInput): ContractEvent[
   // For each priced, non-unlimited block
   for (const block of selectedBlocks) {
     const hasPricing = categoryHasPricing(block.categoryId || '');
-    if (!hasPricing || block.unlimited) continue;
+    // Group Sessions deliver roster occurrences (attendance) even when they are
+    // free (complimentary) or live under a non-pricing category, so they must
+    // not be filtered out by the pricing gate. Everything else still requires
+    // pricing to produce a service visit.
+    const isGroupSession = block.config?.audience === 'group' || block.categoryId === 'session';
+    if ((!hasPricing && !isGroupSession) || block.unlimited) continue;
 
     // Billing-only blocks (fees/dues like memberships) bill on their cycle
     // but never generate service events/visits
@@ -156,7 +161,10 @@ export function computeContractEvents(input: ComputeEventsInput): ContractEvent[
 
     const qty = block.quantity || 1;
 
-    if (block.serviceCycleDays && block.serviceCycleDays > 0 && qty > 1) {
+    // Group Sessions always follow their cadence (anchor to the named weekday),
+    // even for a single occurrence, so the session lands on e.g. the first
+    // Saturday rather than Day 1.
+    if (block.serviceCycleDays && block.serviceCycleDays > 0 && (qty > 1 || isGroupSession)) {
       // Day-of-week anchor: when the cycle names a weekday (e.g. "alternate
       // Saturdays"), occurrences snap to that weekday at a whole-week interval
       // so they never drift. Otherwise fall back to the raw day interval.
