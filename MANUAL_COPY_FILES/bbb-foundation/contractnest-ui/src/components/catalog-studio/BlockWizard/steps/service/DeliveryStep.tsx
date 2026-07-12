@@ -87,6 +87,29 @@ const DeliveryStep: React.FC<DeliveryStepProps> = ({ formData, onChange }) => {
     { id: 'hybrid', icon: Users, label: 'Hybrid', description: 'Both options available' },
   ];
 
+  // Sample timeline — the first few occurrences from *today*, using the same
+  // anchor logic as real generation, so users can see how the cadence lands.
+  const anchorForSample =
+    formData.cycleAnchorWeekday ??
+    (formData as { meta?: { serviceCycles?: { anchorWeekday?: number } } }).meta?.serviceCycles?.anchorWeekday;
+  const sampleDates = React.useMemo(() => {
+    const days = formData.cycleDays;
+    if (!requiresCycles || !days || days < 1) return [] as Date[];
+    const hasAnchor = typeof anchorForSample === 'number' && anchorForSample >= 0 && anchorForSample <= 6;
+    const addD = (d: Date, n: number) => { const r = new Date(d); r.setDate(r.getDate() + n); return r; };
+    const start = new Date(); start.setHours(0, 0, 0, 0);
+    let first = start;
+    if (hasAnchor) {
+      const diff = (((anchorForSample as number) - start.getDay()) % 7 + 7) % 7;
+      first = addD(start, diff);
+    }
+    const everyNWeeks = Math.max(1, Math.round(days / 7));
+    const out: Date[] = [];
+    for (let i = 0; i < 6; i++) out.push(hasAnchor ? addD(first, i * everyNWeeks * 7) : addD(start, i * days));
+    return out;
+  }, [requiresCycles, formData.cycleDays, anchorForSample]);
+  const fmtSample = (d: Date) => d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+
   return (
     <div className="animate-in fade-in slide-in-from-right-4 duration-200">
       <h2 className="text-lg font-bold mb-1" style={{ color: colors.utility.primaryText }}>
@@ -512,6 +535,49 @@ const DeliveryStep: React.FC<DeliveryStepProps> = ({ formData, onChange }) => {
                       <p className="text-xs mt-2" style={{ color: colors.utility.secondaryText }}>
                         Buffer time before marking as overdue
                       </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Sample timeline — how the cadence lands (from today) */}
+              {requiresCycles && sampleDates.length > 0 && (
+                <div className="p-6 rounded-xl border animate-in fade-in slide-in-from-top-2 duration-200" style={cardStyle}>
+                  <h4 className="text-base font-semibold mb-1 flex items-center gap-2" style={{ color: colors.utility.primaryText }}>
+                    <CheckCircle2 className="w-5 h-5" style={{ color: colors.brand.primary }} />
+                    Sample schedule
+                  </h4>
+                  <p className="text-xs mb-4" style={{ color: colors.utility.secondaryText }}>
+                    First {sampleDates.length} occurrences from today
+                    {typeof anchorForSample === 'number'
+                      ? ` — snapped to every ${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][anchorForSample]}`
+                      : ` — every ${formData.cycleDays} days`}.
+                    Real dates use the contract's start date.
+                  </p>
+                  <div className="flex flex-col gap-0">
+                    {sampleDates.map((d, i) => (
+                      <div key={i} className="flex items-center gap-3">
+                        <div className="flex flex-col items-center">
+                          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: colors.brand.primary }} />
+                          {i < sampleDates.length - 1 && (
+                            <div className="w-px h-6" style={{ backgroundColor: `${colors.brand.primary}40` }} />
+                          )}
+                        </div>
+                        <div className="flex items-baseline gap-2 pb-1">
+                          <span className="text-xs font-semibold" style={{ color: colors.utility.primaryText }}>
+                            {fmtSample(d)}
+                          </span>
+                          <span className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
+                            occurrence {i + 1}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="flex items-center gap-3">
+                      <div className="w-2.5 flex justify-center">
+                        <span className="text-xs" style={{ color: colors.utility.secondaryText }}>⋯</span>
+                      </div>
+                      <span className="text-[10px]" style={{ color: colors.utility.secondaryText }}>continues for the full duration</span>
                     </div>
                   </div>
                 </div>
