@@ -82,9 +82,9 @@ const formatCurrency = (amount: number, currency: string = 'INR') => {
 // same pricing/tax/cycle/instance-id logic.
 const buildConfigurableBlock = (
   block: Block,
-  ctx: { currency: string; activeCoverageType: CoverageTypeItem | null; activeCoverageTabId: string | null; hasCoverageTypes: boolean }
+  ctx: { currency: string; activeCoverageType: CoverageTypeItem | null; activeCoverageTabId: string | null; hasCoverageTypes: boolean; durationDays?: number }
 ): ConfigurableBlock => {
-  const { currency, activeCoverageType, activeCoverageTabId, hasCoverageTypes } = ctx;
+  const { currency, activeCoverageType, activeCoverageTabId, hasCoverageTypes, durationDays } = ctx;
   const category = getCategoryById(block.categoryId);
 
   const blockServiceCycles = (block.meta as any)?.serviceCycles || (block.config as any)?.serviceCycles;
@@ -116,12 +116,21 @@ const buildConfigurableBlock = (
   const unitPriceWithTax = taxInclusion === 'inclusive' ? blockPrice : blockPrice + (blockPrice * totalTaxRate / 100);
   const instanceId = hasCoverageTypes ? `${block.id}__${activeCoverageTabId}` : block.id;
 
+  // Group Sessions are cadence-first: default the occurrence count to however
+  // many cycles fit the contract duration (e.g. 14-day cadence over 12 months
+  // → ~26 sessions), so the timeline reflects the real schedule. Still fully
+  // editable on the card (manual quantity preserved).
+  const defaultQuantity =
+    isGroupSession && serviceCycleDays && serviceCycleDays > 0 && durationDays
+      ? Math.max(1, Math.floor(durationDays / serviceCycleDays))
+      : 1;
+
   return {
     id: instanceId,
     name: block.name,
     description: block.description || '',
     icon: block.icon || 'Package',
-    quantity: 1,
+    quantity: defaultQuantity,
     cycle: defaultCycle,
     customCycleDays,
     serviceCycleDays,
@@ -301,7 +310,7 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
         return;
       }
 
-      const newBlock = buildConfigurableBlock(block, { currency, activeCoverageType, activeCoverageTabId, hasCoverageTypes });
+      const newBlock = buildConfigurableBlock(block, { currency, activeCoverageType, activeCoverageTabId, hasCoverageTypes, durationDays: contractDuration ? contractDuration * 30 : undefined });
 
       onBlocksChange([...selectedBlocks, newBlock]);
       addToast({
@@ -314,7 +323,7 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
 
       setExpandedBlockId(newBlock.id);
     },
-    [selectedBlocks, blocksForActiveTab, onBlocksChange, addToast, currency, activeCoverageType, activeCoverageTabId, hasCoverageTypes]
+    [selectedBlocks, blocksForActiveTab, onBlocksChange, addToast, currency, activeCoverageType, activeCoverageTabId, hasCoverageTypes, contractDuration]
   );
 
   // ── Bulk add (VaNi recommender) ───────────────────────────────────
@@ -325,7 +334,7 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
       const existingIds = new Set(blocksForActiveTab.filter((b) => !b.isFlyBy).map((b) => b.id));
       const toAdd: ConfigurableBlock[] = [];
       for (const block of blocks) {
-        const built = buildConfigurableBlock(block, { currency, activeCoverageType, activeCoverageTabId, hasCoverageTypes });
+        const built = buildConfigurableBlock(block, { currency, activeCoverageType, activeCoverageTabId, hasCoverageTypes, durationDays: contractDuration ? contractDuration * 30 : undefined });
         if (existingIds.has(built.id)) continue;
         existingIds.add(built.id);
         toAdd.push(built);
@@ -341,7 +350,7 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
         message: `${toAdd.length} block${toAdd.length === 1 ? '' : 's'} added${hasCoverageTypes && activeCoverageType ? ` to ${activeCoverageType.resource_name}` : ''}`,
       });
     },
-    [selectedBlocks, blocksForActiveTab, onBlocksChange, addToast, currency, activeCoverageType, activeCoverageTabId, hasCoverageTypes]
+    [selectedBlocks, blocksForActiveTab, onBlocksChange, addToast, currency, activeCoverageType, activeCoverageTabId, hasCoverageTypes, contractDuration]
   );
 
   // Add FlyBy block (inline empty block)
