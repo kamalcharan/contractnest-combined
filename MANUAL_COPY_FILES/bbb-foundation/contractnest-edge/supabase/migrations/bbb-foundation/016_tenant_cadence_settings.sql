@@ -84,10 +84,14 @@ WHERE NOT EXISTS (
   SELECT 1 FROM public.t_tenant_cadence_settings s WHERE s.tenant_id = t.id
 );
 
--- ── thin RPCs (API calls these with service role) ───────────────────────────
+-- ── thin RPCs ───────────────────────────────────────────────────────────────
+-- SECURITY DEFINER: the tables have RLS enabled with no policies (access only
+-- via these trusted, tenant-scoped RPCs), so the functions run as the owner and
+-- bypass RLS regardless of which key the backend authenticates with.
 CREATE OR REPLACE FUNCTION public.get_tenant_cadence_settings(p_tenant uuid)
  RETURNS jsonb
  LANGUAGE plpgsql
+ SECURITY DEFINER
  SET search_path TO 'public'
 AS $$
 DECLARE
@@ -112,6 +116,7 @@ CREATE OR REPLACE FUNCTION public.upsert_tenant_cadence_settings(
   p_tenant uuid, p_weekly_holidays int[], p_default_shift text)
  RETURNS jsonb
  LANGUAGE plpgsql
+ SECURITY DEFINER
  SET search_path TO 'public'
 AS $$
 BEGIN
@@ -132,6 +137,7 @@ CREATE OR REPLACE FUNCTION public.add_tenant_holiday(
   p_tenant uuid, p_date date, p_label text DEFAULT NULL)
  RETURNS jsonb
  LANGUAGE plpgsql
+ SECURITY DEFINER
  SET search_path TO 'public'
 AS $$
 BEGIN
@@ -145,6 +151,7 @@ $$;
 CREATE OR REPLACE FUNCTION public.remove_tenant_holiday(p_tenant uuid, p_date date)
  RETURNS jsonb
  LANGUAGE plpgsql
+ SECURITY DEFINER
  SET search_path TO 'public'
 AS $$
 BEGIN
