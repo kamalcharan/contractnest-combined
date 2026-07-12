@@ -752,14 +752,14 @@ export const blockToCreateData = (
   block: Partial<Block> & { name: string },
   options: BlockOperationOptions = {}
 ) => {
-  // Group Session is a service preset: persist as a SERVICE type (so the edge
-  // resolves block_type_id + all service logic applies) but keep the 'session'
-  // CATEGORY for grouping/discovery. The engine tells them apart via
-  // config.audience, never the category name.
+  // Group Session is a service preset: persist as a SERVICE block (type AND
+  // category) so it shows up everywhere a service block does — the Catalog
+  // list, the contract's Service Blocks picker, billing config, etc. The engine
+  // tells a Group Session apart via config.audience === 'group', never the
+  // category name.
   const rawCategory = block.categoryId || 'service';
   const isSession = rawCategory === 'session';
   const blockType = isSession ? 'service' : rawCategory;
-  const dbCategory = isSession ? 'session' : blockType;
   const { price, currency } = extractPrimaryPrice(block);
 
   // Get pricing mode - check both top-level and meta
@@ -794,7 +794,7 @@ export const blockToCreateData = (
     name: block.name,
     type: blockType,  // Correct field name for DB
     // Note: block_type_id expects UUID - let API/edge resolve it from 'type'
-    category: dbCategory, // Category for grouping ('session' for Group Session, else = type)
+    category: blockType, // Group Session stores as 'service' so it lists/pickers like one
 
     // Optional top-level fields
     display_name: block.name,
