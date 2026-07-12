@@ -17,7 +17,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/Button';
 import { useTheme } from '@/contexts/ThemeContext';
-import SandboxResetCard from '@/components/settings/SandboxResetCard';
 
 const StorageManagementPage: React.FC = () => {
   const navigate = useNavigate();
@@ -368,11 +367,6 @@ const StorageManagementPage: React.FC = () => {
               enableBatchOperations={true}
             />
           </div>
-        </div>
-
-        {/* Sandbox — clear the tenant's transactional data (keeps masterdata) */}
-        <div className="mt-8">
-          <SandboxResetCard />
         </div>
       </div>
     </div>
