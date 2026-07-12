@@ -251,6 +251,9 @@ export function computeContractEvents(input: ComputeEventsInput): ContractEvent[
       const hasPricing = categoryHasPricing(block.categoryId || '');
       if (!hasPricing || block.unlimited) continue;
 
+      // Complimentary blocks are free — they deliver occurrences but never bill.
+      if (block.config?.complimentary) continue;
+
       const blockCycle = block.cycle || 'prepaid';
       const blockTotal = block.totalPrice || 0;
 

@@ -128,6 +128,11 @@ const BlockWizardContent: React.FC<BlockWizardContentProps> = ({
       return errors;
     }
 
+    // Complimentary blocks are free — never ask for a price on any step.
+    if ((data as { complimentary?: boolean }).complimentary) {
+      return errors;
+    }
+
     // Block-specific step validations
     if (type === 'service') {
       // Step 3 - Resources: No mandatory fields (independent is default)
@@ -292,11 +297,14 @@ const BlockWizardContent: React.FC<BlockWizardContentProps> = ({
     // editable on the Delivery step.
     if (type === 'session') {
       setFormData((prev) => {
-        const p = prev as { audience?: string; requiresCycles?: boolean };
+        const p = prev as { audience?: string; requiresCycles?: boolean; complimentary?: boolean };
         return {
           ...prev,
           audience: p.audience || 'group',
           requiresCycles: p.requiresCycles ?? true,
+          // Group Sessions are complimentary by nature (attendance, not money):
+          // no price, no billing — just occurrences.
+          complimentary: p.complimentary ?? true,
         };
       });
     }

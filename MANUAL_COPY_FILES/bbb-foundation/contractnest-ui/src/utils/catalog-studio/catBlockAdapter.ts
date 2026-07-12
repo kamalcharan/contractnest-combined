@@ -141,6 +141,7 @@ export const catBlockToBlock = (catBlock: CatBlock): Block => {
       deliveryMode: config.deliveryMode || config.location?.type,
       serviceCycles: config.serviceCycles,
       billingOnly: config.billingOnly,
+      complimentary: config.complimentary,
       audience: config.audience,
       bufferTime: config.buffer || config.bufferTime,
       location: config.location,
@@ -311,6 +312,10 @@ const buildServiceConfig = (block: Partial<Block>): Record<string, unknown> => {
   // Billing-only flag — block bills on its cycle but generates no service events
   const billingOnly = getField(block, 'billingOnly');
   if (billingOnly !== undefined) config.billingOnly = billingOnly;
+
+  // Complimentary — free block: no price, no billing events, still delivered.
+  const complimentary = getField(block, 'complimentary');
+  if (complimentary !== undefined) config.complimentary = complimentary;
 
   // Audience — 'individual' (1:1, the buyer) or 'group' (1:N roster). The engine
   // branches on this; a Group Session block persists 'group' here.
@@ -927,6 +932,7 @@ export const blockToUpdateData = (
     if (meta.deliveryMode !== undefined) configUpdates.deliveryMode = meta.deliveryMode;
     if (meta.serviceCycles !== undefined) configUpdates.serviceCycles = meta.serviceCycles;
     if (meta.billingOnly !== undefined) configUpdates.billingOnly = meta.billingOnly;
+    if (meta.complimentary !== undefined) configUpdates.complimentary = meta.complimentary;
     if (meta.audience !== undefined) configUpdates.audience = meta.audience;
     if (meta.bufferTime !== undefined) configUpdates.buffer = meta.bufferTime;
     if (meta.terms !== undefined) configUpdates.terms = meta.terms;

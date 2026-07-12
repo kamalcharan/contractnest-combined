@@ -20,6 +20,9 @@ interface DeliveryStepProps {
     cycleAnchorWeekday?: number;
     // Billing-only: bills on its cycle, generates no service events/visits
     billingOnly?: boolean;
+    // Complimentary: free — no price, no billing events; still delivers its
+    // service/session occurrences. Opposite of billing-only.
+    complimentary?: boolean;
     // Audience: who receives each cycle — the contract's buyer (individual/1:1)
     // or a group that checks in (group/1:N). The engine branches on this field.
     audience?: 'individual' | 'group';
@@ -36,6 +39,9 @@ const DeliveryStep: React.FC<DeliveryStepProps> = ({ formData, onChange }) => {
     // top-level (wizard edits) with meta fallback (editing an existing block)
     formData.billingOnly ?? (formData as { meta?: { billingOnly?: boolean } }).meta?.billingOnly ?? false
   );
+  const [complimentary, setComplimentary] = useState(
+    formData.complimentary ?? (formData as { meta?: { complimentary?: boolean } }).meta?.complimentary ?? false
+  );
   const [audience, setAudience] = useState<'individual' | 'group'>(
     formData.audience ?? (formData as { meta?: { audience?: 'individual' | 'group' } }).meta?.audience ?? 'individual'
   );
@@ -43,6 +49,14 @@ const DeliveryStep: React.FC<DeliveryStepProps> = ({ formData, onChange }) => {
   const handleBillingOnlyToggle = (enabled: boolean) => {
     setBillingOnly(enabled);
     onChange('billingOnly', enabled);
+    // Billing-only and Complimentary are opposites — never both on.
+    if (enabled && complimentary) { setComplimentary(false); onChange('complimentary', false); }
+  };
+
+  const handleComplimentaryToggle = (enabled: boolean) => {
+    setComplimentary(enabled);
+    onChange('complimentary', enabled);
+    if (enabled && billingOnly) { setBillingOnly(false); onChange('billingOnly', false); }
   };
 
   const handleAudienceChange = (value: 'individual' | 'group') => {
@@ -186,6 +200,33 @@ const DeliveryStep: React.FC<DeliveryStepProps> = ({ formData, onChange }) => {
               <div
                 className="w-11 h-6 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all transition-colors"
                 style={{ backgroundColor: billingOnly ? colors.brand.primary : (isDarkMode ? colors.utility.primaryBackground : '#D1D5DB') }}
+              />
+            </label>
+          </div>
+        </div>
+
+        {/* Complimentary toggle — free blocks: no price, no billing, still delivered */}
+        <div className="p-6 rounded-xl border" style={cardStyle}>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <label className="block text-sm font-semibold mb-1" style={labelStyle}>
+                Complimentary (free)
+              </label>
+              <p className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                This block is free — <strong>no price is asked and it never bills</strong>. It still delivers
+                its service/session occurrences (e.g. a group meeting, a free consultation, an included part).
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer flex-shrink-0 mt-1">
+              <input
+                type="checkbox"
+                checked={complimentary}
+                onChange={(e) => handleComplimentaryToggle(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div
+                className="w-11 h-6 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all transition-colors"
+                style={{ backgroundColor: complimentary ? colors.brand.primary : (isDarkMode ? colors.utility.primaryBackground : '#D1D5DB') }}
               />
             </label>
           </div>
