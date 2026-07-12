@@ -1,0 +1,106 @@
+================================================================================
+BATCH 3 — Group Session Check-in (attendance + BAU dues + chair confirm)
+================================================================================
+
+Submodules affected: contractnest-edge (migration), contractnest-api (routes),
+contractnest-ui (public page + chair page).
+
+DB migration 017 is ALREADY APPLIED to the live database (tables + SECURITY
+DEFINER RPCs). The .sql is included only so your local migration history matches.
+
+--------------------------------------------------------------------------------
+NEW FILES — copy as-is
+--------------------------------------------------------------------------------
+# Edge (migration — already applied live; copy for history)
+contractnest-edge/supabase/migrations/bbb-foundation/017_group_session_checkin.sql
+
+# API
+contractnest-api/src/services/sessionCheckinService.ts
+contractnest-api/src/controllers/sessionCheckinController.ts
+contractnest-api/src/routes/sessionCheckinPublicRoutes.ts        (PUBLIC — no auth)
+contractnest-api/src/routes/sessionCheckinRoutes.ts              (chair — auth)
+
+# UI
+contractnest-ui/src/pages/checkin/useSessionCheckin.ts
+contractnest-ui/src/pages/checkin/SessionCheckinPage.tsx         (member-facing, public)
+contractnest-ui/src/pages/session-checkin/useChairCheckin.ts
+contractnest-ui/src/pages/session-checkin/ChairCheckinPage.tsx   (chair)
+
+# UI (edit — SESSION_CHECKIN block added next to CADENCE_SETTINGS)
+contractnest-ui/src/services/serviceURLs.ts
+
+--------------------------------------------------------------------------------
+PowerShell copy
+--------------------------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+$B = "MANUAL_COPY_FILES\bbb-foundation"
+
+Copy-Item "$B\contractnest-edge\supabase\migrations\bbb-foundation\017_group_session_checkin.sql" -Destination "contractnest-edge\supabase\migrations\bbb-foundation\017_group_session_checkin.sql" -Force
+
+Copy-Item "$B\contractnest-api\src\services\sessionCheckinService.ts"        -Destination "contractnest-api\src\services\" -Force
+Copy-Item "$B\contractnest-api\src\controllers\sessionCheckinController.ts"  -Destination "contractnest-api\src\controllers\" -Force
+Copy-Item "$B\contractnest-api\src\routes\sessionCheckinPublicRoutes.ts"     -Destination "contractnest-api\src\routes\" -Force
+Copy-Item "$B\contractnest-api\src\routes\sessionCheckinRoutes.ts"           -Destination "contractnest-api\src\routes\" -Force
+
+New-Item -ItemType Directory -Force -Path "contractnest-ui\src\pages\checkin","contractnest-ui\src\pages\session-checkin" | Out-Null
+Copy-Item "$B\contractnest-ui\src\pages\checkin\useSessionCheckin.ts"        -Destination "contractnest-ui\src\pages\checkin\" -Force
+Copy-Item "$B\contractnest-ui\src\pages\checkin\SessionCheckinPage.tsx"      -Destination "contractnest-ui\src\pages\checkin\" -Force
+Copy-Item "$B\contractnest-ui\src\pages\session-checkin\useChairCheckin.ts"  -Destination "contractnest-ui\src\pages\session-checkin\" -Force
+Copy-Item "$B\contractnest-ui\src\pages\session-checkin\ChairCheckinPage.tsx" -Destination "contractnest-ui\src\pages\session-checkin\" -Force
+Copy-Item "$B\contractnest-ui\src\services\serviceURLs.ts"                   -Destination "contractnest-ui\src\services\serviceURLs.ts" -Force
+
+--------------------------------------------------------------------------------
+MANUAL EDIT 1 — contractnest-api/src/index.ts  (register the routes)
+--------------------------------------------------------------------------------
+Add imports near the other route imports:
+
+    import sessionCheckinPublicRoutes from './routes/sessionCheckinPublicRoutes';
+    import sessionCheckinRoutes from './routes/sessionCheckinRoutes';
+
+Register them with the other app.use('/api/...') lines. The PUBLIC one must NOT
+be behind any auth (it has none of its own — that's intentional):
+
+    app.use('/api/checkin', sessionCheckinPublicRoutes);       // PUBLIC member check-in
+    app.use('/api/session-checkin', sessionCheckinRoutes);     // chair (authenticated)
+
+--------------------------------------------------------------------------------
+MANUAL EDIT 2 — contractnest-ui/src/App.tsx  (routes)
+--------------------------------------------------------------------------------
+Add imports:
+
+    import SessionCheckinPage from './pages/checkin/SessionCheckinPage';
+    import ChairCheckinPage from './pages/session-checkin/ChairCheckinPage';
+
+(a) PUBLIC member route — put it with the other public routes (near /playground,
+    /contract-review), OUTSIDE any ProtectedRoute / MainLayout:
+
+    <Route path="/checkin/:token" element={<SessionCheckinPage />} />
+
+(b) CHAIR route — put it INSIDE the authenticated MainLayout routes (same block
+    where the app's internal pages live), e.g.:
+
+    <Route path="session-checkin" element={<ChairCheckinPage />} />
+
+    → reachable at /session-checkin once logged in. (Optionally add a nav/menu
+      entry pointing to it.)
+
+--------------------------------------------------------------------------------
+HOW TO TEST (in your test environment)
+--------------------------------------------------------------------------------
+1. Create/have a chapter Group Session contract that is ACTIVE and has service
+   occurrences (one dated today, to test a live check-in).
+2. Chair page (/session-checkin): paste that contract's ID → "Get link" →
+   copy the /checkin/<token> URL (make a QR from it).
+3. Open /checkin/<token> (logged out / incognito): it resolves today's session.
+4. Enter a member's phone (a contact who is the buyer on an active contract with
+   billing events). It matches them and shows their attendance + BAU dues.
+5. Mark Present, optionally pick a due + enter a UPI ref → Check in.
+6. Back on the chair page → the declared payment appears under "Payments to
+   confirm" → Confirm → the member's billing event flips to Paid.
+
+Notes:
+- Roster = contacts who are the buyer on an ACTIVE contract that has billing
+  events; matched by the last 10 digits of any phone/mobile/whatsapp channel.
+- A phone that doesn't match falls back to a guest attendance (no dues).
+- Chair "Confirm" sets the billing event status to 'paid' directly (manual path).
+================================================================================
