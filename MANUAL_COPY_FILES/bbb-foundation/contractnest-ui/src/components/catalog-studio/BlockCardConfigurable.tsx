@@ -78,6 +78,7 @@ export interface ConfigurableBlock {
     audience?: 'individual' | 'group'; // Group Session marker (1:N attendance)
     complimentary?: boolean; // Complimentary block — delivers occurrences but no price/billing
     serviceCycles?: { anchorWeekday?: number; days?: number; enabled?: boolean }; // Cadence config
+    autoCount?: boolean; // Group Session: occurrence count auto-derives from contract duration until user edits it
   };
 }
 
@@ -181,9 +182,10 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
   const handleQuantityChange = useCallback(
     (delta: number) => {
       const newQty = Math.max(1, block.quantity + delta);
-      onUpdate(block.id, { quantity: newQty });
+      // A manual edit pins the count — stop auto-deriving it from the duration.
+      onUpdate(block.id, { quantity: newQty, config: { ...block.config, autoCount: false } });
     },
-    [block.id, block.quantity, onUpdate]
+    [block.id, block.quantity, block.config, onUpdate]
   );
 
   const handleCycleChange = useCallback(
@@ -205,8 +207,10 @@ const BlockCardConfigurable: React.FC<BlockCardConfigurableProps> = ({
       unlimited: !block.unlimited,
       // Clear service cycle when switching to unlimited
       ...(!block.unlimited ? { serviceCycleDays: undefined } : {}),
+      // Switching mode is a manual choice — stop auto-deriving the count.
+      config: { ...block.config, autoCount: false },
     });
-  }, [block.id, block.unlimited, onUpdate]);
+  }, [block.id, block.unlimited, block.config, onUpdate]);
 
   const handleServiceCycleDaysChange = useCallback(
     (days: number | undefined) => {
