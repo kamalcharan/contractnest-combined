@@ -6,7 +6,7 @@ import React, { useMemo, useState, useCallback } from 'react';
 import {
   Calendar, CalendarDays, DollarSign, Wrench, Clock,
   Edit3, RotateCcw, Sparkles, Info, Receipt, Infinity,
-  CheckCircle2, Zap, Bell, Users, Package,
+  CheckCircle2, Zap, Bell, Users, Package, CalendarClock, ChevronRight, ChevronLeft,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { getCurrencySymbol } from '@/utils/constants/currencies';
@@ -18,6 +18,8 @@ import {
   type ContractEvent,
   type ComputeEventsInput,
 } from '@/utils/service-contracts/contractEvents';
+import { findHolidayConflicts } from '@/utils/service-contracts/holidayResolver';
+import { useCadenceSettings } from '@/pages/settings/cadence/useCadenceSettings';
 import { EventCard } from '@/components/contracts/EventCard';
 
 export interface EventsPreviewStepProps {
@@ -99,6 +101,44 @@ const EventsPreviewStep: React.FC<EventsPreviewStepProps> = ({
   const summary = useMemo(() => summarizeEvents(events), [events]);
   const dateGroups = useMemo(() => groupEventsByDate(events), [events]);
 
+  // ── Holiday-clash resolver (Cadence Settings) ──
+  const { settings: cadence, loading: cadenceLoading } = useCadenceSettings();
+  // Occurrences the user explicitly chose to keep on the holiday — dismissed
+  // from the active list so the banner can clear.
+  const [keptConflicts, setKeptConflicts] = useState<Set<string>>(new Set());
+
+  const holidayConflicts = useMemo(
+    () => (cadenceLoading ? [] : findHolidayConflicts(events, cadence)),
+    [events, cadence, cadenceLoading]
+  );
+  const activeConflicts = useMemo(
+    () => holidayConflicts.filter((c) => !keptConflicts.has(c.eventId)),
+    [holidayConflicts, keptConflicts]
+  );
+  const conflictIds = useMemo(() => new Set(activeConflicts.map((c) => c.eventId)), [activeConflicts]);
+  const defaultDirection = cadence.default_shift === 'previous' ? 'previous' : 'next';
+
+  // Apply a shift (override the date); Keep just dismisses the alert.
+  const applyShift = useCallback((eventId: string, date: Date) => {
+    onEventOverridesChange({ ...eventOverrides, [eventId]: date });
+  }, [eventOverrides, onEventOverridesChange]);
+
+  const keepOnHoliday = useCallback((eventId: string) => {
+    setKeptConflicts((prev) => {
+      const next = new Set(prev);
+      next.add(eventId);
+      return next;
+    });
+  }, []);
+
+  const applyAllDefault = useCallback(() => {
+    const next = { ...eventOverrides };
+    for (const c of activeConflicts) {
+      next[c.eventId] = defaultDirection === 'previous' ? c.prevDate : c.nextDate;
+    }
+    onEventOverridesChange(next);
+  }, [activeConflicts, defaultDirection, eventOverrides, onEventOverridesChange]);
+
   // Unlimited blocks (no events, shown as continuous cards)
   const unlimitedBlocks = useMemo(
     () => selectedBlocks.filter(b => b.unlimited),
@@ -132,6 +172,7 @@ const EventsPreviewStep: React.FC<EventsPreviewStepProps> = ({
     const isSparePart = event.event_type === 'spare_part';
     const isOverridden = !!eventOverrides[event.id];
     const isEditing = editingEventId === event.id;
+    const conflict = conflictIds.has(event.id) ? activeConflicts.find((c) => c.eventId === event.id) : undefined;
     const accent = isSparePart ? colors.semantic.info : isService ? colors.semantic.success : colors.semantic.warning;
 
     // Convert preview event to database-compatible ContractEvent for EventCard
@@ -222,6 +263,63 @@ const EventsPreviewStep: React.FC<EventsPreviewStepProps> = ({
             </button>
           )}
         </div>
+
+        {/* Holiday-clash resolver (only for occurrences landing on a holiday) */}
+        {conflict && (
+          <div
+            className="mt-2 p-2.5 rounded-lg border"
+            style={{
+              backgroundColor: `${colors.semantic.warning}0A`,
+              borderColor: `${colors.semantic.warning}33`,
+            }}
+          >
+            <div className="flex items-start gap-1.5 mb-2">
+              <CalendarClock className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: colors.semantic.warning }} />
+              <span className="text-[11px] leading-snug" style={{ color: colors.utility.primaryText }}>
+                Falls on <strong>{conflict.reason}</strong>. Shift this session?
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {/* Previous (N-1) */}
+              <button
+                onClick={() => applyShift(event.id, conflict.prevDate)}
+                className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-all"
+                style={{
+                  backgroundColor: defaultDirection === 'previous' ? colors.brand.primary : `${colors.utility.primaryText}08`,
+                  color: defaultDirection === 'previous' ? '#FFFFFF' : colors.utility.secondaryText,
+                }}
+                title={`Move earlier to ${formatEventDate(conflict.prevDate)}`}
+              >
+                <ChevronLeft className="w-3 h-3" />
+                {formatEventDate(conflict.prevDate)}
+                {defaultDirection === 'previous' && <span className="opacity-80">· default</span>}
+              </button>
+              {/* Next (N+1) */}
+              <button
+                onClick={() => applyShift(event.id, conflict.nextDate)}
+                className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-all"
+                style={{
+                  backgroundColor: defaultDirection === 'next' ? colors.brand.primary : `${colors.utility.primaryText}08`,
+                  color: defaultDirection === 'next' ? '#FFFFFF' : colors.utility.secondaryText,
+                }}
+                title={`Move later to ${formatEventDate(conflict.nextDate)}`}
+              >
+                {formatEventDate(conflict.nextDate)}
+                {defaultDirection === 'next' && <span className="opacity-80">· default</span>}
+                <ChevronRight className="w-3 h-3" />
+              </button>
+              {/* Keep on the holiday */}
+              <button
+                onClick={() => keepOnHoliday(event.id)}
+                className="px-2 py-1 rounded-md text-[10px] font-medium transition-all"
+                style={{ backgroundColor: `${colors.utility.primaryText}08`, color: colors.utility.secondaryText }}
+                title="Keep this session on the holiday"
+              >
+                Keep
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -314,6 +412,32 @@ const EventsPreviewStep: React.FC<EventsPreviewStepProps> = ({
 
       {/* ═══ LEFT: Vertical Timeline ═══ */}
       <div className="flex-[2] min-w-0 pb-8">
+
+        {/* Holiday-clash banner — sessions landing on a tenant holiday */}
+        {activeConflicts.length > 0 && (
+          <div
+            className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl mb-6 border"
+            style={{
+              backgroundColor: `${colors.semantic.warning}0A`,
+              borderColor: `${colors.semantic.warning}33`,
+            }}
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <CalendarClock className="w-4 h-4 flex-shrink-0" style={{ color: colors.semantic.warning }} />
+              <span className="text-xs" style={{ color: colors.utility.primaryText }}>
+                <strong>{activeConflicts.length}</strong> session{activeConflicts.length > 1 ? 's' : ''} fall on a holiday.
+                {' '}Review each below, or shift all to the {defaultDirection === 'previous' ? 'previous' : 'next'} working day.
+              </span>
+            </div>
+            <button
+              onClick={applyAllDefault}
+              className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:opacity-90"
+              style={{ backgroundColor: colors.brand.primary, color: '#FFFFFF' }}
+            >
+              Shift all ({defaultDirection === 'previous' ? 'N−1' : 'N+1'})
+            </button>
+          </div>
+        )}
 
         {/* Override indicator */}
         {hasOverrides && (
