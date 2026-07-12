@@ -16,6 +16,7 @@ import api from '@/services/api';
 import { API_ENDPOINTS } from '@/services/serviceURLs';
 
 interface PreviewCounts {
+  is_live: boolean;
   contracts: number; contract_events: number; invoices: number; appointments: number;
   service_tickets: number; form_submissions: number; session_attendance: number;
   payment_declarations: number; contacts: number; equipment: number;
@@ -85,6 +86,16 @@ const SandboxResetCard: React.FC = () => {
       <div className="flex items-center gap-2 mb-1">
         <AlertTriangle className="w-5 h-5" style={{ color: colors.semantic.error }} />
         <h3 className="font-semibold" style={{ color: colors.utility.primaryText }}>Sandbox — clear test data</h3>
+        {counts && (
+          <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full"
+            style={{
+              backgroundColor: (counts.is_live ? colors.semantic.error : colors.semantic.success) + '18',
+              color: counts.is_live ? colors.semantic.error : colors.semantic.success,
+            }}
+            title="Sandbox only ever affects your current environment">
+            {counts.is_live ? 'LIVE environment' : 'TEST environment'}
+          </span>
+        )}
         <button onClick={loadPreview} className="ml-auto p-1.5 rounded-md hover:opacity-80" title="Refresh counts"
           style={{ color: colors.utility.secondaryText }}>
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />

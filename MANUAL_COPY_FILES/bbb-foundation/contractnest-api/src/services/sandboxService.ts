@@ -36,13 +36,14 @@ class SandboxService {
     }
   }
 
-  preview(tenantId: string) {
-    return this.call('sandbox_preview_counts', { p_tenant: tenantId });
+  preview(tenantId: string, isLive: boolean) {
+    return this.call('sandbox_preview_counts', { p_tenant: tenantId, p_is_live: isLive });
   }
 
-  reset(tenantId: string, includeContacts: boolean, includeEquipment: boolean) {
+  reset(tenantId: string, isLive: boolean, includeContacts: boolean, includeEquipment: boolean) {
     return this.call('sandbox_reset_transactions', {
       p_tenant: tenantId,
+      p_is_live: isLive,
       p_include_contacts: includeContacts,
       p_include_equipment: includeEquipment,
     });
