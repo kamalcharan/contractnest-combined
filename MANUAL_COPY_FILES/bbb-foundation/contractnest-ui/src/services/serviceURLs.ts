@@ -1240,11 +1240,6 @@ export const API_ENDPOINTS = {
     DECLARATIONS: '/api/session-checkin/declarations',
     CONFIRM_DECLARATION: (id: string) => `/api/session-checkin/declarations/${id}/confirm`,
   },
-  // Sandbox — clear the tenant's transactional data (keeps masterdata).
-  SANDBOX: {
-    PREVIEW: '/api/sandbox/preview',
-    RESET: '/api/sandbox/reset',
-  },
   SMART_FORMS: {
     // Convenience: admin template endpoints (same as ADMIN.SMART_FORMS)
     ADMIN: {

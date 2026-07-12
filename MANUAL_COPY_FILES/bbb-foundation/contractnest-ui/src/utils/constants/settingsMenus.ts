@@ -171,16 +171,6 @@ export const settingsMenuItems: SettingsItem[] = [
     card_icon_name: 'HardDrive',
     adminOnly: false
   },
-  {
-    id: 'sandbox',
-    settings_type: 'Sandbox',
-    parent_type: GROUP_STORAGE_SPACE,
-    description_short: 'Clear test data',
-    description_long: 'Delete transactional records (contracts, billing, check-ins) — keeps catalog, settings & numbering',
-    route_path: '/settings/storage/sandbox',
-    card_icon_name: 'Trash2',
-    adminOnly: false
-  },
 
 
 
@@ -289,6 +279,16 @@ export const settingsMenuItems: SettingsItem[] = [
     description_long: 'Generate AI-powered business profile with semantic keywords for better discoverability',
     route_path: '/settings/business-profile/smart-profile',
     card_icon_name: 'Sparkles',
+    adminOnly: false
+  },
+  {
+    id: 'account-data-reset',
+    settings_type: 'Data & Reset',
+    parent_type: GROUP_BUSINESS_PROFILE,
+    description_short: 'Reset or close account',
+    description_long: 'Review your data, reset test / all data, or close the account',
+    route_path: '/settings/business-profile/close-account',
+    card_icon_name: 'DatabaseZap',
     adminOnly: false
   },
 
