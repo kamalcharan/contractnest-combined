@@ -37,10 +37,16 @@ UPDATE path did NOT — it saved category='session' and called buildConfig('sess
 which has no case and returns just { icon }. So EDITING a group-session block
 wiped its whole config.
 
-Fix:
-  - utils/catalog-studio/catBlockAdapter.ts  (blockToUpdateData)
-      * added the same session->'service' remap used by blockToCreateData, applied
-        to data.type/data.category AND the buildConfig() call.
+Fix (catBlockAdapter.ts — TWO parts):
+  1. blockToUpdateData: added the same session->'service' remap used by
+     blockToCreateData, applied to data.type/data.category AND the buildConfig()
+     call — so editing a group-session block runs buildServiceConfig instead of
+     the default { icon }.
+  2. buildServiceConfig: fixed the cycle precedence. It was
+     `config.serviceCycles = serviceCycles || {...}`, so editing the cadence on a
+     block that already had a serviceCycles object was ignored (stale object won).
+     Now it prefers the freshly-entered cycleDays/anchor/grace and falls back to
+     the existing object — so the service cycle saves every time.
 
 FILES TO COPY (run from contractnest-combined\ root):
 ─────────────────────

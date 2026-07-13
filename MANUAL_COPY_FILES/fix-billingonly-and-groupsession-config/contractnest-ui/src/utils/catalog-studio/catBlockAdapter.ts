@@ -297,15 +297,25 @@ const buildServiceConfig = (block: Partial<Block>): Record<string, unknown> => {
   const requiresCycles = getField(block, 'requiresCycles');
   const cycleDays = getField(block, 'cycleDays');
   const cycleAnchorWeekday = getField(block, 'cycleAnchorWeekday');
+  const cycleGracePeriod = getField(block, 'cycleGracePeriod');
   const serviceCycles = getField(block, 'serviceCycles');
   if (requiresCycles || serviceCycles) {
-    config.serviceCycles = serviceCycles || {
-      enabled: requiresCycles,
-      days: cycleDays,
-      gracePeriod: getField(block, 'cycleGracePeriod'),
-      ...(cycleAnchorWeekday !== undefined && cycleAnchorWeekday !== null
-        ? { anchorWeekday: cycleAnchorWeekday }
-        : {}),
+    // Prefer the freshly-entered wizard fields (cycleDays/anchor/grace) and fall
+    // back to any existing serviceCycles object. Previously this was
+    // `serviceCycles || {...}`, so editing the cadence on a block that already
+    // had a serviceCycles object was silently ignored — the stale object won.
+    const existing = (serviceCycles && typeof serviceCycles === 'object')
+      ? (serviceCycles as Record<string, unknown>)
+      : {};
+    const days = cycleDays ?? existing.days;
+    const anchorWeekday = cycleAnchorWeekday ?? existing.anchorWeekday;
+    const gracePeriod = cycleGracePeriod ?? existing.gracePeriod;
+    config.serviceCycles = {
+      ...existing,
+      enabled: requiresCycles ?? existing.enabled ?? true,
+      ...(days !== undefined && days !== null ? { days } : {}),
+      ...(gracePeriod !== undefined && gracePeriod !== null ? { gracePeriod } : {}),
+      ...(anchorWeekday !== undefined && anchorWeekday !== null ? { anchorWeekday } : {}),
     };
   }
 
@@ -854,14 +864,6 @@ export const blockToUpdateData = (
   const data: Record<string, unknown> = {};
   const meta = updates.meta || {};
 
-  // Group Session persists as a SERVICE block (type AND category) — the engine
-  // tells it apart via config.audience === 'group', never the category name.
-  // Mirror blockToCreateData's remap here so EDITING a group-session block does
-  // not re-save category 'session' (which has no buildConfig case → the whole
-  // config, incl. serviceCycles/anchorWeekday/audience, gets wiped to just the
-  // icon).
-  const remapType = (cat?: string) => (cat === 'session' ? 'service' : cat);
-
   // Basic fields
   if (updates.name !== undefined) data.name = updates.name;
   if (updates.description !== undefined) data.description = updates.description;
@@ -870,9 +872,8 @@ export const blockToUpdateData = (
 
   // Type info for config context (don't send block_type_id - it requires UUID, not string name)
   if (updates.categoryId !== undefined) {
-    const blockType = remapType(updates.categoryId);
-    data.type = blockType;
-    data.category = blockType;
+    data.type = updates.categoryId;
+    data.category = updates.categoryId;
   }
 
   // NOTE: pricing_mode_id is a UUID column in DB - don't send string names like 'independent'
@@ -913,7 +914,7 @@ export const blockToUpdateData = (
 
   // Config updates - rebuild entire config if any meta changes
   if (Object.keys(meta).length > 0 && updates.categoryId) {
-    data.config = buildConfig(updates, remapType(updates.categoryId) as string);
+    data.config = buildConfig(updates, updates.categoryId);
   } else if (Object.keys(meta).length > 0) {
     // Partial config update - merge with existing
     const configUpdates: Record<string, unknown> = {};
