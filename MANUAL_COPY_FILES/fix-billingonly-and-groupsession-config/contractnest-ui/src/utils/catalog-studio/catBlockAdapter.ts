@@ -864,6 +864,14 @@ export const blockToUpdateData = (
   const data: Record<string, unknown> = {};
   const meta = updates.meta || {};
 
+  // Group Session persists as a SERVICE block (type AND category) — the engine
+  // tells it apart via config.audience === 'group', never the category name.
+  // Mirror blockToCreateData's remap here so EDITING a group-session block does
+  // not re-save category 'session' (which has no buildConfig case → the whole
+  // config, incl. serviceCycles/anchorWeekday/audience, gets wiped to just the
+  // icon).
+  const remapType = (cat?: string) => (cat === 'session' ? 'service' : cat);
+
   // Basic fields
   if (updates.name !== undefined) data.name = updates.name;
   if (updates.description !== undefined) data.description = updates.description;
@@ -872,8 +880,9 @@ export const blockToUpdateData = (
 
   // Type info for config context (don't send block_type_id - it requires UUID, not string name)
   if (updates.categoryId !== undefined) {
-    data.type = updates.categoryId;
-    data.category = updates.categoryId;
+    const blockType = remapType(updates.categoryId);
+    data.type = blockType;
+    data.category = blockType;
   }
 
   // NOTE: pricing_mode_id is a UUID column in DB - don't send string names like 'independent'
@@ -914,7 +923,7 @@ export const blockToUpdateData = (
 
   // Config updates - rebuild entire config if any meta changes
   if (Object.keys(meta).length > 0 && updates.categoryId) {
-    data.config = buildConfig(updates, updates.categoryId);
+    data.config = buildConfig(updates, remapType(updates.categoryId) as string);
   } else if (Object.keys(meta).length > 0) {
     // Partial config update - merge with existing
     const configUpdates: Record<string, unknown> = {};
