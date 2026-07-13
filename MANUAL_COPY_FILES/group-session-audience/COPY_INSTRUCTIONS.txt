@@ -1,0 +1,61 @@
+═══════════════════════════════════════════════════
+FEATURE: Group Session marker (audience) — label + "Group Sessions" tab + check-in routing
+DATE: 2026-07-13
+DB APPLIED BY CLAUDE? YES — the migration below was applied LIVE to project uwyqhzotluikawcboldr
+   (ADD COLUMN + both RPC patches). Verified: column present, insert carries audience,
+   read returns ce.audience. The .sql is included so it's in your repo history too.
+═══════════════════════════════════════════════════
+
+WHAT THIS DOES
+─────────────────────
+Persists audience:'group' on contract events so the ops calendars can tell a
+group session from a 1:1 visit. Then:
+  - Event Schedule rows show "Group Session" (Users icon) and a "Check-in" button
+    instead of "Book appointment".
+  - A new "Group sessions" tab filters the list to audience='group'
+    (same mechanism as the Service / Billing tabs).
+
+audience flows end to end:
+  UI computed_events (payload) -> create_contract_transaction (stores verbatim)
+  -> process_contract_events_from_computed (passes verbatim)
+  -> insert_contract_events_batch (writes audience) -> t_contract_events.audience
+  -> get_contract_events_list (returns audience) -> the Event Schedule row.
+
+FILES
+─────────────────────
+1. contractnest-ui/src/components/contracts/ContractWizard/index.tsx
+     - create-events payload now includes `audience` (was the only field dropped).
+2. contractnest-ui/src/pages/operations/services/index.tsx  (Event Schedule)
+     - LaneFilter gains 'group'; a "Group sessions" tab; fetches the service lane
+       and narrows to audience='group' client-side; group rows show a Users icon,
+       "Group Session" label, and a "Check-in" button -> /session-checkin.
+3. contractnest-edge/supabase/migrations/bbb-foundation/014_events_audience_marker.sql
+     - ADD COLUMN t_contract_events.audience + drift-proof patches to
+       insert_contract_events_batch and get_contract_events_list.
+       ALREADY APPLIED LIVE. Keep it in the repo; re-running is a safe no-op
+       (idempotent guards).
+
+NOTE: EventCard.tsx already renders "Group Session" from event.audience — no change
+needed there (it's used by Ops Cockpit / contract & contact timelines, which now
+light up automatically once the read RPC returns audience).
+
+COPY COMMANDS (run from contractnest-combined\ root)
+─────────────────────
+Copy-Item "MANUAL_COPY_FILES\group-session-audience\contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\group-session-audience\contractnest-ui\src\pages\operations\services\index.tsx" -Destination "contractnest-ui\src\pages\operations\services\index.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\group-session-audience\contractnest-edge\supabase\migrations\bbb-foundation\014_events_audience_marker.sql" -Destination "contractnest-edge\supabase\migrations\bbb-foundation\014_events_audience_marker.sql" -Force
+
+RESTART: UI dev server + hard refresh. (No API restart needed — this is UI + DB.)
+
+TEST
+─────────────────────
+- [ ] Create a NEW contract with a Group Session block; activate it.
+- [ ] Event Schedule (/ops/services): its occurrences show "Group Session" (Users
+      icon) with a "Check-in" button (not "Book appointment").
+- [ ] Click the "Group sessions" tab -> list narrows to just group occurrences.
+- [ ] "Check-in" -> lands on /session-checkin.
+- [ ] Service / Billing / All events tabs still behave as before.
+
+CAVEAT: existing contracts created before this (e.g. CN-1034) have NULL audience
+on their saved events — they won't relabel. New contracts are correct going forward.
+═══════════════════════════════════════════════════
