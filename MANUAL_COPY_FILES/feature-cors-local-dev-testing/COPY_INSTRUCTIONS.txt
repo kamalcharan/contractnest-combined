@@ -1,0 +1,83 @@
+═══════════════════════════════════════════════════
+📦 FIX: Allow Expo web dev origin through API CORS
+═══════════════════════════════════════════════════
+Branch folder : feature-cors-local-dev-testing
+Submodule     : contractnest-api (ONLY)
+File changed  : src/index.ts — CORS allowedOrigins fallback array
+Verified      : Additive-only change, 4 lines, no logic changed
+
+WHY
+  Testing the ContractNest mobile app via `npm run web` opens a real
+  browser (localhost:8081), which enforces CORS. The API's fallback
+  origin allowlist only had localhost:3000 / 5173 (the web app's Vite
+  ports), so every fetch from the mobile app's web preview was silently
+  blocked by the browser → showed as "Network error" in the app.
+  Native testing (Expo Go on a phone, or a built app) is NOT affected —
+  browsers enforce CORS, native fetch does not.
+
+  Added: http://localhost:8081, http://127.0.0.1:8081 (Expo SDK 54 web
+  port), plus :19006 variants (older Expo web port), for safety.
+
+⚠️ IMPORTANT — THIS ONLY MATTERS IF RAILWAY HAS NO ALLOWED_ORIGINS VAR
+  This array is only used when the ALLOWED_ORIGINS environment variable
+  is NOT set on the running server (see src/index.ts line 465). Your
+  mobile app talks to the PRODUCTION Railway API by default.
+
+  ⚡ FASTEST FIX (no deploy, works immediately):
+     Railway dashboard → contractnest-api service → Variables →
+     if ALLOWED_ORIGINS exists, add these to the comma-separated value:
+       http://localhost:8081,http://127.0.0.1:8081
+     Railway restarts the service automatically — done in ~30 seconds.
+
+  If ALLOWED_ORIGINS is NOT set on Railway (i.e. it's using this code's
+  fallback array), then you need Steps 1-4 below (copy + commit + push
+  + wait for Railway to redeploy from your main branch).
+
+═══════════════════════════════════════════════════
+STEP 1 — Navigate to project
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+═══════════════════════════════════════════════════
+STEP 2 — Copy the file
+═══════════════════════════════════════════════════
+Copy-Item "MANUAL_COPY_FILES\feature-cors-local-dev-testing\contractnest-api\src\index.ts" -Destination "contractnest-api\src\index.ts" -Force
+
+Write-Host "✅ File copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+STEP 3 — Test locally first (optional but recommended)
+═══════════════════════════════════════════════════
+cd contractnest-api
+npm run dev
+# leave this running, then in ContractNest-Mobile run:
+#   $env:EXPO_PUBLIC_API_URL="http://localhost:5000"; npm run web
+# (requires your local .env with SUPABASE_URL / SUPABASE_KEY already set)
+cd ..
+
+═══════════════════════════════════════════════════
+STEP 4 — Commit & push (deploys to Railway if auto-deploy is on)
+═══════════════════════════════════════════════════
+cd contractnest-api
+git status
+git add src/index.ts
+git commit -m "fix: allow Expo web dev origin (localhost:8081/19006) through CORS"
+git push origin main
+cd ..
+
+git add contractnest-api
+git commit -m "chore: update contractnest-api submodule - CORS fix for mobile web testing"
+git push origin claude/init-submodules-o72kvp
+
+# Then merge to master following your usual flow (see prior instructions),
+# or let Railway's branch-tracked auto-deploy pick it up if main is watched.
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Railway env var updated OR code deployed
+- [ ] Refresh the mobile app's web tab (Ctrl+F5)
+- [ ] Retry login → should now hit the API instead of "Network error"
+- [ ] If login still fails, the error will be a real one this time
+      (invalid credentials, 500, etc.) — much easier to debug from here
+═══════════════════════════════════════════════════
