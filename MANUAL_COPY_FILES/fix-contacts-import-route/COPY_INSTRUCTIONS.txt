@@ -1,0 +1,45 @@
+═══════════════════════════════════════════════════
+ITERATION: 1 (Fix)
+DATE: 2026-07-13
+FIX: Restore missing /contacts/import route (Import button opened contact view)
+═══════════════════════════════════════════════════
+
+ROOT CAUSE:
+─────────────────────
+commit 2ac447c ADDED the import route to contractnest-ui/src/App.tsx:
+    import ContactsImportPage from './pages/contacts/import';
+    <Route path="import" element={<ContactsImportPage />} />
+
+commit b1113d8 (Sandbox wiring hand-merge) DELETED both lines as collateral.
+With no "import" route, /contacts/import matches /contacts/:id (id="import")
+and renders ContactViewPage instead of the import wizard.
+
+WHY A .ps1 AND NOT A FULL App.tsx:
+─────────────────────
+App.tsx is a hand-merged file that diverges from the committed submodule
+(Sandbox lines were retired locally). A full-file overwrite would risk
+re-adding the Sandbox lines you removed. This script inserts ONLY the two
+missing contacts-import lines and is idempotent (safe to re-run).
+
+FILE THIS ITERATION:
+─────────────────────
+1. fix_contacts_import_route.ps1  (patches contractnest-ui/src/App.tsx in place)
+
+COPY / RUN COMMANDS (run from contractnest-combined\ root):
+─────────────────────
+Copy-Item "MANUAL_COPY_FILES\fix-contacts-import-route\fix_contacts_import_route.ps1" -Destination ".\fix_contacts_import_route.ps1" -Force
+powershell -ExecutionPolicy Bypass -File .\fix_contacts_import_route.ps1
+
+Then restart the UI dev server:
+    cd contractnest-ui
+    npm run dev
+    (hard-refresh browser: Ctrl+F5)
+
+TEST:
+─────────────────────
+- [ ] Contacts page -> click "Import" -> the Import wizard opens (upload
+      .xlsx/.csv, map columns, preview), NOT a contact view/edit page.
+- [ ] URL is /contacts/import.
+- [ ] Existing contacts still open normally (/contacts/<id>) and edit
+      (/contacts/<id>/edit) - confirms the :id route still works.
+═══════════════════════════════════════════════════
