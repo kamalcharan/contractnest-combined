@@ -1,0 +1,57 @@
+================================================================
+GROUP SESSIONS DASHBOARD - PHASE 1 (Foundation RPCs)
+================================================================
+Branch: claude/group-session-handover-reset-bsn220
+Submodules Affected: contractnest-edge (DB migration only)
+
+WHAT THIS IS
+----------------------------------------------------------------
+Phase 1 of the generic (tenant-agnostic) Group Sessions dashboard.
+Four chair-side, tenant-scoped READ RPCs that power the dashboard
+drill-down (Sessions -> Occurrences -> Roster -> Member).
+
+A "group session" is defined GENERICALLY as any t_contracts row
+flagged: metadata->>'group_session_owner' = 'true'
+(the contract that OWNS the shared audience='group' schedule).
+Roster reuses gs_membership_contract() from migration 017.
+No tenant name is hardcoded - works for any customer.
+
+RPCs added (all SECURITY DEFINER, RLS-on-no-policies pattern):
+  1. gs_dash_sessions(p_tenant, p_is_live)   -> list sessions + aggregates
+  2. gs_dash_occurrences(p_tenant, p_contract)-> occurrences + attendance
+  3. gs_dash_roster(p_tenant, p_contract)     -> enumerate roster (NEW)
+  4. gs_dash_member(p_tenant, p_member)       -> member attendance + dues
+
+DEPLOYMENT STATUS
+----------------------------------------------------------------
+*** ALREADY APPLIED LIVE *** to project uwyqhzotluikawcboldr.
+You do NOT need to deploy again. The .sql file is the repo record.
+Re-running is a safe no-op (CREATE OR REPLACE).
+
+FILES IN THIS BUNDLE
+----------------------------------------------------------------
+contractnest-edge/supabase/migrations/bbb-foundation/018_group_session_dashboard_rpcs.sql
+
+COPY COMMANDS (PowerShell, from repo root)
+----------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\group-session-dashboard-p1\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "Phase 1 migration file copied." -ForegroundColor Green
+
+VERIFICATION (already done live)
+----------------------------------------------------------------
+gs_dash_roster returned a sample member "CHARAN KAMAL" with
+membership_contract_id 75a12dd6-... , dues_pending: true, attended: 0
+-> confirms the NEW roster-enumeration capability works.
+
+NEXT (Phase 2 - not in this bundle)
+----------------------------------------------------------------
+- Dashboard UI: Overview -> Group/Session -> Occurrence -> Member
+- Group Sessions nav item
+- "Create/Manage Group Session" flow (sets metadata.group_session_owner
+  = 'true' on the owner contract; wires the occurrence guard so the
+  OWNER contract generates occurrences while MEMBER contracts stay 0)
+- "Open check-in" -> existing chair QR flow
+================================================================
