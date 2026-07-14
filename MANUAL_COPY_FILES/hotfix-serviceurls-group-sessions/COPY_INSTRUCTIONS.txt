@@ -1,0 +1,49 @@
+================================================================
+HOTFIX — restore GROUP_SESSIONS endpoints in serviceURLs.ts
+================================================================
+Branch: claude/group-session-handover-reset-bsn220
+Submodule Affected: contractnest-ui  (ONE file)
+
+SYMPTOM
+----------------------------------------------------------------
+"Could not load group sessions" + the Group Sessions nav/page stopped
+working.
+
+ROOT CAUSE (my mistake)
+----------------------------------------------------------------
+serviceURLs.ts is a SHARED file that appears in many bundles. The G1.1
+Offline-UPI bundle shipped a serviceURLs.ts that was built off an OLD base
+which did NOT contain the GROUP_SESSIONS endpoint block. When that bundle's
+contractnest-ui folder was copied with "-Recurse -Force", it OVERWROTE the
+good serviceURLs.ts (which had GROUP_SESSIONS from the group-sessions
+phases) with the stale one. Result: API_ENDPOINTS.GROUP_SESSIONS became
+undefined, so every dashboard call crashed.
+
+It was NOT the G2 check-in change.
+
+THE FIX
+----------------------------------------------------------------
+This bundle contains ONE corrected serviceURLs.ts that has BOTH:
+  - the full GROUP_SESSIONS.* endpoint block (dashboard), AND
+  - INTEGRATIONS.DELETE (Offline UPI remove).
+(The poisonous G1.1 bundle copy has also been repaired, so re-copying it
+can no longer regress this file.)
+
+COPY COMMAND (PowerShell, from repo root)
+----------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\hotfix-serviceurls-group-sessions\contractnest-ui\src\services\serviceURLs.ts" -Destination "contractnest-ui\src\services\serviceURLs.ts" -Force
+
+Write-Host "serviceURLs.ts restored." -ForegroundColor Green
+Hard-refresh the browser (Ctrl+F5).
+
+VERIFY
+----------------------------------------------------------------
+  [ ] Group Sessions nav opens the dashboard again (no "Could not load").
+  [ ] Settings -> Integrations -> Offline UPI still has its Remove button.
+
+Quick check in the copied file:
+  Select-String -Path "contractnest-ui\src\services\serviceURLs.ts" -Pattern "GROUP_SESSIONS"   # must match
+  Select-String -Path "contractnest-ui\src\services\serviceURLs.ts" -Pattern "DELETE: \(id"     # integrations delete present
+================================================================
