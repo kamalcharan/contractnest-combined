@@ -1,0 +1,58 @@
+================================================================
+SESSION CHECK-IN ROUTE FIX (+ carries Phase 2 group-sessions mount)
+================================================================
+Branch: claude/group-session-handover-reset-bsn220
+Submodule Affected: contractnest-api (single file: src/index.ts)
+
+THE BUG
+----------------------------------------------------------------
+The Session Check-in feature (chair page "Get link" + "Payments to
+confirm", and the public member QR page) was fully built - routes,
+controller, service all exist - but the two routers were NEVER mounted
+in index.ts. So every call 404s: that's the "Route not found" you saw
+under "Payments to confirm", and why "Open check-in" / "Get link" do
+nothing.
+
+  contractnest-api/src/routes/sessionCheckinRoutes.ts        (existed, unmounted)
+  contractnest-api/src/routes/sessionCheckinPublicRoutes.ts  (existed, unmounted)
+
+THE FIX
+----------------------------------------------------------------
+Mount both routers in index.ts (load block + register block), matching
+the VaNi pattern:
+  app.use('/api/session-checkin', sessionCheckinRoutes);   // chair (auth)
+  app.use('/api/checkin', sessionCheckinPublicRoutes);     // public member QR
+
+This index.ts ALSO contains the Phase 2 group-sessions mount
+(/api/group-sessions), so it SUPERSEDES the index.ts in
+group-session-dashboard-p2/. Copy THIS one (it's the newest and has both).
+
+TYPECHECK: api tsc --noEmit clean.
+
+FILE
+----------------------------------------------------------------
+contractnest-api/src/index.ts   (full file; additive route mounts only)
+
+COPY COMMAND (PowerShell, from repo root)
+----------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\session-checkin-route-fix\contractnest-api\src\index.ts" -Destination "contractnest-api\src\index.ts" -Force
+Write-Host "Check-in routes mounted." -ForegroundColor Green
+
+Then restart the API (npm run dev). Verify in the API startup log:
+  Session Check-in (chair) routes registered at /api/session-checkin
+  Session Check-in (public) routes registered at /api/checkin
+  Group Sessions dashboard routes registered at /api/group-sessions
+
+TEST
+----------------------------------------------------------------
+  [ ] Session Check-in page: "Payments to confirm" no longer shows
+      "Route not found" (shows the pending list or "Nothing pending")
+  [ ] Paste a group-session contract ID into "Get link" -> returns a
+      permanent /checkin/<token> link (no 404)
+
+NOTE (design, not a blocker) - see chat: the member check-in page could
+later be driven by Smart Forms instead of the current bespoke page. That
+is a separate architectural decision; this fix simply makes the
+already-built check-in flow work.
+================================================================
