@@ -1,0 +1,101 @@
+================================================================
+GROUP SESSIONS — PHASE E: reference-matching dashboard + drill-downs
+================================================================
+Branch: claude/group-session-handover-reset-bsn220
+Submodules Affected: contractnest-edge, contractnest-api, contractnest-ui
+
+SUPERSEDES the group-sessions dashboard from Phases A–D (the 3 API files +
+serviceURLs + hooks + page). Copy THESE. Requires A–D applied and the
+prerequisites (p1 RPCs, nav/route, session-checkin-route-fix mount).
+
+WHY: the earlier phases built the data/plumbing but shipped a bare, flat UI.
+This rebuilds the dashboard to the agreed reference mock — a proper 4-level
+drill-down — so you can actually open an event, see its metrics, download the
+QR, and reach the smart form.
+
+WHAT THIS IS (the reference IA, mapped to our block-centric data)
+----------------------------------------------------------------
+  Overview  → block cards (each = a group session): Members / Attendance% /
+              Held, Next, QR pill. + "Payments to confirm".
+  Group     → click a card: KPIs (Members · Attendance% · Next · Dues due),
+              "Upcoming & past sessions" (click a row → occurrence),
+              "Roster" (click a member → member), "Session series", and an
+              ALWAYS-VISIBLE QR card (download PNG/SVG · Open · Regenerate).
+  Occurrence→ click a session: the attendance screen — mark each member
+              Present/absent (chair, no QR needed), present count, + QR card,
+              + per-occurrence Move date / Skip / Restore.
+  Member    → click a member: profile + KPIs (Attendance% · Attended N/held ·
+              Dues · Last seen) + attendance-history grid (✓/✕/·) + payments.
+
+New RPCs (migration 023): gs_occurrence_attendance, gs_mark_attendance (chair
+manual marking), gs_member_block (member-in-block profile). New API endpoints:
+GET /occurrence/:id/attendance, POST /occurrence/:id/mark,
+GET /member/:memberId/block/:blockId. QR is rendered inline by the vendored
+qrcodegen (no npm install).
+
+ANSWERS TO THE "I don't know how to…" points:
+  - Open a specific event  → Overview → a card → click a row under
+    "Upcoming & past sessions".
+  - Event metrics          → that occurrence screen shows present count +
+    per-member present/absent; the Group page shows attendance %.
+  - Download the QR        → the QR card on the Group (and Occurrence) page —
+    Download PNG/SVG, always visible.
+  - Test the smart form    → QR card → "Open" (or scan) opens the member
+    check-in page = the smart form. NOTE: today's date needs a scheduled
+    occurrence — use "Add" on the sessions card to add today, else it says
+    "no session today".
+
+Production checklist:
+  Transaction Mgmt : attendance upsert atomic; mark flips schedule to 'held'
+  Race conditions  : UNIQUE(schedule_occurrence_id, member) partial index
+  Error handling   : RPC {ok:false,reason}; service {success,error}; mutation
+                     toasts; per-view loading + empty states
+  Toasts/Loaders   : react-hot-toast on mutations; LoadingSpinner per section
+TYPECHECK: api + ui clean (tsc --noEmit).
+
+DEPLOYMENT STATUS
+----------------------------------------------------------------
+Migration 023 ALREADY APPLIED LIVE to project uwyqhzotluikawcboldr. The .sql
+is the repo record; safe no-op. No edge deploy needed.
+Live-verified: gs_occurrence_attendance (roster present/absent) +
+gs_member_block (attendance grid + billing) return correctly for the Bi Weekly
+Meetings block.
+
+FILES (supersede Phase C/D group-sessions files)
+----------------------------------------------------------------
+NEW:
+  contractnest-edge/supabase/migrations/bbb-foundation/023_group_session_drilldowns.sql
+  contractnest-ui/src/components/group-sessions/QRCard.tsx
+MODIFIED:
+  contractnest-api/src/services/groupSessionsDashboardService.ts     (+occurrenceAttendance/markAttendance/memberBlock)
+  contractnest-api/src/controllers/groupSessionsDashboardController.ts (+3 handlers)
+  contractnest-api/src/routes/groupSessionsDashboardRoutes.ts        (+3 routes)
+  contractnest-ui/src/services/serviceURLs.ts                        (+OCC_ATTENDANCE/OCC_MARK/MEMBER_BLOCK)
+  contractnest-ui/src/hooks/queries/useGroupSessionsDashboard.ts     (+occurrence/mark/member-block hooks)
+  contractnest-ui/src/pages/operations/group-sessions/index.tsx      (FULL rebuild → 4-level drill-down)
+  contractnest-ui/src/utils/qrcodegen.ts                             (unchanged from D; included for self-containment)
+
+COPY COMMANDS (PowerShell, from repo root)
+----------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\group-sessions-phaseE\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\group-sessions-phaseE\contractnest-api\*"  -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\group-sessions-phaseE\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+
+Write-Host "Phase E copied." -ForegroundColor Green
+
+Restart API + UI. (The old CheckinQrModal.tsx from Phase D is now unused —
+harmless; the QR is the inline QR card.)
+
+TEST
+----------------------------------------------------------------
+  [ ] Overview shows a card "Bi Weekly Meetings" (Members 2, Held 8/34, QR ready)
+  [ ] Click it → Group page: KPIs, 34-date session list, roster (2), Session
+      series, and a real scannable QR with Download
+  [ ] Click a session row → Occurrence page: mark a member Present → present
+      count + roster Attended update; Move/Skip work
+  [ ] Click a member → profile with attendance grid + payments
+  [ ] QR card "Open" → the member check-in page (smart form). Add today's date
+      first (sessions card "Add") to get past "no session today"
+================================================================
