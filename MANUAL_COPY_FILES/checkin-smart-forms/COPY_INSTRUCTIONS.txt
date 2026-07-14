@@ -1,0 +1,94 @@
+================================================================
+SMART-FORMS-DRIVEN GROUP SESSION CHECK-IN (hybrid)
+================================================================
+Branch: claude/group-session-handover-reset-bsn220
+Submodules Affected: contractnest-edge, contractnest-api, contractnest-ui
+
+PREREQUISITE
+----------------------------------------------------------------
+Apply the "session-checkin-route-fix" bundle FIRST (it mounts the
+check-in routers in index.ts). Without it, /api/checkin/* is unmounted
+and this feature 404s.
+
+WHAT THIS IS
+----------------------------------------------------------------
+When a member scans the session QR, the check-in page now renders its
+QUESTIONS from a Smart Forms template (configurable per tenant) instead
+of hardcoded fields. The token wizard (resolve -> phone lookup -> history
+-> dues) is unchanged; only the questions step became Smart-Forms-driven.
+
+Why hybrid (not a pure Smart Form): the Smart Forms SAVE pipeline
+(/api/forms/submissions -> m_form_submissions) requires a logged-in
+tenant JWT + NOT-NULL tenant/template/contract keys, which a logged-out
+member scanning a QR does not have. So answers keep flowing through the
+token-gated gs_submit_checkin RPC. The Smart Forms RENDERER component is
+reused (it is pure/auth-free); the persistence is NOT.
+
+Production checklist:
+  Transaction Mgmt : RPC-level upsert (single statement); atomic
+  Race conditions  : attendance UPSERT on (occurrence, member) unique idx
+  Error handling   : service {success,error}; controller sendError;
+                     page falls back to a built-in default schema if the
+                     form endpoint is unreachable; no_session_today gated
+  Toasts/Loaders   : page uses inline states (public, dependency-light);
+                     FormRenderer shows its own loading on submit
+
+TYPECHECK: api + the two check-in UI files compile clean (tsc --noEmit).
+(Pre-existing broken files OnboardingContext.ts / serviceURLs.addition.ts
+throw unrelated tsc errors; untouched here.)
+
+DEPLOYMENT STATUS
+----------------------------------------------------------------
+Migration 019 is ALREADY APPLIED LIVE to project uwyqhzotluikawcboldr
+(gs_checkin_form + extended gs_submit_checkin, +form columns on
+t_session_attendance). The .sql file is the repo record; safe no-op to
+re-run. You do NOT need to deploy the edge again.
+
+FILES
+----------------------------------------------------------------
+NEW:
+  contractnest-edge/supabase/migrations/bbb-foundation/019_checkin_smart_form.sql
+MODIFIED (additive):
+  contractnest-api/src/services/sessionCheckinService.ts     (+checkinForm, +responses in submit)
+  contractnest-api/src/controllers/sessionCheckinController.ts (+form handler, +responses)
+  contractnest-api/src/routes/sessionCheckinPublicRoutes.ts  (+GET /:token/form)
+  contractnest-ui/src/pages/checkin/useSessionCheckin.ts     (+form(), +types, +DEFAULT_CHECKIN_SCHEMA)
+  contractnest-ui/src/pages/checkin/SessionCheckinPage.tsx   (renders <FormRenderer> for questions)
+
+COPY COMMANDS (PowerShell, from repo root)
+----------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\checkin-smart-forms\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\checkin-smart-forms\contractnest-api\*"  -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\checkin-smart-forms\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+
+Write-Host "Check-in Smart Forms files copied." -ForegroundColor Green
+
+Then restart the API (npm run dev) and the UI (npm run dev).
+
+HOW THE FORM IS CHOSEN (per tenant, generic)
+----------------------------------------------------------------
+gs_checkin_form(token) serves the APPROVED Smart Forms template mapped to
+the session's owner contract via m_form_template_mappings with
+timing = 'during_service'. If none is mapped, it returns a built-in
+attendance-only default, so check-in always works out of the box.
+To customise: author a template in Smart Forms admin (status=approved) and
+add a m_form_template_mappings row (contract_id = the group-session owner
+contract, timing='during_service', status='active').
+
+The well-known field id `attendance_status` (values present|apologies)
+maps to attendance; all other fields are stored as `form_responses` JSONB
+on t_session_attendance. Dues selection stays custom (dynamic per member).
+
+TEST
+----------------------------------------------------------------
+  [ ] Open a /checkin/<token> link (mint via chair "Get link")
+  [ ] Enter a roster phone -> member matches, dues list shows
+  [ ] The questions render (default: "Are you attending today?")
+  [ ] Submit -> "You're checked in"; attendance row written with
+      form_responses; a declared payment shows pending to the chair
+  [ ] With no session today -> "No session today" (disabled)
+  [ ] (optional) Map an approved template 'during_service' -> those
+      questions render instead of the default
+================================================================
