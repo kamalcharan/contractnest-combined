@@ -29,6 +29,16 @@ FILES
      - LaneFilter gains 'group'; a "Group sessions" tab; fetches the service lane
        and narrows to audience='group' client-side; group rows show a Users icon,
        "Group Session" label, and a "Check-in" button -> /session-checkin.
+2b. contractnest-api/src/services/contractComposerService.ts   *** API — assign path ***
+     - Threads audience through the composer (candidate -> prefill block config) so
+       TEMPLATE ASSIGNMENT (single AND bulk) carries audience='group'. Without this,
+       manual contract creation works but assign/bulk-assign would save NULL audience.
+     - NOTE: this file SUPERSEDES the contractComposerService.ts in
+       MANUAL_COPY_FILES/fix-billingonly-and-groupsession-config/ — it contains BOTH
+       the #2 billingOnly fix AND the audience threading. Copy THIS one.
+     - The other #2 API files (contractEventsDerivationService.ts, the parity test)
+       are unchanged — apply them from the fix-billingonly folder as before.
+     - Requires an API server restart.
 3. contractnest-edge/supabase/migrations/bbb-foundation/014_events_audience_marker.sql
      - ADD COLUMN t_contract_events.audience + drift-proof patches to
        insert_contract_events_batch and get_contract_events_list.
@@ -43,9 +53,10 @@ COPY COMMANDS (run from contractnest-combined\ root)
 ─────────────────────
 Copy-Item "MANUAL_COPY_FILES\group-session-audience\contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Force
 Copy-Item "MANUAL_COPY_FILES\group-session-audience\contractnest-ui\src\pages\operations\services\index.tsx" -Destination "contractnest-ui\src\pages\operations\services\index.tsx" -Force
+Copy-Item "MANUAL_COPY_FILES\group-session-audience\contractnest-api\src\services\contractComposerService.ts" -Destination "contractnest-api\src\services\contractComposerService.ts" -Force
 Copy-Item "MANUAL_COPY_FILES\group-session-audience\contractnest-edge\supabase\migrations\bbb-foundation\014_events_audience_marker.sql" -Destination "contractnest-edge\supabase\migrations\bbb-foundation\014_events_audience_marker.sql" -Force
 
-RESTART: UI dev server + hard refresh. (No API restart needed — this is UI + DB.)
+RESTART: UI dev server + hard refresh, AND the API server (contractComposerService changed).
 
 TEST
 ─────────────────────
