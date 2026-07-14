@@ -1,0 +1,46 @@
+================================================================
+GROUP SESSIONS — G1: "Offline UPI" integration
+================================================================
+Branch: claude/group-session-handover-reset-bsn220
+Submodule Affected: contractnest-edge (DB seed only — NO api/ui code)
+
+WHAT THIS IS
+----------------------------------------------------------------
+Adds an "Offline UPI" provider under the Payment Gateway integration type.
+It is NOT a real gateway (no API keys, no fees) — it just stores the tenant's
+UPI VPA + payee name so the group-session check-in can later open the member's
+UPI app (GPay/PhonePe) via a upi:// intent (that's G4).
+
+Because /settings/integrations renders providers dynamically from
+config_schema.fields and saves values into t_tenant_integrations.credentials,
+seeding this ONE provider row is all G1 needs — no UI or API changes.
+
+Config fields the tenant fills (Settings → Integrations → Offline UPI):
+  - UPI ID (VPA)   e.g. bbbchapter@okhdfcbank
+  - Payee name     shown in the member's UPI app
+metadata.kind='upi_intent' flags it so the check-in "Pay now" (G4) knows to
+build a UPI intent rather than call a gateway.
+
+DEPLOYMENT STATUS
+----------------------------------------------------------------
+ALREADY APPLIED LIVE to project uwyqhzotluikawcboldr. The .sql is the repo
+record; safe no-op to re-run (insert-if-absent). No edge deploy needed.
+
+FILE
+----------------------------------------------------------------
+contractnest-edge/supabase/migrations/bbb-foundation/025_offline_upi_integration.sql
+
+COPY COMMAND (PowerShell, from repo root)
+----------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\group-sessions-g1-offline-upi\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+TEST
+----------------------------------------------------------------
+  [ ] Settings -> Integrations -> under Payment Gateway, "Offline UPI" appears
+  [ ] Enter a UPI ID + Payee name -> Save -> stored on the tenant
+  (Using it at check-in comes in G4: "Pay now" opens the UPI app.)
+
+NOTE: it lists under "Payment Gateway". If any gateway picker elsewhere now
+shows "Offline UPI", G4 will branch on metadata.kind='upi_intent'.
+================================================================
