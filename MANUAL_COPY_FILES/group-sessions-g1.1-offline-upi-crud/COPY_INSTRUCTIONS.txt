@@ -1,0 +1,72 @@
+================================================================
+G1.1 — Offline UPI: config-only setup modal (add / edit / delete)
+================================================================
+Branch: claude/group-session-handover-reset-bsn220
+Submodules Affected: contractnest-edge, contractnest-api, contractnest-ui
+SUPERSEDES the "group-sessions-g1-offline-upi" bundle.
+
+WHY
+----------------------------------------------------------------
+The integration setup modal was built for gateways (Test Connection →
+Connect). For "Offline UPI" there is nothing to connect/test — it is plain
+add / edit / delete of a stored VPA. The old modal even BLOCKED saving because
+it ran a test first ("Test connection not implemented for provider:
+offline_upi").
+
+WHAT CHANGED
+----------------------------------------------------------------
+Providers flagged metadata.config_only=true (Offline UPI is) now get a
+CRUD modal instead of the connect/test flow:
+  - Saving NO LONGER runs a connection test (it just stores the values).
+  - The "Test Connection" button is hidden.
+  - Primary button reads "Save" (new) / "Save changes" (editing).
+  - When a config already exists, a red "Remove" button deletes it.
+This is generic — any future config-only provider gets the same treatment.
+
+Delete was wired end-to-end (the edge function already supported it; only the
+API route + hook + prop-threading were missing):
+  API  : DELETE /api/integrations/:id  → integrationController.deleteIntegration
+         → integrationService.deleteTenantIntegration (existing)
+  UI   : useIntegrations.deleteIntegration; onDelete threaded
+         index → IntegrationTypeSection → IntegrationProviderCard → modal.
+
+DEPLOYMENT STATUS
+----------------------------------------------------------------
+Migration 025 (provider seed + metadata.config_only) ALREADY APPLIED LIVE to
+project uwyqhzotluikawcboldr (config_only was added via UPDATE; the .sql now
+includes it). Safe no-op to re-run. No edge deploy needed.
+
+TYPECHECK: api + ui clean.
+
+FILES (supersede G1)
+----------------------------------------------------------------
+MODIFIED:
+  contractnest-edge/supabase/migrations/bbb-foundation/025_offline_upi_integration.sql  (+config_only)
+  contractnest-api/src/controllers/integrationController.ts   (+deleteIntegration)
+  contractnest-api/src/routes/integrationRoutes.ts            (+DELETE /integrations/:id)
+  contractnest-ui/src/services/serviceURLs.ts                 (+INTEGRATIONS.DELETE)
+  contractnest-ui/src/hooks/useIntegrations.ts                (+deleteIntegration)
+  contractnest-ui/src/pages/settings/integrations/index.tsx   (pass onDelete)
+  contractnest-ui/src/components/integrations/IntegrationSetupModal.tsx  (config-only + Remove)
+  contractnest-ui/src/components/integrations/IntegrationTypeSection.tsx (thread onDelete)
+  contractnest-ui/src/components/integrations/IntegrationProviderCard.tsx (thread onDelete)
+
+COPY COMMANDS (PowerShell, from repo root)
+----------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\group-sessions-g1.1-offline-upi-crud\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\group-sessions-g1.1-offline-upi-crud\contractnest-api\*"  -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\group-sessions-g1.1-offline-upi-crud\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+
+Write-Host "G1.1 copied." -ForegroundColor Green
+Restart API + UI.
+
+TEST
+----------------------------------------------------------------
+  [ ] Settings → Integrations → Offline UPI: no "Test Connection"; button says "Save"
+  [ ] Enter UPI ID + Payee name → Save → stored (no connection error)
+  [ ] Reopen → edit values → "Save changes"
+  [ ] Reopen → "Remove" → config deleted
+  (Gateways like Razorpay/Stripe are unaffected — they still Test/Connect.)
+================================================================
