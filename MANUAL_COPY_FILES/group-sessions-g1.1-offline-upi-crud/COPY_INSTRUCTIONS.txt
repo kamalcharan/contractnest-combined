@@ -45,9 +45,22 @@ API route + hook + prop-threading were missing):
 
 DEPLOYMENT STATUS
 ----------------------------------------------------------------
-Migration 025 (provider seed + metadata.config_only) ALREADY APPLIED LIVE to
-project uwyqhzotluikawcboldr (config_only was added via UPDATE; the .sql now
-includes it). Safe no-op to re-run. No edge deploy needed.
+ALL BACKEND CHANGES ARE ALREADY LIVE on project uwyqhzotluikawcboldr:
+  - Migration 025 (provider seed + metadata.config_only) applied.
+  - Migration 026 (get_integration_provider +metadata; delete_tenant_integration)
+    applied.
+  - Edge function "integrations" REDEPLOYED (v64):
+      * /test now returns { success:true } for config_only / offline_upi
+        (this is the definitive fix for "Test connection not implemented").
+      * new DELETE .../tenant-integrations?id= -> delete_tenant_integration.
+
+>> Because the fix lives in the edge function, SAVING OFFLINE UPI ALREADY WORKS
+   with the CURRENT (old) frontend — just hard-refresh the browser. The UI files
+   below are polish (hide Test button, "Save"/"Remove" labels), not required to
+   clear the error.
+
+The contractnest-edge/ files in this bundle are for the REPO RECORD (commit them
+so git matches what is live). No manual edge deploy needed on your side.
 
 TYPECHECK: api + ui clean.
 
