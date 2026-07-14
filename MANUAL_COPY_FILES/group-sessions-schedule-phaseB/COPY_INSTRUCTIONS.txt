@@ -1,0 +1,83 @@
+================================================================
+GROUP SESSIONS — PHASE B: shared per-block schedule + edits
+================================================================
+Branch: claude/group-session-handover-reset-bsn220
+Submodules Affected: contractnest-edge, contractnest-api, contractnest-ui
+
+SUPERSEDES the group-sessions files from Phase A (same 3 API files +
+serviceURLs + hooks + page). Copy THESE — they are newer. Requires Phase A
+already applied (block-centric dashboard) and the earlier prerequisites
+(p1 RPCs, nav/route from p2, session-checkin-route-fix mount).
+
+WHAT THIS ADDS
+----------------------------------------------------------------
+ONE shared schedule per group-session block (not per member contract), so a
+holiday reschedule is a single-row edit every member sees.
+
+  New table t_group_session_schedule (tenant, source_block_id, is_live,
+  occurrence_date, seq, status, note). Generated from the block cadence
+  (m_cat_blocks.config.serviceCycles: days + anchorWeekday).
+
+  New RPCs: gs_generate_schedule, gs_schedule_move (holiday), gs_schedule_status
+  (skip/cancel/restore/held), gs_schedule_add, gs_renumber_schedule.
+  gs_dash_occurrences now reads this table; gs_dash_sessions aggregates
+  occurrences_total / done / next_occurrence from it.
+
+Dashboard → open a group session → Occurrences tab:
+  - empty  → "Generate schedule" button (from the block cadence)
+  - filled → each occurrence with # / date / status; per-row actions:
+             Move date (holiday), Skip, Cancel, Restore; plus "Add date"
+
+Production checklist:
+  Transaction Mgmt : single-statement upserts; renumber in one UPDATE
+  Race conditions  : UNIQUE(tenant, block, is_live, date) — no dupe dates
+  Error handling   : RPC {ok:false,reason}; service {success,error};
+                     controller sendError; mutation onError toasts
+  Toasts           : react-hot-toast on every schedule mutation
+  Loaders          : buttons disable + "Generating…" while pending
+
+TYPECHECK: api + ui group-sessions files compile clean (tsc --noEmit).
+
+DEPLOYMENT STATUS
+----------------------------------------------------------------
+Migration 021 ALREADY APPLIED LIVE to project uwyqhzotluikawcboldr
+(table + all gs_schedule_* / gs_generate_schedule RPCs + updated
+gs_dash_occurrences/sessions). The .sql is the repo record; safe no-op to
+re-run. No edge deploy needed.
+
+Live-verified: generating "Bi Weekly Meetings" produced 34 Saturdays 14 days
+apart (2026-04-04 → 2027-07-10); moving 2026-07-25 → 2026-07-26 updated the
+next_occurrence on the card. Attendance % / QR still deferred to Phase C.
+
+FILES (supersede Phase A)
+----------------------------------------------------------------
+NEW:
+  contractnest-edge/supabase/migrations/bbb-foundation/021_group_session_schedule.sql
+MODIFIED:
+  contractnest-api/src/services/groupSessionsDashboardService.ts     (dashOccurrences gets is_live; +generate/move/status/add)
+  contractnest-api/src/controllers/groupSessionsDashboardController.ts (+generate/move/status/add handlers)
+  contractnest-api/src/routes/groupSessionsDashboardRoutes.ts        (+POST generate/add/move/status)
+  contractnest-ui/src/services/serviceURLs.ts                        (+GENERATE/OCC_ADD/OCC_MOVE/OCC_STATUS)
+  contractnest-ui/src/hooks/queries/useGroupSessionsDashboard.ts     (GsOccurrenceRow reshaped; +4 mutation hooks)
+  contractnest-ui/src/pages/operations/group-sessions/index.tsx      (Occurrences tab: generate + per-occurrence edit)
+
+COPY COMMANDS (PowerShell, from repo root)
+----------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\group-sessions-schedule-phaseB\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\group-sessions-schedule-phaseB\contractnest-api\*"  -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\group-sessions-schedule-phaseB\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+
+Write-Host "Phase B (shared schedule) copied." -ForegroundColor Green
+
+Restart API + UI. In TEST env, open Group Sessions -> Bi Weekly Meetings:
+  [ ] Occurrences tab shows the 34-date schedule (already generated live)
+  [ ] Card shows 34 total / N done / Next date
+  [ ] Move a date (pencil) -> pick new date -> card's Next updates
+  [ ] Skip / Cancel / Restore a date; Add an ad-hoc date
+  [ ] Roster tab unchanged (2 members + contract dates + dues)
+
+NOTE: Occurrence "Present" counts + attendance % + QR come in Phase C
+(check-in resolves today's session from this schedule and writes attendance).
+================================================================
