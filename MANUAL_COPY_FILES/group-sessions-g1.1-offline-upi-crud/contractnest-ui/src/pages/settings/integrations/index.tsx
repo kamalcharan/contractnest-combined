@@ -172,8 +172,11 @@ const IntegrationsPage = () => {
       provider_name: provider?.provider_name || '',
       display_name: provider?.display_name || ''
     };
-    
-    const result = await saveIntegration(integration as Integration);
+
+    // Config-only providers (e.g. Offline UPI) have nothing to verify — save directly.
+    const configOnly = !!(provider as any)?.metadata?.config_only;
+
+    const result = await saveIntegration(integration as Integration, { skipTest: configOnly });
     if (result) {
       // Refresh the integrations
       await fetchIntegrationTypes();
@@ -202,8 +205,11 @@ const IntegrationsPage = () => {
       is_live: params.is_live !== undefined ? params.is_live : existingIntegration.is_live,
       is_active: params.is_active !== undefined ? params.is_active : existingIntegration.is_active
     };
-    
-    const result = await saveIntegration(updatedIntegration);
+
+    // Config-only providers (e.g. Offline UPI) have nothing to verify — save directly.
+    const configOnly = !!(existingIntegration as any)?.metadata?.config_only;
+
+    const result = await saveIntegration(updatedIntegration, { skipTest: configOnly });
     if (result) {
       // Refresh the integrations
       fetchIntegrationTypes();

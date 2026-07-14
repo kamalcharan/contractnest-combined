@@ -285,21 +285,25 @@ export const useIntegrations = () => {
   };
   
   // Save integration
-  const saveIntegration = async (integration: Integration) => {
+  // options.skipTest: for config-only providers (e.g. Offline UPI) there is
+  // nothing to connect/verify — persist the stored values directly.
+  const saveIntegration = async (integration: Integration, options?: { skipTest?: boolean }) => {
     setSubmitting(true);
     setError(null);
 
     const loadingToastId = vaniToast.info('Saving integration...', { duration: 60000 });
 
     try {
-      // Test the connection first
-      const testResponse = await testConnection(integration);
+      // Test the connection first (unless this is a config-only provider)
+      if (!options?.skipTest) {
+        const testResponse = await testConnection(integration);
 
-      if (!testResponse.success) {
-        vaniToast.dismiss(loadingToastId);
-        return false;
+        if (!testResponse.success) {
+          vaniToast.dismiss(loadingToastId);
+          return false;
+        }
       }
-      
+
       // Save the integration with test results
       const response = await api.post(API_ENDPOINTS.INTEGRATIONS.BASE, {
         ...integration,

@@ -13,6 +13,19 @@ add / edit / delete of a stored VPA. The old modal even BLOCKED saving because
 it ran a test first ("Test connection not implemented for provider:
 offline_upi").
 
+FOLLOW-UP FIX (save path) — IMPORTANT
+----------------------------------------------------------------
+Symptom: entered UPI details, saw a toast, but the card stayed in "Set Up"
+mode and nothing persisted.
+Cause: even with the modal's own test skipped, persistence goes through
+useIntegrations.saveIntegration(), which ALSO runs a connection test BEFORE
+the insert. For offline_upi that test returns "not implemented" -> save
+aborted -> no t_tenant_integrations row -> card stays in setup mode.
+Fix: saveIntegration now accepts { skipTest } and index.tsx passes
+skipTest=true for config-only providers (detected via provider.metadata.
+config_only), so the VPA is stored directly. Files: useIntegrations.ts +
+pages/settings/integrations/index.tsx (both already in this bundle).
+
 WHAT CHANGED
 ----------------------------------------------------------------
 Providers flagged metadata.config_only=true (Offline UPI is) now get a
