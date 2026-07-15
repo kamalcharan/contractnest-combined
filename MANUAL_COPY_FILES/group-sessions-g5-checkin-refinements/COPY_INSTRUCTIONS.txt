@@ -1,0 +1,73 @@
+================================================================
+G5 — Check-in refinements (feedback round)  [cumulative: G2..G5]
+================================================================
+Branch: claude/group-session-handover-reset-bsn220
+Submodule Affected: contractnest-ui (mainly), contractnest-api (unchanged vs G4, included for self-containment)
+NO DB migration. NO edge deploy. UI-only behavior changes.
+
+WHAT CHANGED (your 6 observations)
+----------------------------------------------------------------
+1) Older/specific session on mobile: kept "today only" by design. The
+   "no session today" screen now explains: check-in opens on the session
+   day; for a past session, the chapter marks you (dashboard). [1A]
+
+2) Substitute mobile "not saved": it WAS saving, but the sub-form never
+   showed a field for it. Added an explicit "Your mobile number" field in
+   the substitute flow (pre-filled from the number you scanned with), so
+   it's clearly captured.
+
+3) Reopen persisted old values: removed the remembered-number pre-fill.
+   Every open now starts blank at step 1. [2A]
+
+4) Close/exit: the success screen now has a "Close" button (closes the
+   tab) + "Check in someone else" (resets) + "You can now close this tab".
+
+5) Country code + mobile format: every phone entry is now a COUNTRY-CODE
+   selector (ISO, default IN +91) + number field, validated with the
+   product utility (validatePhoneByCountry) and stored as +{code}{digits}
+   (getFullPhoneNumber) — same convention as ContactFields. Member
+   recognition is unaffected (lookup matches on the last 10 digits).
+
+6) NEW: if an already-checked-in member re-enters their mobile, the page
+   shows "✓ You've already checked in for {date}" and still shows their
+   dues + Pay options (Record payment / Done). No duplicate attendance.
+
+Implementation notes:
+- Uses src/utils/constants/countries.ts and
+  src/utils/validation/contactValidation.ts (already in your tree).
+- PhoneField and card wrappers are module-scope (keeps input focus; the
+  earlier remount fix is retained).
+
+FILES
+----------------------------------------------------------------
+UI:
+  src/pages/checkin/SessionCheckinPage.tsx   (all of the above)  <-- the change
+  src/pages/checkin/useSessionCheckin.ts     (unchanged vs G4; included)
+API (unchanged vs G4; included so the bundle is self-contained):
+  src/services/sessionCheckinService.ts
+  src/controllers/sessionCheckinController.ts
+  src/routes/sessionCheckinPublicRoutes.ts
+
+COPY COMMANDS (PowerShell, from repo root)
+----------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\group-sessions-g5-checkin-refinements\contractnest-ui\*"  -Destination "contractnest-ui\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\group-sessions-g5-checkin-refinements\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+
+Write-Host "G5 copied." -ForegroundColor Green
+Restart UI (API unchanged), hard-refresh.
+
+TEST
+----------------------------------------------------------------
+  [ ] Phone entry shows a country dropdown (IN +91) + number; invalid
+      length is rejected with a message.
+  [ ] Member check-in still recognises the member (last-10-digit match).
+  [ ] Re-enter an already-checked-in member's number -> "already checked
+      in" banner + dues/Pay shown (no attendance duplicate).
+  [ ] Substitute flow: shows "Member's mobile" AND "Your mobile" fields;
+      after check-in, the substitute appears under the member with the
+      mobile saved.
+  [ ] Reopen the URL -> starts blank (no pre-filled number).
+  [ ] Success screen has Close + "Check in someone else".
+================================================================
