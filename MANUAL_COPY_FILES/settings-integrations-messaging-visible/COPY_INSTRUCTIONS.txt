@@ -1,0 +1,61 @@
+═══════════════════════════════════════════════════
+BUNDLE: settings-integrations-messaging-visible
+═══════════════════════════════════════════════════
+Goal: make Email / SMS / WhatsApp visible in /settings/integrations,
+currently COUPLED TO US (Built-in via JTD/MSG91). Bring-your-own providers
+are shown as "Coming soon" (visible but locked). No dispatch/worker changes.
+
+Submodules affected:
+  - contractnest-ui   (1 file — UI states for Built-in / Coming soon)
+  - contractnest-edge (1 migration — catalog data; applied LIVE, not copied)
+
+────────────────────────────────────────────────────
+PART A — DATABASE (applied live, NOT copied)
+────────────────────────────────────────────────────
+File: contractnest-edge/supabase/migrations/integrations-messaging-visibility/
+      001_show_messaging_builtin_byo_comingsoon.sql
+
+This is applied to the live Supabase project (uwyqhzotluikawcboldr) via the
+Supabase MCP apply_migration (or your own migration pipeline). It is idempotent.
+NOTE: the integration catalog is GLOBAL — once applied, every tenant sees the
+new Email / SMS / WhatsApp sections. Apply only when you're ready for that.
+
+What it does:
+  * Adds a 'whatsapp_service' integration type; activates email/sms/whatsapp types.
+  * Adds a "ContractNest (Built-in)" provider per channel (platform_managed).
+  * Marks SendGrid + Twilio as coming_soon; adds Meta Cloud API + Gupshup
+    (WhatsApp) as coming_soon.
+
+────────────────────────────────────────────────────
+PART B — UI (copy for local testing)  [PowerShell]
+────────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\settings-integrations-messaging-visible\contractnest-ui\src\components\integrations\IntegrationProviderCard.tsx" `
+  -Destination "contractnest-ui\src\components\integrations\IntegrationProviderCard.tsx" -Force
+
+cd contractnest-ui ; npm run dev   # then Ctrl+F5
+
+The card now honours two provider.metadata flags:
+  * platform_managed:true  → "Active · Powered by ContractNest" + "✓ Enabled for
+    your workspace" (no setup form, no toggle) — informational only.
+  * coming_soon:true       → dimmed card, "Coming soon" badge, disabled button.
+Normal providers (e.g. Payment/Razorpay) are unchanged.
+
+────────────────────────────────────────────────────
+TEST CHECKLIST  (after Part A applied + Part B copied)
+────────────────────────────────────────────────────
+Go to /settings/integrations:
+  [ ] New sections appear: Email, SMS, WhatsApp (plus existing Payment).
+  [ ] Each shows a "ContractNest (Built-in)" card = "Active · Powered by
+      ContractNest", "✓ Enabled for your workspace", no Set Up form.
+  [ ] SendGrid / Twilio / Meta WhatsApp Cloud API / Gupshup show as
+      "Coming soon" — dimmed, disabled button, cannot open a setup modal.
+  [ ] Payment / Razorpay still works exactly as before (Set Up / Settings).
+  [ ] Toggle Test/Live mode — sections still render correctly.
+
+═══════════════════════════════════════════════════
+⏸  After testing: "Tested, working - proceed with merge"  → Phase 2 (push
+   UI to contractnest-ui main; migration already live).
+   or "Issue found: <describe>"
+═══════════════════════════════════════════════════
