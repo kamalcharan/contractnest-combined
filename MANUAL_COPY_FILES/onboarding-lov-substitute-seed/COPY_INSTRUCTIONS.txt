@@ -1,0 +1,33 @@
+================================================================
+Onboarding seed — add 'Substitute' to the default Tags LOV
+================================================================
+Branch: claude/group-session-handover-reset-bsn220
+Submodules: contractnest-edge (tenants fn), contractnest-ui (lovDefaults)
+
+WHY
+----------------------------------------------------------------
+Group-session check-in tags contacts as 'Guest' / 'Substitute'. Tags must be
+LOV-backed (no free-text). 'Guest' was already a default Tags LOV value;
+'Substitute' was not. Added it to the DEFAULT_LOV_SEED so NEW tenant signups
+get it. Existing tenants are intentionally NOT backfilled (per decision);
+BBB was added manually for testing.
+
+FILES (keep these two in sync — they are the single source of truth)
+----------------------------------------------------------------
+  contractnest-edge/supabase/functions/tenants/index.ts   (DEFAULT_LOV_SEED
+     -> Tags -> + Substitute #14B8A6)  [seeds the DB at tenant creation]
+  contractnest-ui/src/utils/constants/lovDefaults.ts      (+ Substitute)
+     [renders the VaNi lov-setup step]
+
+DEPLOY
+----------------------------------------------------------------
+>> The contractnest-edge 'tenants' function must be REDEPLOYED for new signups
+   to seed Substitute. It is the tenant-creation (signup) function — deploy it
+   from source via your Supabase pipeline/CLI (safer than a hand copy for a
+   critical path). The UI file just needs the normal copy + build.
+
+COPY (UI)
+----------------------------------------------------------------
+Copy-Item "MANUAL_COPY_FILES\onboarding-lov-substitute-seed\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\onboarding-lov-substitute-seed\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+================================================================

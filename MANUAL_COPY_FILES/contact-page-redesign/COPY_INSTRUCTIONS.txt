@@ -1,0 +1,51 @@
+================================================================
+Contact page redesign — identity-first Profile + inline edit
+================================================================
+Branch: claude/group-session-handover-reset-bsn220
+Submodule: contractnest-ui  (2 files) — UI ONLY, no API/DB changes
+
+WHAT
+----------------------------------------------------------------
+Rebuilds the contact detail page around the approved mockup:
+  - NEW default "Profile" tab: identity-first card grid (Identity, Contact
+    channels, Tags & roles, People & alternates, Addresses, Compliance,
+    Notes) with INLINE section edit — each card's Edit expands fields, Save
+    writes only that section.
+  - The 5 analytics tabs (Overview/Contracts/Assets/Financials/Timeline)
+    become "Insights" — shown ONLY when the contact has activity (contracts/
+    invoices/events/value). A bare contact (e.g. a session guest) shows just
+    the profile + an "enrich" hint. Progressive disclosure.
+  - Header "Edit" now jumps to the Profile tab (single edit model) instead of
+    the old drawer.
+
+REUSES EXISTING INFRA (no new data code):
+  - useContact (data), useUpdateContact (PUT /api/contacts/:id — the update
+    RPC COALESCEs scalars + skips null arrays, so section saves are safe),
+  - useContactCockpit (Insights), useMasterDataOptions('Tags') (tag LOV — tags
+    are chosen from the LOV only, not free text),
+  - country/phone utils (validatePhoneByCountry), vaniToast.
+
+NOTE: the old ProfileDrawer / ActionIsland are left mounted (harmless) and can
+be retired in a follow-up now that inline edit is the primary model.
+
+FILES
+----------------------------------------------------------------
+  NEW  src/components/contacts/view/ContactProfileTab.tsx
+  EDIT src/pages/contacts/view.tsx  (Profile default tab + Insights gating)
+
+COPY (PowerShell, from repo root)
+----------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\contact-page-redesign\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Write-Host "Contact redesign copied." -ForegroundColor Green
+Restart UI, hard-refresh, open a contact (e.g. /contacts/<id>).
+
+TEST
+----------------------------------------------------------------
+  [ ] Opens on Profile; sections show real data.
+  [ ] Edit a section (Channels / Identity / Notes / Tags) -> inline fields ->
+      Save persists; other sections unaffected (no data loss).
+  [ ] Typing in an edit field keeps focus (no per-keystroke refresh).
+  [ ] Tags editor offers ONLY LOV tags (Guest/Substitute/Lead/VIP...).
+  [ ] A contact with contracts shows the Insights tabs; a bare guest doesn't.
+================================================================
