@@ -1,0 +1,78 @@
+═══════════════════════════════════════════════════
+BUNDLE: fix-contract-equipment-tab-and-document-view
+═══════════════════════════════════════════════════
+Submodule affected: contractnest-ui  (UI only — no API / edge / DB changes)
+
+WHAT THIS FIXES
+─────────────────────────────────
+1) Contract view → Equipment tab now HIDDEN for contracts that have no
+   equipment/facility. Rule (chosen): show the tab only when the contract
+   TYPE (nomenclature) is equipment/entity-based OR the contract already has
+   equipment/facility rows. Pure-service contracts (e.g. "year contract",
+   CN-1035) no longer show the Equipment tab or its "Add Equipment" button.
+
+2) Contract view → Document tab (reuses ReviewSendStep):
+   - Title was "Untitled Contract"  → now shows the real contract name
+     (falls back to contract.name, which is where the title actually lives).
+   - "Ref: #CN-XXXX" (hardcoded placeholder) → now shows the real number,
+     e.g. "Ref: #CN-1035".
+   - "Created <today>" (hardcoded to now) → now shows the real created date.
+   - Timeline start date now uses the contract's real start_date.
+   - Nomenclature chip now wired (shows only if the contract has one).
+   NOTE: the creation Wizard's Review step is UNCHANGED in behaviour — it
+   omits these new props, so it keeps the "#CN-XXXX" placeholder and "today"
+   until the contract is actually created. All new props are optional.
+
+IMPORTANT — WHY ReviewSendStep BASE MATTERS
+─────────────────────────────────
+ReviewSendStep.tsx in THIS bundle was built on your local (bbb-foundation)
+copy that contains the Group-Session occurrence/cadence rendering — NOT the
+committed submodule version (which lacks it). Copy THIS file; do not let an
+older committed copy overwrite it.
+
+FILES IN THIS BUNDLE
+─────────────────────────────────
+  contractnest-ui/src/pages/contracts/detail/index.tsx
+  contractnest-ui/src/components/contracts/ContractWizard/steps/ReviewSendStep.tsx
+
+═══════════════════════════════════════════════════
+PHASE 1 — COPY FOR LOCAL TESTING (PowerShell)
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\fix-contract-equipment-tab-and-document-view\contractnest-ui\src\pages\contracts\detail\index.tsx" `
+  -Destination "contractnest-ui\src\pages\contracts\detail\index.tsx" -Force
+
+Copy-Item "MANUAL_COPY_FILES\fix-contract-equipment-tab-and-document-view\contractnest-ui\src\components\contracts\ContractWizard\steps\ReviewSendStep.tsx" `
+  -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\ReviewSendStep.tsx" -Force
+
+Write-Host "Copied. Now build/typecheck + run dev." -ForegroundColor Green
+
+cd contractnest-ui
+npm run dev
+# Hard refresh the browser: Ctrl+F5
+
+═══════════════════════════════════════════════════
+TEST CHECKLIST
+═══════════════════════════════════════════════════
+Contract WITHOUT equipment/facility (e.g. CN-1035 "year contract"):
+  [ ] Equipment tab is NOT shown in the tab bar.
+  [ ] Overview / Tasks / Financials / Audit Log / Document still work.
+  [ ] Document tab title shows "year contract" (not "Untitled Contract").
+  [ ] Document tab shows "Ref: #CN-1035".
+  [ ] Document tab "Created" date matches the contract's real created date.
+  [ ] Group Session block still renders with its session count / cadence.
+
+Contract WITH equipment or facility (equipment/entity-based type):
+  [ ] Equipment (or Facility / Equipment & Facility) tab STILL shows.
+  [ ] Add Equipment / Add Facility still works.
+
+Creation Wizard (regression check):
+  [ ] Review step still shows "#CN-XXXX" placeholder + today's date
+      (unchanged — number/date not assigned until the contract is created).
+
+═══════════════════════════════════════════════════
+⏸  After testing, reply:
+     "Tested, working - proceed with merge"   (I'll give Phase 2 commit steps)
+  or "Issue found: <describe>"
+═══════════════════════════════════════════════════
