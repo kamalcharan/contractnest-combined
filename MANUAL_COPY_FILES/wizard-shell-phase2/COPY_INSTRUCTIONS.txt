@@ -1,0 +1,89 @@
+═══════════════════════════════════════════════════════════════════
+WIZARDSHELL PHASE 2 — CONTRACT WIZARD UX — COPY INSTRUCTIONS
+═══════════════════════════════════════════════════════════════════
+Date: 2026-07-15
+Submodule affected: contractnest-ui ONLY
+
+⚠️  PREREQUISITE: apply AFTER both
+   1. bbb-foundation batch (claude/handover-closing-tasks-11cmhn)
+   2. wizard-logic-extraction batch (Phase 1.5 — you already applied &
+      parity-verified this)
+This batch's index.tsx INCLUDES the Phase 1.5 extraction — copying it
+without logic/ in place will not compile. logic/stepConfig.ts here
+REPLACES the Phase 1.5 copy (adds phases + hints; existing exports
+unchanged).
+
+WHAT'S NEW (visible changes this time — unlike Phase 1.5)
+  1. PHASE STEPPER (header): the 12 dots become 4 labelled phases —
+     Setup · Terms · Services · Finalize — with per-step dots.
+     Every VISITED step is clickable, forward or backward. Locked
+     future steps show a lock and a tooltip.
+  2. CONTINUE IS NEVER SILENTLY DISABLED: pressing Continue on an
+     incomplete step shows a red reason pill above the action bar
+     ("Add at least one service block", "Select a counterparty…").
+     Hint clears the moment you edit anything.
+  3. EDIT-FROM-REVIEW: on the Review step, click any earlier step in
+     the stepper → fix it → Continue returns you STRAIGHT to Review
+     (no re-walking). Manual Back cancels the shortcut.
+  4. AUTOSAVE HARDENED: once a draft record exists, every edit
+     autosaves after 2.5s of quiet (not only on Continue). Draft
+     creation threshold unchanged (past Details, needs a name).
+  5. UNLOAD GUARD: closing the tab/refreshing mid-wizard with content
+     now asks for confirmation (in-app Close already had a dialog).
+  6. ONE PROGRESS MODEL: the bottom bar no longer carries dots — it is
+     Back · step label · draft status · total · Continue.
+
+FILES
+  MOD  src/components/contracts/ContractWizard/index.tsx
+  MOD  src/components/contracts/ContractWizard/logic/stepConfig.ts
+         (adds WizardPhaseId, STEP_PHASE, PHASE_LABELS, blockedHintFor,
+          TEMPLATE_SELECTION_HINT — pure additions)
+  NEW  src/components/contracts/ContractWizard/shell/PhaseStepper.tsx
+  NEW  src/components/contracts/ContractWizard/shell/ActionBar.tsx
+  UNTOUCHED: all 12 step components, payment handlers, logic/mapper,
+  logic/state, logic/gating, FloatingActionIsland (still used by the
+  admin global-designer), all API code.
+
+STEP 1 — Copy
+─────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\wizard-shell-phase2\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+STEP 2 — Verify
+─────────────────────────────
+cd contractnest-ui
+npx tsc --noEmit     # same pre-existing errors only
+npx vite-node src/components/contracts/ContractWizard/logic/__parity__/run.ts
+                     # PASS ×5 — business logic untouched by Phase 2
+npm run dev          # hard refresh (Ctrl+F5)
+
+STEP 3 — Testing checklist
+─────────────────────────────
+- [ ] Contract from scratch: phases show Setup·Terms·Services·Finalize;
+      dots fill as you go
+- [ ] Press Continue with empty step → red reason pill appears; edit
+      anything → pill clears; complete → advances
+- [ ] Template-selection sub-step: Continue without picking → hint
+- [ ] Jump back from Review via stepper → change something → Continue
+      → lands back on Review directly
+- [ ] Back button still walks one step (and cancels the review shortcut)
+- [ ] Asset step still skipped for non-equipment nomenclatures (its dot
+      hidden; jump can't land on it)
+- [ ] Draft: advance past Details → then IDLE-EDIT a field and wait 3s →
+      "Saved" appears without pressing Continue
+- [ ] Refresh tab mid-wizard → browser confirm appears
+- [ ] Template mode + RFQ mode: phases render correctly (fewer steps),
+      Save Template / Send RFQ work
+- [ ] Create with payment / online / skip — untouched, one smoke each
+- [ ] Events preview dates unchanged (parity guarantees the data;
+      eyeball the UI)
+
+PRODUCTION CHECKLIST (per CLAUDE.md)
+  Transaction Mgmt: n/a (no new writes; reuses existing draft/create mutations)
+  Race conditions:  autosave debounced 2.5s, skips while a save/create is
+                    in flight; Continue disabled only while mutations run
+  Error handling:   existing mutation error toasts unchanged; save failures
+                    surface in the bar's SAVE FAILED state
+  Toasts:           existing VaNiToast system (no new toast paths)
+  Loaders:          Loader2 spinner in Continue while busy (existing pattern)
+═══════════════════════════════════════════════════════════════════
