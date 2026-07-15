@@ -1,0 +1,78 @@
+================================================================
+G3 — Guest & Substitute check-in  (cumulative: includes G2)
+================================================================
+Branch: claude/group-session-handover-reset-bsn220
+Submodules Affected: contractnest-edge (migration, already live),
+                     contractnest-api, contractnest-ui
+
+IMPORTANT: These api/ui files are CUMULATIVE — they contain the G2 changes
+too. Copying this bundle gives you G2 + G3 together. (If you already copied
+G2, copying G3 simply overwrites the same 2 UI + 3 API files with the
+combined version — safe.)
+
+WHAT THIS DOES
+----------------------------------------------------------------
+When a scanned mobile number is NOT on the roster, the check-in page now
+asks "How are you joining today?" with two paths:
+
+GUEST
+  - Capture name (required) + optional company/email.
+  - Saved as a real contact tagged 'guest' (t_contacts, tags[].tag_value=
+    'guest'); that guest is marked present for today's session.
+  - Re-scanning the same number reuses the existing guest contact (dedupe).
+
+SUBSTITUTE ("standing in for a member")
+  - Enter the MEMBER'S mobile -> looked up on the roster (no roster list is
+    exposed) -> confirms "Standing in for {member}".
+  - Enter the substitute's name.
+  - The substitute is saved as the member's ALTERNATIVE CONTACT PERSON
+    (a 'contact_person' child row under the member, tagged 'substitute').
+  - The MEMBER is marked present (seat filled via substitute); the
+    attendance row records the substitute name + is_substitute flag in
+    form_responses. Attendance/streak stays on the member (your choice).
+  - Re-scanning reuses the existing alternative contact (dedupe).
+
+DEPLOYMENT STATUS
+----------------------------------------------------------------
+Migration 027 (gs_checkin_guest, gs_checkin_substitute) is ALREADY APPLIED
+LIVE to project uwyqhzotluikawcboldr. Safe no-op to re-run. No edge deploy.
+Both RPCs were smoke-tested live (guest + substitute) and the test rows
+cleaned up.
+
+FILES
+----------------------------------------------------------------
+EDGE (record only; already live):
+  contractnest-edge/supabase/migrations/bbb-foundation/027_group_session_guest_substitute.sql
+API (contractnest-api):
+  src/services/sessionCheckinService.ts       (+guestCheckin, +substituteCheckin)  [+G2 checkinForm/submit]
+  src/controllers/sessionCheckinController.ts (+guest, +substitute handlers)        [+G2 form]
+  src/routes/sessionCheckinPublicRoutes.ts    (+POST /:token/guest, /:token/substitute) [+G2 /form]
+UI (contractnest-ui):
+  src/pages/checkin/useSessionCheckin.ts      (+guest(), +substitute() api)         [+G2 form types]
+  src/pages/checkin/SessionCheckinPage.tsx    (guest/substitute branch)             [+G2 polish]
+
+COPY COMMANDS (PowerShell, from repo root)
+----------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\group-sessions-g3-guest-substitute\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\group-sessions-g3-guest-substitute\contractnest-ui\*"  -Destination "contractnest-ui\"  -Recurse -Force
+
+Write-Host "G3 copied." -ForegroundColor Green
+Restart API + UI, then hard-refresh.
+
+TEST (a temporary 'today' test session is in place)
+----------------------------------------------------------------
+Open the check-in link (/checkin/<token>) on a phone-width window:
+  GUEST
+   [ ] Enter an unknown mobile -> "I'm a guest" -> name (+company/email)
+       -> Continue -> Present -> Check in -> success.
+   [ ] In Contacts, the guest appears with a 'Guest' tag.
+  SUBSTITUTE
+   [ ] Enter an unknown mobile -> "I'm standing in for a member"
+       -> enter a MEMBER's mobile -> "Standing in for {member}"
+       -> your name -> Continue -> Check in -> success.
+   [ ] The member shows present for today; open that member's contact ->
+       the substitute is listed as an Alternative Contact Person.
+   [ ] Re-scanning the same substitute number does NOT create a duplicate.
+================================================================

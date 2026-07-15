@@ -1,0 +1,76 @@
+================================================================
+G2 — Polished member check-in page (Smart-Form driven)
+================================================================
+Branch: claude/group-session-handover-reset-bsn220
+Submodules Affected: contractnest-api, contractnest-ui
+No DB migration. No edge deploy. (gs_checkin_form + gs_submit_checkin
+response args are ALREADY LIVE.)
+
+WHAT THIS DOES
+----------------------------------------------------------------
+Rebuilds the public QR check-in page (/checkin/:token) into a polished,
+mobile-first experience (Option A: fixed branded skeleton + tenant Smart
+Form content):
+  - Branded header (chapter name) + "today's session" hero.
+  - Step 1: big mobile-number entry (remembers device).
+  - Step 2 (recognised member): welcome + past check-in count; prominent
+    Present / Apologies control; the tenant's check-in Smart Form questions
+    (from gs_checkin_form) rendered inline in the mobile style; your open
+    dues with a pay-declaration + UPI reference; one "Check in" CTA.
+  - Guests (number not on roster): name -> "Continue as guest" -> same
+    attendance + form step (no dues). [Full guest tag + substitute capture
+    come in G3.]
+  - Polished success screen.
+
+The Smart Form answers are now SAVED: submit sends responses +
+form_template_id + form_template_version, which gs_submit_checkin persists
+to t_session_attendance (form_responses / form_template_id / _version).
+
+The form body is rendered by a small, self-contained renderer inside the
+page (NOT the admin FormRenderer) on purpose — this page loads for
+logged-out members on a phone and must stay dependency-light (no
+ThemeContext / admin components). Field types supported: heading,
+paragraph, divider, text, email, tel/phone, number, date, textarea, radio,
+select, checkboxes/multiselect, boolean/checkbox/toggle, plus `required`
+validation and simple conditional visibility.
+
+FILES
+----------------------------------------------------------------
+API (contractnest-api):
+  src/services/sessionCheckinService.ts      (+checkinForm(); submit passes
+                                              responses/form_template_id/version)
+  src/controllers/sessionCheckinController.ts (+form handler; submit reads
+                                              responses/form ids from body)
+  src/routes/sessionCheckinPublicRoutes.ts    (+GET /:token/form)
+UI (contractnest-ui):
+  src/pages/checkin/useSessionCheckin.ts      (+form() api, form types,
+                                              extended SubmitPayload)
+  src/pages/checkin/SessionCheckinPage.tsx    (full polished rewrite)
+
+COPY COMMANDS (PowerShell, from repo root)
+----------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\group-sessions-g2-checkin-page\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\group-sessions-g2-checkin-page\contractnest-ui\*"  -Destination "contractnest-ui\"  -Recurse -Force
+
+Write-Host "G2 copied." -ForegroundColor Green
+Restart API + UI, then hard-refresh.
+
+TEST
+----------------------------------------------------------------
+Open the chapter QR / session link (/checkin/:token) on a phone or narrow
+window:
+  [ ] Header shows the chapter (Group Session) name; hero shows today's date
+      (or "No session today" + next).
+  [ ] Enter a member's mobile -> Continue -> welcome + past check-in count.
+  [ ] Present/Apologies toggles; Smart Form questions appear (default form =
+      just attendance, so a tenant with a 'during_service' form will show its
+      extra questions here).
+  [ ] Pick an open due -> UPI reference field appears.
+  [ ] Check in -> success screen; verify a t_session_attendance row with
+      form_responses populated.
+  [ ] Enter an unknown mobile -> "Continue as guest" -> can check in with a
+      name (no dues).
+  [ ] "Not you? Start over" resets to step 1.
+================================================================

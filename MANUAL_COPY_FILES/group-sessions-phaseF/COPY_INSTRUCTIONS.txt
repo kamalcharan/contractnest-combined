@@ -1,0 +1,94 @@
+================================================================
+GROUP SESSIONS — PHASE F: collect dues · session stats · session link
+================================================================
+Branch: claude/group-session-handover-reset-bsn220
+Submodules Affected: contractnest-edge, contractnest-api, contractnest-ui
+SUPERSEDES the Phase E group-sessions files. Requires A–E applied.
+
+WHAT THIS ADDS (from your feedback)
+----------------------------------------------------------------
+1. COLLECT DUES MANUALLY (beyond QR-declared payments)
+   Member page → Payments (BAU dues): each unpaid due now has a
+   "Mark collected" button (cash/offline). Marks the billing event PAID;
+   an "Undo" reverts it. New RPC gs_mark_due_paid; endpoint
+   POST /api/group-sessions/due/:billingEventId/paid.
+   (The other dues path stays: members declare UPI at check-in → chair
+    Confirms under "Payments to confirm" on the overview.)
+
+2. SESSION STATISTICS on the occurrence screen
+   Opening a session now shows a stats strip: Present · Absent ·
+   Attendance% · Roster · Dues due — plus the per-member list.
+
+3. OPEN THE SESSION LINK FROM THE WEBSITE (not just the QR)
+   The QR card now shows the check-in URL with a Copy button (and the
+   existing Open button). Share/open the link without scanning.
+
+WHERE THINGS ARE (answers to your questions)
+----------------------------------------------------------------
+- Attendance beyond QR:  Group → click a session → the Occurrence screen →
+  "Mark" / "Present" per member (chair marks manually, no QR).
+- Dues collected marked:  Member page → Payments → "Mark collected";
+  OR Overview → "Payments to confirm" → Confirm (for UPI declared at check-in).
+- Session statistics:     the stats strip on the Occurrence screen.
+- Smart Forms — WHERE/HOW:
+    WHERE: on the member check-in page (the QR/link target, /checkin/<token>).
+           When a member scans/opens it they get: identify by phone → the
+           form's questions (attendance + any custom questions) → dues → submit.
+    HOW configured: Smart Forms admin → author a template (status=approved) →
+           add a m_form_template_mappings row for the group-session owner
+           contract with timing='during_service'. If none is mapped, a built-in
+           attendance-only form is shown. So every session already has a working
+           form; mapping a template customises the questions.
+    TEST it: QR card → "Open" (or copy the link) → that page IS the form.
+           First add today's date (sessions card "Add") so it's not
+           "no session today".
+- Admin/chair procedure (end to end):
+    1) Group page → "Generate schedule" (from the block cadence).
+    2) QR card → Download/print the QR, or Copy the link to share.
+    3) On session day: members self-check-in via QR/link, OR chair opens the
+       occurrence and marks attendance.
+    4) Dues: confirm declared UPI payments (overview) or "Mark collected"
+       on the member page.
+
+Production checklist:
+  Transaction Mgmt : single-statement status update; atomic
+  Race conditions  : idempotent mark; React-Query invalidate + refetch
+  Error handling   : RPC {ok:false,reason}; controller sendError; toasts
+  Toasts/Loaders   : react-hot-toast on mark/collect; disabled busy states
+TYPECHECK: api + ui clean.
+
+DEPLOYMENT STATUS
+----------------------------------------------------------------
+Migration 024 (gs_mark_due_paid) ALREADY APPLIED LIVE to project
+uwyqhzotluikawcboldr. The .sql is the repo record; safe no-op. No edge deploy.
+
+FILES (supersede Phase E)
+----------------------------------------------------------------
+NEW:
+  contractnest-edge/supabase/migrations/bbb-foundation/024_mark_due_paid.sql
+MODIFIED:
+  contractnest-api/src/services/groupSessionsDashboardService.ts     (+markDuePaid)
+  contractnest-api/src/controllers/groupSessionsDashboardController.ts (+markDuePaid handler)
+  contractnest-api/src/routes/groupSessionsDashboardRoutes.ts        (+POST /due/:id/paid)
+  contractnest-ui/src/services/serviceURLs.ts                        (+DUE_PAID)
+  contractnest-ui/src/hooks/queries/useGroupSessionsDashboard.ts     (+useMarkDuePaid; billing event_id)
+  contractnest-ui/src/pages/operations/group-sessions/index.tsx      (session stats strip + Mark collected)
+  contractnest-ui/src/components/group-sessions/QRCard.tsx           (copyable check-in link)
+
+COPY COMMANDS (PowerShell, from repo root)
+----------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\group-sessions-phaseF\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\group-sessions-phaseF\contractnest-api\*"  -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\group-sessions-phaseF\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+
+Write-Host "Phase F copied." -ForegroundColor Green
+Restart API + UI.
+
+TEST
+----------------------------------------------------------------
+  [ ] Member page → Payments → "Mark collected" flips a due to Paid (Undo reverts)
+  [ ] Occurrence screen shows Present/Absent/Attendance%/Roster/Dues stats
+  [ ] QR card shows the check-in URL + Copy; Open loads the member form
+================================================================

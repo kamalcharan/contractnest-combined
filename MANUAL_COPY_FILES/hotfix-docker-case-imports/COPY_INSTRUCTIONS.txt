@@ -1,0 +1,61 @@
+================================================================
+HOTFIX — Docker (Linux) build fails: case-mismatched imports
+================================================================
+Branch: claude/group-session-handover-reset-bsn220
+Submodule: contractnest-ui  (5 files)
+
+SYMPTOM
+----------------------------------------------------------------
+docker build -> vite build:
+  [vite:load-fallback] Could not load .../pages/onboarding/steps/UserProfileStep
+Local dev (Windows/Mac) works; Docker fails because Linux filesystems are
+CASE-SENSITIVE. The import casing didn't match the real filename.
+
+NOT related to the check-in/group-session work — these are pre-existing
+casing mismatches that only surface on a case-sensitive build.
+
+THE 9 FIXES (import path -> real file), across 5 files
+----------------------------------------------------------------
+  src/App.tsx
+     '@/pages/onboarding/steps/UserProfileStep'  -> '.../userProfileStep'
+  src/components/CRO/ConversionForm.tsx
+     '../ui/button' -> '../ui/Button'
+     '../ui/input'  -> '../ui/Input'
+  src/pages/settings/LOV/addNewValueModal.tsx
+     '../../../components/ui/input' -> '.../ui/Input'
+  src/vani/components/shared/index.ts
+     './VaNiList' -> './VaniList'
+     './VaNiStatusBadge' -> './VaniStatusBadge'   (x2)
+     './VaNiMetricCard' -> './VaniMetricCard'
+  src/vani/pages/VaNiDashboard.tsx
+     '../components/shared/VaNiMetricCard' -> '.../VaniMetricCard'
+Only the import PATH strings changed — exported identifiers (Button, Input,
+VaNiStatusBadge, VaNiMetricCard, …) are untouched.
+
+Verified: 0 case-mismatched imports remain anywhere in src.
+
+IMPORTANT — App.tsx
+----------------------------------------------------------------
+The App.tsx in this bundle is your GROUP-SESSION dashboard version (it keeps
+the /checkin/:token AND the Operations -> Group Sessions routes) with the
+one-line case fix applied. Copying it will NOT remove your group-sessions
+nav route.
+  ** If your local App.tsx has OTHER custom changes not in the dashboard
+     version, do NOT overwrite it — instead just edit line ~70: **
+        import UserProfileStep from '@/pages/onboarding/steps/userProfileStep';
+     (lowercase 'u' in userProfileStep)
+
+COPY COMMANDS (PowerShell, from repo root)
+----------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\hotfix-docker-case-imports\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Case-import fixes copied." -ForegroundColor Green
+Re-run the Docker build.
+
+VERIFY
+----------------------------------------------------------------
+  [ ] docker build gets past the vite build step (no 'Could not load' error).
+  [ ] Group Sessions nav still opens (App.tsx route preserved).
+================================================================

@@ -1,0 +1,65 @@
+═══════════════════════════════════════════════════
+GROUP SESSION — COMPLETE / CONSOLIDATED DELIVERY
+DATE: 2026-07-14
+Copy EVERYTHING from THIS folder. It supersedes the earlier folders:
+  fix-billingonly-and-groupsession-config  AND  group-session-audience.
+Every file here is the latest version.
+DB APPLIED BY CLAUDE (live, project uwyqhzotluikawcboldr):
+  - migration 014 (audience column + RPC patches) — applied & verified.
+  - cleaned CN-1035 (Vasanth): deleted the 27 wrongly-materialised session rows;
+    it now has billing only. CN-1034 (Nikhil, pre-deployment) left as-is.
+═══════════════════════════════════════════════════
+
+WHAT'S INCLUDED (the whole group-session + billing-only work)
+─────────────────────
+#2  Billing-only blocks -> no service events (API derivation + composer + parity).
+#3  Group-session cadence saves & displays in Catalog Studio (catBlockAdapter, DeliveryStep).
+AUD Group-session 'audience' marker persists (payload + DB column + RPCs) and the
+    Event Schedule gets a "Group sessions" tab, label, and Check-in routing.
+0-OCC (NEW) Group sessions generate ZERO service occurrences on a member contract.
+    A group session is shared 1:N — materialising it per member duplicated the whole
+    schedule (24 members x 26 = ~600 rows). Now a member contract carries billing +
+    check-in eligibility only; the session schedule will live at the group/chapter
+    level (the Group Session dashboard, next).
+
+FILES
+─────────────────────
+contractnest-ui:
+  1. src/utils/service-contracts/contractEvents.ts                 (0-occ guard for group)
+  2. src/components/contracts/ContractWizard/index.tsx             (audience in payload)
+  3. src/pages/operations/services/index.tsx                       (Group sessions tab, label, check-in)
+  4. src/utils/catalog-studio/catBlockAdapter.ts                   (#3 cadence save)
+  5. src/components/catalog-studio/BlockWizard/steps/service/DeliveryStep.tsx  (#3 cadence display)
+contractnest-api:
+  6. src/services/contractComposerService.ts                      (billingOnly + audience threading)
+  7. src/services/contractEventsDerivationService.ts              (billingOnly + group guards)
+  8. src/__tests__/contractEventsDerivationParity.ts              (fixtures for both guards)
+contractnest-edge:
+  9. supabase/migrations/bbb-foundation/014_events_audience_marker.sql  (already applied live; repo history)
+
+COPY COMMANDS (run from contractnest-combined\ root)
+─────────────────────
+$b = "MANUAL_COPY_FILES\group-session-complete"
+Copy-Item "$b\contractnest-ui\src\utils\service-contracts\contractEvents.ts" -Destination "contractnest-ui\src\utils\service-contracts\contractEvents.ts" -Force
+Copy-Item "$b\contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\index.tsx" -Force
+Copy-Item "$b\contractnest-ui\src\pages\operations\services\index.tsx" -Destination "contractnest-ui\src\pages\operations\services\index.tsx" -Force
+Copy-Item "$b\contractnest-ui\src\utils\catalog-studio\catBlockAdapter.ts" -Destination "contractnest-ui\src\utils\catalog-studio\catBlockAdapter.ts" -Force
+Copy-Item "$b\contractnest-ui\src\components\catalog-studio\BlockWizard\steps\service\DeliveryStep.tsx" -Destination "contractnest-ui\src\components\catalog-studio\BlockWizard\steps\service\DeliveryStep.tsx" -Force
+Copy-Item "$b\contractnest-api\src\services\contractComposerService.ts" -Destination "contractnest-api\src\services\contractComposerService.ts" -Force
+Copy-Item "$b\contractnest-api\src\services\contractEventsDerivationService.ts" -Destination "contractnest-api\src\services\contractEventsDerivationService.ts" -Force
+Copy-Item "$b\contractnest-api\src\__tests__\contractEventsDerivationParity.ts" -Destination "contractnest-api\src\__tests__\contractEventsDerivationParity.ts" -Force
+Copy-Item "$b\contractnest-edge\supabase\migrations\bbb-foundation\014_events_audience_marker.sql" -Destination "contractnest-edge\supabase\migrations\bbb-foundation\014_events_audience_marker.sql" -Force
+
+RESTART: UI dev server + hard refresh, AND the API server. (DB already applied; no edge deploy.)
+
+TEST
+─────────────────────
+- [ ] Assign "BBB 2026 subscription" to a NEW member (single and Bulk).
+- [ ] The new contract shows ONLY billing events (BAU + Membership). NO Bi-Weekly rows.
+- [ ] No per-member session duplication in Event Schedule.
+- [ ] Billing-only blocks still make only billing events.
+- [ ] Catalog Studio: group-session cadence saves + displays (14 days / Saturday).
+
+NEXT (agreed, not in this delivery): Group Sessions nav + dashboard (chapter-level
+session schedule, roster, attendance, dues reconciliation) — we'll design that next.
+═══════════════════════════════════════════════════

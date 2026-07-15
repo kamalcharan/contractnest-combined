@@ -1,0 +1,91 @@
+================================================================
+GROUP SESSIONS — PHASE C: check-in + attendance on the block schedule
+================================================================
+Branch: claude/group-session-handover-reset-bsn220
+Submodules Affected: contractnest-edge, contractnest-api, contractnest-ui
+
+SUPERSEDES the group-sessions files from Phase B (same 3 API files +
+serviceURLs + hooks + page). Copy THESE. Requires Phase A + B applied and the
+session-checkin-route-fix mount (/api/checkin + /api/group-sessions).
+
+WHAT THIS ADDS
+----------------------------------------------------------------
+Check-in now works off the BLOCK schedule, so scanning the QR finds today's
+occurrence and writes attendance back — lighting up present counts,
+attendance %, and QR-ready on the dashboard.
+
+  * Token per BLOCK (+ environment): gs_ensure_block_token. The dashboard
+    "Open check-in" / "Check-in" mints it and opens /checkin/<token>.
+  * gs_resolve_checkin / gs_lookup_member / gs_member_history / gs_submit_checkin
+    / gs_checkin_form are now BLOCK-aware (legacy contract tokens still work).
+  * Attendance rows link to the schedule occurrence (t_session_attendance
+    .schedule_occurrence_id + .source_block_id), so:
+      - Occurrences tab shows "· N present" on past/held rows
+      - roster "Attended" counts real check-ins
+      - gs_dash_sessions returns qr_ready + attendance_pct
+
+The public member check-in page (SessionCheckinPage) is UNCHANGED — it works
+transparently through the now-block-aware token RPCs.
+
+Schema notes (in migration 022): t_group_session_tokens.contract_id and
+t_session_attendance.session_contract_id are made NULLABLE (block tokens /
+block attendance have no single contract); + new columns/indexes.
+
+Production checklist:
+  Transaction Mgmt : single-statement upserts; attendance upsert atomic
+  Race conditions  : UNIQUE(schedule_occurrence_id, member_contact_id) partial
+  Error handling   : RPC {ok:false,reason}; service {success,error};
+                     mutation/openCheckin surface toasts
+  Toasts/Loaders   : "Open check-in" shows Opening…; link opened + copied toast
+
+TYPECHECK: api + ui group-sessions files compile clean.
+
+DEPLOYMENT STATUS
+----------------------------------------------------------------
+Migration 022 ALREADY APPLIED LIVE to project uwyqhzotluikawcboldr (incl. the
+two NULLABLE alters + block-aware check-in RPCs + dashboard qr/attendance).
+The .sql is the repo record; safe no-op to re-run. No edge deploy needed.
+
+Live-verified: minted a block token (qr_ready=true), added a today occurrence,
+resolved the token, submitted a check-in for Vasanth -> roster Attended=1,
+occurrence present=1. (Test scaffolding was cleaned up afterwards; the schedule
+is the clean 34 Saturdays again, attendance 0 until real check-ins happen.)
+
+FILES (supersede Phase B)
+----------------------------------------------------------------
+NEW:
+  contractnest-edge/supabase/migrations/bbb-foundation/022_checkin_block_schedule.sql
+MODIFIED:
+  contractnest-api/src/services/groupSessionsDashboardService.ts     (+ensureBlockToken)
+  contractnest-api/src/controllers/groupSessionsDashboardController.ts (+ensureToken handler)
+  contractnest-api/src/routes/groupSessionsDashboardRoutes.ts        (+POST /token/:blockId)
+  contractnest-ui/src/services/serviceURLs.ts                        (+TOKEN)
+  contractnest-ui/src/hooks/queries/useGroupSessionsDashboard.ts     (+useEnsureBlockToken)
+  contractnest-ui/src/pages/operations/group-sessions/index.tsx      ("Open check-in" mints block token + opens /checkin/<token>; occurrence "N present")
+
+COPY COMMANDS (PowerShell, from repo root)
+----------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\group-sessions-checkin-phaseC\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\group-sessions-checkin-phaseC\contractnest-api\*"  -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\group-sessions-checkin-phaseC\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+
+Write-Host "Phase C (block check-in) copied." -ForegroundColor Green
+
+Restart API + UI. In TEST env, open Group Sessions -> Bi Weekly Meetings:
+  [ ] Card shows QR ready
+  [ ] "Open check-in" opens /checkin/<token> in a new tab (link also copied)
+  [ ] On a date the schedule has an occurrence TODAY, the member flow:
+      enter roster phone -> attendance question -> submit -> "checked in"
+  [ ] Occurrences tab: held/past rows show "· N present"; roster Attended
+      increments; attendance % appears once past occurrences have check-ins
+
+TESTING TIP: today's date must have a scheduled occurrence for check-in to
+accept ("no session today" otherwise). Use the Occurrences tab "Add date" to
+add today if you want to test the member flow immediately.
+
+NEXT (Phase D, not in this bundle): QR image rendering (download/print),
+chair-side dues confirmation surfaced in the dashboard, enforcement guards
+(contract wizard hides group blocks; template-uniqueness).
+================================================================

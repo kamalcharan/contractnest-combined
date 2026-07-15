@@ -1,0 +1,43 @@
+═══════════════════════════════════════════════════
+FEATURE: Exact End Date picker in Contract Details (bidirectional with duration)
+DATE: 2026-07-13
+BRANCH: claude/group-session-handover-reset-bsn220
+═══════════════════════════════════════════════════
+
+WHAT CHANGED:
+─────────────────────
+Added an "End Date" date picker beside "Start Date" in the Contract Details
+wizard step. It stays in sync with the duration presets / duration input:
+  - Change Start Date or duration  -> End Date updates automatically.
+  - Pick an exact End Date          -> duration back-computes (whole years or
+    months when the date lands cleanly on one, otherwise an exact day count).
+
+WHY NO API / DB / EDGE CHANGE:
+─────────────────────
+end_date is already STORED in the DB, computed by the trigger
+trg_compute_contract_dates as start_date + duration (migration
+054_end_date_prolongation_auto_expire.sql). The trigger always derives
+end_date from duration, so we keep duration as the source of truth and derive
+it from the picked date. The stored end_date will exactly equal the date you
+pick (day-count fallback is Postgres-exact; month/year only used when it maps
+cleanly with no month-end overflow).
+
+FILES THIS ITERATION (1, contractnest-ui only):
+─────────────────────
+1. contractnest-ui/src/components/contracts/ContractWizard/steps/ContractDetailsStep.tsx
+
+COPY COMMAND (run from contractnest-combined\ root):
+─────────────────────
+Copy-Item "MANUAL_COPY_FILES\contract-end-date-picker\contractnest-ui\src\components\contracts\ContractWizard\steps\ContractDetailsStep.tsx" -Destination "contractnest-ui\src\components\contracts\ContractWizard\steps\ContractDetailsStep.tsx" -Force
+
+TEST:
+─────────────────────
+- [ ] New contract -> Contract Details: an "End Date" picker shows below "Start Date".
+- [ ] Click "1 Year" preset -> End Date shows exactly 1 year after Start Date.
+- [ ] Pick an End Date exactly 3 months out -> the "3 Months" preset highlights, duration input shows 3 Months.
+- [ ] Pick an arbitrary End Date (e.g. 100 days out) -> duration switches to Days with the exact count; timeline END node matches the picked date.
+- [ ] Change Start Date -> End Date shifts to keep the same duration.
+- [ ] End Date cannot be set on/before Start Date (earlier dates disabled).
+- [ ] Save the contract -> open it -> stored end date equals the date you picked.
+- [ ] Templates (template builder) are unaffected: still duration-only, no date pickers.
+═══════════════════════════════════════════════════

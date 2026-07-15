@@ -1,0 +1,77 @@
+================================================================
+GROUP SESSIONS — PHASE A: block-centric dashboard
+================================================================
+Branch: claude/group-session-handover-reset-bsn220
+Submodules Affected: contractnest-edge, contractnest-api, contractnest-ui
+
+SUPERSEDES the group-sessions files from group-session-dashboard-p2
+(same 3 API files + serviceURLs + hooks + page). Copy THESE — they are newer.
+
+WHAT CHANGED (the model)
+----------------------------------------------------------------
+The dashboard is now keyed by the GROUP-SESSION BLOCK, not by a flagged
+"owner" contract.
+
+  A "group session" = a catalog block with config->>'audience'='group'
+  (m_cat_blocks). Its roster = the DISTINCT buyers of ACTIVE contracts
+  (status='active') that carry that block (t_contract_blocks.source_block_id),
+  scoped to the current environment (is_live).
+
+Why: the reliable key is source_block_id — contract-level category/audience
+markers drift (the same block shows category 'session' on one contract and
+'service' on another). Keying on the block fixes the roster.
+
+FIXES a real bug: the old roster was tenant-wide (counted everyone with any
+membership contract). Live-verified example — "Bi Weekly Meetings":
+  OLD dashboard: 3 members (Charan, Nikhil, Vasanth) — WRONG (Charan has no
+                 group block)
+  NEW dashboard: 2 members (Nikhil, Vasanth) — the contracts that actually
+                 carry block 3f22e995
+Card title is now the BLOCK name ("Bi Weekly Meetings"), and each roster row
+shows the member's CONTRACT name + start/end dates.
+
+NOTE: Occurrences / attendance % / QR are intentionally 0/empty here — the
+shared per-block SCHEDULE arrives in Phase B (that's what fills Occurrences,
+attendance and the holiday single-event edit). Roster + dues are live now.
+
+DEPLOYMENT STATUS
+----------------------------------------------------------------
+Migration 020 is ALREADY APPLIED LIVE to project uwyqhzotluikawcboldr
+(redefines gs_dash_sessions / gs_dash_roster / gs_dash_occurrences to be
+block-centric). The .sql is the repo record; safe no-op to re-run. No edge
+deploy needed.
+
+FILES (all supersede the p2 versions where names overlap)
+----------------------------------------------------------------
+NEW:
+  contractnest-edge/supabase/migrations/bbb-foundation/020_dashboard_block_centric.sql
+MODIFIED:
+  contractnest-api/src/services/groupSessionsDashboardService.ts     (dashOccurrences/Roster take blockId; roster passes is_live)
+  contractnest-api/src/controllers/groupSessionsDashboardController.ts (:blockId params; roster passes isLive)
+  contractnest-api/src/routes/groupSessionsDashboardRoutes.ts        (/occurrences/:blockId, /roster/:blockId)
+  contractnest-ui/src/services/serviceURLs.ts                        (blockId param names)
+  contractnest-ui/src/hooks/queries/useGroupSessionsDashboard.ts     (GsSessionRow.block_id; roster gets contract_name/start/end)
+  contractnest-ui/src/pages/operations/group-sessions/index.tsx      (uses block_id; roster shows Contract + dates)
+
+PREREQUISITES (from earlier bundles, still needed)
+----------------------------------------------------------------
+- group-session-dashboard-p1 (the base gs_dash_* RPCs + nav/route — App.tsx
+  and industryMenus from p2 are UNCHANGED by Phase A, keep them)
+- session-checkin-route-fix (index.ts mounts /api/group-sessions)
+
+COPY COMMANDS (PowerShell, from repo root)
+----------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\group-sessions-block-centric-phaseA\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\group-sessions-block-centric-phaseA\contractnest-api\*"  -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\group-sessions-block-centric-phaseA\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+
+Write-Host "Phase A (block-centric dashboard) copied." -ForegroundColor Green
+
+Restart API + UI. In TEST environment, open Group Sessions:
+  [ ] Card titled "Bi Weekly Meetings" (block name, not "year contract")
+  [ ] Members on roster = 2 (Nikhil + Vasanth); Charan NOT shown
+  [ ] Roster tab: each row shows Member + Contract name + start/end dates + Dues
+  [ ] Occurrences empty (expected until Phase B)
+================================================================

@@ -1,0 +1,27 @@
+================================================================
+HOTFIX — check-in form inputs lose focus / "refresh" on each keystroke
+================================================================
+Branch: claude/group-session-handover-reset-bsn220
+Submodule: contractnest-ui  (ONE file)
+
+CAUSE (my bug)
+----------------------------------------------------------------
+The Shell and Card wrapper components were defined INSIDE the page
+component. React creates a brand-new component type on every render, so it
+UNMOUNTS and REMOUNTS the whole tree each keystroke -> every input loses
+focus ("refresh activity"). Fix: the wrappers are hoisted to module scope so
+their identity is stable across renders; inputs keep focus while typing.
+
+Requires the G3 (or G2) page already copied. This file is the G3 page + fix.
+
+COPY COMMAND (PowerShell, from repo root)
+----------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\hotfix-checkin-input-focus\contractnest-ui\src\pages\checkin\SessionCheckinPage.tsx" -Destination "contractnest-ui\src\pages\checkin\SessionCheckinPage.tsx" -Force
+Write-Host "Check-in input focus fixed." -ForegroundColor Green
+
+TEST
+----------------------------------------------------------------
+  [ ] Open the check-in link; type in the mobile / name / company fields ->
+      the cursor STAYS in the field; no flicker per keystroke.
+================================================================

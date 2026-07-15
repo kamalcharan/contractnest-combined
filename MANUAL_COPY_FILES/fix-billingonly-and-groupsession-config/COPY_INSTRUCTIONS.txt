@@ -1,0 +1,80 @@
+═══════════════════════════════════════════════════
+FIXES: #2 billing-only blocks create service events  +  #3 group-session cadence wiped on block edit
+DATE: 2026-07-13
+DB APPLIED BY CLAUDE? NO — investigation used read-only SELECTs only. Nothing was written to the DB.
+═══════════════════════════════════════════════════
+
+────────────────────────────────────────────────────
+#2  BILLING-ONLY BLOCKS SHOULD NOT CREATE SERVICE EVENTS  (contractnest-api)
+────────────────────────────────────────────────────
+Root cause: the SERVER event-derivation path (used by assign/composer) lacked
+the billingOnly guard the UI has, AND the composer stripped the flag and
+hardcoded categoryId:'service' / unlimited:false.
+
+Fix (no hardcodings — the real flag is carried end to end):
+  - contractEventsDerivationService.ts
+      * DerivationBlock: added `billingOnly?: boolean`
+      * SERVICE EVENTS loop: added `if (block.billingOnly) continue;`
+  - contractComposerService.ts
+      * CandidatePayload: added `billing_only?: boolean`
+      * shortlist candidates: billing_only = block.config?.billingOnly === true
+      * template candidates:  billing_only = b.config?.billingOnly === true
+      * PrefillBlock.config: added `billingOnly?`
+      * prefill mapping: config.billingOnly = cand.billing_only
+      * derivation mapping: now passes billingOnly + real categoryId/unlimited
+        (removed the hardcoded 'service' / false)
+  - __tests__/contractEventsDerivationParity.ts
+      * RefBlock + reference impl guard + a new "membership dues" fixture/scenario
+        so the parity contract now ENFORCES billing-only = zero service events.
+
+────────────────────────────────────────────────────
+#3  GROUP-SESSION CADENCE (14 days / Saturday) NOT COMING INTO THE BLOCK  (contractnest-ui)
+────────────────────────────────────────────────────
+Root cause: catalog block "Bi Weekly Meetings" is stored with category='session'
+and config={"icon":"Wrench"} — the cadence/anchor/audience were WIPED. Why:
+the create path remaps session->'service' (so buildServiceConfig runs), but the
+UPDATE path did NOT — it saved category='session' and called buildConfig('session'),
+which has no case and returns just { icon }. So EDITING a group-session block
+wiped its whole config.
+
+Fix (catBlockAdapter.ts — TWO parts):
+  1. blockToUpdateData: added the same session->'service' remap used by
+     blockToCreateData, applied to data.type/data.category AND the buildConfig()
+     call — so editing a group-session block runs buildServiceConfig instead of
+     the default { icon }.
+  2. buildServiceConfig: fixed the cycle precedence. It was
+     `config.serviceCycles = serviceCycles || {...}`, so editing the cadence on a
+     block that already had a serviceCycles object was ignored (stale object won).
+     Now it prefers the freshly-entered cycleDays/anchor/grace and falls back to
+     the existing object — so the service cycle saves every time.
+
+FILES TO COPY (run from contractnest-combined\ root):
+─────────────────────
+Copy-Item "MANUAL_COPY_FILES\fix-billingonly-and-groupsession-config\contractnest-api\src\services\contractComposerService.ts"        -Destination "contractnest-api\src\services\contractComposerService.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\fix-billingonly-and-groupsession-config\contractnest-api\src\services\contractEventsDerivationService.ts" -Destination "contractnest-api\src\services\contractEventsDerivationService.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\fix-billingonly-and-groupsession-config\contractnest-api\src\__tests__\contractEventsDerivationParity.ts" -Destination "contractnest-api\src\__tests__\contractEventsDerivationParity.ts" -Force
+Copy-Item "MANUAL_COPY_FILES\fix-billingonly-and-groupsession-config\contractnest-ui\src\utils\catalog-studio\catBlockAdapter.ts"       -Destination "contractnest-ui\src\utils\catalog-studio\catBlockAdapter.ts" -Force
+
+RESTART:
+─────────────────────
+  - contractnest-api : restart the API server (#2 is server-side)
+  - contractnest-ui  : restart dev server + hard refresh (#3 is client-side)
+
+OPTIONAL DB PATCH (only for the already-broken block):
+─────────────────────
+optional_restore_broken_block.sql  — restores serviceCycles{14,Sat}+audience on
+that one block. OR simpler: after the UI fix, just re-open the block in
+Catalog Studio and re-enter "14 days / Saturday" and Save.
+
+TEST:
+─────────────────────
+#2
+  - [ ] Assign a template whose block is billing-only -> the created contract has
+        ONLY billing events, ZERO service events.
+  - [ ] (dev) API test suite: the new parity scenario "billing-only membership dues"
+        passes.
+#3
+  - [ ] Catalog Studio -> edit a Group Session block, set 14 days / Saturday, Save.
+  - [ ] Re-open it: the cadence + Saturday anchor are still there (not blank).
+  - [ ] Add it to a contract/template: Service Cycle shows "Every 14 days", not "Every — days".
+═══════════════════════════════════════════════════

@@ -1,0 +1,84 @@
+================================================================
+G4 — One-tap UPI payment on the check-in page  (cumulative: G2+G3+G4)
+================================================================
+Branch: claude/group-session-handover-reset-bsn220
+Submodules Affected: contractnest-edge, contractnest-api, contractnest-ui
+
+Cumulative bundle: the api/ui files contain G2 + G3 + G4 (and the input-focus
+hotfix). Copying this gives you everything for the check-in feature.
+
+WHAT THIS DOES
+----------------------------------------------------------------
+When a member selects an open due, the check-in page now shows:
+  - a "Pay ₹X now" button -> opens the phone's UPI app (GPay/PhonePe/Paytm)
+    via a upi:// intent, pre-filled with the chapter's VPA, payee, amount and
+    a note (chapter — due label);
+  - a "scan to pay" QR (same upi:// string) + the VPA text, as a desktop
+    fallback (no UPI app on a laptop);
+  - the existing UPI-reference field. The declaration flow is UNCHANGED — the
+    chair still confirms offline. This is a convenience layer, not a new rail.
+The Pay UI only appears if the tenant has configured Offline UPI (G1).
+
+INPUT-FOCUS HOTFIX (also here)
+----------------------------------------------------------------
+Shell/Card wrappers were defined inside the page component -> React remounted
+the tree on every keystroke (inputs lost focus). They are now module-scope.
+If you already applied the standalone hotfix, this file supersedes it.
+
+HOW THE VPA REACHES THE PUBLIC PAGE
+----------------------------------------------------------------
+Integration credentials are AES-GCM encrypted and never returned to clients.
+A VPA + payee are payer-facing (non-secret), so for config_only providers we
+keep a plaintext copy at credentials->'public'. New RPC
+gs_checkin_payment_config(token) returns only that slice for the token's
+tenant. API: GET /api/checkin/:token/payment-config.
+
+DEPLOYMENT STATUS
+----------------------------------------------------------------
+LIVE on project uwyqhzotluikawcboldr:
+  - Migration 028 (gs_checkin_payment_config) applied.
+  - The existing Offline UPI row was BACKFILLED with its plaintext public
+    slice, so Pay works immediately with the current VPA.
+PENDING (non-blocking):
+  - The integrations edge function change (store 'public' on save for
+    config_only providers) could NOT be redeployed from here (the deploy tool
+    kept aborting). Impact: if you EDIT the Offline UPI VPA in Settings, the
+    plaintext 'public' copy won't refresh until this edge deploy lands (the
+    encrypted copy still updates). The current VPA already works. The updated
+    edge file is in this bundle for when the deploy is re-run.
+
+FILES
+----------------------------------------------------------------
+EDGE:
+  supabase/migrations/bbb-foundation/028_group_session_payment_config.sql  (LIVE)
+  supabase/functions/integrations/index.ts   (+public storage; DEPLOY PENDING)
+API (contractnest-api):
+  src/services/sessionCheckinService.ts       (+paymentConfig)      [G2+G3+G4]
+  src/controllers/sessionCheckinController.ts (+paymentConfig)      [G2+G3+G4]
+  src/routes/sessionCheckinPublicRoutes.ts    (+GET /payment-config)[G2+G3+G4]
+UI (contractnest-ui):
+  src/pages/checkin/useSessionCheckin.ts      (+paymentConfig api)  [G2+G3+G4]
+  src/pages/checkin/SessionCheckinPage.tsx    (Pay button + QR; focus-fix) [all]
+  (uses src/utils/qrcodegen.ts — already present from the dashboard QR)
+
+COPY COMMANDS (PowerShell, from repo root)
+----------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\group-sessions-g4-upi-intent\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\group-sessions-g4-upi-intent\contractnest-ui\*"  -Destination "contractnest-ui\"  -Recurse -Force
+# Edge migration is already live; copy the edge files for the repo record:
+Copy-Item "MANUAL_COPY_FILES\group-sessions-g4-upi-intent\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "G4 copied." -ForegroundColor Green
+Restart API + UI, hard-refresh.
+
+TEST (a temporary 'today' test session is in place; Offline UPI = kamalcharan@okicici)
+----------------------------------------------------------------
+  [ ] Check in as a member with an open due -> select a due.
+  [ ] "Pay ₹X now" appears; on a phone it opens the UPI app pre-filled with
+      the amount + kamalcharan@okicici. On desktop, the QR + VPA show.
+  [ ] Enter a UPI reference -> Check in -> declaration recorded pending (chair
+      confirms in the dashboard, as before).
+  [ ] If Offline UPI is NOT configured for a tenant, no Pay button shows.
+================================================================

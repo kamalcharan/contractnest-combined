@@ -1,0 +1,90 @@
+================================================================
+GROUP SESSIONS — PHASE D: enforcement + QR image + dues confirmation
+================================================================
+Branch: claude/group-session-handover-reset-bsn220
+Submodule Affected: contractnest-ui ONLY (no edge, no api).
+
+Requires Phases A–C applied (and their prerequisites: p1 RPCs, nav/route,
+session-checkin-route-fix mount). SUPERSEDES the Phase C versions of
+useGroupSessionsDashboard.ts and pages/operations/group-sessions/index.tsx.
+
+WHAT THIS ADDS (three parts)
+----------------------------------------------------------------
+D1. ENFORCEMENT GUARDS (your rules 1 & 3)
+    - Rule 1: the ContractWizard block library HIDES group-session blocks on the
+      DIRECT contract path (mode='contract'); they remain available only in
+      TEMPLATE mode. (BlockLibraryMini hideGroupBlocks; threaded from
+      ContractWizard/index -> ServiceBlocksStep.)
+    - Rule 3: adding a group-session block to a template is BLOCKED if that block
+      already belongs to another template (a group session = one template only).
+      Uses useCatTemplates to compute the used set (excludes the template being
+      edited); rejects with a warning toast in single + bulk add.
+
+D2. QR IMAGE (self-contained, zero new dependency)
+    - New src/utils/qrcodegen.ts — a vendored QR encoder (nayuki qrcodegen, MIT),
+      NO npm install needed. Verified: v1->21, v6->41, finder/timing/separator ok.
+    - New CheckinQrModal: dashboard "Open check-in" now opens a modal with the
+      scannable QR + link (copy) + Download PNG / Download SVG / Open. Print the
+      PNG as the chapter poster.
+
+D3. CHAIR DUES CONFIRMATION (reuses existing endpoints)
+    - Dashboard overview shows "Payments to confirm" — members' UPI payments
+      declared at check-in — with Confirm (marks the billing event PAID) / Reject.
+    - Reuses /api/session-checkin/declarations + /declarations/:id/confirm
+      (already mounted by session-checkin-route-fix). No new API.
+
+Production checklist:
+  Transaction Mgmt : confirm flips declaration + billing event server-side (RPC)
+  Race conditions  : mutations invalidate + refetch; buttons disable while pending
+  Error handling   : mutation onError toasts; QR renders '—' fallback on failure
+  Toasts/Loaders   : react-hot-toast on confirm/reject; disabled busy states
+  Enforcement      : additive optional props (default off) — no behaviour change
+                     outside the group-session paths
+
+TYPECHECK: tsc --noEmit clean across all touched files (wizard incl.).
+
+FILES
+----------------------------------------------------------------
+NEW:
+  contractnest-ui/src/utils/qrcodegen.ts
+  contractnest-ui/src/components/group-sessions/CheckinQrModal.tsx
+MODIFIED:
+  contractnest-ui/src/components/catalog-studio/BlockLibraryMini.tsx            (hideGroupBlocks)
+  contractnest-ui/src/components/contracts/ContractWizard/steps/ServiceBlocksStep.tsx (hide + uniqueness in add handlers)
+  contractnest-ui/src/components/contracts/ContractWizard/index.tsx             (usedGroupSessionBlockIds memo + props)
+  contractnest-ui/src/hooks/queries/useGroupSessionsDashboard.ts               (+declarations hooks; supersedes Phase C)
+  contractnest-ui/src/pages/operations/group-sessions/index.tsx                (QR modal + Payments to confirm; supersedes Phase C)
+
+COPY COMMANDS (PowerShell, from repo root)
+----------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\group-sessions-phaseD\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Phase D copied." -ForegroundColor Green
+
+Restart the UI (npm run dev). No API/edge restart needed.
+
+TEST
+----------------------------------------------------------------
+D1:
+  [ ] New CONTRACT (direct/scratch): the block library does NOT list group-session
+      blocks (e.g. "Bi Weekly Meetings")
+  [ ] TEMPLATE builder: group-session blocks ARE listed and addable
+  [ ] Add a group block already used by another template -> warning toast, not added
+D2:
+  [ ] Group Sessions -> a session card / session view -> "Open check-in" ->
+      modal shows a scannable QR + link; Download PNG/SVG work; scanning the QR
+      opens the member /checkin/<token> page
+D3:
+  [ ] After a member declares a UPI payment at check-in, the dashboard overview
+      shows "Payments to confirm"; Confirm marks the due PAID (roster dues clears),
+      Reject dismisses it
+
+NOTES
+----------------------------------------------------------------
+- "Payments to confirm" is tenant-wide (all group-session declarations), matching
+  the existing chair endpoint; it appears on the overview.
+- qrcodegen.ts is dependency-free on purpose (npm install in this repo hits an
+  ERESOLVE peer conflict; vendoring avoids it and keeps the copy-files flow clean).
+================================================================

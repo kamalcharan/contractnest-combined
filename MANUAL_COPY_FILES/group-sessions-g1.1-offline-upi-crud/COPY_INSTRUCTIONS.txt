@@ -1,0 +1,98 @@
+================================================================
+G1.1 — Offline UPI: config-only setup modal (add / edit / delete)
+================================================================
+Branch: claude/group-session-handover-reset-bsn220
+Submodules Affected: contractnest-edge, contractnest-api, contractnest-ui
+SUPERSEDES the "group-sessions-g1-offline-upi" bundle.
+
+WHY
+----------------------------------------------------------------
+The integration setup modal was built for gateways (Test Connection →
+Connect). For "Offline UPI" there is nothing to connect/test — it is plain
+add / edit / delete of a stored VPA. The old modal even BLOCKED saving because
+it ran a test first ("Test connection not implemented for provider:
+offline_upi").
+
+FOLLOW-UP FIX (save path) — IMPORTANT
+----------------------------------------------------------------
+Symptom: entered UPI details, saw a toast, but the card stayed in "Set Up"
+mode and nothing persisted.
+Cause: even with the modal's own test skipped, persistence goes through
+useIntegrations.saveIntegration(), which ALSO runs a connection test BEFORE
+the insert. For offline_upi that test returns "not implemented" -> save
+aborted -> no t_tenant_integrations row -> card stays in setup mode.
+Fix: saveIntegration now accepts { skipTest } and index.tsx passes
+skipTest=true for config-only providers (detected via provider.metadata.
+config_only), so the VPA is stored directly. Files: useIntegrations.ts +
+pages/settings/integrations/index.tsx (both already in this bundle).
+
+WHAT CHANGED
+----------------------------------------------------------------
+Providers flagged metadata.config_only=true (Offline UPI is) now get a
+CRUD modal instead of the connect/test flow:
+  - Saving NO LONGER runs a connection test (it just stores the values).
+  - The "Test Connection" button is hidden.
+  - Primary button reads "Save" (new) / "Save changes" (editing).
+  - When a config already exists, a red "Remove" button deletes it.
+This is generic — any future config-only provider gets the same treatment.
+
+Delete was wired end-to-end (the edge function already supported it; only the
+API route + hook + prop-threading were missing):
+  API  : DELETE /api/integrations/:id  → integrationController.deleteIntegration
+         → integrationService.deleteTenantIntegration (existing)
+  UI   : useIntegrations.deleteIntegration; onDelete threaded
+         index → IntegrationTypeSection → IntegrationProviderCard → modal.
+
+DEPLOYMENT STATUS
+----------------------------------------------------------------
+ALL BACKEND CHANGES ARE ALREADY LIVE on project uwyqhzotluikawcboldr:
+  - Migration 025 (provider seed + metadata.config_only) applied.
+  - Migration 026 (get_integration_provider +metadata; delete_tenant_integration)
+    applied.
+  - Edge function "integrations" REDEPLOYED (v64):
+      * /test now returns { success:true } for config_only / offline_upi
+        (this is the definitive fix for "Test connection not implemented").
+      * new DELETE .../tenant-integrations?id= -> delete_tenant_integration.
+
+>> Because the fix lives in the edge function, SAVING OFFLINE UPI ALREADY WORKS
+   with the CURRENT (old) frontend — just hard-refresh the browser. The UI files
+   below are polish (hide Test button, "Save"/"Remove" labels), not required to
+   clear the error.
+
+The contractnest-edge/ files in this bundle are for the REPO RECORD (commit them
+so git matches what is live). No manual edge deploy needed on your side.
+
+TYPECHECK: api + ui clean.
+
+FILES (supersede G1)
+----------------------------------------------------------------
+MODIFIED:
+  contractnest-edge/supabase/migrations/bbb-foundation/025_offline_upi_integration.sql  (+config_only)
+  contractnest-api/src/controllers/integrationController.ts   (+deleteIntegration)
+  contractnest-api/src/routes/integrationRoutes.ts            (+DELETE /integrations/:id)
+  contractnest-ui/src/services/serviceURLs.ts                 (+INTEGRATIONS.DELETE)
+  contractnest-ui/src/hooks/useIntegrations.ts                (+deleteIntegration)
+  contractnest-ui/src/pages/settings/integrations/index.tsx   (pass onDelete)
+  contractnest-ui/src/components/integrations/IntegrationSetupModal.tsx  (config-only + Remove)
+  contractnest-ui/src/components/integrations/IntegrationTypeSection.tsx (thread onDelete)
+  contractnest-ui/src/components/integrations/IntegrationProviderCard.tsx (thread onDelete)
+
+COPY COMMANDS (PowerShell, from repo root)
+----------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\group-sessions-g1.1-offline-upi-crud\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\group-sessions-g1.1-offline-upi-crud\contractnest-api\*"  -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\group-sessions-g1.1-offline-upi-crud\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+
+Write-Host "G1.1 copied." -ForegroundColor Green
+Restart API + UI.
+
+TEST
+----------------------------------------------------------------
+  [ ] Settings → Integrations → Offline UPI: no "Test Connection"; button says "Save"
+  [ ] Enter UPI ID + Payee name → Save → stored (no connection error)
+  [ ] Reopen → edit values → "Save changes"
+  [ ] Reopen → "Remove" → config deleted
+  (Gateways like Razorpay/Stripe are unaffected — they still Test/Connect.)
+================================================================

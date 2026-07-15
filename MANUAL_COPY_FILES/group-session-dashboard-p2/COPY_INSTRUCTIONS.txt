@@ -1,0 +1,129 @@
+================================================================
+GROUP SESSIONS DASHBOARD - PHASE 2 (Dashboard UI + Nav + API)
+================================================================
+Branch: claude/group-session-handover-reset-bsn220
+Submodules Affected: contractnest-api, contractnest-ui
+Depends on: Phase 1 RPCs (migration 018) - ALREADY LIVE.
+
+Production checklist:
+  Transaction Mgmt : N/A (read-only dashboard)
+  Race conditions  : N/A (read-only; React-Query dedupes)
+  Error handling   : Yes - service {success,error} envelope; controller
+                     sendError; UI error-card + retry per view
+  Toasts           : N/A (read-only views; no mutations in Phase 2)
+  Loaders          : Yes - LoadingSpinner (overview + per-tab)
+
+WHAT THIS IS
+----------------------------------------------------------------
+The generic (tenant-agnostic) Group Sessions dashboard UI, wired to the
+Phase 1 gs_dash_* RPCs through new Express endpoints. Drill-down:
+  Overview (session cards) -> Session (Occurrences | Roster tabs)
+                           -> Member (attendance history + dues)
+New nav item under Operations -> "Group Sessions" (/group-sessions).
+"Open check-in" links to the existing chair flow (/session-checkin).
+
+IMPORTANT: the UI never calls Supabase directly - all data goes through
+the Express API. That's why this phase adds API endpoints too. tenant_id
+and is_live are injected by the api request interceptor as headers
+(x-tenant-id / x-environment); the backend reads them - nothing is
+hardcoded and no tenant name appears anywhere.
+
+TYPECHECK: both new UI files and the API files compile clean (tsc --noEmit).
+(Note: a PRE-EXISTING broken file src/services/serviceURLs.addition.ts on
+UI main throws tsc errors - it is unrelated to this work and left untouched.)
+
+----------------------------------------------------------------
+FILES - NEW (safe straight copy)
+----------------------------------------------------------------
+API:
+  contractnest-api/src/services/groupSessionsDashboardService.ts
+  contractnest-api/src/controllers/groupSessionsDashboardController.ts
+  contractnest-api/src/routes/groupSessionsDashboardRoutes.ts
+UI:
+  contractnest-ui/src/pages/operations/group-sessions/index.tsx
+  contractnest-ui/src/hooks/queries/useGroupSessionsDashboard.ts
+
+----------------------------------------------------------------
+FILES - MODIFIED (full files included; small additive edits)
+----------------------------------------------------------------
+If your local main matches origin/main, a straight copy is safe. If your
+local has drifted, hand-apply these exact additions instead:
+
+1) contractnest-api/src/index.ts
+   - LOAD block (after the "Load VaNi desk routes" block, ~line 409):
+       let groupSessionsDashboardRoutes;
+       try {
+         groupSessionsDashboardRoutes = require('./routes/groupSessionsDashboardRoutes').default;
+         console.log('Group Sessions dashboard routes loaded');
+       } catch (error) {
+         console.error('Failed to load Group Sessions dashboard routes:', error);
+         if (process.env.NODE_ENV === 'production') { process.exit(1); }
+         else { groupSessionsDashboardRoutes = null; }
+       }
+   - MOUNT block (before the "Register VaNi Composer routes" block, ~line 892):
+       try {
+         if (groupSessionsDashboardRoutes) {
+           app.use('/api/group-sessions', groupSessionsDashboardRoutes);
+           console.log('Group Sessions dashboard routes registered at /api/group-sessions');
+         }
+       } catch (error) {
+         console.error('Failed to register Group Sessions dashboard routes:', error);
+         captureException(error instanceof Error ? error : new Error(String(error)), {
+           tags: { source: 'route_registration', route_type: 'group_sessions_dashboard' }
+         });
+       }
+
+2) contractnest-ui/src/services/serviceURLs.ts
+   - Add inside API_ENDPOINTS (right after the SESSION_CHECKIN block):
+       GROUP_SESSIONS: {
+         SESSIONS: '/api/group-sessions/sessions',
+         OCCURRENCES: (contractId: string) => `/api/group-sessions/occurrences/${contractId}`,
+         ROSTER: (contractId: string) => `/api/group-sessions/roster/${contractId}`,
+         MEMBER: (memberId: string) => `/api/group-sessions/member/${memberId}`,
+       },
+
+3) contractnest-ui/src/utils/constants/industryMenus.ts
+   - Add to the Operations submenuItems array (after ops-services):
+       { id: 'ops-group-sessions', label: 'Group Sessions', icon: 'Users', path: '/group-sessions' },
+
+4) contractnest-ui/src/App.tsx
+   - Import (after OpsServiceSchedulePage import, ~line 182):
+       import GroupSessionsPage from './pages/operations/group-sessions';
+   - Route (after the /ops/services <Route> block, ~line 596):
+       <Route path="/group-sessions"
+         element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+         <Route index element={<GroupSessionsPage />} />
+       </Route>
+
+----------------------------------------------------------------
+COPY COMMANDS (PowerShell, from repo root)
+----------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+Copy-Item "MANUAL_COPY_FILES\group-session-dashboard-p2\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\group-session-dashboard-p2\contractnest-ui\*"  -Destination "contractnest-ui\"  -Recurse -Force
+
+Write-Host "Phase 2 files copied." -ForegroundColor Green
+
+----------------------------------------------------------------
+RUN & TEST
+----------------------------------------------------------------
+cd contractnest-api ; npm run dev      # API must be running (new /api/group-sessions/*)
+cd ..\contractnest-ui ; npm run dev     # then hard-refresh (Ctrl+F5)
+
+Testing checklist:
+  [ ] Sidebar: Operations -> "Group Sessions" appears and routes to /group-sessions
+  [ ] Overview: stat cards (sessions / members / upcoming / QR) + one card per
+      contract flagged group_session_owner='true'
+  [ ] Card -> Session view: Occurrences tab lists the shared schedule with
+      Held/Upcoming + present count
+  [ ] Roster tab: members enumerated, Attended count + Dues (Pending/Clear)
+  [ ] Member row -> Member view: attendance history + billing/dues
+  [ ] "Open check-in" / "Check-in" -> /session-checkin (existing chair flow)
+  [ ] Empty state shows if the tenant has no owner-flagged session yet
+
+NOTE ON DATA: a session only shows here once a contract carries
+metadata.group_session_owner='true'. Setting that flag is the "Create/Manage
+Group Session" flow = PHASE 3 (create-owner + occurrence-guard refinement).
+Until then the overview may be empty even if members/dues exist.
+================================================================
