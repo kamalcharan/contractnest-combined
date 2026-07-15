@@ -1,0 +1,28 @@
+================================================================
+HOTFIX — Group Session QR card: add "Copy link" button
+================================================================
+Branch: claude/group-session-handover-reset-bsn220
+Submodule: contractnest-ui  (ONE file)
+
+WHAT
+----------------------------------------------------------------
+The QR card gets an explicit full-width "Copy link" button (turns into
+"Link copied" for ~1.5s) so the chapter can copy the /checkin/<token> URL
+without downloading the QR. (This file is the latest QRCard; it also has the
+inline URL + copy icon row, in case your copy was an older one.)
+
+FILE
+----------------------------------------------------------------
+  src/components/group-sessions/QRCard.tsx
+
+COPY (PowerShell, from repo root)
+----------------------------------------------------------------
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\hotfix-qr-copy-link\contractnest-ui\src\components\group-sessions\QRCard.tsx" -Destination "contractnest-ui\src\components\group-sessions\QRCard.tsx" -Force
+Write-Host "QR Copy link added." -ForegroundColor Green
+
+TEST
+----------------------------------------------------------------
+  [ ] Open a Group Session -> QR card -> "Copy link" copies the check-in URL;
+      button flips to "Link copied" briefly.
+================================================================
