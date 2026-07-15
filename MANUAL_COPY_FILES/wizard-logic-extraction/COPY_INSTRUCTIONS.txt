@@ -1,0 +1,77 @@
+═══════════════════════════════════════════════════════════════════
+WIZARD LOGIC EXTRACTION (Phase 1.5) — COPY INSTRUCTIONS
+═══════════════════════════════════════════════════════════════════
+Date: 2026-07-15
+Submodule affected: contractnest-ui ONLY
+
+⚠️  ORDERING REQUIREMENT — READ FIRST
+This batch must be applied AFTER the bbb-foundation batch
+(branch claude/handover-closing-tasks-11cmhn) has been applied/merged.
+Reason: the parity goldens (logic/__parity__/goldens.json) were generated
+against bbb-foundation's contractEvents.ts (weekday-anchored cadence /
+Group Sessions). Applied to pre-bbb main, the parity check will FAIL on
+F1/F2 event dates — that failure is expected and means "wrong order",
+not a bug.
+
+WHAT THIS IS
+Verbatim extraction of business logic OUT of the 2,906-line
+ContractWizard/index.tsx into pure modules, with a behavioral lock.
+ZERO functional change intended. index.tsx drops to ~2,480 lines.
+
+  NEW  src/components/contracts/ContractWizard/logic/state.ts
+         ContractWizardState type + createInitialWizardState /
+         serializeWizardState / deserializeWizardState /
+         sanitizeStateForTemplate
+  NEW  logic/stepConfig.ts
+         StepId/StepConfig + CONTRACT_STEPS / TEMPLATE_STEPS / RFQ_STEPS +
+         counterparty maps + DRAFT_SAVE_MIN_STEP_ID
+  NEW  logic/mapper.ts
+         ACCEPTANCE_METHOD_API_MAP + isValidUUID + computeEventsForApi +
+         mapWizardToRequest  (⚠ parity contract with
+         contractnest-api/src/services/contractEventsDerivationService.ts)
+  NEW  logic/gating.ts
+         canGoNextForStep (verbatim canGoNext switch) + ASSET_STEP_GROUPS +
+         shouldSkipAssetStepFor — the future WizardShell validate() seam
+  NEW  logic/__parity__/{fixtures.ts, run.ts, goldens.json}
+         Behavioral lock: 5 fixtures × (mapper output, serialize
+         round-trip fixpoint, template sanitize, full gating matrix)
+  MOD  src/components/contracts/ContractWizard/index.tsx
+         Moved spans deleted; imports from ./logic added; public exports
+         re-exported so '@/components/contracts/ContractWizard' imports
+         (useContractSubmission.ts, VaNiReviewFinalize.tsx) are untouched.
+
+STEP 1 — Copy files
+─────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\wizard-logic-extraction\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+STEP 2 — Verify (all three should pass)
+─────────────────────────────
+cd contractnest-ui
+npx tsc --noEmit          # expect the SAME pre-existing errors as before, none new in ContractWizard
+npx vite-node src/components/contracts/ContractWizard/logic/__parity__/run.ts
+                          # expect: PASS ×5, "All parity checks passed."
+npm run dev               # smoke: create a contract end-to-end, save a draft, resume it, save a template
+
+STEP 3 — Regression checklist (manual)
+─────────────────────────────
+- [ ] Create contract from scratch → all 12 steps → created OK
+- [ ] Continue-button gating unchanged on every step (incl. asset step for
+      equipment_maintenance nomenclature; skipped for e.g. consulting)
+- [ ] Draft autosave past Details step; close+resume restores state & step
+- [ ] Template mode: save + re-edit a template (buyer stays stripped)
+- [ ] RFQ flow: multi-vendor create
+- [ ] VaNi composer finalize path still creates (uses re-exported mapper)
+
+PARITY GOING FORWARD
+Whenever mapper/serialization/gating changes INTENTIONALLY:
+  npx vite-node src/components/contracts/ContractWizard/logic/__parity__/run.ts -- --update
+Review the goldens.json diff and commit it WITH the change. If
+computed_events changed, contractnest-api/src/__tests__/
+contractEventsDerivationParity.ts must be updated in the same change.
+
+KNOWN PRE-EXISTING ISSUE (not from this batch — reported separately)
+main does not `npm run build`: src/App.tsx imports
+'@/pages/onboarding/steps/UserProfileStep' which does not exist in the
+repo. Present before this change; also visible in npx tsc baseline.
+═══════════════════════════════════════════════════════════════════
