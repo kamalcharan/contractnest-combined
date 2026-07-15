@@ -1,0 +1,104 @@
+═══════════════════════════════════════════════════════════════════
+SPRINT 1 — STEP (a) UI · AUTHORING UX BATCH — COPY INSTRUCTIONS
+═══════════════════════════════════════════════════════════════════
+Date: 2026-07-16 · Gate: owner review of step (a) before step (b) migration
+Submodule affected: contractnest-ui ONLY · UX reference: SPRINT_REFERENCES/4 (+2)
+
+⚠️  INCLUDES A PHASE-2 RE-DELIVERY
+Main is missing the WizardShell Phase 2 files you tested earlier (the
+shell/ folder + wired index.tsx + stepConfig additions were never
+committed — only Phase 1.5 landed). This batch includes them again;
+after this copy, commit will finally bring main to the tested state.
+
+WHAT'S NEW (Sprint 1a)
+ 1. COVERAGE & ASSETS step
+    - Unit count per asset type: selected coverage chips get a ×N
+      stepper ("MRI Machines ×3") — the declared fleet size.
+    - PLACEHOLDERS: for every type, (units − attached) placeholder
+      entries auto-appear in equipment_details (asset_registry_id null,
+      specifications.placeholder=true). Status panel shows
+      "N units to attach" — the locked servicing model starts here.
+    - Context line: "Service blocks in the next step attach to the
+      coverage you pick here."
+    - "Buyer will add" card renamed to "<Client> lists them after
+      signing — you can still send the contract today", with a
+      "N to attach" badge.
+    - All counts now distinguish attached vs placeholder.
+ 2. SERVICE BLOCKS step
+    - Empty state opens with "✦ Ask VaNi what this contract usually
+      includes" (recommendations-first).
+    - Unified-cycle mismatch now warns INLINE at selection: banner in
+      the added-blocks column + amber chip on each offending block
+      ("bills monthly — contract is unified quarterly"). Same rule as
+      the Continue-time check (which stays as backstop).
+    - Recorded discounts: blocks capture listPrice at add-time; editing
+      price below list shows "list ₹X̶ → ₹Y (−p%)" chip (internal
+      line-discount record; groundwork for invoice allocation).
+ 3. BILLING VIEW step — CONTRACT-LEVEL DISCOUNT
+    - New Discount card: %/₹ toggle + value. Applied BEFORE tax,
+      loaded uniformly across line items (internal), per decision:
+      chain shows Sum total → Discount → Taxable → Tax → Total to pay.
+    - "Internal allocation" expandable lists per-line loaded amounts,
+      labeled "not shown on invoice".
+    - Tax + grand total + EMI all recompute off the discounted base.
+    - State: discountType/discountValue/discountTotal added to wizard
+      state (serialization-safe; old drafts default to no discount).
+ 4. Parity goldens re-based intentionally (state shape + F1 discount
+    fixture). Mapper does NOT emit discounts yet — that is step (c).
+
+STEP 1 — Copy
+─────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\sprint1a-authoring-ux\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+STEP 2 — Verify
+─────────────────────────────
+cd contractnest-ui
+npx tsc --noEmit          # same pre-existing errors only (23), none new
+npx vite-node src/components/contracts/ContractWizard/logic/__parity__/run.ts
+                          # PASS ×5
+npm run dev               # Ctrl+F5
+
+STEP 3 — Gate-review checklist (step a)
+─────────────────────────────
+Coverage & Assets (equipment nomenclature, e.g. AMC):
+- [ ] Pick an asset type → chip shows ×1 with −/+ stepper; set ×3
+- [ ] Status panel shows "3 units to attach" (amber, dashed)
+- [ ] Attach 1 real asset from registry → panel: 1 attached, "2 units
+      to attach"; grid header shows "1 / N · 2 to attach"
+- [ ] Choose "<Client> lists them after signing" → badge shows count;
+      step completes without attaching anything
+- [ ] Context line about blocks visible under the heading
+Service blocks:
+- [ ] With no blocks: "Ask VaNi…" button present, opens recommender
+- [ ] Unified cycle + two blocks with different cycles → inline banner
+      + amber chip on the offending block (no toast needed)
+- [ ] Edit a block's price below list → "list → price (−%)" chip
+Billing view:
+- [ ] Discount card: set 10% → chain displays Sum total → Discount →
+      Taxable → Tax → Total to be paid; totals/EMI update live
+- [ ] Internal allocation expandable lists per-line loaded amounts
+- [ ] Clear resets everything
+Cross-cutting:
+- [ ] Phase stepper (Setup·Terms·Services·Finalize) present again
+      (Phase 2 re-delivery); blocked-Continue hints work
+- [ ] Draft save/resume round-trips discount + unit counts +
+      placeholders (serialize/deserialize)
+- [ ] Template mode: save template with discount; re-edit shows it
+- [ ] RFQ flow unaffected
+
+PRODUCTION CHECKLIST (per CLAUDE.md)
+  Transactions: n/a (UI step — no new writes; discount persists via the
+                existing draft/save paths)
+  Race conditions: placeholder reconciliation is loop-guarded (id-set
+                comparison before writes); discount input clamped
+  Error handling: existing mutation/toast paths unchanged
+  Toasts: existing VaNiToast (no new toast systems)
+  Loaders: existing VaNiLoader / Loader2 patterns (no new loaders)
+
+NOT IN THIS BATCH (later steps of Sprint 1)
+  (b) Migration: t_contracts discount columns + t_contract_event_assets
+      per-asset table + RPC changes
+  (c) Stitch: mapper emits discount + placeholder fan-out at activation,
+      computed_events on discounted totals + API parity update
+═══════════════════════════════════════════════════════════════════
