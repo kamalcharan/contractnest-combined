@@ -20,7 +20,7 @@
 | File (SPRINT_REFERENCES/) | Governs |
 |---|---|
 | `1-lifecycle-blueprint.html` | The whole program — Author→Activate→Service→Settle spine |
-| `2-multi-asset-playground.html` | Sprints 2, 3, 5, 7 — per-asset fan-out, placeholder gating, per-asset invoice lines, closed loop |
+| `2-multi-asset-playground.html` | Sprints 1, 2, 3, 5, 7 — per-asset fan-out, placeholder gating, per-asset invoice lines, closed loop |
 | `3-wizardshell-prototype.html` | Sprint 1 — shell behaviors (already shipped; regression reference) |
 | `4-coverage-blocks-redesign.html` | Sprint 1 — asset-assignment + service-blocks step UX |
 | `5-landing-playground.html` | Parked track (post-Sprint-7) |
@@ -46,7 +46,7 @@
 - `logic/` modules + parity harness — extended, not restructured.
 - `AssetSelectionStep`'s existing machinery: `NOMENCLATURE_TO_RESOURCE`, `useClientAssets`, `EquipmentFormDialog`, attachment modes (`existing|buyer|later`) — re-skinned, not rewritten.
 - `ServiceBlocksStep` + `VaNiBlockRecommender` (bbb/iks78e merged versions) — **first task: reconcile iks78e leftovers against main** if any remain unmerged.
-- Existing state fields: `coverageTypes`, `equipmentDetails`, `allowBuyerToAdd`, block `config` — Sprint 1 UI rides these; **no new event schema here** (that's Sprint 2).
+- Existing state fields: `coverageTypes`, `equipmentDetails`, `allowBuyerToAdd`, block `config` — the UI step rides these; the per-asset event schema lands in this sprint's migration step below.
 
 ### Build — step (a) UI
 1. **"Coverage & Assets" step** per reference: one question ("Which asset types does this contract cover?"); asset-type pick is the mandatory gate; three attachment paths with **"client lists after signing" as a first-class card**; per-type unit count (qty ≥ 1); registry picker collapses after selection; context line explaining blocks attach to these types. Placeholder instances represented in `equipmentDetails` with `asset_registry_id: null` + a `placeholder: true` marker in specifications.
@@ -58,26 +58,29 @@
 - `t_contracts`: `discount_type` (`percent|amount`), `discount_value` numeric, `discount_total` numeric (computed absolute).
 - `t_contract_blocks.custom_fields` carries `list_price` + `loaded_discount` (JSONB — no column change).
 - Create/update contract RPC accepts the three discount fields. Rollback: columns nullable, RPC params optional.
+- **Per-asset schema (THE cross-cutting migration, owned by this sprint):** new table `t_contract_event_assets` — `id, tenant_id, contract_id, event_id → t_contract_events, asset_ref (equipment_details entry id / asset_registry_id), status (open|assigned|in_progress|proven|blocked_placeholder), assignee, form_submission_id → m_form_submissions, evidence_id → t_service_evidence, proven_at`. Generated at activation: one row per service event × covered asset (placeholders start `blocked_placeholder`). Backfill script for existing active contracts.
 
 ### Build — step (c) Stitch
 - `logic/mapper.ts`: emit discount fields + per-block `list_price`/`loaded_discount`; grand-total chain = `baseSubtotal − discount_total → tax → grand_total`. EMI math picks up discounted grand total automatically.
 - `computeEventsForApi`: billing event amounts derive from discounted totals → **update API derivation parity in same batch**.
+- Activation path (events derivation service + trigger) generates the per-asset rows; attaching a real asset to a placeholder flips its rows to `open`.
 - Re-golden wizard parity. Impact notes (analysis deliverable, no code): cockpit/AR/appointments/group-sessions read-paths that display totals — enumerate which show gross vs net (fix-list feeds Sprints 3–5).
 
 ### Acceptance SQL (sprint1.sql)
 - A contract created via wizard has: N `equipment_details` entries incl. ≥1 placeholder when "later" chosen; `discount_type/value/total` populated; every block row carries `custom_fields.list_price`; `computed_events` billing amounts = discounted math.
-- A template saved carries the same in `settings.wizard_state`.
+- Activating the test contract yields `t_contract_event_assets` rows = service events × covered assets, with placeholders `blocked_placeholder`; attaching a real asset flips its rows to `open`.
+- A template saved carries the same authoring data in `settings.wizard_state`.
 
 ### Manual checklist
-Create contract with 2 asset types (one "client lists later"), 3 blocks (one with edited price), 10% discount → verify wizard math on Billing View; verify template round-trip; verify RFQ unaffected; parity 5/5; tsc baseline.
+Create contract with 2 asset types (one "client lists later"), 3 blocks (one with edited price), 10% discount → verify wizard math on Billing View; activate → verify per-asset rows in DB; attach the placeholder's real asset → verify rows unlock; verify template round-trip; verify RFQ unaffected; parity 5/5; tsc baseline.
 
-**Out of scope:** per-asset events (S2), invoice rendering of discount (S4), any servicing UI.
+**Out of scope:** form invocation on the per-asset rows (S2), invoice rendering of discount (S4), any servicing UI (S3/S7).
 
 ---
 
-## Sprint 2 — Smart forms from KT + the per-asset schema
+## Sprint 2 — Smart forms from KT
 
-**Goal:** forms exist for everything the knowledge tree knows, bind automatically, and the DB can represent per-asset service work. This sprint is the "definition of done" layer.
+**Goal:** forms exist for everything the knowledge tree knows, bind automatically, and attach to the per-asset rows created in Sprint 1. This sprint is the "definition of done" layer.
 **UX reference:** `2-multi-asset-playground.html` (form-per-machine, placeholder lock).
 
 ### Reuse
@@ -91,16 +94,15 @@ Create contract with 2 asset types (one "client lists later"), 3 blocks (one wit
 ### Build — step (b) Migration
 1. **Seed the starter library:** generate one form per KT equipment type from its checkpoints (checkpoint → pass/fail field; measurable checkpoints → numeric field). Delivered as a reviewable seed migration (forms in `m_form_templates`, `status='approved'`, `resource_template_id` set). Owner reviews generated forms before apply.
 2. **Auto-mapping rule:** on contract activation, for each covered asset type with a bound form → insert `m_form_template_mappings` row (`contract_id`, `form_template_id`, `is_mandatory=true`, `timing='during'`).
-3. **Per-asset schema (THE cross-cutting migration):** new table `t_contract_event_assets` — `id, tenant_id, contract_id, event_id → t_contract_events, asset_ref (equipment_details entry id / asset_registry_id), status (open|assigned|in_progress|proven|blocked_placeholder), assignee, form_submission_id → m_form_submissions, evidence_id → t_service_evidence, proven_at`. Generated at activation: one row per service event × covered asset (incl. placeholders with `blocked_placeholder`). Backfill script for existing active contracts.
 
 ### Build — step (c) Stitch
-- Activation path (events derivation service + trigger) generates the per-asset rows; attaching a real asset to a placeholder flips its rows to `open` and enables form invocation (server-side check: form submission requires non-placeholder asset_ref).
-- Existing contracts’ Operations/Tasks tabs keep working (they read events; per-asset rows are additive).
+- Form invocation attaches to the Sprint 1 `t_contract_event_assets` rows: a submission links to exactly one event-asset row; **server-side check: form submission requires a non-placeholder `asset_ref`** (this is the enforcement of placeholder gating at the forms layer).
+- Existing contracts’ Operations/Tasks tabs keep working (they read events; per-asset linkage is additive).
 
 ### Acceptance SQL (sprint2.sql)
 - Every KT equipment type has ≥1 approved form with `resource_template_id` set; count of generated forms reported.
-- Activating a test contract yields `t_contract_event_assets` rows = events × assets, placeholders `blocked_placeholder`; mappings rows with `is_mandatory=true` for each bound type.
-- A form submission row links to exactly one event-asset row; submission on a placeholder is REJECTED (verify via negative test).
+- Activating a test contract yields mappings rows with `is_mandatory=true` for each bound asset type.
+- A form submission row links to exactly one `t_contract_event_assets` row; submission against a placeholder row is REJECTED (verify via negative test).
 
 **Out of scope:** servicing UI that consumes this (S3/S7), services/session-type KT forms (roster path lands in S5).
 
