@@ -1,4 +1,4 @@
-<title>ContractNest — Lifecycle Playground</title>
+<title>ContractNest — Multi-Asset Servicing Playground</title>
 <style>
   :root{
     --bg:#EEF2F0;--surface:#FFFFFF;--surface-2:#F5F8F6;--ink:#17241F;--muted:#566862;--faint:#8A9993;
@@ -9,516 +9,482 @@
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14.5px;line-height:1.5}
-  button{font:inherit;cursor:pointer}input,select,textarea{font:inherit;color:inherit}
+  button{font:inherit;cursor:pointer}input,select{font:inherit;color:inherit}
   :focus-visible{outline:2px solid var(--teal);outline-offset:2px}
   .app{display:flex;min-height:100vh}
-  /* sidebar */
-  .side{width:210px;flex:none;background:var(--surface);border-right:1px solid var(--line);padding:16px 12px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh;overflow-y:auto}
-  .logo{font-weight:800;letter-spacing:.02em;padding:6px 10px 14px;font-size:1.05rem}
-  .logo b{color:var(--teal)}
-  .nav{border:none;background:none;text-align:left;padding:9px 12px;border-radius:9px;color:var(--muted);font-weight:600;font-size:.88rem;display:flex;align-items:center;gap:9px}
-  .nav:hover{background:var(--surface-2);color:var(--ink)}
-  .nav.on{background:var(--teal-soft);color:var(--teal)}
-  .nav .ic{width:16px;text-align:center}
+  .side{width:212px;flex:none;background:var(--surface);border-right:1px solid var(--line);padding:16px 12px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh;overflow-y:auto}
+  .logo{font-weight:800;letter-spacing:.02em;padding:6px 10px 14px;font-size:1.05rem}.logo b{color:var(--teal)}
+  .nav{border:none;background:none;text-align:left;padding:9px 12px;border-radius:9px;color:var(--muted);font-weight:600;font-size:.88rem;display:flex;gap:9px}
+  .nav:hover{background:var(--surface-2);color:var(--ink)}.nav.on{background:var(--teal-soft);color:var(--teal)}
   .side .sec{font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);padding:14px 12px 6px}
   .side .cx{font-size:.8rem;padding:7px 12px;border-radius:8px;color:var(--muted);border:none;background:none;text-align:left;display:flex;justify-content:space-between;gap:6px;width:100%}
-  .side .cx:hover{background:var(--surface-2)}
-  .side .cx.on{background:var(--surface-2);color:var(--ink);font-weight:600}
-  .side .cx .dot{font-size:.62rem}
-  .newbtn{margin-top:8px;border:none;background:var(--teal);color:#fff;border-radius:9px;padding:10px;font-weight:700;font-size:.85rem}
-  .newbtn:hover{background:var(--teal-hi)}
-  /* main */
+  .side .cx:hover{background:var(--surface-2)}.side .cx.on{background:var(--surface-2);color:var(--ink);font-weight:600}
+  .newbtn{margin-top:8px;border:none;background:var(--teal);color:#fff;border-radius:9px;padding:10px;font-weight:700;font-size:.85rem}.newbtn:hover{background:var(--teal-hi)}
+  .spacer{flex:1}
   main{flex:1;min-width:0;padding:26px 30px 80px;max-width:1000px}
   @media(max-width:720px){.side{position:fixed;left:-220px;transition:left .2s;z-index:80}.side.open{left:0}main{padding:20px 16px 80px}.menu-btn{display:inline-flex!important}}
   .menu-btn{display:none;border:1px solid var(--line);background:var(--surface);border-radius:8px;width:34px;height:34px;align-items:center;justify-content:center;margin-bottom:12px}
   h1.pg{font-size:1.5rem;margin:0 0 3px;font-weight:750;letter-spacing:-.01em}
   .sub{color:var(--muted);font-size:.9rem;margin:0 0 20px}
+  .sub b{color:var(--ink)}
   .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-  .spacer{flex:1}
-  /* KPI */
   .kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:22px}
-  @media(max-width:900px){.kpis{grid-template-columns:repeat(3,1fr)}}
-  @media(max-width:520px){.kpis{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:900px){.kpis{grid-template-columns:repeat(3,1fr)}}@media(max-width:520px){.kpis{grid-template-columns:repeat(2,1fr)}}
   .kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:13px 14px}
   .kpi b{font-size:1.3rem;font-variant-numeric:tabular-nums;display:block;line-height:1.1}
-  .kpi span{font-family:var(--mono);font-size:.58rem;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
-  .kpi.alert b{color:var(--red)}.kpi.good b{color:var(--teal)}
-  .kpi .delta{font-size:.6rem;color:var(--teal);font-weight:700}
-  /* cards */
-  .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:0;margin-bottom:16px;overflow:hidden}
+  .kpi span{font-family:var(--mono);font-size:.57rem;letter-spacing:.05em;text-transform:uppercase;color:var(--faint)}
+  .kpi.alert b{color:var(--red)}.kpi.good b{color:var(--teal)}.kpi .delta{color:var(--teal);font-weight:700}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;margin-bottom:16px;overflow:hidden}
   .card-h{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;background:var(--surface-2)}
-  .card-h h3{margin:0;font-size:.95rem}
-  .card-b{padding:6px 18px 14px}
-  /* event/visit rows */
-  .ev{display:flex;align-items:center;gap:13px;padding:12px 0;border-bottom:1px solid var(--line)}
-  .ev:last-child{border-bottom:none}
-  .ev .dt{width:52px;flex:none;text-align:center}
-  .ev .dt b{display:block;font-size:1.05rem;line-height:1;font-variant-numeric:tabular-nums}
-  .ev .dt span{font-family:var(--mono);font-size:.58rem;color:var(--faint);text-transform:uppercase}
-  .ev .info{min-width:0;flex:1}
-  .ev .info b{font-size:.9rem;display:block}
-  .ev .info span{font-family:var(--mono);font-size:.66rem;color:var(--faint)}
+  .card-h h3{margin:0;font-size:.95rem}.card-b{padding:6px 18px 14px}
+  .ev{display:flex;align-items:center;gap:13px;padding:12px 0;border-bottom:1px solid var(--line)}.ev:last-child{border-bottom:none}
+  .ev .dt{width:52px;flex:none;text-align:center}.ev .dt b{display:block;font-size:1.05rem;line-height:1;font-variant-numeric:tabular-nums}.ev .dt span{font-family:var(--mono);font-size:.58rem;color:var(--faint);text-transform:uppercase}
+  .ev .info{min-width:0;flex:1}.ev .info b{font-size:.9rem;display:block}.ev .info span{font-family:var(--mono);font-size:.66rem;color:var(--faint)}
   .st{font-family:var(--mono);font-size:.6rem;letter-spacing:.05em;text-transform:uppercase;padding:3px 9px;border-radius:999px;white-space:nowrap}
-  .st.scheduled{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
-  .st.due{background:var(--amber-soft);color:var(--amber)}
-  .st.overdue{background:var(--red-soft);color:var(--red)}
-  .st.assigned{background:var(--blue-soft);color:var(--blue)}
-  .st.completed,.st.paid{background:var(--teal-soft);color:var(--teal)}
-  .st.draft{background:var(--amber-soft);color:var(--amber)}
-  .st.sent,.st.unpaid{background:var(--blue-soft);color:var(--blue)}
-  .act{border:none;background:var(--teal);color:#fff;border-radius:8px;padding:7px 14px;font-weight:650;font-size:.78rem;white-space:nowrap}
-  .act:hover{background:var(--teal-hi)}
-  .act.g{background:var(--surface);color:var(--teal);border:1px solid var(--teal)}
-  .act.g:hover{background:var(--teal-soft)}
+  .st.scheduled{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}.st.due{background:var(--amber-soft);color:var(--amber)}
+  .st.overdue{background:var(--red-soft);color:var(--red)}.st.partial,.st.in_progress{background:var(--blue-soft);color:var(--blue)}
+  .st.completed,.st.paid,.st.active{background:var(--teal-soft);color:var(--teal)}.st.draft{background:var(--amber-soft);color:var(--amber)}
+  .st.sent,.st.unpaid{background:var(--blue-soft);color:var(--blue)}.st.placeholder{background:var(--amber-soft);color:var(--amber)}
+  .act{border:none;background:var(--teal);color:#fff;border-radius:8px;padding:7px 14px;font-weight:650;font-size:.78rem;white-space:nowrap}.act:hover{background:var(--teal-hi)}
+  .act.g{background:var(--surface);color:var(--teal);border:1px solid var(--teal)}.act.g:hover{background:var(--teal-soft)}
   .act.mut{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
-  .empty{padding:26px;text-align:center;color:var(--faint);font-size:.86rem}
-  .empty .big{font-size:1.8rem;display:block;margin-bottom:6px}
-  /* tabs */
+  .empty{padding:26px;text-align:center;color:var(--faint);font-size:.86rem}.empty .big{font-size:1.8rem;display:block;margin-bottom:6px}
   .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:16px;flex-wrap:wrap}
   .tab{border:none;background:none;padding:9px 14px;font-weight:600;font-size:.85rem;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
-  .tab.on{color:var(--teal);border-bottom-color:var(--teal)}
-  .tab .b{font-size:.62rem;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:0 6px;margin-left:5px}
-  /* contract list */
+  .tab.on{color:var(--teal);border-bottom-color:var(--teal)}.tab .b{font-size:.62rem;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:0 6px;margin-left:5px}
   .clist{display:flex;flex-direction:column}
-  .cl-row{display:flex;align-items:center;gap:13px;padding:13px 0;border-bottom:1px solid var(--line);cursor:pointer}
-  .cl-row:last-child{border-bottom:none}
-  .cl-row:hover{background:var(--surface-2)}
+  .cl-row{display:flex;align-items:center;gap:13px;padding:13px 0;border-bottom:1px solid var(--line);cursor:pointer}.cl-row:last-child{border-bottom:none}.cl-row:hover{background:var(--surface-2)}
   .cl-av{width:38px;height:38px;flex:none;border-radius:9px;display:grid;place-items:center;font-weight:700;color:#fff;font-size:.85rem}
   .cl-row .nm b{font-size:.9rem;display:block}.cl-row .nm span{font-family:var(--mono);font-size:.66rem;color:var(--faint)}
-  .cl-row .val{margin-left:auto;text-align:right;font-variant-numeric:tabular-nums}
-  .cl-row .val b{font-size:.9rem}.cl-row .val span{font-size:.64rem;color:var(--faint);display:block}
+  .cl-row .val{margin-left:auto;text-align:right;font-variant-numeric:tabular-nums}.cl-row .val b{font-size:.9rem}.cl-row .val span{font-size:.64rem;color:var(--faint);display:block}
+  /* asset chips */
+  .assets{display:flex;flex-wrap:wrap;gap:7px;margin:2px 0 8px}
+  .achip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:3px 11px;font-size:.74rem;background:var(--surface)}
+  .achip.ph{border-color:var(--amber);background:var(--amber-soft);color:var(--amber)}
+  .achip .sn{font-family:var(--mono);font-size:.64rem;color:var(--faint)}
   /* wizard */
   .wsteps{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
-  .ws{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:.64rem;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);padding:5px 11px;border:1px solid var(--line);border-radius:999px}
+  .ws{display:flex;gap:7px;font-family:var(--mono);font-size:.64rem;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);padding:5px 11px;border:1px solid var(--line);border-radius:999px}
   .ws.on{border-color:var(--teal);color:var(--teal)}.ws.done{border-color:var(--teal);color:var(--teal);background:var(--teal-soft)}
-  .field{margin-bottom:14px}
-  .field label{display:block;font-size:.8rem;font-weight:650;color:var(--muted);margin-bottom:5px}
-  .field label .rq{color:var(--red)}
-  .field input,.field select{width:100%;border:1.5px solid var(--line);border-radius:9px;padding:9px 12px;font-size:.9rem;background:var(--surface)}
-  .field input.bad{border-color:var(--red);background:var(--red-soft)}
-  .pickrow{display:flex;align-items:center;gap:12px;border:1.5px solid var(--line);border-radius:10px;padding:11px 14px;margin-bottom:8px;cursor:pointer;background:var(--surface)}
-  .pickrow:hover{border-color:var(--teal)}
-  .pickrow.sel{border-color:var(--teal);background:var(--teal-soft)}
-  .pickrow .tk{width:19px;height:19px;flex:none;border-radius:5px;border:1.5px solid var(--faint);display:grid;place-items:center;font-size:.66rem;color:#fff}
-  .pickrow.sel .tk{background:var(--teal);border-color:var(--teal)}
-  .pickrow .nm b{font-size:.88rem}.pickrow .nm span{font-family:var(--mono);font-size:.64rem;color:var(--faint);display:block}
-  .pickrow .pr{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:650;font-size:.86rem}
-  .seg{display:flex;gap:7px;flex-wrap:wrap}
-  .seg button{border:1.5px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:7px 15px;font-size:.82rem;font-weight:600}
-  .seg button.on{border-color:var(--teal);background:var(--teal);color:#fff}
-  .reco{border:1.5px dashed var(--teal);background:var(--teal-soft);border-radius:11px;padding:13px 15px;margin-bottom:14px}
-  .reco b{color:var(--teal);font-size:.85rem}.reco p{margin:3px 0 10px;font-size:.78rem;color:var(--muted)}
-  .totbar{display:flex;justify-content:space-between;align-items:center;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin-top:12px;font-variant-numeric:tabular-nums}
-  .totbar b{font-size:1.05rem;color:var(--teal)}
+  .field{margin-bottom:14px}.field label{display:block;font-size:.8rem;font-weight:650;color:var(--muted);margin-bottom:5px}.field label .rq{color:var(--red)}
+  .field input,.field select{width:100%;border:1.5px solid var(--line);border-radius:9px;padding:9px 12px;font-size:.9rem;background:var(--surface)}.field input.bad{border-color:var(--red);background:var(--red-soft)}
+  .pickrow{display:flex;align-items:center;gap:12px;border:1.5px solid var(--line);border-radius:10px;padding:11px 14px;margin-bottom:8px;cursor:pointer;background:var(--surface)}.pickrow:hover{border-color:var(--teal)}.pickrow.sel{border-color:var(--teal);background:var(--teal-soft)}
+  .pickrow .tk{width:19px;height:19px;flex:none;border-radius:5px;border:1.5px solid var(--faint);display:grid;place-items:center;font-size:.66rem;color:#fff}.pickrow.sel .tk{background:var(--teal);border-color:var(--teal)}
+  .pickrow .nm b{font-size:.88rem}.pickrow .nm span{font-family:var(--mono);font-size:.64rem;color:var(--faint);display:block}.pickrow .pr{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:650;font-size:.86rem}
+  .seg{display:flex;gap:7px;flex-wrap:wrap}.seg button{border:1.5px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:7px 15px;font-size:.82rem;font-weight:600}.seg button.on{border-color:var(--teal);background:var(--teal);color:#fff}
+  .totbar{display:flex;justify-content:space-between;align-items:center;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin-top:12px;font-variant-numeric:tabular-nums}.totbar b{font-size:1.05rem;color:var(--teal)}
+  .stepn{border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:8px 12px;font-size:.82rem;color:var(--muted);margin-bottom:10px}
   /* drawer */
-  .scrim{position:fixed;inset:0;background:rgba(23,36,31,.5);z-index:100;display:none;align-items:stretch;justify-content:flex-end}
-  .scrim.open{display:flex}
-  .drawer{width:480px;max-width:100vw;background:var(--surface);height:100vh;overflow-y:auto;box-shadow:var(--shadow);display:flex;flex-direction:column}
-  .dr-h{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;gap:10px;position:sticky;top:0;background:var(--surface);z-index:2}
+  .scrim{position:fixed;inset:0;background:rgba(23,36,31,.5);z-index:100;display:none;justify-content:flex-end}.scrim.open{display:flex}
+  .drawer{width:520px;max-width:100vw;background:var(--surface);height:100vh;overflow-y:auto;box-shadow:var(--shadow);display:flex;flex-direction:column}
+  .dr-h{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;gap:10px;position:sticky;top:0;background:var(--surface);z-index:2}
   .dr-h .x{margin-left:auto;border:none;background:var(--surface-2);border-radius:8px;width:30px;height:30px;color:var(--muted)}
   .dr-h b{font-size:1rem}.dr-h span{font-family:var(--mono);font-size:.66rem;color:var(--faint)}
-  .dr-b{padding:18px 20px;flex:1}
-  .dr-f{padding:14px 20px;border-top:1px solid var(--line);position:sticky;bottom:0;background:var(--surface);display:flex;gap:10px;align-items:center}
-  .gate{display:flex;gap:8px;align-items:center;border-radius:10px;padding:10px 13px;font-size:.8rem;font-weight:600;margin-bottom:14px}
-  .gate.lock{background:var(--amber-soft);border:1px solid var(--amber);color:var(--amber)}
-  .gate.ok{background:var(--teal-soft);border:1px solid var(--teal);color:var(--teal)}
-  .drop{border:1.5px dashed var(--line);border-radius:10px;padding:15px;text-align:center;color:var(--faint);font-size:.82rem;cursor:pointer}
-  .drop:hover{border-color:var(--teal);color:var(--teal)}
-  .drop.has{border-style:solid;border-color:var(--teal);background:var(--teal-soft);color:var(--teal);font-weight:600}
-  .prim{margin-left:auto;border:none;background:var(--teal);color:#fff;border-radius:999px;padding:10px 22px;font-weight:700;font-size:.86rem}
-  .prim:disabled{opacity:.4;cursor:not-allowed}
+  .dr-b{padding:16px 20px;flex:1}.dr-f{padding:14px 20px;border-top:1px solid var(--line);position:sticky;bottom:0;background:var(--surface);display:flex;gap:10px;align-items:center}
+  .progress{font-family:var(--mono);font-size:.68rem;color:var(--muted);margin-bottom:12px}
+  /* asset task card */
+  .task{border:1.5px solid var(--line);border-radius:11px;margin-bottom:10px;overflow:hidden}
+  .task.done{border-color:var(--teal)}.task.ph{border-color:var(--amber);border-style:dashed}
+  .task-h{display:flex;align-items:center;gap:11px;padding:12px 14px;cursor:pointer;background:var(--surface)}
+  .task.done .task-h{background:var(--teal-soft)}.task.ph .task-h{background:var(--amber-soft)}
+  .task-h .ti b{font-size:.86rem;display:block}.task-h .ti span{font-family:var(--mono);font-size:.62rem;color:var(--faint)}
+  .task-h .badge{margin-left:auto;font-family:var(--mono);font-size:.58rem;letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border-radius:999px}
+  .badge.open{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}.badge.done{background:var(--teal);color:#fff}.badge.ph{background:var(--amber);color:#fff}
+  .task-body{padding:12px 14px;border-top:1px dashed var(--line);background:var(--surface-2)}
+  .gate{display:flex;gap:8px;align-items:center;border-radius:9px;padding:9px 12px;font-size:.78rem;font-weight:600;margin-bottom:12px}
+  .gate.lock{background:var(--amber-soft);border:1px solid var(--amber);color:var(--amber)}.gate.ok{background:var(--teal-soft);border:1px solid var(--teal);color:var(--teal)}
+  .drop{border:1.5px dashed var(--line);border-radius:9px;padding:13px;text-align:center;color:var(--faint);font-size:.8rem;cursor:pointer}.drop:hover{border-color:var(--teal);color:var(--teal)}.drop.has{border-style:solid;border-color:var(--teal);background:var(--teal-soft);color:var(--teal);font-weight:600}
+  .prim{margin-left:auto;border:none;background:var(--teal);color:#fff;border-radius:999px;padding:10px 22px;font-weight:700;font-size:.86rem}.prim:disabled{opacity:.4;cursor:not-allowed}
   .ghost{border:none;background:none;color:var(--muted);font-weight:600;padding:9px 12px}
-  .banner{border:1px solid var(--amber);background:var(--amber-soft);border-radius:11px;padding:12px 16px;margin-bottom:18px;font-size:.85rem;color:var(--ink)}
-  .banner b{color:var(--amber)}
-  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(8px);z-index:120;background:var(--ink);color:var(--bg);font-size:.84rem;font-weight:600;border-radius:10px;padding:11px 20px;opacity:0;transition:all .25s;pointer-events:none;box-shadow:var(--shadow);max-width:90vw;text-align:center}
-  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .miniact{border:none;background:var(--teal);color:#fff;border-radius:7px;padding:6px 12px;font-size:.76rem;font-weight:650}.miniact.g{background:var(--surface);color:var(--amber);border:1px solid var(--amber)}
+  .banner{border:1px solid var(--amber);background:var(--amber-soft);border-radius:11px;padding:12px 16px;margin-bottom:18px;font-size:.85rem}.banner b{color:var(--amber)}
+  /* invoice */
+  .inv-line{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:.84rem}.inv-line:last-child{border-bottom:none}
+  .inv-line .l span{font-family:var(--mono);font-size:.62rem;color:var(--faint);display:block}
+  .inv-line .a{font-variant-numeric:tabular-nums;font-weight:650}
+  .inv-tot{display:flex;justify-content:space-between;padding:10px 0 2px;border-top:2px solid var(--teal);margin-top:4px;font-weight:700;font-variant-numeric:tabular-nums}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(8px);z-index:120;background:var(--ink);color:var(--bg);font-size:.84rem;font-weight:600;border-radius:10px;padding:11px 20px;opacity:0;transition:all .25s;pointer-events:none;box-shadow:var(--shadow);max-width:90vw;text-align:center}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   .help{position:fixed;top:14px;right:14px;z-index:70;width:32px;height:32px;border-radius:50%;background:var(--surface);border:1px solid var(--line);color:var(--muted);font-weight:700}
-  .helpbox{position:fixed;top:54px;right:14px;z-index:69;width:320px;max-width:calc(100vw - 28px);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;display:none;box-shadow:var(--shadow);font-size:.8rem;color:var(--muted)}
-  .helpbox.show{display:block}
-  .helpbox h4{margin:0 0 8px;font-size:.9rem;color:var(--ink)}
-  .helpbox ol{margin:0;padding-left:17px}.helpbox li{margin-bottom:6px}
+  .helpbox{position:fixed;top:54px;right:14px;z-index:69;width:340px;max-width:calc(100vw - 28px);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;display:none;box-shadow:var(--shadow);font-size:.8rem;color:var(--muted)}.helpbox.show{display:block}
+  .helpbox h4{margin:0 0 8px;font-size:.9rem;color:var(--ink)}.helpbox ol{margin:0;padding-left:17px}.helpbox li{margin-bottom:6px}.helpbox b{color:var(--ink)}
 </style>
 
 <button class="help" onclick="document.getElementById('helpbox').classList.toggle('show')" aria-label="How to use">?</button>
 <div class="helpbox" id="helpbox">
-  <h4>This is a real, connected playground</h4>
+  <h4>Multi-asset servicing — the spine</h4>
   <ol>
-    <li>It opens in the <b>ghost-town state</b> from the live data: events overdue, nothing serviced, invoices out anyway.</li>
-    <li><b>Service a visit</b> — from the dashboard queue or a contract's Service tab. Assign → fill the <b>mandatory form</b> (the definition of done) → attach a photo → Complete.</li>
-    <li>Watch the <b>KPIs move live</b> — tickets & evidence go from 0 up, overdue drops, and a completed job <b>drafts its invoice</b>.</li>
-    <li><b>Create a contract</b> (+ New) — it generates a real schedule you then service.</li>
-    <li>Everything is connected: actions in one place change the numbers everywhere.</li>
+    <li>A visit <b>fans out per physical asset</b>. Apollo's MRI PM = one task per machine, each with its own calibration form = its own evidence.</li>
+    <li>The event <b>closes only when every asset is proven</b>. Two serials done + one machine left = still open.</li>
+    <li><b>Placeholder assets</b> (unknown at signing): you can assign a tech and start — but you <b>can't close</b> until the real asset is attached, because the per-serial form can't be invoked without it.</li>
+    <li>Billing is <b>per-asset line items in one contract invoice</b> — MRI-01, MRI-02, MRI-03 as lines, one receipt.</li>
+    <li>Open the overdue <b>MRI Preventive Maintenance</b> visit to see it all.</li>
   </ol>
 </div>
 
-<div class="app">
-  <aside class="side" id="side"></aside>
-  <main id="main"></main>
-</div>
+<div class="app"><aside class="side" id="side"></aside><main id="main"></main></div>
 <div class="scrim" id="scrim" onclick="if(event.target===this)closeDrawer()"><div class="drawer" id="drawer"></div></div>
 <div class="toast" id="toast"></div>
 
 <script>
-/* ══════════ data ══════════ */
+/* ══ catalog / forms ══ */
 const CATALOG=[
-  {id:'mripm',name:'MRI Preventive Maintenance',cov:'MRI Machines',cad:'Quarterly',vpy:4,price:38000,form:'MRI Calibration'},
-  {id:'ventpm',name:'Ventilator PM',cov:'Ventilators',cad:'Quarterly',vpy:4,price:6500,form:'Ventilator Safety Checklist'},
-  {id:'labpm',name:'Analyser PM + Calibration',cov:'Lab Analysers',cad:'Quarterly',vpy:4,price:12000,form:'Analyser Calibration'},
-  {id:'bd',name:'24-hr Breakdown Support',cov:'All equipment',cad:'Quarterly',vpy:4,price:18000,form:null},
-  {id:'hvac',name:'HVAC PM Service',cov:'HVAC',cad:'Monthly',vpy:12,price:4500,form:'HVAC PM Checklist'},
+  {id:'mripm',name:'MRI Preventive Maintenance',cov:'MRI Machines',cad:'Quarterly',vpy:4,price:9500,form:'MRI Calibration'},
+  {id:'ventpm',name:'Ventilator PM',cov:'Ventilators',cad:'Quarterly',vpy:4,price:2200,form:'Ventilator Safety Checklist'},
+  {id:'hvac',name:'HVAC PM Service',cov:'HVAC Units',cad:'Monthly',vpy:12,price:1500,form:'HVAC PM Checklist'},
 ];
 const FORMS={
-  'MRI Calibration':[{id:'coil',l:'Coil integrity',t:'pf'},{id:'he',l:'Helium level (%)',t:'num',ph:'e.g. 78'},{id:'qa',l:'Image QA passed',t:'pf'}],
-  'Ventilator Safety Checklist':[{id:'flow',l:'Flow sensor OK',t:'pf'},{id:'o2',l:'O₂ cell OK',t:'pf'},{id:'batt',l:'Battery backup (min)',t:'num',ph:'e.g. 30'}],
-  'Analyser Calibration':[{id:'probe',l:'Probe wash done',t:'pf'},{id:'ise',l:'ISE calibrated',t:'pf'}],
-  'HVAC PM Checklist':[{id:'filt',l:'Filters replaced',t:'pf'},{id:'gas',l:'Gas pressure (psi)',t:'num',ph:'e.g. 120'}],
+  'MRI Calibration':[{id:'coil',l:'Coil integrity',t:'pf'},{id:'he',l:'Helium level (%)',t:'num',ph:'per machine'},{id:'qa',l:'Image QA passed',t:'pf'}],
+  'Ventilator Safety Checklist':[{id:'flow',l:'Flow sensor OK',t:'pf'},{id:'o2',l:'O₂ cell OK',t:'pf'}],
+  'HVAC PM Checklist':[{id:'filt',l:'Filters replaced',t:'pf'},{id:'gas',l:'Gas pressure (psi)',t:'num',ph:'psi'}],
 };
-const AVATARS=['#1F7A5E','#2C6E8F','#A8760C','#7A4E8C','#B0506A'];
+const AVATARS=['#1F7A5E','#2C6E8F','#A8760C','#7A4E8C'];
 const TECHS=['Ramesh K. · Biomedical','Anita S. · Field Eng','CoolAir (external)'];
 
-/* ══════════ state ══════════ */
-const today=new Date(); today.setHours(0,0,0,0);
+const today=new Date();today.setHours(0,0,0,0);
 const d=off=>{const x=new Date(today);x.setDate(x.getDate()+off);return x;};
-let uid=1; const nid=p=>p+(uid++);
+let uid=1;const nid=p=>p+(uid++);
 
-function makeEvents(blocks,startOff,months){
+/* build events with per-asset tasks */
+function makeEvents(blocks,assets,startOff,months){
   const evs=[];
   blocks.forEach(b=>{
     const c=CATALOG.find(x=>x.id===b.id);
-    const per=c.vpy*(months/12);
+    const covAssets=assets.filter(a=>a.type===c.cov);
+    const per=Math.max(1,Math.round(c.vpy*(months/12)));
     const gap=Math.round(365/c.vpy);
     for(let i=0;i<per;i++){
-      evs.push({id:nid('ev'),type:'service',name:c.name,cov:c.cov,form:c.form,price:c.price,
-        date:d(startOff+i*gap),status:'scheduled',assignee:null,formData:{},photo:false,serviced:false});
+      evs.push({id:nid('ev'),type:'service',blockId:c.id,name:c.name,cov:c.cov,form:c.form,unit:c.price,
+        date:d(startOff+i*gap),
+        tasks:covAssets.map(a=>({assetId:a.id,assignee:null,form:{},photo:false,done:false})),
+      });
     }
   });
-  // one billing event per quarter
   const q=Math.max(1,Math.round(months/3));
-  const per=blocks.reduce((s,b)=>s+CATALOG.find(x=>x.id===b.id).price*CATALOG.find(x=>x.id===b.id).vpy,0)*(months/12);
-  for(let i=0;i<q;i++){
-    evs.push({id:nid('ev'),type:'billing',name:'Billing — period '+(i+1),date:d(startOff+i*90+1),
-      status:'scheduled',amount:Math.round(per/q),invoiceId:null});
-  }
+  for(let i=0;i<q;i++) evs.push({id:nid('ev'),type:'billing',name:'Billing — period '+(i+1),date:d(startOff+i*90+2),period:i,invoiceId:null});
   return evs.sort((a,b)=>a.date-b.date);
 }
 
-// seed: the ghost-town contract (mirrors "Testing all contract")
+/* seed: Apollo AMC with 3 MRIs (2 real, 1 placeholder) + 2 ventilators */
 function seed(){
-  const blocks=[{id:'mripm'},{id:'ventpm'},{id:'bd'}];
-  const evs=makeEvents(blocks,-120,12); // started 4 months ago
-  // one seeded invoice already sent (billing ran ahead of delivery)
-  const firstBill=evs.find(e=>e.type==='billing');
-  const inv={id:nid('inv'),num:'INV-1006',amount:firstBill.amount,status:'unpaid',evidenced:false,date:firstBill.date};
-  firstBill.invoiceId=inv.id; firstBill.status='overdue';
-  return [{
-    id:'529ef4d6',name:'Testing all contract',customer:'Apollo Hyderabad',color:AVATARS[0],
-    coverage:['MRI Machines','Ventilators','All equipment'],blocks,months:12,status:'active',
-    events:evs,invoices:[inv],evidenceGate:true,
-  }];
+  const assets=[
+    {id:nid('as'),type:'MRI Machines',serial:'MRI-01 · MAGNETOM Sola · SN40221',status:'active'},
+    {id:nid('as'),type:'MRI Machines',serial:'MRI-02 · MAGNETOM Sola · SN40230',status:'active'},
+    {id:nid('as'),type:'MRI Machines',serial:null,status:'placeholder'},
+    {id:nid('as'),type:'Ventilators',serial:'VENT-01 · Carescape R860 · SN8834',status:'active'},
+    {id:nid('as'),type:'Ventilators',serial:'VENT-02 · Carescape R860 · SN8835',status:'active'},
+  ];
+  const blocks=[{id:'mripm'},{id:'ventpm'}];
+  const evs=makeEvents(blocks,assets,-95,12);
+  return[{id:'apollo',name:'Apollo AMC 2026',customer:'Apollo Hyderabad',color:AVATARS[0],
+    coverage:['MRI Machines','Ventilators'],blocks,assets,months:12,status:'active',
+    events:evs,invoices:[],evidenceGate:true}];
 }
 
-const S={view:'dashboard',activeId:null,tab:'schedule',sideOpen:false,
-  contracts:seed(),
-  nw:null, // new-contract wizard state
-  drawer:null, // {eventId, contractId, mode}
-};
+const S={view:'dashboard',activeId:null,tab:'schedule',sideOpen:false,contracts:seed(),nw:null,drawer:null};
 
-/* ══════════ derive ══════════ */
-function recompute(){
-  S.contracts.forEach(c=>c.events.forEach(e=>{
-    if(e.serviced||e.status==='completed'){e.status='completed';return;}
-    if(e.type==='billing'&&e.invoiceId){const iv=c.invoices.find(i=>i.id===e.invoiceId);if(iv&&iv.status==='paid'){e.status='paid';return;}}
-    if(e.status==='assigned')return;
-    const days=Math.round((e.date-today)/864e5);
-    e.status = days<0?'overdue':days<=7?'due':'scheduled';
-  }));
+/* ══ derive ══ */
+function evStatus(e){
+  if(e.type==='billing'){return e.status||'scheduled';}
+  const total=e.tasks.length, done=e.tasks.filter(t=>t.done).length;
+  if(total>0&&done===total)return'completed';
+  if(done>0)return'partial';
+  const days=Math.round((e.date-today)/864e5);
+  return days<0?'overdue':days<=7?'due':'scheduled';
 }
+function assetOf(c,id){return c.assets.find(a=>a.id===id);}
 function kpis(){
-  let overdue=0,dueSoon=0,tickets=0,evidence=0,portfolio=0,outstanding=0,invoices=0;
+  let overdue=0,due=0,assetsProven=0,portfolio=0,outstanding=0,placeholders=0;
   S.contracts.forEach(c=>{
-    portfolio+=c.events.filter(e=>e.type==='service').reduce((s,e)=>s+(e.price||0),0);
+    c.assets.forEach(a=>{if(a.status==='placeholder')placeholders++;});
     c.events.forEach(e=>{
-      if(e.status==='overdue')overdue++;
-      if(e.status==='due')dueSoon++;
-      if(e.type==='service'&&e.serviced){tickets++;if(e.form)evidence++;else evidence++;}
+      if(e.type==='billing'){if(e.invoiceId){const iv=c.invoices.find(i=>i.id===e.invoiceId);}return;}
+      const st=evStatus(e);
+      if(st==='overdue')overdue++;else if(st==='due')due++;
+      e.tasks.forEach(t=>{if(t.done)assetsProven++;});
+      portfolio+=e.tasks.length*e.unit;
     });
-    c.invoices.forEach(i=>{invoices++;if(i.status!=='paid')outstanding+=i.amount;});
+    c.invoices.forEach(i=>{if(i.status!=='paid')outstanding+=i.amount;});
   });
-  return{overdue,dueSoon,tickets,evidence,portfolio,outstanding,invoices};
+  return{overdue,due,assetsProven,portfolio,outstanding,placeholders};
 }
 const inr=n=>'₹'+Math.round(n||0).toLocaleString('en-IN');
 const dfmt=dt=>({dd:dt.getDate(),mm:dt.toLocaleString('en',{month:'short'})});
-function toast(m){const t=el('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2600);}
 const el=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(m){const t=el('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2800);}
 
-/* ══════════ nav ══════════ */
-function go(view,id){S.view=view;if(id!==undefined)S.activeId=id;if(view==='contract')S.tab='schedule';S.sideOpen=false;render();window.scrollTo(0,0);}
-function startNew(){S.nw={step:0,name:'',customer:'',coverage:[],blocks:[],months:12,recoApplied:false,err:{}};go('new');}
+function go(v,id){S.view=v;if(id!==undefined)S.activeId=id;if(v==='contract')S.tab='schedule';S.sideOpen=false;render();window.scrollTo(0,0);}
+function startNew(){S.nw={step:0,name:'',customer:'',coverage:[],blocks:[],counts:{},months:12,err:{}};go('new');}
 
-/* ══════════ sidebar ══════════ */
+/* ══ sidebar ══ */
 function renderSide(){
   el('side').className='side'+(S.sideOpen?' open':'');
-  el('side').innerHTML=`
-    <div class="logo">Contract<b>Nest</b></div>
-    <button class="nav ${S.view==='dashboard'?'on':''}" onclick="go('dashboard')"><span class="ic">◧</span>Dashboard</button>
+  el('side').innerHTML=`<div class="logo">Contract<b>Nest</b></div>
+    <button class="nav ${S.view==='dashboard'?'on':''}" onclick="go('dashboard')"><span>◧</span>Dashboard</button>
     <button class="newbtn" onclick="startNew()">＋ New Contract</button>
     <div class="sec">Contracts</div>
-    ${S.contracts.map(c=>{const od=c.events.filter(e=>e.status==='overdue').length;
-      return `<button class="cx ${S.view==='contract'&&S.activeId===c.id?'on':''}" onclick="go('contract','${c.id}')">
-        <span>${esc(c.name)}</span>${od?`<span class="dot" style="color:var(--red)">● ${od}</span>`:`<span class="dot" style="color:var(--teal)">●</span>`}</button>`;}).join('')}
-    <div class="spacer"></div>
-    <div class="sec">Playground</div>
-    <button class="cx" onclick="if(confirm('Reset the playground to its opening state?')){S.contracts=seed();go('dashboard');toast('Reset to ghost-town state');}">↺ Reset demo</button>`;
+    ${S.contracts.map(c=>{const od=c.events.filter(e=>e.type==='service'&&evStatus(e)==='overdue').length;
+      return`<button class="cx ${S.view==='contract'&&S.activeId===c.id?'on':''}" onclick="go('contract','${c.id}')"><span>${esc(c.name)}</span><span style="color:${od?'var(--red)':'var(--teal)'}">${od?'● '+od:'●'}</span></button>`;}).join('')}
+    <div class="spacer"></div><div class="sec">Playground</div>
+    <button class="cx" onclick="if(confirm('Reset the playground?')){S.contracts=seed();go('dashboard');toast('Reset');}">↺ Reset demo</button>`;
 }
 
-/* ══════════ dashboard ══════════ */
+/* ══ dashboard ══ */
 function renderDashboard(){
-  const k=kpis();
-  const queue=[];
-  S.contracts.forEach(c=>c.events.forEach(e=>{if(e.type==='service'&&!e.serviced&&(e.status==='overdue'||e.status==='due'||e.status==='assigned'))queue.push({c,e});}));
+  const k=kpis();const queue=[];
+  S.contracts.forEach(c=>c.events.forEach(e=>{if(e.type==='service'){const st=evStatus(e);if(st==='overdue'||st==='due'||st==='partial')queue.push({c,e,st});}}));
   queue.sort((a,b)=>a.e.date-b.e.date);
-  el('main').innerHTML=`
-    <button class="menu-btn" onclick="S.sideOpen=true;renderSide()">☰</button>
+  el('main').innerHTML=`<button class="menu-btn" onclick="S.sideOpen=true;renderSide()">☰</button>
     <h1 class="pg">Operations</h1>
-    <p class="sub">The command view — and, unlike today, a place you can actually <b>close</b> the work, not just count it.</p>
-    ${k.tickets===0?`<div class="banner">⚠ <b>Ghost-town state</b> (from your live data): ${k.overdue} events overdue, <b>0 serviced</b>, <b>0 evidence captured</b> — yet ${k.invoices} invoice(s) already out. Service a visit below and watch it come alive.</div>`:''}
+    <p class="sub">Servicing is <b>per physical asset</b> — a visit isn't done until every machine is proven.</p>
+    ${k.assetsProven===0?`<div class="banner">⚠ <b>Nothing serviced yet.</b> ${k.overdue} visits overdue · <b>${k.placeholders} asset(s) not yet attached</b> (they'll block closure). Open a visit below.</div>`:''}
     <div class="kpis">
       <div class="kpi"><b>${inr(k.portfolio)}</b><span>Portfolio / yr</span></div>
-      <div class="kpi ${k.overdue?'alert':''}"><b>${k.overdue}</b><span>Overdue events</span></div>
-      <div class="kpi"><b>${k.dueSoon}</b><span>Due this week</span></div>
-      <div class="kpi ${k.tickets?'good':''}"><b>${k.tickets}</b><span>Visits serviced ${k.tickets?'<span class=delta>▲</span>':''}</span></div>
-      <div class="kpi ${k.evidence?'good':''}"><b>${k.evidence}</b><span>Proof captured</span></div>
+      <div class="kpi ${k.overdue?'alert':''}"><b>${k.overdue}</b><span>Overdue visits</span></div>
+      <div class="kpi"><b>${k.due}</b><span>Due this week</span></div>
+      <div class="kpi ${k.assetsProven?'good':''}"><b>${k.assetsProven}</b><span>Assets proven ${k.assetsProven?'<span class=delta>▲</span>':''}</span></div>
+      <div class="kpi ${k.placeholders?'alert':''}"><b>${k.placeholders}</b><span>Unattached assets</span></div>
       <div class="kpi ${k.outstanding?'alert':''}"><b>${inr(k.outstanding)}</b><span>Outstanding AR</span></div>
     </div>
-    <div class="card">
-      <div class="card-h"><h3>Today &amp; overdue — do it now</h3><div class="spacer"></div><span class="st ${queue.length?'overdue':'completed'}">${queue.length} to close</span></div>
-      <div class="card-b">
-        ${queue.length?queue.slice(0,8).map(({c,e})=>evRow(c,e,true)).join(''):`<div class="empty"><span class="big">✅</span>Every due visit is serviced. This is what "closed loop" looks like.</div>`}
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-h"><h3>Contracts</h3></div>
-      <div class="card-b clist">
-        ${S.contracts.map(c=>{const val=c.events.filter(e=>e.type==='service').reduce((s,e)=>s+e.price,0);const od=c.events.filter(e=>e.status==='overdue').length;
-          return `<div class="cl-row" onclick="go('contract','${c.id}')">
-            <div class="cl-av" style="background:${c.color}">${esc(c.customer.slice(0,2)).toUpperCase()}</div>
-            <div class="nm"><b>${esc(c.name)}</b><span>${esc(c.customer)} · ${c.blocks.length} blocks · ${c.months}mo</span></div>
-            <div class="val"><b>${inr(val)}</b><span>${od?`<span style="color:var(--red)">${od} overdue</span>`:'on track'}</span></div>
-          </div>`;}).join('')}
-      </div>
-    </div>`;
-}
-
-function evRow(c,e,showContract){
-  const {dd,mm}=dfmt(e.date);
-  let action='';
-  if(e.type==='billing'){
-    const iv=e.invoiceId?c.invoices.find(i=>i.id===e.invoiceId):null;
-    if(!iv)action=`<button class="act g" onclick="event.stopPropagation();draftInvoice('${c.id}','${e.id}')">Draft invoice</button>`;
-    else action=`<span class="st ${iv.status}">${iv.status.replace('_',' ')}</span>`;
-  }else if(e.serviced){
-    action=`<button class="act mut" onclick="event.stopPropagation();openProof('${c.id}','${e.id}')">View proof</button>`;
-  }else if(e.status==='assigned'){
-    action=`<button class="act" onclick="event.stopPropagation();openVisit('${c.id}','${e.id}')">Start visit</button>`;
-  }else{
-    action=`<button class="act ${e.status==='overdue'?'':'g'}" onclick="event.stopPropagation();openAssign('${c.id}','${e.id}')">Assign</button>`;
-  }
-  return `<div class="ev">
-    <div class="dt"><b>${dd}</b><span>${mm}</span></div>
-    <div class="info"><b>${esc(e.name)}</b><span>${showContract?esc(c.customer)+' · ':''}${e.type==='service'?(e.cov||''):(inr(e.amount))}${e.assignee?' · '+esc(e.assignee.split(' · ')[0]):''}${e.form?' · form: '+esc(e.form):''}</span></div>
-    <span class="st ${e.status}">${e.status}</span>
-    ${action}
-  </div>`;
-}
-
-/* ══════════ contract detail ══════════ */
-function renderContract(){
-  const c=S.contracts.find(x=>x.id===S.activeId);if(!c){go('dashboard');return;}
-  const svc=c.events.filter(e=>e.type==='service');const bil=c.events.filter(e=>e.type==='billing');
-  const done=svc.filter(e=>e.serviced).length;
-  el('main').innerHTML=`
-    <button class="menu-btn" onclick="S.sideOpen=true;renderSide()">☰</button>
-    <div class="row"><button class="ghost" onclick="go('dashboard')">‹ Operations</button></div>
-    <h1 class="pg">${esc(c.name)}</h1>
-    <p class="sub">${esc(c.customer)} · ${c.status} · covers ${c.coverage.join(', ')} · ${done}/${svc.length} visits serviced</p>
-    <div class="tabs">
-      <button class="tab ${S.tab==='schedule'?'on':''}" onclick="S.tab='schedule';render()">Service schedule<span class="b">${svc.length}</span></button>
-      <button class="tab ${S.tab==='financials'?'on':''}" onclick="S.tab='financials';render()">Financials<span class="b">${c.invoices.length}</span></button>
-      <button class="tab ${S.tab==='overview'?'on':''}" onclick="S.tab='overview';render()">Overview</button>
-    </div>
-    ${S.tab==='schedule'?scheduleTab(c,svc,bil):S.tab==='financials'?financialsTab(c):overviewTab(c,svc,done)}`;
-}
-function scheduleTab(c,svc,bil){
-  return `<div class="card"><div class="card-h"><h3>Service visits</h3><div class="spacer"></div>
-      <label style="font-size:.76rem;color:var(--muted);display:flex;gap:6px;align-items:center;cursor:pointer">
-        <input type="checkbox" ${c.evidenceGate?'checked':''} onchange="c_toggleGate('${c.id}')"> evidence-before-invoice</label></div>
-    <div class="card-b">${svc.map(e=>evRow(c,e,false)).join('')}</div></div>
-    <div class="card"><div class="card-h"><h3>Billing events</h3></div>
-    <div class="card-b">${bil.map(e=>evRow(c,e,false)).join('')||'<div class="empty">No billing events</div>'}</div></div>`;
-}
-function financialsTab(c){
-  const out=c.invoices.filter(i=>i.status!=='paid').reduce((s,i)=>s+i.amount,0);
-  return `<div class="card"><div class="card-h"><h3>Invoices</h3><div class="spacer"></div><span class="st ${out?'overdue':'completed'}">${inr(out)} outstanding</span></div>
-    <div class="card-b">${c.invoices.length?c.invoices.map(i=>`
-      <div class="ev"><div class="info"><b>${esc(i.num||'Draft invoice')}</b><span>${i.evidenced?'✓ evidence attached':'no evidence linked'} · ${dfmt(i.date).dd} ${dfmt(i.date).mm}</span></div>
-        <span class="st ${i.status}">${i.status.replace('_',' ')}</span>
-        <b style="font-variant-numeric:tabular-nums;min-width:80px;text-align:right">${inr(i.amount)}</b>
-        ${i.status==='draft'?`<button class="act" onclick="sendInvoice('${c.id}','${i.id}')">Send</button>`:i.status==='paid'?'':`<button class="act g" onclick="payInvoice('${c.id}','${i.id}')">Record payment</button>`}
-      </div>`).join(''):'<div class="empty"><span class="big">🧾</span>No invoices yet — draft one from a billing event, or complete a service milestone.</div>'}
+    <div class="card"><div class="card-h"><h3>Visits to close</h3><div class="spacer"></div><span class="st ${queue.length?'overdue':'completed'}">${queue.length}</span></div>
+      <div class="card-b">${queue.length?queue.slice(0,8).map(({c,e})=>evRow(c,e,true)).join(''):`<div class="empty"><span class="big">✅</span>Every visit's assets are proven.</div>`}</div></div>
+    <div class="card"><div class="card-h"><h3>Contracts</h3></div><div class="card-b clist">
+      ${S.contracts.map(c=>{const val=c.events.filter(e=>e.type==='service').reduce((s,e)=>s+e.tasks.length*e.unit,0);const od=c.events.filter(e=>e.type==='service'&&evStatus(e)==='overdue').length;
+        return`<div class="cl-row" onclick="go('contract','${c.id}')"><div class="cl-av" style="background:${c.color}">${esc(c.customer.slice(0,2)).toUpperCase()}</div>
+          <div class="nm"><b>${esc(c.name)}</b><span>${esc(c.customer)} · ${c.assets.length} assets · ${c.blocks.length} blocks</span></div>
+          <div class="val"><b>${inr(val)}</b><span>${od?`<span style="color:var(--red)">${od} overdue</span>`:'on track'}</span></div></div>`;}).join('')}
     </div></div>`;
 }
-function overviewTab(c,svc,done){
-  const val=svc.reduce((s,e)=>s+e.price,0);
-  return `<div class="card"><div class="card-h"><h3>At a glance</h3></div><div class="card-b">
-    <div class="ev"><div class="info"><b>Contract value / yr</b></div><b>${inr(val)}</b></div>
-    <div class="ev"><div class="info"><b>Service visits</b><span>${done} done · ${svc.filter(e=>e.status==='overdue').length} overdue · ${svc.length-done} remaining</span></div></div>
-    <div class="ev"><div class="info"><b>Coverage</b><span>${c.coverage.join(' · ')}</span></div></div>
-    <div class="ev"><div class="info"><b>Blocks</b><span>${c.blocks.map(b=>CATALOG.find(x=>x.id===b.id).name).join(' · ')}</span></div></div>
+function evRow(c,e,showC){
+  const {dd,mm}=dfmt(e.date);const st=evStatus(e);
+  let action='';
+  if(e.type==='billing'){const iv=e.invoiceId?c.invoices.find(i=>i.id===e.invoiceId):null;
+    action=iv?`<span class="st ${iv.status}">${iv.status.replace('_',' ')}</span>`:`<button class="act g" onclick="event.stopPropagation();draftInvoice('${c.id}','${e.id}')">Draft invoice</button>`;
+  }else{const done=e.tasks.filter(t=>t.done).length;
+    action=`<button class="act ${st==='overdue'?'':'g'}" onclick="event.stopPropagation();openVisit('${c.id}','${e.id}')">${done>0?'Continue':'Open'} visit</button>`;
+  }
+  const meta=e.type==='service'?`${e.cov} · ${e.tasks.filter(t=>t.done).length}/${e.tasks.length} assets proven · form: ${e.form}`:inr(periodAmount(c,e));
+  return`<div class="ev"><div class="dt"><b>${dd}</b><span>${mm}</span></div>
+    <div class="info"><b>${esc(e.name)}</b><span>${showC?esc(c.customer)+' · ':''}${esc(meta)}</span></div>
+    <span class="st ${st}">${st==='partial'?'in progress':st}</span>${action}</div>`;
+}
+
+/* ══ contract detail ══ */
+function renderContract(){
+  const c=S.contracts.find(x=>x.id===S.activeId);if(!c){go('dashboard');return;}
+  const svc=c.events.filter(e=>e.type==='service'),bil=c.events.filter(e=>e.type==='billing');
+  const proven=svc.reduce((s,e)=>s+e.tasks.filter(t=>t.done).length,0),tot=svc.reduce((s,e)=>s+e.tasks.length,0);
+  el('main').innerHTML=`<button class="menu-btn" onclick="S.sideOpen=true;renderSide()">☰</button>
+    <div class="row"><button class="ghost" onclick="go('dashboard')">‹ Operations</button></div>
+    <h1 class="pg">${esc(c.name)}</h1><p class="sub">${esc(c.customer)} · ${proven}/${tot} asset-visits proven</p>
+    <div class="tabs">
+      <button class="tab ${S.tab==='schedule'?'on':''}" onclick="S.tab='schedule';render()">Service schedule<span class="b">${svc.length}</span></button>
+      <button class="tab ${S.tab==='assets'?'on':''}" onclick="S.tab='assets';render()">Assets<span class="b">${c.assets.length}</span></button>
+      <button class="tab ${S.tab==='financials'?'on':''}" onclick="S.tab='financials';render()">Financials<span class="b">${c.invoices.length}</span></button>
+    </div>
+    ${S.tab==='schedule'?schedTab(c,svc,bil):S.tab==='assets'?assetsTab(c):finTab(c)}`;
+}
+function schedTab(c,svc,bil){
+  return`<div class="card"><div class="card-h"><h3>Service visits — per asset</h3><div class="spacer"></div>
+    <label style="font-size:.76rem;color:var(--muted);display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" ${c.evidenceGate?'checked':''} onchange="tGate('${c.id}')"> evidence-before-invoice</label></div>
+    <div class="card-b">${svc.map(e=>evRow(c,e,false)).join('')}</div></div>
+    <div class="card"><div class="card-h"><h3>Billing — one invoice, per-asset lines</h3></div>
+    <div class="card-b">${bil.map(e=>evRow(c,e,false)).join('')}</div></div>`;
+}
+function assetsTab(c){
+  const types=[...new Set(c.assets.map(a=>a.type))];
+  return`<div class="card"><div class="card-h"><h3>Covered assets</h3></div><div class="card-b">
+    ${types.map(t=>`<div style="padding:8px 0"><div style="font-weight:650;font-size:.85rem;margin-bottom:6px">${esc(t)}</div>
+      ${c.assets.filter(a=>a.type===t).map(a=>`<div class="ev" style="padding:8px 0">
+        <div class="info"><b>${a.serial?esc(a.serial.split(' · ')[0]):'Unattached asset'}</b><span>${a.serial?esc(a.serial):'client to list after signing'}</span></div>
+        <span class="st ${a.status}">${a.status}</span>
+        ${a.status==='placeholder'?`<button class="act g" onclick="attachAsset('${c.id}','${a.id}')">Attach real asset</button>`:''}</div>`).join('')}
+    </div>`).join('')}
   </div></div>`;
 }
-function c_toggleGate(id){const c=S.contracts.find(x=>x.id===id);c.evidenceGate=!c.evidenceGate;toast(c.evidenceGate?'Invoices now require evidence first':'Evidence gate off');render();}
+function finTab(c){
+  const out=c.invoices.filter(i=>i.status!=='paid').reduce((s,i)=>s+i.amount,0);
+  return`<div class="card"><div class="card-h"><h3>Invoices</h3><div class="spacer"></div><span class="st ${out?'overdue':'completed'}">${inr(out)} outstanding</span></div>
+    <div class="card-b">${c.invoices.length?c.invoices.map(i=>`
+      <div style="border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px">
+        <div class="row" style="margin-bottom:8px"><b>${esc(i.num)}</b><span class="st ${i.status}">${i.status.replace('_',' ')}</span><div class="spacer"></div>
+          ${i.status==='draft'?`<button class="act" onclick="sendInvoice('${c.id}','${i.id}')">Send</button>`:i.status==='paid'?'':`<button class="act g" onclick="payInvoice('${c.id}','${i.id}')">Record payment</button>`}</div>
+        ${i.lines.map(l=>`<div class="inv-line"><div class="l">${esc(l.label)}<span>${esc(l.serial||'—')}</span></div><div class="a">${inr(l.amount)}</div></div>`).join('')}
+        <div class="inv-tot"><span>Total · ${i.lines.length} asset line(s)</span><span>${inr(i.amount)}</span></div>
+      </div>`).join(''):'<div class="empty"><span class="big">🧾</span>No invoices yet — draft one from a billing event.</div>'}
+    </div></div>`;
+}
+function tGate(id){const c=S.contracts.find(x=>x.id===id);c.evidenceGate=!c.evidenceGate;render();toast(c.evidenceGate?'Invoices now require evidence':'Evidence gate off');}
 
-/* ══════════ servicing actions ══════════ */
-function openAssign(cid,eid){S.drawer={cid,eid,mode:'assign',pick:null,date:new Date().toISOString().slice(0,10)};renderDrawer();}
-function openVisit(cid,eid){const c=S.contracts.find(x=>x.id===cid);const e=c.events.find(x=>x.id===eid);S.drawer={cid,eid,mode:'visit',form:{...e.formData},photo:e.photo,err:{}};renderDrawer();}
-function openProof(cid,eid){S.drawer={cid,eid,mode:'proof'};renderDrawer();}
+/* ══ servicing drawer (per-asset fan-out) ══ */
+function openVisit(cid,eid){S.drawer={cid,eid,expanded:null};renderDrawer();}
 function closeDrawer(){S.drawer=null;el('scrim').classList.remove('open');el('drawer').innerHTML='';}
+function taskComplete(e,t){const fields=e.form?FORMS[e.form]||[]:[];return fields.every(f=>{const v=t.form[f.id];return v!==undefined&&v!==''&&v!==null;})&&t.photo;}
 
 function renderDrawer(){
   const dw=S.drawer;if(!dw){closeDrawer();return;}
   const c=S.contracts.find(x=>x.id===dw.cid);const e=c.events.find(x=>x.id===dw.eid);
   el('scrim').classList.add('open');
-  if(dw.mode==='assign'){
-    el('drawer').innerHTML=`
-      <div class="dr-h"><div><b>Assign visit</b><span>${esc(e.name)} · ${esc(c.customer)}</span></div><button class="x" onclick="closeDrawer()">✕</button></div>
-      <div class="dr-b">
-        <p class="sub" style="margin-bottom:14px">Turn this into an owned, dated visit — the handoff that never happens today.</p>
-        <div class="field"><label>Technician <span class="rq">*</span></label>
-          ${TECHS.map(t=>`<div class="pickrow ${dw.pick===t?'sel':''}" onclick="S.drawer.pick='${t}';renderDrawer()"><span class="tk">${dw.pick===t?'✓':''}</span><div class="nm"><b>${esc(t.split(' · ')[0])}</b><span>${esc(t.split(' · ')[1]||'')}</span></div></div>`).join('')}</div>
-        <div class="field"><label>Scheduled date</label><input type="date" value="${dw.date}" onchange="S.drawer.date=this.value"></div>
-        ${e.form?`<div class="gate lock">🔒 Requires the <b style="margin:0 3px">${esc(e.form)}</b> form — inherited from the equipment type. Can't close without it.</div>`:''}
-      </div>
-      <div class="dr-f"><button class="ghost" onclick="closeDrawer()">Cancel</button>
-        <button class="prim" ${dw.pick?'':'disabled'} onclick="doAssign()">Schedule visit ›</button></div>`;
-    return;
-  }
-  if(dw.mode==='visit'){
-    const fields=e.form?FORMS[e.form]||[]:[];
-    const ok=fields.filter(f=>true).every(f=>{const v=dw.form[f.id];return v!==undefined&&v!==''&&v!==null;})&&dw.photo;
-    el('drawer').innerHTML=`
-      <div class="dr-h"><div><b>${esc(e.name)}</b><span>${esc(e.cov||'')} · ${esc((e.assignee||'').split(' · ')[0])} · on-site</span></div><button class="x" onclick="closeDrawer()">✕</button></div>
-      <div class="dr-b">
-        <div class="gate ${ok?'ok':'lock'}">${ok?'✓ Form complete — ready to close':e.form?'🔒 Fill the mandatory '+esc(e.form)+' form to finish':'Attach a photo to finish'}</div>
-        ${fields.map(f=>fieldHtml(f,dw)).join('')}
-        <div class="field"><label>Site photo <span class="rq">*</span></label>
-          <div class="drop ${dw.photo?'has':''}" onclick="S.drawer.photo=!S.drawer.photo;renderDrawer()">${dw.photo?'✓ IMG_4821.jpg attached — tap to remove':'📷 Tap to capture / attach a photo'}</div></div>
-      </div>
-      <div class="dr-f"><button class="ghost" onclick="closeDrawer()">Cancel</button>
-        <button class="prim" ${ok?'':'disabled'} onclick="doComplete()">Complete visit ›</button></div>`;
-    return;
-  }
-  if(dw.mode==='proof'){
-    const fields=e.form?FORMS[e.form]||[]:[];
-    el('drawer').innerHTML=`
-      <div class="dr-h"><div><b>Proof of work</b><span>${esc(e.name)} · completed</span></div><button class="x" onclick="closeDrawer()">✕</button></div>
-      <div class="dr-b">
-        <div class="gate ok">✓ ${esc(e.form||'Visit')} submission — this is the evidence</div>
-        ${fields.map(f=>`<div class="ev"><div class="info"><b>${esc(f.l)}</b></div><b>${esc(String(e.formData[f.id]??'—'))}</b></div>`).join('')}
-        <div class="field" style="margin-top:12px"><label>Site photo</label><div class="drop has">✓ IMG_4821.jpg</div></div>
-      </div>
-      <div class="dr-f"><button class="ghost" onclick="closeDrawer()">Close</button></div>`;
-    return;
-  }
+  const done=e.tasks.filter(t=>t.done).length;
+  const placeholders=e.tasks.filter(t=>assetOf(c,t.assetId).status==='placeholder'&&!t.done).length;
+  const allDone=done===e.tasks.length;
+  el('drawer').innerHTML=`
+    <div class="dr-h"><div><b>${esc(e.name)}</b><span>${esc(e.cov)} · ${esc(c.customer)} · form: ${esc(e.form)}</span></div><button class="x" onclick="closeDrawer()">✕</button></div>
+    <div class="dr-b">
+      <div class="progress">Proven ${done} of ${e.tasks.length} assets${placeholders?` · <span style="color:var(--amber)">${placeholders} awaiting an attached asset</span>`:''}</div>
+      ${e.tasks.map((t,i)=>taskCard(c,e,t,i)).join('')}
+    </div>
+    <div class="dr-f">
+      <button class="ghost" onclick="closeDrawer()">Close</button>
+      <span style="font-size:.76rem;color:var(--faint)">${allDone?'All assets proven — visit complete':placeholders?`${placeholders} asset(s) not attached — can't fully close`:'Prove every asset to complete'}</span>
+      <button class="prim" ${allDone?'':'disabled'} onclick="finishVisit()">Complete visit ›</button>
+    </div>`;
 }
-function fieldHtml(f,dw){
-  if(f.t==='pf'){const v=dw.form[f.id];
-    return `<div class="field"><label>${esc(f.l)} <span class="rq">*</span></label><div class="seg">
-      <button class="${v==='pass'?'on':''}" onclick="S.drawer.form['${f.id}']='pass';renderDrawer()">Pass</button>
-      <button class="${v==='fail'?'on':''}" onclick="S.drawer.form['${f.id}']='fail';renderDrawer()">Fail</button></div></div>`;}
-  return `<div class="field"><label>${esc(f.l)} <span class="rq">*</span></label>
-    <input type="${f.t==='num'?'number':'text'}" value="${esc(dw.form[f.id]??'')}" placeholder="${esc(f.ph||'')}" oninput="S.drawer.form['${f.id}']=this.value;syncGate()"></div>`;
+function taskCard(c,e,t,i){
+  const a=assetOf(c,t.assetId);const dw=S.drawer;const isPh=a.status==='placeholder';
+  const open=dw.expanded===i;
+  const badge=t.done?'<span class="badge done">✓ proven</span>':isPh?'<span class="badge ph">no asset</span>':`<span class="badge ${t.assignee?'open':'open'}">${t.assignee?'assigned':'open'}</span>`;
+  const cls=t.done?'done':isPh?'ph':'';
+  let body='';
+  if(open){
+    if(isPh){
+      body=`<div class="task-body">
+        <div class="gate lock">🔒 Smart form can't be invoked without the real asset. You can assign &amp; visit, but the ticket can't close.</div>
+        <div class="field"><label>Technician</label>
+          <select onchange="S.drawer._a='${t.assetId}';setTaskTech('${t.assetId}',this.value)"><option value="">Assign…</option>${TECHS.map(x=>`<option ${t.assignee===x?'selected':''}>${esc(x)}</option>`).join('')}</select></div>
+        <div class="row"><button class="miniact g" onclick="attachFromVisit('${c.id}','${t.assetId}')">＋ Attach the real asset now</button></div>
+      </div>`;
+    }else{
+      const fields=e.form?FORMS[e.form]||[]:[];const ok=taskComplete(e,t);
+      body=`<div class="task-body">
+        <div class="gate ${ok?'ok':'lock'}">${ok?'✓ Form complete for this machine':'🔒 Fill the '+esc(e.form)+' for this machine'}</div>
+        ${fields.map(f=>fieldHtml(t.assetId,f,t)).join('')}
+        <div class="field"><label>Photo (this machine) <span class="rq">*</span></label>
+          <div class="drop ${t.photo?'has':''}" onclick="togglePhoto('${t.assetId}')">${t.photo?'✓ '+esc((a.serial||'').split(' · ')[0])+'.jpg':'📷 Capture'}</div></div>
+        <div class="row" style="margin-top:6px"><button class="miniact" ${ok?'':'disabled style=opacity:.4'} onclick="markTaskDone('${t.assetId}')">Mark this asset proven ✓</button></div>
+      </div>`;
+    }
+  }
+  return`<div class="task ${cls}">
+    <div class="task-h" onclick="S.drawer.expanded=${open?'null':i};renderDrawer()">
+      <div class="ti"><b>${a.serial?esc(a.serial.split(' · ')[0]):'Unattached asset'}</b><span>${a.serial?esc(a.serial):'placeholder · attach to service'}</span></div>${badge}</div>
+    ${body}</div>`;
 }
-function syncGate(){/* light: re-render only updates gate/button */renderDrawer();}
+function fieldHtml(aid,f,t){
+  if(f.t==='pf'){const v=t.form[f.id];
+    return`<div class="field"><label>${esc(f.l)} <span class="rq">*</span></label><div class="seg">
+      <button class="${v==='pass'?'on':''}" onclick="setTaskField('${aid}','${f.id}','pass')">Pass</button>
+      <button class="${v==='fail'?'on':''}" onclick="setTaskField('${aid}','${f.id}','fail')">Fail</button></div></div>`;}
+  return`<div class="field"><label>${esc(f.l)} <span class="rq">*</span></label>
+    <input type="${f.t==='num'?'number':'text'}" value="${esc(t.form[f.id]??'')}" placeholder="${esc(f.ph||'')}" oninput="setTaskFieldRaw('${aid}','${f.id}',this.value)"></div>`;
+}
+function curTask(aid){const c=S.contracts.find(x=>x.id===S.drawer.cid);const e=c.events.find(x=>x.id===S.drawer.eid);return e.tasks.find(t=>t.assetId===aid);}
+function setTaskField(aid,fid,v){curTask(aid).form[fid]=v;renderDrawer();}
+function setTaskFieldRaw(aid,fid,v){curTask(aid).form[fid]=v;renderDrawer();}
+function togglePhoto(aid){const t=curTask(aid);t.photo=!t.photo;renderDrawer();}
+function setTaskTech(aid,v){curTask(aid).assignee=v||null;toast(v?'Assigned '+v.split(' · ')[0]:'Unassigned');renderDrawer();}
+function markTaskDone(aid){const t=curTask(aid);const c=S.contracts.find(x=>x.id===S.drawer.cid);const e=c.events.find(x=>x.id===S.drawer.eid);
+  if(!taskComplete(e,t)){toast('Finish the form for this machine');return;}
+  t.done=true;S.drawer.expanded=null;renderDrawer();render();toast('Asset proven — evidence captured');}
+function attachFromVisit(cid,aid){attachAsset(cid,aid,true);}
+function attachAsset(cid,aid,fromVisit){
+  const c=S.contracts.find(x=>x.id===cid);const a=assetOf(c,aid);
+  const sn=prompt('Enter the real asset serial / tag (e.g. MRI-03 · MAGNETOM Sola · SN40244):','MRI-03 · MAGNETOM Sola · SN40244');
+  if(!sn)return;
+  a.serial=sn;a.status='active';
+  recompute();
+  if(fromVisit&&S.drawer){renderDrawer();toast('Asset attached — form now available for this machine');}
+  else{render();toast('Asset attached — it can now be serviced');}
+}
+function finishVisit(){const c=S.contracts.find(x=>x.id===S.drawer.cid);const e=c.events.find(x=>x.id===S.drawer.eid);
+  if(e.tasks.some(t=>!t.done)){toast('Some assets not yet proven');return;}
+  closeDrawer();
+  const drafted=maybeDraftInvoice(c);render();
+  toast(drafted?'Visit closed → per-asset invoice drafted':'Visit closed — all assets proven');
+}
 
-function doAssign(){const dw=S.drawer;const c=S.contracts.find(x=>x.id===dw.cid);const e=c.events.find(x=>x.id===dw.eid);
-  e.assignee=dw.pick;e.status='assigned';e.date=new Date(dw.date);e.date.setHours(0,0,0,0);
-  toast('Assigned to '+dw.pick.split(' · ')[0]);S.drawer.mode='visit';S.drawer.form={};S.drawer.photo=false;recompute();renderDrawer();render();}
-function doComplete(){const dw=S.drawer;const c=S.contracts.find(x=>x.id===dw.cid);const e=c.events.find(x=>x.id===dw.eid);
-  e.formData={...dw.form};e.photo=true;e.serviced=true;e.status='completed';
-  recompute();closeDrawer();
-  // auto-draft invoice for the covering billing period if evidence gate satisfied
-  const drafted=maybeDraftInvoice(c);
-  render();
-  toast(drafted?'Job proven → event closed → invoice drafted':'Job proven → event closed');
+/* ══ billing: per-asset lines, one invoice ══ */
+function periodAmount(c,billEv){
+  // sum unit × proven-or-covered assets across service events (fleet)
+  const svc=c.events.filter(e=>e.type==='service');
+  let amt=0; svc.forEach(e=>{e.tasks.forEach(t=>{amt+=e.unit;});});
+  return Math.round(amt/Math.max(1,c.events.filter(e=>e.type==='billing').length));
+}
+function buildLines(c){
+  // one line per asset that has proven service, priced by its block unit
+  const lines=[];
+  c.events.filter(e=>e.type==='service').forEach(e=>{
+    e.tasks.filter(t=>t.done).forEach(t=>{
+      const a=assetOf(c,t.assetId);
+      lines.push({label:e.name,serial:a.serial?a.serial.split(' · ')[0]:a.id,amount:e.unit});
+    });
+  });
+  return lines;
 }
 function maybeDraftInvoice(c){
-  // find an overdue/due billing event with no invoice whose period now has a serviced visit
-  const bill=c.events.find(e=>e.type==='billing'&&!e.invoiceId&&(e.status==='overdue'||e.status==='due'));
+  const bill=c.events.find(e=>e.type==='billing'&&!e.invoiceId&&(evStatus(e)!=='paid'));
   if(!bill)return false;
-  const anyServiced=c.events.some(e=>e.type==='service'&&e.serviced);
-  if(c.evidenceGate&&!anyServiced)return false;
-  const inv={id:nid('inv'),num:'INV-'+(1000+c.invoices.length+7),amount:bill.amount,status:'draft',evidenced:anyServiced,date:new Date(today)};
-  c.invoices.push(inv);bill.invoiceId=inv.id;
+  const lines=buildLines(c);
+  if(c.evidenceGate&&lines.length===0)return false;
+  const inv={id:nid('inv'),num:'INV-'+(2000+c.invoices.length),status:'draft',lines,amount:lines.reduce((s,l)=>s+l.amount,0),date:new Date(today)};
+  c.invoices.push(inv);bill.invoiceId=inv.id;bill.status='draft';
   return true;
 }
 function draftInvoice(cid,eid){const c=S.contracts.find(x=>x.id===cid);const e=c.events.find(x=>x.id===eid);
-  const anyServiced=c.events.some(x=>x.type==='service'&&x.serviced);
-  if(c.evidenceGate&&!anyServiced){toast('⚠ Evidence-before-invoice is on — service a visit in this period first');return;}
-  const inv={id:nid('inv'),num:'INV-'+(1000+c.invoices.length+7),amount:e.amount,status:'draft',evidenced:anyServiced,date:new Date(today)};
-  c.invoices.push(inv);e.invoiceId=inv.id;recompute();render();toast('Invoice drafted from billing event');}
-function sendInvoice(cid,iid){const c=S.contracts.find(x=>x.id===cid);const i=c.invoices.find(x=>x.id===iid);i.status='unpaid';render();toast('Invoice sent to '+c.customer);}
-function payInvoice(cid,iid){const c=S.contracts.find(x=>x.id===cid);const i=c.invoices.find(x=>x.id===iid);i.status='paid';recompute();render();toast('Payment recorded — '+inr(i.amount));}
+  const lines=buildLines(c);
+  if(c.evidenceGate&&lines.length===0){toast('⚠ Evidence-before-invoice — prove at least one asset first');return;}
+  const inv={id:nid('inv'),num:'INV-'+(2000+c.invoices.length),status:'draft',lines:lines.length?lines:[{label:'Period charge',serial:null,amount:periodAmount(c,e)}],date:new Date(today)};
+  inv.amount=inv.lines.reduce((s,l)=>s+l.amount,0);
+  c.invoices.push(inv);e.invoiceId=inv.id;e.status='draft';render();toast('Invoice drafted — '+inv.lines.length+' asset line(s)');}
+function sendInvoice(cid,iid){const c=S.contracts.find(x=>x.id===cid);c.invoices.find(i=>i.id===iid).status='unpaid';render();toast('Invoice sent');}
+function payInvoice(cid,iid){const c=S.contracts.find(x=>x.id===cid);c.invoices.find(i=>i.id===iid).status='paid';render();toast('Payment recorded');}
 
-/* ══════════ new contract wizard ══════════ */
+function recompute(){/* statuses derived on read; regenerate tasks if assets changed */
+  S.contracts.forEach(c=>{
+    c.events.filter(e=>e.type==='service').forEach(e=>{
+      const covAssets=c.assets.filter(a=>a.type===e.cov);
+      // add tasks for newly-attached assets that had no task (placeholder replaced keeps same id, so fine)
+      covAssets.forEach(a=>{if(!e.tasks.some(t=>t.assetId===a.id))e.tasks.push({assetId:a.id,assignee:null,form:{},photo:false,done:false});});
+    });
+  });
+}
+
+/* ══ new contract wizard (asset counts) ══ */
 function renderNew(){
-  const w=S.nw;const steps=['Basics','Coverage','Blocks','Terms'];
-  const blockTotal=w.blocks.reduce((s,b)=>s+CATALOG.find(x=>x.id===b.id).price*CATALOG.find(x=>x.id===b.id).vpy,0)*(w.months/12);
-  let bodyHtml='';
-  if(w.step===0){bodyHtml=`
-    <div class="field"><label>Contract name <span class="rq">*</span></label><input class="${w.err.name?'bad':''}" value="${esc(w.name)}" placeholder="e.g. Apollo AMC 2026" oninput="S.nw.name=this.value;delete S.nw.err.name"></div>
-    <div class="field"><label>Customer <span class="rq">*</span></label><input class="${w.err.customer?'bad':''}" value="${esc(w.customer)}" placeholder="e.g. Apollo Hyderabad" oninput="S.nw.customer=this.value;delete S.nw.err.customer"></div>`;}
-  else if(w.step===1){const covs=[...new Set(CATALOG.map(x=>x.cov))];bodyHtml=`
-    <p class="sub">Which asset types does this contract cover? Blocks attach to these.</p>
-    ${covs.map(cv=>`<div class="pickrow ${w.coverage.includes(cv)?'sel':''}" onclick="nwCov('${esc(cv)}')"><span class="tk">${w.coverage.includes(cv)?'✓':''}</span><div class="nm"><b>${esc(cv)}</b></div></div>`).join('')}`;}
-  else if(w.step===2){const relevant=CATALOG.filter(b=>w.coverage.length===0||w.coverage.includes(b.cov)||b.cov==='All equipment');bodyHtml=`
-    ${!w.recoApplied?`<div class="reco"><b>✦ VaNi suggests</b><p>For this coverage, tenants usually add these blocks with catalog pricing.</p><button class="act" onclick="nwReco()">Add ${relevant.filter(b=>['mripm','ventpm','labpm'].includes(b.id)).length} recommended</button></div>`:''}
-    ${relevant.map(b=>{const sel=w.blocks.some(x=>x.id===b.id);return `<div class="pickrow ${sel?'sel':''}" onclick="nwBlock('${b.id}')"><span class="tk">${sel?'✓':''}</span><div class="nm"><b>${esc(b.name)}</b><span>${b.cad} · ${b.vpy}/yr${b.form?' · form: '+esc(b.form):''}</span></div><span class="pr">${inr(b.price)}</span></div>`;}).join('')}
-    <div class="totbar"><span>Contract value / yr</span><b>${inr(blockTotal)}</b></div>`;}
-  else{bodyHtml=`
-    <div class="field"><label>Duration</label><div class="seg">${[12,24,36].map(m=>`<button class="${w.months===m?'on':''}" onclick="S.nw.months=${m};renderNew()">${m} months</button>`).join('')}</div></div>
-    <div class="totbar"><span>${w.blocks.length} blocks · billed quarterly · ${w.months}mo</span><b>${inr(blockTotal)}</b></div>
-    <p class="sub" style="margin-top:14px">On create, this generates the full service + billing schedule — which you then service from the dashboard.</p>`;}
-  el('main').innerHTML=`
-    <button class="menu-btn" onclick="S.sideOpen=true;renderSide()">☰</button>
-    <div class="row"><button class="ghost" onclick="go('dashboard')">‹ Cancel</button></div>
-    <h1 class="pg">New contract</h1>
+  const w=S.nw;const steps=['Basics','Coverage & count','Blocks','Terms'];
+  const relevantBlocks=CATALOG.filter(b=>w.coverage.includes(b.cov));
+  const total=relevantBlocks.filter(b=>w.blocks.some(x=>x.id===b.id)).reduce((s,b)=>s+b.price*b.vpy*(w.counts[b.cov]||1)*(w.months/12),0);
+  let body='';
+  if(w.step===0)body=`<div class="field"><label>Contract name <span class="rq">*</span></label><input class="${w.err.name?'bad':''}" value="${esc(w.name)}" placeholder="e.g. Fortis AMC" oninput="S.nw.name=this.value;delete S.nw.err.name"></div>
+    <div class="field"><label>Customer <span class="rq">*</span></label><input class="${w.err.customer?'bad':''}" value="${esc(w.customer)}" placeholder="e.g. Fortis Bangalore" oninput="S.nw.customer=this.value;delete S.nw.err.customer"></div>`;
+  else if(w.step===1){const covs=[...new Set(CATALOG.map(x=>x.cov))];body=`<p class="sub">Pick asset types and how many units of each (placeholders you can attach later).</p>
+    ${covs.map(cv=>{const on=w.coverage.includes(cv);return`<div class="pickrow ${on?'sel':''}"><span class="tk" onclick="nwCov('${esc(cv)}')">${on?'✓':''}</span>
+      <div class="nm" onclick="nwCov('${esc(cv)}')"><b>${esc(cv)}</b></div>
+      ${on?`<div class="row" style="gap:6px"><span style="font-size:.72rem;color:var(--faint)">units</span><input type="number" min="1" value="${w.counts[cv]||1}" style="width:64px" onclick="event.stopPropagation()" oninput="S.nw.counts['${esc(cv)}']=Math.max(1,+this.value||1)"></div>`:''}</div>`;}).join('')}`;}
+  else if(w.step===2)body=`${relevantBlocks.length?relevantBlocks.map(b=>{const sel=w.blocks.some(x=>x.id===b.id);return`<div class="pickrow ${sel?'sel':''}" onclick="nwBlock('${b.id}')"><span class="tk">${sel?'✓':''}</span><div class="nm"><b>${esc(b.name)}</b><span>${b.cad} · ${b.vpy}/yr · ${w.counts[b.cov]||1} unit(s) · form ${esc(b.form||'—')}</span></div><span class="pr">${inr(b.price)}<span style="font-size:.6rem;color:var(--faint);display:block">/asset/visit</span></span></div>`;}).join(''):'<div class="empty">Pick a coverage type first</div>'}
+    <div class="totbar"><span>Contract value / yr</span><b>${inr(total)}</b></div>`;
+  else body=`<div class="field"><label>Duration</label><div class="seg">${[12,24,36].map(m=>`<button class="${w.months===m?'on':''}" onclick="S.nw.months=${m};renderNew()">${m} months</button>`).join('')}</div></div>
+    <div class="stepn">Generates a per-asset schedule: each unit gets its own visit task + form each cycle.</div>
+    <div class="totbar"><span>${w.blocks.length} block(s) × units · ${w.months}mo</span><b>${inr(total)}</b></div>`;
+  el('main').innerHTML=`<button class="menu-btn" onclick="S.sideOpen=true;renderSide()">☰</button>
+    <div class="row"><button class="ghost" onclick="go('dashboard')">‹ Cancel</button></div><h1 class="pg">New contract</h1>
     <div class="wsteps">${steps.map((s,i)=>`<span class="ws ${i===w.step?'on':i<w.step?'done':''}">${i<w.step?'✓ ':''}${s}</span>`).join('')}</div>
-    <div class="card"><div class="card-b" style="padding:18px">${bodyHtml}</div></div>
+    <div class="card"><div class="card-b" style="padding:18px">${body}</div></div>
     <div class="row"><button class="ghost" ${w.step===0?'style=visibility:hidden':''} onclick="S.nw.step--;renderNew()">‹ Back</button><div class="spacer"></div>
-      <button class="prim" style="margin:0" onclick="nwNext()">${w.step===3?'Create contract ›':'Continue ›'}</button></div>`;
+      <button class="prim" style="margin:0" onclick="nwNext()">${w.step===3?'Create ›':'Continue ›'}</button></div>`;
 }
-function nwCov(cv){const i=S.nw.coverage.indexOf(cv);i>=0?S.nw.coverage.splice(i,1):S.nw.coverage.push(cv);renderNew();}
+function nwCov(cv){const i=S.nw.coverage.indexOf(cv);if(i>=0){S.nw.coverage.splice(i,1);}else{S.nw.coverage.push(cv);if(!S.nw.counts[cv])S.nw.counts[cv]=1;}renderNew();}
 function nwBlock(id){const i=S.nw.blocks.findIndex(x=>x.id===id);i>=0?S.nw.blocks.splice(i,1):S.nw.blocks.push({id});renderNew();}
-function nwReco(){['mripm','ventpm','labpm'].forEach(id=>{if(CATALOG.find(x=>x.id===id)&&!S.nw.blocks.some(x=>x.id===id)&&(S.nw.coverage.length===0||S.nw.coverage.includes(CATALOG.find(x=>x.id===id).cov)))S.nw.blocks.push({id});});S.nw.recoApplied=true;renderNew();toast('Recommended blocks added');}
 function nwNext(){const w=S.nw;
-  if(w.step===0){w.err={};if(!w.name.trim())w.err.name=1;if(!w.customer.trim())w.err.customer=1;if(Object.keys(w.err).length){renderNew();toast('Fill the required fields');return;}}
-  if(w.step===1&&w.coverage.length===0){toast('Pick at least one asset type');return;}
-  if(w.step===2&&w.blocks.length===0){toast('Add at least one block');return;}
+  if(w.step===0){w.err={};if(!w.name.trim())w.err.name=1;if(!w.customer.trim())w.err.customer=1;if(Object.keys(w.err).length){renderNew();toast('Fill required fields');return;}}
+  if(w.step===1&&!w.coverage.length){toast('Pick at least one asset type');return;}
+  if(w.step===2&&!w.blocks.length){toast('Add at least one block');return;}
   if(w.step<3){w.step++;renderNew();return;}
-  // create
+  const assets=[];w.coverage.forEach(cv=>{const n=w.counts[cv]||1;for(let i=0;i<n;i++)assets.push({id:nid('as'),type:cv,serial:`${cv.split(' ')[0].toUpperCase()}-${String(i+1).padStart(2,'0')} · SN${1000+i}`,status:'active'});});
   const c={id:nid('c'),name:w.name.trim(),customer:w.customer.trim(),color:AVATARS[S.contracts.length%AVATARS.length],
-    coverage:[...w.coverage],blocks:[...w.blocks],months:w.months,status:'active',
-    events:makeEvents(w.blocks,7,w.months),invoices:[],evidenceGate:true};
-  S.contracts.push(c);recompute();go('contract',c.id);toast('Contract created — schedule generated. Now service it.');}
+    coverage:[...w.coverage],blocks:[...w.blocks],assets,months:w.months,status:'active',events:makeEvents(w.blocks,assets,7,w.months),invoices:[],evidenceGate:true};
+  S.contracts.push(c);go('contract',c.id);toast('Created — per-asset schedule generated');}
 
-/* ══════════ root ══════════ */
-function render(){
-  recompute();renderSide();
-  if(S.view==='dashboard')renderDashboard();
-  else if(S.view==='contract')renderContract();
-  else if(S.view==='new')renderNew();
-  if(S.drawer)renderDrawer();
-}
+function render(){recompute();renderSide();if(S.view==='dashboard')renderDashboard();else if(S.view==='contract')renderContract();else renderNew();if(S.drawer)renderDrawer();}
 render();
 </script>
