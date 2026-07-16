@@ -1,0 +1,82 @@
+═══════════════════════════════════════════════════════════════════
+PROFESSIONAL CONTRACT PDF — DYNAMIC CONTENT FROM THE CONTRACT ITSELF
+═══════════════════════════════════════════════════════════════════
+Date: 2026-07-16 · Implements the approved mock
+SPRINT_REFERENCES/7-contract-document.html with the owner correction:
+EVERY section derives from real contract data — nothing is canned.
+Submodule: contractnest-ui ONLY (1 new + 3 edited files).
+Requires all prior cadence batches (through preview-tax-discount-fix).
+
+WHAT THIS DELIVERS
+  A shared ContractDocument component renders the professional paper
+  (letterhead → reference grid → parties → Schedules A/B/C → terms →
+  signatures → CNAK footer). It is rendered OFF-SCREEN and captured
+  by the existing html2canvas+jsPDF flow, so:
+   - Wizard Review step → "Download PDF" now produces the pro document
+   - Buyer review page (/contract-review) → same
+  The on-screen review pages are unchanged (their redesign can adopt
+  the same component later if you want).
+
+CONTENT SOURCES (all dynamic, per your correction)
+  Letterhead + Provider  → tenant profile (name, logo, city, phone,
+                           email); initials monogram when no logo
+  Contract No / status   → contract fields ("Draft — number on save"
+                           in the wizard before first save)
+  Reference grid         → effective date, term → end date,
+                           acceptance method, currency
+  Customer               → buyer contact (salutation-aware name,
+                           phone, email)
+  Intro sentence         → GENERATED from provider/customer/term
+  Schedule A             → service & spare blocks: service cycle →
+                           "Every N days", visit counts; billing-only
+                           blocks badged with no visits
+  Schedule B             → per-block cadence/rate/payments/amounts +
+                           the locked chain: Sum total → Discount →
+                           Taxable → tax lines → Total to be paid,
+                           with amount-in-words (Indian numbering);
+                           internal allocations NEVER appear
+  Schedule C             → dated payment rows from the SAME
+                           computeContractEvents math the wizard
+                           persists (cadence payments + seller-set
+                           final payment included)
+  Terms                  → the contract's TEXT BLOCKS — heading +
+                           their real content (rich text preserved) —
+                           plus one generated acceptance line
+  Signatures / footer    → provider + buyer names; CNAK when known
+
+ALSO WIRED
+  ReviewSendStep now receives discountType/discountValue from wizard
+  state, so the exported document shows the discount chain (the
+  on-screen review step totals gain it via the same data on a later
+  pass — the DOCUMENT is authoritative for the buyer).
+
+STEP 1 — Copy
+─────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\contract-document-pdf\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+STEP 2 — Verify
+─────────────────────────────
+cd contractnest-ui ; npm run dev
+tsc: zero new errors (normalized before/after diff empty)
+parity: PASS ×5
+
+STEP 3 — Gate-review checklist
+─────────────────────────────
+Wizard → Review & Send → Download PDF:
+- [ ] PDF is the professional document (letterhead, schedules), not
+      the old screen capture
+- [ ] Provider block = your tenant profile; Customer = the buyer
+- [ ] Schedule A: billing-only block badged, no visits; service
+      blocks show "Every N days · X visits"
+- [ ] Schedule B: cadence block shows rate × payments; totals chain
+      shows Sum total → (Discount when set) → Taxable → tax lines →
+      Total; amount in words correct
+- [ ] Schedule C: dated rows matching the Events Preview exactly
+- [ ] Terms section shows YOUR text blocks' actual content (add a
+      "Terms & Conditions" text block to the contract to see it)
+- [ ] Template mode: no customer block; document still generates
+Buyer review page (open via CNAK link) → Download:
+- [ ] Same document, with contract number, saved totals and CNAK in
+      the footer
+═══════════════════════════════════════════════════════════════════
