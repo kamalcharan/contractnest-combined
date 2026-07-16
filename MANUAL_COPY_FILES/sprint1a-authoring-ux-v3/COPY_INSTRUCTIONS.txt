@@ -1,0 +1,90 @@
+═══════════════════════════════════════════════════════════════════
+SPRINT 1 — STEP (a) UI · COVERAGE & ASSETS — v3 (REGISTRY PICKER UX)
+═══════════════════════════════════════════════════════════════════
+Date: 2026-07-16 · Gate: owner review of step (a), applies ON TOP OF
+sprint1a-authoring-ux-v2 (which you already tested and gave feedback on)
+Submodule affected: contractnest-ui ONLY (one file)
+
+WHY THIS BATCH EXISTS
+After testing v2 live, you flagged three UX issues in the "Pick from
+their registered equipment" flow. This batch addresses exactly those
+three, and nothing else — the types stage, the 3 attachment cards, and
+all Sprint 1a business logic are unchanged from v2.
+
+WHAT CHANGES ON SCREEN (your 3 points, in order)
+ 1. Registry picker moves from BELOW the 3 attachment cards to a
+    column to the RIGHT of them — sitting between the cards and the
+    "Coverage" sidebar, as you asked. This only happens once you pick
+    "Pick from their registered <type>" AND the picker is expanded;
+    otherwise the page stays single-column exactly like before (the
+    "later" and "register new" cards don't need the extra width).
+ 2. As soon as you attach something from the picker, it now appears
+    immediately in the right sidebar under a new "Attached (N)" list
+    — each item shown by name with a checkmark — so you get live
+    confirmation without scrolling the picker itself.
+ 3. The picker now groups by equipment type and, for each type, shows
+    "<total in registry> of <units you declared> in registry" as a
+    badge. If the registry has fewer units than you declared (your
+    "3 requested, 1 exists" example), it also shows an inline note:
+    "2 more units will need to be added later (as placeholders)" right
+    under that type's list — so it's clear up front which units can be
+    attached now vs. which will remain placeholders no matter what you
+    pick.
+
+WHAT DOES NOT CHANGE
+ - Types stage (flat cards, unit steppers) — untouched.
+ - The 3 attachment-mode cards themselves — untouched, still in the
+   same order/priority.
+ - Placeholder reconciliation logic, unit-count math, "Register new"
+   flow — untouched.
+ - Collapsed one-line "N attached from the registry" summary (shown
+   once you click "Done — collapse list") — untouched, still appears
+   under the cards in single-column mode.
+
+STEP 1 — Copy
+─────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\sprint1a-authoring-ux-v3\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+STEP 2 — Verify
+─────────────────────────────
+cd contractnest-ui
+npx tsc --noEmit          # same pre-existing errors only (23), none new
+npx vite-node src/components/contracts/ContractWizard/logic/__parity__/run.ts
+                          # PASS ×5
+npm run dev               # Ctrl+F5
+
+STEP 3 — Gate-review checklist (v3 specifically)
+─────────────────────────────
+- [ ] Pick a type with 3 units where only 1 exists in the registry →
+      click "Pick from their registered…" → picker appears to the
+      RIGHT of the 3 cards (not below), sitting before the Coverage
+      sidebar
+- [ ] That type's group shows "1 of 3 in registry" badge and "2 more
+      units will need to be added later (as placeholders)" note
+- [ ] Attach the 1 real asset → it immediately shows up in the right
+      sidebar under "Attached (1)" with its name
+- [ ] With 2+ coverage types selected, picker shows one group per
+      type, each with its own "N of M in registry" badge
+- [ ] Search still filters within each type's group correctly
+- [ ] Click "Done — collapse list" → picker collapses, page returns to
+      single-column layout with the one-line summary under the cards
+- [ ] On a narrow window, the split layout stacks (cards above,
+      picker below) instead of squeezing sideways
+- [ ] Placeholder note banner at the bottom still reflects the same
+      count as before
+
+PRODUCTION CHECKLIST (per CLAUDE.md)
+  Transactions: n/a (presentation-only; no new writes)
+  Race conditions: unchanged — same placeholder-reconciliation guard
+  Error handling: existing mutation/toast paths unchanged
+  Toasts: existing VaNiToast (no new toast systems)
+  Loaders: existing VaNiLoader (no new loaders)
+
+NOT IN THIS BATCH
+  If you haven't copied sprint1a-authoring-ux-v2 yet, this batch's
+  file supersedes it entirely (it already includes everything from
+  v2) — you only need this v3 folder, not v2, going forward.
+  Sprint 1 step (b) migration and step (c) stitch are still pending
+  your go-ahead after step (a) gate passes.
+═══════════════════════════════════════════════════════════════════
