@@ -1,0 +1,125 @@
+═══════════════════════════════════════════════════════════════════
+SPRINT 1 — STEP (a) UI · COVERAGE & ASSETS — v2 (VISUAL REDESIGN)
+═══════════════════════════════════════════════════════════════════
+Date: 2026-07-16 · Gate: owner review of step (a), replaces the prior
+Coverage & Assets delivery in MANUAL_COPY_FILES/sprint1a-authoring-ux
+Submodule affected: contractnest-ui ONLY (one file)
+UX reference: SPRINT_REFERENCES html mock "asset-step-redesign-v2"
+              (reviewed and approved by owner before this was coded)
+
+⚠️  WHY THIS BATCH EXISTS
+The previous sprint1a-authoring-ux batch shipped Coverage & Assets
+logic (unit steppers, placeholders) on top of the file's EXISTING
+visual layout — so on screen it looked like "old UX + a couple of
+numbers," not a new UX. This batch replaces the file's presentation
+layer to match the approved mock. Business logic (placeholders, unit
+counts, reconciliation) is UNCHANGED from the previous batch — only
+what you SEE and CLICK is different.
+
+WHAT ACTUALLY CHANGES ON SCREEN (vs. what you tested before)
+ 1. No more accordion / hidden sub-categories. Every equipment type is
+    a flat, always-visible card up front. Nothing is collapsed behind
+    a click to "expand a category" — you see all choices immediately.
+ 2. Picking a type shows its ×N unit stepper INLINE on that same card
+    (not a separate row/section).
+ 3. Once you've picked at least one type, a "Continue to attachment
+    options →" button appears. Clicking it moves you to a SECOND
+    stage (still inside this one wizard step — no page change): "How
+    should these get attached?"
+ 4. That second stage shows exactly 3 stacked cards, in this order:
+      a) "<Client> lists them after signing" — now the TOP, visually
+         elevated (Recommended badge, bigger card) option, with
+         "✓ You can still send the contract today" underneath it.
+      b) "Pick from their registered <equipment/asset type>"
+      c) "Register new now"
+    (Previously "buyer will add" and "attach later" were two separate,
+    same-weight options lower down the page — they are now ONE merged
+    option, per your call to merge them, and it's promoted to the top.)
+ 5. Choosing "Pick from their registered…" opens a focused registry
+    picker (search + list) scoped ONLY to the types you picked in
+    stage 1 — not the full asset registry. Once you're done picking,
+    "Done — collapse list" shrinks it to a one-line summary so the
+    screen doesn't stay cluttered.
+ 6. An "Edit equipment types" link at the top of stage 2 takes you
+    back to stage 1 without losing your selections.
+ 7. Right-side summary panel is lighter: just your chosen coverage
+    types with counts, and (in stage 2) an attachment summary. It's
+    hidden on narrower screens instead of squeezing the main content.
+
+WHAT DOES NOT CHANGE (verify these still work exactly as before)
+ - Unit-count stepper math and the "N units to attach" placeholder
+   logic (placeholders auto-appear/reconcile exactly as tested in the
+   prior batch).
+ - Registering a brand-new asset still opens the same
+   EquipmentFormDialog and auto-attaches it on success.
+ - Step-level Continue/gating behavior (blocked-hint pill, "select at
+   least one coverage type") is untouched — this batch only changes
+   what's rendered INSIDE the step, not the wizard shell around it.
+ - Parity harness / discount math on Billing View — untouched,
+   verified still green (see STEP 2 below).
+
+STEP 1 — Copy
+─────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\sprint1a-authoring-ux-v2\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+STEP 2 — Verify
+─────────────────────────────
+cd contractnest-ui
+npx tsc --noEmit          # same pre-existing errors only (23), none new
+npx vite-node src/components/contracts/ContractWizard/logic/__parity__/run.ts
+                          # PASS ×5 — confirms discount/mapper math untouched
+npm run dev               # Ctrl+F5
+
+STEP 3 — Gate-review checklist (step a, v2 specifically)
+─────────────────────────────
+Stage "types" (equipment nomenclature contract, e.g. AMC):
+- [ ] All equipment types visible immediately — no click needed to
+      "expand" a category to see its types
+- [ ] Click ANYWHERE on a card (not just the icon/name) selects it —
+      including near the card's edge/corner, not just dead-center
+- [ ] Selecting shows the ×N stepper on that same card; set to ×3
+- [ ] Header chip updates live: "N types selected / M units total"
+- [ ] With zero types selected, "Continue to attachment options" is
+      not clickable / shows the amber "pick at least one type" note
+Stage "attach" (after clicking Continue):
+- [ ] Exactly 3 cards, "<Client> lists them after signing" is the
+      TOP card, visually bigger/badged as Recommended
+- [ ] Clicking it completes the step with zero assets attached —
+      no dead-end, no error
+- [ ] "Pick from registered…" opens a picker showing ONLY assets
+      whose type matches what you picked in stage 1 (not the full
+      registry)
+- [ ] Attach 1 real asset → "Done — collapse list" shrinks the picker
+      to a one-line summary; re-expand still works
+- [ ] "Register new now" opens the existing add-asset form; on
+      success it auto-attaches and switches to the registered view
+- [ ] "Edit equipment types" returns to stage "types" with your
+      earlier selections (and unit counts) intact
+- [ ] Placeholder note banner appears when units > attached, and
+      explains assignment/status can proceed but not closure
+Cross-cutting (must be unchanged from what you tested before):
+- [ ] Draft save/resume round-trips coverage types + unit counts +
+      attachment mode
+- [ ] Billing View discount chain still shows Sum total → Discount →
+      Taxable → Tax → Total to pay, math unchanged
+- [ ] RFQ flow unaffected (this step doesn't run in RFQ mode)
+
+PRODUCTION CHECKLIST (per CLAUDE.md)
+  Transactions: n/a (presentation-only change; no new writes)
+  Race conditions: unchanged — same placeholder-reconciliation guard
+                as the prior batch
+  Error handling: existing mutation/toast paths unchanged
+  Toasts: existing VaNiToast (no new toast systems)
+  Loaders: existing VaNiLoader (no new loaders)
+
+NOT IN THIS BATCH
+  Service Blocks step and Billing View discount UI are UNCHANGED from
+  the previous sprint1a-authoring-ux batch — if you already copied
+  that batch and it's working, this v2 batch only overwrites
+  AssetSelectionStep.tsx. If you have NOT yet copied the original
+  sprint1a-authoring-ux batch, copy that one FIRST, then apply this
+  v2 on top (it will overwrite the same file with the redesigned one).
+  Sprint 1 step (b) migration and step (c) stitch are still pending
+  your go-ahead after this step (a) gate passes.
+═══════════════════════════════════════════════════════════════════
