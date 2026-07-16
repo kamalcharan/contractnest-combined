@@ -1,0 +1,525 @@
+<title>Contract Wizard — Coverage & Blocks Step Redesign</title>
+<style>
+  /* In-product app theme (light, teal) — matches the live ContractNest UI */
+  :root {
+    --bg: #F2F5F3;
+    --surface: #FFFFFF;
+    --surface-2: #F7F9F8;
+    --ink: #1E2B26;
+    --muted: #5C6B64;
+    --faint: #93A09A;
+    --line: #E3E9E5;
+    --teal: #2E7D64;
+    --teal-hi: #35906F;
+    --teal-soft: #E7F2ED;
+    --amber: #B07E10;
+    --amber-soft: #FBF3DF;
+    --red: #C24634;
+    --red-soft: #FBEAE6;
+    --green: #2E7D64;
+    --sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.5; }
+  button { font: inherit; cursor: pointer; }
+  input { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+
+  /* wizard chrome */
+  .chrome { max-width: 1080px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+  header.wz {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 14px 24px; background: var(--surface); border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; z-index: 40;
+  }
+  .wz-title { font-weight: 700; font-size: 0.95rem; }
+  .wz-title small { display: block; font-weight: 400; font-size: 0.75rem; color: var(--faint); }
+  .phases { display: flex; align-items: center; gap: 14px; }
+  .phase { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .phase .lbl { font-size: 0.6rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--faint); }
+  .phase.active .lbl { color: var(--teal); }
+  .phase.done .lbl { color: var(--green); }
+  .phase .dots { display: flex; gap: 5px; }
+  .dot { width: 12px; height: 12px; border-radius: 999px; background: #E8EDEA; border: 1px solid var(--line); }
+  .dot.done { background: var(--teal-soft); border-color: var(--teal); }
+  .dot.cur { width: 26px; background: var(--teal); border-color: var(--teal); }
+  .psep { width: 12px; height: 1px; background: var(--line); }
+
+  main.wz { flex: 1; padding: 30px 24px 130px; }
+  .panel { max-width: 780px; margin: 0 auto; }
+  h1.step { font-size: 1.5rem; margin: 0 0 4px; font-weight: 750; letter-spacing: -0.01em; }
+  .step-sub { color: var(--muted); margin: 0 0 6px; font-size: 0.92rem; }
+  .why {
+    display: inline-flex; align-items: center; gap: 7px; margin: 4px 0 22px;
+    font-size: 0.78rem; color: var(--teal); background: var(--teal-soft);
+    border-radius: 999px; padding: 4px 12px;
+  }
+
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+  .card h3 { margin: 0 0 4px; font-size: 0.98rem; }
+  .card .hint { font-size: 0.8rem; color: var(--faint); margin: 0 0 14px; }
+  .req { color: var(--red); }
+
+  /* choice cards (attachment mode) */
+  .modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  @media (max-width: 680px) { .modes { grid-template-columns: 1fr; } }
+  .mode {
+    text-align: left; background: var(--surface); border: 1.5px solid var(--line);
+    border-radius: 12px; padding: 16px; transition: border-color .15s, box-shadow .15s; position: relative;
+  }
+  .mode:hover { border-color: var(--teal); }
+  .mode.sel { border-color: var(--teal); box-shadow: 0 0 0 1px var(--teal); background: var(--teal-soft); }
+  .mode .glyph { font-size: 1.3rem; display: block; margin-bottom: 8px; }
+  .mode h4 { margin: 0 0 3px; font-size: 0.9rem; }
+  .mode p { margin: 0; font-size: 0.76rem; color: var(--muted); }
+  .mode .reassure { display: block; margin-top: 8px; font-size: 0.7rem; color: var(--teal); font-weight: 600; }
+
+  /* coverage chips */
+  .covs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 620px) { .covs { grid-template-columns: 1fr; } }
+  .cov {
+    display: flex; gap: 10px; align-items: flex-start; text-align: left;
+    background: var(--surface); border: 1.5px solid var(--line); border-radius: 10px; padding: 12px 14px;
+  }
+  .cov:hover { border-color: var(--teal); }
+  .cov.sel { border-color: var(--teal); background: var(--teal-soft); }
+  .cov .tick { width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid var(--faint); flex: none; display: grid; place-items: center; font-size: 0.65rem; color: #fff; margin-top: 1px; }
+  .cov.sel .tick { background: var(--teal); border-color: var(--teal); }
+  .cov b { display: block; font-size: 0.86rem; }
+  .cov span { font-size: 0.74rem; color: var(--muted); }
+
+  /* registry picker */
+  .search { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px; background: var(--surface-2); margin-bottom: 12px; }
+  .search input { border: none; background: none; outline: none; flex: 1; font-size: 0.88rem; }
+  .asset {
+    display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+    border: 1.5px solid var(--line); border-radius: 10px; padding: 11px 14px; margin-bottom: 8px; background: var(--surface);
+  }
+  .asset:hover { border-color: var(--teal); }
+  .asset.sel { border-color: var(--teal); background: var(--teal-soft); }
+  .asset .tick { width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid var(--faint); flex: none; display: grid; place-items: center; font-size: 0.65rem; color: #fff; }
+  .asset.sel .tick { background: var(--teal); border-color: var(--teal); }
+  .asset b { font-size: 0.86rem; display: block; }
+  .asset .loc { font-family: var(--mono); font-size: 0.66rem; color: var(--faint); letter-spacing: 0.03em; }
+  .asset .dept { margin-left: auto; font-size: 0.68rem; color: var(--muted); background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; white-space: nowrap; }
+  .collapsed-summary {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    background: var(--teal-soft); border: 1px solid var(--teal); border-radius: 10px; padding: 12px 16px;
+  }
+  .collapsed-summary b { color: var(--teal); }
+  .linkbtn { background: none; border: none; color: var(--teal); font-weight: 700; font-size: 0.8rem; padding: 0; }
+
+  /* blocks step */
+  .reco {
+    border: 1.5px dashed var(--teal); background: var(--teal-soft); border-radius: 12px; padding: 16px 18px; margin-bottom: 18px;
+  }
+  .reco-head { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 0.9rem; color: var(--teal); margin-bottom: 4px; }
+  .reco p { margin: 0 0 12px; font-size: 0.78rem; color: var(--muted); }
+  .reco .btns { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn-teal { background: var(--teal); color: #fff; border: none; border-radius: 8px; padding: 8px 16px; font-size: 0.82rem; font-weight: 650; }
+  .btn-teal:hover { background: var(--teal-hi); }
+  .btn-quiet { background: var(--surface); color: var(--muted); border: 1px solid var(--line); border-radius: 8px; padding: 8px 14px; font-size: 0.82rem; font-weight: 600; }
+
+  .blk { border: 1.5px solid var(--line); border-radius: 12px; background: var(--surface); margin-bottom: 10px; overflow: hidden; }
+  .blk.sel { border-color: var(--teal); }
+  .blk-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: none; border: none; padding: 13px 16px; }
+  .blk-row .tick { width: 19px; height: 19px; border-radius: 5px; border: 1.5px solid var(--faint); flex: none; display: grid; place-items: center; font-size: 0.66rem; color: #fff; }
+  .blk.sel .blk-row .tick { background: var(--teal); border-color: var(--teal); }
+  .blk-row .nm { font-weight: 650; font-size: 0.9rem; }
+  .blk-row .cad { font-family: var(--mono); font-size: 0.68rem; color: var(--faint); letter-spacing: 0.03em; margin-top: 1px; }
+  .blk-row .pr { margin-left: auto; text-align: right; white-space: nowrap; }
+  .blk-row .pr b { font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+  .blk-row .pr span { display: block; font-size: 0.64rem; color: var(--faint); }
+  .blk-row .caret { color: var(--faint); font-size: 0.8rem; margin-left: 8px; visibility: hidden; }
+  .blk.sel .blk-row .caret { visibility: visible; }
+  .blk-warn {
+    display: flex; gap: 8px; align-items: flex-start; margin: 0 16px 12px;
+    background: var(--amber-soft); border: 1px solid var(--amber); color: var(--amber);
+    border-radius: 8px; padding: 8px 12px; font-size: 0.76rem; font-weight: 600;
+  }
+  .blk-config { border-top: 1px dashed var(--line); background: var(--surface-2); padding: 14px 16px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  @media (max-width: 620px) { .blk-config { grid-template-columns: 1fr; } }
+  .cfg label { display: block; font-size: 0.7rem; font-weight: 700; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .cfg input, .cfg select { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 0.86rem; background: var(--surface); }
+  .disc-note { grid-column: 1 / -1; font-size: 0.76rem; }
+  .disc-note .cut { text-decoration: line-through; color: var(--faint); }
+  .disc-note .pct { color: var(--teal); font-weight: 700; }
+  .disc-note .rec { color: var(--faint); }
+
+  .flyby { width: 100%; border: 1.5px dashed var(--line); background: none; border-radius: 12px; padding: 13px; color: var(--muted); font-weight: 600; font-size: 0.86rem; }
+  .flyby:hover { border-color: var(--teal); color: var(--teal); }
+
+  .totalbar {
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    padding: 12px 16px; margin-top: 14px; font-variant-numeric: tabular-nums;
+  }
+  .totalbar b { font-size: 1.05rem; }
+  .totalbar .n { font-size: 0.76rem; color: var(--muted); }
+
+  /* summary step */
+  .sum-cov { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); padding: 16px 18px; margin-bottom: 12px; }
+  .sum-cov h4 { margin: 0 0 2px; font-size: 0.92rem; color: var(--teal); }
+  .sum-cov .meta { font-size: 0.74rem; color: var(--faint); margin-bottom: 10px; }
+  .sum-li { display: flex; justify-content: space-between; font-size: 0.84rem; padding: 6px 0; border-top: 1px solid var(--line); }
+  .sum-li span:last-child { font-variant-numeric: tabular-nums; font-weight: 650; }
+
+  /* bottom action bar (shell) */
+  .bar-wrap { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 50; display: flex; flex-direction: column; align-items: center; gap: 8px; width: calc(100% - 24px); max-width: 620px; }
+  .hintpill {
+    display: none; align-items: center; gap: 7px; font-size: 0.78rem; font-weight: 650;
+    background: var(--red-soft); border: 1px solid var(--red); color: var(--red);
+    border-radius: 999px; padding: 6px 14px;
+  }
+  .hintpill.show { display: inline-flex; }
+  .bar {
+    display: flex; align-items: center; gap: 12px; width: 100%;
+    background: rgba(255,255,255,0.95); border: 1px solid var(--line); border-radius: 999px;
+    padding: 8px 10px; box-shadow: 0 10px 30px rgba(30,43,38,0.15); backdrop-filter: blur(8px);
+  }
+  .bar .ghost { background: none; border: none; color: var(--muted); font-weight: 600; padding: 8px 14px; border-radius: 999px; }
+  .bar .ghost:hover { background: var(--surface-2); }
+  .bar .lbl { flex: 1; text-align: center; font-size: 0.76rem; color: var(--faint); }
+  .bar .primary { background: var(--teal); color: #fff; border: none; border-radius: 999px; padding: 10px 24px; font-weight: 700; font-size: 0.88rem; }
+  .bar .primary:hover { background: var(--teal-hi); }
+
+  /* notes + toast */
+  .notes-btn { position: fixed; top: 14px; right: 14px; z-index: 60; width: 32px; height: 32px; border-radius: 50%; background: var(--surface); border: 1px solid var(--line); color: var(--muted); font-weight: 700; }
+  .notes { position: fixed; top: 54px; right: 14px; z-index: 59; width: 340px; max-width: calc(100vw - 28px); max-height: calc(100vh - 140px); overflow-y: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; display: none; box-shadow: 0 10px 30px rgba(30,43,38,0.18); }
+  .notes.show { display: block; }
+  .notes h3 { margin: 0 0 8px; font-size: 0.9rem; }
+  .notes ol { margin: 0; padding-left: 18px; font-size: 0.76rem; color: var(--muted); }
+  .notes li { margin-bottom: 7px; }
+  .notes li b { color: var(--ink); }
+  .toast { position: fixed; bottom: 86px; right: 18px; z-index: 70; background: var(--ink); color: #fff; font-size: 0.82rem; font-weight: 600; border-radius: 10px; padding: 10px 16px; opacity: 0; transform: translateY(8px); transition: all .25s; pointer-events: none; }
+  .toast.show { opacity: 1; transform: none; }
+</style>
+
+<button class="notes-btn" onclick="document.getElementById('notes').classList.toggle('show')" aria-label="Design notes">?</button>
+<aside class="notes" id="notes">
+  <h3>What changed vs. today's steps</h3>
+  <ol>
+    <li><b>Assets step tells you WHY it exists</b> — "blocks in the next step attach to what you pick here." Today that linkage is never explained.</li>
+    <li><b>One question at a time</b> — attachment mode first (with "client lists them after signing" as a first-class card, not a buried toggle), then coverage in plain language, then assets only if relevant.</li>
+    <li><b>Coverage types lead</b> — they're the mandatory thing, so they come before the equipment grid, each with a one-line meaning.</li>
+    <li><b>Registry collapses once picked</b> — "4 assets selected · edit" instead of a permanent grid.</li>
+    <li><b>Blocks: recommendations open the step</b> — VaNi suggests from nomenclature + coverage; one click adds the set. The catalog below is a checklist; config unfolds only for selected blocks.</li>
+    <li><b>Cycle mismatch warns at selection</b> — inline on the block, not a toast at Continue.</li>
+    <li><b>Price edits become recorded discounts</b> — "list → your price (−%)" display; groundwork for the discounts feature.</li>
+    <li><b>Payoff screen</b> — blocks grouped under coverage types with assets counted, so the asset↔block linkage the data model already has finally becomes visible.</li>
+  </ol>
+</aside>
+
+<div class="chrome">
+  <header class="wz">
+    <div class="wz-title">New Client Contract<small>Sunrise Medical · Equipment AMC</small></div>
+    <div class="phases" id="phases"></div>
+    <div style="width:80px"></div>
+  </header>
+  <main class="wz"><div class="panel" id="panel"></div></main>
+</div>
+
+<div class="bar-wrap">
+  <div class="hintpill" id="hint"></div>
+  <div class="bar">
+    <button class="ghost" id="backBtn" onclick="goBack()">‹ Back</button>
+    <span class="lbl" id="barLbl"></span>
+    <button class="primary" id="nextBtn" onclick="goNext()">Continue ›</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ── data ── */
+const ASSETS = [
+  { id: 'mri',  name: 'MRI — Siemens MAGNETOM Sola', loc: 'SN 40221 · Radiology · Block A', dept: 'Radiology' },
+  { id: 'vent1', name: 'Ventilator — GE Carescape R860 (×3)', loc: 'SN 8834/8835/8901 · ICU', dept: 'ICU' },
+  { id: 'defib', name: 'Defibrillator — Nihon Kohden TEC-8300', loc: 'SN 5521 · Emergency · OT-2', dept: 'Emergency' },
+  { id: 'lab',  name: 'Chemistry Analyser — Roche Cobas', loc: 'SN 77120 · Lab · Ground Fl', dept: 'Lab' },
+  { id: 'dr',   name: 'DR System — Fujifilm FDR Go Plus', loc: 'SN 3310 · Radiology', dept: 'Radiology' },
+];
+const COVERAGE = [
+  { id: 'comp',  name: 'Comprehensive', desc: 'Parts + labour + preventive visits' },
+  { id: 'noncomp', name: 'Non-comprehensive', desc: 'Labour only — parts billed separately' },
+  { id: 'prev',  name: 'Preventive only', desc: 'Scheduled PM visits, no breakdown cover' },
+  { id: 'bd',    name: 'Breakdown-only', desc: 'On-call repairs, no scheduled visits' },
+];
+const BLOCKS = [
+  { id: 'mripm', name: 'MRI Preventive Maintenance', cad: 'Quarterly · 4 visits/yr', cycle: 'Quarterly', list: 38000, unit: 'per visit', qty: 4, rec: true },
+  { id: 'ventpm', name: 'Ventilator PM (per unit)', cad: 'Quarterly · 4 visits/yr', cycle: 'Quarterly', list: 6500, unit: 'per visit', qty: 12, rec: true },
+  { id: 'labpm', name: 'Analyser PM + Calibration', cad: 'Quarterly · 4 visits/yr', cycle: 'Quarterly', list: 12000, unit: 'per visit', qty: 4, rec: true },
+  { id: 'bdsupport', name: '24-hr Breakdown Support', cad: 'Retainer · billed quarterly', cycle: 'Quarterly', list: 18000, unit: 'per quarter', qty: 4, rec: true },
+  { id: 'defibchk', name: 'Defibrillator Safety Check', cad: 'Half-yearly · 2 visits/yr', cycle: 'Half-yearly', list: 3500, unit: 'per visit', qty: 2, rec: false },
+  { id: 'cert', name: 'Annual Calibration Certificates', cad: 'Annual · 1 issue/yr', cycle: 'Annual', list: 9000, unit: 'per year', qty: 1, rec: false },
+];
+const CONTRACT_CYCLE = 'Quarterly'; // unified billing cycle set on the previous step
+
+/* ── state ── */
+const S = {
+  screen: 'assets',            // assets | blocks | summary
+  mode: null,                  // existing | later | manual
+  coverage: [],
+  assets: [],
+  assetsCollapsed: false,
+  blocks: {},                  // id -> {qty, price}
+  expanded: null,
+  recoApplied: false,
+};
+const $ = id => document.getElementById(id);
+const inr = n => '₹' + Math.round(n).toLocaleString('en-IN');
+function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2400); }
+function hint(m) { const h = $('hint'); if (!m) { h.classList.remove('show'); return; } h.textContent = '⚠ ' + m; h.classList.add('show'); }
+
+function total() {
+  return Object.entries(S.blocks).reduce((s, [id, cfg]) => {
+    const b = BLOCKS.find(x => x.id === id);
+    return s + (cfg.price ?? b.list) * (cfg.qty ?? b.qty);
+  }, 0);
+}
+
+/* ── nav ── */
+function goNext() {
+  if (S.screen === 'assets') {
+    if (!S.mode) { hint('Choose how assets are added — or let the client do it after signing'); return; }
+    if (!S.coverage.length) { hint('Pick at least one coverage type — service blocks attach to these'); return; }
+    if (S.mode === 'existing' && !S.assets.length) { hint('Select at least one asset from the registry (or switch to "client lists them")'); return; }
+    S.screen = 'blocks'; hint(null); render(); window.scrollTo({ top: 0, behavior: 'smooth' });
+  } else if (S.screen === 'blocks') {
+    if (!Object.keys(S.blocks).length) { hint('Add at least one service block'); return; }
+    S.screen = 'summary'; hint(null); render(); window.scrollTo({ top: 0, behavior: 'smooth' });
+  } else {
+    toast('Mock ends here — next would be Billing View');
+  }
+}
+function goBack() {
+  hint(null);
+  if (S.screen === 'blocks') S.screen = 'assets';
+  else if (S.screen === 'summary') S.screen = 'blocks';
+  else toast('Previous step: Details (mock starts at Coverage & Assets)');
+  render();
+}
+
+/* ── interactions ── */
+function setMode(m) { S.mode = m; hint(null); if (m !== 'existing') { S.assets = []; } render(); }
+function toggleCov(id) { const i = S.coverage.indexOf(id); i >= 0 ? S.coverage.splice(i, 1) : S.coverage.push(id); hint(null); render(); }
+function toggleAsset(id) { const i = S.assets.indexOf(id); i >= 0 ? S.assets.splice(i, 1) : S.assets.push(id); hint(null); render(); }
+function collapseAssets() { S.assetsCollapsed = true; render(); }
+function expandAssets() { S.assetsCollapsed = false; render(); }
+function toggleBlock(id) {
+  if (S.blocks[id]) { delete S.blocks[id]; if (S.expanded === id) S.expanded = null; }
+  else { const b = BLOCKS.find(x => x.id === id); S.blocks[id] = { qty: b.qty, price: b.list }; }
+  hint(null); render();
+}
+function expandBlock(id, ev) { ev.stopPropagation(); S.expanded = S.expanded === id ? null : id; render(); }
+function setCfg(id, key, val) {
+  S.blocks[id][key] = Number(val) || 0;
+  renderTotalsOnly();
+}
+function applyReco() {
+  BLOCKS.filter(b => b.rec).forEach(b => { if (!S.blocks[b.id]) S.blocks[b.id] = { qty: b.qty, price: b.list }; });
+  S.recoApplied = true; render();
+  toast('4 recommended blocks added — deselect any you don\'t need');
+}
+
+/* ── renderers ── */
+function renderPhases() {
+  // phases: Setup(done) Terms(active on assets) Services(active on blocks/summary) Finalize
+  const map = { assets: 1, blocks: 2, summary: 2 };
+  const cur = map[S.screen];
+  const defs = [ ['Setup', 4], ['Terms', 3], ['Services', 2], ['Finalize', 3] ];
+  $('phases').innerHTML = defs.map(([lbl, n], pi) => {
+    const cls = pi < cur ? 'done' : pi === cur ? 'active' : '';
+    const dots = Array.from({ length: n }).map((_, di) => {
+      if (pi < cur) return '<span class="dot done"></span>';
+      if (pi === cur) {
+        const subCur = S.screen === 'assets' ? 1 : (S.screen === 'blocks' ? 0 : 1);
+        return `<span class="dot ${di < subCur ? 'done' : di === subCur ? 'cur' : ''}"></span>`;
+      }
+      return '<span class="dot"></span>';
+    }).join('');
+    return `<div class="phase ${cls}"><span class="lbl">${lbl}</span><div class="dots">${dots}</div></div>${pi < 3 ? '<div class="psep"></div>' : ''}`;
+  }).join('');
+}
+
+function renderBar() {
+  const lbl = { assets: 'Coverage & Assets · step 6 of 12', blocks: 'Add Blocks · step 8 of 12', summary: 'Scope summary (illustrative)' }[S.screen];
+  $('barLbl').textContent = lbl + (S.screen !== 'assets' && total() > 0 ? ` · ${inr(total())}` : '');
+  $('nextBtn').textContent = S.screen === 'summary' ? 'Continue to Billing ›' : 'Continue ›';
+}
+function renderTotalsOnly() {
+  const el = $('runTotal');
+  if (el) {
+    el.innerHTML = `<span class="n">${Object.keys(S.blocks).length} blocks · billed ${CONTRACT_CYCLE.toLowerCase()} (unified)</span><b>${inr(total())}</b>`;
+  }
+  const disc = S.expanded && $('disc-' + S.expanded);
+  if (disc) {
+    const b = BLOCKS.find(x => x.id === S.expanded);
+    const cfg = S.blocks[S.expanded];
+    disc.innerHTML = discNote(b, cfg);
+  }
+  renderBar();
+}
+function discNote(b, cfg) {
+  if (!cfg || cfg.price === b.list) return `<span class="rec">List price ${inr(b.list)} ${b.unit} — edit the price to record a negotiated discount.</span>`;
+  const pct = Math.round((1 - cfg.price / b.list) * 1000) / 10;
+  if (pct <= 0) return `<span class="rec">Above list price (${inr(b.list)}).</span>`;
+  return `List <span class="cut">${inr(b.list)}</span> → <b>${inr(cfg.price)}</b> <span class="pct">(−${pct}%)</span> <span class="rec">· recorded as a line discount</span>`;
+}
+
+function render() {
+  renderPhases(); renderBar();
+  const p = $('panel');
+
+  /* ═══ SCREEN: Coverage & Assets ═══ */
+  if (S.screen === 'assets') {
+    const covHtml = COVERAGE.map(c => `
+      <button class="cov ${S.coverage.includes(c.id) ? 'sel' : ''}" onclick="toggleCov('${c.id}')">
+        <span class="tick">${S.coverage.includes(c.id) ? '✓' : ''}</span>
+        <span><b>${c.name}</b><span>${c.desc}</span></span>
+      </button>`).join('');
+
+    let assetsHtml = '';
+    if (S.mode === 'existing') {
+      if (S.assetsCollapsed && S.assets.length) {
+        assetsHtml = `
+          <div class="card">
+            <div class="collapsed-summary">
+              <span><b>${S.assets.length} asset${S.assets.length > 1 ? 's' : ''} selected</b> from Sunrise Medical's registry</span>
+              <button class="linkbtn" onclick="expandAssets()">Edit selection</button>
+            </div>
+          </div>`;
+      } else {
+        assetsHtml = `
+          <div class="card">
+            <h3>Pick from their registered assets</h3>
+            <p class="hint">Sunrise Medical has ${ASSETS.length} assets in the registry. Serial numbers and locations come along automatically.</p>
+            <div class="search">🔍 <input placeholder="Search assets… (mock)" oninput="void 0"></div>
+            ${ASSETS.map(a => `
+              <button class="asset ${S.assets.includes(a.id) ? 'sel' : ''}" onclick="toggleAsset('${a.id}')">
+                <span class="tick">${S.assets.includes(a.id) ? '✓' : ''}</span>
+                <span><b>${a.name}</b><span class="loc">${a.loc}</span></span>
+                <span class="dept">${a.dept}</span>
+              </button>`).join('')}
+            ${S.assets.length ? `<div style="text-align:right;margin-top:4px"><button class="linkbtn" onclick="collapseAssets()">Done — collapse list</button></div>` : ''}
+          </div>`;
+      }
+    } else if (S.mode === 'later') {
+      assetsHtml = `
+        <div class="card">
+          <div class="collapsed-summary">
+            <span>📨 <b>Sunrise Medical lists their assets after signing.</b> They'll get an asset form with the contract — you can still send it today.</span>
+          </div>
+        </div>`;
+    } else if (S.mode === 'manual') {
+      assetsHtml = `
+        <div class="card">
+          <h3>Add assets manually</h3>
+          <p class="hint">Full form (make, model, serial, location) opens per asset — same dialog as the Equipment Registry. <em>(mock placeholder)</em></p>
+          <button class="flyby" onclick="toast('Mock — opens the EquipmentFormDialog used today')">＋ Add an asset</button>
+        </div>`;
+    }
+
+    p.innerHTML = `
+      <h1 class="step">What does this contract cover?</h1>
+      <p class="step-sub">Coverage decides the promise; assets decide the scope. Both can be adjusted later.</p>
+      <div class="why">ⓘ Service blocks in the next step attach to the coverage you pick here</div>
+
+      <div class="card">
+        <h3>Coverage <span class="req">*</span></h3>
+        <p class="hint">Pick every level of cover this contract offers.</p>
+        <div class="covs">${covHtml}</div>
+      </div>
+
+      <div class="card">
+        <h3>Assets</h3>
+        <p class="hint">How should the covered equipment get into the contract?</p>
+        <div class="modes">
+          <button class="mode ${S.mode === 'existing' ? 'sel' : ''}" onclick="setMode('existing')">
+            <span class="glyph">🗂️</span><h4>Pick from their registry</h4>
+            <p>${ASSETS.length} registered assets with serials & locations</p>
+          </button>
+          <button class="mode ${S.mode === 'later' ? 'sel' : ''}" onclick="setMode('later')">
+            <span class="glyph">📨</span><h4>Client lists them after signing</h4>
+            <p>They fill an asset form once the contract is accepted</p>
+            <span class="reassure">✓ You can still send the contract today</span>
+          </button>
+          <button class="mode ${S.mode === 'manual' ? 'sel' : ''}" onclick="setMode('manual')">
+            <span class="glyph">✍️</span><h4>Add manually now</h4>
+            <p>Type make / model / serial yourself</p>
+          </button>
+        </div>
+      </div>
+      ${assetsHtml}`;
+    return;
+  }
+
+  /* ═══ SCREEN: Add Service Blocks ═══ */
+  if (S.screen === 'blocks') {
+    const covNames = S.coverage.map(id => COVERAGE.find(c => c.id === id).name).join(' + ') || 'your coverage';
+    const recoHtml = S.recoApplied ? '' : `
+      <div class="reco">
+        <div class="reco-head">✦ VaNi suggests for an Equipment AMC · ${covNames}</div>
+        <p>Based on the nomenclature, coverage and the ${S.assets.length || 'client\'s'} assets: MRI PM, Ventilator PM, Analyser PM and 24-hr Breakdown Support. Prices come from your catalog.</p>
+        <div class="btns">
+          <button class="btn-teal" onclick="applyReco()">Add all 4 recommended</button>
+          <button class="btn-quiet" onclick="S.recoApplied = true; render()">I'll pick myself</button>
+        </div>
+      </div>`;
+
+    const blocksHtml = BLOCKS.map(b => {
+      const sel = !!S.blocks[b.id];
+      const cfg = S.blocks[b.id];
+      const mismatch = sel && b.cycle !== CONTRACT_CYCLE;
+      const expanded = S.expanded === b.id && sel;
+      return `
+        <div class="blk ${sel ? 'sel' : ''}">
+          <button class="blk-row" onclick="toggleBlock('${b.id}')">
+            <span class="tick">${sel ? '✓' : ''}</span>
+            <span><span class="nm">${b.name}</span><br><span class="cad">${b.cad}</span></span>
+            <span class="pr"><b>${inr(cfg?.price ?? b.list)}</b><span>${b.unit}</span></span>
+            <span class="caret" onclick="expandBlock('${b.id}', event)" role="button" aria-label="Configure">${expanded ? '▲ configure' : '▼ configure'}</span>
+          </button>
+          ${mismatch ? `<div class="blk-warn">⚠ Bills <b>&nbsp;${b.cycle}&nbsp;</b> but this contract is <b>&nbsp;${CONTRACT_CYCLE} (unified)</b>. Align the cycle here — or switch the contract to per-block billing on the Billing Cycle step.</div>` : ''}
+          ${expanded ? `
+            <div class="blk-config">
+              <div class="cfg"><label>Quantity / occurrences</label><input type="number" min="1" value="${cfg.qty}" oninput="setCfg('${b.id}','qty',this.value)"></div>
+              <div class="cfg"><label>Your price (${b.unit})</label><input type="number" min="0" value="${cfg.price}" oninput="setCfg('${b.id}','price',this.value)"></div>
+              <div class="cfg"><label>Billing cycle</label><select onchange="toast('Mock — would update cycle')"><option>${b.cycle}</option><option>Quarterly</option><option>Monthly</option></select></div>
+              <div class="disc-note" id="disc-${b.id}">${discNote(b, cfg)}</div>
+            </div>` : ''}
+        </div>`;
+    }).join('');
+
+    p.innerHTML = `
+      <h1 class="step">Add service blocks</h1>
+      <p class="step-sub">Tick what this contract delivers. Open a block only if you need to change quantity, price or cycle.</p>
+      <div class="why">ⓘ Prices and cadences come from your Catalog Studio — edits here apply to this contract only</div>
+      ${recoHtml}
+      ${blocksHtml}
+      <button class="flyby" onclick="toast('Mock — inline custom line: name, price, cycle. Saved as a fly-by block.')">＋ Add a custom line (not in your catalog)</button>
+      <div class="totalbar" id="runTotal"><span class="n">${Object.keys(S.blocks).length} blocks · billed ${CONTRACT_CYCLE.toLowerCase()} (unified)</span><b>${inr(total())}</b></div>`;
+    return;
+  }
+
+  /* ═══ SCREEN: payoff summary ═══ */
+  const chosen = Object.keys(S.blocks).map(id => {
+    const b = BLOCKS.find(x => x.id === id); const cfg = S.blocks[id];
+    return { ...b, qty: cfg.qty, price: cfg.price };
+  });
+  p.innerHTML = `
+    <h1 class="step">Scope, connected</h1>
+    <p class="step-sub">This is the payoff of the asset↔coverage↔block linkage — shown here (illustrative), and later on the Review step.</p>
+    ${S.coverage.map(cid => {
+      const c = COVERAGE.find(x => x.id === cid);
+      return `
+        <div class="sum-cov">
+          <h4>${c.name}</h4>
+          <div class="meta">${S.mode === 'later' ? 'Assets: client lists after signing' : `${S.assets.length} assets covered`} · ${c.desc}</div>
+          ${chosen.map(b => `<div class="sum-li"><span>${b.name} — ${b.qty} × ${inr(b.price)}</span><span>${inr(b.qty * b.price)}</span></div>`).join('')}
+        </div>`;
+    }).join('')}
+    <div class="totalbar"><span class="n">Contract value before tax & discounts</span><b>${inr(total())}</b></div>`;
+}
+render();
+</script>
