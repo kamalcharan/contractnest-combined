@@ -267,15 +267,16 @@ export const useTenantProfile = (options: UseTenantProfileOptions = {}) => {
 
   // Validate the final form
   const validateForm = (): boolean => {
-    if (!formData.business_type_id) {
+    // business_type_id is deprecated (persona replaced it) and is null for
+    // every tenant now — gating on it here would block saving for everyone.
+    if (!formData.persona && !formData.business_type_id) {
       vaniToast.error('Business type is required');
       return false;
     }
 
-    if (!formData.industry_id) {
-      vaniToast.error('Industry is required');
-      return false;
-    }
+    // Industry is now managed separately (Industries sidebar tab), so it's
+    // no longer required here — a saved profile can legitimately have a
+    // blank industry_id on this form.
 
     // FIX: Check for empty or whitespace-only business_name
     if (!formData.business_name || !formData.business_name.trim()) {
