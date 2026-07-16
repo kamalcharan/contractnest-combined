@@ -1,0 +1,124 @@
+═══════════════════════════════════════════════════════════════════
+CADENCE PRICING — STEP 2a of 3: CONTRACT WIZARD (seller proposes)
+═══════════════════════════════════════════════════════════════════
+Date: 2026-07-16 · Gate: owner review before step 2b (contract view +
+buyer review UI) and step 2c (acceptance-time stitch)
+Submodule affected: contractnest-ui ONLY (5 files)
+UX reference: SPRINT_REFERENCES/6-cadence-pricing.html — TAB 2 (v3,
+owner-approved). Requires the cadence-pricing-catalog batch (step 1)
+to already be applied — the catalog side defines the rate cards this
+step consumes.
+
+WHAT THIS DELIVERS
+When a CADENCE-PRICED block (from step 1's catalog rate card) is
+added to a contract or template:
+
+ 1. The block card's "Billing Cycle" picker is replaced by PAYMENT
+    CADENCE chips — one per enabled cadence that FITS the contract's
+    duration, each showing its rate ("Quarterly · ₹4,500 per
+    quarter"), with the tenant default badged and pre-selected.
+    Labeled "your proposal to the buyer".
+ 2. A payment schedule summary computes live:
+    "4 payments × ₹4,500 = ₹18,000 over 12 months".
+ 3. Leftover months (e.g. 8-month contract, quarterly cadence) show
+    the SELLER-SET final payment field — pro-rata offered only as a
+    clickable suggestion, never applied silently (locked decision).
+ 4. Selling-price overrides are per-cadence and survive switching
+    cadences (negotiate ₹4,200 on Quarterly, flip to Monthly and
+    back — the ₹4,200 is remembered). The recorded-discount chip
+    compares against the CHOSEN cadence's list rate.
+ 5. Visits stay decoupled: quantity/service-cycle keep driving
+    service visits; payment count derives from (cadence, term) and is
+    never stored. Changing contract duration re-derives the money —
+    and if the chosen cadence no longer fits, the block auto-switches
+    to the default/first fitting cadence WITH a toast (never a silent
+    price change).
+ 6. Billing View totals, line items ("2 + final pay · Quarterly"),
+    contract-level discount, EMI and the internal allocation all
+    compute off the cadence term total.
+ 7. Events Preview generates billing events from the proposal:
+    full payments at the rate (+tax), plus the seller-set final
+    payment as its own labeled event. New cycles halfyearly/annual
+    map to 182/365 days.
+
+FIX INCLUDED (Sprint 1a gap)
+    The recorded-discount footnote chip in Add Service Blocks now
+    compares the EFFECTIVE selling price (customPrice ?? price) — it
+    previously compared the never-changing defined price, so catalog-
+    block discounts never showed the chip.
+
+INTERIM BEHAVIOR (until steps 2b/2c)
+  - The buyer does NOT yet see cadence options at review — the
+    proposal is what gets sent. Buyer choice lands in 2b/2c.
+  - Events preview reflects the seller's proposal (per your decision:
+    it may change if the buyer picks differently at acceptance —
+    that regeneration is step 2c).
+
+NOT SUPPORTED IN V1 (flagged during design)
+  - Group Session blocks ignore cadence pricing (their quantity means
+    roster occurrences; payments-vs-occurrences needs its own pass)
+  - If NO enabled cadence fits the term (e.g. 2-week contract, only
+    quarterly priced), the block falls back to single-price at the
+    anchor total
+
+STEP 1 — Copy
+─────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\cadence-pricing-wizard\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+STEP 2 — Verify
+─────────────────────────────
+cd contractnest-ui
+npx tsc --noEmit          # zero NEW errors (verified by before/after diff)
+npx vite-node src/components/contracts/ContractWizard/logic/__parity__/run.ts
+                          # PASS ×5 — existing event/billing math untouched
+npm run dev
+
+STEP 3 — Gate-review checklist
+─────────────────────────────
+Using your saved cadence-priced block (18000/12mo; M 1600 / Q 4500 /
+A 17000, Q default) in a NEW 12-month contract:
+- [ ] Add the block → card shows cadence chips (not the old PrePaid/
+      PostPaid row); Quarterly pre-selected with "default" badge
+- [ ] Summary reads "4 payments × ₹4,500 = ₹18,000 over 12 months"
+- [ ] Switch to Monthly → 12 × ₹1,600 = ₹19,200; Annual → 1 × ₹17,000
+- [ ] Visits: service cycle 90 days still shows 4 visits regardless
+      of which payment cadence is chosen
+- [ ] Set contract duration to 8 months → Annual chip disappears
+      (note explains why); pick Quarterly → "2 payments × ₹4,500 +
+      final payment ₹3,000"; the final payment is editable and
+      "pro-rata suggestion: ₹3,000" restores it
+- [ ] Set duration to 6 months while Annual was chosen → toast
+      "Payment cadence adjusted", block lands on a fitting cadence
+- [ ] Edit Selling Price on Quarterly to 4200 → discount chip
+      "list ₹4,500 → ₹4,200 (−6.7%)"; switch to Monthly and back →
+      ₹4,200 remembered
+- [ ] Billing View: line shows "4 pay · Quarterly", totals/tax/
+      discount/EMI compute off ₹18,000 (not rate × visit count)
+- [ ] Events Preview: 4 quarterly billing events of ₹5,310 each
+      (18% tax case); with the 8-month setup, 2 full + 1 final event
+- [ ] Draft save → resume: cadence, overrides, final payment intact
+- [ ] Template flow: same behavior; create-from-template re-fits the
+      cadence to the new contract's duration
+- [ ] NORMAL blocks: cycle picker, qty, totals all exactly as before
+
+PRODUCTION CHECKLIST (per CLAUDE.md)
+  Transactions: n/a (wizard state only; existing draft-save paths)
+  Race conditions: duration-change effect is change-detected (no
+                loops); auto-switch never fires without a real misfit
+  Error handling: existing paths unchanged; misfit cadence surfaces
+                as a visible warning + toast, never silent
+  Toasts: existing VaNiToast ("Payment cadence adjusted")
+  Loaders: none needed (no new async)
+
+VERIFIED BEFORE PACKAGING
+  - tsc before/after diff: identical 1,501 pre-existing errors, only
+    line shifts — zero new
+  - Parity harness: PASS ×5 (goldens untouched)
+  - Synthetic event-math run: 12 checks — quarterly/annual/final-
+    payment splits sum exactly to block totals, tax handled, and
+    non-cadence blocks byte-identical behavior
+
+NEXT: step 2b — contract view + buyer review payment options;
+step 2c — acceptance-time cadence resolution + event regeneration.
+═══════════════════════════════════════════════════════════════════
