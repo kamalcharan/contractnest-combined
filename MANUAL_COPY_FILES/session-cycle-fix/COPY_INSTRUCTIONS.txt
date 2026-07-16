@@ -1,0 +1,35 @@
+═══════════════════════════════════════════════════════════════════
+BATCH: session-cycle-fix
+Group Session "CYCLE not saved" (Saturday Cadence bug)
+═══════════════════════════════════════════════════════════════════
+APPLY AFTER: composer-category-fix. SUBMODULE: contractnest-ui only.
+
+ROOT CAUSE (verified in DB — the block's config had NO serviceCycles
+key): the adapter's buildConfig switch had no 'session' case, so a
+Group Session block's config fell to the default `{ icon }` — cycle,
+audience and complimentary were silently DROPPED on every save.
+Three more gaps fixed while in there:
+  1. audience/complimentary were never serialized for ANY block type
+     (only KT-seeded blocks had them, written directly by the seeder).
+  2. The edit page hydrated the raw block, but the Delivery step reads
+     top-level fields (requiresCycles/cycleDays) — saved cycles showed
+     as OFF when re-editing. Now hydrated up from meta.
+  3. blockToUpdateData only rebuilt config when meta was non-empty —
+     top-level-only wizard forms lost their whole config. An explicit
+     requiresCycles=false now also beats a stale saved cycle (toggling
+     cycles OFF actually persists).
+
+FILES:
+contractnest-ui/src/utils/catalog-studio/catBlockAdapter.ts
+contractnest-ui/src/pages/catalog-studio/blocks/[id]/edit.tsx
+
+Copy-Item "MANUAL_COPY_FILES\session-cycle-fix\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+NOTE: "Saturday Cadence" itself has no cycle in the DB (it was never
+saved) — after copying, edit it once, set the cycle (7 days) and save;
+it will persist and reload correctly from then on.
+
+VERIFIED: 9/9 round-trip checks (create/update/load × cycle, audience,
+complimentary; toggle-off persistence; cadence pricingRecords intact
+through the relaxed rebuild guard); tsc zero new errors; parity PASS.
+═══════════════════════════════════════════════════════════════════
