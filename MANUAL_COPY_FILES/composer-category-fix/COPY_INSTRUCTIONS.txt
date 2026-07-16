@@ -1,0 +1,35 @@
+═══════════════════════════════════════════════════════════════════
+BATCH: composer-category-fix
+Backlog: null-amount ₹0 billing event (root cause) + category
+mislabeling on template-instantiated contracts.
+═══════════════════════════════════════════════════════════════════
+APPLY AFTER: cadence-buyer-acceptance. SUBMODULE: contractnest-api only.
+
+ROOT CAUSE (found on CN-1043): the VaNi composer's assembleDraft
+hardcoded categoryId 'service' for EVERY block it instantiates from a
+template. The auto-included Terms & Conditions text block therefore
+arrived as a "service" block → the event derivation gave the ₹0 block
+a Prepaid billing event → the events mapper turns 0 into null → the
+null-amount day-1 billing task. Also mislabeled headings (text/billing
+blocks shown as Service).
+
+FIX: CandidatePayload += category_id; template candidates carry the
+saved block category; catalog-scan candidates stay 'service' (that
+tier only matches service blocks); assembleDraft + derivationBlocks
+use the real category. The API derivation already skips non-priced
+categories — it just had to be told the truth.
+
+FILE: contractnest-api/src/services/contractComposerService.ts
+
+Copy-Item "MANUAL_COPY_FILES\composer-category-fix\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+# restart API server
+
+TEST: instantiate any template that carries the T&C block → the draft
+shows T&C under Text (not Service); after acceptance there is NO
+null-amount billing event; block headings correct.
+NOTE: CN-1043's existing null event row remains in place (harmless,
+test data) — future contracts are clean.
+
+VERIFIED: esbuild parse OK; API events parity 9/9 (derivation logic
+untouched — it now just receives correct categories).
+═══════════════════════════════════════════════════════════════════
