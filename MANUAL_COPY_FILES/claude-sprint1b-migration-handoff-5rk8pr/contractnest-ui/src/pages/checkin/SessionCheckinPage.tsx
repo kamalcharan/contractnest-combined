@@ -109,11 +109,11 @@ const Shell: React.FC<{ chapterName: string; tenantName?: string; children: Reac
           boxShadow: '0 4px 12px -2px rgba(218,100,16,0.45)' }}>{initialOf(chapterName)}</div>
         <div style={{ lineHeight: 1.2 }}>
           {tenantName && (
-            <div style={{ fontSize: 11, color: BRAND.sub, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+            <div style={{ fontSize: 15, color: BRAND.ink, fontWeight: 800, letterSpacing: 0.2 }}>
               {tenantName}
             </div>
           )}
-          <div style={{ fontWeight: 800, color: BRAND.ink, fontSize: 16 }}>{chapterName}</div>
+          <div style={{ fontWeight: 700, color: BRAND.sub, fontSize: 13.5, marginTop: tenantName ? 1 : 0 }}>{chapterName}</div>
           <div style={{ fontSize: 12, color: BRAND.sub }}>Session check-in</div>
         </div>
       </div>
