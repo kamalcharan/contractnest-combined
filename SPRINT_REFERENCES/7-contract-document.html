@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Contract Document — professional print/PDF target</title>
+<style>
+  :root {
+    --ink: #16181D;
+    --ink2: #5B6472;
+    --line: #E3E6EB;
+    --brand: #0D9488;
+    --brand-dark: #0B7C72;
+    --paper: #FFFFFF;
+    --wash: #F6F8F9;
+    --amber: #92600A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #ECEEF1; font-family: 'Segoe UI', -apple-system, 'Helvetica Neue', Arial, sans-serif; color: var(--ink); padding: 32px 16px; font-size: 13px; line-height: 1.5; }
+  .sheet { max-width: 794px; margin: 0 auto 28px; background: var(--paper); box-shadow: 0 2px 18px rgba(20,30,40,.12); padding: 52px 56px; }
+
+  /* ── letterhead ── */
+  .lh { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 18px; border-bottom: 3px solid var(--brand); }
+  .lh .co { display: flex; gap: 12px; align-items: center; }
+  .lh .logo { width: 46px; height: 46px; border-radius: 10px; background: var(--brand); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 19px; letter-spacing: .5px; }
+  .lh .coname { font-size: 19px; font-weight: 800; letter-spacing: .2px; }
+  .lh .coline { font-size: 11px; color: var(--ink2); margin-top: 2px; }
+  .lh .doc { text-align: right; }
+  .lh .doctype { font-family: Georgia, 'Times New Roman', serif; font-size: 21px; letter-spacing: 2.5px; font-weight: 400; text-transform: uppercase; color: var(--ink); }
+  .lh .docno { font-size: 11.5px; color: var(--ink2); margin-top: 4px; }
+  .lh .docno b { color: var(--ink); font-weight: 700; }
+  .statuschip { display: inline-block; margin-top: 6px; font-size: 9.5px; font-weight: 800; letter-spacing: 1.2px; padding: 3px 10px; border: 1px solid var(--amber); color: var(--amber); border-radius: 3px; text-transform: uppercase; }
+
+  /* ── reference grid ── */
+  .refgrid { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; margin: 22px 0; }
+  .refcell { padding: 10px 14px; border-right: 1px solid var(--line); background: var(--wash); }
+  .refcell:last-child { border-right: none; }
+  .refcell .k { font-size: 9px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--ink2); }
+  .refcell .v { font-size: 12.5px; font-weight: 700; margin-top: 3px; }
+  .refcell .v small { font-weight: 500; color: var(--ink2); }
+
+  /* ── parties ── */
+  .parties { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 26px; }
+  .party { border-left: 3px solid var(--brand); padding-left: 14px; }
+  .party .role { font-size: 9px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase; color: var(--brand-dark); }
+  .party .nm { font-size: 15px; font-weight: 800; margin-top: 4px; }
+  .party .det { font-size: 11.5px; color: var(--ink2); margin-top: 2px; line-height: 1.6; }
+
+  .intro { font-size: 12px; color: var(--ink2); margin-bottom: 26px; line-height: 1.7; }
+  .intro b { color: var(--ink); }
+
+  /* ── schedules ── */
+  .schedule { margin-bottom: 30px; }
+  .sched-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+  .sched-head .tag { font-family: Georgia, serif; font-size: 11px; letter-spacing: 2px; color: var(--brand-dark); text-transform: uppercase; white-space: nowrap; }
+  .sched-head .ttl { font-size: 14px; font-weight: 800; }
+  .sched-head .rule { flex: 1; border-top: 1px solid var(--line); transform: translateY(-3px); }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead th { font-size: 9.5px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; color: var(--ink2); text-align: left; padding: 7px 10px; border-bottom: 2px solid var(--ink); }
+  thead th.r, td.r { text-align: right; }
+  tbody td { padding: 9px 10px; border-bottom: 1px solid var(--line); font-size: 12px; vertical-align: top; }
+  tbody tr:nth-child(even) td { background: var(--wash); }
+  td .sub { font-size: 10.5px; color: var(--ink2); margin-top: 2px; }
+  .mono { font-variant-numeric: tabular-nums; }
+  .badge { display: inline-block; font-size: 9px; font-weight: 700; padding: 1.5px 7px; border-radius: 3px; background: #EEF2F4; color: var(--ink2); letter-spacing: .4px; }
+  .badge.cad { background: rgba(13,148,136,.09); color: var(--brand-dark); }
+
+  /* ── commercial summary ── */
+  .commwrap { display: flex; gap: 24px; align-items: flex-start; }
+  .commleft { flex: 1; }
+  .totalsbox { width: 300px; flex-shrink: 0; }
+  .totalsbox .row { display: flex; justify-content: space-between; padding: 7px 12px; font-size: 12px; border-bottom: 1px solid var(--line); }
+  .totalsbox .row .lbl { color: var(--ink2); }
+  .totalsbox .grand { display: flex; justify-content: space-between; padding: 12px; background: var(--ink); color: #fff; font-weight: 800; font-size: 14px; border-radius: 0 0 6px 6px; }
+  .totalsbox .top { border: 1px solid var(--line); border-bottom: none; border-radius: 6px 6px 0 0; overflow: hidden; }
+  .inwords { font-size: 10.5px; color: var(--ink2); font-style: italic; margin-top: 8px; }
+
+  /* ── signatures ── */
+  .terms { font-size: 11px; color: var(--ink2); line-height: 1.8; }
+  .terms li { margin-left: 16px; margin-bottom: 4px; }
+  .signs { display: grid; grid-template-columns: 1fr 1fr; gap: 60px; margin-top: 44px; }
+  .sig .line { border-top: 1.5px solid var(--ink); padding-top: 8px; font-size: 11px; font-weight: 700; }
+  .sig .who { font-size: 10px; color: var(--ink2); margin-top: 2px; }
+  .sig .spacer { height: 52px; }
+
+  /* ── footer ── */
+  .foot { display: flex; justify-content: space-between; margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 9.5px; color: var(--ink2); }
+  .foot b { color: var(--brand-dark); }
+
+  @media print {
+    body { background: #fff; padding: 0; }
+    .sheet { box-shadow: none; margin: 0; max-width: none; padding: 40px 48px; }
+    .schedule { break-inside: avoid; }
+    @page { size: A4; margin: 14mm 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="sheet">
+
+  <!-- LETTERHEAD -->
+  <div class="lh">
+    <div class="co">
+      <div class="logo">PH</div>
+      <div>
+        <div class="coname">pulse healthcare</div>
+        <div class="coline">hyderabad · +91 98851 64233</div>
+      </div>
+    </div>
+    <div class="doc">
+      <div class="doctype">Service Agreement</div>
+      <div class="docno">Contract No. <b>CN-2026-0147</b></div>
+      <span class="statuschip">Draft — Awaiting Acceptance</span>
+    </div>
+  </div>
+
+  <!-- REFERENCE GRID -->
+  <div class="refgrid">
+    <div class="refcell"><div class="k">Effective Date</div><div class="v">16 Jul 2026</div></div>
+    <div class="refcell"><div class="k">Term</div><div class="v">12 months <small>→ 16 Jul 2027</small></div></div>
+    <div class="refcell"><div class="k">Acceptance</div><div class="v">Sign-off <small>(buyer approves)</small></div></div>
+    <div class="refcell"><div class="k">Currency</div><div class="v">INR (₹)</div></div>
+  </div>
+
+  <!-- PARTIES -->
+  <div class="parties">
+    <div class="party">
+      <div class="role">Service Provider</div>
+      <div class="nm">pulse healthcare</div>
+      <div class="det">hyderabad<br>+91 98851 64233 · billing@pulsehealthcare.in</div>
+    </div>
+    <div class="party">
+      <div class="role">Customer</div>
+      <div class="nm">Mr. multipay</div>
+      <div class="det">IN +91 99998 87765<br>multipay@client.example</div>
+    </div>
+  </div>
+
+  <p class="intro">
+    This Service Agreement sets out the services, commercial terms and payment schedule agreed between
+    <b>pulse healthcare</b> (the "Provider") and <b>Mr. multipay</b> (the "Customer") for the term stated above.
+    The schedules below form an integral part of this Agreement.
+  </p>
+
+  <!-- SCHEDULE A — SERVICES -->
+  <div class="schedule">
+    <div class="sched-head"><span class="tag">Schedule A</span><span class="ttl">Services &amp; Deliverables</span><span class="rule"></span></div>
+    <table>
+      <thead>
+        <tr><th style="width:28px;">#</th><th>Item</th><th style="width:170px;">Service schedule</th><th style="width:110px;" class="r">Visits / Term</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="mono">1</td>
+          <td>
+            <b>multipay test</b> <span class="badge">billing only</span>
+            <div class="sub">Recurring dues — bills on its payment cadence; no service visits are scheduled for this item.</div>
+          </td>
+          <td>—</td>
+          <td class="r">—</td>
+        </tr>
+        <tr>
+          <td class="mono">2</td>
+          <td>
+            <b>HVAC Preventive Maintenance</b>
+            <div class="sub">Filters, belts, coil inspection per visit. Evidence captured via smart form on completion.</div>
+          </td>
+          <td>Every 90 days from start</td>
+          <td class="r mono">4 visits</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- SCHEDULE B — COMMERCIAL TERMS -->
+  <div class="schedule">
+    <div class="sched-head"><span class="tag">Schedule B</span><span class="ttl">Commercial Terms</span><span class="rule"></span></div>
+    <div class="commwrap">
+      <div class="commleft">
+        <table>
+          <thead>
+            <tr><th>Item</th><th style="width:120px;">Payment cadence</th><th style="width:90px;" class="r">Rate</th><th style="width:80px;" class="r">Payments</th><th style="width:100px;" class="r">Amount</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>multipay test</b></td>
+              <td><span class="badge cad">Monthly</span></td>
+              <td class="r mono">1,500.00</td>
+              <td class="r mono">12</td>
+              <td class="r mono">18,000.00</td>
+            </tr>
+            <tr>
+              <td><b>HVAC Preventive Maintenance</b></td>
+              <td><span class="badge">Prepaid</span></td>
+              <td class="r mono">4,000.00</td>
+              <td class="r mono">—</td>
+              <td class="r mono">16,000.00</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="inwords">All rates are exclusive of applicable taxes unless stated otherwise. The Customer may choose a different offered payment cadence at acceptance; the payment schedule regenerates accordingly.</p>
+      </div>
+      <div class="totalsbox">
+        <div class="top">
+          <div class="row"><span class="lbl">Sum total</span><span class="mono">₹34,000.00</span></div>
+          <div class="row"><span class="lbl">Discount</span><span class="mono">− ₹1,000.00</span></div>
+          <div class="row"><span class="lbl">Taxable value</span><span class="mono">₹33,000.00</span></div>
+          <div class="row"><span class="lbl">GST 18%</span><span class="mono">₹5,940.00</span></div>
+        </div>
+        <div class="grand"><span>Total to be paid</span><span class="mono">₹38,940.00</span></div>
+        <div class="inwords">Rupees Thirty-Eight Thousand Nine Hundred Forty Only</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCHEDULE C — PAYMENT SCHEDULE -->
+  <div class="schedule">
+    <div class="sched-head"><span class="tag">Schedule C</span><span class="ttl">Payment Schedule</span><span class="rule"></span></div>
+    <table>
+      <thead>
+        <tr><th style="width:28px;">#</th><th style="width:110px;">Due date</th><th>Description</th><th style="width:110px;" class="r">Amount (₹)</th></tr>
+      </thead>
+      <tbody>
+        <tr><td class="mono">1</td><td class="mono">16 Jul 2026</td><td>On acceptance — HVAC Preventive Maintenance (prepaid) + multipay test, Monthly 1/12</td><td class="r mono">20,650.00</td></tr>
+        <tr><td class="mono">2</td><td class="mono">16 Aug 2026</td><td>multipay test — Monthly 2/12</td><td class="r mono">1,663.00</td></tr>
+        <tr><td class="mono">3</td><td class="mono">15 Sep 2026</td><td>multipay test — Monthly 3/12</td><td class="r mono">1,663.00</td></tr>
+        <tr><td class="mono">4</td><td class="mono">15 Oct 2026</td><td>multipay test — Monthly 4/12</td><td class="r mono">1,663.00</td></tr>
+        <tr><td class="mono">…</td><td class="mono">…</td><td style="color:var(--ink2);">monthly through Jun 2027 (rows 5–11 continue identically)</td><td class="r mono">1,663.00</td></tr>
+        <tr><td class="mono">12</td><td class="mono">11 Jun 2027</td><td>multipay test — Monthly 12/12 (final)</td><td class="r mono">1,662.00</td></tr>
+      </tbody>
+    </table>
+    <p class="inwords" style="margin-top:6px;">Amounts shown are tax-inclusive per instalment and sum exactly to the Total in Schedule B. Dates follow the contract start date; individual dates may be adjusted by mutual agreement before invoicing.</p>
+  </div>
+
+  <!-- TERMS + SIGNATURES -->
+  <div class="schedule">
+    <div class="sched-head"><span class="tag">Terms</span><span class="ttl">Acceptance &amp; General Conditions</span><span class="rule"></span></div>
+    <ol class="terms">
+      <li>This Agreement takes effect upon the Customer's acceptance via the secure review link (sign-off method).</li>
+      <li>Invoices are raised per Schedule C. Payments are due within the grace period stated on each invoice.</li>
+      <li>Service visits are scheduled per Schedule A; completion is evidenced through the Provider's service records.</li>
+      <li>Either party may seek amendment of these terms in writing; amendments apply prospectively.</li>
+    </ol>
+    <div class="signs">
+      <div class="sig"><div class="spacer"></div><div class="line">For pulse healthcare</div><div class="who">Authorised signatory · Name &amp; date</div></div>
+      <div class="sig"><div class="spacer"></div><div class="line">For Mr. multipay</div><div class="who">Accepted via CNAK sign-off · Name &amp; date</div></div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span>Verify authenticity: <b>CNAK-4X7Q2M</b> · contractnest.in/verify</span>
+    <span>CN-2026-0147 · Page 1 of 1 · Generated 16 Jul 2026</span>
+  </div>
+</div>
+
+</body>
+</html>
