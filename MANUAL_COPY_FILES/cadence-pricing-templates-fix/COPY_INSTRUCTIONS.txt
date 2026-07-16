@@ -1,0 +1,100 @@
+═══════════════════════════════════════════════════════════════════
+CADENCE PRICING — BUG FIX: TEMPLATE→CONTRACT PATH + BILLING-ONLY VIEW
+═══════════════════════════════════════════════════════════════════
+Date: 2026-07-16 · Fixes the bug you reported on contract
+c198e099… (multipay block saved 4,200 / events 840×5 / listed under
+"Service"). Requires cadence-pricing-catalog + cadence-pricing-wizard.
+Submodules affected: contractnest-ui (2 files) AND contractnest-api
+(3 files) — FIRST BATCH WITH AN API COPY STEP, see Step 1.
+
+ROOT CAUSE (verified against your live DB)
+  Your contract was instantiated from the signed-off template via the
+  composer fast path in contractnest-api. That path rebuilt each
+  template block into a synthetic candidate with a hard-coded field
+  list — silently DROPPING config (cadence rate card, seller final
+  payment, billingOnly) and recomputing total as rate × qty:
+    - t_contract_blocks.total_price = 4,200 (rate, not the 16,800 term)
+    - persisted config had only {notes, billingOnly, showDescription}
+    - events fell to the generic quarterly split: ceil(365/90) = 5
+      payments of 840 (= 4,200 ÷ 5)
+  The wizard-side math from the previous batch was correct — the
+  server-side instantiation path bypassed it. My earlier decision to
+  defer block-config persistence to step 2c was wrong: templates
+  round-trip through persistence immediately. This batch brings that
+  forward.
+
+WHAT'S FIXED
+ A. contractnest-api / contractComposerService
+    - Template candidates now carry the FULL saved block config
+      (cadence rate card, seller final payment, billingOnly, notes).
+    - Cadence blocks keep their saved payment cadence and their
+      total is the TERM total (4 × 4,200 = 16,800), never rate × qty.
+    - Contract subtotal/tax/grand total compute off term totals.
+ B. contractnest-api / contractEventsDerivationService (+ parity test)
+    - Billing-only blocks no longer generate service events (parity
+      with the UI — this was missing server-side even before cadence).
+    - Cadence billing events: N payments at the rate + the seller-set
+      final payment as its own labeled event; halfyearly/annual map
+      to 182/365 days.
+    - Parity test extended with 3 cadence scenarios — 9/9 scenarios
+      byte-identical (including "billing-only cadence block → exactly
+      4 quarterly payments, no service events").
+ C. contractnest-ui / review page + wizard Review step
+    - Billing-only blocks now group under BILLING, never "Service".
+    - Cadence blocks show "4 payments × ₹4,200 · Quarterly" instead
+      of "Qty: 1", and the per-unit footer reads "₹4,200/qtr".
+    - Review step Subtotal now uses term totals (was showing the
+      bare rate, e.g. ₹4,200 while Grand Total said ₹16,800).
+    - Mixed Billing Schedule row: term totals no longer mislabeled
+      with a "/qtr" suffix (now says "term total").
+
+STEP 1 — Copy (NOTE: two submodules this time)
+─────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\cadence-pricing-templates-fix\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\cadence-pricing-templates-fix\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+
+STEP 2 — Verify
+─────────────────────────────
+cd contractnest-ui
+npx tsc --noEmit
+npx vite-node src/components/contracts/ContractWizard/logic/__parity__/run.ts   # PASS ×5
+cd ..\contractnest-api
+npx vite-node src/__tests__/contractEventsDerivationParity.ts                   # 9/9 byte-identical
+# restart the API dev server so the composer changes take effect
+npm run dev (both api and ui)
+
+⚠ Known tsc note: 2 new instances of the review page's PRE-EXISTING
+  colors.text/textSecondary type mismatch (that file has 55+ already;
+  runtime-safe — the page renders with them today). Every other file:
+  zero new errors by before/after diff.
+
+STEP 3 — Gate-review checklist
+─────────────────────────────
+Re-create the contract from your "verifying block" template (the old
+contract c198e099 has the corrupted values baked in — make a new one):
+- [ ] Block line shows ₹16,800 total with "4 payments × ₹4,200 ·
+      Quarterly" (not Qty: 1 / ₹4,200)
+- [ ] The block appears under BILLING, not Service, with a
+      "billing only — no service visits" tag
+- [ ] Financial Summary: Subtotal ₹16,800 = Grand Total ₹16,800
+- [ ] Saved events: exactly 4 quarterly billing events of ₹4,200
+      each (dates 3 months apart), ZERO service events
+- [ ] DB spot-check: t_contract_blocks.total_price = 16800 and
+      custom_fields.config contains cadencePricing
+- [ ] A NORMAL (non-cadence) template still instantiates exactly as
+      before — blocks, totals, events unchanged
+- [ ] Wizard Review step: Mixed Billing Schedule row says
+      "term total" under ₹16,800 (no misleading "/qtr")
+
+PRODUCTION CHECKLIST (per CLAUDE.md)
+  Transactions: unchanged — same single RPC write path
+  Race conditions: n/a (pure computation fixes)
+  Error handling: composer error paths unchanged
+  Toasts / Loaders: n/a (no new async UI)
+
+NOT IN THIS BATCH
+  Old contract c198e099 keeps its corrupted values (4,200 / 840×5) —
+  delete/recreate it. Buyer-side cadence choice at review remains
+  step 2b/2c.
+═══════════════════════════════════════════════════════════════════
