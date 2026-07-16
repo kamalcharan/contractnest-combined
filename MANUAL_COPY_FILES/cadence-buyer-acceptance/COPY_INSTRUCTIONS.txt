@@ -1,0 +1,137 @@
+═══════════════════════════════════════════════════════════════════
+BATCH: cadence-buyer-acceptance
+Cadence pricing steps 2b + 2c — buyer picks the payment plan at
+sign-off; acceptance reprices the contract server-side.
+═══════════════════════════════════════════════════════════════════
+
+PREREQUISITE ORDER — apply AFTER all previous batches, ending with
+mvp-scope-tnc-gating. (Same chain as before + this one last.)
+
+SUBMODULES AFFECTED: contractnest-ui, contractnest-api,
+contractnest-edge  ← FIRST BATCH WITH AN EDGE CHANGE (see DEPLOY)
+DATABASE: NO migrations, NO RPC/trigger changes.
+
+───────────────────────────────────────────────────────────────────
+WHAT THIS BATCH DOES
+───────────────────────────────────────────────────────────────────
+
+2b — BUYER PICKS THE PAYMENT PLAN (public review page)
+  - Every cadence-priced block shows a "Choose your payment plan"
+    card above the contract document: the enabled cadences from the
+    seller's rate card that fit the term, each with rate, payment
+    count (+ final when the term doesn't divide) and term total.
+    The seller's proposal is preselected and tagged PROPOSED.
+  - Picking another plan LIVE-UPDATES the on-screen contract document
+    (Schedule B rates + Schedule C payment schedule) and shows
+    "With your plan the contract total is ₹X (proposed: ₹Y)".
+  - Shown only while the contract is pending_acceptance and only when
+    the block genuinely has ≥2 fitting options.
+  - Accept sends ONLY {block_id, cycle} picks that differ from the
+    proposal — never any amounts.
+
+2c — ACCEPTANCE-TIME RESOLUTION (API + edge)
+  - API /api/contracts/public/respond forwards cadence_selections
+    (shape-validated) to the contracts edge function.
+  - Edge (new module cadence-acceptance.ts): recomputes EVERYTHING
+    from the STORED rate card — client amounts are never read:
+      · validates CNAK+secret, unresponded grant, pending_acceptance
+      · new rate = seller's per-cadence override ?? card rate
+      · seller's hand-set final applies ONLY to the proposed cadence;
+        a switched cadence uses the standard remainder suggestion
+      · tax backed out of stored totals (total_price ÷ pre-tax term)
+      · block row updated (billing_cycle, unit_price, total_price,
+        custom_fields.config: cadenceSelectedByBuyer /
+        cadenceProposedBySeller audit trail)
+      · contract totals updated by delta (total_value / tax_total /
+        grand_total) and the block's BILLING events regenerated inside
+        computed_events (service events untouched)
+      · THEN the existing respond_to_contract RPC runs — the existing
+        activation trigger materializes the corrected events and
+        generate_contract_invoices reads the corrected totals.
+        No SQL was touched.
+  - A failed reprice BLOCKS the acceptance (400) — accepting at the
+    wrong price is worse than not accepting.
+
+───────────────────────────────────────────────────────────────────
+FILES (5)
+───────────────────────────────────────────────────────────────────
+contractnest-ui/src/pages/contracts/review/index.tsx
+    payment-plan picker card, live-adjusted document/totals,
+    cadence_selections in the accept payload
+contractnest-api/src/controllers/contractController.ts
+    shape-validate + forward cadence_selections
+contractnest-api/src/services/contractService.ts
+    respondToContract payload type + passthrough
+contractnest-edge/supabase/functions/contracts/cadence-acceptance.ts   (NEW)
+    pure repricing/event-regeneration module (no Deno imports — unit
+    parity-checked against the UI math, see VERIFICATION)
+contractnest-edge/supabase/functions/contracts/index.ts
+    handlePublicRespond wires applyCadenceSelections before the RPC
+
+───────────────────────────────────────────────────────────────────
+COPY COMMANDS (PowerShell)
+───────────────────────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\cadence-buyer-acceptance\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\cadence-buyer-acceptance\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\cadence-buyer-acceptance\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+───────────────────────────────────────────────────────────────────
+⚠ DEPLOY — the edge change must reach Supabase before testing 2c
+───────────────────────────────────────────────────────────────────
+The picker (2b) works from the UI copy alone, but ACCEPTING with a
+changed plan needs the deployed edge function. Either:
+  a) Ask Claude to deploy via the Supabase MCP (say "deploy the
+     contracts edge function") — backward-compatible: responds
+     without cadence_selections behave exactly as today; or
+  b) Deploy yourself:  supabase functions deploy contracts
+Note: if the edge isn't deployed yet, accepts with a changed plan
+send cadence_selections that the old function simply IGNORES — the
+contract would accept at the seller's proposal. Deploy first.
+
+───────────────────────────────────────────────────────────────────
+KNOWN LIMITS (MVP, by design)
+───────────────────────────────────────────────────────────────────
+- Sign-off-link acceptance only; auto/payment acceptance keep the
+  seller's proposal (locked decision).
+- Seller's per-event date overrides on the changed block's BILLING
+  events are regenerated on the standard schedule (service events
+  and other blocks keep their dates).
+- Block updates + RPC are separate statements: if the RPC fails
+  after repricing, the contract stays pending with the buyer's plan
+  persisted — a retry accept is consistent; a buyer who abandons
+  leaves the pending contract at their picked plan.
+- Contract-level percent discounts are not re-derived (no discount
+  metadata is persisted today); totals move by exact block deltas.
+
+───────────────────────────────────────────────────────────────────
+TESTING CHECKLIST
+───────────────────────────────────────────────────────────────────
+- [ ] Send a contract with a cadence block (e.g. Quarterly proposed,
+      12-month term) via sign-off link
+- [ ] Buyer page shows the payment-plan card; Quarterly tagged
+      PROPOSED; Monthly/6-Months/Annual listed with correct totals
+- [ ] Picking Monthly updates Schedule B/C in the document + the
+      "with your plan" note (e.g. ₹21,240 vs proposed ₹19,824 @18%)
+- [ ] Accept with Monthly → contract activates; verify in seller app:
+      · contract grand_total = the buyer's plan total
+      · billing events = 12 monthly events (not 4 quarterly)
+      · invoice total matches
+      · block shows cadenceSelectedByBuyer in custom_fields
+- [ ] Accept WITHOUT changing the plan → identical to today
+- [ ] Reject flow unchanged; non-cadence contracts show no picker
+
+───────────────────────────────────────────────────────────────────
+VERIFICATION DONE
+───────────────────────────────────────────────────────────────────
+- Edge↔UI math parity: 55/55 checks across 5 scenarios (cadence
+  switch with tax, remainder final, no-tax annual, seller final
+  non-carry, per-cadence override) — edge module output compared
+  event-by-event against the UI's computeContractEvents
+- tsc --noEmit: ZERO new errors vs baseline
+- Contract Wizard parity harness: PASS ×3
+- API events-derivation parity suite: 9/9
+
+⏸️ WAITING FOR CONFIRMATION — test, then reply
+   "Tested, working - proceed with merge" for Phase 2 commands.
+═══════════════════════════════════════════════════════════════════
