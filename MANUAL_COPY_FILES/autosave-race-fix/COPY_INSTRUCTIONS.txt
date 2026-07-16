@@ -1,0 +1,44 @@
+═══════════════════════════════════════════════════════════════════
+FIX: "UPDATE FAILED" TOAST ON ENTERING BILLING VIEW (autosave race)
+═══════════════════════════════════════════════════════════════════
+Date: 2026-07-16 · Submodule: contractnest-ui ONLY (1 file)
+Requires the contract-document-pdf batch (this file builds on it).
+
+ROOT CAUSE (verified in your live edge-function logs)
+  Entering Billing View triggers a burst of wizard-state changes
+  (totals reporting, cadence total sync). Each change re-armed the
+  2.5s autosave, and the logs show ~7 PUTs in 10 seconds with a mix
+  of 200s and 409s:
+    PUT 200 · PUT 200 · PUT 409 · PUT 200 · PUT 409 · PUT 409 · 200
+  Two races caused this:
+  1. STALE VERSION — the autosave read the draft's version from a
+     React closure; overlapping saves sent yesterday's version and
+     the server correctly answered 409 (optimistic concurrency).
+  2. TOAST LEAK — autosaves run silently, but save A's cleanup
+     un-silenced the toast system while save B was still in flight,
+     so B's 409 surfaced as the "Update Failed" toast you saw.
+  No data was lost — a later save in the burst always landed (200).
+
+THE FIX (all inside ContractWizard/index.tsx)
+  - The draft version now lives in a ref that every save reads at
+    send time — never stale, including final-submit paths.
+  - Autosave is single-flight: if a save is mid-flight when the
+    debounce fires, it re-checks every 1s instead of overlapping.
+  - Result: no version races, no overlap, silent mode can't leak.
+
+STEP 1 — Copy
+─────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\autosave-race-fix\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+STEP 2 — Verify
+─────────────────────────────
+cd contractnest-ui ; npm run dev
+- [ ] Walk a draft from Blocks → Billing View → Events → Review:
+      no "Update Failed" toast at any step
+- [ ] Autosave indicator still cycles saving → saved
+- [ ] Network tab: PUTs to /contracts/{id} are strictly one-at-a-time
+      and all return 200
+- [ ] Final Send still works (uses the same fresh-version ref)
+tsc: zero new errors (before/after diff empty) · parity PASS ×5
+═══════════════════════════════════════════════════════════════════
