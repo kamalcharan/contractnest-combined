@@ -72,7 +72,32 @@ Catalog Studio → Terms & Conditions once — everything downstream
 (auto-include, document Terms section) picks it up automatically.
 
 ───────────────────────────────────────────────────────────────────
-FILES IN THIS BATCH (13, all contractnest-ui)
+UPDATE v2 (founder feedback): gating now covers BOTH catalog systems
+───────────────────────────────────────────────────────────────────
+First round only gated the TypeSelectionStep cards using the LOCAL
+category list — but block types actually load from the DATABASE
+(m_category_details via useBlockCategories), and the main studio at
+/catalog-studio/configure never even shows that step (it deep-links
+to /blocks/new?type=X). Fixed at the source + every entry point:
+
+  src/hooks/queries/useBlockTypes.ts
+      DB-driven categories now carry the MVP flags via applyMvpOverrides
+  src/utils/catalog-studio/categories.ts
+      + MVP_CATEGORY_OVERRIDES map + applyMvpOverrides (single source)
+  src/components/catalog-studio/BlockGrid.tsx
+      Video/Image/Document show a "coming soon" EMPTY STATE (no grid,
+      no add tile) + header badge — /catalog-studio/configure
+  src/components/catalog-studio/CategoryPanel.tsx
+      "Soon" tag + "Coming soon" caption on gated sidebar entries
+  src/pages/catalog-studio/configure.tsx
+      navigateToCreateBlock gates coming-soon types (toast) and
+      redirects text→edit-existing-T&C (toast)
+  src/pages/catalog-studio/blocks/new.tsx
+      direct-URL guard (?type=video → toast + falls back to service);
+      text with an existing T&C → toast + redirect to its edit page
+
+───────────────────────────────────────────────────────────────────
+FILES IN THIS BATCH (19, all contractnest-ui)
 ───────────────────────────────────────────────────────────────────
 src/App.tsx
     + route /onboarding/terms-conditions (VaNi block) + import
