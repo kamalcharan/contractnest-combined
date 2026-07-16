@@ -100,6 +100,29 @@ export const BLOCK_CATEGORIES: BlockCategory[] = [
 ];
 
 // =================================================================
+// MVP GATING OVERLAY
+// Block types usually come from the DATABASE (useBlockCategories →
+// m_category_details), where these product-decision flags don't live.
+// This overlay is applied on top of every category source — DB rows and
+// the fallback above — so the MVP gates hold regardless of origin.
+// =================================================================
+
+export const MVP_CATEGORY_OVERRIDES: Record<string, Partial<BlockCategory>> = {
+  // One Terms & Conditions per business, auto-included in every contract
+  text: { singleton: true, description: 'Terms & Conditions (one per business)' },
+  // Gated until the post-MVP smart canvas
+  video: { comingSoon: true },
+  image: { comingSoon: true },
+  document: { comingSoon: true },
+};
+
+/** Apply the MVP flags to a category from any source (DB or fallback). */
+export const applyMvpOverrides = (category: BlockCategory): BlockCategory => {
+  const override = MVP_CATEGORY_OVERRIDES[category.id];
+  return override ? { ...category, ...override } : category;
+};
+
+// =================================================================
 // HELPER FUNCTIONS
 // =================================================================
 
