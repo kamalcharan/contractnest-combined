@@ -10,5 +10,6 @@ The design contract for the 7-sprint servicing program. Open any HTML in a brows
 | `3-wizardshell-prototype.html` | Sprint 1 (regression ref) | Shell behaviors already shipped |
 | `4-coverage-blocks-redesign.html` | Sprint 1 | Coverage & Assets + Add Service Blocks step UX |
 | `5-landing-playground.html` | Parked (post-Sprint-7) | Landing v4 / KT playground track |
+| `6-cadence-pricing.html` | Sprint 1 insert (pre-1b) | Cyclical pricing: per-cadence rate card in catalog-studio + cadence-aware block card in the wizard — both tabs share state |
 
 Workflow per sprint: **UI → owner review → Migration → owner review → Stitch → owner review**, each delivered as a MANUAL_COPY_FILES batch with acceptance SQL.
