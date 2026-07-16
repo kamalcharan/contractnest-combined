@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cadence Pricing — Catalog Studio + Contract Wizard mock</title>
+<title>Cadence Pricing — Catalog Studio + Contract Wizard mock (v2: anchored base term)</title>
 <style>
   :root {
     --brand: #0D9488;
@@ -19,6 +19,7 @@
     --amber-bg: #FEF3C7;
     --amber-line: #F59E0B;
     --green: #059669;
+    --red: #DC2626;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); padding: 24px; }
@@ -26,7 +27,6 @@
   h1 { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
   .sub { font-size: 13px; color: var(--text2); margin-bottom: 20px; }
 
-  /* Tabs */
   .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
   .tab { padding: 9px 16px; border-radius: 10px; border: 2px solid var(--line); background: var(--card); font-size: 13px; font-weight: 700; cursor: pointer; color: var(--text2); }
   .tab.active { border-color: var(--brand); color: var(--brand); background: var(--brand-08); }
@@ -39,29 +39,37 @@
   .card h3 { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
   .card .hint { font-size: 12px; color: var(--text2); margin-bottom: 14px; }
 
-  /* mode selector (mirrors PricingStep's option cards) */
   .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
   .mode { border: 2px solid var(--line); border-radius: 12px; padding: 13px 14px; cursor: pointer; background: var(--card); }
   .mode.sel { border-color: var(--brand); background: var(--brand-08); }
   .mode .t { font-size: 13px; font-weight: 700; }
   .mode .d { font-size: 11px; color: var(--text2); margin-top: 2px; }
 
-  /* rate card table */
+  /* base term anchor */
+  .basebox { border: 2px solid var(--brand-20); background: var(--brand-08); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; }
+  .basebox .lbl { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--brand); margin-bottom: 8px; }
+  .basebox .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; font-weight: 700; }
+  .basebox input { padding: 7px 10px; border: 1px solid var(--line); border-radius: 9px; font-size: 14px; font-weight: 700; background: var(--card); }
+  .basebox #baseAmount { width: 130px; }
+  .basebox #baseMonths { width: 70px; }
+  .basebox .cap { font-size: 11px; font-weight: 600; color: var(--text2); margin-top: 8px; }
+
   .ratecard { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
-  .rrow { display: grid; grid-template-columns: 26px 120px 150px 1fr auto; align-items: center; gap: 12px; padding: 11px 14px; border-bottom: 1px solid var(--line); background: var(--card); }
+  .rrow { display: grid; grid-template-columns: 26px 110px 140px 1fr; align-items: center; gap: 12px; padding: 11px 14px; border-bottom: 1px solid var(--line); background: var(--card); }
   .rrow:last-child { border-bottom: none; }
   .rrow.off { opacity: .45; background: #FAFAFA; }
   .rrow .cad { font-size: 13px; font-weight: 700; }
   .rrow .per { font-size: 11px; color: var(--text2); }
-  .rrow input[type="number"] { width: 130px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 9px; font-size: 13px; font-weight: 600; }
+  .rrow input[type="number"] { width: 120px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 9px; font-size: 13px; font-weight: 600; }
   .rrow input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--brand); cursor: pointer; }
   .eq { font-size: 11px; color: var(--text2); }
   .eq b { color: var(--text); }
-  .besttag { font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 99px; background: var(--brand-12); color: var(--brand); text-transform: uppercase; letter-spacing: .4px; }
-  .deltatag { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: #F3F4F6; color: var(--text2); }
+  .fairlink { font-size: 10.5px; font-weight: 700; color: var(--brand); cursor: pointer; text-decoration: underline; }
+  .partag { font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 99px; background: var(--brand-12); color: var(--brand); }
+  .premtag { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: var(--amber-bg); color: var(--amber); }
+  .disctag { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 99px; background: rgba(5,150,105,.12); color: var(--green); }
   .notechip { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--brand); background: var(--brand-08); border-radius: 99px; padding: 5px 12px; margin-top: 12px; }
 
-  /* wizard block card */
   .blockcard { border: 1px solid var(--line); border-radius: 14px; background: var(--card); padding: 18px; }
   .bhead { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
   .bicon { width: 40px; height: 40px; border-radius: 10px; background: var(--brand-12); color: var(--brand); display: flex; align-items: center; justify-content: center; font-size: 18px; }
@@ -72,18 +80,24 @@
   .durrow select { padding: 7px 10px; border: 1px solid var(--line); border-radius: 9px; font-size: 13px; font-weight: 600; }
   .seclabel { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--text2); margin-bottom: 8px; }
 
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
   .chip { border: 2px solid var(--line); border-radius: 11px; padding: 9px 14px; background: var(--card); cursor: pointer; text-align: left; }
   .chip.sel { border-color: var(--brand); background: var(--brand-08); }
   .chip .cl { font-size: 12px; font-weight: 800; }
   .chip .cp { font-size: 11px; color: var(--text2); margin-top: 1px; }
   .chip.sel .cp { color: var(--brand); font-weight: 700; }
+  .hiddennote { font-size: 11px; color: var(--text2); margin-bottom: 14px; font-style: italic; }
 
   .totalbox { border: 1px solid var(--brand-20); background: var(--brand-08); border-radius: 12px; padding: 13px 16px; margin-bottom: 12px; }
   .totalbox .line1 { font-size: 12px; font-weight: 600; color: var(--text2); }
   .totalbox .line2 { font-size: 18px; font-weight: 800; color: var(--brand); margin-top: 2px; }
-  .prorate { display: none; align-items: flex-start; gap: 8px; border: 1px solid var(--amber-line); background: var(--amber-bg); color: var(--amber); border-radius: 10px; padding: 9px 12px; font-size: 11.5px; font-weight: 600; margin-bottom: 12px; }
-  .prorate.show { display: flex; }
+
+  .partialbox { display: none; border: 1px solid var(--amber-line); background: var(--amber-bg); border-radius: 10px; padding: 11px 14px; margin-bottom: 12px; }
+  .partialbox.show { display: block; }
+  .partialbox .pb1 { font-size: 11.5px; font-weight: 700; color: var(--amber); margin-bottom: 6px; }
+  .partialbox .pb2 { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: var(--amber); }
+  .partialbox input { width: 110px; padding: 6px 9px; border: 1px solid var(--amber-line); border-radius: 8px; font-size: 13px; font-weight: 700; background: var(--card); }
+  .partialbox .sug { font-size: 10.5px; font-weight: 700; color: var(--amber); cursor: pointer; text-decoration: underline; }
 
   .visits { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text2); border-top: 1px dashed var(--line); padding-top: 12px; margin-top: 2px; }
   .visits b { color: var(--text); }
@@ -104,8 +118,8 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Cadence Pricing (cyclical pricing)</h1>
-  <p class="sub">One service, different rates by payment cadence — e.g. ₹1,600/month · ₹4,500/quarter · ₹17,000/year. Edit rates in tab 1; tab 2 shows what the seller sees in the contract wizard. Both tabs share state.</p>
+  <h1>Cadence Pricing — anchored to a captured base term</h1>
+  <p class="sub">The tenant first declares <b>"Total price ₹X for Y months"</b> (stored — nothing assumes 1 year). Per-cadence rates are then played against that anchor. Tab 2 shows the seller's wizard view. Both tabs share state.</p>
 
   <div class="tabs">
     <button class="tab active" id="tabCat" onclick="showPanel('cat')">1 · Catalog Studio — Pricing step</button>
@@ -116,7 +130,7 @@
   <div class="panel active" id="panel-cat">
     <div class="card">
       <h3>Currency-Specific Pricing — ₹ INR</h3>
-      <p class="hint">Inside the existing per-currency pricing card. Everything above/below this (tax treatment, tax tags, price breakdown) stays exactly as today.</p>
+      <p class="hint">Inside the existing per-currency pricing card. Tax treatment, tax tags, price breakdown all stay exactly as today.</p>
 
       <div class="modes">
         <div class="mode" id="modeOne" onclick="setMode('one')">
@@ -125,19 +139,32 @@
         </div>
         <div class="mode sel" id="modeCadence" onclick="setMode('cadence')">
           <div class="t">Varies by billing cadence</div>
-          <div class="d">Different rate per cadence — buyer pays more monthly, less annually</div>
+          <div class="d">Different rate per cadence — anchored to a base price & term you define</div>
         </div>
       </div>
 
       <div id="oneWrap" style="display:none;">
         <label style="font-size:12px;font-weight:700;color:var(--text2);display:block;margin-bottom:6px;">Price *</label>
         <input type="number" value="4500" style="width:160px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-weight:700;">
-        <p class="hint" style="margin-top:8px;">(unchanged from today — shown here only to prove nothing regresses for normal blocks)</p>
+        <p class="hint" style="margin-top:8px;">(unchanged from today — shown only to prove nothing regresses for normal blocks)</p>
       </div>
 
       <div id="rateWrap">
+        <!-- THE ANCHOR: captured base price + term -->
+        <div class="basebox">
+          <div class="lbl">Base price — the anchor (captured &amp; stored)</div>
+          <div class="row">
+            Total price
+            <input type="number" id="baseAmount" value="18000" oninput="onBaseEdit()">
+            for
+            <input type="number" id="baseMonths" value="12" min="1" oninput="onBaseEdit()">
+            months
+          </div>
+          <div class="cap">Every cadence rate below is compared against this. The cycle timeline is whatever you define here — 3, 6, 12 months — never assumed.</div>
+        </div>
+
         <div class="ratecard" id="ratecard"></div>
-        <div class="notechip">ⓘ Sellers can only pick the cadences you price here — unpriced cadences won't appear in the contract wizard</div>
+        <div class="notechip">ⓘ Sellers can only pick the cadences you price here — and only when the cadence fits the contract's duration</div>
       </div>
     </div>
   </div>
@@ -147,8 +174,9 @@
     <div class="card">
       <div class="durrow">
         <label>Contract duration</label>
-        <select id="durationSel" onchange="renderWizard()">
+        <select id="durationSel" onchange="onDurationChange()">
           <option value="6">6 months</option>
+          <option value="8">8 months</option>
           <option value="12" selected>12 months</option>
           <option value="24">24 months</option>
         </select>
@@ -160,20 +188,27 @@
           <div class="bicon">🔧</div>
           <div>
             <div class="bname">HVAC Preventive Maintenance</div>
-            <div class="bcat">Service · cadence-priced</div>
+            <div class="bcat">Service · cadence-priced · base <span id="baseEcho">₹18,000 / 12 months</span></div>
           </div>
         </div>
 
         <div class="seclabel">Payment cadence</div>
         <div class="chips" id="chips"></div>
+        <div class="hiddennote" id="hiddenNote"></div>
 
         <div class="totalbox">
           <div class="line1" id="payBreakdown">—</div>
           <div class="line2" id="termTotal">—</div>
         </div>
 
-        <div class="prorate" id="prorateNote">
-          ⚠ <span id="prorateText"></span>
+        <!-- leftover months: SELLER decides the final payment -->
+        <div class="partialbox" id="partialBox">
+          <div class="pb1" id="partialTitle"></div>
+          <div class="pb2">
+            Final payment
+            <input type="number" id="partialAmt" oninput="onPartialEdit()">
+            <span class="sug" id="partialSug" onclick="usePartialSuggestion()"></span>
+          </div>
         </div>
 
         <div class="seclabel">Billing preview</div>
@@ -197,18 +232,27 @@
 <script>
 // ── Shared state ─────────────────────────────────────────────
 const CADENCES = [
-  { id: 'monthly',    label: 'Monthly',     per: 'per month',   monthsPerPeriod: 1  },
-  { id: 'quarterly',  label: 'Quarterly',   per: 'per quarter', monthsPerPeriod: 3  },
-  { id: 'halfyearly', label: 'Half-Yearly', per: 'per 6 months',monthsPerPeriod: 6  },
-  { id: 'annual',     label: 'Annual',      per: 'per year',    monthsPerPeriod: 12 },
+  { id: 'monthly',    label: 'Monthly',   per: 'per month',    monthsPerPeriod: 1  },
+  { id: 'quarterly',  label: 'Quarterly', per: 'per quarter',  monthsPerPeriod: 3  },
+  { id: 'halfyearly', label: '6 Months',  per: 'per 6 months', monthsPerPeriod: 6  },
+  { id: 'annual',     label: 'Annual',    per: 'per year',     monthsPerPeriod: 12 },
 ];
 const state = {
   mode: 'cadence',
+  baseAmount: 18000,
+  baseMonths: 12,
   rates: { monthly: { on: true, amount: 1600 }, quarterly: { on: true, amount: 4500 }, halfyearly: { on: false, amount: 0 }, annual: { on: true, amount: 17000 } },
   chosen: 'quarterly',
-  sellPrice: null, // null = follows rate card
+  sellPrice: null,      // null = follows rate card
+  partial: null,        // seller-decided final payment; null = follow suggestion
 };
 const fmt = (n) => '₹' + Math.round(n).toLocaleString('en-IN');
+
+// fair per-period value derived from the captured anchor
+function fairFor(cad) {
+  if (!state.baseAmount || !state.baseMonths) return null;
+  return state.baseAmount * cad.monthsPerPeriod / state.baseMonths;
+}
 
 // ── Tabs ─────────────────────────────────────────────────────
 function showPanel(which) {
@@ -219,7 +263,7 @@ function showPanel(which) {
   if (which === 'wiz') renderWizard();
 }
 
-// ── Panel 1: catalog rate card ───────────────────────────────
+// ── Panel 1 ──────────────────────────────────────────────────
 function setMode(m) {
   state.mode = m;
   document.getElementById('modeOne').classList.toggle('sel', m === 'one');
@@ -228,116 +272,121 @@ function setMode(m) {
   document.getElementById('rateWrap').style.display = m === 'cadence' ? 'block' : 'none';
 }
 
-function yearly(cad) {
+function eqCellHTML(cad) {
   const r = state.rates[cad.id];
-  if (!r.on || !r.amount) return null;
-  return r.amount * (12 / cad.monthsPerPeriod);
+  const fair = fairFor(cad);
+  if (!r.on) return '<span class="eq">—</span>';
+  if (fair === null) return '<span class="eq">set a base price first</span>';
+  let out = `<span class="eq">fair vs base: <b>${fmt(fair)}</b> <span class="fairlink" data-fair="${cad.id}" onclick="useFair('${cad.id}')">use</span></span>`;
+  if (r.amount > 0) {
+    const d = (r.amount - fair) / fair * 100;
+    if (Math.abs(d) < 0.5) out += ' <span class="partag">at par</span>';
+    else if (d > 0) out += ` <span class="premtag">+${d.toFixed(1)}% premium</span>`;
+    else out += ` <span class="disctag">−${Math.abs(d).toFixed(1)}% discount</span>`;
+    out += `<div class="eq" style="margin-top:2px;">= <b>${fmt(r.amount * state.baseMonths / cad.monthsPerPeriod)}</b> over the ${state.baseMonths}-month base term</div>`;
+  }
+  return out;
 }
 
 function renderRateCard() {
   const el = document.getElementById('ratecard');
-  const yearlies = CADENCES.map(yearly).filter((v) => v !== null);
-  const best = yearlies.length ? Math.min(...yearlies) : null;
   el.innerHTML = CADENCES.map((cad) => {
     const r = state.rates[cad.id];
-    const y = yearly(cad);
-    let eq = '<span class="eq">—</span>';
-    if (y !== null) {
-      const isBest = y === best;
-      const delta = isBest ? '' : ` <span class="deltatag">+${(((y - best) / best) * 100).toFixed(1)}% vs best</span>`;
-      eq = `<span class="eq">≈ <b>${fmt(y)}</b>/year${delta}</span>${isBest ? ' <span class="besttag">Best value</span>' : ''}`;
-    }
     return `<div class="rrow ${r.on ? '' : 'off'}" data-cad="${cad.id}">
       <input type="checkbox" ${r.on ? 'checked' : ''} onchange="toggleCad('${cad.id}', this.checked)">
       <div><div class="cad">${cad.label}</div><div class="per">${cad.per}</div></div>
       <input type="number" value="${r.amount || ''}" placeholder="0" ${r.on ? '' : 'disabled'} oninput="setRate('${cad.id}', this.value)">
-      <div>${eq}</div>
-      <div></div>
+      <div class="eqcell">${eqCellHTML(cad)}</div>
     </div>`;
   }).join('');
 }
+function refreshEqCells() {
+  CADENCES.forEach((cad) => {
+    const row = document.querySelector(`.rrow[data-cad="${cad.id}"]`);
+    if (row) row.querySelector('.eqcell').innerHTML = eqCellHTML(cad);
+  });
+}
 function toggleCad(id, on) {
   state.rates[id].on = on;
-  if (!on && state.chosen === id) {
-    const firstOn = CADENCES.find((c) => state.rates[c.id].on && state.rates[c.id].amount > 0);
-    state.chosen = firstOn ? firstOn.id : null;
-  }
+  if (!on && state.chosen === id) state.chosen = null;
   renderRateCard();
 }
 function setRate(id, v) {
   state.rates[id].amount = parseFloat(v) || 0;
-  state.sellPrice = null;
-  // re-render equivalents only (keep focus): cheap approach — update eq cells
-  renderRateCardEqOnly();
+  state.sellPrice = null; state.partial = null;
+  refreshEqCells();
 }
-function renderRateCardEqOnly() {
-  // full rerender loses input focus; recompute eq text in place
-  const yearlies = CADENCES.map(yearly).filter((v) => v !== null);
-  const best = yearlies.length ? Math.min(...yearlies) : null;
-  CADENCES.forEach((cad) => {
-    const row = document.querySelector(`.rrow[data-cad="${cad.id}"]`);
-    if (!row) return;
-    const y = yearly(cad);
-    const cell = row.children[3];
-    if (y === null) { cell.innerHTML = '<span class="eq">—</span>'; return; }
-    const isBest = y === best;
-    const delta = isBest ? '' : ` <span class="deltatag">+${(((y - best) / best) * 100).toFixed(1)}% vs best</span>`;
-    cell.innerHTML = `<span class="eq">≈ <b>${fmt(y)}</b>/year${delta}</span>${isBest ? ' <span class="besttag">Best value</span>' : ''}`;
-  });
+function useFair(id) {
+  const cad = CADENCES.find((c) => c.id === id);
+  const fair = fairFor(cad);
+  if (fair === null) return;
+  state.rates[id].amount = Math.round(fair);
+  renderRateCard();
+}
+function onBaseEdit() {
+  state.baseAmount = parseFloat(document.getElementById('baseAmount').value) || 0;
+  state.baseMonths = parseInt(document.getElementById('baseMonths').value, 10) || 0;
+  refreshEqCells();
 }
 
-// ── Panel 2: wizard ──────────────────────────────────────────
-function periodsFor(cadId, months) {
-  const cad = CADENCES.find((c) => c.id === cadId);
-  return months / cad.monthsPerPeriod; // may be fractional → proration case
+// ── Panel 2 ──────────────────────────────────────────────────
+function offeredCadences(months) {
+  return CADENCES.filter((c) => state.rates[c.id].on && state.rates[c.id].amount > 0 && c.monthsPerPeriod <= months);
 }
 
 function renderWizard() {
   const months = parseInt(document.getElementById('durationSel').value, 10);
-  const offered = CADENCES.filter((c) => state.rates[c.id].on && state.rates[c.id].amount > 0);
+  document.getElementById('baseEcho').textContent = `${fmt(state.baseAmount)} / ${state.baseMonths} months`;
+
+  const offered = offeredCadences(months);
+  const hiddenBecauseTooLong = CADENCES.filter((c) => state.rates[c.id].on && state.rates[c.id].amount > 0 && c.monthsPerPeriod > months);
   if (!offered.some((c) => c.id === state.chosen)) state.chosen = offered[0]?.id || null;
 
-  // chips
   document.getElementById('chips').innerHTML = offered.map((cad) => `
     <button class="chip ${state.chosen === cad.id ? 'sel' : ''}" data-cad="${cad.id}" onclick="chooseCadence('${cad.id}')">
       <div class="cl">${cad.label}</div>
       <div class="cp">${fmt(state.rates[cad.id].amount)} ${cad.per}</div>
     </button>`).join('');
+  document.getElementById('hiddenNote').textContent = hiddenBecauseTooLong.length
+    ? `${hiddenBecauseTooLong.map((c) => c.label).join(', ')} not offered — longer than the ${months}-month contract`
+    : '';
 
-  if (!state.chosen) return;
+  if (!state.chosen) { document.getElementById('payBreakdown').textContent = '—'; document.getElementById('termTotal').textContent = '—'; return; }
   const cad = CADENCES.find((c) => c.id === state.chosen);
   const listRate = state.rates[cad.id].amount;
   const rate = state.sellPrice ?? listRate;
 
-  const p = periodsFor(cad.id, months);
-  const full = Math.floor(p);
-  const frac = p - full;
-  const total = rate * p;
+  const full = Math.floor(months / cad.monthsPerPeriod);
+  const remMonths = months - full * cad.monthsPerPeriod;
+  const suggestion = Math.round(rate * remMonths / cad.monthsPerPeriod);
+  const partial = remMonths > 0 ? (state.partial ?? suggestion) : 0;
+  const total = rate * full + partial;
 
-  // breakdown text
   let breakdown = `${full} payment${full !== 1 ? 's' : ''} × ${fmt(rate)}`;
-  if (frac > 0.001) breakdown += (full > 0 ? ' + ' : '') + `1 prorated payment of ${fmt(rate * frac)}`;
-  if (full === 0 && frac > 0.001) breakdown = `1 prorated payment of ${fmt(rate * frac)}`;
+  if (remMonths > 0) breakdown += ` + final payment ${fmt(partial)}`;
   document.getElementById('payBreakdown').textContent = `${cad.label} · ${breakdown}`;
   document.getElementById('termTotal').textContent = `${fmt(total)} over ${months} months`;
 
-  // proration note
-  const note = document.getElementById('prorateNote');
-  if (frac > 0.001) {
-    note.classList.add('show');
-    document.getElementById('prorateText').textContent =
-      `${months}-month term doesn't divide evenly into ${cad.label.toLowerCase()} payments — final payment prorated to ${fmt(rate * frac)}. (Open decision: prorate like this, or hide cadences longer than the term?)`;
+  // leftover months → seller decides
+  const box = document.getElementById('partialBox');
+  if (remMonths > 0) {
+    box.classList.add('show');
+    document.getElementById('partialTitle').textContent =
+      `${remMonths} month${remMonths > 1 ? 's' : ''} left over after ${full} ${cad.label.toLowerCase()} payment${full !== 1 ? 's' : ''} — you decide the final payment`;
+    const pa = document.getElementById('partialAmt');
+    if (document.activeElement !== pa) pa.value = partial;
+    document.getElementById('partialSug').textContent = `pro-rata suggestion: ${fmt(suggestion)}`;
   } else {
-    note.classList.remove('show');
+    box.classList.remove('show');
   }
 
   // invoice preview
   const invs = [];
   for (let i = 0; i < full; i++) invs.push(`<span class="inv">Inv ${i + 1} · ${fmt(rate)}</span>`);
-  if (frac > 0.001) invs.push(`<span class="inv pro">Inv ${full + 1} · ${fmt(rate * frac)} (prorated)</span>`);
+  if (remMonths > 0) invs.push(`<span class="inv pro">Inv ${full + 1} · ${fmt(partial)} (final, seller-set)</span>`);
   document.getElementById('invRow').innerHTML = invs.join('');
 
-  // selling price + discount chip
+  // selling price + cadence-aware discount chip
   document.getElementById('perLabel').textContent = cad.per.replace('per ', '');
   const sp = document.getElementById('sellPrice');
   if (document.activeElement !== sp) sp.value = rate;
@@ -352,19 +401,33 @@ function renderWizard() {
     chip.classList.remove('show');
   }
 
-  // visits — independent of cadence
   const visits = Math.floor((months * 30.42) / 90);
   document.getElementById('visitsLine').textContent = `${visits} visits`;
 }
 
 function chooseCadence(id) {
   state.chosen = id;
-  state.sellPrice = null; // switching cadence resets to that cadence's list rate
+  state.sellPrice = null;
+  state.partial = null;
+  renderWizard();
+}
+function onDurationChange() {
+  state.partial = null;
   renderWizard();
 }
 function onSellEdit() {
   const v = parseFloat(document.getElementById('sellPrice').value);
   state.sellPrice = isNaN(v) ? null : v;
+  state.partial = null; // suggestion re-derives from the new rate
+  renderWizard();
+}
+function onPartialEdit() {
+  const v = parseFloat(document.getElementById('partialAmt').value);
+  state.partial = isNaN(v) ? null : v;
+  renderWizard();
+}
+function usePartialSuggestion() {
+  state.partial = null;
   renderWizard();
 }
 
