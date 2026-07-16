@@ -1,0 +1,84 @@
+═══════════════════════════════════════════════════════════════════
+FIX — REMOVE THE TWO PRE-EXISTING TSC-BREAKING DEAD FILES
+═══════════════════════════════════════════════════════════════════
+Date: 2026-07-16 · Unrelated to Sprint 1a — a standalone cleanup you
+asked about after seeing the tsc output during Sprint 1a testing.
+Submodule affected: contractnest-ui ONLY
+
+WHAT THIS FIXES
+The "Found 23 errors in 2 files" you've been seeing on every tsc run
+this whole engagement comes from two dead, unused files:
+
+ 1. src/contexts/OnboardingContext.ts → renamed to .tsx
+    Root cause: the file has a .ts extension but contains JSX
+    (`<OnboardingContext.Provider>...</OnboardingContext.Provider>`).
+    TypeScript only parses JSX inside .tsx files, so in a .ts file
+    that JSX gets misread as a generic/type-assertion, cascading into
+    all 5 errors. Confirmed unused — nothing in the app imports
+    OnboardingProvider or useOnboardingContext. Renaming is a
+    mechanical fix; no behavior change since it was never wired in.
+
+ 2. src/services/serviceURLs.addition.ts → deleted
+    This was never a real module — its own header comment says "Add
+    this section to API_ENDPOINTS object in serviceURLs.ts". It's a
+    leftover scratch note of a diff that was already applied for
+    real (serviceURLs.ts already has the CATALOG_STUDIO block).
+    Confirmed nothing imports this file. Deleting it is safe.
+
+⚠️  IMPORTANT DISCOVERY — READ BEFORE YOU PANIC AT THE NEXT TSC RUN
+With these two files gone, `tsc --noEmit` now reports ~1500 errors
+across ~267 OTHER files. This is NOT something this fix caused — those
+two files' catastrophic parse errors (especially the unterminated JSX
+in OnboardingContext.ts) were apparently suppressing TypeScript's
+ability to report semantic errors across the rest of the project.
+Removing them didn't break anything; it revealed a pre-existing
+backlog that was always there but invisible.
+
+Per your decision: we are shipping ONLY this 2-file fix now and
+parking the 267-file backlog as a separately tracked cleanup effort —
+it predates this session, it's unrelated to Sprint 1a, and none of it
+touches code we've shipped (the Sprint 1a wizard files that DO appear
+in that list — e.g. ContractWizard/index.tsx referencing a stale
+ASSET_STEP_GROUPS, a missing colors.utility.border property — are
+pre-existing type mismatches from before this session, not anything
+introduced by Sprint 1a).
+
+STEP 1 — Copy
+─────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\fix-tsc-dead-files\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Remove-Item "contractnest-ui\src\services\serviceURLs.addition.ts" -ErrorAction SilentlyContinue
+Remove-Item "contractnest-ui\src\contexts\OnboardingContext.ts" -ErrorAction SilentlyContinue
+
+STEP 2 — Verify
+─────────────────────────────
+cd contractnest-ui
+npx tsc --noEmit
+# Expect: no errors from OnboardingContext.ts or serviceURLs.addition.ts
+# (those files no longer exist). You WILL see a large number of other
+# errors now surfaced from elsewhere in the codebase — that's the
+# newly-revealed pre-existing backlog described above, not a
+# regression from this batch or from Sprint 1a.
+npm run dev
+
+STEP 3 — Gate-review checklist
+─────────────────────────────
+- [ ] App still starts and runs normally (this is a dead-code removal,
+      nothing user-facing should change)
+- [ ] No feature that used to work is now broken (onboarding flow
+      wasn't using this context — confirm nothing regresses there)
+
+PRODUCTION CHECKLIST (per CLAUDE.md)
+  Transactions: n/a (dead code removal, no runtime behavior change)
+  Race conditions: n/a
+  Error handling: n/a
+  Toasts: n/a
+  Loaders: n/a
+
+NOT IN THIS BATCH
+  The newly-surfaced ~267-file / ~1500-error TypeScript backlog is
+  explicitly NOT addressed here, per your decision to park it. When
+  you're ready to tackle it, we should treat it as its own tracked
+  effort (triage dead vs. live code, then fix in batches) — separate
+  from the Sprint 1 program.
+═══════════════════════════════════════════════════════════════════
