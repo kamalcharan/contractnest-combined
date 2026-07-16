@@ -1,0 +1,157 @@
+═══════════════════════════════════════════════════════════════════
+BATCH: mvp-scope-tnc-gating
+MVP scope reduction — singleton Terms & Conditions + block-type gating
++ contract document shown on-screen (review = PDF format)
+═══════════════════════════════════════════════════════════════════
+
+PREREQUISITE ORDER — apply AFTER all previous batches, in this order:
+  bbb-foundation → wizard-logic-extraction → wizard-shell-phase2 →
+  sprint1a-authoring-ux → asset-selection-v2 → asset-selection-v3 →
+  fix-tsc-dead-files (incl. the two file DELETIONS listed in its
+  instructions) → cadence-pricing-catalog → cadence-pricing-wizard →
+  cadence-pricing-templates-fix → preview-tax-discount-fix →
+  contract-document-pdf → autosave-race-fix → THIS BATCH
+
+SUBMODULES AFFECTED: contractnest-ui ONLY (no API, no edge changes)
+DATABASE: NO changes, NO seeding done (see "T&C seeding" note below)
+
+───────────────────────────────────────────────────────────────────
+WHAT THIS BATCH DOES
+───────────────────────────────────────────────────────────────────
+
+1) SINGLETON TERMS & CONDITIONS (Catalog Studio)
+   - Text block category renamed to intent: "Terms & Conditions
+     (one per business)" and flagged singleton.
+   - Creating a second text block is intercepted: the wizard opens the
+     tenant's EXISTING T&C in edit mode instead (info toast explains).
+
+2) COMING-SOON GATING (Catalog Studio)
+   - Video / Image / Document block types show a "Coming soon" badge,
+     dimmed and non-clickable. Post-MVP smart canvas replaces them.
+
+3) T&C IN VANI ONBOARDING (new step)
+   - New step at /onboarding/terms-conditions, between pricing-review
+     and equipment-confirm (both persona) / lov-setup (seller persona).
+   - VaNi presents editable boilerplate in RichTextEditor; found
+     existing T&C is loaded instead of the boilerplate (reused tenants).
+   - Saving creates/updates the singleton text block through the same
+     catalog mutations Catalog Studio uses (toasts included).
+   - Skippable — "Skip for now" defers to Catalog Studio (lazy seed).
+
+4) AUTO-INCLUDE T&C IN EVERY CONTRACT & TEMPLATE (Contract Wizard)
+   - On wizard open (contracts AND templates), the tenant's T&C text
+     block is appended automatically at ₹0 (no billing, no events);
+     re-appended if a template/draft predating this rule lacks it.
+   - RFQ mode: auto-included T&C is stripped (RFQs carry no doc terms).
+   - Its content renders as the Terms section of the contract document.
+
+5) FLYBY RESTRICTED TO SERVICES (Contract Wizard)
+   - Ad-hoc FlyBy block creation in Add Service Blocks now offers ONLY
+     the Service type (text/document FlyBys could break the document
+     structure).
+
+6) ON-SCREEN REVIEW = CONTRACT DOCUMENT (owner decision #4: "same")
+   - Wizard Review & Send: the old paper preview is replaced by the
+     professional ContractDocument (exactly what the PDF exports).
+     Self/Client toggle retired with the paper; RFQ keeps old preview.
+   - Buyer review page (/contract-review): same — document renders
+     visibly; legacy paper kept only as fallback if document data
+     can't be assembled. PDF export captures the visible document.
+
+───────────────────────────────────────────────────────────────────
+T&C SEEDING NOTE (tenant 'gotikar@yahoo.com')
+───────────────────────────────────────────────────────────────────
+No direct DB write was made. 'gotikar@yahoo.com' does NOT exist in
+auth.users; the closest tenant is "BBB" with business_email
+ghotikar@yahooo.com (tenant dd194710-92b4-4110-80eb-0b492a0d2c1f).
+Rather than guessing a DB insert, seeding is LAZY via the UI: the
+tenant gets the T&C either through the new onboarding step or on the
+first "+ text block" click in Catalog Studio (which opens the
+boilerplate-free wizard). If you want, log in as that tenant and use
+Catalog Studio → Terms & Conditions once — everything downstream
+(auto-include, document Terms section) picks it up automatically.
+
+───────────────────────────────────────────────────────────────────
+FILES IN THIS BATCH (13, all contractnest-ui)
+───────────────────────────────────────────────────────────────────
+src/App.tsx
+    + route /onboarding/terms-conditions (VaNi block) + import
+src/pages/onboarding/index.tsx
+    + pricing-review / terms-conditions / equipment-confirm in the
+      resume map (getStepPath)
+src/pages/onboarding/steps/TermsConditionsStep.tsx        (NEW)
+    the onboarding T&C step (boilerplate, existing-block load,
+    create/update via catalog mutations, skip, persona routing)
+src/pages/onboarding/steps/Screen8APricingStep.tsx
+    confirm/skip now navigate to terms-conditions (persona branch
+    moved into the new step)
+src/utils/onboarding/completeVaniStep.ts
+    + 'terms-conditions' in the VaniStepId union
+src/types/catalogStudio.ts
+    BlockCategory += comingSoon?, singleton?
+src/utils/catalog-studio/categories.ts
+    text → singleton + renamed description; video/image/document →
+    comingSoon
+src/components/catalog-studio/BlockWizard/steps/TypeSelectionStep.tsx
+    gated cards (dimmed, badge, click-guarded)
+src/pages/catalog-studio/blocks.tsx
+    singleton intercept: create-text redirects to editing existing T&C
+src/components/contracts/ContractWizard/index.tsx
+    auto-include T&C effect (+ RFQ strip)
+src/components/contracts/ContractWizard/steps/ServiceBlocksStep.tsx
+    flyByTypes={['service']}
+src/components/contracts/ContractWizard/steps/ReviewSendStep.tsx
+    visible ContractDocument replaces paper (contract mode)
+src/pages/contracts/review/index.tsx
+    visible ContractDocument replaces paper (fallback kept)
+
+───────────────────────────────────────────────────────────────────
+COPY COMMANDS (PowerShell)
+───────────────────────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\mvp-scope-tnc-gating\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Write-Host "✅ mvp-scope-tnc-gating copied!" -ForegroundColor Green
+
+Then: cd contractnest-ui && npm run dev   (hard refresh: Ctrl+F5)
+
+───────────────────────────────────────────────────────────────────
+TESTING CHECKLIST
+───────────────────────────────────────────────────────────────────
+Catalog Studio:
+- [ ] Video/Image/Document cards show "Coming soon", not clickable
+- [ ] "+ block" → Text with an existing T&C → opens EDIT of that block
+      with info toast (no second text block possible)
+- [ ] Text card description reads "Terms & Conditions (one per business)"
+
+Onboarding (fresh tenant, seller or both persona):
+- [ ] pricing-review → Continue lands on Terms & Conditions step
+- [ ] Boilerplate loads; edit + "Use these terms" creates the block
+      (toast) and continues (both → equipment-confirm, seller → lov-setup)
+- [ ] "Skip for now" continues without creating anything
+- [ ] Re-entering the step later shows EXISTING badge + saved content
+
+Contract Wizard:
+- [ ] New contract: T&C appears in selected blocks automatically at ₹0
+- [ ] Billing View / events: T&C contributes nothing (no price, no events)
+- [ ] Review & Send shows the professional document on-screen; PDF
+      download matches it exactly
+- [ ] Template create: T&C auto-included; instantiating that template
+      carries it
+- [ ] RFQ: no T&C block, old RFQ preview + PDF still work
+- [ ] FlyBy panel in Add Service Blocks offers ONLY Service
+
+Buyer review page (/contract-review?cnak=...&secret=...):
+- [ ] Shows the professional document (Terms section = tenant's T&C)
+- [ ] PDF download matches; Accept / Reject unaffected
+
+───────────────────────────────────────────────────────────────────
+VERIFICATION DONE ON THIS BATCH
+───────────────────────────────────────────────────────────────────
+- tsc --noEmit: ZERO new errors vs pre-batch baseline (normalized diff
+  identical; the ~1500 pre-existing project errors remain parked)
+- Contract Wizard logic parity harness: PASS ×5 runs
+- No API/edge changes → API parity suite unaffected (9/9 as shipped)
+
+⏸️ WAITING FOR CONFIRMATION — test locally, then reply
+   "Tested, working - proceed with merge" for Phase 2 commands.
+═══════════════════════════════════════════════════════════════════
