@@ -1,0 +1,1474 @@
+// src/components/contracts/ContractWizard/steps/BillingViewStep.tsx
+// Step 8: Billing View - 3-column layout
+// Column 1: Billing config summary | Column 2: Read-only pricing cards | Column 3: Payment Schedule + Summary
+
+import React, { useMemo, useEffect, useCallback } from 'react';
+import {
+  Calendar,
+  CheckCircle2,
+  DollarSign,
+  Receipt,
+  CreditCard,
+  CalendarRange,
+  Minus,
+  Plus,
+  Info,
+  ListChecks,
+  Lock,
+  Shuffle,
+  Zap,
+  Percent,
+} from 'lucide-react';
+import * as LucideIcons from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
+import { getCurrencySymbol } from '@/utils/constants/currencies';
+import { ConfigurableBlock, CYCLE_OPTIONS } from '@/components/catalog-studio/BlockCardConfigurable';
+import { BillingCycleType } from './BillingCycleStep';
+import { categoryHasPricing } from '@/utils/catalog-studio/categories';
+import { FLYBY_TYPE_CONFIG } from '@/components/catalog-studio/FlyByBlockCard';
+import { cadenceTermMath, getCadenceCycle } from '@/utils/catalog-studio/cadencePricing';
+
+export interface BillingViewStepProps {
+  selectedBlocks: ConfigurableBlock[];
+  currency: string;
+  billingCycleType: BillingCycleType;
+  onBlocksChange: (blocks: ConfigurableBlock[]) => void;
+  // Tax (kept for backward compat, no longer used for contract-level tax)
+  selectedTaxRateIds: string[];
+  onTaxRateIdsChange: (ids: string[]) => void;
+  onTotalsChange?: (totals: {
+    baseSubtotal?: number;
+    taxTotal: number;
+    grandTotal: number;
+    discountTotal?: number;
+    taxBreakdown: Array<{ tax_rate_id: string; name: string; rate: number; amount: number }>;
+  }) => void;
+  // Sprint 1: contract-level discount (% or absolute), applied BEFORE tax and
+  // loaded uniformly across line items internally
+  discountType?: 'percent' | 'amount' | null;
+  discountValue?: number;
+  onDiscountChange?: (type: 'percent' | 'amount' | null, value: number) => void;
+  // Payment
+  paymentMode: 'prepaid' | 'emi' | 'defined';
+  onPaymentModeChange: (mode: 'prepaid' | 'emi' | 'defined') => void;
+  emiMonths: number;
+  onEmiMonthsChange: (months: number) => void;
+  perBlockPaymentType: Record<string, 'prepaid' | 'postpaid'>;
+  onPerBlockPaymentTypeChange: (types: Record<string, 'prepaid' | 'postpaid'>) => void;
+  // Contract info
+  contractDuration?: number;
+}
+
+// Format currency
+const formatCurrency = (amount: number, currency: string = 'INR', decimals = 2) => {
+  const symbol = getCurrencySymbol(currency);
+  return `${symbol}${amount.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+};
+
+// Get cycle label from id (cadence-pricing cycles included)
+const getCycleLabel = (cycleId: string): string => {
+  const cadence = getCadenceCycle(cycleId);
+  if (cadence) return cadence.label;
+  const cycle = CYCLE_OPTIONS.find((c) => c.id === cycleId);
+  return cycle?.label || cycleId || '-';
+};
+
+// Helper to get Lucide icon component by name
+const getIconComponent = (iconName: string) => {
+  const iconsMap = LucideIcons as unknown as Record<
+    string,
+    React.ComponentType<{ className?: string; size?: number; style?: React.CSSProperties }>
+  >;
+  return iconsMap[iconName] || LucideIcons.Package;
+};
+
+// Billing cycle option data (reused from BillingCycleStep)
+const BILLING_CYCLE_OPTIONS = [
+  {
+    id: 'unified' as const,
+    title: 'Unified Cycle',
+    description: 'All services billed on the same schedule',
+    icon: Calendar,
+    benefits: ['Simpler invoicing', 'Predictable billing', 'Easier reconciliation'],
+    visualExample: { labels: ['M', 'M', 'M'], description: 'All Monthly' },
+  },
+  {
+    id: 'mixed' as const,
+    title: 'Mixed Cycles',
+    description: 'Each service has its own billing schedule',
+    icon: Shuffle,
+    benefits: ['Maximum flexibility', 'Mix recurring & one-time', 'Custom per service'],
+    visualExample: { labels: ['M', 'Q', '1x'], description: 'Monthly, Quarterly, One-time' },
+  },
+];
+
+const BillingViewStep: React.FC<BillingViewStepProps> = ({
+  selectedBlocks,
+  currency,
+  billingCycleType,
+  onBlocksChange,
+  selectedTaxRateIds,
+  onTaxRateIdsChange,
+  onTotalsChange,
+  paymentMode,
+  onPaymentModeChange,
+  emiMonths,
+  onEmiMonthsChange,
+  perBlockPaymentType,
+  onPerBlockPaymentTypeChange,
+  contractDuration = 12,
+  discountType = null,
+  discountValue = 0,
+  onDiscountChange,
+}) => {
+  const { isDarkMode, currentTheme } = useTheme();
+  const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
+
+  // Filter to only billable blocks (categories that have pricing)
+  const billableBlocks = useMemo(
+    () => selectedBlocks.filter((b) => categoryHasPricing(b.categoryId || '')),
+    [selectedBlocks]
+  );
+
+  // EMI and cadence pricing are competing answers to "how is this amount
+  // spread over time": EMI is an equal split of the grand total, a cadence
+  // rate card is the seller's own priced installment offer (with buyer choice
+  // at acceptance). Mixing them breaks money — a buyer's cadence switch
+  // reprices totals but contract-level EMI events would not regenerate.
+  const hasCadenceBlocks = useMemo(
+    () => selectedBlocks.some((b) => Boolean((b.config as any)?.cadencePricing)),
+    [selectedBlocks]
+  );
+
+  const isMixed = billingCycleType === 'mixed';
+
+  // Conditional availability for payment schedule options
+  const allPrepaid = useMemo(
+    () => billableBlocks.length > 0 && billableBlocks.every((b) => b.cycle === 'prepaid'),
+    [billableBlocks]
+  );
+  const allPostpaid = useMemo(
+    () => billableBlocks.length > 0 && billableBlocks.every((b) => b.cycle === 'postpaid'),
+    [billableBlocks]
+  );
+
+  // "As Defined" breakup — group blocks by cycle type
+  const definedBreakup = useMemo(() => {
+    const groups: Record<string, { total: number; count: number }> = {};
+    billableBlocks.forEach((block) => {
+      const cycle = block.cycle || 'prepaid';
+      if (!groups[cycle]) groups[cycle] = { total: 0, count: 0 };
+      groups[cycle].total += block.totalPrice;
+      groups[cycle].count += 1;
+    });
+
+    const order = ['prepaid', 'monthly', 'fortnightly', 'quarterly', 'halfyearly', 'annual', 'custom', 'postpaid'];
+    return order
+      .filter((cycle) => groups[cycle])
+      .map((cycle) => ({
+        cycle,
+        label:
+          cycle === 'prepaid' ? 'On Acceptance (Prepaid)'
+          : cycle === 'postpaid' ? 'On Completion (Postpaid)'
+          : getCycleLabel(cycle),
+        total: groups[cycle].total,
+        blockCount: groups[cycle].count,
+        isRecurring: !['prepaid', 'postpaid'].includes(cycle),
+      }));
+  }, [billableBlocks]);
+
+  // Calculate totals from per-block taxes + aggregate tax breakup by tax name
+  // Money multiplier for a block. Cadence-priced blocks bill by (payments ×
+  // rate + seller-set final) derived from the contract term — NOT by the
+  // visit quantity — so their multiplier is termTotal/rate. Everything else
+  // keeps qty (or 1 when unlimited).
+  const billingQty = useCallback((block: ConfigurableBlock): number => {
+    const cadDef = block.config?.cadencePricing ? getCadenceCycle(block.cycle) : undefined;
+    if (cadDef) {
+      const ep = block.config?.customPrice ?? block.price;
+      if (!ep || ep <= 0) return 0;
+      const m = cadenceTermMath(ep, Math.max(1, contractDuration || 12), cadDef.monthsPerPeriod, block.config?.cadenceFinalPayment);
+      return m.termTotal / ep;
+    }
+    return block.unlimited ? 1 : block.quantity;
+  }, [contractDuration]);
+
+  const totals = useMemo(() => {
+    let baseSubtotal = 0;
+    let totalTax = 0;
+    let grandTotal = 0;
+    const taxMap: Record<string, { name: string; rate: number; amount: number; tax_rate_id: string }> = {};
+
+    billableBlocks.forEach((block) => {
+      const ep = block.config?.customPrice ?? block.price;
+      const qty = billingQty(block);
+      const taxRate = block.taxRate || 0;
+
+      if (block.isFlyBy && taxRate === 0) {
+        baseSubtotal += ep * qty;
+        grandTotal += block.totalPrice;
+      } else if (taxRate === 0) {
+        baseSubtotal += ep * qty;
+        grandTotal += block.totalPrice;
+      } else if (block.taxInclusion === 'inclusive') {
+        const total = ep * qty;
+        const base = total / (1 + taxRate / 100);
+        baseSubtotal += base;
+        totalTax += total - base;
+        grandTotal += block.totalPrice;
+
+        // Aggregate per-tax lines
+        if (block.taxes?.length) {
+          block.taxes.forEach((tax) => {
+            const perTaxAmt = (base * Number(tax.rate)) / 100;
+            const key = tax.id || tax.name || `tax-${tax.rate}`;
+            if (!taxMap[key]) taxMap[key] = { name: tax.name || 'Tax', rate: Number(tax.rate), amount: 0, tax_rate_id: tax.id || '' };
+            taxMap[key].amount += perTaxAmt;
+          });
+        }
+      } else {
+        // exclusive
+        const base = ep * qty;
+        baseSubtotal += base;
+        totalTax += base * taxRate / 100;
+        grandTotal += block.totalPrice;
+
+        // Aggregate per-tax lines
+        if (block.taxes?.length) {
+          block.taxes.forEach((tax) => {
+            const perTaxAmt = (base * Number(tax.rate)) / 100;
+            const key = tax.id || tax.name || `tax-${tax.rate}`;
+            if (!taxMap[key]) taxMap[key] = { name: tax.name || 'Tax', rate: Number(tax.rate), amount: 0, tax_rate_id: tax.id || '' };
+            taxMap[key].amount += perTaxAmt;
+          });
+        }
+      }
+    });
+
+    // ── Sprint 1: contract-level discount, applied BEFORE tax ────────
+    // Uniform (pro-rata) loading across line items == one proportional factor,
+    // since every block's tax is linear in its base. Exact by construction.
+    const rawDiscount = discountType === 'percent'
+      ? baseSubtotal * (Math.max(0, discountValue) / 100)
+      : discountType === 'amount'
+        ? Math.max(0, discountValue)
+        : 0;
+    const discountTotal = Math.min(rawDiscount, baseSubtotal);
+    const factor = baseSubtotal > 0 ? (baseSubtotal - discountTotal) / baseSubtotal : 1;
+
+    const netTax = totalTax * factor;
+    const netGrand = grandTotal * factor;
+    const emiInstallment = emiMonths > 0 ? netGrand / emiMonths : netGrand;
+
+    // Build sorted tax breakup array (net of discount)
+    const taxBreakup = Object.values(taxMap).map((t) => ({
+      ...t,
+      amount: Math.round(t.amount * factor * 100) / 100,
+    }));
+
+    return {
+      baseSubtotal: Math.round(baseSubtotal * 100) / 100,          // gross (pre-discount) — "sum total"
+      discountTotal: Math.round(discountTotal * 100) / 100,
+      taxableSubtotal: Math.round((baseSubtotal - discountTotal) * 100) / 100,
+      totalTax: Math.round(netTax * 100) / 100,                    // net of discount
+      grandTotal: Math.round(netGrand * 100) / 100,                // "total to be paid"
+      grossGrandTotal: Math.round(grandTotal * 100) / 100,
+      discountFactor: factor,
+      blockCount: billableBlocks.length,
+      emiInstallment: Math.round(emiInstallment * 100) / 100,
+      taxBreakup,
+    };
+  }, [billableBlocks, emiMonths, discountType, discountValue, billingQty]);
+
+  // Report computed totals to parent wizard state
+  useEffect(() => {
+    if (!onTotalsChange) return;
+    onTotalsChange({
+      baseSubtotal: totals.baseSubtotal,
+      taxTotal: totals.totalTax,
+      grandTotal: totals.grandTotal,
+      discountTotal: totals.discountTotal,
+      taxBreakdown: totals.taxBreakup.map((t) => ({
+        tax_rate_id: t.tax_rate_id,
+        name: t.name,
+        rate: t.rate,
+        amount: t.amount,
+      })),
+    });
+  }, [totals.baseSubtotal, totals.totalTax, totals.grandTotal, totals.discountTotal, totals.taxBreakup, onTotalsChange]);
+
+  // 'prepaid' is the invalid default for mixed cycles — it bills everything
+  // upfront as ONE lump event instead of per-block. When a contract enters
+  // mixed mode still carrying that default, seed it to 'defined' (per-block
+  // schedule → 1 upfront + N recurring events). We only override 'prepaid':
+  // 'defined' and 'emi' are both valid, user-selectable choices in mixed mode
+  // (see the selector in the mixed branch below), so leave those alone.
+  useEffect(() => {
+    if (isMixed && paymentMode === 'prepaid') {
+      onPaymentModeChange('defined');
+    }
+  }, [isMixed, paymentMode, onPaymentModeChange]);
+
+  // Drafts/templates that picked EMI before a cadence block was added fall
+  // back to per-block billing — the cadence IS the installment plan.
+  useEffect(() => {
+    if (hasCadenceBlocks && paymentMode === 'emi') {
+      onPaymentModeChange('defined');
+    }
+  }, [hasCadenceBlocks, paymentMode, onPaymentModeChange]);
+
+  // Handle per-block payment type change
+  const handleBlockPaymentTypeChange = useCallback(
+    (blockId: string, type: 'prepaid' | 'postpaid') => {
+      onPerBlockPaymentTypeChange({
+        ...perBlockPaymentType,
+        [blockId]: type,
+      });
+    },
+    [perBlockPaymentType, onPerBlockPaymentTypeChange]
+  );
+
+  // Get the selected billing cycle option
+  const selectedCycleOption = BILLING_CYCLE_OPTIONS.find((o) => o.id === billingCycleType);
+
+  return (
+    <div
+      className="h-full flex flex-col"
+      style={{ backgroundColor: colors.utility.primaryBackground }}
+    >
+      {/* In-page Header */}
+      <div className="text-center pt-6 pb-4 px-4 flex-shrink-0">
+        <h2
+          className="text-2xl font-bold mb-2"
+          style={{ color: colors.utility.primaryText }}
+        >
+          Billing View
+        </h2>
+        <p
+          className="text-sm"
+          style={{ color: colors.utility.secondaryText }}
+        >
+          Review pricing breakdown and configure payment schedule
+        </p>
+      </div>
+
+      {/* 3-Column Layout */}
+      <div className="flex-1 flex gap-4 px-4 pb-4 min-h-0">
+        {/* Column 1: Billing Configuration Summary */}
+        <div className="w-[250px] flex-shrink-0">
+          <div
+            className="rounded-xl border overflow-hidden"
+            style={{
+              backgroundColor: colors.utility.secondaryBackground,
+              borderColor: `${colors.utility.primaryText}10`,
+            }}
+          >
+            {/* Column Header */}
+            <div
+              className="p-3 border-b flex items-center gap-2"
+              style={{ borderColor: `${colors.utility.primaryText}10` }}
+            >
+              <Calendar className="w-4 h-4" style={{ color: colors.brand.primary }} />
+              <span
+                className="text-sm font-semibold"
+                style={{ color: colors.utility.primaryText }}
+              >
+                Billing Config
+              </span>
+            </div>
+
+            {/* Selected Cycle Card */}
+            {selectedCycleOption && (
+              <div className="p-4">
+                <div
+                  className="p-4 rounded-xl border-2"
+                  style={{
+                    backgroundColor: `${colors.brand.primary}08`,
+                    borderColor: colors.brand.primary,
+                  }}
+                >
+                  {/* Icon */}
+                  <div
+                    className="w-10 h-10 rounded-lg flex items-center justify-center mb-3"
+                    style={{ backgroundColor: colors.brand.primary }}
+                  >
+                    <selectedCycleOption.icon className="w-5 h-5 text-white" />
+                  </div>
+
+                  {/* Title */}
+                  <h4
+                    className="text-sm font-bold mb-1"
+                    style={{ color: colors.utility.primaryText }}
+                  >
+                    {selectedCycleOption.title}
+                  </h4>
+                  <p
+                    className="text-xs mb-3"
+                    style={{ color: colors.utility.secondaryText }}
+                  >
+                    {selectedCycleOption.description}
+                  </p>
+
+                  {/* Visual Example */}
+                  <div
+                    className="flex items-center gap-1.5 mb-3 p-2 rounded-lg"
+                    style={{ backgroundColor: `${colors.utility.primaryText}05` }}
+                  >
+                    {selectedCycleOption.visualExample.labels.map((label, i) => (
+                      <div
+                        key={i}
+                        className="w-7 h-7 rounded-md flex items-center justify-center text-[10px] font-bold"
+                        style={{
+                          backgroundColor: colors.brand.primary,
+                          color: 'white',
+                        }}
+                      >
+                        {label}
+                      </div>
+                    ))}
+                    <span
+                      className="text-[10px] ml-1"
+                      style={{ color: colors.utility.secondaryText }}
+                    >
+                      {selectedCycleOption.visualExample.description}
+                    </span>
+                  </div>
+
+                  {/* Benefits */}
+                  <div className="space-y-1.5">
+                    {selectedCycleOption.benefits.map((benefit, i) => (
+                      <div key={i} className="flex items-center gap-1.5">
+                        <CheckCircle2
+                          className="w-3.5 h-3.5 flex-shrink-0"
+                          style={{ color: colors.semantic.success }}
+                        />
+                        <span
+                          className="text-[11px]"
+                          style={{ color: colors.utility.secondaryText }}
+                        >
+                          {benefit}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Currency Info */}
+                <div
+                  className="mt-3 p-3 rounded-lg flex items-center gap-2"
+                  style={{ backgroundColor: `${colors.utility.primaryText}05` }}
+                >
+                  <DollarSign className="w-4 h-4" style={{ color: colors.brand.primary }} />
+                  <div>
+                    <span
+                      className="text-xs font-medium block"
+                      style={{ color: colors.utility.primaryText }}
+                    >
+                      Currency
+                    </span>
+                    <span
+                      className="text-[11px]"
+                      style={{ color: colors.utility.secondaryText }}
+                    >
+                      {currency} ({getCurrencySymbol(currency)})
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Column 2: Read-Only Pricing Cards */}
+        <div
+          className="flex-1 flex flex-col rounded-xl border overflow-hidden min-h-0"
+          style={{
+            backgroundColor: colors.utility.secondaryBackground,
+            borderColor: `${colors.utility.primaryText}10`,
+          }}
+        >
+          {/* Header */}
+          <div
+            className="p-3 border-b flex items-center justify-between flex-shrink-0"
+            style={{ borderColor: `${colors.utility.primaryText}10` }}
+          >
+            <div className="flex items-center gap-2">
+              <Receipt className="w-4 h-4" style={{ color: colors.brand.primary }} />
+              <span
+                className="text-sm font-semibold"
+                style={{ color: colors.utility.primaryText }}
+              >
+                Line Items
+              </span>
+              <span
+                className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                style={{
+                  backgroundColor: colors.brand.primary,
+                  color: '#fff',
+                }}
+              >
+                {totals.blockCount}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
+                {currency}
+              </span>
+              <span className="text-xs font-semibold" style={{ color: colors.brand.primary }}>
+                {getCurrencySymbol(currency)}
+              </span>
+            </div>
+          </div>
+
+          {/* Pricing Cards */}
+          <div
+            className="flex-1 overflow-y-auto p-4 space-y-3"
+            style={{ backgroundColor: colors.utility.primaryBackground }}
+          >
+            {billableBlocks.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Receipt className="w-10 h-10 mb-3" style={{ color: `${colors.utility.secondaryText}40` }} />
+                <p className="text-sm" style={{ color: colors.utility.secondaryText }}>
+                  No billable blocks added yet
+                </p>
+                <p className="text-xs mt-1" style={{ color: `${colors.utility.secondaryText}80` }}>
+                  Add Service or Spare blocks in the previous step
+                </p>
+              </div>
+            ) : (
+              billableBlocks.map((block) => {
+                const ep = block.config?.customPrice ?? block.price;
+                const qty = billingQty(block);
+                // Cadence blocks: show whole payments (+ final) instead of a
+                // fractional money multiplier
+                const isCadenceLine = !!block.config?.cadencePricing && !!getCadenceCycle(block.cycle);
+                const qtyLabel = block.unlimited
+                  ? '∞'
+                  : isCadenceLine
+                    ? `${Math.floor(qty)}${qty % 1 > 0.001 ? ' + final' : ''} pay`
+                    : `×${qty}`;
+                const taxRate = block.taxRate || 0;
+                const isFlyBy = block.isFlyBy;
+                const showTax = !isFlyBy && taxRate > 0;
+                const blockPayType = perBlockPaymentType[block.id] || 'prepaid';
+
+                let baseAmount: number;
+                let taxAmount: number;
+                if (!showTax) {
+                  baseAmount = ep * qty;
+                  taxAmount = 0;
+                } else if (block.taxInclusion === 'inclusive') {
+                  baseAmount = (ep / (1 + taxRate / 100)) * qty;
+                  taxAmount = ep * qty - baseAmount;
+                } else {
+                  baseAmount = ep * qty;
+                  taxAmount = baseAmount * taxRate / 100;
+                }
+
+                // Get icon
+                const flyByType = (block.flyByType || 'service') as keyof typeof FLYBY_TYPE_CONFIG;
+                const IconComponent = isFlyBy
+                  ? FLYBY_TYPE_CONFIG[flyByType]?.icon || LucideIcons.Zap
+                  : getIconComponent(block.icon);
+                const iconBg = isFlyBy
+                  ? FLYBY_TYPE_CONFIG[flyByType]?.bgColor || '#EFF6FF'
+                  : (block.categoryBgColor || `${block.categoryColor}20`);
+                const iconColor = isFlyBy
+                  ? FLYBY_TYPE_CONFIG[flyByType]?.color || '#3B82F6'
+                  : block.categoryColor;
+
+                return (
+                  <div
+                    key={block.id}
+                    className="rounded-xl border overflow-hidden"
+                    style={{
+                      backgroundColor: colors.utility.secondaryBackground,
+                      borderColor: `${colors.utility.primaryText}10`,
+                    }}
+                  >
+                    {/* Card Header */}
+                    <div className="p-3">
+                      <div className="flex items-center gap-2.5">
+                        {/* Icon */}
+                        <div
+                          className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 relative"
+                          style={{ backgroundColor: iconBg }}
+                        >
+                          <IconComponent className="w-4 h-4" style={{ color: iconColor }} />
+                          {isFlyBy && (
+                            <div
+                              className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full flex items-center justify-center"
+                              style={{ backgroundColor: iconColor }}
+                            >
+                              <Zap className="w-2 h-2 text-white" />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Name & badges */}
+                        <div className="flex-1 min-w-0">
+                          <h4
+                            className="font-semibold text-sm truncate"
+                            style={{ color: colors.utility.primaryText }}
+                          >
+                            {block.name || 'Untitled'}
+                          </h4>
+                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                            <span
+                              className="text-[10px] px-1.5 py-0.5 rounded font-medium"
+                              style={{
+                                backgroundColor: iconBg,
+                                color: iconColor,
+                              }}
+                            >
+                              {isFlyBy ? `FlyBy ${block.categoryName}` : block.categoryName}
+                            </span>
+                            <span className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
+                              {qtyLabel} • {getCycleLabel(block.cycle)}
+                            </span>
+                            {isMixed && (
+                              <span
+                                className="text-[9px] px-1.5 py-0.5 rounded font-medium"
+                                style={{
+                                  backgroundColor: blockPayType === 'prepaid'
+                                    ? `${colors.semantic.success}15`
+                                    : `${colors.semantic.warning}15`,
+                                  color: blockPayType === 'prepaid'
+                                    ? colors.semantic.success
+                                    : colors.semantic.warning,
+                                }}
+                              >
+                                {blockPayType === 'prepaid' ? 'Prepaid' : 'Postpaid'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Total */}
+                        <div className="text-right flex-shrink-0">
+                          <span className="text-sm font-bold" style={{ color: colors.brand.primary }}>
+                            {formatCurrency(block.totalPrice, block.currency)}
+                          </span>
+                          {showTax && (
+                            <span className="text-[10px] block" style={{ color: colors.utility.secondaryText }}>
+                              incl. {taxRate}% tax
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Pricing Breakdown */}
+                    <div
+                      className="px-3 pb-3 pt-0"
+                    >
+                      <div
+                        className="pt-2 border-t space-y-1"
+                        style={{ borderColor: `${colors.utility.primaryText}08` }}
+                      >
+                        {/* Base / Selling Price */}
+                        <div className="flex justify-between text-xs">
+                          <span style={{ color: colors.utility.secondaryText }}>
+                            {showTax && block.taxInclusion === 'inclusive' ? 'Base Price' : 'Selling Price'}
+                            {' '}({qtyLabel})
+                          </span>
+                          <span style={{ color: colors.utility.primaryText }}>
+                            {formatCurrency(Math.round(baseAmount * 100) / 100, block.currency)}
+                          </span>
+                        </div>
+
+                        {/* Per-tax lines (not for FlyBy) */}
+                        {showTax && block.taxes?.map((tax, i) => {
+                          const perTaxAmount = block.taxInclusion === 'inclusive'
+                            ? (ep / (1 + taxRate / 100)) * Number(tax.rate) / 100 * qty
+                            : ep * Number(tax.rate) / 100 * qty;
+                          return (
+                            <div key={i} className="flex justify-between text-xs">
+                              <span style={{ color: colors.utility.secondaryText }}>
+                                {tax.name || 'Tax'} ({tax.rate}%)
+                              </span>
+                              <span style={{ color: colors.utility.primaryText }}>
+                                {formatCurrency(Math.round(perTaxAmount * 100) / 100, block.currency)}
+                              </span>
+                            </div>
+                          );
+                        })}
+
+                        {/* Tax inclusion badge */}
+                        {showTax && block.taxInclusion && (
+                          <span
+                            className="inline-block text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+                            style={{
+                              backgroundColor: block.taxInclusion === 'inclusive' ? `${colors.semantic.success}15` : `${colors.semantic.warning}15`,
+                              color: block.taxInclusion === 'inclusive' ? colors.semantic.success : colors.semantic.warning,
+                            }}
+                          >
+                            Tax {block.taxInclusion === 'inclusive' ? 'Inclusive' : 'Exclusive'}
+                          </span>
+                        )}
+
+                        {/* Line total */}
+                        <div
+                          className="flex justify-between text-xs font-semibold pt-1 mt-1 border-t"
+                          style={{ borderColor: `${colors.utility.primaryText}06` }}
+                        >
+                          <span style={{ color: colors.utility.primaryText }}>
+                            Total
+                          </span>
+                          <span style={{ color: colors.brand.primary }}>
+                            {formatCurrency(block.totalPrice, block.currency)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Subtotal Footer */}
+          {billableBlocks.length > 0 && (
+            <div
+              className="flex-shrink-0 flex items-center justify-between px-4 py-2 border-t"
+              style={{
+                borderColor: `${colors.utility.primaryText}15`,
+                backgroundColor: colors.utility.secondaryBackground,
+              }}
+            >
+              <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                {totals.blockCount} item{totals.blockCount !== 1 ? 's' : ''}
+              </span>
+              <span
+                className="text-sm font-semibold"
+                style={{ color: colors.utility.primaryText }}
+              >
+                {formatCurrency(totals.grandTotal, currency)}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Column 3: Payment Schedule + Summary */}
+        <div className="w-[420px] flex-shrink-0 min-h-0">
+          <div className="h-full overflow-y-auto flex flex-col gap-3 pr-1">
+
+          {/* ── Sprint 1: Contract-level discount ─────────────────────── */}
+          {onDiscountChange && billableBlocks.length > 0 && (
+            <div
+              className="rounded-xl border overflow-hidden flex-shrink-0"
+              style={{
+                backgroundColor: colors.utility.secondaryBackground,
+                borderColor: totals.discountTotal > 0 ? `${colors.brand.primary}40` : `${colors.utility.primaryText}10`,
+              }}
+            >
+              <div className="p-3 border-b flex items-center gap-2" style={{ borderColor: `${colors.utility.primaryText}10` }}>
+                <Percent className="w-4 h-4" style={{ color: colors.brand.primary }} />
+                <span className="text-sm font-semibold" style={{ color: colors.utility.primaryText }}>Discount</span>
+                <div className="ml-auto flex rounded-lg border overflow-hidden" style={{ borderColor: `${colors.utility.primaryText}15` }}>
+                  {(['amount', 'percent'] as const).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => onDiscountChange(t, discountValue || 0)}
+                      className="px-3 py-1 text-xs font-bold transition-colors"
+                      style={{
+                        backgroundColor: (discountType ?? 'amount') === t ? colors.brand.primary : 'transparent',
+                        color: (discountType ?? 'amount') === t ? '#FFFFFF' : colors.utility.secondaryText,
+                      }}
+                    >
+                      {t === 'percent' ? '%' : getCurrencySymbol(currency)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="p-3">
+                <div className="flex items-center gap-2 mb-3">
+                  <input
+                    type="number"
+                    min={0}
+                    max={discountType === 'percent' ? 100 : undefined}
+                    value={discountValue || ''}
+                    placeholder={discountType === 'percent' ? 'e.g. 10' : 'e.g. 5000'}
+                    onChange={(e) => {
+                      const v = Math.max(0, parseFloat(e.target.value) || 0);
+                      const t = discountType ?? 'amount';
+                      onDiscountChange(t, t === 'percent' ? Math.min(100, v) : v);
+                    }}
+                    className="flex-1 rounded-lg border px-3 py-2 text-sm font-semibold bg-transparent outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    style={{ borderColor: `${colors.utility.primaryText}20`, color: colors.utility.primaryText }}
+                  />
+                  {totals.discountTotal > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => onDiscountChange(null, 0)}
+                      className="text-[11px] font-semibold px-2 py-1 rounded hover:opacity-80"
+                      style={{ color: colors.utility.secondaryText }}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                {!discountType && (
+                  <p className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
+                    Pick % or {getCurrencySymbol(currency)} to give a contract-level discount — applied before tax.
+                  </p>
+                )}
+                {totals.discountTotal > 0 && (
+                  <>
+                    {/* The chain: sum total → discount → taxable → tax → to pay */}
+                    <div className="space-y-1 text-[11px]" style={{ color: colors.utility.secondaryText }}>
+                      <div className="flex justify-between"><span>Sum total (before tax)</span><span className="tabular-nums">{formatCurrency(totals.baseSubtotal, currency)}</span></div>
+                      <div className="flex justify-between font-semibold" style={{ color: colors.brand.primary }}>
+                        <span>Discount{discountType === 'percent' ? ` (${discountValue}%)` : ''}</span>
+                        <span className="tabular-nums">−{formatCurrency(totals.discountTotal, currency)}</span>
+                      </div>
+                      <div className="flex justify-between"><span>Taxable value</span><span className="tabular-nums">{formatCurrency(totals.taxableSubtotal, currency)}</span></div>
+                      <div className="flex justify-between"><span>Tax</span><span className="tabular-nums">{formatCurrency(totals.totalTax, currency)}</span></div>
+                      <div className="flex justify-between font-bold pt-1 border-t" style={{ color: colors.utility.primaryText, borderColor: `${colors.utility.primaryText}10` }}>
+                        <span>Total to be paid</span><span className="tabular-nums">{formatCurrency(totals.grandTotal, currency)}</span>
+                      </div>
+                    </div>
+                    {/* Internal allocation — uniform loading, never shown on the invoice */}
+                    <details className="mt-2">
+                      <summary className="text-[10px] font-semibold cursor-pointer" style={{ color: colors.utility.secondaryText }}>
+                        Internal allocation across {totals.blockCount} line item{totals.blockCount !== 1 ? 's' : ''} (not shown on invoice)
+                      </summary>
+                      <div className="mt-1.5 space-y-0.5">
+                        {billableBlocks.map((b) => {
+                          const ep = (b.config?.customPrice ?? b.price) * billingQty(b);
+                          const share = totals.baseSubtotal > 0 ? (ep / totals.baseSubtotal) * totals.discountTotal : 0;
+                          return (
+                            <div key={b.id} className="flex justify-between text-[10px]" style={{ color: colors.utility.secondaryText }}>
+                              <span className="truncate pr-2">{b.name}</span>
+                              <span className="tabular-nums flex-shrink-0">−{formatCurrency(Math.round(share * 100) / 100, currency)}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </details>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Payment Schedule Section */}
+          <div
+            className="rounded-xl border overflow-hidden flex-shrink-0"
+            style={{
+              backgroundColor: colors.utility.secondaryBackground,
+              borderColor: `${colors.utility.primaryText}10`,
+            }}
+          >
+            {/* Header */}
+            <div
+              className="p-3 border-b flex items-center gap-2"
+              style={{ borderColor: `${colors.utility.primaryText}10` }}
+            >
+              <CreditCard className="w-4 h-4" style={{ color: colors.brand.primary }} />
+              <span
+                className="text-sm font-semibold"
+                style={{ color: colors.utility.primaryText }}
+              >
+                Payment Schedule
+              </span>
+            </div>
+
+            <div className="p-4">
+              {!isMixed ? (
+                <>
+                  {/* 3 Payment Schedule Options */}
+                  <div className="flex gap-2 mb-4">
+                    {/* Upfront Card */}
+                    <button
+                      onClick={() => allPrepaid && onPaymentModeChange('prepaid')}
+                      className="flex-1 p-3 rounded-xl border-2 transition-all text-left relative"
+                      style={{
+                        borderColor: paymentMode === 'prepaid' ? colors.brand.primary : `${colors.utility.primaryText}15`,
+                        backgroundColor: paymentMode === 'prepaid' ? `${colors.brand.primary}08` : 'transparent',
+                        opacity: allPrepaid ? 1 : 0.45,
+                        cursor: allPrepaid ? 'pointer' : 'not-allowed',
+                      }}
+                    >
+                      {!allPrepaid && (
+                        <Lock className="w-3 h-3 absolute top-2 right-2" style={{ color: colors.utility.secondaryText }} />
+                      )}
+                      <CreditCard
+                        className="w-5 h-5 mb-2"
+                        style={{ color: paymentMode === 'prepaid' ? colors.brand.primary : colors.utility.secondaryText }}
+                      />
+                      <div
+                        className="text-xs font-bold"
+                        style={{ color: paymentMode === 'prepaid' ? colors.brand.primary : colors.utility.primaryText }}
+                      >
+                        Upfront
+                      </div>
+                      <div
+                        className="text-[10px] mt-0.5"
+                        style={{ color: colors.utility.secondaryText }}
+                      >
+                        Full payment at once
+                      </div>
+                    </button>
+
+                    {/* EMI Card — blocked when a block carries a cadence rate
+                        card (the cadence IS the installment plan) */}
+                    <button
+                      onClick={() => allPostpaid && !hasCadenceBlocks && onPaymentModeChange('emi')}
+                      className="flex-1 p-3 rounded-xl border-2 transition-all text-left relative"
+                      style={{
+                        borderColor: paymentMode === 'emi' ? colors.brand.primary : `${colors.utility.primaryText}15`,
+                        backgroundColor: paymentMode === 'emi' ? `${colors.brand.primary}08` : 'transparent',
+                        opacity: allPostpaid && !hasCadenceBlocks ? 1 : 0.45,
+                        cursor: allPostpaid && !hasCadenceBlocks ? 'pointer' : 'not-allowed',
+                      }}
+                    >
+                      {(!allPostpaid || hasCadenceBlocks) && (
+                        <Lock className="w-3 h-3 absolute top-2 right-2" style={{ color: colors.utility.secondaryText }} />
+                      )}
+                      <CalendarRange
+                        className="w-5 h-5 mb-2"
+                        style={{ color: paymentMode === 'emi' ? colors.brand.primary : colors.utility.secondaryText }}
+                      />
+                      <div
+                        className="text-xs font-bold"
+                        style={{ color: paymentMode === 'emi' ? colors.brand.primary : colors.utility.primaryText }}
+                      >
+                        EMI
+                      </div>
+                      <div
+                        className="text-[10px] mt-0.5"
+                        style={{ color: colors.utility.secondaryText }}
+                      >
+                        {hasCadenceBlocks ? 'Blocks with payment plans set their own schedule' : 'Equal installments'}
+                      </div>
+                    </button>
+
+                    {/* As Defined Card */}
+                    <button
+                      onClick={() => onPaymentModeChange('defined')}
+                      className="flex-1 p-3 rounded-xl border-2 transition-all text-left"
+                      style={{
+                        borderColor: paymentMode === 'defined' ? colors.brand.primary : `${colors.utility.primaryText}15`,
+                        backgroundColor: paymentMode === 'defined' ? `${colors.brand.primary}08` : 'transparent',
+                      }}
+                    >
+                      <ListChecks
+                        className="w-5 h-5 mb-2"
+                        style={{ color: paymentMode === 'defined' ? colors.brand.primary : colors.utility.secondaryText }}
+                      />
+                      <div
+                        className="text-xs font-bold"
+                        style={{ color: paymentMode === 'defined' ? colors.brand.primary : colors.utility.primaryText }}
+                      >
+                        As Defined
+                      </div>
+                      <div
+                        className="text-[10px] mt-0.5"
+                        style={{ color: colors.utility.secondaryText }}
+                      >
+                        Per block cycle
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* Availability hints */}
+                  {(!allPrepaid || !allPostpaid) && (
+                    <div
+                      className="flex items-start gap-1.5 mb-3 px-2 py-1.5 rounded-lg"
+                      style={{ backgroundColor: `${colors.utility.primaryText}04` }}
+                    >
+                      <Info className="w-3 h-3 flex-shrink-0 mt-0.5" style={{ color: colors.utility.secondaryText }} />
+                      <span className="text-[10px] leading-relaxed" style={{ color: colors.utility.secondaryText }}>
+                        {!allPrepaid && !allPostpaid
+                          ? 'Upfront requires all blocks prepaid. EMI requires all blocks postpaid.'
+                          : !allPrepaid
+                            ? 'Upfront requires all blocks to have prepaid billing cycle.'
+                            : 'EMI requires all blocks to have postpaid billing cycle.'}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Upfront Details */}
+                  {paymentMode === 'prepaid' && (
+                    <div
+                      className="p-3 rounded-lg"
+                      style={{ backgroundColor: `${colors.utility.primaryText}05` }}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-medium" style={{ color: colors.utility.primaryText }}>
+                          Payment Amount
+                        </span>
+                        <span className="text-sm font-bold" style={{ color: colors.brand.primary }}>
+                          {formatCurrency(totals.grandTotal, currency)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Info className="w-3 h-3" style={{ color: colors.utility.secondaryText }} />
+                        <span className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
+                          Invoice generated when contract is accepted
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* EMI Details */}
+                  {paymentMode === 'emi' && (
+                    <div className="space-y-3">
+                      {/* Duration Selector */}
+                      <div
+                        className="p-3 rounded-lg"
+                        style={{ backgroundColor: `${colors.utility.primaryText}05` }}
+                      >
+                        <label
+                          className="text-[10px] font-medium uppercase tracking-wide mb-2 block"
+                          style={{ color: colors.utility.secondaryText }}
+                        >
+                          Duration (months)
+                        </label>
+                        <div
+                          className="flex items-center rounded-lg border overflow-hidden"
+                          style={{ borderColor: `${colors.utility.primaryText}20`, backgroundColor: colors.utility.primaryBackground }}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = Math.max(2, emiMonths - 1);
+                              onEmiMonthsChange(next);
+                            }}
+                            disabled={emiMonths <= 2}
+                            className="px-3 py-2 hover:opacity-80 disabled:opacity-30 border-r transition-colors"
+                            style={{
+                              color: colors.utility.primaryText,
+                              borderColor: `${colors.utility.primaryText}15`,
+                              backgroundColor: `${colors.utility.primaryText}05`,
+                            }}
+                          >
+                            <Minus className="w-4 h-4" />
+                          </button>
+                          <input
+                            type="number"
+                            value={emiMonths}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value, 10);
+                              if (!isNaN(val)) {
+                                const clamped = Math.max(2, Math.min(contractDuration || 60, val));
+                                onEmiMonthsChange(clamped);
+                              }
+                            }}
+                            min={2}
+                            max={contractDuration || 60}
+                            className="flex-1 text-center text-sm font-bold bg-transparent border-0 outline-none w-12 py-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            style={{ color: colors.brand.primary }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = Math.min(contractDuration || 60, emiMonths + 1);
+                              onEmiMonthsChange(next);
+                            }}
+                            className="px-3 py-2 hover:opacity-80 border-l transition-colors"
+                            style={{
+                              color: colors.utility.primaryText,
+                              borderColor: `${colors.utility.primaryText}15`,
+                              backgroundColor: `${colors.utility.primaryText}05`,
+                            }}
+                          >
+                            <Plus className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* EMI Breakdown */}
+                      <div
+                        className="p-3 rounded-lg"
+                        style={{ backgroundColor: `${colors.utility.primaryText}05` }}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-medium" style={{ color: colors.utility.primaryText }}>
+                            Per Installment
+                          </span>
+                          <span className="text-sm font-bold" style={{ color: colors.brand.primary }}>
+                            {formatCurrency(totals.emiInstallment, currency)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 mb-3">
+                          <Info className="w-3 h-3 flex-shrink-0" style={{ color: colors.utility.secondaryText }} />
+                          <span className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
+                            1st invoice on acceptance, rest monthly
+                          </span>
+                        </div>
+
+                        {/* Schedule Preview */}
+                        <div className="space-y-1">
+                          {Array.from({ length: Math.min(emiMonths, 4) }).map((_, i) => (
+                            <div
+                              key={i}
+                              className="flex items-center justify-between text-[11px] py-1"
+                              style={{ borderBottom: `1px solid ${colors.utility.primaryText}06` }}
+                            >
+                              <div className="flex items-center gap-1.5">
+                                <div
+                                  className="w-4 h-4 rounded flex items-center justify-center text-[8px] font-bold"
+                                  style={{ backgroundColor: `${colors.brand.primary}15`, color: colors.brand.primary }}
+                                >
+                                  {i + 1}
+                                </div>
+                                <span style={{ color: colors.utility.secondaryText }}>
+                                  {i === 0 ? 'On acceptance' : `Month ${i + 1}`}
+                                </span>
+                              </div>
+                              <span className="font-medium" style={{ color: colors.utility.primaryText }}>
+                                {formatCurrency(totals.emiInstallment, currency)}
+                              </span>
+                            </div>
+                          ))}
+                          {emiMonths > 4 && (
+                            <div className="text-center pt-1">
+                              <span className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
+                                +{emiMonths - 4} more installment{emiMonths - 4 > 1 ? 's' : ''}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* As Defined Details */}
+                  {paymentMode === 'defined' && (
+                    <div
+                      className="p-3 rounded-lg"
+                      style={{ backgroundColor: `${colors.utility.primaryText}05` }}
+                    >
+                      <div className="flex items-center gap-1.5 mb-3">
+                        <Info className="w-3 h-3 flex-shrink-0" style={{ color: colors.utility.secondaryText }} />
+                        <span className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
+                          Billed exactly as each block's billing cycle defines
+                        </span>
+                      </div>
+
+                      {/* Breakup by cycle type */}
+                      <div className="space-y-1">
+                        {definedBreakup.map((group, i) => (
+                          <div
+                            key={group.cycle}
+                            className="flex items-center justify-between text-[11px] py-1.5"
+                            style={{ borderBottom: `1px solid ${colors.utility.primaryText}06` }}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <div
+                                className="w-4 h-4 rounded flex items-center justify-center text-[8px] font-bold"
+                                style={{ backgroundColor: `${colors.brand.primary}15`, color: colors.brand.primary }}
+                              >
+                                {i + 1}
+                              </div>
+                              <div>
+                                <span style={{ color: colors.utility.primaryText }} className="font-medium">
+                                  {group.label}
+                                </span>
+                                <span
+                                  className="text-[9px] ml-1"
+                                  style={{ color: colors.utility.secondaryText }}
+                                >
+                                  ({group.blockCount} block{group.blockCount !== 1 ? 's' : ''})
+                                </span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <span className="font-medium" style={{ color: colors.utility.primaryText }}>
+                                {formatCurrency(group.total, currency)}
+                              </span>
+                              {group.isRecurring && (
+                                <span
+                                  className="text-[9px] block"
+                                  style={{ color: colors.utility.secondaryText }}
+                                >
+                                  /{group.cycle === 'monthly' ? 'mo' : group.cycle === 'fortnightly' ? '2wk' : group.cycle === 'quarterly' ? 'qtr' : group.cycle}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Total */}
+                      <div
+                        className="flex items-center justify-between mt-2 pt-2"
+                        style={{ borderTop: `1px solid ${colors.utility.primaryText}10` }}
+                      >
+                        <span className="text-[11px] font-medium" style={{ color: colors.utility.secondaryText }}>
+                          Contract Total
+                        </span>
+                        <span className="text-xs font-bold" style={{ color: colors.brand.primary }}>
+                          {formatCurrency(totals.grandTotal, currency)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                /* Mixed: selectable payment options (per-block schedule or EMI) */
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Shuffle className="w-4 h-4" style={{ color: colors.brand.primary }} />
+                    <span className="text-xs font-medium" style={{ color: colors.utility.primaryText }}>
+                      Mixed Payment Schedule
+                    </span>
+                  </div>
+
+                  {/* Payment option selector — visible & selectable in mixed mode.
+                      'Per Schedule' (defined) → each block bills on its own cycle
+                      (1 upfront + one per cycle). 'EMI' → split the total evenly. */}
+                  <div className="flex gap-2 mb-3">
+                    <button
+                      onClick={() => onPaymentModeChange('defined')}
+                      className="flex-1 p-3 rounded-xl border-2 transition-all text-left"
+                      style={{
+                        borderColor: paymentMode !== 'emi' ? colors.brand.primary : `${colors.utility.primaryText}15`,
+                        backgroundColor: paymentMode !== 'emi' ? `${colors.brand.primary}08` : 'transparent',
+                      }}
+                    >
+                      <ListChecks className="w-5 h-5 mb-2" style={{ color: paymentMode !== 'emi' ? colors.brand.primary : colors.utility.secondaryText }} />
+                      <div className="text-xs font-bold" style={{ color: paymentMode !== 'emi' ? colors.brand.primary : colors.utility.primaryText }}>
+                        Per Schedule
+                      </div>
+                      <div className="text-[10px] mt-0.5" style={{ color: colors.utility.secondaryText }}>
+                        Each block on its own cycle
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => !hasCadenceBlocks && onPaymentModeChange('emi')}
+                      className="flex-1 p-3 rounded-xl border-2 transition-all text-left relative"
+                      style={{
+                        borderColor: paymentMode === 'emi' ? colors.brand.primary : `${colors.utility.primaryText}15`,
+                        backgroundColor: paymentMode === 'emi' ? `${colors.brand.primary}08` : 'transparent',
+                        opacity: hasCadenceBlocks ? 0.45 : 1,
+                        cursor: hasCadenceBlocks ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      {hasCadenceBlocks && (
+                        <Lock className="w-3 h-3 absolute top-2 right-2" style={{ color: colors.utility.secondaryText }} />
+                      )}
+                      <CalendarRange className="w-5 h-5 mb-2" style={{ color: paymentMode === 'emi' ? colors.brand.primary : colors.utility.secondaryText }} />
+                      <div className="text-xs font-bold" style={{ color: paymentMode === 'emi' ? colors.brand.primary : colors.utility.primaryText }}>
+                        EMI
+                      </div>
+                      <div className="text-[10px] mt-0.5" style={{ color: colors.utility.secondaryText }}>
+                        {hasCadenceBlocks ? 'Blocks with payment plans set their own schedule' : 'Equal installments of total'}
+                      </div>
+                    </button>
+                  </div>
+
+                  {paymentMode === 'emi' ? (
+                    /* EMI: installment stepper + per-installment amount */
+                    <div className="space-y-3">
+                      <div className="p-3 rounded-lg" style={{ backgroundColor: `${colors.utility.primaryText}05` }}>
+                        <label className="text-[10px] font-medium uppercase tracking-wide mb-2 block" style={{ color: colors.utility.secondaryText }}>
+                          Installments
+                        </label>
+                        <div className="flex items-center rounded-lg border overflow-hidden" style={{ borderColor: `${colors.utility.primaryText}20`, backgroundColor: colors.utility.primaryBackground }}>
+                          <button type="button" onClick={() => onEmiMonthsChange(Math.max(2, emiMonths - 1))} disabled={emiMonths <= 2} className="px-3 py-2 hover:opacity-80 disabled:opacity-30 border-r transition-colors" style={{ color: colors.utility.primaryText, borderColor: `${colors.utility.primaryText}15`, backgroundColor: `${colors.utility.primaryText}05` }}>
+                            <Minus className="w-4 h-4" />
+                          </button>
+                          <input type="number" value={emiMonths} onChange={(e) => { const val = parseInt(e.target.value, 10); if (!isNaN(val)) onEmiMonthsChange(Math.max(2, Math.min(contractDuration || 60, val))); }} min={2} max={contractDuration || 60} className="flex-1 text-center text-sm font-bold bg-transparent border-0 outline-none w-12 py-2 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" style={{ color: colors.brand.primary }} />
+                          <button type="button" onClick={() => onEmiMonthsChange(Math.min(contractDuration || 60, emiMonths + 1))} className="px-3 py-2 hover:opacity-80 border-l transition-colors" style={{ color: colors.utility.primaryText, borderColor: `${colors.utility.primaryText}15`, backgroundColor: `${colors.utility.primaryText}05` }}>
+                            <Plus className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="p-3 rounded-lg" style={{ backgroundColor: `${colors.utility.primaryText}05` }}>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-medium" style={{ color: colors.utility.primaryText }}>Per Installment</span>
+                          <span className="text-sm font-bold" style={{ color: colors.brand.primary }}>{formatCurrency(totals.emiInstallment, currency)}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Info className="w-3 h-3 flex-shrink-0" style={{ color: colors.utility.secondaryText }} />
+                          <span className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
+                            {emiMonths} equal installments — the total is split evenly across each
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                  <>
+                  <p className="text-[11px] mb-3" style={{ color: colors.utility.secondaryText }}>
+                    Each block bills on its own cycle — one invoice on acceptance plus one per cycle. See Events Preview for the full schedule.
+                  </p>
+
+                  {/* Breakup by cycle type */}
+                  <div
+                    className="p-3 rounded-lg"
+                    style={{ backgroundColor: `${colors.utility.primaryText}05` }}
+                  >
+                    <div className="space-y-1">
+                      {definedBreakup.map((group, i) => (
+                        <div
+                          key={group.cycle}
+                          className="flex items-center justify-between text-[11px] py-1.5"
+                          style={{ borderBottom: `1px solid ${colors.utility.primaryText}06` }}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            <div
+                              className="w-4 h-4 rounded flex items-center justify-center text-[8px] font-bold"
+                              style={{ backgroundColor: `${colors.brand.primary}15`, color: colors.brand.primary }}
+                            >
+                              {i + 1}
+                            </div>
+                            <div>
+                              <span style={{ color: colors.utility.primaryText }} className="font-medium">
+                                {group.label}
+                              </span>
+                              <span
+                                className="text-[9px] ml-1"
+                                style={{ color: colors.utility.secondaryText }}
+                              >
+                                ({group.blockCount} block{group.blockCount !== 1 ? 's' : ''})
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className="font-medium" style={{ color: colors.utility.primaryText }}>
+                              {formatCurrency(group.total, currency)}
+                            </span>
+                            {group.isRecurring && (
+                              <span
+                                className="text-[9px] block"
+                                style={{ color: colors.utility.secondaryText }}
+                              >
+                                /{group.cycle === 'monthly' ? 'mo' : group.cycle === 'fortnightly' ? '2wk' : group.cycle === 'quarterly' ? 'qtr' : group.cycle}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Total */}
+                    <div
+                      className="flex items-center justify-between mt-2 pt-2"
+                      style={{ borderTop: `1px solid ${colors.utility.primaryText}10` }}
+                    >
+                      <span className="text-[11px] font-medium" style={{ color: colors.utility.secondaryText }}>
+                        Contract Total
+                      </span>
+                      <span className="text-xs font-bold" style={{ color: colors.brand.primary }}>
+                        {formatCurrency(totals.grandTotal, currency)}
+                      </span>
+                    </div>
+                  </div>
+                  </>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Summary Section */}
+          <div
+            className="rounded-xl border overflow-hidden flex-shrink-0"
+            style={{
+              backgroundColor: colors.utility.secondaryBackground,
+              borderColor: `${colors.utility.primaryText}10`,
+            }}
+          >
+            {/* Header */}
+            <div
+              className="p-3 border-b flex items-center gap-2"
+              style={{ borderColor: `${colors.utility.primaryText}10` }}
+            >
+              <DollarSign className="w-4 h-4" style={{ color: colors.brand.primary }} />
+              <span
+                className="text-sm font-semibold"
+                style={{ color: colors.utility.primaryText }}
+              >
+                Summary
+              </span>
+            </div>
+
+            <div className="p-4 space-y-2">
+              {/* Subtotal (before tax) */}
+              <div className="flex items-center justify-between">
+                <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                  Subtotal
+                </span>
+                <span className="text-xs font-medium" style={{ color: colors.utility.primaryText }}>
+                  {formatCurrency(totals.baseSubtotal, currency)}
+                </span>
+              </div>
+
+              {/* Individual Tax Lines */}
+              {totals.taxBreakup.length > 0 ? (
+                totals.taxBreakup.map((tax, idx) => (
+                  <div key={idx} className="flex items-center justify-between">
+                    <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                      {tax.name} ({tax.rate}%)
+                    </span>
+                    <span className="text-xs font-medium" style={{ color: colors.utility.primaryText }}>
+                      {formatCurrency(tax.amount, currency)}
+                    </span>
+                  </div>
+                ))
+              ) : totals.totalTax > 0 ? (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs" style={{ color: colors.utility.secondaryText }}>
+                    Tax
+                  </span>
+                  <span className="text-xs font-medium" style={{ color: colors.utility.primaryText }}>
+                    {formatCurrency(totals.totalTax, currency)}
+                  </span>
+                </div>
+              ) : null}
+
+              {/* Divider */}
+              <div
+                className="border-t my-1"
+                style={{ borderColor: `${colors.utility.primaryText}10` }}
+              />
+
+              {/* Grand Total */}
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold" style={{ color: colors.utility.primaryText }}>
+                  Grand Total
+                </span>
+                <span className="text-lg font-bold" style={{ color: colors.brand.primary }}>
+                  {formatCurrency(totals.grandTotal, currency)}
+                </span>
+              </div>
+
+              {/* Schedule Note */}
+              {!isMixed && paymentMode === 'emi' && (
+                <div
+                  className="mt-2 p-2.5 rounded-lg flex items-center justify-between"
+                  style={{ backgroundColor: `${colors.brand.primary}08` }}
+                >
+                  <span className="text-[11px]" style={{ color: colors.utility.secondaryText }}>
+                    {emiMonths} monthly installments
+                  </span>
+                  <span className="text-xs font-bold" style={{ color: colors.brand.primary }}>
+                    {formatCurrency(totals.emiInstallment, currency)} /mo
+                  </span>
+                </div>
+              )}
+              {!isMixed && paymentMode === 'defined' && definedBreakup.length > 0 && (
+                <div
+                  className="mt-2 p-2.5 rounded-lg"
+                  style={{ backgroundColor: `${colors.brand.primary}08` }}
+                >
+                  <span className="text-[11px]" style={{ color: colors.utility.secondaryText }}>
+                    {definedBreakup.length} billing group{definedBreakup.length !== 1 ? 's' : ''} as per block cycles
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+          </div>{/* close inner scroll wrapper */}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default BillingViewStep;

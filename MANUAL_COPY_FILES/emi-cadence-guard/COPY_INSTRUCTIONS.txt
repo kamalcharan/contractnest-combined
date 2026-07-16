@@ -1,0 +1,56 @@
+═══════════════════════════════════════════════════════════════════
+BATCH: emi-cadence-guard
+EMI × cadence-pricing mutual exclusion + Group Session dashboard fix
+═══════════════════════════════════════════════════════════════════
+APPLY AFTER: session-cycle-fix.
+SUBMODULES: contractnest-ui, contractnest-edge (⚠ REDEPLOY contracts fn)
+
+PART 1 — EMI is blocked when a contract/template carries a
+cadence-priced block (owner decision):
+  - Billing View: both EMI selectors (uniform + mixed mode) lock with
+    an explanation ("blocks with payment plans set their own
+    schedule"); drafts/templates already on EMI fall back to
+    per-block billing automatically when a cadence block is present.
+    Template mode inherits (same component).
+  - Buyer review page: the payment-plan picker hides on EMI contracts
+    (proposal stands) — a cadence switch would not regenerate the
+    contract-level EMI events (stale-schedule hazard).
+  - Edge fn (defense in depth): applyCadenceSelections rejects
+    selections on payment_mode='emi' contracts.
+
+PART 2 — "previous group session vanished" root cause + hardening:
+  The Group Sessions dashboard lists blocks whose CATALOG config has
+  audience='group'. "Bi Weekly Meetings" lost its whole config
+  (wiped to {icon} at 16:59 by a save through the pre-session-fix
+  adapter) → dropped off the dashboard. NOT related to CN-1044.
+  - DATA REPAIRED IN DB (already done, no action needed): Bi Weekly
+    Meetings restored (audience=group, 14-day Saturday-anchored
+    cycle, from the copy saved on CN-1035); Saturday Cadence given
+    audience=group. Both reappear on the dashboard on refresh.
+  - CODE: session-type blocks now ALWAYS save audience='group' (the
+    session's identity — even when an older block had none saved for
+    the edit form to carry).
+
+FILES:
+contractnest-ui/.../BillingViewStep.tsx      EMI gating (both modes)
+contractnest-ui/.../pages/contracts/review/index.tsx   picker hides on EMI
+contractnest-ui/.../utils/catalog-studio/catBlockAdapter.ts  session audience default
+contractnest-edge/.../contracts/index.ts     EMI rejection in cadence apply
+
+Copy-Item "MANUAL_COPY_FILES\emi-cadence-guard\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\emi-cadence-guard\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+supabase functions deploy contracts   # or ask Claude to deploy via MCP
+
+TEST:
+- [ ] Contract with a cadence block → Billing View shows EMI locked
+      with the note; without cadence blocks EMI works as before
+- [ ] Draft that had EMI + add cadence block → falls back to
+      Per Schedule automatically
+- [ ] Group Sessions dashboard shows BOTH Bi Weekly Meetings and
+      Saturday Cadence again (refresh)
+- [ ] Re-save any Group Session block → audience survives (check
+      dashboard again after save)
+
+VERIFIED: 4/4 session-audience round-trip checks; tsc zero new
+errors; wizard parity PASS.
+═══════════════════════════════════════════════════════════════════
