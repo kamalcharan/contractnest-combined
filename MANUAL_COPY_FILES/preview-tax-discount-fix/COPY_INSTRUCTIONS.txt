@@ -1,0 +1,53 @@
+═══════════════════════════════════════════════════════════════════
+FIX: PHANTOM 18% TAX IN PREVIEW PANEL + DISCOUNT DEFAULTS TO AMOUNT
+═══════════════════════════════════════════════════════════════════
+Date: 2026-07-16 · Submodule: contractnest-ui ONLY (2 files)
+
+THE TAX "BUG" — WHAT WAS ACTUALLY HAPPENING (verified in your DB)
+  Your "multipay test" block has NO tax stored: m_cat_blocks shows
+  taxes: [] and tax_rate: 0. The cadence rate card is perfect.
+  The 18% you saw on the Add Blocks step came from a HARDCODED
+  default in ContractPreviewPanel.tsx:
+      const taxRate = 0.18; // 18% GST default  ← TODO left in code
+  It applied fake 18% to every contract. So:
+   - Add Blocks panel: 18,000 + fake 3,240 = 21,240   (WRONG source)
+   - Billing View:     18,000, no tax                 (HONEST)
+   - Events:           12 × 1,500                     (HONEST)
+  Nothing was "stripping" tax — it was never on the block.
+
+  FIX: the panel now computes tax from each block's REAL taxes and
+  hides the tax row when there is none. All four surfaces now agree.
+
+  ⚠ ACTION FOR YOU: if this block should carry GST 18%, open it in
+  Catalog Studio → Pricing and add the tax under "Tax Rates" on the
+  INR record. Then: block card 21,240 · Billing View shows 3,240 tax
+  · events become 12 × 1,770 — everywhere, consistently.
+
+DISCOUNT — AMOUNT IS NOW THE DEFAULT
+  The Billing View discount card defaults to ₹ (amount): the field is
+  immediately typeable and the toggle shows ₹ first. % remains one
+  click away. (Your request #3.)
+
+STEP 1 — Copy
+─────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\preview-tax-discount-fix\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+STEP 2 — Verify
+─────────────────────────────
+cd contractnest-ui ; npm run dev
+- [ ] Add Blocks step: right panel shows NO tax row for the untaxed
+      block; totals agree with Billing View (18,000 everywhere)
+- [ ] Add GST 18% to the block in Catalog Studio, re-add it → 21,240
+      on the card, Billing View 18,000 + 3,240, events 12 × 1,770
+- [ ] Billing View discount: typing a number immediately applies an
+      AMOUNT discount; ₹ chip preselected; % still works
+tsc: zero new errors (before/after diff identical); parity PASS ×5.
+
+ALSO IN THIS PUSH (parent repo, not a copy step)
+  SPRINT_REFERENCES/7-contract-document.html — the professional
+  contract-document mock (letterhead, Schedule A services, Schedule B
+  commercial terms with the locked discount chain, Schedule C dated
+  payment schedule, signatures, CNAK footer). Review it — on your
+  sign-off it becomes the template for the wizard/review PDF export.
+═══════════════════════════════════════════════════════════════════
