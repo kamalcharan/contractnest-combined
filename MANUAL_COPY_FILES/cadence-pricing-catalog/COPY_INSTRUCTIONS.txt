@@ -1,0 +1,117 @@
+═══════════════════════════════════════════════════════════════════
+CADENCE PRICING — STEP 1 of 3: CATALOG STUDIO (this batch closes it)
+═══════════════════════════════════════════════════════════════════
+Date: 2026-07-16 · Gate: owner review of catalog side before wizard side
+Submodule affected: contractnest-ui ONLY (3 edits + 1 new file)
+UX reference: SPRINT_REFERENCES/6-cadence-pricing.html — TAB 1 (v3,
+owner-approved). Tabs 2 and 3 (wizard proposal / buyer pick) are
+LATER steps, not in this batch.
+
+WHAT THIS DELIVERS
+In Catalog Studio → Block Wizard → Pricing step, each currency card
+for a FIXED-price service gets a scheme choice:
+
+ 1. "One price" (default) — exactly today's behavior. Every existing
+    block, and every block where you don't touch the toggle, works
+    unchanged.
+ 2. "Varies by billing cadence" — reveals:
+    a. The ANCHOR (captured & stored): "Total price ₹X for Y months".
+       X reuses the record's price field; Y is new (base_term_months).
+       Nothing assumes a 1-year timeline.
+    b. The rate card: Monthly / Quarterly / 6 Months / Annual rows,
+       each with an enable checkbox + per-period rate. Each enabled
+       row shows the FAIR pro-rata value vs your anchor, a one-click
+       "use" link to fill it, an at-par/+premium/−discount tag, and
+       "= ₹N over the Y-month base term".
+    c. A DEFAULT radio — one enabled cadence, pre-selected when the
+       block is later added to a contract. Auto-moves if you disable
+       the default row.
+
+VALIDATION (Next is blocked with a message if):
+  - cadence scheme with no base total or no base term
+  - no enabled cadence with a rate > 0
+  - no default among the enabled cadences
+
+STORAGE / DATA MODEL (no DB migration)
+  New optional fields ride inside each pricingRecord in the block's
+  meta JSON (config), which already round-trips through
+  catBlockAdapter untouched:
+    pricing_scheme: 'single' | 'cadence'
+    base_term_months: number
+    cadence_rates: [{ cycle, amount, enabled }]
+    default_cadence: 'monthly'|'quarterly'|'halfyearly'|'annual'
+  Shared types/math live in the NEW module
+  src/utils/catalog-studio/cadencePricing.ts — the wizard and buyer
+  steps will import from the same place later.
+
+INTERIM BEHAVIOR (until the wizard-side step lands)
+  A cadence-priced block added to a contract TODAY still behaves as a
+  single-price block using the anchor total (₹X) as its price — the
+  contract wizard doesn't read the rate card yet. That's the next
+  step, after this gate passes.
+
+NOT SUPPORTED IN V1 (flag if you want them)
+  - Cadence pricing on HOURLY price type (toggle hidden — per-period
+    rates don't make sense against an hourly rate)
+  - Cadence pricing inside PER-VARIANT pricing mode (the per-variant
+    cards keep single prices; "Same for All" + cadence works)
+
+STEP 1 — Copy
+─────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\cadence-pricing-catalog\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+STEP 2 — Verify
+─────────────────────────────
+cd contractnest-ui
+npx tsc --noEmit
+  # NOTE: if you applied fix-tsc-dead-files you'll see the large
+  # pre-existing backlog — this batch adds ZERO new errors (verified
+  # by before/after diff: identical 1501 errors, only line shifts).
+  # If you did NOT apply that fix you'll see the old 23 errors.
+npx vite-node src/components/contracts/ContractWizard/logic/__parity__/run.ts
+  # PASS ×5 — contract wizard math untouched
+npm run dev
+
+STEP 3 — Gate-review checklist
+─────────────────────────────
+Create a new service block (Catalog Studio → New Block → Service):
+- [ ] Pricing step: currency card shows "One price" / "Varies by
+      billing cadence" choice; One price is pre-selected and the step
+      looks exactly like before
+- [ ] Save a normal single-price block → unchanged end-to-end
+- [ ] Switch to "Varies by billing cadence" → anchor appears with
+      "Total price __ for 12 months" (12 editable)
+- [ ] Enter your scenario: total 18000 for 12 months; enable Monthly
+      1600 / Quarterly 4500 / Annual 17000 →
+      Monthly shows "fair ₹1,500 · +6.7% premium · = ₹19,200 over the
+      12-month base term"; Quarterly shows "at par"; Annual shows
+      "−5.6% discount"
+- [ ] "use" link fills a rate with the fair value
+- [ ] First cadence you enable becomes the default automatically;
+      radio only clickable on enabled rows; disabling the default row
+      moves the default
+- [ ] Change base to 4500 for 3 months → fair values recompute (no
+      1-year assumption)
+- [ ] Try Next with an incomplete rate card → blocked with a clear
+      message
+- [ ] Save the cadence-priced block, reopen for EDIT → scheme, anchor
+      term, rates and default all round-trip intact  ⟵ most important
+- [ ] Hourly price type: cadence toggle not shown
+- [ ] Taxes / tax treatment / multi-currency add-remove all unchanged
+
+PRODUCTION CHECKLIST (per CLAUDE.md)
+  Transactions: n/a (rides existing block save path — one write)
+  Race conditions: n/a (single-user form state; same save flow)
+  Error handling: existing block-save error paths unchanged;
+                validation blocks incomplete rate cards before save
+  Toasts: existing block wizard toasts (no new toast systems)
+  Loaders: existing block wizard loaders (no new loaders)
+
+NEXT STEPS AFTER THIS GATE
+  Step 2 of 3 — Contract wizard: cadence chips on the block card
+  (seller proposes, default pre-selected, term-fit rule, seller-set
+  final payment for leftover months).
+  Step 3 of 3 — Buyer review: payment options at acceptance + events
+  generated from the buyer's chosen cadence.
+═══════════════════════════════════════════════════════════════════
