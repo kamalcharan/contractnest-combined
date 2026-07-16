@@ -5,6 +5,25 @@
 
 ---
 
+## Program status — updated 16 Jul 2026
+
+### Done
+- **Sprint 1 step (a) UI — complete and merged to main.** Coverage & Assets redesign (registry picker middle column, live Attached sidebar, per-type registry intelligence), Service Blocks redesign, Billing View discount UI (contract-level %/₹ toggle, amount default; state fields only — persistence lands in step (b)). WizardShell + logic extraction with the parity harness locked.
+- **Beyond-spec: cadence (cyclical) pricing, end-to-end.** Catalog rate cards ("Total X for Y months" anchor, per-cadence rates, tenant default) → wizard proposal with term math and duration-fit auto-switch → template round-trip → buyer payment-plan picker at sign-off → server-side acceptance repricing in the contracts edge fn (stored-rate-card recompute, tamper-proof). Live-verified on CN-1043 (12 monthly events, invoice at correct total). Note: this is cadence *pricing*; Sprint 6's "cadence" (visit scheduling/appointments) is untouched.
+- **Professional contract document** (ink-on-white, Schedules A/B/C, terms from the T&C block, amount-in-words, CNAK footer) rendered on-screen and exported as PDF from: wizard Review & Send, seller contract detail "Document" tab, and the public buyer review page.
+- **MVP scope reduction**: singleton Terms & Conditions (VaNi onboarding step after pricing-review; auto-included in every contract/template; second text block redirects to edit), video/image/document types gated "coming soon" in both catalog systems, FlyBy restricted to service.
+- **Hardening en route**: template-instantiation config passthrough (composer), phantom 18% tax removed, autosave race (draft version single-flight), composer preserves block categories (killed the ₹0 null billing event), Group Session cycle/audience persistence (session case in the adapter).
+
+### Pending
+- **Sprint 1 (b) migration**: `t_contracts` discount columns + RPC params; `custom_fields.list_price`/`loaded_discount`; **`t_contract_event_assets`** per-asset table + activation generation + backfill (unblocks S3/S6/S7).
+- **Sprint 1 (c) stitch**: mapper emits discount fields; `computeEventsForApi` discounted amounts + API derivation parity re-golden; placeholder→open flips; gross-vs-net impact notes.
+- **Sprints 2–7** as specified (smart forms; contract view per-asset grain; AR/AP settle bridge; events & group-sessions cleanup; appointments integration; service execution loop-close).
+- **Deployment gap (go-live blocker)**: deploy current UI main to the `FRONTEND_URL` host *and* `www.contractnest.com` (WhatsApp links 404 there); align `FRONTEND_URL` with the MSG91 template URL. Contracts edge fn is already deployed and current.
+- **Deferred cadence steps**: none — 2a/2b/2c shipped. Buyer *switch* path live-test outstanding (covered 55/55 by parity harness).
+- **Debt**: ~1,500 legacy tsc errors (bucketed cleanup pass planned: delete dead marketing pages → fix live code → gate CI); one null-amount event row on CN-1043 (test data, informational).
+
+---
+
 ## 0. Program rules (apply to every sprint)
 
 1. **Reuse-first.** Every sprint lists "Reuse" (existing infra, untouched or enhanced) before "Build." Nothing is rebuilt that exists. The audits proved most backend hooks exist — the work is wiring, not greenfield.
