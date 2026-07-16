@@ -53,6 +53,25 @@ WHAT THIS BATCH DOES
     wrong price is worse than not accepting.
 
 ───────────────────────────────────────────────────────────────────
+🚑 HOTFIX v2 (incident: 0 contracts / Group Session 404)
+───────────────────────────────────────────────────────────────────
+The first cut of contractController.ts / contractService.ts was built
+on a stale (July-10) base and MISSED the bulk-create + Group Session
+additions your main gained since (bulkCreateContracts,
+findAssignedBuyerIds). Copying them removed those methods, so
+contractRoutes registered an undefined handler and the API's contract
+routes died → contracts list showed 0 for every tenant and Group
+Session 404'd. Requests never reached the edge (edge logs confirmed).
+
+FIXED HERE: both API files are now rebuilt on your CURRENT main
+(commit 520f16c) with the small cadence passthrough re-applied on
+top. Re-copy the contractnest-api files from this batch and RESTART
+the API server — contracts and Group Session come back immediately.
+The deployed edge function was verified byte-correct (no upstream
+drift existed in the contracts fn) — NO redeploy needed. UI file
+verified clean against main — no action needed there.
+
+───────────────────────────────────────────────────────────────────
 FILES (5)
 ───────────────────────────────────────────────────────────────────
 contractnest-ui/src/pages/contracts/review/index.tsx
