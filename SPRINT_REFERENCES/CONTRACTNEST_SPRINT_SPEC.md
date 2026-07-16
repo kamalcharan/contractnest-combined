@@ -24,6 +24,19 @@
 
 ---
 
+### Session hand-off — 16 Jul 2026 (end of session)
+Shipped after the status above: `emi-cadence-guard` (EMI locked on cadence-priced contracts/templates + buyer picker hidden on EMI + edge rejection; Group Session dashboard repaired — catalog configs restored in DB, session blocks now always persist audience='group').
+
+**User actions outstanding**
+1. Copy + test + Phase-2 merge: `composer-category-fix` (API), `session-cycle-fix` (UI), `emi-cadence-guard` (UI + edge — ⚠ redeploy `contracts` edge fn after copying).
+2. Re-set the cycle on the "Saturday Cadence" block once (its cycle was never saved pre-fix).
+3. Live-test the buyer cadence SWITCH (accept with a plan ≠ proposal).
+
+**Next build item (agreed)**: Sprint 1 step (b) migration + step (c) stitch — see Pending above. Plan: migration SQL draft reviewed before applying via Supabase MCP; then the code batch (UI mapper/events + API derivation parity re-golden); then impact notes. Open design question: backfill asset rows for past service events or future-only?
+
+**Workflow reminders for the next session**: re-layer ALL batch folders in MANUAL_COPY_FILES chronological order onto pristine submodules before editing, then `git fetch origin main` in each submodule and REBUILD every shipped file on latest main (stale-base clobbering bit us twice); tsc baseline diff + parity harness before packaging; reset trees after pushing.
+
+
 ## 0. Program rules (apply to every sprint)
 
 1. **Reuse-first.** Every sprint lists "Reuse" (existing infra, untouched or enhanced) before "Build." Nothing is rebuilt that exists. The audits proved most backend hooks exist — the work is wiring, not greenfield.
