@@ -1,0 +1,131 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — discount-billing-stitch
+═══════════════════════════════════════════════════
+Submodules Affected: contractnest-ui (6 files), contractnest-api (2 files)
+
+WHAT THIS FIXES
+───────────────────────────────────────────────────
+The contract-level discount (Billing View step) was only cosmetic in one
+common case. It always displayed correctly, but:
+
+  1. It was NEVER sent to the backend at all — create_contract_transaction /
+     update_contract_transaction already accept discount_type/discount_value/
+     discount_total, but the wizard's payload builder never included them.
+
+  2. For "Per Schedule" billing (mixed cadence — each block bills on its own
+     cycle; paymentMode === 'defined'), the actual generated billing events
+     were computed straight from each block's undiscounted total. So a buyer
+     on Per Schedule billing was invoiced the FULL undiscounted amount at
+     every cycle, even though Billing View showed a discounted total.
+     (Upfront and EMI billing were already correct — they use grandTotal,
+     which already nets the discount.)
+
+WHAT CHANGED
+───────────────────────────────────────────────────
+contractnest-ui:
+  - src/components/contracts/ContractWizard/logic/mapper.ts
+      Added discount_type / discount_value / discount_total to the API
+      payload. Passes baseSubtotal/discountTotal into event computation.
+  - src/utils/service-contracts/contractEvents.ts
+      The paymentMode==='defined' branch now loads the contract discount
+      pro-rata into every block's billed total before splitting it into
+      per-cycle installments (same allocation Billing View already uses
+      for its own tax-breakup display). Upfront/EMI branches unchanged
+      (already correct).
+  - src/components/contracts/ContractWizard/steps/EventsPreviewStep.tsx
+    + src/components/contracts/ContractWizard/index.tsx
+      The Events Preview step (what the seller sees before submitting) now
+      gets baseSubtotal/discountTotal too, so the preview matches exactly
+      what gets billed after submission — previously the preview would have
+      shown the (wrong) undiscounted amounts for Per Schedule billing.
+  - src/components/contracts/document/ContractDocument.tsx
+      Same fix for the generated contract document's payment schedule
+      (Schedule C), which computes off the same shared event math.
+  - src/components/contracts/ContractWizard/logic/__parity__/goldens.json
+      Updated golden for the one existing fixture that sets a discount
+      (F1_basicContract) to include the 3 newly-emitted payload fields.
+      No fixture in this harness currently exercises paymentMode:'defined',
+      so this is the only line-level diff — see TESTING NOTE below.
+
+contractnest-api:
+  - src/services/contractEventsDerivationService.ts
+      Server-side mirror of the exact same contractEvents.ts fix (this file
+      is a "byte-identical parity" port per its own header comment — server-
+      recomputed events must agree with what the buyer saw at signing).
+  - src/__tests__/contractEventsDerivationParity.ts
+      Mirrored the same fix into the test's inline reference copy, and
+      added 2 new scenarios: discount + Per Schedule billing (the bug this
+      fixes) and discount + Upfront billing (proves no double-counting).
+
+TESTING NOTE (important — please run these before treating this as verified)
+───────────────────────────────────────────────────
+I could not run either test suite in my sandbox — installing dependencies
+failed because contractnest-api's postinstall tries to download the Supabase
+CLI binary from GitHub, which this sandbox's network policy blocks. I was
+not able to execute the parity tests to confirm the goldens/output. Please
+run both after copying:
+
+  cd contractnest-api
+  npx ts-node src/__tests__/contractEventsDerivationParity.ts
+
+  cd ../contractnest-ui
+  npx vite-node src/components/contracts/ContractWizard/logic/__parity__/run.ts
+
+The second command should PASS as-is (I hand-computed the one changed
+golden). If it doesn't, re-run with "-- --update" and review the diff before
+committing — do not blindly accept it.
+
+Separately noticed but NOT touched (pre-existing, unrelated to this fix):
+the backend's EMI branch (deriveContractEvents) and this same parity test's
+reference copy do not apply the "last installment absorbs rounding" logic
+that the UI's contractEvents.ts already has for EMI — a pre-existing
+UI/backend divergence for non-evenly-divisible EMI amounts. Flagging it,
+not fixing it here, since it's outside what was asked.
+
+OUT OF SCOPE (explicitly deferred per your earlier steer)
+───────────────────────────────────────────────────
+Per-block discount and the VaNi Composer discount path were both explicitly
+left out of this batch — discount stays contract-level-only, and VaNi
+Composer still has no discount concept at all.
+
+Not committed or pushed by Claude — Phase 1 only, per your procedure.
+
+───────────────────────────────────────────────────
+STEP 1: Navigate to Project Root
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+───────────────────────────────────────────────────
+STEP 2: Copy Files (PowerShell)
+───────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\discount-billing-stitch\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\discount-billing-stitch\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+───────────────────────────────────────────────────
+STEP 3: Run the parity tests (see TESTING NOTE above)
+───────────────────────────────────────────────────
+cd contractnest-api
+npx ts-node src/__tests__/contractEventsDerivationParity.ts
+cd ..\contractnest-ui
+npx vite-node src/components/contracts/ContractWizard/logic/__parity__/run.ts
+
+───────────────────────────────────────────────────
+STEP 4: Manual test — the actual bug this fixes
+───────────────────────────────────────────────────
+cd contractnest-ui
+npm run dev
+
+- [ ] Create a contract: 2+ blocks, "Per Schedule" (mixed cadence) billing,
+      set a contract-level discount in Billing View (e.g. 10%)
+- [ ] Go to Events Preview — billing amounts per block should already be
+      reduced by the discount (previously they were NOT)
+- [ ] Submit the contract, then check t_contracts.discount_type/
+      discount_value/discount_total are populated, and t_contracts.
+      computed_events billing amounts match what Events Preview showed
+- [ ] Repeat with Upfront and EMI payment modes — confirm totals unchanged
+      from before (these were already correct; must not regress)
+- [ ] Create a contract with NO discount at all — confirm billing amounts
+      are byte-identical to before this change (no-op proof)
+═══════════════════════════════════════════════════
