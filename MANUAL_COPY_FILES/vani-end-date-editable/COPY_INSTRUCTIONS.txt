@@ -1,0 +1,59 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — vani-end-date-editable
+═══════════════════════════════════════════════════
+Submodule Affected: contractnest-ui (2 files)
+
+This batch SUPERSEDES the earlier "bulk-assign-tags" batch — this copy of
+BulkAssignDialog.tsx includes the tag badges from that batch PLUS the end
+date fix below. Copying this is enough; no need to also copy the older
+bulk-assign-tags batch.
+
+Not committed or pushed by Claude — Phase 1 only, per your procedure.
+
+───────────────────────────────────────────────────
+STEP 1: Navigate to Project Root
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+───────────────────────────────────────────────────
+STEP 2: Copy Files (PowerShell)
+───────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\vani-end-date-editable\contractnest-ui\src\components\contracts\vani\BulkAssignDialog.tsx" -Destination "contractnest-ui\src\components\contracts\vani\BulkAssignDialog.tsx" -Force
+
+Copy-Item "MANUAL_COPY_FILES\vani-end-date-editable\contractnest-ui\src\components\contracts\vani\VaNiComposerLauncher.tsx" -Destination "contractnest-ui\src\components\contracts\vani\VaNiComposerLauncher.tsx" -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+───────────────────────────────────────────────────
+STEP 3: Restart Dev Server & Test
+───────────────────────────────────────────────────
+cd contractnest-ui
+npm run dev
+
+═══════════════════════════════════════════════════
+WHAT CHANGED
+═══════════════════════════════════════════════════
+Both single-assign ("Draft with VaNi") and Bulk Assign now have an
+End Date field you can directly pick from a date input — previously it
+was read-only computed text ("Ends 17 Jan 2027").
+
+Picking an end date back-computes an EXACT day-count duration (not the
+lossy months=30/years=365 approximation the Duration control uses), so
+End Date and Duration always stay in sync however you edit either one:
+  - Change Start/End date -> Duration recalculates to exact days
+  - Change Duration (value/unit) -> End date recalculates from it
+
+BulkAssignDialog.tsx also still carries the tag-badge display from the
+previous batch (VIP/Lead/Guest/Substitute next to each contact name).
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Single "Draft with VaNi" -> End date is now a date picker, not text
+- [ ] Pick a new End date -> draft re-assembles, Duration field updates to
+      match (in days)
+- [ ] Change Duration instead -> End date field updates to match
+- [ ] Bulk Assign dialog -> same End date behavior
+- [ ] Bulk Assign dialog -> tag badges (from the prior batch) still show
+      correctly next to contact names
+═══════════════════════════════════════════════════
