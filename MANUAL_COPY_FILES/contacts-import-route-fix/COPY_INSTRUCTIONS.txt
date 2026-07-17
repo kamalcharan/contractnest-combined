@@ -1,0 +1,62 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — contacts-import-route-fix
+═══════════════════════════════════════════════════
+Submodule Affected: contractnest-ui (1 file: src/App.tsx)
+
+⚠️ THIS IS A REPEAT REGRESSION — 3rd time this exact route has been fixed
+then lost. Root cause (confirmed via git log -p --follow -- src/App.tsx):
+the import statement `import ContactsImportPage from './pages/contacts/import'`
+and the route `<Route path="import" element={<ContactsImportPage />} />`
+have been added and silently dropped across commits b1113d8 (added) ->
+2ac447c (added) -> 8febcd0 (removed) -> 7c33dd8 (added) -> 79c40b9 (removed,
+was HEAD before this fix). 79c40b9 is a large bulk "chore: update
+contractnest-ui" commit touching App.tsx among many unrelated files — this
+is the signature of a bulk `git add . / commit / push` run from a stale
+local copy of App.tsx that predates the fix, overwriting it.
+
+RECOMMENDATION: before your next bulk commit/push across all submodules,
+diff App.tsx specifically (or just this route block) against what's about
+to be committed, so a stale local copy doesn't silently re-clobber this
+again. Happy to also add a lightweight smoke test asserting /contacts/import
+renders correctly, if you want a guardrail that fails loudly instead of
+silently next time.
+
+Not committed or pushed by Claude — Phase 1 only, per your procedure.
+
+───────────────────────────────────────────────────
+STEP 1: Navigate to Project Root
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+───────────────────────────────────────────────────
+STEP 2: Copy File (PowerShell)
+───────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\contacts-import-route-fix\contractnest-ui\src\App.tsx" -Destination "contractnest-ui\src\App.tsx" -Force
+
+Write-Host "File copied!" -ForegroundColor Green
+
+───────────────────────────────────────────────────
+STEP 3: Restart Dev Server & Test
+───────────────────────────────────────────────────
+cd contractnest-ui
+npm run dev
+
+═══════════════════════════════════════════════════
+WHAT CHANGED
+═══════════════════════════════════════════════════
+src/App.tsx:
+  - Re-added: import ContactsImportPage from './pages/contacts/import';
+  - Re-added: <Route path="import" element={<ContactsImportPage />} />
+    inside the /contacts route block (before the :id route).
+
+Nothing else in App.tsx touched.
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Contacts page -> click "Import" -> the import wizard page loads
+      (upload -> map columns -> preview -> import), not a blank screen
+- [ ] Direct navigation to /contacts/import also works
+- [ ] Existing /contacts, /contacts/create, /contacts/:id, /contacts/:id/edit
+      routes still work (unaffected — only one new line added to each)
+═══════════════════════════════════════════════════
