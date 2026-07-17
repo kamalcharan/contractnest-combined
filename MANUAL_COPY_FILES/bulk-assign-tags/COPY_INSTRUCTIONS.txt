@@ -1,0 +1,50 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — bulk-assign-tags
+═══════════════════════════════════════════════════
+Submodule Affected: contractnest-ui (1 file)
+
+NOT committed or pushed by Claude — Phase 1 only, per your procedure.
+Test locally first; commit/push/merge is on you once confirmed working.
+
+───────────────────────────────────────────────────
+STEP 1: Navigate to Project Root
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+───────────────────────────────────────────────────
+STEP 2: Copy File (PowerShell)
+───────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\bulk-assign-tags\contractnest-ui\src\components\contracts\vani\BulkAssignDialog.tsx" -Destination "contractnest-ui\src\components\contracts\vani\BulkAssignDialog.tsx" -Force
+
+Write-Host "File copied!" -ForegroundColor Green
+
+───────────────────────────────────────────────────
+STEP 3: Restart Dev Server & Test
+───────────────────────────────────────────────────
+cd contractnest-ui
+npm run dev
+
+═══════════════════════════════════════════════════
+WHAT CHANGED
+═══════════════════════════════════════════════════
+Bulk Assign dialog's member list now shows each contact's TAGS (VIP, Lead,
+Guest, Substitute, etc. — the tenant-configurable ones from Contacts page,
+distinct from contact type) as small colored badges between the name and
+the contact-type label. No backend change — this data (contact.tags) was
+already returned by the same useContactList hook the dialog already uses,
+just not displayed. Same rendering pattern as the classic wizard's
+BuyerSelectionStep.tsx contact detail panel.
+
+Display only — no new tag filter control was added (per your call on
+scope), so this is purely additive/visual.
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Bulk Assign dialog → contacts with tags (e.g. a Guest or Lead) show
+      small colored tag badges next to their name
+- [ ] Contacts with no tags show nothing extra (no empty badge/gap)
+- [ ] Existing contact-type label (CLIENT/VENDOR/PARTNER/TEAM MEMBER) still
+      renders correctly to the right of any tag badges
+- [ ] No layout overflow/wrapping issues on rows with 2-3 tags
+═══════════════════════════════════════════════════
