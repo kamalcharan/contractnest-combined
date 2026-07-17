@@ -553,6 +553,12 @@ Services do NOT have KT equivalent yet. Future work if needed:
 **Current state**: tenant sets price manually in pricing-review step or catalog-studio editor after onboarding.
 **When to revisit**: when platform needs pre-filled market-reference pricing for consulting/wellness/legal service types.
 
+### Per-block discount — deliberately deferred (Sprint 1 spec deviation)
+`CONTRACTNEST_SPRINT_SPEC.md` Sprint 1 step (b) calls for `t_contract_blocks.custom_fields.list_price` / `loaded_discount` (a discount settable per pricing block, in addition to the contract-level discount). Owner decision: discount stays **contract-level only** for now — mutually exclusive block-vs-contract discount was designed and mocked, but not built, to avoid adding a control to the already-cramped "Add Service Blocks" step.
+
+**Current state**: only the contract-level discount (Billing View step, `discount_type`/`discount_value`/`discount_total`) exists and is fully stitched end-to-end (mapper, billing event derivation, backend parity, Events Preview, contract document).
+**When to revisit**: owner's call — flagged here so it isn't mistaken for a missed Sprint 1 item. If picked back up, an interactive mock already exists from the design discussion (single-page "Add Service Blocks" with a compact discount-mode toggle + collapsed-by-default per-block discount row) to start from.
+
 ---
 
 ## ⚠️ Session Reminders
