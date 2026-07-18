@@ -1,0 +1,39 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — remove-orphaned-contract-tab
+═══════════════════════════════════════════════════
+Submodule Affected: contractnest-ui (1 file DELETED, not added)
+
+WHAT THIS DOES
+───────────────────────────────────────────────────
+Deletes contractnest-ui/src/components/contracts/ContractTab.tsx —
+confirmed orphaned (searched the entire src tree: zero imports, zero
+routes reference it; only a similarly-named but unrelated file,
+constants/contractTabs.ts, matched the search, and that's just a tab
+config constants file, not an importer of this component). Part of
+Sprint 3's dead-surface cleanup.
+
+Not committed or pushed by Claude — Phase 1 only, per your procedure.
+This is a DELETE, so there's no file to copy — run the remove command
+below instead.
+
+───────────────────────────────────────────────────
+STEP 1: Navigate to Project Root
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull origin claude/sprint1b-migration-handoff-5rk8pr
+
+───────────────────────────────────────────────────
+STEP 2: Delete the file (PowerShell)
+───────────────────────────────────────────────────
+Remove-Item "contractnest-ui\src\components\contracts\ContractTab.tsx" -Force
+
+Write-Host "File removed!" -ForegroundColor Green
+
+───────────────────────────────────────────────────
+STEP 3: Test
+───────────────────────────────────────────────────
+cd contractnest-ui
+npm run dev
+- [ ] App builds and runs with no missing-import errors (confirms nothing
+      actually referenced this file)
+═══════════════════════════════════════════════════
