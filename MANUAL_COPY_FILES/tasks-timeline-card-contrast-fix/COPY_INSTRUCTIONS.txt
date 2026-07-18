@@ -1,0 +1,55 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — tasks-timeline-card-contrast-fix
+═══════════════════════════════════════════════════
+Submodule Affected: contractnest-ui (1 file)
+
+WHAT THIS FIXES
+───────────────────────────────────────────────────
+Reported: on the Tasks (seller) / My Services (buyer) tab, event cards were
+nearly invisible against the panel behind them — straining to read.
+
+Root cause (confirmed via theme values): the outer "Full Timeline" panel in
+SellerTasksTab.tsx used colors.utility.secondaryBackground as its
+background — and EventCard (the card component itself) ALSO uses
+colors.utility.secondaryBackground for its own background. In light theme
+that resolves to the exact same #ffffff for both — literally white cards
+on a white panel, zero contrast.
+
+Checked OperationsTab.tsx (the other place EventCard renders, on the
+default "Operations" view) — it does NOT have this bug; its outer
+container has no background style at all, so cards contrast fine against
+the page canvas directly. This was specific to SellerTasksTab's extra
+wrapping panel.
+
+Fix: the outer timeline panel now uses colors.utility.primaryBackground
+(a light grey-blue, #f1f4f8 in light theme) instead of secondaryBackground
+— so the white EventCards now visibly stand out against it. EventCard
+itself was not touched (it's shared across many other screens).
+
+Not committed or pushed by Claude — Phase 1 only, per your procedure.
+
+───────────────────────────────────────────────────
+STEP 1: Navigate to Project Root and Copy File
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull origin claude/sprint1b-migration-handoff-5rk8pr
+
+Copy-Item "MANUAL_COPY_FILES\tasks-timeline-card-contrast-fix\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "File copied!" -ForegroundColor Green
+
+───────────────────────────────────────────────────
+STEP 2: Test
+───────────────────────────────────────────────────
+cd contractnest-ui
+npm run dev
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Seller "Tasks" tab — event cards clearly visible against the panel,
+      both in light and dark theme
+- [ ] Buyer "My Services" tab — same (shared component)
+- [ ] Billing-only contract (like "sdfdfdsf") and a mixed service+billing
+      contract both look correct
+═══════════════════════════════════════════════════
