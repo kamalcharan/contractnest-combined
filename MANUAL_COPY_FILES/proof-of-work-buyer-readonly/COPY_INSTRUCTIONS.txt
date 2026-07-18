@@ -1,0 +1,50 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — proof-of-work-buyer-readonly
+═══════════════════════════════════════════════════
+Submodule Affected: contractnest-ui (1 file)
+
+WHAT THIS FIXES
+───────────────────────────────────────────────────
+"Proof of Work" (buyer tab) was rendering EvidencePolicySection
+unconditionally — a full editable configuration card (policy type toggle:
+none/upload/smart_form, form picker, Save button) meant only for the
+seller to configure what evidence is required. It had no role prop or
+gating at all, so the buyer could see and interact with the seller's
+evidence-policy configuration on their own "view only" tab.
+
+Checked EvidenceTab (the other half of this tab) separately — it was
+already correctly read-only for both roles (the only action is a "View"
+eye icon per evidence item; no upload/entry control exists in it at all).
+
+Fix: EvidencePolicySection is now only rendered when !isBuyer. The buyer's
+Proof of Work tab now shows only EvidenceTab — a plain read-only list of
+proof already captured against their services/tasks.
+
+Not committed or pushed by Claude — Phase 1 only, per your procedure.
+
+───────────────────────────────────────────────────
+STEP 1: Navigate to Project Root and Copy File
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull origin claude/sprint1b-migration-handoff-5rk8pr
+
+Copy-Item "MANUAL_COPY_FILES\proof-of-work-buyer-readonly\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "File copied!" -ForegroundColor Green
+
+───────────────────────────────────────────────────
+STEP 2: Test
+───────────────────────────────────────────────────
+cd contractnest-ui
+npm run dev
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Buyer's "Proof of Work" tab — no policy configuration card at the
+      top anymore, just the evidence list
+- [ ] Seller's equivalent view (if seller also reaches this same tab/case
+      anywhere) still shows the configuration card, unaffected
+- [ ] Buyer can still view existing evidence items (photos, reports,
+      status icons) — nothing else was hidden
+═══════════════════════════════════════════════════
