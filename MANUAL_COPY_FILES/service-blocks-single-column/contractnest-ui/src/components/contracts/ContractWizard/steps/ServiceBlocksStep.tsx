@@ -8,8 +8,8 @@
 // changed. Blocks still attach per coverage type (the bold names in the
 // "Blocks attach to:" line are the scope switcher).
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { Zap } from 'lucide-react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { Zap, Wrench, Package, FileText, File } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useVaNiToast } from '@/components/common/toast/VaNiToast';
 import { Block } from '@/types/catalogStudio';
@@ -285,6 +285,26 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [vaniDismissed, setVaniDismissed] = useState(false);
+
+  // FlyBy dropdown (custom line types — same four the old header offered)
+  const [showFlyByMenu, setShowFlyByMenu] = useState(false);
+  const flyByMenuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (flyByMenuRef.current && !flyByMenuRef.current.contains(e.target as Node)) {
+        setShowFlyByMenu(false);
+      }
+    };
+    if (showFlyByMenu) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showFlyByMenu]);
+
+  const flyByMenuOptions = [
+    { type: 'service' as FlyByCategoryId, icon: Wrench, label: 'Service', color: '#3B82F6' },
+    { type: 'spare' as FlyByCategoryId, icon: Package, label: 'Spare Part', color: '#F59E0B' },
+    { type: 'text' as FlyByCategoryId, icon: FileText, label: 'Text Block', color: '#8B5CF6' },
+    { type: 'document' as FlyByCategoryId, icon: File, label: 'Document', color: '#10B981' },
+  ];
 
   // ── Catalog blocks (same source as library + recommender) ──────────
   const { data: catData, isLoading: catalogLoading } = useCatBlocksTest();
@@ -853,16 +873,56 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
             </div>
           )}
 
-          <button
-            type="button"
-            onClick={() => handleAddFlyByBlock('service')}
-            className="w-full rounded-[11px] border-2 border-dashed px-3 py-3 mt-3.5 text-[13px] font-bold transition-colors"
-            style={{ borderColor: colors.utility.primaryText + '25', color: dim, backgroundColor: 'transparent' }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = colors.brand.primary; e.currentTarget.style.borderColor = colors.brand.primary; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = dim; e.currentTarget.style.borderColor = colors.utility.primaryText + '25'; }}
-          >
-            + Add a custom line (not in your catalog)
-          </button>
+          {/* FlyBy — custom line, as a type dropdown (Service / Spare Part /
+              Text Block / Document — the same four the previous layout offered) */}
+          <div className="relative" ref={flyByMenuRef}>
+            <button
+              type="button"
+              onClick={() => setShowFlyByMenu((v) => !v)}
+              className="w-full rounded-[11px] border-2 border-dashed px-3 py-3 mt-3.5 text-[13px] font-bold transition-colors"
+              style={{ borderColor: colors.utility.primaryText + '25', color: dim, backgroundColor: 'transparent' }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = colors.brand.primary; e.currentTarget.style.borderColor = colors.brand.primary; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = dim; e.currentTarget.style.borderColor = colors.utility.primaryText + '25'; }}
+            >
+              + Add a custom line (not in your catalog) ▾
+            </button>
+            {showFlyByMenu && (
+              <div
+                className="absolute left-0 right-0 bottom-full mb-1 rounded-xl border shadow-lg z-20 py-1 overflow-hidden"
+                style={{
+                  background: isDarkMode ? 'rgba(30, 41, 59, 0.97)' : 'rgba(255, 255, 255, 0.97)',
+                  backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)',
+                  borderColor: isDarkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                } as React.CSSProperties}
+              >
+                {flyByMenuOptions.map((opt) => {
+                  const OptIcon = opt.icon;
+                  return (
+                    <button
+                      key={opt.type}
+                      type="button"
+                      onClick={() => {
+                        handleAddFlyByBlock(opt.type);
+                        setShowFlyByMenu(false);
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-xs transition-colors hover:opacity-80"
+                      style={{ color: colors.utility.primaryText }}
+                    >
+                      <div
+                        className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{ backgroundColor: `${opt.color}15` }}
+                      >
+                        <OptIcon className="w-3.5 h-3.5" style={{ color: opt.color }} />
+                      </div>
+                      <span className="font-medium">{opt.label}</span>
+                      <Zap className="w-3 h-3 ml-auto" style={{ color: opt.color }} />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
