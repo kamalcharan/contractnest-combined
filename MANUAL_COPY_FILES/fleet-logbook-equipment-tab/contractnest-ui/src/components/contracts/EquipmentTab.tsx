@@ -233,9 +233,11 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
   // if either query errors or returns nothing, cards render without the
   // service footer and the matrix lens stays hidden.
 
+  // per_page MAX is 100 — the API validator (contractEventValidators.ts)
+  // rejects anything above with a 400, which silently emptied this tab.
   const { data: eventsData, isLoading: eventsLoading } = useContractEventsForContract(
     contractId || null,
-    { per_page: 200 },
+    { per_page: 100 },
   );
   const { data: eventAssetsByEvent = {}, isLoading: eventAssetsLoading } = useContractEventAssets(
     contractId || null,

@@ -42,7 +42,7 @@ All data is joined CLIENT-SIDE from existing queries — no backend change.
    strip's Awaiting stat both toggle a placeholder-only view of the grid.
 
 Data join (EquipmentTab):
-  useContractEventsForContract(contractId, per_page 200) +
+  useContractEventsForContract(contractId, per_page 100 — API max) +
   useContractEventAssets(contractId). A row belongs to a machine when
   row.asset_ref === detail.id OR row.asset_ref === detail.asset_registry_id.
   Rows join to events by event_id for scheduled_date/status. Per machine:
