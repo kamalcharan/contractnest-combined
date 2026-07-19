@@ -1,0 +1,90 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — contract-view-regression-repair (Batch A)
+═══════════════════════════════════════════════════
+Submodules Affected: contractnest-ui only (4 files)
+
+WHAT THIS FIXES (all found during the 19 Jul contract-view audit)
+───────────────────────────────────────────────────
+1. RE-APPLIES the lost equipment-facility-tab-coverage-fix.
+   The original batch (MANUAL_COPY_FILES/equipment-facility-tab-coverage-fix)
+   never made it to main — a later batch's copy of detail/index.tsx
+   overwrote it (stale-base clobbering, third occurrence). Verified on
+   main: zero `coverage_types` references, debug log still present.
+   This batch re-ports JUST the fix onto the CURRENT main file (diffed
+   first — main's newer buyer-gating changes are preserved):
+   - Equipment/Facility tab now shows for contracts that DECLARED
+     coverage types but have no assets attached yet ("client lists
+     after signing" path) — previously the tab vanished entirely.
+   - Tab label classifies declared coverage against the tenant's
+     resource catalog (Equipment / Facility / Equipment & Facility).
+
+2. WIRES Sprint 3 per-asset progress into the tabs users actually see.
+   EventAssetProgress ("n/m assets proven" chip) only rendered inside
+   OperationsTab — which is in NEITHER tab list (seller: overview/tasks/
+   equipment/financials/audit/document; buyer: overview/equipment/
+   my_services/payments/proof_of_work/requests). The feature was
+   unreachable in normal navigation. Now the chip renders under every
+   service event card in SellerTasksTab (used by BOTH seller "Tasks"
+   and buyer "My Services").
+
+3. FIXES two attach-asset picker bugs (EquipmentTab):
+   - Assets already attached to the contract no longer appear in the
+     attach-placeholder picker. Previously they rendered as selected
+     and clicking one ran the REMOVE branch — silently detaching an
+     asset from the slot it already filled.
+   - The "X of Y added" counter now counts only assets in the current
+     filtered view. Previously it compared the GLOBAL attached count
+     against the NARROWED list ("9 of 3 added").
+
+4. CAPS the expanded per-asset list height (max-h-56 + scroll) so a
+   many-asset event can't shove the whole timeline down.
+
+5. REMOVES all leftover debug console.log blocks from detail/index.tsx
+   and EquipmentTab.tsx (including the one with a duplicate buyer_id
+   key), and drops the now-unused nomenclatureLoading/Error destructure.
+
+FILES
+───────────────────────────────────────────────────
+contractnest-ui/src/pages/contracts/detail/index.tsx      [coverage fix re-applied + debug removal]
+contractnest-ui/src/components/contracts/SellerTasksTab.tsx [+EventAssetProgress under service cards]
+contractnest-ui/src/components/contracts/EquipmentTab.tsx  [2 picker bugs + debug removal]
+contractnest-ui/src/components/contracts/EventAssetProgress.tsx [height cap on expanded list]
+
+All four files were copied from CURRENT origin/main (16892cf) and edited
+in place — not from any older batch folder (the clobbering lesson).
+
+Not committed to any submodule by Claude — Phase 1 only.
+
+───────────────────────────────────────────────────
+STEP 1: Pull + Copy (PowerShell)
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git fetch origin
+git checkout claude/sprint1b-migration-handoff-5rk8pr
+git pull origin claude/sprint1b-migration-handoff-5rk8pr
+
+Copy-Item "MANUAL_COPY_FILES\contract-view-regression-repair\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+───────────────────────────────────────────────────
+STEP 2: Manual test
+───────────────────────────────────────────────────
+cd contractnest-ui
+npm run dev
+
+- [ ] Open a contract that DECLARED coverage in the wizard but has no
+      equipment attached yet — the Equipment (or Facility) tab now
+      appears. (Previously: no tab at all.)
+- [ ] Open a contract WITH equipment + service events → Tasks tab —
+      each service event card now shows the "n/m assets proven" chip;
+      expanding lists per-asset status. Same on buyer "My Services".
+- [ ] Equipment tab → click "Attach Asset" on a placeholder — the
+      picker no longer lists assets already attached to this contract,
+      and the "X of Y added" counter reads sensibly.
+- [ ] Console: no [NomenclatureDebug] / [EquipmentTab] /
+      [ContractDetail→Equipment] log spam.
+- [ ] Regression: buyer persona still sees restricted tabs; Proof of
+      Work still read-only for buyer (untouched, verified preserved).
+- [ ] tsc baseline clean.
+═══════════════════════════════════════════════════
