@@ -1,0 +1,89 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — buyer-claim-and-viewer-tabs-fix
+═══════════════════════════════════════════════════
+Submodule Affected: contractnest-ui (1 file)
+Also fixed directly on Supabase (no file to copy — see below).
+
+WHAT THIS FIXES
+───────────────────────────────────────────────────
+Two confirmed bugs found while trying to test the buyer-side view:
+
+BUG 1 (fixed directly on Supabase — already live, nothing to copy for this
+part): claim_contract_by_cnak() has never once written t_contracts.
+buyer_tenant_id, since the function was first created — checked both its
+original version (migration 051) and its latest revision (migration 059);
+both only update t_contract_access. The column exists specifically for
+this ("the tenant who claimed/accepted this contract as a buyer", added in
+migration 042) and several read paths already depend on it (useContractRole
+on the frontend, get_contract_by_id, get_contracts_list, an access-check
+path in migration 055) — they've just never seen it populated. This is not
+a regression; it was never finished.
+
+Fix applied: claim_contract_by_cnak now sets buyer_tenant_id in both the
+first-time-claim path and the "already claimed by this tenant" path — so
+a contract claimed before this fix self-heals the next time someone
+re-enters the same CNAK, with no separate backfill script needed. Verified
+live: re-ran the claim for CNAK-0321FA ("tyuy") — buyer_tenant_id is now
+correctly set.
+
+BUG 2 (this file): contracts/detail/index.tsx picked which tab set to show
+using `showBuyerView ? BUYER_TAB_DEFINITIONS : SELLER_TAB_DEFINITIONS` —
+meaning ANY non-buyer, including a genuine third-party viewer (someone who
+is neither this contract's seller nor its claimed buyer), fell through to
+the FULL SELLER tab set: Financials, Audit Log, Tasks with status-change
+controls. This was directly reachable in practice — before Bug 1 was
+fixed, every claimed buyer was itself misclassified as a 'viewer' (since
+buyer_tenant_id was never set), so buyer sessions were seeing seller-only
+tabs.
+
+Fix: added a minimal VIEWER_TAB_DEFINITIONS (Overview + Document only,
+read-only) and changed the tab-selection logic to branch on isSeller
+explicitly, not "not buyer":
+  showBuyerView ? BUYER_TAB_DEFINITIONS
+    : isSeller ? SELLER_TAB_DEFINITIONS
+    : VIEWER_TAB_DEFINITIONS
+
+SCOPE NOTE — one thing NOT touched, flagged for awareness: there's a
+separate `showSellerView` boolean used in ~15 other places in this same
+file (contact label wording, some conditional renders) that has the same
+"viewer falls back to seller" pattern baked in. I only fixed the tab
+LIST itself (the concrete, reachable symptom you hit) — I did not audit
+or rewrite every other showSellerView/showBuyerView usage in the file,
+since that's a larger change with more regression surface. Worth a
+dedicated pass later if you want the rest tightened up too.
+
+Not committed or pushed by Claude — Phase 1 only, per your procedure.
+
+───────────────────────────────────────────────────
+STEP 1: Navigate to Project Root and Copy File
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull origin claude/sprint1b-migration-handoff-5rk8pr
+
+Copy-Item "MANUAL_COPY_FILES\buyer-claim-and-viewer-tabs-fix\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "File copied!" -ForegroundColor Green
+
+───────────────────────────────────────────────────
+STEP 2: Test
+───────────────────────────────────────────────────
+cd contractnest-ui
+npm run dev
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Log in as the tenant that claimed "tyuy" (vikuna / info@vikuna.io) —
+      open the contract — you should now see the BUYER tab bar (Overview,
+      Equipment, My Services, Payments, Proof of Work, Requests, Document),
+      not the seller's (Tasks, Financials, Audit Log)
+- [ ] My Services tab now shows the 12 HVAC events, with the per-asset
+      progress chip from the previous batch
+- [ ] Log in as pulse@p.com (the actual seller) — still sees the full
+      seller tab bar, unaffected
+- [ ] Claim a NEW contract (fresh CNAK, never claimed before) as a third
+      tenant — confirm buyer_tenant_id gets set correctly from the start
+- [ ] If you have a way to view a contract as a genuine third party
+      (neither its seller nor its buyer) — confirm it now shows only
+      Overview + Document, not the full seller tab set
+═══════════════════════════════════════════════════

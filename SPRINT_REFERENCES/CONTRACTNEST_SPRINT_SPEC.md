@@ -5,36 +5,42 @@
 
 ---
 
-## Program status — updated 16 Jul 2026
+## Program status — updated 18 Jul 2026
 
 ### Done
 - **Sprint 1 step (a) UI — complete and merged to main.** Coverage & Assets redesign (registry picker middle column, live Attached sidebar, per-type registry intelligence), Service Blocks redesign, Billing View discount UI (contract-level %/₹ toggle, amount default; state fields only — persistence lands in step (b)). WizardShell + logic extraction with the parity harness locked.
-- **Beyond-spec: cadence (cyclical) pricing, end-to-end.** Catalog rate cards ("Total X for Y months" anchor, per-cadence rates, tenant default) → wizard proposal with term math and duration-fit auto-switch → template round-trip → buyer payment-plan picker at sign-off → server-side acceptance repricing in the contracts edge fn (stored-rate-card recompute, tamper-proof). Live-verified on CN-1043 (12 monthly events, invoice at correct total). Note: this is cadence *pricing*; Sprint 6's "cadence" (visit scheduling/appointments) is untouched.
-- **Professional contract document** (ink-on-white, Schedules A/B/C, terms from the T&C block, amount-in-words, CNAK footer) rendered on-screen and exported as PDF from: wizard Review & Send, seller contract detail "Document" tab, and the public buyer review page.
-- **MVP scope reduction**: singleton Terms & Conditions (VaNi onboarding step after pricing-review; auto-included in every contract/template; second text block redirects to edit), video/image/document types gated "coming soon" in both catalog systems, FlyBy restricted to service.
-- **Hardening en route**: template-instantiation config passthrough (composer), phantom 18% tax removed, autosave race (draft version single-flight), composer preserves block categories (killed the ₹0 null billing event), Group Session cycle/audience persistence (session case in the adapter).
+- **Sprint 1 step (b) migration + step (c) stitch — complete.** `t_contract_event_assets` per-asset table live (fixed a source-column bug found during verification: `generate_contract_event_assets()` was reading from an empty `metadata.wizard_state` path instead of the real `equipment_details` column — affected every contract, not just legacy ones). Contract-level discount threaded end-to-end: mapper → `computeEventsForApi` derivation → API parity → Events Preview → contract document. Placeholder→open flips on real-asset attach confirmed live.
+- **Sprint 3 (Contract View per-asset grain) — complete.** Per-asset progress chip on each service event (`EventAssetProgress`, expandable to per-asset status/assignee) wired into both Operations and Tasks/My Services views; Equipment tab supports attaching a real asset to a placeholder slot for multi-equipment contracts, with "N of M" indexing when a category has more than one item; `t_contract_event_assets` read path (`GET /:id/event-assets`) added through API + edge fn. Dead surface removed: orphaned `ContractTab.tsx` (zero imports, confirmed by full-tree search) and the dead `communication` tab-content branch/`PlaceholderTab` component in contract detail. `sql/acceptance/sprint3.sql` authored (5 checks: asset-row generation, placeholder→open flip, no orphan rows on re-attach, in-place equipment_details replace, no unrelated `updated_at` drift) — **acceptance closed: owner verified the attach-asset flow live on 18 Jul** (per-asset rows generate, placeholder→open flips, `equipment_details` replaced in place, no orphan rows); formal SQL run waived as redundant with the manual verification.
+- **Beyond-spec hardening found and fixed while working the buyer side of Sprint 3** (all real, pre-existing bugs, not regressions — root-caused via `pg_get_functiondef` + live data before any fix):
+  - `claim_contract_by_cnak()` never wrote `buyer_tenant_id` on the contract — present since the function's original version; buyer-side contracts were invisible to their own Contracts Hub. Fixed with a self-healing update on both first-claim and re-claim paths; one already-affected contract ("sddsd") backfilled directly (only 2 contracts total ever affected, no blanket backfill needed).
+  - CNAK claiming had zero Test/Live environment awareness anywhere in the stack — a Test-mode claim against a Live contract silently succeeded. `claim_contract_by_cnak` now takes `p_is_live` and rejects cross-environment claims with a clear message.
+  - `get_contract_events_list()` / `get_contract_events_date_summary()` were scoped to `ce.tenant_id = p_tenant_id` only (seller-only) — buyer's "My Services" showed zero events even after a correct claim. Both RPCs extended to also match via `t_contracts.buyer_tenant_id`.
+  - Contract detail tab selection defaulted any non-buyer (including a bare "viewer" role) to the full seller tab set (Financials/Audit Log/Tasks exposed). Added a viewer-safe tab set as a defensive fallback.
+  - `EvidencePolicySection` (seller-only evidence policy config) rendered unconditionally on the buyer's "Proof of Work" tab with no role gating at all — buyer now sees only the read-only evidence list.
+  - Tasks/My Services timeline: event cards were rendered white-on-white (panel and card both used the same theme token) — panel background corrected to the primary/card contrast pairing used elsewhere in the app; no layout change (the seller/buyer opposite-side billing-vs-services split is intentional and was not touched).
 
 ### Pending
-- **Sprint 1 (b) migration**: `t_contracts` discount columns + RPC params; `custom_fields.list_price`/`loaded_discount`; **`t_contract_event_assets`** per-asset table + activation generation + backfill (unblocks S3/S6/S7).
-- **Sprint 1 (c) stitch**: mapper emits discount fields; `computeEventsForApi` discounted amounts + API derivation parity re-golden; placeholder→open flips; gross-vs-net impact notes.
-- **Sprints 2–7** as specified (smart forms; contract view per-asset grain; AR/AP settle bridge; events & group-sessions cleanup; appointments integration; service execution loop-close).
+- **Sprint 2** (smart forms from Knowledge Tree) and **Sprint 7** (service execution loop-close) — owner has proposed doing these two together; sequencing decision still open, not started.
+- **Sprint 4 (AR/AP settle bridge) — next build item, starts in a new session** (see hand-off below).
+- **Sprints 5–6** as specified (events & group-sessions cleanup; appointments integration) — not started.
 - **Deployment gap (go-live blocker)**: deploy current UI main to the `FRONTEND_URL` host *and* `www.contractnest.com` (WhatsApp links 404 there); align `FRONTEND_URL` with the MSG91 template URL. Contracts edge fn is already deployed and current.
-- **Deferred cadence steps**: none — 2a/2b/2c shipped. Buyer *switch* path live-test outstanding (covered 55/55 by parity harness).
-- **Debt**: ~1,500 legacy tsc errors (bucketed cleanup pass planned: delete dead marketing pages → fix live code → gate CI); one null-amount event row on CN-1043 (test data, informational).
+- **Debt**: ~1,500 legacy tsc errors (bucketed cleanup pass planned: delete dead marketing pages → fix live code → gate CI); one null-amount event row on CN-1043 (test data, informational); a local, unpushed `contractnest-api` submodule pointer diff (commit amend for author/committer metadata only, no content change) is sitting uncommitted at the parent-repo level pending the owner's call — not acted on unilaterally per standing procedure.
+- Per-block discount (mutually-exclusive with contract-level discount) — deliberately deferred, see "Future Review Items" in CLAUDE.md.
 
 ---
 
-### Session hand-off — 16 Jul 2026 (end of session)
-Shipped after the status above: `emi-cadence-guard` (EMI locked on cadence-priced contracts/templates + buyer picker hidden on EMI + edge rejection; Group Session dashboard repaired — catalog configs restored in DB, session blocks now always persist audience='group').
+### Session hand-off — 18 Jul 2026 (end of session)
+Shipped after the 16 Jul status above: Sprint 1 (b)/(c) discount stitch, Sprint 3 per-asset grain (progress UI + equipment attach-to-placeholder flow + dead-surface cleanup), and the six beyond-spec buyer-side bugs listed under Done above. All delivered as MANUAL_COPY_FILES batches (`remove-orphaned-contract-tab` is the last one, pending owner copy/test); all DB migrations applied and live-verified via direct RPC re-invocation before being called done.
 
 **User actions outstanding**
-1. Copy + test + Phase-2 merge: `composer-category-fix` (API), `session-cycle-fix` (UI), `emi-cadence-guard` (UI + edge — ⚠ redeploy `contracts` edge fn after copying).
-2. Re-set the cycle on the "Saturday Cadence" block once (its cycle was never saved pre-fix).
-3. Live-test the buyer cadence SWITCH (accept with a plan ≠ proposal).
+1. Copy + test the still-unmerged MANUAL_COPY_FILES batches from this session (equipment/facility coverage-tab fix, Sprint 3 per-asset grain, buyer-claim + viewer-tab fix, Proof of Work buyer-readonly, Tasks timeline contrast fix, remove-orphaned-contract-tab). **UI portion released to `main` on 18 Jul** — `contractnest-ui@16892cf`, parent `master@6d963bdb` (Sprint 3 grain + discount stitch + ContractTab removal + buyer-side UI fixes). Any `contractnest-api`/`contractnest-edge` migrations & RPCs backing these batches (event-assets endpoint, `claim_contract_by_cnak` env-awareness/`buyer_tenant_id`, `get_contract_events_*` buyer scoping) still need their own deploy/push if not already applied.
+2. `sql/acceptance/sprint3.sql` — **closed**: owner verified the attach-asset behavior live on 18 Jul; formal SQL run waived.
+3. Decide on the outstanding `contractnest-api` submodule pointer diff (see Debt above).
+4. Decide Sprint 2 vs Sprint 7 sequencing (owner's stated lean: run them together) once Sprint 4 is underway or before.
 
-**Next build item (agreed)**: Sprint 1 step (b) migration + step (c) stitch — see Pending above. Plan: migration SQL draft reviewed before applying via Supabase MCP; then the code batch (UI mapper/events + API derivation parity re-golden); then impact notes. Open design question: backfill asset rows for past service events or future-only?
+**Next build item (agreed): Sprint 4 — AR/AP settle bridge — in a new session.** This session's job was to close out Sprint 3 cleanly; no Sprint 4 design or code was started here.
 
-**Workflow reminders for the next session**: re-layer ALL batch folders in MANUAL_COPY_FILES chronological order onto pristine submodules before editing, then `git fetch origin main` in each submodule and REBUILD every shipped file on latest main (stale-base clobbering bit us twice); tsc baseline diff + parity harness before packaging; reset trees after pushing.
+**Workflow reminders for the next session**: re-layer ALL batch folders in MANUAL_COPY_FILES chronological order onto pristine submodules before editing, then `git fetch origin main` in each submodule and REBUILD every shipped file on latest main (stale-base clobbering bit us twice); tsc baseline diff + parity harness before packaging; reset trees after pushing. (Sprint 3 acceptance is closed — owner verified live 18 Jul — so Sprint 4 can start clean.)
 
 
 ## 0. Program rules (apply to every sprint)

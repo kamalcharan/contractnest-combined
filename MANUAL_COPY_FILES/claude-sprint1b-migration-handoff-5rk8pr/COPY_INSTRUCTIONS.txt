@@ -1,0 +1,82 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — claude-sprint1b-migration-handoff-5rk8pr
+═══════════════════════════════════════════════════
+
+NOTE: These files are ALSO already committed and pushed to
+origin/claude/sprint1b-migration-handoff-5rk8pr in each real repo
+(contractnest-ui, contractnest-edge). This folder is a redundant,
+copy-paste-ready mirror of the exact same changes, in case you'd
+rather copy files by hand than deal with submodule pull/checkout.
+Either path gets you the same end state — use whichever is easier.
+
+Submodules Affected: contractnest-ui, contractnest-edge
+
+───────────────────────────────────────────────────
+STEP 1: Navigate to Project Root
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+───────────────────────────────────────────────────
+STEP 2: Copy Files (PowerShell)
+───────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\claude-sprint1b-migration-handoff-5rk8pr\contractnest-ui\src\hooks\useTenantProfile.ts" -Destination "contractnest-ui\src\hooks\useTenantProfile.ts" -Force
+
+Copy-Item "MANUAL_COPY_FILES\claude-sprint1b-migration-handoff-5rk8pr\contractnest-ui\src\pages\checkin\SessionCheckinPage.tsx" -Destination "contractnest-ui\src\pages\checkin\SessionCheckinPage.tsx" -Force
+
+Copy-Item "MANUAL_COPY_FILES\claude-sprint1b-migration-handoff-5rk8pr\contractnest-ui\src\pages\checkin\useSessionCheckin.ts" -Destination "contractnest-ui\src\pages\checkin\useSessionCheckin.ts" -Force
+
+Copy-Item "MANUAL_COPY_FILES\claude-sprint1b-migration-handoff-5rk8pr\contractnest-edge\supabase\migrations\bbb-foundation\029_checkin_tenant_name.sql" -Destination "contractnest-edge\supabase\migrations\bbb-foundation\029_checkin_tenant_name.sql" -Force
+
+Copy-Item "MANUAL_COPY_FILES\claude-sprint1b-migration-handoff-5rk8pr\contractnest-edge\supabase\migrations\contracts\058_equipment_placeholder_attach.sql" -Destination "contractnest-edge\supabase\migrations\contracts\058_equipment_placeholder_attach.sql" -Force
+
+Write-Host "All files copied!" -ForegroundColor Green
+
+───────────────────────────────────────────────────
+STEP 3: The .sql files are ALREADY APPLIED to your live Supabase
+project (uwyqhzotluikawcboldr) — they were run directly via MCP
+during this session, not just written to disk. Copying them here
+only brings your local migration history file tree in sync; it
+does NOT need to be re-run against the database.
+───────────────────────────────────────────────────
+
+───────────────────────────────────────────────────
+STEP 4: Restart Dev Server & Test
+───────────────────────────────────────────────────
+cd contractnest-ui
+npm run dev
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════
+FILES IN THIS BATCH
+═══════════════════════════════════════════════════
+contractnest-ui/src/hooks/useTenantProfile.ts
+  - Fix: Edit Profile now lands on Organization Details (name, contacts,
+    brand color) instead of getting stuck on the Industry/Business-Type
+    wizard step. Gates on `persona` (the field that's actually populated
+    for every tenant) instead of the deprecated, always-null business_type_id.
+
+contractnest-ui/src/pages/checkin/SessionCheckinPage.tsx
+contractnest-ui/src/pages/checkin/useSessionCheckin.ts
+  - Feature: public check-in page (/checkin/:token) now shows the
+    tenant/organization name as a small heading above the cadence/session
+    name (e.g. "BBB" above "Saturday Cadence").
+
+contractnest-edge/supabase/migrations/bbb-foundation/029_checkin_tenant_name.sql
+  - gs_resolve_checkin RPC extended to return `business_name` (joined
+    from t_tenant_profiles). ALREADY APPLIED to Supabase.
+
+contractnest-edge/supabase/migrations/contracts/058_equipment_placeholder_attach.sql
+  - buyer_add_equipment_to_contract / seller_add_equipment_to_contract
+    extended with an optional p_replaces_item_id param for Sprint 1(b)
+    step (c) — backend-only, no UI wired to it yet. ALREADY APPLIED to
+    Supabase.
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Log into BBB -> /settings/business-profile -> Edit Profile ->
+      lands on "Tell us about your organization" (not the industry step)
+- [ ] Log into Pulse -> same check -> still works (no regression)
+- [ ] Open the Saturday Cadence check-in link on localhost -> "BBB"
+      shows as a small label above "Saturday Cadence"
+═══════════════════════════════════════════════════

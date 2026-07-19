@@ -1,0 +1,108 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — sprint3-per-asset-grain
+═══════════════════════════════════════════════════
+Submodules Affected: contractnest-ui (8 files), contractnest-api (3 files),
+contractnest-edge (1 file — ⚠ REDEPLOY the "contracts" edge function after copying)
+
+WHAT THIS BUILDS — Sprint 3: Contract View, per-asset grain
+───────────────────────────────────────────────────
+1. Per-asset progress on event cards. Each service event's card now shows
+   a collapsed "n/m assets proven" chip; expands to a list of every
+   covered asset with its own status (open/assigned/in_progress/proven/
+   awaiting asset), assignee, and name. Works identically for seller
+   (Operations tab) and buyer (My Services tab) — both already share the
+   same components.
+2. Equipment tab now distinguishes real vs. placeholder assets:
+   - Placeholder cards get a "To be attached" badge.
+   - When a contract has multiple items of the same type (e.g. 3 HVAC
+     units), each card shows "N of M" so they're no longer visually
+     identical.
+   - Placeholder cards get a new "Attach Asset" button — opens the
+     registry picker pre-filtered to that exact asset type, and replaces
+     that specific placeholder in place (rather than appending a new
+     item) when you pick a real asset.
+3. Dead-surface cleanup: removed the unreachable "Communication" tab case
+   (confirmed dead — not wired to any nav button) and its now-unused
+   PlaceholderTab component; removed leftover debug console.log calls in
+   the contract detail page. "Generate Invoice" (previously a dead button
+   with no click handler, in both Operations and My Services/Tasks) is now
+   disabled with a "arrives in Sprint 4" tooltip instead of silently doing
+   nothing.
+4. Same coverage_types-based Equipment/Facility classification fix from
+   the previous batch, applied to the "which Add button to show" logic
+   too (equipTabMode) — it had the identical gap as the tab-label fix.
+
+BACKEND WORK BEHIND #1 AND #2
+───────────────────────────────────────────────────
+- New read endpoint: GET /api/contracts/:id/event-assets — returns
+  t_contract_event_assets rows grouped by event_id. Routed through
+  contractnest-api (routes/controller/service, thin proxy) to a new
+  handler in the "contracts" edge function.
+- "Attach Asset" wiring: the buyer/seller add-equipment RPCs already
+  supported replacing a placeholder in-place (p_replaces_item_id, built in
+  an earlier session) and already correctly unlock the right
+  t_contract_event_assets rows — but the edge function's HTTP handlers
+  never read/forwarded that parameter from the request body. Fixed in
+  both handlers; threaded through the UI mutation hooks
+  (useBuyerAddEquipment/useSellerAddEquipment) with a new optional
+  replacesItemId param.
+
+⚠ IMPORTANT PREREQUISITE (already applied by me directly to Supabase,
+not part of this file copy): generate_contract_event_assets() had a bug
+where it read equipment from a JSON path nothing in the app ever
+populated (metadata.wizard_state.equipmentDetails) instead of the real
+t_contracts.equipment_details column — meaning t_contract_event_assets
+never got populated for ANY contract, old or new. I fixed that function
+directly via migration during this session (already live on your Supabase
+project) — nothing to copy for that part, just flagging it since #1 and
+#2 above depend on it.
+
+Not committed or pushed by Claude — Phase 1 only, per your procedure.
+
+───────────────────────────────────────────────────
+STEP 1: Navigate to Project Root and Copy Files
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull origin claude/sprint1b-migration-handoff-5rk8pr
+
+Copy-Item "MANUAL_COPY_FILES\sprint3-per-asset-grain\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\sprint3-per-asset-grain\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\sprint3-per-asset-grain\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+───────────────────────────────────────────────────
+STEP 2: Redeploy the "contracts" edge function (required — new endpoint
+and the replaces_item_id fix both live there)
+───────────────────────────────────────────────────
+Deploy contractnest-edge\supabase\functions\contracts via your normal
+Supabase deploy step for that function.
+
+───────────────────────────────────────────────────
+STEP 3: Test
+───────────────────────────────────────────────────
+cd contractnest-ui
+npm run dev
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Open an active contract with a placeholder equipment item — the
+      Equipment tab shows a "To be attached" badge on it
+- [ ] Contract with 2+ units of the same type — each card shows "N of M"
+- [ ] Click "Attach Asset" on a placeholder — picker opens, pre-filtered to
+      the right asset type; picking a real asset replaces the placeholder
+      IN PLACE (equipment count doesn't grow), badge disappears
+- [ ] Operations tab (seller) — each service event card shows an
+      "n/m assets proven" chip; expand it to see the per-asset list
+- [ ] My Services tab (buyer) — same chip appears, same data
+- [ ] Before attach: chip may show a lower "proven" count / an
+      "Awaiting asset" row; after attach, that asset's row updates
+- [ ] "Generate Invoice" buttons are visibly disabled with a tooltip, not
+      silently doing nothing
+- [ ] "Communication" tab is gone from the tab bar (it was already
+      unreachable, so this should be invisible — just confirming no console
+      errors)
+- [ ] Console — no leftover [NomenclatureDebug] / [ContractDetail→Equipment]
+      debug logs
+═══════════════════════════════════════════════════

@@ -1,0 +1,74 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — equipment-facility-tab-coverage-fix
+═══════════════════════════════════════════════════
+Submodule Affected: contractnest-ui (2 files)
+
+WHAT THIS FIXES
+───────────────────────────────────────────────────
+Reported bug: contract /contracts/bfd13ba4-f8af-4859-8407-fefdd5504abb
+covers HVAC (equipment) but the Equipment tab did not show at all.
+
+Root cause (confirmed via direct DB check): the tab-visibility logic
+(contractSupportsEquipment) and the tab-label logic (equipmentTabLabel) in
+contracts/detail/index.tsx only ever checked equipment_details (attached
+instances) and the nomenclature's form_settings flags. Neither ever looked
+at coverage_types — the Sprint 1 field that declares "which asset types
+does this contract cover," which can be non-empty even when no instance
+has been attached yet (e.g. "buyer will add later" with nothing attached).
+That contract has empty equipment_details + null nomenclature_id, but a
+real coverage_types entry for "HVAC System" — so the tab vanished even
+though the contract plainly covers equipment.
+
+WHAT CHANGED
+───────────────────────────────────────────────────
+- src/pages/contracts/detail/index.tsx
+    - contractSupportsEquipment: now also returns true when
+      contract.coverage_types has entries.
+    - equipmentTabLabel: added a third fallback — when equipment_details is
+      empty, classify each coverage_types entry (equipment vs facility) by
+      looking its resource_id up in the tenant's resource catalog (reusing
+      the existing useResources() hook, already used elsewhere in the app —
+      no new backend endpoint needed).
+    - Removed a debug console.log block explicitly marked "DEBUG: Remove
+      after fixing equipment/facility tab issue" — this fix is that fix.
+- src/types/contracts.ts
+    - Added the missing coverage_types field (+ ContractCoverageType
+      interface) to the Contract type. It existed in the DB and in the
+      wizard's internal state, but was never declared on the type the
+      detail page reads — needed so the fix above type-checks.
+
+Not committed or pushed by Claude — Phase 1 only, per your procedure.
+
+───────────────────────────────────────────────────
+STEP 1: Navigate to Project Root
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+───────────────────────────────────────────────────
+STEP 2: Copy Files (PowerShell)
+───────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\equipment-facility-tab-coverage-fix\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+───────────────────────────────────────────────────
+STEP 3: Test
+───────────────────────────────────────────────────
+cd contractnest-ui
+npm run dev
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Open /contracts/bfd13ba4-f8af-4859-8407-fefdd5504abb — the "Equipment"
+      tab should now appear (this contract's coverage_types declares HVAC,
+      an equipment type, with nothing attached yet)
+- [ ] A contract with a real attached facility/entity asset — tab still
+      labeled "Facility", unaffected by this change
+- [ ] A contract with both equipment AND facility coverage types (no
+      instances attached) — tab labeled "Equipment & Facility"
+- [ ] A pure-service contract (no equipment_details, no coverage_types,
+      no equipment-based nomenclature) — tab still correctly hidden
+- [ ] Console — the removed debug block ([NomenclatureDebug] logs) no
+      longer fires on this page
+═══════════════════════════════════════════════════

@@ -1,0 +1,54 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — cnak-claim-environment-aware
+═══════════════════════════════════════════════════
+Submodule Affected: contractnest-edge (1 file) — ⚠ REDEPLOY the "contracts"
+edge function after copying.
+Also fixed directly on Supabase (already live — nothing to copy for that
+part): claim_contract_by_cnak() RPC.
+
+WHAT THIS FIXES
+───────────────────────────────────────────────────
+CNAK claiming had zero environment (Test/Live) awareness anywhere in the
+stack — not a deliberate allowance, just never built. Confirmed: neither
+claim_contract_by_cnak()'s signature nor t_contract_access (the table
+backing claims) had any is_live/environment column or check at all, even
+though every other handler in the same edge function already receives and
+uses an `isLive` value derived from the x-environment header.
+
+Fix:
+- claim_contract_by_cnak(p_cnak, p_tenant_id, p_user_id, p_is_live) — new
+  4th parameter. Rejects the claim outright (code: ENVIRONMENT_MISMATCH)
+  when the contract's own is_live doesn't match the claiming tenant's
+  current mode, with a clear message ("This contract belongs to your Live
+  workspace, but you are currently in Test mode...").
+- Edge function's handleClaimContract now receives and forwards isLive
+  (already computed in the outer request scope) as p_is_live.
+- No UI change needed — the shared `api` axios instance already attaches
+  x-environment globally via an interceptor, so the claim call already
+  carries the correct current Test/Live toggle state.
+
+Not committed or pushed by Claude — Phase 1 only, per your procedure.
+
+───────────────────────────────────────────────────
+STEP 1: Navigate to Project Root and Copy File
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull origin claude/sprint1b-migration-handoff-5rk8pr
+
+Copy-Item "MANUAL_COPY_FILES\cnak-claim-environment-aware\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "File copied!" -ForegroundColor Green
+
+───────────────────────────────────────────────────
+STEP 2: Redeploy the "contracts" edge function (required)
+───────────────────────────────────────────────────
+
+───────────────────────────────────────────────────
+STEP 3: Test
+───────────────────────────────────────────────────
+- [ ] While in Test mode, try to claim a CNAK for a Live contract —
+      should be rejected with a clear "wrong environment" message
+- [ ] While in Live mode, claim a Live contract's CNAK — should still
+      succeed normally
+- [ ] Same in reverse (Test contract claimed from Live mode) — rejected
+═══════════════════════════════════════════════════

@@ -1,0 +1,512 @@
+// src/utils/service-contracts/contractEvents.ts
+// Computes Contract Events from wizard state — service delivery + billing schedule
+// Phase 1: Frontend computation for Events Preview step
+
+import type { ConfigurableBlock } from '@/components/catalog-studio/BlockCardConfigurable';
+import { categoryHasPricing } from '@/utils/catalog-studio/categories';
+
+// ─── Types ───
+
+export type EventType = 'service' | 'billing';
+export type BillingSubType = 'upfront' | 'emi' | 'on_completion' | 'recurring';
+
+export interface ContractEvent {
+  id: string;                    // Deterministic ID for React keys
+  contract_id?: string;
+
+  // Source
+  block_id: string;
+  block_name: string;
+  category_id: string;
+
+  // Type
+  event_type: EventType;
+  billing_sub_type?: BillingSubType;
+  billing_cycle_label?: string;  // 'Monthly', 'EMI 3/5', 'Prepaid', etc.
+
+  // Schedule
+  sequence_number: number;       // 1-based: 1 of 5, 2 of 5...
+  total_occurrences: number;
+  scheduled_date: Date;          // Computed; user can adjust in preview
+  original_date: Date;           // System-computed (never changes)
+
+  // Financials (billing events only)
+  amount?: number;
+  currency?: string;
+
+  // Status (default for preview)
+  status: 'scheduled';
+
+  // Allocation (empty in preview, populated later)
+  assigned_to?: string;
+  assigned_to_name?: string;
+}
+
+export interface ComputeEventsInput {
+  startDate: Date;
+  durationValue: number;
+  durationUnit: string;          // 'days' | 'months' | 'years'
+  selectedBlocks: ConfigurableBlock[];
+  paymentMode: 'prepaid' | 'emi' | 'defined';
+  emiMonths: number;
+  perBlockPaymentType: Record<string, 'prepaid' | 'postpaid'>;
+  billingCycleType: 'unified' | 'mixed' | null;
+  grandTotal: number;
+  currency: string;
+  // Sprint 1: contract-level discount — needed to load it pro-rata into
+  // per-block billing amounts (paymentMode === 'defined'). prepaid/emi
+  // already net it via grandTotal, which is computed post-discount.
+  baseSubtotal?: number;
+  discountTotal?: number;
+}
+
+// ─── Helpers ───
+
+/** Convert duration to total days */
+export function durationToDays(value: number, unit: string): number {
+  switch (unit) {
+    case 'days': return value;
+    case 'months': return value * 30;
+    case 'years': return value * 365;
+    default: return value * 30;
+  }
+}
+
+/** Add days to a date (returns new Date) */
+function addDays(date: Date, days: number): Date {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+}
+
+/** Add months to a date */
+function addMonths(date: Date, months: number): Date {
+  const result = new Date(date);
+  result.setMonth(result.getMonth() + months);
+  return result;
+}
+
+/** Deterministic event ID */
+function makeEventId(blockId: string, eventType: EventType, seq: number): string {
+  // Full blockId (not a slice) so distinct blocks can't collide on an id prefix,
+  // which would misapply date overrides and clash React keys.
+  return `evt_${eventType}_${blockId}_${seq}`;
+}
+
+/** How many recurring periods fit in the contract duration */
+function countRecurringPeriods(durationDays: number, periodDays: number): number {
+  if (periodDays <= 0) return 1;
+  return Math.max(1, Math.ceil(durationDays / periodDays));
+}
+
+/** Billing cycle to period in days */
+function cycleToPeriodDays(cycle: string, customDays?: number): number {
+  switch (cycle) {
+    case 'monthly': return 30;
+    case 'fortnightly': return 14;
+    case 'quarterly': return 90;
+    // Cadence-pricing cycles (cyclical pricing rate cards)
+    case 'halfyearly': return 182;
+    case 'annual': return 365;
+    case 'custom': return customDays || 30;
+    default: return 0; // prepaid/postpaid are one-time, not recurring
+  }
+}
+
+/** Human-readable cycle label */
+function cycleLabel(cycle: string): string {
+  switch (cycle) {
+    case 'prepaid': return 'Prepaid';
+    case 'postpaid': return 'Postpaid';
+    case 'monthly': return 'Monthly';
+    case 'fortnightly': return 'Fortnightly';
+    case 'quarterly': return 'Quarterly';
+    case 'halfyearly': return '6-Monthly';
+    case 'annual': return 'Annual';
+    case 'custom': return 'Custom Cycle';
+    default: return cycle;
+  }
+}
+
+// ─── Main Computation ───
+
+export function computeContractEvents(input: ComputeEventsInput): ContractEvent[] {
+  const {
+    startDate,
+    durationValue,
+    durationUnit,
+    selectedBlocks,
+    paymentMode,
+    emiMonths,
+    grandTotal,
+    currency,
+    baseSubtotal,
+    discountTotal,
+  } = input;
+
+  const events: ContractEvent[] = [];
+  const totalDays = durationToDays(durationValue, durationUnit);
+  const endDate = addDays(startDate, totalDays);
+  // Contract-level discount loaded pro-rata into every block's billed total —
+  // same allocation the Billing View step uses for its own tax-breakup display.
+  const discountFactor = baseSubtotal && baseSubtotal > 0 && discountTotal
+    ? Math.max(0, (baseSubtotal - discountTotal) / baseSubtotal)
+    : 1;
+
+  // ─── SERVICE EVENTS ───
+  // For each priced, non-unlimited block
+  for (const block of selectedBlocks) {
+    const hasPricing = categoryHasPricing(block.categoryId || '');
+    if (!hasPricing || block.unlimited) continue;
+
+    // Billing-only blocks (fees/dues like memberships) bill on their cycle
+    // but never generate service events/visits
+    if (block.config?.billingOnly) continue;
+
+    const qty = block.quantity || 1;
+
+    if (block.serviceCycleDays && block.serviceCycleDays > 0 && qty > 1) {
+      // Recurring service: qty events, each serviceCycleDays apart
+      for (let i = 0; i < qty; i++) {
+        const dayOffset = i * block.serviceCycleDays;
+        const date = addDays(startDate, dayOffset);
+
+        events.push({
+          id: makeEventId(block.id, 'service', i + 1),
+          block_id: block.id,
+          block_name: block.name,
+          category_id: block.categoryId || '',
+          event_type: 'service',
+          sequence_number: i + 1,
+          total_occurrences: qty,
+          scheduled_date: date,
+          original_date: new Date(date),
+          status: 'scheduled',
+        });
+      }
+    } else {
+      // One-time service delivery on Day 1
+      events.push({
+        id: makeEventId(block.id, 'service', 1),
+        block_id: block.id,
+        block_name: block.name,
+        category_id: block.categoryId || '',
+        event_type: 'service',
+        sequence_number: 1,
+        total_occurrences: 1,
+        scheduled_date: new Date(startDate),
+        original_date: new Date(startDate),
+        status: 'scheduled',
+      });
+    }
+  }
+
+  // ─── BILLING EVENTS ───
+
+  if (paymentMode === 'prepaid') {
+    // Upfront: 1 billing event on Day 1 for full amount
+    events.push({
+      id: makeEventId('contract', 'billing', 1),
+      block_id: '_contract',
+      block_name: 'Full Payment (Upfront)',
+      category_id: '',
+      event_type: 'billing',
+      billing_sub_type: 'upfront',
+      billing_cycle_label: 'Upfront',
+      sequence_number: 1,
+      total_occurrences: 1,
+      scheduled_date: new Date(startDate),
+      original_date: new Date(startDate),
+      amount: grandTotal,
+      currency,
+      status: 'scheduled',
+    });
+  } else if (paymentMode === 'emi') {
+    // EMI: N monthly installments. The final installment absorbs rounding so the
+    // installments sum EXACTLY to grandTotal (no ±cents drift).
+    const installment = Math.round((grandTotal / emiMonths) * 100) / 100;
+    const lastInstallment = Math.round((grandTotal - installment * (emiMonths - 1)) * 100) / 100;
+    for (let i = 0; i < emiMonths; i++) {
+      const date = i === 0 ? new Date(startDate) : addMonths(startDate, i);
+      events.push({
+        id: makeEventId('emi', 'billing', i + 1),
+        block_id: '_emi',
+        block_name: `EMI Installment`,
+        category_id: '',
+        event_type: 'billing',
+        billing_sub_type: 'emi',
+        billing_cycle_label: `EMI ${i + 1}/${emiMonths}`,
+        sequence_number: i + 1,
+        total_occurrences: emiMonths,
+        scheduled_date: date,
+        original_date: new Date(date),
+        amount: i === emiMonths - 1 ? lastInstallment : installment,
+        currency,
+        status: 'scheduled',
+      });
+    }
+  } else if (paymentMode === 'defined') {
+    // Per-block billing: each block generates its own billing events
+    for (const block of selectedBlocks) {
+      const hasPricing = categoryHasPricing(block.categoryId || '');
+      if (!hasPricing || block.unlimited) continue;
+
+      const blockCycle = block.cycle || 'prepaid';
+      const blockTotal = (block.totalPrice || 0) * discountFactor;
+
+      // The block's CYCLE (frequency) drives billing — NOT the prepaid/postpaid
+      // payment type. A Monthly block bills every month even when its payment
+      // type is 'prepaid' (that only means "invoice at the start of the period").
+      // Only a genuine one-shot 'prepaid'/'postpaid' cycle collapses to 1 event;
+      // monthly/fortnightly/quarterly/custom fall through to the recurring branch.
+      if (blockCycle === 'prepaid') {
+        // On acceptance — 1 event
+        events.push({
+          id: makeEventId(block.id, 'billing', 1),
+          block_id: block.id,
+          block_name: block.name,
+          category_id: block.categoryId || '',
+          event_type: 'billing',
+          billing_sub_type: 'upfront',
+          billing_cycle_label: 'Prepaid',
+          sequence_number: 1,
+          total_occurrences: 1,
+          scheduled_date: new Date(startDate),
+          original_date: new Date(startDate),
+          amount: blockTotal,
+          currency: block.currency || currency,
+          status: 'scheduled',
+        });
+      } else if (blockCycle === 'postpaid') {
+        // On completion — 1 event at end
+        events.push({
+          id: makeEventId(block.id, 'billing', 1),
+          block_id: block.id,
+          block_name: block.name,
+          category_id: block.categoryId || '',
+          event_type: 'billing',
+          billing_sub_type: 'on_completion',
+          billing_cycle_label: 'Postpaid',
+          sequence_number: 1,
+          total_occurrences: 1,
+          scheduled_date: new Date(endDate),
+          original_date: new Date(endDate),
+          amount: blockTotal,
+          currency: block.currency || currency,
+          status: 'scheduled',
+        });
+      } else if ((block.config as any)?.cadencePricing) {
+        // Cadence-priced (cyclical pricing): the payment count derives from
+        // (cadence, contract term) — NOT from quantity, which stays the
+        // service-visit count. Full payments at the per-period rate, plus a
+        // seller-set final payment when the term doesn't divide evenly.
+        const periodDays = cycleToPeriodDays(blockCycle, block.customCycleDays);
+        const durationMonths = Math.max(1, Math.round(totalDays / 30));
+        const periodMonths = Math.max(1, Math.round(periodDays / 30));
+        const fullPayments = Math.max(0, Math.floor(durationMonths / periodMonths));
+        const remMonths = durationMonths - fullPayments * periodMonths;
+        // blockTotal already includes tax and the final payment — split it back:
+        // regular payments share (total − final's tax-inclusive share) equally.
+        const cfg = block.config as any;
+        const effRate = cfg?.customPrice ?? block.price;
+        const preTaxFinal = remMonths > 0
+          ? (typeof cfg?.cadenceFinalPayment === 'number' ? cfg.cadenceFinalPayment : Math.round((effRate * remMonths) / periodMonths))
+          : 0;
+        const taxFactor = (block.taxRate || 0) > 0 && block.taxInclusion === 'exclusive' ? 1 + (block.taxRate || 0) / 100 : 1;
+        const finalWithTax = Math.round(preTaxFinal * taxFactor * discountFactor * 100) / 100;
+        const count = fullPayments + (finalWithTax > 0 ? 1 : 0);
+        const perPeriodAmount = fullPayments > 0
+          ? Math.round(((blockTotal - finalWithTax) / fullPayments) * 100) / 100
+          : 0;
+
+        const startIdx = events.length;
+        for (let i = 0; i < fullPayments; i++) {
+          const date = addDays(startDate, i * periodDays);
+          if (date > endDate) break;
+          events.push({
+            id: makeEventId(block.id, 'billing', i + 1),
+            block_id: block.id,
+            block_name: block.name,
+            category_id: block.categoryId || '',
+            event_type: 'billing',
+            billing_sub_type: 'recurring',
+            billing_cycle_label: `${cycleLabel(blockCycle)} ${i + 1}/${count}`,
+            sequence_number: i + 1,
+            total_occurrences: count,
+            scheduled_date: date,
+            original_date: new Date(date),
+            amount: perPeriodAmount,
+            currency: block.currency || currency,
+            status: 'scheduled',
+          });
+        }
+        const emittedFull = events.length - startIdx;
+        // Last full payment absorbs rounding against the regular share
+        if (emittedFull === fullPayments && emittedFull > 0) {
+          events[events.length - 1].amount =
+            Math.round(((blockTotal - finalWithTax) - perPeriodAmount * (fullPayments - 1)) * 100) / 100;
+        }
+        // Seller-decided final payment for the leftover months
+        if (finalWithTax > 0) {
+          const date = addDays(startDate, fullPayments * periodDays);
+          events.push({
+            id: makeEventId(block.id, 'billing', fullPayments + 1),
+            block_id: block.id,
+            block_name: block.name,
+            category_id: block.categoryId || '',
+            event_type: 'billing',
+            billing_sub_type: 'recurring',
+            billing_cycle_label: `${cycleLabel(blockCycle)} final (${remMonths} mo)`,
+            sequence_number: fullPayments + 1,
+            total_occurrences: count,
+            scheduled_date: date > endDate ? new Date(endDate) : date,
+            original_date: date > endDate ? new Date(endDate) : new Date(date),
+            amount: finalWithTax,
+            currency: block.currency || currency,
+            status: 'scheduled',
+          });
+        }
+      } else {
+        // Recurring: monthly, fortnightly, quarterly, custom.
+        // The block's quantity is the user-intended number of billing
+        // occurrences (BAU "×12 Monthly" = 12 invoices), so honor it directly.
+        // Otherwise the count drifts to ceil(days/periodDays) — e.g. a 1-year
+        // monthly block would bill ceil(365/30)=13× at ₹1,384.62 instead of
+        // 12× ₹1,500. Fall back to the date-derived count only when quantity
+        // isn't a meaningful multi-count (qty ≤ 1).
+        const periodDays = cycleToPeriodDays(blockCycle, block.customCycleDays);
+        const qty = block.quantity || 0;
+        const count = qty > 1 ? qty : countRecurringPeriods(totalDays, periodDays);
+        const perPeriodAmount = Math.round((blockTotal / count) * 100) / 100;
+
+        const startIdx = events.length;
+        for (let i = 0; i < count; i++) {
+          const date = addDays(startDate, i * periodDays);
+          // Don't generate events past the contract end
+          if (date > endDate) break;
+
+          events.push({
+            id: makeEventId(block.id, 'billing', i + 1),
+            block_id: block.id,
+            block_name: block.name,
+            category_id: block.categoryId || '',
+            event_type: 'billing',
+            billing_sub_type: 'recurring',
+            billing_cycle_label: `${cycleLabel(blockCycle)} ${i + 1}/${count}`,
+            sequence_number: i + 1,
+            total_occurrences: count,
+            scheduled_date: date,
+            original_date: new Date(date),
+            amount: perPeriodAmount,
+            currency: block.currency || currency,
+            status: 'scheduled',
+          });
+        }
+        // When every period fit, the last installment absorbs rounding so the
+        // block's recurring billing sums EXACTLY to its total (no ±cents drift).
+        const emitted = events.length - startIdx;
+        if (emitted === count && emitted > 0) {
+          events[events.length - 1].amount =
+            Math.round((blockTotal - perPeriodAmount * (count - 1)) * 100) / 100;
+        }
+      }
+    }
+  }
+
+  // Sort all events by scheduled_date, then by type (service before billing on same day)
+  events.sort((a, b) => {
+    const dateDiff = a.scheduled_date.getTime() - b.scheduled_date.getTime();
+    if (dateDiff !== 0) return dateDiff;
+    // Service events before billing events on the same day
+    if (a.event_type === 'service' && b.event_type === 'billing') return -1;
+    if (a.event_type === 'billing' && b.event_type === 'service') return 1;
+    return 0;
+  });
+
+  return events;
+}
+
+// ─── Summary helpers (for preview UI) ───
+
+export interface EventSummary {
+  totalEvents: number;
+  serviceEvents: number;
+  billingEvents: number;
+  totalBillingAmount: number;
+  firstEventDate: Date | null;
+  lastEventDate: Date | null;
+  spanDays: number;
+}
+
+export function summarizeEvents(events: ContractEvent[]): EventSummary {
+  const serviceEvents = events.filter(e => e.event_type === 'service');
+  const billingEvents = events.filter(e => e.event_type === 'billing');
+  const totalBillingAmount = billingEvents.reduce((sum, e) => sum + (e.amount || 0), 0);
+
+  const sorted = [...events].sort(
+    (a, b) => a.scheduled_date.getTime() - b.scheduled_date.getTime()
+  );
+  const first = sorted[0]?.scheduled_date || null;
+  const last = sorted[sorted.length - 1]?.scheduled_date || null;
+  const spanDays = first && last
+    ? Math.round((last.getTime() - first.getTime()) / (1000 * 60 * 60 * 24))
+    : 0;
+
+  return {
+    totalEvents: events.length,
+    serviceEvents: serviceEvents.length,
+    billingEvents: billingEvents.length,
+    totalBillingAmount: Math.round(totalBillingAmount * 100) / 100,
+    firstEventDate: first,
+    lastEventDate: last,
+    spanDays,
+  };
+}
+
+/** Group events by block for display */
+export function groupEventsByBlock(
+  events: ContractEvent[]
+): Record<string, { block_name: string; events: ContractEvent[] }> {
+  const groups: Record<string, { block_name: string; events: ContractEvent[] }> = {};
+
+  for (const event of events) {
+    const key = event.block_id;
+    if (!groups[key]) {
+      groups[key] = { block_name: event.block_name, events: [] };
+    }
+    groups[key].events.push(event);
+  }
+
+  return groups;
+}
+
+/** Group events by date for timeline display */
+export function groupEventsByDate(
+  events: ContractEvent[]
+): Array<{ date: Date; dateLabel: string; events: ContractEvent[] }> {
+  const map = new Map<string, { date: Date; events: ContractEvent[] }>();
+
+  for (const event of events) {
+    // Key on the LOCAL calendar day (matching the local display), not UTC —
+    // otherwise an event near local midnight groups under the wrong day.
+    const d = event.scheduled_date;
+    const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    if (!map.has(key)) {
+      map.set(key, { date: event.scheduled_date, events: [] });
+    }
+    map.get(key)!.events.push(event);
+  }
+
+  return Array.from(map.values())
+    .sort((a, b) => a.date.getTime() - b.date.getTime())
+    .map(({ date, events: evts }) => ({
+      date,
+      dateLabel: date.toLocaleDateString('en-IN', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      }),
+      events: evts,
+    }));
+}

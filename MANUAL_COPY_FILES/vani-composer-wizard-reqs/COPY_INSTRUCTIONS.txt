@@ -1,0 +1,78 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — vani-composer-wizard-reqs (contractnest-api ONLY)
+═══════════════════════════════════════════════════
+
+IMPORTANT — why this batch exists as manual-copy while everything else this
+session was pushed directly to git: this session's git credentials have
+READ-ONLY access to contractnest-api (fetch works, push returns 403), unlike
+contractnest-ui/contractnest-edge/contractnest-combined which have full push
+access. The contractnest-ui half of this same feature (VaNiComposerLauncher.tsx,
+vaniComposerService.ts) IS already pushed to
+origin/claude/sprint1b-migration-handoff-5rk8pr — pull that normally. Only
+these 2 contractnest-api files need manual copying.
+
+Submodule Affected: contractnest-api (2 files)
+
+───────────────────────────────────────────────────
+STEP 1: Navigate to Project Root
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+───────────────────────────────────────────────────
+STEP 2: Copy Files (PowerShell)
+───────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\vani-composer-wizard-reqs\contractnest-api\src\controllers\vaniComposerController.ts" -Destination "contractnest-api\src\controllers\vaniComposerController.ts" -Force
+
+Copy-Item "MANUAL_COPY_FILES\vani-composer-wizard-reqs\contractnest-api\src\services\contractComposerService.ts" -Destination "contractnest-api\src\services\contractComposerService.ts" -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+───────────────────────────────────────────────────
+STEP 3: Restart API Server & Test
+───────────────────────────────────────────────────
+cd contractnest-api
+npm run dev
+
+═══════════════════════════════════════════════════
+WHAT CHANGED
+═══════════════════════════════════════════════════
+contractnest-api/src/services/contractComposerService.ts
+  - assembleDraft / assembleFromTemplate accept an optional
+    cadenceSelections param: {block_id, cycle}[]. When a candidate block
+    has a cadencePricing rate card and the requested cycle is one of its
+    enabled, priced rates, that cycle (and its rate) is used instead of
+    the template's saved cycle. Rate always comes from the block's own
+    stored rate card — the client only ever sends a cycle name, never
+    an amount (same security model as cadence-acceptance.ts).
+  - buildAssetPrefill now generates placeholder equipment_details rows
+    (asset_registry_id: null, specifications: {placeholder: true,
+    coverage_resource_id}) for any coverage type with no attached real
+    asset — matching the classic wizard's AssetSelectionStep.tsx shape.
+    Previously only the allowBuyerToAdd flag was set with no actual
+    placeholder row, so downstream per-asset tracking
+    (t_contract_event_assets, from the sprint1b migrations) had nothing
+    to react to for VaNi-composed contracts.
+
+contractnest-api/src/controllers/vaniComposerController.ts
+  - New private validCadenceSelections() validates/sanitizes the
+    cadence_selections array from the request body (block_id + cycle
+    strings only, capped at 50 entries).
+  - Both the /assemble and /assemble-from-template handlers parse
+    cadence_selections and pass it through.
+
+═══════════════════════════════════════════════════
+TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Draft with VaNi -> pick a template with a cadence-priced block
+      (e.g. one of the group-session/cadence blocks) -> confirm a new
+      "Cadence — <block name>" picker appears in Preferences with the
+      real rate-card options + amounts, and picking one re-assembles
+      the draft with the new total
+- [ ] Draft with VaNi -> pick a template covering an equipment/facility
+      nomenclature where the buyer has no matching registered asset ->
+      confirm the assembled draft's equipment_details includes a
+      placeholder row (asset_registry_id: null) for that coverage type,
+      not just the allowBuyerToAdd flag
+- [ ] Existing non-cadence, non-equipment templates still assemble
+      identically to before (no regression)
+═══════════════════════════════════════════════════
