@@ -1,0 +1,218 @@
+═══════════════════════════════════════════════════
+COPY INSTRUCTIONS — sprint4-gst-tax-records
+═══════════════════════════════════════════════════
+Submodules Affected: contractnest-edge (2 new migration files + 1 modified
+edge fn), contractnest-api (3 modified files), contractnest-ui (1 modified
+hook + 1 new component + 5 modified files)
+Also touches: sql/acceptance/sprint4.sql — already written directly to the
+parent repo (not a submodule, not app code — same convention as sprint3.sql).
+
+Sprint 4 (re-scoped 2026-07-19): tax records (renamed from "GST" — this is
+NOT India-specific; the mechanism is generic, other countries use VAT/other
+regimes) + invoice tax compliance + tax registration number capture/print.
+Buyer gateway payments, payment verification, My Services pay, cancel/
+bad-debt/write-off fixes, and the 27-invoice reconciliation repair all move
+to Sprint 7, per your explicit call.
+
+WHAT THIS ADDS
+───────────────────────────────────────────────────
+1. A point-in-time tax_breakdown (e.g. CGST/SGST/IGST) snapshot on
+   t_invoices, copied from the contract at the moment an invoice is
+   generated — so a filed period's tax cannot silently change if the
+   contract is edited later. Mirrors the existing t_contracts.tax_breakdown
+   shape.
+
+2. A new read-only RPC get_tenant_tax_summary — month-wise (by invoice
+   issue date, i.e. accrual basis): taxable value, tax invoiced, tax
+   collected (approximate — no per-payment tax split exists in the schema),
+   invoice count, and the tax component split.
+
+3. A "Taxes" section on /ops/finance (receivables view only) — a month-wise
+   table + CSV export, so you can answer "what tax did I invoice/collect
+   in June" without touching the database directly.
+
+4. A report-first backfill for the 27 pre-existing invoices so the Taxes
+   view is historically complete, not just forward-looking.
+
+5. Tax registration number (GSTIN / VAT ID / etc.) surfaced wherever it's
+   already captured (t_tenant_profiles.gst_number — the column name stays
+   as-is; only relabeled in UI as country-aware "Tax Registration Number"):
+   - Read-only display on the Tax Settings page (Tax Display panel), with
+     a warning if it's not set.
+   - Printed on the invoice view (pages/contracts/invoice/index.tsx).
+   - Printed on the wizard's Review & Send document preview
+     (ContractWizard/steps/ReviewSendStep.tsx).
+   - Added to the public buyer review page's document data — see the
+     BLOCKED finding below; this is wired but currently a no-op live.
+
+WHAT DID NOT NEED CHANGING (verified, not assumed)
+───────────────────────────────────────────────────
+- Invoice line-item display: the invoice view already itemizes from
+  contract.blocks — untouched.
+- t_invoices.tax_amount was already correct on every live invoice (0
+  mismatches found against contract.tax_total before writing this batch) —
+  this batch adds the missing component BREAKDOWN, it does not fix a
+  wrong total.
+- Discount compliance on t_invoices (subtotal/discount_total columns) is
+  a deliberately separate follow-up — 0 contracts currently carry a
+  discount, so nothing is broken yet, but flagged for its own review.
+
+DELIBERATELY NOT TOUCHED (flagged, not silently skipped)
+───────────────────────────────────────────────────
+1. The VaNi scanner's per-event DRAFT invoice path (operations-loop/
+   013_stage3_scanner_v2.sql, STEP 4) hardcodes tax_amount=0 on scanner-
+   created drafts. Zero draft invoices exist in production today (verified
+   live), so this is a LATENT defect, not a live undercount — but it WILL
+   undercount tax the first time the scanner actually mints a draft. That
+   function has been patched across 6 separate migration files; reproducing
+   it here without first reading its full, multiply-patched LIVE definition
+   would be a materially higher-risk edit than anything else in this batch.
+
+2. NEW FINDING — tax registration status ("registered" vs "not GST-
+   registered") has no home anywhere in the schema, and the Tax Settings
+   SAVE flow (create_or_update_tax_settings / get_tax_settings_with_rates,
+   called by the tax-settings edge fn) references RPC names that DO NOT
+   EXIST in the live database — confirmed via direct pg_proc lookup. This
+   means the tax-settings display-mode save path may currently be broken
+   in production (unrelated to anything in this batch — pre-existing).
+   Did NOT touch this or add a registration-status column, since there's
+   no verified-safe write path to attach it to yet. Needs its own
+   investigation: what actually writes t_tax_settings today (5 rows exist,
+   so something does), before either the registration-status toggle or a
+   fix to this save flow can be built.
+
+3. NEW FINDING — the PUBLIC buyer review page's provider letterhead
+   (logo, business name, address, phone, email — not just the new tax
+   number) appears to be a live no-op. The migration file for
+   validate_contract_access (contracts/010_public_contract_rpcs.sql)
+   builds a full `profile` object from t_tenant_profiles, but the LIVE
+   deployed function (pulled via pg_get_functiondef, verified) has no such
+   fetch — its `tenant` object only returns {id, name}, no `profile` key
+   at all. So contractnest-ui/src/pages/contracts/review/index.tsx has
+   been reading `tenant?.profile?.*` as undefined in production, for
+   fields well beyond gst_number. This batch's edit there (adding
+   gst_number to providerLines) is written defensively — same
+   undefined-safe pattern as the pre-existing city/phone/email lines — so
+   it causes NO regression, but it also won't actually show anything until
+   this separate, pre-existing RPC gap is fixed. Did not touch the RPC
+   itself given the scope of the drift (more than just one field) and the
+   risk in guessing what else changed between the migration file and the
+   live function without a fuller audit.
+
+Both new findings are pre-existing production issues, unrelated to this
+batch's changes, surfaced while investigating where to print the tax
+number. Recommend a dedicated look before Sprint 4's remaining pieces or
+Sprint 7.
+
+FILES IN THIS BATCH
+───────────────────────────────────────────────────
+contractnest-edge/supabase/migrations/contracts/
+  062_invoice_tax_snapshot_and_tax_summary.sql   [NEW — DB change, see below]
+  063_backfill_invoice_tax_breakdown.sql          [NEW — DB change, see below]
+contractnest-edge/supabase/functions/finance/index.ts   [modified — +1 route]
+contractnest-api/src/services/financeService.ts          [modified — +1 method]
+contractnest-api/src/controllers/financeController.ts    [modified — +1 method]
+contractnest-api/src/routes/financeRoutes.ts              [modified — +1 route]
+contractnest-ui/src/hooks/queries/useFinanceQueries.ts    [modified — +types, +hook]
+contractnest-ui/src/components/operations/finance/TaxSummarySection.tsx  [NEW]
+contractnest-ui/src/pages/operations/finance/index.tsx    [modified — +import, +1 render line]
+contractnest-ui/src/components/TaxSettings/TaxDisplayPanel.tsx           [modified — +read-only tax reg. no. card]
+contractnest-ui/src/pages/contracts/invoice/index.tsx                    [modified — +tax reg. no. print line]
+contractnest-ui/src/components/contracts/ContractWizard/steps/ReviewSendStep.tsx  [modified — +tax reg. no. in providerLines]
+contractnest-ui/src/pages/contracts/review/index.tsx                     [modified — +tax reg. no. in type + providerLines; SEE FINDING #3 ABOVE]
+
+⚠️ DATABASE CHANGES — NOT YET APPLIED, PER YOUR STANDING RULE
+───────────────────────────────────────────────────
+I have NOT run either SQL file against Supabase. Per "Analysis First,
+Code Later" and the sprint spec's migration-gate rule, both files are
+DRAFTS for your review:
+
+  062_invoice_tax_snapshot_and_tax_summary.sql
+    - Additive only: 1 new nullable column (t_invoices.tax_breakdown),
+      1 function replaced (generate_contract_invoices — reproduced
+      verbatim from its live definition, +1 line), 1 new function
+      (get_tenant_tax_summary). Rollback: drop the column, revert the
+      function to migration 006's body.
+
+  063_backfill_invoice_tax_breakdown.sql
+    - Step 1 is a REPORT (read-only SELECT) — shows exactly what would
+      be set for the 27 existing invoices, sourced from their contracts'
+      current tax_breakdown. Run this first.
+    - Step 2 (the UPDATE) is commented out in the file. Only uncomment
+      and run it after you've reviewed Step 1's output. Safety already
+      checked live: 0 of these invoices show any drift between
+      total_amount and contract.grand_total, so backfilling from the
+      current contract row is safe.
+
+Tell me "approved, apply 062" (and separately "approved, apply the 063
+backfill" after reviewing its report) and I'll run them via the Supabase
+MCP — I will not run them without that explicit go-ahead.
+
+Not committed or pushed by Claude — Phase 1 only, per your procedure.
+Nothing was copied into the submodule working trees either — everything
+above lives only under MANUAL_COPY_FILES until you copy it yourself.
+
+───────────────────────────────────────────────────
+STEP 1: Navigate to Project Root
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+───────────────────────────────────────────────────
+STEP 2: Copy Files (PowerShell)
+───────────────────────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\sprint4-gst-tax-records\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\sprint4-gst-tax-records\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\sprint4-gst-tax-records\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+Note: copying the migration .sql files into contractnest-edge/supabase/
+migrations/contracts/ does NOT apply them — Supabase migrations only run
+when explicitly pushed/applied. They will sit there inert until you (or I,
+with your go-ahead) apply them.
+
+───────────────────────────────────────────────────
+STEP 3: Apply the DB migration (only after you approve — see warning above)
+───────────────────────────────────────────────────
+Review 062's SQL, then either apply it yourself via your normal Supabase
+migration flow, or tell me "approved, apply 062" and I'll run it via MCP.
+
+Then review 063 Step 1's report output before deciding on the backfill.
+
+───────────────────────────────────────────────────
+STEP 4: Manual test
+───────────────────────────────────────────────────
+cd contractnest-ui
+npm run dev
+
+- [ ] After 062 is applied: create + activate a contract WITH tax (any
+      tax rate selected) — confirm its new invoice's tax_breakdown is
+      populated (check in Supabase table editor or via get_contract_invoices)
+- [ ] Open /ops/finance (Revenue perspective) — the new "Taxes" section
+      appears below "Who owes you", shows a row for the current month with
+      taxable value / tax invoiced / tax collected / component breakdown
+- [ ] Click "Export CSV" — file downloads with one row per month, columns
+      matching the on-screen table plus a column per tax component name
+- [ ] Switch to Expense perspective (Payables) — Taxes section does NOT
+      appear (receivables-only by design)
+- [ ] Record a payment against the invoice from Step 1 — refresh /ops/
+      finance — "Tax Collected (approx)" for that month increases
+      proportionally
+- [ ] After the 063 backfill is applied: open a PRE-EXISTING invoice (one
+      of the 27) via get_contract_invoices or the invoice view — its
+      tax_breakdown is now populated; total_amount/balance/amount_paid/
+      status are unchanged from before
+- [ ] Open Settings → Tax Settings — if any tenant has gst_number set
+      (currently 0 of 81 do — see BusinessDetailsStep.tsx, the only place
+      it's editable today), confirm it displays; if not set, confirm the
+      "Not set" warning shows instead
+- [ ] Open the invoice view for a contract on a tenant WITH gst_number set
+      — confirm "GSTIN: <value>" (or "Tax Reg. No." for non-IN) prints
+      under the business email
+- [ ] Same check on the wizard's Review & Send step document preview
+- [ ] Public buyer review page: confirmed this will NOT show the tax
+      number yet — see Finding #3 above (pre-existing RPC gap). Don't
+      treat that as a bug in this batch.
+- [ ] tsc baseline clean (no new type errors from the new hook/component/
+      exported types)
+═══════════════════════════════════════════════════
