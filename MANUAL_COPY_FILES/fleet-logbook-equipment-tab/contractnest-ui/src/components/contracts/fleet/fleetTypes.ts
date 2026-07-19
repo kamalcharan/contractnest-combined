@@ -95,9 +95,14 @@ export function buildFleetServiceMap(
   for (const e of events) eventById.set(e.id, e);
   const serviceEvents = events.filter((e) => e.event_type === 'service');
 
-  // Index rows by asset_ref for O(1) lookup per machine
+  // Index rows by asset_ref for O(1) lookup per machine.
+  // DEFENSIVE: the event-assets endpoint has no backend handler today, so
+  // the "record of arrays" the hook's type promises may actually be any
+  // JSON object — only iterate values that really are arrays.
   const rowsByRef = new Map<string, ContractEventAssetRow[]>();
-  for (const rows of Object.values(assetRowsByEvent)) {
+  const buckets = assetRowsByEvent && typeof assetRowsByEvent === 'object' ? Object.values(assetRowsByEvent) : [];
+  for (const rows of buckets) {
+    if (!Array.isArray(rows)) continue;
     for (const r of rows) {
       if (!r?.asset_ref) continue;
       const bucket = rowsByRef.get(r.asset_ref);

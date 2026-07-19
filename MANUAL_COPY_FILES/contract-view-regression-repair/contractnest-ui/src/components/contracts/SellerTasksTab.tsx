@@ -363,7 +363,7 @@ export const SellerTasksTab: React.FC<SellerTasksTabProps> = ({
                             }
                           />
                           <EventAssetProgress
-                            assets={eventAssetsByEvent[evt.id] || []}
+                            assets={Array.isArray(eventAssetsByEvent[evt.id]) ? eventAssetsByEvent[evt.id] : []}
                             colors={colors}
                           />
                         </div>
