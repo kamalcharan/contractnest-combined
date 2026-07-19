@@ -17,6 +17,7 @@ import {
   ClipboardList,
   CreditCard,
   Clock,
+  TableIcon,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import {
@@ -48,6 +49,9 @@ export interface SellerTasksTabProps {
   /** 'seller' (default) shows Start Service / Generate Invoice actions;
    *  'buyer' shows Make Payment action on billing side */
   role?: 'seller' | 'buyer';
+  /** Mock 8 cross-link: opens the Equipment tab pre-switched to the
+   *  service matrix. Omit to hide the "View in matrix" buttons. */
+  onViewMatrix?: () => void;
 }
 
 // ═══════════════════════════════════════════════════
@@ -55,6 +59,24 @@ export interface SellerTasksTabProps {
 // ═══════════════════════════════════════════════════
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** Event statuses that mean "this event is closed, don't flag it" */
+const CLOSED_STATUSES = new Set(['completed', 'cancelled', 'skipped']);
+
+/** Local-timezone yyyy-mm-dd for "today" */
+const localTodayKey = () => {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
+};
+
+/** "24 Jul" (adds 'YY when not the current year) */
+const shortDate = (dateKey: string | null) => {
+  if (!dateKey) return '—';
+  const d = new Date(dateKey + 'T00:00:00');
+  if (isNaN(d.getTime())) return '—';
+  const base = `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+  return d.getFullYear() === new Date().getFullYear() ? base : `${base} '${String(d.getFullYear()).slice(2)}`;
+};
 
 interface DateGroup {
   date: string;
@@ -72,6 +94,7 @@ export const SellerTasksTab: React.FC<SellerTasksTabProps> = ({
   currency,
   colors,
   role = 'seller',
+  onViewMatrix,
 }) => {
   const { isDarkMode } = useTheme();
   const isSeller = role === 'seller';
@@ -160,6 +183,49 @@ export const SellerTasksTab: React.FC<SellerTasksTabProps> = ({
         return { date, dateObj, serviceEvents, billingEvents };
       });
   }, [allEvents]);
+
+  // ── Fleet-aware stat strip (mock 8): next visit day, overdue, billing due ──
+  const todayKey = localTodayKey();
+  const taskStats = useMemo(() => {
+    const isOpen = (e: ContractEvent) => !CLOSED_STATUSES.has(e.status);
+    const dateOf = (e: ContractEvent) => e.scheduled_date.split('T')[0];
+    let overdue = 0;
+    let billingDueMonth = 0;
+    let nextVisitDate: string | null = null;
+    const ym = todayKey.slice(0, 7);
+    for (const e of allEvents) {
+      const d = dateOf(e);
+      if (e.event_type === 'billing') {
+        if (isOpen(e) && d.slice(0, 7) === ym) {
+          billingDueMonth += Math.max(0, (e.amount || 0) - (e.amount_settled || 0));
+        }
+        continue;
+      }
+      if (isOpen(e) && (e.status === 'overdue' || d < todayKey)) overdue += 1;
+      if (isOpen(e) && d >= todayKey && (!nextVisitDate || d < nextVisitDate)) nextVisitDate = d;
+    }
+    const nextVisitCount = nextVisitDate
+      ? allEvents.filter(
+          (e) => e.event_type !== 'billing' && isOpen(e) && dateOf(e) === nextVisitDate,
+        ).length
+      : 0;
+    return { overdue, billingDueMonth, nextVisitDate, nextVisitCount };
+  }, [allEvents, todayKey]);
+
+  const fmtMoney = useCallback(
+    (v: number) => {
+      try {
+        return new Intl.NumberFormat('en-IN', {
+          style: 'currency',
+          currency: currency || 'INR',
+          maximumFractionDigits: 0,
+        }).format(v);
+      } catch {
+        return `${currency} ${Math.round(v).toLocaleString()}`;
+      }
+    },
+    [currency],
+  );
 
   // ── Handlers ──
   const handleStatusChange = useCallback(
@@ -307,6 +373,53 @@ export const SellerTasksTab: React.FC<SellerTasksTabProps> = ({
         </div>
       </div>
 
+      {/* ── Fleet-aware stat strip (mock 8) ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-5">
+        <div
+          className="rounded-xl border px-4 py-3"
+          style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: `${colors.utility.primaryText}12` }}
+        >
+          <div className="text-lg font-extrabold leading-tight" style={{ color: colors.utility.primaryText }}>
+            {shortDate(taskStats.nextVisitDate)}
+          </div>
+          <div className="text-[11px] mt-0.5" style={{ color: colors.utility.secondaryText }}>
+            Next visit day
+            {taskStats.nextVisitCount > 0 && ` · ${taskStats.nextVisitCount} visit${taskStats.nextVisitCount === 1 ? '' : 's'}`}
+          </div>
+        </div>
+        <div
+          className="rounded-xl border px-4 py-3"
+          style={{
+            backgroundColor: colors.utility.secondaryBackground,
+            borderColor: taskStats.overdue > 0 ? `${colors.semantic?.error || '#EF4444'}50` : `${colors.utility.primaryText}12`,
+          }}
+        >
+          <div
+            className="text-lg font-extrabold leading-tight"
+            style={{ color: taskStats.overdue > 0 ? colors.semantic?.error || '#EF4444' : colors.utility.primaryText }}
+          >
+            {taskStats.overdue}
+          </div>
+          <div className="text-[11px] mt-0.5" style={{ color: colors.utility.secondaryText }}>
+            Overdue visit{taskStats.overdue === 1 ? '' : 's'}
+          </div>
+        </div>
+        <div
+          className="rounded-xl border px-4 py-3"
+          style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: `${colors.utility.primaryText}12` }}
+        >
+          <div
+            className="text-lg font-extrabold leading-tight tabular-nums"
+            style={{ color: taskStats.billingDueMonth > 0 ? warningColor : successColor }}
+          >
+            {fmtMoney(taskStats.billingDueMonth)}
+          </div>
+          <div className="text-[11px] mt-0.5" style={{ color: colors.utility.secondaryText }}>
+            Billing due this month
+          </div>
+        </div>
+      </div>
+
       {/* Timeline */}
       <div className="relative">
         {/* Vertical center line */}
@@ -330,8 +443,26 @@ export const SellerTasksTab: React.FC<SellerTasksTabProps> = ({
               (e) => e.status !== 'completed' && e.status !== 'cancelled',
             );
 
+            // Mock 8: overdue groups get red emphasis; groups beyond the
+            // next upcoming visit are dimmed (still fully interactive).
+            const groupHasOverdue =
+              group.date < todayKey &&
+              [...group.serviceEvents, ...group.billingEvents].some(
+                (e) => !CLOSED_STATUSES.has(e.status),
+              );
+            const daysLate = groupHasOverdue
+              ? Math.max(1, Math.round((new Date(todayKey + 'T00:00:00').getTime() - group.dateObj.getTime()) / 86400000))
+              : 0;
+            const isFarFuture =
+              !groupHasOverdue && !!taskStats.nextVisitDate && group.date > taskStats.nextVisitDate;
+            const nodeColor = groupHasOverdue ? (colors.semantic?.error || '#EF4444') : dateNodeColor;
+
             return (
-              <div key={group.date} className="relative flex items-start">
+              <div
+                key={group.date}
+                className="relative flex items-start transition-opacity"
+                style={{ opacity: isFarFuture ? 0.72 : 1 }}
+              >
                 {/* ─── LEFT: Service & Spare Part cards ─── */}
                 <div className="flex-1 flex flex-col gap-3 items-end pr-6 pt-1">
                   {/* Column header (first date group only) */}
@@ -369,26 +500,43 @@ export const SellerTasksTab: React.FC<SellerTasksTabProps> = ({
                         </div>
                       ))}
 
-                      {/* Start Service button — seller only */}
-                      {isSeller && hasIncompleteService && (
-                        <button
-                          onClick={() =>
-                            handleStartService(group.date, [
-                              ...group.serviceEvents,
-                              ...group.billingEvents,
-                            ])
-                          }
-                          className="flex items-center gap-2 px-3 py-2 rounded-lg text-[11px] font-bold transition-all hover:shadow-md hover:opacity-90"
-                          style={{
-                            background: `linear-gradient(135deg, ${colors.brand.primary}, ${colors.brand.primary}DD)`,
-                            color: '#ffffff',
-                            boxShadow: `0 2px 8px ${colors.brand.primary}25`,
-                          }}
-                        >
-                          <Play className="w-3.5 h-3.5" />
-                          Start Service
-                        </button>
-                      )}
+                      {/* Start Service (seller) + View in matrix cross-link */}
+                      <div className="flex items-center gap-2 flex-wrap justify-end">
+                        {isSeller && hasIncompleteService && (
+                          <button
+                            onClick={() =>
+                              handleStartService(group.date, [
+                                ...group.serviceEvents,
+                                ...group.billingEvents,
+                              ])
+                            }
+                            className="flex items-center gap-2 px-3 py-2 rounded-lg text-[11px] font-bold transition-all hover:shadow-md hover:opacity-90"
+                            style={{
+                              background: `linear-gradient(135deg, ${colors.brand.primary}, ${colors.brand.primary}DD)`,
+                              color: '#ffffff',
+                              boxShadow: `0 2px 8px ${colors.brand.primary}25`,
+                            }}
+                          >
+                            <Play className="w-3.5 h-3.5" />
+                            Start Service
+                          </button>
+                        )}
+                        {onViewMatrix && (
+                          <button
+                            onClick={onViewMatrix}
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-bold border transition-all hover:shadow-sm hover:opacity-90"
+                            style={{
+                              borderColor: `${colors.brand.primary}30`,
+                              color: colors.brand.primary,
+                              backgroundColor: `${colors.brand.primary}08`,
+                            }}
+                            title="See this visit across every machine"
+                          >
+                            <TableIcon className="w-3.5 h-3.5" />
+                            View in matrix
+                          </button>
+                        )}
+                      </div>
                     </>
                   ) : (
                     <div className="h-16" />
@@ -408,12 +556,12 @@ export const SellerTasksTab: React.FC<SellerTasksTabProps> = ({
                     />
                   )}
 
-                  {/* Main date circle */}
+                  {/* Main date circle (red when the group has an overdue event) */}
                   <div
                     className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg"
                     style={{
-                      background: `linear-gradient(135deg, ${dateNodeColor}, ${dateNodeColor}CC)`,
-                      boxShadow: `0 4px 14px ${dateNodeColor}30`,
+                      background: `linear-gradient(135deg, ${nodeColor}, ${nodeColor}CC)`,
+                      boxShadow: `0 4px 14px ${nodeColor}30`,
                     }}
                   >
                     <span className="text-sm font-bold text-white">{dayNum}</span>
@@ -426,6 +574,14 @@ export const SellerTasksTab: React.FC<SellerTasksTabProps> = ({
                   >
                     {MONTHS[group.dateObj.getMonth()]} {group.dateObj.getFullYear()}
                   </span>
+                  {groupHasOverdue && (
+                    <span
+                      className="text-[9px] font-bold mt-0.5 whitespace-nowrap uppercase tracking-wide"
+                      style={{ color: colors.semantic?.error || '#EF4444' }}
+                    >
+                      Overdue · {daysLate}d late
+                    </span>
+                  )}
 
                   {/* Connector dot below (except last) */}
                   {!isLast && (

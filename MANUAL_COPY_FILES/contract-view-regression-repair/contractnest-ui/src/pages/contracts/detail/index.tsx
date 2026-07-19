@@ -87,6 +87,7 @@ import { useGlobalMasterData } from '@/hooks/queries/useProductMasterdata';
 import { useResources } from '@/hooks/queries/useResources';
 import { ACCEPTANCE_METHOD_HEX_COLORS } from '@/utils/constants/contracts';
 import BuyerPaymentsView from '@/components/contracts/BuyerPaymentsView';
+import InvoiceTaxChain from '@/components/contracts/finance/InvoiceTaxChain';
 import ServiceRequestsPlaceholder from '@/components/contracts/ServiceRequestsPlaceholder';
 import type { ReviewSendStepProps } from '@/components/contracts/ContractWizard/steps/ReviewSendStep';
 import { ConfigurableBlock } from '@/components/catalog-studio/BlockCardConfigurable';
@@ -1561,6 +1562,9 @@ const ContractDetailPage: React.FC = () => {
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
 
   const [activeTab, setActiveTab] = useState<TabId>('operations');
+  // Mock 8 cross-link: "View in matrix" on Tasks/My Services opens the
+  // Equipment tab pre-switched to the service-matrix lens (mount-time only).
+  const [equipDefaultLens, setEquipDefaultLens] = useState<'cards' | 'matrix'>('cards');
   const [tabInitialized, setTabInitialized] = useState(false);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
 
@@ -1791,6 +1795,11 @@ const ContractDetailPage: React.FC = () => {
             contractId={contract.id}
             currency={contract.currency || 'INR'}
             colors={colors}
+            onViewMatrix={
+              contractSupportsEquipment
+                ? () => { setEquipDefaultLens('matrix'); setActiveTab('equipment'); }
+                : undefined
+            }
           />
         );
       case 'equipment': {
@@ -1827,6 +1836,7 @@ const ContractDetailPage: React.FC = () => {
             contractId={contract.id}
             buyerId={contract.buyer_contact_person_id || contract.contact_id || contract.buyer_id}
             mode={equipTabMode}
+            defaultLens={equipDefaultLens}
           />
         );
       }
@@ -1839,6 +1849,11 @@ const ContractDetailPage: React.FC = () => {
             currency={contract.currency || 'INR'}
             colors={colors}
             role="buyer"
+            onViewMatrix={
+              contractSupportsEquipment
+                ? () => { setEquipDefaultLens('matrix'); setActiveTab('equipment'); }
+                : undefined
+            }
           />
         );
       case 'payments':
@@ -1906,8 +1921,47 @@ const ContractDetailPage: React.FC = () => {
             </div>
           </div>
         );
-      case 'financials':
+      case 'financials': {
+        const nextDueInvoice = pageInvoices
+          .filter((inv) => inv.status !== 'paid' && inv.status !== 'cancelled' && inv.status !== 'bad_debt' && inv.due_date)
+          .sort((a, b) => (a.due_date! < b.due_date! ? -1 : 1))[0];
+        const finStat = (value: React.ReactNode, label: React.ReactNode, tone?: 'ok' | 'warn') => (
+          <div
+            className="rounded-xl border px-4 py-3"
+            style={{ backgroundColor: colors.utility.secondaryBackground, borderColor: colors.utility.primaryText + '12' }}
+          >
+            <div
+              className="text-lg font-extrabold leading-tight tabular-nums"
+              style={{ color: tone === 'ok' ? colors.semantic.success : tone === 'warn' ? colors.semantic.warning : colors.utility.primaryText }}
+            >
+              {value}
+            </div>
+            <div className="text-[11px] mt-0.5" style={{ color: colors.utility.secondaryText }}>{label}</div>
+          </div>
+        );
         return (
+          <div className="space-y-4">
+            {/* Financials stat strip (mock 8) — invoiced / collected / balance */}
+            {(pageSummary?.invoice_count ?? 0) > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {finStat(
+                  formatCurrency(pageSummary?.total_invoiced ?? 0, contract.currency),
+                  'Total invoiced (incl. tax)',
+                )}
+                {finStat(
+                  formatCurrency(pageSummary?.total_paid ?? 0, contract.currency),
+                  `Collected · ${pageSummary?.collection_percentage ?? 0}%`,
+                  'ok',
+                )}
+                {finStat(
+                  formatCurrency(pageSummary?.total_balance ?? 0, contract.currency),
+                  nextDueInvoice?.due_date
+                    ? `Balance · due ${formatDate(nextDueInvoice.due_date)}`
+                    : 'Balance',
+                  (pageSummary?.total_balance ?? 0) > 0 ? 'warn' : 'ok',
+                )}
+              </div>
+            )}
           <div className="grid gap-6" style={{ gridTemplateColumns: '1fr 400px' }}>
             {/* Left: Full financial details */}
             <div className="space-y-6">
@@ -2006,27 +2060,45 @@ const ContractDetailPage: React.FC = () => {
                         const balance = inv.total_amount - (inv.amount_paid || 0);
                         const receipts = inv.receipts || [];
                         const hasReceipts = receipts.length > 0;
+                        const cf = (contract as any)?.custom_fields || {};
+                        const discountTotal = Number(cf.discount_total ?? (contract as any)?.discount_total ?? 0) || 0;
+                        const discountLabel =
+                          (cf.discount_type ?? (contract as any)?.discount_type) === 'percent' &&
+                          (cf.discount_value ?? (contract as any)?.discount_value)
+                            ? `${cf.discount_value ?? (contract as any)?.discount_value}%`
+                            : null;
                         return (
-                          <InvoiceCard
-                            key={inv.id}
-                            inv={inv}
-                            isPaid={isPaid}
-                            isPartial={isPartial}
-                            isCancelled={isCancelled}
-                            isBadDebt={isBadDebt}
-                            isTerminal={isTerminal}
-                            statusColor={statusColor}
-                            statusLabel={statusLabel}
-                            balance={balance}
-                            receipts={receipts}
-                            hasReceipts={hasReceipts}
-                            colors={colors}
-                            isSeller={!showBuyerView}
-                            contractId={contract.id}
-                            formatCurrency={formatCurrency}
-                            formatDate={formatDate}
-                            onViewInvoice={() => navigate(`/contracts/${contract.id}/invoice/${inv.id}`)}
-                          />
+                          <div key={inv.id}>
+                            <InvoiceCard
+                              inv={inv}
+                              isPaid={isPaid}
+                              isPartial={isPartial}
+                              isCancelled={isCancelled}
+                              isBadDebt={isBadDebt}
+                              isTerminal={isTerminal}
+                              statusColor={statusColor}
+                              statusLabel={statusLabel}
+                              balance={balance}
+                              receipts={receipts}
+                              hasReceipts={hasReceipts}
+                              colors={colors}
+                              isSeller={!showBuyerView}
+                              contractId={contract.id}
+                              formatCurrency={formatCurrency}
+                              formatDate={formatDate}
+                              onViewInvoice={() => navigate(`/contracts/${contract.id}/invoice/${inv.id}`)}
+                            />
+                            {/* Mock 8: locked tax chain + collection bar (read-only, additive) */}
+                            {!isTerminal && (
+                              <InvoiceTaxChain
+                                invoice={inv}
+                                colors={colors}
+                                formatCurrency={formatCurrency}
+                                discountTotal={discountTotal}
+                                discountLabel={discountLabel}
+                              />
+                            )}
+                          </div>
                         );
                       })}
                     </div>
@@ -2059,7 +2131,9 @@ const ContractDetailPage: React.FC = () => {
               onViewInvoice={(invoiceId) => navigate(`/contracts/${id}/invoice/${invoiceId}`)}
             />
           </div>
+          </div>
         );
+      }
       case 'evidence':
         return (
           <div className="space-y-6">
@@ -2553,7 +2627,12 @@ const ContractDetailPage: React.FC = () => {
         <TabsNavigation
           tabs={tabDefinitions}
           activeTab={activeTab}
-          onTabChange={(tabId) => setActiveTab(tabId as TabId)}
+          onTabChange={(tabId) => {
+            // Manual tab clicks always land on the default cards lens;
+            // only the "View in matrix" cross-link pre-selects the matrix.
+            setEquipDefaultLens('cards');
+            setActiveTab(tabId as TabId);
+          }}
           variant="underline"
           size="md"
         />
