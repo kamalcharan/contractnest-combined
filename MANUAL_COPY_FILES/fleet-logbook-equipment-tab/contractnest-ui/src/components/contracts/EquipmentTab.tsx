@@ -12,7 +12,7 @@
 // - "Show only awaiting" filter
 
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { Wrench, Plus, X, Search, Package, Building2, Link2, LayoutGrid, TableIcon, CheckCircle2 } from 'lucide-react';
+import { Wrench, Plus, X, Search, Package, Building2, LayoutGrid, TableIcon, CheckCircle2 } from 'lucide-react';
 import type { ContractEquipmentDetail } from '@/types/contracts';
 import { isPlaceholderDetail } from '@/components/contracts/ContractWizard/steps/AssetSelectionStep';
 import { useAuth } from '@/context/AuthContext';
@@ -32,16 +32,16 @@ import {
   useContractEventAssets,
 } from '@/hooks/queries/useContractEventQueries';
 import type { TenantAsset, AssetFormData, AssetRegistryFilters } from '@/types/assetRegistry';
-import EquipmentCard, { type CardAsset } from '@/pages/equipment-registry/EquipmentCard';
+import EquipmentCard from '@/pages/equipment-registry/EquipmentCard';
 import EquipmentFormDialog from '@/pages/equipment-registry/EquipmentFormDialog';
 import { VaNiLoader } from '@/components/common/loaders/UnifiedLoader';
 import { useContactList } from '@/hooks/useContacts';
 import FleetSummaryStrip from '@/components/contracts/fleet/FleetSummaryStrip';
 import FleetMatrix, { type FleetMatrixGroup } from '@/components/contracts/fleet/FleetMatrix';
 import MachineLogbookDrawer from '@/components/contracts/fleet/MachineLogbookDrawer';
+import MachineCard from '@/components/contracts/fleet/MachineCard';
 import {
   buildFleetServiceMap,
-  formatShortDate,
   localTodayKey,
 } from '@/components/contracts/fleet/fleetTypes';
 
@@ -102,46 +102,6 @@ function assetToDetail(
     specifications: asset.specifications || {},
     notes: asset.description,
   };
-}
-
-/** Convert a ContractEquipmentDetail into a CardAsset so EquipmentCard can render it */
-function detailToCardAsset(detail: ContractEquipmentDetail): CardAsset {
-  return {
-    id: detail.asset_registry_id || detail.id,
-    tenant_id: detail.added_by_tenant_id || '',
-    resource_type_id: detail.resource_type === 'entity' ? 'asset' : 'equipment',
-    asset_type_id: detail.category_id || null,
-    parent_asset_id: null,
-    template_id: null,
-    industry_id: null,
-    name: detail.item_name,
-    code: null,
-    description: detail.notes || null,
-    status: 'active' as const,
-    condition: (detail.condition || 'good') as any,
-    criticality: (detail.criticality || 'low') as any,
-    ownership_type: 'client' as any,
-    owner_contact_id: null,
-    location: detail.location || null,
-    make: detail.make || null,
-    model: detail.model || null,
-    serial_number: detail.serial_number || null,
-    purchase_date: detail.purchase_date || null,
-    warranty_expiry: detail.warranty_expiry || null,
-    last_service_date: null,
-    area_sqft: detail.area_sqft || null,
-    dimensions: detail.dimensions || null,
-    capacity: detail.capacity || null,
-    specifications: detail.specifications || {},
-    tags: [],
-    image_url: null,
-    is_active: true,
-    is_live: true,
-    created_at: '',
-    updated_at: '',
-    created_by: null,
-    updated_by: null,
-  } as CardAsset;
 }
 
 /** Category group of machines (cards lens) */
@@ -584,122 +544,38 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
 
   // ── Render helpers ────────────────────────────────────────────
 
-  /** Compact per-machine service-state footer under each card */
-  const renderServiceFooter = (item: ContractEquipmentDetail, isPlaceholder: boolean) => {
-    if (serviceDataLoading || !hasServiceData) return null;
-    const state = fleetMap.get(item.id);
-    if (!state || state.totalVisits === 0) return null;
-
-    if (isPlaceholder) {
-      return (
-        <div
-          className="mt-2 rounded-lg border border-dashed px-3 py-2 text-[11px] font-medium"
-          style={{ borderColor: '#f59e0b40', color: '#d97706', backgroundColor: '#f59e0b0a' }}
-        >
-          {state.totalVisits} visit{state.totalVisits === 1 ? '' : 's'} locked until an asset is attached
-        </div>
-      );
-    }
-
-    const behind = state.overdueCount > 0;
-    const pct = state.totalVisits > 0 ? Math.round((state.provenCount / state.totalVisits) * 100) : 0;
-    return (
-      <div
-        className="mt-2 rounded-lg border px-3 py-2"
-        style={{
-          backgroundColor: colors.utility.secondaryBackground,
-          borderColor: behind ? colors.semantic.error + '50' : colors.utility.primaryText + '10',
-        }}
-      >
-        <div className="flex items-center justify-between gap-2 text-[11px]">
-          <span
-            style={{
-              color: behind ? colors.semantic.error : colors.utility.secondaryText,
-              fontWeight: behind ? 700 : 500,
-            }}
-          >
-            {state.provenCount} of {state.totalVisits} visits proven
-            {behind ? ` · ${state.overdueCount} overdue` : ''}
-          </span>
-          <span style={{ color: colors.utility.secondaryText }}>
-            {state.nextDueDate ? `Next: ${formatShortDate(state.nextDueDate)}` : ''}
-          </span>
-        </div>
-        <div
-          className="h-1 rounded-full mt-1.5 overflow-hidden"
-          style={{ backgroundColor: colors.utility.primaryText + '10' }}
-        >
-          <div
-            className="h-full rounded-full transition-all"
-            style={{
-              width: `${pct}%`,
-              backgroundColor: behind ? colors.semantic.error : colors.semantic.success,
-            }}
-          />
-        </div>
-        {state.lastProven && (
-          <div className="text-[10px] mt-1" style={{ color: colors.utility.secondaryText }}>
-            Last proven {formatShortDate(state.lastProven.dateKey)}
-            {state.lastProven.assignee ? ` · ${state.lastProven.assignee}` : ''}
-          </div>
-        )}
-      </div>
-    );
-  };
-
   const renderMachineCard = (item: ContractEquipmentDetail) => {
     const isOwnItem = item.added_by_tenant_id === tenantId;
     const canRemove = isOwnItem && !!contractId;
-    const cardAsset = detailToCardAsset(item);
     // Resolve client name: use asset_registry_id to find in registry,
     // or fall back to the buyer contact on this contract
     const clientName = buyerId ? contactNameMap.get(buyerId) : undefined;
     const isPlaceholder = isPlaceholderDetail(item as any);
     const displayIndex = displayIndexById.get(item.id);
     const state = fleetMap.get(item.id);
-    const clickable = !!state && state.totalVisits > 0;
+    const clickable = !isPlaceholder && !!state && state.totalVisits > 0;
 
     return (
       <div
         key={item.id}
-        className={`relative ${clickable ? 'cursor-pointer' : ''}`}
+        className={`relative h-full ${clickable ? 'cursor-pointer' : ''}`}
         onClick={(e) => handleCardClick(e, item)}
       >
-        {(isPlaceholder || displayIndex) && (
-          <div className="flex items-center gap-2 mb-1.5">
-            {isPlaceholder && (
-              <span
-                className="text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide"
-                style={{ backgroundColor: '#f59e0b18', color: '#d97706', border: '1px solid #f59e0b30' }}
-              >
-                To be attached
-              </span>
-            )}
-            {displayIndex && (
-              <span className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
-                {displayIndex.index} of {displayIndex.total}
-              </span>
-            )}
-          </div>
-        )}
-        <EquipmentCard
-          asset={cardAsset}
+        <MachineCard
+          colors={colors}
+          detail={item}
+          isPlaceholder={isPlaceholder}
+          displayIndex={displayIndex}
+          state={state}
+          hasServiceData={hasServiceData && !serviceDataLoading}
           clientName={clientName}
-          onDelete={canRemove ? () => handleRemoveCard(item) : undefined}
-          onEdit={undefined}
-          disabled={removeMutation.isPending}
+          canRemove={canRemove}
+          canAttach={canAdd}
+          removing={removeMutation.isPending}
+          onRemove={canRemove ? () => handleRemoveCard(item) : undefined}
+          onAttach={isPlaceholder && canAdd ? () => handleStartAttach(item) : undefined}
+          onOpenLogbook={clickable ? () => setLogbookMachineId(item.id) : undefined}
         />
-        {renderServiceFooter(item, isPlaceholder)}
-        {isPlaceholder && canAdd && (
-          <button
-            onClick={(e) => { e.stopPropagation(); handleStartAttach(item); }}
-            className="mt-2 w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors hover:opacity-90"
-            style={{ backgroundColor: colors.brand.primary, color: '#fff' }}
-          >
-            <Link2 className="h-3.5 w-3.5" />
-            Attach Asset
-          </button>
-        )}
       </div>
     );
   };
@@ -1040,13 +916,8 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
                   </span>
                 </div>
                 <div
-                  className="grid gap-4"
-                  style={{
-                    gridTemplateColumns:
-                      equipmentDetails.length === 1
-                        ? '1fr'
-                        : 'repeat(auto-fill, minmax(380px, 1fr))',
-                  }}
+                  className="grid gap-3"
+                  style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(310px, 1fr))' }}
                 >
                   {group.items.map((item) => renderMachineCard(item))}
                 </div>

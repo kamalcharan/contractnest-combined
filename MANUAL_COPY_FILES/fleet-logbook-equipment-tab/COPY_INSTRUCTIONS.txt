@@ -65,11 +65,25 @@ hiding the service layer.
 
 FILES IN THIS BATCH
 ───────────────────
-  contractnest-ui/src/components/contracts/EquipmentTab.tsx      (MODIFIED — 1096 lines)
-  contractnest-ui/src/components/contracts/fleet/fleetTypes.ts           (NEW — 167 lines)
-  contractnest-ui/src/components/contracts/fleet/FleetSummaryStrip.tsx   (NEW — 159 lines)
-  contractnest-ui/src/components/contracts/fleet/FleetMatrix.tsx         (NEW — 200 lines)
-  contractnest-ui/src/components/contracts/fleet/MachineLogbookDrawer.tsx(NEW — 210 lines)
+  contractnest-ui/src/components/contracts/EquipmentTab.tsx      (MODIFIED)
+  contractnest-ui/src/components/contracts/fleet/fleetTypes.ts           (NEW)
+  contractnest-ui/src/components/contracts/fleet/FleetSummaryStrip.tsx   (NEW)
+  contractnest-ui/src/components/contracts/fleet/FleetMatrix.tsx         (NEW)
+  contractnest-ui/src/components/contracts/fleet/MachineLogbookDrawer.tsx(NEW)
+  contractnest-ui/src/components/contracts/fleet/MachineCard.tsx         (NEW)
+
+SECOND FIX (19 Jul, after mock-vs-product gap review): the fleet grid no
+longer reuses the bulky registry EquipmentCard. A purpose-built compact
+MachineCard (per the design mock's card anatomy) renders each machine:
+name + SN/location/make line, Attached/Awaiting pill, condition ·
+criticality · client compressed into one meta line, "x of y visits
+proven · Next/Due" line, thin progress bar, and a footer with an
+EXPLICIT "View logbook" button (drawer no longer relies on the invisible
+card-body click, though that still works), Attach button on placeholders
+("Forms & closure blocked" language per mock), and a compact remove
+icon. The PICKER still uses EquipmentCard unchanged. All handlers
+(add/remove/attach/stay-open/buyer gating) are the same functions —
+presentation-only change. Grid tightened to minmax(310px,1fr) per mock.
 
 ⚠️ BATCH ORDERING — READ THIS
 ─────────────────────────────
