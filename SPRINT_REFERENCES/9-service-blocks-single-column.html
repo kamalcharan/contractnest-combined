@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Add Service Blocks — Single-Column Redesign (Batch C reference)</title>
+<style>
+  :root{
+    --bg:#f2f4f7; --card:#ffffff; --ink:#1a2230; --dim:#66707e; --line:#e3e7ec;
+    --brand:#2563eb; --brand-soft:#eaf0fe;
+    --ok:#0d9464; --ok-soft:#e7f6f0;
+    --warn:#d97706; --warn-soft:#fdf3e3;
+    --vani:#7c3aed; --vani-soft:#f3eefe;
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--ink);font:14px/1.55 -apple-system,"Segoe UI",Arial,sans-serif;padding-bottom:110px}
+  .note{max-width:780px;margin:18px auto 0;padding:10px 16px;background:#fff8e6;border:1px solid #f0dfae;border-radius:8px;font-size:12.5px;color:#7a5d10}
+  .wrap{max-width:780px;margin:16px auto;padding:0 16px}
+  .head h1{font-size:19px;font-weight:800;text-align:center}
+  .head .sub{color:var(--dim);font-size:12.5px;text-align:center;margin-top:3px}
+  .ctx{text-align:center;font-size:12px;color:var(--dim);margin-top:8px}
+  .ctx b{color:var(--ink)}
+  /* VaNi inline banner */
+  .vani{display:flex;align-items:center;gap:12px;background:var(--vani-soft);border:1px solid #e2d5fb;border-radius:12px;padding:13px 16px;margin-top:16px}
+  .vani .av{width:34px;height:34px;border-radius:50%;background:var(--vani);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0}
+  .vani .tx{flex:1;font-size:13px}
+  .vani .tx b{color:var(--vani)}
+  .vani button{border:0;border-radius:8px;padding:8px 13px;font-size:12.5px;font-weight:700;cursor:pointer}
+  .vani .add{background:var(--vani);color:#fff}
+  .vani .skip{background:transparent;color:var(--dim)}
+  /* checklist */
+  .sect{margin-top:20px}
+  .sect .sh{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);margin-bottom:8px}
+  .rowb{background:var(--card);border:1px solid var(--line);border-radius:11px;margin-bottom:8px;overflow:hidden;transition:border-color .15s}
+  .rowb.on{border-color:var(--brand)}
+  .rt{display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer}
+  .cb{width:20px;height:20px;border:2px solid #c3cad4;border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:900}
+  .rowb.on .cb{background:var(--brand);border-color:var(--brand)}
+  .rt .nm{font-weight:700;font-size:13.5px}
+  .rt .ds{font-size:12px;color:var(--dim)}
+  .rt .pr{margin-left:auto;text-align:right;flex-shrink:0}
+  .rt .pr .a{font-weight:800;font-size:13.5px}
+  .rt .pr .c{font-size:11px;color:var(--dim)}
+  /* compact config summary line (checked, collapsed) */
+  .cfgline{display:none;align-items:center;gap:8px;padding:0 14px 11px 46px;font-size:12px;color:var(--dim);flex-wrap:wrap}
+  .rowb.on .cfgline{display:flex}
+  .cfgline .tag{background:#f1f4f8;border-radius:99px;padding:2px 9px;font-weight:600}
+  .cfgline .disc{background:var(--ok-soft);color:var(--ok);border-radius:99px;padding:2px 9px;font-weight:700}
+  .cfgline .edit{margin-left:auto;border:0;background:transparent;color:var(--brand);font-weight:700;font-size:12px;cursor:pointer}
+  /* expanded 3-field config */
+  .cfg{display:none;border-top:1px dashed var(--line);padding:14px;background:#fafbfd}
+  .cfg.open{display:block}
+  .f3{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+  .fld label{display:block;font-size:11px;font-weight:700;color:var(--dim);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em}
+  .fld input,.fld select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px;background:#fff}
+  .pricehint{font-size:11.5px;margin-top:5px;color:var(--ok);font-weight:600}
+  .adv{margin-top:12px}
+  .adv summary{font-size:12.5px;font-weight:700;color:var(--dim);cursor:pointer;list-style:none}
+  .adv summary::before{content:'▸ '}
+  .adv[open] summary::before{content:'▾ '}
+  .adv .advbody{margin-top:10px;font-size:12.5px;color:var(--dim);display:grid;gap:8px}
+  .adv .advrow{display:flex;justify-content:space-between;background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 12px}
+  .cfg .done{margin-top:12px;text-align:right}
+  .cfg .done button{border:0;background:var(--brand);color:#fff;font-weight:700;font-size:12.5px;border-radius:8px;padding:8px 16px;cursor:pointer}
+  /* mismatch affordance */
+  .mismatch{display:none;align-items:center;gap:10px;background:var(--warn-soft);border:1px solid #f2ddb4;border-radius:10px;padding:11px 14px;margin-top:14px;font-size:12.5px}
+  .mismatch.show{display:flex}
+  .mismatch b{color:var(--warn)}
+  .mismatch button{margin-left:auto;border:0;background:var(--warn);color:#fff;font-weight:700;font-size:12px;border-radius:7px;padding:7px 12px;cursor:pointer;flex-shrink:0}
+  /* flyby */
+  .flyby{width:100%;border:2px dashed #c9d2dd;background:transparent;border-radius:11px;padding:13px;font-size:13px;font-weight:700;color:var(--dim);cursor:pointer;margin-top:14px}
+  .flyby:hover{color:var(--brand);border-color:var(--brand)}
+  /* sticky total bar */
+  .total{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);box-shadow:0 -6px 20px rgba(20,40,80,.07);z-index:30}
+  .total .in{max-width:780px;margin:0 auto;padding:13px 16px;display:flex;align-items:center;gap:14px}
+  .total .sum{font-size:13px}
+  .total .sum b{font-size:16px}
+  .total .sum .m{color:var(--dim);font-size:12px}
+  .total .cont{margin-left:auto;border:0;background:var(--brand);color:#fff;font-weight:800;font-size:13.5px;border-radius:9px;padding:11px 26px;cursor:pointer}
+</style>
+</head>
+<body>
+
+<div class="note"><b>Design reference — Batch C (Add Service Blocks, single-column).</b> Interactive mock. The principle (from your originally approved design): <b>tick what the contract delivers; open a block only if you need to change qty, price or cycle.</b> Everything rarely needed lives behind "Advanced". Try: check/uncheck rows, hit Edit, open Advanced, click "Align all" on the amber banner, watch the total bar.</div>
+
+<div class="wrap">
+  <div class="head">
+    <h1>Add Service Blocks</h1>
+    <div class="sub">Step 5 of 12 · tick what this contract delivers</div>
+    <div class="ctx">Blocks attach to: <b>Air Conditioners (6)</b> · <b>Water Pumps (3)</b></div>
+  </div>
+
+  <!-- VaNi inline banner (replaces the 460px drawer + two trigger buttons) -->
+  <div class="vani" id="vaniBanner">
+    <div class="av">V</div>
+    <div class="tx"><b>VaNi suggests 3 blocks</b> for an AC + pump AMC: Preventive Maintenance, Gas Top-up, Pump Overhaul. You can adjust after adding.</div>
+    <button class="add" onclick="vaniAddAll()">Add all 3</button>
+    <button class="skip" onclick="document.getElementById('vaniBanner').style.display='none'">I'll pick myself</button>
+  </div>
+
+  <!-- Catalog as checklist -->
+  <div class="sect">
+    <div class="sh">Services — from your catalog</div>
+
+    <!-- Row 1: checked example with compact summary + full 3-field config -->
+    <div class="rowb on" id="r1">
+      <div class="rt" onclick="toggleRow('r1')">
+        <div class="cb">✓</div>
+        <div><div class="nm">Preventive Maintenance Visit</div><div class="ds">Filter clean, coil wash, performance check</div></div>
+        <div class="pr"><div class="a">₹1,200</div><div class="c">per visit</div></div>
+      </div>
+      <div class="cfgline">
+        <span class="tag">4 visits / year</span><span class="tag">Quarterly billing</span><span class="disc">₹1,050 · −12.5% off list</span>
+        <button class="edit" onclick="toggleCfg('r1')">Edit</button>
+      </div>
+      <div class="cfg" id="cfg-r1">
+        <div class="f3">
+          <div class="fld"><label>Visits per year</label><input type="number" value="4"></div>
+          <div class="fld"><label>Your price (per visit)</label><input type="number" value="1050" oninput="priceHint(this)"><div class="pricehint" id="ph">List ₹1,200 → −12.5% recorded as discount</div></div>
+          <div class="fld"><label>Billing cycle</label>
+            <select id="cyc-r1" onchange="checkMismatch()"><option>Quarterly</option><option>Monthly</option><option>Upfront</option></select>
+          </div>
+        </div>
+        <details class="adv">
+          <summary>Advanced — tax, service interval, description (rarely needed)</summary>
+          <div class="advbody">
+            <div class="advrow"><span>Tax</span><span>GST 18% (from Tax Settings) · inclusive</span></div>
+            <div class="advrow"><span>Service interval</span><span>Every 90 days (from catalog)</span></div>
+            <div class="advrow"><span>Show description on contract</span><span>Yes</span></div>
+            <div class="advrow"><span>Billing-only (no visits)</span><span>No</span></div>
+          </div>
+        </details>
+        <div class="done"><button onclick="toggleCfg('r1')">Done</button></div>
+      </div>
+    </div>
+
+    <!-- Row 2: checked, different cycle (drives the mismatch banner) -->
+    <div class="rowb on" id="r2">
+      <div class="rt" onclick="toggleRow('r2')">
+        <div class="cb">✓</div>
+        <div><div class="nm">Gas Top-up (R32)</div><div class="ds">Refrigerant refill incl. leak test</div></div>
+        <div class="pr"><div class="a">₹2,500</div><div class="c">per unit</div></div>
+      </div>
+      <div class="cfgline">
+        <span class="tag">On demand · max 2/yr</span><span class="tag" id="cyc2tag" style="background:var(--warn-soft);color:var(--warn)">Monthly billing</span>
+        <button class="edit" onclick="alert('Same 3-field editor as above — omitted in mock')">Edit</button>
+      </div>
+    </div>
+
+    <!-- Row 3: unchecked -->
+    <div class="rowb" id="r3">
+      <div class="rt" onclick="toggleRow('r3')">
+        <div class="cb"></div>
+        <div><div class="nm">Annual Deep Clean</div><div class="ds">Chemical wash, full-day service</div></div>
+        <div class="pr"><div class="a">₹3,800</div><div class="c">per unit / year</div></div>
+      </div>
+      <div class="cfgline">
+        <span class="tag">1 visit / year</span><span class="tag">Upfront billing</span>
+        <button class="edit" onclick="alert('Same 3-field editor — omitted in mock')">Edit</button>
+      </div>
+    </div>
+
+    <div class="sh" style="margin-top:16px">Spares & parts</div>
+    <div class="rowb" id="r4">
+      <div class="rt" onclick="toggleRow('r4')">
+        <div class="cb"></div>
+        <div><div class="nm">Pump Overhaul Kit</div><div class="ds">Bearings, seals, impeller service</div></div>
+        <div class="pr"><div class="a">₹4,200</div><div class="c">per pump</div></div>
+      </div>
+      <div class="cfgline">
+        <span class="tag">1 per pump</span><span class="tag">Quarterly billing</span>
+        <button class="edit" onclick="alert('Same 3-field editor — omitted in mock')">Edit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ONE mismatch affordance with one-click fix (replaces banner + chips + blocking toast) -->
+  <div class="mismatch show" id="mismatch">
+    <span><b>Billing cycles differ:</b> Gas Top-up bills Monthly, everything else Quarterly. Unified billing needs one cycle.</span>
+    <button onclick="alignAll()">Align all to Quarterly</button>
+  </div>
+
+  <!-- FlyBy: single entry, bottom of list -->
+  <button class="flyby" onclick="alert('Opens one inline custom-line row (service type only, per MVP scope)')">+ Add a custom line (not in your catalog)</button>
+</div>
+
+<!-- Sticky running total -->
+<div class="total">
+  <div class="in">
+    <div class="sum"><b id="tCount">2 blocks</b> · <b id="tAmt">₹9,300</b><span class="m"> /year before tax · discount recorded on 1 block</span></div>
+    <button class="cont" onclick="alert('Continue → Billing View (validation happens inline, not as a surprise toast)')">Continue</button>
+  </div>
+</div>
+
+<script>
+var checked = {r1:true, r2:true, r3:false, r4:false};
+var price = {r1:4200, r2:5000, r3:3800, r4:4200}; // annualized mock values (r1: 4×1050, r2: 2×2500)
+function toggleRow(id){
+  checked[id] = !checked[id];
+  document.getElementById(id).classList.toggle('on', checked[id]);
+  if(!checked[id]){ var c=document.getElementById('cfg-'+id); if(c) c.classList.remove('open'); }
+  refreshTotal(); checkMismatch();
+}
+function toggleCfg(id){
+  var c=document.getElementById('cfg-'+id); if(c) c.classList.toggle('open');
+}
+function priceHint(inp){
+  var v=parseFloat(inp.value||0), list=1200;
+  var ph=document.getElementById('ph');
+  if(v>=list){ ph.textContent='At list price — no discount recorded'; ph.style.color='#66707e'; }
+  else { var d=Math.round((1-v/list)*1000)/10; ph.textContent='List ₹1,200 → −'+d+'% recorded as discount'; ph.style.color='var(--ok)'; }
+}
+function refreshTotal(){
+  var n=0, amt=0;
+  for(var k in checked){ if(checked[k]){ n++; amt+=price[k]; } }
+  document.getElementById('tCount').textContent = n+' block'+(n===1?'':'s');
+  document.getElementById('tAmt').textContent = '₹'+amt.toLocaleString('en-IN');
+}
+var aligned=false;
+function checkMismatch(){
+  var show = checked.r1 && checked.r2 && !aligned;
+  document.getElementById('mismatch').classList.toggle('show', show);
+}
+function alignAll(){
+  aligned=true;
+  var t=document.getElementById('cyc2tag');
+  t.textContent='Quarterly billing'; t.style.background='#f1f4f8'; t.style.color='#66707e';
+  checkMismatch();
+}
+function vaniAddAll(){
+  ['r1','r2','r4'].forEach(function(id){ if(!checked[id]){ checked[id]=true; document.getElementById(id).classList.add('on'); }});
+  document.getElementById('vaniBanner').style.display='none';
+  refreshTotal(); checkMismatch();
+}
+refreshTotal();
+</script>
+</body>
+</html>

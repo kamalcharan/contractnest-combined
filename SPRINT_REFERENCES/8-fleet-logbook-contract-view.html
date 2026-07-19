@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fleet Logbook — Contract View Redesign (Batch B reference)</title>
+<style>
+  :root{
+    --bg:#f2f4f7; --card:#ffffff; --ink:#1a2230; --dim:#66707e; --line:#e3e7ec;
+    --brand:#2563eb; --brand-soft:#eaf0fe;
+    --ok:#0d9464; --ok-soft:#e7f6f0;
+    --warn:#d97706; --warn-soft:#fdf3e3;
+    --err:#dc2626; --err-soft:#fdecec;
+    --lock:#a16207;
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--ink);font:14px/1.55 -apple-system,"Segoe UI",Arial,sans-serif;padding-bottom:80px}
+  .note{max-width:1080px;margin:18px auto 0;padding:10px 16px;background:#fff8e6;border:1px solid #f0dfae;border-radius:8px;font-size:12.5px;color:#7a5d10}
+  .wrap{max-width:1080px;margin:16px auto;padding:0 16px}
+  .pagehead h1{font-size:19px;font-weight:700}
+  .pagehead .sub{color:var(--dim);font-size:12.5px;margin-top:2px}
+  /* contract header + tabs mock */
+  .chead{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-top:14px}
+  .chead .row{display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+  .chead .cnum{font-size:12px;color:var(--dim)}
+  .chead .cname{font-size:16px;font-weight:700}
+  .badge{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--ok-soft);color:var(--ok)}
+  .tabs{display:flex;gap:4px;margin-top:14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .tab{padding:8px 14px;font-size:13px;color:var(--dim);border-bottom:2px solid transparent;cursor:default}
+  .tab.on{color:var(--brand);border-color:var(--brand);font-weight:700}
+  /* fleet summary strip */
+  .fleet{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:14px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .stat .v{font-size:20px;font-weight:800}
+  .stat .l{font-size:11.5px;color:var(--dim);margin-top:1px}
+  .stat.warn .v{color:var(--warn)} .stat.ok .v{color:var(--ok)}
+  /* lens toggle */
+  .lens{display:flex;align-items:center;gap:10px;margin:18px 0 10px}
+  .lens .seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--card)}
+  .seg button{border:0;background:transparent;padding:7px 14px;font-size:12.5px;font-weight:600;color:var(--dim);cursor:pointer}
+  .seg button.on{background:var(--brand);color:#fff}
+  .lens .hint{font-size:12px;color:var(--dim)}
+  /* machine groups */
+  .group{margin-top:16px}
+  .ghead{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .ghead h3{font-size:13.5px;font-weight:700}
+  .ghead .gsum{font-size:12px;color:var(--dim)}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:12px}
+  .m{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;cursor:pointer;transition:box-shadow .15s}
+  .m:hover{box-shadow:0 4px 14px rgba(20,40,80,.08)}
+  .m .top{display:flex;justify-content:space-between;gap:8px}
+  .m .nm{font-weight:700;font-size:13.5px}
+  .m .sn{font-size:11.5px;color:var(--dim)}
+  .pill{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap;align-self:flex-start}
+  .pill.ok{background:var(--ok-soft);color:var(--ok)}
+  .pill.wait{background:var(--warn-soft);color:var(--warn)}
+  .m .svc{display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:12px;color:var(--dim)}
+  .bar{height:5px;border-radius:99px;background:#edf0f4;margin-top:8px;overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--ok)}
+  .m .foot{display:flex;justify-content:space-between;align-items:center;margin-top:10px}
+  .lb{font-size:12px;font-weight:700;color:var(--brand);background:var(--brand-soft);border:0;border-radius:7px;padding:6px 10px;cursor:pointer}
+  .attach{font-size:12px;font-weight:700;color:#fff;background:var(--warn);border:0;border-radius:7px;padding:6px 12px;cursor:pointer}
+  .m.ph{border-style:dashed;background:#fffdf7}
+  /* matrix */
+  .matrix{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;overflow-x:auto;display:none}
+  table{border-collapse:collapse;width:100%;min-width:640px}
+  th,td{padding:9px 10px;font-size:12.5px;text-align:center;border-bottom:1px solid var(--line)}
+  th{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+  td.mn{text-align:left;font-weight:600;white-space:nowrap}
+  td.mn .sn{display:block;font-weight:400;font-size:11px;color:var(--dim)}
+  .dot{display:inline-block;width:14px;height:14px;border-radius:50%}
+  .dot.p{background:var(--ok)} .dot.s{background:#cbd5e1} .dot.d{background:var(--warn)} .dot.o{background:var(--err)}
+  .dot.l{background:repeating-linear-gradient(45deg,#e5cf9a,#e5cf9a 3px,#fff 3px,#fff 6px);border:1px solid var(--lock)}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:12px;color:var(--dim)}
+  .legend span{display:flex;align-items:center;gap:6px}
+  /* drawer */
+  .ovl{position:fixed;inset:0;background:rgba(15,23,42,.35);display:none;z-index:40}
+  .drawer{position:fixed;top:0;right:-460px;width:440px;max-width:94vw;height:100vh;background:var(--card);z-index:50;box-shadow:-8px 0 30px rgba(0,0,0,.18);transition:right .25s ease;display:flex;flex-direction:column}
+  .drawer.open{right:0}
+  .dh{padding:18px;border-bottom:1px solid var(--line)}
+  .dh .t{font-weight:800;font-size:15px}
+  .dh .s{font-size:12px;color:var(--dim);margin-top:2px}
+  .dh .x{float:right;border:0;background:transparent;font-size:18px;cursor:pointer;color:var(--dim)}
+  .dbody{padding:18px;overflow-y:auto;flex:1}
+  .vh{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--dim);margin-bottom:10px}
+  .visit{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
+  .visit .ic{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+  .ic.p{background:var(--ok-soft);color:var(--ok)} .ic.s{background:#eef1f5;color:var(--dim)} .ic.o{background:var(--err-soft);color:var(--err)}
+  .visit .vt{font-weight:600;font-size:13px}
+  .visit .vd{font-size:11.5px;color:var(--dim)}
+  .chip{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;margin-top:4px}
+  .chip.ev{background:var(--ok-soft);color:var(--ok)}
+  .chip.pend{background:#eef1f5;color:var(--dim)}
+  /* bulk attach panel inside drawer */
+  .slot{display:flex;justify-content:space-between;align-items:center;border:1px solid var(--line);border-radius:9px;padding:10px 12px;margin-bottom:8px}
+  .slot .an{font-weight:600;font-size:13px}
+  .slot .as{font-size:11.5px;color:var(--dim)}
+  .slot button{font-size:12px;font-weight:700;color:#fff;background:var(--brand);border:0;border-radius:7px;padding:6px 12px;cursor:pointer}
+  .slot.done{background:var(--ok-soft);border-color:#bfe6d6}
+  .slot.done button{background:var(--ok);pointer-events:none}
+  .stay{font-size:11.5px;color:var(--dim);margin:6px 0 14px}
+</style>
+</head>
+<body>
+
+<div class="note"><b>Design reference — Batch B (fleet logbook).</b> Interactive mock, no real data. The core idea: the contract view gains an <b>asset-centric lens</b> — every machine is a first-class card with its own service state and logbook; a matrix shows the whole fleet at a glance. Click a machine card → its logbook. Click "Attach" on a dashed card → the stay-open bulk attach flow. Toggle "By machine / By date".</div>
+
+<div class="wrap">
+  <div class="pagehead">
+    <h1>Contract view — Equipment tab, redesigned as a Fleet Logbook</h1>
+    <div class="sub">Scenario: AMC with 9 machines (6 ACs + 3 pumps), quarterly visits, 2 machines still unattached ("client lists after signing")</div>
+  </div>
+
+  <div class="chead">
+    <div class="row">
+      <div>
+        <div class="cnum">CN-1044 · Annual Maintenance Contract</div>
+        <div class="cname">Acme Facilities — HVAC & Pump AMC 2026</div>
+      </div>
+      <span class="badge">Active</span>
+    </div>
+    <div class="tabs">
+      <div class="tab">Overview</div>
+      <div class="tab">Tasks</div>
+      <div class="tab on">Equipment</div>
+      <div class="tab">Financials</div>
+      <div class="tab">Audit Log</div>
+      <div class="tab">Document</div>
+    </div>
+  </div>
+
+  <!-- Fleet summary strip -->
+  <div class="fleet">
+    <div class="stat"><div class="v">9</div><div class="l">Machines covered</div></div>
+    <div class="stat warn"><div class="v">2</div><div class="l">Awaiting asset ("attach later")</div></div>
+    <div class="stat ok"><div class="v">19 / 36</div><div class="l">Visits proven (term to date)</div></div>
+    <div class="stat"><div class="v">24 Jul</div><div class="l">Next visit due</div></div>
+    <div class="stat warn"><div class="v">1</div><div class="l">Machine behind schedule</div></div>
+  </div>
+
+  <!-- Lens toggle -->
+  <div class="lens">
+    <div class="seg">
+      <button id="btnCards" class="on" onclick="lens('cards')">Machine cards</button>
+      <button id="btnMatrix" onclick="lens('matrix')">Service matrix</button>
+    </div>
+    <span class="hint">Same fleet, two lenses — cards for working a machine, matrix for spotting who's behind</span>
+  </div>
+
+  <!-- ══ Lens 1: category-grouped machine cards ══ -->
+  <div id="cardsView">
+    <div class="group">
+      <div class="ghead"><h3>Air Conditioners</h3><span class="gsum">6 units · 5 attached · 1 awaiting · 14/24 visits proven</span></div>
+      <div class="cards">
+        <div class="m" onclick="openLog('AC-1 · Daikin 2T Cassette','SN DK-88121 · 3rd floor server room','ok')">
+          <div class="top"><div><div class="nm">AC-1 · Daikin 2T Cassette</div><div class="sn">SN DK-88121 · 3rd floor server room</div></div><span class="pill ok">Attached</span></div>
+          <div class="svc"><span>3 of 4 visits proven</span><span>Next: 24 Jul</span></div>
+          <div class="bar"><i style="width:75%"></i></div>
+          <div class="foot"><span class="sn">Last serviced 12 Apr · R. Kumar</span><button class="lb">View logbook</button></div>
+        </div>
+        <div class="m" onclick="openLog('AC-2 · Daikin 2T Cassette','SN DK-88122 · 3rd floor east wing','ok')">
+          <div class="top"><div><div class="nm">AC-2 · Daikin 2T Cassette</div><div class="sn">SN DK-88122 · 3rd floor east wing</div></div><span class="pill ok">Attached</span></div>
+          <div class="svc"><span>3 of 4 visits proven</span><span>Next: 24 Jul</span></div>
+          <div class="bar"><i style="width:75%"></i></div>
+          <div class="foot"><span class="sn">Last serviced 12 Apr · R. Kumar</span><button class="lb">View logbook</button></div>
+        </div>
+        <div class="m" onclick="openLog('AC-3 · Voltas 1.5T Split','SN VL-40913 · Reception','behind')">
+          <div class="top"><div><div class="nm">AC-3 · Voltas 1.5T Split</div><div class="sn">SN VL-40913 · Reception</div></div><span class="pill ok">Attached</span></div>
+          <div class="svc"><span style="color:var(--err);font-weight:700">2 of 4 · 1 overdue</span><span>Due: 02 Jul (missed)</span></div>
+          <div class="bar"><i style="width:50%;background:var(--err)"></i></div>
+          <div class="foot"><span class="sn">Last serviced 08 Jan · S. Patel</span><button class="lb">View logbook</button></div>
+        </div>
+        <div class="m" onclick="openLog('AC-4 · Voltas 1.5T Split','SN VL-40914 · Conference room','ok')">
+          <div class="top"><div><div class="nm">AC-4 · Voltas 1.5T Split</div><div class="sn">SN VL-40914 · Conference room</div></div><span class="pill ok">Attached</span></div>
+          <div class="svc"><span>3 of 4 visits proven</span><span>Next: 24 Jul</span></div>
+          <div class="bar"><i style="width:75%"></i></div>
+          <div class="foot"><span class="sn">Last serviced 12 Apr · R. Kumar</span><button class="lb">View logbook</button></div>
+        </div>
+        <div class="m" onclick="openLog('AC-5 · Blue Star 2T Ducted','SN BS-77310 · Cafeteria','ok')">
+          <div class="top"><div><div class="nm">AC-5 · Blue Star 2T Ducted</div><div class="sn">SN BS-77310 · Cafeteria</div></div><span class="pill ok">Attached</span></div>
+          <div class="svc"><span>3 of 4 visits proven</span><span>Next: 24 Jul</span></div>
+          <div class="bar"><i style="width:75%"></i></div>
+          <div class="foot"><span class="sn">Last serviced 13 Apr · R. Kumar</span><button class="lb">View logbook</button></div>
+        </div>
+        <div class="m ph">
+          <div class="top"><div><div class="nm">AC-6 · (to be listed by client)</div><div class="sn">Placeholder · 6 of 6</div></div><span class="pill wait">Awaiting asset</span></div>
+          <div class="svc"><span>Visits locked until attached</span><span>—</span></div>
+          <div class="bar"><i style="width:0%"></i></div>
+          <div class="foot"><span class="sn">Forms & closure blocked</span><button class="attach" onclick="event.stopPropagation();openAttach()">Attach asset</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="ghead"><h3>Water Pumps</h3><span class="gsum">3 units · 2 attached · 1 awaiting · 5/12 visits proven</span></div>
+      <div class="cards">
+        <div class="m" onclick="openLog('PUMP-1 · Kirloskar 5HP','SN KL-2211 · Basement sump','ok')">
+          <div class="top"><div><div class="nm">PUMP-1 · Kirloskar 5HP</div><div class="sn">SN KL-2211 · Basement sump</div></div><span class="pill ok">Attached</span></div>
+          <div class="svc"><span>3 of 4 visits proven</span><span>Next: 24 Jul</span></div>
+          <div class="bar"><i style="width:75%"></i></div>
+          <div class="foot"><span class="sn">Last serviced 12 Apr · A. Singh</span><button class="lb">View logbook</button></div>
+        </div>
+        <div class="m" onclick="openLog('PUMP-2 · Kirloskar 5HP','SN KL-2212 · Terrace booster','ok')">
+          <div class="top"><div><div class="nm">PUMP-2 · Kirloskar 5HP</div><div class="sn">SN KL-2212 · Terrace booster</div></div><span class="pill ok">Attached</span></div>
+          <div class="svc"><span>2 of 4 visits proven</span><span>Next: 24 Jul</span></div>
+          <div class="bar"><i style="width:50%"></i></div>
+          <div class="foot"><span class="sn">Last serviced 10 Apr · A. Singh</span><button class="lb">View logbook</button></div>
+        </div>
+        <div class="m ph">
+          <div class="top"><div><div class="nm">PUMP-3 · (to be listed by client)</div><div class="sn">Placeholder · 3 of 3</div></div><span class="pill wait">Awaiting asset</span></div>
+          <div class="svc"><span>Visits locked until attached</span><span>—</span></div>
+          <div class="bar"><i style="width:0%"></i></div>
+          <div class="foot"><span class="sn">Forms & closure blocked</span><button class="attach" onclick="event.stopPropagation();openAttach()">Attach asset</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Lens 2: service matrix ══ -->
+  <div id="matrixView" class="matrix">
+    <table>
+      <thead><tr><th style="text-align:left">Machine</th><th>Q1 · Jan</th><th>Q2 · Apr</th><th>Q3 · Jul</th><th>Q4 · Oct</th></tr></thead>
+      <tbody>
+        <tr><td class="mn">AC-1 Daikin 2T<span class="sn">DK-88121</span></td><td><span class="dot p"></span></td><td><span class="dot p"></span></td><td><span class="dot p"></span></td><td><span class="dot s"></span></td></tr>
+        <tr><td class="mn">AC-2 Daikin 2T<span class="sn">DK-88122</span></td><td><span class="dot p"></span></td><td><span class="dot p"></span></td><td><span class="dot p"></span></td><td><span class="dot s"></span></td></tr>
+        <tr><td class="mn">AC-3 Voltas 1.5T<span class="sn">VL-40913</span></td><td><span class="dot p"></span></td><td><span class="dot p"></span></td><td><span class="dot o"></span></td><td><span class="dot s"></span></td></tr>
+        <tr><td class="mn">AC-4 Voltas 1.5T<span class="sn">VL-40914</span></td><td><span class="dot p"></span></td><td><span class="dot p"></span></td><td><span class="dot p"></span></td><td><span class="dot s"></span></td></tr>
+        <tr><td class="mn">AC-5 Blue Star 2T<span class="sn">BS-77310</span></td><td><span class="dot p"></span></td><td><span class="dot p"></span></td><td><span class="dot p"></span></td><td><span class="dot s"></span></td></tr>
+        <tr><td class="mn">AC-6 (placeholder)<span class="sn">to be listed</span></td><td><span class="dot l"></span></td><td><span class="dot l"></span></td><td><span class="dot l"></span></td><td><span class="dot l"></span></td></tr>
+        <tr><td class="mn">PUMP-1 Kirloskar<span class="sn">KL-2211</span></td><td><span class="dot p"></span></td><td><span class="dot p"></span></td><td><span class="dot p"></span></td><td><span class="dot s"></span></td></tr>
+        <tr><td class="mn">PUMP-2 Kirloskar<span class="sn">KL-2212</span></td><td><span class="dot p"></span></td><td><span class="dot p"></span></td><td><span class="dot d"></span></td><td><span class="dot s"></span></td></tr>
+        <tr><td class="mn">PUMP-3 (placeholder)<span class="sn">to be listed</span></td><td><span class="dot l"></span></td><td><span class="dot l"></span></td><td><span class="dot l"></span></td><td><span class="dot l"></span></td></tr>
+      </tbody>
+    </table>
+    <div class="legend">
+      <span><span class="dot p"></span> Proven</span>
+      <span><span class="dot d"></span> Due</span>
+      <span><span class="dot o"></span> Overdue</span>
+      <span><span class="dot s"></span> Scheduled</span>
+      <span><span class="dot l"></span> Locked (placeholder)</span>
+    </div>
+  </div>
+</div>
+
+<!-- Logbook drawer -->
+<div class="ovl" id="ovl" onclick="closeAll()"></div>
+<div class="drawer" id="logDrawer">
+  <div class="dh">
+    <button class="x" onclick="closeAll()">✕</button>
+    <div class="t" id="logTitle">AC-1 · Daikin 2T Cassette</div>
+    <div class="s" id="logSub">SN DK-88121 · 3rd floor server room</div>
+  </div>
+  <div class="dbody">
+    <div class="vh">Service logbook — this machine only</div>
+    <div id="logOk">
+      <div class="visit"><div class="ic p">✓</div><div><div class="vt">Q2 visit — proven</div><div class="vd">12 Apr 2026 · R. Kumar · filter clean + gas check</div><span class="chip ev">Photo + checklist attached</span></div></div>
+      <div class="visit"><div class="ic p">✓</div><div><div class="vt">Q1 visit — proven</div><div class="vd">09 Jan 2026 · S. Patel · full service</div><span class="chip ev">Photo + checklist attached</span></div></div>
+      <div class="visit"><div class="ic s">○</div><div><div class="vt">Q3 visit — scheduled</div><div class="vd">24 Jul 2026 · assignee TBD</div><span class="chip pend">Awaiting visit</span></div></div>
+      <div class="visit"><div class="ic s">○</div><div><div class="vt">Q4 visit — scheduled</div><div class="vd">22 Oct 2026</div><span class="chip pend">Awaiting visit</span></div></div>
+    </div>
+    <div id="logBehind" style="display:none">
+      <div class="visit"><div class="ic o">!</div><div><div class="vt">Q3 visit — overdue</div><div class="vd">Due 02 Jul 2026 · missed · no technician assigned</div><span class="chip pend">Action needed</span></div></div>
+      <div class="visit"><div class="ic p">✓</div><div><div class="vt">Q1 visit — proven</div><div class="vd">08 Jan 2026 · S. Patel</div><span class="chip ev">Photo attached</span></div></div>
+      <div class="visit"><div class="ic s">○</div><div><div class="vt">Q4 visit — scheduled</div><div class="vd">22 Oct 2026</div><span class="chip pend">Awaiting visit</span></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk attach drawer -->
+<div class="drawer" id="attachDrawer">
+  <div class="dh">
+    <button class="x" onclick="closeAll()">✕</button>
+    <div class="t">Attach assets — 2 slots open</div>
+    <div class="s">Panel stays open until every placeholder is filled. Already-attached units are hidden.</div>
+  </div>
+  <div class="dbody">
+    <div class="vh">Slot 1 · Air Conditioner (6 of 6)</div>
+    <div class="stay">Registry units matching this category, not yet on the contract:</div>
+    <div class="slot" id="s1"><div><div class="an">Voltas 1.5T Split — SN VL-40977</div><div class="as">Acme Facilities · 2nd floor store</div></div><button onclick="fill('s1')">Attach</button></div>
+    <div class="slot" id="s2"><div><div class="an">LG 1T Window — SN LG-11220</div><div class="as">Acme Facilities · Guard cabin</div></div><button onclick="fill('s2')">Attach</button></div>
+    <div class="vh" style="margin-top:18px">Slot 2 · Water Pump (3 of 3)</div>
+    <div class="slot" id="s3"><div><div class="an">CRI 3HP Monoblock — SN CR-5501</div><div class="as">Acme Facilities · Garden line</div></div><button onclick="fill('s3')">Attach</button></div>
+    <div class="stay" style="margin-top:16px">+ Can't find it? <b style="color:var(--brand)">Create a new facility/equipment entry</b> without leaving this panel.</div>
+  </div>
+</div>
+
+<script>
+function lens(which){
+  document.getElementById('cardsView').style.display = which==='cards'?'block':'none';
+  document.getElementById('matrixView').style.display = which==='matrix'?'block':'none';
+  document.getElementById('btnCards').classList.toggle('on', which==='cards');
+  document.getElementById('btnMatrix').classList.toggle('on', which==='matrix');
+}
+function openLog(t,s,variant){
+  document.getElementById('logTitle').textContent=t;
+  document.getElementById('logSub').textContent=s;
+  document.getElementById('logOk').style.display = variant==='behind'?'none':'block';
+  document.getElementById('logBehind').style.display = variant==='behind'?'block':'none';
+  document.getElementById('ovl').style.display='block';
+  document.getElementById('logDrawer').classList.add('open');
+}
+function openAttach(){
+  document.getElementById('ovl').style.display='block';
+  document.getElementById('attachDrawer').classList.add('open');
+}
+function fill(id){
+  var el=document.getElementById(id);
+  el.classList.add('done');
+  el.querySelector('button').textContent='Attached ✓';
+}
+function closeAll(){
+  document.getElementById('ovl').style.display='none';
+  document.getElementById('logDrawer').classList.remove('open');
+  document.getElementById('attachDrawer').classList.remove('open');
+}
+</script>
+</body>
+</html>
