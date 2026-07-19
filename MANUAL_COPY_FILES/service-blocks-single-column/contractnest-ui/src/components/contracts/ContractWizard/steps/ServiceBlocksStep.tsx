@@ -287,10 +287,10 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
   const [vaniDismissed, setVaniDismissed] = useState(false);
 
   // Slim filter row: blocks carry facility/equipment resource scoping
-  // (selectedResources) — default to showing only blocks relevant to the
-  // active coverage type; unscoped blocks always pass. Selected blocks
-  // are never hidden by any filter.
-  const [relevanceOn, setRelevanceOn] = useState(true);
+  // (selectedResources). OFF by default — the full catalog is always the
+  // starting view; the user opts INTO narrowing it. Selected blocks are
+  // never hidden by any filter.
+  const [relevanceOn, setRelevanceOn] = useState(false);
   const [recommendedOnly, setRecommendedOnly] = useState(false);
 
   // FlyBy dropdown (custom line types — same four the old header offered)
@@ -777,10 +777,10 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
                 >
                   Recommended only {recommendedOnly ? '✓' : ''}
                 </button>
-                {((relevanceOn && hasCoverageTypes) || recommendedOnly) && (
+                {((relevanceOn && hasCoverageTypes) || recommendedOnly || !!searchQuery) && (
                   <button
                     type="button"
-                    onClick={() => { setRelevanceOn(false); setRecommendedOnly(false); }}
+                    onClick={() => { setRelevanceOn(false); setRecommendedOnly(false); setSearchQuery(''); }}
                     className="text-[11px] font-semibold underline"
                     style={{ color: dim }}
                   >
@@ -893,10 +893,10 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
                     className="rounded-[10px] border border-dashed px-4 py-4 mt-4 text-center text-[12.5px]"
                     style={{ borderColor: colors.utility.primaryText + '20', color: dim }}
                   >
-                    No catalog blocks match the current filter.{' '}
+                    No catalog blocks match the current filter{searchQuery ? ' or search' : ''}.{' '}
                     <button
                       type="button"
-                      onClick={() => { setRelevanceOn(false); setRecommendedOnly(false); }}
+                      onClick={() => { setRelevanceOn(false); setRecommendedOnly(false); setSearchQuery(''); }}
                       className="font-bold underline"
                       style={{ color: colors.brand.primary }}
                     >
