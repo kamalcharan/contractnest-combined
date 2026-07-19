@@ -93,6 +93,21 @@ const ChecklistRow: React.FC<ChecklistRowProps> = ({
 
   const cp = instance?.config?.cadencePricing as BlockCadencePricing | undefined;
   const cadenceOptions = cp ? fittingCadences(cp, durationMonths) : [];
+
+  // ── Service cycle (visit interval) — same rules as the previous card ──
+  const isGroupSession = instance?.config?.audience === 'group' || instance?.categoryId === 'session';
+  const deliversOccurrences = priced || isGroupSession || !!instance?.serviceCycleDays;
+  const anchorWeekday = (instance?.config as any)?.serviceCycles?.anchorWeekday;
+  const anchorLabel =
+    typeof anchorWeekday === 'number' && anchorWeekday >= 0 && anchorWeekday <= 6
+      ? ['Sundays', 'Mondays', 'Tuesdays', 'Wednesdays', 'Thursdays', 'Fridays', 'Saturdays'][anchorWeekday]
+      : null;
+  const contractDurationDays = durationMonths * 30;
+  const serviceCycleSpanDays =
+    instance?.serviceCycleDays && !instance.unlimited && instance.quantity > 1
+      ? (instance.quantity - 1) * instance.serviceCycleDays
+      : 0;
+  const serviceCycleExceedsDuration = !!(contractDurationDays && serviceCycleSpanDays > contractDurationDays);
   // Payment schedule for the chosen cadence (N payments × rate + final)
   const cadDefCur = cp && instance ? getCadenceCycle(instance.cycle) : undefined;
   const cadenceMath =
@@ -339,7 +354,14 @@ const ChecklistRow: React.FC<ChecklistRowProps> = ({
                     <input
                       type="checkbox"
                       checked={instance.unlimited}
-                      onChange={(e) => onUpdate({ unlimited: e.target.checked })}
+                      onChange={(e) =>
+                        // Same rule as the previous card: switching to
+                        // Unlimited clears the service cycle interval
+                        onUpdate({
+                          unlimited: e.target.checked,
+                          ...(e.target.checked ? { serviceCycleDays: undefined } : {}),
+                        })
+                      }
                     />
                     Unlimited
                   </label>
@@ -370,54 +392,164 @@ const ChecklistRow: React.FC<ChecklistRowProps> = ({
                     : 'No list price on this block'}
                 </div>
               </div>
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: dim }}>
-                  Billing cycle
-                </label>
-                <select
-                  value={instance.cycle}
-                  onChange={(e) => handleCycleChange(e.target.value)}
-                  className="w-full rounded-lg px-2.5 py-2 text-[13px]"
-                  style={inputStyle}
-                >
-                  {cp ? (
-                    cadenceOptions.map((c) => {
-                      const rate = cp.rates.find((r) => r.cycle === c.id);
-                      const override = (instance.config as any)?.cadenceOverrides?.[c.id];
-                      const shown = c.id === instance.cycle ? (effPrice ?? rate?.amount) : (override ?? rate?.amount);
-                      return (
-                        <option key={c.id} value={c.id}>
-                          {c.label} — {sym}{(shown ?? 0).toLocaleString()} {c.per}
-                          {cp.defaultCadence === c.id ? ' (default)' : ''}
-                        </option>
-                      );
-                    })
-                  ) : (
-                    CYCLE_OPTIONS.map((o) => (
-                      <option key={o.id} value={o.id}>{o.label}</option>
-                    ))
-                  )}
-                </select>
-                {/* Custom cycle days — inline, same as the previous card */}
-                {!cp && instance.cycle === 'custom' && (
-                  <div className="flex items-center gap-2 mt-2">
-                    <input
-                      type="number"
-                      min={1}
-                      value={instance.customCycleDays || ''}
-                      placeholder="Enter days"
-                      onChange={(e) => onUpdate({ customCycleDays: e.target.value ? Math.max(1, Number(e.target.value)) : undefined })}
-                      className="w-24 rounded-lg px-2.5 py-1.5 text-[12.5px]"
-                      style={inputStyle}
-                    />
-                    <span className="text-[11.5px]" style={{ color: dim }}>Days</span>
-                  </div>
-                )}
-              </div>
             </div>
           ) : (
             <div className="text-[12.5px]" style={{ color: dim }}>
               Content block — no pricing. It shapes the contract document{typeLabel === 'checklist block' ? ' and attaches to visits' : ''}.
+            </div>
+          )}
+
+          {/* Billing cycle — chip selection (same options as the previous card) */}
+          {priced && (
+            <div className="mt-3">
+              <label className="block text-[11px] font-bold uppercase tracking-wide mb-1.5" style={{ color: dim }}>
+                {cp ? 'Payment cadence — your proposal to the buyer' : 'Billing cycle'}
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {cp
+                  ? cadenceOptions.map((c) => {
+                      const rate = cp.rates.find((r) => r.cycle === c.id);
+                      const override = (instance.config as any)?.cadenceOverrides?.[c.id];
+                      const shown = c.id === instance.cycle ? (effPrice ?? rate?.amount) : (override ?? rate?.amount);
+                      const isActive = instance.cycle === c.id;
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => handleCycleChange(c.id)}
+                          className="px-3 py-2 rounded-lg text-xs font-medium transition-all text-left"
+                          style={{
+                            backgroundColor: isActive ? colors.brand.primary : colors.utility.primaryText + '08',
+                            color: isActive ? '#fff' : dim,
+                          }}
+                        >
+                          <span className="font-bold">
+                            {c.label}
+                            {cp.defaultCadence === c.id && (
+                              <span
+                                className="ml-1.5 text-[8px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full"
+                                style={{
+                                  backgroundColor: isActive ? 'rgba(255,255,255,0.25)' : colors.brand.primary + '15',
+                                  color: isActive ? '#fff' : colors.brand.primary,
+                                }}
+                              >
+                                default
+                              </span>
+                            )}
+                          </span>
+                          <span className="block text-[10px] mt-0.5" style={{ opacity: 0.85 }}>
+                            {sym}{(shown ?? 0).toLocaleString()} {c.per}
+                          </span>
+                        </button>
+                      );
+                    })
+                  : CYCLE_OPTIONS.map((o) => {
+                      const isActive = instance.cycle === o.id;
+                      const OptIcon = o.icon;
+                      return (
+                        <button
+                          key={o.id}
+                          type="button"
+                          onClick={() => handleCycleChange(o.id)}
+                          className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5"
+                          style={{
+                            backgroundColor: isActive ? colors.brand.primary : colors.utility.primaryText + '08',
+                            color: isActive ? '#fff' : dim,
+                          }}
+                        >
+                          <OptIcon className="w-3.5 h-3.5" />
+                          {o.label}
+                        </button>
+                      );
+                    })}
+              </div>
+              {/* Custom cycle days — only when Custom is selected */}
+              {!cp && instance.cycle === 'custom' && (
+                <div className="flex items-center gap-2 mt-2">
+                  <input
+                    type="number"
+                    min={1}
+                    value={instance.customCycleDays || ''}
+                    placeholder="Enter days"
+                    onChange={(e) => onUpdate({ customCycleDays: e.target.value ? Math.max(1, Number(e.target.value)) : undefined })}
+                    className="w-24 rounded-lg px-2.5 py-1.5 text-[12.5px]"
+                    style={inputStyle}
+                  />
+                  <span className="text-[11.5px]" style={{ color: dim }}>Days</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Service cycle (visit interval) — full previous-card logic:
+              editable interval, anchor weekday, plain-language summary,
+              span-vs-duration validation. Hidden when Unlimited. */}
+          {deliversOccurrences && !instance.unlimited && (
+            <div
+              className="mt-3 p-3 rounded-xl border-2 border-dashed"
+              style={{
+                borderColor: serviceCycleExceedsDuration
+                  ? colors.semantic?.error || '#EF4444'
+                  : instance.serviceCycleDays
+                    ? colors.brand.primary
+                    : colors.utility.primaryText + '20',
+                backgroundColor: serviceCycleExceedsDuration
+                  ? (colors.semantic?.error || '#EF4444') + '08'
+                  : instance.serviceCycleDays
+                    ? colors.brand.primary + '06'
+                    : 'transparent',
+              }}
+            >
+              <label className="block text-[10px] font-bold uppercase tracking-wide mb-2" style={{ color: dim }}>
+                Service cycle
+              </label>
+              <div className="flex items-center gap-2">
+                <span className="text-xs" style={{ color: dim }}>Every</span>
+                <input
+                  type="number"
+                  min={1}
+                  value={instance.serviceCycleDays || ''}
+                  placeholder="—"
+                  onChange={(e) =>
+                    onUpdate({ serviceCycleDays: e.target.value ? Math.max(1, Number(e.target.value)) : undefined })
+                  }
+                  className="w-20 rounded-lg px-2.5 py-1.5 text-sm font-medium text-center"
+                  style={{
+                    ...inputStyle,
+                    border: `1px solid ${serviceCycleExceedsDuration ? colors.semantic?.error || '#EF4444' : colors.utility.primaryText + '20'}`,
+                  }}
+                />
+                <span className="text-xs" style={{ color: dim }}>
+                  {anchorLabel ? `days · on ${anchorLabel}` : 'days from start of contract'}
+                </span>
+              </div>
+              {instance.serviceCycleDays && instance.serviceCycleDays > 0 ? (
+                <p className="text-xs leading-relaxed mt-2" style={{ color: colors.utility.primaryText }}>
+                  {isGroupSession ? 'This session runs' : 'This service will be performed'} every{' '}
+                  <strong>{instance.serviceCycleDays} days</strong>
+                  {anchorLabel && <> on <strong>{anchorLabel}</strong></>},{' '}
+                  <strong>{instance.quantity} time{instance.quantity > 1 ? 's' : ''}</strong>
+                  {instance.quantity > 1 && !anchorLabel && (
+                    <span style={{ color: dim }}>
+                      {' '}(Day 1 to Day {(instance.quantity - 1) * instance.serviceCycleDays})
+                    </span>
+                  )}
+                </p>
+              ) : null}
+              {isGroupSession && (
+                <p className="text-[11px] mt-1" style={{ color: dim }}>
+                  Holidays shift per Cadence Settings — you'll confirm each clash at the schedule preview.
+                </p>
+              )}
+              {serviceCycleExceedsDuration && (
+                <div
+                  className="mt-2 p-2 rounded-lg text-xs"
+                  style={{ backgroundColor: (colors.semantic?.error || '#EF4444') + '12', color: colors.semantic?.error || '#EF4444' }}
+                >
+                  Cycles span {serviceCycleSpanDays} days but the contract is only {contractDurationDays} days.
+                  Reduce visits or increase the interval.
+                </div>
+              )}
             </div>
           )}
 
@@ -476,7 +608,7 @@ const ChecklistRow: React.FC<ChecklistRowProps> = ({
           {/* Advanced disclosure */}
           <details className="mt-3">
             <summary className="text-[12.5px] font-bold cursor-pointer" style={{ color: dim }}>
-              Advanced — tax, service interval, description{priced ? ', billing-only' : ''} (rarely needed)
+              Advanced — tax, description{priced ? ', billing-only' : ''} (rarely needed)
             </summary>
             <div className="grid gap-2 mt-2.5">
               {priced && advRow(
@@ -484,10 +616,6 @@ const ChecklistRow: React.FC<ChecklistRowProps> = ({
                 instance.taxes && instance.taxes.length > 0
                   ? `${instance.taxes.map((t) => `${t.name} ${t.rate}%`).join(' + ')} · ${instance.taxInclusion === 'inclusive' ? 'inclusive' : 'exclusive'}`
                   : 'No tax on this block',
-              )}
-              {advRow(
-                'Service interval',
-                instance.serviceCycleDays ? `Every ${instance.serviceCycleDays} days (from catalog)` : '—',
               )}
               {advRow(
                 'Show description on contract',
