@@ -1,7 +1,7 @@
 ═══════════════════════════════════════════════════
 COPY INSTRUCTIONS — sprint4-gst-tax-records
 ═══════════════════════════════════════════════════
-Submodules Affected: contractnest-edge (3 migration files, all APPLIED
+Submodules Affected: contractnest-edge (5 migration files, all APPLIED
 live + 1 modified edge fn, DEPLOYED live), contractnest-api (4 modified
 files), contractnest-ui (8 modified/new files)
 Also touches: sql/acceptance/sprint4.sql — already written directly to the
@@ -10,8 +10,8 @@ parent repo (not a submodule, not app code — same convention as sprint3.sql).
 Sprint 4 (re-scoped 2026-07-19): tax records (renamed from "GST" — this is
 NOT India-specific; the mechanism is generic, other countries use VAT/other
 regimes) + invoice tax compliance + tax registration number capture/print
-+ a "No Tax" declared state for non-tax-registered tenants (+ a real,
-pre-existing production bug fix found and closed along the way — see
++ a "No Tax" declared state for non-tax-registered tenants + three real,
+pre-existing production bugs found and closed along the way (see Findings
 below). Buyer gateway payments, payment verification, My Services pay,
 cancel/bad-debt/write-off fixes, and the 27-invoice reconciliation repair
 all move to Sprint 7, per your explicit call.
@@ -25,6 +25,8 @@ on the Supabase project, applied with your explicit go-ahead:
   - 063 backfill: report reviewed, UPDATE run, verified (29 rows, 0 drift)
   - 064 migration: applied, verified (tax-settings RPCs restored +
     no_tax constraint widened)
+  - 065 migration: applied, verified (buyer-page letterhead fix)
+  - 066 migration: applied, verified (scanner draft-invoice tax fix)
 The .sql files in this batch are the SOURCE-CONTROL RECORD of what's
 already live — copying them into your local checkout does not re-apply
 anything (migrations only run when pushed through your normal Supabase
@@ -90,7 +92,7 @@ WHAT DID NOT NEED CHANGING (verified, not assumed)
   RPCs with the right names/params; only the RPCs themselves were
   missing. Confirmed before applying, not assumed.
 
-FINDINGS — one fixed, one still open
+FINDINGS — all four resolved or explicitly deferred
 ───────────────────────────────────────────────────
 1. FIXED — tax-settings save was broken in production since ~Feb 2026.
    create_or_update_tax_settings / get_tax_settings_with_rates were
@@ -104,30 +106,49 @@ FINDINGS — one fixed, one still open
    being written to this file — caught immediately and corrected so the
    exact same untracked-drift problem didn't repeat on its own fix.
 
-2. STILL OPEN — the PUBLIC buyer review page's provider letterhead
-   (logo, business name, address, phone, email, and now tax number) is a
-   live no-op. The tracked migration file for validate_contract_access
-   (contracts/010_public_contract_rpcs.sql) builds a full `profile`
+2. FIXED — the PUBLIC buyer review page's provider letterhead (logo,
+   business name, address, phone, email, tax number) was a live no-op.
+   The tracked migration file for validate_contract_access
+   (contracts/010_public_contract_rpcs.sql) built a full `profile`
    object; the LIVE deployed function (pulled via pg_get_functiondef,
-   verified) does not — its `tenant` object only returns {id, name}.
-   contractnest-ui/src/pages/contracts/review/index.tsx has been reading
-   `tenant?.profile?.*` as undefined in production for all of these
-   fields, not just the new tax number. This batch's edit there is
-   written defensively (same undefined-safe pattern as the pre-existing
-   lines) — zero regression — but won't show anything until this
-   separate RPC gap is fixed. Not touched here given the scope of the
-   drift and the risk of guessing what else changed without a fuller
-   audit.
+   verified byte-for-byte before editing) didn't — its `tenant` object
+   only returned {id, name}. Fixed (migration 065): added a
+   t_tenant_profiles lookup and a `profile` key to the response,
+   reproducing every other line of the live function verbatim. Verified:
+   error path unchanged (invalid cnak still returns the same error); did
+   NOT invoke the function against a real pending access record (it has
+   a side effect — marks the link "viewed" — which would have corrupted
+   real buyer-tracking data), instead verified the new profile lookup
+   via a read-only SELECT against real data. contractnest-ui/src/pages/
+   contracts/review/index.tsx's gst_number wiring (added earlier in this
+   batch, written defensively for exactly this gap) now actually works —
+   no UI change needed for this fix, only the RPC.
 
-3. DELIBERATELY NOT TOUCHED — the VaNi scanner's per-event DRAFT invoice
-   path (operations-loop/013_stage3_scanner_v2.sql, STEP 4) hardcodes
-   tax_amount=0 on scanner-created drafts. Zero draft invoices exist in
-   production today (verified live), so this is latent, not an active
-   undercount — but it WILL undercount tax the first time the scanner
-   mints a draft. That function has been patched across 6 separate
-   migration files; reproducing it without reading its full,
-   multiply-patched live definition would be materially higher-risk
-   than anything else in this batch.
+3. FIXED — the VaNi scanner's per-event DRAFT invoice path
+   (run_contract_event_scanner, STEP 4) hardcoded tax_amount=0 on
+   scanner-created drafts. Zero draft invoices existed in production
+   when this was found (verified live), so it was latent, not an active
+   undercount. Pulled the LIVE function definition first (20,782 chars,
+   pg_get_functiondef) rather than trust the tracked migration file
+   (operations-loop/013_stage3_scanner_v2.sql) — the live version had
+   already drifted significantly beyond it (an advisory lock guard, a
+   STEP 2b appointment-auto-request block, and per-tenant VaNi rule
+   gating on every step, none of which are in the tracked file).
+   Reproducing from the file would have silently reverted all of that.
+   Fixed (migration 066): tax_amount and tax_breakdown now prorate from
+   the contract's own tax configuration, proportional to the event's
+   share of the contract's total_value — documented as an approximation
+   (no per-line tax data exists in the schema). SELF-CAUGHT BUG: the
+   first applied version used the wrong ratio for the tax_breakdown
+   component split (tax_total/total_value instead of
+   event.amount/total_value), double-applying the tax rate and producing
+   wrong numbers. Caught via a read-only proration test against real
+   contract data BEFORE calling this done — never reached a live draft
+   invoice (0 exist; scanner is cron-triggered, not called on-demand).
+   Corrected and re-verified. Did NOT invoke the actual scanner function
+   to test (real side effects: sends real reminder emails/SMS, creates
+   real appointments, marks real events overdue) — verified via
+   read-only simulation only.
 
 4. DELIBERATELY NOT TOUCHED — a fully duplicate, parallel
    useUpdateTaxDisplay implementation exists in
@@ -143,6 +164,8 @@ contractnest-edge/supabase/migrations/contracts/
   062_invoice_tax_snapshot_and_tax_summary.sql        [APPLIED LIVE]
   063_backfill_invoice_tax_breakdown.sql               [APPLIED LIVE]
   064_restore_tax_settings_rpcs_and_add_no_tax.sql     [APPLIED LIVE]
+  065_fix_validate_contract_access_missing_profile.sql [APPLIED LIVE]
+  066_fix_scanner_draft_invoice_zero_tax.sql           [APPLIED LIVE]
 contractnest-edge/supabase/functions/finance/index.ts  [DEPLOYED LIVE, v2]
 contractnest-api/src/services/financeService.ts           [+1 method]
 contractnest-api/src/controllers/financeController.ts     [+1 method]
@@ -203,8 +226,9 @@ Tax registration number:
       the "Not set" warning
 - [ ] Invoice view + wizard Review & Send: prints "GSTIN: <value>" (or
       "Tax Reg. No." for non-IN) when set
-- [ ] Public buyer review page: will NOT show it yet — Finding #2, a
-      separate pre-existing bug, not this batch's regression
+- [ ] Public buyer review page: NOW fixed (migration 065) — open a
+      contract's CNAK link, confirm the seller's logo/name/address/
+      phone/email/tax number all render (previously all blank)
 
 No Tax:
 - [ ] Tax Settings → Tax Display now shows 3 radio options: Excluding
@@ -215,6 +239,14 @@ No Tax:
       registered" message instead of an empty table, Export CSV disabled
 - [ ] Switch back to "Excluding tax" or "Including tax" — confirm normal
       save still works (regression check on the restored RPC)
+
+Scanner draft-invoice tax (migration 066) — no UI surface to click; DB-
+only verification since 0 draft invoices exist and the scanner is
+cron-triggered, not user-invokable:
+- [ ] If/when the scanner ever creates its first draft invoice for a
+      tenant with tax configured, confirm its tax_amount and
+      tax_breakdown are populated (proportional to the event's share of
+      the contract), not zero.
 
 General:
 - [ ] tsc baseline clean (no new type errors — this batch widened 3

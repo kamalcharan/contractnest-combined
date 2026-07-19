@@ -30,7 +30,7 @@
 ### Pending
 - **Sprint 4 (re-scoped) UI batch — owner copy/local-test/Phase-2 confirm outstanding.** DB + edge sides are live (see Done above); the Taxes NAV, tax registration number, and No Tax UI code are pushed but not yet copied/tested locally.
 - **Sprint 4 items moved to Sprint 7** (owner's explicit call, 19 Jul): buyer gateway payments (buyer currently records payment offline like a seller — wrong; should invoke the seller's configured gateway), payment "in verification" → seller-confirms workflow, My Services record/pay parity with seller Tasks, seller cancel/bad-debt fixes + add write-off, and the 27-invoice reconciliation repair (null `contract_event_id` links + broken receipt-allocation trail on 9 of 10 paid/partial invoices — distinct from the tax_breakdown backfill already done). Per-asset invoice lines + evidence-before-invoice gate remain S7-dependent as originally scoped (need Sprint 2's forms + Sprint 7's asset-proving writer; nothing currently marks an asset "proven" anywhere in the codebase).
-- **Sprint 4 new findings, not yet fixed**: public buyer-review page's provider letterhead is a live no-op (RPC drift, pre-existing, unrelated to this batch); VaNi scanner hardcodes `tax_amount=0` on draft invoices (latent, 0 drafts exist live).
+- ~~Sprint 4 new findings, not yet fixed~~ — **both closed 19 Jul.** Public buyer-review page's provider letterhead (RPC drift, `validate_contract_access` missing a `profile` fetch the live function had lost) — fixed, verified live. VaNi scanner's `tax_amount=0` hardcode on draft invoices — fixed (prorated from contract tax config), verified via read-only simulation (never invoked the live scanner — it has real side effects: reminder emails/SMS, appointments). Caught and corrected a self-introduced bug in the scanner fix's first pass (wrong ratio on the tax_breakdown component split) before calling it done — see `sql/acceptance` batch notes / `COPY_INSTRUCTIONS.txt` for the full trail.
 - **Sprint 4 still-deferred**: discount compliance on `t_invoices` (`subtotal`/`discount_total` columns) — "next point," not yet built.
 - **Sprint 2** (smart forms from Knowledge Tree) and **Sprint 7** (service execution loop-close, now also absorbing the above Sprint 4 settle-side items) — owner has proposed doing Sprint 2 + Sprint 7 together; sequencing decision still open, not started.
 - **Sprints 5–6** as specified (events & group-sessions cleanup; appointments integration) — not started.
@@ -58,7 +58,7 @@ Shipped: invoice `tax_breakdown` snapshot + `get_tenant_tax_summary` RPC (applie
 
 **User actions outstanding**
 1. Copy + local-test the `sprint4-gst-tax-records` MANUAL_COPY_FILES batch (Taxes NAV, tax registration number print, No Tax option) — DB/edge sides are already live, only the UI/API code needs copying and confirming.
-2. Decide whether to fix the two new findings now (public buyer-page letterhead RPC gap; scanner tax=0) or leave them for a dedicated pass.
+2. ~~Decide whether to fix the two new findings now~~ — **done 19 Jul**, owner said go ahead; both fixed and verified live (see Done above).
 3. Decide Sprint 2 vs Sprint 7 sequencing (carried over, still open).
 
 **Next build item (agreed): Sprint 7 — service execution loop-close** (absorbing the Sprint 4 settle-side items moved above), likely paired with Sprint 2 per owner's stated lean — sequencing decision still needed before starting.
