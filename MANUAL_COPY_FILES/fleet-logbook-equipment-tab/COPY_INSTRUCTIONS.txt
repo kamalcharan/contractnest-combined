@@ -71,6 +71,34 @@ FILES IN THIS BATCH
   contractnest-ui/src/components/contracts/fleet/FleetMatrix.tsx         (NEW)
   contractnest-ui/src/components/contracts/fleet/MachineLogbookDrawer.tsx(NEW)
   contractnest-ui/src/components/contracts/fleet/MachineCard.tsx         (NEW)
+  contractnest-ui/src/components/contracts/finance/InvoiceTaxChain.tsx   (NEW)
+  contractnest-ui/src/components/contracts/BuyerPaymentsView.tsx (MODIFIED — buyer tax chain)
+  contractnest-ui/src/types/contracts.ts                         (MODIFIED — Invoice.tax_breakdown type)
+  contractnest-edge/supabase/migrations/contracts/067_invoices_rpc_returns_tax_breakdown.sql
+      (NEW — get_contract_invoices returns tax_breakdown. ALREADY APPLIED
+       LIVE via MCP on 19 Jul 2026 and verified; the file is the record.
+       Nothing for you to run.)
+
+TASKS + FINANCIALS COMPLETION (19 Jul, "complete financials and tasks"):
+ALL ADDITIVE — no existing functionality removed or rewired.
+- Financials tab (detail/index.tsx, in Batch A folder): 3-stat strip
+  (total invoiced incl tax / collected % / balance + next due date) above
+  the existing layout; a read-only InvoiceTaxChain (taxable → CGST/SGST
+  components from the Sprint 4 snapshot → total, collection bar, receipts
+  line) under every InvoiceCard. InvoiceCard, Collect Payment CTA,
+  PaymentRequestHistory, FinancialHealth sidebar: untouched.
+- Buyer parity: the same InvoiceTaxChain renders under each invoice in
+  BuyerPaymentsView (read-only; Pay buttons untouched).
+- Tasks tab (SellerTasksTab.tsx, in Batch A folder): 3-stat strip (next
+  visit day + count / overdue visits / billing due this month), red date
+  node + "Overdue · Nd late" on overdue groups, dimmed far-future groups,
+  and a "View in matrix" button that jumps to the Equipment tab with the
+  service matrix pre-selected. EventCard, status transitions, Start
+  Service, Record Payment, drawer: untouched. Works for seller Tasks AND
+  buyer My Services.
+- Cross-link plumbing: EquipmentTab gains optional defaultLens prop
+  (mount-time only); detail/index passes it and resets to cards on
+  manual tab clicks.
 
 SECOND FIX (19 Jul, after mock-vs-product gap review): the fleet grid no
 longer reuses the bulky registry EquipmentCard. A purpose-built compact

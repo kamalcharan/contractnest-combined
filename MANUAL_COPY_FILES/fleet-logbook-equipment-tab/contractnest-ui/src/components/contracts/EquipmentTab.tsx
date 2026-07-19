@@ -62,6 +62,8 @@ interface EquipmentTabProps {
   buyerId?: string;
   /** Determines which add buttons to show: equipment, facility, or both */
   mode?: EquipmentTabMode;
+  /** Lens pre-selected at mount ("View in matrix" cross-link from Tasks) */
+  defaultLens?: 'cards' | 'matrix';
 }
 
 // =================================================================
@@ -127,6 +129,7 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
   contractId,
   buyerId,
   mode = 'equipment',
+  defaultLens = 'cards',
 }) => {
   const { currentTenant } = useAuth();
   const tenantId = currentTenant?.id || '';
@@ -150,8 +153,9 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
   /** Stay-open attach flow: note shown after a successful attach when more
    * placeholders remain ("Attached ✓ — now attaching: <category>") */
   const [attachedNote, setAttachedNote] = useState<string | null>(null);
-  /** Fleet lens: category-grouped machine cards or read-only service matrix */
-  const [lens, setLens] = useState<'cards' | 'matrix'>('cards');
+  /** Fleet lens: category-grouped machine cards or read-only service matrix.
+   * Seeded from defaultLens at mount ("View in matrix" cross-link). */
+  const [lens, setLens] = useState<'cards' | 'matrix'>(defaultLens);
   /** "Show only awaiting" filter — placeholder cards only */
   const [showOnlyAwaiting, setShowOnlyAwaiting] = useState(false);
   /** Machine whose logbook drawer is open (equipment detail id) */
