@@ -9,10 +9,15 @@
 import React from 'react';
 import { Block } from '@/types/catalogStudio';
 import type { ConfigurableBlock } from '@/components/catalog-studio';
+// Single source of truth for non-cadence billing cycles — the SAME six
+// options the previous card offered (PrePaid/PostPaid/Monthly/
+// Fortnightly/Quarterly/Custom)
+import { CYCLE_OPTIONS } from '@/components/catalog-studio/BlockCardConfigurable';
 import { getCurrencySymbol } from '@/utils/constants/currencies';
 import {
   getCadenceCycle,
   fittingCadences,
+  cadenceTermMath,
   type BlockCadencePricing,
 } from '@/utils/catalog-studio/cadencePricing';
 
@@ -47,9 +52,9 @@ export interface ChecklistRowProps {
 const cycleLabel = (cycle: string, customDays?: number): string => {
   const cad = getCadenceCycle(cycle);
   if (cad) return `${cad.label} billing`;
-  if (cycle === 'prepaid') return 'PrePaid';
-  if (cycle === 'postpaid') return 'PostPaid';
   if (cycle === 'custom') return customDays ? `Every ${customDays} days` : 'Custom cycle';
+  const opt = CYCLE_OPTIONS.find((o) => o.id === cycle);
+  if (opt) return opt.label;
   return cycle;
 };
 
@@ -88,6 +93,17 @@ const ChecklistRow: React.FC<ChecklistRowProps> = ({
 
   const cp = instance?.config?.cadencePricing as BlockCadencePricing | undefined;
   const cadenceOptions = cp ? fittingCadences(cp, durationMonths) : [];
+  // Payment schedule for the chosen cadence (N payments × rate + final)
+  const cadDefCur = cp && instance ? getCadenceCycle(instance.cycle) : undefined;
+  const cadenceMath =
+    cp && instance && cadDefCur
+      ? cadenceTermMath(
+          (instance.config?.customPrice ?? instance.price),
+          durationMonths,
+          cadDefCur.monthsPerPeriod,
+          instance.config?.cadenceFinalPayment,
+        )
+      : null;
 
   const displayPrice = checked
     ? effPrice
@@ -203,6 +219,19 @@ const ChecklistRow: React.FC<ChecklistRowProps> = ({
             {description}
           </div>
         </div>
+        {/* Explicit pick affordance — the checkbox alone was easy to miss */}
+        {!disabled && !flyBy && (
+          <span
+            className="text-[10.5px] font-extrabold rounded-full px-2.5 py-1 flex-shrink-0"
+            style={
+              checked
+                ? { backgroundColor: colors.semantic?.success ? colors.semantic.success + '15' : '#0d946415', color: colors.semantic?.success || '#0d9464' }
+                : { backgroundColor: colors.brand.primary + '12', color: colors.brand.primary }
+            }
+          >
+            {checked ? '✓ Added' : '+ Add'}
+          </span>
+        )}
         <div className="ml-auto text-right flex-shrink-0">
           {disabled ? (
             <span
@@ -352,22 +381,95 @@ const ChecklistRow: React.FC<ChecklistRowProps> = ({
                   style={inputStyle}
                 >
                   {cp ? (
-                    cadenceOptions.map((c) => (
-                      <option key={c.id} value={c.id}>{c.label}</option>
-                    ))
+                    cadenceOptions.map((c) => {
+                      const rate = cp.rates.find((r) => r.cycle === c.id);
+                      const override = (instance.config as any)?.cadenceOverrides?.[c.id];
+                      const shown = c.id === instance.cycle ? (effPrice ?? rate?.amount) : (override ?? rate?.amount);
+                      return (
+                        <option key={c.id} value={c.id}>
+                          {c.label} — {sym}{(shown ?? 0).toLocaleString()} {c.per}
+                          {cp.defaultCadence === c.id ? ' (default)' : ''}
+                        </option>
+                      );
+                    })
                   ) : (
-                    <>
-                      <option value="prepaid">PrePaid</option>
-                      <option value="postpaid">PostPaid</option>
-                      <option value="custom">Custom (every N days)</option>
-                    </>
+                    CYCLE_OPTIONS.map((o) => (
+                      <option key={o.id} value={o.id}>{o.label}</option>
+                    ))
                   )}
                 </select>
+                {/* Custom cycle days — inline, same as the previous card */}
+                {!cp && instance.cycle === 'custom' && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <input
+                      type="number"
+                      min={1}
+                      value={instance.customCycleDays || ''}
+                      placeholder="Enter days"
+                      onChange={(e) => onUpdate({ customCycleDays: e.target.value ? Math.max(1, Number(e.target.value)) : undefined })}
+                      className="w-24 rounded-lg px-2.5 py-1.5 text-[12.5px]"
+                      style={inputStyle}
+                    />
+                    <span className="text-[11.5px]" style={{ color: dim }}>Days</span>
+                  </div>
+                )}
               </div>
             </div>
           ) : (
             <div className="text-[12.5px]" style={{ color: dim }}>
               Content block — no pricing. It shapes the contract document{typeLabel === 'checklist block' ? ' and attaches to visits' : ''}.
+            </div>
+          )}
+
+          {/* Cadence payment schedule + seller-set final payment (as before) */}
+          {priced && cp && cadenceMath && (
+            <div
+              className="mt-3 rounded-lg border px-3 py-2.5"
+              style={{ borderColor: `${colors.brand.primary}30`, backgroundColor: `${colors.brand.primary}06` }}
+            >
+              <div className="text-[12px] font-semibold" style={{ color: colors.utility.primaryText }}>
+                {cadenceMath.fullPayments} payment{cadenceMath.fullPayments !== 1 ? 's' : ''} × {sym}
+                {(effPrice ?? instance!.price).toLocaleString()}
+                {cadenceMath.remMonths > 0 && (
+                  <> + final payment {sym}{cadenceMath.finalPayment.toLocaleString()}</>
+                )}{' '}
+                = <span style={{ color: colors.brand.primary }}>{sym}{cadenceMath.termTotal.toLocaleString()}</span> over {durationMonths} months
+              </div>
+              {cadenceMath.remMonths > 0 && (
+                <div className="mt-2 pt-2 border-t border-dashed" style={{ borderColor: '#F59E0B60' }}>
+                  <div className="text-[11px] font-semibold mb-1" style={{ color: '#B45309' }}>
+                    {cadenceMath.remMonths} month{cadenceMath.remMonths > 1 ? 's' : ''} left over — you decide the final payment
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={0}
+                      value={instance!.config?.cadenceFinalPayment ?? cadenceMath.suggestedFinal}
+                      onChange={(e) => {
+                        const v = parseFloat(e.target.value);
+                        onUpdate({
+                          config: {
+                            ...instance!.config,
+                            cadenceFinalPayment: isNaN(v) ? undefined : Math.max(0, v),
+                          } as any,
+                        });
+                      }}
+                      className="w-28 rounded-lg px-2.5 py-1.5 text-[12.5px]"
+                      style={{ ...inputStyle, borderColor: '#F59E0B60' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onUpdate({ config: { ...instance!.config, cadenceFinalPayment: undefined } as any })
+                      }
+                      className="text-[10.5px] font-bold underline"
+                      style={{ color: '#B45309' }}
+                    >
+                      pro-rata suggestion: {sym}{cadenceMath.suggestedFinal.toLocaleString()}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -408,17 +510,6 @@ const ChecklistRow: React.FC<ChecklistRowProps> = ({
                   />
                   {instance.config?.billingOnly ? 'Yes' : 'No'}
                 </label>,
-              )}
-              {priced && instance.cycle === 'custom' && advRow(
-                'Custom cycle days',
-                <input
-                  type="number"
-                  min={1}
-                  value={instance.customCycleDays || ''}
-                  onChange={(e) => onUpdate({ customCycleDays: Math.max(1, parseInt(e.target.value, 10) || 1) })}
-                  className="w-24 rounded-md px-2 py-1 text-[12px] text-right"
-                  style={inputStyle}
-                />,
               )}
             </div>
           </details>
