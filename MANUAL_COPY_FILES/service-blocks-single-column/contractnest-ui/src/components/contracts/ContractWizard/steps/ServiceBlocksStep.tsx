@@ -294,7 +294,12 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
   // (nothing hidden). At scale (a large catalog) this is the primary way
   // a user narrows down: pick a type, then search within it. Multi-select.
   const [activeTypeKeys, setActiveTypeKeys] = useState<Set<string>>(new Set());
+  // "Selected (N)" — so a large catalog doesn't hide what you've already
+  // picked. Shows every selected block across ALL types, overriding the
+  // type chips (mutually exclusive with them).
+  const [showSelectedOnly, setShowSelectedOnly] = useState(false);
   const toggleTypeKey = useCallback((key: string) => {
+    setShowSelectedOnly(false);
     setActiveTypeKeys((prev) => {
       const next = new Set(prev);
       next.has(key) ? next.delete(key) : next.add(key);
@@ -749,11 +754,11 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
                   <span className="text-[11px] font-semibold" style={{ color: dim }}>Type:</span>
                   <button
                     type="button"
-                    onClick={() => setActiveTypeKeys(new Set())}
-                    aria-pressed={activeTypeKeys.size === 0}
+                    onClick={() => { setActiveTypeKeys(new Set()); setShowSelectedOnly(false); }}
+                    aria-pressed={activeTypeKeys.size === 0 && !showSelectedOnly}
                     className="px-2.5 py-1 rounded-full text-[11px] font-bold transition-colors"
                     style={
-                      activeTypeKeys.size === 0
+                      activeTypeKeys.size === 0 && !showSelectedOnly
                         ? { backgroundColor: colors.brand.primary, color: '#fff' }
                         : { backgroundColor: colors.utility.primaryText + '0a', color: dim, border: `1px solid ${colors.utility.primaryText}15` }
                     }
@@ -763,7 +768,7 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
                   {SECTIONS.map((section) => {
                     const count = allCatalogBlocks.filter((b) => section.cats.includes(b.categoryId)).length;
                     if (count === 0) return null;
-                    const isActive = activeTypeKeys.has(section.key);
+                    const isActive = !showSelectedOnly && activeTypeKeys.has(section.key);
                     return (
                       <button
                         key={section.key}
@@ -781,6 +786,23 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
                       </button>
                     );
                   })}
+                  {/* "Selected" — so a large catalog never hides what's
+                      already checked; overrides the type chips above. */}
+                  {blocksForActiveTab.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => { setShowSelectedOnly((v) => !v); setActiveTypeKeys(new Set()); }}
+                      aria-pressed={showSelectedOnly}
+                      className="ml-auto px-2.5 py-1 rounded-full text-[11px] font-bold transition-colors"
+                      style={
+                        showSelectedOnly
+                          ? { backgroundColor: colors.semantic?.success || '#0d9464', color: '#fff' }
+                          : { backgroundColor: (colors.semantic?.success || '#0d9464') + '12', color: colors.semantic?.success || '#0d9464', border: `1px solid ${(colors.semantic?.success || '#0d9464')}40` }
+                      }
+                    >
+                      ✓ Selected ({blocksForActiveTab.length})
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -792,7 +814,8 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
               ) : (
                 SECTIONS.map((section) => {
                   if (activeTypeKeys.size > 0 && !activeTypeKeys.has(section.key)) return null;
-                  const sectionBlocks = allCatalogBlocks.filter((b) => section.cats.includes(b.categoryId));
+                  let sectionBlocks = allCatalogBlocks.filter((b) => section.cats.includes(b.categoryId));
+                  if (showSelectedOnly) sectionBlocks = sectionBlocks.filter((b) => !!instanceFor(b));
                   if (sectionBlocks.length === 0) return null;
 
                   // Selected first, then VaNi-recommended, then name
@@ -806,12 +829,12 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
                   if (q && searched.length === 0) return null;
 
                   const isExpanded = expandedSections.has(section.key);
-                  const visible = q
+                  const visible = q || showSelectedOnly
                     ? searched
                     : isExpanded
                       ? sorted
                       : sorted.filter((b, i) => i < INITIAL_VISIBLE || !!instanceFor(b));
-                  const hiddenCount = q ? 0 : sorted.length - visible.length;
+                  const hiddenCount = q || showSelectedOnly ? 0 : sorted.length - visible.length;
 
                   return (
                     <div key={section.key} className="mt-5">
@@ -1016,7 +1039,7 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
         </div>
       </div>
 
-      {/* Sticky running total */}
+      {/* Sticky running total — tapping the count jumps into "Selected" */}
       <StickyTotalBar
         colors={colors}
         isDarkMode={isDarkMode}
@@ -1025,6 +1048,11 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
         discountCount={discountCount}
         hidePricing={rfqMode}
         onContinue={onContinue}
+        onViewSelected={
+          blocksForActiveTab.length > 0
+            ? () => { setShowSelectedOnly(true); setActiveTypeKeys(new Set()); }
+            : undefined
+        }
       />
     </div>
   );

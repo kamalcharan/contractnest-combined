@@ -12,6 +12,9 @@ interface StickyTotalBarProps {
   discountCount: number;
   hidePricing?: boolean;
   onContinue?: () => void;
+  /** Present when there's something to jump into — clicking the count
+   * switches the checklist to the "Selected" view */
+  onViewSelected?: () => void;
 }
 
 const StickyTotalBar: React.FC<StickyTotalBarProps> = ({
@@ -22,6 +25,7 @@ const StickyTotalBar: React.FC<StickyTotalBarProps> = ({
   discountCount,
   hidePricing = false,
   onContinue,
+  onViewSelected,
 }) => {
   return (
     <div
@@ -34,7 +38,19 @@ const StickyTotalBar: React.FC<StickyTotalBarProps> = ({
     >
       <div className="max-w-[780px] mx-auto px-4 py-3 flex items-center gap-3.5">
         <div className="text-[13px]" style={{ color: colors.utility.primaryText }}>
-          <b className="text-[15px]">{count} block{count === 1 ? '' : 's'}</b>
+          {onViewSelected ? (
+            <button
+              type="button"
+              onClick={onViewSelected}
+              className="font-extrabold text-[15px] underline decoration-dotted"
+              style={{ color: colors.utility.primaryText }}
+              title="View what's selected"
+            >
+              {count} block{count === 1 ? '' : 's'}
+            </button>
+          ) : (
+            <b className="text-[15px]">{count} block{count === 1 ? '' : 's'}</b>
+          )}
           {!hidePricing && (
             <>
               {' · '}
