@@ -1,0 +1,118 @@
+═══════════════════════════════════════════════════
+ADD SERVICE BLOCKS — SINGLE-COLUMN CHECKLIST (Batch C)
+Branch folder: service-blocks-single-column
+Submodules affected: contractnest-ui ONLY
+Design reference: SPRINT_REFERENCES/9-service-blocks-single-column.html
+═══════════════════════════════════════════════════
+
+WHAT CHANGED
+────────────
+The wizard's "Add Service Blocks" step is rebuilt to the approved mock 9
+anatomy. ONLY THE RENDER CHANGED — every piece of selection/pricing
+logic is the same code that powered the old 3-column layout:
+buildConfigurableBlock (pricing records, tax, cadence, group sessions),
+handleAddBlock / handleAddBlocks / handleAddFlyByBlock /
+handleRemoveBlock / handleUpdateBlock, the two duration-sync effects
+(group-session auto-count, cadence money sync + toast), the unified-
+cycle mismatch detection, the duplicate guard, all toasts, RFQ mode.
+
+Mock elements delivered:
+1. Single centered column (max 780px), "tick what this contract
+   delivers" header.
+2. "Blocks attach to: <Type> (n) · <Type> (n)" context line — the bold
+   names ARE the coverage scope switcher (same per-coverage instance
+   model as before: blockId__coverageTypeId).
+3. VaNi inline banner — "VaNi suggests N blocks … [Add all N] [I'll pick
+   myself]". Same deterministic heuristic as the recommender drawer,
+   extracted to serviceBlocksChecklist/recommend.ts (single source).
+4. Full-catalog search bar (name / description / type).
+5. Catalog as a checklist, grouped: Services / Spares & parts / Fees &
+   billing / Terms & checklists (no price — "shapes the document") /
+   Media & documents (video, image, document → COMING SOON, disabled
+   per MVP scope). "x of N shown · show all N" per section; selected
+   rows always visible; VaNi-recommended rows float up.
+6. Tick = add (same toast), untick = remove. Checked rows show the
+   compact summary line: visits tag, cycle tag (amber when it offends
+   unified billing), green discount tag, Billing-only tag, Edit.
+7. Edit opens the 3-field editor: Visits (+Unlimited), Your price (live
+   "List ₹X → −Y% recorded as discount" hint), Billing cycle (cadence
+   rate-card options for cadence-priced blocks — switching restores
+   per-cadence overrides exactly like the old card; PrePaid/PostPaid/
+   Custom otherwise). Advanced disclosure: tax (read-only), service
+   interval (read-only), show-description toggle, billing-only toggle,
+   custom cycle days. Done closes.
+8. ONE amber mismatch banner with one-click "Align all to <majority>" —
+   snaps every offender through the same price math (cadence blocks
+   without that rate are skipped with a toast).
+9. "+ Add a custom line (not in your catalog)" dashed button → FlyBy
+   service line, rendered as an editable checklist row (name,
+   description, price, cycle, remove). RFQ mode = custom lines only,
+   no pricing shown.
+10. Sticky bottom total bar: "N blocks · ₹X term total incl. tax ·
+    discount recorded on N blocks" + Continue. Continue calls the
+    wizard's OWN validated handleNext (passed down as onContinue) — no
+    duplicate navigation logic. The wizard's regular action bar is
+    unchanged and still works.
+
+Superseded by the mock (removed from this step, files untouched):
+  - 3-column layout (BlockLibraryMini panel, ContractPreviewPanel
+    column) — preview still exists on Review & Send.
+  - Drag-to-reorder of added blocks (mock has no drag; block order =
+    selection order, as before for new adds).
+  - VaNi drawer trigger button — the inline banner covers it; the
+    drawer component file is untouched.
+
+FILES IN THIS BATCH
+───────────────────
+  contractnest-ui/src/components/contracts/ContractWizard/steps/ServiceBlocksStep.tsx  (REWRITTEN render, logic preserved)
+  contractnest-ui/src/components/contracts/ContractWizard/steps/serviceBlocksChecklist/ChecklistRow.tsx    (NEW)
+  contractnest-ui/src/components/contracts/ContractWizard/steps/serviceBlocksChecklist/VaNiInlineBanner.tsx(NEW)
+  contractnest-ui/src/components/contracts/ContractWizard/steps/serviceBlocksChecklist/StickyTotalBar.tsx  (NEW)
+  contractnest-ui/src/components/contracts/ContractWizard/steps/serviceBlocksChecklist/recommend.ts        (NEW)
+  contractnest-ui/src/components/contracts/ContractWizard/index.tsx  (ONE LINE: onContinue={handleNext})
+
+───────────────────────────────────────────────────
+STEP 1: Pull + Copy (PowerShell)
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git pull origin claude/sprint1b-migration-handoff-5rk8pr
+
+Copy-Item "MANUAL_COPY_FILES\service-blocks-single-column\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+───────────────────────────────────────────────────
+STEP 2: Restart dev server (new serviceBlocksChecklist/ folder)
+───────────────────────────────────────────────────
+cd contractnest-ui
+npm run dev
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Wizard (template path) → Add Service Blocks: single-column
+      checklist, VaNi banner on top, search bar, grouped sections
+- [ ] "Add all N" on the banner adds every suggestion (toast), banner
+      disappears; "I'll pick myself" just dismisses
+- [ ] Tick a service → row turns blue, summary line appears; untick →
+      removed (toast). Duplicate protection intact
+- [ ] Edit → change visits / price / cycle → sticky bar total updates;
+      price below list shows the green −% hint AND the green tag
+- [ ] Cadence-priced block: cycle select lists only rate-card cadences;
+      switching updates price + total correctly
+- [ ] Unified billing + two different cycles → amber banner appears;
+      "Align all to X" fixes every offender in one click
+- [ ] Coverage line: clicking the other bold type switches scope;
+      same catalog block can be added to both types independently
+- [ ] "+ Add a custom line" → editable row (name/desc/price/cycle),
+      Remove line works
+- [ ] Sticky bar Continue behaves EXACTLY like the wizard's Continue
+      (same validation, same blocked-reason messages)
+- [ ] RFQ path: custom lines only, no prices anywhere
+- [ ] Dark mode: rows/banner/bar legible
+- [ ] Full wizard run-through: blocks land in Billing View + Events
+      Preview unchanged (same ConfigurableBlock data, untouched mapper)
+
+Phase 2 (commit to submodule main) only after "tested, working".
+═══════════════════════════════════════════════════
