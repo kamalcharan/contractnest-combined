@@ -5,6 +5,13 @@ Submodules affected: contractnest-ui ONLY
 Design reference: SPRINT_REFERENCES/9-service-blocks-single-column.html
 ═══════════════════════════════════════════════════
 
+LATEST FIX 2 (post-review, "how does user know what's selected at 100
+blocks"): added a green "✓ Selected (N)" chip to the filter row, mutually
+exclusive with the type chips — clicking it shows every selected block
+across ALL types, no pagination cap. The sticky bottom bar's block count
+is now also clickable and jumps straight into this same view. Selecting
+a type chip (or "All") exits Selected view.
+
 LATEST FIX (post-review): the "Filter:" row was replaced. The earlier
 version had two abstract filters ("For <coverage type>" resource-scope
 match, "Recommended only") that were confusing and, on a thin/test
