@@ -36,7 +36,7 @@ import { catBlocksToBlocks } from '@/utils/catalog-studio/catBlockAdapter';
 import ChecklistRow from './serviceBlocksChecklist/ChecklistRow';
 import VaNiInlineBanner from './serviceBlocksChecklist/VaNiInlineBanner';
 import StickyTotalBar from './serviceBlocksChecklist/StickyTotalBar';
-import { recommendBlocks } from './serviceBlocksChecklist/recommend';
+import { recommendBlocks, resourceNamesOf } from './serviceBlocksChecklist/recommend';
 
 // Coverage type from AssetSelectionStep
 import type { CoverageTypeItem } from './AssetSelectionStep';
@@ -285,6 +285,13 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [vaniDismissed, setVaniDismissed] = useState(false);
+
+  // Slim filter row: blocks carry facility/equipment resource scoping
+  // (selectedResources) — default to showing only blocks relevant to the
+  // active coverage type; unscoped blocks always pass. Selected blocks
+  // are never hidden by any filter.
+  const [relevanceOn, setRelevanceOn] = useState(true);
+  const [recommendedOnly, setRecommendedOnly] = useState(false);
 
   // FlyBy dropdown (custom line types — same four the old header offered)
   const [showFlyByMenu, setShowFlyByMenu] = useState(false);
@@ -629,6 +636,22 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
 
   const suggestionIds = useMemo(() => new Set(vaniSuggestions.map((b) => b.id)), [vaniSuggestions]);
 
+  // Filter predicates — same resource-name matching the VaNi heuristic uses
+  const activeCoverageNameLc = (activeCoverageType?.resource_name || '').toLowerCase();
+  const passesFilters = useCallback(
+    (b: Block) => {
+      if (relevanceOn && hasCoverageTypes && activeCoverageNameLc) {
+        const rn = resourceNamesOf(b);
+        if (rn.length > 0 && !rn.some((n) => n.includes(activeCoverageNameLc) || activeCoverageNameLc.includes(n))) {
+          return false;
+        }
+      }
+      if (recommendedOnly && !suggestionIds.has(b.id)) return false;
+      return true;
+    },
+    [relevanceOn, hasCoverageTypes, activeCoverageNameLc, recommendedOnly, suggestionIds],
+  );
+
   const q = searchQuery.trim().toLowerCase();
   const matchesSearch = useCallback(
     (b: Block) =>
@@ -723,6 +746,49 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
                 />
               </div>
 
+              {/* Slim filter row — resource scoping + recommendations */}
+              <div className="flex items-center gap-1.5 flex-wrap mt-2">
+                <span className="text-[11px] font-semibold" style={{ color: dim }}>Filter:</span>
+                {hasCoverageTypes && activeCoverageType && (
+                  <button
+                    type="button"
+                    onClick={() => setRelevanceOn((v) => !v)}
+                    aria-pressed={relevanceOn}
+                    className="px-2.5 py-1 rounded-full text-[11px] font-bold transition-colors"
+                    style={
+                      relevanceOn
+                        ? { backgroundColor: colors.brand.primary, color: '#fff' }
+                        : { backgroundColor: colors.utility.primaryText + '0a', color: dim, border: `1px solid ${colors.utility.primaryText}15` }
+                    }
+                  >
+                    For {activeCoverageType.resource_name} {relevanceOn ? '✓' : ''}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setRecommendedOnly((v) => !v)}
+                  aria-pressed={recommendedOnly}
+                  className="px-2.5 py-1 rounded-full text-[11px] font-bold transition-colors"
+                  style={
+                    recommendedOnly
+                      ? { backgroundColor: '#7c3aed', color: '#fff' }
+                      : { backgroundColor: colors.utility.primaryText + '0a', color: dim, border: `1px solid ${colors.utility.primaryText}15` }
+                  }
+                >
+                  Recommended only {recommendedOnly ? '✓' : ''}
+                </button>
+                {((relevanceOn && hasCoverageTypes) || recommendedOnly) && (
+                  <button
+                    type="button"
+                    onClick={() => { setRelevanceOn(false); setRecommendedOnly(false); }}
+                    className="text-[11px] font-semibold underline"
+                    style={{ color: dim }}
+                  >
+                    show everything
+                  </button>
+                )}
+              </div>
+
               {/* Catalog checklist, grouped by block type */}
               {catalogLoading ? (
                 <div className="text-center py-10 text-[12.5px]" style={{ color: dim }}>
@@ -736,7 +802,10 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
                   // Selected first, then VaNi-recommended, then name
                   const rank = (b: Block) =>
                     instanceFor(b) ? 0 : suggestionIds.has(b.id) ? 1 : 2;
-                  const sorted = [...sectionBlocks].sort(
+                  // Slim filters apply here — selected blocks are never hidden
+                  const scoped = sectionBlocks.filter((b) => passesFilters(b) || !!instanceFor(b));
+                  if (scoped.length === 0) return null;
+                  const sorted = [...scoped].sort(
                     (a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name),
                   );
 
@@ -813,6 +882,26 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
                   );
                 })
               )}
+
+              {/* Filters hid everything — say so instead of a silent blank */}
+              {!catalogLoading &&
+                allCatalogBlocks.length > 0 &&
+                !allCatalogBlocks.some((b) => passesFilters(b) || !!instanceFor(b)) && (
+                  <div
+                    className="rounded-[10px] border border-dashed px-4 py-4 mt-4 text-center text-[12.5px]"
+                    style={{ borderColor: colors.utility.primaryText + '20', color: dim }}
+                  >
+                    No catalog blocks match the current filter.{' '}
+                    <button
+                      type="button"
+                      onClick={() => { setRelevanceOn(false); setRecommendedOnly(false); }}
+                      className="font-bold underline"
+                      style={{ color: colors.brand.primary }}
+                    >
+                      Show everything
+                    </button>
+                  </div>
+                )}
 
               {/* Cycle mismatch — one affordance, one-click fix */}
               {cycleMismatch && (
