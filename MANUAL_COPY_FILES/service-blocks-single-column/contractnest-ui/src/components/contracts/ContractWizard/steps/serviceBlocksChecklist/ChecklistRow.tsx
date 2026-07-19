@@ -45,8 +45,10 @@ export interface ChecklistRowProps {
   onToggleExpand: () => void;
   onUpdate: (updates: Partial<ConfigurableBlock>) => void;
   onRemove?: () => void;
-  /** Type suffix shown after the name for content blocks ("text block") */
+  /** Type suffix used in content-block copy ("checklist block") */
   typeLabel?: string;
+  /** Small colored category pill so the block TYPE is visible on every row */
+  typeChip?: { label: string; color: string };
 }
 
 const cycleLabel = (cycle: string, customDays?: number): string => {
@@ -77,6 +79,7 @@ const ChecklistRow: React.FC<ChecklistRowProps> = ({
   onUpdate,
   onRemove,
   typeLabel,
+  typeChip,
 }) => {
   const line = colors.utility.primaryText + '15';
   const dim = colors.utility.secondaryText;
@@ -214,19 +217,36 @@ const ChecklistRow: React.FC<ChecklistRowProps> = ({
         </div>
         <div className="min-w-0 flex-1">
           {flyBy && checked ? (
-            <input
-              value={name}
-              placeholder="Custom line name…"
-              onClick={(e) => e.stopPropagation()}
-              onChange={(e) => onUpdate({ name: e.target.value })}
-              className="w-full rounded-md px-2 py-1 text-[13.5px] font-bold"
-              style={inputStyle}
-            />
+            <div className="flex items-center gap-1.5">
+              <input
+                value={name}
+                placeholder="Custom line name…"
+                onClick={(e) => e.stopPropagation()}
+                onChange={(e) => onUpdate({ name: e.target.value })}
+                className="w-full rounded-md px-2 py-1 text-[13.5px] font-bold"
+                style={inputStyle}
+              />
+              {typeChip && (
+                <span
+                  className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded flex-shrink-0"
+                  style={{ backgroundColor: typeChip.color + '15', color: typeChip.color }}
+                >
+                  {typeChip.label}
+                </span>
+              )}
+            </div>
           ) : (
-            <div className="font-bold text-[13.5px] truncate" style={{ color: colors.utility.primaryText }}>
-              {name || 'Custom line'}
-              {typeLabel && (
-                <span className="font-normal" style={{ color: dim }}> · {typeLabel}</span>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="font-bold text-[13.5px] truncate" style={{ color: colors.utility.primaryText }}>
+                {name || 'Custom line'}
+              </span>
+              {typeChip && (
+                <span
+                  className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded flex-shrink-0"
+                  style={{ backgroundColor: typeChip.color + '15', color: typeChip.color }}
+                >
+                  {typeChip.label}
+                </span>
               )}
             </div>
           )}

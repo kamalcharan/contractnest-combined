@@ -851,6 +851,7 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
                       {visible.map((block) => {
                         const instance = instanceFor(block);
                         const instId = instanceIdFor(block);
+                        const cat = getCategoryById(block.categoryId);
                         return (
                           <ChecklistRow
                             key={block.id}
@@ -862,6 +863,7 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
                             checked={!!instance}
                             disabled={section.comingSoon}
                             priced={section.priced && categoryHasPricing(block.categoryId)}
+                            typeChip={{ label: cat?.name || block.categoryId, color: cat?.color || '#6B7280' }}
                             mismatch={
                               instance && cycleMismatch?.offenders.has(instId)
                                 ? { majority: cycleMismatch.majority }
@@ -946,6 +948,7 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
                   checked
                   priced={!rfqMode && (fb.flyByType === 'service' || fb.flyByType === 'spare')}
                   flyBy
+                  typeChip={{ label: fb.categoryName || fb.flyByType || 'Custom', color: fb.categoryColor || '#6B7280' }}
                   mismatch={
                     cycleMismatch?.offenders.has(fb.id)
                       ? { majority: cycleMismatch.majority }
