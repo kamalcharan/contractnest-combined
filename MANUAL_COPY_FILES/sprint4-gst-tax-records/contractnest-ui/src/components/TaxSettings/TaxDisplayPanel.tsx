@@ -36,7 +36,7 @@ const TaxDisplayPanel = ({ hook, onError }: TaxDisplayPanelProps) => {
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
 
   // Local form state
-  const [selectedMode, setSelectedMode] = useState<'including_tax' | 'excluding_tax'>('excluding_tax');
+  const [selectedMode, setSelectedMode] = useState<'including_tax' | 'excluding_tax' | 'no_tax'>('excluding_tax');
   const [hasLocalChanges, setHasLocalChanges] = useState(false);
 
   // Display mode options (matching your reference UI)
@@ -50,6 +50,11 @@ const TaxDisplayPanel = ({ hook, onError }: TaxDisplayPanelProps) => {
       value: 'including_tax' as const,
       label: 'Including tax',
       description: 'Show prices with tax included'
+    },
+    {
+      value: 'no_tax' as const,
+      label: 'No tax',
+      description: 'Not tax-registered — no rate ever applies; invoices carry no tax line'
     }
   ];
 
@@ -62,7 +67,7 @@ const TaxDisplayPanel = ({ hook, onError }: TaxDisplayPanelProps) => {
   }, [state.data]);
 
   // Handle mode change
-  const handleModeChange = (mode: 'including_tax' | 'excluding_tax') => {
+  const handleModeChange = (mode: 'including_tax' | 'excluding_tax' | 'no_tax') => {
     setSelectedMode(mode);
     setHasLocalChanges(state.data?.display_mode !== mode);
   };
@@ -431,7 +436,8 @@ const TaxDisplayPanel = ({ hook, onError }: TaxDisplayPanelProps) => {
               className="font-medium transition-colors"
               style={{ color: colors.utility.primaryText }}
             >
-              {state.data.display_mode === 'including_tax' ? 'Including tax' : 'Excluding tax'}
+              {state.data.display_mode === 'including_tax' ? 'Including tax' :
+               state.data.display_mode === 'no_tax' ? 'No tax' : 'Excluding tax'}
             </span></div>
             {state.data.default_tax_rate_id && (
               <div>Default Tax Rate: <span

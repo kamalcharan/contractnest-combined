@@ -7,11 +7,12 @@
 // ============================================================================
 
 import React from 'react';
-import { Receipt, Download } from 'lucide-react';
+import { Receipt, Download, ShieldOff } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useTaxSummary, type TaxMonth } from '@/hooks/queries/useFinanceQueries';
+import { useTaxDisplay } from '@/hooks/useTaxDisplay';
 
 const formatMoney = (value: number | null | undefined): string => {
   const amount = Number(value || 0);
@@ -85,6 +86,11 @@ const TaxSummarySection: React.FC = () => {
   const { data, isLoading, isError } = useTaxSummary();
   const months = data?.months || [];
 
+  // Tenant may have declared "No Tax" (not tax-registered) in Tax Settings —
+  // in that case the NAV shouldn't show an empty/zero table, it should say why.
+  const { state: taxDisplayState } = useTaxDisplay();
+  const isNoTax = taxDisplayState.data?.display_mode === 'no_tax';
+
   const handleExport = () => {
     if (!months.length) return;
     const csv = monthsToCsv(months);
@@ -105,7 +111,7 @@ const TaxSummarySection: React.FC = () => {
         </div>
         <button
           onClick={handleExport}
-          disabled={!months.length}
+          disabled={!months.length || isNoTax}
           className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border disabled:opacity-40 disabled:cursor-not-allowed"
           style={{ borderColor: colors.utility.secondaryText + '30', color: colors.utility.secondaryText }}
         >
@@ -114,6 +120,19 @@ const TaxSummarySection: React.FC = () => {
         </button>
       </CardHeader>
       <CardContent>
+        {isNoTax ? (
+          <div className="flex flex-col items-center py-8 gap-2 text-center">
+            <ShieldOff className="h-6 w-6" style={{ color: colors.utility.secondaryText }} />
+            <p className="text-sm font-medium" style={{ color: colors.utility.primaryText }}>
+              Not tax registered
+            </p>
+            <p className="text-xs max-w-sm" style={{ color: colors.utility.secondaryText }}>
+              Your Tax Settings are set to "No tax" — no tax ever applies, so there's nothing to
+              report here. Change this in Settings → Tax Settings if that's changed.
+            </p>
+          </div>
+        ) : (
+          <>
         {isLoading && (
           <div className="flex justify-center py-8">
             <LoadingSpinner />
@@ -172,6 +191,8 @@ const TaxSummarySection: React.FC = () => {
               </tbody>
             </table>
           </div>
+        )}
+          </>
         )}
       </CardContent>
     </Card>
