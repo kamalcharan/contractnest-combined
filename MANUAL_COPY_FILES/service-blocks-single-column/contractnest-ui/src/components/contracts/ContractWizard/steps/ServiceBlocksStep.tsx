@@ -36,7 +36,7 @@ import { catBlocksToBlocks } from '@/utils/catalog-studio/catBlockAdapter';
 import ChecklistRow from './serviceBlocksChecklist/ChecklistRow';
 import VaNiInlineBanner from './serviceBlocksChecklist/VaNiInlineBanner';
 import StickyTotalBar from './serviceBlocksChecklist/StickyTotalBar';
-import { recommendBlocks, resourceNamesOf } from './serviceBlocksChecklist/recommend';
+import { recommendBlocks } from './serviceBlocksChecklist/recommend';
 
 // Coverage type from AssetSelectionStep
 import type { CoverageTypeItem } from './AssetSelectionStep';
@@ -202,18 +202,20 @@ const buildConfigurableBlock = (
 const SECTIONS: Array<{
   key: string;
   title: string;
+  chipLabel: string;
   hint?: string;
   cats: string[];
   priced: boolean;
   comingSoon?: boolean;
   typeLabelByCat?: Record<string, string>;
 }> = [
-  { key: 'services', title: 'Services — from your catalog', cats: ['service', 'session'], priced: true },
-  { key: 'spares', title: 'Spares & parts', cats: ['spare'], priced: true },
-  { key: 'fees', title: 'Fees & billing', cats: ['billing'], priced: true },
+  { key: 'services', title: 'Services — from your catalog', chipLabel: 'Services', cats: ['service', 'session'], priced: true },
+  { key: 'spares', title: 'Spares & parts', chipLabel: 'Spare Parts', cats: ['spare'], priced: true },
+  { key: 'fees', title: 'Fees & billing', chipLabel: 'Fees & Billing', cats: ['billing'], priced: true },
   {
     key: 'content',
     title: 'Terms & checklists',
+    chipLabel: 'Terms & Checklists',
     hint: 'content blocks — no pricing, they shape the document & the work',
     cats: ['text', 'checklist'],
     priced: false,
@@ -222,6 +224,7 @@ const SECTIONS: Array<{
   {
     key: 'media',
     title: 'Media & documents',
+    chipLabel: 'Media & Documents',
     cats: ['video', 'image', 'document'],
     priced: false,
     comingSoon: true,
@@ -286,12 +289,18 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [vaniDismissed, setVaniDismissed] = useState(false);
 
-  // Slim filter row: blocks carry facility/equipment resource scoping
-  // (selectedResources). OFF by default — the full catalog is always the
-  // starting view; the user opts INTO narrowing it. Selected blocks are
-  // never hidden by any filter.
-  const [relevanceOn, setRelevanceOn] = useState(false);
-  const [recommendedOnly, setRecommendedOnly] = useState(false);
+  // Type filter — one chip per block type (Services, Spare Parts, Fees &
+  // Billing, Terms & Checklists, Media & Documents). Empty set = "All"
+  // (nothing hidden). At scale (a large catalog) this is the primary way
+  // a user narrows down: pick a type, then search within it. Multi-select.
+  const [activeTypeKeys, setActiveTypeKeys] = useState<Set<string>>(new Set());
+  const toggleTypeKey = useCallback((key: string) => {
+    setActiveTypeKeys((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  }, []);
 
   // FlyBy dropdown (custom line types — same four the old header offered)
   const [showFlyByMenu, setShowFlyByMenu] = useState(false);
@@ -636,22 +645,6 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
 
   const suggestionIds = useMemo(() => new Set(vaniSuggestions.map((b) => b.id)), [vaniSuggestions]);
 
-  // Filter predicates — same resource-name matching the VaNi heuristic uses
-  const activeCoverageNameLc = (activeCoverageType?.resource_name || '').toLowerCase();
-  const passesFilters = useCallback(
-    (b: Block) => {
-      if (relevanceOn && hasCoverageTypes && activeCoverageNameLc) {
-        const rn = resourceNamesOf(b);
-        if (rn.length > 0 && !rn.some((n) => n.includes(activeCoverageNameLc) || activeCoverageNameLc.includes(n))) {
-          return false;
-        }
-      }
-      if (recommendedOnly && !suggestionIds.has(b.id)) return false;
-      return true;
-    },
-    [relevanceOn, hasCoverageTypes, activeCoverageNameLc, recommendedOnly, suggestionIds],
-  );
-
   const q = searchQuery.trim().toLowerCase();
   const matchesSearch = useCallback(
     (b: Block) =>
@@ -746,48 +739,50 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
                 />
               </div>
 
-              {/* Slim filter row — resource scoping + recommendations */}
-              <div className="flex items-center gap-1.5 flex-wrap mt-2">
-                <span className="text-[11px] font-semibold" style={{ color: dim }}>Filter:</span>
-                {hasCoverageTypes && activeCoverageType && (
+              {/* Type filter — one chip per block type. Click to narrow to
+                  just that type (multi-select); click again to remove it.
+                  Empty selection = show every type. This is the lever that
+                  matters once the catalog has real volume: pick a type,
+                  then search inside it. */}
+              {!catalogLoading && (
+                <div className="flex items-center gap-1.5 flex-wrap mt-2">
+                  <span className="text-[11px] font-semibold" style={{ color: dim }}>Type:</span>
                   <button
                     type="button"
-                    onClick={() => setRelevanceOn((v) => !v)}
-                    aria-pressed={relevanceOn}
+                    onClick={() => setActiveTypeKeys(new Set())}
+                    aria-pressed={activeTypeKeys.size === 0}
                     className="px-2.5 py-1 rounded-full text-[11px] font-bold transition-colors"
                     style={
-                      relevanceOn
+                      activeTypeKeys.size === 0
                         ? { backgroundColor: colors.brand.primary, color: '#fff' }
                         : { backgroundColor: colors.utility.primaryText + '0a', color: dim, border: `1px solid ${colors.utility.primaryText}15` }
                     }
                   >
-                    For {activeCoverageType.resource_name} {relevanceOn ? '✓' : ''}
+                    All
                   </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setRecommendedOnly((v) => !v)}
-                  aria-pressed={recommendedOnly}
-                  className="px-2.5 py-1 rounded-full text-[11px] font-bold transition-colors"
-                  style={
-                    recommendedOnly
-                      ? { backgroundColor: '#7c3aed', color: '#fff' }
-                      : { backgroundColor: colors.utility.primaryText + '0a', color: dim, border: `1px solid ${colors.utility.primaryText}15` }
-                  }
-                >
-                  Recommended only {recommendedOnly ? '✓' : ''}
-                </button>
-                {((relevanceOn && hasCoverageTypes) || recommendedOnly || !!searchQuery) && (
-                  <button
-                    type="button"
-                    onClick={() => { setRelevanceOn(false); setRecommendedOnly(false); setSearchQuery(''); }}
-                    className="text-[11px] font-semibold underline"
-                    style={{ color: dim }}
-                  >
-                    show everything
-                  </button>
-                )}
-              </div>
+                  {SECTIONS.map((section) => {
+                    const count = allCatalogBlocks.filter((b) => section.cats.includes(b.categoryId)).length;
+                    if (count === 0) return null;
+                    const isActive = activeTypeKeys.has(section.key);
+                    return (
+                      <button
+                        key={section.key}
+                        type="button"
+                        onClick={() => toggleTypeKey(section.key)}
+                        aria-pressed={isActive}
+                        className="px-2.5 py-1 rounded-full text-[11px] font-bold transition-colors"
+                        style={
+                          isActive
+                            ? { backgroundColor: colors.brand.primary, color: '#fff' }
+                            : { backgroundColor: colors.utility.primaryText + '0a', color: dim, border: `1px solid ${colors.utility.primaryText}15` }
+                        }
+                      >
+                        {section.chipLabel} ({count})
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
 
               {/* Catalog checklist, grouped by block type */}
               {catalogLoading ? (
@@ -796,16 +791,14 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
                 </div>
               ) : (
                 SECTIONS.map((section) => {
+                  if (activeTypeKeys.size > 0 && !activeTypeKeys.has(section.key)) return null;
                   const sectionBlocks = allCatalogBlocks.filter((b) => section.cats.includes(b.categoryId));
                   if (sectionBlocks.length === 0) return null;
 
                   // Selected first, then VaNi-recommended, then name
                   const rank = (b: Block) =>
                     instanceFor(b) ? 0 : suggestionIds.has(b.id) ? 1 : 2;
-                  // Slim filters apply here — selected blocks are never hidden
-                  const scoped = sectionBlocks.filter((b) => passesFilters(b) || !!instanceFor(b));
-                  if (scoped.length === 0) return null;
-                  const sorted = [...scoped].sort(
+                  const sorted = [...sectionBlocks].sort(
                     (a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name),
                   );
 
@@ -885,18 +878,23 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
                 })
               )}
 
-              {/* Filters hid everything — say so instead of a silent blank */}
+              {/* Type filter + search hid everything — say so instead of a
+                  silent blank */}
               {!catalogLoading &&
                 allCatalogBlocks.length > 0 &&
-                !allCatalogBlocks.some((b) => passesFilters(b) || !!instanceFor(b)) && (
+                !allCatalogBlocks.some(
+                  (b) =>
+                    (activeTypeKeys.size === 0 || SECTIONS.some((s) => activeTypeKeys.has(s.key) && s.cats.includes(b.categoryId))) &&
+                    matchesSearch(b),
+                ) && (
                   <div
                     className="rounded-[10px] border border-dashed px-4 py-4 mt-4 text-center text-[12.5px]"
                     style={{ borderColor: colors.utility.primaryText + '20', color: dim }}
                   >
-                    No catalog blocks match the current filter{searchQuery ? ' or search' : ''}.{' '}
+                    No catalog blocks match the current type{searchQuery ? ' or search' : ''}.{' '}
                     <button
                       type="button"
-                      onClick={() => { setRelevanceOn(false); setRecommendedOnly(false); setSearchQuery(''); }}
+                      onClick={() => { setActiveTypeKeys(new Set()); setSearchQuery(''); }}
                       className="font-bold underline"
                       style={{ color: colors.brand.primary }}
                     >

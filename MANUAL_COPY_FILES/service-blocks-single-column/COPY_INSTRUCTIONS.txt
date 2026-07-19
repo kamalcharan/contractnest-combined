@@ -5,6 +5,20 @@ Submodules affected: contractnest-ui ONLY
 Design reference: SPRINT_REFERENCES/9-service-blocks-single-column.html
 ═══════════════════════════════════════════════════
 
+LATEST FIX (post-review): the "Filter:" row was replaced. The earlier
+version had two abstract filters ("For <coverage type>" resource-scope
+match, "Recommended only") that were confusing and, on a thin/test
+catalog, could make the list look empty. Replaced with a plain TYPE
+filter — one chip per block type with a live count: All / Services (N) /
+Spare Parts (N) / Fees & Billing (N) / Terms & Checklists (N) / Media &
+Documents (N). Click a chip to show only that type (multi-select — click
+more than one to combine); click "All" to clear. This is the intended
+lever at real catalog volume: pick a type, then use the search bar to
+find the exact block inside it. No "recommended" or "relevance" concept
+left in the filter row — VaNi's suggestions still float to the top of
+each section and still have their own inline banner, unrelated to this
+filter.
+
 WHAT CHANGED
 ────────────
 The wizard's "Add Service Blocks" step is rebuilt to the approved mock 9
