@@ -1,0 +1,198 @@
+═══════════════════════════════════════════════════
+FLEET LOGBOOK — EQUIPMENT TAB REDESIGN (Batch B)
+Branch folder: fleet-logbook-equipment-tab
+Submodules affected: contractnest-ui ONLY
+═══════════════════════════════════════════════════
+
+WHAT CHANGED
+────────────
+The contract detail Equipment tab is redesigned as a "Fleet Logbook"
+(design reference: SPRINT_REFERENCES/8-fleet-logbook-contract-view.html).
+All data is joined CLIENT-SIDE from existing queries — no backend change.
+
+1. Fleet summary strip — machines covered (equipment/facility breakdown,
+   placeholders counted separately), awaiting-asset count (doubles as the
+   "show only awaiting" filter toggle), fleet-wide visits proven X/Y,
+   next visit due date, machines behind schedule.
+2. Category-grouped machine grid — cards grouped under category headers
+   ("Air Conditioners · 6 units · 5 attached · 1 awaiting · 14/24 visits
+   proven"). Each attached card gains a compact service-state footer:
+   "X of Y visits proven · Next: <date>" + thin progress bar (red when
+   any visit is overdue) + "Last proven <date> · <assignee>". Placeholder
+   cards show "N visits locked until an asset is attached" and keep the
+   existing pill + Attach Asset button.
+3. Lens toggle — segmented control "Machine cards | Service matrix".
+   Matrix: rows = machines (grouped, name + serial), columns = the
+   contract's distinct service visit dates (falls back to "Visit N"
+   labels beyond 14 dates; horizontal scroll), cells = status dots
+   (proven green / due amber / overdue red / scheduled grey / locked
+   striped) with a legend. Read-only. Toggle hidden when the contract
+   has no service visits.
+4. Machine logbook drawer — clicking a machine card (not its buttons)
+   opens a right-side slide-in drawer listing that machine's visits
+   chronologically: block name + visit n of m, date, visit status,
+   per-asset row status chip, assignee, proven date. Read-only; closes
+   on overlay click or X.
+5. Stay-open attach — in attach-placeholder mode, a successful attach
+   no longer auto-closes the picker while other placeholders remain: it
+   advances to the next placeholder (same category preferred) and shows
+   an "Attached '<asset>' — now attaching: <category>" note. Closes only
+   when no placeholders remain or the user closes it.
+6. "Show only awaiting" filter — chip next to the lens toggle AND the
+   strip's Awaiting stat both toggle a placeholder-only view of the grid.
+
+Data join (EquipmentTab):
+  useContractEventsForContract(contractId, per_page 200) +
+  useContractEventAssets(contractId). A row belongs to a machine when
+  row.asset_ref === detail.id OR row.asset_ref === detail.asset_registry_id.
+  Rows join to events by event_id for scheduled_date/status. Per machine:
+  provenCount, totalVisits, overdueCount (row not proven and event
+  overdue/past-date and not completed/cancelled/skipped), nextDueDate
+  (earliest non-proven date >= today), lastProven (date + assignee).
+
+FIX (19 Jul, post first user test): per-asset rows are NO LONGER required
+for the fleet view to render. Contracts whose service events have no
+t_contract_event_assets rows (anything created before Sprint 3 seeding,
+e.g. CN-1020) previously fell back to the plain old card grid — strip
+stats showed "—", no footers, no matrix, no drawer. Now every service
+event with no per-asset row for a machine synthesizes a visit for that
+machine from the event alone (proven = event completed, overdue from
+event status/date). Per-asset rows, when present, refine the same visit
+to true per-machine grain. Matrix columns + hasServiceData now derive
+from service events directly. A contract with equipment but genuinely
+zero service events shows an explicit dashed note instead of silently
+hiding the service layer.
+
+FILES IN THIS BATCH
+───────────────────
+  contractnest-ui/src/components/contracts/EquipmentTab.tsx      (MODIFIED)
+  contractnest-ui/src/components/contracts/fleet/fleetTypes.ts           (NEW)
+  contractnest-ui/src/components/contracts/fleet/FleetSummaryStrip.tsx   (NEW)
+  contractnest-ui/src/components/contracts/fleet/FleetMatrix.tsx         (NEW)
+  contractnest-ui/src/components/contracts/fleet/MachineLogbookDrawer.tsx(NEW)
+  contractnest-ui/src/components/contracts/fleet/MachineCard.tsx         (NEW)
+
+SECOND FIX (19 Jul, after mock-vs-product gap review): the fleet grid no
+longer reuses the bulky registry EquipmentCard. A purpose-built compact
+MachineCard (per the design mock's card anatomy) renders each machine:
+name + SN/location/make line, Attached/Awaiting pill, condition ·
+criticality · client compressed into one meta line, "x of y visits
+proven · Next/Due" line, thin progress bar, and a footer with an
+EXPLICIT "View logbook" button (drawer no longer relies on the invisible
+card-body click, though that still works), Attach button on placeholders
+("Forms & closure blocked" language per mock), and a compact remove
+icon. The PICKER still uses EquipmentCard unchanged. All handlers
+(add/remove/attach/stay-open/buyer gating) are the same functions —
+presentation-only change. Grid tightened to minmax(310px,1fr) per mock.
+
+⚠️ BATCH ORDERING — READ THIS
+─────────────────────────────
+This batch SUPERSEDES contract-view-regression-repair (Batch A) for
+EquipmentTab.tsx ONLY. This EquipmentTab.tsx was built ON TOP OF Batch
+A's version, so it already contains Batch A's picker fixes
+(already-attached assets hidden in attach mode, corrected "n of m added"
+counter, category-narrowed attach picker).
+
+Batch A's OTHER files (SellerTasksTab.tsx, EventAssetProgress.tsx,
+pages/contracts/detail/index.tsx) are NOT in this batch and are still
+needed — copy contract-view-regression-repair FIRST, then this batch
+(this batch's EquipmentTab.tsx overwrites A's — that is correct).
+Copying this batch standalone is safe for EquipmentTab.tsx itself, but
+you would miss Batch A's fixes to the other three files.
+
+No changes to src/pages/contracts/detail/index.tsx in this batch —
+the contract header is untouched.
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Batch A first (if not already applied), then this batch
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\contract-view-regression-repair\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\fleet-logbook-equipment-tab\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "✅ All files copied!" -ForegroundColor Green
+
+STEP 3: Start Dev Server & Test
+─────────────────────────────────
+cd contractnest-ui
+npm run dev
+# Hard refresh browser: Ctrl+F5
+
+Production Checklist:
+  ✅ Transaction Management: N/A — read-only UI feature; add/remove/attach
+     reuse existing mutation hooks (server-side transactions unchanged)
+  ✅ Race Condition Handling: attach flow keeps existing mutatingAssetId
+     lock (other cards disabled while one mutates); stay-open advance
+     computed from pre-mutation snapshot, replacesItemId unchanged
+  ✅ Error Handling: all mutations keep try/catch; event/event-asset query
+     errors degrade gracefully (footers/matrix simply don't render)
+  ✅ Toasts: existing mutation-hook toasts unchanged (no new mutations)
+  ✅ Loaders: VaNiLoader reused (picker + matrix loading row); cards render
+     without service footer while service data loads
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+
+SELLER persona (multi-machine contract, e.g. 6 ACs + 3 pumps, quarterly):
+- [ ] Fleet strip shows: 9 machines (breakdown line), awaiting count,
+      visits proven X/Y matching the Tasks tab chips, next visit date,
+      machines-behind count
+- [ ] Cards are grouped by category with "N units · M attached ·
+      K awaiting · X/Y visits proven" headers
+- [ ] Attached card footer shows "X of Y visits proven · Next: <date>"
+      with green progress bar; a machine with a missed visit shows red
+      bar + "· N overdue"
+- [ ] Clicking a card body opens the logbook drawer: visits in date
+      order, status icons (proven/overdue/scheduled/locked), assignee,
+      proven date; closes via X and via overlay click
+- [ ] Clicking the card's delete button does NOT open the drawer
+- [ ] Lens toggle appears; "Service matrix" shows one row per machine,
+      one column per visit date, dots match card states; placeholder
+      rows show striped/locked dots; legend renders; table scrolls
+      horizontally on narrow screens
+- [ ] "Show only awaiting" chip (and the strip's Awaiting stat) filter
+      the grid to placeholder cards only; toggling off restores all
+- [ ] STAY-OPEN ATTACH: with 2+ placeholders, click Attach Asset →
+      pick a unit → picker STAYS OPEN, shows "Attached '<asset>' — now
+      attaching: <category>", header targets the next placeholder;
+      attaching the last placeholder closes the picker
+- [ ] Attach picker still hides already-attached units and shows the
+      correct "n of m added" counter (Batch A regression check)
+
+BUYER persona (open the same contract from the buyer tenant):
+- [ ] Same fleet view renders (strip, groups, footers, matrix, drawer)
+- [ ] With allow_buyer_to_add OFF: no Add/Attach buttons for buyer
+- [ ] With allow_buyer_to_add ON: buyer picker shows SELF-owned registry
+      assets only (not the seller's client-filtered list)
+- [ ] If the buyer tenant cannot read the seller's events, tab still
+      renders cards without service footers (no crash, no error wall)
+
+REGRESSIONS (both personas where permitted):
+- [ ] Add Equipment / Add Facility buttons open the picker; "+ Add"
+      inside the picker opens EquipmentFormDialog; creating a new asset
+      auto-adds it to the contract
+- [ ] Remove (delete) on an own card still works with loading state
+- [ ] Contact/client name still resolves on cards and in the picker
+- [ ] Contract with service events but NO per-asset rows (older
+      contracts, e.g. CN-1020): full fleet view renders — strip
+      populated, card footers with progress bars, lens toggle + matrix,
+      logbook drawer (visits derived from the events themselves)
+- [ ] Contract with ZERO service events: cards render, no lens toggle,
+      strip shows "—", dashed "No service visits scheduled yet" note
+- [ ] Single-machine contract still renders full-width card
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+(Phase 2 commit/merge commands will be provided after confirmation.)
+═══════════════════════════════════════════════════
