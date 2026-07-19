@@ -50,6 +50,19 @@ Data join (EquipmentTab):
   overdue/past-date and not completed/cancelled/skipped), nextDueDate
   (earliest non-proven date >= today), lastProven (date + assignee).
 
+FIX (19 Jul, post first user test): per-asset rows are NO LONGER required
+for the fleet view to render. Contracts whose service events have no
+t_contract_event_assets rows (anything created before Sprint 3 seeding,
+e.g. CN-1020) previously fell back to the plain old card grid — strip
+stats showed "—", no footers, no matrix, no drawer. Now every service
+event with no per-asset row for a machine synthesizes a visit for that
+machine from the event alone (proven = event completed, overdue from
+event status/date). Per-asset rows, when present, refine the same visit
+to true per-machine grain. Matrix columns + hasServiceData now derive
+from service events directly. A contract with equipment but genuinely
+zero service events shows an explicit dashed note instead of silently
+hiding the service layer.
+
 FILES IN THIS BATCH
 ───────────────────
   contractnest-ui/src/components/contracts/EquipmentTab.tsx      (MODIFIED — 1096 lines)
@@ -153,8 +166,12 @@ REGRESSIONS (both personas where permitted):
       auto-adds it to the contract
 - [ ] Remove (delete) on an own card still works with loading state
 - [ ] Contact/client name still resolves on cards and in the picker
-- [ ] Contract with ZERO service events: cards render with no service
-      footers, no lens toggle, strip shows "—" for service stats
+- [ ] Contract with service events but NO per-asset rows (older
+      contracts, e.g. CN-1020): full fleet view renders — strip
+      populated, card footers with progress bars, lens toggle + matrix,
+      logbook drawer (visits derived from the events themselves)
+- [ ] Contract with ZERO service events: cards render, no lens toggle,
+      strip shows "—", dashed "No service visits scheduled yet" note
 - [ ] Single-machine contract still renders full-width card
 
 ═══════════════════════════════════════════════════

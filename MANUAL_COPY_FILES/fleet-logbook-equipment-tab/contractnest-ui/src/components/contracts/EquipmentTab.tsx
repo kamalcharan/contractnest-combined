@@ -290,17 +290,19 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
     [equipmentDetails, allEvents, eventAssetsByEvent],
   );
 
-  /** Distinct ISO dates of service visits that carry per-asset rows (matrix columns) */
+  /** Distinct ISO dates of the contract's service visits (matrix columns).
+   * Derived from the service events themselves — per-asset rows refine the
+   * per-machine detail when they exist, but are NOT required for the fleet
+   * view to render. */
   const dateColumns = useMemo(() => {
-    const eventIdsWithRows = new Set(Object.keys(eventAssetsByEvent));
     const set = new Set<string>();
     for (const e of allEvents) {
-      if (eventIdsWithRows.has(e.id) && e.scheduled_date) {
+      if (e.event_type === 'service' && e.scheduled_date) {
         set.add(e.scheduled_date.split('T')[0]);
       }
     }
     return Array.from(set).sort();
-  }, [allEvents, eventAssetsByEvent]);
+  }, [allEvents]);
 
   const hasServiceData = !serviceDataLoading && dateColumns.length > 0;
 
@@ -993,6 +995,17 @@ const EquipmentTab: React.FC<EquipmentTabProps> = ({
               Cards for working a machine, matrix for spotting who's behind
             </span>
           )}
+        </div>
+      )}
+
+      {/* ── Zero-visits note: equipment exists but no service visits yet ── */}
+      {hasEquipment && !serviceDataLoading && !hasServiceData && (
+        <div
+          className="rounded-xl border border-dashed px-4 py-3 text-xs"
+          style={{ borderColor: colors.utility.primaryText + '15', color: colors.utility.secondaryText }}
+        >
+          No service visits scheduled on this contract yet — per-machine service
+          tracking and the service matrix light up once visits exist.
         </div>
       )}
 

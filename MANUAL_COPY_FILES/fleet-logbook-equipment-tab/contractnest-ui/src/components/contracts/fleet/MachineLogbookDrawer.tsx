@@ -156,7 +156,7 @@ const MachineLogbookDrawer: React.FC<MachineLogbookDrawerProps> = ({
                 const { Icon, color, bg } = visitIcon(v);
                 return (
                   <div
-                    key={v.row.id}
+                    key={v.key}
                     className="flex gap-3 py-3 border-b last:border-b-0"
                     style={{ borderColor: lineColor }}
                   >
@@ -178,18 +178,18 @@ const MachineLogbookDrawer: React.FC<MachineLogbookDrawerProps> = ({
                           className="text-[10px] font-bold px-2 py-0.5 rounded-full"
                           style={{ backgroundColor: bg, color }}
                         >
-                          {ROW_STATUS_LABEL[v.row.status] || v.row.status}
+                          {v.row ? ROW_STATUS_LABEL[v.row.status] || v.row.status : visitStatusLine(v)}
                         </span>
-                        {(v.row.assignee || v.event?.assigned_to_name) && (
+                        {(v.row?.assignee || v.event?.assigned_to_name) && (
                           <span
                             className="flex items-center gap-1 text-[10px]"
                             style={{ color: colors.utility.secondaryText }}
                           >
                             <User className="h-3 w-3" />
-                            {v.row.assignee || v.event?.assigned_to_name}
+                            {v.row?.assignee || v.event?.assigned_to_name}
                           </span>
                         )}
-                        {v.isProven && v.row.proven_at && (
+                        {v.isProven && v.row?.proven_at && (
                           <span className="text-[10px]" style={{ color: colors.utility.secondaryText }}>
                             Proven {formatShortDate(v.row.proven_at.split('T')[0])}
                           </span>
