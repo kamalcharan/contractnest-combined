@@ -121,13 +121,15 @@
     </div>
     <div class="tabs">
       <div class="tab">Overview</div>
-      <div class="tab">Tasks</div>
-      <div class="tab on">Equipment</div>
-      <div class="tab">Financials</div>
+      <div class="tab" id="t-tasks" onclick="switchTab('tasks')" style="cursor:pointer">Tasks</div>
+      <div class="tab on" id="t-equipment" onclick="switchTab('equipment')" style="cursor:pointer">Equipment</div>
+      <div class="tab" id="t-financials" onclick="switchTab('financials')" style="cursor:pointer">Financials</div>
       <div class="tab">Audit Log</div>
       <div class="tab">Document</div>
     </div>
   </div>
+
+  <div id="tab-equipment">
 
   <!-- Fleet summary strip -->
   <div class="fleet">
@@ -240,6 +242,96 @@
       <span><span class="dot l"></span> Locked (placeholder)</span>
     </div>
   </div>
+  </div><!-- /tab-equipment -->
+
+  <!-- ══════════ TASKS TAB — date timeline, fleet-aware ══════════ -->
+  <div id="tab-tasks" style="display:none">
+    <div class="fleet" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
+      <div class="stat"><div class="v">24 Jul</div><div class="l">Next visit day · 8 machines</div></div>
+      <div class="stat warn"><div class="v">1</div><div class="l">Overdue visit (AC-3, Q3)</div></div>
+      <div class="stat ok"><div class="v">₹0</div><div class="l">Billing due this month</div></div>
+    </div>
+
+    <div class="group">
+      <div class="ghead"><h3>02 Jul — overdue</h3><span class="gsum">1 visit missed</span></div>
+      <div class="cards">
+        <div class="m" style="border-color:#f3c9c9;background:#fffafa" onclick="openLog('AC-3 · Voltas 1.5T Split','SN VL-40913 · Reception','behind')">
+          <div class="top"><div><div class="nm">Q3 Preventive Maintenance</div><div class="sn">AC-3 only · rest of fleet done</div></div><span class="pill" style="background:var(--err-soft);color:var(--err)">Overdue</span></div>
+          <div class="svc"><span style="color:var(--err);font-weight:700">0/1 assets proven</span><span>No technician</span></div>
+          <div class="foot"><span class="sn">Due 02 Jul · 17 days late</span><button class="lb">Open machine</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="ghead"><h3>24 Jul — upcoming</h3><span class="gsum">Q3 visits · 8 machines across 2 categories</span></div>
+      <div class="cards">
+        <div class="m">
+          <div class="top"><div><div class="nm">Q3 Preventive Maintenance</div><div class="sn">Air Conditioners · 5 attached + 1 locked</div></div><span class="pill" style="background:var(--brand-soft);color:var(--brand)">Scheduled</span></div>
+          <div class="svc"><span><b>0/6 assets proven</b> · 1 awaiting attach</span><span>R. Kumar</span></div>
+          <div class="bar"><i style="width:0%"></i></div>
+          <div class="foot"><span class="sn">Expand ▾ shows the 6 per-machine rows</span><button class="lb" onclick="switchTab('equipment');lens('matrix')">View in matrix</button></div>
+        </div>
+        <div class="m">
+          <div class="top"><div><div class="nm">Q3 Pump Service</div><div class="sn">Water Pumps · 2 attached + 1 locked</div></div><span class="pill" style="background:var(--brand-soft);color:var(--brand)">Scheduled</span></div>
+          <div class="svc"><span><b>0/3 assets proven</b> · 1 awaiting attach</span><span>A. Singh</span></div>
+          <div class="bar"><i style="width:0%"></i></div>
+          <div class="foot"><span class="sn">Expand ▾ shows the 3 per-machine rows</span><button class="lb" onclick="switchTab('equipment');lens('matrix')">View in matrix</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="ghead"><h3>22 Oct — upcoming</h3><span class="gsum">Q4 visits · full fleet</span></div>
+      <div class="cards">
+        <div class="m" style="opacity:.7">
+          <div class="top"><div><div class="nm">Q4 Preventive Maintenance</div><div class="sn">All 9 machines</div></div><span class="pill" style="background:#eef1f5;color:var(--dim)">Scheduled</span></div>
+          <div class="svc"><span>0/9 assets proven</span><span>Unassigned</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="note" style="margin:16px 0 0;max-width:none">Design intent: the date timeline stays (scheduling brain), but every visit card carries the <b>n/m assets proven</b> chip and cross-links to the machine matrix — one tap between "when" and "which machine".</div>
+  </div>
+
+  <!-- ══════════ FINANCIALS TAB — tax-aware, per Sprint 4 ══════════ -->
+  <div id="tab-financials" style="display:none">
+    <div class="fleet" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
+      <div class="stat"><div class="v">₹1,08,560</div><div class="l">Total invoiced (incl. GST)</div></div>
+      <div class="stat ok"><div class="v">₹54,280</div><div class="l">Collected · 50%</div></div>
+      <div class="stat warn"><div class="v">₹54,280</div><div class="l">Balance · due 01 Aug</div></div>
+    </div>
+
+    <div class="group">
+      <div class="ghead"><h3>Invoice INV-10021</h3><span class="gsum">Issued 19 Mar 2026 · partially paid</span></div>
+      <div class="matrix" style="display:block">
+        <table style="min-width:480px">
+          <tbody>
+            <tr><td class="mn">AMC service charges (9 machines · annual)</td><td style="text-align:right">₹1,00,000</td></tr>
+            <tr><td class="mn" style="color:var(--ok)">Discount (10% contract-level)</td><td style="text-align:right;color:var(--ok)">− ₹10,000</td></tr>
+            <tr><td class="mn">Taxable value</td><td style="text-align:right">₹92,000</td></tr>
+            <tr><td class="mn" style="color:var(--dim)">CGST 9%</td><td style="text-align:right;color:var(--dim)">₹8,280</td></tr>
+            <tr><td class="mn" style="color:var(--dim)">SGST 9%</td><td style="text-align:right;color:var(--dim)">₹8,280</td></tr>
+            <tr><td class="mn" style="font-weight:800">Total to be paid</td><td style="text-align:right;font-weight:800">₹1,08,560</td></tr>
+          </tbody>
+        </table>
+        <div class="bar" style="margin-top:14px"><i style="width:50%"></i></div>
+        <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:12px;color:var(--dim)"><span>₹54,280 collected via 2 receipts</span><span>GSTIN printed on invoice · tax snapshot locked at issue</span></div>
+        <div style="display:flex;gap:10px;margin-top:14px">
+          <button class="lb" onclick="alert('Opens the printable invoice (tax breakdown + GSTIN from Sprint 4)')">View invoice</button>
+          <button class="lb" style="background:var(--ok-soft);color:var(--ok)" onclick="alert('Record Payment dialog — allocate against dues (existing flow)')">Record payment</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="ghead"><h3>Receipts</h3><span class="gsum">2 recorded</span></div>
+      <div class="cards" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">
+        <div class="m" style="cursor:default"><div class="top"><div><div class="nm">RCP-2201 · ₹42,322</div><div class="sn">19 Mar · UPI · verified</div></div><span class="pill ok">Verified</span></div></div>
+        <div class="m" style="cursor:default"><div class="top"><div><div class="nm">RCP-2214 · ₹11,958</div><div class="sn">02 May · Bank transfer · verified</div></div><span class="pill ok">Verified</span></div></div>
+      </div>
+    </div>
+    <div class="note" style="margin:16px 0 0;max-width:none">Design intent: the Financials tab presents the owner's locked chain — <b>actual values → discount → taxable → GST split → total to pay</b> — straight from the Sprint 4 invoice tax snapshot, with collection progress and receipts beneath. Per-machine internal allocations stay seller-only and OFF the invoice.</div>
+  </div>
 </div>
 
 <!-- Logbook drawer -->
@@ -285,6 +377,12 @@
 </div>
 
 <script>
+function switchTab(which){
+  ['tasks','equipment','financials'].forEach(function(t){
+    document.getElementById('tab-'+t).style.display = t===which?'block':'none';
+    document.getElementById('t-'+t).classList.toggle('on', t===which);
+  });
+}
 function lens(which){
   document.getElementById('cardsView').style.display = which==='cards'?'block':'none';
   document.getElementById('matrixView').style.display = which==='matrix'?'block':'none';
