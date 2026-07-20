@@ -1,0 +1,123 @@
+═══════════════════════════════════════════════════
+GROUP SESSIONS — CHAIR ASSIGNMENT (API + UI)
+Branch folder: group-sessions-chair-assignment
+Submodules affected: contractnest-api, contractnest-ui
+DB/RPC: already applied live (bbb-foundation/030, 031 — prior batches)
+═══════════════════════════════════════════════════
+
+WHAT THIS BATCH DOES
+────────────────────
+Wires the already-live gs_schedule_assign / gs_schedule_assign_default
+RPCs up to the Group Sessions dashboard (/group-sessions):
+
+1. API layer (contractnest-api):
+   - POST /api/group-sessions/occurrence/:id/assign
+     body: { assigned_to, assigned_to_name? } — assigned_to=null clears
+     the chair (and soft-deletes the linked appointment).
+   - POST /api/group-sessions/occurrences/:blockId/assign-default
+     body: { assigned_to, assigned_to_name? } — sets the chair as default
+     for every future, non-cancelled occurrence of that block in one call.
+   - New controller methods (assignChair, assignDefaultChair) + service
+     methods, following the exact existing pattern (same tenant/is_live
+     header extraction, same sendSuccess/sendError shape).
+
+2. UI layer (contractnest-ui):
+   - GsOccurrenceRow gains assigned_to / assigned_to_name (already
+     returned by gs_dash_occurrences per the 030/031 migrations — no
+     backend gap, just wasn't typed/used yet).
+   - New hooks useAssignChair() / useAssignChairDefault() in
+     useGroupSessionsDashboard.ts, same react-query + toast pattern as
+     every other mutation in that file.
+   - New AssignChairControl (local component in the page): shows
+     "Chaired by X · Change · Remove" once assigned, or an "Assign
+     chair"/"Assign default chair" button otherwise. Opens the EXISTING
+     common/ContactPicker.tsx inline — filtered to
+     classifications: ['buyer','vendor','partner','team_member'] per
+     your spec — no new picker built.
+   - "Session series" card (Group view) gets the DEFAULT chair action —
+     applies to every future session in one call.
+   - Occurrence drill-down (click any session date) gets the PER-SESSION
+     override action next to Move date / Skip, plus a small green
+     "Appointment · <name> · Accepted" card once a chair is assigned —
+     the visible confirmation you asked for, not a silent side-effect.
+   - Picking a contact only yields an id from ContactPicker; the control
+     resolves the display name via the same useContact() hook
+     ContactPicker itself uses, before firing the mutation (so
+     assigned_to_name is always a real name, never blank).
+
+SCOPING NOTE
+────────────────────
+The Appointment Card is derived purely from the occurrence's own
+assigned_to_name + date (status is always "Accepted" by design — see
+031's migration notes: gs_schedule_assign always creates it in
+'accepted' state). It does NOT fetch the appointment row independently.
+If you later want to change a chair's appointment status from inside
+this card (e.g. mark declined) rather than always showing Accepted,
+that's a follow-up — the appointment itself is a real row in
+t_appointments and fully reachable via the existing Appointments kanban
+once that module is built out (Sprint 6, not yet started).
+
+FILES IN THIS BATCH
+────────────────────
+  contractnest-api/src/routes/groupSessionsDashboardRoutes.ts       (MODIFIED — 2 new routes)
+  contractnest-api/src/controllers/groupSessionsDashboardController.ts (MODIFIED — 2 new methods)
+  contractnest-api/src/services/groupSessionsDashboardService.ts    (MODIFIED — 2 new methods)
+  contractnest-ui/src/services/serviceURLs.ts                       (MODIFIED — 2 new GROUP_SESSIONS entries)
+  contractnest-ui/src/hooks/queries/useGroupSessionsDashboard.ts    (MODIFIED — 2 new hooks + type fields)
+  contractnest-ui/src/pages/operations/group-sessions/index.tsx     (MODIFIED — AssignChairControl + 2 wire-ups)
+
+───────────────────────────────────────────────────
+STEP 1: Pull + Copy (PowerShell)
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git fetch origin
+git checkout claude/sprint1b-migration-handoff-5rk8pr
+git pull origin claude/sprint1b-migration-handoff-5rk8pr
+
+Copy-Item "MANUAL_COPY_FILES\group-sessions-chair-assignment\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\group-sessions-chair-assignment\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+───────────────────────────────────────────────────
+STEP 2: Start both + test
+───────────────────────────────────────────────────
+cd contractnest-api
+npm run dev
+# new terminal
+cd contractnest-ui
+npm run dev
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+Test against BBB (Test environment, since that's where the real
+Saturday Cadence / Bi Weekly Meetings data lives — toggle "Test" in the
+top-right if needed):
+
+- [ ] Open Operations → Group Sessions → a group (e.g. Saturday Cadence)
+- [ ] "Session series" card shows "Assign default chair" — click it,
+      the ContactPicker opens filtered to clients/vendors/partners/team
+      members; search finds a real contact; confirm → toast "Set as
+      default chair for N upcoming sessions"
+- [ ] Every future session in "Upcoming & past sessions" now reflects
+      the assignment when you open it (see below) — the one PAST session
+      is untouched (26 of 27, matching the earlier verified count)
+- [ ] Click into an upcoming session → the occurrence view shows
+      "Chaired by <name>" next to Move date/Skip, and a green
+      "Appointment · <name> · Accepted" card appears
+- [ ] Click "Change" on that occurrence → pick a DIFFERENT contact →
+      confirm → only THIS occurrence updates; go back to the series list
+      and open a different date → still shows the original default chair
+      (per-session override, not global)
+- [ ] Click "Remove" on the overridden occurrence → chair badge and
+      Appointment Card disappear, button reverts to "Assign chair"
+- [ ] Regression: Move date, Skip/Restore, attendance marking (Mark/
+      Present), Add occurrence, QR card — all still work unchanged
+- [ ] Buyer/vendor/partner/team_member filter genuinely narrows the
+      picker (test with a search term matching a contact of each type
+      if you have them)
+
+Phase 2 (commit to submodule main) only after "tested, working".
+═══════════════════════════════════════════════════
