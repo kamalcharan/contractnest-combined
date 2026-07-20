@@ -66,11 +66,76 @@ VERIFICATION (already done, live, before this file was written)
 - Confirms BBB actually has 27 active member contracts carrying
   "Saturday Cadence" (not the ~10 sampled earlier — LIMIT 10 undercounted).
 
-NOT YET DONE (next phases, unchanged from before)
+FOLLOW-UP (031_group_session_chair_appointment.sql, same session)
 ────────────────────────────────────────────────────
-- UI: an "Assign chair" action on the occurrence card in the Group
-  Sessions dashboard (localhost:5173/group-sessions), calling
-  gs_schedule_assign. Not built in this batch — pure backend.
+Owner's next requirement: assigning a chair should ALSO create a real
+appointment for that person, not just a field on the occurrence. This is
+architecturally sound (unlike the reverted first attempt) because it's
+genuinely 1:1 — one occurrence, one chair, one appointment — exactly
+t_appointments' intended cardinality, unlike "fan one appointment across
+50 members" which was correctly ruled out.
+
+- t_appointments widened: contract_id/event_id made nullable, new
+  nullable group_session_occurrence_id (FK to t_group_session_schedule),
+  a CHECK constraint enforcing exactly one link type is ever set, and a
+  partial unique index (one active appointment per occurrence, mirroring
+  the existing per-event rule).
+- gs_schedule_assign() extended: on assigning, also upserts the chair's
+  appointment — status='accepted' directly (no requested/negotiation
+  stage; the date's already fixed by cadence, the tenant is assigning,
+  not proposing slots for the chair to pick). Passing assigned_to=NULL
+  now also soft-deletes the appointment (is_active=false), not just
+  clearing the occurrence field.
+- New RPC gs_schedule_assign_default(tenant, block, is_live,
+  assigned_to, assigned_to_name) — "set as default chair going forward":
+  applies to every future, non-cancelled occurrence of a block in one
+  call, each getting its own appointment row. A later single-occurrence
+  gs_schedule_assign() call still overrides just that one date (owner:
+  "default to all, but might change at a session").
+
+Also settled and declined in this session: merging Group Session
+occurrences directly into t_contract_events (a "universal cadence
+table" with a type discriminator). Technically feasible, but would mean
+rewriting ~26 already-live gs_* RPCs + the working dashboard for a
+conceptual-purity gain that doesn't even solve the attendance-table
+question (t_session_attendance still can't fold into
+t_contract_event_assets either way — attendance is per (occurrence,
+member) with no per-member event to attach to, which is deliberately
+avoided). Owner agreed: not worth the rewrite risk now; a read-layer
+UNION view can give VaNi a unified feed later without touching the live
+system.
+
+VERIFICATION (031, already done, live, before this file was written)
+────────────────────────────────────────────────────
+- gs_schedule_assign on the same real occurrence (Jul 31): appointment
+  row created with contract_id=NULL, event_id=NULL,
+  group_session_occurrence_id set, status='accepted', scheduled_at =
+  occurrence date, is_live correctly inherited from the occurrence
+  (false, matching Test-environment data).
+- gs_schedule_assign(..., NULL, NULL) on the same occurrence:
+  appointment flipped to is_active=false (soft-deleted), occurrence's
+  assigned_to/assigned_to_name cleared.
+- gs_schedule_assign_default on the full "Saturday Cadence" block:
+  assigned_count=26 (all future, non-cancelled occurrences — the one
+  past occurrence correctly excluded), confirmed 26 active appointment
+  rows created, one per occurrence.
+- Full cleanup after verification: all test appointment rows hard-
+  deleted, all occurrences' assigned_to/assigned_to_name cleared back to
+  NULL — confirmed zero residue (remaining_assigned=0,
+  remaining appointments query returned no rows) before writing this
+  file.
+
+NOT YET DONE (next phases)
+────────────────────────────────────────────────────
+- UI: "Assign chair" action (single + "set as default") on the Group
+  Sessions dashboard (localhost:5173/group-sessions), using the existing
+  common/ContactPicker.tsx (classifications: buyer/vendor/partner/
+  team_member) for who to pick, plus a small "Appointment Card" showing
+  the resulting appointment (Accepted status, editable) inline — not
+  built in this batch, pure backend so far.
+- API layer: POST /api/group-sessions/occurrence/:id/assign (+ a
+  "default" variant) — route/controller/service + serviceURLs.ts entry +
+  a mutation hook in useGroupSessionsDashboard.ts. Not built yet.
 - Sprint 5(b) data repair (stale event statuses, orphaned test events,
   the 29 stuck 'requested' appointments — platform-wide, unrelated to
   Group Sessions).
