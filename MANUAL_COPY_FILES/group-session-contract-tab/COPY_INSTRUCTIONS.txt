@@ -32,13 +32,18 @@ will move to contract view as a tab."
    at their own contract, or a seller looking at a specific member's
    contract, instead of only being reachable from inside /group-sessions.
 
-3. CORRECTION (this is the fixed version — a first attempt redesigned
-   the layout into one consolidated card, which was wrong and got
-   reverted). GroupSessionTab.tsx is now a direct port of the ORIGINAL
-   per-member screen: the same 6 separate KPI cards, the same policy
-   strip, the same present/absent/substitute history grid (✓ / ✕ / S),
-   the same payments card — same design you already saw and liked,
-   just relocated into the Contract page instead of redesigned.
+3. GroupSessionTab.tsx is a direct port of the ORIGINAL per-member
+   screen: the same 6 separate KPI cards, the same policy strip, the
+   same present/absent/substitute history grid (✓ / ✕ / S) — same
+   design you already saw and liked, just relocated into the Contract
+   page instead of redesigned.
+
+3b. FOLLOW-UP FIX: dropped the "Payments (BAU dues)" card from this
+    tab. Now that the view lives inside the Contract page, that card
+    duplicated the Contract's own Financials tab (which already has a
+    full payment/dues view with a Collect Payment CTA) — redundant
+    once you're one click away from the real thing. Sessions now shows
+    attendance-only data; dues/payments stay solely on Financials.
 
 4. "View contract" on a roster row navigates to
    /contracts/:contractId?tab=sessions and lands directly on the new
@@ -91,11 +96,11 @@ npm run dev
 - [ ] Click "View contract" on any member row → lands on
       /contracts/<their contract>?tab=sessions with the Sessions tab
       already active (not the default Overview tab)
-- [ ] On that Contract page, confirm the Sessions tab shows the same
-      layout as the old /group-sessions member screen: 6 separate KPI
+- [ ] On that Contract page, confirm the Sessions tab shows: 6 KPI
       cards (Attendance %, Attended, Last seen, Missed, Substituted,
-      Dues), the policy strip, the ✓/✕/S attendance history grid, and
-      payments — not a redesigned single card
+      Dues), the policy strip, and the ✓/✕/S attendance history grid —
+      and confirm there's NO "Payments (BAU dues)" card anymore (check
+      the Financials tab instead for that)
 - [ ] Open a DIFFERENT contract that has NO group-session block (e.g.
       any regular service/equipment contract) → confirm the Sessions
       tab does not appear at all

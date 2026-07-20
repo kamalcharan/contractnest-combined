@@ -24,8 +24,6 @@ const fmtDate = (d?: string | null): string => {
 };
 const initials = (n?: string | null) =>
   (n || '?').split(' ').map((x) => x[0]).slice(0, 2).join('').toUpperCase();
-const money = (n?: number | null, c?: string | null) =>
-  (n == null ? '—' : `${!c || c === 'INR' ? '₹' : c + ' '}${Number(n).toLocaleString()}`);
 
 interface GroupSessionTabProps {
   colors: any;
@@ -125,18 +123,6 @@ const GroupSessionTab: React.FC<GroupSessionTabProps> = ({ colors, memberId, blo
           ))}
           {(d.attendance?.length ?? 0) === 0 && <span className="text-sm" style={sub}>No sessions yet.</span>}
         </div>
-      </Card>
-
-      <Card style={cardStyle}>
-        <SectionHd icon={<Wallet size={15} />} title="Payments (BAU dues)" />
-        {(d.billing?.length ?? 0) === 0 ? (
-          <div className="py-8 text-center text-sm" style={sub}>No billing schedule.</div>
-        ) : (d.billing ?? []).map((b, i) => (
-          <div key={i} className="flex items-center justify-between px-4 py-2.5 border-b" style={{ borderColor: line }}>
-            <div><div className="text-[13px]" style={ink}>{b.label || fmtDate(b.date)}</div><div className="text-[11.5px]" style={sub}>{fmtDate(b.date)}</div></div>
-            <span className="text-[11px] font-semibold rounded px-2 py-0.5" style={{ backgroundColor: (b.status === 'paid' ? colors.semantic.success : colors.semantic.warning) + '1e', color: b.status === 'paid' ? colors.semantic.success : colors.semantic.warning }}>{b.status === 'paid' ? `Paid ${money(b.amount, b.currency)}` : `${money(b.amount, b.currency)} · ${b.status || 'due'}`}</span>
-          </div>
-        ))}
       </Card>
     </>
   );
