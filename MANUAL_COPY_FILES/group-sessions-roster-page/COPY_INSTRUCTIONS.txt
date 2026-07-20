@@ -1,0 +1,86 @@
+═══════════════════════════════════════════════════
+GROUP SESSIONS — ROSTER MOVED TO ITS OWN PAGE
+Branch folder: group-sessions-roster-page
+Submodules affected: contractnest-ui only
+DB/RPC: none — reuses gs_dash_roster, already live
+IMPORTANT: layer this ON TOP OF group-session-contract-tab (this
+  batch's index.tsx already includes everything from that one).
+═══════════════════════════════════════════════════
+
+WHAT CHANGED (per your last message)
+────────────────────
+1. Group view KPI strip — the "Dues due" tile is replaced by a
+   "Roster View" tile: same size/position as the other 3 stat tiles,
+   but visually distinct (solid brand-primary background instead of
+   the neutral bordered style) so it reads as a button, not a stat.
+   Clicking it opens the new Roster page for that session.
+
+2. The Roster table that used to sit at the bottom of the Group view's
+   left column is gone — Roster only lives on its own page now.
+
+3. New Roster page (Group Sessions → a session → Roster View):
+   - 4 stat tiles: Members, Average attendance (till now, computed
+     from each member's own attended/overall — no hardcoded numbers),
+     Over cap (count of members over EITHER their own no-show or
+     substitute cap — each member's cap comes from their own signed
+     contract snapshot, same source as everywhere else in this
+     feature — nothing hardcoded), Dues due.
+   - A search box, filters the list by member name as you type
+     (client-side — the roster is already fully loaded, no new
+     network calls).
+   - A list view styled like the Contacts list page (rounded row
+     cards, not a dense table) — one row per member: avatar, name,
+     contract, Attended/Missed/Subbed, cap status pill, dues pill,
+     "View contract" link (same as before — /contracts/:id?tab=sessions).
+
+WHY THIS IS SAFE / MINIMAL
+────────────────────
+- No DB or API changes — same gs_dash_roster data, just fetched when
+  view==='roster' too (previously only fetched for view==='group').
+- No new route — 'roster' is a new internal view state alongside the
+  existing overview/group/occurrence pattern already used throughout
+  this page, not a new URL.
+
+FILES IN THIS BATCH
+────────────────────
+  contractnest-ui/src/pages/operations/group-sessions/index.tsx   (MODIFIED — Roster tile, Roster page, table removed)
+
+───────────────────────────────────────────────────
+STEP 1: Pull + Copy (PowerShell)
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git fetch origin
+git checkout claude/sprint1b-migration-handoff-5rk8pr
+git pull origin claude/sprint1b-migration-handoff-5rk8pr
+
+Copy-Item "MANUAL_COPY_FILES\group-sessions-roster-page\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+───────────────────────────────────────────────────
+STEP 2: Start UI, test
+───────────────────────────────────────────────────
+cd contractnest-ui
+npm run dev
+# Hard refresh: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Open Group Sessions → Saturday Cadence → confirm "Dues due" tile
+      is gone, replaced by a differently-colored "Roster View" tile
+- [ ] Confirm the Roster table is gone from the bottom of the Group
+      view — only "Upcoming & past sessions" remains in that column
+- [ ] Click "Roster View" → lands on a new page with 4 stat tiles
+      (Members, Average attendance, Over cap, Dues due) and a search box
+- [ ] Type a member's name in search → list filters instantly
+- [ ] Confirm "Average attendance" and "Over cap" numbers look right
+      given the real data (10 members, most currently over cap per
+      earlier testing)
+- [ ] Click "View contract" on a roster row → still lands on that
+      member's Contract page, Sessions tab
+- [ ] Regression: chair assignment, occurrence Move/Skip/locked badge,
+      QR, Session series card — all unchanged
+
+Phase 2 (commit to submodule main) only after "tested, working".
+═══════════════════════════════════════════════════
