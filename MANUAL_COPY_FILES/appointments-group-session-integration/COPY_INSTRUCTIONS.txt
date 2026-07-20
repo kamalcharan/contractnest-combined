@@ -1,0 +1,93 @@
+═══════════════════════════════════════════════════
+APPOINTMENTS — MAKE GROUP SESSION CHAIR APPOINTMENTS VISIBLE
+Branch folder: appointments-group-session-integration
+Submodules affected: contractnest-edge only — DB/RPC fix, already
+  applied live and verified. NO UI changes needed at all: the existing
+  /ops/appointments kanban (contractnest-ui/src/pages/operations/
+  appointments/index.tsx) already renders generically off field names
+  (buyer_name, block_name, event_date, status) — this batch just makes
+  sure Group Session rows are included in what the RPC returns, mapped
+  onto those same field names.
+DEPENDS ON: MANUAL_COPY_FILES/sprint5-6-group-session-chair/.../
+  031_group_session_chair_appointment.sql (adds
+  t_appointments.group_session_occurrence_id + nullable contract_id/
+  event_id) — already applied live; copy that one too if you haven't.
+═══════════════════════════════════════════════════
+
+WHAT WAS WRONG (confirmed against real data, not guessed)
+────────────────────
+get_appointments_list — the RPC behind /ops/appointments — INNER
+JOINed t_contract_events and t_contracts, both requiring non-null
+event_id/contract_id. Group Session chair appointments (created by
+gs_schedule_assign when you assign a chair) deliberately have those
+two columns NULL — they link via group_session_occurrence_id instead.
+Result: for BBB specifically, 0 regular appointments + 18 real,
+active, accepted Group Session appointments existed, and the kanban
+showed "No appointments yet" — all 18 were silently excluded. Verified
+directly: before the fix, get_appointments_list returned 0 rows for
+BBB; after, it returns all 18, and the untouched regular-appointment
+path for another tenant still returns exactly the same 17 it did
+before (unaffected).
+
+WHAT CHANGED
+────────────────────
+get_appointments_list now UNIONs two branches: the existing contract/
+event path (byte-for-byte unchanged) plus a new group-session path
+that joins t_group_session_schedule + m_cat_blocks instead. Since a
+chair appointment has no single "buyer," a few fields are repurposed
+so the existing card UI (which already gracefully hides fields that
+are null) shows something sensible:
+  buyer_name    -> the session block's name (e.g. "Saturday Cadence") — card title
+  block_name    -> literal "Group Session" — subtitle, mirrors "Service visit"
+  contract_name -> "Session #<seq>"
+  event_date    -> the occurrence's date
+  buyer_phone / buyer_email / contract_number / task_id -> NULL (simply don't render)
+
+Also verified: update_appointment (accept/decline/reschedule/complete)
+already works correctly on these rows with zero changes needed — its
+event-sync block only fires when an event_id resolves, which it never
+does for a null event_id, so it safely no-ops. Confirmed this live: a
+real appointment was round-tripped through an update call and back,
+zero side effects, zero stray audit rows.
+
+FILES IN THIS BATCH
+────────────────────
+  contractnest-edge/supabase/migrations/operations-loop/013_appointments_list_include_group_sessions.sql   (NEW — record of already-applied live migration)
+
+───────────────────────────────────────────────────
+STEP 1: Pull + Copy (PowerShell)
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git fetch origin
+git checkout claude/sprint1b-migration-handoff-5rk8pr
+git pull origin claude/sprint1b-migration-handoff-5rk8pr
+
+Copy-Item "MANUAL_COPY_FILES\appointments-group-session-integration\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+───────────────────────────────────────────────────
+STEP 2: Test (no dev server restart needed — DB-only change,
+already live; this step is just to LOOK at it)
+───────────────────────────────────────────────────
+Open /ops/appointments as Sanjay Ghotikar (or any BBB chair user),
+Test environment.
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Open /ops/appointments (BBB, Test) → confirm you now see 18
+      cards instead of "No appointments yet"
+- [ ] Each card shows "Saturday Cadence" as the title, "Group Session"
+      as the subtitle, and a date matching a real Saturday Cadence
+      occurrence
+- [ ] Cards sit in the "Accepted" column (all 18 are currently
+      status='accepted')
+- [ ] Click one → confirm the accept/decline/reschedule/complete
+      actions don't error (they operate purely on status, independent
+      of contract/event)
+- [ ] Regression: any tenant with real regular (non-group-session)
+      appointments still shows them exactly as before
+
+Phase 2 (commit to submodule main) only after "tested, working".
+═══════════════════════════════════════════════════
