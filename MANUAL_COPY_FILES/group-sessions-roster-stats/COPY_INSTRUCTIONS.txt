@@ -1,0 +1,110 @@
+═══════════════════════════════════════════════════
+GROUP SESSIONS — ROSTER & MEMBER ATTENDANCE STATS (attended/missed/
+substituted/overall, join-date-aware, policy-cap flags)
+Branch folder: group-sessions-roster-stats
+Submodules affected: contractnest-edge (already applied live), contractnest-ui
+IMPORTANT: layer this ON TOP OF the prior batches (chair-assignment,
+  chair-followup, issues-2, catalog-attendance-policy) — the two UI files
+  in this batch already include everything from group-sessions-issues-2.
+═══════════════════════════════════════════════════
+
+WHAT THIS BATCH DOES
+────────────────────
+This is the roster/member-view work promised after the Catalog Studio
+attendance-policy card. Both already applied live and verified against
+real BBB data (10 members, all currently over the 6-no-show cap in the
+Test data — expected, since Test attendance wasn't tracked rigorously
+before now):
+
+1. DB (contractnest-edge) — migration 035:
+   - gs_dash_roster and gs_member_block now compute, PER MEMBER:
+     overall (occurrences in THEIR OWN contract window — join date
+     through today/end date, excluding cancelled/skipped — not the
+     block's total), attended, missed (= overall - attended),
+     substituted (present rows flagged is_substitute), and the cap
+     comparison (max_no_shows/max_substitutes + over_no_show_cap/
+     over_substitute_cap booleans).
+   - The cap is read from the MEMBER'S OWN contract snapshot
+     (t_contract_blocks.custom_fields.config.groupSession.attendancePolicy)
+     — not the live catalog block — so it reflects what that member
+     actually signed, per the T&C design from the last batch.
+   - migration 036: one-off backfill — the 10 existing Saturday Cadence
+     member contracts predate the attendance-policy feature, so they
+     had no policy in their own snapshot. Backfilled to match the
+     block's real live policy (6/6) so there's real data to test
+     against. Bi Weekly Meetings has no real member contracts, so
+     nothing to backfill there.
+
+2. UI (contractnest-ui):
+   - useGroupSessionsDashboard.ts: GsRosterRow and GsMemberBlock types
+     extended with overall/missed/substituted/max_no_shows/
+     max_substitutes/over_no_show_cap/over_substitute_cap;
+     GsMemberBlockAtt gains is_substitute.
+   - Roster card (Group view): each row now shows {attended}/{overall}
+     (member's own denominator, was wrongly the block's total before)
+     plus a red "⚠ N/M no-shows" or "⚠ N/M subs" pill — only when that
+     member is actually over a cap, so most rows stay clean.
+   - Member view: KPI strip grows from 4 to 6 tiles (Attendance %,
+     Attended, Last seen, Missed, Substituted, Dues), plus a new
+     "Attendance policy" card comparing this member's actual counts
+     against their own signed cap (green under cap, red at/over — only
+     shown if a policy exists on their contract). The attendance-history
+     grid gets a 4th marker: a purple "S" square for a session attended
+     via substitute (was indistinguishable from a normal present ✓
+     before).
+
+NOT INCLUDED THIS ROUND (flagged as optional in the original proposal,
+kept out to keep this batch focused)
+────────────────────
+- Occurrence-view attendance-marking list showing the cap flag inline
+  while marking attendance
+- Overview block-card "policy configured" chip
+
+FILES IN THIS BATCH
+────────────────────
+  contractnest-edge/supabase/migrations/bbb-foundation/035_group_session_roster_attendance_stats.sql       (NEW — record of already-applied live migration)
+  contractnest-edge/supabase/migrations/bbb-foundation/036_backfill_saturday_cadence_attendance_policy.sql  (NEW — record of already-applied live backfill)
+  contractnest-ui/src/hooks/queries/useGroupSessionsDashboard.ts                                            (MODIFIED — extended types)
+  contractnest-ui/src/pages/operations/group-sessions/index.tsx                                             (MODIFIED — roster row + member view)
+
+───────────────────────────────────────────────────
+STEP 1: Pull + Copy (PowerShell)
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git fetch origin
+git checkout claude/sprint1b-migration-handoff-5rk8pr
+git pull origin claude/sprint1b-migration-handoff-5rk8pr
+
+Copy-Item "MANUAL_COPY_FILES\group-sessions-roster-stats\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\group-sessions-roster-stats\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+───────────────────────────────────────────────────
+STEP 2: Start UI, test
+───────────────────────────────────────────────────
+cd contractnest-ui
+npm run dev
+# Hard refresh: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+Test against BBB (Test environment), Saturday Cadence:
+
+- [ ] Open the group view → Roster card → confirm each row shows
+      "attended/8" (not the old block-wide number) and a red no-show
+      warning pill (expect most/all 10 members flagged, since Test
+      attendance data is sparse — this is real, not a display bug)
+- [ ] Click into a member → confirm 6 KPI tiles (Attendance %,
+      Attended, Last seen, Missed, Substituted, Dues) and an
+      "Attendance policy" card comparing their counts to 6/6
+- [ ] Click into VENKATESWARA RAO MADDALI specifically → Substituted
+      should show 1, and the attendance-history grid should show one
+      purple "S" square instead of a green ✓
+- [ ] Regression: chair assignment, QR, occurrence Move/Skip, held-
+      occurrence lock badge, Catalog Studio attendance-policy card —
+      all unchanged
+
+Phase 2 (commit to submodule main) only after "tested, working".
+═══════════════════════════════════════════════════
