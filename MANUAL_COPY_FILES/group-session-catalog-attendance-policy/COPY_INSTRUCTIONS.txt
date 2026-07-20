@@ -1,0 +1,109 @@
+═══════════════════════════════════════════════════
+GROUP SESSION — CATALOG STUDIO ATTENDANCE POLICY (T&C, not a dashboard toggle)
+Branch folder: group-session-catalog-attendance-policy
+Submodules affected: contractnest-ui
+DB/RPC: none — this batch is UI-only, no migration
+═══════════════════════════════════════════════════
+
+WHAT THIS BATCH DOES
+────────────────────
+Per your last two turns: the attendance policy (max no-shows, max
+substitute check-ins) is now authored on the "Group Session" catalog
+block itself, in Catalog Studio's Delivery Settings step — NOT a live
+dashboard setting. This makes it a real, tenant-configurable T&C:
+
+1. contractnest-ui/src/components/catalog-studio/BlockWizard/steps/service/DeliveryStep.tsx
+   New "Attendance policy" card, shown only when Audience = Group,
+   right after the Audience selector. Two number inputs — "Max
+   no-shows allowed" / "Max substitute check-ins allowed" — both
+   blank by default (= no cap). Same onChange('field', value) pattern
+   already used for Cycle Period / Anchor Weekday, no new patterns.
+
+2. contractnest-ui/src/utils/catalog-studio/catBlockAdapter.ts
+   - catBlockToBlock(): exposes the saved policy as flat
+     meta.maxNoShows / meta.maxSubstitutes so the wizard hydrates it
+     when editing an existing block (same fallback pattern as
+     serviceCycles/audience).
+   - buildServiceConfig(): writes config.groupSession.attendancePolicy
+     = { maxNoShows, maxSubstitutes }.
+   - IMPORTANT FIX included here: buildServiceConfig previously had
+     no knowledge of config.groupSession.defaultChairContactId/Name
+     (set live from the Group Sessions dashboard's "Assign default
+     chair", not through this wizard) — a routine Catalog Studio save
+     (e.g. just changing the price) would have silently WIPED it,
+     since the wizard rebuilds the whole config from scratch. Fixed:
+     buildServiceConfig now always preserves whatever's already in
+     config.groupSession and only overlays the policy on top. Applied
+     the same preservation to the smaller partial-update path in
+     blockToUpdateData() for symmetry.
+
+WHY THIS MAKES IT A REAL T&C (not new plumbing needed)
+────────────────────
+Confirmed directly against real BBB data: a catalog block's full
+config already gets deep-copied into custom_fields.config on EVERY
+member's own t_contract_blocks row the moment their contract is
+created (this is generic, already-existing, not block-type-specific —
+verified against every Saturday Cadence member's contract). So the
+moment a tenant sets this policy on the block, every contract created
+from it afterward automatically carries the policy as part of that
+member's own signed terms — no new snapshot code needed. Existing
+members' contracts (created before the policy existed) simply have no
+attendancePolicy in their snapshot — no cap, no false flag.
+
+NOT YET DONE (next round, per your "1st upgrade the card... then we
+move to other parts")
+────────────────────
+- Roster/member view showing attended/missed/substituted per member,
+  scoped to their own join date (not the block's total)
+- Comparing a member's actual missed/substituted counts against the
+  cap from THEIR OWN contract snapshot (not the live catalog block)
+  and flagging when at/over
+- Occurrence attendance-marking list showing the same flag inline
+
+FILES IN THIS BATCH
+────────────────────
+  contractnest-ui/src/components/catalog-studio/BlockWizard/steps/service/DeliveryStep.tsx  (MODIFIED — new Attendance policy card)
+  contractnest-ui/src/utils/catalog-studio/catBlockAdapter.ts                                (MODIFIED — read/write policy + preserve groupSession on save)
+
+───────────────────────────────────────────────────
+STEP 1: Pull + Copy (PowerShell)
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git fetch origin
+git checkout claude/sprint1b-migration-handoff-5rk8pr
+git pull origin claude/sprint1b-migration-handoff-5rk8pr
+
+Copy-Item "MANUAL_COPY_FILES\group-session-catalog-attendance-policy\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+───────────────────────────────────────────────────
+STEP 2: Start UI, test
+───────────────────────────────────────────────────
+cd contractnest-ui
+npm run dev
+# Hard refresh: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Catalog Studio → open/create a service block → Delivery Settings
+      → select Audience = Group → confirm the "Attendance policy" card
+      appears with two blank number fields
+- [ ] Select Audience = Individual → confirm the card disappears
+- [ ] Enter 6 / 6, save the block → re-open it in edit mode → confirm
+      both fields show 6 (hydration works)
+- [ ] Edit the Saturday Cadence block (BBB) — it already has a live
+      default chair set (Sanjay Ghotikar) — set an attendance policy
+      and save → check the DB afterward: confirm
+      config.groupSession.defaultChairContactId/Name are STILL there
+      alongside the new attendancePolicy (this is the regression the
+      preservation fix protects against — please flag if it's gone)
+- [ ] Create a brand-new test contract against the Saturday Cadence
+      block → confirm the new contract's t_contract_blocks.custom_fields.config.groupSession.attendancePolicy
+      matches what's set on the catalog block (the T&C snapshot working)
+- [ ] Regression: everything else on Delivery Settings (cycles, billing
+      only, complimentary, delivery mode) still saves correctly
+
+Phase 2 (commit to submodule main) only after "tested, working".
+═══════════════════════════════════════════════════
