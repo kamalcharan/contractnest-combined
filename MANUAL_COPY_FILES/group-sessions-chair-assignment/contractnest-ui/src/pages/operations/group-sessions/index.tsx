@@ -113,6 +113,18 @@ const GroupSessionsPage: React.FC = () => {
     return wd ? `Weekly · ${wd}` : 'Recurring';
   }, [occurrences]);
 
+  // Derived from the occurrences already fetched — not a separately stored
+  // field. Reflects reality even after a refresh: whoever chairs the
+  // nearest upcoming (non-past, non-cancelled) occurrence is shown as the
+  // series' current default; count = how many future occurrences share it.
+  const seriesChair = useMemo(() => {
+    const upcoming = occurrences.filter((o) => !o.is_past && o.status !== 'cancelled');
+    const next = upcoming.find((o) => o.assigned_to_name);
+    if (!next) return null;
+    const matching = upcoming.filter((o) => o.assigned_to_name === next.assigned_to_name).length;
+    return { name: next.assigned_to_name as string, count: matching, total: upcoming.length };
+  }, [occurrences]);
+
   const overview = useMemo(() => {
     const totalSessions = sessions.length;
     const members = sessionsQuery.data?.roster_size ?? 0;
@@ -390,8 +402,15 @@ const GroupSessionsPage: React.FC = () => {
                 <span className="text-[10.5px] font-bold rounded-full px-2 py-1" style={{ backgroundColor: (s.qr_ready ? colors.semantic.success : colors.semantic.warning) + '1e', color: s.qr_ready ? colors.semantic.success : colors.semantic.warning }}>{s.qr_ready ? 'QR ready' : 'No QR'}</span>
               </div>
               <div className="px-4 pb-3.5 pt-1 border-t" style={{ borderColor: line }}>
-                <div className="text-[11px] mb-2" style={sub}>Default chair — applies to every upcoming session; override any single date from that session.</div>
+                <div className="text-[11px] mb-2" style={sub}>
+                  {occurrencesQuery.isLoading
+                    ? 'Loading…'
+                    : seriesChair
+                      ? `Default chair — applied to ${seriesChair.count} of ${seriesChair.total} upcoming sessions.`
+                      : 'Default chair — applies to every upcoming session; override any single date from that session.'}
+                </div>
                 <AssignChairControl
+                  currentName={seriesChair?.name}
                   busy={assignChairDefault.isPending}
                   buttonLabel="Assign default chair"
                   changeLabel="Change default"

@@ -5,6 +5,19 @@ Submodules affected: contractnest-api, contractnest-ui
 DB/RPC: already applied live (bbb-foundation/030, 031 — prior batches)
 ═══════════════════════════════════════════════════
 
+FIX (post-first-test): your "Sanjay Ghotikar" assignment DID save — verified
+directly in the DB: 26 real appointment rows, status='accepted',
+assigned_to_name='SANJAY GHOTIKAR', all written in the same call. The bug
+was purely UI feedback: the "Session series" card's default-chair control
+was write-only — it never showed what's currently assigned back, only a
+toast that's easy to miss. Fixed: the series card now derives "Default
+chair — applied to N of M upcoming sessions" + a "Chaired by X · Change
+default" badge from the occurrence data already being fetched (not a new
+field — there's no separate "block default" column, this reflects whoever
+chairs the nearest upcoming, non-cancelled occurrence). Survives a page
+refresh since it's computed from real server data every time, not local
+component state.
+
 WHAT THIS BATCH DOES
 ────────────────────
 Wires the already-live gs_schedule_assign / gs_schedule_assign_default
