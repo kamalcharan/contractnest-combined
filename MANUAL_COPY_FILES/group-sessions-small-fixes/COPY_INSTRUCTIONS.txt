@@ -1,0 +1,68 @@
+═══════════════════════════════════════════════════
+GROUP SESSIONS — TWO DEFERRED SMALL PIECES
+Branch folder: group-sessions-small-fixes
+Submodules affected: contractnest-edge (already applied live), contractnest-ui
+IMPORTANT: layer this ON TOP OF group-sessions-roster-cards (this
+  batch's files already include everything from that one).
+═══════════════════════════════════════════════════
+
+WHAT THIS BATCH DOES
+────────────────────
+The two items explicitly deferred earlier in the roster/attendance work:
+
+1. Occurrence attendance-marking screen now shows a red "6/6" (or
+   "Over cap") warning pill next to a member's name — same cap logic
+   as everywhere else (their own signed policy, join-date-scoped) —
+   so the chair sees who's already over cap WHILE marking attendance
+   that day, not only after the fact on the Roster page.
+
+2. Overview block cards now show a small green shield-check icon next
+   to the block name when that block has an attendance policy
+   configured in Catalog Studio — a quick visual "this one has rules
+   set" signal without opening it.
+
+DB — migration 038: extended gs_occurrence_attendance (per-member
+missed/cap fields, same computation as the roster) and gs_dash_sessions
+(policy_configured per block). Both applied live and verified against
+real BBB data before this batch was written.
+
+FILES IN THIS BATCH
+────────────────────
+  contractnest-edge/supabase/migrations/bbb-foundation/038_group_session_occurrence_flag_overview_chip.sql  (NEW — record of already-applied live migration)
+  contractnest-ui/src/hooks/queries/useGroupSessionsDashboard.ts                                              (MODIFIED — GsSessionRow + GsOccAttendanceMember extended)
+  contractnest-ui/src/pages/operations/group-sessions/index.tsx                                               (MODIFIED — Overview chip, Occurrence cap flag)
+
+───────────────────────────────────────────────────
+STEP 1: Pull + Copy (PowerShell)
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git fetch origin
+git checkout claude/sprint1b-migration-handoff-5rk8pr
+git pull origin claude/sprint1b-migration-handoff-5rk8pr
+
+Copy-Item "MANUAL_COPY_FILES\group-sessions-small-fixes\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\group-sessions-small-fixes\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+───────────────────────────────────────────────────
+STEP 2: Start UI, test
+───────────────────────────────────────────────────
+cd contractnest-ui
+npm run dev
+# Hard refresh: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Group Sessions overview → Saturday Cadence card shows a small
+      green shield icon next to the name (policy is configured on
+      this block)
+- [ ] Open an upcoming occurrence (e.g. 2026-07-25) → attendance list
+      shows a red "8/6" or similar pill next to members already over
+      their no-show cap
+- [ ] Regression: Roster page cards/grid, Contract Sessions tab,
+      Session series/QR, chair assignment — all unchanged
+
+Phase 2 (commit to submodule main) only after "tested, working".
+═══════════════════════════════════════════════════
