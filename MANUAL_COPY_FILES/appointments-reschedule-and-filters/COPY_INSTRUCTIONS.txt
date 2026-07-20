@@ -1,0 +1,104 @@
+═══════════════════════════════════════════════════
+APPOINTMENTS — ONE-STEP RESCHEDULE, GROUP SESSION LOCKOUT, CONTRACT #, DATE FILTERS
+Branch folder: appointments-reschedule-and-filters
+Submodules affected: contractnest-edge (already applied live), contractnest-ui
+DEPENDS ON: MANUAL_COPY_FILES/appointments-group-session-integration/
+  (adds Group Session rows to get_appointments_list — copy that batch
+  first if you haven't already, including its renumbered 018 migration).
+═══════════════════════════════════════════════════
+
+WHAT THIS BATCH DOES
+────────────────────
+Four things requested after seeing the Appointments board live:
+
+1. RESCHEDULE IS NOW ONE STEP (regular appointments)
+   Previously "Reschedule" just flipped status to 'rescheduled' with no
+   date — you then had to click "Accept" a second time to actually pick
+   a slot. Now "Reschedule" opens the same inline date/time picker
+   directly and saves straight to 'accepted' with the new time. This
+   only works correctly because of the DB fix below — accepted→accepted
+   with just a scheduled_at change previously skipped both the
+   Contract-Tasks sync and the audit log.
+
+2. GROUP SESSION APPOINTMENTS: RESCHEDULE/DECLINE ARE LOCKED HERE
+   Per your call — reschedule for chair appointments must happen on the
+   Group Sessions dashboard (session-level, affects the whole roster),
+   not per-appointment here; this board only ever showed a sync of that
+   data. Group Session cards (detected by having no contract_id) now
+   show a "Managed in Group Sessions" button linking to /group-sessions
+   instead of Reschedule/Not needed. Accept / Completed / No response
+   still work normally (those don't desync anything).
+   Also added "Chaired by <name>" on Group Session cards, since you'd
+   asked earlier whether the chair's name shows anywhere — it didn't.
+
+3. CONTRACT NUMBER NOW VISIBLE ON THE CARD
+   Previously only in the hover tooltip on the external-link icon. Now
+   shown as its own line under the block name (regular appointments
+   only — Group Session rows have no single contract).
+
+4. DATE-RANGE FILTER CHIPS
+   "All / Next 7 days / Next 30 days" chip row above the board, filtering
+   client-side (appointments are already fetched in one call) by
+   scheduled_at (if accepted) or event_date otherwise. Needed once
+   Group Session volume pushes past a couple hundred cards.
+
+DB — audit-trail fix (already applied live, verified against a real BBB
+appointment, fully cleaned up after testing): update_appointment now
+fires the t_contract_events sync AND the t_audit_log insert when EITHER
+status OR scheduled_at changes, not only on status change. Migration
+019 is the permanent record of what's already live.
+
+NOTE ON NUMBERING: the appointments-group-session-integration batch's
+migration file was originally mis-numbered 013 (collides with the real
+013_stage3_scanner_v2.sql already in the submodule, since that batch was
+never actually copied in yet) — it's been renamed to 018 in that batch's
+folder. This one continues at 019.
+
+FILES IN THIS BATCH
+────────────────────
+  contractnest-edge/supabase/migrations/operations-loop/019_appointment_update_sync_on_time_change.sql   (NEW — record of already-applied live migration)
+  contractnest-ui/src/pages/operations/appointments/index.tsx                                             (MODIFIED)
+
+───────────────────────────────────────────────────
+STEP 1: Pull + Copy (PowerShell)
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git fetch origin
+git checkout claude/sprint1b-migration-handoff-5rk8pr
+git pull origin claude/sprint1b-migration-handoff-5rk8pr
+
+Copy-Item "MANUAL_COPY_FILES\appointments-group-session-integration\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\appointments-reschedule-and-filters\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\appointments-reschedule-and-filters\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+───────────────────────────────────────────────────
+STEP 2: Start UI, test
+───────────────────────────────────────────────────
+cd contractnest-ui
+npm run dev
+# Hard refresh: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] /ops/appointments (BBB, Test) → click "Reschedule" on a regular
+      accepted appointment → date/time picker opens immediately →
+      confirm → card shows the new "Confirmed: ..." time, no second
+      click needed
+- [ ] Group Session card (Saturday Cadence chair appointment) → shows
+      "Chaired by Sanjay Ghotikar" (or whoever is assigned) and a
+      "Managed in Group Sessions" button instead of Reschedule/Not
+      needed → clicking it navigates to /group-sessions
+- [ ] Regular appointment card → contract number now visible as its
+      own line, not just in the tooltip
+- [ ] Filter chips: "Next 7 days" / "Next 30 days" narrow the board;
+      "All" shows everything again
+- [ ] Reschedule a regular appointment → open Contract → Tasks tab →
+      confirm the new date reflects there too (sync still works)
+- [ ] Regression: Accept / Completed / No response / Re-request / Not
+      needed all still work as before on non-Group-Session cards
+
+Phase 2 (commit to submodule main) only after "tested, working".
+═══════════════════════════════════════════════════

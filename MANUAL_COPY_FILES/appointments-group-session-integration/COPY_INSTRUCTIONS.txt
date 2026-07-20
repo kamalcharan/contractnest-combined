@@ -52,7 +52,11 @@ zero side effects, zero stray audit rows.
 
 FILES IN THIS BATCH
 ────────────────────
-  contractnest-edge/supabase/migrations/operations-loop/013_appointments_list_include_group_sessions.sql   (NEW — record of already-applied live migration)
+  contractnest-edge/supabase/migrations/operations-loop/018_appointments_list_include_group_sessions.sql   (NEW — record of already-applied live migration)
+  NOTE: renumbered from 013 to 018 — 013 is already taken by
+  013_stage3_scanner_v2.sql in the real submodule; this batch's copy
+  had never been merged in yet, so the collision was only ever local
+  to MANUAL_COPY_FILES and is fixed before Phase 2.
 
 ───────────────────────────────────────────────────
 STEP 1: Pull + Copy (PowerShell)
