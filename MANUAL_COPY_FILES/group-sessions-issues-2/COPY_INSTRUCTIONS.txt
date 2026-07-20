@@ -1,0 +1,159 @@
+═══════════════════════════════════════════════════
+GROUP SESSIONS — ISSUES ROUND 2 (schedule repair, freeze, audit trail,
+substitute display)
+Branch folder: group-sessions-issues-2
+Submodules affected: contractnest-edge (already applied live), contractnest-api,
+                      contractnest-ui
+IMPORTANT: layer this ON TOP OF both prior batches — copy
+  group-sessions-chair-assignment, then group-sessions-chair-followup,
+  then this one (this one's UI/API files already include everything from
+  both, so copying just this one last is enough IF you copied the first
+  two already; if starting fresh, still copy all three in order).
+═══════════════════════════════════════════════════
+
+ANSWERS TO YOUR 8 ITEMS
+────────────────────────
+1) Edge deployment — yes, all DB work below was applied directly to the
+   live Supabase project and verified before this batch was written.
+   There's no separate Deno edge function involved in this feature; the
+   migration files are the permanent record of what's already live.
+
+2) & 5) Wrong schedule dates / next session on a Friday — root cause
+   found: the "Saturday Cadence" catalog block was missing
+   anchorWeekday in its cadence config (unlike "Bi Weekly Meetings",
+   which has it set correctly). Without it, the whole series was
+   anchored to the linked contracts' start_date (a Wednesday) from the
+   very first generation and drifted onto Thursdays — this was NEVER a
+   "moving one occurrence cascades to the rest" bug (confirmed
+   gs_schedule_move only ever updates the single row being moved).
+   FIXED: backfilled anchorWeekday=6, deleted the wrongly-anchored
+   future rows (including the 07-31 Friday you flagged as wrong), and
+   regenerated. The one held/completed occurrence (07-11, real
+   attendance data) was left untouched and is a genuine Saturday. Next
+   session is now correctly 2026-07-25 (a Saturday). See migration 034
+   for the exact repair (idempotent, scoped to that one block).
+
+4) Freeze completed sessions — FIXED. Once an occurrence's status is
+   'held' (attendance has been recorded for it), its date and chair
+   are now immutable — gs_schedule_move / gs_schedule_assign refuse
+   with {ok:false, reason:'occurrence_completed'}, and gs_schedule_status
+   refuses to transition away from 'held'. Attendance marking
+   (gs_mark_attendance) stays editable regardless, so you can still
+   correct who attended after the fact. The UI now shows a
+   "Completed — locked" badge on a held occurrence and hides the
+   Move/Skip/Assign controls entirely (attendance marking stays
+   visible and enabled).
+
+6) Chair on all sessions with exceptions — unaffected by any of the
+   above; already correct from the previous batch (default chair +
+   per-occurrence override). Verified it's still working after the
+   schedule repair (assigned_to lives on the same row as the date, so
+   fixing dates doesn't touch it).
+
+7) Audit trail — FIXED. Added p_changed_by/p_changed_by_name params
+   (mirroring update_appointment's existing convention) to
+   gs_schedule_move, gs_schedule_status, gs_schedule_assign(_default),
+   and gs_mark_attendance — every real change now writes a row to the
+   existing t_audit_log table (move, status change, chair
+   assign/unassign, attendance mark). The API layer extracts the
+   actor from req.user (same pattern as appointmentController) and
+   passes it through automatically — no new UI needed to see it work,
+   but there's no dedicated "view audit history" screen yet; the data
+   is queryable directly for now.
+
+8) Substitute name display — FIXED. gs_checkin_substitute already
+   wrote the correct composite name into t_session_attendance.member_name
+   (e.g. "Charan Kamal (substitute: Laasya Priya)"), but
+   gs_occurrence_attendance — the roster the UI actually reads — was
+   ignoring it and always showing the contract's own buyer_name. Fixed
+   to prefer the attendance row's member_name when one exists. Verified
+   directly against a real block/member: the roster now shows the
+   substitute-decorated name and present=true correctly. (Kept the
+   already-stored format — "Name (substitute: Sub Name)", colon — since
+   that's what gs_checkin_substitute writes; let me know if you want the
+   dash format you mentioned instead, that's a one-line tweak.)
+
+WHAT THIS BATCH DOES
+────────────────────
+1. DB (contractnest-edge) — migrations 033 + 034, already applied live
+   and verified against real BBB Test data (freeze guards, audit
+   writes, substitute display, schedule repair — each tested and
+   cleaned up, zero residue). Included as the permanent record.
+
+2. API (contractnest-api):
+   - groupSessionsDashboardController.ts: new `actor()` helper
+     (req.user?.id / req.user?.name || req.user?.email, same pattern
+     as appointmentController) passed through to moveOccurrence,
+     setOccurrenceStatus, assignChair, assignDefaultChair, markAttendance.
+   - groupSessionsDashboardService.ts: those five methods now accept
+     optional changedBy/changedByName and forward them as
+     p_changed_by/p_changed_by_name.
+
+3. UI (contractnest-ui):
+   - useGroupSessionsDashboard.ts: useMoveOccurrence / useSetOccurrenceStatus
+     / useAssignChair now throw a real, readable error when the RPC
+     refuses (occurrence_completed) instead of silently showing a false
+     "success" toast — surfaces the freeze as an actual error toast.
+   - group-sessions/index.tsx: occurrence drill-down now shows a
+     "Completed — locked" badge and hides Move date / Skip / Restore /
+     Assign chair once status='held'; attendance marking stays fully
+     visible and usable.
+
+FILES IN THIS BATCH
+────────────────────
+  contractnest-edge/supabase/migrations/bbb-foundation/033_group_session_freeze_audit_substitute_fix.sql  (NEW — record of already-applied live migration)
+  contractnest-edge/supabase/migrations/bbb-foundation/034_fix_saturday_cadence_anchor_bbb.sql             (NEW — record of already-applied live data repair, idempotent)
+  contractnest-api/src/controllers/groupSessionsDashboardController.ts   (MODIFIED — actor() + threaded through 5 endpoints)
+  contractnest-api/src/services/groupSessionsDashboardService.ts        (MODIFIED — 5 methods accept changedBy/changedByName)
+  contractnest-ui/src/hooks/queries/useGroupSessionsDashboard.ts        (MODIFIED — gsThrowIfRefused on 3 mutations)
+  contractnest-ui/src/pages/operations/group-sessions/index.tsx         (MODIFIED — locked badge + hidden controls on held occurrences)
+
+───────────────────────────────────────────────────
+STEP 1: Pull + Copy (PowerShell)
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git fetch origin
+git checkout claude/sprint1b-migration-handoff-5rk8pr
+git pull origin claude/sprint1b-migration-handoff-5rk8pr
+
+Copy-Item "MANUAL_COPY_FILES\group-sessions-issues-2\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\group-sessions-issues-2\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\group-sessions-issues-2\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+───────────────────────────────────────────────────
+STEP 2: Start API + UI, test
+───────────────────────────────────────────────────
+cd contractnest-api
+npm run dev
+# new terminal
+cd contractnest-ui
+npm run dev
+# Hard refresh: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+Test against BBB (Test environment):
+
+- [ ] Open Saturday Cadence → confirm the schedule now shows a real
+      biweekly Saturday cadence (04-04, 04-18, ... 07-11 held ... 07-25
+      next, 08-08, ...) — no more stray Thursdays or the 07-31 Friday
+- [ ] Open the 07-11 (held) occurrence → confirm you see the
+      "Completed — locked" badge, no Move/Skip/Assign controls, but
+      attendance marking still works
+- [ ] Try to move or reassign a held occurrence via a direct API call
+      (or confirm the UI simply doesn't offer the option) → should be
+      refused, not silently ignored
+- [ ] Open an upcoming (non-held) occurrence → Move date / Skip /
+      Assign chair all still work exactly as before
+- [ ] Have a member checked in as a substitute (via the QR check-in
+      flow, gs_checkin_substitute) → open that occurrence's attendance
+      list → confirm the roster shows "Member Name (substitute: Sub
+      Name)" instead of just the member's own name
+- [ ] Regression: default chair assignment, per-occurrence override,
+      QR card, roster/dues — all unchanged
+
+Phase 2 (commit to submodule main) only after "tested, working".
+═══════════════════════════════════════════════════
