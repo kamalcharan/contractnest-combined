@@ -1,0 +1,102 @@
+═══════════════════════════════════════════════════
+GROUP SESSIONS — CHAIR FOLLOW-UP (default inheritance + QR cleanup)
+Branch folder: group-sessions-chair-followup
+Submodules affected: contractnest-edge (migration record only — already
+                      applied live), contractnest-ui
+═══════════════════════════════════════════════════
+
+ANSWERS TO YOUR 3 QUESTIONS
+────────────────────────────
+1) Mid-session/per-occurrence chair change — already solved, no change
+   needed. The "Change" control on a single occurrence
+   (gs_schedule_assign scoped to one occurrence id) only ever touches
+   that one date. Nothing in this batch affects this.
+
+2) Future sessions not inheriting the default chair — FIXED in this
+   batch. gs_schedule_assign_default now also stores the default on
+   the block itself (m_cat_blocks.config.groupSession.
+   defaultChairContactId / defaultChairName). gs_generate_schedule and
+   gs_schedule_add now read that stored default and stamp it onto any
+   NEWLY inserted occurrence row. Existing rows/overrides are untouched
+   (ON CONFLICT DO NOTHING already protected them before, and still
+   does). Applied live and verified: set default on Saturday Cadence,
+   inserted one test date via gs_schedule_add and one via
+   gs_generate_schedule — both inherited the default chair correctly;
+   test rows removed afterward, real 27-row schedule and the genuine
+   Sanjay Ghotikar default were left exactly as they were/should be.
+
+3) "Master QR" — turned out to be a non-issue on the backend once you
+   confirmed distinct group-session series should keep distinct QR
+   codes (no collision risk). Checked the actual code: QRCard is
+   already rendered with the same blockId in both the series view and
+   the occurrence drill-down — meaning it was ALREADY the same one
+   QR per series the whole time, resolved by date server-side
+   (gs_resolve_checkin / gs_submit_checkin already do this). The only
+   real problem was the QR card rendering a SECOND time on the
+   occurrence drill-down page, making it look like a new QR existed
+   per session date. Fixed in this batch: removed the duplicate
+   <QRCard> from the occurrence view — it now only appears once, on
+   the series page.
+
+WHAT THIS BATCH DOES
+────────────────────
+1. DB (contractnest-edge) — migration 032, already applied live +
+   verified against BBB Test data (see above). File included purely
+   as the permanent record; nothing to re-apply.
+
+2. UI (contractnest-ui) — contractnest-ui/src/pages/operations/
+   group-sessions/index.tsx: removed the duplicate QRCard render from
+   renderOccurrence(). No other changes. (This batch is layered ON TOP
+   OF the group-sessions-chair-assignment batch — copy that one first
+   if you haven't already, then this one, so both sets of edits land.)
+
+FILES IN THIS BATCH
+────────────────────
+  contractnest-edge/supabase/migrations/bbb-foundation/032_group_session_default_chair_inheritance.sql  (NEW — record of already-applied live migration)
+  contractnest-ui/src/pages/operations/group-sessions/index.tsx                                          (MODIFIED — removed duplicate QRCard)
+
+───────────────────────────────────────────────────
+STEP 1: Pull + Copy (PowerShell)
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git fetch origin
+git checkout claude/sprint1b-migration-handoff-5rk8pr
+git pull origin claude/sprint1b-migration-handoff-5rk8pr
+
+Copy-Item "MANUAL_COPY_FILES\group-sessions-chair-followup\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\group-sessions-chair-followup\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+───────────────────────────────────────────────────
+STEP 2: Start UI + test
+───────────────────────────────────────────────────
+cd contractnest-ui
+npm run dev
+# Hard refresh browser: Ctrl+F5
+# (No API changes in this batch — API doesn't need restarting for this one.)
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+Test against BBB (Test environment):
+
+- [ ] Open a group session series (e.g. Saturday Cadence) → click into
+      any upcoming occurrence → confirm the QR card no longer appears
+      on that page (only Move date / Skip / chair controls / roster)
+- [ ] Go back to the series page → confirm the QR card still appears
+      there, unchanged, and still scans/resolves correctly for today's
+      date
+- [ ] Click "Generate schedule" (or extend a contract's date range so
+      new future occurrences get created) → open one of the newly
+      created future occurrences → confirm it already shows "Chaired
+      by Sanjay Ghotikar" without you touching it
+- [ ] Add an ad-hoc occurrence date → confirm it also comes in
+      pre-chaired with the current default
+- [ ] Regression: per-occurrence "Change"/"Remove" override still
+      works and still only affects that one date (default-chair
+      inheritance only applies at INSERT time, never overwrites an
+      existing row)
+
+Phase 2 (commit to submodule main) only after "tested, working".
+═══════════════════════════════════════════════════
