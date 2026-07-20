@@ -1,0 +1,80 @@
+═══════════════════════════════════════════════════
+GROUP SESSIONS — ROSTER AS MEMBER CARDS WITH ATTENDANCE GRID
+Branch folder: group-sessions-roster-cards
+Submodules affected: contractnest-edge (already applied live), contractnest-ui
+IMPORTANT: layer this ON TOP OF group-sessions-roster-page (this batch's
+  index.tsx already includes everything from that one).
+═══════════════════════════════════════════════════
+
+WHAT CHANGED (per your screenshot + "every member is a card, it will
+have attendance and small statistics like 6/8, BBB will have average
+60 people in each chapter")
+────────────────────
+The previous version of the Roster page showed a numeric table-style
+list (Attended/Missed/Subbed as separate columns). That wasn't what
+you asked for — you wanted every member shown as a CARD with a compact
+"6/8" style stat AND their actual attendance-history grid (✓/✕/S
+squares), all stacked and visible by default, searchable by name.
+
+1. DB — migration 037: gs_dash_roster now also returns each member's
+   full occurrence-by-occurrence attendance array (same shape
+   gs_member_block already computes per-member), so ~60 members' grids
+   load in ONE call instead of 60 separate API calls. Applied live,
+   verified against real BBB data (26-occurrence grid returned
+   correctly for MALLADI MADHU KUMAR).
+
+2. UI — Roster page member list is now cards, not a table:
+   - Each card: avatar, name, contract name, a compact "attended/overall"
+     stat (e.g. "0/8", red if over cap), a cap-status pill (only shown
+     as a warning when actually over cap — from that member's own
+     signed policy, nothing hardcoded), a dues pill, "View contract".
+   - Below that: the member's own attendance-history grid — the same
+     ✓ (present) / ✕ (absent) / S (attended via substitute) / ·
+     (upcoming) squares used everywhere else in this feature, just
+     smaller (to stay compact across ~60 cards).
+   - All cards shown by default (not click-to-expand) — the search box
+     narrows which cards are visible as you type.
+
+FILES IN THIS BATCH
+────────────────────
+  contractnest-edge/supabase/migrations/bbb-foundation/037_group_session_roster_attendance_grid.sql  (NEW — record of already-applied live migration)
+  contractnest-ui/src/hooks/queries/useGroupSessionsDashboard.ts                                       (MODIFIED — GsRosterRow gains attendance[])
+  contractnest-ui/src/pages/operations/group-sessions/index.tsx                                        (MODIFIED — Roster cards + grid)
+
+───────────────────────────────────────────────────
+STEP 1: Pull + Copy (PowerShell)
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git fetch origin
+git checkout claude/sprint1b-migration-handoff-5rk8pr
+git pull origin claude/sprint1b-migration-handoff-5rk8pr
+
+Copy-Item "MANUAL_COPY_FILES\group-sessions-roster-cards\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\group-sessions-roster-cards\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+───────────────────────────────────────────────────
+STEP 2: Start UI, test
+───────────────────────────────────────────────────
+cd contractnest-ui
+npm run dev
+# Hard refresh: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Open Group Sessions → Saturday Cadence → Roster View
+- [ ] Confirm all 10 members show as cards, each with its own
+      attendance-history grid underneath the name/stat row
+- [ ] Confirm the compact stat (e.g. "0/8") turns red when that member
+      is over their no-show cap
+- [ ] Type a member's name in search → only matching cards remain
+- [ ] Click "View contract" on a card → still lands on that member's
+      Contract page, Sessions tab
+- [ ] Regression: the 4 top stat tiles (Members, Average attendance,
+      Over cap, Dues due), Group view, occurrence Move/Skip/locked
+      badge, QR, Session series card — all unchanged
+
+Phase 2 (commit to submodule main) only after "tested, working".
+═══════════════════════════════════════════════════
