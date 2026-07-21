@@ -893,6 +893,7 @@ const ServiceBlocksStep: React.FC<ServiceBlocksStepProps> = ({
                             }
                             onToggleExpand={() => handleToggleExpand(instId)}
                             onUpdate={(updates) => handleUpdateBlock(instId, updates)}
+                            onRemove={instance ? () => handleRemoveBlock(instId) : undefined}
                           />
                         );
                       })}

@@ -5,6 +5,22 @@ Submodules affected: contractnest-ui ONLY
 Design reference: SPRINT_REFERENCES/9-service-blocks-single-column.html
 ═══════════════════════════════════════════════════
 
+LATEST FIX 3 (bug report: "no option to remove a saved block and move
+ahead"): ChecklistRow.tsx already has a working "Remove line" button
+(bottom of the expanded editor, next to "Done") — but ServiceBlocksStep
+only ever passed `onRemove` to the flyBy/custom-line usage of
+ChecklistRow, not the main catalog-block usage. For a regular catalog
+block, the ONLY way to remove it was clicking the small checkbox at the
+top of the row a second time (an implicit toggle, easy to miss —
+especially once expanded into a full pricing editor with a "Done"
+button, which reads as "finish configuring," not "remove"). Fixed by
+passing `onRemove={instance ? () => handleRemoveBlock(instId) : undefined}`
+to the catalog-block ChecklistRow too (ServiceBlocksStep.tsx, ~line
+891-896) — the existing "Remove line" button now appears for every
+checked catalog block, not just custom lines. The checkbox-toggle
+removal still works exactly as before; this just adds the explicit,
+discoverable button alongside it.
+
 LATEST FIX 2 (post-review, "how does user know what's selected at 100
 blocks"): added a green "✓ Selected (N)" chip to the filter row, mutually
 exclusive with the type chips — clicking it shows every selected block
