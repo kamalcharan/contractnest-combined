@@ -114,7 +114,7 @@ const ContactViewPage: React.FC = () => {
   const [isExplainerOpen, setIsExplainerOpen] = useState(false);
 
   // API
-  const { data: contact, loading, error, refetch } = useContact(id || '');
+  const { data: contact, loading, error, refetch, hardRefresh } = useContact(id || '');
   const updateStatusHook = useUpdateContactStatus();
   const sendInvitationHook = useSendInvitation();
   const { data: cockpitData, isLoading: cockpitLoading } = useContactCockpit(id || '', { daysAhead });
@@ -178,7 +178,12 @@ const ContactViewPage: React.FC = () => {
     try {
       await updateStatusHook.mutate(contact.id, newStatus);
       toast({ title: 'Status updated', description: `Contact is now ${newStatus}.` });
-      refetch();
+      // refetch() serves cached data first (useContact's fetchContact skips
+      // the network call when a cache entry exists) — that cache still
+      // holds the pre-update status, so the header/lock state wouldn't
+      // update until something else (e.g. a full page reload) invalidated
+      // it. hardRefresh() explicitly invalidates the cache before fetching.
+      hardRefresh();
     } catch (err: any) {
       console.error('Failed to update status:', err);
       const description = err?.code === 'DEPENDENCY_EXISTS'
