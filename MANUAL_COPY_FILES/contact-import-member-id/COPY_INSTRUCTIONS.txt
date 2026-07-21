@@ -55,10 +55,9 @@ function touched in an earlier batch this session):
   - _shared/contacts/contactService.ts: createContact's rpcContactData
     whitelist now includes external_data.
   Diff-verified the other 6 files in this function matched the live
-  deployed source byte-for-byte before redeploying (no drift). Redeploy
-  status: see live conversation / commit follow-up for confirmation —
-  if this note is still here unedited, treat the edge function fix as
-  NOT YET CONFIRMED deployed and re-check before relying on it.
+  deployed source byte-for-byte before redeploying (no drift). Redeployed
+  live as version 65 (status ACTIVE) and re-confirmed by pulling the
+  deployed source back down and finding the fix present verbatim.
 
 Also fixed in this batch (separate ask, same conversation): when a
 spreadsheet's category text doesn't fuzzy-match any known industry, the
