@@ -119,7 +119,11 @@ const ContactProfileTab: React.FC<Props> = ({ contact, colors, onSaved }) => {
   const bar = (onSave: () => void) => <EditBar colors={colors} loading={loading} onSave={onSave} onCancel={cancel} />;
 
   return (
-    <div className="p-6" style={{ maxWidth: 1120, margin: '0 auto' }}>
+    // Extra bottom padding — ActionIsland (Profile/Contract/Email/WhatsApp
+    // pill) is position:fixed at the viewport bottom with no space of its
+    // own reserved in the page; without this, the last section can end up
+    // sitting directly under it on short-content contacts.
+    <div className="p-6" style={{ maxWidth: 1120, margin: '0 auto', paddingBottom: 100 }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 14 }}>
 
         {/* IDENTITY */}
