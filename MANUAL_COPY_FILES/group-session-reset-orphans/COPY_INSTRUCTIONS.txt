@@ -1,0 +1,106 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════
+Branch: group-session-reset-orphans
+Files Changed:
+  - contractnest-edge/supabase/migrations/bbb-foundation/043_fix_group_session_reset_orphans.sql (already applied live)
+
+Submodules Affected: contractnest-edge (DB only — already applied/verified live)
+
+BUG REPORT: group-session dashboard showed impossible attendance ratios
+like "4/1 present" on an 11 Jul occurrence, for a block where only 1
+active contract/buyer actually exists. User's hypothesis: leftover
+orphaned data from a previous "reset test data" run in Settings.
+
+ROOT CAUSE — CONFIRMED, genuine cleanup-RPC bug, not user error:
+`reset_tenant_session_and_forms()` (called by the live "reset test data"
+button via `admin_reset_test_data`) deleted t_session_attendance and
+t_session_payment_declarations rows keyed on a `session_contract_id`
+column — but that column is NEVER populated anywhere in the codebase (0
+non-null rows across the ENTIRE table, all tenants, confirmed by direct
+query). Attendance is actually linked via member_contact_id +
+schedule_occurrence_id/source_block_id. So the reset's delete for these
+two tables was always a silent no-op (also masked by a blanket
+`EXCEPTION WHEN OTHERS THEN NULL`) — old test contacts/contracts got
+correctly wiped, but their attendance rows survived and kept counting
+toward whatever contract/block came next.
+
+For the reported 11 Jul occurrence specifically: 4 attendance rows
+existed whose member_contact_id no longer resolved to any contact at all
+("Vedant", "VASANTH JOSHI", "Y VILASINI MANJUNATH", "VENKATESWARA RAO
+MADDALI") — confirmed via direct query, all 5 attendance rows for this
+block (including one more on the 02 May occurrence) were orphaned the
+same way.
+
+FIX:
+1. Rewrote both broken DELETE predicates in
+   `reset_tenant_session_and_forms` to scope by tenant_id (both tables
+   have it directly) and, for the environment (is_live) scoping, by
+   joining through the occurrence's OWN is_live flag
+   (t_group_session_schedule.is_live for attendance,
+   t_contract_events.is_live for payment declarations) instead of the
+   dead contract-id column. Deliberately NOT joined through
+   member_contact_id — that would fail to clean up exactly the
+   already-orphaned rows this fix exists for, since their contact no
+   longer exists at all.
+2. One-time cleanup (already done, live): deleted the 5 confirmed-
+   orphaned t_session_attendance rows for this BBB test-env block by
+   exact row id (verified each one's member_contact_id resolved to no
+   existing contact before deleting; verified 0 rows remain for the
+   block afterward).
+
+VERIFIED LIVE:
+  - Migration applied successfully (function replaced).
+  - 5 orphaned rows deleted by exact id, all confirmed to be the ones
+    with member_name "Vedant"/"VASANTH JOSHI"/"Y VILASINI MANJUNATH"/
+    "VENKATESWARA RAO MADDALI"/"Srilekha Kulkarni".
+  - `t_session_attendance` for source_block_id
+    c6e86303-4a3c-41fa-8779-e330d5b0574d now has 0 rows — the 11 Jul
+    occurrence will show 0/1 (or whatever the real current check-in
+    state is) instead of 4/1.
+
+NOT IN SCOPE (flagged, not touched): `t_group_session_schedule` (the
+recurring occurrence schedule itself) and `t_checkin_devices` are never
+referenced by any reset function at all — they're block/device
+configuration, not per-attendee data, so leaving them out of "reset test
+data" is probably correct, but worth knowing if a future report surfaces
+stale schedule/device rows specifically.
+
+Production Checklist:
+  ✅ Transaction Management: N/A (DDL — function replace; the one-time
+     cleanup was a plain scoped DELETE by exact row id, verified before
+     and after)
+  ✅ Race Condition Handling: N/A (admin-triggered, one-shot cleanup action)
+  ✅ Error Handling: unaffected — kept the existing per-statement
+     EXCEPTION WHEN OTHERS THEN NULL wrapper pattern already used
+     throughout this function
+  ✅ Toasts: N/A (no UI change in this batch)
+  ✅ Loaders: N/A (no UI change in this batch)
+
+═══════════════════════════════════════════════════
+💻 NOTHING TO COPY — DB-ONLY, ALREADY LIVE
+═══════════════════════════════════════════════════
+This batch is a record of already-applied, already-verified DB work —
+the migration file here is documentation of what was run live via
+Supabase MCP. Nothing to copy into contractnest-edge locally to test;
+just refresh the group-session dashboard for BBB and confirm the 11 Jul
+occurrence no longer shows an inflated attendance count.
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Group session dashboard, BBB tenant, test environment — 11 Jul
+      occurrence for the recurring block no longer shows "4/1 present"
+- [ ] Overall attendance % for the series reflects only real, current
+      contacts
+- [ ] (Optional, next time reset is used) Run "reset test data" again on
+      a tenant with real group-session attendance and confirm the
+      attendance rows for that tenant's test contracts actually clear
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Confirm the dashboard now looks right:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
