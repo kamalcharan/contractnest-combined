@@ -1,0 +1,107 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════
+Branch: builtin-channel-toggle
+Files Changed:
+  - contractnest-edge/supabase/migrations/integrations-messaging-visibility/002_builtin_channel_toggle.sql (applied live)
+  - contractnest-ui/src/components/integrations/IntegrationProviderCard.tsx
+
+Submodules Affected: contractnest-edge (DB — already applied live), contractnest-ui
+
+REQUEST: "'/integrations' is all about enabling and disabling the
+messages, we should actually do from there" — after today's incident
+(BBB test-environment sending real WhatsApp/emails), the Settings >
+Integrations page's "ContractNest WhatsApp (Built-in)" / "ContractNest
+Email (Built-in)" cards always showed "Active" / "Enabled for your
+workspace" with no way to actually turn them off — that copy was purely
+static (driven by a global catalog flag, `platform_managed: true`, with
+zero connection to any real per-tenant state). The actual send-blocking
+lived entirely in a backend-only table (n_jtd_tenant_config) with no UI
+at all. This batch makes the Integrations page the real control surface.
+
+WHAT CHANGED:
+1. DB migration (applied live): every tenant (157 backfilled, plus a new
+   AFTER INSERT trigger for all future tenants) now gets a real
+   `t_tenant_integrations` row for both built-in channel providers. This
+   is what makes IntegrationProviderCard's ALREADY-EXISTING toggle switch
+   appear (it only renders when a tenant_integration row exists — that
+   code was never platform_managed-specific, it just never had a row to
+   attach to for these two providers). BBB was seeded as already-disabled
+   to match its current (correct) state — the migration doesn't silently
+   re-enable it.
+2. `toggle_integration_status` RPC (the function the existing toggle
+   switch already calls for every other integration) now ALSO syncs
+   `n_jtd_tenant_config.channels_enabled` (both live and test rows) when
+   the provider being toggled is one of the two built-in channels — this
+   is what makes the switch actually control sending, not just look like
+   it does. Verified live: flipped BBB's WhatsApp toggle on then back
+   off, confirmed n_jtd_tenant_config updated correctly both times, left
+   BBB back in its disabled state.
+3. IntegrationProviderCard.tsx: the "Active · Powered by ContractNest" /
+   "✓ Enabled for your workspace" copy (previously hardcoded true) now
+   reflects the real tenantIntegration.is_active state — shows "Disabled
+   for your workspace" / "Disabled — use the toggle to re-enable" when
+   off. Also swapped the built-in cards' detail text (previously "Last
+   verified: Never" / "Live mode", which doesn't mean anything for a
+   no-setup-required built-in channel) for a plain one-line explanation
+   of what the toggle does.
+
+Production Checklist:
+  ✅ Transaction Management: N/A (DDL/config change + single UPDATE per
+     toggle click, already how toggle_integration_status worked)
+  ✅ Race Condition Handling: unaffected — same single UPDATE...RETURNING
+     pattern the RPC already used; the two n_jtd_tenant_config upserts
+     are ON CONFLICT DO UPDATE, safe to re-run
+  ✅ Error Handling: unaffected — no exception handling added beyond what
+     the original RPC had; if the new sync step fails, the whole toggle
+     call fails (so the UI shows an error) rather than silently
+     succeeding while sending stays out of sync
+  ✅ Toasts: unaffected — existing toggle UI's error handling
+     (captureException in handleToggleStatus) untouched
+  ✅ Loaders: N/A (toggle switch has no loading state in the existing
+     component; not introduced here either — same as before)
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git fetch origin
+git checkout claude/sprint1b-migration-handoff-5rk8pr
+git pull origin claude/sprint1b-migration-handoff-5rk8pr
+
+Copy-Item "MANUAL_COPY_FILES\builtin-channel-toggle\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+STEP 2: Start Dev Server & Test
+─────────────────────────────────
+cd contractnest-ui && npm run dev
+
+Hard refresh browser: Ctrl+F5
+(The DB migration is already live — nothing to run locally for it.)
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Go to Settings > Integrations for BBB — WhatsApp and Email cards
+      should now show a real toggle switch, both showing OFF/"Disabled
+      for your workspace" (matches today's incident fix)
+- [ ] Go to Settings > Integrations for any OTHER tenant — both cards
+      should show ON/"Active · Powered by ContractNest" (unaffected,
+      default-enabled)
+- [ ] Flip a toggle off/on on a non-BBB test tenant — confirm the badge
+      text and bottom-right text update immediately
+- [ ] After flipping, trigger something that would normally send that
+      channel (e.g. an invitation) — confirm it's actually blocked/sent
+      accordingly (n_jtd row status_code should reflect the new state)
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
