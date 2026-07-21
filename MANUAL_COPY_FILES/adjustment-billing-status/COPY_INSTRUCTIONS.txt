@@ -1,0 +1,113 @@
+═══════════════════════════════════════════════════
+BILLING/INVOICE — "ADJUSTMENT" STATUS (Phase 1 of the mid-cycle-join POA)
+Branch folder: adjustment-billing-status
+Submodules affected: contractnest-edge (DB + edge function, already applied/deployed live), contractnest-ui
+═══════════════════════════════════════════════════
+
+WHAT THIS BATCH DOES
+────────────────────
+Adds a new `adjustment` status for billing events and invoices, mirroring
+the existing `bad_debt` pattern exactly — no new table. This is the
+foundation for the mid-cycle-join proration workflow discussed: when a
+member's fee is split (e.g. 5000 collected this year, 2500 deferred into
+next year's renewal), the deferred slice gets marked `adjustment` instead
+of drifting into `overdue` — distinct from `bad_debt` (gave up collecting)
+because it's an intentional deferral, reconciled by the chair at renewal
+via Add Note (not built yet — separate phase) and manual pricing entry.
+
+DB (already applied live, verified against real BBB data, fully cleaned
+up after testing):
+  - New `adjustment` status added to m_event_status_config /
+    m_event_status_transitions (global template + backfilled to all 157
+    existing tenants via the same seed_event_status_defaults() mechanism
+    new tenants already use — future tenants get it automatically).
+  - cancel_or_writeoff_invoice: new `adjustment` action alongside
+    `cancel`/`bad_debt`.
+  - record_invoice_payment: rejects payment against an adjusted invoice
+    (same as bad_debt/cancelled).
+  - get_contract_invoices: adjustment_count in the summary.
+  - run_contract_event_scanner: won't reuse an adjusted invoice as a
+    target for new billing events.
+
+⚠ TWO REAL PRE-EXISTING BUGS FOUND AND FIXED (not caused by this batch —
+  they broke every existing bad_debt/cancel action too, confirmed live):
+  1. cancel_or_writeoff_invoice inserted into t_contract_history columns
+     that don't exist (new_status/metadata — the real columns are
+     from_status/to_status/changes). Every real "Mark as Bad Debt" /
+     "Cancel Invoice" click has been silently failing and rolling back.
+  2. t_contract_history.action has a fixed CHECK-constraint enum that
+     never included 'invoice_bad_debt' etc. — fixed to use the existing
+     'status_changed' bucket, full detail still captured in `changes`.
+  Both fixed as part of this migration; verified live end-to-end
+  (adjustment marked, payment correctly rejected, summary count correct,
+  audit row written) then fully reverted the test invoice/audit row.
+
+Edge function (contractnest-edge/supabase/functions/contracts/index.ts,
+already deployed live as version 50): widened the cancel-invoice action
+validation from ['cancel','bad_debt'] to also accept 'adjustment'.
+Verified the deployed function's content matches this file byte-for-byte
+before deploying (no drift), and confirmed post-deploy the new action is
+present.
+
+UI (contracts/detail/index.tsx, types/contracts.ts,
+operations/finance/index.tsx):
+  - New "Mark as Adjustment" button next to "Mark as Bad Debt" on each
+    invoice card (same seller/not-paid/not-terminal gate).
+  - Confirm dialog explains the intent ("deferred, reconciled at renewal
+    — not a write-off") rather than reusing the bad-debt copy.
+  - Status badge/border/colors use a distinct indigo (#6366F1) so
+    "Adjusted" doesn't read as an alarm color like Bad Debt/Overdue.
+  - Finance view invoice-status badge: "Adjusted" label, same indigo.
+  - InvoiceStatus / CancelInvoicePayload / CancelInvoiceResponse types
+    widened to include 'adjustment'.
+
+STILL TO COME (separate phases, not in this batch): Add Note on Contract
+View (reusing t_audit_log), completion guard for open billing, the Renew
+action (list + detail page).
+
+FILES IN THIS BATCH
+────────────────────
+  contractnest-edge/supabase/migrations/contracts/062_adjustment_billing_status.sql   (NEW — record of already-applied live migration, includes the 2 bug fixes)
+  contractnest-edge/supabase/functions/contracts/index.ts                            (MODIFIED — already deployed live as v50, record of the change)
+  contractnest-ui/src/types/contracts.ts                                             (MODIFIED — InvoiceStatus + CancelInvoicePayload/Response widened)
+  contractnest-ui/src/pages/contracts/detail/index.tsx                               (MODIFIED — Mark as Adjustment button, status styling, confirm dialog)
+  contractnest-ui/src/pages/operations/finance/index.tsx                             (MODIFIED — Adjusted status badge)
+
+───────────────────────────────────────────────────
+STEP 1: Pull + Copy (PowerShell)
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git fetch origin
+git checkout claude/sprint1b-migration-handoff-5rk8pr
+git pull origin claude/sprint1b-migration-handoff-5rk8pr
+
+Copy-Item "MANUAL_COPY_FILES\adjustment-billing-status\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\adjustment-billing-status\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+───────────────────────────────────────────────────
+STEP 2: Start UI, test
+───────────────────────────────────────────────────
+cd contractnest-ui
+npm run dev
+# Hard refresh: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Open any contract with an unpaid/overdue invoice → Financials tab →
+      invoice card now shows Cancel / Adjustment / Bad Debt buttons
+- [ ] Click "Adjustment" → confirm dialog shows the deferred/carried-
+      forward copy (not the bad-debt write-off copy) → confirm → invoice
+      status flips to "Adjusted" with an indigo badge, balance zeroed
+- [ ] Try to record a payment against that same invoice → correctly
+      rejected ("Invoice is already adjustment")
+- [ ] Operations → Finance → the same invoice shows "Adjusted" label
+- [ ] Regression: "Mark as Bad Debt" and "Cancel Invoice" still work
+      (they were actually broken before this batch's bug fixes — worth
+      specifically confirming they now succeed instead of silently
+      failing)
+
+Phase 2 (commit to submodule main) only after "tested, working".
+═══════════════════════════════════════════════════
