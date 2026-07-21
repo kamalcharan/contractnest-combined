@@ -125,7 +125,7 @@ const HEADER_PATTERNS: Array<{ field: TargetFieldKey; patterns: RegExp[] }> = [
   { field: 'designation', patterns: [/designation/i, /^role$/i, /title/i, /position/i] },
   { field: 'category', patterns: [/category/i, /industry/i, /business\s*type/i, /segment/i] },
   { field: 'tags', patterns: [/^tags?$/i, /labels?/i] },
-  { field: 'member_id', patterns: [/member\s*id/i] },
+  { field: 'member_id', patterns: [/member(?:ship)?\s*id/i, /membership\s*(?:no|number)/i] },
   { field: 'reference', patterns: [/\bid\b/i, /reference/i, /reg\s*no/i, /code/i] },
 ];
 
