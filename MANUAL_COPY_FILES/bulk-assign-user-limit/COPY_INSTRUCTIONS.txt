@@ -1,0 +1,83 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════
+Branch: bulk-assign-user-limit
+Files Changed:
+  - contractnest-ui/src/components/contracts/vani/BulkAssignDialog.tsx - fix member-picker limit
+
+Submodules Affected: contractnest-ui
+
+BUG REPORT: in /catalog-studio/templates-list, "bulk assign" only ever
+showed the same 20 users, even after reopening/reloading.
+
+ROOT CAUSE: BulkAssignDialog.tsx called useContactList({ ..., per_page:
+100, ... } as any). useContactList's ContactFilters type has no
+`per_page` field — only `limit`. The `as any` cast let this typo compile
+silently, so `per_page: 100` was just dropped and no limit was ever sent.
+With no limit param, three separate layers each fell back to their own
+default of 20 (contractnest-ui/src/hooks/useContacts.ts:29,
+contractnest-api/src/controllers/contactController.ts:54/66,
+contractnest-edge/supabase/functions/_shared/contacts/contactService.ts:46)
+— consistently, which is why reopening the dialog kept returning the same
+20 (same default params -> same first page every time).
+
+FIX: renamed `per_page: 100` to `limit: 100` (the field the hook actually
+reads) and dropped the `as any` cast now that the object is fully valid
+against ContactFilters — leaving that cast in place would have hidden the
+exact same class of typo again in the future.
+
+NOTE: the API/edge layers still cap `limit` at 100 (Math.min(limit, 100))
+regardless of what's requested, and BulkAssignDialog has no pagination/
+"load more" UI — it just renders whatever comes back. That's fine for a
+tenant with under 100 assignable contacts; if a tenant ever has more, a
+follow-up would be needed (page size selector or infinite scroll) to see
+everyone. Not addressed here — this batch only fixes the specific
+"same 20 users" bug reported.
+
+Production Checklist:
+  ✅ Transaction Management: N/A (read-only list fetch)
+  ✅ Race Condition Handling: unaffected — useContactList already guards
+     against out-of-order responses via requestIdRef
+  ✅ Error Handling: unaffected — existing error handling in the hook untouched
+  ✅ Toasts: N/A (no new user-facing action, just fixes what's fetched)
+  ✅ Loaders: unaffected — existing `loading` state from the hook untouched
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git fetch origin
+git checkout claude/sprint1b-migration-handoff-5rk8pr
+git pull origin claude/sprint1b-migration-handoff-5rk8pr
+
+STEP 2: Copy Files from MANUAL_COPY_FILES
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\bulk-assign-user-limit\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+STEP 3: Start Dev Server & Test
+─────────────────────────────────
+cd contractnest-ui && npm run dev
+
+Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Go to /catalog-studio/templates-list, open "bulk assign" on a template
+- [ ] Confirm the member list shows more than 20 contacts (up to 100) if
+      the tenant has that many eligible contacts
+- [ ] Search and classification filter still work as before
+- [ ] Select-all-shown / individual selection still work as before
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
