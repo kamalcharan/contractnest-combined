@@ -67,7 +67,7 @@ action (list + detail page).
 
 FILES IN THIS BATCH
 ────────────────────
-  contractnest-edge/supabase/migrations/contracts/062_adjustment_billing_status.sql   (NEW — record of already-applied live migration, includes the 2 bug fixes)
+  contractnest-edge/supabase/migrations/contracts/068_adjustment_billing_status.sql   (NEW — record of already-applied live migration, includes the 2 bug fixes; renumbered from 062, which collides with the still-unmerged sprint4-gst-tax-records batch's 062_invoice_tax_snapshot_and_tax_summary.sql — that batch runs through 067)
   contractnest-edge/supabase/functions/contracts/index.ts                            (MODIFIED — already deployed live as v50, record of the change)
   contractnest-ui/src/types/contracts.ts                                             (MODIFIED — InvoiceStatus + CancelInvoicePayload/Response widened)
   contractnest-ui/src/pages/contracts/detail/index.tsx                               (MODIFIED — Mark as Adjustment button, status styling, confirm dialog)
