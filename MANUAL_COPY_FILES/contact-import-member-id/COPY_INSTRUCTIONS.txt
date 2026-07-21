@@ -1,0 +1,111 @@
+═══════════════════════════════════════════════════
+CONTACT IMPORT — MEMBER ID (via generic external_data JSON)
+Branch folder: contact-import-member-id
+Submodules affected: contractnest-edge (DB — already applied/verified live), contractnest-ui
+═══════════════════════════════════════════════════
+
+WHAT THIS BATCH DOES
+────────────────────
+Prompted by a real BBB B-Hive member roster file with a "Member Id" column
+(e.g. "HYDBHA2750") — an external membership number, distinct from
+ContractNest's own contact ID. Previously this would silently get dumped as
+unstructured text into the contact's `notes` field via the generic
+"Reference Id" mapping. This batch gives it a real, structured home.
+
+Design: a generic `external_data` JSONB column on t_contacts — NOT a
+single-purpose `member_id` column — so future external-system integrations
+(CRM ids, POS customer numbers, etc.) can add new keys with zero schema
+change. Today it holds exactly one key: `member_id`.
+
+Scope, per explicit direction:
+  - Import-only. Not exposed on the create-contact or edit-contact forms —
+    only the import wizard ever writes to it.
+  - Displayed read-only on the contact profile view, in a new generic
+    "External Data" card that iterates whatever keys are present — so any
+    future key shows up automatically without new UI code.
+
+DB (already applied live, verified against BBB data, fully reverted after
+testing):
+  - t_contacts.external_data jsonb DEFAULT '{}'::jsonb (new nullable column).
+  - create_contact_idempotent_v2: now inserts external_data from
+    p_contact_data->'external_data' — the only write path, since import has
+    no update-existing-contact path (confirmed: every import row is always
+    a fresh create call).
+  - get_contact_full_v2: now returns external_data.
+  - update_contact_idempotent_v2 intentionally NOT touched (import-only
+    field, never sent by the edit-contact form).
+  - Verified end-to-end live: created a test contact with
+    external_data: {"member_id": "HYDBHA2750"}, confirmed
+    get_contact_full_v2 returns it, deleted the test contact.
+
+Also fixed in this batch (separate ask, same conversation): when a
+spreadsheet's category text doesn't fuzzy-match any known industry, the
+Category → Industry mapping dropdown now defaults to the existing "Other"
+industry (already in master data, id='other') instead of "— not mapped —".
+Still adjustable by the user before import; previously an unmatched
+category was left unmapped and only noted in `notes` text.
+
+UI (contractnest-ui):
+  - pages/contacts/import/contactsAdapter.ts:
+    * New `member_id` target field, split out of the old catch-all
+      "Reference Id" field (which stayed generic for anything else).
+    * Header auto-detection: a column named "Member Id"/"MemberID"/etc. now
+      maps to the new field instead of "Reference Id".
+    * extractRows/buildContactPayload: captures the column and writes
+      `external_data: { member_id: ... }` on the create payload.
+  - pages/contacts/import/index.tsx: industry-fallback-to-"Other" fix
+    described above (~10 lines in handleToPreview).
+  - hooks/useContacts.ts: `Contact.external_data?: Record<string, string>`.
+  - components/contacts/view/ContactProfileTab.tsx: new read-only
+    "External Data" section (SectionCard, no edit button) below Notes —
+    generic key/value viewer, only rendered when external_data has entries.
+
+FILES IN THIS BATCH
+────────────────────
+  contractnest-edge/supabase/migrations/bbb-foundation/040_contact_external_data.sql   (NEW — record of already-applied live migration)
+  contractnest-ui/src/pages/contacts/import/contactsAdapter.ts                         (MODIFIED — member_id field, payload)
+  contractnest-ui/src/pages/contacts/import/index.tsx                                  (MODIFIED — industry fallback to "Other")
+  contractnest-ui/src/hooks/useContacts.ts                                             (MODIFIED — Contact.external_data type)
+  contractnest-ui/src/components/contacts/view/ContactProfileTab.tsx                   (MODIFIED — new External Data card)
+
+───────────────────────────────────────────────────
+STEP 1: Pull + Copy (PowerShell)
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git fetch origin
+git checkout claude/sprint1b-migration-handoff-5rk8pr
+git pull origin claude/sprint1b-migration-handoff-5rk8pr
+
+Copy-Item "MANUAL_COPY_FILES\contact-import-member-id\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\contact-import-member-id\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+───────────────────────────────────────────────────
+STEP 2: Start UI, test
+───────────────────────────────────────────────────
+cd contractnest-ui
+npm run dev
+# Hard refresh: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Contacts → Import → upload the BBB member list file → Map Columns:
+      the "Member Id" column auto-maps to "Member ID" (not "Reference Id")
+- [ ] Preview step: Category → Industry mapping now defaults unmatched
+      categories (e.g. "Digital Marketing" if it doesn't fuzzy-match) to
+      "Other" instead of "— not mapped —" — still changeable via dropdown
+- [ ] Complete the import
+- [ ] Open one of the imported contacts → profile view shows a new
+      "External Data" section with "Member Id: HYDBHA2750" (read-only,
+      no edit button)
+- [ ] Create a brand-new contact manually (not via import) → confirm there
+      is NO Member ID / External Data field anywhere on the create form
+- [ ] Edit an existing contact (any section) → confirm External Data is
+      not editable and unaffected by the save
+- [ ] Regression: import a file WITHOUT a Member Id column → still works
+      exactly as before (no External Data section appears on those contacts)
+
+Phase 2 (commit to submodule main) only after "tested, working".
+═══════════════════════════════════════════════════
