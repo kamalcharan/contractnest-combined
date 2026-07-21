@@ -1,0 +1,103 @@
+═══════════════════════════════════════════════════
+CONTACT STATUS HARDENING — PHASE 1 (DB only)
+Branch folder: contact-status-hardening
+Submodules affected: contractnest-edge (DB — already applied/verified live)
+═══════════════════════════════════════════════════
+
+WHAT THIS BATCH DOES
+────────────────────
+Phase 1 of the contact-view redesign POA. Replaces the guardrail-free
+status-change path currently used by ProfileDrawer's Active/Inactive
+toggle and Archive button (a bare `UPDATE t_contacts SET status = ...`
+issued straight from edge-function app code — no RPC, no row lock, and
+critically: once a contact hit 'archived' it could NEVER be changed again,
+by anyone, because the code had a hard `IF existing.status === 'archived'
+THEN throw`).
+
+Investigated end-to-end (traced UI hook -> API -> edge function -> DB)
+before building this, per owner's ask to "check the history how archive
+is managed" — findings:
+  - No RPC at all in that path — a bare Supabase client `.update()`.
+  - Only guard: blocks ANY status change on an already-archived contact
+    (so reactivation was structurally impossible, contradicting the
+    intent of having an "Archived" toggle state at all).
+  - Zero dependency checks — a contact with active contracts or unpaid
+    invoices could be archived with no warning.
+  - No real audit trail — a fire-and-forget write to the generic
+    t_audit_logs table wrapped in `.catch(() => {})`; a failure there is
+    invisible.
+  - BUSINESS_RULES restriction banner text ("No new contracts can be
+    created" for inactive contacts, etc.) is purely descriptive — nothing
+    actually enforces it anywhere in the codebase.
+
+New RPC `update_contact_status_v2`, mirroring two already-proven patterns
+in this codebase (`update_contract_status`'s row-locked structured-result
+shape; `delete_service_catalog_item`'s dependency-check-before-archive):
+  - Row-locks the contact (`FOR UPDATE NOWAIT` — fails fast with
+    CONCURRENT_UPDATE instead of hanging on contention).
+  - Owner's explicit decisions (this session): archived -> active IS now
+    allowed (reactivation is user-facing, not permanently blocked or
+    admin-only as the old code enforced) — but archiving IS blocked
+    while the contact has active contracts (status not in
+    cancelled/expired/completed) or unpaid invoices (status not in
+    paid/cancelled/bad_debt/adjustment), checked via the contract's
+    buyer_id OR buyer_contact_person_id. Inactive has no such block —
+    it's a soft pause, not terminal.
+  - Idempotent no-op if already at the requested status.
+  - Real audit entry written INSIDE the same transaction (not a
+    fire-and-forget side call) — a failure there fails the whole
+    operation instead of being silently swallowed.
+
+VERIFIED LIVE (against real BBB data, all test writes reverted, fully
+confirmed back to original state afterward):
+  - Archiving a contact WITH an active contract + unpaid invoice ("D
+    DASARADHI SARMA") was correctly BLOCKED:
+    {"success":false,"code":"DEPENDENCY_EXISTS","error":"Cannot archive:
+    1 active contract(s), 1 unpaid invoice(s)"} — contact status
+    unchanged (confirmed the function's exception-block auto-rollback
+    behavior works correctly too, caught via an unrelated FK-constraint
+    test error, then re-verified clean).
+  - Setting that SAME contact to 'inactive' succeeded (no block) —
+    confirms inactive stays a soft, unrestricted pause.
+  - Archiving a contact with NO active contracts/invoices ("ABHINANDAN
+    DESHMUKH") succeeded.
+  - Reactivating that same now-archived contact back to 'active'
+    succeeded — confirms the old "archived is permanent" bug is fixed.
+  - Audit rows confirmed written correctly for each transition, then
+    the test-induced ones cleaned up (kept the real historical
+    contact.create audit entries untouched).
+
+STILL TO COME (Phase 2, not in this batch — explicitly deferred per
+owner's "do P1 first"): wire contractnest-api + the contacts edge
+function to call this RPC instead of the bare update; UI status dropdown
+in the contact-view header; locking all edit affordances on the page
+when status = 'archived'. Phase 3 (separate, later): remove ProfileDrawer
++ dead code (view.tsx's unreachable archive dialog, index.tsx's
+handleSoftDelete, ContactCockpitPanel.tsx), promote People & Alternates
+to editable, remove the no-op top "Edit" button.
+
+FILES IN THIS BATCH
+────────────────────
+  contractnest-edge/supabase/migrations/bbb-foundation/041_contact_status_v2.sql   (NEW — record of already-applied live migration)
+
+───────────────────────────────────────────────────
+STEP 1: Pull + Copy (PowerShell)
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git fetch origin
+git checkout claude/sprint1b-migration-handoff-5rk8pr
+git pull origin claude/sprint1b-migration-handoff-5rk8pr
+
+Copy-Item "MANUAL_COPY_FILES\contact-status-hardening\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+🧪 NOTHING TO UI-TEST YET
+═══════════════════════════════════════════════════
+This is a DB-only batch — the RPC exists live and is fully verified via
+direct SQL testing above, but nothing in the UI calls it yet (Phase 2).
+No local testing needed for this batch specifically; it's a record of
+already-applied, already-verified DB work. Confirm "tested, working" or
+just say "proceed to Phase 2" when ready.
+═══════════════════════════════════════════════════
