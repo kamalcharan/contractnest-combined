@@ -182,7 +182,7 @@ serve(async (req: Request) => {
       case 'PATCH':
         if (contactId) {
           const statusData = requestBody ? JSON.parse(requestBody) : await req.json();
-          response = await handleUpdateContactStatus(contactService, contactId, statusData, tenantId, isLive, auditLogger);
+          response = await handleUpdateContactStatus(contactService, contactId, statusData, tenantId, isLive, auditLogger, req);
         } else {
           response = new Response(
             JSON.stringify({ error: 'Contact ID required for status update' }),
@@ -611,16 +611,40 @@ async function handleUpdateContact(
   }
 }
 
+// Decodes the caller's own JWT to get the real auth.users id (the 'sub'
+// claim). The contractnest-api layer also forwards a `performed_by` field,
+// but that value is unreliable — its req.user.id ends up holding the
+// t_user_profiles row id instead of the auth id (an object-spread ordering
+// bug in that layer's auth middleware), which fails the
+// t_audit_logs.user_id -> auth.users foreign key. Deriving it here directly
+// from the request's own bearer token sidesteps that entirely — the same
+// approach _shared/audit.ts already uses for its own audit entries.
+function getAuthUserId(req: Request): string | null {
+  try {
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+    const token = authHeader.substring(7);
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = JSON.parse(atob(parts[1]));
+    return payload.sub || null;
+  } catch {
+    return null;
+  }
+}
+
 async function handleUpdateContactStatus(
   contactService: ContactService,
   contactId: string,
   requestData: any,
   tenantId: string,
   isLive: boolean,
-  auditLogger: any
+  auditLogger: any,
+  req: Request
 ): Promise<Response> {
   try {
-    const { status, performed_by, performed_by_name } = requestData;
+    const { status, performed_by_name } = requestData;
+    const performed_by = getAuthUserId(req);
     const validStatuses = ['active', 'inactive', 'archived'];
 
     if (!validStatuses.includes(status)) {

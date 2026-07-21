@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
-  Edit,
   User,
   FileText,
   Building2,
@@ -278,6 +277,19 @@ const ContactViewPage: React.FC = () => {
                 ) : (
                   <User className="h-4 w-4" style={{ color: colors.brand.primary }} />
                 )}
+                {contact.contact_number && (
+                  <span
+                    className="px-2 py-0.5 rounded-md text-xs font-semibold"
+                    style={{
+                      fontFamily: 'ui-monospace, monospace',
+                      backgroundColor: colors.utility.primaryBackground,
+                      color: colors.utility.secondaryText,
+                      border: `1px solid ${colors.utility.primaryText}15`,
+                    }}
+                  >
+                    {contact.contact_number}
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-2 text-sm" style={{ color: colors.utility.secondaryText }}>
                 {primaryEmail && <span>{primaryEmail.value}</span>}
@@ -349,18 +361,6 @@ const ContactViewPage: React.FC = () => {
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Right: Edit */}
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => setActiveTab('profile')}
-            className="px-4 py-2 rounded-lg flex items-center gap-2 transition-colors hover:opacity-80"
-            style={{ backgroundColor: colors.utility.primaryBackground, border: `1px solid ${colors.utility.primaryText}20`, color: colors.utility.primaryText }}
-          >
-            <Edit className="h-4 w-4" />
-            Edit
-          </button>
         </div>
       </header>
 

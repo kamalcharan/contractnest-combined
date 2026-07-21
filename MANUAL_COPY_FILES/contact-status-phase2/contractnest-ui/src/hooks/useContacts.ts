@@ -162,6 +162,7 @@ export interface ContactFilters {
 
 export interface Contact {
   id: string;
+  contact_number?: string;
   type: 'individual' | 'corporate';
   status: 'active' | 'inactive' | 'archived';
   name?: string;

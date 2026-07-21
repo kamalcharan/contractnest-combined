@@ -89,13 +89,50 @@ LAYER-BY-LAYER CHANGES
 
 VERIFICATION DONE SO FAR
 ────────────────────
-  - All 8 touched files pass an esbuild syntax check (no parse errors).
-  - The edge function's 2 changed files were diffed against the exact
-    currently-deployed source (fetched live) before redeploying — only
-    the intended lines differ; the other 5 files in that function were
+  - All touched files pass an esbuild syntax check (no parse errors).
+  - The edge function's changed files were diffed against the exact
+    currently-deployed source (fetched live) before each redeploy — only
+    the intended lines differ; unchanged files in that function were
     redeployed byte-identical to avoid any drift.
   - Edge function `contacts` redeployed live to Supabase project
-    uwyqhzotluikawcboldr.
+    uwyqhzotluikawcboldr (now includes both the RPC wiring and the FK fix
+    below).
+
+FOLLOW-UP FIXES (from first round of live testing on this batch)
+────────────────────
+1. BUG — archiving/deactivating a contact failed with:
+   "insert or update on table t_audit_logs violates foreign key
+   constraint t_audit_logs_user_id_fkey"
+   Root cause: contractnest-api's auth middleware
+   (src/middleware/auth.ts) builds `req.user` as
+   `{ id: user.id, ...response.data }` — and `response.data` (the user's
+   profile row) has its own `id` field (the t_user_profiles row id, always
+   a DIFFERENT uuid from the real auth id), which overwrites `id: user.id`
+   in the spread. So `req.user.id`, which this batch forwarded as
+   `performed_by` all the way down to the RPC's audit insert, was actually
+   the profile-table id — never present in `auth.users`, hence the FK
+   violation. (contact.create audits never hit this because the edge
+   function derives the user id itself from the JWT, bypassing that
+   layer entirely.)
+   FIX (contractnest-edge/supabase/functions/contacts/index.ts only —
+   deliberately NOT touching the shared auth middleware, which many other
+   code paths depend on as-is): `handleUpdateContactStatus` now decodes
+   the caller's own bearer token directly (new local `getAuthUserId()`
+   helper, same technique `_shared/audit.ts` already uses for its own
+   audit entries) instead of trusting the client-forwarded `performed_by`
+   field. Redeployed live.
+2. Added `contact_number` (e.g. "CT-1011") to the `get_contact_full_v2`
+   RPC's response — migration
+   `042_contact_number_in_full_v2.sql`, applied live. The column already
+   existed and is populated via the CONTACT sequence counter on insert;
+   it just wasn't in this RPC's returned JSON yet. Now shown as a small
+   monospace badge next to the contact's name in the view header.
+3. Removed the top-right "Edit" button in the header — per owner
+   feedback it was a no-op (it only called `setActiveTab('profile')`,
+   and the Profile tab — where '`activeTab`' already defaults to — is
+   reachable from the tab bar anyway, with its own working, correctly
+   locking Edit buttons per section). Also dropped the now-unused `Edit`
+   icon import.
 
 STILL TO TEST (this batch, once copied locally)
 ────────────────────
@@ -109,17 +146,19 @@ STILL TO TEST (this batch, once copied locally)
     ActionIsland's Profile/Contract/Email/WhatsApp buttons all disabled).
   - Reactivate that archived contact from the header dropdown — should
     succeed, all edit affordances return.
+  - Header shows the contact's CT-#### number next to their name.
+  - Top-right "Edit" button is gone; Profile tab (with its own per-section
+    Edit buttons) is still reachable from the tab bar as before.
 
 DEFERRED (Phase 3, not in this batch): remove ProfileDrawer entirely and
 fold its unique corporate-contact-persons-editing into ContactProfileTab's
 "People & Alternates" section (making it editable); remove now-genuinely-
 dead code (`pages/contacts/index.tsx`'s `handleSoftDelete`, orphaned
-`ContactCockpitPanel.tsx`); remove the no-op top-right "Edit" button in
-view.tsx's header (now redundant now that Profile tab is always visible
-and its own section-level Edit buttons work/lock correctly).
+`ContactCockpitPanel.tsx`).
 
 FILES IN THIS BATCH
 ────────────────────
+  contractnest-edge/supabase/migrations/bbb-foundation/042_contact_number_in_full_v2.sql   (applied live)
   contractnest-edge/supabase/functions/_shared/contacts/contactService.ts   (deployed live)
   contractnest-edge/supabase/functions/contacts/index.ts                    (deployed live)
   contractnest-api/src/services/contactService.ts
