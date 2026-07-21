@@ -1,0 +1,106 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════
+Branch: bbb-notification-killswitch
+Files Changed:
+  - contractnest-edge/supabase/functions/jtd-worker/index.ts - tenant channel kill switch (deployed live)
+
+Submodules Affected: contractnest-edge (DB config + edge function — already applied/deployed live)
+
+REQUEST: "for BBB tenant - disable all whatsapp and emailid going out" — BBB
+is being used for live/production-adjacent testing and real messages
+should not reach real people while testing.
+
+INVESTIGATION FINDINGS (before making any change):
+  - All outbound WhatsApp and email goes through MSG91, dispatched from a
+    single chokepoint: jtd-worker/index.ts's processMessage(), regardless
+    of which feature enqueued the message (contract signoff, user
+    invitations, payment/invoice notifications all funnel into the same
+    n_jtd queue).
+  - A tenant-level config table already exists for exactly this purpose —
+    n_jtd_tenant_config (is_active, channels_enabled jsonb e.g.
+    {email:true, whatsapp:true}, keyed by tenant_id + is_live) — and the
+    3 enqueue-side callers already check it (isChannelEnabled()) before
+    inserting into the queue. BUT jtd-worker itself NEVER re-checked this
+    config before actually sending — so it blindly dispatched anything
+    already in the queue, and any hypothetical future enqueue path that
+    skipped the per-caller check would bypass the config entirely. No row
+    existed for BBB, so it was implicitly enabled-by-default.
+  - Checked for already-queued messages for BBB (tenant_id
+    dd194710-92b4-4110-80eb-0b492a0d2c1f) before making any change: none
+    pending — 19 emails already had status_code='sent' (delivered earlier
+    today, cannot be recalled; flagging this so it's known, not something
+    this fix can undo).
+
+FIX — two layers, both applied live:
+1. DB config (both environments): inserted n_jtd_tenant_config rows for
+   BBB, is_live=true AND is_live=false, with
+   channels_enabled={"email":false,"whatsapp":false,"sms":false,"push":false,"inapp":true}.
+   This blocks all NEW enqueues from the 3 gated callers immediately.
+2. Code fix (jtd-worker/index.ts, deployed live): added a check in
+   processMessage(), right before the channel dispatch, that re-reads
+   n_jtd_tenant_config for the message's tenant_id + is_live and skips
+   the actual send (deletes from queue, marks failed, archives to DLQ)
+   if the channel is disabled — for 'email' and 'whatsapp' specifically.
+   This is a GENERAL fix (not hardcoded to BBB) — it makes the worker
+   finally honor the config table that already existed for this purpose,
+   for every tenant, closing the gap that layer 1 alone doesn't cover
+   (already-queued messages, or any future enqueue path that skips the
+   per-caller check).
+
+NOTE ON THE DEPLOYED FUNCTION: while preparing this deploy, found that
+the LIVE jtd-worker (before this fix) was already 1 version behind the
+git-committed handlers/sms.ts and handlers/whatsapp.ts — the local
+checkout has a complete, self-consistent country-code-aware mobile
+formatting feature (countryCode param, MSG91 country field) that simply
+hadn't been redeployed yet. Deployed those files as-is alongside this
+fix (verified they're complete/coherent, not a work-in-progress) rather
+than deploying stale versions.
+
+VERIFIED LIVE:
+  - n_jtd_tenant_config: 2 rows for BBB (is_live true/false), channels
+    disabled, confirmed via SELECT after insert.
+  - jtd-worker redeployed; confirmed the new version's source contains
+    the tenant-config check.
+  - No pending WhatsApp/email messages existed for BBB at time of fix.
+
+Production Checklist:
+  ✅ Transaction Management: N/A (config row insert + function deploy,
+     no application-level transaction needed)
+  ✅ Race Condition Handling: N/A (idempotent config check per message)
+  ✅ Error Handling: unaffected — reused the exact same
+     updateJTDStatus/archiveToDLQ/deleteMessage pattern already used for
+     every other failure path in this function
+  ✅ Toasts: N/A (backend-only change, no UI)
+  ✅ Loaders: N/A (backend-only change, no UI)
+
+═══════════════════════════════════════════════════
+💻 NOTHING TO COPY — BACKEND-ONLY, ALREADY LIVE
+═══════════════════════════════════════════════════
+DB config and edge function are both already live. Nothing to copy
+locally to test this specific fix.
+
+═══════════════════════════════════════════════════
+🧪 HOW TO VERIFY
+═══════════════════════════════════════════════════
+- [ ] Trigger something that would normally send BBB a WhatsApp/email
+      (e.g. a contract signoff notification, a user invitation) — the
+      corresponding n_jtd row should end up status_code='failed' with
+      error_message "Blocked: email/whatsapp disabled for this tenant",
+      and no real message should be sent (check MSG91 dashboard /
+      contractnest logs for absence of a send attempt).
+- [ ] In-app notifications for BBB should still work normally (only
+      email + whatsapp were disabled).
+- [ ] Other tenants' notifications should be completely unaffected.
+
+To re-enable later: update the two n_jtd_tenant_config rows for BBB
+(tenant_id dd194710-92b4-4110-80eb-0b492a0d2c1f) back to
+channels_enabled.email=true / .whatsapp=true.
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Confirm this is what you wanted:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
