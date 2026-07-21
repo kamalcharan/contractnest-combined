@@ -1,0 +1,110 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════
+Branch: contract-pdf-date-fixes
+Files Changed:
+  - contractnest-ui/src/components/contracts/ContractWizard/index.tsx - pass startDate to ReviewSendStep
+  - contractnest-ui/src/components/contracts/document/ContractDocument.tsx - use start_date not created_at
+  - contractnest-ui/src/pages/contracts/review/index.tsx - use start_date not created_at
+
+Submodules Affected: contractnest-ui
+
+BUG REPORT: creating a contract via template with start date 1 Apr 2026 /
+end date 31 Mar 2027 showed a preview "Service Agreement" with
+"Effective Date: 21 Jul 2026" (today), "Term: 1 year -> 21 Jul 2027"
+(today+1yr), and "Contract No. Draft — number on save" / "DRAFT —
+AWAITING ACCEPTANCE". The actual saved contract (CN-1020) was correct in
+the DB (start_date 2026-04-01, status active) — this was TWO separate
+bugs in what gets displayed, not a save-time data bug.
+
+BUG 1 — pre-save wizard preview (the one actually reported):
+`ContractWizard/index.tsx`'s `case 'review':` render passes a long list
+of props to `<ReviewSendStep>` but never included `startDate`, even
+though `wizardState.startDate` holds the correct picked date at that
+point (it's already threaded to ServiceBlocksStep and EventsPreviewStep
+earlier in the same file — just dropped here). Inside ReviewSendStep,
+the missing prop silently defaulted to `new Date()` (today) for both the
+document preview's effective date/term math and the on-page timeline.
+The "Draft — number on save" / "DRAFT — AWAITING ACCEPTANCE" markers are
+CORRECT as-is — there's genuinely no contract number yet at the preview
+stage, before final save.
+FIX: added `startDate={wizardState.startDate}` to the ReviewSendStep call.
+
+BUG 2 — separate, pre-existing bug affecting ALREADY-SAVED contracts:
+The buyer-facing contract review/PDF page (`pages/contracts/review/index.tsx`,
+reached via a CNAK magic link) and its shared renderer
+(`ContractDocument.tsx`'s `buildDocFromSavedContract`) both computed the
+displayed "start date" from `created_at` (when the DB row was inserted)
+instead of `start_date` (the contract's actual agreed start) — for BOTH
+the "Contract Duration: {date} -> {date}" range shown on the page AND the
+same field baked into the exported PDF. This is independent of the
+wizard bug above and would show wrong dates any time someone views/
+downloads the PDF for an already-saved contract whose start date differs
+from when it was created in the system.
+Root cause: the backend already returns `start_date` correctly (verified
+via the `get_contract_by_id` RPC and the public-validate response) — the
+frontend's `FullContractData`/`SavedContractDocInput` TypeScript
+interfaces simply never declared the field, so it was silently ignored
+even though present in the payload.
+FIX: added `start_date` to both interfaces; `buildDocFromSavedContract`
+now reads `c.start_date || c.created_at` (defensive fallback for any
+legacy row that somehow lacks it); split the review page's single
+`startDate` variable into `createdDate` (created_at — used only for the
+"· Created {date}" byline, which is correctly about record creation) and
+`startDate` (now start_date — used for the "Contract Duration" range and
+the PDF's effective date/term, which is correctly about the contract's
+actual term).
+
+Production Checklist:
+  ✅ Transaction Management: N/A (display-only fix, no writes)
+  ✅ Race Condition Handling: N/A
+  ✅ Error Handling: unaffected — defensive `|| c.created_at` /
+     `|| contract.created_at` fallbacks kept in case start_date is ever
+     null on an old row
+  ✅ Toasts: N/A (no new user-facing action)
+  ✅ Loaders: N/A (no new async operation)
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git fetch origin
+git checkout claude/sprint1b-migration-handoff-5rk8pr
+git pull origin claude/sprint1b-migration-handoff-5rk8pr
+
+STEP 2: Copy Files from MANUAL_COPY_FILES
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\contract-pdf-date-fixes\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+STEP 3: Start Dev Server & Test
+─────────────────────────────────
+cd contractnest-ui && npm run dev
+
+Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Create a contract via template, picking a start date NOT today
+      (e.g. 1 Apr 2026) — the Review/Send preview step should now show
+      the real picked effective date and correct term range, not today's
+      date
+- [ ] Open the buyer-facing review/PDF link (CNAK) for an ALREADY-SAVED
+      contract whose start date differs from its creation date — the
+      "Contract Duration" range and the exported PDF's Effective
+      Date/Term should now reflect the real start_date
+- [ ] Same page's "· Created {date}" byline should still show the
+      record's actual creation date, unchanged
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
