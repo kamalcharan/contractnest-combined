@@ -1,0 +1,197 @@
+═══════════════════════════════════════════════════
+CONTACT STATUS HARDENING — PHASE 2 (wiring + UI)
+Branch folder: contact-status-phase2
+Submodules affected: contractnest-edge (already deployed live),
+                      contractnest-api, contractnest-ui
+═══════════════════════════════════════════════════
+
+WHAT THIS BATCH DOES
+────────────────────
+Phase 2 of the contact-view redesign POA. Wires the `update_contact_status_v2`
+RPC (Phase 1, already live — see contact-status-hardening batch) through
+every layer, replacing the old guardrail-free bare `.update()` call, and
+builds the real interactive status control in the contact-view header.
+
+Per owner's explicit decision this session ("reactive can be user-facing,
+its not a problem, onlything is, when archived - nothing is editable"):
+  - The header status control stays ACTIVE/CLICKABLE at all times, including
+    on an archived contact — that's the only way to reactivate it.
+  - Every other edit affordance on the page is now LOCKED when
+    status === 'archived': all 6 editable sections in the Profile tab
+    (Identity, Contact Channels, Tags & Roles, Addresses, Compliance,
+    Notes — People & Alternates was already read-only, untouched), plus
+    the ActionIsland's "Profile" button (which opens ProfileDrawer, a
+    second editor for the same fields — disabling it closes that
+    back-door instead of leaving the lock half-enforced). The
+    ActionIsland's Contract/Email/WhatsApp buttons were ALREADY disabled
+    on archived contacts (pre-existing `isDisabled` logic) — no change
+    needed there.
+
+LAYER-BY-LAYER CHANGES
+────────────────────
+1. contractnest-edge (DEPLOYED LIVE — `contacts` edge function redeployed
+   on top of v65 with only the 2 files below changed; the other 5 files
+   in that function were redeployed byte-identical, verified by diffing
+   against the live source before redeploying):
+   - _shared/contacts/contactService.ts: `updateContactStatus()` rewritten
+     to call the `update_contact_status_v2` RPC (row-locked, dependency
+     checks, real audit row, allows archived->active) instead of the old
+     bare `.update()` that had none of those guardrails and permanently
+     blocked leaving 'archived'. On RPC failure, returns the structured
+     result as-is (code/dependencies intact) instead of throwing a flat
+     Error — lets the HTTP layer map it to the right status code.
+   - contacts/index.ts (`handleUpdateContactStatus`): now reads
+     `performed_by`/`performed_by_name` from the request, checks
+     `result.success`, and maps RECORD_NOT_FOUND->404,
+     DEPENDENCY_EXISTS/CONCURRENT_UPDATE->409, else 400. Removed the old
+     fire-and-forget `auditLogger.log(...).catch(() => {})` call — the RPC
+     already writes a real audit row inside its own transaction, so the
+     old side-call was redundant and silently swallowed failures.
+
+2. contractnest-api:
+   - src/services/contactService.ts: `updateContactStatus()` signature
+     extended with `userId`/`userName`, forwarded to the edge function as
+     `performed_by`/`performed_by_name`. `transformForFrontend()`'s error
+     branch now also passes through `dependencies` so the UI can show the
+     specific "N active contract(s), M unpaid invoice(s)" count.
+   - src/controllers/contactController.ts: `updateContactStatus` now reads
+     `req.user?.id` / `req.user?.name || req.user?.email` and passes them
+     through; failure status-code mapping expanded to include
+     RECORD_NOT_FOUND (404) and DEPENDENCY_EXISTS/CONCURRENT_UPDATE (409)
+     (previously only had a generic 400 path).
+
+3. contractnest-ui:
+   - hooks/useContacts.ts (`useUpdateContactStatus`): on a failed response,
+     the thrown Error now carries `.code` and `.dependencies` (previously
+     just a message string) so the page can distinguish a dependency block
+     from any other failure.
+   - pages/contacts/view.tsx:
+     * Header status badge replaced with a real dropdown (Active/Inactive/
+       Archived, current value checked) — click opens a small menu;
+       picking a different status either calls the update directly
+       (active/inactive) or opens the existing (previously unreachable)
+       Archive confirmation dialog first.
+     * `handleStatusUpdate` now shows a toast on both success and failure,
+       surfacing the exact "Cannot archive: N active contract(s), M unpaid
+       invoice(s)" message from the RPC when `err.code === 'DEPENDENCY_EXISTS'`.
+     * `<ContactProfileTab>` now receives `readOnly={contact.status === 'archived'}`.
+   - components/contacts/view/ContactProfileTab.tsx: new `readOnly` prop.
+     Each of the 6 editable SectionCards now gets its `onEdit` handler via
+     a new `editHandler()` helper that returns `undefined` when readOnly —
+     this both prevents entering edit mode AND hides the section's "Edit"
+     button entirely (SectionCard only renders it when `onEdit` is truthy).
+   - components/contacts/cockpit/ActionIsland.tsx: the "Profile" button
+     (opens ProfileDrawer — a second, overlapping editor for the same
+     contact fields) now gets `disabled={isDisabled}` like the other
+     buttons in this component already had (`isDisabled` = contact is
+     archived) — closes the one remaining path to edit an archived
+     contact's data.
+
+VERIFICATION DONE SO FAR
+────────────────────
+  - All 8 touched files pass an esbuild syntax check (no parse errors).
+  - The edge function's 2 changed files were diffed against the exact
+    currently-deployed source (fetched live) before redeploying — only
+    the intended lines differ; the other 5 files in that function were
+    redeployed byte-identical to avoid any drift.
+  - Edge function `contacts` redeployed live to Supabase project
+    uwyqhzotluikawcboldr.
+
+STILL TO TEST (this batch, once copied locally)
+────────────────────
+  - Status dropdown: change active -> inactive -> active on a contact with
+    no obligations — should succeed silently with a toast each time.
+  - Archive a contact with an active contract or unpaid invoice — should
+    show a toast with the specific blocked-count message, contact stays
+    active.
+  - Archive a contact with none of those — should succeed; page should
+    immediately lock (all "Edit" buttons on Profile tab disappear,
+    ActionIsland's Profile/Contract/Email/WhatsApp buttons all disabled).
+  - Reactivate that archived contact from the header dropdown — should
+    succeed, all edit affordances return.
+
+DEFERRED (Phase 3, not in this batch): remove ProfileDrawer entirely and
+fold its unique corporate-contact-persons-editing into ContactProfileTab's
+"People & Alternates" section (making it editable); remove now-genuinely-
+dead code (`pages/contacts/index.tsx`'s `handleSoftDelete`, orphaned
+`ContactCockpitPanel.tsx`); remove the no-op top-right "Edit" button in
+view.tsx's header (now redundant now that Profile tab is always visible
+and its own section-level Edit buttons work/lock correctly).
+
+FILES IN THIS BATCH
+────────────────────
+  contractnest-edge/supabase/functions/_shared/contacts/contactService.ts   (deployed live)
+  contractnest-edge/supabase/functions/contacts/index.ts                    (deployed live)
+  contractnest-api/src/services/contactService.ts
+  contractnest-api/src/controllers/contactController.ts
+  contractnest-ui/src/hooks/useContacts.ts
+  contractnest-ui/src/pages/contacts/view.tsx
+  contractnest-ui/src/components/contacts/view/ContactProfileTab.tsx
+  contractnest-ui/src/components/contacts/cockpit/ActionIsland.tsx
+
+NOTE ON BASE FILES: contractnest-ui/src/hooks/useContacts.ts and
+contractnest-ui/src/components/contacts/view/ContactProfileTab.tsx in this
+batch are based on the copies from the earlier contact-import-member-id
+batch (which you should already have copied in) — they include that
+batch's changes (external_data field / External Data card) PLUS this
+batch's changes on top. Copying this batch over your working tree is safe
+either way (freshly cloned or already has contact-import-member-id applied).
+
+───────────────────────────────────────────────────
+STEP 1: Pull + Copy (PowerShell)
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git fetch origin
+git checkout claude/sprint1b-migration-handoff-5rk8pr
+git pull origin claude/sprint1b-migration-handoff-5rk8pr
+
+Copy-Item "MANUAL_COPY_FILES\contact-status-phase2\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\contact-status-phase2\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\contact-status-phase2\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+STEP 2: Start Dev Servers & Test
+─────────────────────────────────
+cd contractnest-ui
+npm run dev
+
+cd ../contractnest-api
+npm run dev
+
+Hard refresh browser: Ctrl+F5
+(The edge function is already deployed live — no local edge setup needed
+to test this batch.)
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Open any active contact — status badge in header shows a dropdown
+      chevron; clicking it shows Active/Inactive/Archived with a
+      checkmark on the current one.
+- [ ] Switch active -> inactive: succeeds, toast confirms, badge updates.
+- [ ] Switch inactive -> active: succeeds, toast confirms.
+- [ ] Try to archive a contact that has an active contract or unpaid
+      invoice (e.g. one with a live contract): should show a red toast
+      with the specific "Cannot archive: N active contract(s), M unpaid
+      invoice(s)" message; status stays unchanged.
+- [ ] Archive a contact with no active contracts/invoices: succeeds.
+      Immediately after — every "Edit" button on the Profile tab
+      (Identity, Contact Channels, Tags & Roles, Addresses, Compliance,
+      Notes) should be GONE. The floating ActionIsland's Profile,
+      Contract, Email, WhatsApp buttons should all be visibly disabled.
+- [ ] From the archived contact, reopen the header status dropdown and
+      pick "Active" — should reactivate immediately (no confirmation
+      dialog, per the "reactivate is user-facing, not a problem"
+      decision), toast confirms, all Edit buttons and ActionIsland
+      buttons reappear/re-enable.
+- [ ] Confirm People & Alternates section has no Edit button regardless
+      of status (unchanged — was already read-only before this batch).
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
