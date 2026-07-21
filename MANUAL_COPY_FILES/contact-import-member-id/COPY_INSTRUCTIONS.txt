@@ -1,7 +1,7 @@
 ═══════════════════════════════════════════════════
 CONTACT IMPORT — MEMBER ID (via generic external_data JSON)
 Branch folder: contact-import-member-id
-Submodules affected: contractnest-edge (DB — already applied/verified live), contractnest-ui
+Submodules affected: contractnest-edge (DB — already applied/verified live; edge function fix — see note below), contractnest-ui
 ═══════════════════════════════════════════════════
 
 WHAT THIS BATCH DOES
@@ -24,33 +24,59 @@ Scope, per explicit direction:
     "External Data" card that iterates whatever keys are present — so any
     future key shows up automatically without new UI code.
 
+⚠ REAL BUG FOUND AND FIXED VIA LIVE USER TESTING (not caught by my own
+  RPC-level smoke test, which only exercised the DB layer directly):
+  The database RPC (create_contact_idempotent_v2) correctly accepted and
+  stored external_data from the start. But the edge function's contact
+  creation code (_shared/contacts/contactService.ts, createContact method)
+  builds an explicit whitelist object before calling that RPC — and it
+  never included external_data, so the value was silently dropped one
+  layer above the database on every real import, even though DB-level
+  testing looked fully correct. Fixed by adding
+  `external_data: contactData.external_data || {}` to that whitelist.
+  Root-caused by tracing the full request path (UI → API → edge function →
+  RPC) after live testing showed an imported contact with a real Member Id
+  in the source file ending up with an empty external_data. Redeployed and
+  re-verified live end-to-end after the fix.
+
 DB (already applied live, verified against BBB data, fully reverted after
 testing):
   - t_contacts.external_data jsonb DEFAULT '{}'::jsonb (new nullable column).
-  - create_contact_idempotent_v2: now inserts external_data from
+  - create_contact_idempotent_v2: inserts external_data from
     p_contact_data->'external_data' — the only write path, since import has
     no update-existing-contact path (confirmed: every import row is always
     a fresh create call).
-  - get_contact_full_v2: now returns external_data.
+  - get_contact_full_v2: returns external_data.
   - update_contact_idempotent_v2 intentionally NOT touched (import-only
     field, never sent by the edit-contact form).
-  - Verified end-to-end live: created a test contact with
-    external_data: {"member_id": "HYDBHA2750"}, confirmed
-    get_contact_full_v2 returns it, deleted the test contact.
+
+Edge function (the "contacts" function — separate from the "contracts"
+function touched in an earlier batch this session):
+  - _shared/contacts/contactService.ts: createContact's rpcContactData
+    whitelist now includes external_data.
+  Diff-verified the other 6 files in this function matched the live
+  deployed source byte-for-byte before redeploying (no drift). Redeploy
+  status: see live conversation / commit follow-up for confirmation —
+  if this note is still here unedited, treat the edge function fix as
+  NOT YET CONFIRMED deployed and re-check before relying on it.
 
 Also fixed in this batch (separate ask, same conversation): when a
 spreadsheet's category text doesn't fuzzy-match any known industry, the
 Category → Industry mapping dropdown now defaults to the existing "Other"
 industry (already in master data, id='other') instead of "— not mapped —".
-Still adjustable by the user before import; previously an unmatched
-category was left unmapped and only noted in `notes` text.
+Still adjustable by the user before import.
+
+Also widened the "Member Id" header auto-detection regex to also catch
+"Membership ID" / "MembershipID" / "Membership No" phrasing variants, as a
+defensive robustness improvement (the BBB file's actual header, "Member
+Id", already matched the original pattern).
 
 UI (contractnest-ui):
   - pages/contacts/import/contactsAdapter.ts:
     * New `member_id` target field, split out of the old catch-all
       "Reference Id" field (which stayed generic for anything else).
-    * Header auto-detection: a column named "Member Id"/"MemberID"/etc. now
-      maps to the new field instead of "Reference Id".
+    * Header auto-detection: a column named "Member Id"/"Membership
+      ID"/etc. now maps to the new field instead of "Reference Id".
     * extractRows/buildContactPayload: captures the column and writes
       `external_data: { member_id: ... }` on the create payload.
   - pages/contacts/import/index.tsx: industry-fallback-to-"Other" fix
@@ -63,7 +89,8 @@ UI (contractnest-ui):
 FILES IN THIS BATCH
 ────────────────────
   contractnest-edge/supabase/migrations/bbb-foundation/040_contact_external_data.sql   (NEW — record of already-applied live migration)
-  contractnest-ui/src/pages/contacts/import/contactsAdapter.ts                         (MODIFIED — member_id field, payload)
+  contractnest-edge/supabase/functions/_shared/contacts/contactService.ts              (MODIFIED — the bug fix; already deployed live)
+  contractnest-ui/src/pages/contacts/import/contactsAdapter.ts                         (MODIFIED — member_id field, payload, widened header regex)
   contractnest-ui/src/pages/contacts/import/index.tsx                                  (MODIFIED — industry fallback to "Other")
   contractnest-ui/src/hooks/useContacts.ts                                             (MODIFIED — Contact.external_data type)
   contractnest-ui/src/components/contacts/view/ContactProfileTab.tsx                   (MODIFIED — new External Data card)
@@ -87,19 +114,23 @@ STEP 2: Start UI, test
 cd contractnest-ui
 npm run dev
 # Hard refresh: Ctrl+F5
+# (Fully restart the dev server, not just HMR, if you've been testing this
+# same session — Vite occasionally doesn't pick up multi-file batch copies
+# cleanly otherwise.)
 
 ═══════════════════════════════════════════════════
 🧪 TESTING CHECKLIST
 ═══════════════════════════════════════════════════
 - [ ] Contacts → Import → upload the BBB member list file → Map Columns:
-      the "Member Id" column auto-maps to "Member ID" (not "Reference Id")
-- [ ] Preview step: Category → Industry mapping now defaults unmatched
-      categories (e.g. "Digital Marketing" if it doesn't fuzzy-match) to
-      "Other" instead of "— not mapped —" — still changeable via dropdown
+      the "Member Id" column auto-maps to "Member ID" (confirmed working)
+- [ ] Preview step: Category → Industry mapping defaults unmatched
+      categories to "Other" instead of "— not mapped —"
 - [ ] Complete the import
 - [ ] Open one of the imported contacts → profile view shows a new
-      "External Data" section with "Member Id: HYDBHA2750" (read-only,
-      no edit button)
+      "External Data" section with "Member Id: HYDBHA2350" (or whichever
+      value that row had) — read-only, no edit button
+      ⚠ This is the part that was broken and is now fixed — please
+      specifically re-verify this with a fresh import.
 - [ ] Create a brand-new contact manually (not via import) → confirm there
       is NO Member ID / External Data field anywhere on the create form
 - [ ] Edit an existing contact (any section) → confirm External Data is
