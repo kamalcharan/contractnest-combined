@@ -1,0 +1,109 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════
+Branch: bbb-contact-risk-mitigation
+Files Changed:
+  - contractnest-edge/supabase/migrations/bbb-foundation/044_bbb_contact_risk_mitigation.sql (applied live)
+
+Submodules Affected: contractnest-edge (DB only — already applied/verified live)
+
+REQUEST: extra defense-in-depth after today's incident — corrupt every
+stored mobile number and email address for BBB so that even if a future
+bug bypasses every send-blocking layer built earlier today
+(n_jtd_tenant_config, jtd-worker guardrails, the new Settings >
+Integrations toggle), an accidental send would fail to reach a real
+inbox/phone instead of actually landing.
+
+SCOPE (owner-confirmed): BOTH environments (test and live) — not just
+test. Reversible — originals preserved, not a one-way overwrite.
+
+BEFORE CORRUPTING: checked whether `t_contracts.buyer_email` /
+`buyer_phone` (a snapshot field some notification code paths read before
+falling back to a live contact-channel lookup — confirmed via
+`contracts/index.ts:859-860`) needed the same treatment. BBB's only
+contract has both empty, so nothing to corrupt there — t_contact_channels
+is the canonical source every path ultimately falls back to, and is a
+complete fix for this tenant's current data.
+
+TRANSFORMATION: appends the value's own last character twice — matches
+your example verbatim ("gmail.com" -> "gmail.commm": last char of "com"
+is "m", appended twice). Same rule on a mobile number adds 2 digits
+(e.g. "...950" -> "...95000"). One consistent rule for both.
+
+REVERSIBILITY: new table `t_contact_channel_risk_backup` stores every
+original value before it was overwritten (channel_id, original_value,
+corrupted_value, timestamps). The migration file's bottom comment has
+the exact reverse-UPDATE to run when BBB is confirmed ready for real
+messaging again — nothing to write from scratch later.
+
+VERIFIED LIVE:
+  - 104 t_contact_channels rows corrupted (51 email + 51... actually 53
+    mobile + 51 email = 104), all for BBB, all is_live=false (BBB
+    currently has no is_live=true contacts yet — the fix applies to both
+    environments by not filtering on is_live at all, so it'll cover any
+    live contacts BBB adds later too, automatically, next time this
+    migration or a similar backfill runs — NOTE: this migration is a
+    ONE-TIME pass over data that existed at run time; it does NOT
+    protect contacts added to BBB after today. See "STILL AT RISK" below.
+  - Spot-checked sample rows: e.g. "adithya.gifting@gmail.commm",
+    "balak29@gmail.commm", mobiles with 2 extra trailing digits.
+  - 104 backup rows confirmed in t_contact_channel_risk_backup, all
+    restored_at IS NULL (nothing reversed yet).
+
+STILL AT RISK / NOT COVERED BY THIS BATCH:
+  - Any NEW contact added to BBB after this migration ran will have its
+    real mobile/email, uncorrupted, unless this migration (or an
+    equivalent) is re-run. The migration is idempotent (safe to re-run —
+    it skips anything already backed up) but is NOT automatic; nothing
+    watches for new BBB contacts and corrupts them on insert.
+  - Any snapshot-style contact fields on OTHER tables (invoices, service
+    tickets, appointments) were not audited beyond the two confirmed
+    JTD-enqueue paths (contract signoff, payment request) checked today
+    — payment-gateway's `customer.email`/`customer.contact` traces back
+    to Razorpay's own customer object, which is external to this
+    database and outside what a DB-level fix here can reach.
+  - This is a data-corruption safety net, not a replacement for the
+    actual send-blocking already in place (n_jtd_tenant_config +
+    jtd-worker + Integrations toggle) — those remain the primary control.
+
+Production Checklist:
+  ✅ Transaction Management: N/A (single CTE-based INSERT+UPDATE, applied
+     as one atomic migration statement)
+  ✅ Race Condition Handling: N/A (one-time admin data operation)
+  ✅ Error Handling: N/A (no application code changed)
+  ✅ Toasts: N/A (no UI change)
+  ✅ Loaders: N/A (no UI change)
+
+═══════════════════════════════════════════════════
+💻 NOTHING TO COPY — DB-ONLY, ALREADY LIVE
+═══════════════════════════════════════════════════
+This is a one-time live data operation, already applied and verified.
+Nothing to copy into contractnest-edge locally.
+
+═══════════════════════════════════════════════════
+🧪 HOW TO VERIFY / REVERSE LATER
+═══════════════════════════════════════════════════
+- [ ] Open a BBB contact's profile — mobile/email fields should now show
+      the corrupted (invalid) values.
+- [ ] When ready to reverse: run the UPDATE at the bottom of
+      044_bbb_contact_risk_mitigation.sql (also copied below for
+      convenience):
+
+UPDATE t_contact_channels ch
+SET value = b.original_value, updated_at = now()
+FROM t_contact_channel_risk_backup b
+WHERE ch.id = b.channel_id
+  AND b.tenant_id = 'dd194710-92b4-4110-80eb-0b492a0d2c1f'
+  AND b.restored_at IS NULL;
+
+UPDATE t_contact_channel_risk_backup
+SET restored_at = now()
+WHERE tenant_id = 'dd194710-92b4-4110-80eb-0b492a0d2c1f' AND restored_at IS NULL;
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Confirm this matches what you wanted:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
