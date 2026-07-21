@@ -299,6 +299,19 @@ async function processMessage(msg: JTDQueueMessage): Promise<void> {
 
     console.log(`Processing JTD ${jtd_id} - ${source_type_code} via ${channel_code} (retry ${jtdRecord.retry_count}/${maxRetries})`);
 
+    // Global test-environment guardrail: TEST-env (is_live=false) records
+    // often carry real people's contact details (imported/seeded test
+    // data), so a test-environment action must never actually message a
+    // real inbox — regardless of tenant config. Unconditional, applies to
+    // every tenant, independent of the per-tenant check below.
+    if (jtdRecord.is_live === false && (channel_code === 'email' || channel_code === 'whatsapp')) {
+      console.log(`JTD ${jtd_id} blocked: TEST environment never sends real ${channel_code}`);
+      await deleteMessage(msg.msg_id);
+      await updateJTDStatus(jtd_id, 'failed', undefined, `Blocked: TEST environment does not send real ${channel_code}`, true);
+      await archiveToDLQ(msg.msg_id, `Blocked: TEST environment does not send real ${channel_code}`);
+      return;
+    }
+
     // Tenant-level channel kill switch. n_jtd_tenant_config already exists
     // for exactly this (is_active / channels_enabled), and the three
     // enqueue-side callers check it before inserting into n_jtd — but this

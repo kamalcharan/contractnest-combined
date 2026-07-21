@@ -3,9 +3,25 @@
 ═══════════════════════════════════════════════════
 Branch: bbb-notification-killswitch
 Files Changed:
-  - contractnest-edge/supabase/functions/jtd-worker/index.ts - tenant channel kill switch (deployed live)
+  - contractnest-edge/supabase/functions/jtd-worker/index.ts - tenant channel kill switch + global TEST-env guardrail (deployed live)
 
 Submodules Affected: contractnest-edge (DB config + edge function — already applied/deployed live)
+
+FOLLOW-UP (same day, urgent): after the BBB-scoped fix below shipped,
+real test-environment emails kept alarming recipients — traced to the
+SAME 19 rows sent before this fix even existed (verified via n_jtd:
+nothing new had hit the queue in the prior 20 minutes at the time of the
+follow-up), not a live ongoing leak. Recipients reacting to messages
+already sent isn't fixable after the fact, but to make the underlying
+risk impossible going forward (test data — imported/seeded rosters —
+routinely carries real people's contact info that must NEVER actually be
+messaged), added a second, GLOBAL guardrail in the same jtd-worker
+processMessage(): any queue record with is_live=false is blocked from
+email/whatsapp dispatch unconditionally, for every tenant, independent
+of the per-tenant n_jtd_tenant_config check. Deployed as jtd-worker v24.
+Also confirmed while investigating: the "dead" sendInvitationEmail/
+sendInvitationWhatsApp functions in user-invitations/index.ts have zero
+call sites anywhere in the codebase — ruled out as a bypass path.
 
 REQUEST: "for BBB tenant - disable all whatsapp and emailid going out" — BBB
 is being used for live/production-adjacent testing and real messages
