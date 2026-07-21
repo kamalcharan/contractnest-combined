@@ -1,0 +1,174 @@
+═══════════════════════════════════════════════════
+CONTRACT-LEVEL CREDIT & DEPOSIT (replaces invoice-level "Mark as Adjustment")
+Branch folder: contract-credit-deposit
+Submodules affected: contractnest-edge (DB — already applied/verified live;
+  edge function — written, NOT yet deployed), contractnest-api, contractnest-ui
+═══════════════════════════════════════════════════
+
+WHAT THIS BATCH DOES
+────────────────────
+Replaces the invoice-level "Mark as Adjustment" flow (shipped in the
+adjustment-billing-status batch) with contract-level Credit and Deposit,
+per live user testing that found the invoice-level flow zeroed the ENTIRE
+remaining balance instead of carving out a specific partial amount.
+
+Credit: a specific amount + reason captured on a contract that's ending
+(e.g. mid-cycle-join proration — 3000 of this year's fee is really an
+advance for next year). Lives as plain columns on t_contracts (same
+pattern as discount_type/discount_value/discount_total), not a new table.
+Lifecycle: pending -> applied. Applying it to a later contract for the
+same buyer is a MANUAL action (no Renew feature exists yet) — the tenant
+opens the buyer's next contract and applies a pending credit from there.
+Does NOT retroactively adjust invoices/billing events already generated
+on the target contract — apply before those exist for a clean result
+(consistent with the platform's "no system-invented proration" rule).
+
+Deposit: a security deposit the SELLER holds against this contract
+(regulated industries), reclaimed once the contract closes. Also plain
+columns on t_contracts. Lifecycle: held -> reclaimed. Distinct from the
+existing unused buyer-side requiresDeposit field.
+
+DB (already applied live, verified against real BBB data — set/apply
+credit, set/reclaim deposit all smoke-tested end to end, then fully
+reverted; see 069_contract_credit_deposit.sql for the exact schema +
+5 new RPCs + get_contract_by_id Part D extension):
+  - t_contracts: 12 new nullable columns (credit_amount, credit_reason,
+    credit_status, credit_created_at, credit_applied_to_contract_id,
+    credit_applied_at, credit_received_amount,
+    credit_received_from_contract_id, deposit_amount, deposit_status,
+    deposit_created_at, deposit_reclaimed_at) + 2 CHECK constraints.
+  - set_contract_credit, find_buyer_pending_credits,
+    apply_buyer_credit_to_contract, set_contract_deposit,
+    reclaim_contract_deposit (new RPCs).
+  - get_contract_by_id: new Part D jsonb block returning the credit/
+    deposit fields — rest of the function preserved byte-identical.
+
+Edge function (contractnest-edge/supabase/functions/contracts/index.ts):
+  WRITTEN but NOT YET DEPLOYED — new routes only, purely additive, diffed
+  clean against the live deployed version (v50):
+    POST /contracts/{id}/credit          -> set_contract_credit
+    GET  /contracts/credit-pending       -> find_buyer_pending_credits
+    POST /contracts/{id}/credit/apply    -> apply_buyer_credit_to_contract
+    POST /contracts/{id}/deposit         -> set_contract_deposit
+    POST /contracts/{id}/deposit/reclaim -> reclaim_contract_deposit
+  ⚠ Until this is deployed, the new UI buttons below will fail (the API
+  will 404/error reaching these routes). Say the word when you want it
+  deployed — it's a single additive redeploy, already diff-verified.
+
+contractnest-api (proxy layer to the edge function — new routes/
+controller/service methods only, mirrors the existing cancelInvoice
+pattern):
+  POST /api/contracts/:id/credit, /api/contracts/credit-pending,
+  POST /api/contracts/:id/credit/apply, POST /api/contracts/:id/deposit,
+  POST /api/contracts/:id/deposit/reclaim.
+  (Note: GET /credit-pending is registered BEFORE GET /:id in the route
+  file — otherwise Express would match "credit-pending" as the :id param.)
+
+UI (contractnest-ui):
+  - types/contracts.ts: Contract interface extended with all credit/
+    deposit fields; new SetContractCreditPayload/SetContractDepositPayload/
+    BuyerPendingCredit/ApplyBuyerCreditPayload/Response types.
+  - services/serviceURLs.ts: 5 new endpoint builders under CONTRACTS.
+  - hooks/queries/useContractCreditDeposit.ts (NEW): useSetContractCredit,
+    useBuyerPendingCredits, useApplyBuyerCredit, useSetContractDeposit,
+    useReclaimContractDeposit — TanStack Query hooks mirroring
+    useCancelInvoice's pattern, invalidate contract detail on success.
+  - hooks/useNeedsAttention.ts: 3 new info cards in evaluateActiveContract
+    — "Credit Set Aside" (pending), "Credit Applied" (received from a
+    prior contract), "Security Deposit Held" — surfaced on the Overview
+    tab's Needs Attention panel with amount + reason, no new action
+    wiring needed (info-only cards, same pattern as the existing Service/
+    Financial Track summaries).
+  - pages/contracts/detail/index.tsx:
+    * REMOVED the old "Mark as Adjustment" invoice-card button, its
+      confirm-dialog branch, and all isAdjustment prop plumbing on
+      InvoiceCard (Cancel / Bad Debt buttons untouched). The 'adjustment'
+      invoice status/badge display itself is left in place (DB-level,
+      harmless, no longer reachable from this UI).
+    * NEW CreditDepositCard component, added to the Financials tab's
+      right sidebar (alongside Financial Health): shows/applies a pending
+      credit from another contract for the same buyer, set-aside form for
+      this contract's own credit, set/reclaim for the security deposit.
+
+⚠ TWO REAL PRE-EXISTING BUGS previously found+fixed in the
+  adjustment-billing-status batch (Bad Debt / Cancel Invoice were
+  silently failing) remain fixed — not touched again here, just noting
+  they're still worth a regression check alongside this batch.
+
+STILL TO COME (not in this batch): Add Note (t_audit_log), completion
+guard for open billing, the Renew action, "Expiring Soon" filter.
+
+FILES IN THIS BATCH
+────────────────────
+  contractnest-edge/supabase/migrations/contracts/069_contract_credit_deposit.sql  (NEW — record of already-applied live migration)
+  contractnest-edge/supabase/functions/contracts/index.ts                          (MODIFIED — new routes, NOT yet deployed)
+  contractnest-api/src/services/contractService.ts                                 (MODIFIED — 5 new proxy methods)
+  contractnest-api/src/controllers/contractController.ts                          (MODIFIED — 5 new controller actions)
+  contractnest-api/src/routes/contractRoutes.ts                                   (MODIFIED — 5 new routes)
+  contractnest-ui/src/types/contracts.ts                                          (MODIFIED — Contract fields + new request/response types)
+  contractnest-ui/src/services/serviceURLs.ts                                     (MODIFIED — 5 new endpoint builders)
+  contractnest-ui/src/hooks/queries/useContractCreditDeposit.ts                   (NEW — 5 TanStack Query hooks)
+  contractnest-ui/src/hooks/useNeedsAttention.ts                                  (MODIFIED — 3 new info cards)
+  contractnest-ui/src/pages/contracts/detail/index.tsx                           (MODIFIED — removed old button, added CreditDepositCard)
+
+───────────────────────────────────────────────────
+STEP 1: Pull + Copy (PowerShell)
+───────────────────────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git fetch origin
+git checkout claude/sprint1b-migration-handoff-5rk8pr
+git pull origin claude/sprint1b-migration-handoff-5rk8pr
+
+Copy-Item "MANUAL_COPY_FILES\contract-credit-deposit\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\contract-credit-deposit\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\contract-credit-deposit\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+───────────────────────────────────────────────────
+STEP 2: Start API + UI, test
+───────────────────────────────────────────────────
+cd contractnest-api
+npm run dev
+# separate terminal
+cd contractnest-ui
+npm run dev
+# Hard refresh: Ctrl+F5
+
+⚠ The edge function is NOT deployed yet (deploy was intentionally held
+back). Credit/Deposit buttons will hit the new API routes, which will
+error until it's deployed. Everything ELSE (button removal, layout,
+existing Cancel/Bad Debt actions, Needs Attention info cards for any
+contract that already has data — none will yet, since no live contract
+has credit/deposit set) can still be visually reviewed.
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST (full end-to-end — once edge function is deployed)
+═══════════════════════════════════════════════════
+- [ ] Contract detail -> Financials tab: old "Adjustment" button is gone
+      from invoice cards; Cancel / Bad Debt still present and unchanged
+- [ ] Financials tab right sidebar shows new "Credit & Deposit" card
+      below Financial Health
+- [ ] Click "Set Aside a Credit" -> enter amount + reason -> Save ->
+      shows as "pending" with amount/reason
+- [ ] Open a DIFFERENT contract for the SAME buyer -> Credit & Deposit
+      card shows "Pending Credit Available" with an Apply button ->
+      click Apply -> contract's grand total reduces by the credit amount
+- [ ] Back on the original contract, credit now shows "applied"
+- [ ] Click "Add Deposit" -> enter amount -> Save -> shows as "held"
+      with a Reclaim button -> click Reclaim -> shows as "reclaimed"
+- [ ] Overview tab -> Needs Attention shows "Credit Set Aside" / "Credit
+      Applied" / "Security Deposit Held" info cards with the right
+      amount + reason, once any of those states exist on the contract
+- [ ] Regression: Cancel Invoice / Mark as Bad Debt on an invoice still
+      work correctly (fixed in the prior batch — re-verify no drift)
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+Also let me know when you want the edge function deployed — it's a
+single additive redeploy, already diff-verified against the live version.
+═══════════════════════════════════════════════════
