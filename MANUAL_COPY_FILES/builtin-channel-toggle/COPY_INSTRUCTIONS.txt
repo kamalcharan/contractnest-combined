@@ -4,9 +4,24 @@
 Branch: builtin-channel-toggle
 Files Changed:
   - contractnest-edge/supabase/migrations/integrations-messaging-visibility/002_builtin_channel_toggle.sql (applied live)
+  - contractnest-edge/supabase/migrations/integrations-messaging-visibility/003_builtin_channel_toggle_both_envs.sql (applied live)
   - contractnest-ui/src/components/integrations/IntegrationProviderCard.tsx
 
 Submodules Affected: contractnest-edge (DB — already applied live), contractnest-ui
+
+FOLLOW-UP FIX (from live testing): after copying the UI change, the
+toggle still didn't appear — screenshot showed the old static "Active" /
+"Enabled for your workspace" copy with no switch, for a tenant viewed in
+TEST mode. Root cause: get_integrations_by_type/get_tenant_integration
+join t_tenant_integrations on (tenant_id, is_live = p_is_live) — a
+tenant needs a SEPARATE row per environment, and 002 only seeded
+is_live=true. Viewing the page in test mode found no matching row, so
+is_configured came back false and the toggle never rendered. 003 seeds
+the missing is_live=false row for every tenant (628 total rows now =
+157 tenants × 2 providers × 2 environments) and updates the new-tenant
+trigger to seed both going forward. Re-verified live via the actual RPC
+call for BBB in test mode: is_configured=true, is_active=false — matches
+what should now render.
 
 REQUEST: "'/integrations' is all about enabling and disabling the
 messages, we should actually do from there" — after today's incident
