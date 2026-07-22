@@ -743,28 +743,29 @@ const FinancePage: React.FC = () => {
             </Card>
           )}
 
-          {/* ── Worklist grouped by contact/contract ── */}
-          <Card>
-            <CardHeader>
-              <div className="flex flex-wrap items-center gap-3">
-                <CardTitle className="text-base flex-1" style={{ color: colors.utility.primaryText }}>
-                  Worklist
-                  <span className="ml-2 text-xs font-normal" style={{ color: colors.utility.secondaryText }}>
-                    grouped by contact · {worklistGroups.length} open
-                  </span>
-                </CardTitle>
-                {kpis.overdueTotal > 0 && (
-                  <span
-                    className="px-2.5 py-1 rounded-full text-xs font-bold"
-                    style={{ backgroundColor: colors.semantic.error + '15', color: colors.semantic.error }}
-                  >
-                    {formatMoney(kpis.overdueTotal)} needs chasing
-                  </span>
-                )}
-              </div>
-            </CardHeader>
+          {/* ── Worklist grouped by contact/contract ──
+              Deliberately NOT wrapped in a Card: rows carry their own panel
+              background (same as the contacts table), so they need the page
+              canvas behind them to stand out — white-on-white otherwise. */}
+          <div>
+            <div className="flex flex-wrap items-center gap-3 mb-3">
+              <h2 className="text-base font-bold flex-1" style={{ color: colors.utility.primaryText }}>
+                Worklist
+                <span className="ml-2 text-xs font-normal" style={{ color: colors.utility.secondaryText }}>
+                  grouped by contact · {worklistGroups.length} open
+                </span>
+              </h2>
+              {kpis.overdueTotal > 0 && (
+                <span
+                  className="px-2.5 py-1 rounded-full text-xs font-bold"
+                  style={{ backgroundColor: colors.semantic.error + '15', color: colors.semantic.error }}
+                >
+                  {formatMoney(kpis.overdueTotal)} needs chasing
+                </span>
+              )}
+            </div>
 
-            <CardContent className="overflow-x-auto">
+            <div className="overflow-x-auto">
               {worklistVisible.length === 0 ? (
                 <div className="flex flex-col items-center py-12 gap-2">
                   <Inbox className="h-8 w-8" style={{ color: colors.utility.secondaryText }} />
@@ -990,8 +991,8 @@ const FinancePage: React.FC = () => {
                   </div>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </>
       )}
 
