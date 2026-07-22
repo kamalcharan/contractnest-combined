@@ -3,8 +3,12 @@ BATCH: messaging-governance (2026-07-22)
 ═══════════════════════════════════════════════════
 Owner decision: outbound messages are governed by RULES (Settings →
 Automations, user-edited) AND CHANNELS (/integrations) — nothing goes out
-unless BOTH allow it. Identity messages (password reset / forgot password /
-user invites) are explicitly exempt — not touched by this batch.
+unless BOTH allow it, EXCEPT three identity messages: password reset,
+forgot password, and user invitations. Those always go out, but per the
+owner's follow-up principle ("everything will go via jtd framework so
+everything will be on audit-trail, if not its wrong") they must still be
+visible in the n_jtd audit trail. See "IDENTITY-MESSAGE EXCEPTIONS" section
+below for the three-function change that implements this.
 
 FILES IN THIS BATCH
 ───────────────────
@@ -53,6 +57,73 @@ UI
    Automations, share the acceptance link manually" instead of the success
    toast. Covers wizard, template conversion, and VaNi creation — all three
    funnel through this one mutation.
+
+IDENTITY-MESSAGE EXCEPTIONS (2026-07-22, second round — DEPLOYED LIVE)
+───────────────────────────────────────────────────────────────────
+Owner: "all these 3 are exceptions......user-invite should not have
+restriction, it can always go........." — password reset, forgot password
+(same code path), and user invitations bypass BOTH the rules gate and the
+channel gate entirely. Forgot-password shares handleResetPassword() with
+password reset (traced ForgotPasswordPage.tsx → AuthContext.resetPassword()
+→ /api/auth/reset-password → auth edge function), so one change covers both.
+
+All three files below were rebuilt from freshly-verified LIVE source (not
+the local git checkout, which was confirmed stale/drifted for two of the
+three functions) and byte-diffed against live before deploy. All three are
+ALREADY DEPLOYED to Supabase — copying into git is for parity only.
+
+6. contractnest-edge/supabase/functions/jtd-worker/index.ts (+ 4 handler
+   files, copied verbatim, no changes)
+   Local git checkout was missing ~25 lines of kill-switch logic that IS
+   live in production (v24) — the original session's §0 git/live drift gap,
+   still open. Rebuilt from verified live v24 source. Added
+   GATE_EXEMPT_SOURCE_TYPES = new Set(['user_invite']) and wired it into
+   both the TEST-env guardrail and the tenant channel kill switch inside
+   processMessage() — those two checks now skip entirely for
+   source_type_code = 'user_invite'. DEPLOYED → v25.
+
+7. contractnest-edge/supabase/functions/user-invitations/jtd-integration.ts
+   (+ index.ts, copied verbatim, no changes)
+   Removed the isChannelEnabled() gate from sendInvitation() and the
+   per-channel gate check inside sendMultiChannelInvitation()'s loop —
+   invitations now always create their n_jtd row regardless of tenant
+   channel config. (Note: local git checkout had an unrelated, never-live
+   userCode/secretCode param addition to this file that index.ts doesn't
+   actually use — left out of this rebuild since it's dead code, unrelated
+   to this task, and not something the live index.ts calls with.)
+   DEPLOYED → v61.
+
+8. contractnest-edge/supabase/functions/auth/handlers/password.ts (+ 12
+   other auth files, copied verbatim, no changes)
+   handleResetPassword() now inserts an AUDIT-ONLY n_jtd row after
+   Supabase Auth's resetPasswordForEmail() succeeds — status_code:
+   'delivered' (not 'created'), so trg_jtd_enqueue never queues/dispatches
+   it a second time. Resolves tenant via
+   t_user_profiles → t_user_tenants(is_default=true). Best-effort: wrapped
+   in its own try/catch so a lookup failure never breaks the actual reset
+   email; skips quietly if the email doesn't match a known user (preserves
+   Supabase's existing behavior of not revealing account existence).
+   DEPLOYED → v82 (highest-risk function — verified all 14 files, including
+   the 13 untouched ones, against live source before deploying).
+
+TESTING CHECKLIST — IDENTITY EXCEPTIONS
+────────────────────────────────────────
+- [ ] Turn Email AND WhatsApp off in /integrations → invite a new user →
+      invite is still created and its n_jtd row(s) still get queued/sent
+      (previously would have been silently skipped)
+- [ ] Same test in a TEST-environment tenant (is_live=false) → invite still
+      dispatches (previously the jtd-worker TEST-env guardrail would have
+      blocked it)
+- [ ] Trigger "forgot password" for a known user → reset email arrives as
+      before (unchanged Supabase Auth flow) → check n_jtd: a new row exists
+      with source_type_code='password_reset', status_code='delivered',
+      metadata.delivered_via='supabase_auth' — and pgmq.jtd_queue does NOT
+      show a new message for it (proves it was never enqueued/dispatched
+      twice)
+- [ ] Trigger "forgot password" for an email with no matching user profile →
+      no error, no n_jtd row (best-effort skip working as intended)
+- [ ] Regression: payment_reminder / service_reminder / contract_signoff_invite
+      still respect rules+channels gates as before (unchanged in this round)
 
 COPY COMMANDS (PowerShell)
 ──────────────────────────
