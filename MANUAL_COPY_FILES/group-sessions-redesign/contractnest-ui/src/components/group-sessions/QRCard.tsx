@@ -16,7 +16,7 @@
 // ============================================================================
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Download, ExternalLink, RefreshCw, QrCode as QrIcon, Copy, Check, Image as ImageIcon } from 'lucide-react';
+import { ExternalLink, RefreshCw, QrCode as QrIcon, Copy, Check, Image as ImageIcon } from 'lucide-react';
 import { useEnsureBlockToken } from '@/hooks/queries/useGroupSessionsDashboard';
 import { QrCode } from '@/utils/qrcodegen';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -29,6 +29,16 @@ interface QRCardProps {
   cadence?: string;
 }
 
+// Poster size presets. All are drawn from the same 1080-unit-wide design
+// space (ctx.scale), so the QR content and branding are identical — only the
+// canvas dimensions and layout density change. Print presets are 300 DPI.
+type PosterPreset = 'social' | 'a4' | 'stand';
+const POSTER_PRESETS: Record<PosterPreset, { label: string; file: string; W: number; H: number; compact: boolean }> = {
+  social: { label: 'Social · 1080×1350', file: 'social', W: 1080, H: 1350, compact: false },
+  a4:     { label: 'A4 print · 300 DPI', file: 'a4', W: 2480, H: 3508, compact: false },
+  stand:  { label: 'QR stand · 5×5in · 300 DPI', file: 'stand', W: 1500, H: 1500, compact: true },
+};
+
 const QRCard: React.FC<QRCardProps> = ({ blockId, title, cadence }) => {
   const { isDarkMode, currentTheme } = useTheme();
   const colors = isDarkMode ? currentTheme.darkMode.colors : currentTheme.colors;
@@ -36,6 +46,7 @@ const QRCard: React.FC<QRCardProps> = ({ blockId, title, cadence }) => {
   const ensureToken = useEnsureBlockToken();
   const [token, setToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [posterSize, setPosterSize] = useState<PosterPreset>('social');
 
   useEffect(() => {
     let alive = true;
@@ -55,38 +66,29 @@ const QRCard: React.FC<QRCardProps> = ({ blockId, title, cadence }) => {
 
   const fileBase = `${title.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-checkin`;
 
-  const download = (kind: 'svg' | 'png') => {
-    if (!svg) return;
-    const base = `${fileBase}-qr`;
-    if (kind === 'svg') {
-      const blob = new Blob([svg], { type: 'image/svg+xml' });
-      const href = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href = href; a.download = `${base}.svg`; a.click();
-      URL.revokeObjectURL(href);
-      return;
-    }
-    const img = new window.Image();
-    const dataUri = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
-    img.onload = () => {
-      const size = (img.width || 41) * 12;
-      const c = document.createElement('canvas'); c.width = size; c.height = size;
-      const ctx = c.getContext('2d'); if (!ctx) return;
-      ctx.fillStyle = isDarkMode ? '#20242A' : '#ffffff'; ctx.fillRect(0, 0, size, size);
-      ctx.imageSmoothingEnabled = false; ctx.drawImage(img, 0, 0, size, size);
-      const a = document.createElement('a'); a.href = c.toDataURL('image/png'); a.download = `${base}.png`; a.click();
-    };
-    img.src = dataUri;
-  };
+  // Plain PNG/SVG downloads intentionally removed (owner, 2026-07-22): the
+  // branded poster is the only download so the brand propagates with every
+  // printed QR. The inline svg above remains for on-screen preview only.
 
-  // ── Branded poster (1080×1350 PNG, drawn directly on canvas) ──
+  // ── Branded poster: preset-sized PNG, drawn directly on canvas ──
+  // Everything is laid out in a 1080-unit-wide design space and scaled to the
+  // preset's pixel size, so all formats carry identical branding and an
+  // identical QR. Full layout for social/A4; compact (no steps row) for the
+  // square QR-stand format.
   const downloadPoster = () => {
     if (!url) return;
     let qr: QrCode;
     try { qr = QrCode.encodeText(url, 'MEDIUM'); } catch { return; }
 
-    const W = 1080, H = 1350;
+    const preset = POSTER_PRESETS[posterSize];
+    const { W, H, compact } = preset;
     const c = document.createElement('canvas'); c.width = W; c.height = H;
     const ctx = c.getContext('2d'); if (!ctx) return;
+
+    const s = W / 1080;           // design-space scale
+    const DW = 1080;              // design width
+    const dh = H / s;             // design height (1350 social · ~1527 A4 · 1080 stand)
+    ctx.scale(s, s);
 
     const brand = colors.brand.primary || '#EA7A26';
     const navy = '#232F4B';
@@ -111,54 +113,56 @@ const QRCard: React.FC<QRCardProps> = ({ blockId, title, cadence }) => {
     const wrapLines = (text: string, font: string, maxW: number): string[] => {
       ctx.font = font;
       const words = text.split(/\s+/);
-      const lines: string[] = [];
+      const out: string[] = [];
       let cur = '';
       words.forEach((w) => {
         const probe = cur ? `${cur} ${w}` : w;
-        if (ctx.measureText(probe).width > maxW && cur) { lines.push(cur); cur = w; }
+        if (ctx.measureText(probe).width > maxW && cur) { out.push(cur); cur = w; }
         else cur = probe;
       });
-      if (cur) lines.push(cur);
-      return lines;
+      if (cur) out.push(cur);
+      return out;
     };
 
-    // Background + ambient shapes
-    ctx.fillStyle = navy; ctx.fillRect(0, 0, W, H);
-    circle(-130, 330, 400, '#1A2338', 0.9);
-    circle(W + 140, H - 400, 470, '#2B3A5C', 0.35);
-    circle(W - 80, 180, 190, '#2B3A5C', 0.25);
-    // Brand top bar
-    ctx.fillStyle = brand; ctx.fillRect(0, 0, W, 24);
+    // Background + ambient shapes + brand top bar
+    ctx.fillStyle = navy; ctx.fillRect(0, 0, DW, dh);
+    circle(-130, dh * 0.24, 400, '#1A2338', 0.9);
+    circle(DW + 140, dh * 0.72, 470, '#2B3A5C', 0.35);
+    circle(DW - 80, dh * 0.13, 190, '#2B3A5C', 0.25);
+    ctx.fillStyle = brand; ctx.fillRect(0, 0, DW, compact ? 20 : 24);
 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
 
+    // Full layout occupies ~1350 design units; on taller canvases (A4)
+    // centre the content block vertically.
+    const off = compact ? 0 : Math.max(0, (dh - 1350) / 2);
+
     // Eyebrow — cadence
     ctx.fillStyle = brand;
-    ctx.font = '800 30px -apple-system, "Segoe UI", Arial, sans-serif';
-    (ctx as any).letterSpacing = '7px';
-    ctx.fillText(eyebrow, W / 2, 148);
+    ctx.font = `800 ${compact ? 24 : 30}px -apple-system, "Segoe UI", Arial, sans-serif`;
+    (ctx as any).letterSpacing = compact ? '5px' : '7px';
+    ctx.fillText(eyebrow, DW / 2, off + (compact ? 86 : 148));
     (ctx as any).letterSpacing = '0px';
 
     // Tenant name (wraps if long)
     ctx.fillStyle = '#FFFFFF';
-    const nameFont = 'bold 84px Georgia, "Times New Roman", serif';
-    const nameLines = wrapLines(tenantName, nameFont, W - 140);
-    let y = 252;
-    nameLines.forEach((ln) => { ctx.font = nameFont; ctx.fillText(ln, W / 2, y); y += 94; });
+    const nameFont = `bold ${compact ? 58 : 84}px Georgia, "Times New Roman", serif`;
+    const nameLines = wrapLines(tenantName, nameFont, DW - 140);
+    let y = off + (compact ? 158 : 252);
+    const nameStep = compact ? 66 : 94;
+    nameLines.forEach((ln) => { ctx.font = nameFont; ctx.fillText(ln, DW / 2, y); y += nameStep; });
 
-    // Divider under the name
-    ctx.fillStyle = brand; rr(W / 2 - 45, y - 56, 90, 6, 3); ctx.fill();
-
-    // Group name
+    // Divider + group name
+    ctx.fillStyle = brand; rr(DW / 2 - 45, y - (compact ? 42 : 56), 90, compact ? 5 : 6, 3); ctx.fill();
     ctx.fillStyle = softInk;
-    ctx.font = '500 36px -apple-system, "Segoe UI", Arial, sans-serif';
-    ctx.fillText(title, W / 2, y + 12);
+    ctx.font = `500 ${compact ? 28 : 36}px -apple-system, "Segoe UI", Arial, sans-serif`;
+    ctx.fillText(title, DW / 2, y + (compact ? 4 : 12));
 
     // QR panel
-    const panel = 560;
-    const px = (W - panel) / 2;
-    const py = y + 64;
+    const panel = compact ? 520 : 560;
+    const px = (DW - panel) / 2;
+    const py = y + (compact ? 44 : 64);
     ctx.save();
     ctx.shadowColor = 'rgba(0,0,0,0.45)'; ctx.shadowBlur = 40; ctx.shadowOffsetY = 14;
     ctx.fillStyle = '#FFFFFF'; rr(px, py, panel, panel, 30); ctx.fill();
@@ -166,7 +170,7 @@ const QRCard: React.FC<QRCardProps> = ({ blockId, title, cadence }) => {
 
     // Corner brackets
     ctx.strokeStyle = brand; ctx.lineWidth = 8; ctx.lineCap = 'round';
-    const g = 26, L = 62; // gap outside panel, arm length
+    const g = 24, L = 58;
     const corners: [number, number, number, number][] = [
       [px - g, py - g, 1, 1], [px + panel + g, py - g, -1, 1],
       [px - g, py + panel + g, 1, -1], [px + panel + g, py + panel + g, -1, -1],
@@ -181,8 +185,8 @@ const QRCard: React.FC<QRCardProps> = ({ blockId, title, cadence }) => {
     ctx.font = '800 26px -apple-system, "Segoe UI", Arial, sans-serif';
     (ctx as any).letterSpacing = '4px';
     const pillW = ctx.measureText('SCAN ME').width + 64;
-    ctx.fillStyle = brand; rr(W / 2 - pillW / 2, py - 26, pillW, 52, 26); ctx.fill();
-    ctx.fillStyle = '#FFFFFF'; ctx.fillText('SCAN ME', W / 2, py + 9);
+    ctx.fillStyle = brand; rr(DW / 2 - pillW / 2, py - 26, pillW, 52, 26); ctx.fill();
+    ctx.fillStyle = '#FFFFFF'; ctx.fillText('SCAN ME', DW / 2, py + 9);
     (ctx as any).letterSpacing = '0px';
 
     // QR modules (dark on the white panel, generous quiet zone)
@@ -199,56 +203,59 @@ const QRCard: React.FC<QRCardProps> = ({ blockId, title, cadence }) => {
     }
 
     // Caption — two-tone serif
-    const capY = py + panel + 108;
-    ctx.font = 'bold 46px Georgia, "Times New Roman", serif';
+    const capY = py + panel + (compact ? 76 : 108);
+    ctx.font = `bold ${compact ? 36 : 46}px Georgia, "Times New Roman", serif`;
     const part1 = 'Scan to mark ';
     const part2 = 'your attendance';
     const capW = ctx.measureText(part1).width + ctx.measureText(part2).width;
     ctx.textAlign = 'left';
-    ctx.fillStyle = '#FFFFFF'; ctx.fillText(part1, W / 2 - capW / 2, capY);
-    ctx.fillStyle = brand; ctx.fillText(part2, W / 2 - capW / 2 + ctx.measureText(part1).width, capY);
+    ctx.fillStyle = '#FFFFFF'; ctx.fillText(part1, DW / 2 - capW / 2, capY);
+    ctx.fillStyle = brand; ctx.fillText(part2, DW / 2 - capW / 2 + ctx.measureText(part1).width, capY);
 
-    // Steps: 1 Scan › 2 Mark present › 3 Pay dues
-    const steps = ['Scan', 'Mark present', 'Pay dues'];
-    const stepFont = '600 26px -apple-system, "Segoe UI", Arial, sans-serif';
-    const R = 19, numGap = 12, sepGap = 34;
-    ctx.font = stepFont;
-    let total = 0;
-    steps.forEach((s, i) => { total += R * 2 + numGap + ctx.measureText(s).width + (i < steps.length - 1 ? sepGap * 2 : 0); });
-    let sx = W / 2 - total / 2;
-    const sy = capY + 74;
-    steps.forEach((s, i) => {
-      circle(sx + R, sy - 9, R, brand);
-      ctx.fillStyle = '#FFFFFF'; ctx.font = '800 22px -apple-system, "Segoe UI", Arial, sans-serif';
-      ctx.textAlign = 'center'; ctx.fillText(String(i + 1), sx + R, sy - 1);
-      ctx.textAlign = 'left'; ctx.font = stepFont; ctx.fillStyle = softInk;
-      ctx.fillText(s, sx + R * 2 + numGap, sy);
-      sx += R * 2 + numGap + ctx.measureText(s).width;
-      if (i < steps.length - 1) {
-        ctx.fillStyle = sep;
-        ctx.fillText('›', sx + sepGap - 6, sy);
-        sx += sepGap * 2;
-      }
-    });
+    // Steps row — full layout only (the square stand stays minimal)
+    if (!compact) {
+      const steps = ['Scan', 'Mark present', 'Pay dues'];
+      const stepFont = '600 26px -apple-system, "Segoe UI", Arial, sans-serif';
+      const R = 19, numGap = 12, sepGap = 34;
+      ctx.font = stepFont;
+      let total = 0;
+      steps.forEach((st, i) => { total += R * 2 + numGap + ctx.measureText(st).width + (i < steps.length - 1 ? sepGap * 2 : 0); });
+      let sx = DW / 2 - total / 2;
+      const sy = capY + 74;
+      steps.forEach((st, i) => {
+        circle(sx + R, sy - 9, R, brand);
+        ctx.fillStyle = '#FFFFFF'; ctx.font = '800 22px -apple-system, "Segoe UI", Arial, sans-serif';
+        ctx.textAlign = 'center'; ctx.fillText(String(i + 1), sx + R, sy - 1);
+        ctx.textAlign = 'left'; ctx.font = stepFont; ctx.fillStyle = softInk;
+        ctx.fillText(st, sx + R * 2 + numGap, sy);
+        sx += R * 2 + numGap + ctx.measureText(st).width;
+        if (i < steps.length - 1) {
+          ctx.fillStyle = sep;
+          ctx.fillText('›', sx + sepGap - 6, sy);
+          sx += sepGap * 2;
+        }
+      });
+    }
 
     // Product branding footer: ● ContractNest · by Vikuna Technologies
     const brandLine = 'ContractNest';
     const byLine = '  ·  by Vikuna Technologies';
-    ctx.font = '800 30px -apple-system, "Segoe UI", Arial, sans-serif';
+    ctx.font = `800 ${compact ? 26 : 30}px -apple-system, "Segoe UI", Arial, sans-serif`;
     const w1 = ctx.measureText(brandLine).width;
-    ctx.font = '500 24px -apple-system, "Segoe UI", Arial, sans-serif';
+    ctx.font = `500 ${compact ? 21 : 24}px -apple-system, "Segoe UI", Arial, sans-serif`;
     const w2 = ctx.measureText(byLine).width;
-    const bx = W / 2 - (w1 + w2) / 2;
+    const bx = DW / 2 - (w1 + w2) / 2;
+    const by = dh - (compact ? 40 : 52);
     ctx.textAlign = 'left';
-    ctx.font = '800 30px -apple-system, "Segoe UI", Arial, sans-serif';
-    ctx.fillStyle = '#FFFFFF'; ctx.fillText(brandLine, bx, H - 52);
-    ctx.font = '500 24px -apple-system, "Segoe UI", Arial, sans-serif';
-    ctx.fillStyle = softInk; ctx.fillText(byLine, bx + w1, H - 52);
-    circle(bx - 22, H - 62, 7, brand);
+    ctx.font = `800 ${compact ? 26 : 30}px -apple-system, "Segoe UI", Arial, sans-serif`;
+    ctx.fillStyle = '#FFFFFF'; ctx.fillText(brandLine, bx, by);
+    ctx.font = `500 ${compact ? 21 : 24}px -apple-system, "Segoe UI", Arial, sans-serif`;
+    ctx.fillStyle = softInk; ctx.fillText(byLine, bx + w1, by);
+    circle(bx - 22, by - 9, compact ? 6 : 7, brand);
 
     const a = document.createElement('a');
     a.href = c.toDataURL('image/png');
-    a.download = `${fileBase}-poster.png`;
+    a.download = `${fileBase}-poster-${preset.file}.png`;
     a.click();
   };
 
@@ -299,14 +306,23 @@ const QRCard: React.FC<QRCardProps> = ({ blockId, title, cadence }) => {
         </div>
       )}
 
+      <select
+        value={posterSize}
+        onChange={(e) => setPosterSize(e.target.value as PosterPreset)}
+        aria-label="Poster size"
+        style={{ width: '100%', marginBottom: 8, padding: '8px 10px', borderRadius: 9, fontWeight: 600, fontSize: 12.5,
+          border: `1px solid ${colors.utility.primaryText}22`, background: colors.utility.primaryBackground, color: colors.utility.primaryText, cursor: 'pointer' }}
+      >
+        {(Object.keys(POSTER_PRESETS) as PosterPreset[]).map((k) => (
+          <option key={k} value={k}>{POSTER_PRESETS[k].label}</option>
+        ))}
+      </select>
       <div style={{ display: 'flex', gap: 8 }}>
         <button style={{ ...btn, background: colors.brand.primary, color: '#fff', borderColor: colors.brand.primary }} disabled={!url} onClick={downloadPoster} title="Branded poster with the QR — print or share">
-          <ImageIcon size={14} /> Poster
+          <ImageIcon size={14} /> Download poster
         </button>
-        <button style={btn} disabled={!svg} onClick={() => download('png')} title="Plain QR only"><Download size={14} /> PNG</button>
-        <button style={btn} disabled={!svg} onClick={() => download('svg')}>SVG</button>
         {url && (
-          <a href={url} target="_blank" rel="noopener noreferrer" style={{ ...btn, textDecoration: 'none' }}>
+          <a href={url} target="_blank" rel="noopener noreferrer" style={{ ...btn, flex: 'none', textDecoration: 'none' }}>
             <ExternalLink size={14} /> Open
           </a>
         )}
