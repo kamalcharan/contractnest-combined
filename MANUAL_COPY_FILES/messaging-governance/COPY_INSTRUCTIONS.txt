@@ -1,0 +1,89 @@
+═══════════════════════════════════════════════════
+BATCH: messaging-governance (2026-07-22)
+═══════════════════════════════════════════════════
+Owner decision: outbound messages are governed by RULES (Settings →
+Automations, user-edited) AND CHANNELS (/integrations) — nothing goes out
+unless BOTH allow it. Identity messages (password reset / forgot password /
+user invites) are explicitly exempt — not touched by this batch.
+
+FILES IN THIS BATCH
+───────────────────
+EDGE (migration applied live; contracts function DEPLOYED live — see below)
+
+1. contractnest-edge/supabase/migrations/operations-loop/022_contracts_rules_domain.sql
+   New 'contracts' rules domain, one rule: contract_signoff_invite
+   (default ON). Appears automatically on every tenant's Automations page.
+   ALREADY APPLIED LIVE — verified 7 rules returned, default-on confirmed.
+
+2. contractnest-edge/supabase/functions/contracts/index.ts
+   handleSendNotification (POST /contracts/:id/notify) now checks
+   vani_rule_enabled(tenant, 'contract_signoff_invite') before sending.
+   When off: records a 'notification_suppressed' t_contract_history row
+   (auditable) and returns { success: true, suppressed: true } instead of
+   dispatching — the contract itself is unaffected, no error surfaced.
+   DEPLOYED LIVE via a background agent this session — verify the deploy
+   succeeded before relying on it (see verification note below).
+
+API
+
+3. contractnest-api/src/controllers/vaniDeskController.ts
+   updateRule: removed the VaNi-entitlement gate on EDITING rules. Rules are
+   the tenant's own standing instructions; the entitlement continues to gate
+   VaNi's other premium surfaces (briefing etc.) — untouched.
+
+UI
+
+4. contractnest-ui/src/pages/settings/automation-rules/index.tsx
+   - Editing is unconditionally available (canEdit = true); the old
+     "start VaNi trial to edit" lock banner is replaced by a channel-
+     dependency banner: when Email and/or WhatsApp are off in Integrations,
+     a warning card explains rules stay configured but nothing sends, with
+     an "Open Integrations" button.
+   - Message-sending rules (service_reminder, payment_reminder,
+     contract_signoff_invite) get an inline "suppressed — Email & WhatsApp
+     off in Integrations" badge next to their On/Off pill when applicable.
+   - New 'Contracts' domain group (FileText icon) alongside Services/Finance.
+   - Reads /api/integrations/messaging (existing endpoint) read-only to
+     compute the two channels' on/off state; failure just hides the badges,
+     never blocks the page.
+
+5. contractnest-ui/src/hooks/queries/useContractQueries.ts
+   sendNotificationMutation onSuccess: when the API returns
+   suppressed:true, shows "Invite not sent — turned off in Settings →
+   Automations, share the acceptance link manually" instead of the success
+   toast. Covers wizard, template conversion, and VaNi creation — all three
+   funnel through this one mutation.
+
+COPY COMMANDS (PowerShell)
+──────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\messaging-governance\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\messaging-governance\contractnest-api\*"  -Destination "contractnest-api\"  -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\messaging-governance\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+# DB migration + edge function are already live — copying is for git parity,
+# no re-apply/redeploy needed unless verification below says otherwise.
+
+VERIFY THE EDGE DEPLOY LANDED (do this first)
+──────────────────────────────────────────────
+- [ ] Supabase Dashboard → Edge Functions → contracts → confirm a new
+      version exists with today's timestamp, OR
+- [ ] Create/send a sign-off contract while the rule is ON — invite should
+      dispatch as before (verifies the deploy didn't break normal sending)
+
+TESTING CHECKLIST (BBB, TEST env)
+─────────────────────────────────
+- [ ] Settings → Automation Rules: no lock banner; every rule (incl. new
+      "Contract sign-off invites" under Contracts) is directly editable
+- [ ] Turn Email + WhatsApp off in /integrations → Automations page shows
+      the "turned off in Integrations" warning card; service_reminder,
+      payment_reminder, and contract_signoff_invite show the inline
+      "suppressed" badge next to their On pill
+- [ ] Turn contract_signoff_invite OFF → create a sign-off contract via the
+      wizard → contract is created normally, but toast says "Invite not
+      sent" instead of "Notification Sent"; t_contract_history has a
+      'notification_suppressed' row for that contract
+- [ ] Turn the rule back ON → repeat → normal "Notification Sent" toast,
+      JTD entries enqueued (kill switches on BBB still block delivery,
+      expected)
+- [ ] Template conversion and VaNi AI contract creation both respect the
+      same rule (they funnel through the same notify call)
