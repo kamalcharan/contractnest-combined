@@ -1,0 +1,64 @@
+═══════════════════════════════════════════════════
+BATCH: finance-event-aware-ageing (2026-07-22)
+═══════════════════════════════════════════════════
+Owner decision: "invoice is 1, receipts are multiple" — the AR model is ONE
+invoice per contract + the event-level settlement sub-ledger
+(bbb-foundation/006). This batch makes /ops/finance statistics read from that
+sub-ledger, and fixes the invoice document issues found on INV-10020.
+
+FILES IN THIS BATCH
+───────────────────
+1. contractnest-edge/supabase/migrations/operations-loop/020_event_aware_receivables.sql
+   - CREATE OR REPLACE get_tenant_receivables (response shape unchanged; NO UI
+     or edge-function change needed for it):
+     * Overdue / Ageing buckets / Due-in-7-15-30 now computed from billing
+       events (t_contract_events: amount - amount_settled, aged by each
+       event's own scheduled_date), instead of the invoice's single due_date.
+     * FIFO fallback: payments recorded without event allocations are applied
+       (display-only) to the contract's oldest unsettled events first.
+     * Contracts with an open invoice but no billing events keep old
+       invoice-level semantics.
+     * Total outstanding / drafts / collected stay invoice-based (source of
+       truth per 006).
+     * collected_this_month now filters test/live via the receipt's invoice
+       (007 mixed both environments).
+     * by_buyer: "oldest Nd overdue" now event-based; outstanding unchanged.
+   - get_tenant_payables deliberately untouched.
+   ⚠ ALREADY APPLIED LIVE to project uwyqhzotluikawcboldr on 2026-07-22.
+     Do NOT re-run unless recreating the DB — file is CREATE OR REPLACE and
+     safe to re-run if you do.
+
+2. contractnest-ui/src/pages/contracts/invoice/index.tsx
+   - Line items: strip stored HTML (<p>...</p>) from block descriptions.
+   - Qty column: derive billed occurrences for recurring blocks so
+     Rate x Qty = Total (BAU with Options now shows 12, not 1).
+   - Payment Mode: 'defined' now prints "As per billing schedule" instead of
+     the raw enum "Defined" (invoice body + details sidebar).
+   - Download PDF: JPEG instead of PNG inside the generated PDF (~10-20x
+     smaller file; INV-10020 was 10.3 MB).
+
+COPY COMMANDS (PowerShell)
+──────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\finance-event-aware-ageing\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\finance-event-aware-ageing\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+TESTING CHECKLIST (BBB tenant, TEST env, as of 2026-07-22)
+──────────────────────────────────────────────────────────
+/ops/finance (Revenue perspective) should now show:
+- [ ] Total outstanding: Rs 31,500 (2 open invoices) — unchanged
+- [ ] Overdue: Rs 10,500 · 2 invoices past due  (was Rs 31,500)
+- [ ] Ageing: 1-7: 0 · 8-15: 0 · 16-30: Rs 6,000 (2) · 30+: Rs 4,500 (1)
+- [ ] Due in next 30 days: Rs 1,500 (7d: 0 · 15d: Rs 1,500)
+      = CN-1020's month-5 instalment due 30-Jul
+- [ ] Who owes you: Test user Rs 18,000 (Rs 6,000 overdue, oldest 112d);
+      CHARAN KAMAL Rs 13,500 (Rs 4,500 overdue, oldest 22d)
+- [ ] Collected this month: Rs 19,500
+Invoice document (contract CN-1020 → INV-10020):
+- [ ] Descriptions show plain text, no <p> tags
+- [ ] BAU with Options row: Rate Rs 1,500 · Qty 12 · Total Rs 18,000
+- [ ] Payment Mode shows "As per billing schedule"
+- [ ] Downloaded PDF is ~1 MB or less, single page
+
+NOTE: RPC verified live against BBB (test + live) and 3 other tenants —
+all return success with consistent numbers.
