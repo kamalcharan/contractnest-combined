@@ -1,0 +1,41 @@
+═══════════════════════════════════════════════════
+📦 SESSION HANDOVER DOCUMENT
+═══════════════════════════════════════════════════
+Branch: handover-2026-07-21
+Files Changed:
+  - ClaudeDocumentation/HANDOVER-2026-07-21-BBB-MESSAGING-INCIDENT-AND-FIXES.md (new)
+
+Submodules Affected: ClaudeDocumentation ONLY
+
+WHAT THIS IS: a full write-up of this session — the BBB real-messaging
+incident and every kill switch/fix built in response, plus the smaller
+contract/task bugs fixed alongside it. Read it first thing in the next
+session; it starts with a table of exactly what's live in Supabase vs
+what's actually committed to each submodule's own `main` branch — that
+gap (specifically in contractnest-edge) is the most important thing to
+close early in the next session, flagged in §0.
+
+═══════════════════════════════════════════════════
+💻 COPY FOR THE NEXT SESSION
+═══════════════════════════════════════════════════
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git fetch origin
+git checkout claude/sprint1b-migration-handoff-5rk8pr
+git pull origin claude/sprint1b-migration-handoff-5rk8pr
+
+Copy-Item "MANUAL_COPY_FILES\handover-2026-07-21\ClaudeDocumentation\*" -Destination "ClaudeDocumentation\" -Recurse -Force
+
+cd ClaudeDocumentation
+git add HANDOVER-2026-07-21-BBB-MESSAGING-INCIDENT-AND-FIXES.md
+git commit -m "docs: session handover — BBB messaging incident, kill switches, contract/task fixes"
+git push origin master
+cd ..
+
+Write-Host "Handover doc committed to ClaudeDocumentation!" -ForegroundColor Green
+
+═══════════════════════════════════════════════════
+⏸️ NO TESTING NEEDED — DOCUMENTATION ONLY
+═══════════════════════════════════════════════════
+This is a plain markdown file, nothing to run or verify beyond reading
+it. Point the next Claude session at it directly.
+═══════════════════════════════════════════════════
