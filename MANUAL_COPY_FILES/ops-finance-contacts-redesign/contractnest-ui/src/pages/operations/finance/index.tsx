@@ -346,22 +346,23 @@ const FinancePage: React.FC = () => {
     color: active ? colors.utility.primaryText : colors.utility.secondaryText
   });
 
+  // Pill treatment mirrors the contacts table exactly: 10px, semibold, bordered
   const invoiceStatusPill = (inv?: FinanceInvoice) => {
     if (!inv) return null;
     let label = 'Unpaid';
-    let bg = colors.brand.primary + '15';
-    let fg = colors.utility.primaryText;
+    let accent = colors.utility.secondaryText;
     if (inv.status === 'partially_paid') {
       label = 'Partially paid';
-      bg = colors.semantic.warning + '20';
-      fg = colors.semantic.warning;
+      accent = colors.semantic.warning;
     } else if (inv.status === 'paid') {
       label = 'Paid';
-      bg = colors.semantic.success + '20';
-      fg = colors.semantic.success;
+      accent = colors.semantic.success;
     }
     return (
-      <span className="px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap" style={{ backgroundColor: bg, color: fg }}>
+      <span
+        className="px-2 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap"
+        style={{ backgroundColor: accent + '20', borderColor: accent + '40', color: accent }}
+      >
         {label}
       </span>
     );
@@ -794,19 +795,20 @@ const FinancePage: React.FC = () => {
                     return (
                       <React.Fragment key={row.contractId}>
                         <div
-                          className="grid items-center gap-2 px-3 py-2.5 rounded-lg border cursor-pointer"
+                          className="grid items-center gap-2 px-3 py-2.5 rounded-lg border transition-colors cursor-pointer"
                           style={{
                             gridTemplateColumns: WORKLIST_GRID_COLS,
-                            borderColor: isExpanded ? colors.brand.primary + '50' : colors.utility.secondaryText + '15'
+                            borderColor: isExpanded ? colors.brand.primary + '60' : colors.utility.primaryText + '15',
+                            backgroundColor: isExpanded ? colors.brand.primary + '08' : colors.utility.secondaryBackground
                           }}
                           onClick={() => toggleExpanded(row.contractId)}
                         >
                           {/* Contact / invoice */}
                           <div className="flex items-center gap-2.5 min-w-0">
                             <span
-                              className="h-8 w-8 rounded-lg flex-none inline-flex items-center justify-center text-xs font-extrabold border"
+                              className="h-8 w-8 rounded-lg flex-none inline-flex items-center justify-center text-xs font-bold border"
                               style={{
-                                backgroundColor: colors.brand.primary + '18',
+                                backgroundColor: colors.brand.primary + '20',
                                 borderColor: colors.brand.primary + '40',
                                 color: colors.brand.primary
                               }}
@@ -850,9 +852,10 @@ const FinancePage: React.FC = () => {
                           <div>
                             {row.maxDaysOverdue > 0 ? (
                               <span
-                                className="px-2 py-0.5 rounded-full text-xs font-bold whitespace-nowrap"
+                                className="px-2 py-0.5 rounded-full text-[10px] font-semibold border whitespace-nowrap"
                                 style={{
-                                  backgroundColor: (row.maxDaysOverdue > 30 ? '#B91C1C' : colors.semantic.error) + '18',
+                                  backgroundColor: (row.maxDaysOverdue > 30 ? '#B91C1C' : colors.semantic.error) + '20',
+                                  borderColor: (row.maxDaysOverdue > 30 ? '#B91C1C' : colors.semantic.error) + '40',
                                   color: row.maxDaysOverdue > 30 ? '#B91C1C' : colors.semantic.error
                                 }}
                               >
