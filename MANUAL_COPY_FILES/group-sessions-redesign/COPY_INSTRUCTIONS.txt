@@ -1,0 +1,74 @@
+═══════════════════════════════════════════════════
+BATCH: group-sessions-redesign (2026-07-22)
+═══════════════════════════════════════════════════
+Owner-approved redesign (interactive playground reviewed 2026-07-22, incl.
+the Groups | Payments tabs decision) + the confirmed payment-flow semantics:
+a member's check-in payment selection is ONLY a flag; money enters AR via
+the invoice, only when the chair confirms.
+
+FILES IN THIS BATCH
+───────────────────
+EDGE (DB only — ALREADY APPLIED LIVE to uwyqhzotluikawcboldr and verified
+with a rolled-back end-to-end test. File is the git record; no edge function
+redeploy needed.)
+
+1. contractnest-edge/supabase/migrations/bbb-foundation/046_declaration_group_and_ledger.sql
+   - gs_pending_declarations: rows now carry block_id + block_name
+     (declaration → t_group_session_schedule → m_cat_blocks); oldest-first.
+   - gs_confirm_declaration: Confirm now records the payment through the
+     invoice via record_invoice_payment_with_allocations — receipt +
+     invoice.amount_paid + event.amount_settled advance together; amount is
+     capped at LEAST(declared, event remainder, invoice balance); the event
+     flips 'paid' only when fully settled; ledger failure leaves the
+     declaration pending; no-open-invoice confirms with ledger_recorded=false.
+     Reject unchanged.
+   Verified (rolled back): invoice 7,500→9,000 paid, balance 18,000→16,500,
+   event settled 1,500 + paid, 1 receipt + 1 allocation, group name resolved.
+
+UI
+
+2. contractnest-ui/src/hooks/queries/useGroupSessionsDashboard.ts
+   - GsDeclaration + block_id/block_name
+   - Confirm toast reflects whether a receipt was recorded to the invoice
+
+3. contractnest-ui/src/pages/operations/group-sessions/index.tsx  (redesigned)
+   All four views in the AR/AP table language (tables on canvas, unified
+   10px bordered pills, filter chips, client-side paging 10/page):
+   - Overview: KPI band; Groups | Payments-to-confirm SEGMENTED TABS
+     (payments tab shows a count badge). Groups = table (Group · Members ·
+     Attendance · Held · Next · QR). Payments = table (Member · Group ·
+     Declared · Reference · Confirm/Reject) with per-group filter chips,
+     member search, "no reference" flagged, self-declared noted.
+   - Group detail: sessions table (Date · # · Chair · Status · Note) with
+     Upcoming/Past/All chips + pager; Add-date / Generate-schedule kept;
+     Session-series + QR side panels kept as cards.
+   - Roster: members table (Member · Contract · Attended · Caps · Dues ·
+     View contract) with All/Over-cap/Dues chips + search + pager; the
+     attendance ✓/✕/S strip moved into the EXPANDABLE row (click member).
+   - Occurrence: Move date / Skip / Restore / Assign chair controls kept;
+     attendance is a table with All/Present/Absent chips + search + Mark
+     toggle; held sessions stay correctable, date/chair locked.
+   - Removed: hard-coded hover:bg-black/5 (replaced by the shared row
+     treatment); old card grids and divider-lists.
+
+COPY COMMANDS (PowerShell)
+──────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\group-sessions-redesign\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\group-sessions-redesign\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+TESTING CHECKLIST (BBB, TEST env)
+─────────────────────────────────
+- [ ] /group-sessions: KPIs + Groups tab as a table; Payments tab shows
+      badge only when declarations exist
+- [ ] Click a group → sessions table with Upcoming/Past/All chips + pager;
+      Add date and Generate schedule still work; series chair + QR panels intact
+- [ ] Roster: filter chips + search work; clicking a member unfolds the
+      attendance strip; View contract still navigates
+- [ ] Occurrence: Move date / Skip / Restore / Assign chair all work;
+      attendance chips filter; Mark toggles présence
+- [ ] End-to-end payment: member check-in → declare a due (with/without UPI
+      ref) → appears under Payments tab with the right group → Confirm →
+      toast says "receipt recorded" → /ops/finance shows the instalment
+      settled (timeline bar turns green) and Collected this month increases
+- [ ] Reject leaves the ledger untouched
