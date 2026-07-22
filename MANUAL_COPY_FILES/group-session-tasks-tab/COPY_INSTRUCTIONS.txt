@@ -1,0 +1,103 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════
+Branch: group-session-tasks-tab
+Files Changed:
+  - contractnest-ui/src/components/contracts/EventCard.tsx - group-session card gets a heading + "Go to Group Session" link instead of Book appointment
+  - contractnest-ui/src/components/contracts/SellerTasksTab.tsx - "Start Service" bulk action now excludes group-session events
+
+Submodules Affected: contractnest-ui
+
+BASE FILE NOTE: SellerTasksTab.tsx in this batch is based on the
+contract-view-regression-repair batch's copy ("Tasks + Financials tabs
+per mock 8" — stat strip, overdue emphasis, View-in-matrix link), NOT
+the plain real submodule — that batch is what your screenshot showed
+running, and it hasn't been merged into the real submodule yet. Copying
+this batch is safe either way: it includes all of that batch's changes
+plus this fix on top.
+
+REQUEST: on a contract's Tasks tab, a Group Session task should never
+show "Book appointment" or "Start Service" — those only make sense for
+individually-delivered services. Instead it should show a heading and a
+link to navigate to the Group Session menu.
+
+WHAT I FOUND:
+  - EventCard.tsx already correctly excluded "Book appointment" for
+    group-session events (`canBookAppointment` already required
+    `!isGroupSession`) — but left that entire row blank for group
+    sessions instead of showing anything useful there.
+  - SellerTasksTab.tsx's separate "Start Service" bulk-action button (one
+    per date, opens a panel to start every service event scheduled that
+    day) did NOT exclude group-session events at all — it would have
+    included them in that bulk action if any existed in that date group.
+  - Checked CN-1021 (the contract in your screenshot) directly: its
+    "Saturday Cadence" group-session block has ZERO rows in
+    t_contract_events — group sessions generate their occurrences into a
+    separate table (t_group_session_schedule) surfaced on the dedicated
+    Group Session dashboard instead, by design. So this exact bug
+    couldn't be reproduced live on THIS contract right now (there's no
+    group-session task card to show at all) — the fix is for whenever a
+    group-session event DOES appear in this list (some other flow may
+    still route one through here, and it's the correct general fix
+    regardless).
+
+FIX:
+  - EventCard.tsx: added a new block, shown only when
+    event.event_type === 'service' && isGroupSession — a "Group Session"
+    label plus a "Go to Group Session" button that navigates to
+    /group-sessions (the existing Group Session dashboard route). The
+    existing "Book appointment" block now also explicitly excludes
+    isGroupSession (was already effectively excluded via
+    canBookAppointment, made explicit for clarity).
+  - SellerTasksTab.tsx: hasIncompleteService and the event list passed to
+    handleStartService both now filter out events with audience==='group'.
+
+Production Checklist:
+  ✅ Transaction Management: N/A (display/navigation only)
+  ✅ Race Condition Handling: N/A
+  ✅ Error Handling: N/A (no new async operation)
+  ✅ Toasts: N/A (no new user-facing async action, just navigation)
+  ✅ Loaders: N/A
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+git fetch origin
+git checkout claude/sprint1b-migration-handoff-5rk8pr
+git pull origin claude/sprint1b-migration-handoff-5rk8pr
+
+Copy-Item "MANUAL_COPY_FILES\group-session-tasks-tab\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "Files copied!" -ForegroundColor Green
+
+STEP 2: Start Dev Server & Test
+─────────────────────────────────
+cd contractnest-ui && npm run dev
+
+Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Find (or create) a contract with a group-session task actually
+      appearing on the Tasks tab (not CN-1021 — confirmed it has none
+      right now) — its card should show "Group Session" + a "Go to
+      Group Session" button, no "Book appointment"
+- [ ] That date's "Start Service" bulk button (if other, non-group
+      service events exist the same day) should only open the panel for
+      the non-group ones
+- [ ] "Go to Group Session" navigates to /group-sessions
+- [ ] Regular (non-group) service tasks are completely unaffected —
+      Book appointment / Start Service still work exactly as before
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
