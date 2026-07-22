@@ -1,0 +1,54 @@
+═══════════════════════════════════════════════════
+BATCH: card-prop-forwarding (2026-07-22)
+═══════════════════════════════════════════════════
+Option B from the Card-swallows-props discussion (owner-approved).
+Deliberately its own one-file batch so it can be reverted independently.
+
+FILE
+────
+contractnest-ui/src/components/ui/card.tsx
+  Card / CardHeader / CardTitle / CardContent now extend the standard
+  React HTMLAttributes and spread {...props} onto their element — style,
+  onClick, id, hover handlers, aria-* all pass through. Previously ONLY
+  className/children were accepted; everything else was silently dropped.
+
+WHY
+───
+61 call sites across ~24 files pass style objects that have NEVER applied
+(51 on Card, 10 on CardHeader/CardContent). With this change they all go
+live at once. App-wide typecheck: clean.
+
+COPY COMMAND (PowerShell)
+─────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\card-prop-forwarding\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+EYEBALL CHECKLIST — screens whose look ACTUALLY changes
+───────────────────────────────────────────────────────
+I classified all 61 dormant styles. The large majority (~50) set neutral
+theme tokens (secondaryBackground/primaryBackground + hairline border) that
+match the default card in light mode — no visible change there; dark mode
+IMPROVES (cards now follow theme tokens). The ones worth a look:
+
+VISUAL ACCENTS APPEARING (intended, previously missing):
+- [ ] /ops/finance — "Drafts awaiting your approval" panel gains its amber
+      warning border (needs a draft invoice to see)
+- [ ] VaNi → WhatsApp integration — the error-state card becomes red-tinted
+      (only visible in its error condition)
+- [ ] VaNi → Job details — the failure card gains a red-tinted border
+- [ ] Settings → Business profile (smart profile) — two CardHeaders gain
+      soft brand/success GRADIENTS; one card a success-tinted border.
+      Most visible cosmetic change in the batch — judge if you like it.
+
+SPACING/LAYOUT SHIFTS (paddings/margins that now apply):
+- [ ] Settings → Automation rules — CardContent padding 16px (was 24)
+      + a card gains marginBottom — slightly tighter, gaps grow a touch
+- [ ] VaNi → Briefing page — several CardContent paddings (14/16/20/28/32)
+      replace the default 24; one card gains marginBottom
+
+DARK-MODE SPOT CHECK (biggest silent beneficiary):
+- [ ] Any VaNi page (Job details is densest) in dark mode — cards should
+      now use theme backgrounds instead of the generic bg-card variable
+
+If any screen looks wrong, the fix is at that call site (adjust its style),
+or worst case revert this one file.
