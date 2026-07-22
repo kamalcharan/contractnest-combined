@@ -1,0 +1,84 @@
+═══════════════════════════════════════════════════
+BATCH: user-invitations-workspace-display-name-fix (2026-07-22)
+═══════════════════════════════════════════════════
+ISSUE
+─────
+Tenant's business name is "BBB Bhagyanagar", but the invitation email/SMS/
+WhatsApp text said: "Sanjay Ghotikar has invited you to join BBB on
+ContractNest."
+
+ROOT CAUSE
+──────────
+createInvitation() and resendInvitation() built the invite message's
+workspaceName from t_tenants.name only:
+    const { data: tenant } = await supabase.from('t_tenants').select('name, ...')
+    ...
+    workspaceName: tenant?.name || 'Workspace'
+
+t_tenants.name for this tenant is literally "BBB" — a short internal
+name/code, NOT the business's display name. The actual display name
+("BBB Bhagyanagar") lives in a separate table, t_tenant_profiles.business_name
+— confirmed by querying the DB directly. This is also the field the rest of
+the app already treats as canonical (dashboard header, VaNi chat, tenant
+context service all read business_name), so the invitation flow was simply
+missing a join to it.
+
+FIX
+───
+Both createInvitation() and resendInvitation() now also fetch
+t_tenant_profiles.business_name for the tenant_id, and use:
+    workspaceDisplayName = tenantProfile?.business_name || tenant?.name || 'Workspace'
+as the workspaceName passed into the invite message — falling back to
+t_tenants.name (then a generic 'Workspace') if a tenant hasn't completed
+onboarding/profile setup yet. No schema change, no other flow touched.
+
+This batch is layered on top of the user-invitations-pagination-fix batch
+(same file) — this copy contains BOTH fixes together, so copying this one
+file gives you the full current state of index.ts.
+
+DEPLOYMENT STATUS
+──────────────────
+Already deployed directly to Supabase (project uwyqhzotluikawcboldr) as
+user-invitations version 64, ACTIVE. Post-deploy verified: re-fetched the
+live function and diffed byte-for-byte against the intended source — both
+index.ts and jtd-integration.ts identical. This batch is for git history /
+local checkout parity only.
+
+FILES IN THIS BATCH
+───────────────────
+1. contractnest-edge/supabase/functions/user-invitations/index.ts
+   - createInvitation(): added t_tenant_profiles.business_name lookup,
+     workspaceName now uses business_name || tenant.name || 'Workspace'
+   - resendInvitation(): same change
+   (also includes the earlier pagination fix from the previous batch —
+   this is the full current file, not just a diff)
+2. contractnest-edge/supabase/functions/user-invitations/jtd-integration.ts
+   - Unchanged (copied verbatim for a complete deploy bundle in git)
+
+COPY COMMANDS (PowerShell)
+──────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\user-invitations-workspace-display-name-fix\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+(No local dev server test needed — already live on Supabase and verified.
+This copy keeps contractnest-edge's git history in sync with what's
+deployed.)
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST (can be done directly against live now)
+═══════════════════════════════════════════════════
+- [ ] Send a fresh invitation from tenant BBB (dd194710-92b4-4110-80eb-
+      0b492a0d2c1f) and confirm the email/SMS/WhatsApp text now reads
+      "...to join BBB Bhagyanagar on ContractNest" instead of "...BBB..."
+- [ ] Resend an existing pending invitation for the same tenant and confirm
+      the same corrected name appears.
+- [ ] Sanity check a tenant that HASN'T completed onboarding (no
+      t_tenant_profiles row yet, or business_name is null) still falls back
+      to t_tenants.name (or 'Workspace') without erroring.
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+This fix is live already. Let me know once you've sent/resent an
+invitation and confirmed the workspace name now reads correctly.
+═══════════════════════════════════════════════════
