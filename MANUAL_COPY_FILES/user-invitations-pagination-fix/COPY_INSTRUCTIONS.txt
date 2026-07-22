@@ -1,0 +1,83 @@
+═══════════════════════════════════════════════════
+BATCH: user-invitations-pagination-fix (2026-07-22)
+═══════════════════════════════════════════════════
+ROOT CAUSE
+──────────
+"Accept & Join Workspace" did nothing for kamalcharan@gmail.com. Investigation
+found 3 real 400 responses (not a silent client failure): the invitation flow
+called auth.admin.createUser() for an email that ALREADY had an auth.users
+account (created 2025-07-15), which correctly rejected the duplicate — but the
+UI/flow got there in the first place because existing-user detection wrongly
+said "this is a new user".
+
+Why detection was wrong: this project has 162 auth.users rows. Both
+validateInvitation() and acceptInvitation() in this edge function had a
+fallback lookup:
+    supabase.auth.admin.listUsers({ page: 1, perPage: 100 })
+Supabase's admin listUsers() only returns ONE page per call. Any account
+past the first 100 (like this one) was silently invisible to that lookup,
+so a genuinely existing user was treated as brand new and routed down the
+"create account" path instead of "sign in with your existing account".
+
+FIX
+───
+New shared helper `findAuthUserByEmail()` loops through listUsers() pages
+(1000/page, up to 50 pages) until it finds a case-insensitive email match
+or runs out of users. Both call sites (validateInvitation's fallback,
+acceptInvitation's fallback) now use this helper instead of the bare
+page:1 call. No other logic changed — diffed against the live pre-fix
+source to confirm.
+
+Also cleaned up as part of this: the stale duplicate auth.users record for
+kamalcharan@gmail.com was deleted directly in Supabase (after nulling the
+one FK reference from a closed test tenant's created_by column) so the
+invitation can be retried cleanly.
+
+DEPLOYMENT STATUS
+──────────────────
+Already deployed directly to Supabase (project uwyqhzotluikawcboldr) as
+user-invitations version 63, ACTIVE. Post-deploy verified: re-fetched the
+live function and diffed byte-for-byte against the intended source — both
+index.ts and jtd-integration.ts identical. This batch is for git history /
+local checkout parity only — no further action needed to make the fix live.
+
+FILES IN THIS BATCH
+───────────────────
+1. contractnest-edge/supabase/functions/user-invitations/index.ts
+   - Added findAuthUserByEmail() helper (paginated auth.users lookup)
+   - validateInvitation(): fallback now uses findAuthUserByEmail()
+   - acceptInvitation(): fallback now uses findAuthUserByEmail()
+2. contractnest-edge/supabase/functions/user-invitations/jtd-integration.ts
+   - Unchanged (copied verbatim for a complete deploy bundle in git)
+
+COPY COMMANDS (PowerShell)
+──────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\user-invitations-pagination-fix\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+(No local dev server test needed for this one — it's already live on
+Supabase and verified. This copy is only to keep contractnest-edge's git
+history in sync with what's deployed.)
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST (can be done directly against live now)
+═══════════════════════════════════════════════════
+- [ ] Re-open the same invitation link for kamalcharan@gmail.com (invitation
+      id b1e62b85-cf50-487f-aa9c-88f8e2e49c49, still status 'sent') and
+      confirm it now correctly detects... actually this user's auth account
+      was deleted, so this invitation will now correctly go down the
+      NEW-USER signup path (no more duplicate-email 400).
+- [ ] For a true regression test of the pagination fix itself: invite an
+      email that belongs to an existing auth user known to be beyond the
+      first 100 users, and confirm validateInvitation returns
+      user_exists: true (previously would have wrongly said false).
+- [ ] Confirm accepting a fresh invitation for a genuinely new email still
+      works end-to-end (new-user path unaffected).
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+This fix is live already. Let me know once you've retried the
+kamalcharan@gmail.com invitation (or a fresh one) and confirm it works
+end-to-end.
+═══════════════════════════════════════════════════
