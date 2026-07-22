@@ -1,0 +1,79 @@
+═══════════════════════════════════════════════════
+BATCH: checkin-payment-confirmation-ux (2026-07-22)
+═══════════════════════════════════════════════════
+UPI deep links ("Pay ₹X now") have no callback into the browser — once the
+user's UPI app opens, this page has no way of knowing whether they paid, or
+whether they even came back. Left as-is, a member can easily assume the
+system detected the payment automatically and never enters the UPI
+reference + taps "Record payment" — the payment then never gets declared,
+and the chair never sees it to confirm.
+
+Two things now set that expectation instead of relying on the user to
+intuit it:
+  1. Tapping "Pay ₹X now" opens a confirm modal first ("Before you pay —
+     this isn't recorded automatically, come back and enter your reference
+     + tap Record payment") with a "Continue to pay" button that actually
+     opens the UPI app.
+  2. If the tab regains focus after that (visibilitychange) and the
+     reference still hasn't been entered, a small "Back from paying?" nudge
+     appears above the UPI reference field, reminding them to finish the
+     declaration. Clears itself once they start typing a reference.
+
+No backend/data-model change — this is UI-only, same submit/declare flow as
+before (member self-declares, chair confirms offline).
+
+FILES IN THIS BATCH
+───────────────────
+1. contractnest-ui/src/pages/checkin/SessionCheckinPage.tsx
+   - New state: payConfirmOpen, pendingPayUrl, paymentAttempted,
+     showReturnNudge.
+   - New useEffect on document visibilitychange → sets showReturnNudge when
+     the tab comes back into view after a pay attempt with no reference
+     entered yet and the check-in isn't already done.
+   - "Pay ₹X now" is now a button that opens the confirm modal instead of
+     navigating directly; the modal's own "Continue to pay" link is the
+     actual UPI deep link.
+   - Return-nudge banner rendered above the UPI reference input.
+
+Base note: this file was rebuilt from the CURRENT LIVE content of
+contractnest-ui's main branch (fetched fresh, not the stale local
+checkout) — main already has several other merged batches from this
+session (group-sessions, card-prop-forwarding, the contact-channel
+country-code display fix, etc.), and this edit is layered cleanly on top
+of all of that. Diffed against the live base before finalizing — the only
+changes are exactly what's described above.
+
+COPY COMMANDS (PowerShell)
+──────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\checkin-payment-confirmation-ux\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+cd contractnest-ui
+npm run dev
+# Hard refresh: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Open a checkin link with an open due, tap "Pay ₹X now" → confirm
+      modal appears explaining the manual-declare step, before anything
+      opens
+- [ ] Tap "Cancel" in the modal → closes, nothing navigates, due list still
+      intact
+- [ ] Tap "Continue to pay" → opens the UPI app chooser as before; switch
+      back to the browser tab (e.g. via app switcher, without paying) →
+      "Back from paying?" nudge appears above the UPI reference field
+- [ ] Type anything into the UPI reference field → nudge disappears
+- [ ] Complete the full flow (enter reference, tap Record payment) → works
+      exactly as before, no change to submission behavior
+- [ ] Confirm this doesn't regress the QR-based "scan to pay" path (that
+      one doesn't navigate the tab away, so no modal/nudge involved there —
+      should behave unchanged)
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
