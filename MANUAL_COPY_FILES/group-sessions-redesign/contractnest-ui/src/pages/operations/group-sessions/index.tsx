@@ -266,15 +266,34 @@ const GroupSessionsPage: React.FC = () => {
     return rows.slice((cur - 1) * PAGE_SIZE, cur * PAGE_SIZE);
   };
 
-  const Kpi = ({ icon, label, value, sub: s2, tone, onClick }: { icon: React.ReactNode; label: string; value: React.ReactNode; sub?: string; tone?: 'good' | 'warn'; onClick?: () => void }) => (
-    <Card style={onClick ? { backgroundColor: colors.brand.primary, borderColor: colors.brand.primary, cursor: 'pointer' } : cardStyle} onClick={onClick}>
-      <CardContent className="p-4">
-        <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide" style={onClick ? { color: '#ffffffd9' } : sub}>{icon}{label}</div>
-        <div className="text-2xl font-bold mt-1 tabular-nums" style={onClick ? { color: '#fff' } : ink}>{value}</div>
-        {s2 && <div className="text-[11px] mt-0.5" style={{ color: onClick ? '#ffffffd9' : tone === 'good' ? colors.semantic.success : tone === 'warn' ? colors.semantic.warning : colors.utility.secondaryText }}>{s2}</div>}
-      </CardContent>
-    </Card>
-  );
+  // NOTE: the shared ui/Card accepts ONLY className/children — it silently
+  // drops style and onClick. A clickable/brand-filled tile must therefore be
+  // a real <button>, never a Card (that's how the pre-redesign Roster tile
+  // worked, and losing this made it render blank white-on-white).
+  const Kpi = ({ icon, label, value, sub: s2, tone, onClick }: { icon: React.ReactNode; label: string; value: React.ReactNode; sub?: string; tone?: 'good' | 'warn'; onClick?: () => void }) => {
+    if (onClick) {
+      return (
+        <button
+          onClick={onClick}
+          className="text-left rounded-lg p-4 transition-shadow hover:shadow-md"
+          style={{ backgroundColor: colors.brand.primary, color: '#fff' }}
+        >
+          <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide" style={{ color: '#ffffffd9' }}>{icon}{label}</div>
+          <div className="text-2xl font-bold mt-1 tabular-nums">{value}</div>
+          {s2 && <div className="text-[11px] mt-0.5 inline-flex items-center" style={{ color: '#ffffffd9' }}>{s2}</div>}
+        </button>
+      );
+    }
+    return (
+      <Card style={cardStyle}>
+        <CardContent className="p-4">
+          <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide" style={sub}>{icon}{label}</div>
+          <div className="text-2xl font-bold mt-1 tabular-nums" style={ink}>{value}</div>
+          {s2 && <div className="text-[11px] mt-0.5" style={{ color: tone === 'good' ? colors.semantic.success : tone === 'warn' ? colors.semantic.warning : colors.utility.secondaryText }}>{s2}</div>}
+        </CardContent>
+      </Card>
+    );
+  };
   const Crumb = ({ items }: { items: { label: string; onClick?: () => void }[] }) => (
     <div className="flex items-center gap-1.5 text-[12.5px] flex-wrap mb-2">
       {items.map((it, i) => (
