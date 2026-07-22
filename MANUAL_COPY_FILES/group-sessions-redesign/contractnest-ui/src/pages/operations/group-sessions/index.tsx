@@ -172,6 +172,28 @@ const GroupSessionsPage: React.FC = () => {
     return { totalSessions, members, avg, next: nexts[0] || null };
   }, [sessions, sessionsQuery.data]);
 
+  // NOTE: every hook must live above the early loading/error returns below —
+  // conditional hook counts crash React ("Rendered more hooks…").
+  const declGroups = useMemo(() => {
+    const map = new Map<string, { name: string; count: number }>();
+    declarations.forEach((d) => {
+      const key = d.block_id || 'unknown';
+      const cur = map.get(key) || { name: d.block_name || 'Unknown group', count: 0 };
+      cur.count += 1;
+      map.set(key, cur);
+    });
+    return Array.from(map.entries());
+  }, [declarations]);
+
+  const filteredDeclarations = useMemo(() => {
+    const term = declSearch.trim().toLowerCase();
+    return declarations.filter((d) => {
+      if (declGroup !== 'all' && (d.block_id || 'unknown') !== declGroup) return false;
+      if (term && !(d.member_name || '').toLowerCase().includes(term)) return false;
+      return true;
+    });
+  }, [declarations, declGroup, declSearch]);
+
   const openGroup = (s: GsSessionRow) => { setSelectedSession(s); setView('group'); setShowAdd(false); setEditOccId(null); setOccFilter('upcoming'); setOccPage(1); };
   const openOccurrence = (o: GsOccurrenceRow) => { setSelectedOcc(o); setEditOccId(null); setAttFilter('all'); setAttSearch(''); setView('occurrence'); };
 
@@ -360,26 +382,6 @@ const GroupSessionsPage: React.FC = () => {
   // ─────────────────────────────────────────────
   // Overview — Groups | Payments tabs
   // ─────────────────────────────────────────────
-  const declGroups = useMemo(() => {
-    const map = new Map<string, { name: string; count: number }>();
-    declarations.forEach((d) => {
-      const key = d.block_id || 'unknown';
-      const cur = map.get(key) || { name: d.block_name || 'Unknown group', count: 0 };
-      cur.count += 1;
-      map.set(key, cur);
-    });
-    return Array.from(map.entries());
-  }, [declarations]);
-
-  const filteredDeclarations = useMemo(() => {
-    const term = declSearch.trim().toLowerCase();
-    return declarations.filter((d) => {
-      if (declGroup !== 'all' && (d.block_id || 'unknown') !== declGroup) return false;
-      if (term && !(d.member_name || '').toLowerCase().includes(term)) return false;
-      return true;
-    });
-  }, [declarations, declGroup, declSearch]);
-
   const renderOverview = () => (
     <>
       <h1 className="text-xl font-semibold" style={ink}>Group Sessions</h1>
