@@ -670,7 +670,7 @@ const GroupSessionsPage: React.FC = () => {
                 />
               </div>
             </Card>
-            <QRCard blockId={s.block_id} title={s.name} />
+            <QRCard blockId={s.block_id} title={s.name} cadence={cadence} />
           </div>
         </div>
       </>
