@@ -1,0 +1,100 @@
+═══════════════════════════════════════════════════
+BATCH: contact-channel-country-code-display (2026-07-22)
+═══════════════════════════════════════════════════
+Fixes the "+91 shown twice" issue on contact mobile/whatsapp/phone channels:
+the edit box (and, on ContactProfileTab, the read-only view) was pre-filling
+directly from the stored channel value, which already has the country's dial
+code baked in (e.g. "+919885164233") — right next to a separate country-code
+dropdown showing the same code again. Left as-is, this also actively blocked
+saving: the client-side length validator counts the baked-in dial-code digits
+too, so a value like "+919885164233" reads as 12 digits against India's
+exactly-10 rule and fails validation until the user manually deletes the
+leading "91" themselves.
+
+Storage format is UNCHANGED — t_contact_channels.value still always holds the
+full dial-coded number, because the payment/service reminder scanner (SQL)
+reads that value directly as the number to message, with no separate
+combination with country_code. This batch only changes what the edit/view UI
+shows and accepts; the save round-trip (local digits + country_code) already
+worked correctly on the backend, this just fixes the input pre-fill and
+display to match.
+
+Two live, reachable edit surfaces have this bug (traced actual routes/imports
+first — a couple of other components with similar phone-formatting code,
+ContactChannelsCard.tsx and ContextualEditorPanel.tsx, turned out to be
+orphaned/unreferenced and were left untouched):
+  1. ContactProfileTab.tsx — the "Contact channels" section on the main
+     contact detail page (/contacts/:id).
+  2. ContactChannelsSection.tsx — used by ProfileDrawer.tsx's "Edit Channels"
+     modal (opened from the Profile pill / cockpit drawer).
+Create flows (QuickAddContactDrawer, CSV import, Advanced-create prefill) do
+NOT pre-fill from an existing stored value, so they were already correct and
+are untouched.
+
+FILES IN THIS BATCH
+───────────────────
+1. contractnest-ui/src/utils/constants/channels.ts
+   Added getLocalPhoneDigits(channel, value, countryCode) — strips a phone
+   value's dial-code prefix back off for display, but ONLY when the
+   remaining digits are a plausible local number for that country (the same
+   safe-strip rule formatChannelValue already uses on the way back in). An
+   ambiguous or already-corrupted value (e.g. one of the historically
+   mis-imported BBB contacts) is left as-is rather than risk chopping real
+   digits off a number that doesn't cleanly split.
+
+2. contractnest-ui/src/components/contacts/view/ContactProfileTab.tsx
+   - Edit-mode initializer for the channels list now strips the dial code
+     via a local `localDigits()` helper (same logic as getLocalPhoneDigits,
+     kept file-local since this component doesn't otherwise use the
+     channels.ts config system).
+   - Read-only channel row now shows "IN 9885164233" instead of
+     "IN +919885164233".
+   - Save handler untouched — it already sent local digits + country_code
+     separately; this was purely an input/display fix.
+
+3. contractnest-ui/src/components/contacts/forms/ContactChannelsSection.tsx
+   - Clicking the pencil/edit icon on an existing channel now strips the
+     dial code (via the new getLocalPhoneDigits) before opening that row for
+     editing, so the input shows local digits instead of the full value.
+   - The existing "confirm" (check) button already calls formatChannelValue
+     to rebuild the full value on save — unchanged, and correct now that the
+     input holds local digits going in.
+
+COPY COMMANDS (PowerShell)
+──────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\contact-channel-country-code-display\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "✅ Files copied!" -ForegroundColor Green
+
+STEP: Start Dev Server & Test
+─────────────────────────────────
+cd contractnest-ui && npm run dev
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Open a contact with an existing mobile number (India) → click Edit on
+      Contact Channels → input shows just the 10 local digits, no "+91"
+      baked in, country dropdown still shows "IN +91" alongside it
+- [ ] Edit an unrelated field (e.g. add a note-less save) without touching
+      the number → Save succeeds (previously failed with a digit-count
+      validation error unless the user manually stripped "91" first)
+- [ ] Change one digit of the local number and Save → reloads showing the
+      corrected number, still stored/displayed correctly with country code
+- [ ] Repeat via the Profile drawer's "Edit Channels" modal (the Profile
+      pill on the bottom action bar) — same behavior
+- [ ] Add a brand-new mobile channel (Quick Add or the "+ Add channel"
+      button) with a different country (e.g. US, 10 digits) → still saves
+      and displays correctly — confirms create-flow wasn't affected
+- [ ] Confirm WhatsApp/SMS reminders still work for a contact touched by
+      this fix (storage format is unchanged, but worth one live check)
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
