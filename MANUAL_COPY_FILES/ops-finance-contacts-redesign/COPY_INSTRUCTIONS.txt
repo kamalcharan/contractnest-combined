@@ -1,0 +1,82 @@
+═══════════════════════════════════════════════════
+BATCH: ops-finance-contacts-redesign (2026-07-22)
+═══════════════════════════════════════════════════
+Owner-approved redesign (interactive mock reviewed 2026-07-22):
+Finance page → smart filter + cash timeline + grouped worklist;
+Contacts page → table list view + working search + honest paging.
+
+FILES IN THIS BATCH
+───────────────────
+EDGE (DB only — both ALREADY APPLIED LIVE to uwyqhzotluikawcboldr; the files
+are the git record. No edge function redeploy needed for either.)
+
+1. contractnest-edge/supabase/migrations/bbb-foundation/045_contact_list_search_paging.sql
+   list_contacts_with_channels_v2:
+   - search now matches name, company, CT number, AND channel values
+     (email/phone), with digits-only phone matching (>=4 digits) so any
+     formatting of a number finds the contact
+   - child contacts (parent_contact_id NOT NULL) excluded server-side —
+     pages are full and "Showing X of Y" is honest
+   - row payload gains contact_number + parent_contact_id
+
+2. contractnest-edge/supabase/migrations/operations-loop/021_receivables_events_schedule.sql
+   get_tenant_receivables: ADDITIVE `events` array — every billing event
+   (settled + open, FIFO-adjusted open amounts) on contracts with an open
+   invoice; synthetic row for event-less contracts; cap 1000.
+   summary/by_buyer/invoices identical to 020.
+
+UI
+
+3. contractnest-ui/src/hooks/queries/useFinanceQueries.ts
+   + FinanceEvent interface, + events?: FinanceEvent[] on ReceivablesResponse.
+
+4. contractnest-ui/src/pages/operations/finance/index.tsx  (redesigned)
+   Receivables view:
+   - Smart filter bar: Month · Contact · Contract · Overdue-only · search —
+     KPIs, timeline and worklist all recompute from the filtered event set
+   - KPI band: Outstanding / Actually overdue (with oldest days) /
+     Coming due 30d (with next instalment) / Collected this month
+   - Cash timeline: month columns, red = late (deep red past 30d),
+     green = expected; click a month to filter; legend below
+   - Worklist grouped by contact/contract, expandable instalment schedule
+     (click row), Remind + Open-contract actions, client-side paging (10/pg)
+   - "Who owes you" card and flat invoice table replaced by the grouped
+     worklist; Drafts-awaiting-approval panel unchanged
+   Payables view: unchanged from Stage 1.
+
+5. contractnest-ui/src/pages/contacts/index.tsx
+   - List view is now a proper table (product-wide list pattern): select-all
+     header checkbox, Contact · CT Number · Phone/Email · Classification ·
+     Status · Actions columns; row click opens the contact
+   - Grid (cards) view untouched — toggle still available
+   - Pager fixed: windowed pages (1 … n-1 n n+1 … last) — previously only
+     pages 1-5 were ever reachable
+   - Client-side child-contact filter removed (server excludes them now)
+   - Search placeholder documents the new coverage
+
+COPY COMMANDS (PowerShell)
+──────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\ops-finance-contacts-redesign\contractnest-ui\*"   -Destination "contractnest-ui\"   -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\ops-finance-contacts-redesign\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+TESTING CHECKLIST (BBB, TEST env)
+─────────────────────────────────
+Contacts (/contacts):
+- [ ] List view renders as an aligned table with header row
+- [ ] Search "9440495904" (or any stored phone, any spacing) → finds the contact
+- [ ] Search "yahoo" → finds contacts by email; search "CT-" prefix works
+- [ ] CT number column populated
+- [ ] Select-all checkbox selects the page; bulk bar appears
+- [ ] Pager: with >5 pages, last page reachable; "Showing X to Y of Z" consistent
+Finance (/ops/finance, Revenue):
+- [ ] Cash timeline shows red bars Apr/May/Jun (₹1.5k/₹1.5k/₹6k) and green
+      Jul ₹1.5k, Sep ₹4.5k, Dec ₹4.5k, Aug/…(future months) — TODAY tag on Jul
+- [ ] Clicking a month filters KPIs + worklist; Clear all resets
+- [ ] Contact/Contract dropdowns filter everything
+- [ ] Worklist: 2 rows (Test user ₹18,000 / ₹6,000 overdue · CHARAN KAMAL
+      ₹13,500 / ₹4,500 overdue); row click expands instalment chips
+      (green ✓ paid, red late with days, brand "next")
+- [ ] Remind button on a row queues reminder (BBB kill switches still block
+      actual sending — expected)
+- [ ] Switch header perspective to Expense → payables view unchanged
