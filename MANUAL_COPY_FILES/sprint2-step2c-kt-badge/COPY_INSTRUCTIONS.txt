@@ -1,0 +1,75 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════
+Branch: sprint2-step2c-kt-badge
+(Sprint 2/7 pilot — POA Step 2c, follow-up to Step 2)
+
+Files Changed:
+  - contractnest-ui/src/pages/admin/smart-forms/types/smartFormsAdmin.types.ts
+      FormTemplate (the read-model interface, used by the list page) gains
+      `source: 'manual' | 'knowledge_tree' | 'tenant_fork'` and
+      `resource_template_id: string | null` so the UI can read the columns
+      Step 2 started populating. (This file already carries Step 2's
+      CreateTemplatePayload change — apply Step 2's batch first, or this
+      file on its own if Step 2 is already copied in.)
+  - contractnest-ui/src/pages/admin/smart-forms/SmartFormsAdminPage.tsx
+      Each row in the Smart Forms list now shows a "🌳 Knowledge Tree"
+      badge when source === 'knowledge_tree'. Clicking the badge opens the
+      originating Knowledge Tree page
+      (/service-contracts/templates/admin/global-templates/tree/:resource_template_id)
+      without triggering the row's own click (which opens the form editor).
+      No backend/edge changes needed — GET /smart-forms already selects
+      `*`, so source/resource_template_id were already coming back in the
+      API response; only the frontend wasn't reading or displaying them.
+
+Submodules Affected: contractnest-ui only
+
+Production Checklist:
+  ✅ Transaction Management: N/A — read-only display, no writes
+  ✅ Race Condition Handling: N/A
+  ✅ Error Handling: badge only renders when both source and
+     resource_template_id are present — no null-navigation possible
+  ✅ Toasts: N/A — no action that succeeds/fails here
+  ✅ Loaders: N/A — uses existing list loading state, no new async call
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files from MANUAL_COPY_FILES
+─────────────────────────────────
+NOTE: apply in this order if starting fresh (Step 2 not yet copied in):
+Copy-Item "MANUAL_COPY_FILES\sprint2-step2-kt-export-checkpoint-and-source\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\sprint2-step2c-kt-badge\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "✅ Files copied!" -ForegroundColor Green
+
+STEP 3: Start Dev Server & Test
+─────────────────────────────────
+cd contractnest-ui
+npm run dev
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Go to Admin > Smart Forms
+- [ ] Find the HVAC draft you exported earlier from the Knowledge Tree
+- [ ] Confirm it shows a "🌳 Knowledge Tree" badge next to its status/version
+- [ ] Confirm manually-created (non-KT) templates do NOT show the badge
+- [ ] Click the badge — confirm it navigates to the HVAC Knowledge Tree
+      page (not the form editor)
+- [ ] Confirm clicking elsewhere on the row still opens the form editor
+      as before (badge click doesn't leak into the row's own onClick)
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
