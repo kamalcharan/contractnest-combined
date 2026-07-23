@@ -1,0 +1,39 @@
+═══════════════════════════════════════════════════
+BATCH: session-handover-2026-07-22 (docs only)
+═══════════════════════════════════════════════════
+Session handover doc for the next Claude Code session, following the same
+convention as prior handovers (e.g. HANDOVER-2026-07-21-BBB-MESSAGING-
+INCIDENT-AND-FIXES.md) — what shipped, live/DB state, what's still only in
+MANUAL_COPY_FILES vs actually merged into each submodule's own git main,
+and pointers into SPRINT_REFERENCES/CONTRACTNEST_SPRINT_SPEC.md for
+Sprint 2 and Sprint 7, which is what the owner wants to pick up next
+session once BBB go-live settles down.
+
+FILES IN THIS BATCH
+───────────────────
+1. ClaudeDocumentation/HANDOVER-2026-07-22-BBB-GOLIVE-PREP-AND-FIXES.md
+
+COPY COMMANDS (PowerShell)
+──────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+Copy-Item "MANUAL_COPY_FILES\session-handover-2026-07-22\ClaudeDocumentation\*" -Destination "ClaudeDocumentation\" -Recurse -Force
+
+cd ClaudeDocumentation
+git checkout master
+git pull origin master
+git add "HANDOVER-2026-07-22-BBB-GOLIVE-PREP-AND-FIXES.md"
+git commit -m "docs: session handover - BBB go-live fixes, finance AR/AP, sprint 2/7 pointers"
+git push origin master
+cd ..
+
+git add ClaudeDocumentation
+git commit -m "chore: update ClaudeDocumentation submodule - session handover"
+git push origin master
+
+(No local testing needed — this is a docs-only batch, no code changes.)
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Nothing to test — copy + commit whenever convenient.
+═══════════════════════════════════════════════════
