@@ -1,0 +1,42 @@
+BATCH: restore-knowledge-tree-menu
+SUBMODULE(S) AFFECTED: contractnest-ui
+
+WHAT THIS BATCH IS
+-------------------
+Restores the "Global Templates" and "Global Template Designer" admin submenu
+items (under Implementation Toolkit) that were silently removed from
+industryMenus.ts in commit d639d7e ("chore: update contractnest-ui",
+Jul 4 2026) while everything downstream of them (routes, pages, the
+Knowledge Tree tab/detail view) stayed fully intact and reachable by direct
+URL the whole time. This was a pure nav-config regression, not a deleted
+feature — confirmed via git log/diff and by ruling out any DB/permission
+cause (vikuna tenant's is_admin/is_test flags are unaffected by anything
+else touched this session).
+
+FILES IN THIS BATCH
+--------------------
+contractnest-ui/src/utils/constants/industryMenus.ts
+  - Re-added the 'global-templates' and 'global-template-designer'
+    submenuItems entries to the 'implementation-toolkit' group, restored to
+    their exact original position (immediately before 'template-analytics').
+    No other changes to the file.
+
+WHERE TO COPY
+--------------------
+Copy-Item "MANUAL_COPY_FILES\restore-knowledge-tree-menu\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+TESTING CHECKLIST
+--------------------
+- [ ] Log in as an admin tenant (e.g. vikuna) -> sidebar -> Implementation
+      Toolkit -> confirm "Global Templates" and "Global Template Designer"
+      both appear, in that order, above "Template Analytics".
+- [ ] Click "Global Templates" -> confirm it opens
+      /service-contracts/templates/admin/global-templates and the
+      Knowledge Tree tab/cards render as before.
+- [ ] Click "Global Template Designer" -> confirm it opens
+      /service-contracts/templates/admin/global-designer.
+
+STATUS
+------
+NOT yet deployed/merged into contractnest-ui's own git main. Staged here
+for local pull + test per CLAUDE.md two-phase workflow.
