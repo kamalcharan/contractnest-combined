@@ -1,0 +1,69 @@
+BATCH: sprint2-step1-checkpoint-field-type
+SUBMODULE(S) AFFECTED: contractnest-ui
+
+WHAT THIS BATCH IS
+-------------------
+Step 1 of the Sprint 2/7 HVAC pilot POA. Adds a real "Checkpoint" field type
+to the Smart Forms builder -- renders as three traffic-light buttons
+(Good / Attention / Fail, green/amber/red) instead of a generic dropdown,
+per the owner's confirmed decision on the checklist+service-form playground.
+Optional "photo required" flag shown as a small camera indicator.
+
+Backend needs no changes: contractnest-edge/supabase/functions/smart-forms/
+index.ts's schema validator only checks structural shape (id/title/sections/
+fields present, no duplicate ids) -- it has no allow-list of field.type
+values, so 'checkpoint' passes validation with zero backend work.
+
+FILES IN THIS BATCH
+--------------------
+contractnest-ui/src/pages/settings/smart-forms/types.ts
+  - Added `photo_required?: boolean` to the FormField interface.
+
+contractnest-ui/src/pages/admin/smart-forms/utils/fieldTypeRegistry.ts
+  - New 'checkpoint' entry in the Selection Fields category (🚦 icon),
+    defaultProps seeds the 3 fixed options (good/warn/bad) + photo_required.
+    Appears automatically in the drag-drop Field Palette -- no palette code
+    changes needed, it renders the registry generically.
+
+contractnest-ui/src/pages/settings/smart-forms/components/FormRenderer.tsx
+  - New interactive 'checkpoint' block: 3 tappable buttons, selected state
+    fills with the semantic tone color (colors.semantic.success/warning/error,
+    by option position), same handleChange/validation wiring as every other
+    field type. This is what a technician actually fills out.
+
+contractnest-ui/src/pages/admin/smart-forms/components/LiveFormPreview.tsx
+  - Matching STATIC preview block (this file has its own separate,
+    non-interactive rendering switch used only in the builder's live-preview
+    pane -- confirmed it does not reuse FormRenderer, so needed its own copy
+    of the same visual, disabled instead of clickable).
+
+WHERE TO COPY
+--------------------
+Copy-Item "MANUAL_COPY_FILES\sprint2-step1-checkpoint-field-type\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+TESTING CHECKLIST
+--------------------
+- [ ] /admin/smart-forms -> open or create a form -> "Checkpoint" appears in
+      the Selection Fields palette group with a 🚦 icon.
+- [ ] Drag it into a section -> Live Preview pane shows 3 colored buttons
+      (Good/Attention/Fail) with green/amber/red outlines, disabled (static).
+- [ ] Edit the field's JSON to set "photo_required": true -> preview shows
+      the 📷 indicator next to the label.
+- [ ] Save the form, then open it wherever FormRenderer actually renders it
+      live (e.g. TicketEvidencePanel, or any smart-form fill-out flow) ->
+      confirm the 3 buttons are now clickable, selecting one fills it solid
+      with the tone color, and the value persists like any other field.
+- [ ] Submit/validate the schema (Validate button in the editor) -> confirms
+      the backend accepts 'checkpoint' as a valid type (no error).
+
+STATUS
+------
+NOT yet copied or merged into contractnest-ui's own git main. Staged here
+for local pull + test per CLAUDE.md two-phase workflow.
+
+NEXT
+----
+POA Step 2: update the Knowledge Tree export (useAutoComposeForm.ts) to use
+this new Checkpoint field type for condition checkpoints instead of a
+generic select, and fix the source-tagging bug (exported forms currently
+save as source='manual' instead of 'knowledge_tree'). Not started.
