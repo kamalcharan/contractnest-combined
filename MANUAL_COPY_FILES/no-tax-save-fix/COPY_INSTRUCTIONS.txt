@@ -1,0 +1,62 @@
+BATCH: no-tax-save-fix
+SUBMODULE(S) AFFECTED: contractnest-api, contractnest-ui
+
+WHAT THIS BATCH IS
+-------------------
+Fixes "Failed to load tax display settings / Validation failed" when saving
+the new "No Tax" option on Tax Settings (part of the Sprint 4 gst-tax-records
+work). Root cause: the sprint4-gst-tax-records batch updated taxTypes.ts and
+the RPCs to know about display_mode='no_tax', but missed the sibling Express
+validator file — its allow-list still only accepted including_tax/excluding_tax,
+so a save with 'no_tax' 400'd at API middleware before ever reaching the RPC.
+The RPCs, DB constraint, and existing tenant data were all already correct
+(verified live via pg_get_functiondef against project uwyqhzotluikawcboldr) —
+nothing there needed to change.
+
+Secondary/cosmetic bug also fixed: a save failure was setting the same
+state.error field the panel uses to detect a *load* failure, so any failed
+save replaced the whole form with a "Failed to load tax display settings"
+screen (discarding the user's in-progress selection) instead of just
+toasting the error and letting them retry.
+
+FILES IN THIS BATCH
+--------------------
+contractnest-api/src/validators/taxSettingsValidators.ts
+  - display_mode .isIn([...]) allow-list now includes NO_TAX (was missing).
+  - Updated the matching .withMessage() text and the VALIDATION_RULES doc
+    string to mention "no_tax" too.
+
+contractnest-ui/src/hooks/useTaxDisplay.ts
+  - updateDisplayMode()'s catch block no longer sets state.error on a save
+    failure (only saving: false) — save errors are still fully reported via
+    the existing vaniToast.error('Update Failed', ...) call, this just stops
+    it from also triggering the panel's full-page load-error view.
+  - No change to fetchTaxSettings() — a genuine load failure still sets
+    state.error and shows the "Failed to load" screen as before, correctly.
+
+WHERE TO COPY
+--------------------
+Copy-Item "MANUAL_COPY_FILES\no-tax-save-fix\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\no-tax-save-fix\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+TESTING CHECKLIST
+--------------------
+- [ ] Tax Settings -> select "No Tax" -> Save -> succeeds, no error shown,
+      toast confirms "Settings Updated" / "Tax display mode changed to
+      'No tax'".
+- [ ] Switch back to "Including tax" / "Excluding tax" -> still saves fine
+      (no regression on the two pre-existing modes).
+- [ ] Simulate a genuine load failure (e.g. bad network) -> confirm the
+      full "Failed to load tax display settings" screen with "Try Again"
+      still appears as before (this path is unchanged).
+- [ ] Simulate a save failure some other way (if easy) -> confirm the form
+      stays visible with a toast, instead of flipping to the load-error
+      screen.
+
+STATUS
+------
+NOT yet deployed/merged into either submodule's own git main. Staged here
+for local pull + test per CLAUDE.md two-phase workflow. contractnest-api
+needs its own restart/redeploy for the validator change to take effect
+(this is Express middleware, not an edge function — no Supabase deploy
+needed, just the API service picking up the new build).
