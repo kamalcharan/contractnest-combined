@@ -1,0 +1,40 @@
+BATCH: sprint2-step0-track-event-assets-migration
+SUBMODULE(S) AFFECTED: contractnest-edge
+
+WHAT THIS BATCH IS
+-------------------
+Step 0 of the Sprint 2/7 HVAC pilot POA -- pure housekeeping, no behavior
+change. t_contract_event_assets and the three functions/trigger that
+generate and unlock its rows (generate_contract_event_assets,
+trg_fn_generate_event_assets + its trigger trg_zz_generate_event_assets,
+unlock_placeholder_event_assets) have been live in Supabase since Sprint 1
+but were never captured in any tracked migration -- the only prior mention
+anywhere in migrations/ was a comment, not actual DDL. Same "live but
+untracked" risk pattern that caused the tax-settings RPC bug earlier this
+program; closing it before building Sprint 2/7 work on top of this
+foundation.
+
+FILES IN THIS BATCH
+--------------------
+contractnest-edge/supabase/migrations/contracts/071_track_contract_event_assets_foundation.sql
+  - CREATE TABLE IF NOT EXISTS / CREATE OR REPLACE FUNCTION / CREATE INDEX IF
+    NOT EXISTS throughout -- a safe no-op re-apply, written to exactly match
+    what was already live (pulled via pg_get_functiondef/pg_get_triggerdef
+    before writing this file).
+
+WHERE TO COPY
+--------------------
+Copy-Item "MANUAL_COPY_FILES\sprint2-step0-track-event-assets-migration\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+STATUS
+------
+ALREADY APPLIED LIVE via Supabase MCP and verified as a true no-op: the 12
+existing t_contract_event_assets rows are unchanged (still 12, still all
+status='open') after applying. This file is for git tracking only -- no
+action needed beyond copying it into the submodule checkout, no redeploy,
+no re-run required.
+
+NEXT
+----
+POA Step 1: add a "Checkpoint" field type (traffic-light 🟢🟡🔴) to the
+Smart Forms builder. Not started.
