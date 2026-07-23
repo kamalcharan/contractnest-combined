@@ -1,0 +1,71 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════
+Branch: sprint2-step2b-kt-tab-overflow-fix
+(Bug fix found while verifying Sprint 2/7 Step 2)
+
+Files Changed:
+  - contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/KnowledgeTreeDetail.tsx
+      The Knowledge Tree detail page's tab bar (Variants / Spare Parts /
+      Checkpoints / Service Cycles / Services / Overlays / Form Preview)
+      had no overflow handling. The page layout is a 2-column CSS grid
+      (`1fr 320px`) with `min-w-0` on the left column, so on narrower
+      windows/zoom the 7-tab row overflowed past the left column boundary
+      and visually spilled underneath the "VaNi Intelligence" card in the
+      right column (which paints on top since it's later in the DOM) —
+      making the "Form Preview" tab appear to have vanished.
+
+      Fix: tab bar container now scrolls horizontally
+      (overflowX: 'auto', flexWrap: 'nowrap') and each tab button no
+      longer wraps its label (whiteSpace: 'nowrap', flexShrink: 0), so
+      on narrow screens you get a scrollable tab strip instead of visual
+      clipping/overlap. No tabs added/removed/reordered.
+
+Submodules Affected: contractnest-ui
+
+Production Checklist:
+  ✅ Transaction Management: N/A — pure CSS/layout change, no data operations
+  ✅ Race Condition Handling: N/A
+  ✅ Error Handling: N/A — no logic changed
+  ✅ Toasts: N/A — no user action triggered here
+  ✅ Loaders: N/A
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files from MANUAL_COPY_FILES
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\sprint2-step2b-kt-tab-overflow-fix\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "✅ File copied!" -ForegroundColor Green
+
+STEP 3: Start Dev Server & Test
+─────────────────────────────────
+cd contractnest-ui
+npm run dev
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Open any Knowledge Tree equipment page
+- [ ] Shrink the browser window / zoom in until the tab row would
+      previously have overflowed
+- [ ] Confirm the tab bar now shows a horizontal scrollbar instead of
+      tabs disappearing behind the VaNi Intelligence card
+- [ ] Confirm "Form Preview" tab is reachable by scrolling the tab strip
+- [ ] Confirm normal full-width behavior is unchanged (all 7 tabs visible,
+      no scrollbar, no visual regression) at your usual window size
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
