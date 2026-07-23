@@ -1,0 +1,95 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════
+Branch: sprint2-step2-kt-export-checkpoint-and-source
+(Sprint 2/7 pilot — POA Step 2)
+
+Files Changed:
+  - contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/components/useAutoComposeForm.ts
+      buildConditionSections() now emits field type 'checkpoint' instead of
+      'select' for condition checkpoints (traffic-light UX). Emoji prefixes
+      removed from option labels — the checkpoint field renders its own
+      color now.
+  - contractnest-ui/src/pages/service-contracts/templates/admin/knowledge-tree/components/FormPreviewTab.tsx
+      handleExport()'s createTemplate() call now passes source:
+      'knowledge_tree' and resource_template_id: summary.resource_template.id
+      so exported forms record their Knowledge Tree origin.
+  - contractnest-ui/src/pages/admin/smart-forms/types/smartFormsAdmin.types.ts
+      CreateTemplatePayload gains optional source and resource_template_id
+      fields to match the new payload shape.
+  - contractnest-edge/supabase/functions/smart-forms/index.ts
+      ROOT CAUSE FIX: POST /smart-forms create-template handler previously
+      never read source/resource_template_id from the request body, so
+      every created template silently fell back to the DB column default
+      ('manual') regardless of actual origin. Now reads both from the
+      request body. DEPLOYED LIVE as smart-forms v5, verified byte-for-byte.
+
+Submodules Affected: contractnest-ui, contractnest-edge (edge function already deployed live)
+
+Production Checklist:
+  ✅ Transaction Management: N/A — single-row insert, no multi-step write
+  ✅ Race Condition Handling: N/A — no concurrent-write scenario introduced
+  ✅ Error Handling: unchanged — existing try/catch and error() helper in
+     the edge function cover the new fields the same as existing ones
+  ✅ Toasts: unchanged — existing vaniToast.success/error calls in
+     FormPreviewTab.tsx already cover this action
+  ✅ Loaders: unchanged — existing `exporting` loading state already covers
+     this action
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files from MANUAL_COPY_FILES
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\sprint2-step2-kt-export-checkpoint-and-source\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\sprint2-step2-kt-export-checkpoint-and-source\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "✅ All files copied!" -ForegroundColor Green
+
+NOTE: The contractnest-edge/smart-forms function is ALREADY DEPLOYED LIVE
+(v5, verified byte-for-byte). Copying it locally is only to keep your
+working tree in sync with what's live — no redeploy is needed for this step.
+
+STEP 3: Start Dev Server & Test
+─────────────────────────────────
+cd contractnest-ui
+npm run dev
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Go to a Knowledge Tree equipment page, e.g.
+      /service-contracts/templates/admin/global-templates/tree/<HVAC template id>?type=equipment
+- [ ] Open the "Form Preview" tab
+- [ ] Confirm condition checkpoints now render as 3 traffic-light buttons
+      (not a plain dropdown) — same visual as the Smart Forms builder's
+      Checkpoint field type
+- [ ] Click "Export as Draft SmartForm"
+- [ ] Open Admin > Smart Forms, find the newly created draft
+- [ ] Confirm its `source` column/value shows "knowledge_tree" (not
+      "manual") — check via Supabase table editor or the admin list if
+      source is surfaced there
+- [ ] Confirm `resource_template_id` on the new row matches the HVAC
+      resource template's id
+- [ ] Open the new draft in the Form Builder — confirm the condition
+      fields show as Checkpoint type with the traffic-light preview
+      (LiveFormPreview.tsx, from Step 1) working correctly
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+
+Note: the edge function half of this change is already live in Supabase
+(deployed + verified this session) since edge functions can't be "tested
+locally" the same way — only the two contractnest-ui files need local
+copy+test before Phase 2 commit.
+═══════════════════════════════════════════════════
