@@ -25,9 +25,29 @@ Round 2 (found after Round 1's fix moved the error one layer deeper, to
     after the edge function was fixed. Caught proactively before it could
     cause a second confusing bug report.
 
-The RPCs, DB constraint, and existing tenant data were all already correct
-the whole time (verified live via pg_get_functiondef against project
-uwyqhzotluikawcboldr) — none of that needed to change.
+Round 3 (found after Round 2's fixes were deployed live — from a raw
+"Cannot read properties of undefined (reading 'id')", not a validation
+message, meaning the request finally reached the RPC):
+  - create_or_update_tax_settings() RPC itself had a real, pre-existing bug,
+    NOT specific to no_tax: `v_existing IS NOT NULL` on a PL/pgSQL RECORD
+    variable checks that EVERY field is non-null, not "was a row found". Any
+    tenant whose existing t_tax_settings row has a null default_tax_rate_id
+    (the common case — nobody had set a specific default rate) got wrongly
+    routed into the INSERT branch instead of UPDATE on ANY save, hitting the
+    unique_tenant_tax_settings constraint. Fixed by using Postgres's FOUND
+    special variable instead, which reliably reflects the SELECT INTO result.
+    Migration: contracts/070_fix_tax_settings_upsert_record_null_check.sql.
+    Applied live and verified (re-ran the exact failing call against a real
+    tenant with a null default_tax_rate_id — now correctly updates in place).
+  - The edge function also had a latent bug of its own: create_or_update_tax_settings
+    and get_tax_settings_with_rates both catch their own exceptions internally
+    and return {error: '...'} as a normal (non-throwing) response, but the
+    edge function only checked the Postgres-level `error` from supabase.rpc(),
+    never data?.error — so any RPC-side failure (the one above, or any future
+    one) surfaced as a confusing raw TypeError instead of the real message.
+    Added the missing data?.error check to both handlers.
+
+The DB constraint and existing tenant data were otherwise already correct.
 
 Secondary/cosmetic bug also fixed: a save failure was setting the same
 state.error field the panel uses to detect a *load* failure, so any failed
@@ -46,10 +66,18 @@ contractnest-api/src/services/taxSettingsService.ts
   - validateTaxSettings()'s display_mode allow-list now includes 'no_tax'.
 
 contractnest-edge/supabase/functions/tax-settings/index.ts
-  - The POST handler's own display_mode allow-list now includes 'no_tax',
-    with a matching updated error message. Needs redeploying to Supabase
-    (not just copied) since edge functions run from what's deployed, not
-    the repo checkout.
+  - display_mode allow-list now includes 'no_tax' in the POST handler.
+  - Both handleGetRequest and handleCreateUpdateSettings now check data?.error
+    (the RPC's own self-caught error shape) before assuming the payload has
+    settings/rates, instead of crashing with a raw TypeError.
+  - DEPLOYED LIVE already (v25) — this copy is for keeping the repo checkout
+    in sync, no further deploy action needed for this file.
+
+contractnest-edge/supabase/migrations/contracts/070_fix_tax_settings_upsert_record_null_check.sql
+  - Fixes create_or_update_tax_settings()'s existence-check bug described
+    above. APPLIED LIVE already — this file is for tracking only, do not
+    re-run (would just no-op re-apply CREATE OR REPLACE FUNCTION, safe but
+    unnecessary).
 
 contractnest-ui/src/hooks/useTaxDisplay.ts
   - updateDisplayMode()'s catch block no longer sets state.error on a save
@@ -65,21 +93,28 @@ Copy-Item "MANUAL_COPY_FILES\no-tax-save-fix\contractnest-api\*" -Destination "c
 Copy-Item "MANUAL_COPY_FILES\no-tax-save-fix\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
 Copy-Item "MANUAL_COPY_FILES\no-tax-save-fix\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
 
-The contractnest-edge file additionally needs deploying to Supabase (ask me
-to do this live via MCP once you've copied everything and are ready to test
-— I did not deploy it automatically this round since contractnest-api also
-needs its own restart, and testing both halves together avoids yet another
-round-trip).
+The tax-settings edge function and the RPC migration are both ALREADY LIVE
+on Supabase (deployed/applied directly via MCP during this session, verified
+byte-for-byte and by re-running the exact failing call). Copying the
+contractnest-edge files here is just to keep the repo checkout in sync with
+what's live — no further deploy action needed for contractnest-edge.
+
+contractnest-api still needs you to copy its 2 files and restart the
+service (Express, not an edge function — code changes need a restart to
+take effect).
 
 TESTING CHECKLIST
 --------------------
 - [ ] Tax Settings -> select "No Tax" -> Save -> succeeds, no error shown,
       toast confirms "Settings Updated" / "Tax display mode changed to
-      'No tax'".
+      'No tax'". (Already verified working live for the vikuna tenant
+      directly against the RPC — should now also work end-to-end through
+      the UI once contractnest-api is restarted.)
 - [ ] Refresh the page after saving "No Tax" -> settings reload correctly
       (exercises the response validator fix in taxSettingsService.ts).
 - [ ] Switch back to "Including tax" / "Excluding tax" -> still saves fine
-      (no regression on the two pre-existing modes).
+      (no regression on the two pre-existing modes, and exercises the
+      UPDATE-branch fix for tenants that DO have a default_tax_rate_id set).
 - [ ] Simulate a genuine load failure (e.g. bad network) -> confirm the
       full "Failed to load tax display settings" screen with "Try Again"
       still appears as before (this path is unchanged).
@@ -89,8 +124,10 @@ TESTING CHECKLIST
 
 STATUS
 ------
-NOT yet deployed/merged into any submodule's own git main, and the edge
-function change is NOT yet deployed live to Supabase (see WHERE TO COPY
-above — say the word and I'll deploy it). contractnest-api needs its own
-restart/redeploy for its two file changes to take effect (Express service,
-not an edge function).
+contractnest-edge: LIVE (edge function v25 deployed, RPC migration 070
+applied and verified). NOT yet merged into contractnest-edge's own git main
+— still needs owner copy/commit there per CLAUDE.md two-phase workflow, but
+functionally already live and working.
+
+contractnest-api: code changes staged here, NOT yet copied or restarted.
+contractnest-ui: code changes staged here, NOT yet copied.

@@ -378,6 +378,13 @@ async function handleGetRequest(
       throw new Error(`Failed to fetch tax settings: ${error.message}`);
     }
 
+    // This RPC also catches its own exceptions internally and returns
+    // {error: '...'} as a normal response rather than a Postgres-level
+    // error -- must not cache/return that as if it were real settings data.
+    if (data?.error) {
+      throw new Error(data.error);
+    }
+
     // Cache the response
     setCachedResponse(tenantId, data);
 
@@ -460,6 +467,15 @@ async function handleCreateUpdateSettings(
 
     if (error) {
       throw new Error(`Failed to save settings: ${error.message}`);
+    }
+
+    // The RPC catches its own exceptions and returns {error: '...'} as a
+    // normal (non-throwing) response rather than a Postgres-level error --
+    // must check for that before assuming data.settings exists, or a real
+    // RPC-side failure surfaces as a confusing "Cannot read properties of
+    // undefined (reading 'id')" instead of the actual error message.
+    if (data?.error) {
+      throw new Error(data.error);
     }
 
     const result = data.settings;
