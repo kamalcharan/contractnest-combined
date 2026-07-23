@@ -1,0 +1,57 @@
+BATCH: close-account-auth-cleanup
+SUBMODULE(S) AFFECTED: contractnest-edge
+
+WHAT THIS BATCH IS
+-------------------
+Fixes the admin "Close Account" flow (/admin/subscription-management) so it
+also deletes the now-orphaned auth.users record for any user left with zero
+remaining tenant memberships after a tenant close. Previously the
+admin_close_tenant_account() RPC computed orphan_user_ids correctly but only
+returned them for manual deletion via the Supabase Dashboard — auth.users
+was never actually touched.
+
+Fix is entirely in the edge function (not the RPC): after a successful
+close-account RPC call, the handler loops orphan_user_ids and calls
+supabase.auth.admin.deleteUser() for each (best-effort, one failure doesn't
+block the rest — same swallow-and-report style as the RPC itself). This
+matches the existing auth.admin.deleteUser() usage already in this same
+function's createTenant.ts rollback path.
+
+Verified before writing this fix (via direct Supabase queries):
+  - t_user_tenant_roles.user_tenant_id -> t_user_tenants.id is ON DELETE
+    CASCADE, so no FK blocks the RPC's existing `DELETE FROM t_user_tenants`
+    step (an earlier hypothesis that this was broken turned out to be wrong).
+  - No table in the public schema has a declared FK into auth.users, so
+    calling auth.admin.deleteUser() for a genuinely-orphaned user will not hit an
+    unexpected FK violation from app tables. (The RPC already nulls/deletes
+    the app-level references it knows about -- t_audit_logs.user_id,
+    t_contacts.auth_user_id, t_user_auth_methods, t_user_profiles -- before
+    returning orphan_user_ids.)
+
+FILES IN THIS BATCH
+--------------------
+contractnest-edge/supabase/functions/admin-tenant-management/index.ts
+  - close-account handler: added auth.admin.deleteUser() loop over
+    data.orphan_user_ids after the RPC call succeeds; response now also
+    includes auth_users_deleted[] and auth_delete_errors[].
+
+contractnest-edge/supabase/functions/admin-tenant-management/handlers/createTenant.ts
+  - unchanged, included only because it's a dependency of index.ts for
+    edge function deployment (entrypoint + relative import).
+
+STATUS
+------
+NOT yet deployed to Supabase. NOT yet copied into contractnest-edge's own
+git main. Staged here pending explicit go-ahead to deploy live.
+
+COPY STEPS (when ready to test/deploy)
+----------------------------------------
+1. Copy contractnest-edge/supabase/functions/admin-tenant-management/index.ts
+   into the real contractnest-edge submodule checkout, same path.
+2. Deploy the admin-tenant-management edge function to Supabase project
+   uwyqhzotluikawcboldr (verify_jwt: true, same as current deployment).
+3. Test close-account on a single low-stakes tenant first; confirm the
+   response includes auth_users_deleted with the expected user_id(s) and
+   auth_delete_errors is empty.
+4. Per CLAUDE.md two-phase rule: only after "tested, working" confirmation,
+   commit this file into contractnest-edge's own main and push.
