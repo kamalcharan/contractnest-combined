@@ -1,0 +1,93 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════
+Branch: sprint2-step2d-api-layer-source-fix
+(Sprint 2/7 pilot — ACTUAL root cause of the missing Knowledge Tree badge)
+
+WHY THIS EXISTS: Step 2 fixed the `smart-forms` Supabase edge function to
+read source/resource_template_id from the request body. That fix was
+correct but incomplete — the Admin UI doesn't call the edge function
+directly. It calls contractnest-api's Express route
+(POST /api/admin/forms), which proxies to the edge function. That route
+was explicitly whitelisting the request body and silently dropping
+source/resource_template_id before the request ever reached the edge
+function. Confirmed via direct DB query: every export after Step 2/2c
+still landed with source='manual', resource_template_id=null. This batch
+fixes the actual layer where the fields were being lost.
+
+Files Changed:
+  - contractnest-api/src/types/adminForms.dto.ts
+      CreateTemplateRequest gains optional source / resource_template_id.
+  - contractnest-api/src/routes/adminFormsRoutes.ts
+      POST / handler's whitelisted body object now forwards
+      req.body.source and req.body.resource_template_id instead of
+      silently dropping them.
+  - contractnest-api/src/validators/adminFormsValidators.ts
+      createTemplateValidation gains optional validation:
+      source must be one of manual/knowledge_tree/tenant_fork,
+      resource_template_id must be a valid UUID.
+
+Submodules Affected: contractnest-api (Express backend — requires a dev
+server restart, NOT a Supabase edge deploy)
+
+Production Checklist:
+  ✅ Transaction Management: N/A — pass-through fields, no DB write here
+     (the actual insert happens in the edge function, already covered)
+  ✅ Race Condition Handling: N/A
+  ✅ Error Handling: unchanged — existing try/catch + handleEdgeError
+     already covers this route; new fields just ride along
+  ✅ Toasts: N/A — handled by the existing FormPreviewTab.tsx export flow
+  ✅ Loaders: N/A — no new async call, existing `exporting` state covers it
+  ✅ Input Validation: added — source restricted to a fixed enum,
+     resource_template_id must be a valid UUID (matches the pattern of
+     every other field in this validator file)
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files from MANUAL_COPY_FILES
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\sprint2-step2d-api-layer-source-fix\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+
+Write-Host "✅ Files copied!" -ForegroundColor Green
+
+STEP 3: Restart the API dev server (REQUIRED — this is the layer that was broken)
+─────────────────────────────────
+cd contractnest-api
+# Stop the running dev server (Ctrl+C) if it's running, then:
+npm run dev
+
+Also make sure contractnest-ui is running with Step 2 + Step 2c already
+copied in (source/resource_template_id in FormPreviewTab.tsx's export
+call, and the badge in SmartFormsAdminPage.tsx).
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Restart contractnest-api (this file only takes effect after a
+      process restart, not hot-reload, if your dev setup doesn't watch
+      for file changes automatically)
+- [ ] Go to the HVAC Knowledge Tree page → Form Preview tab
+- [ ] Click "Export as Draft SmartForm" (a NEW export — old drafts won't
+      retroactively update)
+- [ ] Confirm the toast "SmartForm draft created" appears
+- [ ] Go to Admin > Smart Forms — confirm the new row shows the
+      "🌳 Knowledge Tree" badge
+- [ ] Click the badge — confirm it navigates to the HVAC Knowledge Tree
+      page
+
+I will also verify directly via the database once you confirm you've
+re-exported — no need to check the DB yourself.
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
