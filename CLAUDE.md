@@ -576,6 +576,13 @@ The billing-event derivation engine (`contractnest-api/src/services/contractEven
 **Current state**: fix applied to the router; the SPA shell itself (`contractnest-ui`) was already safe — nginx serves `index.html` with `no-cache, no-store, must-revalidate` and hashed JS/CSS assets with `immutable` caching, the standard safe pattern, so this closed the one real gap (API responses).
 **When to revisit**: no further action expected; noted here for the record since it was a live-traffic risk fixed same-day as go-live.
 
+### CRITICAL — check-in "today" was computed in UTC, not IST (found + fixed live, 2026-07-25)
+Every group-session check-in/attendance/dashboard RPC (`gs_resolve_checkin`, `gs_submit_checkin`, `gs_checkin_guest`, `gs_checkin_substitute`, `gs_checkin_form`, `gs_dash_occurrences`, `gs_dash_sessions`, `gs_member_block`, `gs_dash_roster`, `gs_occurrence_attendance`, `gs_generate_schedule`, `gs_schedule_assign_default`, `gs_confirm_declaration`) used bare `current_date` — the **database's** timezone (UTC) — to decide "is there a session today." Discovered live at 00:28 IST on 25 Jul 2026 (BBB's actual go-live morning): `current_date` was still `'2026-07-24'` (UTC doesn't roll to the 25th until 05:30 IST), so the check-in page said "No session today — next session 25 Jul 2026" even though it already *was* 25 Jul in India and today's real Saturday Cadence occurrence existed and was checkin-able. Every IST day has this ~5.5-hour blind window (00:00–05:30 IST) where the whole check-in surface silently thinks it's still yesterday.
+
+**Fix (live, migration `bbb-foundation/048_checkin_ist_today.sql`)**: all 13 functions above now compute "today" as `(now() at time zone 'Asia/Kolkata')::date` instead of `current_date`. Applied by pulling each function's live definition and substituting the expression in place (not retyped by hand) — verified live against a real BBB token: `gs_resolve_checkin` now correctly returns `today: 2026-07-25` and matches today's actual occurrence.
+**Current state**: `'Asia/Kolkata'` is hardcoded — there is no per-tenant timezone column (`t_tenants`/`t_tenant_profiles` checked, neither has one). Correct today since every observed tenant is India-based.
+**When to revisit**: before the platform serves tenants outside India, this needs to become tenant-configurable (add a timezone column, thread it through these functions) rather than hardcoded. Until then, every "today"-based date comparison anywhere in the platform should be treated with suspicion — this fix only covered the check-in/group-session surface; other RPCs using bare `current_date`/`now()` elsewhere may have the same latent bug and haven't been audited.
+
 ---
 
 ## ⚠️ Session Reminders

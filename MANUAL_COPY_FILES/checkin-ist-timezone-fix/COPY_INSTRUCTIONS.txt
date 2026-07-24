@@ -1,0 +1,45 @@
+===============================================================
+MANUAL COPY INSTRUCTIONS - checkin-ist-timezone-fix
+===============================================================
+
+CRITICAL FIX — ALREADY LIVE. Found and fixed live during BBB's
+go-live: every check-in/attendance/dashboard RPC computed "today"
+from bare current_date (the DATABASE's UTC timezone), not the
+tenant's local (IST) day. Between IST midnight and 5:30 AM, the
+database's current_date is still YESTERDAY, so gs_resolve_checkin
+(and everything else in the check-in surface) would incorrectly say
+"no session today" even when it already was today in India and a
+real, checkin-able session existed.
+
+FILES IN THIS FOLDER:
+---------------------------------------------------------------
+
+1. contractnest-edge/supabase/migrations/bbb-foundation/048_checkin_ist_today.sql
+   -> Copy to: contractnest-edge\supabase\migrations\bbb-foundation\048_checkin_ist_today.sql
+   -> ALREADY LIVE. Fixes 13 functions to use
+      (now() at time zone 'Asia/Kolkata')::date instead of
+      current_date: gs_resolve_checkin, gs_submit_checkin,
+      gs_checkin_guest, gs_checkin_substitute, gs_checkin_form,
+      gs_dash_occurrences, gs_dash_sessions, gs_member_block,
+      gs_dash_roster, gs_occurrence_attendance, gs_generate_schedule,
+      gs_schedule_assign_default, gs_confirm_declaration.
+      Applied by pulling each function's live definition and
+      substituting the expression in place (via regexp_replace),
+      not retyped by hand -- guarantees exact parity with everything
+      else already in each function body.
+
+SUBMODULES AFFECTED: contractnest-edge only (DB functions, no app
+code changed -- copy this purely so your local migration history
+matches what's live)
+
+NOTE: 'Asia/Kolkata' is hardcoded -- there's no per-tenant timezone
+column yet. Fine today (every tenant is India-based), flagged in
+CLAUDE.md as needing to become tenant-configurable before the
+platform serves other regions.
+
+VERIFIED LIVE: gs_resolve_checkin for a real BBB Saturday-Cadence
+token now correctly returns today=2026-07-25 and matches today's
+actual occurrence, where it previously said "no session today, next
+session 25 Jul" at the same real-world moment.
+
+===============================================================
