@@ -1,0 +1,66 @@
+===============================================================
+MANUAL COPY INSTRUCTIONS - checkin-payment-ux
+===============================================================
+
+IMPORTANT: The database migration in this batch is ALREADY LIVE
+on Supabase (applied directly this session). Copy it so your
+local checkout's git history matches what's running -- no
+redeploy needed for that file.
+
+FILES IN THIS FOLDER:
+---------------------------------------------------------------
+
+1. contractnest-edge/supabase/migrations/bbb-foundation/047_checkin_totals_and_cadence.sql
+   -> Copy to: contractnest-edge\supabase\migrations\bbb-foundation\047_checkin_totals_and_cadence.sql
+   -> ALREADY LIVE. gs_member_history now also returns:
+        - totals: { total_amount, total_paid, balance } -- same numbers
+          the seller's Financials tab already shows for this contract,
+          just exposed to the public check-in RPC.
+        - Each billing row: amount_settled + remaining (amount minus
+          amount_settled) -- lets the UI cap what a member can enter.
+        - cadence_rates -- the member's own real cadencePricing rate
+          card (Monthly/Quarterly/etc with real amounts).
+
+2. contractnest-ui/src/pages/checkin/useSessionCheckin.ts
+   -> Copy to: contractnest-ui\src\pages\checkin\useSessionCheckin.ts
+   -> New types: CheckinTotals, CadenceRate, CadenceRateCard.
+      BillingRow gains amount_settled/remaining. CheckinHistory gains
+      totals/cadence_rates.
+
+3. contractnest-ui/src/pages/checkin/SessionCheckinPage.tsx
+   -> Copy to: contractnest-ui\src\pages\checkin\SessionCheckinPage.tsx
+   -> Redesigned "Your dues" -> "Payments" card:
+        - Total Paid / Balance shown up top (two stat tiles)
+        - Earliest open due is auto-targeted (no more picking which
+          due from a list -- one less decision for a member on a
+          phone at the door)
+        - Monthly / Quarterly (etc) quick-pick chips using the
+          member's REAL rate card, not a hardcoded guess
+        - Free amount input, always editable, pre-filled by whichever
+          chip is tapped, capped at what's actually still owed on the
+          targeted event (prevents a lump sum from silently exceeding
+          what gets recorded -- if someone wants to pay several
+          periods at once, that's a chair-side Record Payment action,
+          same as before)
+        - UPI pay button / QR / reference field: unchanged mechanics,
+          now driven by the editable amount instead of a fixed due
+        - Submit button + the post-submit confirmation screen now
+          both show the actual amount being recorded
+
+SUBMODULES AFFECTED: contractnest-ui, contractnest-edge
+(edge already deployed live -- only ui needs your local test + merge)
+
+TESTING CHECKLIST:
+- [ ] Open a check-in link for a member with an open due, scan/identify
+- [ ] "Total Paid" / "Balance" show correct numbers matching Financials tab
+- [ ] Tap a cadence chip -> amount field fills with that rate
+- [ ] Type an amount above what's due -> field clamps down + shows the note
+- [ ] Type an amount at/below what's due -> no clamp note, "Pay X now" /
+      QR update to match
+- [ ] Submit -> declaration recorded with the entered amount; confirmation
+      screen shows that amount
+- [ ] Member with zero open dues -> "All dues are settled" message, no
+      picker shown
+- [ ] Existing UPI pay-now / QR / reference flow still works end-to-end
+
+===============================================================
