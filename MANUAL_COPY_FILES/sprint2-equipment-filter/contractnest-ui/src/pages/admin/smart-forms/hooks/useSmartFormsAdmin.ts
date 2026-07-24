@@ -44,6 +44,7 @@ export function useFormTemplates(filters: FormTemplateFilters = {}) {
     filters.category,
     filters.form_type,
     filters.search,
+    filters.resource_template_id,
   ]);
 
   useEffect(() => {

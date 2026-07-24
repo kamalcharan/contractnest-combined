@@ -179,6 +179,8 @@ router.post(
         form_type: req.body.form_type,
         tags: req.body.tags,
         schema: req.body.schema,
+        source: req.body.source,
+        resource_template_id: req.body.resource_template_id,
       };
 
       const result = await adminFormsService.createTemplate(authHeader, tenantId, body);

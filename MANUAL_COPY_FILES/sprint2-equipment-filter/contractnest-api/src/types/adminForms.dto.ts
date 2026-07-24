@@ -35,6 +35,8 @@ export interface CreateTemplateRequest {
   form_type: string;
   tags?: string[];
   schema: Record<string, unknown>;
+  source?: string;
+  resource_template_id?: string;
 }
 
 /**

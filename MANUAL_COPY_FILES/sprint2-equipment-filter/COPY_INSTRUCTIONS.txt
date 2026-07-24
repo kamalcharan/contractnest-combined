@@ -1,4 +1,52 @@
 ═══════════════════════════════════════════════════
+🔧 BUGFIX UPDATE (after live testing found 3 issues)
+═══════════════════════════════════════════════════
+Reported: (1) no way to tell a "checklist" apart from a real service
+form in the list, (2) the KT badge should show the actual equipment
+name, (3) the new Equipment filter dropdown didn't filter anything.
+
+1) Equipment filter did nothing when selected
+   Root cause: useFormTemplates()'s fetch function is wrapped in
+   useCallback with a dependency array that listed page/limit/status/
+   category/form_type/search — but NOT resource_template_id. Picking an
+   equipment updated React state, but the memoized fetch() never got a
+   new reference, so the effect that re-runs it never fired — the
+   request was never re-sent with the new filter.
+   Fix: added filters.resource_template_id to that dependency array
+   (useSmartFormsAdmin.ts).
+
+2) KT badge now shows the actual equipment name
+   Was: generic "🌳 Knowledge Tree" text on every tagged row.
+   Now: "🌳 {equipment name}" (e.g. "🌳 HVAC System"), sourced from the
+   same equipmentTags list already fetched for the dropdown — no new
+   API call. (SmartFormsAdminPage.tsx)
+
+3) The real "checklist" bug — a 4th occurrence of this session's
+   recurring proxy-whitelisting pattern
+   Root cause: contractnest-api's POST /api/admin/forms route
+   (adminFormsRoutes.ts) explicitly rebuilds the request body it
+   forwards to the edge function, listing only
+   {name, description, category, form_type, tags, schema} — silently
+   dropping `source` and `resource_template_id`, which the frontend DOES
+   send correctly (verified in FormPreviewTab.tsx's handleGenerateForBlock
+   and handleExport). CreateTemplateRequest in adminForms.dto.ts didn't
+   even declare those two fields. Net effect: every form created via the
+   "arm catalog-studio" per-block button silently lost its Knowledge Tree
+   tagging on the way to the DB, landing in the list indistinguishable
+   from a manually-typed form — no badge, no way to tell it apart. That's
+   what looked like an unlabeled "checklist."
+   Fix: added source/resource_template_id to CreateTemplateRequest (dto)
+   and forwarded both fields in the POST / handler's body construction
+   (adminFormsRoutes.ts). Also directly patched the one row this had
+   already corrupted ("Air Filter Inspection & Replacement — Service
+   Form", id cfb12423-...) back to source='knowledge_tree' with its
+   correct resource_template_id — no need to regenerate it.
+
+Only contractnest-api + contractnest-ui files changed for this round.
+No new migration, no edge redeploy — re-copy both and restart.
+═══════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════
 📦 CHANGES SUMMARY
 ═══════════════════════════════════════════════════
 Branch: sprint2-equipment-filter

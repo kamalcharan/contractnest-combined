@@ -25,6 +25,10 @@ const SmartFormsAdminPage: React.FC = () => {
   const { templates, pagination, loading, error, refresh } = useFormTemplates(filters);
   const mutations = useFormTemplateMutations();
   const { tags: equipmentTags } = useEquipmentTags();
+  const equipmentNameById = React.useMemo(
+    () => new Map(equipmentTags.map(t => [t.resource_template_id, t.name])),
+    [equipmentTags],
+  );
 
   // Confirmation dialog state
   const [confirmAction, setConfirmAction] = useState<{
@@ -371,7 +375,7 @@ const SmartFormsAdminPage: React.FC = () => {
                         cursor: 'pointer',
                       }}
                     >
-                      🌳 Knowledge Tree
+                      🌳 {equipmentNameById.get(t.resource_template_id) || 'Knowledge Tree'}
                     </span>
                   )}
                 </div>
