@@ -1,0 +1,157 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════
+Branch: sprint2-arm-catalog-studio
+(Sprint 2/7 pilot — "arm catalog-studio": per-catalog-block SmartForms)
+
+WHY THIS EXISTS: a contract doesn't pull in "the whole equipment" — it
+pulls in individual catalog blocks (e.g. "Air Filter Inspection &
+Replacement"), each already scoped to its own small slice of Knowledge
+Tree checkpoints via `m_cat_blocks.kt_checkpoint_ids` (populated by the
+existing, unmodified `ktCatBlockMapperService` at seed time — confirmed
+this was already grouping checkpoints correctly, just nothing consumed
+it). The single combined equipment-wide form from Step 2 covers all 97
+HVAC checkpoints at once and can't be attached to any one block. This
+batch adds a way to compose a small form PER catalog block and attach it
+directly, so contracts inherit the right form automatically later
+(no manual picking) once a block's `form_template_id` is set.
+
+CONFIRMED LIVE (via `cat-blocks` edge function, already had this wired):
+`m_cat_blocks.form_template_id` was already a real FK column to
+`m_form_templates`, and the PATCH update handler already whitelisted it
+(`allowedFields`) — 0 of 1731 blocks used it, but no backend change was
+needed to SAVE it. Only a way to fetch blocks by equipment
+(`resource_template_id` filter, added here) and a way to compose+attach
+a form were missing.
+
+Files Changed:
+
+  contractnest-edge (edge function — ALREADY DEPLOYED LIVE, v19, verified
+  byte-for-byte):
+  - supabase/functions/cat-blocks/index.ts
+      Added `resource_template_id` as a filterable query param on
+      GET /cat-blocks (mirrors the existing category/pricing_mode_id
+      filters). No other logic touched — form_template_id save path was
+      already correct.
+
+  contractnest-api (Express proxy — 3 files, mirrors the existing filter
+  passthrough pattern used everywhere else this session):
+  - src/types/catalogStudioTypes.ts — BlockQueryParams gains
+    resource_template_id.
+  - src/controllers/catalogStudioController.ts — parseBlockQueryParams
+    forwards it.
+  - src/services/catBlocksService.ts — buildQueryString forwards it to
+    the edge function.
+  (No update-path changes needed — updateBlock/catBlocksService already
+  spread the full request body through untouched, so form_template_id
+  was never at risk of being stripped there.)
+
+  contractnest-ui (5 files):
+  - src/services/serviceURLs.ts — CatBlockFilters gains
+    resource_template_id; LIST_WITH_FILTERS forwards it. (This file also
+    still carries the smart-forms equipment-tags additions from the
+    sprint2-equipment-filter batch — apply that batch first, or this
+    copy already includes both.)
+  - src/hooks/queries/useCatBlocks.ts — CatBlock type gains
+    resource_template_id, kt_checkpoint_ids, form_template_id (the DB/
+    edge already returned these; the frontend type just didn't declare
+    them).
+  - src/hooks/mutations/useCatBlocksMutations.ts — UpdateBlockData gains
+    form_template_id.
+  - src/pages/service-contracts/templates/admin/knowledge-tree/components/useAutoComposeForm.ts
+      New composeBlockForm() — composes a form scoped to only the given
+      checkpoint ids (a block's kt_checkpoint_ids), instead of the whole
+      equipment. Reuses the same section-building logic Step 2 already
+      shipped (including the Checkpoint traffic-light field type).
+  - src/pages/service-contracts/templates/admin/knowledge-tree/components/FormPreviewTab.tsx
+      New "Per-Service Forms (Catalog Studio)" section below the existing
+      combined-form preview/export. Lists every catalog block for this
+      equipment that has its own checkpoint slice, with a
+      "Generate & Attach" button per block. Clicking it composes that
+      block's scoped form, creates it via the existing createTemplate()
+      call (source='knowledge_tree'), then saves the new form's id onto
+      that block via the existing useUpdateCatBlock() mutation — zero
+      new backend calls invented, both already existed.
+
+Submodules Affected: contractnest-edge (live), contractnest-api, contractnest-ui
+
+Production Checklist:
+  ✅ Transaction Management: N/A for the new filter (reads only). The
+     attach flow is 2 sequential calls (create form, then update block)
+     — not atomic, but safe: if the update fails, the form still exists
+     as a valid draft and "Regenerate" can be retried: it just creates
+     another form and retries the attach, no partial/corrupt state.
+  ✅ Race Condition Handling: block update already uses optimistic
+     locking (version check) server-side, unchanged. Added client-side
+     guard: while any block's form is being generated, ALL block buttons
+     disable — the create-template mutation hook only supports one
+     in-flight "create" operation at a time, so this avoids a second
+     concurrent click silently no-op'ing.
+  ✅ Error Handling: try/catch around the whole generate+attach flow,
+     per-step toast messages (create failure vs. attach failure surfaced
+     separately), matches the existing handleExport pattern in this file.
+  ✅ Toasts: uses existing vaniToast.success/error — new form created,
+     failed to create, failed to attach.
+  ✅ Loaders: per-block spinner ("Working…") plus the existing blocksLoading
+     state while the catalog block list itself loads.
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files from MANUAL_COPY_FILES
+─────────────────────────────────
+NOTE: apply Step 2 (KT export + Checkpoint field type) first if you
+haven't already — this batch's FormPreviewTab.tsx/useAutoComposeForm.ts
+build directly on top of it.
+
+Copy-Item "MANUAL_COPY_FILES\sprint2-arm-catalog-studio\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\sprint2-arm-catalog-studio\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "✅ Files copied!" -ForegroundColor Green
+
+(No action needed for contractnest-edge — cat-blocks is already deployed
+live and verified.)
+
+STEP 3: Restart contractnest-api
+─────────────────────────────────
+cd contractnest-api
+# Ctrl+C to stop it if running, then:
+npm run dev
+
+cd contractnest-ui
+npm run dev
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Go to the HVAC Knowledge Tree page → Form Preview tab
+- [ ] Scroll below the existing combined-form export bar — confirm a new
+      "Per-Service Forms (Catalog Studio)" section appears
+- [ ] Confirm it lists catalog blocks like "Air Filter Inspection &
+      Replacement" with a checkpoint count (e.g. "2 checkpoints") — NOT
+      spare-part-only blocks like "Air Filter (disposable)"
+- [ ] Click "Generate & Attach" on one block — confirm a success toast,
+      the block shows a green "Attached" badge, and the button changes
+      to "Regenerate"
+- [ ] While one block is generating, confirm all other blocks' buttons
+      are disabled (race-guard working)
+- [ ] Open Admin > Smart Forms — confirm the new form appears, tagged
+      "🌳 Knowledge Tree", with only that block's checkpoints (2 for Air
+      Filter Inspection & Replacement, not 97)
+
+I will also verify directly via the database once you confirm a block
+was attached — no need to check the DB yourself.
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
