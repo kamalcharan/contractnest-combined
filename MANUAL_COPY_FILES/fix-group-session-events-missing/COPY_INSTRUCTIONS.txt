@@ -1,0 +1,102 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════
+Branch: fix-group-session-events-missing
+
+WHAT WAS WRONG: found while auditing all LIVE contracts for a reported
+start-date issue. Every contract built from a template containing a Group
+Session block (e.g. BBB's "Saturday Cadence", biweekly, 25 occurrences/year)
+had ZERO scheduled occurrence events — not wrong dates, completely absent.
+Confirmed across all 27 live "BBB 2026 Schedule" contracts.
+
+ROOT CAUSE: the event derivation engine (contractEventsDerivationService.ts
+on the API, and its frontend parity copy contractEvents.ts) decides whether
+a block needs scheduled service events by calling categoryHasPricing(),
+which only recognizes categoryId 'service' and 'spare'. A Group Session
+block uses categoryId 'session' and is often complimentary (price 0 on
+purpose — attendance tracking, not billing) — so it has no pricing step in
+the wizard, categoryHasPricing() returned false, and the block was silently
+skipped. No error anywhere; the schedule just never existed.
+
+THE FIX: split the concern. categoryHasPricing() still gates BILLING events
+(correct — a 0-price session block shouldn't generate a billing event).
+Service-event generation now checks a new, separate
+categoryNeedsServiceEvents() (service + session) instead, so Group Session
+blocks get their occurrence schedule regardless of price.
+
+DATA FIX (already applied directly to the live database — no file to copy
+for this part): backfilled the missing 25-occurrence Saturday-biweekly
+schedule for all 27 existing live "BBB 2026 Schedule" contracts, anchored
+to each contract's (corrected) start date. 675 events inserted total.
+
+Also fixed in this same pass (separate issue, same audit): 8 of the 27 BBB
+contracts had been bulk-assigned with today's date as the contract start
+instead of the intended fiscal year (1 Apr 2026 – 1 Apr 2027) — corrected
+the contract dates and re-aligned their billing event schedule to match the
+other 19 (already-issued/paid invoices and receipts were left untouched,
+since those reflect real money that was actually collected — only the
+event schedule *labels* were corrected).
+
+Files Changed:
+  - contractnest-api/src/services/contractEventsDerivationService.ts
+  - contractnest-ui/src/utils/service-contracts/contractEvents.ts
+
+Submodules Affected: contractnest-api, contractnest-ui
+
+Production Checklist:
+  ✅ Transaction Management: N/A — pure derivation logic, no new DB write path
+  ✅ Race Condition Handling: N/A — no change to concurrency behavior
+  ✅ Error Handling: unchanged — same skip-on-unlimited/billingOnly guards as
+     before, just a different (correct) category gate
+  ✅ Toasts: N/A — no new user-facing action
+  ✅ Loaders: N/A — no new async operation
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files from MANUAL_COPY_FILES
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\fix-group-session-events-missing\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\fix-group-session-events-missing\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "✅ Files copied!" -ForegroundColor Green
+
+STEP 3: Restart both dev servers
+─────────────────────────────────
+cd contractnest-api
+npm run dev
+# separate terminal:
+cd ../contractnest-ui
+npm run dev
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Create a NEW test contract from a template containing a Group Session
+      block (or the BBB template) — confirm the Events Preview step in the
+      wizard now shows the Group Session's occurrences, not just billing
+- [ ] Confirm a complimentary Group Session block still shows ₹0 / no
+      billing event (only occurrence/attendance events)
+- [ ] Open the Group Sessions dashboard for BBB — confirm all 27 members
+      now show their Saturday Cadence schedule (biweekly, starting 1 Apr
+      2026)
+- [ ] Spot-check one of the 8 previously-mis-dated contracts (e.g. "BBB
+      2026 Schedule — Harsha Kulkarni") — confirm start date now shows
+      1 Apr 2026 and billing events are on the same quarterly cadence as
+      the others (1 Apr / 30 Jun / 28 Sep / 27 Dec 2026)
+- [ ] Confirm the already-paid receipts on those 8 contracts are untouched
+      (same receipt numbers, amounts, payment dates as before)
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
