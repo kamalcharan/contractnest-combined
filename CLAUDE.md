@@ -565,6 +565,17 @@ Services do NOT have KT equivalent yet. Future work if needed:
 **Current state**: `OverviewTab` component (`components/contacts/dashboard/OverviewTab.tsx`) and its import are untouched, just unwired — nothing deleted. Once merged, tab bar will show Profile | Contracts | Assets | Financials | Timeline.
 **When to revisit**: owner's call — pending review next session. Un-hide by uncommenting the `{ key: 'overview', ... }` entry and restoring the `LayoutDashboard` import.
 
+### Billing cadence dates drift off calendar-month/quarter boundaries (found 2026-07-24)
+The billing-event derivation engine (`contractnest-api/src/services/contractEventsDerivationService.ts`'s `cycleToPeriodDays` — `monthly: 30, quarterly: 90, halfyearly: 182, annual: 365` — mirrored in the UI (`contractnest-ui/src/utils/service-contracts/contractEvents.ts`) and the edge cadence-acceptance module (`contractnest-edge/supabase/functions/contracts/cadence-acceptance.ts`)) generates every recurring cadence as a **fixed day-count interval** from the contract start date, not calendar-aligned. Since months aren't a uniform 30 days, this drifts: e.g. a Monthly schedule starting 1 Apr lands on 1 Apr → 1 May → **31 May** → 30 Jun → 30 Jul... — two events land within the same calendar month (May) whenever a 31-day month is crossed. Quarterly has the same root cause (Apr 1 → Jun 30 → Sep 28 → Dec 27, not the 1st of each quarter-month) — less visually jarring than Monthly but the same bug.
+
+**Current state**: BBB's 18 Monthly-cadence contracts were corrected as a live data fix (`t_contract_events.scheduled_date`/`original_date` recomputed to the same day-of-month each calendar month, including already-paid events, so Payment History reads 1 Apr / 1 May / 1 Jun / 1 Jul cleanly). This was a **data-only fix for BBB**, not an engine change — the derivation engine itself is untouched and will keep producing drifted dates for every new Monthly/Quarterly/Half-yearly/Annual cadence contract on every tenant.
+**When to revisit**: needs a real engineering pass (day-count math → calendar-month arithmetic) across all three mirrored copies (API, UI, edge) plus regression testing against proration/invoice generation, which assume day-count periods today. Deliberately not touched the night of BBB's go-live — too wide a blast radius to rush.
+
+### Public check-in page — no-cache headers added (2026-07-24)
+`contractnest-api/src/routes/sessionCheckinPublicRoutes.ts` (serves `/checkin/:token`, no auth) had no `Cache-Control` headers at all on any route — a real risk since the same QR/link is scanned repeatedly by many different members on many different phones, and mobile browsers or carrier proxies (aggressive GET caching is common on Indian telecom networks) will cache a `resolve`/`history` response with no explicit directive, potentially showing one member a stale or another member's attendance/dues state. Added a router-level middleware setting `Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate` + `Pragma: no-cache` + `Expires: 0` on every response from this router.
+**Current state**: fix applied to the router; the SPA shell itself (`contractnest-ui`) was already safe — nginx serves `index.html` with `no-cache, no-store, must-revalidate` and hashed JS/CSS assets with `immutable` caching, the standard safe pattern, so this closed the one real gap (API responses).
+**When to revisit**: no further action expected; noted here for the record since it was a live-traffic risk fixed same-day as go-live.
+
 ---
 
 ## ⚠️ Session Reminders
