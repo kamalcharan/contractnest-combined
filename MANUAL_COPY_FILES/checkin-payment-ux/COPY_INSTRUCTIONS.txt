@@ -29,25 +29,21 @@ FILES IN THIS FOLDER:
 
 3. contractnest-ui/src/pages/checkin/SessionCheckinPage.tsx
    -> Copy to: contractnest-ui\src\pages\checkin\SessionCheckinPage.tsx
-   -> Redesigned "Your dues" -> "Payments" card:
-        - Total Paid / Balance shown up top (two stat tiles)
-        - Earliest open due is auto-targeted (no more picking which
-          due from a list -- one less decision for a member on a
-          phone at the door)
-        - SELECTION ONLY, no free-typed amount: the payment options
-          shown are the member's own enabled cadence rates (Monthly /
-          Quarterly / etc), filtered to only the ones that fit within
-          what's currently due -- plus the due's own remaining amount
-          as a fallback if none of the cadence rates match exactly
-          (e.g. an already-partially-settled event). Every selectable
-          amount is therefore a real billing-event number, so every
-          resulting receipt reconciles cleanly against an event in
-          Finance -- nothing a member can type that doesn't map to
-          the billing schedule. (If someone wants to pay several
-          periods at once, that's still a chair-side Record Payment
-          action, same as before.)
+   -> Redesigned "Your dues" -> "Payments" card, built entirely from the
+      real billing events (no abstract "pick Monthly or Quarterly"
+      picker -- the contract is already on one cadence; these ARE its
+      events):
+        - Total Paid / Balance up top (two stat tiles, same numbers as
+          the Financials tab)
+        - Payment History -- every already-paid event with its real
+          label/date/amount, collapsed by default (tap to expand),
+          same pattern as the seller's receipts list
+        - A clear visual break, then CURRENT: the next open event's
+          real label, due date, and exact amount -- no picker, no
+          free-typed amount, because there's no real choice here, it's
+          exactly what that event was priced at
         - UPI pay button / QR / reference field: unchanged mechanics,
-          now driven by the selected amount
+          driven by the current due's amount
         - Submit button + the post-submit confirmation screen both
           show the actual amount being recorded
 
@@ -57,13 +53,14 @@ SUBMODULES AFFECTED: contractnest-ui, contractnest-edge
 TESTING CHECKLIST:
 - [ ] Open a check-in link for a member with an open due, scan/identify
 - [ ] "Total Paid" / "Balance" show correct numbers matching Financials tab
-- [ ] Payment options shown are only cadence rates that fit within what's
-      due -- no free-text amount field anywhere
-- [ ] Tap an option -> it highlights, "Pay X now" / QR update to match
-- [ ] Submit -> declaration recorded with the selected amount; confirmation
-      screen shows that amount
-- [ ] Member with zero open dues -> "All dues are settled" message, no
-      picker shown
+- [ ] "Payment History" expands to show real paid events with dates/amounts
+- [ ] "CURRENT" shows the next real due event's label, date, and exact
+      amount -- no free-text field, no picker, anywhere
+- [ ] "Pay X now" / QR reflect that exact current-due amount
+- [ ] Submit -> declaration recorded with that amount; confirmation screen
+      shows it
+- [ ] Member with zero open dues -> "All dues are settled" message
+- [ ] Member with zero paid events -> no "Payment History" toggle shown
 - [ ] Existing UPI pay-now / QR / reference flow still works end-to-end
 
 ===============================================================

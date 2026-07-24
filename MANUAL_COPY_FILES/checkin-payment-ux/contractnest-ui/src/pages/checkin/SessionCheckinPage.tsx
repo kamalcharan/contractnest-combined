@@ -46,7 +46,6 @@ const fmtDate = (iso?: string) => {
 const money = (n?: number, c = 'INR') =>
   `${c === 'INR' ? '₹' : c + ' '}${Number(n || 0).toLocaleString()}`;
 const isOpen = (s: string) => ['scheduled', 'due', 'overdue'].includes(s);
-const CADENCE_LABEL: Record<string, string> = { monthly: 'Monthly', quarterly: 'Quarterly', halfyearly: '6-Monthly', annual: 'Annual' };
 const initialOf = (s?: string) => (s || '?').trim().charAt(0).toUpperCase() || '?';
 
 // Build a UPI intent URL (upi://pay?…). On a phone this opens the UPI app
@@ -294,36 +293,38 @@ const SessionCheckinPage: React.FC = () => {
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [paymentAttempted, upiRef, done]);
 
+  // Full billing timeline, oldest first — the RPC already sorts by
+  // scheduled_date. This is the real cadence: which periods are paid, which
+  // is next, and when — no separate "pick monthly or quarterly" abstraction,
+  // because the contract is already ON one cadence and these ARE its events.
+  const billingTimeline = history?.billing || [];
   const openDues = useMemo<BillingRow[]>(
-    () => (history?.billing || []).filter((b) => isOpen(b.status)),
-    [history]
+    () => billingTimeline.filter((b) => isOpen(b.status)),
+    [billingTimeline]
+  );
+  const paidEvents = useMemo<BillingRow[]>(
+    () => billingTimeline.filter((b) => b.status === 'paid'),
+    [billingTimeline]
   );
   // Earliest open due is the only thing a payment can settle against right
   // now — matches how the seller-side ledger applies money (oldest first).
+  // It's the sole payable amount: no picker, because there's no real choice
+  // here — it's exactly what this event was priced at.
   const targetDue = openDues[0] || null;
-  const payCap = targetDue ? (targetDue.remaining ?? targetDue.amount) : 0;
-  // Selectable amounts are billing-event-derived only — the member's own
-  // cadence rates, and only the ones that fit within what's actually due —
-  // never a typed number. A typed amount has no billing event behind it and
-  // can't be reconciled against a receipt in Finance; a selected one always
-  // maps to a real amount the event was priced at.
-  type PayOption = { cycle: string; label: string; amount: number };
-  const cadenceOptions: PayOption[] = (history?.cadence_rates?.rates || [])
-    .filter((r) => r.enabled && r.amount > 0 && r.amount <= payCap)
-    .map((r) => ({ cycle: r.cycle, label: CADENCE_LABEL[r.cycle] || r.cycle, amount: r.amount }));
-  // If none of the cadence rates line up exactly with what's due (e.g. this
-  // event is already partially settled), the due's own remaining amount is
-  // still a real billing-event number — offer it as the fallback option.
-  const payOptions: PayOption[] = cadenceOptions.some((o) => o.amount === payCap)
-    ? cadenceOptions
-    : targetDue ? [...cadenceOptions, { cycle: '__due__', label: targetDue.label, amount: payCap }] : cadenceOptions;
+  const [showSchedule, setShowSchedule] = useState(false);
 
-  const selectPayOption = (opt: PayOption) => {
-    if (!targetDue) return;
-    setPayAmount(String(opt.amount));
-    setSelectedCadence(opt.cycle);
-    setPayEventId(targetDue.event_id);
-  };
+  // Auto-target the next due the moment it's known — paying it isn't a
+  // decision the member makes among options, so there's nothing to tap
+  // before the "Pay" action becomes available.
+  useEffect(() => {
+    if (targetDue) {
+      setPayEventId(targetDue.event_id);
+      setPayAmount(String(targetDue.remaining ?? targetDue.amount));
+    } else {
+      setPayEventId(''); setPayAmount('');
+    }
+    setSelectedCadence(null);
+  }, [targetDue?.event_id, targetDue?.remaining, targetDue?.amount]);
 
   // Flattened, condition-filtered form fields (minus the attendance control we
   // render ourselves and any pure-layout blocks we still show as text).
@@ -956,36 +957,62 @@ const SessionCheckinPage: React.FC = () => {
                 </div>
               )}
 
-              {openDues.length === 0 && (
-                <p style={{ color: BRAND.ok, fontSize: 14, margin: 0 }}>All dues are settled. 🎉</p>
+              {/* Payment History — every already-paid event, real dates and
+                  amounts, collapsed by default (same pattern as the seller's
+                  receipts list). Shows exactly which periods are settled. */}
+              {paidEvents.length > 0 && (
+                <div style={{ marginBottom: 4 }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowSchedule(!showSchedule)}
+                    style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '10px 12px', borderRadius: 10, border: `1px solid ${BRAND.line}`, background: '#F8FAFC',
+                      cursor: 'pointer' }}>
+                    <span style={{ fontSize: 12.5, fontWeight: 700, color: BRAND.ink }}>
+                      Payment History
+                      <span style={{ fontWeight: 500, color: BRAND.sub }}> · {paidEvents.length} paid</span>
+                    </span>
+                    <span style={{ fontSize: 12, color: BRAND.sub }}>{showSchedule ? '▲' : '▼'}</span>
+                  </button>
+                  {showSchedule && (
+                    <div style={{ marginTop: 4 }}>
+                      {paidEvents.map((e) => (
+                        <div key={e.event_id}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 4px', borderTop: `1px solid #F1F1F3` }}>
+                          <div>
+                            <div style={{ fontSize: 13, color: BRAND.ink }}>{e.label}</div>
+                            <div style={{ fontSize: 11.5, color: BRAND.sub, marginTop: 1 }}>{fmtDate(e.date)}</div>
+                          </div>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: BRAND.ok }}>
+                            ✓ {money(e.amount_settled ?? e.amount, e.currency)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
 
-              {targetDue && (
-                <>
-                  <div style={{ fontSize: 12.5, color: BRAND.sub, marginBottom: 10 }}>
-                    Next due: <strong style={{ color: BRAND.ink }}>{targetDue.label}</strong> · {fmtDate(targetDue.date)}
-                  </div>
+              {/* Clear break between what's settled and what's owed now */}
+              {(paidEvents.length > 0 && (targetDue || openDues.length === 0)) && (
+                <div style={{ height: 1, background: BRAND.line, margin: '14px 0' }} />
+              )}
 
-                  {/* Selectable amounts only — each option is a real billing-event
-                      amount (the member's own cadence rate, or the due itself),
-                      never a typed number, so every receipt reconciles cleanly
-                      against an event in Finance. */}
-                  <label style={labelStyle}>How much are you paying?</label>
-                  <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-                    {payOptions.map((opt) => {
-                      const active = selectedCadence === opt.cycle;
-                      return (
-                        <button key={opt.cycle} type="button"
-                          onClick={() => selectPayOption(opt)}
-                          style={{ padding: '10px 16px', borderRadius: 10, border: `1.5px solid ${active ? BRAND.accent : BRAND.field}`,
-                            background: active ? BRAND.accentSoft : '#fff', color: active ? BRAND.accentInk : BRAND.ink,
-                            fontWeight: 700, fontSize: 13.5, cursor: 'pointer', transition: 'all 120ms' }}>
-                          {opt.label} · {money(opt.amount, targetDue.currency)}
-                        </button>
-                      );
-                    })}
+              {openDues.length === 0 ? (
+                <p style={{ color: BRAND.ok, fontSize: 14, margin: 0 }}>All dues are settled. 🎉</p>
+              ) : targetDue && (
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: BRAND.sub, letterSpacing: 0.4, marginBottom: 6 }}>CURRENT</div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: 15, color: BRAND.ink }}>{targetDue.label}</div>
+                      <div style={{ fontSize: 12, color: BRAND.sub, marginTop: 2 }}>Due {fmtDate(targetDue.date)}</div>
+                    </div>
+                    <div style={{ fontSize: 19, fontWeight: 800, color: BRAND.accentInk }}>
+                      {money(targetDue.remaining ?? targetDue.amount, targetDue.currency)}
+                    </div>
                   </div>
-                </>
+                </div>
               )}
 
               {payEventId && Number(payAmount) > 0 && (() => {
