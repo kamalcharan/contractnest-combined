@@ -36,6 +36,21 @@ untouched):
     the word and I'll deploy + verify byte-for-byte, same as every other
     edge change this session.
 
+ALSO REPORTED at the same time: no distinct "Group Sessions" filter in
+the Contract Wizard's block picker (Add Blocks step) — Group Session
+blocks (like "Saturday Cadence", "Bi Weekly Meetings") were lumped into
+the same "Services" filter chip/section as regular service blocks
+(cats: ['service', 'session'] in one SECTIONS entry), no way to browse
+them separately.
+
+  - contractnest-ui/.../ContractWizard/steps/ServiceBlocksStep.tsx
+      Split the single 'services' SECTIONS entry into two:
+      'services' (cats: ['service']) and a new 'sessions' entry
+      (cats: ['session'], chip label "Group Sessions"). Each block's
+      inline type badge (SERVICE / GROUP SESSION) is computed
+      per-block already, independent of section grouping, so this is a
+      pure filter/grouping change — no other behavior affected.
+
 Two follow-ups from live testing:
 
 1. The "Sync Prices from KT" button was only reachable from the equipment
