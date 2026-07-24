@@ -1,0 +1,27 @@
+═══════════════════════════════════════════════════
+⏸️ WORK IN PROGRESS — NOT YET APPLIED, NOT YET COMPLETE
+═══════════════════════════════════════════════════
+Branch: sprint2-auto-generate-kt-forms
+(Sprint 2/7 pilot — automatic per-service SmartForm generation triggered
+by the KT "Generate Service Names" step, feeding a new master mapping
+table that tenant onboarding will read from)
+
+STATUS: only the first file of a larger planned change exists so far.
+The migration below has NOT been applied to the live database (the apply
+call was interrupted/rejected mid-session) and no other planned pieces
+(backend service, new Express route, frontend hook, cat-blocks bulk-seed
+consumption) have been built yet. This batch exists only to satisfy the
+session's untracked-files check — do not treat this as ready to copy or
+test.
+
+Files so far:
+  - contractnest-edge/supabase/migrations/smart-forms/005_kt_service_form_map.sql
+      Defines m_kt_service_form_map (resource_template_id, service_name,
+      form_template_id) -- NOT YET APPLIED LIVE.
+
+═══════════════════════════════════════════════════
+DO NOT COPY OR TEST THIS BATCH YET
+═══════════════════════════════════════════════════
+Wait for a follow-up commit that either completes this feature or
+explicitly says what changed, before copying anything from this folder.
+═══════════════════════════════════════════════════
