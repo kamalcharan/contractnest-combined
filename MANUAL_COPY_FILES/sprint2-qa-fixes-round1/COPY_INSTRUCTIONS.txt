@@ -1,6 +1,41 @@
 ═══════════════════════════════════════════════════
-🔧 UPDATE — Sync fixed to also add missing items, not just prices
+🔧 UPDATE 2 — Catalog Studio blocks list ignored the Test/Live toggle
 ═══════════════════════════════════════════════════
+Reported: "Saturday Cadence" (a Group Session block) visible while
+creating a template in Test environment, not in Live.
+
+ROOT CAUSE (traced end to end): the frontend's Live/Test toggle
+(localStorage) is correctly sent as an x-environment header on every
+request. contractnest-api's catalogStudioController correctly reads it.
+But catBlocksService.makeRequest() — the function that forwards the
+request to the cat-blocks edge function — builds its headers from
+scratch and never includes x-environment. The edge function's
+extractRequestContext() defaults environment to 'live' whenever the
+header is missing, so ctx.isLive was ALWAYS true for every blocks-list
+request, system-wide — the toggle had zero effect on this endpoint.
+
+DECISION (confirmed): rather than fix the toggle to make Test/Live
+legitimately diverge, Catalog Studio should show the SAME data in both
+environments — matching how /settings/configure/resources already has
+no environment split at all. Applies globally (all tenants), since the
+toggle was already non-functional, not working-as-designed.
+
+THE FIX — contractnest-edge/supabase/functions/cat-blocks/index.ts,
+handleGetBlocks (the tenant-facing list handler; handleGetBlocksAdmin is
+untouched):
+  - Removed the `.eq('is_live', ctx.isLive)` filter entirely.
+  - Because bulk-seed creates a separate test row AND live row per
+    logical block (same tenant + resource_template_id + name, different
+    id), just dropping the filter would make every seeded block appear
+    TWICE. Added a dedup pass: fetch all candidate rows (capped at 2000,
+    well above any tenant's realistic count), collapse by
+    (tenant_id, resource_template_id, name) preferring the live copy
+    when both exist, THEN apply the requested page/limit to the deduped
+    list. Pagination's total/has_more now reflect the deduped count.
+  - ⚠️ NOT YET DEPLOYED — this is a shared platform edge function, say
+    the word and I'll deploy + verify byte-for-byte, same as every other
+    edge change this session.
+
 Two follow-ups from live testing:
 
 1. The "Sync Prices from KT" button was only reachable from the equipment
@@ -180,6 +215,14 @@ npm run dev
       "Already in your catalog — nothing new to load"
 - [ ] Re-click sync a second time on the same equipment — confirm it
       reports nothing to do, rather than erroring or double-applying
+- [ ] (After the cat-blocks edge deploy) At /catalog-studio/templates-list,
+      create/edit a template — confirm "Saturday Cadence" (or any block)
+      shows up identically whether the Live/Test toggle is set to Live or
+      Test
+- [ ] Open an equipment with lots of seeded blocks (e.g. HVAC — 136 raw
+      rows, ~68 after dedup) — confirm no duplicate rows appear in the
+      block picker or in /catalog-studio/blocks, and pagination (if you
+      page through) doesn't skip or repeat items
 
 ═══════════════════════════════════════════════════
 ⏸️ WAITING FOR CONFIRMATION
