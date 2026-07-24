@@ -1,0 +1,125 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════
+Branch: sprint2-equipment-filter
+(Sprint 2/7 pilot — Equipment/Facility filter on Admin Smart Forms list)
+
+WHAT THIS DOES: adds a 5th filter to the Admin Smart Forms list —
+"All Equipment" — alongside the existing Search / Status / Category /
+Form Type filters. Unlike Category and Form Type (small fixed enums,
+hardcoded arrays), Equipment is dynamic and open-ended (grows every time
+a new Knowledge Tree is built), so its dropdown options are read live
+from the database instead of a hardcoded list.
+
+Files Changed:
+
+  contractnest-edge (DB + edge function — ALREADY APPLIED/DEPLOYED LIVE):
+  - supabase/migrations/smart-forms/004_get_form_equipment_tags_rpc.sql
+      New RPC get_form_equipment_tags() — returns one row per distinct
+      resource_template_id actually tagged on at least one form, with
+      display name, resource_type_id (equipment vs facility/'asset'),
+      and how many forms reference it. Applied live, verified.
+  - supabase/functions/smart-forms/index.ts
+      Added GET /smart-forms/equipment-tags (calls the RPC above) and a
+      resource_template_id query filter on GET /smart-forms (the list
+      route). Deployed live as smart-forms v6, verified byte-for-byte.
+
+  contractnest-api (Express proxy layer):
+  - src/types/adminForms.dto.ts — ListTemplatesRequest gains
+    resource_template_id; new EquipmentTag / EquipmentTagsResponse types.
+  - src/routes/adminFormsRoutes.ts — GET / now forwards
+    resource_template_id to the edge function; new GET /equipment-tags
+    route (registered before /:id so Express matches the literal path).
+  - src/services/adminFormsService.ts — new getEquipmentTags() proxy method.
+  - src/validators/adminFormsValidators.ts — resource_template_id
+    validated as an optional UUID on the list endpoint.
+
+  contractnest-ui (Admin Smart Forms list):
+  - src/services/serviceURLs.ts — SmartFormsFilters gains
+    resource_template_id; new EQUIPMENT_TAGS endpoint constant;
+    LIST_WITH_FILTERS forwards the new filter.
+  - src/pages/admin/smart-forms/types/smartFormsAdmin.types.ts —
+    FormTemplateFilters gains resource_template_id; new EquipmentTag type.
+    (Also carries forward Step 2c's FormTemplate.source /
+    resource_template_id and Step 2's CreateTemplatePayload fields, since
+    this batch branches from the same baseline — apply Step 2 + Step 2c
+    first, or this file's copy alone already includes both.)
+  - src/pages/admin/smart-forms/hooks/useSmartFormsAdmin.ts — new
+    useEquipmentTags() hook powering the dropdown.
+  - src/pages/admin/smart-forms/SmartFormsAdminPage.tsx — new "All
+    Equipment" dropdown filter, positioned after Form Type. Also carries
+    forward Step 2c's "🌳 Knowledge Tree" badge on list rows (same reason
+    as above).
+
+Submodules Affected: contractnest-edge (live), contractnest-api, contractnest-ui
+
+Production Checklist:
+  ✅ Transaction Management: N/A — all reads, no writes
+  ✅ Race Condition Handling: N/A
+  ✅ Error Handling: new RPC/route/hook follow the exact same
+     try/catch + error-message pattern as every other endpoint in these
+     files (adminFormsService, adminFormsRoutes, useSmartFormsAdmin)
+  ✅ Toasts: N/A — filter dropdowns don't need a toast (same as the
+     existing Status/Category/Type filters)
+  ✅ Loaders: useEquipmentTags() has its own loading state; dropdown
+     renders with whatever tags have loaded (empty until fetch resolves,
+     same graceful-degradation pattern as the rest of the page)
+  ✅ Input Validation: resource_template_id validated as a UUID at the
+     contractnest-api layer, matching every other filter param
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files from MANUAL_COPY_FILES
+─────────────────────────────────
+NOTE: apply Step 2 and Step 2c first if you haven't already (this batch's
+UI files are supersets that include both, but the edge/api layers assume
+Step 2 + Step 2d are already in place).
+
+Copy-Item "MANUAL_COPY_FILES\sprint2-equipment-filter\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\sprint2-equipment-filter\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\sprint2-equipment-filter\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "✅ Files copied!" -ForegroundColor Green
+
+STEP 3: Restart affected dev servers
+─────────────────────────────────
+cd contractnest-api
+# Ctrl+C to stop it if running, then:
+npm run dev
+
+(In another terminal)
+cd contractnest-ui
+npm run dev
+# Hard refresh browser: Ctrl+F5
+
+(No action needed for contractnest-edge — the RPC and edge function
+are already live in Supabase.)
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Go to Admin > Smart Forms
+- [ ] Confirm a 5th dropdown "All Equipment" appears after "All Types"
+- [ ] Confirm it lists "HVAC System (1)" (or however many forms are
+      currently tagged) — NOT a hardcoded list, should reflect whatever
+      is actually in the database
+- [ ] Select it — confirm the list filters down to only HVAC-tagged forms
+- [ ] Confirm combining it with Category/Type/Status filters works
+      together (e.g. Category=maintenance AND Equipment=HVAC)
+- [ ] Clear filters — confirm the equipment dropdown resets too
+- [ ] Confirm the "🌳 Knowledge Tree" badge from Step 2c still works
+      (it's re-included in this batch's copy of SmartFormsAdminPage.tsx)
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════

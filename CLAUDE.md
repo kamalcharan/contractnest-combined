@@ -559,6 +559,12 @@ Services do NOT have KT equivalent yet. Future work if needed:
 **Current state**: only the contract-level discount (Billing View step, `discount_type`/`discount_value`/`discount_total`) exists and is fully stitched end-to-end (mapper, billing event derivation, backend parity, Events Preview, contract document).
 **When to revisit**: owner's call — flagged here so it isn't mistaken for a missed Sprint 1 item. If picked back up, an interactive mock already exists from the design discussion (single-page "Add Service Blocks" with a compact discount-mode toggle + collapsed-by-default per-block discount row) to start from.
 
+### Smart Forms `category`/`form_type` taxonomy — conflated dimensions
+While wiring up equipment/facility tagging on Smart Forms (Sprint 2/7 pilot), noticed `category` (`calibration, inspection, audit, maintenance, clinical, pharma, compliance, onboarding, general`) mixes industry-vertical values (`clinical`, `pharma`) with functional-purpose values (`maintenance`, `inspection`, `compliance`, ...) in one flat, hardcoded enum — forcing a single pick loses information (an HVAC PM form is arguably "maintenance" *and* "inspection" *and* "compliance"). `form_type` (service-lifecycle stage) has no such issue.
+
+**Current state**: left as-is — equipment/facility tagging (`resource_template_id`) is the dimension that actually answers "what does this form belong to," and doesn't have this problem.
+**When to revisit**: when a new industry vertical doesn't fit the current list, or the hardcoded-enum duplication (frontend + backend) becomes a maintenance pain. Full analysis: `ClaudeDocumentation/smartformscategories.md`.
+
 ---
 
 ## ⚠️ Session Reminders

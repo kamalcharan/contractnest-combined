@@ -1,0 +1,46 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════
+Branch: sprint2-smartforms-taxonomy-doc
+(Documentation only — no code, no testing needed)
+
+Files Changed:
+  - ClaudeDocumentation/smartformscategories.md
+      New observation doc: Smart Forms' category/form_type taxonomy
+      conflates industry-vertical values (clinical, pharma) with
+      functional-purpose values (maintenance, inspection, compliance,
+      ...) in one flat hardcoded enum. Discovered while wiring up
+      equipment/facility tagging on Smart Forms this session. Not
+      actioned — saved for future review. Referenced from the root
+      CLAUDE.md's "Future Review Items" section (see the CLAUDE.md diff
+      already applied directly to the parent repo in this same commit
+      batch — that file lives at the repo root, not inside this
+      submodule folder).
+
+Submodules Affected: ClaudeDocumentation only
+
+Production Checklist: N/A — documentation only, no code changes.
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files from MANUAL_COPY_FILES
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\sprint2-smartforms-taxonomy-doc\ClaudeDocumentation\*" -Destination "ClaudeDocumentation\" -Recurse -Force
+
+Write-Host "✅ File copied!" -ForegroundColor Green
+
+Nothing to test — it's a markdown file. Read it over and confirm it says
+what you want, then treat this like any other doc merge whenever
+convenient (no urgency, no code depends on it).
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+→ "Tested, working - proceed with merge" (or just "looks good")
+═══════════════════════════════════════════════════
