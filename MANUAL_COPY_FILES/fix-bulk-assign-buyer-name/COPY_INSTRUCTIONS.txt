@@ -1,0 +1,99 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════
+Branch: fix-bulk-assign-buyer-name
+
+WHAT WAS WRONG: Bulk-assigning a template to multiple members gave every
+resulting contract the same heading — "<Template> — New Client — <Duration>"
+— instead of each member's real name. Direct/single assignment was correct.
+
+ROOT CAUSE: BulkAssignDialog assembles the draft ONCE, before any member is
+picked (buyer = null for the preview), so the server bakes the heading in
+right then with the "New Client" fallback. Per-member submission overrode
+buyerId/buyerName but never regenerated the baked-in contractName, so every
+contract in the batch kept the placeholder heading.
+
+Also separately noticed (and fixed): buyer names pulled straight from
+contacts (often ALL CAPS from bulk imports) were going into contract
+headings verbatim — "BBB 2026 Schedule — CHARAN KAMAL — 1 Year" — instead
+of proper case.
+
+THE FIX:
+  contractnest-ui/src/components/contracts/vani/BulkAssignDialog.tsx
+    - Per member, rebuild contractName by swapping the buyer segment of the
+      baked-in heading for that member's real (title-cased) name, instead
+      of leaving the "New Client" placeholder in every contract.
+    - Added toTitleCase() so buyer names display as "Charan Kamal", not
+      "CHARAN KAMAL".
+
+  contractnest-api/src/services/contractComposerService.ts
+    - assembleDraft() now title-cases the buyer name used in the generated
+      contractName heading (affects direct/single assignment too, so this
+      is fixed everywhere going forward, not just bulk).
+
+DATA FIX (already applied directly to the live database — no file to
+copy for this part): 26 existing contracts across 3 tenants had their
+`name` corrected — the 9 BBB "New Client" placeholders now show the real
+buyer name, and all buyer-name segments (BBB and others) were normalized
+from ALL CAPS to proper case. This was a one-time SQL correction; nothing
+further needed locally for it.
+
+Files Changed:
+  - contractnest-ui/src/components/contracts/vani/BulkAssignDialog.tsx
+  - contractnest-api/src/services/contractComposerService.ts
+
+Submodules Affected: contractnest-ui, contractnest-api
+
+Production Checklist:
+  ✅ Transaction Management: N/A — client-side string composition only;
+     no new DB write path
+  ✅ Race Condition Handling: N/A — no change to concurrency behavior
+  ✅ Error Handling: unchanged — falls back to the original baked-in name
+     if the heading doesn't match the expected 3-segment format
+  ✅ Toasts: N/A — no new user-facing action, same submit flow
+  ✅ Loaders: N/A — no new async operation
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files from MANUAL_COPY_FILES
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\fix-bulk-assign-buyer-name\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\fix-bulk-assign-buyer-name\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+
+Write-Host "✅ Files copied!" -ForegroundColor Green
+
+STEP 3: Restart both dev servers
+─────────────────────────────────
+cd contractnest-ui
+npm run dev
+# separate terminal:
+cd ../contractnest-api
+npm run dev
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Bulk-assign a signed-off template to 2-3 members with different names
+      (include at least one contact whose name is stored in ALL CAPS)
+- [ ] Confirm each resulting contract's heading shows THAT member's real
+      name, in proper case (e.g. "Charan Kamal", not "New Client" or
+      "CHARAN KAMAL")
+- [ ] Confirm direct/single assignment (VaNi composer, one buyer) also now
+      shows the buyer's name in proper case
+- [ ] Spot-check the 26 already-corrected contracts on /contracts (BBB
+      tenant) — headings should show real names, no "New Client" left
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
