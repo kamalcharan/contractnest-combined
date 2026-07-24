@@ -1,4 +1,36 @@
 ═══════════════════════════════════════════════════
+🔧 UPDATE — Sync fixed to also add missing items, not just prices
+═══════════════════════════════════════════════════
+Two follow-ups from live testing:
+
+1. The "Sync Prices from KT" button was only reachable from the equipment
+   detail page's VaNi card — nothing in the sidebar (where the UNPRICED
+   badge actually lives) hinted the action existed. Added a small inline
+   ↻ control directly beside the UNPRICED badge in the sidebar itself.
+
+2. User asked what "Re-seed with VaNi" actually does, and testing showed
+   it's a no-op on any already-seeded equipment ("Already in your catalog
+   — nothing new to load") — its idempotency check is whole-template (any
+   existing row -> skip entirely), so it can never pull in new items the
+   KT has gained since the tenant first seeded. That made the pricing fix
+   incomplete: syncing prices only helps items that already exist in the
+   tenant's catalog, not items the KT added later that never got seeded
+   at all. So the reprice function became a proper sync function:
+
+   ktCatBlockMapperService.repriceBlocksForTemplate() -> renamed to
+   syncBlocksForTemplate() — now does BOTH: adds any KT block missing
+   from the tenant's catalog by name (both test + live), and backfills
+   base_price on existing-but-unpriced blocks. Never touches anything the
+   tenant has already priced or customized. Route renamed to match:
+   POST /api/seeds/tenant/sync-equipment (was reprice-equipment).
+
+   On the equipment detail page, the VaNi card's action for BOTH 'seeded'
+   and 'unpriced' states now calls this same sync — "Re-seed with VaNi"
+   is gone; it's "⟳ Sync with Knowledge Tree" everywhere except first-time
+   seeding ('kt' state), which still goes through the preview-then-load
+   flow since that's a bigger, first-time action worth previewing.
+
+═══════════════════════════════════════════════════
 📦 CHANGES SUMMARY
 ═══════════════════════════════════════════════════
 Branch: sprint2-qa-fixes-round1
@@ -138,12 +170,16 @@ npm run dev
       ONE row per service, not one per tenant
 - [ ] Click "Generate Missing" on a service group with "no form yet" —
       confirm it creates the form and the row flips to "approved"
-- [ ] Go to /catalog-studio/equipment, select Elevator or UPS (sharma
-      elevators tenant, or any tenant showing "UNPRICED") — confirm the
-      card now reads "Sync Prices from KT" and clicking it actually
-      updates the spare/service rows to show real prices
-- [ ] Re-click "Sync Prices from KT" a second time — confirm it reports
-      "nothing to sync" rather than erroring or double-applying
+- [ ] Go to /catalog-studio/equipment — an UNPRICED equipment now shows a
+      small ↻ button right next to the badge in the sidebar itself (not
+      just on the detail page). Click it — confirm it actually updates
+      the spare/service rows to show real prices.
+- [ ] Open an equipment already fully "IN CATALOG" — confirm its card now
+      says "⟳ Sync with Knowledge Tree" (not "Re-seed with VaNi") and
+      clicking it reports "Already up to date" rather than the old
+      "Already in your catalog — nothing new to load"
+- [ ] Re-click sync a second time on the same equipment — confirm it
+      reports nothing to do, rather than erroring or double-applying
 
 ═══════════════════════════════════════════════════
 ⏸️ WAITING FOR CONFIRMATION
