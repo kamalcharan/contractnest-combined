@@ -1,27 +1,165 @@
 ═══════════════════════════════════════════════════
-⏸️ WORK IN PROGRESS — NOT YET APPLIED, NOT YET COMPLETE
+📦 CHANGES SUMMARY
 ═══════════════════════════════════════════════════
 Branch: sprint2-auto-generate-kt-forms
-(Sprint 2/7 pilot — automatic per-service SmartForm generation triggered
-by the KT "Generate Service Names" step, feeding a new master mapping
-table that tenant onboarding will read from)
+(Sprint 2/7 pilot — auto-generate SmartForms as part of KT generation +
+tenant onboarding, no manual "export" click required)
 
-STATUS: only the first file of a larger planned change exists so far.
-The migration below has NOT been applied to the live database (the apply
-call was interrupted/rejected mid-session) and no other planned pieces
-(backend service, new Express route, frontend hook, cat-blocks bulk-seed
-consumption) have been built yet. This batch exists only to satisfy the
-session's untracked-files check — do not treat this as ready to copy or
-test.
+WHAT THIS DOES:
+1. Right after an admin completes the KT "Generate Service Names" step
+   (the point at which service_name is finally persisted, making
+   checkpoint grouping resolvable — catalog_name is already there from
+   the earlier, automatic Cycles step), the system now AUTOMATICALLY:
+   composes one small SmartForm per service group (same grouping key
+   ktCatBlockMapperService already uses: catalog_name || service_name),
+   creates it, and registers it in a new master mapping table
+   (m_kt_service_form_map) — keyed by resource_template_id + service_name,
+   independent of any tenant.
+2. Tenant onboarding's existing bulk-seed step (cat-blocks/bulk edge
+   route, unchanged trigger point) now looks up that mapping table and
+   stamps form_template_id onto each new tenant's m_cat_blocks row
+   automatically at seed time. Every tenant who onboards with a given
+   equipment from now on gets pre-armed service blocks — no admin action
+   per tenant, ever.
 
-Files so far:
-  - contractnest-edge/supabase/migrations/smart-forms/005_kt_service_form_map.sql
-      Defines m_kt_service_form_map (resource_template_id, service_name,
-      form_template_id) -- NOT YET APPLIED LIVE.
+This makes forms a genuine peer to pricing/blocks in the onboarding
+sequence, and removes the need for the "Generate & Attach" per-block
+button (from the sprint2-arm-catalog-studio batch, not yet copied into
+your local tree) as the PRIMARY path — that button still exists and still
+works, but is now a manual override/regenerate tool for one already-
+seeded tenant's block, not the only way forms get attached.
 
 ═══════════════════════════════════════════════════
-DO NOT COPY OR TEST THIS BATCH YET
+Files Changed:
 ═══════════════════════════════════════════════════
-Wait for a follow-up commit that either completes this feature or
-explicitly says what changed, before copying anything from this folder.
+
+  contractnest-edge (1 DB migration — ALREADY APPLIED LIVE + verified;
+  1 edge function — NOT YET DEPLOYED, waiting on your go-ahead):
+  - supabase/migrations/smart-forms/005_kt_service_form_map.sql
+      New table m_kt_service_form_map (resource_template_id, service_name,
+      form_template_id, unique on the first two). APPLIED LIVE, columns
+      verified via information_schema.
+  - supabase/functions/cat-blocks/index.ts
+      handleBulkSeed now looks up m_kt_service_form_map for the KT being
+      seeded and sets form_template_id on each insert row where a mapping
+      exists. Builds on top of the resource_template_id filter already
+      deployed live as v19 (sprint2-arm-catalog-studio batch) — this
+      would be v20. ⚠️ NOT YET DEPLOYED — say the word and I'll deploy +
+      verify byte-for-byte, same as every other edge change this session.
+
+  contractnest-api (4 files):
+  - src/services/ktCatBlockMapperService.ts
+      New public method getServiceCheckpointGroups() — same grouping key
+      and same underlying fetch (fetchServiceCycleRows, which in practice
+      always uses the JS fallback join since the RPC it prefers,
+      kt_service_cycle_rows_for_template, doesn't exist in this DB —
+      confirmed via direct query) as the existing buildServiceBlocks(),
+      just returning {serviceName, checkpointIds[]} instead of full
+      cat_block payloads. No existing behavior changed.
+  - src/services/ktServiceFormGeneratorService.ts (NEW)
+      Composes one FormSchema per service group and creates it directly
+      in m_form_templates (service-role Supabase client, same access
+      pattern ktCatBlockMapperService already uses), then upserts the
+      mapping. Section-building logic is a 1:1 port of contractnest-ui's
+      useAutoComposeForm.ts (composeBlockForm + its helpers) — pure data
+      transformation, no React dependency, so it runs identically
+      server-side. Skips any service group already in the mapping table
+      (won't regenerate/duplicate on repeated "Generate Service Names"
+      runs).
+  - src/controllers/knowledgeTreeController.ts
+      New generateForms handler — POST /api/knowledge-tree/generate-forms.
+      No LLM call; purely deterministic from already-generated data.
+  - src/routes/knowledgeTreeRoutes.ts
+      New route registration for the above.
+
+  contractnest-ui (1 file):
+  - src/hooks/queries/useKnowledgeTree.ts
+      useKTGenerateServiceNames now calls the new generate-forms endpoint
+      right after patch-service-names succeeds. Best-effort: wrapped in
+      its own try/catch so a forms-generation failure never rolls back
+      (or even surfaces as an error on) the service-names save that
+      already succeeded — it only logs to console.
+
+Submodules Affected: contractnest-edge (migration live, edge function
+pending), contractnest-api, contractnest-ui
+
+Production Checklist:
+  ✅ Transaction Management: form creation + mapping upsert happen
+     sequentially per service group inside generateFormsForTemplate;
+     a failure on one group is logged and skipped, doesn't abort the
+     remaining groups (matches the existing per-KT-not-per-tenant
+     failure isolation pattern already used in handleBulkSeed)
+  ✅ Race Condition Handling: m_kt_service_form_map has a unique
+     constraint on (resource_template_id, service_name) with upsert
+     onConflict — safe against the endpoint being called twice
+     concurrently for the same equipment
+  ✅ Error Handling: generate-forms failures are caught and logged
+     without failing the service-names save (see above); handleBulkSeed's
+     existing per-KT try/catch already covers the new mapping lookup
+  ✅ Toasts: N/A — this runs invisibly in the background after Service
+     Names; the existing "Generate Service Names" toast is unaffected.
+     Admins can check Admin > Smart Forms (with the 🌳 badge from Step 2c)
+     to see what got created.
+  ✅ Loaders: N/A — no new user-facing async action; piggybacks on the
+     existing Generate Service Names button's loading state
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files from MANUAL_COPY_FILES
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\sprint2-auto-generate-kt-forms\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\sprint2-auto-generate-kt-forms\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "✅ Files copied!" -ForegroundColor Green
+
+⚠️ contractnest-edge: the migration is already live. The cat-blocks
+   edge function is NOT yet deployed — testing the onboarding-side
+   auto-attach (new tenant → pre-armed blocks) won't work until that's
+   deployed. Testing the KT-side auto-generation (Service Names →
+   forms created) works fully without it.
+
+STEP 3: Restart contractnest-api
+─────────────────────────────────
+cd contractnest-api
+# Ctrl+C to stop it if running, then:
+npm run dev
+
+cd contractnest-ui
+npm run dev
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Pick an equipment/KT that has NOT had "Generate Service Names" run
+      yet (or one where you're comfortable re-running it — it's a patch,
+      not a wipe)
+- [ ] Click "Generate Service Names"
+- [ ] After it completes, open Admin > Smart Forms — confirm new draft
+      forms appeared, one per service group, each tagged 🌳 Knowledge Tree,
+      each scoped to only that service's checkpoints (not all of them)
+- [ ] Re-run "Generate Service Names" on the same equipment — confirm NO
+      duplicate forms get created (should skip groups already mapped)
+- [ ] (Once cat-blocks is deployed) Onboard a fresh tenant with this
+      equipment — confirm their newly-seeded m_cat_blocks rows already
+      have form_template_id set, with zero manual action
+
+I'll also verify directly via the database once you confirm — no need
+to check yourself.
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+
+Separately: say the word when you want the cat-blocks edge function
+deployed live (it's written and ready, just not pushed to Supabase yet).
 ═══════════════════════════════════════════════════
