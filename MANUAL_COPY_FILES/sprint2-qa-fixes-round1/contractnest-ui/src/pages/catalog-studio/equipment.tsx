@@ -159,7 +159,10 @@ const CatalogEquipmentPage: React.FC = () => {
 
   // ── Seed actions ────────────────────────────────────────────────────────────
 
-  const [syncingPrices, setSyncingPrices] = useState(false);
+  // tplId currently syncing, or null — tracked per-template (not a single
+  // boolean) so the inline sync control next to each UNPRICED badge in the
+  // sidebar can show its own spinner without disabling every other row.
+  const [syncingTplId, setSyncingTplId] = useState<string | null>(null);
 
   useEffect(() => { setVariantFilter('all'); }, [selectedId]);
 
@@ -168,8 +171,10 @@ const CatalogEquipmentPage: React.FC = () => {
   // on already-seeded equipment (idempotency check). This is the actual fix
   // for the 'unpriced' state: pull current KT prices into the already-seeded
   // blocks that never got one, without touching anything already priced.
+  // Callable both from the sidebar's inline sync control (discoverable right
+  // where the UNPRICED badge is) and the equipment detail page's VaNi card.
   const syncPrices = async (tplId: string) => {
-    setSyncingPrices(true);
+    setSyncingTplId(tplId);
     try {
       const resp = await api.post('/api/seeds/tenant/reprice-equipment', {
         resourceTemplateId: tplId,
@@ -185,7 +190,7 @@ const CatalogEquipmentPage: React.FC = () => {
     } catch (err: any) {
       vaniToast.error(err?.response?.data?.error || 'Price sync failed');
     } finally {
-      setSyncingPrices(false);
+      setSyncingTplId(null);
     }
   };
 
@@ -258,7 +263,22 @@ const CatalogEquipmentPage: React.FC = () => {
           </div>
         </div>
         {st === 'seeded' && <Badge tone="green">IN CATALOG</Badge>}
-        {st === 'unpriced' && <Badge tone="amber">UNPRICED</Badge>}
+        {st === 'unpriced' && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <Badge tone="amber">UNPRICED</Badge>
+            <button
+              onClick={(e) => { e.stopPropagation(); syncPrices(tpl.id); }}
+              disabled={syncingTplId !== null}
+              title="Sync prices from the knowledge tree"
+              style={{
+                fontFamily: MONO, fontSize: 12, lineHeight: 1, padding: '3px 6px', borderRadius: 5,
+                border: `1px solid ${AMBER}40`, background: AMBER_BG, color: AMBER,
+                cursor: syncingTplId !== null ? 'not-allowed' : 'pointer',
+                opacity: syncingTplId !== null && syncingTplId !== tpl.id ? 0.4 : 1,
+              }}
+            >{syncingTplId === tpl.id ? '…' : '↻'}</button>
+          </div>
+        )}
         {st === 'kt' && <Badge tone="blue">KT READY</Badge>}
         {st === 'none' && <Badge tone="grey">NO KT</Badge>}
       </div>
@@ -457,9 +477,9 @@ const CatalogEquipmentPage: React.FC = () => {
                     </div>
                     <button
                       onClick={() => selState === 'unpriced' ? syncPrices(selectedId!) : openPreview(selectedId!)}
-                      disabled={syncingPrices}
-                      style={{ border: 'none', borderRadius: 100, padding: '10px 20px', fontFamily: 'inherit', fontSize: 13, fontWeight: 700, cursor: syncingPrices ? 'wait' : 'pointer', background: `linear-gradient(135deg,${VANI},#ff8f5a)`, color: '#fff', boxShadow: '0 3px 10px rgba(255,107,43,.35)', opacity: syncingPrices ? 0.6 : 1 }}
-                    >{selState === 'kt' ? '✨ Seed with VaNi' : selState === 'unpriced' ? (syncingPrices ? 'Syncing…' : '$ Sync Prices from KT') : '⟳ Re-seed with VaNi'}</button>
+                      disabled={syncingTplId === selectedId}
+                      style={{ border: 'none', borderRadius: 100, padding: '10px 20px', fontFamily: 'inherit', fontSize: 13, fontWeight: 700, cursor: syncingTplId === selectedId ? 'wait' : 'pointer', background: `linear-gradient(135deg,${VANI},#ff8f5a)`, color: '#fff', boxShadow: '0 3px 10px rgba(255,107,43,.35)', opacity: syncingTplId === selectedId ? 0.6 : 1 }}
+                    >{selState === 'kt' ? '✨ Seed with VaNi' : selState === 'unpriced' ? (syncingTplId === selectedId ? 'Syncing…' : '$ Sync Prices from KT') : '⟳ Re-seed with VaNi'}</button>
                   </div>
                 )}
 
