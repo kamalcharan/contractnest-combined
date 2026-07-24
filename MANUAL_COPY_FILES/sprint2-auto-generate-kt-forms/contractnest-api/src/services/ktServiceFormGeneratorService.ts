@@ -273,9 +273,19 @@ export class KtServiceFormGeneratorService {
 
   async generateFormsForTemplate(
     resourceTemplateId: string,
-    userId: string | null,
+    accessToken: string,
   ): Promise<{ results: KtFormGenerationResult[] }> {
     const sb = this.supabase;
+
+    // m_form_templates.created_by is NOT NULL — resolve the real caller
+    // from their bearer token (same pattern the smart-forms edge function
+    // already uses: db.auth.getUser(token)), rather than trusting a
+    // request header the frontend never actually sends.
+    const { data: userRes } = await sb.auth.getUser(accessToken);
+    const userId = userRes?.user?.id;
+    if (!userId) {
+      throw new Error('Could not resolve caller identity from access token');
+    }
 
     // Lazy import to avoid a require-cycle at module load (ktCatBlockMapperService
     // already exists as a singleton instance elsewhere in this codebase).

@@ -275,8 +275,7 @@ class KnowledgeTreeController {
       res.status(400).json({ success: false, error: { code: 'VALIDATION_ERROR', message: 'resourceTemplateId required' } }); return;
     }
     try {
-      const userId = (req.headers['x-user-id'] as string) || null;
-      const { results } = await ktServiceFormGeneratorService.generateFormsForTemplate(resourceTemplateId, userId);
+      const { results } = await ktServiceFormGeneratorService.generateFormsForTemplate(resourceTemplateId, context.accessToken);
       const created = results.filter(r => r.status === 'created').length;
       console.log(`✅ KT service forms — ${created} created, ${results.length - created} skipped for template ${resourceTemplateId}`);
       res.status(200).json({ success: true, data: { resource_template_id: resourceTemplateId, results } });

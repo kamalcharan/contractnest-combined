@@ -1,4 +1,35 @@
 ═══════════════════════════════════════════════════
+🔧 BUGFIX UPDATE (after first local test)
+═══════════════════════════════════════════════════
+First test run failed for every service group with:
+  null value in column "created_by" of relation "m_form_templates"
+  violates not-null constraint
+
+Root cause: knowledgeTreeController.generateForms was reading a
+`x-user-id` request header that the frontend's shared API client never
+actually sends (it only attaches Authorization + x-tenant-id) — so
+created_by was always null, and m_form_templates.created_by is NOT NULL
+with no default.
+
+Fix: resolve the real caller server-side from their bearer token, the
+same pattern the smart-forms edge function already uses successfully
+(db.auth.getUser(token)):
+  - knowledgeTreeController.ts: generateForms now passes
+    context.accessToken (already extracted by getContext(), the same
+    token every other KT endpoint uses) into the service, instead of
+    the broken x-user-id header read.
+  - ktServiceFormGeneratorService.ts: generateFormsForTemplate now takes
+    accessToken instead of userId, and resolves a real, non-null user id
+    via supabase.auth.getUser(accessToken) before creating each form.
+    Throws early with a clear error if the token doesn't resolve to a
+    user (shouldn't happen — the same token already passed
+    validateHeaders on the route).
+
+Only contractnest-api changed for this fix. No new migration, no edge
+redeploy needed — just re-copy contractnest-api and restart it.
+═══════════════════════════════════════════════════
+
+═══════════════════════════════════════════════════
 📦 CHANGES SUMMARY
 ═══════════════════════════════════════════════════
 Branch: sprint2-auto-generate-kt-forms
