@@ -1,0 +1,63 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════
+Branch: remove-contract-rate-limit
+(URGENT — bulk-assign was actively blocked right before BBB go-live)
+
+WHAT WAS WRONG: bulk-assigning BBB members returned 429 "Too many contract
+creation requests". POST /api/contracts (single create) and POST
+/api/contracts/bulk-create shared one rate limiter capped at 30 requests /
+15 minutes — today's testing (individual test contracts + several rounds
+of bulk-assign) exhausted it.
+
+THE FIX (explicit request — remove, not raise): deleted both rate
+limiters from contractnest-api/src/routes/contractRoutes.ts —
+  - createContractRateLimit (30/15min, on POST / and POST /bulk-create)
+  - contractRateLimit (100/15min, applied to ALL /api/contracts routes)
+Also removed the now-unused `express-rate-limit` import.
+
+Files Changed:
+  - contractnest-api/src/routes/contractRoutes.ts
+
+Submodules Affected: contractnest-api only
+
+Production Checklist:
+  ✅ Transaction Management: N/A — routing/middleware change only
+  ✅ Race Condition Handling: N/A — no change to concurrency behavior
+  ✅ Error Handling: N/A — removes an error path, adds none
+  ✅ Toasts: N/A
+  ✅ Loaders: N/A
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files from MANUAL_COPY_FILES
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\remove-contract-rate-limit\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+
+Write-Host "✅ Files copied!" -ForegroundColor Green
+
+STEP 3: Restart contractnest-api
+─────────────────────────────────
+cd contractnest-api
+npm run dev
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Retry the bulk-assign that was 429'd — should now succeed
+- [ ] Confirm you can create/bulk-create many contracts back-to-back
+      without hitting a rate limit
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
