@@ -1,0 +1,95 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════
+Branch: fix-terms-block-type-uuid
+(Onboarding blocker — sharma@s.com got stuck at the Terms & Conditions
+step with "invalid input syntax for type uuid: text")
+
+WHAT WAS WRONG: TermsConditionsStep.tsx creates the tenant's singleton
+Terms & Conditions block by calling blockToCreateData({ categoryId:
+'text', ... }). That adapter sends the literal string 'text' as the
+block's type/category but never sets block_type_id — the actual DB
+column, which is uuid. Nothing downstream (contractnest-api's
+catBlocksService, the cat-blocks edge function) resolves the friendly
+string into its real UUID; they pass it straight through, and Postgres
+rejects the insert. This made EVERY first-time tenant fail at this step
+(only updates to an already-existing block were safe, because the
+update path strips non-UUID block_type_id before sending).
+
+THE FIX: matches an existing, established convention already used
+elsewhere in this codebase (Screen8APricingStep.tsx,
+ktCatBlockMapperService.ts) — hardcode the platform's permanent LOV
+UUID as a constant instead of relying on server-side resolution that
+doesn't exist. Confirmed the real UUID via m_category_details
+(cat_block_type / sub_cat_name = 'text'): db4bf715-dc1a-46f6-94a9-
+e64429137d3f.
+
+Files Changed:
+
+  contractnest-ui (1 file):
+  - src/pages/onboarding/steps/TermsConditionsStep.tsx
+      Added BLOCK_TYPE_TEXT constant. Both blockToCreateData(...) and
+      blockToUpdateData(...) calls now pass categoryId: BLOCK_TYPE_TEXT
+      instead of the literal string 'text'. The read-side "find existing
+      T&C block" matching logic (blocks.find(b => b.categoryId ===
+      'text')) is untouched — it correctly compares against the
+      friendly name resolved on read via block_type_name, not the UUID.
+
+Submodules Affected: contractnest-ui only
+
+Production Checklist:
+  ✅ Transaction Management: N/A — single insert/update, no multi-step
+     write; unchanged from before
+  ✅ Race Condition Handling: N/A — no change to concurrency behavior
+  ✅ Error Handling: unchanged — existing try/catch + saveError display
+     still in place; this fix just makes the underlying call succeed
+  ✅ Toasts: unchanged — mutation hooks already toast success/failure
+  ✅ Loaders: unchanged — existing saving state / spinner untouched
+
+No new migration, no edge redeploy, no contractnest-api changes needed.
+
+On sharma@s.com specifically: their attempt failed at the INSERT itself,
+so nothing partial was written (no orphaned block, no onboarding step
+recorded as complete). Once this is copied in, they can just retry the
+"Use these terms" button — no manual cleanup needed.
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files from MANUAL_COPY_FILES
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\fix-terms-block-type-uuid\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "✅ Files copied!" -ForegroundColor Green
+
+STEP 3: Restart contractnest-ui
+─────────────────────────────────
+cd contractnest-ui
+npm run dev
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Resume/retry onboarding for sharma@s.com (or any tenant stuck at
+      Terms & Conditions) — click "Use these terms →"
+- [ ] Confirm it saves successfully and navigates to the next step
+      (equipment-confirm or lov-setup) instead of showing the uuid error
+- [ ] Re-open the step later (or re-run onboarding for the same tenant)
+      — confirm it now shows "EXISTING" / "I found your existing Terms
+      & Conditions" instead of creating a duplicate
+- [ ] Check Catalog Studio — confirm exactly one Text block named
+      "Terms & Conditions" exists for that tenant
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
