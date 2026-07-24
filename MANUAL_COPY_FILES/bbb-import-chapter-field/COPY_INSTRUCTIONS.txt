@@ -1,0 +1,91 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════
+Branch: bbb-import-chapter-field
+(BBB going live tomorrow morning — Contacts import was mapping the
+"Chapter Name" column to "Ignore" with no way to fix it)
+
+WHAT WAS WRONG: the import mapping wizard auto-suggests a target field
+per uploaded column by matching the header text against a fixed set of
+regex synonyms (contactsAdapter.ts's HEADER_PATTERNS) — name, mobile,
+email, business name, designation, category, tags, member id, reference.
+"Chapter Name" didn't match any of them, so it always fell through to
+"Ignore" — and there was no "Chapter" option in the mapping dropdown to
+select manually either, because no such target field existed at all.
+
+THE FIX: added a real "Chapter" target field, stored the same way Member
+ID already is — in the contact's external_data jsonb (external_data.
+chapter_name) — which the contact profile page already renders
+generically (every external_data key is humanized and shown as an
+"Additional Field", so "chapter_name" shows up as "Chapter Name" right
+alongside "Member Id" with zero UI changes needed there). Also added
+"Chapter Name" to the auto-detect patterns so it maps correctly by
+default on future imports, not just this once.
+
+Files Changed:
+
+  contractnest-ui (1 file):
+  - src/pages/contacts/import/contactsAdapter.ts
+      + TargetFieldKey gains 'chapter'
+      + TARGET_FIELDS gains a "Chapter" entry (dropdown option), placed
+        right after "Member ID"
+      + HEADER_PATTERNS gains /chapter/i, /^branch$/i, /^group$/i so
+        "Chapter Name" (and similar) auto-map instead of defaulting to
+        Ignore
+      + ImportRow gains `chapter: string`, extracted in extractRows()
+        the same way memberId already is
+      + buildContactPayload() writes chapter into
+        external_data.chapter_name alongside member_id when present
+
+Submodules Affected: contractnest-ui only
+
+Production Checklist:
+  ✅ Transaction Management: N/A — this only changes what gets attached
+     to the same per-row create-contact payload the import already sends;
+     no new transaction boundary
+  ✅ Race Condition Handling: N/A — no change to concurrency behavior
+  ✅ Error Handling: unchanged — chapter is optional, same as member_id;
+     no new validation/error path
+  ✅ Toasts: N/A — no new user-facing action
+  ✅ Loaders: N/A — no new async operation
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files from MANUAL_COPY_FILES
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\bbb-import-chapter-field\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "✅ Files copied!" -ForegroundColor Green
+
+STEP 3: Restart contractnest-ui
+─────────────────────────────────
+cd contractnest-ui
+npm run dev
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Re-upload the BBB B-Hive member list into Contacts import
+- [ ] Confirm "Chapter Name" now auto-maps to "Chapter" (not "Ignore")
+      on Step 2 — Map Columns
+- [ ] Complete the import for a couple of test rows
+- [ ] Open one of the imported contacts' profile — confirm "Chapter
+      Name" shows up under Additional Fields, next to "Member Id"
+- [ ] Confirm existing fields (Name, Mobile, Email, Category, Role ->
+      Designation, Member Id) still map and import correctly — this
+      change is additive only
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
