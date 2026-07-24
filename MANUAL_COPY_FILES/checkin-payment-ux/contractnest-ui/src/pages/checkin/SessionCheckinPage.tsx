@@ -50,9 +50,15 @@ const initialOf = (s?: string) => (s || '?').trim().charAt(0).toUpperCase() || '
 
 // Build a UPI intent URL (upi://pay?…). On a phone this opens the UPI app
 // chooser (GPay / PhonePe / Paytm) pre-filled with payee + amount.
+// mc (merchant category code) is mandatory per the NPCI UPI Linking Spec —
+// every real QR (personal or merchant) carries it, defaulting to 0000 for a
+// non-merchant payee. Omitting it made GPay reject the link outright with
+// "Payments to this receiver are not allowed by UPI network", even to a
+// valid VPA, while scanning that same payee's own QR worked fine.
 const upiPayUrl = (vpa: string, payee?: string, amount?: number, note?: string) => {
   const parts = [`pa=${encodeURIComponent(vpa)}`];
   if (payee) parts.push(`pn=${encodeURIComponent(payee)}`);
+  parts.push('mc=0000');
   if (amount) parts.push(`am=${amount}`);
   parts.push('cu=INR');
   if (note) parts.push(`tn=${encodeURIComponent(note)}`);
