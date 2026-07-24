@@ -1,0 +1,79 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════
+Branch: fix-lov-setup-route
+(Onboarding blocker — /onboarding/lov-setup showed 404, right after the
+Terms & Conditions step fix)
+
+WHAT WAS WRONG: TermsConditionsStep.tsx navigates to
+'/onboarding/lov-setup' for any persona other than 'both'. LovSetupStep.tsx
+(the LOV categories setup step — sits between equipment-confirm and
+done, fully built, navigates forward to /onboarding/done) exists as a
+file but was never imported or registered as a route in App.tsx's
+/onboarding route table. Every tenant whose persona isn't 'both' hits a
+dead route at this exact point in the flow.
+
+THE FIX: added the missing import and <Route path="lov-setup" .../>
+registration in App.tsx, right after "equipment-confirm" and before
+"done" — matching where the component's own navigation already expects
+to land (its header comment says "Navigation: /onboarding/done", and it
+does navigate('/onboarding/done', ...) on both confirm and skip).
+
+Files Changed:
+
+  contractnest-ui (1 file):
+  - src/App.tsx
+      + import LovSetupStep from '@/pages/onboarding/steps/LovSetupStep';
+      + <Route path="lov-setup" element={<LovSetupStep />} />
+
+Submodules Affected: contractnest-ui only
+
+Production Checklist:
+  ✅ Transaction Management: N/A — routing only, no data changes
+  ✅ Race Condition Handling: N/A
+  ✅ Error Handling: N/A — no new error paths introduced
+  ✅ Toasts: N/A — no new user-facing action
+  ✅ Loaders: N/A — no new async operation
+
+On sharma@s.com specifically: their "terms-conditions" step already
+completed successfully (that write happens before the navigate that
+404'd), so nothing needs to be redone there. Once this is copied in,
+either have them revisit /onboarding/lov-setup directly, or resume
+onboarding normally — it should route them here as the next step.
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files from MANUAL_COPY_FILES
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\fix-lov-setup-route\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "✅ Files copied!" -ForegroundColor Green
+
+STEP 3: Restart contractnest-ui
+─────────────────────────────────
+cd contractnest-ui
+npm run dev
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Navigate to /onboarding/lov-setup directly (or resume sharma@s.com's
+      onboarding) — confirm the LOV setup step renders instead of a 404
+- [ ] Confirm "Continue" / skip navigates to /onboarding/done successfully
+- [ ] Confirm the LOV categories shown match what was seeded at tenant
+      creation (Roles, Tags, etc. per DEFAULT_LOV_SEED)
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
