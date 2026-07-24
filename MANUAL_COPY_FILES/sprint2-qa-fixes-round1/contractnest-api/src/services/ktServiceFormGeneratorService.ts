@@ -397,6 +397,45 @@ export class KtServiceFormGeneratorService {
 
     return { results };
   }
+
+  // Read-only status per service group — powers the admin KT tree page's
+  // "Per-Service Forms" panel. Sourced from m_kt_service_form_map (platform
+  // master, one row per resource_template_id + service_name) instead of
+  // tenant-owned m_cat_blocks, which showed one duplicate row per tenant
+  // that had seeded the equipment.
+  async getFormStatusForTemplate(resourceTemplateId: string): Promise<{
+    service_name: string;
+    checkpoint_count: number;
+    form_template_id: string | null;
+    form_status: string | null;
+  }[]> {
+    const sb = this.supabase;
+    const { ktCatBlockMapperService } = await import('./ktCatBlockMapperService');
+    const groups = await ktCatBlockMapperService.getServiceCheckpointGroups(resourceTemplateId);
+    if (groups.length === 0) return [];
+
+    const { data: mapRows } = await sb
+      .from('m_kt_service_form_map')
+      .select('service_name, form_template_id')
+      .eq('resource_template_id', resourceTemplateId);
+    const formIdByService = new Map((mapRows || []).map((r: any) => [r.service_name, r.form_template_id]));
+
+    const formIds = [...formIdByService.values()].filter(Boolean) as string[];
+    const { data: formRows } = formIds.length
+      ? await sb.from('m_form_templates').select('id, status').in('id', formIds)
+      : { data: [] as any[] };
+    const statusById = new Map((formRows || []).map((f: any) => [f.id, f.status]));
+
+    return groups.map((g) => {
+      const formTemplateId = formIdByService.get(g.serviceName) || null;
+      return {
+        service_name: g.serviceName,
+        checkpoint_count: g.checkpointIds.length,
+        form_template_id: formTemplateId,
+        form_status: formTemplateId ? (statusById.get(formTemplateId) || null) : null,
+      };
+    });
+  }
 }
 
 export const ktServiceFormGeneratorService = new KtServiceFormGeneratorService();

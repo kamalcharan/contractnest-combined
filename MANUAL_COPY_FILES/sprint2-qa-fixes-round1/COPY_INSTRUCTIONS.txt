@@ -1,0 +1,154 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════
+Branch: sprint2-qa-fixes-round1
+(Fixes for 3 issues found while QA-testing the auto-generate-kt-forms +
+equipment-filter batches on a live "sharma elevators" onboarding)
+
+═══════════════════════════════════════════════════
+1) KT-generated SmartForms auto-approve (were invisible to tenants)
+═══════════════════════════════════════════════════
+Root cause: /settings/configure/smart-forms only lists status='approved'
+templates. Every KT-auto-generated form was created as 'draft' and
+nothing ever moved it forward — so equipment with a fully-seeded catalog
+showed zero forms in the tenant-facing Smart Forms page. This was PRD
+Section 13 Open Decision #2 ("agent forms go draft->review->approved OR
+skip to approved"), left open. Resolved: auto-approve, since these forms
+are deterministically composed from vetted Knowledge Tree checkpoint
+data, not free-form LLM output.
+
+  - contractnest-api/src/services/ktServiceFormGeneratorService.ts
+      generateFormsForTemplate's insert now sets status: 'approved' (was
+      'draft'), plus approved_by/approved_at/review_notes for an audit
+      trail. Also added getFormStatusForTemplate() — read-only, powers #2.
+
+═══════════════════════════════════════════════════
+2) Admin KT tree page showed duplicate forms (one row per tenant)
+═══════════════════════════════════════════════════
+Root cause: the "Per-Service Forms" panel on the admin KT tree page
+queried m_cat_blocks (tenant-owned — one copy per tenant that seeded the
+equipment) filtered only by resource_template_id, no tenant grouping. With
+N tenants seeded, admins saw N duplicate rows per service — the exact
+"14 rows" issue from earlier this session, just not yet fixed in this
+specific panel. Fix: this panel now reads from m_kt_service_form_map (the
+platform-level mapping table already built for onboarding auto-attach)
+instead of m_cat_blocks — one row per service, period, regardless of how
+many tenants have seeded the equipment.
+
+  - contractnest-api/src/services/ktCatBlockMapperService.ts
+      New getFormStatusForTemplate() [via ktServiceFormGeneratorService,
+      see above] reads m_kt_service_form_map + m_form_templates status.
+  - contractnest-api/src/controllers/knowledgeTreeController.ts
+      New getServiceFormStatus handler — GET /generate-forms's read-only
+      sibling.
+  - contractnest-api/src/routes/knowledgeTreeRoutes.ts
+      New route: GET /api/knowledge-tree/service-forms?resourceTemplateId=
+  - contractnest-ui/.../knowledge-tree/components/FormPreviewTab.tsx
+      "Per-Service Forms" panel rewritten: fetches the new endpoint
+      instead of useCatBlocks(), shows one row per service group with a
+      status badge (form ready / no form yet), plus a single "Generate
+      Missing" button (calls the existing generate-forms endpoint, which
+      already skips groups that have a form). The old per-block "Generate
+      & Attach" button is gone — forms are created automatically right
+      after Service Names now, this panel is a status view + fallback.
+
+═══════════════════════════════════════════════════
+3) Already-seeded equipment stayed "unpriced" after generating KT prices
+═══════════════════════════════════════════════════
+Root cause, confirmed via direct DB query on sharma@s.com's tenant:
+Elevator's 35 spare parts are fully priced in the knowledge tree RIGHT
+NOW, but every one of the tenant's 70 seeded blocks (test+live) has
+base_price null. Their multi-currency pricing table rows (m_kt_prices)
+were created at 11:14:20 today — 44 minutes AFTER their blocks were
+seeded at 10:30:56. Seeding is a one-time snapshot copy, not a live
+reference, and there was no mechanism to push updated KT prices into
+already-seeded blocks. Separately confirmed "Re-seed with VaNi" — despite
+its "re-running is safe" copy — actually no-ops entirely on already-seeded
+equipment (the bulk-seed idempotency check finds existing rows and skips),
+so it can't fix this either.
+
+  - contractnest-api/src/services/ktCatBlockMapperService.ts
+      New repriceBlocksForTemplate(tenantId, resourceTemplateId, authToken):
+      recomputes fresh blocks from current KT data, matches the tenant's
+      existing is_seed=true blocks by name, and updates base_price/
+      currency/config ONLY for rows that are still at base_price null/0
+      (anything the tenant already priced or edited is left untouched).
+  - contractnest-api/src/routes/seedRoutes.ts
+      New route: POST /api/seeds/tenant/reprice-equipment
+      Body: { resourceTemplateId }
+  - contractnest-ui/src/pages/catalog-studio/equipment.tsx
+      When an equipment's state is 'unpriced', the VaNi card CTA now
+      reads "Sync Prices from KT" and calls the new reprice endpoint
+      instead of the seed flow (which would just no-op). 'seeded'/'kt'
+      states are unchanged.
+
+Submodules Affected: contractnest-api, contractnest-ui
+(No new migration, no edge redeploy — this round is API + UI only.)
+
+Production Checklist:
+  ✅ Transaction Management: reprice updates are per-row (one UPDATE per
+     block), matching the existing pattern in this file; a failure on one
+     block is logged and skipped, doesn't abort the rest
+  ✅ Race Condition Handling: reprice only touches rows still at their
+     original unpriced seed state (base_price null/0) — safe to run
+     repeatedly, and never clobbers a price the tenant has since set
+  ✅ Error Handling: all new endpoints follow the same try/catch +
+     structured error response pattern as every other route in these files
+  ✅ Toasts: syncPrices()/handleGenerateMissing() both toast success
+     (with count) or a clear "nothing to do" info toast
+  ✅ Loaders: both new actions have dedicated loading state (button
+     disables + spinner) distinct from the existing seed-preview flow
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files from MANUAL_COPY_FILES
+─────────────────────────────────
+NOTE: apply sprint2-auto-generate-kt-forms and sprint2-arm-catalog-studio
+first if you haven't already — this batch edits files those introduced.
+
+Copy-Item "MANUAL_COPY_FILES\sprint2-qa-fixes-round1\contractnest-api\*" -Destination "contractnest-api\" -Recurse -Force
+Copy-Item "MANUAL_COPY_FILES\sprint2-qa-fixes-round1\contractnest-ui\*" -Destination "contractnest-ui\" -Recurse -Force
+
+Write-Host "✅ Files copied!" -ForegroundColor Green
+
+STEP 3: Restart affected dev servers
+─────────────────────────────────
+cd contractnest-api
+npm run dev
+
+(In another terminal)
+cd contractnest-ui
+npm run dev
+# Hard refresh browser: Ctrl+F5
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Run "Generate Service Names" on a fresh (or existing) equipment —
+      confirm the resulting forms show up on /settings/configure/smart-forms
+      immediately (no manual approve step)
+- [ ] Open the admin KT tree page for an equipment seeded by multiple
+      tenants (e.g. Elevator / Lift) — confirm "Per-Service Forms" shows
+      ONE row per service, not one per tenant
+- [ ] Click "Generate Missing" on a service group with "no form yet" —
+      confirm it creates the form and the row flips to "approved"
+- [ ] Go to /catalog-studio/equipment, select Elevator or UPS (sharma
+      elevators tenant, or any tenant showing "UNPRICED") — confirm the
+      card now reads "Sync Prices from KT" and clicking it actually
+      updates the spare/service rows to show real prices
+- [ ] Re-click "Sync Prices from KT" a second time — confirm it reports
+      "nothing to sync" rather than erroring or double-applying
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
