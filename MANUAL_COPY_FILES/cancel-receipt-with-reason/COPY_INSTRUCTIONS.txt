@@ -1,0 +1,73 @@
+===============================================================
+MANUAL COPY INSTRUCTIONS - cancel-receipt-with-reason
+===============================================================
+
+IMPORTANT: The database migration and edge function in this batch
+are ALREADY LIVE on Supabase (applied directly this session, same
+as other DB/edge changes this branch). You do NOT need to redeploy
+them -- they're included here only so your local checkout's git
+history matches what's actually running. Copy them so `git status`
+comes up clean, but no `supabase db push` / function redeploy
+needed for those two files.
+
+FILES IN THIS FOLDER:
+---------------------------------------------------------------
+
+1. contractnest-edge/supabase/migrations/contracts/071_cancel_invoice_receipt.sql
+   -> Copy to: contractnest-edge\supabase\migrations\contracts\071_cancel_invoice_receipt.sql
+   -> ALREADY LIVE. New cancel_invoice_receipt() RPC + 3 new columns
+      on t_invoice_receipts (cancellation_reason, cancelled_at,
+      cancelled_by). Mirrors cancel_or_writeoff_invoice's structure.
+
+2. contractnest-edge/supabase/functions/contracts/index.ts
+   -> Copy to: contractnest-edge\supabase\functions\contracts\index.ts
+   -> ALREADY LIVE (deployed as contracts v53). New route:
+      POST /contracts/{id}/invoices/receipts/cancel -> handleCancelReceipt
+      -> cancel_invoice_receipt RPC.
+
+3. contractnest-api/src/routes/contractRoutes.ts
+   -> Copy to: contractnest-api\src\routes\contractRoutes.ts
+   -> New route: POST /:id/invoices/receipts/cancel
+
+4. contractnest-api/src/controllers/contractController.ts
+   -> Copy to: contractnest-api\src\controllers\contractController.ts
+   -> New cancelReceipt controller method
+
+5. contractnest-api/src/services/contractService.ts
+   -> Copy to: contractnest-api\src\services\contractService.ts
+   -> New cancelReceipt service method (proxies to edge function)
+
+6. contractnest-ui/src/types/contracts.ts
+   -> Copy to: contractnest-ui\src\types\contracts.ts
+   -> New CancelReceiptPayload / CancelReceiptResponse types
+
+7. contractnest-ui/src/services/serviceURLs.ts
+   -> Copy to: contractnest-ui\src\services\serviceURLs.ts
+   -> New API_ENDPOINTS.CONTRACTS.CANCEL_RECEIPT(id) endpoint
+
+8. contractnest-ui/src/hooks/queries/useInvoiceQueries.ts
+   -> Copy to: contractnest-ui\src\hooks\queries\useInvoiceQueries.ts
+   -> New useCancelReceipt(contractId) mutation hook
+
+9. contractnest-ui/src/pages/contracts/detail/index.tsx
+   -> Copy to: contractnest-ui\src\pages\contracts\detail\index.tsx
+   -> Adds a "Cancel" icon-button next to each receipt row in the
+      expanded receipts list (InvoiceCard component), with an
+      inline confirm panel (reason input, Confirm Cancel / Dismiss),
+      mirroring the existing invoice Cancel/Bad Debt action exactly.
+      Seller-only (isSeller gate, same as invoice actions).
+
+SUBMODULES AFFECTED: contractnest-api, contractnest-ui, contractnest-edge
+(edge already deployed live -- only api/ui need your local test + merge)
+
+WHAT IT DOES:
+Cancelling a receipt reverses whatever it settled: deletes its
+t_invoice_receipt_allocations rows, un-settles the contract_events
+those allocations touched (back to 'scheduled', or 'partial_payment'
+if only part of the event was covered by this receipt), deactivates
+the receipt with the captured reason + timestamp + who cancelled it,
+and recomputes the parent invoice's amount_paid/balance/status.
+Whole-receipt only (no partial cancel). Works regardless of the
+event's cadence (monthly/quarterly/etc).
+
+===============================================================
