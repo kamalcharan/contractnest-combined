@@ -1,0 +1,89 @@
+═══════════════════════════════════════════════════
+📦 CHANGES SUMMARY
+═══════════════════════════════════════════════════
+Branch: sprint2-step5-persist-evidence-on-create
+(Sprint 2/7 pilot — POA Step 5)
+
+WHAT WAS BROKEN: the contract wizard's Evidence Policy step selections
+(evidence_policy_type, evidence_selected_forms) were silently discarded
+whenever a contract was CREATED (via the wizard's initial save or VaNi
+auto-accept). They only persisted if the contract was later EDITED and
+saved, because update_contract_transaction already handled both fields
+but create_contract_transaction's INSERT never referenced them at all.
+
+Confirmed via direct inspection of both live RPC definitions:
+  - contractnest-edge/supabase/functions/contracts/index.ts's
+    handleCreate() spreads the full request body into the RPC payload
+    with no whitelisting (`...body`) -- so the frontend was never the
+    problem, same as the create_contract_transaction RPC itself was.
+  - The wizard (contractnest-ui/.../ContractWizard/logic/mapper.ts) was
+    already sending both fields correctly in the create payload.
+  - The RPC's own INSERT column list was the only place the fields were
+    dropped.
+
+Files Changed:
+  - contractnest-edge/supabase/migrations/contracts/072_persist_evidence_policy_on_create.sql
+      Re-applies create_contract_transaction unchanged except for adding
+      evidence_policy_type / evidence_selected_forms to the INSERT column
+      list and VALUES (COALESCE to the same column defaults 'none' / '[]'
+      that update_contract_transaction already uses).
+
+Submodules Affected: contractnest-edge (DB migration)
+
+⚠️ ALREADY APPLIED LIVE to Supabase project uwyqhzotluikawcboldr via
+   apply_migration, and verified against the live function definition.
+   This batch is for repo file tracking (this session's established
+   discipline: every live DB change gets a matching tracked migration
+   file) -- no further action needed to make the fix take effect, it's
+   already live. Copying the file locally just keeps your working tree
+   in sync with what's live.
+
+Production Checklist:
+  ✅ Transaction Management: unchanged — INSERT still runs inside the
+     RPC's implicit single-statement transaction, same as before
+  ✅ Race Condition Handling: N/A — no concurrency change, this is a
+     create path (no existing row to race against)
+  ✅ Error Handling: unchanged — same EXCEPTION WHEN OTHERS block as
+     before, new fields don't introduce new failure modes (both
+     COALESCE'd to safe defaults matching the column defaults)
+  ✅ Toasts: N/A — no new user-facing action, existing wizard create
+     flow's toast/error handling already covers this call
+  ✅ Loaders: N/A — no new async call
+
+═══════════════════════════════════════════════════
+💻 PHASE 1: COPY FILES FOR LOCAL TESTING
+═══════════════════════════════════════════════════
+
+STEP 1: Navigate to Project
+─────────────────────────────────
+cd "D:\projects\core projects\ContractNest\contractnest-combined"
+
+STEP 2: Copy Files from MANUAL_COPY_FILES
+─────────────────────────────────
+Copy-Item "MANUAL_COPY_FILES\sprint2-step5-persist-evidence-on-create\contractnest-edge\*" -Destination "contractnest-edge\" -Recurse -Force
+
+Write-Host "✅ File copied!" -ForegroundColor Green
+
+(No dev server restart needed — this is a DB function, already live.)
+
+═══════════════════════════════════════════════════
+🧪 TESTING CHECKLIST
+═══════════════════════════════════════════════════
+- [ ] Start a new contract in the wizard, select an Evidence Policy
+      (policy type + at least one form) in the Evidence Policy step
+- [ ] Complete and CREATE the contract (do not just save a draft and
+      edit it — test the fresh-create path specifically)
+- [ ] Confirm the created contract's evidence_policy_type and
+      evidence_selected_forms reflect what you picked (check via the
+      contract detail page if it surfaces this, or ask me to verify via
+      the database directly)
+- [ ] Confirm a contract created with NO evidence policy selected still
+      works fine and defaults sensibly (policy_type='none', forms=[])
+
+═══════════════════════════════════════════════════
+⏸️ WAITING FOR CONFIRMATION
+═══════════════════════════════════════════════════
+Test locally and confirm:
+  → "Tested, working - proceed with merge"
+  → "Issue found: [describe problem]"
+═══════════════════════════════════════════════════
